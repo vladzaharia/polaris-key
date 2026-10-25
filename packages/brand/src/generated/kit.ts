@@ -84,7 +84,7 @@ export const KIT_TOKENS = {
       cardPad: { default: 44 },
       focus: { width: 3, offset: 2, glow: 8 },
       scrim: {
-        light: { opacity: 0.2, blur: 0 },
+        light: { opacity: 0.35, blur: 0 },
         dark: { opacity: 0.42, blur: 0 },
       },
     },
@@ -324,15 +324,15 @@ export const KIT_TOKENS = {
     },
     windows: {
       display: {
-        size: 40,
-        lineHeight: 52,
+        size: 28,
+        lineHeight: 36,
         weight: 600,
         tracking: 0,
         family: "sans",
       },
       title: {
-        size: 28,
-        lineHeight: 36,
+        size: 20,
+        lineHeight: 28,
         weight: 600,
         tracking: 0,
         family: "sans",

@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Archive, KeySquare } from "lucide-react";
 import { type LicenseSummary } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
@@ -34,7 +35,6 @@ import {
   BulkEnableDialog,
   isForbidden,
   NO_BATCH,
-  NO_TIER,
   BulkKeysButton,
   LicenseCard,
   HOLDER_CHIP_ICONS,
@@ -45,8 +45,8 @@ import {
   serverFacetIds,
   useServerFilter,
 } from "../components/LicenseListParts.js";
+import { licenseQuery } from "../data.js";
 import { useLicenseColumns } from "../components/licenseColumns.js";
-import { OverrideMigrationNotice } from "../components/OverrideMigrationNotice.js";
 import {
   BulkDeleteDialog,
   CleanupDialog,
@@ -62,10 +62,12 @@ import {
   useHolderCounts,
   useLicenseBatches,
 } from "../components/holders.js";
+import { noMatchText } from "../components/noMatchText.js";
 import { EMPTY, loadDraft, saveDraft } from "../wizard/draft.js";
 import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
+  defaultTierOf,
   licenseState,
   seatLimitOf,
   useLicensePages,
@@ -96,6 +98,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     counts: serverCounts,
     loadAll,
   } = useLicensePages(slug, serverFilter);
+  const queryClient = useQueryClient();
   const [searchingAll, setSearchingAll] = React.useState(false);
   const tiersQ = useTiers(slug);
   const batchesQ = useLicenseBatches(slug);
@@ -152,7 +155,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   );
 
   const seatsOf = React.useCallback(
-    (l: LicenseSummary) => seatLimitOf(l, tiers, product?.defaultDeviceLimit),
+    (l: LicenseSummary) => seatLimitOf(l, tiers),
     [tiers, product?.defaultDeviceLimit],
   );
 
@@ -198,6 +201,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
             {
               id: "batch",
               label: "Batch",
+              secondary: true,
               options: [
                 ...batches.map((b) => ({ value: b.id, label: b.label })),
                 { value: NO_BATCH, label: "Not in a batch" },
@@ -209,15 +213,16 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "tier",
         label: "Tier",
-        options: [
-          ...tiers.map((t) => ({ value: t.id, label: t.label || t.id })),
-          { value: NO_TIER, label: "No tier" },
-        ],
-        accessor: (l) => l.tier ?? NO_TIER,
+        // Folds into More below 1280 px, so the band keeps one row down to the rail.
+        secondary: "narrow",
+        options: tiers.map((t) => ({ value: t.id, label: t.label || t.id })),
+        // A license with no tier is on the Default tier (LX-33.7).
+        accessor: (l) => l.tier ?? defaultTierOf(tiers)?.id ?? null,
       },
       {
         id: "origin",
         label: "Origin",
+        secondary: true,
         options: ["Automatic grant", "By hand", "Key batch"].map((o) => ({
           value: o,
           label: o,
@@ -312,6 +317,9 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
 
   return (
     <CollectionTemplate
+      // A one-line strip of status chips (it scrolls sideways on a phone): the first row stays
+      // near the title.
+      summaryClassName="-mx-1 -mb-1 -mt-4 flex gap-2 overflow-x-auto px-1 py-1"
       header={
         <PageHeader
           title="Licenses"
@@ -376,7 +384,6 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         ) : undefined
       }
     >
-      <OverrideMigrationNotice slug={slug} />
       {oneBatch ? (
         <p className="text-sm text-fg-muted" data-testid="batch-filter-link">
           Showing the licenses of batch{" "}
@@ -400,6 +407,11 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           (holderOf(l).kind === "floating" ? `Floating license ${l.id}` : l.id)
         }
         rowHref={(l) => r.license(slug, l.id)}
+        onRowIntent={(l) =>
+          // The record is read before the click, so its skeleton is gone and the name (pk-key)
+          // has both ends on a first visit. Fresh data is not refetched (licenseQuery's staleTime).
+          void queryClient.prefetchQuery(licenseQuery(slug, l.id))
+        }
         linkComponent={Link}
         facets={facets}
         search={{
@@ -494,10 +506,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                     v === "inAccount"
                       ? "in-account"
                       : HOLDER_STATE_LABELS[v as HolderState],
-                  tier: (v) =>
-                    v === NO_TIER
-                      ? "no-tier"
-                      : (tiers.find((t) => t.id === v)?.label ?? v),
+                  tier: (v) => tiers.find((t) => t.id === v)?.label ?? v,
                 }),
               }
         }
@@ -508,7 +517,11 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
             primary={primary}
             now={now}
             seats={seatsOf(l)}
-            tierLabel={l.tier ? tierLabel(l.tier) : null}
+            tierLabel={
+              l.tier
+                ? tierLabel(l.tier)
+                : (defaultTierOf(tiers)?.label ?? "Default")
+            }
           />
         )}
       />
@@ -549,37 +562,16 @@ function FacetTile({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "flex flex-col items-start gap-1 rounded-lg border bg-surface-raised px-4 py-3 text-start",
+        "inline-flex min-h-8 shrink-0 items-center gap-2 rounded-full border bg-surface-raised px-3 py-0.5 text-start text-sm",
         "transition-colors hover:border-border-strong",
         "focus-visible:outline-2 focus-visible:outline-focus",
         pressed ? "border-accent ring-1 ring-accent" : "border-border",
       )}
     >
-      <span className="text-xs text-fg-muted">{label}</span>
-      <span className="text-xl font-semibold tabular-nums text-fg-strong">
+      <span className="text-fg-muted">{label}</span>
+      <span className="font-semibold tabular-nums text-fg-strong">
         {count.toLocaleString()}
       </span>
     </button>
   );
-}
-
-/** "No floating Studio license has a name, email or id containing “Q2KD-88”." */
-function noMatchText(
-  state: { q: string; filters: Record<string, string[]> },
-  words: Record<"holder" | "tier", (value: string) => string>,
-): string {
-  // Holder words are common nouns ("floating"); a tier keeps its name ("Studio").
-  const pick = (id: "holder" | "tier"): string =>
-    (state.filters[id] ?? [])
-      .map((v) => (id === "holder" ? words[id](v).toLowerCase() : words[id](v)))
-      .join(" or ");
-  const q = state.q.trim();
-  const who = [pick("holder"), pick("tier")].filter(Boolean).join(" ");
-  const what = `${who ? `${who} ` : ""}license`;
-  const others = Object.entries(state.filters).some(
-    ([id, v]) => v.length > 0 && id !== "holder" && id !== "tier",
-  );
-  if (q)
-    return `No ${what} has a name, email or id containing “${q}”${others ? " under the other filters" : ""}.`;
-  return `No ${what} matches${others ? " the other filters" : ""}.`;
 }

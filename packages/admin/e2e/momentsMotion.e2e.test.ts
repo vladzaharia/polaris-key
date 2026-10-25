@@ -237,27 +237,17 @@ const REDUCED: { label: string; motion: Motion; dataMotion: boolean }[] = [
 ];
 
 describe("Overview: the first load staggers the attention list and the first release bursts once", () => {
-  it("motion on: items rise 30 ms apart, six sparks burst and leave, the moment is stored", async () => {
+  // CX-OVW: Overview's attention is the hero's next step, no longer a list; the stagger of the
+  // Needs attention items is Home's (the "Home:" describe below).
+  it("motion on: six sparks burst and leave, the moment is stored", async () => {
     const page = await open("#/p/djdl");
     await page.getByText(RELEASE_TITLE).waitFor();
-    const list = page
-      .getByRole("region", { name: "Needs attention" })
-      .getByRole("list");
-    await list.waitFor();
     // The burst leaves the DOM when its animations end (never on a timer).
     await page.waitForFunction(
       () => document.querySelector(".pk-burst") === null,
     );
     await atRest(page);
     const p = await probe(page);
-    const step = await staggerStep(page);
-    expect(step).toBe(30);
-    const items = p.starts.filter((s) => s.staggered && s.name === "pk-enter");
-    const count = await list.getByRole("listitem").count();
-    expect(count).toBeGreaterThanOrEqual(2);
-    expect(items.map((s) => s.delay)).toEqual(
-      Array.from({ length: count }, (_, i) => Math.min(i, 6) * step),
-    );
     // Six sparks and one check draw, on the tokens.
     const sparks = p.starts.filter((s) => s.name === "pk-burst");
     expect(sparks).toHaveLength(6);
@@ -265,8 +255,6 @@ describe("Overview: the first load staggers the attention list and the first rel
     expect(p.starts.some((s) => s.name === "pk-draw" && s.tag === "path")).toBe(
       true,
     );
-    // The class leaves once the items have landed; the page is at rest.
-    expect(await list.getAttribute("class")).not.toMatch(/\bpk-stagger\b/);
     expect(await runningAnimations(page)).toBe(0);
     expect(
       await page.evaluate(() =>
@@ -275,10 +263,7 @@ describe("Overview: the first load staggers the attention list and the first rel
     ).not.toBeNull();
     // A reload is a new document: the moment is stored, so no banner and no burst.
     await page.reload();
-    await page
-      .getByRole("region", { name: "Needs attention" })
-      .getByRole("list")
-      .waitFor();
+    await page.getByRole("heading", { level: 1, name: "DJDL" }).waitFor();
     await atRest(page);
     expect(await page.getByText(RELEASE_TITLE).count()).toBe(0);
     const again = await probe(page);
@@ -289,16 +274,12 @@ describe("Overview: the first load staggers the attention list and the first rel
   });
 
   for (const r of REDUCED)
-    it(`${r.label}: the same banner and items at once, nothing animates, no View Transition`, async () => {
+    it(`${r.label}: the same banner at once, nothing animates, no View Transition`, async () => {
       const page = await open("#/p/djdl", {
         motion: r.motion,
         dataMotion: r.dataMotion,
       });
       await page.getByText(RELEASE_TITLE).waitFor();
-      const list = page
-        .getByRole("region", { name: "Needs attention" })
-        .getByRole("list");
-      await list.waitFor();
       expect(await staggerStep(page)).toBe(0);
       const banner = page.locator('[data-moment="first-release:djdl"]');
       expect(await banner.locator(".pk-celebration[data-static]").count()).toBe(
@@ -306,9 +287,6 @@ describe("Overview: the first load staggers the attention list and the first rel
       );
       expect(await banner.locator(".pk-burst").count()).toBe(0);
       expect(await runningAnimations(page)).toBe(0);
-      expect(await list.getByRole("listitem").count()).toBeGreaterThanOrEqual(
-        2,
-      );
       // An interaction is an instant swap too.
       await banner.getByRole("button", { name: "Dismiss" }).click();
       expect(await banner.count()).toBe(0);
@@ -317,6 +295,54 @@ describe("Overview: the first load staggers the attention list and the first rel
         "H1",
       );
       expect(await runningAnimations(page)).toBe(0);
+      const p = await probe(page);
+      expect(moving(p)).toEqual([]);
+      expect(p.vt).toBe(0);
+      expect(p.v).toEqual([]);
+      await closeContext(page.context());
+    });
+});
+
+describe("Home: the Needs attention items rise in one after another on the first load", () => {
+  const listOf = (page: Page) =>
+    page.getByRole("region", { name: "Needs attention" }).getByRole("list");
+
+  it("motion on: items rise 30 ms apart, then the class leaves", async () => {
+    const page = await open("#/");
+    const list = listOf(page);
+    await list.waitFor();
+    await atRest(page);
+    const p = await probe(page);
+    const step = await staggerStep(page);
+    expect(step).toBe(30);
+    const items = p.starts.filter((s) => s.staggered && s.name === "pk-enter");
+    const count = await list.getByRole("listitem").count();
+    expect(count).toBeGreaterThanOrEqual(2);
+    expect(items.map((s) => s.delay)).toEqual(
+      Array.from({ length: count }, (_, i) => Math.min(i, 6) * step),
+    );
+    // The class leaves once the items have landed; the page is at rest.
+    expect(await list.getAttribute("class")).not.toMatch(/\bpk-stagger\b/);
+    expect(await runningAnimations(page)).toBe(0);
+    expect(p.v).toEqual([]);
+    await closeContext(page.context());
+  });
+
+  for (const r of REDUCED)
+    it(`${r.label}: the same items at once, nothing animates`, async () => {
+      const page = await open("#/", {
+        motion: r.motion,
+        dataMotion: r.dataMotion,
+      });
+      const list = listOf(page);
+      await list.waitFor();
+      expect(await staggerStep(page)).toBe(0);
+      // Home's other cards load in beside the list; their 0 ms fade is an instant swap.
+      await atRest(page);
+      expect(await runningAnimations(page)).toBe(0);
+      expect(await list.getByRole("listitem").count()).toBeGreaterThanOrEqual(
+        2,
+      );
       const p = await probe(page);
       expect(moving(p)).toEqual([]);
       expect(p.vt).toBe(0);

@@ -32,7 +32,7 @@ func _ready() -> void:
 checks for an update, showing the `PKeyBoot` screen while it works. It returns once the player is
 through: a stop (offline, a blocked build, an error) keeps its card and Try again on screen, and the
 await waits through the retries. Then read config with
-`PolarisKey.config.get_value("key", fallback)`, check `PolarisKey.license.is_entitled("name")`,
+`PolarisKey.config.get_value("key", fallback)`, check `PolarisKey.entitlements.has("name")`,
 and so on.
 
 Requires Godot 4.4 or later; 4.6 or later is recommended. Version: see `plugin.cfg`.

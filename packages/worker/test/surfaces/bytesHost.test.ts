@@ -1,0 +1,1166 @@
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { beforeEach, describe, expect, it } from "vitest";
+import worker from "../../src/index.js";
+import { BYTE_ROUTES } from "../../src/mount.js";
+import {
+  bytesHostname,
+  dispatchBytesHost,
+  inertDocumentPolicy,
+  isBytesHost,
+  type ByteRoute,
+} from "../../src/core/assets/bytesHost.js";
+import {
+  LANDING_CSS,
+  landingCsp,
+  landingFaviconSvg,
+} from "../../src/core/assets/bytesLanding.js";
+import { BLOB_CSP } from "../../src/core/assets/blobs.js";
+import { ADMIN_COOKIE } from "../../src/core/console/session.js";
+import { PORTAL_COOKIE } from "../../src/services/identity/portal/session.js";
+import {
+  CORS_ALLOW_HEADERS,
+  CORS_ALLOW_METHODS,
+  CORS_EXPOSE_HEADERS,
+  serializeWebOrigins,
+} from "../../src/core/cors.js";
+import {
+  serializeServices,
+  type ServicesMap,
+} from "../../src/core/services.js";
+import { setServices } from "../../src/core/products/store.js";
+import type { Db } from "../../src/db/types.js";
+import type { Env } from "../../src/platform/env.js";
+import { makeTestDb } from "../helpers.js";
+import { KvMock } from "../kvMock.js";
+import { makeEnv, NOW, seedProduct } from "../seed.js";
+import { TEST_ROOT as HERE } from "../paths.js";
+
+const SRC = join(HERE, "..", "src");
+
+const BYTES = "https://dl.example.test";
+const CONSOLE = "https://key.example.test";
+
+function env(blobOrigin?: string): Env {
+  const e = makeEnv(new KvMock(), []);
+  if (blobOrigin !== undefined) e.BLOB_ORIGIN = blobOrigin;
+  return e;
+}
+
+/** Paths that, on the console, reach the admin SPA, the docs gate, the portal, discovery, a
+ *  service route, the webhook and the alias table. None of them may answer on the bytes host. */
+const CONSOLE_PATHS = [
+  "/",
+  "/index.html",
+  "/manage",
+  "/manage/api/me",
+  "/manage/login",
+  "/docs",
+  "/docs/start/concepts/",
+  "/login",
+  "/api/me",
+  "/download/abc",
+  "/djdl/.well-known/polaris.json",
+  "/djdl/.well-known/jwks.json",
+  "/djdl/release/dl/x",
+  "/djdl/appcast.xml",
+  "/webhooks/github",
+  "/blobs/sha256/" + "a".repeat(64),
+];
+
+async function snapshot(res: Response): Promise<unknown> {
+  return {
+    status: res.status,
+    headers: [...res.headers].filter(([k]) => k !== "date"),
+    body: await res.text(),
+  };
+}
+
+async function outcome(req: Request, e: Env): Promise<unknown> {
+  try {
+    return await snapshot(await worker.fetch(req, e));
+  } catch (err) {
+    return { threw: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+describe("bytes host: configuration", () => {
+  it("resolves BLOB_ORIGIN to a lowercase hostname, and nothing for unset or junk", () => {
+    expect(bytesHostname({ BLOB_ORIGIN: "https://DL.plrs.im" })).toBe(
+      "dl.plrs.im",
+    );
+    expect(bytesHostname({ BLOB_ORIGIN: "https://dl.plrs.im/" })).toBe(
+      "dl.plrs.im",
+    );
+    // The fully-qualified form (trailing dot) is the same DNS name.
+    expect(bytesHostname({ BLOB_ORIGIN: "https://dl.plrs.im./" })).toBe(
+      "dl.plrs.im",
+    );
+    expect(
+      isBytesHost(new URL("https://dl.plrs.im./manage"), {
+        BLOB_ORIGIN: "https://dl.plrs.im",
+      }),
+    ).toBe(true);
+    expect(
+      isBytesHost(new URL("https://DL.plrs.im../manage"), {
+        BLOB_ORIGIN: "https://dl.plrs.im",
+      }),
+    ).toBe(true);
+    expect(
+      isBytesHost(new URL("https://key.plrs.im./manage"), {
+        BLOB_ORIGIN: "https://dl.plrs.im",
+      }),
+    ).toBe(false);
+    expect(bytesHostname({})).toBeNull();
+    expect(bytesHostname({ BLOB_ORIGIN: "" })).toBeNull();
+    expect(bytesHostname({ BLOB_ORIGIN: "not a url" })).toBeNull();
+    expect(bytesHostname({ BLOB_ORIGIN: "ftp://dl.plrs.im" })).toBeNull();
+    expect(isBytesHost(new URL("https://dl.plrs.im/x"), {})).toBe(false);
+  });
+
+  it("the committed wrangler.toml points each environment's BLOB_ORIGIN at its own dl host", () => {
+    const toml = readFileSync(join(HERE, "..", "wrangler.toml"), "utf8");
+    for (const [envName, host] of [
+      ["prod", "dl.plrs.im"],
+      ["staging", "dl-staging.plrs.im"],
+      ["dev", "dl-dev.plrs.im"],
+    ] as const) {
+      const block = toml
+        .split(`[env.${envName}]`)[1]!
+        .split(/\n\[env\.(?!\w+\.)/)[0]!;
+      expect(block, envName).toContain(`BLOB_ORIGIN = "https://${host}"`);
+      expect(block, envName).toMatch(
+        new RegExp(
+          `pattern = "${host.replace(/\./g, "\\.")}"\\s*\\ncustom_domain = true`,
+        ),
+      );
+      expect(block, envName).toContain(
+        `bucket_name = "polaris-key-blobs-${envName}"`,
+      );
+    }
+  });
+
+  it("registers exactly the four byte routes and the download page, each owned by the distribution service (P2b-04, P2b-06, P4-18)", () => {
+    // P2-05 registered them for Release; P2b-04 moved all byte delivery to Distribution. Each
+    // route matches its canonical `/distribution/…` path AND its `/release/…` alias, so the URLs
+    // discovery advertised on the bytes host keep answering. P2b-06 added the one DOCUMENT
+    // route, the public download page (`test/surfaces/downloadPage.test.ts` pins its matching and the
+    // policy the dispatcher holds it to).
+    expect(
+      BYTE_ROUTES.map((r) => [r.name, r.service, r.document ?? false]),
+    ).toEqual([
+      ["distribution.build", "distribution", false],
+      ["distribution.file", "distribution", false],
+      ["distribution.blob", "distribution", false],
+      // P4-18: the payload URL (`test/surfaces/distributionPayload.test.ts` pins its matching).
+      ["distribution.payload", "distribution", false],
+      ["distribution.page", "distribution", true],
+    ]);
+    const hex = "a".repeat(64);
+    expect(
+      BYTE_ROUTES[0]!.match("/djdl/distribution/builds/stable/macos"),
+    ).toEqual({
+      product: "djdl",
+      params: { kind: "build", selector: "stable", buildId: "macos" },
+    });
+    expect(
+      BYTE_ROUTES[1]!.match("/djdl/distribution/files/v1.2.3/a.zip"),
+    ).toEqual({
+      product: "djdl",
+      params: { kind: "file", releaseId: "v1.2.3", name: "a.zip" },
+    });
+    expect(
+      BYTE_ROUTES[2]!.match(`/djdl/distribution/blobs/sha256/${hex}`),
+    ).toEqual({
+      product: "djdl",
+      params: { kind: "blob", sha256: hex },
+    });
+    expect(BYTE_ROUTES[0]!.match("/djdl/release/builds/stable/macos")).toEqual({
+      product: "djdl",
+      params: { kind: "build", selector: "stable", buildId: "macos" },
+    });
+    expect(BYTE_ROUTES[1]!.match("/djdl/release/files/v1.2.3/a.zip")).toEqual({
+      product: "djdl",
+      params: { kind: "file", releaseId: "v1.2.3", name: "a.zip" },
+    });
+    expect(BYTE_ROUTES[2]!.match(`/djdl/release/blobs/sha256/${hex}`)).toEqual({
+      product: "djdl",
+      params: { kind: "blob", sha256: hex },
+    });
+    // Nothing else on the host: not the legacy download, not a short or bad hash.
+    for (const path of [
+      "/djdl/release/dl/latest/djdl-arm64",
+      "/djdl/distribution/dl/latest/djdl-arm64",
+      "/djdl/distribution/install.sh",
+      "/djdl/distribution/rollouts/direct/stable",
+      `/djdl/release/blobs/sha256/${"A".repeat(64)}`,
+      "/djdl/release/blobs/sha256/abc",
+      "/djdl/release/builds/stable",
+      "/DJDL/release/builds/stable/macos",
+      "/djdl/update/appcast.xml",
+    ]) {
+      expect(
+        BYTE_ROUTES.map((r) => r.match(path)).filter(Boolean),
+        path,
+      ).toEqual([]);
+    }
+  });
+
+  /**
+   * The BLOB_ORIGIN guard (P2-05). Two misconfigurations break host isolation silently:
+   * BLOB_ORIGIN equal to the console's hostname (every console path 404s), and a dl* route
+   * deployed without BLOB_ORIGIN (the full console then answers on the same-site sibling). The
+   * committed configuration may contain neither, in any environment.
+   */
+  it("no environment points BLOB_ORIGIN at a console host or deploys a dl route without it", () => {
+    const toml = readFileSync(join(HERE, "..", "wrangler.toml"), "utf8");
+    const blocks = toml.split(/\n(?=\[env\.[a-z]+\]\n)/).slice(1);
+    expect(blocks.length).toBeGreaterThanOrEqual(3);
+    for (const block of blocks) {
+      const name = /^\[env\.([a-z]+)\]/.exec(block)![1]!;
+      const patterns = [...block.matchAll(/pattern = "([^"]+)"/g)].map(
+        (m) => m[1]!,
+      );
+      const origin = /BLOB_ORIGIN = "([^"]+)"/.exec(block)?.[1];
+      const dlHosts = patterns.filter((p) => /^dl[.-]/.test(p));
+      const consoleHosts = patterns.filter((p) => !/^dl[.-]/.test(p));
+      if (dlHosts.length > 0) {
+        expect(origin, `${name}: a dl route needs BLOB_ORIGIN`).toBeDefined();
+      }
+      if (origin !== undefined) {
+        const host = bytesHostname({ BLOB_ORIGIN: origin });
+        expect(host, `${name}: BLOB_ORIGIN must parse`).not.toBeNull();
+        expect(
+          consoleHosts,
+          `${name}: BLOB_ORIGIN is a console host`,
+        ).not.toContain(host);
+        expect(
+          dlHosts,
+          `${name}: BLOB_ORIGIN names its own dl route`,
+        ).toContain(host);
+      }
+    }
+  });
+});
+
+/** `GET /` is the one path the bytes host answers outside its routes: the landing page. */
+const isLanding = (path: string, method = "GET") =>
+  path === "/" && (method === "GET" || method === "HEAD");
+
+describe("bytes host: isolation", () => {
+  it("every console, portal, docs and product path answers the plain not-found there", async () => {
+    for (const path of CONSOLE_PATHS) {
+      for (const method of ["GET", "POST"]) {
+        if (isLanding(path, method)) continue; // the landing page: its own suite below
+        const res = await worker.fetch(
+          new Request(BYTES + path, { method }),
+          env(BYTES),
+        );
+        expect(res.status, `${method} ${path}`).toBe(404);
+        expect(await res.json(), path).toEqual({ error: "not_found" });
+        expect(res.headers.get("set-cookie"), path).toBeNull();
+        expect(res.headers.get("x-content-type-options"), path).toBe("nosniff");
+        expect(res.headers.get("content-security-policy"), path).toBe(BLOB_CSP);
+        expect(res.headers.get("content-security-policy"), path).toMatch(
+          /\bsandbox\b/,
+        );
+        // The dispatcher's HSTS backstop still applies to the bytes host.
+        expect(res.headers.get("strict-transport-security"), path).toContain(
+          "max-age=",
+        );
+      }
+    }
+  });
+
+  it("the fully-qualified host (trailing dot) is the bytes host too, not a way around it", async () => {
+    // The edge routes `dl.plrs.im.` to this Worker with the dot kept in req.url; an exact
+    // hostname comparison would hand it the whole console.
+    for (const base of [BYTES + ".", "https://DL.example.test.:443"]) {
+      for (const path of CONSOLE_PATHS) {
+        if (isLanding(path)) continue; // the landing page: its own suite below
+        const res = await worker.fetch(new Request(base + path), env(BYTES));
+        expect(res.status, base + path).toBe(404);
+        expect(await res.json(), base + path).toEqual({ error: "not_found" });
+        expect(res.headers.get("content-security-policy"), base + path).toBe(
+          BLOB_CSP,
+        );
+        expect(res.headers.get("x-content-type-options"), base + path).toBe(
+          "nosniff",
+        );
+      }
+    }
+  });
+
+  it("the host match is case-insensitive and ignores the port", async () => {
+    const res = await worker.fetch(
+      new Request("https://DL.EXAMPLE.TEST:443/manage"),
+      env(BYTES),
+    );
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+  });
+
+  it("with BLOB_ORIGIN unset, routing is byte-identical to today — on any host", async () => {
+    for (const path of CONSOLE_PATHS) {
+      for (const host of [CONSOLE, BYTES]) {
+        const without = await outcome(new Request(host + path), env());
+        const junk = await outcome(new Request(host + path), env("not a url"));
+        expect(junk, host + path).toEqual(without);
+      }
+    }
+  });
+
+  it("with BLOB_ORIGIN set, the console host is unchanged", async () => {
+    for (const path of CONSOLE_PATHS) {
+      const without = await outcome(new Request(CONSOLE + path), env());
+      const withIt = await outcome(new Request(CONSOLE + path), env(BYTES));
+      expect(withIt, path).toEqual(without);
+    }
+  });
+});
+
+// ── The landing page (BRAND §8, `core/assets/bytesLanding.ts`) ──────────────────────────────────────
+
+function landingEnv(blobOrigin: string, consoleOrigin?: string): Env {
+  const e = env(blobOrigin);
+  if (consoleOrigin !== undefined) e.CONSOLE_ORIGIN = consoleOrigin;
+  return e;
+}
+
+function sha256B64(text: string): string {
+  return createHash("sha256").update(text).digest("base64");
+}
+
+describe("bytes host: the landing page at /", () => {
+  it("GET / answers the static page under its own inert policy, with every host header", async () => {
+    const res = await worker.fetch(
+      new Request(`${BYTES}/`, { headers: { cookie: "a=b" } }),
+      landingEnv(BYTES, CONSOLE),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toBe(await landingCsp());
+    expect(csp).not.toBe(BLOB_CSP);
+    // The policy the dispatcher checks for any HTML on this host, and what it says.
+    expect(inertDocumentPolicy(csp)).toBe(true);
+    const directives = csp.split(";").map((d) => d.trim());
+    expect(directives).toContain("sandbox");
+    expect(directives).toContain("default-src 'none'");
+    expect(directives).toContain("img-src data:");
+    expect(directives).toContain("frame-ancestors 'none'");
+    expect(directives).toContain("base-uri 'none'");
+    expect(directives).toContain("form-action 'none'");
+    expect(csp).not.toMatch(
+      /script|connect-src|font-src|allow-|'self'|'unsafe/,
+    );
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("x-frame-options")).toBe("DENY");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(res.headers.get("content-disposition")).toBeNull();
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("strict-transport-security")).toContain("max-age=");
+
+    const html = await res.text();
+    // The one stylesheet is exactly the hashed one.
+    const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(
+      (m) => m[1]!,
+    );
+    expect(styles).toEqual([LANDING_CSS]);
+    expect(csp).toContain(`'sha256-${sha256B64(LANDING_CSS)}'`);
+    // No script, no handler, no style attribute, no form, no frame, no external fetch.
+    expect(html).not.toMatch(
+      /<script|\son[a-z]+=|\sstyle=|<form|<iframe|<object|<embed|<link rel="stylesheet"|@import|@font-face|url\(/i,
+    );
+    // A customer surface: with no customer site there is no link at all, only the SVG namespace
+    // and the data: favicon. Never the console, never the docs.
+    const urls = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map(
+      (m) => m[1]!,
+    );
+    expect(urls.filter((u) => !u.startsWith("data:image/svg+xml,"))).toEqual(
+      [],
+    );
+    expect(
+      html
+        .match(/https?:\/\/[^"\s)<]+/g)!
+        .filter((u) => u !== "http://www.w3.org/2000/svg"),
+    ).toEqual([]);
+    expect(html).not.toContain("sign-in required");
+    // The Polaris Locker shell (LK-07; BRAND §8), the one-line explanation, no environment label
+    // in prod, no Delivery service row.
+    expect(html).toContain('role="img" aria-label="Polaris Locker"');
+    expect(html).toContain("<title>Downloads · Polaris Locker</title>");
+    expect(html).not.toContain('<div class="svc">');
+    expect(html).not.toContain("Polaris Key");
+    expect(html).toContain("The download host for games and apps.");
+    expect(html).not.toContain("environment</p>");
+    expect(html).not.toContain("noindex");
+  });
+
+  it("HEAD / answers the same headers with no body", async () => {
+    const e = landingEnv(BYTES, CONSOLE);
+    const get = await worker.fetch(new Request(`${BYTES}/`), e);
+    const head = await worker.fetch(
+      new Request(`${BYTES}/`, { method: "HEAD" }),
+      e,
+    );
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+    for (const h of [
+      "content-type",
+      "content-security-policy",
+      "x-content-type-options",
+      "cache-control",
+    ])
+      expect(head.headers.get(h), h).toBe(get.headers.get(h));
+  });
+
+  it("the page is static: no product, query or header changes a byte of it", async () => {
+    const e = landingEnv(BYTES, CONSOLE);
+    const bare = await (await worker.fetch(new Request(`${BYTES}/`), e)).text();
+    const db = makeTestDb();
+    await seedProduct(db, "djdl");
+    for (const req of [
+      new Request(`${BYTES}/?product=djdl&x=<script>`),
+      new Request(`${BYTES}/`, {
+        headers: { "user-agent": "<script>", "accept-language": "fr" },
+      }),
+    ]) {
+      const res = await dispatchBytesHost(req, e, db, BYTE_ROUTES);
+      expect(await res.text()).toBe(bare);
+    }
+    expect(bare).not.toContain("djdl");
+  });
+
+  it("any other method on / keeps the plain not-found", async () => {
+    for (const method of ["POST", "PUT", "DELETE", "PATCH", "OPTIONS"]) {
+      const res = await worker.fetch(
+        new Request(`${BYTES}/`, { method }),
+        landingEnv(BYTES, CONSOLE),
+      );
+      expect(res.status, method).toBe(404);
+      expect(await res.json(), method).toEqual({ error: "not_found" });
+      expect(res.headers.get("content-security-policy"), method).toBe(BLOB_CSP);
+    }
+  });
+
+  it("every other path is unchanged: the plain not-found, never HTML", async () => {
+    for (const path of [
+      "//",
+      "/index.html",
+      "/favicon.ico",
+      "/favicon.svg",
+      "/site.webmanifest",
+      "/apple-touch-icon.png",
+      "/robots.txt",
+      "/%2F",
+      "/.",
+      "/?",
+    ]) {
+      const res = await worker.fetch(
+        new Request(BYTES + path),
+        landingEnv(BYTES, CONSOLE),
+      );
+      const isRoot = new URL(BYTES + path).pathname === "/";
+      if (isRoot) {
+        // `/.` and `/?` are `/` once the URL is parsed: the page itself.
+        expect(res.status, path).toBe(200);
+        continue;
+      }
+      expect(res.status, path).toBe(404);
+      expect(res.headers.get("content-type") ?? "", path).not.toMatch(/html/);
+      expect(res.headers.get("content-security-policy"), path).toBe(BLOB_CSP);
+    }
+  });
+
+  it("the fully-qualified, upper-case or ported bytes host gets the page too", async () => {
+    for (const base of [`${BYTES}.`, "https://DL.EXAMPLE.TEST:443"]) {
+      const res = await worker.fetch(
+        new Request(`${base}/`),
+        landingEnv(BYTES, CONSOLE),
+      );
+      expect(res.status, base).toBe(200);
+      expect(res.headers.get("content-security-policy"), base).toBe(
+        await landingCsp(),
+      );
+    }
+  });
+
+  it("the console host's / is untouched by it", async () => {
+    const without = await outcome(new Request(`${CONSOLE}/`), env());
+    const withIt = await outcome(
+      new Request(`${CONSOLE}/`),
+      landingEnv(BYTES, CONSOLE),
+    );
+    expect(withIt).toEqual(without);
+    expect(JSON.stringify(withIt)).not.toContain(
+      "The download host for games and apps",
+    );
+  });
+
+  it("staging and dev hosts serve the same page, naming their environment and console", async () => {
+    for (const [blob, consoleOrigin, label] of [
+      ["https://dl-staging.plrs.im", "https://key-staging.plrs.im", "Staging"],
+      ["https://dl-dev.plrs.im", "https://key-dev.plrs.im", "Development"],
+    ] as const) {
+      const res = await worker.fetch(
+        new Request(`${blob}/`),
+        landingEnv(blob, consoleOrigin),
+      );
+      expect(res.status, blob).toBe(200);
+      expect(res.headers.get("content-security-policy"), blob).toBe(
+        await landingCsp(),
+      );
+      const html = await res.text();
+      expect(html, blob).toContain(`<p class="env">${label} environment</p>`);
+      expect(html, blob).toContain(
+        `<title>Downloads (${label}) · Polaris Locker</title>`,
+      );
+      expect(html, blob).not.toContain(consoleOrigin);
+      expect(html, blob).toContain(
+        '<meta name="robots" content="noindex, nofollow">',
+      );
+      // Their other paths and their console hosts are as before.
+      const other = await worker.fetch(
+        new Request(`${blob}/manage`),
+        landingEnv(blob, consoleOrigin),
+      );
+      expect(other.status, blob).toBe(404);
+      expect(
+        await outcome(
+          new Request(`${consoleOrigin}/`),
+          landingEnv(blob, consoleOrigin),
+        ),
+      ).toEqual(await outcome(new Request(`${consoleOrigin}/`), env()));
+    }
+  });
+
+  it("links Polaris Locker, and only when the deployment has a usable customer site", async () => {
+    for (const [customer, href] of [
+      ["https://polaris.locker", 'href="https://polaris.locker/"'],
+      ["http://localhost:8787", 'href="http://localhost:8787/"'],
+      [undefined, null],
+      ["", null],
+      ["not a url", null],
+      ["javascript:alert(1)", null],
+    ] as const) {
+      const e = landingEnv("https://dl.plrs.im", CONSOLE);
+      if (customer !== undefined) e.CUSTOMER_ORIGIN = customer;
+      const html = await (
+        await worker.fetch(new Request("https://dl.plrs.im/"), e)
+      ).text();
+      if (href) {
+        expect(html, String(customer)).toContain(href);
+        expect(html, String(customer)).toContain("Open Polaris Locker");
+      } else {
+        expect(html, String(customer)).not.toContain("<nav");
+      }
+      expect(html).not.toContain(CONSOLE);
+      expect(html).not.toContain("key.plrs.im");
+      expect(html).not.toContain("javascript:");
+    }
+  });
+
+  it("with BLOB_ORIGIN unset there is no bytes host, so no landing page anywhere", async () => {
+    const without = await outcome(new Request(`${BYTES}/`), env());
+    expect(JSON.stringify(without)).not.toContain(
+      "The download host for games and apps",
+    );
+  });
+
+  it("the favicon is the kit's Locker favicon (white tile), inlined", () => {
+    const kit = readFileSync(
+      join(
+        HERE,
+        "..",
+        "node_modules",
+        "@polaris-key",
+        "brand",
+        "locker-kit",
+        "web",
+        "favicon.svg",
+      ),
+      "utf8",
+    );
+    const ours = landingFaviconSvg();
+    const paths = (svg: string) =>
+      [...svg.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+    const ink = (svg: string) => /<g fill="(#[0-9a-f]{6})"/i.exec(svg)?.[1];
+    // The same micro geometry and ink on the same white tile, and no stylesheet to unstyle.
+    expect(paths(ours)).toEqual(paths(kit));
+    expect(paths(ours).length).toBeGreaterThan(0);
+    expect(ink(ours)?.toLowerCase()).toBe(ink(kit)?.toLowerCase());
+    expect(ours).toMatch(/<rect [^>]*fill="#fff"/);
+    expect(ours).not.toMatch(/<style|<script|href=|on[a-z]+=/i);
+  });
+});
+
+/** Enablement written the way the manifest writes it: a full set, through the owning writer. */
+async function setProductServices(
+  db: Db,
+  slug: string,
+  services: Partial<ServicesMap>,
+): Promise<void> {
+  await setServices(
+    db,
+    slug,
+    serializeServices({
+      services: {
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: false },
+        distribution: { enabled: false },
+        update: { enabled: false },
+        identity: { enabled: false },
+        sync: { enabled: false },
+        commerce: { enabled: false },
+        ...services,
+      },
+    }),
+    "manifest",
+    NOW,
+  );
+}
+
+describe("bytes host: dispatch", () => {
+  const SLUG = "djdl";
+  const LISTED = "https://play.djdl.example";
+  const seen: Request[] = [];
+  let db: Db;
+
+  beforeEach(async () => {
+    seen.length = 0;
+    db = makeTestDb();
+    await seedProduct(db, SLUG);
+    // The fake route below belongs to Release, which is off by default.
+    await setProductServices(db, SLUG, { release: { enabled: true } });
+    await db.run(
+      "UPDATE products SET web_origins_json = ? WHERE slug = ?",
+      serializeWebOrigins([LISTED]),
+      SLUG,
+    );
+  });
+
+  /** A fake byte route under `/<product>/fake/...`, the shape P2-05's routes will take. */
+  const echo = (
+    body: BodyInit | null,
+    headers: Record<string, string>,
+    status = 200,
+  ): ByteRoute => ({
+    name: "fake",
+    service: "release",
+    match: (p) => {
+      const m = /^\/([^/]+)\/fake\/(.*)$/.exec(p);
+      return m ? { product: m[1]!, params: { rest: m[2]! } } : null;
+    },
+    handle: async (req, ctx) => {
+      seen.push(req);
+      expect(ctx.product.slug).toBe(SLUG);
+      return new Response(body, { status, headers });
+    },
+  });
+  const octet = { "content-type": "application/octet-stream" };
+
+  it("only allowlisted routes answer; the Cookie header never reaches them", async () => {
+    const route = echo("bytes", {
+      ...octet,
+      "set-cookie": "pkey_x=1; Path=/",
+    });
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`, {
+        headers: { cookie: `${ADMIN_COOKIE}=forged; ${PORTAL_COOKIE}=forged` },
+      }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("bytes");
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.headers.get("cookie")).toBeNull();
+    // ...and no cookie is set on the host, whatever a route tried.
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+
+    const other = await dispatchBytesHost(
+      new Request(BYTES + "/nope"),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(other.status).toBe(404);
+  });
+
+  it("a route for an unknown product answers not-found without running", async () => {
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/nobody/fake/a`),
+      env(BYTES),
+      db,
+      [echo("bytes", octet)],
+    );
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(seen).toHaveLength(0);
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+  });
+
+  it("a route whose service is disabled for the product never runs and answers not-found", async () => {
+    const route = echo("bytes", octet);
+    const ok = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(ok.status).toBe(200);
+    expect(seen).toHaveLength(1);
+    seen.length = 0;
+
+    // The product turns Release off: its bytes stop answering on the host at once, exactly
+    // as its release paths on the console fall to the registry not-found.
+    await setProductServices(db, SLUG, { release: { enabled: false } });
+    const off = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`, { headers: { origin: LISTED } }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(seen).toHaveLength(0);
+    expect(off.status).toBe(404);
+    // Indistinguishable from an unknown product or an unmatched path on this host.
+    const offBody = await off.json();
+    const absent = await dispatchBytesHost(
+      new Request(`${BYTES}/nobody/fake/a`, { headers: { origin: LISTED } }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(offBody).toEqual(await absent.json());
+    expect(offBody).toEqual({ error: "not_found" });
+    expect(off.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(off.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(off.headers.get("access-control-allow-origin")).toBeNull();
+
+    // A route of another service is judged by ITS service, not Release's.
+    const licensed = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [{ ...route, service: "license" }],
+    );
+    expect(licensed.status).toBe(200);
+    expect(seen).toHaveLength(1);
+  });
+
+  it("a route that answers with an executable or renderable type is replaced by not-found", async () => {
+    for (const type of [
+      "text/html; charset=utf-8",
+      "application/xhtml+xml",
+      "image/svg+xml",
+      "application/javascript",
+      "text/javascript",
+      "application/xml",
+      "text/plain",
+      "application/json",
+    ]) {
+      const res = await dispatchBytesHost(
+        new Request(`${BYTES}/${SLUG}/fake/x`, {
+          headers: { origin: LISTED },
+        }),
+        env(BYTES),
+        db,
+        [echo("<script>alert(1)</script>", { "content-type": type })],
+      );
+      expect(res.status, type).toBe(404);
+      expect(await res.json(), type).toEqual({ error: "not_found" });
+      expect(res.headers.get("x-content-type-options"), type).toBe("nosniff");
+      expect(res.headers.get("content-security-policy"), type).toBe(BLOB_CSP);
+    }
+  });
+
+  /** A body with no Content-Type at all (a string body would get `text/plain` implicitly). */
+  const untypedBody = (): ReadableStream<Uint8Array> =>
+    new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode("%PDF-1.7 <script>"));
+        c.close();
+      },
+    });
+
+  it("a success answer whose type is not on the inert allowlist is replaced by not-found", async () => {
+    const cases: Array<[string, () => ByteRoute]> = [
+      [
+        "application/pdf inline",
+        () =>
+          echo("%PDF-1.7", {
+            "content-type": "application/pdf",
+            "content-disposition": "inline",
+          }),
+      ],
+      [
+        "application/pdf",
+        () => echo("%PDF-1.7", { "content-type": "application/pdf" }),
+      ],
+      [
+        "video/mp4 inline",
+        () =>
+          echo("v", {
+            "content-type": "video/mp4",
+            "content-disposition": "inline",
+          }),
+      ],
+      ["image/png", () => echo("png", { "content-type": "image/png" })],
+      [
+        "image/png inline",
+        () =>
+          echo("png", {
+            "content-type": "image/png",
+            "content-disposition": "inline",
+          }),
+      ],
+      ["no Content-Type (stream body)", () => echo(untypedBody(), {})],
+      ["no Content-Type (206)", () => echo(untypedBody(), {}, 206)],
+      [
+        "empty Content-Type",
+        () => echo(new Uint8Array([1, 2]), { "content-type": "" }),
+      ],
+      [
+        "JSON below 400",
+        () => echo("{}", { "content-type": "application/json" }, 201),
+      ],
+    ];
+    for (const [label, route] of cases) {
+      const res = await dispatchBytesHost(
+        new Request(`${BYTES}/${SLUG}/fake/x`, { headers: { origin: LISTED } }),
+        env(BYTES),
+        db,
+        [route()],
+      );
+      expect(res.status, label).toBe(404);
+      expect(await res.json(), label).toEqual({ error: "not_found" });
+      expect(res.headers.get("content-disposition"), label).toBeNull();
+      expect(res.headers.get("x-content-type-options"), label).toBe("nosniff");
+      expect(res.headers.get("content-security-policy"), label).toBe(BLOB_CSP);
+    }
+  });
+
+  it("an allowlisted answer leaves as attachment unless the route asked for inline", async () => {
+    const run = async (headers: Record<string, string>): Promise<Response> =>
+      dispatchBytesHost(
+        new Request(`${BYTES}/${SLUG}/fake/x`),
+        env(BYTES),
+        db,
+        [echo(new Uint8Array([1]), headers)],
+      );
+    const apk = "application/vnd.android.package-archive";
+    const none = await run({ "content-type": apk });
+    expect(none.status).toBe(200);
+    expect(none.headers.get("content-type")).toBe(apk);
+    expect(none.headers.get("content-disposition")).toBe("attachment");
+
+    const odd = await run({
+      "content-type": apk,
+      "content-disposition": "form-data; name=x",
+    });
+    expect(odd.headers.get("content-disposition")).toBe("attachment");
+
+    const att = await run({
+      "content-type": apk,
+      "content-disposition": 'attachment; filename="a.apk"',
+    });
+    expect(att.headers.get("content-disposition")).toBe(
+      'attachment; filename="a.apk"',
+    );
+
+    const inline = await run({
+      "content-type": "application/wasm",
+      "content-disposition": 'inline; filename="a.wasm"',
+    });
+    expect(inline.status).toBe(200);
+    expect(inline.headers.get("content-disposition")).toBe(
+      'inline; filename="a.wasm"',
+    );
+    expect(inline.headers.get("content-security-policy")).toBe(BLOB_CSP);
+  });
+
+  it("body-less answers with no type (304, HEAD-style 200) pass untouched", async () => {
+    const notModified = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`),
+      env(BYTES),
+      db,
+      [echo(null, { etag: '"abc"' }, 304)],
+    );
+    expect(notModified.status).toBe(304);
+    expect(notModified.headers.get("content-disposition")).toBeNull();
+    expect(notModified.headers.get("content-security-policy")).toBe(BLOB_CSP);
+
+    const head = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, { method: "HEAD" }),
+      env(BYTES),
+      db,
+      [echo(null, octet)],
+    );
+    expect(head.status).toBe(200);
+    expect(head.headers.get("content-disposition")).toBe("attachment");
+  });
+
+  it("an error answer may be the platform's JSON or an allowlisted type, nothing else", async () => {
+    for (const [type, status, allowed] of [
+      ["application/json", 403, true],
+      ["application/problem+json", 429, true],
+      ["application/octet-stream", 416, true],
+      ["application/pdf", 403, false],
+      ["image/png", 404, false],
+      ["text/html", 500, false],
+    ] as const) {
+      const res = await dispatchBytesHost(
+        new Request(`${BYTES}/${SLUG}/fake/x`),
+        env(BYTES),
+        db,
+        [echo(new Uint8Array([1]), { "content-type": type }, status)],
+      );
+      expect(res.status, type).toBe(allowed ? status : 404);
+      expect(res.headers.get("content-security-policy"), type).toBe(BLOB_CSP);
+    }
+    const untyped = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`),
+      env(BYTES),
+      db,
+      [echo(untypedBody(), {}, 400)],
+    );
+    expect(untyped.status).toBe(404);
+  });
+
+  it("a JSON error body from a route is allowed through (it is not a payload)", async () => {
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`),
+      env(BYTES),
+      db,
+      [
+        echo(
+          '{"error":"forbidden"}',
+          { "content-type": "application/json" },
+          403,
+        ),
+      ],
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("CORS: the product's own web.origins decide, through the same core/cors.ts step", async () => {
+    const route = echo("b", octet);
+    const listed = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, { headers: { origin: LISTED } }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(listed.headers.get("access-control-allow-origin")).toBe(LISTED);
+    expect(listed.headers.get("access-control-expose-headers")).toBe(
+      CORS_EXPOSE_HEADERS,
+    );
+    expect(listed.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(listed.headers.get("vary")).toMatch(/origin/i);
+    // The hardening survives CORS decoration.
+    expect(listed.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(listed.headers.get("x-content-type-options")).toBe("nosniff");
+
+    const unlisted = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
+        headers: { origin: "https://evil.example" },
+      }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(unlisted.status).toBe(200);
+    expect(unlisted.headers.get("access-control-allow-origin")).toBeNull();
+    expect(unlisted.headers.get("vary")).toMatch(/origin/i);
+  });
+
+  it("CORS preflight is answered before the route runs", async () => {
+    const route = echo("b", octet);
+    const pre = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
+        method: "OPTIONS",
+        headers: {
+          origin: LISTED,
+          "access-control-request-method": "GET",
+          "access-control-request-headers": "range",
+        },
+      }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(pre.status).toBe(204);
+    expect(seen).toHaveLength(0);
+    expect(pre.headers.get("access-control-allow-origin")).toBe(LISTED);
+    expect(pre.headers.get("access-control-allow-methods")).toBe(
+      CORS_ALLOW_METHODS,
+    );
+    expect(pre.headers.get("access-control-allow-headers")).toBe(
+      CORS_ALLOW_HEADERS,
+    );
+    expect(pre.headers.get("content-security-policy")).toBe(BLOB_CSP);
+
+    const evil = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
+        method: "OPTIONS",
+        headers: { origin: "https://evil.example" },
+      }),
+      env(BYTES),
+      db,
+      [route],
+    );
+    expect(evil.status).toBe(204);
+    expect(evil.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("a route cannot set its own Access-Control-* headers", async () => {
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/x`, {
+        headers: { origin: "https://evil.example" },
+      }),
+      env(BYTES),
+      db,
+      [
+        echo("b", {
+          ...octet,
+          "access-control-allow-origin": "*",
+          "access-control-allow-credentials": "true",
+        }),
+      ],
+    );
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+  });
+
+  it("...nor for a product with no web.origins, where core/cors.ts adds nothing", async () => {
+    // `withCors` returns a product-without-origins response untouched, so this is the case
+    // where a route's own headers would otherwise survive.
+    await seedProduct(db, "quiet");
+    await setProductServices(db, "quiet", { release: { enabled: true } });
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/quiet/fake/x`, {
+        headers: { origin: "https://evil.example" },
+      }),
+      env(BYTES),
+      db,
+      [
+        {
+          ...echo("b", {}),
+          handle: async () =>
+            new Response(new Uint8Array([1]), {
+              headers: {
+                ...octet,
+                "access-control-allow-origin": "*",
+                "access-control-allow-credentials": "true",
+                "access-control-expose-headers": "*",
+              },
+            }),
+        },
+      ],
+    );
+    expect(res.status).toBe(200);
+    for (const [k] of res.headers)
+      expect(k.startsWith("access-control-"), k).toBe(false);
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+  });
+
+  it("a throw inside a byte route answers a hardened JSON 500, not the platform's HTML error (P2-05)", async () => {
+    const boom: ByteRoute = {
+      ...echo(null, octet),
+      handle: async () => {
+        throw new Error("route exploded with a secret-looking message");
+      },
+    };
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [boom],
+    );
+    expect(res.status).toBe(500);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(await res.json()).toEqual({ error: "internal_error" });
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(res.headers.get("content-security-policy")).toMatch(/\bsandbox\b/);
+  });
+
+  it("a throw while loading the product answers the same hardened JSON 500 (P2-05)", async () => {
+    const broken = {
+      ...db,
+      first: async () => {
+        throw new Error("D1 is down");
+      },
+    } as unknown as Db;
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      broken,
+      [echo("bytes", octet)],
+    );
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "internal_error" });
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("content-security-policy")).toBe(BLOB_CSP);
+    expect(seen).toHaveLength(0);
+  });
+
+  it("a byte route is handed the product without signing capability", async () => {
+    let handed: unknown = null;
+    const peek: ByteRoute = {
+      ...echo("bytes", octet),
+      handle: async (_req, ctx) => {
+        handed = ctx.product;
+        return new Response("bytes", { headers: octet });
+      },
+    };
+    const res = await dispatchBytesHost(
+      new Request(`${BYTES}/${SLUG}/fake/a`),
+      env(BYTES),
+      db,
+      [peek],
+    );
+    expect(res.status).toBe(200);
+    expect(handed).toMatchObject({ slug: SLUG });
+    expect(handed).not.toHaveProperty("signingKey");
+  });
+});
+
+describe("console session cookies cannot reach the bytes host", () => {
+  // The bytes host is a *.plrs.im sibling (owner decision; THREAT-MODEL §3). What keeps the
+  // console's sessions off it is that every session cookie is HOST-ONLY: no Domain attribute.
+  // `__Host-` makes the browser enforce that for the admin and portal cookies.
+  it("admin and portal cookies are __Host- prefixed", () => {
+    expect(ADMIN_COOKIE.startsWith("__Host-")).toBe(true);
+    expect(PORTAL_COOKIE.startsWith("__Host-")).toBe(true);
+  });
+
+  it("no Set-Cookie anywhere in src/ carries a Domain attribute", () => {
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const ent of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, ent.name);
+        if (ent.isDirectory()) walk(p);
+        else if (p.endsWith(".ts")) {
+          // Code only: comment lines are dropped (session.ts quotes an attacker's
+          // `Domain=plrs.im` cookie in prose to explain why `__Host-` is used).
+          const code = readFileSync(p, "utf8")
+            .split("\n")
+            .filter((l) => !/^\s*(\*|\/\/|\/\*)/.test(l))
+            .join("\n");
+          if (/Domain=/i.test(code)) offenders.push(p);
+        }
+      }
+    };
+    walk(SRC);
+    expect(offenders).toEqual([]);
+  });
+});

@@ -11,8 +11,11 @@
 #   PKEY_TEST_SUITES  the --pkey-test selection (default: ci)
 #   PKEY_TEST_STAMPS  1 runs the build-stamp exports (step 4) whatever the selection; they run
 #                     by default only with the `ci` selection
+#   PKEY_TEST_PNG     1 compares the PNG baselines (step 3c, windowed: needs a display; macOS-recorded);
+#                     PKEY_TEST_PNG_UPDATE=1 records them
 #   PKEY_TEST_MATRIX  1 runs the UI resolution matrix (step 3b, the ui_matrix suite) whatever the
 #                     selection; it runs by default only with the `ci` selection
+#   PKEY_UI_MATRIX_SHARDS  parallel shards of the UI matrix step (default 4, or 2 per path with PATHS=both; 1 = one process per path)
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
 #   PKEY_CONTENT_CORPUS the content corpus directory the packs suite reads (default: the
 #                     checkout's conformance/corpus/v2/content; `content/` is not mirrored)
@@ -219,9 +222,99 @@ step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "
 # limit, PKEY_UI_MATRIX_TIMEOUT (default 1800 s), and the shared PKEY_TEST_TIMEOUT stays as it was.
 # Layout is the same engine code on a release template, so it runs once.
 if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
+  # PKEY_UI_MATRIX_PATHS=both runs it once per presentation path (UI-KITS.md DL16): the scrim
+  # (PKEY_UI_REDUCE_TRANSPARENCY=0, the see-through glass card) and the opaque page (=1). The engines
+  # disagree on which one a headless run takes by default (4.4.1 the scrim, 4.7 on macOS the opaque
+  # page, GODOT-441b), so the newest lane asks for both. Unset: one run, the engine's own path.
+  if [ "${PKEY_UI_MATRIX_PATHS:-auto}" = both ]; then
+    MATRIX_PATHS="0 1"
+  else
+    MATRIX_PATHS="auto"
+  fi
+  # PKEY_UI_MATRIX_SHARDS=<n> splits the cases of each path into n deterministic shares
+  # (`--pkey-shard <i>/<n>`, tests/suite_ui_matrix.gd), and every share of every path runs as its own
+  # PARALLEL process (a hosted runner has 4 vCPUs): default n = 4 / paths (4, or 2 for `both`), 1 =
+  # today's single process per path. Each process has its own log (build/logs/ui-matrix-<i>.log, or
+  # ui-matrix-rt<path>-<i>.log), its own HOME (the suites share `user://` scratch files) and the same
+  # per-step limit; the step fails when any of them fails or times out. The shards are checked
+  # against an unsharded `--pkey-list` dry run: together they must run exactly the listed cases,
+  # each once, per path.
+  if [ "$MATRIX_PATHS" = auto ]; then NPATHS=1; else NPATHS=2; fi
+  SHARDS="${PKEY_UI_MATRIX_SHARDS:-$((4 / NPATHS))}"
+  case "$SHARDS" in
+    '' | *[!0-9]* | 0)
+      echo "run_tests: PKEY_UI_MATRIX_SHARDS=$SHARDS is not a positive number" >&2
+      exit 2
+      ;;
+  esac
+  if [ "$SHARDS" -gt 1 ]; then
+    (
+      TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
+      step ui-matrix-list plain "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix --pkey-list
+    ) || exit 1
+    sed -n 's/^PKEY-MATRIX-CASE //p' "$LOGS/ui-matrix-list.log" | sort >"$LOGS/ui-matrix-cases.txt"
+    if [ ! -s "$LOGS/ui-matrix-cases.txt" ]; then
+      echo "── ui-matrix: FAIL (--pkey-list printed no cases)"
+      exit 1
+    fi
+  fi
+  pids=""
+  for path in $MATRIX_PATHS; do
+    MNAME="ui-matrix$([ "$path" = auto ] || echo "-rt$path")"
+    i=0
+    while [ "$i" -lt "$SHARDS" ]; do
+      (
+        TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
+        if [ "$path" != auto ]; then
+          export PKEY_UI_REDUCE_TRANSPARENCY="$path"
+        fi
+        if [ "$SHARDS" -le 1 ]; then
+          step "$MNAME" run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
+        else
+          RUN_HOME="$RUN_DIR/home-$MNAME-$i"
+          mkdir -p "$RUN_HOME"
+          step "$MNAME-$i" run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix --pkey-shard "$i/$SHARDS"
+        fi
+      ) &
+      pids="$pids $!"
+      i=$((i + 1))
+    done
+  done
+  shard_failed=0
+  for pid in $pids; do
+    wait "$pid" || shard_failed=1
+  done
+  [ "$shard_failed" -eq 0 ] || exit 1
+  if [ "$SHARDS" -gt 1 ]; then
+    for path in $MATRIX_PATHS; do
+      MNAME="ui-matrix$([ "$path" = auto ] || echo "-rt$path")"
+      : >"$LOGS/$MNAME-ran.unsorted"
+      i=0
+      while [ "$i" -lt "$SHARDS" ]; do
+        sed -n 's/^PKEY-MATRIX-RAN //p' "$LOGS/$MNAME-$i.log" >>"$LOGS/$MNAME-ran.unsorted"
+        i=$((i + 1))
+      done
+      sort "$LOGS/$MNAME-ran.unsorted" >"$LOGS/$MNAME-ran.txt"
+      if ! cmp -s "$LOGS/ui-matrix-cases.txt" "$LOGS/$MNAME-ran.txt"; then
+        echo "── $MNAME: FAIL (the $SHARDS shards did not run exactly the $(wc -l <"$LOGS/ui-matrix-cases.txt" | tr -d ' ') listed cases once each)"
+        diff "$LOGS/ui-matrix-cases.txt" "$LOGS/$MNAME-ran.txt" | head -n 20
+        exit 1
+      fi
+      echo "── $MNAME: ok, $SHARDS shards ran all $(wc -l <"$LOGS/ui-matrix-cases.txt" | tr -d ' ') cases once each"
+    done
+  fi
+fi
+
+# 3c. The PNG baselines (tests/suite_ui_png.gd): the screens drawn and compared with the committed
+# PNGs, windowed (a headless run has no renderer), as a step of its own. Off by default: CI's Linux
+# jobs run headless, and the baselines were recorded on macOS arm64 with Godot 4.7.2 (record Linux
+# ones before turning it on there). PKEY_TEST_PNG=1 compares, PKEY_TEST_PNG_UPDATE=1 records.
+if [ "${PKEY_TEST_PNG:-0}" = 1 ] || [ "${PKEY_TEST_PNG_UPDATE:-0}" = 1 ]; then
   (
     TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
-    step ui-matrix run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
+    UPD=""
+    [ "${PKEY_TEST_PNG_UPDATE:-0}" = 1 ] && UPD="update"
+    step ui-png run "$GODOT" --path "$PROJECT" -- --pkey-test ui_png $UPD
   ) || exit 1
 fi
 

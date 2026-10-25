@@ -262,7 +262,7 @@ def make_client(
     c = PolarisKeyClient(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE,
         store=InMemoryStore(),
         client=http or httpx.Client(transport=httpx.MockTransport(server)),

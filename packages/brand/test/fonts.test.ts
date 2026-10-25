@@ -74,7 +74,14 @@ describe("fonts.css", () => {
     const names = fallbackFaces.map(
       (f) => /font-family: "([^"]+)";/.exec(f)![1],
     );
-    expect(names).toEqual(["Rubik Fallback", "JetBrains Mono Fallback"]);
+    expect(names).toEqual([
+      "Rubik Fallback",
+      "Rubik Fallback",
+      "JetBrains Mono Fallback",
+    ]);
+    // Regular and bold faces split the weight range so a load failure keeps bold.
+    expect(fallbackFaces[0]).toContain("font-weight: 300 549;");
+    expect(fallbackFaces[1]).toContain("font-weight: 550 900;");
     for (const f of fallbackFaces) {
       expect(f).toMatch(/size-adjust: [\d.]+%;/);
       expect(f).toMatch(/ascent-override: [\d.]+%;/);

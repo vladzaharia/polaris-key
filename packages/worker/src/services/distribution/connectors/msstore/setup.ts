@@ -24,7 +24,7 @@
  * metadata is read here — listing never selects the sealed column — so resolving opens nothing.
  */
 
-import { effectiveTrackMap } from "@polaris-key/manifest";
+import { effectiveTrackMap, channelLabel } from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../../../platform/json.js";
 import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
@@ -40,7 +40,7 @@ import {
 } from "../../../../core/stores/platformFallback.js";
 
 export const MSSTORE_CONNECTOR = "ms-store";
-export const MSSTORE_LABEL = "Microsoft Store";
+export const MSSTORE_LABEL = channelLabel("microsoft-store");
 export const MSSTORE_OUTLET_KINDS = ["ms-store"] as const;
 export const MSSTORE_CREDENTIAL_KIND = "ms-partner-center";
 
@@ -232,7 +232,7 @@ export async function resolveMsStoreSetup(
       return inert(
         f.reason,
         platformFallbackMessage(
-          "Microsoft Store",
+          channelLabel("microsoft-store"),
           "microsoft-store",
           "Store ID",
           productId,

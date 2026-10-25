@@ -53,12 +53,8 @@ import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import { DATA_ONLY_EXTENSIONS } from "@polaris-key/protocol/packs";
 import { bumpReleaseGeneration } from "../ghCache.js";
-import {
-  artifactsAccessSnapshot,
-  artifactPolicy,
-  getReleaseConfig,
-} from "../config.js";
-import { storeAccess } from "../store.js";
+import { artifactPolicy, getReleaseConfig } from "../config.js";
+import { artifactsSnapshotAccess, storeAccess } from "../store.js";
 import { verifyRecordJws, type RecordRefusalReason } from "../records.js";
 import { readPackDeliverable, readPackDeliverables } from "./deliverables.js";
 import { checkPackPublish } from "./checks.js";
@@ -627,8 +623,12 @@ export async function handlePackSubmit(
       kid: shared.kid,
       jws: shared.jws,
       metadataAccess: storeAccess(policy?.access.metadata ?? "public"),
-      artifactsAccess: storeAccess(
-        cfg ? artifactsAccessSnapshot(cfg) : "public",
+      artifactsAccess: await artifactsSnapshotAccess(
+        env,
+        db,
+        product.slug,
+        record.deliverable,
+        now,
       ),
       now,
     }),

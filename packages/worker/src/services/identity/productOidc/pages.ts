@@ -17,6 +17,7 @@ import {
   callout,
   note,
   renderAuthCard,
+  DEVICE_CARD_LINKS,
   renderBrandPage,
 } from "../../../core/brandHtml.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
@@ -172,6 +173,7 @@ export async function renderDeviceConfirmation(
   // thing that sets `approvedAt`.
   const who = app?.developer?.trim() || product.name;
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     title: "Sign in to continue",
     heading: "Sign in to continue",
     ...(tv ? { variant: "tv" as const } : {}),
@@ -213,13 +215,14 @@ export function renderDeviceEntry(
   tv = false,
 ): Response {
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     title: "Enter your code",
     heading: "Enter the code from your device",
     ...(tv ? { variant: "tv" as const } : {}),
     // B9.3: no product name before the code resolves. A forwarded link must not borrow one.
     body:
       status === 429
-        ? tooManyBody(action)
+        ? tooManyBody()
         : codeEntryBody({
             action,
             method: "post",
@@ -245,6 +248,7 @@ export function deviceGonePage(
   const expired = kind === "expired";
   const shown = pageApp(view.app ?? { name: product?.name ?? "" });
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: expired ? "That code expired" : "This page is out of date",
     heading: expired ? "That code expired" : "This page is out of date",
@@ -282,6 +286,7 @@ export function deviceDeniedPage(
 ): Response {
   const shown = pageApp(view.app ?? { name: product.name });
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: "Nothing was signed in",
     heading: "Nothing was signed in",
@@ -374,6 +379,7 @@ export function signedInPage(
     : "";
   return new Response(
     renderAuthCard({
+      links: DEVICE_CARD_LINKS,
       title: "Signed in",
       heading: "You're signed in",
       ...(view.tv ? { variant: "tv" as const } : {}),

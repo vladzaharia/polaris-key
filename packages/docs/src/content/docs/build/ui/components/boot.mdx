@@ -68,6 +68,44 @@ Boot shows nothing for the first 250 to 300 ms, so a quick start does not flash.
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` when the license state calls for it, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<Boot />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Boot", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisKeyGate(client)`: Boot is its first screen, and the gate hands over to your content once the license is usable.
+
+    **Styled part.** `PolarisBoot`, over a `PolarisBootState`; the gate wires it for you.
+
+    **Headless.** `PolarisBootState` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.material3.Text
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisKeyGate
+
+    @Composable
+    fun App(client: PolarisKeyClient) {
+        PolarisKeyGate(client) { Text("Licensed") }
+    }
+    ```
+
+    On Compose Desktop, `PolarisKeyWindow(client) { }` is the same call as a window, with Boot as its first screen.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

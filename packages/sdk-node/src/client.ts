@@ -59,6 +59,7 @@ import {
 import { TrustManager } from "./core/trust.js";
 import { ConfigClient, type ConfigClientOptions } from "./config/client.js";
 import { LicenseClient, type LicenseClientOptions } from "./license/client.js";
+import { EntitlementsClient } from "./license/entitlements.js";
 import { reacquireToken } from "./license/endpoints.js";
 import {
   DevicesClient,
@@ -169,6 +170,8 @@ export class PolarisKeyClient {
   readonly product: string;
   readonly core: CoreContext;
   readonly license: LicenseClient;
+  /** `has`, `value` and `all` over the license gate: a view, not a second store (SP-35.16). */
+  readonly entitlements: EntitlementsClient;
   readonly config: ConfigClient;
   readonly devices: DevicesClient;
   readonly identity: IdentityClient;
@@ -252,6 +255,7 @@ export class PolarisKeyClient {
       () => this.onLicenseAcquired(),
       opts.license ?? {},
     );
+    this.entitlements = new EntitlementsClient(this.license);
     this.config = new ConfigClient(
       this.core,
       this.cache,
@@ -669,11 +673,7 @@ export class PolarisKeyClient {
     return this.license.isLicensed(now);
   }
 
-  getConfig<T = JSONValue>(key: string, fallback: T): T {
-    return this.config.getConfig(key, fallback);
-  }
-
-  getCurrentDevice(): DeviceInfo {
+  currentDevice(): DeviceInfo {
     const out: DeviceInfo = {
       id: this.core.deviceId,
       current: true,
@@ -692,7 +692,7 @@ export class PolarisKeyClient {
    *  there is no roster to fetch, so the answer is this device alone — which is the honest
    *  offline answer, not an error. */
   async listDevices(): Promise<DeviceInfo[]> {
-    const current = this.getCurrentDevice();
+    const current = this.currentDevice();
     let roster;
     try {
       roster = await this.devices.list();

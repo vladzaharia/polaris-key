@@ -4,6 +4,8 @@
  * `core.e2e.test.ts`.
  */
 
+import { workerFields } from "./workerFields.js";
+
 const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 
@@ -32,6 +34,7 @@ const product = {
   compatMax: "3.0.0",
   defaultMaxOfflineDays: 30,
   defaultDeviceLimit: 5,
+  manifestAuthoritative: { value: false, locked: false },
   adminGroup: "djdl-admins",
   createdAt: NOW - 200 * DAY,
   modifiedAt: NOW - DAY,
@@ -294,7 +297,7 @@ export const CORE_ROUTES: Record<string, unknown> = {
       minVersion: null,
       maxVersion: null,
       identityProvider: "manual",
-    })),
+    })).map(workerFields),
   },
   "/manage/api/products/djdl/devices/summary": {
     total: devices.length,

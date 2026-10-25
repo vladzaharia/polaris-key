@@ -98,11 +98,28 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - **Builds or backs 8 mockup item(s):** `licenses.access`, `packages.feeds-empty`, `packages.feeds-install-refused`, `packages.feeds-off`, `packages.feeds-turn-off`, `packages.feeds`, `packages.portal-packages`, `packages.public-registry`.
 - This package is the builder that carries the UX gate for the items above: the Screen acceptance block applies, and `pkey-ux-reviewer` must pass the built screens (record it with `--ux-review`).
 
+## Corrections (2026-10-22)
+
+The code is the fact; these replace the brief where they disagree (slice plan `P0-27-F-34-slices.md` §0).
+
+- **E1. Copy debt.** The `debt` list in `packages/admin/test/copy.debt.json` is empty; there is nothing to clear.
+- **E2. Feed settings today.** Sections: General, Access, Namespace, Limits, Yank policy, plus the ecosystem panel. Upstream is gone from the UI (the column is pinned to `'none'`, `console/lib/feedModel.ts`). "Untagged manifests" is OCI's `retainUntaggedDays` extension key, "Asset listing" is Godot's `categoryId`, and hide-yanked is Maven's `yankHidesFromIndex` (on by default).
+- **E3. No feed-level entitlement flag.** The flag is each deliverable's own `dist_access.entitlement`; a package with no own row inherits the `app` row's mode and has no flag, so licences are refused (fail closed). "Move the mode and the flag" means one own `dist_access` row per package deliverable, mode `entitled`, the existing own flag kept (a null flag stays null).
+- **E4. `authenticated` and `licensed` are one strictness** on the ladder (`authorize.ts` step 5); rewriting one to the other changes no answer.
+- **E5. A manifest never writes feed rows today** (`registryFeeds.ts`, the manifest `packages` comment, THREAT-MODEL). The system-product bootstrap writes `public`; owner decision O1 keeps the SDK feeds public.
+- **E6. `ReleaseAccess` is the wire enum** (`shared-protocol/src/release.ts`) and stays at four values.
+- **E7. The Packages nav item shows only while `packageFeeds` is on**; the off and empty mockups need it visible regardless.
+- **E8. No install-refusal counter exists**, so `packages.feeds-install-refused` has nothing to read.
+- **E9. Writing package rows can flip PS-03's open access** (`openAccessOf`, `access.ts`); the job must report it.
+- **E10. No route changes.** The console feed routes are one `${P}/distribution/feeds/**` row and `…/distribution/package-feeds` already exists.
+- **E11. UX coverage.** F-34 builds `packages.feeds`, `-empty`, `-off`, `-turn-off`. `-install-refused` needs the missing counter (E8). `packages.portal-packages` was built by F-33; `packages.public-registry` belongs to F-35 and F-38; `licenses.access` to P2-10.
+- **E12. New feeds default to Public today** (`console/handlers/feeds.ts`), and the write accepts all four modes.
+
 ## Acceptance criteria
 
-- [ ] A declared npm package gets a Customers feed with no console step
-- [ ] Four access options become two, and no principal gains read access in the migration (test)
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/packages/*`; `build/install` (private feeds); `help/packages`.
+- [x] A declared npm package gets a Customers feed with no console step
+- [x] Four access options become two, and no principal gains read access in the migration (test)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/packages/*`; `build/install` (private feeds); `help/packages`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

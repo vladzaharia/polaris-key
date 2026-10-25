@@ -162,9 +162,10 @@ import {
   type ImportBundleResult,
   type UpdateDecideOptions,
 } from "../core/index.js";
+import { expectedServicesOf } from "../core/expectedServices.js";
 import {
   copyServices,
-  defaultServices,
+  type ServiceSlug,
   noBusy,
   noErrors,
   withBusy,
@@ -386,7 +387,7 @@ export interface BrowserAdapterOptions {
   version?: string;
   /** What the host EXPECTS this product to run, used only while discovery has not answered
    *  (D-21). Defaults to license + config; never all-true. */
-  expectServices?: ServicesMap;
+  expectedServices?: readonly ServiceSlug[];
   /** The pinned trust keys (kid → raw Ed25519 public key, base64url). An offline bundle
    *  verifies against these ONLY (§7.1), so without them `importBundle` throws
    *  `bundle-import-unsupported` and no stored bundle is ever loaded. */
@@ -531,7 +532,7 @@ export class BrowserAdapter implements PolarisAdapter {
   private csrf: string | null = null;
   private hadSession = false;
   private capabilities: ServicesMap;
-  /** The build's own belief (`expectServices`, else the default): the gate's floor. */
+  /** The build's own belief (`expectedServices`, else the default): the gate's floor. */
   private readonly expectedServices: ServicesMap;
   /** `supports()`'s inputs: the generated table, runtime `web`, and `capabilities` above. */
   private readonly capabilityCtx: CapabilityContext;
@@ -600,9 +601,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.localOverrides = { ...hostOverrides, ...localBackend.read() };
     this.version = opts.version;
     // D-21: the pre-discovery belief. Never all-true.
-    this.expectedServices = copyServices(
-      opts.expectServices ?? defaultServices(),
-    );
+    this.expectedServices = expectedServicesOf(opts);
     this.capabilities = copyServices(this.expectedServices);
     this.capabilityCtx = capabilityContext("web", () => this.capabilities);
     this.presentation_ = new BrowserPresentationSource({
@@ -920,7 +919,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   /** Install the product's real capability map from discovery (D-21). A failed or rejected
-   *  document leaves the constructor's `expectServices` belief in place. */
+   *  document leaves the constructor's `expectedServices` belief in place. */
   /** The licence gate's input: build expectation OR a discovery loaded this session. */
   private licenseGate(): boolean {
     return licenseGateEnabled(this.expectedServices, this.capabilities);

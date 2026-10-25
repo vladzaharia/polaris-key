@@ -5,16 +5,13 @@
  * - Editing the publisher claims it from the manifest (`source` becomes `admin`); resyncs then
  *   leave it alone. Claiming is the only way to grant `release:yank`.
  * - A static token is shown once (`OneTimeSecretDialog`); only its hash is stored. Revoke is L2.
- * - CI publishing lives here, but Release's guided first-release panel edits it too, through the
- *   same `PublisherDrawer` and `IssueCiTokenFlow` (EXPERIENCE.md §0.4 S2).
+ * - Release's guided panel edits it too, via `PublisherDrawer` and `IssueCiTokenFlow` (§0.4 S2).
  */
 
+import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Pencil, Plus } from "lucide-react";
 import {
-  CI_SCOPES,
-  api,
   type CiTokenDto,
   type IssuedCiToken,
   type PublisherClaimBody,
@@ -24,7 +21,6 @@ import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds, toSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { Checkbox } from "../../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DataTable, type DataColumn } from "../../../../ui/data-table/index.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
@@ -36,55 +32,25 @@ import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { NumberInput } from "../../../../ui/NumberInput.js";
 import { OneTimeSecretDialog } from "../../../../ui/OneTimeSecretPanel.js";
+import { StepUpNotice, useStepUpDraft } from "../../../../ui/useStepUpDraft.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
+import { ScopeList, ScopePicker } from "./ciScopes.js";
+import {
+  fetchCiPublisher,
+  fetchCiTokens,
+  num,
+  useCiPublisher,
+  useCiTokens,
+} from "./ciData.js";
 
-/** What each scope lets a CI run do, in the docs' words. */
-const SCOPE_TEXT: Record<string, string> = {
-  "release:publish": "Publish releases",
-  "release:promote": "Promote releases on channels",
-  "release:yank": "Yank releases",
-  "distribution:report": "Report store status",
-  "distribution:rollout": "Start and change rollouts",
-  "distribution:feeds": "Publish package feeds",
-  "distribution:listing": "Upload listing assets",
-  "assets:write": "Upload hosted assets",
-};
-
-export function fetchCiPublisher(
-  slug: string,
-): Promise<PublisherPolicyDto | null> {
-  return api.ciPublisher(slug).then((r) => r.policy);
-}
-
-export function fetchCiTokens(slug: string): Promise<CiTokenDto[]> {
-  return api.ciTokens(slug).then((r) => r.tokens);
-}
-
-/** The trusted-publisher policy: one reader for this page and Release's guided panel. */
-export function useCiPublisher(
-  slug: string,
-): UseQueryResult<PublisherPolicyDto | null> {
-  return useQuery({
-    queryKey: qk.ciPublisher(slug),
-    queryFn: () => fetchCiPublisher(slug),
-  });
-}
-
-/** The product's CI tokens: one reader for this page and Release's guided panel. */
-export function useCiTokens(slug: string): UseQueryResult<CiTokenDto[]> {
-  return useQuery({
-    queryKey: qk.ciTokens(slug),
-    queryFn: () => fetchCiTokens(slug),
-  });
-}
+export { fetchCiPublisher, fetchCiTokens, useCiPublisher, useCiTokens };
 
 export function CiPublishingSection({
   slug,
@@ -99,21 +65,10 @@ export function CiPublishingSection({
   );
 }
 
-function ScopeList({ scopes }: { scopes: string[] }): React.ReactElement {
-  return (
-    <span className="flex flex-wrap gap-1">
-      {scopes.map((s) => (
-        <StatusPill key={s} tone="neutral" icon={null} size="sm">
-          {SCOPE_TEXT[s] ?? s}
-        </StatusPill>
-      ))}
-    </span>
-  );
-}
-
 function PublisherRow({ slug }: { slug: string }): React.ReactElement {
   const policy = useCiPublisher(slug);
   const [editing, setEditing] = React.useState(false);
+  const noMint = useBreakGlassReason();
   return (
     <SettingsRow
       label="Trusted publisher"
@@ -126,6 +81,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
             size="sm"
             iconStart={<Pencil aria-hidden />}
             onClick={() => setEditing(true)}
+            disabledReason={noMint}
           >
             Edit…
           </Button>
@@ -185,6 +141,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
             size="sm"
             iconStart={<Plus aria-hidden />}
             onClick={() => setEditing(true)}
+            disabledReason={noMint}
           >
             Set trusted publisher…
           </Button>
@@ -195,6 +152,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
         open={editing}
         policy={policy.data ?? null}
         onClose={() => setEditing(false)}
+        onOpen={() => setEditing(true)}
       />
     </SettingsRow>
   );
@@ -209,11 +167,14 @@ export function PublisherDrawer({
   open,
   policy,
   onClose,
+  onOpen,
 }: {
   slug: string;
   open: boolean;
   policy: PublisherPolicyDto | null;
   onClose: () => void;
+  /** Reopens the drawer after a step-up sign-in (its entries come back). */
+  onOpen: () => void;
 }): React.ReactElement {
   const [workflow, setWorkflow] = React.useState("");
   const [environment, setEnvironment] = React.useState("");
@@ -222,10 +183,23 @@ export function PublisherDrawer({
   const [repositoryId, setRepositoryId] = React.useState<number | null>(null);
   const [ownerId, setOwnerId] = React.useState<number | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [failure, setFailure] = React.useState<unknown>(null);
+  const stepUp = useStepUpDraft(`ci-publisher:${slug}`, open, onOpen);
 
   React.useEffect(() => {
     if (!open) return;
+    const saved = stepUp.take();
+    if (saved) {
+      setWorkflow(saved.workflow ?? "");
+      setEnvironment(saved.environment ?? "");
+      setScopes((saved.scopes ?? "").split(",").filter(Boolean));
+      setRepository(saved.repository ?? "");
+      setRepositoryId(num(saved.repositoryId));
+      setOwnerId(num(saved.ownerId));
+      setFailure(null);
+      return;
+    }
     setWorkflow(policy?.workflow ?? ".github/workflows/release.yml");
     setEnvironment(policy?.environment ?? "release");
     setScopes(
@@ -243,7 +217,18 @@ export function PublisherDrawer({
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (saving) return;
+    if (saving || noMint) return;
+    if (stepUp.needed) {
+      stepUp.signIn({
+        workflow,
+        environment,
+        scopes: scopes.join(","),
+        repository,
+        repositoryId: repositoryId === null ? "" : String(repositoryId),
+        ownerId: ownerId === null ? "" : String(ownerId),
+      });
+      return;
+    }
     setSaving(true);
     setFailure(null);
     const body: PublisherClaimBody = {
@@ -263,7 +248,7 @@ export function PublisherDrawer({
       toast.success("Trusted publisher saved");
       onClose();
     } catch (err) {
-      setFailure(err);
+      if (!stepUp.check(err)) setFailure(err);
     } finally {
       setSaving(false);
     }
@@ -344,6 +329,7 @@ export function PublisherDrawer({
             {(f) => <Input {...f} mono />}
           </FormField>
           <ScopePicker value={scopes} onChange={setScopes} />
+          {stepUp.needed ? <StepUpNotice /> : null}
           {failure ? (
             <Callout tone="danger" title={errorCopy(failure).title}>
               <ErrorDescription copy={errorCopy(failure)} />
@@ -359,40 +345,17 @@ export function PublisherDrawer({
           >
             Cancel
           </Button>
-          <Button type="submit" loading={saving} disabled={scopes.length === 0}>
-            Save publisher
+          <Button
+            type="submit"
+            loading={saving}
+            disabled={scopes.length === 0}
+            disabledReason={noMint}
+          >
+            {stepUp.needed ? "Sign in again" : "Save publisher"}
           </Button>
         </DrawerFooter>
       </form>
     </Drawer>
-  );
-}
-
-function ScopePicker({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (next: string[]) => void;
-}): React.ReactElement {
-  return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-fg-strong">Scopes</legend>
-      {CI_SCOPES.map((s) => (
-        <Checkbox
-          key={s}
-          label={SCOPE_TEXT[s] ?? s}
-          description={s}
-          checked={value.includes(s)}
-          onCheckedChange={(on) =>
-            onChange(on ? [...value, s].sort() : value.filter((x) => x !== s))
-          }
-        />
-      ))}
-      {value.length === 0 ? (
-        <p className="text-xs text-danger">Choose at least one scope.</p>
-      ) : null}
-    </fieldset>
   );
 }
 
@@ -408,6 +371,7 @@ export function tokenState(
 function TokensRow({ slug }: { slug: string }): React.ReactElement {
   const tokens = useCiTokens(slug);
   const [issuing, setIssuing] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [revoking, setRevoking] = React.useState<CiTokenDto | null>(null);
   const nowSec = toSeconds(Date.now());
 
@@ -484,7 +448,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
   return (
     <SettingsRow
       label="CI tokens"
-      help="For a CI that is not GitHub Actions. A static token lasts at most 90 days."
+      help="For a CI that is not GitHub Actions. A static token lasts up to 90 days, or 365 with only the read scope."
       footer={
         <div className="mt-4">
           <DataTable<CiTokenDto>
@@ -528,6 +492,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
         size="sm"
         iconStart={<Plus aria-hidden />}
         onClick={() => setIssuing(true)}
+        disabledReason={noMint}
       >
         Issue token…
       </Button>
@@ -607,27 +572,47 @@ function IssueTokenDialog({
   onOpenChange: (open: boolean) => void;
   onIssued: (t: IssuedCiToken) => void;
 }): React.ReactElement {
+  const noMint = useBreakGlassReason();
   const [label, setLabel] = React.useState("");
   const [scopes, setScopes] = React.useState<string[]>([]);
   const [days, setDays] = React.useState<number | null>(30);
   const [saving, setSaving] = React.useState(false);
   const [failure, setFailure] = React.useState<unknown>(null);
+  const stepUp = useStepUpDraft(`ci-token:${slug}`, open, () =>
+    onOpenChange(true),
+  );
   React.useEffect(() => {
     if (open) {
-      setLabel("");
-      setScopes(["release:publish"]);
-      setDays(30);
+      const saved = stepUp.take();
+      setLabel(saved?.label ?? "");
+      setScopes(
+        saved
+          ? (saved.scopes ?? "").split(",").filter(Boolean)
+          : ["release:publish"],
+      );
+      setDays(saved ? num(saved.days) : 30);
       setFailure(null);
     }
   }, [open]);
+  // The server's rule (`staticCiTokenMaxTtl`): 365 days when `packages:read` is the only scope.
+  const maxDays =
+    scopes.length === 1 && scopes[0] === "packages:read" ? 365 : 90;
   const daysError =
-    days === null || !Number.isInteger(days) || days < 1 || days > 90
-      ? "Use a whole number of days from 1 to 90."
+    days === null || !Number.isInteger(days) || days < 1 || days > maxDays
+      ? `Use a whole number of days from 1 to ${maxDays}.`
       : undefined;
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (saving || daysError || scopes.length === 0) return;
+    if (saving || noMint || daysError || scopes.length === 0) return;
+    if (stepUp.needed) {
+      stepUp.signIn({
+        label,
+        scopes: scopes.join(","),
+        days: days === null ? "" : String(days),
+      });
+      return;
+    }
     setSaving(true);
     setFailure(null);
     try {
@@ -638,7 +623,7 @@ function IssueTokenDialog({
       });
       onIssued(res);
     } catch (err) {
-      setFailure(err);
+      if (!stepUp.check(err)) setFailure(err);
     } finally {
       setSaving(false);
     }
@@ -680,11 +665,12 @@ function IssueTokenDialog({
                 integer
                 nullable
                 min={1}
-                max={90}
+                max={maxDays}
                 unit="days"
               />
             )}
           </FormField>
+          {stepUp.needed ? <StepUpNotice /> : null}
           {failure ? (
             <Callout tone="danger" title={errorCopy(failure).title}>
               <ErrorDescription copy={errorCopy(failure)} />
@@ -704,8 +690,9 @@ function IssueTokenDialog({
             type="submit"
             loading={saving}
             disabled={!!daysError || scopes.length === 0}
+            disabledReason={noMint}
           >
-            Issue token
+            {stepUp.needed ? "Sign in again" : "Issue token"}
           </Button>
         </DialogFooter>
       </form>

@@ -63,7 +63,7 @@ def _synced(store: Any, manifest: str):
             license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
         ),
         store=store,
-        trust=PINS,
+        pinned_keys=PINS,
     )
     c._tokens.set(TOKEN)
     c.sync()
@@ -84,7 +84,7 @@ def test_a_revoking_manifest_is_filed_as_evidence_in_the_same_write_and_survives
 
     # A restart re-derives the tombstone from the evidence, so the pin stays dead and a
     # manifest it signed is refused.
-    again = make_client(routes(), store=store, trust=PINS)
+    again = make_client(routes(), store=store, pinned_keys=PINS)
     assert again._trust.revoked_pins == [KID]
     assert again._trust.effective.get(KID) is None
     stale = sign_manifest([key_entry(KID, PUBKEY_RAW)], issued=NOW + 10)
@@ -95,7 +95,7 @@ def test_a_revoking_manifest_is_filed_as_evidence_in_the_same_write_and_survives
 def test_evidence_that_no_longer_verifies_is_dropped_and_restores_nothing() -> None:
     store = InMemoryStore(PRODUCT)
     store.write_cache(CacheRecord(pinRevocations={KID: "not.a.jws"}))
-    c = make_client(routes(), store=store, trust=PINS)
+    c = make_client(routes(), store=store, pinned_keys=PINS)
     assert c._trust.revoked_pins == [] and c._trust.pin_revocations == {}
     assert c._trust.effective[KID] == PUBKEY_RAW
     c.close()
@@ -155,7 +155,7 @@ def test_a_refused_manifest_signed_by_a_foreign_key_is_retried_per_pin() -> None
     )
     seen: List[str] = []
     c = make_client(
-        _retry_handler(seen, {ALT: by_alt}, default), trust={ALT: ROTATED_PUB}
+        _retry_handler(seen, {ALT: by_alt}, default), pinned_keys={ALT: ROTATED_PUB}
     )
     assert c._trust.refresh() == by_alt
     assert seen == ["", f"signer={ALT}"]
@@ -165,7 +165,7 @@ def test_a_refused_manifest_signed_by_a_foreign_key_is_retried_per_pin() -> None
 def test_a_refused_manifest_signed_by_a_usable_pin_is_never_retried() -> None:
     bad = sign_manifest([key_entry(KID, PUBKEY_RAW)], schemaVersion=2)
     seen: List[str] = []
-    c = make_client(_retry_handler(seen, {}, bad), trust=PINS)
+    c = make_client(_retry_handler(seen, {}, bad), pinned_keys=PINS)
     assert c._trust.refresh() is None
     assert seen == [""]
     c.close()
@@ -175,7 +175,7 @@ def test_the_signer_retry_is_bounded_and_in_ascending_byte_order() -> None:
     pins = {f"k{n}": PUBKEY_RAW for n in range(9, 0, -1)}
     foreign = sign_manifest([key_entry(KID, PUBKEY_RAW)], kid=KID)
     seen: List[str] = []
-    c = make_client(_retry_handler(seen, {}, foreign), trust=pins)
+    c = make_client(_retry_handler(seen, {}, foreign), pinned_keys=pins)
     assert c._trust.refresh() is None
     assert seen == [""] + [f"signer=k{n}" for n in range(1, MAX_TRUST_SIGNER_ATTEMPTS + 1)]
     c.close()
@@ -186,7 +186,7 @@ def _local(store: Any):
     return create_local_client(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust={KID: PUBKEY_RAW, ALT: ROTATED_PUB},
+        pinned_keys={KID: PUBKEY_RAW, ALT: ROTATED_PUB},
         base_url=BASE_URL,
         store=store,
     )

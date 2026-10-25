@@ -1,0 +1,22 @@
+Polaris Key console ·
+key.example
+
+Opening Polaris Key in
+your browser…
+Didn't open? Go to
+https://key.example/manage/
+device
+
+Enter this code in your browser:
+ WDJB-MJHT 
+
+Waiting for approval…
+   Enter open again
+   c copy the code · Esc cancel
+--- stderr ---
+
+▲  Code WDJB-MJHT was canceled
+   in the browser.
+   Run pkey login --base-url
+   https://key.example to
+   try again.

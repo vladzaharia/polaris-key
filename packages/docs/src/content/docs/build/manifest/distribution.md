@@ -91,6 +91,8 @@ only when it does not widen those defaults (for example `web` to `altstore`). A 
 Declare a new channel id for the wider kind, so copies already installed through the old one keep
 what they had.
 
+A channel with no build for it draws the `outlet_without_build` warning in `pkey validate` and on link: `app-store` declared when `.pkey/release` declares no `ios` or `macos` build in `deliverables.app.artifacts`. It is silent while no artifact map is declared, and for a bare `direct`. The console hides such a channel unless you declared it. See [Which channels a product sees](/docs/features/ship-builds/channels/#which-channels-a-product-sees) and the [validation codes](/docs/reference/validation-codes/).
+
 ### Identity fields per kind
 
 Each kind reads only its own fields; any other key on the entry is ignored. Every field is
@@ -142,7 +144,7 @@ optional. A bad value is `invalid_outlet_identity`.
 - **`snap.release tracks`** maps a declared release track to the snap release track `snapcraft upload --release`
   releases to (`{ stable: "latest/stable", beta: "beta" }`). The publish action's allow-list
   admits no other release track, so a snap step for a release track without an entry is refused (see
-  [Storefront steps](/docs/features/ship-builds/ci-stores/#storefront-steps-itchio-and-snap)).
+  [Snap Store](/docs/features/ship-builds/channels/snap/)).
 - **`tracks`, `branches`, `flights` and `release tracks`** keys must be declared release tracks — `stable`,
   `beta`, a manual release track, or one of `deliverables.app.channels` — otherwise
   `unknown_channel_ref`.
@@ -158,7 +160,7 @@ for a command-line build whose executable resolves under `Cellar/<formula>/`).
 
 `direct.homebrewTap` and `direct.scoopBucket` (optional) are your **own** tap and bucket on
 GitHub, where `pkey storefront homebrew pr` and `pkey storefront scoop pr` open pull requests
-([Pull-request steps](/docs/features/ship-builds/ci-stores/#pull-request-steps-winget-homebrew-scoop-and-flathub)): a
+([pull-request channels](/docs/features/ship-builds/channels/#pull-request-channels)): a
 tap is `<owner>/homebrew-<name>` and a bucket `<owner>/<repo>`, and neither may belong to the
 `Homebrew` or `ScoopInstaller` organization.
 

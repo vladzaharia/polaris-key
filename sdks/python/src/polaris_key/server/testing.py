@@ -163,7 +163,7 @@ class PolarisTestKit:
         self.config: Dict[str, Any] = {
             "product_slug": product,
             "base_url": base_url,
-            "trust": dict(self.pinned_keys),
+            "pinned_keys": dict(self.pinned_keys),
         }
         self.trust = TestTrust(self)
 

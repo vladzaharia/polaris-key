@@ -36,6 +36,7 @@ import type { CrashTags, CrashTagsOptions } from "./crash.js";
 import type { UpdateEvent } from "../constants.generated.js";
 import type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
 import type { InstallOptions, InstallOutcome } from "./install.js";
+import type { BridgeHost, KitView } from "../desktop/bridge.js";
 import type {
   FetchTarget,
   ReleaseFetchOptions,
@@ -271,7 +272,7 @@ export interface PolarisState {
    * a wound-back system clock inert. `0` when nothing signed has been seen yet.
    */
   highWaterMark: number;
-  /** What the product runs, per D-21. Discovery when it answered; the host's `expectServices`
+  /** What the product runs, per D-21. Discovery when it answered; the host's `expectedServices`
    *  (default: license + config) when it did not. Never all-true. */
   capabilities: ServicesMap;
   /** The signed profile (name/email), once a license document is present. */
@@ -647,6 +648,18 @@ export interface PolarisAdapter {
    *  mode then sends the journal at once: nothing records it again). `boot()` confirms by the
    *  stage matrix's `confirmCases`; call it yourself for a boot you drive. */
   confirmBoot(): Promise<void>;
+  /**
+   * The host asks the renderer to open a view (UK-06.4): a native menu item on the desktop
+   * bridge. Returns an unsubscribe. Optional: only the desktop adapter has a host to ask, and an
+   * older host never asks.
+   */
+  onOpen?(cb: (view: KitView) => void): () => void;
+  /**
+   * The OS facts the desktop host reports (UK-06): the chrome (`os`), the system accent, high
+   * contrast and reduced transparency. `null` until a v4 host sends them, and always on an adapter
+   * with no host. The value is replaced only when a fact changes, so it can back a store snapshot.
+   */
+  hostFacts?(): BridgeHost | null;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }

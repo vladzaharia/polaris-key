@@ -242,7 +242,9 @@ public object KitMessageFormat {
     )
 
     private val IDENTIFIER: Regex = Regex("[A-Za-z][A-Za-z0-9]*")
-    private val ARGUMENT: Regex = Regex("\\{([A-Za-z][A-Za-z0-9]*)\\s*(?:,|})")
+
+    // The closing brace is escaped: Android's ICU regex engine rejects a bare `}` (the JVM accepts it).
+    private val ARGUMENT: Regex = Regex("\\{([A-Za-z][A-Za-z0-9]*)\\s*(?:,|\\})")
 }
 
 /** CLDR cardinal categories for the launch locales and the catalog's integer-only subset. */

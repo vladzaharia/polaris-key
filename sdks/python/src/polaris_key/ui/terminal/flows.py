@@ -707,7 +707,7 @@ def config(client: Any, t: Terminal, words: Sequence[str], *, fallback: Optional
 
 
 def _one_setting(client: Any, t: Terminal, key: str, *, saved: bool = False, fallback: Any = None) -> Outcome:
-    value = client.config.get_config(key, fallback)
+    value = client.config.get(key, fallback)
     source = client.config.get_config_source(key)
     src = {"enforced": "enforced", "local": "local", "env": "env"}.get(source, "default")
     from ..core.models import SettingRow

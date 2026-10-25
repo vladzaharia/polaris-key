@@ -4,6 +4,7 @@ import {
   devicesText,
   expiresInText,
 } from "../../lib/vocab/license.js";
+import { channelLabel } from "@polaris-key/manifest";
 import { platformInSentence } from "../../lib/vocab/platforms.js";
 import {
   isEntryItem,
@@ -192,7 +193,7 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 }
 
-/** `productBranding` read for the listing fields it may carry; today's Worker sends null. */
+/** The listing fields of a presentation, validated: only well-formed values survive. */
 export function readPresentation(branding: unknown): Presentation {
   const b =
     branding && typeof branding === "object"
@@ -250,7 +251,7 @@ export function mediaUrl(v: string | null | undefined): string | null {
     : null;
 }
 
-/** The server-side library's presentation (PX-W1), validated like the branding fallback. */
+/** The server-side library's presentation (PX-W1), validated by `readPresentation`. */
 export function presentationFrom(item: PortalPresentation): Presentation {
   const base = readPresentation({
     developerName: item.developerName,
@@ -291,20 +292,18 @@ export function storeName(store: string): string {
 }
 
 const STORE_NAMES: Record<string, string> = {
-  "app-store": "App Store",
-  play: "Google Play",
-  steam: "Steam",
-  "microsoft-store": "Microsoft Store",
-  itch: "itch.io",
+  "app-store": channelLabel("app-store"),
+  play: channelLabel("google-play"),
+  steam: channelLabel("steam"),
+  "microsoft-store": channelLabel("microsoft-store"),
+  itch: channelLabel("itch"),
   "polaris-key": "Polaris Locker",
 };
 
-/** What a licence's origin is read from: the summary, its keys' known last characters (G7),
- * the store of an active purchase on it (`purchase.store`, PX-W6; store name only) and the
- * developer's name (G1), for "From <Developer>". */
+/** What a licence's origin is read from: the summary, its keys' known last characters (G7) and
+ * the developer's name (G1), for "From <Developer>". */
 export interface OriginFacts {
   keys?: readonly { last4?: string }[];
-  store?: string | null;
   developer?: string | null;
 }
 
@@ -322,26 +321,21 @@ const ORIGIN_KINDS: readonly PortalLicenseOrigin[] = [
 ];
 
 /**
- * How the licence reached the person: the Worker's `origin` (PX-23, S-24 D21) when it sent one
- * this build knows, else inferred from the older facts (a key, a store purchase, a sign-in) as
- * before; an older Worker never says "developer" for a licence with a key.
+ * How the licence reached the person: the Worker's `origin` (PX-23, S-24 D21). A kind this
+ * build does not know reads as the developer's.
  */
-function originOf(
-  l: OriginSummary,
-  facts: OriginFacts,
-): { kind: PortalLicenseOrigin; store: string | null } {
-  const store = l.originStore ?? facts.store ?? null;
-  const hasKey = l.keyCount > 0 || (facts.keys ?? []).length > 0;
-  if (l.origin && (ORIGIN_KINDS as readonly string[]).includes(l.origin)) {
+function originOf(l: OriginSummary): {
+  kind: PortalLicenseOrigin;
+  store: string | null;
+} {
+  const store = l.originStore;
+  if ((ORIGIN_KINDS as readonly string[]).includes(l.origin)) {
     const kind = l.origin as PortalLicenseOrigin;
     // A store origin with no store named reads by its other facts, never " key" or "From ".
     if (kind === "store-key" && !store) return { kind: "key", store: null };
     if (kind === "store" && !store) return { kind: "developer", store: null };
     return { kind, store };
   }
-  if (store) return { kind: hasKey ? "store-key" : "store", store };
-  if (hasKey) return { kind: "key", store: null };
-  if (isSignInLicense(l)) return { kind: "signin", store: null };
   return { kind: "developer", store: null };
 }
 
@@ -357,7 +351,7 @@ export function licenseOrigin(
   l: OriginSummary,
   facts: OriginFacts = {},
 ): string {
-  const { kind, store } = originOf(l, facts);
+  const { kind, store } = originOf(l);
   const last = (facts.keys ?? []).find((k) => k.last4)?.last4;
   switch (kind) {
     case "store-key": {
@@ -396,7 +390,7 @@ export function shortOrigin(
   l: OriginSummary,
   facts: OriginFacts = {},
 ): string | null {
-  const { kind, store } = originOf(l, facts);
+  const { kind, store } = originOf(l);
   const last = (facts.keys ?? []).find((k) => k.last4)?.last4;
   switch (kind) {
     case "store-key": {
@@ -575,6 +569,9 @@ function summaryFromItem(item: PortalLicensedItem): PortalLicenseSummary {
     activeKeyCount: 0,
     deviceCount: l.deviceCount,
     entitlements: [],
+    origin: "developer",
+    originStore: null,
+    removable: false,
   };
 }
 

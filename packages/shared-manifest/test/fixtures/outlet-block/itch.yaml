@@ -1,0 +1,8 @@
+outlets:
+  # itch.io
+  itch:
+    kind: itch
+    # butler target, user/game.
+    target: acme/dice
+    # itch.io game id (digits).
+    gameId: "123456"

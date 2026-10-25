@@ -3,6 +3,7 @@
 // same shared stylesheet, so a state drawn here and by `<pk-*>` is the same pixels (UI-KITS.md
 // §3.2, §7.1). Every string is a catalog key of the view (DL8).
 
+import { platformVariant } from "@polaris-key/ui-core/theme";
 import {
   Fragment,
   useEffect,
@@ -51,6 +52,14 @@ export interface KitCtx {
   embedded?: boolean;
   /** The step is the sign-in form's body: every step shares one card width (the split). */
   form?: boolean;
+  /** Settings, opened by the host: the account pane drawn above the settings rows. */
+  account?: ReactNode;
+  /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
+  dialog?: boolean;
+  /** The arrangement of the box (DL1): GNOME lays two responses in a row unless it is portrait. */
+  shape?: "landscape" | "portrait" | "short";
+  /** The window is wider than a docked sheet (35 rem). */
+  wide?: boolean;
   chrome?: Chrome;
   view: View;
   copy: Copy;
@@ -120,22 +129,27 @@ function withoutBraces(s: string, key: string): string {
     .trim();
 }
 
-/** One string. The installed version's line says the size of a download only when it knows one
- *  (the web prompt does not); there the line is just "You have 2.4.1". */
+/** The key to draw: the installed version's line names a download size only when the decision
+ *  carries one (the web prompt does not); otherwise it is the catalog's "You have {version}". */
+function drawnKey(
+  c: KitCtx,
+  key: string,
+  args: Record<string, string | number>,
+): string {
+  return key === "update.current" &&
+    args.size === undefined &&
+    c.copy.has("common.updateCurrentNoSize")
+    ? "common.updateCurrentNoSize"
+    : key;
+}
+
+/** One string. */
 function formatKey(
   c: KitCtx,
   key: string,
   args: Record<string, string | number>,
 ): string {
-  if (key !== "update.current" || args.size !== undefined)
-    return withoutBraces(c.copy.format(key, args), key);
-  return withoutBraces(
-    c.copy
-      .format(key, { ...args, size: "" })
-      .split("·")[0]!
-      .trim(),
-    key,
-  );
+  return withoutBraces(c.copy.format(drawnKey(c, key, args), args), key);
 }
 
 export function text(
@@ -181,14 +195,7 @@ export function plain(
 /** True when the string still holds a `{name}` argument nothing filled. */
 export function unfilled(c: KitCtx, key: string): boolean {
   const args = argsOf(c, key, {});
-  const raw =
-    key === "update.current" && args.size === undefined
-      ? c.copy
-          .format(key, { ...args, size: "" })
-          .split("·")[0]!
-          .trim()
-      : c.copy.format(key, args);
-  return UNFILLED.test(raw);
+  return UNFILLED.test(c.copy.format(drawnKey(c, key, args), args));
 }
 
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────
@@ -581,9 +588,15 @@ export function seatMeter(
   );
 }
 
-/** ProgressBar: determinate only for counted bytes (DL7). */
-export function progressBar(c: KitCtx, fraction: number): ReactNode {
-  const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
+/** ProgressBar: determinate only for counted bytes (DL7). No `fraction` (the size is unknown)
+ *  draws the indeterminate bar: no value, no percentage, a sweep that stands still under
+ *  reduced motion. */
+export function progressBar(
+  c: KitCtx,
+  fraction: number | undefined,
+): ReactNode {
+  const indeterminate = fraction === undefined;
+  const pct = Math.round(Math.max(0, Math.min(1, fraction ?? 0)) * 100);
   const own = c.view.copy.find(
     (k) => !k.startsWith("a11y.") && !k.startsWith("common."),
   );
@@ -599,10 +612,15 @@ export function progressBar(c: KitCtx, fraction: number): ReactNode {
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={pct}
+      aria-valuenow={indeterminate ? undefined : pct}
       aria-label={label}
       data-key={label ? "a11y.progress" : undefined}
-      style={{ ["--pk-fraction" as string]: String(pct / 100) }}
+      data-indeterminate={indeterminate ? "" : undefined}
+      style={
+        indeterminate
+          ? undefined
+          : { ["--pk-fraction" as string]: String(pct / 100) }
+      }
     >
       <span />
     </div>
@@ -802,11 +820,37 @@ export function actions(
   c: KitCtx,
   controls: string[],
   layoutRow = false,
+  group?: "choices",
+  primaryLast = false,
 ): ReactNode {
   if (controls.length === 0) return null;
   const primary = c.view.decisions.primary;
-  const sorted = [...controls].sort(
-    (a, b) => Number(b === primary) - Number(a === primary),
+  // GNOME: two responses in a row (landscape or short boxes) put the suggested action last, at
+  // the trailing end, in the DOM too so Tab follows the eye; stacked (portrait, or three or more)
+  // it is first, on top. A group of choices keeps its order. No CSS reordering either way.
+  // A Mac row reads Cancel then the default, the default last in the DOM too.
+  const last =
+    primaryLast ||
+    (layoutRow && platformVariant(c.resolved.theme) === "macos") ||
+    // A short Mac window docks the bar as one row: the default last, so Tab follows the eye.
+    (!c.dialog &&
+      c.shape === "short" &&
+      controls.length === 2 &&
+      group !== "choices" &&
+      platformVariant(c.resolved.theme) === "macos") ||
+    (group !== "choices" &&
+      controls.length === 2 &&
+      c.view.component !== "StatusScreen" &&
+      c.view.component !== "Boot" &&
+      // A dialog floats (a row) in a window wider than a docked sheet; a page follows its shape.
+      (c.dialog
+        ? c.wide === true
+        : c.shape !== undefined && c.shape !== "portrait") &&
+      platformVariant(c.resolved.theme) === "gnome");
+  const sorted = [...controls].sort((a, b) =>
+    last
+      ? Number(a === primary) - Number(b === primary)
+      : Number(b === primary) - Number(a === primary),
   );
   // Pressed once: while the work runs the primary is busy and ignores further presses.
   const busy =
@@ -816,6 +860,8 @@ export function actions(
       className="actions"
       data-part="actions"
       data-layout={layoutRow ? "row" : "stack"}
+      data-primary={last ? "last" : undefined}
+      data-group={group}
     >
       {sorted.map((k) =>
         button(c, k, k === primary ? "primary" : "secondary", {

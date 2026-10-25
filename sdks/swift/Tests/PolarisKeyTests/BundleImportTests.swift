@@ -123,7 +123,7 @@ final class BundleImportTests: XCTestCase {
 
         let status = await c.status()
         let activation = await c.license.activation()
-        let theme = await c.config.config("ui.theme", default: .string("d"))
+        let theme = await c.config.get("ui.theme", default: .string("d"))
         XCTAssertEqual(status.status, .needsActivation)
         XCTAssertNil(activation, "activation: .bundle arises only from a verified licence doc")
         XCTAssertEqual(theme, .string("air-gapped"))

@@ -1,0 +1,186 @@
+---
+name: adding-a-catalog-entry
+description: Use when adding or changing a key in a product's config catalog (.pkey/schema or products/<slug>/catalog.json) — choosing a Setting, Secret or Minted token (or a flag), writing the Draft-07-subset schema fragment, picking managementDefault or delivery, deciding whether to bump schemaVersion, and publishing.
+---
+
+# Adding a catalog entry
+
+A product's config catalog is the `schema` document of its `.pkey/` manifest: a `schemaVersion`
+plus one `ConfigEntry` per declarable key. It is **data** — never add a product-specific key to
+worker or SDK code.
+
+Reference: `packages/docs/src/content/docs/build/manifest/product.md` (the `.pkey/`
+convention), `packages/shared-catalog/src/types.ts`, and the generated
+field table at `packages/docs/src/content/docs/reference/config-entry.mdx`.
+
+## Checklist
+
+### 1. Pick the type
+
+The console says Setting, Secret or Minted token; the catalog keeps `kind` and `delivery`.
+
+- [ ] **Setting** (`kind: "config"`) — a plaintext client setting. Rides the config document,
+      resolved through the client precedence chain, overridable unless management says otherwise.
+- [ ] **Secret** (`kind: "secret"`) — redacted in admin UIs, delivered in the `secrets` map of the
+      signed config document (cached in the SDK's 0600 file; only the device token is in the OS
+      keyring). Do not add `"secret": true`: the kind says it, the validator warns, and
+      `pkey validate --fix` removes it. A value people change themselves is a Setting with
+      `ui.widget: "password"`, not a Secret.
+- [ ] **Minted token** (`kind: "secret"`, `delivery: "edgeMint"`) — never stored or listed; the app
+      calls `mintToken(key)`. The recipe is the entry's `mint` block (`alg`, `signingKeySecret`,
+      optional `kid`, `audience`, `ttlSeconds`, `claimsTemplate`, `requires`, `requiredEntitlement`);
+      the key is the recipe id. No block and no legacy recipe: the validator warns. A top-level
+      `edgeMint[]` recipe still reads, and `pkey validate --fix` moves it into its entry.
+- [ ] **`flag`** — an entitlement. Flags ride the **license** document only and are read with
+      `entitlements.has` / `entitlements.all`; they are not "managed config". A config-only product has
+      no flags in play.
+
+### 2. Write the entry
+
+- [ ] `key` — dotted identifier, unique in the catalog, matching `^[A-Za-z0-9._:-]{1,64}$`
+      (`run.concurrency`, `proxy.subscriptionUrl`, `polarisVpn`).
+- [ ] `category`, `label`, `description` — grouping and human copy for settings UIs.
+- [ ] `default` — the schema-level default; the client's last-resort fallback.
+- [ ] `ui` — `widget` (`password` · `select` · `textarea` · `switch` · `stepper`), `placeholder`,
+      `unit`, `help`, `order`, `scopes` (admin scopes `profile` · `license` · `device`).
+      **Presentation only; never affects validation.**
+- [ ] `dependsOn: { key, equals }` — presentation gating only. It does **not** gate value
+      validation.
+- [ ] `accessor` — dotted path into the client's config object (`config` / `secret` kinds).
+- [ ] `userGrant` / `grantLabel` — a `flag` shown to the user as an included capability.
+- [ ] Optional metadata: `appliesTo`, `examples`, `deprecated`, `since`.
+
+### 3. Write the `schema` fragment — a Draft-07 **subset**
+
+- [ ] The entry's own `schema` field is a nested JSON-Schema fragment that values must satisfy.
+      Do not confuse it with the document-level `.pkey/schema` file: two different layers.
+- [ ] The validator (`packages/shared-catalog/src/validate.ts`) **interprets** the schema instead
+      of compiling it, because workerd forbids code generation from strings outside the startup
+      window and catalogs are read from D1 during a request. Ajv would throw `EvalError` on every
+      config poll.
+- [ ] **Fail-closed keyword policy.** A keyword this validator does not implement makes the
+      fragment _unsupported_, never "ignored": it is a **422 at publish time**, and at request
+      time the value is marked invalid and pruned before signing. Silently skipping an
+      unrecognised constraint would let an operator believe a value is bounded when it is not.
+- [ ] Assertion keywords supported: `type`, `enum`, `const`, `minimum`, `maximum`,
+      `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `pattern`,
+      `format`, `items`, `additionalItems`, `minItems`, `maxItems`, `uniqueItems`, `contains`,
+      `properties`, `required`, `additionalProperties`, `patternProperties`, `propertyNames`,
+      `minProperties`, `maxProperties`, `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`.
+- [ ] Annotation keywords are inert (carried, no effect): `$schema`, `$id`, `$comment`, `title`,
+      `description`, `default`, `examples`, `deprecated`, `readOnly`, `writeOnly`, `definitions`,
+      `$defs`, `contentMediaType`, `contentEncoding`.
+- [ ] `format` values supported: `uri`, `url`, `uri-reference`, `iri`, `email`, `hostname`,
+      `ipv4`, `ipv6`, `date`, `time`, `date-time`, `uuid`, `json-pointer`, `regex`. Any other
+      format name makes the schema unsupported.
+- [ ] `$ref` is **not** in the supported set. Inline the constraint.
+- [ ] `pattern` / `patternProperties` are matched by a linear-time engine, not the host `RegExp`.
+      A pattern it cannot compile is unsupported.
+- [ ] Structural limits: depth ≤ 12, ≤ 500 subschemas per fragment.
+
+### 4. Choose `managementDefault`, "In the app" (Settings only)
+
+The management state a freshly-minted key gets when an admin has not overridden it per
+tier/license/device. The client precedence is
+`enforced|hidden (remote) > local override > environment > remote default > fallback`.
+
+| Value                  | Client behavior                                                                           | Choose it when                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `default` (Editable)   | user/local override wins, then env, then the remote value, then the SDK fallback          | the key is a user preference the server merely suggests                        |
+| `enforced` (Read-only) | the remote value always wins; local + env ignored; shown **read-only** in settings UIs    | policy the operator must be able to dictate (limits, endpoints, kill switches) |
+| `hidden` (Hidden)      | `enforced` **and** withheld from `listUserConfig` / enumeration; still applied internally | the user must not see or reason about the value at all                         |
+
+The env override for a key is `PKEY_CONFIG_` + the key with dots → `__`
+(`run.concurrency` → `PKEY_CONFIG_run__concurrency`), parsed only when it is one strict JSON
+text (WIRE-CONTRACT-V3 §2.2.1 rule 2: no duplicate names, every number zero or of magnitude
+10^−307 up to below 10^308, at most 64 deep), else the raw string.
+
+### 4b. Tune how it syncs? (config kinds only)
+
+With the `sync` (Cloud Sync) service on and the person signed in, **every Editable `config` key
+syncs** (Editable: no `managementDefault` of `enforced` or `hidden`). A `user` block is optional
+tuning; without one the key behaves as `{ "sync": "user", "conflict": "lastWrite", "listed": true }`.
+
+```json
+"user": { "sync": "platform", "conflict": "max" }
+```
+
+- [ ] `sync` (default `user`): `user` (every device of the person), `platform` (per platform
+      family), `local` (never leaves the device: write it to keep a key off Cloud Sync).
+      `device` is retired and refused (`invalid_user_setting`): use `local`.
+- [ ] `conflict` (default `lastWrite`): `max`/`min` need a number schema; `merge` an object
+      schema with at most 256 top-level members (a set is an object of booleans); never `union`
+      or `revision`, which are record policies. A list setting gets `lastWrite` only.
+- [ ] `listed` (default `true`): whether settings panels show it.
+- [ ] Refused on a `secret` or `flag` (`config.set` refuses those keys with `bad_request` while
+      Cloud Sync is on). On an `enforced` or `hidden` key the block has no effect and the
+      validator warns (`user_setting_locked_default`): the operator locked it, so it never syncs.
+      The rules live once, in `@polaris-key/catalog`'s `userSettingIssues`, used by the manifest
+      validator, the console's publish route and the catalog editor; `syncedSettings` derives
+      each key's route (`synced`, `local`, `locked`, `refused`).
+- [ ] A key the catalog does not declare is an **open setting**: it syncs too, schema-less and
+      `lastWrite`, at most 8 KiB. Declared and open settings share 256 keys and 64 KiB per
+      person. An app treats an undeclared key as untrusted input (any device of the person can
+      write it); declare a key that matters with a schema, route it `local`, or lock it.
+- [ ] A synced `user` block while Cloud Sync is off is a warning
+      (`cloud_sync_block_without_service`): the value stays on the device until it is on.
+- [ ] Storage is not a catalog member: a person's quota is the `pkey.cloudSync.bytes`
+      entitlement (256 MiB when unset), which a tier, a licence override or an add-on sets. A
+      catalog may declare it as an `integer` flag; any other type is an incompatible reserved
+      name.
+
+### 5. Choose `delivery` (secret kinds only)
+
+- [ ] `serverOnly` — retired (the validator warns): keep a Worker-only secret in the product's secrets, not the catalog.
+- [ ] `clientScoped` — delivered to the device in the signed config document.
+- [ ] `edgeMint` — minted on demand at `/<product>/config/mint/<id>/{token,auth}`. Edge-minting
+      is a Config **capability**, not a service; the recipe (alg, claims template, key, audience)
+      lives in the entry's `mint` block, and an operator approves it (step-up) before it mints.
+- [ ] `delivery` on a non-`secret` entry is a validation error. `managementDefault` and `delivery`
+      are not interchangeable — one is enforcement, the other is transport.
+
+### 6. Decide whether to bump `schemaVersion`
+
+- [ ] Bump **only on an incompatible shape change**. Adding a key, tightening copy, or changing a
+      `managementDefault` is not one.
+- [ ] The value is the _product's_ schema version, not the wire's, and it is echoed in the signed
+      config document, so a bump is visible to every client.
+- [ ] Existing admin value/state overrides persist across a publish; new keys take their
+      `managementDefault` until an admin overrides them.
+
+### 7. Publish
+
+- [ ] **Console (`Catalog → Publish new version`)** — seeds a JSON editor from the active catalog
+      with `schemaVersion` pre-incremented, validates on every keystroke, and calls
+      `publishSchema`. Correct the pre-increment back if this is not an incompatible change.
+- [ ] **Push `.pkey/schema`** — for a repo-linked product, commit and push the manifest; the
+      signed GitHub webhook re-parses and updates `product_schema`. This is the normal path, and
+      it keeps the repo the source of truth. A console publish is the out-of-band one.
+- [ ] Either way the catalog is compiled through `@polaris-key/catalog` **before** anything is
+      written, so a malformed fragment fails at publish/import rather than during a client
+      request.
+
+### 8. How clients pick it up
+
+- [ ] Public catalog: `GET /<product>/config/schema`. Signed values: the next
+      `GET /<product>/config/document` (`pkey-config+jws`), which carries `config`, `secrets` and
+      the catalog's `schemaVersion`.
+- [ ] Nothing is pushed. A running client sees the change on its next `sync()`; ETag/`304` means
+      an unchanged catalog costs nothing.
+- [ ] For a product that wants compile-time config types, regenerate its typed mirrors:
+      `pnpm gen mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (add `--check` in that
+      product's CI).
+
+## Verification
+
+```sh
+pkey validate                                                    # if editing a .pkey/ repo
+
+mise exec node@22 -- pnpm --filter @polaris-key/manifest test    # catalog shape + schema parity
+mise exec node@22 -- pnpm --filter @polaris-key/catalog test     # keyword/format support
+mise exec node@22 -- pnpm --filter @polaris-key/worker test      # config document + publish path
+mise exec node@22 -- pnpm format
+```
+
+A fragment that publishes fine but fails at request time means a keyword slipped past — check it
+against the supported list in step 3 rather than loosening the validator.

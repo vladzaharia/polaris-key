@@ -60,6 +60,7 @@ import { type LicenseRow } from "../repo.js";
 import { getLicense } from "../licensing/store.js";
 import { CI_TOKEN_PREFIX } from "../ciVocabulary.js";
 import { lookupCiToken } from "../publisher.js";
+import { PACKAGES_READ_CI_SCOPE } from "../ciVocabulary.js";
 import { erasureVerdict } from "../accounts/erasureFence.js";
 import {
   PACKAGES_READ_SCOPE,
@@ -307,6 +308,15 @@ export async function mintRegistryToken(
       "the platform's SDK feeds are published by the deploy pipeline only",
       ["scopes"],
     );
+  // F-33b.3: an owner-wide READ token is retired; a read service token is a `pkeyci_`
+  // `packages:read` CI token (`issueStaticCiToken`). Owner-bound tokens remain only to publish.
+  if (binding === "owner" && !publish)
+    return refuse(
+      422,
+      "owner_read_retired",
+      "an owner-wide read token is retired; mint a service token instead",
+      ["binding"],
+    );
   if (binding === "license" && scopes.some((s) => s !== "read"))
     return refuse(
       422,
@@ -397,6 +407,12 @@ export async function mintRegistryToken(
 export interface RegistryTokenFilter {
   readonly licenseId?: string;
   readonly portalAccountId?: string;
+  /**
+   * Only tokens no portal account minted (`portal_account_id IS NULL`: an operator's, from the
+   * console). A form of its own so "this account's tokens" and "nobody's tokens" never share a
+   * statement; it is never combined with `portalAccountId`.
+   */
+  readonly operatorMinted?: true;
 }
 
 function filterSql(filter: RegistryTokenFilter): {
@@ -412,6 +428,9 @@ function filterSql(filter: RegistryTokenFilter): {
   if (filter.portalAccountId !== undefined) {
     parts.push("portal_account_id = ?");
     params.push(filter.portalAccountId);
+  }
+  if (filter.operatorMinted === true) {
+    parts.push("portal_account_id IS NULL");
   }
   return {
     sql: parts.length ? ` AND ${parts.join(" AND ")}` : "",
@@ -503,6 +522,22 @@ export async function revokeAllRegistryTokens(
   );
   forgetRegistryTokens();
   return n;
+}
+
+/** `revokeAllRegistryTokens` as a statement, for a batch that revokes several filters atomically. */
+export function stmtRevokeRegistryTokens(
+  product: string,
+  by: string,
+  reason: RegistryRevokeReason,
+  now: number,
+  filter: RegistryTokenFilter = {},
+): DbStatement {
+  const f = filterSql(filter);
+  return {
+    sql: `UPDATE registry_tokens SET revoked_at = ?, revoked_by = ?, revoke_reason = ?
+           WHERE product = ? AND revoked_at IS NULL${f.sql}`,
+    params: [now, by, reason, product, ...f.params],
+  };
 }
 
 /**
@@ -733,6 +768,21 @@ export async function lookupRegistryCredential(
   }
   if (isCi) {
     const ci = await lookupCiToken(env, db, token, now);
+    // F-33b.2 (D-F5): "last used" for a service token, hourly, on this path only.
+    if (
+      ci &&
+      (ci.lastUsedAt === null || ci.lastUsedAt < now - LAST_USED_GRANULARITY)
+    ) {
+      const write = db
+        .run(
+          "UPDATE ci_tokens SET last_used_at = ? WHERE token_hash = ?",
+          now,
+          ci.tokenHash,
+        )
+        .catch(() => undefined);
+      if (opts.waitUntil) opts.waitUntil(write);
+      else await write;
+    }
     const value: ResolvedRegistryToken | null = ci
       ? {
           kind: "ci",
@@ -865,8 +915,15 @@ export async function lookupRegistrySubject(
   );
 }
 
-/** The CI scope that lets a `pkeyci_` token read the owner's non-public feeds. */
-export const CI_FEED_READ_SCOPE = "release:publish";
+/**
+ * The CI scopes that let a `pkeyci_` token read the owner's non-public feeds: the publish scope
+ * (a pipeline that verifies its own feeds) or the read-only service scope (F-33b.2). Reading is
+ * all `packages:read` buys; `registryPublisher` and the `/ci/*` guards ask for their own scopes.
+ */
+export const CI_FEED_READ_SCOPES: readonly string[] = [
+  "release:publish",
+  PACKAGES_READ_CI_SCOPE,
+];
 
 /** The principal a resolution is, for an owner and ecosystem the ladder then judges. */
 export function principalOf(
@@ -874,10 +931,10 @@ export function principalOf(
 ): FeedPrincipal {
   if (resolved === null) return ANONYMOUS;
   if (resolved.kind === "ci") {
-    // A CI token reads private feeds (and mints OCI pull tokens) only with the
-    // publish scope, the one a pipeline that verifies its own feeds holds; a report-only or
-    // promote-only token is no credential here.
-    if (!resolved.scopes.includes(CI_FEED_READ_SCOPE)) return ANONYMOUS;
+    // A CI token reads private feeds (and mints OCI pull tokens) only with the publish scope or
+    // `packages:read`; a report-only or promote-only token is no credential here.
+    if (!CI_FEED_READ_SCOPES.some((s) => resolved.scopes.includes(s)))
+      return ANONYMOUS;
     return { kind: "ci", product: resolved.product, tokenId: resolved.tokenId };
   }
   if (resolved.kind === "person")

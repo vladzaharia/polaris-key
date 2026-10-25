@@ -116,7 +116,7 @@ def test_an_explicit_state_dir_persists(tmp_path) -> None:
     prod = PolarisKeyClient(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         store=InMemoryStore(PRODUCT),
         state_dir=str(tmp_path),
         local_only=True,

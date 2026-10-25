@@ -1,11 +1,11 @@
 class_name PKeyEntitlementBadge
 extends PKeyUiView
 ## "Included with Supporter" chips: one per user-facing entitlement this licence grants. A chip
-## is a catalog `flag` entry with `userGrant: true` that `PolarisKey.license.is_entitled()` holds;
+## is a catalog `flag` entry with `userGrant: true` that `PolarisKey.entitlements.has()` holds;
 ## its text is the entry's `grantLabel` (else its `label`). Set `entitlement` to show one flag's
 ## chip alone. Never focusable; hidden when nothing is granted.
 ##
-## Headless logic: `granted(config, license, only)` (static) lists the labels.
+## Headless logic: `granted(config, entitlements, only)` (static) lists the labels.
 
 ## One flag key, or "" for every user-grant flag.
 @export var entitlement := ""
@@ -49,10 +49,10 @@ func _ready() -> void:
 
 
 ## The grant labels this licence earns: catalog `flag` entries with `userGrant` that
-## `license.is_entitled(key)` holds, in catalog order; only `only` when it is not "".
-static func granted(config: PKeyConfig, license: PKeyLicense, only := "") -> Array:
+## `entitlements.has(key)` holds, in catalog order; only `only` when it is not "".
+static func granted(config: PKeyConfig, entitlements: PKeyEntitlements, only := "") -> Array:
 	var out: Array = []
-	if config == null or license == null:
+	if config == null or entitlements == null:
 		return out
 	for e in config.catalog().get("entries", []):
 		if not (e is Dictionary) or e.get("kind") != "flag" or e.get("userGrant") != true:
@@ -60,7 +60,7 @@ static func granted(config: PKeyConfig, license: PKeyLicense, only := "") -> Arr
 		var key: String = e.get("key", "")
 		if only != "" and key != only:
 			continue
-		if license.is_entitled(key):
+		if entitlements.has(key):
 			var text = e.get("grantLabel") if e.get("grantLabel") is String and e["grantLabel"] != "" else e.get("label", key)
 			out.append(String(text))
 	return out
@@ -76,7 +76,7 @@ func _render() -> void:
 	if labels_override is Array:
 		labels = labels_override
 	elif sdk != null and sdk.get("license") != null:
-		labels = granted(sdk.config, sdk.license, entitlement)
+		labels = granted(sdk.config, sdk.entitlements, entitlement)
 	# One lead-in, then the grants as chips: the first four, the rest as "+N".
 	var shown: Array = []
 	for i in mini(labels.size(), MAX_CHIPS):

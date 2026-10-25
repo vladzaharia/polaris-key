@@ -47,6 +47,7 @@ import type {
 import { PR_STORE_IDS, type PrStoreId } from "../../core/storefront/prPlane.js";
 import { hostedScreenshotUrls } from "./feeds/art.js";
 import type { RenderListing } from "./feeds/render.js";
+import { inheritStored } from "./listing/inherit.js";
 
 const FALLBACK_LOCALE = "en-US";
 
@@ -61,6 +62,7 @@ const SELECTION: Readonly<
       /** The listing column the store projects, if it has one. */
       column: ListingStore | null;
       accepts?: (o: FeedOutlet) => boolean;
+      extraPlatforms?: (o: FeedOutlet) => readonly string[];
     }
   >
 > = {
@@ -77,10 +79,16 @@ const SELECTION: Readonly<
     platform: "macos",
     liveness: "availability",
     column: null,
+    // A cask (macOS) or a formula (macOS, then Linux; A-29.1, D-H2). `platforms` narrows both.
     accepts: (o) =>
-      typeof o.identity.homebrewCask === "string" &&
-      (!Array.isArray(o.identity.platforms) ||
-        o.identity.platforms.includes("macos")),
+      (typeof o.identity.homebrewCask === "string" &&
+        (!Array.isArray(o.identity.platforms) ||
+          o.identity.platforms.includes("macos"))) ||
+      (typeof o.identity.homebrewFormula === "string" &&
+        (!Array.isArray(o.identity.platforms) ||
+          o.identity.platforms.some((p) => p === "macos" || p === "linux"))),
+    extraPlatforms: (o) =>
+      typeof o.identity.homebrewFormula === "string" ? ["linux"] : [],
   },
   scoop: {
     kinds: ["direct"],
@@ -201,6 +209,7 @@ export async function prInputs(
     limit: 1,
     allBuilds: true,
     ...(spec.accepts ? { accepts: spec.accepts } : {}),
+    ...(spec.extraPlatforms ? { extraPlatforms: spec.extraPlatforms } : {}),
   });
   if (!sel) return null;
   const slug = fctx.product.slug;
@@ -220,16 +229,27 @@ export async function prInputs(
             sha256: e.sha256,
             size: e.size,
           }))
-          // A stable order for the generators (and their golden files): by architecture, then name.
+          // A stable order for the generators (and their golden files): macOS before Linux (a
+          // formula reads both), then by architecture, then name.
           .sort((a, b) =>
-            a.arch === b.arch
-              ? a.name.localeCompare(b.name)
-              : a.arch.localeCompare(b.arch),
+            a.platform !== b.platform
+              ? a.platform === "macos"
+                ? -1
+                : b.platform === "macos"
+                  ? 1
+                  : String(a.platform).localeCompare(String(b.platform))
+              : a.arch === b.arch
+                ? a.name.localeCompare(b.name)
+                : a.arch.localeCompare(b.arch),
           ),
       }
     : null;
 
-  const stored = await readListing(fctx.db, slug);
+  const stored = await inheritStored(
+    fctx.db,
+    slug,
+    await readListing(fctx.db, slug),
+  );
   const model: ListingModel = stored?.model ?? {
     app: { defaultLocale: FALLBACK_LOCALE },
     locales: {},

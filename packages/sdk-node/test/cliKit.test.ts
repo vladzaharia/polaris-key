@@ -155,10 +155,10 @@ describe("config verbs", () => {
     expect(parseCliValue("fast")).toBe("fast");
     const set = await configSet(c, "run.mode", '"slow"');
     expect(set.ok).toBe(true);
-    expect(c.config.getConfig("run.mode", null)).toBe("slow");
+    expect(c.config.get("run.mode", null)).toBe("slow");
     expect(configList(c).ok).toBe(true);
     await configReset(c, "run.mode");
-    expect(c.config.getConfig("run.mode", null)).toBeNull();
+    expect(c.config.get("run.mode", null)).toBeNull();
   });
 
   it("secret refuses a key that is not delivered; mint prints the token", async () => {

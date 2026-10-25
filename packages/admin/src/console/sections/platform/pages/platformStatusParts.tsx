@@ -113,7 +113,7 @@ function ListRow({
   meta?: React.ReactNode;
 }): React.ReactElement {
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
       <IconTile icon={icon} />
       <span className="min-w-0 flex-[1_1_10rem] break-words text-fg">
         {children}
@@ -185,10 +185,7 @@ export function HealthByArea({
       <Loaded data={assessment} error={error} onRetry={onRetry}>
         <CardRows label="Health by area">
           {(assessment ? areasOf(assessment) : []).map((area) => (
-            <li
-              key={area.id}
-              className="flex items-center gap-3 py-2.5 text-sm"
-            >
+            <li key={area.id} className="flex items-center gap-3 py-2 text-sm">
               <ServiceGlyph id={area.service} />
               <span className="min-w-0 flex-1 break-words text-fg">
                 {area.label}
@@ -220,7 +217,7 @@ function QueueRow({
   const h = queueHealth(q, dead);
   const n = q.backlogCount ?? 0;
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
       <div className="min-w-0 flex-[1_1_10rem]">
         <div className="font-medium text-fg-strong">{title}</div>
         <div className="text-xs text-fg-muted">
@@ -285,7 +282,7 @@ export function QueuesCard({
               waiting="in dead letters"
             />
             {failed > 0 ? (
-              <li className="flex items-center gap-3 py-2.5 text-sm">
+              <li className="flex items-center gap-3 py-2 text-sm">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-fg-strong">
                     Webhook deliveries
@@ -432,7 +429,7 @@ function Fact({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2.5 text-sm">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2 text-sm">
       <dt className="text-fg-muted">{term}</dt>
       <dd className="min-w-0 break-words text-end text-fg">{children}</dd>
     </div>

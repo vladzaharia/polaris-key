@@ -8,6 +8,7 @@ extends PKeyUiView
 ##
 ##   $PKeyToast.show_update("2.5.0")             # "Tidewater 2.5.0 is available"  [Update now] [Dismiss]
 ##   $PKeyToast.show_copied()                    # "Copied"
+##   $PKeyToast.show_success("Signed in as Mara", "Pro license")
 ##   $PKeyToast.show_warning("Autosave is off")  # a message the game words itself
 ##   $PKeyToast.show_error("sync-failed")        # the error's own title and message; stays
 ##   $PKeyToast.show_progress(38_000_000, 91_000_000, 60.0)   # the counted bar and Undo
@@ -26,6 +27,10 @@ extends PKeyUiView
 signal action_pressed(id: String)
 ## The toast went away: `reason` is `timeout`, `dismissed` or `replaced`.
 signal closed(reason: String)
+## The same two events with the toast they belong to (its `source`, the pusher's own tag, says whose
+## it was): the shared toast host (PolarisKey.toasts()) serves several screens at once.
+signal toast_action(toast: Dictionary, id: String)
+signal toast_closed(toast: Dictionary, reason: String)
 
 ## Add a toast layer over the game in one line (a full-rect view that lets the game's clicks through):
 ##
@@ -186,10 +191,12 @@ func push(toast: Dictionary) -> void:
 	_last_serial = t["serial"]
 	if current.is_empty() or current.get("kind") != "error" or t.get("kind") == "error":
 		var replaced := not current.is_empty()
+		var before := current
 		current = t
 		_start()
 		if replaced:
 			closed.emit("replaced")
+			toast_closed.emit(before, "replaced")
 	else:
 		_queue.append(t)
 	refresh_view()
@@ -210,12 +217,18 @@ func show_copied() -> void:
 	push({"kind": "copied"})
 
 
+## A good-news note in the game's (or the kit's) own words: the success glyph, the 6 s timer.
+func show_success(title: String, consequence := "", actions: Array = []) -> void:
+	push({"kind": "success", "title": title, "consequence": consequence, "actions": actions})
+
+
 func show_warning(title: String, consequence := "", actions: Array = []) -> void:
 	push({"kind": "warning", "title": title, "consequence": consequence, "actions": actions})
 
 
 ## An error: `error` is an error code, a PKeyResult, or the game's own sentence. It stays until dismissed.
 func show_error(error: Variant, consequence := "", actions: Array = []) -> void:
+	PKeyUiFeedback.emit(&"error")
 	var toast := {"kind": "error", "consequence": consequence, "actions": actions}
 	if error is PKeyResult:
 		toast["code"] = (error as PKeyResult).code
@@ -254,12 +267,14 @@ func _start() -> void:
 
 func _close(reason: String) -> void:
 	var had_focus := _has_focus_inside()
+	var gone := current
 	current = {}
 	if not _queue.is_empty():
 		current = _queue.pop_front()
 		_start()
 	refresh_view()
 	closed.emit(reason)
+	toast_closed.emit(gone, reason)
 	if had_focus:
 		restore_opener()
 
@@ -305,7 +320,7 @@ func _input_for_model() -> Dictionary:
 	var inp: Dictionary = {}
 	if kind == "":
 		return inp
-	inp["toast"] = {"kind": kind}
+	inp["toast"] = {"kind": PKeyToastController.model_kind(kind)}
 	match kind:
 		"update":
 			inp["update"] = {"action": "binary", "version": current.get("version", "")}
@@ -330,7 +345,7 @@ func _render() -> void:
 	show_text(_consequence, words["consequence"])
 	# A game's own warning and the core's heading are data, not the kit's copy.
 	for l in [_title, _consequence]:
-		if bool(words["data"]) and kind in ["warning"] or (kind == "error" and l == _title):
+		if bool(words["data"]) and kind in ["warning", "success"] or (kind == "error" and l == _title):
 			l.set_meta(DATA_META, true)
 		elif l.has_meta(DATA_META):
 			l.remove_meta(DATA_META)
@@ -375,12 +390,14 @@ func _time_text(t: PKeyUiCopy) -> String:
 
 # ── Arrange ──────────────────────────────────────────────────────────────────────────────────
 
-## Title-safe: 5 % of the screen from every edge, the page margin at least, past the device's safe area,
-## as the view's own padding (so the base measures the room the card has).
+## Title-safe: 5 % of the screen's width from the sides and 5 % of its height from the top and bottom,
+## the page margin at least, past the device's safe area, as the view's own padding (so the base
+## measures the room the card has).
 func _title_safe(m: Dictionary) -> void:
 	var screen: Vector2 = m["screen"]
-	var ts := roundf(maxf(role("page_margin"), 0.05 * minf(screen.x, screen.y)))
-	var want := [ts + _safe_applied[0], ts + _safe_applied[1], ts + _safe_applied[2], ts + _safe_applied[3]]
+	var tx := roundf(maxf(role("page_margin"), 0.05 * screen.x))
+	var ty := roundf(maxf(role("page_margin"), 0.05 * screen.y))
+	var want := [tx + _safe_applied[0], ty + _safe_applied[1], tx + _safe_applied[2], ty + _safe_applied[3]]
 	var box := get_theme_stylebox("panel") as StyleBoxEmpty
 	var have := [box.content_margin_left, box.content_margin_top, box.content_margin_right, box.content_margin_bottom] if box != null else []
 	if have != want:
@@ -478,6 +495,7 @@ func _on_action(i: int) -> void:
 	var b: Button = _buttons[i]
 	var id := String(b.get_meta(&"pkey_action", ""))
 	action_pressed.emit(id)
+	toast_action.emit(current, id)
 	if id == "dismiss" or id == "install":
 		_close("dismissed")
 	elif id == "undo":

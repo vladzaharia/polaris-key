@@ -4,17 +4,13 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type PlatformReservedNames } from "../../../../api.js";
+import { type PlatformReservedNames } from "../../../../api.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { qk } from "../../../data/queries.js";
+import { platformReads } from "../data.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
-
-export function fetchPlatformReservedNames(): Promise<PlatformReservedNames> {
-  return api.platformReservedNames();
-}
 
 const RESERVED_TYPE_WORDS: Record<string, string> = {
   string: "string",
@@ -32,10 +28,7 @@ export function LicensingSection({
   /** The registry's licensing rows, already rendered. */
   rows: React.ReactNode;
 }): React.ReactElement {
-  const report = useQuery({
-    queryKey: qk.platformReservedNames(),
-    queryFn: fetchPlatformReservedNames,
-  });
+  const report = useQuery(platformReads.reservedNames());
   const data = report.data;
   return (
     <SettingsSection

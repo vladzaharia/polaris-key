@@ -228,9 +228,11 @@ export function GetItPanel({
           tabIndex={0}
           className="@container relative -mx-5 overflow-x-auto border-y border-border desk:-mx-6"
         >
-          <table className="w-full min-w-[17rem] border-collapse text-start text-sm">
+          {/* Under 24rem the rows are blocks (the action goes under the name), so the table is
+              too: a block row inside a table box shrinks to its content, not the card. */}
+          <table className="w-full min-w-[17rem] border-collapse text-start text-sm @max-[24rem]:block">
             <caption className="sr-only">{t("getIt.table")}</caption>
-            <thead>
+            <thead className="@max-[24rem]:block">
               <tr className="text-xs text-fg-muted">
                 <th
                   scope="col"
@@ -249,7 +251,7 @@ export function GetItPanel({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border border-t border-border">
+            <tbody className="divide-y divide-border border-t border-border @max-[24rem]:block">
               {rows.map((r) => (
                 <FileRow
                   key={r.artifact.artifactId}

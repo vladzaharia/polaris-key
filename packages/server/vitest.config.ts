@@ -7,7 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 /**
  * `examples/server-*` install the package from the feed and have no node_modules here. For
  * test/examples.test.ts only: a bare import from a file under examples/ resolves as if the file
- * lived in this package, so `@polaris-key/server/*` finds src/ and `express`/`hono` find the dev
+ * lived in this package, so `@polaris-key/server/*` finds src/ and `express`/`hono`/`fastify`/`koa`/`@nestjs/*` find the dev
  * dependencies.
  */
 function examplesAsConsumers(): Plugin {
@@ -16,11 +16,16 @@ function examplesAsConsumers(): Plugin {
     enforce: "pre",
     async resolveId(source, importer, options) {
       if (!importer || !importer.includes("/examples/")) return null;
-      const sub = /^@polaris-key\/server\/(express|hono|next|testing)$/.exec(
-        source,
-      );
+      const sub =
+        /^@polaris-key\/server\/(express|hono|next|fastify|koa|nestjs|testing)$/.exec(
+          source,
+        );
       if (sub) return join(here, "src", `${sub[1]}.ts`);
-      if (/^(express|hono|@hono\/)/.test(source))
+      if (
+        /^(express|hono|@hono\/|fastify|koa|@koa\/|@nestjs\/|reflect-metadata|rxjs)/.test(
+          source,
+        )
+      )
         return this.resolve(source, join(here, "src", "index.ts"), {
           ...options,
           skipSelf: true,

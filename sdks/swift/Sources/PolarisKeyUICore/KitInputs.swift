@@ -697,13 +697,17 @@ public struct KitUpdate: Sendable, Codable, Equatable, Hashable {
     /// The release's notes, plain lines (the prompt draws at most three), and its changes page.
     public var notes: [String]?
     public var notesUrl: String?
+    /// The store listing a `store` offer names: where "Update" goes when the host has no update
+    /// handler. Never the release notes page.
+    public var listingUrl: String?
 
     public init(
         action: String, outlet: String? = nil, reason: String? = nil, version: String? = nil,
         mandatory: Bool? = nil, critical: Bool? = nil, progress: KitUpdateProgress? = nil,
         currentVersion: String? = nil, sizeBytes: Int? = nil, notes: [String]? = nil,
-        notesUrl: String? = nil
+        notesUrl: String? = nil, listingUrl: String? = nil
     ) {
+        self.listingUrl = listingUrl
         self.currentVersion = currentVersion
         self.sizeBytes = sizeBytes
         self.notes = notes

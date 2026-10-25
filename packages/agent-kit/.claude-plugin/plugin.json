@@ -1,0 +1,8 @@
+{
+  "name": "polaris-key",
+  "description": "Polaris Key skills for coding agents: author a product's .pkey/ manifest and its config catalog.",
+  "author": { "name": "Polaris Key" },
+  "homepage": "https://key.plrs.im/docs/agents",
+  "repository": "https://github.com/vladzaharia/polaris-key",
+  "license": "MIT"
+}

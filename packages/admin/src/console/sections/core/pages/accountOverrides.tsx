@@ -18,7 +18,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
-  ApiError,
+  HttpError,
   type AccountOverridesView,
   type OverrideUpdate,
   type ProductCatalog,
@@ -38,6 +38,8 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import type { UserSlotProps } from "../model/userSlots.js";
+import { coreBReads } from "../data.js";
+import { catalogQuery } from "../../config/data.js";
 
 /**
  * The catalog an account override edits: its `config` and `secret` entries. Entitlements (`flag`)
@@ -64,21 +66,15 @@ export function accountPayload(
 }
 
 function isNotFound(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 404;
+  return error instanceof HttpError && error.status === 404;
 }
 
 export function AccountOverrideEditor({
   slug,
   subject,
 }: UserSlotProps): React.ReactElement {
-  const overridesQ = useQuery({
-    queryKey: qk.userOverrides(slug, subject),
-    queryFn: () => api.productUserOverrides(slug, subject),
-  });
-  const catalogQ = useQuery({
-    queryKey: qk.catalog(slug),
-    queryFn: () => api.schema(slug),
-  });
+  const overridesQ = useQuery(coreBReads.userOverrides(slug, subject));
+  const catalogQ = useQuery(catalogQuery(slug));
   const [serverFields, setServerFields] = React.useState<
     string[] | undefined
   >();
@@ -104,7 +100,7 @@ export function AccountOverrideEditor({
       });
     } catch (err) {
       if (
-        err instanceof ApiError &&
+        err instanceof HttpError &&
         err.status === 409 &&
         err.code === "conflict"
       ) {
@@ -114,7 +110,7 @@ export function AccountOverrideEditor({
         toast.error("These account overrides changed in the meantime", {
           description: "They were reloaded. Check the values, then save again.",
         });
-      } else if (err instanceof ApiError && err.fields?.length) {
+      } else if (err instanceof HttpError && err.fields?.length) {
         // A 422 carries catalog-validated `fields`, each prefixed with its dotted key: they land
         // on the rows that caused them.
         setServerFields(err.fields);
@@ -205,7 +201,6 @@ export function AccountOverrideEditor({
     );
   }
 
-  const retired = overridesQ.data?.licenseLayerRetired === true;
   return (
     <SettingsSection
       id="user-overrides"
@@ -214,10 +209,8 @@ export function AccountOverrideEditor({
         <>
           These config and secret values reach every device signed in to this
           account on this product, and the license-key devices of licenses this
-          account owns. Entitlements stay on each license.
-          {retired
-            ? null
-            : " A value set here wins over the same key on one of their licenses."}
+          account owns. Entitlements stay on each license. A value set here wins
+          over the same key on one of their licenses.
         </>
       }
     >

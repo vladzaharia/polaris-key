@@ -57,7 +57,9 @@ import {
  * Does the element's content overflow it sideways? A scroller is a Tab stop (a named region) only
  * while it overflows, or every table would be one for nothing. Measured again on resize.
  */
-function useOverflows(ref: React.RefObject<HTMLElement | null>): boolean {
+export function useOverflows(
+  ref: React.RefObject<HTMLElement | null>,
+): boolean {
   const [over, setOver] = React.useState(false);
   const watched = React.useRef<{
     el: Element | null;
@@ -128,6 +130,27 @@ export function useMediaQuery(query: string): boolean {
     return () => mql.removeEventListener("change", on);
   }, [query]);
   return matches;
+}
+
+/** Whether the window is narrower than `rem` root-font units (false without `rem`, or in jsdom). */
+export function useNarrowRem(rem: number | undefined): boolean {
+  const get = (): boolean => {
+    if (rem === undefined || typeof window === "undefined") return false;
+    const px = parseFloat(
+      window.getComputedStyle(document.documentElement).fontSize,
+    );
+    return Number.isFinite(px) && px > 0 && window.innerWidth / px < rem;
+  };
+  const [narrow, setNarrow] = React.useState(get);
+  React.useEffect(() => {
+    if (rem === undefined) return;
+    const on = (): void => setNarrow(get());
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rem]);
+  return narrow;
 }
 
 /** A column's id: its `id`, else its `accessorKey`. */
@@ -391,6 +414,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     search,
     selection,
     rowHref,
+    onRowIntent,
     rowLabel,
     rowActions,
     linkComponent: LinkComponent,
@@ -401,7 +425,11 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     empty,
     noResults: noResultsOverride,
     mobile = "scroll",
+    cardBreakpoint = "(max-width: 1023px)",
     mobileCard,
+    cardsBelowRem,
+    flatCards,
+    filtersOneRow,
     toolbarActions,
     toolbarMode = "full",
     errorThing,
@@ -468,7 +496,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   // sideways and hide its end-most columns, Actions included.
   const compactBar = toolbarMode === "compact";
   const iconOnlyBar = useMediaQuery("(max-width: 1599px)") && compactBar;
-  const isCardWidth = useMediaQuery("(max-width: 1023px)");
+  const narrowBar = useMediaQuery("(max-width: 1279px)") && compactBar;
+  const narrowQuery = useMediaQuery(cardBreakpoint);
+  const narrowRem = useNarrowRem(cardsBelowRem);
+  const isCardWidth = cardsBelowRem === undefined ? narrowQuery : narrowRem;
   const isMobileCards = isCardWidth && mobile === "cards";
 
   const serverSide =
@@ -811,17 +842,29 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     // A block, so a truncating cell inside it gets a bounded width (phone cards especially).
     const cls =
       "block min-w-0 max-w-full font-medium text-fg-strong underline-offset-2 hover:text-accent-fg hover:underline";
+    const intent = onRowIntent ? () => onRowIntent(row) : undefined;
     if (LinkComponent) {
       return (
         <span data-row-link-wrap className="block min-w-0">
-          <LinkComponent to={href} className={cls}>
+          <LinkComponent
+            to={href}
+            className={cls}
+            onPointerEnter={intent}
+            onFocus={intent}
+          >
             {children}
           </LinkComponent>
         </span>
       );
     }
     return (
-      <a href={href} data-row-link className={cls}>
+      <a
+        href={href}
+        data-row-link
+        className={cls}
+        onPointerEnter={intent}
+        onFocus={intent}
+      >
         {children}
       </a>
     );
@@ -986,7 +1029,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         ...o,
         count: f.counted
           ? (f.counted.counts?.[o.value] ??
-            (counts && !f.counted.pending
+            (counts && !f.counted.pending && !error
               ? (counts.get(o.value) ?? 0)
               : undefined))
           : counts
@@ -996,7 +1039,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ...(f.counted
         ? { counted: { icons: f.counted.icons, pending: f.counted.pending } }
         : {}),
-      ...(f.secondary ? { secondary: true } : {}),
+      ...(f.secondary === true || (f.secondary === "narrow" && narrowBar)
+        ? { secondary: true }
+        : {}),
       // The controls (the menu's checkboxes, a chip's remove button) work on the live selection,
       // so changes made while a transition holds the old view build on each other instead of on
       // a stale copy; only the chips are drawn from the held view, since the chip row moves the
@@ -1133,6 +1178,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       </Presence>
     ) : (
       <FilterBar
+        oneRow={filtersOneRow}
         lead={toolbarLead}
         search={
           search
@@ -1140,6 +1186,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 value: state.q,
                 onChange: (q) => update({ q }),
                 placeholder: search.placeholder,
+                label: search.label,
               }
             : undefined
         }
@@ -1553,7 +1600,14 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   );
 
   const cards = (
-    <ul ref={setList} aria-label={caption} className="pk-vt-table space-y-2">
+    <ul
+      ref={setList}
+      aria-label={caption}
+      className={cn(
+        "pk-vt-table",
+        flatCards ? "divide-y divide-border" : "space-y-2",
+      )}
+    >
       {pageRows.map((row) => {
         const label = labelOf(row.original);
         const cells = row.getVisibleCells();
@@ -1571,11 +1625,13 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             data-selected={row.getIsSelected() || undefined}
             onClick={followRow}
             className={cn(
-              "@container relative rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
+              flatCards
+                ? "@container px-4 py-3 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle"
+                : "@container rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
               rowHref && "cursor-pointer",
             )}
           >
-            <div className="flex items-start gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               {selection ? (
                 <TriCheckbox
                   checked={row.getIsSelected()}
@@ -1583,7 +1639,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                   label={`Select ${label}`}
                 />
               ) : null}
-              <div className="min-w-0 flex-1 text-sm">
+              <div className="min-w-0 flex-1 text-sm @max-[18rem]:order-last @max-[18rem]:basis-full [&_.truncate]:whitespace-normal [&_.truncate]:[overflow-wrap:anywhere]">
                 {mobileCard
                   ? mobileCard(
                       row.original,
@@ -1594,9 +1650,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     : label}
               </div>
               {rowActions ? (
-                // In a card too narrow to spare a column (a phone at 200 % text), the menu floats
-                // over the card's corner instead of taking width from the name.
-                <div className="shrink-0 @max-[18rem]:absolute @max-[18rem]:end-1 @max-[18rem]:top-1">
+                // The menu keeps its own place on the first line; in a card too narrow to spare a column (a
+                // phone at 200 % text) the name drops to the line below it, full width.
+                <div className="ms-auto shrink-0">
                   <RowMenu
                     label={label}
                     items={rowActions(row.original)}
@@ -1785,7 +1841,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ) : null}
       {/* pk-vt-scope: during a list transition the card and the footer move with the rows instead
           of jumping (S-23 §3.4 item 2); the toolbar above is part of the page and swaps at once. */}
-      <div className={cn("pk-vt-scope", isMobileCards && "space-y-3 p-3")}>
+      <div
+        className={cn(
+          "pk-vt-scope",
+          isMobileCards && !flatCards && "space-y-3 p-3",
+        )}
+      >
         {unloaded &&
         narrowedLoaded &&
         (pageRows.length > 0 || unloaded.searchingAll) ? (
@@ -1834,7 +1895,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         <div onKeyDown={onKeyDown}>
           {isMobileCards && (error || showSkeleton || noResults) ? (
             // Cards draw rows; a state is one full-width block, never a table in a scroller.
-            <div className="rounded-lg border border-border bg-surface-raised p-4">
+            <div
+              className={cn(
+                "rounded-lg border border-border bg-surface-raised p-4",
+                flatCards && "m-3",
+              )}
+            >
               {error ? (
                 <ErrorState
                   error={error}

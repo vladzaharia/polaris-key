@@ -18,7 +18,8 @@
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { Connection } from "../../../core/oidc/connections.js";
-import { onAccountEmailVerified } from "../../../core/licensing/licenseHolders.js";
+import { sendLibraryNotices } from "../accounts/libraryNotice.js";
+import { onAccountEmailVerifiedJoined } from "../../../core/licensing/licenseHolders.js";
 import {
   accountsVerifyingEmail,
   findLink,
@@ -91,7 +92,17 @@ export async function autoLinkThroughDomain(
     summary: `Connected ${input.connection.label} through a verified domain`,
     now,
   });
-  await onAccountEmailVerified(db, account.id, input.email, now);
+  await sendLibraryNotices(env, db, {
+    to: input.email,
+    joined: await onAccountEmailVerifiedJoined(
+      db,
+      account.id,
+      input.email,
+      now,
+    ),
+    origin: input.origin,
+    now,
+  });
   await sendSecurityNotice(
     env,
     db,

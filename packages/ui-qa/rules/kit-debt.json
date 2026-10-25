@@ -4,115 +4,109 @@
     {
       "kit": "compose",
       "rule": "compose-initial-focus",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
       "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-initial-focus",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt",
       "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-initial-focus",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
       "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-initial-focus",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
       "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-initial-focus",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
-      "count": 1
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-link-validation",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
-      "count": 1
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-link-validation",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
       "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignInAndroid.kt",
+      "count": 1
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
       "count": 3
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBrandMarks.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisBrandMarks.kt",
       "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
       "count": 9
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
       "count": 9
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt",
       "count": 6
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisPackProgress.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisPackProgress.kt",
       "count": 4
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisParts.kt",
-      "count": 18
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisParts.kt",
+      "count": 17
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
       "count": 8
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
       "count": 24
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
-      "count": 2
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
+      "count": 1
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisToast.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisToast.kt",
       "count": 6
     },
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
+      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
       "count": 17
     },
     {
@@ -244,19 +238,7 @@
     {
       "kit": "swiftui",
       "rule": "swiftui-initial-focus",
-      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-initial-focus",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/ActivateScreens.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-initial-focus",
-      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/GateScreens.swift",
       "count": 1
     },
     {
@@ -291,18 +273,6 @@
     },
     {
       "kit": "swiftui",
-      "rule": "swiftui-link-validation",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
-      "count": 2
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-link-validation",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisSignIn.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
       "rule": "swiftui-polaris-mark",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitParts.swift",
       "count": 1
@@ -318,24 +288,6 @@
       "rule": "swiftui-px-font",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitStyle.swift",
       "count": 3
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-px-font",
-      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift",
-      "count": 2
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-px-font",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-px-font",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
-      "count": 1
     },
     {
       "kit": "swiftui",
@@ -370,6 +322,12 @@
     {
       "kit": "swiftui",
       "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitQRCode.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyGate.swift",
       "count": 1
     },
@@ -377,7 +335,7 @@
       "kit": "swiftui",
       "rule": "swiftui-spacing-off-scale",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift",
-      "count": 7
+      "count": 6
     },
     {
       "kit": "swiftui",
@@ -408,18 +366,6 @@
       "rule": "swiftui-spacing-off-scale",
       "file": "sdks/swift/Sources/PolarisKeyUI/PolarisBrandMarks.swift",
       "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-spacing-off-scale",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
-      "count": 1
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-spacing-off-scale",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
-      "count": 2
     },
     {
       "kit": "swiftui",

@@ -22,6 +22,7 @@ import {
   nextVersion,
   publicPackageJsons,
   STAMP_TARGETS,
+  stampJson,
   stampText,
   stampVersions,
   toPep440,
@@ -259,7 +260,10 @@ describe("stamping", () => {
     for (const t of STAMP_TARGETS) {
       const text = readFileSync(join(ROOT, t.file), "utf8");
       expect(
-        () => stampText(text, t.pattern, "9.9.9", t.file),
+        () =>
+          t.json
+            ? stampJson(text, t.json, "9.9.9", t.file)
+            : stampText(text, t.pattern!, "9.9.9", t.file),
         t.file,
       ).not.toThrow();
     }
@@ -273,7 +277,24 @@ describe("stamping", () => {
     expect(files).not.toContain("packages/admin/package.json");
     expect(files).toContain("packages/ui-core/package.json");
     expect(files).toContain("packages/server/package.json");
+    // The agent kit is private (D-K1): a stamp target, never a public package.
+    expect(files).not.toContain("packages/agent-kit/package.json");
     expect(files).toHaveLength(12);
+  });
+
+  it("a json target sets its key and refuses a non-object", () => {
+    expect(
+      JSON.parse(stampJson('{"name":"x"}', "version", "1.2.3", "p.json")),
+    ).toEqual({ name: "x", version: "1.2.3" });
+    expect(() => stampJson("[]", "version", "1.2.3", "p.json")).toThrow(
+      /JSON object/,
+    );
+    expect(() => stampJson("3", "version", "1.2.3", "p.json")).toThrow(
+      /JSON object/,
+    );
+    expect(
+      STAMP_TARGETS.find((t) => t.file.endsWith("plugin.json"))?.json,
+    ).toBe("version");
   });
 
   it("writes one version into every SDK, PEP 440 for Python, and leaves everything else", () => {
@@ -313,6 +334,9 @@ describe("stamping", () => {
     expect(read("packages/ui-core/src/browser/sdk/version.ts")).toContain(
       'export const SDK_VERSION = "0.8.13-main.7";',
     );
+    expect(
+      JSON.parse(read("packages/agent-kit/.claude-plugin/plugin.json")),
+    ).toMatchObject({ name: "polaris-key", version: "0.8.13-main.7" });
     const node = JSON.parse(read("packages/sdk-node/package.json")) as {
       version: string;
       dependencies?: Record<string, string>;

@@ -70,6 +70,10 @@ __all__ = [
     "DATA_ONLY_EXTENSION_VALUES",
     "LICENSE_STATUS_VALUES",
     "ACTIVATION_RESULT_VALUES",
+    "SettingVisibility",
+    "SETTING_VISIBILITY_VALUES",
+    "EventKind",
+    "EVENT_KIND_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -121,6 +125,28 @@ __all__ = [
     "DEVICE_LABEL_MAX_CODEPOINTS",
     "REQUEST_HANDLE_PATTERN",
     "REQUEST_HANDLE_TTL_SECONDS",
+    "SYNC_CLIENT_ID_PATTERN",
+    "SYNC_DEBOUNCE_MS",
+    "SYNC_HLC_PATTERN",
+    "SYNC_IMPORT_HLC",
+    "SYNC_KEY_PATTERN",
+    "SYNC_MAX_CLOCK_SKEW_MS",
+    "SYNC_MAX_MERGE_MEMBERS",
+    "SYNC_MAX_MUTATIONS",
+    "SYNC_MAX_PUSH_BYTES",
+    "SYNC_MAX_RECORD_BYTES",
+    "SYNC_MAX_SETTINGS",
+    "SYNC_MAX_SETTINGS_BYTES",
+    "SYNC_MAX_UNION_ELEMENT_BYTES",
+    "SYNC_MAX_VALUE_BYTES",
+    "SYNC_PENDING_DAYS",
+    "SYNC_PULL_PAGE_CHANGES",
+    "SYNC_QUOTA_BYTES",
+    "SYNC_SAVE_SLOTS",
+    "SYNC_SIGNOUT_FLUSH_MS",
+    "SYNC_TOMBSTONE_DAYS",
+    "SYNC_UNLICENSED_QUOTA_BYTES",
+    "SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS",
     "PAIRWISE_SUBJECT_PATTERN",
     "CUSTOMER_ORIGIN_DEFAULT",
     "DEVICE_CODE_PAGE",
@@ -211,6 +237,14 @@ class ErrorCode:
     LICENSE_OWNED: Final = "license_owned"
     LICENSE_EMAIL_BOUND: Final = "license_email_bound"
     ACCOUNT_REQUIRED: Final = "account_required"
+    CURSOR_EXPIRED: Final = "cursor_expired"
+    CLIENT_MISMATCH: Final = "client_mismatch"
+    VALUE_INVALID: Final = "value_invalid"
+    OP_INVALID_FOR_POLICY: Final = "op_invalid_for_policy"
+    SETTING_NOT_SYNCED: Final = "setting_not_synced"
+    COLLECTION_UNKNOWN: Final = "collection_unknown"
+    QUOTA_EXCEEDED: Final = "quota_exceeded"
+    WRITES_PAUSED: Final = "writes_paused"
     EMAIL_MISMATCH: Final = "email_mismatch"
     LINK_CONFLICT: Final = "link_conflict"
     LAST_LINK: Final = "last_link"
@@ -390,6 +424,14 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "license_owned",
     "license_email_bound",
     "account_required",
+    "cursor_expired",
+    "client_mismatch",
+    "value_invalid",
+    "op_invalid_for_policy",
+    "setting_not_synced",
+    "collection_unknown",
+    "quota_exceeded",
+    "writes_paused",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -571,6 +613,14 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "license_owned": "wire",
         "license_email_bound": "wire",
         "account_required": "wire",
+        "cursor_expired": "wire",
+        "client_mismatch": "wire",
+        "value_invalid": "wire",
+        "op_invalid_for_policy": "wire",
+        "setting_not_synced": "wire",
+        "collection_unknown": "wire",
+        "quota_exceeded": "wire",
+        "writes_paused": "wire",
         "email_mismatch": "wire",
         "link_conflict": "wire",
         "last_link": "wire",
@@ -1521,6 +1571,46 @@ ACTIVATION_RESULT_VALUES: Tuple[str, ...] = (
 )
 
 
+class SettingVisibility:
+    """How a managed setting appears to the app and its user (SP-35 D9): editable, readonly (set by the product or an operator) or hidden. Derived from the config document's `state`; `config.setting(key).visibility` reads it."""
+
+    EDITABLE: Final = "editable"
+    READONLY: Final = "readonly"
+    HIDDEN: Final = "hidden"
+
+
+#: Every ``SettingVisibility`` value, in source order.
+SETTING_VISIBILITY_VALUES: Tuple[str, ...] = (
+    "editable",
+    "readonly",
+    "hidden",
+)
+
+
+class EventKind:
+    """The kinds of event on the client's `events` stream (SP-35 Appendix A), in camelCase in every SDK. `entitlement` ships with LX-19 and `cloudSync` with U-06/07/20/21."""
+
+    LICENSE: Final = "license"
+    ENTITLEMENT: Final = "entitlement"
+    CONFIG: Final = "config"
+    UPDATEAVAILABLE: Final = "updateAvailable"
+    PACKS: Final = "packs"
+    STORE: Final = "store"
+    CLOUDSYNC: Final = "cloudSync"
+
+
+#: Every ``EventKind`` value, in source order.
+EVENT_KIND_VALUES: Tuple[str, ...] = (
+    "license",
+    "entitlement",
+    "config",
+    "updateAvailable",
+    "packs",
+    "store",
+    "cloudSync",
+)
+
+
 class HeaderName:
     """The `X-PKey-*` request header names (wire contract v3 §5)."""
 
@@ -1755,6 +1845,94 @@ REQUEST_HANDLE_PATTERN: Final[str] = "^rq_[A-Za-z0-9_-]{22}$"
 
 #: Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
+
+
+#: Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`).
+SYNC_CLIENT_ID_PATTERN: Final[str] = "^c_[A-Za-z0-9_-]{22}$"
+
+
+#: Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+SYNC_DEBOUNCE_MS: Final[int] = 2000
+
+
+#: Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`).
+SYNC_HLC_PATTERN: Final[str] = "^[0-9a-f]{12}:[0-9a-f]{4}$"
+
+
+#: Cloud Sync: `SYNC_IMPORT_HLC` (WIRE-CONTRACT-V4 §11.5, §13.3, `@polaris-key/protocol/sync`).
+SYNC_IMPORT_HLC: Final[str] = "000000000000:0000"
+
+
+#: Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`).
+SYNC_KEY_PATTERN: Final[str] = "^[A-Za-z0-9._:-]{1,128}$"
+
+
+#: Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+SYNC_MAX_CLOCK_SKEW_MS: Final[int] = 300000
+
+
+#: Cloud Sync: `SYNC_MAX_MERGE_MEMBERS` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`).
+SYNC_MAX_MERGE_MEMBERS: Final[int] = 256
+
+
+#: Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+SYNC_MAX_MUTATIONS: Final[int] = 100
+
+
+#: Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+SYNC_MAX_PUSH_BYTES: Final[int] = 262144
+
+
+#: Cloud Sync: `SYNC_MAX_RECORD_BYTES` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
+SYNC_MAX_RECORD_BYTES: Final[int] = 65536
+
+
+#: Cloud Sync: `SYNC_MAX_SETTINGS` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+SYNC_MAX_SETTINGS: Final[int] = 256
+
+
+#: Cloud Sync: `SYNC_MAX_SETTINGS_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+SYNC_MAX_SETTINGS_BYTES: Final[int] = 65536
+
+
+#: Cloud Sync: `SYNC_MAX_UNION_ELEMENT_BYTES` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`).
+SYNC_MAX_UNION_ELEMENT_BYTES: Final[int] = 1024
+
+
+#: Cloud Sync: `SYNC_MAX_VALUE_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+SYNC_MAX_VALUE_BYTES: Final[int] = 8192
+
+
+#: Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+SYNC_PENDING_DAYS: Final[int] = 30
+
+
+#: Cloud Sync: `SYNC_PULL_PAGE_CHANGES` (WIRE-CONTRACT-V4 §13.4, `@polaris-key/protocol/sync`).
+SYNC_PULL_PAGE_CHANGES: Final[int] = 500
+
+
+#: Cloud Sync: `SYNC_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+SYNC_QUOTA_BYTES: Final[int] = 268435456
+
+
+#: Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
+SYNC_SAVE_SLOTS: Final[int] = 16
+
+
+#: Cloud Sync: `SYNC_SIGNOUT_FLUSH_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+SYNC_SIGNOUT_FLUSH_MS: Final[int] = 5000
+
+
+#: Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`).
+SYNC_TOMBSTONE_DAYS: Final[int] = 90
+
+
+#: Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+SYNC_UNLICENSED_QUOTA_BYTES: Final[int] = 1048576
+
+
+#: Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`).
+SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS: Final[int] = 300
 
 
 #: Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).

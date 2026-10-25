@@ -111,17 +111,8 @@ export function channelEntitled(
 }
 
 /**
- * The grant an editor stores for a chosen channel list: `dev` includes `beta` (the include chain
- * dev ⊇ beta ⊇ stable), so choosing `dev` stores `beta` with it. Applied once on the write path
- * of tiers and licences, so the console and API clients store the same thing; the wire predicate
- * (`channelEntitled`) never infers it, and a grant already stored is matched as it is.
+ * The grant an editor stores for a chosen channel list: `dev` includes `beta`. One implementation,
+ * shared with the manifest's tier parse (`@polaris-key/manifest`), so the console, API clients and
+ * a resynced manifest store the same thing.
  */
-export function withIncludedChannels(channels: readonly string[]): string[] {
-  const out: string[] = [];
-  for (const c of channels) {
-    if (c === "dev" && !channels.includes("beta") && !out.includes("beta"))
-      out.push("beta");
-    out.push(c);
-  }
-  return out;
-}
+export { withIncludedChannels } from "@polaris-key/manifest";

@@ -754,7 +754,7 @@ const docOpts = (c: DocCase): VerifyOptions => ({
 // Rebuilt here from client-core's exported semver/channel primitives and the protocol's
 // channel constants rather than imported: that surface is exactly what every SDK must keep in
 // lockstep, and the fixture is the oracle (the Worker replays the same rows through the real
-// gate in packages/worker/test/gateMatrixCorpus.test.ts). Python and Swift port these same
+// gate in packages/worker/test/core/gateMatrixCorpus.test.ts). Python and Swift port these same
 // lines against the same rows. It follows WIRE-CONTRACT-V3 §5.1 rules 2–5.
 function strEnt(e: ManagedEntry | undefined): string | undefined {
   return e && typeof e.value === "string" ? e.value : undefined;

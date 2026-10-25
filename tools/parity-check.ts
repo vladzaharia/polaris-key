@@ -38,6 +38,8 @@
 //      digest tools/capabilities.ts computes from the registry and the manifest (P1b-10). The
 //      table is what `supports()` reads, so a manifest edited without `pnpm gen constants` would
 //      otherwise ship an SDK whose answers disagree with its parity row.
+//   8. the SDK API registry (api.json) is sound: schema, known work packages, features and
+//      enums, a `scan` on every common-word removal (tools/api-check.ts, SP-35).
 //
 // A `transcript` proof no transcript lists yet is not enforced; it is listed (with its owner,
 // if it names one), and a warning is printed when the owner is already `done`.
@@ -50,6 +52,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020Module from "ajv/dist/2020.js";
 import { capabilityDigest, capabilityTable } from "./capabilities.js";
+import { API_PATH, checkApi } from "./api-check.js";
 
 // ── Shapes ─────────────────────────────────────────────────────────────────────────────────
 
@@ -736,6 +739,10 @@ export function checkParity(options: ParityOptions): ParityResult {
             `[rule 5] ${tag.file}:${tag.line}: @pkey-feature names unknown feature "${id}"`,
           );
     }
+
+  // Rule 8: the SDK API registry (conformance/parity/api.json), tools/api-check.ts.
+  // (A root without the file, such as the parity tests' fixtures, has no registry to check.)
+  if (existsSync(join(root, API_PATH))) violations.push(...checkApi(root));
 
   return { violations, warnings, unowned, unrecorded };
 }

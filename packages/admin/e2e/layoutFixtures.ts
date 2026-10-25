@@ -24,6 +24,63 @@ const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 const P = "/manage/api/products/djdl";
 
+const MIB = 1024 ** 2;
+const GIB = 1024 ** 3;
+// U-05.20: Cloud Sync → Usage, in the shape U-05's read really returns: every byte is a settings
+// byte (records, files and older versions are 0 until U-09/U-10), the null tier holds people with
+// no tier or no license, platforms are the devices' own ids (or null), and no tier limit is above
+// the per-person ceiling the read clamps to.
+export const SYNC_USAGE = {
+  enabled: true,
+  usage: {
+    bytes: 18.4 * GIB,
+    people: 4812,
+    settingsBytes: 18.4 * GIB,
+    recordBytes: 0,
+    fileBytes: 0,
+    revisionBytes: 0,
+    computedAt: NOW - 240,
+    breakdown: {
+      byTier: [
+        {
+          tierId: null,
+          people: 3120,
+          bytes: 9.5 * GIB,
+          medianBytes: 2.6 * MIB,
+          over80: 41,
+        },
+        {
+          tierId: "free",
+          people: 1402,
+          bytes: 5.5 * GIB,
+          medianBytes: 3.4 * MIB,
+          over80: 3,
+        },
+        {
+          tierId: "standard",
+          people: 290,
+          bytes: 3.4 * GIB,
+          medianBytes: 9.8 * MIB,
+          over80: 0,
+        },
+      ],
+      byKind: { settings: 18.4 * GIB, records: 0, files: 0, revisions: 0 },
+      byPlatform: [
+        { platform: null, peopleThisWeek: 12, lastSyncAt: NOW - 3 * 3600 },
+        { platform: "android", peopleThisWeek: 1689, lastSyncAt: NOW - 60 },
+        { platform: "ios", peopleThisWeek: 2214, lastSyncAt: NOW - 60 },
+        { platform: "windows", peopleThisWeek: 931, lastSyncAt: NOW - 240 },
+      ],
+    },
+  },
+  today: { day: "2026-10-22", syncs: 61240, conflicts: 37 },
+  tiers: [
+    { id: "free", label: "Free", bytes: null },
+    { id: "standard", label: "Standard", bytes: 512 * MIB },
+  ],
+  defaultBytes: 256 * MIB,
+};
+
 export const LONG_NAME =
   "Northwind Broadcast Audio Workstation — Enterprise Edition for Studios";
 export const LONG_SLUG = "northwind-broadcast-audio-workstation";
@@ -116,15 +173,128 @@ const PRODUCTS = [
     packageFeeds: true,
     presentation: { icon: null },
   }),
+  // F-34.7: two declared packages, none published yet (see `waitingFeeds`).
+  product("waiting", "Waiting product", { presentation: { icon: null } }),
 ];
+
+/** The platform's own attention item, as `GET /attention` composes it (ST-44b.1). */
+export const PLATFORM_PAUSE_ITEM = {
+  id: "@platform:sync.paused",
+  product: null,
+  kind: "sync.paused",
+  tone: "warning",
+  service: "sync",
+  short: "Writes paused",
+  lines: [
+    "Cloud Sync writes are paused for every product.",
+    "Devices keep their changes and send them on resume.",
+  ],
+  action: {
+    label: "Resume writes",
+    page: "platform-settings",
+    query: { setting: "cloudSync.writesPaused" },
+  },
+  area: "platform",
+  since: NOW - 2 * 3600,
+  by: "Ana Lima",
+  reason: "Storage errors in eu-west",
+};
 
 const ME = {
   ...(CORE_ROUTES["/manage/api/me"] as Record<string, unknown>),
-  products: PRODUCTS.map((p, i) => ({
-    slug: p.slug,
-    name: p.name,
-    schemaVersion: i + 1,
-  })),
+  products: [
+    ...PRODUCTS.map((p, i) => ({
+      slug: p.slug,
+      name: p.name,
+      schemaVersion: i + 1,
+    })),
+    // F-34.8: reachable by address and in the member's scope, left out of the products list.
+    { slug: "feedsoff", name: "Feeds off", schemaVersion: 9 },
+  ],
+};
+
+/**
+ * A Platform admin with no product grant: the console lists no product to them (the Worker's
+ * `canSeeProduct`), yet the pause reaches products they cannot see and the platform item is theirs.
+ */
+export const PLATFORM_ONLY_ME = {
+  ...ME,
+  sub: "m-ana",
+  name: "Ana Lima",
+  email: "ana@example.com",
+  platformAdmin: true,
+  products: [],
+};
+
+/**
+ * Platform ready as the Worker answers a Platform admin with no product grant (ST-44b.3): the
+ * Stores row counts the products it cannot name.
+ */
+export const PLATFORM_ONLY_READY = {
+  done: 6,
+  total: 7,
+  rows: [
+    { id: "keyring", title: "Keyring configured", done: true },
+    { id: "portal-sessions", title: "Portal sessions isolated", done: true },
+    { id: "console-sign-in", title: "Console sign-in separate", done: true },
+    { id: "background-jobs", title: "Background jobs ticking", done: true },
+    { id: "email-sender", title: "Email sender configured", done: true },
+    { id: "platform-packages", title: "Platform packages set up", done: true },
+    {
+      id: "store-accounts",
+      title: "Stores connected",
+      done: false,
+      detail:
+        "Another product's Steam uploads need a Steamworks publisher key.",
+      action: { label: "Connect Steam", to: "connections", store: "steam" },
+    },
+  ],
+};
+
+/** A member who administers the djdl product only (Cloud Sync Setup's product-role reads). */
+export const PRODUCT_ROLE_ME = {
+  ...ME,
+  sub: "m-kenji",
+  name: "Kenji Mori",
+  email: "kenji@example.com",
+  platformAdmin: false,
+  permissions: {
+    roles: [
+      {
+        role: "product_admin",
+        scope: "product:djdl",
+        areas: null,
+        source: "grant",
+      },
+    ],
+    platform: { view: ["console"], edit: ["console"] },
+    products: {
+      djdl: {
+        view: [
+          "core",
+          "license",
+          "config",
+          "ship",
+          "keys",
+          "signin",
+          "sync",
+          "commerce",
+          "console",
+        ],
+        edit: [
+          "core",
+          "license",
+          "config",
+          "ship",
+          "keys",
+          "signin",
+          "sync",
+          "commerce",
+          "console",
+        ],
+      },
+    },
+  },
 };
 
 type Row = Record<string, unknown>;
@@ -160,6 +330,15 @@ const ROUTES: Record<string, unknown> = {
   ...DISTRIBUTION_ROUTES,
   ...DATA_ROUTES,
   ...SETTINGS_ROUTES,
+  // F-34.8: the owner row of the switch (feeds on); `feedsoff` answers the off row below.
+  [`${P}/distribution/package-feeds`]: {
+    packageFeeds: {
+      enabled: true,
+      version: 3,
+      updatedAt: NOW - DAY * 9,
+      updatedBy: null,
+    },
+  },
   [`${P}/devices`]: { devices, nextCursor: null },
   [`${P}/devices/summary`]: { ...core("/devices/summary"), total: 40 },
   [`${P}/activity`]: { items: activity, nextCursor: null },
@@ -183,6 +362,63 @@ const ROUTES: Record<string, unknown> = {
     })),
   },
   [`${P}/config/catalog/usage`]: { keys: {} },
+  // U-05.20: Cloud Sync → Usage, U-05's real shape (see SYNC_USAGE).
+  [`${P}/sync/usage`]: SYNC_USAGE,
+  [`${P}/config/mint`]: {
+    registration: "requires-license",
+    anonymousEnroll: false,
+    oidcDefault: false,
+    publicMint: false,
+    licenseEnabled: true,
+    identity: null,
+    recipes: [],
+  },
+  // ST-34.11: Personal tokens, Yours (both scopes, a long host) and Everyone.
+  "/manage/api/me/personal-tokens": {
+    tokens: [
+      {
+        id: "ptok_cli",
+        label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+        hint: "Hq2a",
+        scope: "admin",
+        createdAt: NOW - 3 * DAY,
+        expiresAt: NOW + 4 * DAY,
+        lastUsedAt: NOW - 2 * 3600,
+        revokedAt: null,
+        revokeReason: null,
+        status: "active",
+      },
+      {
+        id: "ptok_ci",
+        label: "CI build server",
+        hint: "j3eX",
+        scope: "packages:read",
+        createdAt: NOW - 60 * DAY,
+        expiresAt: NOW + 30 * DAY,
+        lastUsedAt: null,
+        revokedAt: null,
+        revokeReason: null,
+        status: "active",
+      },
+    ],
+  },
+  "/manage/api/account-tokens": {
+    tokens: [
+      {
+        id: "ptok_cli",
+        email: "ada@example.com",
+        label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+        hint: "Hq2a",
+        scope: "admin",
+        createdAt: NOW - 3 * DAY,
+        expiresAt: NOW + 4 * DAY,
+        lastUsedAt: NOW - 2 * 3600,
+        revokedAt: null,
+        revokeReason: null,
+        status: "active",
+      },
+    ],
+  },
   "/manage/api/me": ME,
   // Sign-in methods (ST-30c.4): the linked account, a long-named passkey, one Use for the console can mark.
   "/manage/api/me/methods": {
@@ -217,6 +453,9 @@ const ROUTES: Record<string, unknown> = {
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.
   "/manage/api/attention": {
     items: [
+      // ST-44b: the Cloud Sync pause is one platform row (product null), whatever the number of
+      // products with Cloud Sync on; the server sends it to Platform editors only.
+      PLATFORM_PAUSE_ITEM,
       {
         id: "acme:sync.failed",
         product: { slug: "acme", name: "Acme" },
@@ -252,6 +491,36 @@ const ROUTES: Record<string, unknown> = {
         action: { label: "Replace key", page: "storefronts" },
         area: "ship",
       },
+      {
+        id: "djdl:storefront.identity_mismatch:play",
+        product: { slug: "djdl", name: "DJDL" },
+        kind: "storefront.identity_mismatch",
+        tone: "warning",
+        service: "commerce",
+        short: "App mismatch",
+        lines: [
+          "Google Play purchases are checked against `gg.djdl.typo.with.a.long.package.name`, not the assigned app `gg.djdl.app`.",
+        ],
+        action: { label: "Review", page: "commerce-overview" },
+        area: "commerce",
+      },
+      {
+        id: `${LONG_SLUG}:channel.identity_mismatch:app-store:bundleId`,
+        product: { slug: LONG_SLUG, name: LONG_NAME },
+        kind: "channel.identity_mismatch",
+        tone: "warning",
+        service: "distribution",
+        short: "App mismatch",
+        lines: [
+          "The `app-store` channel declares bundle ID `com.djdl.typo`; the assigned app is `com.djdl.app`.",
+        ],
+        action: {
+          label: "Review",
+          page: "outlets",
+          query: { outlet: "app-store" },
+        },
+        area: "ship",
+      },
     ],
   },
   "/manage/api/platform/ready": {
@@ -280,6 +549,19 @@ const ROUTES: Record<string, unknown> = {
   [P]: { product: PRODUCTS[0] },
 };
 
+// A product whose data fills every kind (what U-09/U-10 will produce): the bar, four kinds, an
+// older-versions note, so the paired Stored/Platforms row is linted too (case `long:sync-usage`).
+const SYNC_USAGE_RICH = {
+  ...SYNC_USAGE,
+  usage: {
+    ...SYNC_USAGE.usage,
+    settingsBytes: 0.2 * GIB,
+    recordBytes: 3.1 * GIB,
+    fileBytes: 8.5 * GIB,
+    revisionBytes: 6.6 * GIB,
+  },
+};
+
 /** djdl → empty: every array emptied, every count zeroed, so a page draws its empty state. */
 function emptied(v: unknown, key = ""): unknown {
   if (Array.isArray(v)) return [];
@@ -296,17 +578,105 @@ function emptied(v: unknown, key = ""): unknown {
   return v;
 }
 
+/** F-34.8: a product (not in the sidebar list) whose package feeds an operator turned off. */
+const FEEDS_OFF = "/manage/api/products/feedsoff";
+const FEEDS_OFF_AT = NOW - DAY * 2;
+/**
+ * F-34.7: the `waiting` product has declared an npm and a Swift package and published neither,
+ * with a package deliverable each: the Packages cards draw "Waiting…" and the publish command.
+ */
+function waitingFeeds(pathname: string): unknown {
+  const base = "/manage/api/products/waiting";
+  if (pathname === `${base}/distribution/feeds`) {
+    const src = ROUTES[`${P}/distribution/feeds`] as {
+      feeds: Record<string, unknown>[];
+    };
+    return {
+      ...src,
+      feeds: src.feeds.map((f) =>
+        f.ecosystem === "npm" || f.ecosystem === "swift"
+          ? {
+              ...f,
+              configured: true,
+              enabled: true,
+              status: "enabled",
+              reason: null,
+              packages: 0,
+              versions: 0,
+              lastPublishedAt: null,
+            }
+          : { ...f, configured: false },
+      ),
+    };
+  }
+  if (pathname === `${base}/release/deliverables`)
+    return {
+      gateKnown: true,
+      deliverables: [
+        {
+          id: "npm.sourcekit",
+          kind: "package",
+          type: "npm",
+        },
+        {
+          id: "swift.sourcekit",
+          kind: "package",
+          type: "swift",
+        },
+      ],
+    };
+  return undefined;
+}
+
 export function resolve(pathname: string): unknown {
+  if (pathname === FEEDS_OFF)
+    return {
+      product: {
+        ...PRODUCTS[0],
+        slug: "feedsoff",
+        name: "Feeds off",
+        verified: false,
+        packageFeeds: false,
+        packages: {
+          declared: 3,
+          feedsOn: false,
+          offBy: "Ana Lima",
+          offAt: FEEDS_OFF_AT,
+        },
+      },
+    };
+  if (pathname === `${FEEDS_OFF}/distribution/package-feeds`)
+    return {
+      packageFeeds: {
+        enabled: false,
+        version: 4,
+        updatedAt: FEEDS_OFF_AT,
+        updatedBy: "mbr_01J9ZANALIMA",
+      },
+    };
+  if (pathname.startsWith(`${FEEDS_OFF}/`))
+    return ROUTES[`${P}${pathname.slice(FEEDS_OFF.length)}`];
+  const waiting = waitingFeeds(pathname);
+  if (waiting !== undefined) return waiting;
   const empty = "/manage/api/products/empty";
   if (pathname === empty) return { product: PRODUCTS[4] };
   if (pathname.startsWith(`${empty}/`)) {
     const src = ROUTES[`${P}${pathname.slice(empty.length)}`];
     if (pathname === `${empty}/services`) return src;
+    // Nobody has synced: the aggregate is all zero (`emptied` leaves a number alone).
+    if (pathname === `${empty}/sync/usage`)
+      return {
+        ...SYNC_USAGE,
+        usage: { ...SYNC_USAGE.usage, bytes: 0, people: 0, computedAt: 0 },
+        today: { day: SYNC_USAGE.today.day, syncs: 0, conflicts: 0 },
+      };
     return src === undefined ? undefined : emptied(src);
   }
   for (const p of PRODUCTS) {
     if (p.slug === "djdl" || p.slug === "empty") continue;
     const base = `/manage/api/products/${p.slug}`;
+    if (p.slug === LONG_SLUG && pathname === `${base}/sync/usage`)
+      return SYNC_USAGE_RICH;
     if (pathname === base) return { product: p };
     if (pathname.startsWith(`${base}/`))
       return ROUTES[`${P}${pathname.slice(base.length)}`];

@@ -21,12 +21,12 @@
  * it), an entry that names nothing that exists, and a list longer or shorter than
  * `PENDING_CEILING`. ST-25 closes with `PENDING` empty (S-18 §4.13).
  *
- * Data plus pure checks: `test/settings-coverage.test.ts` reads the schema, the inventory and
+ * Data plus pure checks: `test/core/settings-coverage.test.ts` reads the schema, the inventory and
  * the manifest schemas and runs `checkCoverage`; `scripts/gen-settings.ts` publishes
  * `NOT_A_SETTING` on the generated reference page and in the console's search index, so search
  * can explain why a thing is fixed. Nothing here is read at runtime, which is why it lives under
  * `scripts/` and not `src/`: it names every settings-shaped table, the credential tables among
- * them, and only the allowlisted Worker files may name those (`test/outletCredentialReach.test.ts`).
+ * them, and only the allowlisted Worker files may name those (`test/core/outletCredentialReach.test.ts`).
  */
 
 import { DEPRECATED_SPELLINGS, dotted } from "@polaris-key/manifest";
@@ -84,8 +84,6 @@ export const SETTINGS_SHAPED_TABLES: readonly string[] = [
   "dist_store_products",
   "dist_transports",
   "edge_mint_config",
-  "email_product_caps",
-  "lazy_delta_settings",
   "oidc_config",
   "outlet_credentials",
   "platform_credentials",
@@ -204,6 +202,23 @@ export function declaredByRegistry(
  * the rest explain the concrete targets the coverage test finds.
  */
 export const NOT_A_SETTING: readonly NotASetting[] = [
+  {
+    thing: "Store listing content",
+    reason:
+      "Listing text, locales, overrides, images and release notes are content the operator writes, not configuration: registering their storage columns as settings would invent keys (A-27, D12).",
+    shows: "Settings → Presentation → Listing",
+    covers: {
+      ids: [
+        "table:dist_listings",
+        "column:dist_listings.source",
+        "column:dist_listing_assets.source",
+        "column:dist_listing_locales.source",
+        "column:dist_listing_overrides.source",
+        "column:dist_listing_release_notes.source",
+        "manifest:distribution:listing",
+      ],
+    },
+  },
   {
     thing: "Refund, void and chargeback handling",
     reason:
@@ -378,13 +393,11 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
-    thing: "Old lazy-delta and sign-in mail cap tables",
+    thing: "Feed access migration records (what the F-34.4 job overwrote)",
     reason:
-      "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
-    shows: "Product → Settings",
-    covers: {
-      ids: ["table:lazy_delta_settings", "table:email_product_caps"],
-    },
+      "A record kept for the job's down step: prior_source says whether the access row it replaced came from the manifest or the console, so a rollback restores it. Nothing configures it.",
+    shows: "Ship builds → Package feeds",
+    covers: { ids: ["column:dist_registry_access_moves.prior_source"] },
   },
   {
     thing: "Connection records (where a connection row came from)",
@@ -399,6 +412,13 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
       "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
     covers: { ids: ["column:portal_license_links.source"] },
+  },
+  {
+    thing: "Console role binding provenance (ST-31)",
+    reason:
+      "Records how a binding came to exist (an operator gave it, an invite, or the creator of a product): a fact about who has access, not Polaris behaviour.",
+    shows: "Platform → Access",
+    covers: { ids: ["column:console_role_bindings.source"] },
   },
   {
     thing: "An account's birth date and where it came from (I-33)",
@@ -459,28 +479,20 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
  */
 export const PENDING: readonly PendingEntry[] = [
   // API-only stores (S-18 §2.2).
-  { target: "table:platform_store_settings", owner: "ST-12" },
-  { target: "table:platform_credentials", owner: "ST-12" },
-  { target: "table:outlet_credentials", owner: "ST-12" },
-  { target: "table:dist_store_products", owner: "ST-12" },
-  { target: "column:dist_store_products.source", owner: "ST-12" },
+  { target: "table:platform_store_settings", owner: "A-22" },
+  { target: "table:platform_credentials", owner: "P0-28" },
+  { target: "table:outlet_credentials", owner: "P0-28" },
+  { target: "table:dist_store_products", owner: "CM-23" },
+  { target: "column:dist_store_products.source", owner: "CM-23" },
   {
     target: "env:PLATFORM_APPLE_TEAM_ID",
-    owner: "ST-12",
+    owner: "A-22",
     note: "stores.appStore.teamId",
   },
-  // Storefront listing (S-18 D11).
-  { target: "table:dist_listings", owner: "ST-13" },
-  { target: "column:dist_listings.source", owner: "ST-13" },
-  { target: "column:dist_listing_assets.source", owner: "ST-13" },
-  { target: "column:dist_listing_locales.source", owner: "ST-13" },
-  { target: "column:dist_listing_overrides.source", owner: "ST-13" },
-  { target: "column:dist_listing_release_notes.source", owner: "ST-13" },
-  { target: "manifest:distribution:listing", owner: "ST-13" },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 13;
+export const PENDING_CEILING = 6;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

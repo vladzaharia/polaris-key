@@ -11,7 +11,7 @@ import type {
   PortalProvider,
 } from "../api.js";
 
-export { PASSKEY_PROVIDERS, passkeyProvider } from "../../lib/methodNames.js";
+export { passkeyProvider } from "../../lib/methodNames.js";
 
 /** A passkey's name (PORTAL.md §4.26), with the Locker's own default. */
 export function passkeyName(

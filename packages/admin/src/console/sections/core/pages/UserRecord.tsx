@@ -15,12 +15,12 @@
  * sign-in methods: those are never a developer's actions.
  */
 
+import { userExportQuery, userQuery } from "../data.js";
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import {
-  api,
-  ApiError,
+  HttpError,
   type ProductUserDetail,
   type ProductUserLicense,
   type ProductUserRelink,
@@ -44,7 +44,6 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageTabs } from "../../../components/PageTabs.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
 import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
@@ -115,10 +114,7 @@ export function UserRecord({
   subject: string;
   tab?: string;
 }): React.ReactElement {
-  const q = useQuery({
-    queryKey: qk.user(slug, subject),
-    queryFn: () => api.productUser(slug, subject),
-  });
+  const q = useQuery(userQuery(slug, subject));
   const mergedInto = q.data?.mergedInto;
   // D21: an absorbed subject resolves to the survivor's row, which lists it under "Merged from".
   React.useEffect(() => {
@@ -134,7 +130,7 @@ export function UserRecord({
   }
   const user = q.data?.user;
   if (!user) {
-    const notFound = q.error instanceof ApiError && q.error.status === 404;
+    const notFound = q.error instanceof HttpError && q.error.status === 404;
     return (
       <div className="space-y-6">
         <PageHeader
@@ -195,12 +191,15 @@ function UserRecordBody({
     ? (rawTab as UserTab)
     : "overview";
   const [dialog, setDialog] = React.useState<"delete" | null>(null);
+  const queryClient = useQueryClient();
   const [exporting, setExporting] = React.useState(false);
 
   const exportJson = async (): Promise<void> => {
     setExporting(true);
     try {
-      const doc = await api.productUserExport(slug, user.subject);
+      const doc = await queryClient.fetchQuery(
+        userExportQuery(slug, user.subject),
+      );
       if (!downloadJson(`${slug}-${user.subject}.json`, doc))
         toast.error("Couldn't save the file");
     } catch (e) {

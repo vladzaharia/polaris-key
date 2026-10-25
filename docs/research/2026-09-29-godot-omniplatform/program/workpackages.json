@@ -695,7 +695,7 @@
         "Split from P0-25 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/P0-25b-portal-public-route-tables.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-26",
@@ -744,7 +744,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-27-one-adapter-store-delivery-commerce.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-27a",
@@ -863,7 +863,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-30-guardrails-test-harness-test-layout.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-31",
@@ -912,7 +912,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-32-one-data-layer-console-portal.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-33",
@@ -960,7 +960,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-34-shared-hash-router-core.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "P0-35",
@@ -1226,7 +1226,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-45-pkey-command-registry-context-doctor.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P0-46",
@@ -1250,7 +1250,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-46-lint-baselines-debt-ledgers.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-47",
@@ -1581,6 +1581,7 @@
         "P0-50",
         "CM-29",
         "ST-25b",
+        "ST-25c",
         "I-32b",
         "I-32c",
         "LX-41b",
@@ -4886,7 +4887,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-28-accounts-contract-phase.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "I-28b",
@@ -6206,7 +6207,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-27-keep-licence-config-layer-delete.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-27b",
@@ -7141,7 +7142,7 @@
         "Split from F-33 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/F-33b-service-tokens-list-filtering.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-34",
@@ -7166,7 +7167,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/F-34-feeds-that-provision-themselves.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-35",
@@ -7241,7 +7242,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/F-37-pkey-feeds-setup-write-cli-naming.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "F-38",
@@ -7731,7 +7732,7 @@
         "Split from A-19 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/A-19b-channel-labels-literal-lint.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-20",
@@ -7755,7 +7756,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-20-product-facts-channel-read-model.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-21",
@@ -7876,7 +7877,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/A-25-action-v2-channels-auto-thin-inputs.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-26",
@@ -7973,7 +7974,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-28-one-store-app-binding-derived-identity.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-29",
@@ -7997,7 +7998,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/A-29-homebrew-formula-cli-archives.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "A-30",
@@ -8613,7 +8614,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-W13b-display-name-settings.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-W14",
@@ -9779,7 +9780,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.55],
-      "deps": ["ST-11", "ST-14", "ST-17", "ST-19b"],
+      "deps": ["ST-11", "ST-14", "ST-17", "ST-19b", "ST-32", "LX-16", "LX-40"],
       "planMode": false,
       "gates": ["migration", "table-owners", "rule-10"],
       "humanInputs": [],
@@ -9796,7 +9797,7 @@
     },
     {
       "id": "ST-25b",
-      "title": "Drop `products.admin_group` (the release after ST-25)",
+      "title": "Drop `products.admin_group` and `release_config.artifacts_access` (the release after ST-25)",
       "phase": "ST",
       "stage": "phase 5: governance and environments",
       "lane": "worker",
@@ -9813,6 +9814,27 @@
         "docs/research/2026-10-07-dx-consolidation/tracks.md rules 5 and 6"
       ],
       "brief": "wp/ST-25b-drop-products-admin-group.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-25c",
+      "title": "Retire the legacy ownership markers (the `*_source` columns)",
+      "phase": "ST",
+      "stage": "phase 5: governance and environments",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["ST-25", "P0-49"],
+      "planMode": false,
+      "gates": ["migration", "table-owners"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/P0-25b-ST-25-slices.md S7 and D7 (lead decision 2026-10-23)",
+        "docs/research/2026-10-07-dx-consolidation/tracks.md rules 5 and 6"
+      ],
+      "brief": "wp/ST-25c-retire-source-markers.md",
       "status": "todo"
     },
     {
@@ -10343,7 +10365,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/products-onboarding.md"
       ],
       "brief": "wp/ST-46-interactive-pkey-init.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-47",
@@ -10450,7 +10472,7 @@
         "UX coverage 2026-10-09 (program/ux-coverage.md): screens admin.platform-activity, admin.platform-activity-event had no builder"
       ],
       "brief": "wp/ST-51-platform-activity-page.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-52",
@@ -11843,7 +11865,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/sdk-uikits-dx.md"
       ],
       "brief": "wp/SP-35-sdk-api-registry-api-json-0-9.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-35b",
@@ -11871,7 +11893,7 @@
         "plans/SP-35.md §7 slice 2 and Appendix A (approved 2026-10-08)"
       ],
       "brief": "wp/SP-35b-sdk-api-renames-godot-swift-kotlin.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "SP-35"
     },
     {
@@ -13224,7 +13246,7 @@
         "Split from UK-04 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-04b-elements-cdn-module.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-05",
@@ -13308,7 +13330,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-07-swiftui-ios.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "UK-08",
@@ -13359,7 +13381,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-09-compose-android.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-09b",
@@ -13379,7 +13401,7 @@
         "Split from UK-09 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-09b-compose-android-sample-and-expressive.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-10",
@@ -13456,7 +13478,7 @@
         "Split from UK-11 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-11b-godot-game-look-scenes-baselines.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-12",
@@ -13923,7 +13945,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-31-web-recipes.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-32",
@@ -15586,7 +15608,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-02b-chrome.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "DOC-02c",
@@ -15818,7 +15840,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-06b-worker-entry-points.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "DOC-06c",
@@ -16112,7 +16134,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-12a-generators.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "DOC-12b",
@@ -17659,7 +17681,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3 (AX-03b)"
       ],
       "brief": "wp/AX-03b-agents-md-router-repo-map-nested-files.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "AX-04",
@@ -17679,7 +17701,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3, §10 decision 13 (AX-04)"
       ],
       "brief": "wp/AX-04-pnpm-gate-in-the-repo.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "AX-05",
@@ -17747,7 +17769,7 @@
         "docs/research/2026-10-08-llm-audit/README.md §5.1, §5.5, §8.3 (AX-07)"
       ],
       "brief": "wp/AX-07-the-agent-kit-layout-release-zip-references-lint.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "AX-08",

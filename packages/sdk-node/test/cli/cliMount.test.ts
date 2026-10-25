@@ -284,8 +284,10 @@ async function runGate(
       if (input.check === "throws") throw new Error("the check failed");
       return { status: current };
     },
+    entitlements: {
+      has: () => input.entitled && USABLE.includes(current),
+    },
     license: {
-      isEntitled: () => input.entitled && USABLE.includes(current),
       // A key activates the license: the next status is ok.
       activateWithKey: async () => {
         current = "ok";

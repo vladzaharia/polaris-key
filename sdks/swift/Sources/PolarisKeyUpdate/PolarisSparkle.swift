@@ -2,7 +2,7 @@
 // SP-S10).
 //
 // It asserts `SUPublicEDKey` (Sparkle stays the terminal anchor, SparkleAnchor.swift), starts an
-// `SPUStandardUpdaterController`, points it at the product's appcast from DISCOVERY, attaches the
+// `SPUStandardUpdaterController` (or an `SPUUpdater` on the app's own `SPUUserDriver`), points it at the product's appcast from DISCOVERY, attaches the
 // device bearer its requests need, and narrows its channels to the licence's `channels`
 // entitlement. Then it keeps all three current: on every `license` change (activation, a new
 // licence document, sign-out) it re-derives the feed, the headers and the channels.
@@ -60,40 +60,75 @@ import PolarisKeyCore
         }
     }
 
+    /// A user driver that wants the updater it runs under, to start a check again (the update
+    /// window's Try Again). `PolarisSparkle` hands it over when it builds the updater.
+    @MainActor
+    public protocol PolarisSparkleUpdaterAware: AnyObject {
+        func attach(updater: SPUUpdater)
+    }
+
     @MainActor
     public final class PolarisSparkle {
-        public let controller: SPUStandardUpdaterController
+        /// The standard controller; `nil` when an app injected its own `userDriver`.
+        public let controller: SPUStandardUpdaterController?
+        /// The updater on both paths.
+        public let updater: SPUUpdater
         public let delegate: PolarisSparkleLiveDelegate
         private let client: PolarisKeyClient
         private let channel: String
         private var observation: Task<Void, Never>?
 
-        private init(client: PolarisKeyClient, channel: String, delegate: PolarisSparkleLiveDelegate) {
+        /// With no `userDriver`, Sparkle's standard controller (its own UI). With one, an
+        /// `SPUUpdater` on that driver: only the UI changes, the delegate (feed, channels,
+        /// journal) and the anchor are the same.
+        init(
+            client: PolarisKeyClient, channel: String, delegate: PolarisSparkleLiveDelegate,
+            bundle: Foundation.Bundle = .main, userDriver: (any SPUUserDriver)? = nil
+        ) {
             self.client = client
             self.channel = channel
             self.delegate = delegate
-            self.controller = SPUStandardUpdaterController(
-                startingUpdater: false, updaterDelegate: delegate, userDriverDelegate: nil)
+            if let userDriver {
+                self.controller = nil
+                self.updater = SPUUpdater(
+                    hostBundle: bundle, applicationBundle: bundle, userDriver: userDriver,
+                    delegate: delegate)
+                (userDriver as? any PolarisSparkleUpdaterAware)?.attach(updater: updater)
+            } else {
+                let controller = SPUStandardUpdaterController(
+                    startingUpdater: false, updaterDelegate: delegate, userDriverDelegate: nil)
+                self.controller = controller
+                self.updater = controller.updater
+            }
         }
 
         /// Start Sparkle for `client`. Throws `SparkleAnchorError` when the bundle has no
         /// `SUPublicEDKey`, or what `SPUUpdater.start()` throws. Retain the returned object for
-        /// the app's lifetime (it owns the updater and its delegate).
+        /// the app's lifetime (it owns the updater and its delegate, and Sparkle holds the
+        /// `userDriver` it is given). `userDriver` replaces Sparkle's standard UI only: the feed,
+        /// the EdDSA check and the install path are Sparkle's, as without it.
+        ///
+        /// `bundle` is the bundle the updater reads and replaces when a `userDriver` is given. With
+        /// no `userDriver` the standard controller always updates `Bundle.main` and `bundle` only
+        /// supplies the `SUPublicEDKey` check, so pass a custom `bundle` together with a driver.
         public static func start(
-            client: PolarisKeyClient, channel: String? = nil, bundle: Foundation.Bundle = .main
+            client: PolarisKeyClient, channel: String? = nil, bundle: Foundation.Bundle = .main,
+            userDriver: (any SPUUserDriver)? = nil
         ) async throws -> PolarisSparkle {
             try SparkleAnchor.assertPresent(in: bundle)
             let channel = channel ?? client.core.channel
             if await client.core.discoveryDocument == nil { _ = await client.discover() }
             let delegate = PolarisSparkleLiveDelegate(
                 journal: client.core.journal, channel: channel, installedVersion: client.core.version)
-            let sparkle = PolarisSparkle(client: client, channel: channel, delegate: delegate)
+            let sparkle = PolarisSparkle(
+                client: client, channel: channel, delegate: delegate, bundle: bundle,
+                userDriver: userDriver)
             await sparkle.reconfigure()
-            try sparkle.controller.updater.start()
+            try sparkle.updater.start()
             sparkle.observe()
             BinaryUpdateHandoff.shared.set { @MainActor [weak sparkle] in
                 guard let sparkle else { return false }
-                sparkle.controller.checkForUpdates(nil)
+                sparkle.checkForUpdates()
                 return true
             }
             return sparkle
@@ -101,16 +136,15 @@ import PolarisKeyCore
 
         /// Re-derive the feed, headers and channels from the client's current state.
         public func reconfigure() async {
-            let entitlements = await client.license.entitlements()
+            let entitlements = await client.entitlements.all()
             let feed = await client.update.feed(channel: channel, entitlements: entitlements)
             let headers = await client.update.feedHeaders(channel: channel)
             delegate.apply(feed)
-            let updater = controller.updater
             updater.httpHeaders = headers.isEmpty ? nil : headers
         }
 
         /// Ask Sparkle to check now, with its UI.
-        public func checkForUpdates() { controller.checkForUpdates(nil) }
+        public func checkForUpdates() { updater.checkForUpdates() }
 
         /// Stop following the client (the updater keeps its last configuration).
         public func stop() {

@@ -38,6 +38,7 @@
 //                                       backendMatrixVersion, and
 //                                       content/cases.json's contentCorpusVersion
 //   @polaris-key/protocol/identity      the IDENTITY_EXPORTS (WIRE-CONTRACT-V4 §12.7, PX-W13)
+//   @polaris-key/protocol/sync          every SYNC_* constant (WIRE-CONTRACT-V4 §13, U-05.2)
 //   @polaris-key/protocol/core          the PRESENTATION_EXPORTS (WIRE-CONTRACT-V4 §5.5, HA-12)
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
@@ -76,6 +77,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as protocolCore from "@polaris-key/protocol/core";
 import * as protocolIdentity from "@polaris-key/protocol/identity";
+import * as protocolSync from "@polaris-key/protocol/sync";
 import Ajv2020Module from "ajv/dist/2020.js";
 import * as prettier from "prettier";
 import {
@@ -157,6 +159,9 @@ export interface Sources {
   capabilities?: Record<string, SdkCapabilities>;
   /** The `@polaris-key/protocol/core` module namespace (or a stand-in with the same exports). */
   protocol: Record<string, unknown>;
+  /** The text of `packages/shared-protocol/src/sync.ts`, whose doc comments name each `SYNC_*`
+   *  constant's WIRE-CONTRACT-V4 subsection. Absent in a hand-built test: no SYNC_* is emitted. */
+  protocolSyncSource?: string;
   /** The core copy (copy.en.json), already checked by validateCopy. */
   copy?: CopyDoc;
   /** Every translated core pack (copy.<locale>.json, English excluded), keyed by locale. */
@@ -644,8 +649,12 @@ export function loadSources(root = ROOT): Sources {
     services: loadTable(join(root, "tools", "services.json")).services.map(
       (r) => r.slug,
     ),
-    // The identity subpath's exports join core's; only the names in IDENTITY_EXPORTS are read.
-    protocol: { ...protocolCore, ...protocolIdentity },
+    // The identity and sync subpaths' exports join core's; only the names in IDENTITY_EXPORTS and the SYNC_ prefix are read.
+    protocol: { ...protocolCore, ...protocolIdentity, ...protocolSync },
+    protocolSyncSource: readFileSync(
+      join(root, "packages", "shared-protocol", "src", "sync.ts"),
+      "utf8",
+    ),
     copy,
     localeCopy,
     corpus: {
@@ -970,6 +979,38 @@ export const PRESENTATION_EXPORTS = [
   "PRESENTATION_ICON_TYPES",
 ] as const;
 
+/** The Cloud Sync numbers every SDK carries: every `SYNC_*` export of `@polaris-key/protocol/sync`
+ *  (WIRE-CONTRACT-V4 §13; U-05.2). The subsection each cites is read from the `/** §x: ... *\/`
+ *  doc comment above the export in the source, so the table has one home. */
+export function syncExports(
+  protocol: Record<string, unknown>,
+  source: string,
+): { name: string; section: string }[] {
+  const names = Object.keys(protocol)
+    .filter((name) => name.startsWith("SYNC_"))
+    .sort();
+  if (names.length === 0)
+    throw new Error("@polaris-key/protocol/sync exports no SYNC_* constant");
+  return names.map((name) => {
+    const value = protocol[name];
+    if (
+      typeof value !== "string" &&
+      (typeof value !== "number" || !Number.isSafeInteger(value))
+    )
+      throw new Error(
+        `@polaris-key/protocol/sync exports no integer or string ${name}`,
+      );
+    const m = new RegExp(
+      `/\\*\\* ([^:*]*§[^:*]*):[^\\n]*\\*/\\nexport const ${name}\\b`,
+    ).exec(source);
+    if (!m)
+      throw new Error(
+        `${name} in protocol/src/sync.ts has no "/** §x: ... */" doc comment naming its subsection`,
+      );
+    return { name, section: m[1]!.trim() };
+  });
+}
+
 /** The three P4-10 entries of `PACK_LIMIT_EXPORTS`, documented against plans/P4-10.md. */
 const CHUNK_LIMIT_EXPORTS: ReadonlySet<string> = new Set([
   "CHUNKS_FORMAT",
@@ -1187,6 +1228,14 @@ export function buildModel(sources: Sources): Model {
         value,
       };
     }),
+    ...(sources.protocolSyncSource === undefined
+      ? []
+      : syncExports(protocol, sources.protocolSyncSource)
+    ).map(({ name, section }) => ({
+      name,
+      doc: `Cloud Sync: \`${name}\` (WIRE-CONTRACT-V4 ${section}, \`@polaris-key/protocol/sync\`).`,
+      value: scalarValue(name, protocol[name]),
+    })),
     ...SIGNED_IN_EXPORTS.map((name) => ({
       name,
       doc: `Signed-in subject: \`${name}\` (WIRE-CONTRACT-V4 §3.2, \`@polaris-key/protocol/core\`).`,

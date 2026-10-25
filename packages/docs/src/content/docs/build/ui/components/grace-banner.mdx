@@ -64,6 +64,45 @@ Offline grace: the deadline and countdown, Reconnect, and a dismissal that lasts
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` when the license state calls for it, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<GraceBanner />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("GraceBanner", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate draws it above your content while the license works offline in grace; a dismissal lasts the session.
+
+    **Styled part.** `PolarisGraceBanner(body, onReconnect, onDismiss)`; the body comes from the copy's `graceBody`.
+
+    **Headless.** `graceHeadline` and `graceBody` on `PolarisCopy`, given the grace end and now in seconds.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.PolarisGraceBanner
+    import im.plrs.key.ui.PolarisTheme
+    import im.plrs.key.ui.graceBody
+
+    @Composable
+    fun Grace(graceUntil: Long, now: Long, reconnect: () -> Unit) {
+        PolarisGraceBanner(
+            body = PolarisTheme.copy.graceBody(graceUntil, now),
+            onReconnect = reconnect,
+        )
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

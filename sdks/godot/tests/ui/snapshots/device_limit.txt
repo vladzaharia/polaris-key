@@ -1,0 +1,52 @@
+== default: replace the least recent ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Your license is on 3 of 3 devices"
+Card/Scroll/Body/Text/Words/Lede: Label "To use it on this Mac, replace one. You can add it back later."
+Card/Scroll/Body/Text/Caption: Label "3 of 3 in use"
+Card/Scroll/Body/Right/Pick/Tag: Label "Least recent"
+Card/Scroll/Body/Right/Pick/Head/Glyph: TextureRect
+Card/Scroll/Body/Right/Pick/Head/Who/Name: Label "\u2068Work laptop\u2069"
+Card/Scroll/Body/Right/Pick/Head/Who/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Body/Right/Consequence: Label "\u2068Work laptop\u2069 signs out of \u2068Polaris Key SDK\u2069 and this Mac takes its place. We'll email you about it."
+Card/Scroll/Body/Right/Actions/Primary: Button "Replace and continue" [focus 1]
+Card/Scroll/Body/Right/Actions/Back: Button "Back" [focus 2]
+== default: the limit is not known ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Replace a device"
+Card/Scroll/Body/Text/Words/Lede: Label "To use it on this Mac, replace one. You can add it back later."
+Card/Scroll/Body/Right/Pick/Tag: Label "Least recent"
+Card/Scroll/Body/Right/Pick/Head/Glyph: TextureRect
+Card/Scroll/Body/Right/Pick/Head/Who/Name: Label "\u2068Work laptop\u2069"
+Card/Scroll/Body/Right/Pick/Head/Who/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Body/Right/Consequence: Label "\u2068Work laptop\u2069 signs out of \u2068Polaris Key SDK\u2069 and this Mac takes its place. We'll email you about it."
+Card/Scroll/Body/Right/Actions/Primary: Button "Replace and continue" [focus 1]
+Card/Scroll/Body/Right/Actions/Back: Button "Back" [focus 2]
+== browser mode ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Replace a device"
+Card/Scroll/Body/Text/Words/Lede: Label "Replace a device in your browser. \u2068Polaris Key SDK\u2069 continues when you're done."
+Card/Scroll/Body/Right/Actions/Primary: Button "Open in browser" [focus 1]
+== browser mode: a QR code on a TV ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Replace a device"
+Card/Scroll/Body/Text/Words/Lede: Label "Replace a device in your browser. \u2068Polaris Key SDK\u2069 continues when you're done."
+Card/Scroll/Body/Right/ManageQrTile/ManageQr: PKeyQrRect "https://polaris.locker/devices?product=tidewater"
+Card/Scroll/Body/Right/ManageCaption: Label "Scan the code to replace a device on your phone."
+== busy ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Replace and continue"
+Card/Scroll/Body/Right/Actions/Primary: Button "Replace and continue" [disabled]
+== removed ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "\u2068Work laptop\u2069 was replaced. \u2068Polaris Key SDK\u2069 is continuing."
+== failed ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "\u2068Work laptop\u2069 couldn't be replaced. Try again."
+Card/Scroll/Body/Right/Actions/Primary: Button "Try again" [focus 1]

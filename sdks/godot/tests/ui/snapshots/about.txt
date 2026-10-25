@@ -1,0 +1,15 @@
+== with every link ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "About \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Version: Label "Version 2.5.0 (4182)"
+Card/Scroll/Body/Text/Links/Privacy: Button "Privacy" [focus 1]
+Card/Scroll/Body/Text/Links/Support: Button "Get help" [focus 2]
+Card/Scroll/Body/Text/Links/Licenses: Button "Open-source licenses" [focus 3]
+Card/Scroll/Body/Text/Links/CopyDiagnostics: Button "Copy diagnostics" [focus 4]
+== version only ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "About \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Version: Label "Version 2.5.0 (4182)"
+Card/Scroll/Body/Text/Links/Licenses: Button "Open-source licenses" [focus 1]

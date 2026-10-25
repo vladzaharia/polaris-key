@@ -5,11 +5,11 @@
  * names one as its `rbacArea` (`core/settings/define.ts`). A role binding (ST-31) may narrow a
  * Product admin to a list of these ids, so an id is a stored value:
  *
- *   - **Append-only.** An id is never renamed, reused or removed. `test/rbacAreas.test.ts` pins
+ *   - **Append-only.** An id is never renamed, reused or removed. `test/core/rbacAreas.test.ts` pins
  *     this list to `test/fixtures/rbac-areas.json`, which only grows.
  *   - **Independent of the sidebar.** The console's nav groups (`nav.ts`) are never an input: a
  *     page that moves in the sidebar keeps its area.
- *   - **Moves are migrations.** A route that changes area fails `test/rbacRouteAreas.test.ts`
+ *   - **Moves are migrations.** A route that changes area fails `test/surfaces/console/rbacRouteAreas.test.ts`
  *     unless `AREA_MOVES` below lists it (see that type).
  */
 

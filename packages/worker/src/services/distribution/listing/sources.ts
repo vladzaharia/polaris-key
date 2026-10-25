@@ -10,7 +10,8 @@
  *     token and sends nothing (the same refusals as each connector's controls);
  *   - `godot`: what `pkey listing import --godot` read from `project.godot` and
  *     `export_presets.cfg` and uploaded, validated here (it is operator-supplied data);
- *   - `manifest`: `.pkey/distribution` `listing` as an outlet shows it (A-18b's import);
+ *   - `manifest`: `.pkey/distribution` `listing`: the root one from Core's manifest snapshot, or an
+ *     outlet's merged copy (A-18b's import; A-27.3), mapped by `manifestListingSnapshot`;
  *   - `product`: `.pkey/product`'s product name.
  */
 
@@ -23,6 +24,7 @@ import { AscError, AscWriteDenied } from "../../../core/stores/apple/client.js";
 import {
   canonicalCategory,
   emptySnapshot,
+  manifestListingSnapshot,
   normaliseLocale,
   textOf,
   type ImportSource,
@@ -30,6 +32,7 @@ import {
   type SnapshotAsset,
   type SourceOutcome,
 } from "../../../core/storefront/listingImport.js";
+import { getManifestSnapshot } from "../../../core/manifestSnapshot.js";
 import { listOutlets } from "../outlets.js";
 import { readAppStoreListing } from "../connectors/asc/listing.js";
 import { ascRun, finishRun as finishAscRun } from "../connectors/asc/run.js";
@@ -237,19 +240,15 @@ export async function msStoreSource(c: SourceContext): Promise<SourceOutcome> {
 
 // ── The manifest and the product ─────────────────────────────────────────────────────────────
 
-/** The listing art fields (HA-04's `icon`/`header`, and the pre-HA-04 aliases a stored row may hold). */
-const MANIFEST_ASSETS = [
-  "icon",
-  "header",
-  "iconUrl",
-  "headerUrl",
-  "screenshots",
-] as const;
-
 /**
- * `.pkey/distribution` `listing` as `outletId` shows it (or the first live outlet with one):
- * name, developer name, category, website and tint at the app level; subtitle and description in
- * `locale`. Asset URLs are not imported (assets are uploaded blobs, A-18d).
+ * `.pkey/distribution` `listing`, through the one mapping (`manifestListingSnapshot`).
+ *
+ *   - No `outletId`: the ROOT listing from Core's manifest snapshot (the last applied manifest,
+ *     `distribution.listing`). A product with no snapshot row yet (applied before ST-01) falls
+ *     back to the first live outlet's merged copy, as before.
+ *   - With an `outletId`: that outlet's merged copy (`dist_outlets.listing_json`), unchanged.
+ *
+ * Asset URLs are not imported (assets are uploaded blobs, A-18d).
  */
 export async function manifestSource(
   db: Db,
@@ -257,6 +256,22 @@ export async function manifestSource(
   outletId: string | null,
   locale: string,
 ): Promise<SourceOutcome> {
+  if (outletId === null) {
+    const snap = await getManifestSnapshot(db, product);
+    if (snap) {
+      const root = rootListingOf(parseJsonColumn(snap.manifest_json));
+      if (!root)
+        return fail(
+          404,
+          "no_manifest_listing",
+          "the applied .pkey/distribution declares no listing",
+        );
+      return {
+        ok: true,
+        snapshot: manifestListingSnapshot(root, "root", locale),
+      };
+    }
+  }
   const live = (await listOutlets(db, product))
     .filter((o) => o.removed_at === null)
     .sort((a, b) => (a.outlet_id < b.outlet_id ? -1 : 1));
@@ -278,38 +293,20 @@ export async function manifestSource(
         ? "no live channel has a .pkey/distribution listing"
         : `channel ${outletId} has no .pkey/distribution listing`,
     );
-  const l = found.listing;
-  const snap = emptySnapshot("manifest", found.outlet);
-  const str = (v: unknown) =>
-    typeof v === "string" && v !== "" ? v : undefined;
-  const set = <K extends keyof ListingSnapshot["app"]>(
-    k: K,
-    v: ListingSnapshot["app"][K] | undefined,
-  ) => {
-    if (v !== undefined) snap.app[k] = v;
+  return {
+    ok: true,
+    snapshot: manifestListingSnapshot(found.listing, found.outlet, locale),
   };
-  set("name", str(l.name));
-  set("developerName", str(l.developerName));
-  const category = str(l.category);
-  if (category) set("category", canonicalCategory(category) ?? category);
-  set("tint", str(l.tintColor));
-  const website = str(l.website);
-  if (website) snap.app.urls = { website };
-  const subtitle = str(l.subtitle);
-  const description = str(l.description);
-  if (subtitle || description)
-    snap.locales[locale] = {
-      ...(subtitle ? { subtitle } : {}),
-      ...(description ? { description } : {}),
-    };
-  for (const f of MANIFEST_ASSETS)
-    if (l[f] !== undefined)
-      snap.skipped.push({
-        field: f,
-        reason:
-          "asset URLs are not imported: listing assets are uploaded blobs (pkey listing assets)",
-      });
-  return { ok: true, snapshot: snap };
+}
+
+/** The root `distribution.listing` of a stored parsed manifest, or null. */
+function rootListingOf(manifest: unknown): Record<string, unknown> | null {
+  const d = (manifest as { distribution?: { listing?: unknown } } | null)
+    ?.distribution;
+  const l = d?.listing;
+  return l && typeof l === "object" && !Array.isArray(l)
+    ? (l as Record<string, unknown>)
+    : null;
 }
 
 /** `.pkey/product`'s product name. */

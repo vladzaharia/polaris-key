@@ -17,7 +17,7 @@ func run(t: PKeyTestContext) -> void:
 
 func _opts() -> PKeyOptions:
 	var o := PKeyOptions.new()
-	o.product = "djdl"
+	o.product_slug = "djdl"
 	o.version = "1.0.0"
 	o.store = PKeyMemoryStore.new()
 	o.build_stamp_path = ""

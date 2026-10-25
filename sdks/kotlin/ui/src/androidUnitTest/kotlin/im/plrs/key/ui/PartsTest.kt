@@ -84,12 +84,12 @@ class PartsTest {
         val rows = case.rows.choices!!.choices
         // The preselected license is chosen to start with.
         val start = case.rows.choices!!.preselected ?: rows.first { !it.isFull }.id
-        rule.onNodeWithText("Use this license and continue").performScrollTo().performClick()
+        rule.onNodeWithText("Use this license").performScrollTo().performClick()
         assertEquals(listOf(start), chosen)
         // Choosing another row moves the check and the answer.
         rule.onAllNodes(radios)[2].performClick()
         rule.onAllNodes(radios)[2].assertIsSelected()
-        rule.onNodeWithText("Use this license and continue").performScrollTo().performClick()
+        rule.onNodeWithText("Use this license").performScrollTo().performClick()
         assertEquals(rows.filterNot { it.isFull }[2].id, chosen.last())
     }
 

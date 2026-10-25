@@ -28,6 +28,25 @@ every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the main process holds the grant and calls `choice.*`; the renderer's form gets view data only and posts the pick through `exposePolarisKey()` (SIGN-IN.md D-91). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
 
+## Corrections (2026-10-22)
+
+The code is the fact; `/Users/vlad/Repos/pk-wt/_lead/plans/UK-06-slices.md` (slices UK-06.1 onward) carries the full plan. These corrections win over the text below where they differ.
+
+- **K1. The bridge already exists (SP-31).** Main: `exposePolarisBridge(client, { ipcMain, allowSender, appOrigin, downloadDir, invoke })`. Preload: `import "@polaris-key/node/electron/preload"`, or `exposePolarisBridgeInMainWorld` for a CommonJS preload. The contract is bridge v4. `registerPolarisKey` and `exposePolarisKey` were never built.
+- **K2. Update progress does not cross the bridge.** `electronUpdaterDriver` reports `ctx.onProgress`, and `update.install` drops it. UK-06 adds an optional `onUpdateProgress` push.
+- **K3. The React kit has no desktop chrome yet.** It sets `data-pk-platform`, but the shared stylesheet emits only the `web` component tokens. Brand defines the `windows`, `gnome` and `macos` blocks; nothing in the web kits uses them.
+- **K4. The Linux variant id disagrees.** ui-core says `linux`, brand's CSS says `gnome`. One mapping helper in ui-core (U4).
+- **K5. Node's ten `ui.*` rows are `planned` UK-06.** They are proved by the family run plus a bridge-view render test under `packages/sdk-node/test/` (UK-02b D9).
+- **K6. License choice (`choice.*`, I-04 §G) belongs to I-10a's Node identity v2.** UK-06 adds no sign-in verb (U7).
+- **K7. "Baselines under `packages/electron/test/visual/__screenshots__/`" is stale.** There is no new package (C-43); baselines go where the plan's U5 says.
+- **K8. Samples and docs named the wrong entry points.** `examples/ui/README.md`, `packages/docs/src/lib/uiKits.ts` and UI-KITS.md §4.2, §5.1, §6.1 and §10 now name `@polaris-key/node/electron`, `exposePolarisBridge` and the preload import. `examples/node-electron` stays the "your own UI" lane.
+- **K9. Copy.** `update.checkNow` has the macOS variant "Check for Updates…". There is no "Manage License…" key and no notification key yet. Node gets kit copy from `kitCopy.generated.ts` (`gen brand`).
+- **K10. Packaging.** No `electron` dependency exists in the workspace, and pnpm runs no lifecycle script outside `onlyBuiltDependencies`, so Electron's binary download needs an entry there. No CI job runs on Windows today.
+- **U1. Names.** Keep the shipped `exposePolarisBridge(client, { ipcMain })` and the preload import. Where this page says `registerPolarisKey` or `exposePolarisKey`, read these.
+- **U2. Bridge additions.** `host`, `onUpdateProgress` and `onOpen` are optional v4 members. `POLARIS_BRIDGE_VERSION` stays 4.
+
+- **UK-06.6 UX review notes left for UK-06.15 (2026-10-22).** M2: on the board, inline steps (Activate, Device limit, Sign-in code, Signed out) use a side-by-side equal pair, "primary | Back", and Welcome stacks two buttons at most 320 px wide; the build stacks full-width slabs, and at 900 x 600 DeviceLimit's primary is cut off (also on the web). M5: the depth model is inverted against Fluent (lists and groups are sunken wells where Fluent raises cards; the light secondary button is a grey slab; the dark footer is near black). M6: narrow windows draw the phone layout (a centred 96 px icon over empty space) where the board start-aligns under a one-line strip. M8: not itemised in the review file; ask the reviewer.
+
 ## Consolidation 2026-10-07
 
 The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.

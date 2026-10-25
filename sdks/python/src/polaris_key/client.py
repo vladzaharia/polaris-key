@@ -79,6 +79,7 @@ from .discovery import (
     discover_product,
 )
 from .license.client import LicenseClient
+from .license.entitlements import EntitlementsClient
 from .license.endpoints import ActivationOk, reacquire_token
 from .license.gate import LicenseState
 from .core.portal import PortalStore
@@ -143,7 +144,7 @@ class PolarisKeyClient:
         *,
         product_slug: str,
         version: str,
-        trust: Dict[str, str],
+        pinned_keys: Dict[str, str],
         base_url: Optional[str] = None,
         channel: Optional[str] = None,
         store: Optional[Store] = None,
@@ -182,7 +183,7 @@ class PolarisKeyClient:
         self.core = CoreContext(
             product_slug=product_slug,
             version=version,
-            trust=trust,
+            trust=pinned_keys,
             base_url=base_url,
             channel=channel,
             store=store,
@@ -232,6 +233,8 @@ class PolarisKeyClient:
             # `client.license.deactivate()` raises the same one event `client.deactivate()` does.
             on_changed=lambda: self._license_changed(),
         )
+        #: ``client.entitlements`` (SP-35.20): a thin view over the licence gate above.
+        self.entitlements = EntitlementsClient(self.license)
         #: ``client.events`` (SDK parity pass §3.11): license, entitlement, config,
         #: updateAvailable, packs and store changes, to any number of subscribers.
         self.events = EventBus()
@@ -292,7 +295,7 @@ class PolarisKeyClient:
             self.core,
             self._tokens,
             sync=lambda: self.sync(force=True),
-            is_entitled=lambda flag: self.license.is_entitled(flag),
+            is_entitled=lambda flag: self.entitlements.has(flag),
             outlet_kind=lambda: self.update.outlet.kind if self.update.outlet is not None else None,
         )
 
@@ -596,17 +599,13 @@ class PolarisKeyClient:
         ``kinds``). Returns the unsubscribe function."""
         return self.events.subscribe(listener, kinds)
 
-    def on_config_change(self, key: str, listener: Callable[[Any], None]) -> Callable[[], None]:
-        """Call ``listener(event)`` when ``key``'s effective value changes (``"*"``: any)."""
-        return self.config.on_change(key, listener)
-
     def _observe(self) -> Dict[str, Any]:
         try:
             doc = self.license.doc
             names = sorted(doc.entitlements) if doc is not None else []
             return {
                 "status": self.license.status().status,
-                "ents": {n: self.license.entitlement_value(n) for n in names},
+                "ents": {n: self.entitlements.value(n) for n in names},
                 "config": self.config.snapshot(),
             }
         except Exception:
@@ -759,9 +758,6 @@ class PolarisKeyClient:
         except Exception:
             return None
         return result if isinstance(result, StoreStatus) else None
-
-    def get_config(self, key: str, fallback: Any = None) -> Any:
-        return self.config.get_config(key, fallback)
 
     def register(self) -> RegisterResult:
         return self.devices.register()

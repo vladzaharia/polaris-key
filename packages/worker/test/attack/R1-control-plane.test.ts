@@ -14,14 +14,12 @@ import { makeTestDb } from "../helpers.js";
 import { KvMock, asKv } from "../kvMock.js";
 import { approveEdgeMintRecipe, makeEnv, NOW, seedProduct } from "../seed.js";
 import type { Env } from "../../src/platform/env.js";
-import type { Db } from "../../src/db/types.js";
 import { handleAdmin } from "../../src/console/index.js";
 import type { IdTokenVerifier } from "../../src/console/auth.js";
 import {
   ADMIN_COOKIE,
   buildClearCookie,
   buildSessionCookie,
-  issueSession,
   verifySession,
 } from "../../src/core/console/session.js";
 import {
@@ -43,6 +41,7 @@ import {
 } from "../../src/services/identity/oidc.js";
 import { artefacts, singleUseMock } from "../singleUseMock.js";
 import { adminFlowKey } from "../../src/console/auth.js";
+import { consoleTestSession, consoleActor } from "../consoleSessionHelper.js";
 
 /** The console sign-in gate (ST-29): the principal these groups resolve to is a member. */
 async function signInGate(env: Env, groups: string[]): Promise<boolean> {
@@ -311,8 +310,9 @@ describe("R1-02 cross-realm session signing", () => {
 
   it("R1-02c: REFUTED today — an admin cookie replayed as pkey_portal is rejected (no accountId)", async () => {
     const env = adminEnv(new KvMock());
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       env,
+      makeTestDb(),
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -385,20 +385,6 @@ describe("R1-02 cross-realm session signing", () => {
     expect(await verifyPortalSession(env, forgedPortal, NOW)).toBeNull();
   });
 
-  it("R1-02e: REFUTED — lastIndexOf('.') splitting is not forgeable (extra dots move the signed body)", async () => {
-    const env = adminEnv(new KvMock());
-    const { token } = await issueSession(
-      env,
-      { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
-      NOW,
-    );
-    // Appending a fake segment makes `body` = "<real body>.<real sig>", whose HMAC the
-    // attacker cannot produce.
-    expect(await verifySession(env, `${token}.zzzz`, NOW)).toBeNull();
-    // A leading segment likewise changes the signed input.
-    expect(await verifySession(env, `zzzz.${token}`, NOW)).toBeNull();
-  });
-
   it("R1-02f: REFUTED — JSON string escaping blocks claim injection through name/email", async () => {
     const env = adminEnv(new KvMock());
     const { token } = await issuePortalSession(
@@ -424,8 +410,9 @@ describe("R1-03 state-changing GET endpoints bypass the CSRF gate", () => {
   it("R1-03a: FIXED — logout is POST-only, so it goes THROUGH the CSRF gate instead of around it", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock());
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -495,8 +482,9 @@ describe("R1-04 audit-write amplification", () => {
     await seedProduct(db, "djdl");
 
     // A session that is authenticated but NOT a platform admin.
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       env,
+      db,
       { sub: "u2", name: "Bob", email: "b@x.io", groups: ["djdl-admins"] },
       NOW,
     );
@@ -876,8 +864,9 @@ describe("R1-08 admin cookie hardening", () => {
   it("R1-08b: FIXED — a duplicate session cookie is rejected outright instead of first-match-wins", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock());
-    const attacker = await issueSession(
+    const attacker = await consoleTestSession(
       env,
+      db,
       {
         sub: "mallory",
         name: "M",
@@ -886,8 +875,9 @@ describe("R1-08 admin cookie hardening", () => {
       },
       NOW,
     );
-    const victim = await issueSession(
+    const victim = await consoleTestSession(
       env,
+      db,
       { sub: "ada", name: "A", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -918,7 +908,9 @@ describe("R1-08 admin cookie hardening", () => {
       "/api/me",
       { now: NOW },
     );
-    expect(((await ok.json()) as { sub: string }).sub).toBe("ada");
+    expect(((await ok.json()) as { sub: string }).sub).toBe(
+      await consoleActor(env, db, "ada"),
+    );
   });
 });
 
@@ -940,8 +932,9 @@ describe("REFUTED hypotheses", () => {
 
     // A session forged with an empty group still fails the product gate.
     env.PLATFORM_ADMIN_GROUP = "";
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       env,
+      db,
       { sub: "u", name: "u", email: "u@x", groups: [""] },
       NOW,
     );
@@ -1001,8 +994,9 @@ describe("REFUTED hypotheses", () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );

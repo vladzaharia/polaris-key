@@ -18,7 +18,7 @@
     <string name="pkey_ui_boot_offline_body">Connect to the internet and try again.</string>
     <string name="pkey_ui_boot_offline_playable_body">Some content couldn\'t be downloaded. You can keep going with what\'s installed, or connect and try again.</string>
     <string name="pkey_ui_boot_error_title">Something went wrong</string>
-    <string name="pkey_ui_boot_error_body">If this keeps happening, restart the app.</string>
+    <string name="pkey_ui_boot_error_body">If this keeps happening, restart %1$s.</string>
     <string name="pkey_ui_boot_blocked_update_title">Update required</string>
     <string name="pkey_ui_boot_blocked_update_body">This version can no longer be used. Update to continue.</string>
     <string name="pkey_ui_boot_blocked_unavailable_title">Not available on your license</string>
@@ -42,7 +42,7 @@
     <string name="pkey_ui_grace_body_no_deadline">We couldn\'t reach the license server. You can keep working for now.</string>
     <string name="pkey_ui_use_another_license">Use another license</string>
     <string name="pkey_ui_version_too_old_title">Update required</string>
-    <string name="pkey_ui_version_too_old_body">This version is no longer supported. Update the app to continue.</string>
+    <string name="pkey_ui_version_too_old_body">This version is no longer supported. Update %1$s to continue.</string>
     <string name="pkey_ui_version_too_new_title">Not available on this license</string>
     <string name="pkey_ui_version_too_new_body">This build is newer than your license allows.</string>
     <string name="pkey_ui_channel_not_entitled_title">Channel not included</string>
@@ -149,7 +149,7 @@
     <string name="pkey_ui_update_restart">Restart to update</string>
     <string name="pkey_ui_update_restart_body">Version %1$s is ready. Restart to finish updating.</string>
     <string name="pkey_ui_update_ready_title">%1$s %2$s is ready</string>
-    <string name="pkey_ui_update_ready_body">Restart %1$s to finish updating.</string>
+    <string name="pkey_ui_update_ready_body">Restart to finish updating.</string>
     <string name="pkey_ui_update_restart_when_ready">Restart when ready</string>
     <string name="pkey_ui_update_downloading">Downloading · %1$s of %2$s</string>
     <string name="pkey_ui_update_restart_now">Restart now</string>
@@ -160,6 +160,8 @@
     <string name="pkey_ui_update_all_changes">All changes in %1$s</string>
     <string name="pkey_ui_update_skip">Skip this version</string>
     <string name="pkey_ui_update_time_left">About %1$s left</string>
+    <string name="pkey_ui_update_time_minutes">About %1$s min</string>
+    <string name="pkey_ui_update_time_less_than_minute">Less than a minute</string>
     <string name="pkey_ui_update_app_store">Update on the App Store</string>
     <string name="pkey_ui_update_google_play">Update on Google Play</string>
     <string name="pkey_ui_update_steam">Get it on Steam</string>
@@ -190,5 +192,5 @@
     <string name="pkey_ui_bytes_mb">%1$s MB</string>
     <string name="pkey_ui_bytes_gb">%1$s GB</string>
     <string name="pkey_ui_powered_by">Powered by Polaris Locker</string>
-    <string name="pkey_ui_polaris_key_mark">Polaris Key</string>
+    <string name="pkey_ui_polaris_key_mark">Polaris Locker</string>
 </resources>

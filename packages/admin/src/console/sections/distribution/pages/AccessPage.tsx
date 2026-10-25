@@ -18,7 +18,11 @@ import * as React from "react";
 import type { DeliveryAccess, ReleaseAccess } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
-import { ACCESS_DESCRIPTIONS, ACCESS_LABELS } from "../../../../lib/labels.js";
+import {
+  ACCESS_DESCRIPTIONS,
+  ACCESS_LABELS,
+  PACK_ACCESS_DESCRIPTIONS,
+} from "../../../../lib/labels.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Combobox } from "../../../../ui/Combobox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
@@ -41,7 +45,9 @@ import {
   SettingsSection,
   SettingsTemplate,
 } from "../../../templates/Settings.js";
-import { QUERY, useAccess, useCatalog, useDeliverables } from "../data.js";
+import { QUERY, useAccess } from "../data.js";
+import { useDeliverables } from "../../release/data.js";
+import { useCatalog } from "../../config/data.js";
 import { serverFieldErrors, SubmitError } from "../components/forms.js";
 
 const MODES: ReleaseAccess[] = [
@@ -51,21 +57,13 @@ const MODES: ReleaseAccess[] = [
   "entitled",
 ];
 
-/** The app's `entitled` is Release's eligibility (channel and version window), not a flag. */
-const APP_ENTITLED =
-  "A device whose own license covers the requested channel and version.";
-const PACK_ENTITLED = "A device whose license holds the pack's gate flag.";
-
 function modeOptions(kind: "app" | "pack") {
   return MODES.map((m) => ({
     value: m,
     label: ACCESS_LABELS[m] ?? m,
-    description:
-      m === "entitled"
-        ? kind === "app"
-          ? APP_ENTITLED
-          : PACK_ENTITLED
-        : ACCESS_DESCRIPTIONS[m],
+    description: (kind === "app"
+      ? ACCESS_DESCRIPTIONS
+      : PACK_ACCESS_DESCRIPTIONS)[m],
   }));
 }
 

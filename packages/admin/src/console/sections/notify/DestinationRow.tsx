@@ -8,7 +8,7 @@
 import * as React from "react";
 import { Mail, Webhook } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type AlertDestination,
   type AlertScope,
 } from "../../../api.js";
@@ -159,7 +159,7 @@ export function DestinationRow({
         if (res.outcome === "ok") toast.success("Test alert delivered");
         else setTestFail({ detail: res.detail });
       } catch (e) {
-        if (e instanceof ApiError && e.status === 429 && e.retryAfter) {
+        if (e instanceof HttpError && e.status === 429 && e.retryAfter) {
           setThrottledHere(true);
           onThrottled(e.retryAfter);
           return;
@@ -214,7 +214,7 @@ export function DestinationRow({
         : null;
   const showError = d.enabled && d.lastError && d.lastStatus !== "ok";
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-4 py-2.5 @[16rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-4 py-2 @[16rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
       <Glyph
         aria-hidden
         className={cn(

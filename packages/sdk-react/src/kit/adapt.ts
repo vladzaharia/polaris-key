@@ -6,16 +6,16 @@
 //     row is renamed, confirmed or saved;
 //   * a refusal is shown once, under the field that caused it.
 
-import { viewOf, type UiInput, type View } from "@polaris-key/ui-core";
+import {
+  formatBytes,
+  viewOf,
+  type UiInput,
+  type View,
+} from "@polaris-key/ui-core";
 
-const union = (...lists: readonly (readonly string[])[]): string[] => [
-  ...new Set(lists.flat()),
-];
+import { patched, union } from "./adaptBase.js";
 
-/** The same view with `copy` and `decisions` replaced. */
-function patched(v: View, over: Partial<View>): View {
-  return { ...v, ...over, decisions: { ...v.decisions, ...over.decisions } };
-}
+export { adaptHandoff, HANDOFF_WAITING } from "./adaptBase.js";
 
 /** A pane whose transient state (rename, confirm, save, error) keeps its title and its rows. */
 export function adaptPane(view: View, input: UiInput): View {
@@ -79,18 +79,6 @@ export function adaptReplace(view: View): View {
     ),
   });
 }
-
-/** The code step: how long the code lasts and a Cancel to leave by. */
-export function adaptHandoff(view: View): View {
-  if (view.component !== "SignInHandoff" || view.state !== "code") return view;
-  const add: string[] = [];
-  if (view.args.time !== undefined) add.push("signin.handoff.expires");
-  add.push("common.cancel");
-  return patched(view, { copy: union(view.copy, add) });
-}
-
-/** What the code step says while it waits (a status, not the ticking countdown). */
-export const HANDOFF_WAITING = "cli.signin.waitingCode";
 
 export const ORIGIN_KEY: Readonly<Record<string, string>> = {
   store: "signin.choice.origin.store",
@@ -241,4 +229,22 @@ export function withoutLede(view: View): View {
   return view.component === "Devices" && view.copy.includes("devices.lede")
     ? patched(view, { copy: view.copy.filter((k) => k !== "devices.lede") })
     : view;
+}
+
+/** `update.progress` for UpdateProgress from the bytes a desktop host reports
+ *  (`installUpdate(decision, { onProgress })`). A known total gives the fraction and both sizes;
+ *  an unknown one (`null`) gives neither a fraction nor a total, so the bar is indeterminate
+ *  and no percentage is made up. */
+export function installProgressInput(
+  done: number,
+  total: number | null,
+  locale?: string,
+): NonNullable<NonNullable<UiInput["update"]>["progress"]> {
+  const counted = total !== null && total > 0 && total >= done;
+  return {
+    phase: "download",
+    ...(counted ? { fraction: done / total } : {}),
+    size: formatBytes(done, locale),
+    ...(counted ? { total: formatBytes(total, locale) } : {}),
+  };
 }

@@ -98,7 +98,7 @@ func run(t: PKeyTestContext) -> void:
 	# binary {native} with no plugin: the adapter opens the build's download link.
 	var check := S.check_of({"action": "binary", "method": "native", "release": {"version": "1.5.0", "seq": 15, "sha256": "ab".repeat(32)}, "build": "macos-dmg", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false})
 	var want := S.DL + "/djdl/distribution/builds/1.5.0/macos-dmg"
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("bridges: binary native with no plugin degrades to the build's download link", r.ok and r.behaviour == "link" and r.url == want and e.opened == [want], "%s %s" % [r, e.opened])
 	# With a plugin whose call fails: still the link, and the hook's code is kept.
 	var failing := Native.new()
@@ -106,13 +106,13 @@ func run(t: PKeyTestContext) -> void:
 	e.singletons["PolarisKeySparkle"] = failing
 	u.bridges = {}
 	e.opened.clear()
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("bridges: a native updater that fails falls back to the download link", r.ok and r.behaviour == "link" and e.opened == [want] and r.detail.get("fallback_from") == "sparkle" and failing.calls.size() == 1, "%s %s" % [r, r.detail])
 	var working := Native.new()
 	e.singletons["PolarisKeySparkle"] = working
 	u.bridges = {}
 	e.opened.clear()
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("bridges: with the Sparkle plugin, binary native hands off (no link opened)", r.ok and r.behaviour == "hook" and working.calls.size() == 1 and e.opened.is_empty() and String(working.calls[0][1]).contains("/update/appcast.xml"), str(working.calls))
 	t.check("bridges: with the plugin, native is offered to the decision", u.methods().has("native"))
 	sdk.queue_free()
@@ -146,39 +146,39 @@ func _appimage(t: PKeyTestContext) -> void:
 	r = await ai.install_verified(null, {})
 	t.check("appimage: verified hook cannot run without a check", not r.ok and r.code == PKeyErrors.INVALID_OPTIONS)
 	var no_record := S.check_of(check.decision)
-	r = await sdk.update.apply(no_record)
+	r = await sdk.update.install(no_record)
 	t.check("appimage: a decision without its record cannot install", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
 	var missing := S.check_of(check.decision.duplicate(true))
 	missing.record_doc = check.record_doc.duplicate(true)
 	missing.decision["build"] = "absent"
-	r = await sdk.update.apply(missing)
+	r = await sdk.update.install(missing)
 	t.check("appimage: the selected build must be in the verified record", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
 	missing.decision["build"] = check.decision["build"]
 	missing.record_doc["version"] = "1.6.0"
-	r = await sdk.update.apply(missing)
+	r = await sdk.update.install(missing)
 	t.check("appimage: the record must match the decision's release", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
 	missing.record_doc = check.record_doc.duplicate(true)
 	missing.record_doc["builds"][0]["artifacts"].append(missing.record_doc["builds"][0]["artifacts"][0].duplicate())
-	r = await sdk.update.apply(missing)
+	r = await sdk.update.install(missing)
 	t.check("appimage: ambiguous payloads cannot install", not r.ok and r.code == PKeyErrors.RECORD_MISMATCH and sup.requests(prefix).is_empty())
 	# A transport-consistent replacement with the exact expected length but a different digest.
 	sup.plan[prefix] = [S.ranged(bad)]
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("appimage: host-controlled bytes absent from the signed record are refused without changing the image", not r.ok and r.code == PKeyErrors.PAYLOAD_MISMATCH and S.read(image) == old and e.relaunched.is_empty() and e.opened.is_empty() and _no_staging(image))
 	sup.plan[prefix] = [S.ranged(S.bytes(129, 4))]
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("appimage: an oversized payload changes nothing", not r.ok and r.code == PKeyErrors.RESPONSE_TOO_LARGE and S.read(image) == old and e.relaunched.is_empty() and _no_staging(image))
 	sup.plan[prefix] = [S.ranged(S.bytes(127, 4))]
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("appimage: a truncated payload changes nothing", not r.ok and S.read(image) == old and e.relaunched.is_empty() and _no_staging(image))
 	sup.plan[prefix] = [S.ranged(good)]
 	u.rename_hook = func(fresh: String, target: String) -> int:
 		t.check("appimage: commit receives verified bytes in a private sibling directory", S.read(fresh) == good and target == image and fresh.get_base_dir().get_base_dir() == image.get_base_dir() and FileAccess.get_unix_permissions(fresh.get_base_dir()) == PKeyAppImageBridge.PRIVATE_MODE and FileAccess.get_unix_permissions(fresh) == PKeyAppImageBridge.PRIVATE_MODE)
 		return ERR_FILE_CANT_WRITE
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("appimage: a failed atomic replacement preserves the original and does not relaunch", not r.ok and r.code == PKeyErrors.SWAP_FAILED and S.read(image) == old and e.relaunched.is_empty() and _no_staging(image))
 	u.rename_hook = Callable()
-	r = await sdk.update.apply(check)
+	r = await sdk.update.install(check)
 	t.check("appimage: verified bytes replace and relaunch the image without invoking the zsync updater", r.ok and r.bridge == "appimage" and S.read(image) == good and e.relaunched == [image] and e.executed.is_empty() and e.opened.is_empty() and _no_staging(image), str(r))
 	# The external tool can still provide an informational check, never an install.
 	e.programs["appimageupdatetool"] = "/usr/bin/appimageupdatetool"

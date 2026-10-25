@@ -38,6 +38,8 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+private const val LONG_TOKEN = 14
+
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w360dp-h640dp-mdpi")
@@ -102,7 +104,8 @@ class AccessibilityTest {
     private fun everyScreen(branding: PolarisBranding) {
         host(branding)
         val failures = mutableListOf<String>()
-        for ((name, content) in kitScreens) {
+        // The update prompt in its dialog (the phone's bottom sheet): a window of its own, so it is listed apart.
+        for ((name, content) in kitScreens + ("updatePrompt-sheet" to updateDialog)) {
             show(content)
             // The update banner sits over the product, which brings its own heading.
             checkScreen(name, failures, requireHeading = name != "updatePrompt-ready")
@@ -124,6 +127,8 @@ class AccessibilityTest {
                 // clip signal: a centred paragraph is laid out at the full width it was offered.)
                 val lastEllipsized = layout.lineCount > 0 && layout.isLineEllipsized(layout.lineCount - 1)
                 if (layout.didOverflowHeight || lastEllipsized) failures += "$name: '${layout.layoutInput.text}' is clipped"
+                // And no line ends inside a word (DL11): a break falls at a space, never between two letters.
+                failures += midWordBreaks(layout).map { "$name: '${layout.layoutInput.text}' breaks inside '$it'" }
                 // And no text runs off the side of the window.
                 val bounds = node.boundsInRoot
                 if (bounds.left < -1f || bounds.right > rule.onRoot().fetchSemanticsNode().size.width + 1f) {
@@ -137,6 +142,24 @@ class AccessibilityTest {
             if (lowest > root.size.height + 1 && !scrolls) failures += "$name: content runs past the window and does not scroll"
         }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    /** The words [layout] cuts across two lines: a line that ends on a letter or digit with the next starting on one. */
+    private fun midWordBreaks(layout: TextLayoutResult): List<String> {
+        val text = layout.layoutInput.text.text
+        val broken = mutableListOf<String>()
+        for (line in 0 until layout.lineCount - 1) {
+            val end = layout.getLineEnd(line)
+            if (end <= 0 || end >= text.length) continue
+            if (!text[end - 1].isLetterOrDigit() || !text[end].isLetterOrDigit()) continue
+            var from = end - 1
+            while (from > 0 && text[from - 1].isLetterOrDigit()) from--
+            var to = end
+            while (to < text.length && text[to].isLetterOrDigit()) to++
+            // A token with no break point that is wider than the window (a key, a code) must be cut somewhere.
+            if (to - from < LONG_TOKEN) broken += text.substring(from, to)
+        }
+        return broken
     }
 
     @Test

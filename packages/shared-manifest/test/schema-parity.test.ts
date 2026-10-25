@@ -393,6 +393,21 @@ function base(): Docs {
                 format: "ipa",
                 match: "Acme-*-ios-sideload.ipa",
               },
+              // A-20.5: the builds the Flathub, Snap and web outlets need (`outlet_without_build`).
+              {
+                id: "linux-appimage",
+                platform: "linux",
+                arch: "x86_64",
+                format: "appimage",
+                match: "Acme-*-linux-x86_64.AppImage",
+              },
+              {
+                id: "web",
+                platform: "web",
+                arch: "any",
+                format: "zip",
+                match: "Acme-*-web.zip",
+              },
             ],
           },
           // P4-02: pack deliverables in the v1 subset (plans/P4-01.md §3): a required,
@@ -3080,6 +3095,17 @@ const MUTATIONS: Mutation[] = [
     file: "distribution",
     schema: "accepts",
     mutate: (d) => (outlet(d, "altstore").artifact = "ipa-appstore"),
+  },
+  {
+    // A-20.5, a warning: the release declares an artifact map and none of its builds is on a
+    // platform the Flathub and Snap outlets serve. A cross-document rule, so the schema accepts.
+    code: "outlet_without_build",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) =>
+      (app(d).artifacts = app(d).artifacts.filter(
+        (a: { platform: string }) => a.platform !== "linux",
+      )),
   },
   {
     code: "unknown_channel_ref",

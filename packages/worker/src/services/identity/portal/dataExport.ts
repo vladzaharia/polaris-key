@@ -19,7 +19,7 @@
  * Each document is assembled field by field, never by spreading a row, so a column added to a
  * table tomorrow is NOT exported until someone decides it should be. The OpenAPI schemas
  * (`PortalAccountExport`, `PortalProductExport`) declare `additionalProperties: false`, and
- * `test/portalDataExport.test.ts` validates real documents against them, so the schema and this
+ * `test/services/identity/portalDataExport.test.ts` validates real documents against them, so the schema and this
  * module cannot drift apart. What is deliberately absent, and why:
  *
  *   credentials   no session id (hash), device token (hash), licence key (hash or text),
@@ -28,16 +28,17 @@
  *   other people  no operator or developer identity (who revoked a token, who relinked a
  *                 licence), no other account's row, no relink history (a developer's record).
  *   machinery     the account-join undo snapshot (it copies the absorbed account's passkey user
- *                 handle), the pre-I-05 `portal_*` mirrors (the same data again), the legacy
- *                 `accounts.terms_json`, device fingerprints and software facts (hashed hardware
- *                 components the developer's product keeps for licence enforcement), store
- *                 purchase records, a licence's `overrides_json` and `groups_json`, and the
+ *                 handle), the retired pre-I-05 `portal_*` tables (no code reads them since
+ *                 I-28), the legacy `accounts.terms_json`, device fingerprints and software
+ *                 facts (hashed hardware components the developer's product keeps for licence
+ *                 enforcement), store purchase records, a licence's `overrides_json` and `groups_json`, and the
  *                 developer's own audit log.
  *
  * Secrets that live in a product's registered stores stay sealed: a store's `export` names a
  * secret and says whether it is set, never its value (`config.accountOverrides`).
  */
 
+import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import {
   listAccountTokens,
   type PersonalTokenView,
@@ -621,7 +622,7 @@ async function exportLicense(
     name: row.name,
     email: row.email,
     status: row.status,
-    tier: row.tier_id,
+    tier: await customerTierId(db, row),
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     maxOfflineDays: row.max_offline_days,

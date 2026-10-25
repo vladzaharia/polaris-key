@@ -34,7 +34,10 @@
 
 import type { DbStatement } from "../../../db/types.js";
 import { stmtMoveAccountLicenses } from "../../../core/accounts/accountSubjects.js";
-import { stmtMoveAccountTokens } from "../../../core/accounts/personalTokens.js";
+import {
+  stmtMoveAccountTokens,
+  stmtRevokeAccountAdminTokens,
+} from "../../../core/accounts/personalTokens.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licensing/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/accounts/subjectHooks.js";
@@ -275,7 +278,11 @@ export async function mergeAccounts(
       sql: "UPDATE registry_tokens SET portal_account_id = ? WHERE portal_account_id = ?",
       params: [S, A],
     },
-    // F-33: the absorbed account's personal tokens become the survivor's.
+    // ST-34 D-12: an admin token resolves to the roles of the account that holds it, so it must
+    // never take on the survivor's. It is revoked here, BEFORE the move, and stays on A (the move
+    // skips the admin scope). A restored backup cannot revive it: the row is revoked.
+    stmtRevokeAccountAdminTokens(A, now, "merge"),
+    // F-33: the absorbed account's packages tokens become the survivor's.
     stmtMoveAccountTokens(A, S),
     // I-12: a relink's undo moves the licence back to the account it came from, which is now S.
     {
@@ -333,21 +340,6 @@ export async function mergeAccounts(
       params: [A, S, now],
     },
     { sql: "DELETE FROM accounts WHERE id = ?", params: [A] },
-    // The pre-I-05 tables: the absorbed account's rows go (a rollback re-creates the survivor's
-    // from the moved links and licences, scripts/rollback/0068_accounts.down.sql).
-    {
-      sql: "DELETE FROM portal_account_identities WHERE account_id = ?",
-      params: [A],
-    },
-    {
-      sql: "DELETE FROM portal_account_emails WHERE account_id = ?",
-      params: [A],
-    },
-    {
-      sql: "DELETE FROM portal_license_links WHERE account_id = ?",
-      params: [A],
-    },
-    { sql: "DELETE FROM portal_accounts WHERE id = ?", params: [A] },
     {
       sql: `INSERT INTO portal_audit (id, account_id, at, action, product, target_kind, target_id, summary)
             VALUES (?, ?, ?, 'account.merge', NULL, 'account', ?, ?)`,

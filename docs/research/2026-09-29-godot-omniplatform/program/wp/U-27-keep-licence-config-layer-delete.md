@@ -65,13 +65,29 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - **Builds or backs 1 mockup item(s):** `config.effective`.
 
+## Corrections (2026-10-22)
+
+Found against `integ/next-stage` @ 1099323cc (plan `U-27-P2-12-slices.md` §A0). The code is the fact.
+
+1. **Paths have moved.** The module is `core/ops/overrideMigration.ts`, the handlers are `console/handlers/overrideMigration.ts`, and the page is `packages/admin/src/console/sections/platform/pages/platformOverrideMigration.tsx`. The older `core/overrideMigration.ts` and `admin/handlers/...` paths predate P0-17.
+2. **More readers than `payload.ts:125`.** `core/licensing/payload.ts`, `core/licensing/issue.ts` and `issueAccount.ts` (`licenseConfigOverridesFrozen`), `services/license/admin/licenses.ts` (the freeze, `LICENSE_CONFIG_WRITABLE_SQL`, `configOverridesView`), `services/config/admin/catalog.ts`, `console/handlers/accountOverrides.ts` (`licenseLayerRetired`), `services/config/accountOverrideStore.ts`, `services/config/index.ts`, `productDeletion.ts`, `scheduled.ts` (the nightly step), `core/migrate/coreJobs.ts` (`core.licence-override-migration`), `console/handlers/platform.ts`, `console/routes.ts`, `console/stepUp.ts`, `scripts/override-migration-dry-run.ts` and the `override-migration:dry-run` package script.
+3. **The legacy runner P0-49 left out** is the override migration's own state machine, lease and run, with its CLI script. U-27.4 deletes both. `settingsBackfill.ts` stays with P0-24.
+4. **The "frozen" provisioning path drops unowned licences' provisioned secrets** (`provisionedColumn(..., frozen=true)` writes none). U-27.2 therefore targets per licence, not globally.
+5. **Table owners.** Both tables are owned by `config`; the module crosses into them through `WRITE_SEAMS` / `LICENSE_WRITE_SEAMS` rows naming P0-49, which go with the module.
+6. **Doc pages that do not exist yet.** `features/managed-config/visibility` and `minted-tokens` are created by U-30 and U-31. U-27's part covers `catalog.md`, `profiles.md`, `index.mdx`, `management-states.md` and `reference/config-entry.mdx`.
+7. **The route ledger is already set.** `routeLedger.ts` already says `fate: "deleted", by: "U-27"`.
+
+## Owner decision 1
+
+Cancel the U-03 run. Answered 2026-10-07 under delegated authority, open to the owner's veto. Production had no `override_migration` row at 2026-10-07 19:05 PDT, so the retired and frozen branches never ran and removing them changes no document. The lead re-checks (`SELECT * FROM override_migration`) before release N deploys. U-27.1 (branch `wp/U-27.1-licence-layer-always`) makes the licence layer always read and writable.
+
 ## Acceptance criteria
 
-- [ ] Licence overrides apply to floating and in-account licences (test)
-- [ ] No code reads override_migration (grep) and the old Worker keeps serving during the deploy
-- [ ] Owner decision 1 recorded
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Licence overrides apply to floating and in-account licences (test): `packages/worker/test/surfaces/licenseConfigLayer.test.ts` cases (a) floating and (b) owned licence (U-27.1 0da5533da)
+- [x] No code reads override_migration (grep) and the old Worker keeps serving during the deploy: under `packages/worker/src` only `db/owners.ts` and the `accountOverrideStore` subject-store claim name the tables; the tables stay until U-27b (U-27.4 56621383c)
+- [x] Owner decision 1 recorded (§ Owner decision 1 above)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`. U-27.7 851c352c1 and 08e4f88cd: `catalog`, `profiles`, `management-states`, `upgrade-to-0-9`; `visibility` and `minted-tokens` belong to U-30 and U-31 (Corrections item 6); `reference/config-entry` needed no change.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches: shipped in v0.9.17 (c87a8e7ba, CI attempt 2 green, 90 checks).
 
 ## Verify
 

@@ -342,7 +342,11 @@ describe.concurrent("Sign-in methods", () => {
     run("add-virtual", { virtual: true }, async (p) => {
       await listed(p);
       await openAdd(p);
-      await confirm(p, "Add passkey");
+      // By keyboard: the ring is :focus-visible only, so a pointer would not show it.
+      await p
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Add passkey" })
+        .press("Enter");
       await p.getByRole("alertdialog").waitFor({ state: "detached" });
       // The new row has focus, with a visible ring.
       await p

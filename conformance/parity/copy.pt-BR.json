@@ -26,15 +26,15 @@
       "message": "Você não tem permissão para fazer isso."
     },
     "attestation_required": {
-      "title": "Verificação do dispositivo necessária",
+      "title": "Verificação necessária",
       "message": "Isso exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente."
     },
     "attestation_rejected": {
-      "title": "Falha na verificação do dispositivo",
+      "title": "Dispositivo não verificado",
       "message": "Não foi possível verificar este dispositivo. Tente novamente."
     },
     "attestation_unavailable": {
-      "title": "Verificação do dispositivo indisponível",
+      "title": "Verificação indisponível",
       "message": "A verificação de dispositivo não está disponível para este app agora. Tente novamente em alguns minutos."
     },
     "rate_limited": {
@@ -102,7 +102,7 @@
       "message": "O hardware deste dispositivo mudou. Ative novamente para usar sua licença aqui."
     },
     "fingerprint_required": {
-      "title": "Falha na verificação do dispositivo",
+      "title": "Dispositivo não verificado",
       "message": "Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo."
     },
     "enroll_disabled": {
@@ -154,28 +154,28 @@
       "message": "O acesso não está disponível para este app."
     },
     "invalid_request": {
-      "title": "Solicitação de login inválida",
+      "title": "Solicitação de acesso inválida",
       "message": "O app enviou uma solicitação que não conseguimos ler. Tente de novo."
     },
     "invalid_client": {
-      "title": "Não foi possível concluir o login",
-      "message": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
+      "title": "Acesso não concluído",
+      "message": "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
     },
     "invalid_grant": {
-      "title": "Login não é mais válido",
-      "message": "Este login expirou ou já foi usado. Entre de novo."
+      "title": "Acesso não é mais válido",
+      "message": "Este acesso expirou ou já foi usado. Entre de novo."
     },
     "unsupported_grant_type": {
-      "title": "Solicitação de login inválida",
-      "message": "O app pediu um tipo de login que não aceitamos. Fale com o desenvolvedor."
+      "title": "Solicitação de acesso inválida",
+      "message": "O app pediu um tipo de acesso que não aceitamos. Fale com o desenvolvedor."
     },
     "invalid_scope": {
       "title": "Acesso indisponível",
-      "message": "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor."
+      "message": "O app pediu um tipo de acesso que esta forma de entrar não oferece. Fale com o desenvolvedor."
     },
     "redirect_uri_mismatch": {
-      "title": "O login não consegue voltar ao app",
-      "message": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
+      "title": "Não foi possível voltar ao app",
+      "message": "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
     },
     "license_choice_required": {
       "title": "Escolha uma licença",
@@ -199,7 +199,7 @@
     },
     "invalid_code": {
       "title": "Código incorreto",
-      "message": "Esse código não funcionou. Confira o e-mail e digite de novo."
+      "message": "Esse código está incorreto. Confira o e-mail e tente de novo."
     },
     "code_expired": {
       "title": "Código expirado",
@@ -207,7 +207,7 @@
     },
     "email_in_use": {
       "title": "E-mail já em uso",
-      "message": "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
+      "message": "Outra conta do Polaris Locker já usa este e-mail. Una este acesso a essa conta ou use outro e-mail."
     },
     "terms_required": {
       "title": "Termos não aceitos",
@@ -225,6 +225,38 @@
       "title": "É preciso entrar",
       "message": "Entre na sua conta do Polaris Locker neste dispositivo e tente novamente."
     },
+    "cursor_expired": {
+      "title": "Sincronização desatualizada",
+      "message": "Este dispositivo ficou tempo demais sem sincronizar. Ele vai recomeçar com seus dados salvos."
+    },
+    "client_mismatch": {
+      "title": "Sincronização incompatível",
+      "message": "Esta sincronização pertence a outro dispositivo. Reinicie o app e tente de novo."
+    },
+    "value_invalid": {
+      "title": "Configuração não salva",
+      "message": "Esse valor não é válido para esta configuração."
+    },
+    "op_invalid_for_policy": {
+      "title": "Alteração não permitida",
+      "message": "Essa alteração não é permitida para esta configuração."
+    },
+    "setting_not_synced": {
+      "title": "Não sincronizada",
+      "message": "Esta configuração não é sincronizada com sua conta."
+    },
+    "collection_unknown": {
+      "title": "Coleção desconhecida",
+      "message": "Esta coleção não está disponível."
+    },
+    "quota_exceeded": {
+      "title": "Armazenamento cheio",
+      "message": "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo."
+    },
+    "writes_paused": {
+      "title": "Sincronização pausada",
+      "message": "A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois."
+    },
     "email_mismatch": {
       "title": "E-mail não verificado",
       "message": "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente."
@@ -234,7 +266,7 @@
       "message": "Esse método de acesso pertence a outra conta do Polaris Locker. Entre nessa conta ou una as duas contas."
     },
     "last_link": {
-      "title": "Não é possível remover",
+      "title": "Impossível remover",
       "message": "Este é o único método de acesso da sua conta. Adicione outro antes de removê-lo."
     },
     "step_up_required": {
@@ -246,7 +278,7 @@
       "message": "Esta oferta não está mais disponível para sua conta. Atualize a página e tente novamente."
     },
     "not_removable": {
-      "title": "Não é possível remover",
+      "title": "Impossível remover",
       "message": "Esta licença não pode ser adicionada de novo com uma chave de licença, então ela continua na sua biblioteca."
     },
     "download_auth_required": {
@@ -258,7 +290,7 @@
       "message": "Este download ainda não está configurado. Contate o desenvolvedor."
     },
     "upstream_rate_limited": {
-      "title": "Downloads sobrecarregados",
+      "title": "Servidor ocupado",
       "message": "Os downloads estão sobrecarregados agora. Tente novamente em alguns minutos."
     },
     "server_misconfigured": {
@@ -279,10 +311,10 @@
     },
     "asset_unreachable": {
       "title": "Imagem não atualizada",
-      "message": "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
+      "message": "Não foi possível obter uma imagem na origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
     },
     "feed_not_composable": {
-      "title": "Verificação de atualizações indisponível",
+      "title": "Atualizações indisponíveis",
       "message": "Não é possível verificar atualizações agora. Tente novamente em alguns minutos."
     },
     "service-unavailable": {
@@ -330,11 +362,11 @@
       "message": "Verifique sua conexão e tente novamente."
     },
     "network": {
-      "title": "Não é possível conectar",
+      "title": "Sem conexão",
       "message": "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente."
     },
     "refresh-failed": {
-      "title": "Não foi possível atualizar",
+      "title": "Falha ao atualizar",
       "message": "Não foi possível atualizar sua licença e suas configurações. Verifique sua conexão e tente novamente."
     },
     "sync-failed": {
@@ -355,7 +387,7 @@
     },
     "release-refused": {
       "title": "Não incluído",
-      "message": "Sua licença não inclui este lançamento."
+      "message": "Sua licença não inclui esta versão."
     },
     "bundle-rejected": {
       "title": "Arquivo de ativação inválido",
@@ -374,15 +406,15 @@
       "message": "Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta."
     },
     "device_list_failed": {
-      "title": "Não foi possível carregar os dispositivos",
+      "title": "Falha ao carregar dispositivos",
       "message": "Não foi possível carregar seus dispositivos. Verifique sua conexão e tente novamente."
     },
     "device_rename_failed": {
-      "title": "Não foi possível renomear",
+      "title": "Falha ao renomear",
       "message": "Não foi possível renomear o dispositivo. Tente novamente."
     },
     "device_deauthorize_failed": {
-      "title": "Não foi possível remover o dispositivo",
+      "title": "Falha ao remover dispositivo",
       "message": "Não foi possível remover o dispositivo. Tente novamente."
     },
     "key-entry-unsupported": {
@@ -402,7 +434,7 @@
       "message": "O serviço enviou uma resposta que o app não pôde usar. Tente novamente."
     },
     "network-error": {
-      "title": "Não é possível conectar",
+      "title": "Sem conexão",
       "message": "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente."
     },
     "server-error": {
@@ -474,7 +506,7 @@
       "message": "O serviço enviou uma resposta que o app não pôde usar. Tente novamente."
     },
     "store-failed": {
-      "title": "Problema de armazenamento",
+      "title": "Erro de armazenamento",
       "message": "O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele."
     },
     "platform-error": {
@@ -490,11 +522,11 @@
       "message": "Isso não está disponível para este app."
     },
     "feed-rejected": {
-      "title": "Falha na verificação de atualizações",
+      "title": "Falha ao verificar atualizações",
       "message": "Não foi possível verificar as informações de atualização, então nada foi instalado."
     },
     "feed-rollback": {
-      "title": "Falha na verificação de atualizações",
+      "title": "Falha ao verificar atualizações",
       "message": "As informações de atualização eram mais antigas do que as que este dispositivo já tem, então foram recusadas."
     },
     "record-rejected": {
@@ -510,12 +542,12 @@
       "message": "A atualização não foi baixada corretamente, então não foi instalada. Tente novamente."
     },
     "swap-refused": {
-      "title": "Não é possível atualizar aqui",
+      "title": "Impossível atualizar aqui",
       "message": "Esta instalação não pode se atualizar sozinha. Atualize-a da mesma forma que você a instalou."
     },
     "swap-failed": {
       "title": "Atualização não concluída",
-      "message": "Não foi possível aplicar a atualização. Ela será tentada novamente na próxima inicialização."
+      "message": "Não foi possível aplicar a atualização. Uma nova tentativa será feita na próxima inicialização."
     },
     "files-index-invalid": {
       "title": "Conteúdo inválido",
@@ -642,7 +674,7 @@
       "message": "Não há espaço livre suficiente para este conteúdo. Libere espaço e tente novamente."
     },
     "plan-no-strategy": {
-      "title": "Não é possível instalar o conteúdo",
+      "title": "Impossível instalar conteúdo",
       "message": "Este conteúdo não pode ser instalado neste dispositivo."
     },
     "pack-no-variant": {
@@ -666,7 +698,7 @@
       "message": "Sua licença não inclui este conteúdo."
     },
     "pack-state-unreadable": {
-      "title": "Problema de armazenamento",
+      "title": "Erro de armazenamento",
       "message": "Não foi possível ler o conteúdo instalado, então nada novo foi instalado. Reinicie o app."
     },
     "pck-directory-refused": {
@@ -733,7 +765,7 @@
     },
     "version-too-old": {
       "title": "Atualização necessária",
-      "message": "Esta versão não é mais compatível. Atualize o app para continuar."
+      "message": "Esta versão não tem mais suporte. Atualize {product} para continuar."
     },
     "version-too-new": {
       "title": "Indisponível nesta licença",
@@ -758,7 +790,7 @@
       "message": "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui."
     },
     "fingerprint-required": {
-      "title": "Falha na verificação do dispositivo",
+      "title": "Dispositivo não verificado",
       "message": "Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo."
     },
     "hardware-mismatch": {
@@ -778,7 +810,7 @@
       "message": "Esta licença expirou. Renove-a para continuar."
     },
     "attestation-required": {
-      "title": "Verificação do dispositivo necessária",
+      "title": "Verificação necessária",
       "message": "Esta licença exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente."
     },
     "rate-limited": {

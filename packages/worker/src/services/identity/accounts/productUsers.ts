@@ -43,7 +43,6 @@ import {
 import {
   existingSupportCode,
   existingSupportCodes,
-  normalizeSupportCode,
   subjectForSupportCode,
 } from "../../../core/accounts/supportCodes.js";
 import { type LicenseRow } from "../../../core/repo.js";

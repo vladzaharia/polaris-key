@@ -47,8 +47,9 @@ import {
 } from "@polaris-key/protocol/core";
 import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
-import type { ProductPublic } from "./products.js";
-import type { ServiceHooks } from "./hooks.js";
+import { loadProductPublic, type ProductPublic } from "./products.js";
+import { buildHooks, type ServiceHooks } from "./hooks.js";
+import { bound } from "./contributions.js";
 import {
   PRESENTATION_ICON_SLOTS,
   firstHostedImage,
@@ -162,6 +163,39 @@ export async function resolvePresentation(
     )
       return null;
     return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The developer name a product presents (the listing's `developerName`, HA-12), for a caller that
+ * holds no service hooks, such as Identity's notices (LX-27c.3). Core builds the product's hooks
+ * from the bound registry, gated on that product's enablement, so Distribution's code runs only
+ * while the product has it on, and nothing here imports a service. `null`: none is set, the
+ * product or Distribution is off, or any read failed (display data, never an error).
+ */
+export async function productDeveloperName(
+  env: Env,
+  db: Db,
+  slug: string,
+  now: number,
+): Promise<string | null> {
+  try {
+    const product = await loadProductPublic(db, slug);
+    if (!product) return null;
+    const hooks = buildHooks(bound(), product.services, {
+      env,
+      db,
+      product,
+      now,
+    });
+    const delivery = hooks.delivery();
+    if (!delivery) return null;
+    const listing = (await delivery.listing()) as Readonly<
+      Record<string, unknown>
+    > | null;
+    return presentationText(product, listing).developerName;
   } catch {
     return null;
   }

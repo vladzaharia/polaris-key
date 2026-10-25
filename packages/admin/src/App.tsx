@@ -5,7 +5,7 @@ import { ConsoleQueryProvider } from "./console/data/queryClient.js";
 import { useMe } from "./console/data/hooks.js";
 import { AppShell } from "./console/shell/AppShell.js";
 import { BootScreen } from "./console/shell/StatePages.js";
-import { ApiError } from "./api.js";
+import { HttpError } from "./api.js";
 import {
   ConsoleOffline,
   ConsoleRefused,
@@ -72,9 +72,16 @@ function Boot(): React.ReactElement {
   if (me.data) return <AppShell me={me.data} />;
   if (me.isError) {
     // A refusal is the server answering: trying again cannot change it (B-015).
-    if (me.error instanceof ApiError && me.error.status === 403)
+    if (me.error instanceof HttpError && me.error.status === 403)
       return <ConsoleRefused />;
-    return <ConsoleOffline onRetry={() => me.refetch()} />;
+    // A 5xx is also the server answering: say it failed, not that it can't be reached (P2).
+    const serverError =
+      me.error instanceof HttpError &&
+      me.error.status >= 500 &&
+      me.error.status < 600;
+    return (
+      <ConsoleOffline serverError={serverError} onRetry={() => me.refetch()} />
+    );
   }
   return <BootScreen />;
 }

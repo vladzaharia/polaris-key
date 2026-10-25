@@ -21,8 +21,6 @@ export interface AccountRow {
   avatar_key: string | null;
   locale: string | null;
   details_source_json: string | null;
-  /** Superseded by `account_terms_acceptances` (PX-W15): neither read nor written. */
-  terms_json: string | null;
   /**
    * I-33: the optional birth date (`YYYY-MM-DD`) and where it came from (`user`,
    * `connection:<id>`), `accounts/birthdate.ts`. Private to the person: never answered outside
@@ -197,7 +195,7 @@ export { verifiedAccountEmails };
  * one), then any other account in id order. INTERNAL: for the licence association only (LX-26);
  * nothing about it reaches a developer. The same two sources as `verifiedAccountEmails` (a link
  * whose email is verified, a verified primary email), read the other way; only active accounts
- * answer. Keep the two in step (`test/licenseHolders.test.ts` pins that they agree).
+ * answer. Keep the two in step (`test/surfaces/console/licenseHolders.test.ts` pins that they agree).
  */
 export async function accountsVerifyingEmail(
   db: Db,

@@ -178,8 +178,9 @@ describe("per-command help", () => {
       const cwd = await tempDir();
       const r = await run(argv, { cwd });
       expect(r.code).toBe(0);
-      expect(r.out).toContain(`[--modules ${SERVICE_SLUGS.join(",")}]`);
-      expect(r.out).toContain("pkey init scaffolds .pkey/");
+      expect(r.out).toContain("[--modules slugs]");
+      expect(r.out.replace(/\s+/g, " ")).toContain(SERVICE_SLUGS.join(", "));
+      expect(r.out).toContain("Writes product.yaml");
       expect(r.out).not.toContain("Created");
       expect(await readdir(cwd)).toEqual([]);
     }
@@ -220,19 +221,22 @@ describe("per-command help", () => {
       "pkey release keys generate --content --out file",
     );
 
-    const feeds = await run(["feeds", "-h"]);
-    for (const sub of ["fdroid", "setup", "prune"])
-      expect(feeds.out).toContain(`pkey feeds ${sub}`);
+    const feeds = await run(["storefront", "-h"]);
+    for (const sub of ["fdroid", "itch push", "snap upload"])
+      expect(feeds.out).toContain(`pkey storefront ${sub}`);
 
     const bundle = await run(["help", "bundle"]);
     expect(bundle.out).toContain("PKEY_ADMIN_TOKEN");
-    expect(bundle.out).not.toContain("PKEY_ADMIN_COOKIE");
+    expect(bundle.out).not.toMatch(/cookie/i);
     expect(bundle.out).toContain("--no-config");
 
-    // The import still presents the console session, so its help names the cookie, not the token.
+    // The import takes the same bearer credential (ST-34.9): its help names the token and
+    // pkey login, and no cookie or session at all.
     const listing = await run(["help", "listing", "import"]);
-    expect(listing.out).toContain("PKEY_ADMIN_COOKIE");
-    expect(listing.out).not.toContain("PKEY_ADMIN_TOKEN");
+    expect(listing.out).toContain("PKEY_ADMIN_TOKEN");
+    expect(listing.out).toContain("pkey login");
+    expect(listing.out).toContain("pkeyp_");
+    expect(listing.out).not.toMatch(/cookie|console session/i);
   });
 
   it("help for an unknown command exits 2", async () => {
@@ -261,7 +265,7 @@ describe("pkey validate [path]", () => {
     const r = await run(["validate", "game"], { cwd });
     expect(r.code).toBe(0);
     expect(r.out).toContain("Manifest: valid");
-    expect(r.out).toContain("Modules: license, config");
+    expect(r.out).toContain("Features: license, config");
     // The working directory itself has no .pkey/: without the path that is a failure.
     const here = await run(["validate"], { cwd });
     expect(here.code).toBe(1);

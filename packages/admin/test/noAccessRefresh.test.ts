@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "../src/api.js";
+import { HttpError } from "../src/api.js";
 import { createQueryClient } from "../src/console/data/queryClient.js";
 import {
   bindWriteInvalidation,
@@ -16,15 +16,11 @@ describe("a no_access refusal refreshes me", () => {
     const client = createQueryClient();
     const spy = vi.spyOn(client, "invalidateQueries");
     unbind = bindWriteInvalidation(client);
-    refreshMeOnNoAccess(
-      new ApiError(403, undefined, undefined, undefined, "no_access"),
-    );
+    refreshMeOnNoAccess(new HttpError(403, { reason: "no_access" }));
     expect(spy).toHaveBeenCalledWith({ queryKey: qk.me(), exact: true });
     spy.mockClear();
-    refreshMeOnNoAccess(
-      new ApiError(403, undefined, undefined, undefined, "other"),
-    );
-    refreshMeOnNoAccess(new ApiError(500));
+    refreshMeOnNoAccess(new HttpError(403, { reason: "other" }));
+    refreshMeOnNoAccess(new HttpError(500));
     refreshMeOnNoAccess(new Error("x"));
     expect(spy).not.toHaveBeenCalled();
   });
@@ -37,9 +33,7 @@ describe("a no_access refusal refreshes me", () => {
       .fetchQuery({
         queryKey: ["probe"],
         queryFn: () =>
-          Promise.reject(
-            new ApiError(403, undefined, undefined, undefined, "no_access"),
-          ),
+          Promise.reject(new HttpError(403, { reason: "no_access" })),
       })
       .catch(() => undefined);
     expect(spy).toHaveBeenCalledWith({ queryKey: qk.me(), exact: true });

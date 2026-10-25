@@ -25,6 +25,7 @@ const MINT_ID = /^[a-z0-9-]+$/;
 export const CONFIG_ROUTES = serviceRoutes("config", [
   {
     path: "document",
+    cors: true,
     methods: ["GET"],
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now, settings }) =>
@@ -32,6 +33,7 @@ export const CONFIG_ROUTES = serviceRoutes("config", [
   },
   {
     path: "schema",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "none" },
@@ -40,6 +42,7 @@ export const CONFIG_ROUTES = serviceRoutes("config", [
   // /config/mint/<id>/{token,auth}
   {
     path: "mint/:mintId/token",
+    cors: true,
     methods: ["GET", "POST"],
     auth: { kind: "handler" },
     params: { mintId: MINT_ID },

@@ -55,6 +55,7 @@ const ANCHORS: Readonly<Record<string, string>> = {
   "keys|Device trust": "keys-trust",
   "portal|Polaris Locker": "portal-switches",
   "presentation|Hosting and quotas": "presentation-hosting",
+  "sync-setup|Product limits": "sync-limits",
 };
 
 /** The element id a home's section lands on, if the page has one for it. */
@@ -197,6 +198,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // ── Distribution ───────────────────────────────────────────────────────────────────────────
   "distribution.access": at("access"),
   "distribution.feeds": at("package-feeds"),
+  "distribution.packageFeeds": at("package-feeds"),
   // Operator-owned and written by the Worker's commerce routes; the Commerce page only drives
   // App Store Connect.
   "commerce.stores": API,
@@ -208,6 +210,8 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "distribution.transports": manifest("distribution"),
 
   // ── Identity ───────────────────────────────────────────────────────────────────────────────
+  // Operator-owned (PX-W13c): platform admins only; the others see it read-only.
+  "identity.displayNameApproved": at("app-sign-in", "Presentation"),
   "identity.keyEntry.limit": manifest("product"),
   // App sign-in, License keys.
   "identity.keyEntry.claimByKey": at("portal", "Polaris Locker"),
@@ -218,6 +222,10 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "identity.oidc": manifest("product"),
   "identity.provisioning": manifest("product"),
   "identity.oidc.syncTierOnSignIn": at("app-sign-in", "Tier sync"),
+
+  // ── Cloud Sync ─────────────────────────────────────────────────────────────────────────────
+  // U-05.20: Cloud Sync → Setup → Product limits (the meter and its Change dialog).
+  "cloudSync.ceiling.bytes": at("sync-setup", "Product limits"),
 };
 
 /**

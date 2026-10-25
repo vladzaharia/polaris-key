@@ -1,0 +1,8 @@
+outlets:
+  # F-Droid repository
+  fdroid:
+    kind: fdroid-repo
+    # Artifact id from .pkey/release.
+    artifact: apk
+    # Android package name.
+    packageName: com.acme.dice

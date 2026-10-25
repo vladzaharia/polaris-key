@@ -4,6 +4,7 @@ import {
   CloudUpload,
   Fingerprint,
   Keyboard,
+  KeyRound,
   Library,
   LogOut,
 } from "lucide-react";
@@ -48,7 +49,7 @@ export function formatSessionEnd(epochSeconds: number): string {
  * The account menu (ADMIN.md §2.2, fixes SH-14): who is signed in, when the session ends (A-1;
  * the session is a hard 8 h, so the time is worth knowing before a long edit), the running build
  * (a chip linking to Platform → Deployment, so the version is one click from every page; notes/S-13
- * §9.1), the shortcut sheet, the docs home and Sign out. The theme lives in its own menu beside
+ * §9.1), your Personal tokens, the shortcut sheet, the docs home and Sign out. The theme lives in its own menu beside
  * this one, except under 640 px, where the bar has no room for it and this menu carries the theme
  * and motion choices.
  */
@@ -64,6 +65,9 @@ export function UserMenu({
   onSignOut: () => void;
 }): React.ReactElement {
   const narrow = useMediaQuery(NARROW_BAR_QUERY);
+  // Picking a page: its heading keeps the focus the route gave it, not the menu button Radix
+  // would restore.
+  const navigated = React.useRef(false);
   const initials = (me.name || me.email || "")
     .split(/\s+/)
     .map((s) => s[0])
@@ -80,7 +84,15 @@ export function UserMenu({
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-60">
+      <DropdownMenuContent
+        align="end"
+        className="min-w-60"
+        onCloseAutoFocus={(e) => {
+          if (!navigated.current) return;
+          navigated.current = false;
+          e.preventDefault();
+        }}
+      >
         <DropdownMenuLabel>
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-fg-strong">
@@ -108,6 +120,22 @@ export function UserMenu({
             </Link>
           </DropdownMenuItem>
         ) : null}
+        <DropdownMenuItem asChild>
+          <Link
+            to={r.personalTokens()}
+            onClick={() => {
+              navigated.current = true;
+              // Already on the page: no route change moves focus, so the heading takes it.
+              if (window.location.hash.split("?")[0] === r.personalTokens())
+                requestAnimationFrame(() =>
+                  document.querySelector<HTMLElement>("h1")?.focus(),
+                );
+            }}
+          >
+            <KeyRound aria-hidden />
+            Personal tokens
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onShortcuts}>
           <Keyboard aria-hidden />
           Keyboard shortcuts

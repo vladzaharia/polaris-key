@@ -36,7 +36,7 @@ const axe = configureAxe({
 });
 
 const PAGE = "#/p/djdl/distribution/storefronts";
-const LISTING = "#/p/djdl/distribution/listing";
+const LISTING = "#/p/djdl/settings/presentation/listing";
 const SF = (path = "") => P(`/distribution/storefronts${path}`);
 
 beforeEach(() => {
@@ -652,6 +652,41 @@ describe("Distribution → Storefronts", () => {
     expect(skip).toBeTruthy();
   });
 
+  it("A-28.5: an identifier read from the assignment says so; a manifest one does not", async () => {
+    bootWith(
+      `${PAGE}?flow=add&step=prerequisites&stores=google-play`,
+      routes({
+        [SF()]: {
+          ...VIEW,
+          stores: [
+            {
+              ...PLAY,
+              identifiers: {
+                packageName: { value: "gg.djdl.app", source: "assigned" },
+                developerId: { value: "4321", source: "manifest" },
+              },
+            },
+            NEW_STORE,
+          ],
+        },
+      }),
+    );
+    const ids = await screen.findByLabelText("Google Play identifiers");
+    const rows = within(ids).getAllByText(/./, { selector: "dt" });
+    expect(rows.map((n) => n.textContent)).toEqual([
+      "Package name",
+      "Developer ID",
+    ]);
+    expect(within(ids).getByText("gg.djdl.app")).toBeTruthy();
+    expect(within(ids).getAllByText("From the assignment")).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "App", level: 3 })).toBeTruthy();
+    expect(
+      within(ids.querySelectorAll("div")[1] as HTMLElement).queryByText(
+        "From the assignment",
+      ),
+    ).toBeNull();
+  });
+
   it("a store without a connection is read-only, with the reason", async () => {
     bootWith(
       `${PAGE}?flow=add&step=prerequisites&stores=acme-arcade`,
@@ -697,7 +732,7 @@ describe("Distribution → Listing", () => {
   it("the fit report names what does not fit and offers an override", async () => {
     bootWith(`${LISTING}?tab=fit`, routes());
     expect(
-      await screen.findByText(/title \(en-US\) too long: 34 of 30/),
+      await screen.findByText(/title \(en-US\) too long: 34 of 30/i),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Override…" })).toBeTruthy();
   });

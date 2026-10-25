@@ -36,7 +36,8 @@ export interface ConsoleSubject {
   /**
    * The signed-in account (`AdminSession.aid`, v2 only). Selects the stored bindings. Never
    * logged, never put in a response body (`accountIdBoundary.test.ts`). Absent for a v1 cookie,
-   * a token and the sign-in gate, which resolve the root rule alone.
+   * a `pkeya_` token and the sign-in gate, which resolve the root rule alone. (An admin-scope
+   * `pkeyp_` token does carry it, ST-34.3: it acts as its holder.)
    */
   accountId?: string;
 }
@@ -107,7 +108,7 @@ export async function resolvePrincipal(
   env: RootEnv,
   db: Db | null,
   subject: ConsoleSubject,
-  now: number,
+  _now: number,
 ): Promise<Principal> {
   const grants: Grant[] = [];
   const root =

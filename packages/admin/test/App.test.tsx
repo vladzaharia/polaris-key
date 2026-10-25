@@ -50,7 +50,9 @@ describe("admin SPA", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) =>
         fail
-          ? new Response("{}", { status: 500 })
+          ? (() => {
+              throw new TypeError("Failed to fetch");
+            })()
           : new Response(
               JSON.stringify(
                 String(input).includes("/manage/api/products")
@@ -96,6 +98,21 @@ describe("admin SPA", () => {
         .getByRole("link", { name: "Sign in with another account" })
         .getAttribute("href"),
     ).toMatch(/^\/manage\/login\?returnTo=/);
+  });
+
+  it("P2: a 500 from /me says the server failed, not that Polaris Key can't be reached, and keeps Try again", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 500 })),
+    );
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", {
+        name: "Something went wrong on the server",
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Can't reach Polaris Key/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 
   it("renders a product page at its new URL", async () => {

@@ -8,7 +8,7 @@
  * docs and the console name, the inputs its snippets read (`inputs`) and the feed's path on the
  * registry host. The Worker's feed adapter for the ecosystem
  * (`packages/worker/src/services/distribution/registry/<ecosystem>/index.ts`) points its `setup` at
- * the same object, and its conformance suite (`test/feedAdapters.test.ts`) checks the path and
+ * the same object, and its conformance suite (`test/surfaces/feedAdapters.test.ts`) checks the path and
  * the namespace inputs against the adapter. A template reads its inputs only through the values
  * `renderFeedSetup` resolves from that list: reading an undeclared one throws, so `inputs` is
  * exactly what each snippet depends on.

@@ -34,6 +34,29 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/U-01b.md`](../plans/U-01b.md) §11: §13.1–13.5, D3 (open settings), D5 (quota, resolved per device), D6 (`cloudSyncWrite`, `writes_paused`, the two settings), `empty`, the `syncAccess` change, §6.1's migration, T6, T14, T17, T18, the "One module for the licence question" rewrite and the PRIVACY row. It drops `byTier`, `unlicensed` and `requireLicense`. Its `cloudSyncWrite` relies on U-01b's lenient reader.
 
+## Corrections (2026-10-22)
+
+Recorded by U-05.1 from `_lead/plans/U-05-slices.md` §0. The code is the fact; where this brief disagrees, these win.
+
+1. **Paths have moved.** `syncAccess` is at `packages/worker/src/core/accounts/syncAccess.ts`, not `core/syncAccess.ts`. The trust policy is at `core/trust/deviceTrust.ts` (`TRUST_OPERATIONS` at `:42`, `parseTrustPolicy` at `:256`). The CORS list is `CORS_SERVICE_PATHS` in `core/cors.ts`.
+2. **The lenient reader is live.** `parseTrustPolicy` drops an unknown member whose value is `basic` or `attested` (`deviceTrust.ts:246-283`). U-05 only adds `cloudSyncWrite`.
+3. **All three Cloud Sync settings are registered `pending: { wp: "U-05" }`.** `cloudSync.writesPaused` and `cloudSync.quota.defaultBytes` are in `core/settings/platform.ts:469-524`; `cloudSync.ceiling.bytes` is in `services/sync/settings.ts`. `writeSetting` refuses pending keys (`core/settings/write.ts:643`), and the console draws nothing for a setting the platform list does not serve.
+4. **`@polaris-key/protocol/sync` did not exist.** U-05.1 creates it. client-core's `SYNC_*` constants (`client-core/src/cloud-sync.ts`) and the catalog's `CLOUD_SYNC_*` (`shared-catalog/src/cloudSync.ts`) now take their numbers from it. shared-protocol's build lists each entry point in the `tsup` command of `package.json` `"build"`.
+5. **The sync error codes are not registered.** None of the seven U-05 codes is in `conformance/parity/errors.json`, and `PolarisErrorCode` (`shared-protocol/src/core.ts:295`) lacks them (U-05.2).
+6. **No existing Durable Object uses the SQLite SQL API.** `wrangler.toml` binds `RL`, `UPDATE_HEALTH` and `SINGLE_USE`, with migration tags `v1` to `v3`; the next tag is `v4`. Each class is `implements DurableObject` with one JSON `POST` per operation, and the Node lane runs the real class over a storage mock (`test/updateHealthMock.ts`). `durable_objects` is not inheritable, so `[env.prod]`, `[env.staging]`, `[env.dev]` and `[env.test]` each repeat every binding.
+7. **The subject-store guard constrains ordering** (`test/subjectStores.test.ts`). It fails if `sync_directory` (subject-keyed) lands with no store claiming it, or if `CloudSyncDO` is bound with no store claiming it, or a store claims an unbound class. It bans `subjectFor`, `licenseOwnerSubject`, `accountId`, `account_id` and similar names in every file under `services/sync/`.
+8. **Identity already rewrites device rows on an account merge** (`services/identity/accounts/merge.ts:228`). An undo does not split re-keyed data (`mergeUndo.ts` header), so U-05's store needs no device rewrite and no undo hook.
+9. **CX-SYNC (merge `9119920d5`) built part of the console.** The Setup and Data tabs, the Pause writes and Storage default dialogs and the paused banner are in `packages/admin/src/console/sections/sync/`. Those controls draw nothing until the settings stop being pending. There is no Usage tab and no Cloud Sync admin route. The `ux-coverage.json` evidence for `config.cloud-sync*` predates CX-SYNC.
+10. **The docs pages now exist** (DOC-03a, DOC-05b, DOC-09c): `features/cloud-sync/index.md` (with a "Nothing syncs" note), `help/sync.md` and `help/remove-from-library.mdx`.
+11. **The Goal and Scope text below is out of date.** It still says "unlicensed limits", "RateLimitDO limits" and three product ceilings. Per U-01b D5 and D6, only `cloudSync.ceiling.bytes` is a setting; 100k users and 2,000 pushes a second are constants, and the quota is the `pkey.cloudSync.bytes` entitlement. Goal and Scope are superseded by U-01b D5 and D6 (L18).
+12. **LX-36 (the Anonymous devices tier) is todo.** D5's "no usable licence" branch is a seam that today answers 1 MiB with files refused (`CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes`).
+13. **No platform-family function exists** for `scope: "platform"` (U-01 Q8, approved: `desktop`, `mobile`, `console`, `web`). U-05 adds one in Core (`core/devices/platformFamily.ts`), mapping from `DeviceRow.platform`.
+14. **`cloudsync-quota.json` cannot cover all three scopes.** U-01b §4 says "all three scopes", but the `collection` scope needs U-09's records. U-05 records `user`, `product` and the licence-less 1 MiB case; U-09 re-records it with `collection` (L16).
+15. **The load test runs after the chain merges.** It needs a staging deploy with numbered migrations, so it runs after v0.9.15, once the lead has numbered them.
+16. **A comment is stale.** `services/identity/passthrough/client.ts:24` says Cloud Sync "is not in the service table yet".
+17. **The graph entry is incomplete.** `workpackages.json` gives U-05 `planRef: "U-01"` only; it should add U-01b (the lead edits it, L18).
+18. **Tier data belongs to License.** Tier labels and values live in `tiers`, which License owns. `services/sync` reads them through a Core accessor, never SQL (`tableCrossings`).
+
 ## Goal
 
 Devices push and pull user settings through `/<p>/sync/` against one Durable Object per `(product, subject)`, with push rules 1–8 enforced on the server, `403 account_required` for devices with no signed-in account, the settings account-merge hook, coalesced D1 directory writes, unlicensed limits and product ceilings, and browser bearer access through the CORS list.

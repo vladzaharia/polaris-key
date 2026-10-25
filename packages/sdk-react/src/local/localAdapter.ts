@@ -71,9 +71,10 @@ import {
   type ConfigStorage,
 } from "../core/localConfig.js";
 import type { ReactPresentationSource } from "../core/presentation.js";
+import { expectedServicesOf } from "../core/expectedServices.js";
 import {
   copyServices,
-  defaultServices,
+  type ServiceSlug,
   type ServicesMap,
 } from "../core/services.js";
 import { createStore, type Store } from "../core/store.js";
@@ -123,7 +124,7 @@ export interface LocalAdapterOptions {
    *  `not-applicable`. */
   status?: LicenseStatus;
   /** What the product runs. Defaults to licence + config; never all-true. */
-  expectServices?: ServicesMap;
+  expectedServices?: readonly ServiceSlug[];
   /** The app's version: the boot guard's key and the crash tags' release. Without one the guard
    *  has no build to count launches of, and `markBootAttempt()` throws `not-configured`. */
   version?: string;
@@ -198,7 +199,7 @@ export class LocalAdapter implements PolarisAdapter {
     this.version = opts.version;
     this.clock = opts.now ?? nowSec;
     this.catalog = opts.catalog ?? null;
-    this.capabilities = copyServices(opts.expectServices ?? defaultServices());
+    this.capabilities = expectedServicesOf(opts);
     this.capabilityCtx = capabilityContext("web", () => this.capabilities);
     const hostOverrides = opts.localOverrides ?? {};
     const backend = browserLocalConfigBackend(this.product, opts.storage);

@@ -248,11 +248,14 @@ export async function audit(
   action: string,
   target: Target,
   summary: string,
+  change?: { before?: unknown; after?: unknown },
 ): Promise<void> {
-  await appendAudit(
-    db,
-    sessionRow(product, session, now, action, target, summary),
-  );
+  const row = sessionRow(product, session, now, action, target, summary);
+  if (change?.before !== undefined)
+    row.before_json = JSON.stringify(change.before);
+  if (change?.after !== undefined)
+    row.after_json = JSON.stringify(change.after);
+  await appendAudit(db, row);
 }
 
 function sessionRow(

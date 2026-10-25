@@ -26,7 +26,6 @@ import {
 } from "./platformDeepLink.js";
 import { History } from "lucide-react";
 import {
-  api,
   type PlatformDeployValue,
   type PlatformSetting,
   type PlatformSettingsView,
@@ -39,9 +38,9 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { LiveRegion } from "../../../../ui/LiveRegion.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { qk } from "../../../data/queries.js";
+
+import { reads } from "../../../data/reads.js";
 import {
-  SettingsRow,
   SettingsSection,
   SettingsTemplate,
 } from "../../../templates/Settings.js";
@@ -62,8 +61,7 @@ import { LicensingSection } from "./platformLicensing.js";
 import { PlatformReadyOnHomeRow } from "./platformHomeRow.js";
 import { EditableRow } from "./platformSettingRow.js";
 
-export { fetchPlatformKek } from "./platformKeyring.js";
-export { fetchPlatformReservedNames } from "./platformLicensing.js";
+export { fetchPlatformKek, fetchPlatformReservedNames } from "../data.js";
 
 type SectionId =
   | "platform-ready"
@@ -100,6 +98,12 @@ export const SECTION_OF_AREA: Record<string, SectionId> = {
   licensing: "platform-licensing",
   "background-jobs": "platform-jobs",
 };
+
+/** The title of the section a registry area is shown in (Activity's "Where" row). */
+export function sectionTitleOfArea(area: string): string {
+  const id = SECTION_OF_AREA[area] ?? "platform-advanced";
+  return SECTIONS.find((x) => x.id === id)?.title ?? "Advanced";
+}
 
 /** A setting that reads better elsewhere than its registry area says. */
 const SECTION_OF_KEY: Record<string, SectionId> = {
@@ -230,10 +234,7 @@ function ViewOnlyNotice(): React.ReactElement | null {
 }
 
 export function PlatformSettingsPage(): React.ReactElement {
-  const query = useQuery({
-    queryKey: qk.platformSettings(),
-    queryFn: () => api.platformSettings(),
-  });
+  const query = useQuery(reads.platformSettings());
   const view = query.data;
   useSettingTarget(view !== undefined, platformRowId);
   useOpenAdvancedFor(view);
@@ -290,6 +291,10 @@ export function PlatformSettingsPage(): React.ReactElement {
         setting={s}
         storeAvailable={view.storeAvailable}
         propagationSeconds={view.propagationSeconds}
+        displayMode={
+          view.settings.find((x) => x.key === "IDENTITY_RESERVED_DISPLAY_NAMES")
+            ?.value as string | undefined
+        }
       />
     ));
   const has = (names: readonly string[]) => names.some((n) => deploy.has(n));
@@ -334,7 +339,7 @@ export function PlatformSettingsPage(): React.ReactElement {
         <SettingsSection
           id="platform-signin"
           title="Sign-in"
-          description="Reserved display names save on their own. The identity provider is under Advanced; a console session can never widen its own access."
+          description="The identity provider is under Advanced; a console session can never widen its own access."
         >
           {rows("platform-signin")}
           <ConstantRow view={view} name="ADMIN_SESSION_TTL_SECONDS" />

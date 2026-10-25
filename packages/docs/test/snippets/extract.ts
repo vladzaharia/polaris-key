@@ -2,7 +2,7 @@
  * The doc-snippet extractor: every fenced code block in the docs pages, the SDK READMEs and the
  * agent skills, by language, with the opt-out marker.
  *
- * Conventions for authors (also in AGENTS.md, "Conventions when writing docs pages"):
+ * Conventions for authors (also in packages/docs/AGENTS.md, "Page conventions"):
  *
  * - A `ts`, `tsx`, `js`, `python` or `py` fence is compiled in its SDK lane (see `lanes.ts`). The
  *   lane is the one the block's imports name; a block that imports nothing from an SDK is a Node

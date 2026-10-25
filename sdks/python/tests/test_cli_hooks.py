@@ -80,7 +80,7 @@ class _FakeConfig:
     def __init__(self, owner: "FakeClient") -> None:
         self._owner = owner
 
-    def get_config(self, key: str, fallback: Any = None) -> Any:
+    def get(self, key: str, fallback: Any = None) -> Any:
         return self._owner._config.get(key, fallback)
 
     def get_config_source(self, key: str) -> str:

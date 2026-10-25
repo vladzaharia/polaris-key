@@ -167,7 +167,7 @@ static func editor_defaults(config_path := CONFIG_PATH) -> Dictionary:
 		var opts = load(config_path)
 		if opts is PKeyOptions:
 			# Properties only: in the editor a loaded non-tool resource may be a placeholder.
-			product = str(opts.get("product"))
+			product = str(opts.get("product_slug"))
 			channel_option = str(opts.get("default_channel"))
 			if str(opts.get("version")) != "":
 				version = str(opts.get("version"))

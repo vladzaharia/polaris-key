@@ -16,7 +16,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type PlatformFleet,
   type PlatformReach,
   type PlatformSetting,
@@ -24,7 +23,8 @@ import {
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import type { ConfirmPlan } from "../../../../ui/settings/useSettingWrite.js";
-import { qk } from "../../../data/queries.js";
+
+import { platformReads } from "../data.js";
 import { formatPlatformValue } from "./platformSettingRow.js";
 
 const products = (n: number): string => (n === 1 ? "product" : "products");
@@ -117,8 +117,7 @@ export function useReachPlan(
   const [retrying, setRetrying] = React.useState(false);
   const [retried, setRetried] = React.useState(false);
   const q = useQuery({
-    queryKey: qk.platformReach(setting.key, value),
-    queryFn: () => api.platformSettingReach(setting.key, value),
+    ...platformReads.reach(setting.key, value),
     enabled: target !== null && setting.link != null,
     gcTime: 0,
     staleTime: 0,

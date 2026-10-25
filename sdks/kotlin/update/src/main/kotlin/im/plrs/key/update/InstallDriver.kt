@@ -56,10 +56,16 @@ public sealed interface InstallStage {
     public data class Failed(val code: String, val detail: String? = null) : InstallStage
 }
 
-/** A driver whose install continues after [install] returns, and finishes with a restart. */
-public interface ProgressiveInstallDriver : InstallDriver {
-    /** The background install's stage; [InstallStage.Idle] until one starts. */
+/** A driver that reports where its install stands, for the update prompt's progress. */
+public interface InstallProgressSource {
+    /** The install's stage; [InstallStage.Idle] until one starts. */
     public val progress: StateFlow<InstallStage>
+}
+
+/** A driver whose install continues after [install] returns, and finishes with a restart. */
+public interface ProgressiveInstallDriver : InstallDriver, InstallProgressSource {
+    /** The background install's stage; [InstallStage.Idle] until one starts. */
+    override val progress: StateFlow<InstallStage>
 
     /** Install a downloaded update (the app restarts); `NothingToInstall` when none is downloaded. */
     public suspend fun finish(): InstallResult

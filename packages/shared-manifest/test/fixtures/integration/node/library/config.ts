@@ -8,7 +8,7 @@ const client = await PolarisKeyClient.create({
 });
 
 await client.sync();
-const value = client.config.getConfig("audio.musicVolume", 0.8);
+const value = client.config.get("audio.musicVolume", 0.8);
 const secret = client.config.getSecret("api.token");
 const minted = await client.config.mintToken("cdn");
 client.events.on("config", () => console.log("settings changed"));

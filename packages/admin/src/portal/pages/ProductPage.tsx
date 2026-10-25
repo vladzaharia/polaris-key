@@ -1,4 +1,5 @@
 import * as React from "react";
+import { ErrorState } from "../../ui/ErrorState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
@@ -9,7 +10,6 @@ import { LicenseCard } from "../components/product/LicenseCard.js";
 import { ProductHeader } from "../components/product/ProductHeader.js";
 import { SectionNav } from "../components/product/SectionNav.js";
 import { WhatsNew } from "../components/product/WhatsNew.js";
-import { ErrorPanel } from "../components/States.js";
 import {
   capabilitiesOrNone,
   useCapabilities,
@@ -32,12 +32,12 @@ import {
   seatLimitFor,
   seatsFor,
   showsDeviceCount,
-  storeFor,
   tierName,
   withSeats,
 } from "../model/product.js";
 import {
   focusPageHeading,
+  ROUTE_FOCUS_DEADLINE_MS,
   href,
   navigate,
   scrollBehavior,
@@ -48,6 +48,7 @@ import {
 import { EntryProductBody } from "./EntryProductPage.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
 import { t } from "../../lib/copy.js";
+import { focusRoute } from "../../ui/focusRoute.js";
 
 /**
  * The product page (§4.20) on today's data: everything about one product in one place. The
@@ -79,7 +80,7 @@ export function ProductPage({
   if (lib.isPending) return <ProductSkeleton />;
   if (lib.error)
     return (
-      <ErrorPanel
+      <ErrorState
         error={lib.error}
         onRetry={lib.retry}
         asPage
@@ -87,7 +88,7 @@ export function ProductPage({
         message={t("locker.error.loadFailed", {
           name: product?.name ?? t("locker.error.thisProduct"),
         })}
-        backToLibrary
+        backTo={{ href: href.library(), label: t("locker.library.title") }}
       />
     );
   if (!product) return <NotFoundProduct email={account.email} />;
@@ -146,8 +147,6 @@ function ProductBody({
   // best licence's.
   const seatLimit = seatLimitFor(product, view.data, selected.id);
   const showCount = showsDeviceCount(product, selected);
-  // The store of an active purchase on each licence (PX-W6): the origin names it with the key.
-  const storeOf = (id: string): string | null => storeFor(view.data, id);
   // Get it is in the nav only when its card is drawn (an ended license with nothing to download
   // has none): the nav never points at a section the page does not have.
   const getIt = useGetItShown(product, here);
@@ -184,7 +183,10 @@ function ProductBody({
   // exit) and handed focus back to its opener, and without scrolling away from a deep link.
   React.useEffect(() => {
     if (consumeHeadingFocus(product.slug))
-      focusPageHeading(() => headingRef.current);
+      void focusRoute({
+        root: document.querySelector("main") ?? undefined,
+        deadline: ROUTE_FOCUS_DEADLINE_MS,
+      });
   }, [product.slug]);
 
   // A section deep link scrolls there once.
@@ -288,7 +290,7 @@ function ProductBody({
     href.product(product.slug, s),
   );
   const devicesDetail = detail.data ? withSeats(detail.data, seats) : undefined;
-  // The product view is the seat source; an older Worker without it keeps the licence detail.
+  // The product view is the seat source; the licence detail answers until it arrives.
   const seatsPending = view.isPending && !view.error;
   const activeDevices =
     seats?.inUse ??
@@ -333,7 +335,6 @@ function ProductBody({
       onSelect={(id) =>
         setParams({ license: id === product.best.id ? null : id })
       }
-      storeOf={storeOf}
     />
   );
 
@@ -341,7 +342,7 @@ function ProductBody({
     // data-first-section: a link to the first section keeps the page at its top, as the deep
     // link above does (the router reads it, MO-05).
     <div
-      className="space-y-6 desk:space-y-8"
+      className="space-y-6 desk:space-y-8 desk:lowscreen:space-y-6"
       data-first-section={sections[0] ?? undefined}
     >
       <ProductHeader
@@ -349,9 +350,7 @@ function ProductBody({
         action={action}
         headingRef={headingRef}
         // Only a licence its key can bring back (the Worker's `removable`, PX-23 review).
-        onRemove={
-          selected.removable === true ? () => setRemoving(true) : undefined
-        }
+        onRemove={selected.removable ? () => setRemoving(true) : undefined}
       />
       <RemoveLicenseDialog
         open={removing}
@@ -360,7 +359,6 @@ function ProductBody({
         license={selected}
         detail={detail.data}
         cloudSync={view.data?.services.sync === true}
-        store={storeOf(selected.id)}
         onRemoved={removed}
       />
       <SectionNav {...navProps} variant="pills" />

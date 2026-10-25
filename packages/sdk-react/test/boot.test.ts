@@ -248,7 +248,7 @@ describe("boot-cold-register.json through the browser adapter's boot()", () => {
       version: t.initial.version,
       auth: "bearer",
       trust: { pinnedKeys: t.trust },
-      expectServices: servicesFromList(t.initial.services as never),
+      expectedServices: t.initial.services as never,
       store,
       offlineStore: null,
       fetchImpl: server.fetch as typeof fetch,

@@ -9,6 +9,7 @@ import {
   DoneStep,
   FormStep,
   PrereqList,
+  RepoChangeStep,
   SnippetStep,
   Stepper,
   WaitingFor,
@@ -133,6 +134,55 @@ function DrawerWizardDemo(): React.ReactElement {
         </p>
       </Wizard>
     </>
+  );
+}
+
+const REPO_FILES = [
+  {
+    id: "workflow",
+    label: "Workflow",
+    filename: ".github/workflows/release.yml",
+    language: "yaml" as const,
+    code: 'name: release\non:\n  push:\n    tags: ["v*"]',
+    where: "Add the workflow",
+  },
+  {
+    id: "release",
+    label: "Release",
+    filename: ".pkey/release.json",
+    language: "json" as const,
+    code: '{ "channels": "auto" }',
+    where: "Add the release settings",
+  },
+];
+
+function RepoChangeDemo(): React.ReactElement {
+  return (
+    <div className="max-w-2xl space-y-8">
+      <RepoChangeStep
+        pullRequest={{
+          number: 12,
+          url: "https://github.com/acme/app/pull/12",
+          summary: "Adds the release workflow and the release settings.",
+          files: [
+            { path: ".github/workflows/release.yml", change: "added" },
+            { path: ".pkey/release.json", change: "changed" },
+          ],
+        }}
+        waiting="Waiting for pull request #12 to merge"
+        found={null}
+      />
+      <RepoChangeStep
+        command="pkey ci init --product acme --repo acme/app"
+        files={REPO_FILES}
+        permission={{
+          needs: "Contents: write and Pull requests: write",
+          reviewUrl: "https://github.com/settings/installations",
+        }}
+        waiting="Waiting for the change to reach main"
+        found={null}
+      />
+    </div>
   );
 }
 
@@ -287,6 +337,14 @@ function StepsDemo(): React.ReactElement {
 }
 
 export const stories: Story[] = [
+  {
+    id: "wizard-repo-change",
+    group: "Templates",
+    title: "RepoChangeStep",
+    description:
+      "A step that changes the repository: the pull request Polaris Key opened, or the tabs for making the change yourself.",
+    render: () => <RepoChangeDemo />,
+  },
   {
     id: "stepper",
     group: "Templates",

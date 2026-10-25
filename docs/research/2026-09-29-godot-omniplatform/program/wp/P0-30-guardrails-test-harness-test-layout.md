@@ -54,9 +54,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Worker test wall time measurably lower
-- [ ] Budget and unused-export tests blocking
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Worker test wall time measurably lower (full worker suite through heavy.sh: 132.97 s at the P0-30.1 base, 68.81 s after the template DB, 55.41 s after the P0-30.6 move)
+- [x] Budget and unused-export tests blocking (the 800-line size ledger, P0-30.3; unused exports are P0-46.2's knip ledger, T3; both in `pnpm lint:ts`)
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches. (Scoped per slice; CI runs the matrix.)
 
 ## Verify
 
@@ -71,3 +71,21 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set P0-30 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set P0-30 done`.
+
+## Corrections (2026-10-24)
+
+Verified against the code (plan `P0-30-AX-07-slices.md` §0):
+
+- The numbers grew: 186 migrations (newest `0141_b_index_assertion.sql`), 1,272 `makeTestDb(` call sites in 348 files, 489 flat `*.test.ts` under `test/` plus 27 in subdirectories.
+- `makeTestDb()` replays every migration per call (about 75 ms); a deserialised template takes 0.04 ms.
+- The unused-export test already exists: knip (P0-46.2). Its ledger `tools/lint/debt/knip.json` is the allow-list; no second mechanism.
+- `noUnusedLocals` / `noUnusedParameters` are off; turning them on for the worker gives 116 errors (105 TS6133, 6 TS6196, 5 TS6192). The worker `tsconfig.json` only (P0-30.2).
+- No size budget exists; 69 worker `src/**/*.ts` files exceed 800 lines.
+- The admin harness is half there (`consoleSessionHelper.ts`); `makeEnv(kv, _slugs)` has an unused parameter, made optional rather than swept (263 files).
+- `presentationInsert` can go (migration 0106 shipped from v0.8.33); the migration tests that seed older schemas prove it.
+- Shared helpers are imported from outside `test/` (`dev/world.ts`, admin e2e, `turbo.json`), so only `*.test.ts` files move.
+- Some test paths are referenced by tooling and stay put (T9): `tools/generators.ts:138-139` and `tools/gen-transcripts.mjs:41` (transcripts), `ci.yml:319` (`docsSearchBrowser.test.ts`), root `AGENTS.md` (`routeCoverage`, `tableCrossings`). `tools/lint/debt/jscpd.json` keys 429 lines by worker test path, so a move re-records it.
+- 131 test files build paths from `import.meta.url` (fixtures, `../migrations`); moving them needs a path rewrite (T10).
+- Layout target is `cq-worker-services.md` §5.10; by direct `../src/` imports: core 61, one service 99, console only 29, console + one service 46, two or more services 84, a composition module 134, no `src` import 36. A classification job with a reviewed map, not a blind move (T11).
+- Verify matters (T12): the transcripts family runs the worker scenario tests, which call `makeTestDb`; a template change must keep every transcript byte-identical.
+- P0-30.1 landed: `makeTestDb()` clones a serialized template cached at `os.tmpdir()/pkey-test-db/<sha256 of migration bytes>.sqlite` (temp name + `renameSync`; an unopenable file is rebuilt; no `globalSetup`).

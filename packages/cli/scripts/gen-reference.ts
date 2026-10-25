@@ -48,7 +48,8 @@ function commandSection(c: PkeyCommand): string[] {
     ...c.usage,
     "```",
   ];
-  for (const p of c.about ?? []) out.push("", prose(p.text));
+  for (const p of [...(c.about ?? []), ...(c.reference ?? [])])
+    out.push("", prose(p.text));
   if (c.env?.length) {
     out.push("", "| Variable | Meaning |", "| --- | --- |");
     for (const e of c.env) out.push(`| ${code(e.name)} | ${cell(e.text)} |`);
@@ -71,9 +72,9 @@ function actionTable(): string[] {
     })),
   );
   return [
-    "## GitHub Action",
+    "## GitHub Action inputs removed in 0.9",
     "",
-    "The `polaris-key/publish` Action runs these commands. Each input becomes the flag shown; an input marked step picks which subcommand runs.",
+    "The `polaris-key/publish` Action now takes `command` and `args`. These inputs no longer exist and fail the step; put the flag shown in `args` (an input marked step picks a subcommand: set it as `command`).",
     "",
     "| Input | Command | Flag |",
     "| --- | --- | --- |",

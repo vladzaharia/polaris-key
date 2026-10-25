@@ -7,7 +7,7 @@ import type {
   SimulatedPackDto,
   SimulatedReleaseDto,
 } from "../../../../api.js";
-import { label, OUTLET_KIND_LABELS } from "../../../../lib/labels.js";
+import { outletKindName } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
@@ -605,7 +605,7 @@ export function SimulatorPage({ slug }: { slug: string }): React.ReactElement {
                   options={(overlay.data?.outlets ?? []).map((o) => ({
                     value: o.outletId,
                     label: o.outletId,
-                    description: label(OUTLET_KIND_LABELS, o.kind),
+                    description: outletKindName(o.kind),
                   }))}
                 />
               )}

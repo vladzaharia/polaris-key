@@ -141,6 +141,10 @@ export function collect(
   for (const { kit, dir } of BASELINE_DIRS) {
     const base = resolve(root, dir);
     for (const file of walkPngs(base)) {
+      // Godot's png/ folder (UK-11b slice 3) holds the ui_png suite's own windowed baselines
+      // of whole screens, not registry states: the suite compares them, the report does not.
+      if (kit === "godot" && relative(base, file).split(/[\\/]/)[0] === "png")
+        continue;
       const { rest, theme } = splitTheme(stem(file));
       // Either <state>-<theme>.png, or <state>/<variant>-<theme>.png (Roborazzi's layout).
       const parts = relative(base, file).split(/[\\/]/);

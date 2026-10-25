@@ -100,6 +100,18 @@ export function navigationSource(
       href: globalPage(p.page as GlobalPageId),
     };
   });
+  // ST-34.11: Personal tokens left the sidebar for the account menu, and stays findable here.
+  const tokens = pageOf("personal-tokens");
+  const TokensIcon = tokens.icon;
+  global.push({
+    id: "nav:personal-tokens",
+    group: "Pages",
+    label: tokens.label,
+    detail: "Account",
+    keywords: "account token pkey login cli packages pkeyp",
+    icon: <TokensIcon aria-hidden className="size-4" />,
+    href: globalPage("personal-tokens"),
+  });
   for (const p of platformItems()) {
     const Icon = p.icon;
     global.push({

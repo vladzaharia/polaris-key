@@ -8,7 +8,7 @@ Card/Scroll/Body/Actions/Dismiss: Button "Later" [focus 2]
 == v3 up to date (shown) ==
 Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Text/Words/Message: Label "You're up to date."
+Card/Scroll/Body/Text/Words/Message: Label "You’re up to date"
 == code-ready ==
 Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
@@ -102,3 +102,12 @@ Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Text/Words/Title: Label "An update is available"
 Card/Scroll/Body/Text/Words/Message: Label "A newer version is available. Your package manager installs it."
 Card/Scroll/Body/Actions/Dismiss: Button "Later" [focus 1]
+== binary, modal with release notes ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Words/Title: Label "Polaris Key SDK 1.5.0"
+Card/Scroll/Body/Text/Words/Message: Label "You have 0.1.0"
+Card/Scroll/Body/Text/Words/WhatsNew: Label "What's new"
+Card/Scroll/Body/Text/Words/WhatsNewLines: Label "Faster loading screens\nA new tide table\nFixes a crash on resume"
+Card/Scroll/Body/Text/Words/AllChanges: Button "All changes in 1.5.0" [focus 1]
+Card/Scroll/Body/Actions/Action: Button "Update now" [focus 2]
+Card/Scroll/Body/Actions/Dismiss: Button "Later" [focus 3]

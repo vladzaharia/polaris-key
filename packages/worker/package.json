@@ -10,12 +10,13 @@
     "feed:seq-ceiling": "node scripts/feed-seq-ceiling.mjs",
     "email:dns-check": "../../node_modules/.bin/tsx scripts/check-email-dns.ts",
     "signin:seal": "../../node_modules/.bin/tsx scripts/seal-signin-secret.ts",
-    "override-migration:dry-run": "../../node_modules/.bin/tsx scripts/override-migration-dry-run.ts",
     "grace-clamp:report": "../../node_modules/.bin/tsx scripts/grace-clamp-report.ts",
     "test": "vitest run",
+    "test:service": "node scripts/test-service.mjs",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:workerd": "vitest run --config vitest.workers.config.ts && vitest run --config vitest.deltas.workers.config.ts",
     "typecheck:workerd": "tsc -p test-workerd && tsc -p test-workerd-deltas",
-    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"test-workerd/**/*.ts\" \"test-workerd-deltas/**/*.ts\"",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"test-browser/**/*.ts\" \"test-workerd/**/*.ts\" \"test-workerd-deltas/**/*.ts\"",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "dryrun": "wrangler deploy --dry-run",
@@ -44,6 +45,7 @@
     "@polaris-key/node": "workspace:*",
     "@types/better-sqlite3": "^7.6.11",
     "better-sqlite3": "^11.8.0",
+    "playwright": "1.63.0",
     "wrangler": "4.116.0"
   }
 }

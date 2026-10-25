@@ -3,6 +3,8 @@
 # `client.update.decide()` must be at least 25% smaller than the same app over the 0.8.33 SDK.
 #
 #   measure-ios-footprint.sh [baseline-tag]        (default v0.8.33)
+#   PKEY_FOOTPRINT_KEEP=<dir>   keep both archives, the link maps and footprint.json in <dir>
+#                               (created if missing; never commit its contents)
 #
 # Both builds use this toolchain and the one app source (tools/size-app), so the comparison needs
 # no recorded number. Size is the compressed .ipa payload of the archived, stripped app, which is
@@ -13,28 +15,39 @@ tag="${1:-v0.8.33}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 root="$(cd "$here/../.." && pwd)"
 xcodegen="${XCODEGEN:-xcodegen}"
-work="$(mktemp -d "${TMPDIR:-/tmp}/pkey-ios-footprint.XXXXXX")"
-trap 'rm -rf "$work"' EXIT
+keep="${PKEY_FOOTPRINT_KEEP:-}"
+if [ -n "$keep" ]; then
+  mkdir -p "$keep"
+  work="$(cd "$keep" && pwd)"
+else
+  work="$(mktemp -d "${TMPDIR:-/tmp}/pkey-ios-footprint.XXXXXX")"
+  trap 'rm -rf "$work"' EXIT
+fi
 
 if ! git -C "$root" rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
   git -C "$root" fetch --depth=1 origin "refs/tags/$tag:refs/tags/$tag"
 fi
+rm -rf "$work/baseline-sdk"
 mkdir -p "$work/baseline-sdk"
 git -C "$root" archive "$tag" sdks/swift | tar -x -C "$work/baseline-sdk"
 
 measure() { # <label> <package path> -> prints the ipa size in bytes
   local label="$1" pkg="$2" dir="$work/$1"
+  rm -rf "$dir"
   mkdir -p "$dir"
   cp -R "$here/tools/size-app/App" "$dir/App"
   sed "s|PKPATH|$pkg|" "$here/tools/size-app/project.yml" >"$dir/project.yml"
   (cd "$dir" && "$xcodegen" generate --quiet)
   (cd "$dir" && xcodebuild -project SizeApp.xcodeproj -scheme SizeApp -configuration Release \
     -destination 'generic/platform=iOS' -archivePath app.xcarchive ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
-    CODE_SIGNING_ALLOWED=NO -derivedDataPath derived archive >"$dir/build.log" 2>&1) || {
+    CODE_SIGNING_ALLOWED=NO LD_GENERATE_MAP_FILE=YES -derivedDataPath derived archive >"$dir/build.log" 2>&1) || {
     tail -40 "$dir/build.log" >&2
     echo "::error::the $label size app did not build." >&2
     exit 1
   }
+  # The app target's default map path; a global LD_MAP_FILE_PATH would collide with the package targets' links.
+  find "$dir/derived" -name 'SizeApp-LinkMap-*.txt' -exec cp {} "$dir/linkmap.txt" \; -quit
+  [ -s "$dir/linkmap.txt" ] || : >"$dir/linkmap.txt"
   mkdir -p "$dir/ipa"
   cp -R "$dir/app.xcarchive/Products/Applications" "$dir/ipa/Payload"
   (cd "$dir/ipa" && zip -qr -9 ../app.ipa Payload)
@@ -43,8 +56,13 @@ measure() { # <label> <package path> -> prints the ipa size in bytes
 
 before="$(measure baseline "$work/baseline-sdk/sdks/swift")"
 after="$(measure current "$here")"
-echo "0.8.33 baseline ($tag): $before bytes; this tree: $after bytes"
 # At least 25% smaller: after <= 75% of before.
+target=$((before * 75 / 100))
+echo "$tag baseline: $before bytes; this tree: $after bytes; target (25% smaller): <= $target bytes"
+if [ -n "$keep" ]; then
+  python3 -I "$here/tools/footprint-report.py" "$work/footprint.json" "$tag" "$work/baseline" "$work/current"
+  echo "footprint.json, archives and link maps kept in $work"
+fi
 if [ $((after * 100)) -gt $((before * 75)) ]; then
   echo "::error::the iOS app is only $((100 - after * 100 / before))% smaller than $tag; SP-52 needs at least 25%." >&2
   exit 1

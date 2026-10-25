@@ -94,7 +94,7 @@ The manifest validator does not yet bound `licensing.defaultMaxOfflineDays`, so 
 lands, run the check again after a resync that changes the default.
 
 `--local [--persist-to DIR]` runs the same check against a local D1 (miniflare), which is how
-`packages/worker/test/checkRepresentable.test.ts` exercises it.
+`packages/worker/test/core/checkRepresentable.test.ts` exercises it.
 
 CI deploy:
 
@@ -1653,7 +1653,7 @@ Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.a
 - **A product is capped** (its users see "We can't send email right now"): set its own cap in the
   product's Settings → Daily sign-in mail cap (`email.dailyCap`). Reset it to return to the
   deployment value. The day is a sliding 24 hours. (It used to be a row in
-  `email_product_caps`; migration 0124 copied each row once, and a later migration drops the table.)
+  `email_product_caps`; migration 0124 copied each row once; migration 0140 dropped the table.)
 - **Suppression list** (`email_suppressions`): keyed by the peppered hash of the address, never
   the address. A hard bounce suppresses for 90 days, a complaint, a Cloudflare suppression
   (`E_RECIPIENT_SUPPRESSED`) or an operator entry permanently. A suppressed recipient is answered
@@ -1841,99 +1841,6 @@ not available_ and the rest of the card works as before.
   isolate. A sign-in that answers _… sign-in is unavailable right now_ is the provider's endpoint
   failing, or answering with a host outside the allowlist (`providers/net.ts`).
 
-## License override migration
-
-The license-level config override layer is removed on every product and replaced by the
-**account override**: managed config an operator sets for one account on one product. Devices get the layer of the account signed in on them,
-else of their license's owner; a floating license gets none. Entitlement overrides stay on the
-license. Operators edit the layer on a user's record (Users → a user → Overview), or with
-`PUT /manage/api/products/<slug>/users/<subject>/overrides`.
-
-Until the migration runs, both layers are read (the account layer above the license's) and every
-document is byte-identical to before: the account layer is empty until someone writes one. The
-migration is **one platform-wide run that the owner schedules**. Nothing in the Worker starts it;
-it stays off until the steps below are taken by hand, in order. Agents never run any of it against
-staging or production, and never run `wrangler` against a remote.
-
-**Owner steps (production).**
-
-1. **Deploy.** The `account_overrides` migration ships with the release that carries the override migration and is
-   applied by the normal deploy. Every license keeps working unchanged.
-2. **Dry run on a production-shaped copy.** Either in the console (Platform → Override migration →
-   Dry run), which writes nothing, or offline, with no Worker and no KEK:
-
-   ```sh
-   npx wrangler d1 export polaris_key_prod --env prod --remote --output prod.sql   # owner only
-   pnpm --filter @polaris-key/worker override-migration:dry-run -- --sql prod.sql --out ovm-dry
-   ```
-
-   `ovm-dry/` then holds `inventory.json`, `report.json` and `report.csv`: per product, every
-   license carrying config or secret overrides, whether it moves to its owner's account overrides
-   (`moved`), loses values to another license of the same owner (`collapsed`, with the kept and
-   lost values), or is dropped (`dropped`: no account). Secret values are never in any of them
-   (names only). The tool loads the copy into memory and fails if the dry run changed anything.
-   Delete `prod.sql` afterwards: it holds customer data.
-
-3. **Flag the prerequisites** once the login card **and** the portal Library with Activate
-   License are live in production (decision 21: customers must be able to add their
-   license to an account during the notice). Platform → Override migration → flag each, or
-   `PUT /manage/api/platform/override-migration/prerequisites` with `{"loginCard":true,"library":true}`.
-   The notice is refused until both are set.
-
-   **Before the notice: OIDC-provisioned secrets on licenses with no account (decision 4).** A
-   product whose Identity provisioning writes a secret from a sign-in claim (djdl's
-   `proxy.subscriptionUrl`) keeps that secret on the license until the run; from the run on, its
-   only target is the license owner's account overrides. So **OIDC licenses that are not in an
-   account** (no `account_id`: the customer never added the license in the portal Library, and
-   the automatic attach never matched a verified email) **stop receiving provisioned secrets**:
-   from the run's start, every sign-in (`updateLicenseOnSignIn`, and `activateFromIdentity`'s
-   claim and new-license paths in `services/identity/oidc.ts`) removes them from the license
-   instead of renewing them, and from the run's completion the license stops delivering any it
-   still holds. A sign-in during the run can strip the secret before the run reaches the product,
-   so such a license may then be missing from the report: count them from the dry run, before the
-   notice. They are the `dropped` rows whose `keys.secrets` include a key the provisioning
-   declares:
-
-   ```sh
-   jq '[.[] | select(.outcome == "dropped" and (.keys.secrets | index("proxy.subscriptionUrl")))] | length' ovm-dry/report.json
-   ```
-
-   In the console, the product's license list under Platform → Override migration shows the same
-   licenses with their `secretKeys`. Ask those customers to add the license to their account
-   during the notice: one that does keeps the secret through the owner line.
-
-4. **Start the notice** (`POST …/override-migration/notice`). The run becomes possible 30 days
-   later (`runNotBefore`). During the window the inventory is recomputed nightly, so the count to
-   be dropped falls as customers attach; the console shows it on every affected product's
-   Licenses page. Operators can ask those customers to add the license to their account (the
-   license page offers the portal's Activate License link). Withdraw with
-   `DELETE …/override-migration/notice` if needed; a new notice starts a fresh 30 days.
-5. **Run it** on or after the run date: sign in to the console again (the run needs a sign-in from
-   the last 5 minutes), then Platform → Override migration → Run, or
-   `POST /manage/api/platform/override-migration/run`, repeated while `progress.done` is false
-   (each call processes up to 25 products). From the first call,
-   `PUT …/licenses/<id>/overrides` refuses config and secrets (entitlements stay writable) and the
-   OIDC provisioning writer targets the owner's account overrides; an OIDC license with no account
-   stops receiving its provisioned secrets from here on (see before step 4). When `done` is true,
-   documents stop reading config and secrets from licenses. Each license touched has an audit row
-   (`license.overrides.migrated` or `license.overrides.dropped`), and the platform activity log
-   has the start and the completion.
-6. **The report** (Platform → Override migration → Report, or
-   `GET …/override-migration/report?format=csv[&product=<slug>]`) stays 90 days; use it to
-   re-apply a dropped or lost value by hand once the customer has an account. Secret values are
-   never in it: re-enter those from the source.
-7. **After 90 days** the nightly job deletes the report and empties the licenses' config and
-   secrets columns (entitlements kept). Nothing to do.
-
-**Rolling back.** Before step 5 nothing changed. Between the run and the 90-day mark the licenses
-still hold their old config and secrets, so a Worker built before the override migration would deliver them again
-(the account rows it ignores); a dropped license's values come back that way too. **Do not roll
-back past the override migration once the columns are emptied:** the license values are gone, and only the account
-rows (which an older Worker does not read) hold them.
-
-**KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
-`managed` bucket of the KEK sweep (above).
-
 ## Offline grace clamp
 
 A license's offline grace no longer outlasts the license. While a product's
@@ -1995,8 +1902,9 @@ stays on the old objects until a later release. Three things change underneath:
 - **OIDC-provisioned entitlement keys move** out of `licenses.overrides_json` into the license's
   `oidc` grant, `grt_oidc_<license id>` (djdl's `polarisVpn`). Each entry's state, value and
   `updatedAt` is copied, and the license document reads the grant where the keys used to sit. A
-  sign-in moves its own license. Provisioned **secrets** are not touched: they stay a license
-  override until the override migration runs, and then go to the owner's account overrides.
+  sign-in moves its own license. Provisioned **secrets** are not touched by this job: a sign-in
+  by an identity linked to the license's owner puts them on the owner's account overrides row, and
+  `core.provisioned-secrets-to-account` moves the ones already on the license.
 - **Tiers gain `rank` and `policyOfflineGraceDays`** (default 0 and none). A sign-in whose
   groups map to several tiers picks the highest-ranked one. While every rank is 0 that is still
   the first match, so nothing changes until a rank is set. `oidc.syncTierOnSignIn: upgradeOnly`
@@ -2066,7 +1974,7 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 
 - No compatibility window exists except break-glass, paths that installed native binaries call, and
   the two-release database contracts. There is none for an SDK, the CLI, the publish Action,
-  cookie mode, `PKEY_ADMIN_COOKIE` or the Pocket ID env override: each goes in the release that
+  cookie mode or the Pocket ID env override: each goes in the release that
   replaces it, and a removed manifest field is a validator error that names its replacement.
 - A drop takes two steps. The first stops every read and write. The second drops the object, after
   a production check that nothing read or wrote it and **14 days** after the Worker that stopped
@@ -2077,20 +1985,21 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 
 ### Expand and contract pairs
 
-| Pair                        | Owner     | Exit fact                                                                                                                                                                        |
-| --------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| License override migration  | The lead  | A later release deletes the machinery. A second drops `override_migration` and `override_migration_report` after the check.                                                      |
-| Settings backfill           | The owner | The backfill ran on `djdl` and `polaris-key` and its report is kept. Then the runner, routes and page are deleted.                                                               |
-| Platform-IdP claim          | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed when the legacy callbacks are retired.                                              |
-| Licensing catch-up          | The lead  | A later release retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                            |
-| Standalone licensing tables | The lead  | A second release drops the six standalone licensing tables after the check. Columns of `licenses` and `grants` stay.                                                             |
-| Portal tables               | The lead  | A second release drops the four `portal_*` tables and their views after the check.                                                                                               |
-| Credential tables           | The lead  | A second release drops `product_secrets`, `outlet_credentials` and `platform_credentials` after a check that none was opened.                                                    |
-| Distribution listing        | The lead  | A second release drops `dist_listing` after the check.                                                                                                                           |
-| Storefront close-out        | The lead  | No code reads `discover_enabled`.                                                                                                                                                |
-| Product admin group         | The lead  | Nothing reads `products.admin_group` and every `adminGroup` offer has an outcome. A second release drops it once the previous deploy is the one that stopped the reads or later. |
-| Portal-to-account catch-up  | The lead  | No Worker built before the account model can still serve. Then `services/identity/accounts/legacy.ts` goes (the `LICENSE_WRITE_SEAMS` row names this ledger).                    |
-| Durations and subscriptions | The lead  | None. It has no contract step, and its down script only reports.                                                                                                                 |
+| Pair                        | Owner     | Exit fact                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| License override migration  | The lead  | Deleted with the override-migration release. A later release drops `override_migration`, `override_migration_report` and `provisioned_secret_moves`.                                                                                                                                                                                                                                                                                                                                                                                      |
+| Settings backfill           | The owner | The backfill ran on `djdl` and `polaris-key` and its report is kept. Then the runner, routes and page are deleted.                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Platform-IdP claim          | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed when the legacy callbacks are retired.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Licensing catch-up          | The lead  | A later release retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Standalone licensing tables | The lead  | A second release drops the six standalone licensing tables after the check. Columns of `licenses` and `grants` stay.                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Portal tables               | The lead  | Release N: `scripts/portal-contract-check.sql` reads four zeros before the release, and the guarded purge (`0141_a_portal_contract_purge`) empties the four `portal_*` tables. A second release drops them once all four are still empty in production and **14 days** after release N is live.                                                                                                                                                                                                                                           |
+| Credential tables           | The lead  | A second release drops `product_secrets`, `outlet_credentials` and `platform_credentials` after a check that none was opened.                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Distribution listing        | The lead  | Phase 1: the model is the truth and `dist_listing` the fallback. A production dry run of `distribution.listing-truth` reports no missing and no refused field (or each listed one is accepted), and it is applied. A second release (phase 2) stops reading and writing `dist_listing` and drops it after the check. Then prune the ledger `dist_listing_truth_moves` (it holds listing text and contact emails until then).                                                                                                              |
+| Storefront close-out        | The lead  | No code reads `discover_enabled`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Product admin group         | The lead  | Nothing reads `products.admin_group` and every `adminGroup` offer has an outcome. A second release drops it once the previous deploy is the one that stopped the reads or later.                                                                                                                                                                                                                                                                                                                                                          |
+| Legacy settings stores      | The lead  | Contract done (migration `0140_retire_legacy_settings`): drops `lazy_delta_settings`, `email_product_caps`, `products.branding_json` and the five retired `portal_product_settings` switch columns. Fact: production's rollback targets v0.9.15 and v0.9.16 both contain the settings moves (`f8a95bd96`, `b8c69e523`), so neither reads the dropped objects. Down script `scripts/rollback/0140_retire_legacy_settings.down.sql` recreates them empty. `portal_enabled`, `key_reissue_enabled` and `claim_by_key` stay one more release. |
+| Portal-to-account catch-up  | The lead  | Closed in release N: `services/identity/accounts/legacy.ts`, its nightly step and the `LICENSE_WRITE_SEAMS` row are gone. The lead records the Entry at merge.                                                                                                                                                                                                                                                                                                                                                                            |
+| Durations and subscriptions | The lead  | None. It has no contract step, and its down script only reports.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 ### Rollback ladder (licensing)
 
@@ -2119,12 +2028,15 @@ to the dry-run report the lead read, so the run id is the record.
 When a row's exit depends on a job, the entry names the run id and its totals. Jobs the ledger
 tracks:
 
-| Job                                 | Owner    | Exit fact                                                                                                                                                                       |
-| ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core.licence-override-migration`   | The lead | The dry run reports no license with an override, then a later release deletes the machinery. Applied from the console, never the runner.                                        |
-| `identity.seed-platform-connection` | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                          |
-| Resolver comparison                 | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run. |
-| Resolver switch                     | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                               |
+| Job                                   | Owner    | Exit fact                                                                                                                                                                                                                  |
+| ------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core.licence-override-migration`     | The lead | Deleted with the override-migration release. A later release drops the tables.                                                                                                                                             |
+| `core.provisioned-secrets-to-account` | The lead | A dry run after the apply reports changes 0, and its conflicts and otherSubject counts are resolved or accepted by the lead. Both run ids are recorded under Entries. The release after drops the job and its ledger.      |
+| `identity.seed-platform-connection`   | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                                                                     |
+| `distribution.listing-truth`          | The lead | A dry run reports no `missing` and no `refused` field, the apply is recorded here with its run id, and a fresh dry run reports 0 changes. After phase 2, prune `dist_listing_truth_moves`; down is only valid before then. |
+| `license.limits-materialise`          | The lead | A dry run after the apply reports changes 0 and docDiffs 0, and no license has a tier of NULL. Its run ids are recorded under Entries.                                                                                     |
+| Resolver comparison                   | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run.                                            |
+| Resolver switch                       | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                                                                          |
 
 **Resolver deviation.** The two-release rule says the switch waits for a dry run with no changes. The
 resolver comparison accepts six expected classes instead (`beta-includes-stable`,
@@ -2136,6 +2048,143 @@ zero. The lead acknowledges each class and its count here before the switch.
 GitHub prerelease or with descriptor `channel: beta`, before the switch deploys. Second, drop
 `channelWorkflow` and `betaBranch` from its `.pkey/` manifest right after the switch deploys, not
 earlier: a resync writes `channel_workflow` as NULL when the field is absent.
+
+### Resolver jobs
+
+Three jobs carry the resolver switch. Run each as a dry run first, then apply it from the console
+(Platform → Migrations), then dry-run again. Read a run with `pkey migrate report <run>`. An apply
+is pinned to the dry-run report you read; a unit whose product changed since is refused and needs
+a new dry run.
+
+| Job                                 | Dry run shows                                                                                                                                                           | Apply                                                                                                                | Down                                                                                                                                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `update.resolver-compare`           | Per product: class counts and the worst 50 rows. `changes` is the blocking rows, the retry rows and the probes a pause left unrun. Writes nothing to D1.                | Delegated to the switch rule below. There is no apply.                                                               | Delegated. There is no down.                                                                                                                 |
+| `release.backfill-store`            | Per linked product: `appRows` and `unlisted` (listed releases without `listedAssets`). `changes` is 1 for an empty store, else `unlisted`.                              | Syncs the store from GitHub, audited. A current store reports `skipped`.                                             | Does nothing: the rows are what any sync writes.                                                                                             |
+| `release.materialise-workflow-beta` | Per product with a `channel_workflow`: the workflow, the beta branch, the tags the `beta` selector resolves among today, and `wouldSet` (the ids it would mark `beta`). | Sets `channel = 'beta'` on those undescribed prerelease rows whose channel is unset, audited. Re-applying changes 0. | Clears `channel` on the ids the apply recorded, only where it is still `beta` and the row is still undescribed. Rows changed since are kept. |
+
+**The comparison run.** It probes the appcast (no `arch`, `arm64`, `x86_64`), `/version` on every
+selector, and `/dl` for each file kind, architecture and checksum, plus `pr-<n>` for the pull requests
+of a workflow product's last 10 successful runs. It costs GitHub calls against the product's hourly budget.
+When GitHub answers 403 or 429, or reports fewer than 500 calls left, the run stops and the report
+says `paused` with the time to resume. Run it again after that time: it resumes from a checkpoint
+kept for an hour. Rows are `{product, surface, probe, old, new, class}`.
+
+- **Blocking:** `stale-store` (run `release.backfill-store`, or wait for the 15-minute pass, and
+  dry-run again) and `unexpected` (send it to the lead).
+- **Retry:** `upstream-error`.
+- **Expected** (acknowledged by count in the entries below): `beta-includes-stable`,
+  `workflow-channel`, `beyond-page-cap`, `duplicate-version`, `descriptor-channel`,
+  `descriptor-files`, `beta-workflow-floor`, `beta-yanked-floor-fallback`.
+
+**The order for a workflow product.** Dry-run `release.materialise-workflow-beta`, read `wouldSet`,
+and apply. Change the product's workflow to publish beta as a prerelease or with descriptor
+`channel: beta`, re-run the apply, then dry-run `update.resolver-compare` until the switch rule
+holds.
+
+**The switch rule.** The resolver switches when the latest comparison report has:
+
+1. zero blocking rows;
+2. every expected row acknowledged in the entries below, by class and count;
+3. for every product the job lists with a `channel_workflow`, no `workflow-channel` row whose old
+   answer is a build published after the latest `release.materialise-workflow-beta` apply.
+
+**The 15-minute pass.** The connector cron keeps each linked product's store current without a
+webhook (see the GitHub sync page). Its cron report shows `freshness: synced | fresh | deferred`.
+`deferred` means the tick's cap was spent (25 syncs, 8 per GitHub App installation, oldest check
+first) or the product is backing off after a failed sync (`backoff`); it is synced on a later
+tick. `rateLimited` and `failed` mark a sync that GitHub refused or that wrote nothing.
+
+### License limits (`license.limits-materialise`)
+
+Gives every license a tier and copies onto it the limits its documents get from elsewhere. Run it
+after the Worker that carries it is live, before the release that switches the resolver. A dry run
+writes nothing.
+
+1. `pkey migrate dry-run license.limits-materialise`, then `pkey migrate report <run>`. Per product
+   it lists `seed`, `assigned`, `writes` per field, `dangling`, `devOnlyTiers` and `docDiffs`, with
+   up to 20 ids each.
+2. `docDiffs` or `dangling` above 0: stop. Send the report to the lead; a document would change.
+3. Apply from the console (Platform, Migrations), pinned to the run id. A killed apply resumes with
+   the same call.
+4. Dry-run again. It must show changes 0 and docDiffs 0. A license edited while the apply ran is
+   skipped, and shows here as one change: apply that run.
+5. Record both run ids under Entries.
+
+Freeze edits to product license defaults, tier limits and license limits from step 1 until the
+switch deploys; otherwise repeat steps 1 to 5.
+
+**Roll back.** Run `down` on the apply before rolling the Worker back. It puts each column back to
+its recorded value only while the column still holds the value the job wrote, and removes the
+seeded Default tier once no license uses it. A later edit stays.
+
+### Provisioned secrets (`core.provisioned-secrets-to-account`)
+
+Moves an owned license's provisioned secrets (the keys a product's provisioning hooks declare) from
+the license to the owner's account overrides row, one layer up, with every document's keys and values unchanged (the order of keys inside a document's
+secrets may change once; see the SDK note below). Run it
+after the Worker that carries it is live. A dry run writes nothing.
+
+1. `pkey migrate dry-run core.provisioned-secrets-to-account`, then `pkey migrate report <run>`. Per
+   product it lists `moves`, `shadowed`, `conflicts`, `otherSubject`, `unowned` and `malformed`, with
+   up to 20 license ids each. No value is in the report.
+2. `conflicts` or `otherSubject` above 0: send the report to the lead. Those licenses are skipped and
+   keep their copy; nothing is lost by skipping them.
+3. Apply from the console (Platform, Migrations), pinned to the run id. A sign-in or an edit between
+   the report and the apply skips that move; the next dry run shows it.
+4. Dry-run again. It must show changes 0. Record both run ids under Entries.
+
+Why keys can reorder: a document's secrets are ordered by the layer each key first appears in, so
+a moved key can change place among the others (a product with several secrets). The config ETag
+covers that order, so a device sees one full config response instead of a 304, and the Node, Swift
+and Kotlin `onChange` callbacks, which key on the ETag, fire once: devices may see one config
+change event with identical values. The per-key `onConfigChange` compares values and stays silent.
+
+The dry run shows the D1 query budget first: it reads the licenses, devices and owner rows per
+product, so run it on a product with many licenses before the apply.
+
+The ledger `provisioned_secret_moves` holds license ids, keys, the owner's subject and a SHA-256 of
+each moved entry, never a value. Erasing an account, merging accounts, deleting a license and
+deleting a product all remove or re-key its rows; the table is dropped with the job.
+
+**Roll back.** Run `down` on the apply before rolling the Worker back. It puts each entry back on
+its license, in place, only while the account row still holds the entry the job moved and the
+license is still owned by the same account, and removes it from the row when the job added it and
+every license of that entry has its copy back. A copy that an apply removed as hidden under the
+account entry is restored from that entry. An account entry edited since stays, and so does one
+whose hidden copy differed from it. If the account row could not be updated after three tries,
+`down` reports a counted retry; run it again.
+
+### Portal tables purge (`0141_a_portal_contract_purge`)
+
+Before the release that carries the purge deploys, run the check on the environment. It is
+read-only:
+
+```sh
+npx wrangler d1 execute <DATABASE> --env <ENV> --remote --file packages/worker/scripts/portal-contract-check.sql
+```
+
+1. Read the row: `unmigrated_accounts`, `identities_without_link`, `emails_without_link` and
+   `unsettled_license_links` must all be 0. Record the result under Entries.
+2. Any value above 0: the purge deletes nothing (its DELETEs are guarded by the sum of the same four
+   counts) and the migration still succeeds. Send the leftovers to the lead before the release.
+3. Note a D1 Time Travel bookmark of the environment's database before the release deploys.
+4. After the deploy, required check: the four tables read 0 rows (`SELECT COUNT(*)` on each). Any row means the purge was held back; do not start the 14 days. The release that drops the tables may ship no earlier than 14 days after the zero reading.
+
+The Time Travel bookmark from step 3 keeps the purged end-user data (emails, identities, links) for its retention window. An erasure request received in that window is still held there: do not restore to that bookmark without re-running the erasure afterwards (see Account erasure ledger and D1 restore).
+
+**The zero reading is a hard gate.** The release that carries the purge does not deploy until the check
+reads 0 on all four counts. The Worker of that release has no portal-to-account catch-up and no
+settlement of a pre-existing unsettled license link (the revoke, email and audit it ran are gone);
+the zero reading is what guarantees there is nothing left for either to do.
+
+If the purge was skipped (a non-zero count at deploy), erasure no longer clears
+`portal_account_emails` or `portal_account_identities`: an erased person's email and OIDC subject
+stay in those two tables until the purge empties them or the drop release removes them. Do not leave it so:
+re-run the check, send the leftovers to the lead to settle, then redeploy so the guarded purge
+runs, and read the four tables at 0 again (step 4). Until then the 14 days do not start.
+
+**Roll back.** Roll the Worker back, then run `scripts/rollback/0068_accounts.down.sql`: with the
+tables empty it rebuilds all four exactly from the account model.
 
 ### Entries
 
@@ -2198,16 +2247,16 @@ request-time fence" below; none applies it.) The ticks are:
 
 - every 15 minutes, on the connector tick (`*/15 * * * *`), as the first of the erasure steps,
   before the due-deletion and retry sweeps;
-- nightly at 03:17 UTC (`17 3 * * *`), after the registry-token purge and before the legacy
-  `accountsCatchUp`.
+- nightly at 03:17 UTC (`17 3 * * *`), after the registry-token purge, in the early slot of the
+  services' maintenance.
 
 One pass reads the ledger in key order, in pages of 1,000 keys, at most 5 pages (5,000 ids) a
 pass; a longer ledger is continued from where the last pass stopped (a KV resume marker that
 expires on its own; losing it only restarts the walk). For each page, in this order:
 
 1. **Tombstones.** An id-only `account_tombstones` row is created for every listed id that has none
-   (`INSERT OR IGNORE`: an existing row is never rewritten), so the legacy catch-up cannot copy the
-   account back.
+   (`INSERT OR IGNORE`: an existing row is never rewritten), so nothing can recreate the account
+   under that id. (The portal-to-account catch-up that once copied accounts back is gone since the purge release.)
 2. **Re-erasure.** Every listed account that is live again (`status <> 'deleted'`) is handed to the
    erasure state machine, at most **25 accounts per pass**; the rest are counted as deferred, and a
    pass that stopped at its page bound with accounts deferred resumes from the same point, so they
@@ -2391,8 +2440,8 @@ evidence for a Container tier). Setup is DEPLOYMENT §3 "Lazy deltas".
   opt a product in: its Settings → Lazy deltas (`deltas.lazy.enabled`). Devices that make a
   pair hot (`deltas.lazy.hotDevices`, default 25) and deltas built a day (`deltas.lazy.dailyCap`,
   default 20) are beside it. No SQL: the console writes and audits each change. (It used to
-  be a row in `lazy_delta_settings`; migration 0124 copied each row once, and a later migration
-  drops the table.)
+  be a row in `lazy_delta_settings`; migration 0124 copied each row once; migration 0140
+  dropped the table.)
 
 - **Turn it off.** Lazy deltas off for one product (counting and generation stop at once), or the
   console's Lazy deltas switch for everything (within 30 seconds). For an off no console session
@@ -2483,9 +2532,8 @@ by scope.
   what its job reads, not only its own tree: the Python lane names the Python samples under
   `examples/` and the two cross-SDK fixtures its tests open (`sdks/godot/tests/qr/fixtures.json`,
   `docs/design/ui-kits/terminal-parity.json`), and a rename counts at its old path and its new one.
-  The `changes` job decides this through `tools/ci-scope.mjs`. The lead's local `gate.sh` does not
-  yet ask that script; it still carries its own regexes until it runs `node tools/ci-scope.mjs touches <lane> --worktree`,
-  so until then a local run can pick different lanes from CI for the same files.
+  The `changes` job decides this through `tools/ci-scope.mjs`. `pnpm gate` (`tools/gate.mjs`) asks the
+  same script, so a local run picks the same lanes as CI for the same files.
   A new lane or matrix is one entry in that file and one job in `ci.yml`
   (`tools/ci-scope.test.ts` fails when the two disagree).
 - A pull request runs the floor and the latest of each matrix (Python 3.9 and 3.14 on Linux, Godot

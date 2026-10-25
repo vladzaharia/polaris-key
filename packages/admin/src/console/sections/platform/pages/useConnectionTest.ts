@@ -7,13 +7,13 @@
 
 import * as React from "react";
 import {
-  api,
   type ClaimMapDto,
   type ConnectionTestResult,
 } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { CHANNEL } from "./platformConnectionParts.js";
 import { PopupBlockedError, PopupClosedError } from "./connectionErrors.js";
+import { fetchConnectionTestResult } from "../data.js";
 
 const GIVE_UP_MS = 5 * 60 * 1000;
 
@@ -54,7 +54,7 @@ export function useConnectionTest(i: Input): {
     async (state: string): Promise<void> => {
       stopWatching();
       try {
-        const res = await api.connectionTestResult(state, draftId);
+        const res = await fetchConnectionTestResult(state, draftId);
         setTest(res.result);
         setError(null);
       } catch (e) {

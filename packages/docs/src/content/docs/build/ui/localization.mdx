@@ -40,14 +40,14 @@ are never translated.
 
 Each kit reads a table in its platform's own format.
 
-| For                             | Generated table                                                                                                             |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Web (`ui-core` and the JS kits) | `@polaris-key/brand/kit-copy` (`packages/brand/src/generated/kit-copy/`): one JSON table per locale and a `KitCopyKey` type |
-| Node terminal                   | `packages/sdk-node/src/kitCopy.generated.ts`, so `@polaris-key/node` needs no brand dependency                              |
-| Swift                           | `sdks/swift/Sources/PolarisKeyUI/Resources/Localizable.xcstrings` (a String Catalog with plural and device variations)      |
-| Kotlin                          | `sdks/kotlin/ui/src/commonMain/composeResources/values*/strings.xml` (Compose Resources, with `<plurals>`)                  |
-| Godot                           | `sdks/godot/addons/polaris_key/ui/locale/polaris_key_ui.pot` and one `.po` per locale                                       |
-| Python (the terminal kit)       | `sdks/python/src/polaris_key/ui/kit_copy_generated.py` and `ui/locale/polaris_key_ui.pot`                                   |
+| For                             | Generated table                                                                                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web (`ui-core` and the JS kits) | `@polaris-key/brand/kit-copy` (`packages/brand/src/generated/kit-copy/`): one JSON table per locale and a `KitCopyKey` type                     |
+| Node terminal                   | `packages/sdk-node/src/kitCopy.generated.ts`, so `@polaris-key/node` needs no brand dependency                                                  |
+| Swift                           | `sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json` (the ICU tables; plurals and the device select run through the core's ICU subset) |
+| Kotlin                          | `sdks/kotlin/ui/src/commonMain/composeResources/values*/strings.xml` (Compose Resources, with `<plurals>`)                                      |
+| Godot                           | `sdks/godot/addons/polaris_key/ui/locale/polaris_key_ui.pot` and one `.po` per locale                                                           |
+| Python (the terminal kit)       | `sdks/python/src/polaris_key/ui/kit_copy_generated.py` and `ui/locale/polaris_key_ui.pot`                                                       |
 
 Locale names follow each platform: `pt-BR` is `pt_BR` in gettext and Godot and `pt-rBR` in Compose;
 `zh-Hans` is `zh_Hans` in gettext and Godot and `zh-rCN` in Compose.

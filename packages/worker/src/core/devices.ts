@@ -484,7 +484,7 @@ export async function reconcileDeviceHardware(
           target_kind: "device",
           target_id: sibling.device_id,
           parent_id: license.id,
-          summary: `Same hardware re-registered as ${deviceId}; retired the stale device id so one machine holds one seat`,
+          summary: `Same hardware re-registered as ${deviceId}; retired the stale device id so one device is counted once`,
         });
       }
     }
@@ -1058,13 +1058,17 @@ function coreDeviceAllowed(
  * Identity's `identity/attach`, I-09). In Core because License and Identity both answer it and a
  * service may not import another (rule 6); License re-exports it unchanged.
  */
-export function shapeLicense(license: LicenseRow) {
+export function shapeLicense(
+  license: LicenseRow,
+  /** The tier a device sees (`customerTierId`): null for no tier and for the implicit Default tier. */
+  tierId: string | null,
+) {
   return {
     id: license.id,
     status: license.status,
     name: license.name,
     email: license.email,
-    tierId: license.tier_id,
+    tierId,
     activatedAt: license.activated_at,
     expiresAt: license.expires_at,
     maxOfflineDays: license.max_offline_days,

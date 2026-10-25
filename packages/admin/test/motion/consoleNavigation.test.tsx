@@ -1,3 +1,4 @@
+import { lastAnnouncement } from "../../src/ui/LiveRegion.js";
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -327,9 +328,7 @@ describe("the shell keeps its route focus through a transition", () => {
     await userEvent.click(within(nav).getByRole("link", { name: "Tiers" }));
     const h1 = await screen.findByRole("heading", { level: 1, name: "Tiers" });
     await waitFor(() => expect(document.activeElement).toBe(h1));
-    expect(document.getElementById("route-announcer")!.textContent).toBe(
-      "Tiers, page loaded",
-    );
+    expect(lastAnnouncement()).toBe("Tiers, page loaded");
     expect(started.map((s) => s.type)).toEqual(["route"]);
   });
 });

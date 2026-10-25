@@ -12,11 +12,12 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { EyeOff } from "lucide-react";
-import { api, type PlatformDeploy } from "../../../../api.js";
+import { type PlatformDeploy } from "../../../../api.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { DashboardTemplate } from "../../../templates/Dashboard.js";
-import { qk } from "../../../data/queries.js";
+import { fetchPlatformDeployment, platformReads } from "../data.js";
+import { reads } from "../../../data/reads.js";
 import { readPref, writePref } from "../../../storage.js";
 import { r } from "../../../routes.js";
 import {
@@ -44,13 +45,11 @@ export function PlatformStatus(): React.ReactElement {
   );
   const poll = auto ? OPERATIONS_REFRESH_MS : false;
   const deployment = useQuery({
-    queryKey: qk.platformDeployment(),
-    queryFn: () => api.platformDeployment(),
+    ...platformReads.deployment(),
     refetchInterval: poll,
   });
   const ops = useQuery({
-    queryKey: qk.platformOperations(),
-    queryFn: () => api.platformOperations(),
+    ...reads.platformOperations(),
     // Pauses by itself while the tab is hidden (TanStack's default), and on the operator's switch.
     refetchInterval: poll,
     staleTime: 0,
@@ -58,7 +57,7 @@ export function PlatformStatus(): React.ReactElement {
   const d = deployment.data;
   const op = ops.data;
   const deploys = useMorePages<PlatformDeploy>(
-    (cursor) => api.platformDeployment(cursor).then((p) => p.deploys),
+    (cursor) => fetchPlatformDeployment(cursor).then((p) => p.deploys),
     d?.deploys,
   );
   const assessment = React.useMemo(

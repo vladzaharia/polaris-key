@@ -56,6 +56,9 @@ struct KitText: View {
     var alignment: TextAlignment = .leading
 
     @Environment(\.polarisKeyStrings) private var strings
+    #if os(macOS)
+        @Environment(\.kitLeadingText) private var leading
+    #endif
 
     init(
         _ line: CopyLine, _ role: KitTextRole = .body, color: KitTextColor = .default,
@@ -74,12 +77,20 @@ struct KitText: View {
         self.init(CopyLine(key, args), role, color: color, alignment: alignment)
     }
 
+    private var resolvedAlignment: TextAlignment {
+        #if os(macOS)
+            return leading ? .leading : alignment
+        #else
+            return alignment
+        #endif
+    }
+
     var body: some View {
         kitStyle { style in
             Text(strings.string(line))
                 .font(style.font(role))
                 .foregroundStyle(color.resolve(style.palette))
-                .multilineTextAlignment(alignment)
+                .multilineTextAlignment(resolvedAlignment)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

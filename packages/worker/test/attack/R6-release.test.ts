@@ -60,11 +60,7 @@ import { getReleaseConfig } from "../../src/services/release/index.js";
 import { syncReleaseStore } from "../../src/services/release/sync.js";
 import { checkReleaseHealth } from "../../src/services/release/health.js";
 import { handleAdmin } from "../../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../../src/core/console/session.js";
 import {
   deriveVersionEnv,
   validateInstallContext,
@@ -79,6 +75,7 @@ import {
   syncAccountLicenseLinks,
 } from "../../src/services/identity/portal/repo.js";
 import { HEAD_SHA, withDefaultHead } from "../githubHead.js";
+import { consoleTestSession } from "../consoleSessionHelper.js";
 
 // ── Shared harness ───────────────────────────────────────────────────────────
 
@@ -1575,8 +1572,9 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
     expect(regressed?.message).toContain("v1.0.0");
 
     // A deliberate withdrawal: an operator lowers the floor, and only then does v1.0.0 serve.
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",
@@ -1652,8 +1650,9 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
     await syncReleaseStore(env, db, SLUG, NOW, fetchImpl);
     expect(await latest()).toBe("2.0.0");
 
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",
@@ -1750,8 +1749,9 @@ describe("R6-10 downgrade: deleting the newest release silently makes an older o
     await syncReleaseStore(env, db, SLUG, NOW, fetchImpl);
     expect(await latest()).toBe("2.0.0");
 
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

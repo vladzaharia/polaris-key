@@ -14,7 +14,11 @@ import {
   DEFAULT_BRIDGE_KEY,
   POLARIS_BRIDGE_VERSION,
   channelOf,
+  KIT_VIEWS,
+  openChannel,
   stateChannel,
+  updateProgressChannel,
+  type KitView,
   type BridgeEnvelope,
   type BridgeMethod,
 } from "./protocol.js";
@@ -67,6 +71,18 @@ export interface PreloadPolarisBridge {
   fetchSchema(): Promise<never>;
   importBundle(jws: string): Promise<never>;
   on(event: "stateChanged", cb: (state: never) => void): () => void;
+  /** v4 (UK-06.3): progress of an `update.install` this window started. */
+  onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void;
+  /** v4 (UK-06.4): the host asks this window to open a view (a native menu item). */
+  onOpen(cb: (view: KitView) => void): () => void;
+}
+
+/** One pushed update-install progress event, as `@polaris-key/react`'s `BridgeUpdateProgress`. */
+export interface PreloadUpdateProgress {
+  done: number;
+  total?: number | null;
+  version?: string;
+  phase?: "download";
 }
 
 function unwrap(raw: unknown): unknown {
@@ -90,10 +106,53 @@ export function createPreloadBridge(
     unwrap(await ipc.invoke(channelOf(prefix, method), ...args));
   const listeners = new Set<(state: never) => void>();
   let subscribed = false;
+  // `subscribe` is the host's list of windows it may push to (state and open); it is held while
+  // anything here listens for either.
+  let holders = 0;
+  const hold = (): void => {
+    if (holders++ === 0) void call("subscribe").catch(() => undefined);
+  };
+  const release = (): void => {
+    if (--holders === 0) void call("unsubscribe").catch(() => undefined);
+  };
+  const openListeners = new Set<(view: KitView) => void>();
+  const onOpenPush = (_event: unknown, view: unknown): void => {
+    if (typeof view !== "string" || !KIT_VIEWS.includes(view as KitView))
+      return;
+    for (const cb of [...openListeners]) {
+      try {
+        cb(view as KitView);
+      } catch {
+        // A renderer listener's failure is its own.
+      }
+    }
+  };
   const onState = (_event: unknown, state: unknown): void => {
     for (const cb of [...listeners]) {
       try {
         cb(state as never);
+      } catch {
+        // A renderer listener's failure is its own.
+      }
+    }
+  };
+  const progressListeners = new Set<(p: PreloadUpdateProgress) => void>();
+  const onProgress = (_event: unknown, raw: unknown): void => {
+    // Only the three counted fields cross to the page, whatever the main process sent.
+    const r = (raw ?? {}) as Record<string, unknown>;
+    if (typeof r.done !== "number" || !Number.isFinite(r.done)) return;
+    const p: PreloadUpdateProgress = {
+      done: r.done,
+      total:
+        typeof r.total === "number" && Number.isFinite(r.total)
+          ? r.total
+          : null,
+      phase: "download",
+    };
+    if (typeof r.version === "string") p.version = r.version;
+    for (const cb of [...progressListeners]) {
+      try {
+        cb(p);
       } catch {
         // A renderer listener's failure is its own.
       }
@@ -117,20 +176,42 @@ export function createPreloadBridge(
       call("invoke", service, method, args),
     fetchSchema: () => call("fetchSchema") as Promise<never>,
     importBundle: (jws: string) => call("importBundle", jws) as Promise<never>,
+    onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void {
+      progressListeners.add(cb);
+      if (progressListeners.size === 1)
+        ipc.on(updateProgressChannel(prefix), onProgress);
+      return () => {
+        if (!progressListeners.delete(cb)) return;
+        if (progressListeners.size === 0)
+          ipc.removeListener(updateProgressChannel(prefix), onProgress);
+      };
+    },
+    onOpen(cb: (view: KitView) => void): () => void {
+      openListeners.add(cb);
+      if (openListeners.size === 1) {
+        ipc.on(openChannel(prefix), onOpenPush);
+        hold();
+      }
+      return () => {
+        if (!openListeners.delete(cb) || openListeners.size > 0) return;
+        ipc.removeListener(openChannel(prefix), onOpenPush);
+        release();
+      };
+    },
     on(event: "stateChanged", cb: (state: never) => void): () => void {
       if (event !== "stateChanged") return () => undefined;
       listeners.add(cb);
       if (!subscribed) {
         subscribed = true;
         ipc.on(stateChannel(prefix), onState);
-        void call("subscribe").catch(() => undefined);
+        hold();
       }
       return () => {
         listeners.delete(cb);
         if (listeners.size === 0 && subscribed) {
           subscribed = false;
           ipc.removeListener(stateChannel(prefix), onState);
-          void call("unsubscribe").catch(() => undefined);
+          release();
         }
       };
     },

@@ -5,7 +5,7 @@ import { Input } from "../../../ui/Input.js";
 import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
-import { PortalApiError, type PortalMethods } from "../../api.js";
+import { HttpError, type PortalMethods } from "../../api.js";
 import { useMakePrimary, useRenamePasskey } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import { passkeyName, stepUpFresh } from "../../model/methods.js";
@@ -36,9 +36,9 @@ interface ToolProps {
 }
 
 function errorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     if (err.status === 422)
-      return err.message && err.message !== `portal api ${err.status}`
+      return err.message && err.message !== `http ${err.status}`
         ? err.message
         : t("locker.methods.nameLength");
     if (err.status === 404) return t("locker.methods.alreadyGone");
@@ -145,7 +145,7 @@ export function MakePrimaryTool({
         <p
           id={errorId}
           role="alert"
-          className="mt-2 text-sm text-danger sm:ms-13"
+          className="mt-2 text-sm text-danger sm:ms-12"
         >
           {error}
         </p>
@@ -161,7 +161,7 @@ export function MakePrimaryTool({
           })
         }
       >
-        <div className="pt-3 sm:ms-13">
+        <div className="pt-3 sm:ms-12">
           <div
             className="max-w-xl space-y-3 rounded-lg border border-border bg-surface-sunken p-4"
             onKeyDown={closeOnEscape(close)}
@@ -279,7 +279,7 @@ export function RenamePasskeyTool({
   const error =
     mutation.error && !stepUpFailed ? errorText(mutation.error) : null;
   const invalid =
-    mutation.error instanceof PortalApiError && mutation.error.status === 422;
+    mutation.error instanceof HttpError && mutation.error.status === 422;
 
   const action = open ? null : (
     <Button
@@ -309,7 +309,7 @@ export function RenamePasskeyTool({
         })
       }
     >
-      <div className="pt-3 sm:ms-13">
+      <div className="pt-3 sm:ms-12">
         <form
           noValidate
           className="max-w-xl space-y-3 rounded-lg border border-border bg-surface-sunken p-4"

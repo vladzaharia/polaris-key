@@ -1,8 +1,3 @@
-import {
-  hashKey,
-  mintOpaqueToken,
-  randomId,
-} from "../../../platform/crypto.js";
 import { portalAudit } from "../../../core/accounts/portalAudit.js";
 import { normalizeEmail } from "../../../platform/email.js";
 import { parseJsonColumn } from "../../../platform/json.js";
@@ -32,8 +27,10 @@ import {
   licenseAccountId,
   subjectFor,
 } from "../../../core/accounts/accountSubjects.js";
-import { notAutoAttachBlockedSql } from "../../../core/licensing/licenseHolders.js";
-import { catchUpLegacyAccount } from "../accounts/legacy.js";
+import {
+  notAutoAttachBlockedSql,
+  type JoinedLicense,
+} from "../../../core/licensing/licenseHolders.js";
 import { deleteAccount, type ErasureResult } from "../accounts/deletion.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
 import {
@@ -101,8 +98,8 @@ export interface PortalLicenseRow extends LicenseRow {
 /**
  * The portal's view of an account (I-05: `accounts`, which replaced `portal_accounts` and kept
  * its ids). With `now`, an account absorbed by a merge in the last 30 days resolves to the
- * survivor, so its signed cookie keeps working; an id the new tables do not know yet (an account
- * a pre-I-05 Worker created during the deploy window) is copied across first.
+ * survivor, so its signed cookie keeps working; an id the account tables do not know reads as
+ * signed out (I-28: the portal catch-up is gone).
  */
 export async function getPortalAccount(
   db: Db,
@@ -113,9 +110,7 @@ export async function getPortalAccount(
     now === undefined
       ? await getAccountRow(db, id)
       : await resolveAccount(db, id, now);
-  if (found) return found;
-  if (await catchUpLegacyAccount(db, id)) return getAccountRow(db, id);
-  return null;
+  return found;
 }
 
 function signedInAccount(result: SignInResult): PortalAccountRow {
@@ -153,9 +148,6 @@ export async function getOrCreateAccountByEmail(
   );
 }
 
-/** The issuer-less key every portal identity carried before I-01 (migrations/0059). */
-export const LEGACY_PORTAL_IDENTITY_PROVIDER = "oidc";
-
 /**
  * The `provider` key for identities minted by `issuer`: the configured issuer without a trailing
  * slash, the same normalisation every issuer URL in the portal flow gets. An operator editing
@@ -163,25 +155,6 @@ export const LEGACY_PORTAL_IDENTITY_PROVIDER = "oidc";
  */
 export function portalIdentityIssuerKey(issuer: string): string {
   return issuer.replace(/\/$/, "");
-}
-
-/**
- * Re-key pre-I-01 portal identities from the literal `"oidc"` to the platform issuer (S-16 G14,
- * migrations/0059). The portal table is what a Worker rolled back to before I-05 reads; the
- * account links the 0068 backfill copied from it are re-keyed by `rekeyLegacyAccountLinks`, which
- * the portal callback runs right after this. Both must run before the identity lookup, or a
- * legacy user would get a second account. Idempotent; once no legacy row is left it is a single
- * empty search. `OR IGNORE` leaves a legacy row in place if the issuer-keyed row already exists.
- */
-export async function rekeyLegacyPortalIdentities(
-  db: Db,
-  issuer: string,
-): Promise<void> {
-  await db.run(
-    `UPDATE OR IGNORE portal_account_identities SET provider = ? WHERE provider = ?`,
-    issuer,
-    LEGACY_PORTAL_IDENTITY_PROVIDER,
-  );
 }
 
 /**
@@ -339,8 +312,7 @@ export async function linkLicense(
  * means a TENANT-CONTROLLED issuer, whose `email` and `sub` claims the platform cannot vouch
  * for. The rule is "on for platform-issuer products, off for custom-issuer products", so a
  * tenant that stands up its own Keycloak/Authentik is opted out automatically rather than by an
- * operator remembering to. I-29 retired the per-product override (`auto_link_enabled` is no
- * longer read or written): the issuer is the whole decision.
+ * operator remembering to. I-29 retired the per-product override: the issuer is the whole decision.
  *
  * This is the PRODUCT-level rule, for the callers with no licence in hand (`autoLinkEnabled`,
  * the storefront's eligibility): it reads the provider as it stands now.
@@ -516,10 +488,28 @@ export async function attachWaitingLicensesByEmail(
   email: string,
   now: number,
 ): Promise<number> {
+  return (await attachWaitingLicensesByEmailRows(db, accountId, email, now))
+    .length;
+}
+
+/** `attachWaitingLicensesByEmail`, answering the licences that joined (LX-27c.3). */
+export async function attachWaitingLicensesByEmailRows(
+  db: Db,
+  accountId: string,
+  email: string,
+  now: number,
+): Promise<JoinedLicense[]> {
   const address = normalizeEmail(email);
-  if (!address) return 0;
-  const rows = await db.all<{ product: string; id: string }>(
-    `SELECT l.product AS product, l.id AS id
+  if (!address) return [];
+  const rows = await db.all<{
+    product: string;
+    id: string;
+    invited_at: number | null;
+    status: string;
+    expires_at: number | null;
+  }>(
+    `SELECT l.product AS product, l.id AS id, l.invited_at AS invited_at,
+            l.status AS status, l.expires_at AS expires_at
        FROM licenses l
        LEFT JOIN portal_product_settings s ON s.product = l.product
        LEFT JOIN oidc_config o ON o.product = l.product
@@ -528,12 +518,19 @@ export async function attachWaitingLicensesByEmail(
     address,
     accountId,
   );
-  let attached = 0;
+  const joined: JoinedLicense[] = [];
   for (const licence of rows) {
     if (await attachAutomatically(db, accountId, licence, "email", now))
-      attached++;
+      joined.push({
+        product: licence.product,
+        id: licence.id,
+        invitedAt: licence.invited_at ?? null,
+        active:
+          licence.status === "active" &&
+          (licence.expires_at === null || licence.expires_at > now),
+      });
   }
-  return attached;
+  return joined;
 }
 
 /**
@@ -569,9 +566,17 @@ export async function syncAccountLicenseLinks(
   db: Db,
   accountId: string,
   now: number,
+  /** LX-27c.3: told which licences joined by address (and that address), for the library notice. */
+  onJoined?: (joined: JoinedLicense[], email: string) => Promise<void>,
 ): Promise<void> {
   for (const email of await verifiedAccountEmails(db, accountId)) {
-    await attachWaitingLicensesByEmail(db, accountId, email, now);
+    const joined = await attachWaitingLicensesByEmailRows(
+      db,
+      accountId,
+      email,
+      now,
+    );
+    if (onJoined && joined.length > 0) await onJoined(joined, email);
   }
   const subjects = await db.all<{ subject: string }>(
     "SELECT subject FROM account_links WHERE account_id = ? AND kind = 'oidc'",
@@ -682,16 +687,23 @@ export async function listVisibleDevices(
 /**
  * A product's portal settings: the listing columns and branding of its `portal_product_settings`
  * row, with the three switches (`portal_enabled`, `key_reissue_enabled`, `claim_by_key`) read from
- * their settings rows (ST-14; `core/portalToggles.ts`). The table's own switch columns are no
- * longer read; ST-25 drops them.
+ * their settings rows (ST-14; `core/portalToggles.ts`). The table's own switch columns are
+ * dropped (migration 0140).
  */
 export async function getPortalProductSettings(
   db: Db,
   product: string,
 ): Promise<PortalProductSettingsRow> {
   const [row, toggles] = await Promise.all([
-    db.first<PortalProductSettingsRow>(
-      "SELECT * FROM portal_product_settings WHERE product = ?",
+    db.first<
+      Omit<
+        PortalProductSettingsRow,
+        "portal_enabled" | "key_reissue_enabled" | "claim_by_key"
+      >
+    >(
+      `SELECT product, discover_enabled, store_listed, store_audience, store_offer_paths_json,
+              store_group_labels_json, branding_json, created_at, modified_at
+         FROM portal_product_settings WHERE product = ?`,
       product,
     ),
     readPortalToggles(db, product),
@@ -902,11 +914,10 @@ export function releaseServiceEnabled(
 /**
  * What the customer portal offers for ONE product, or (without `product`) for the platform.
  *
- * I-29: the per-product toggles `oidc_enabled`, `magic_enabled`, `license_key_claim_enabled` and
- * `auto_link_enabled` are retired and no longer read. Email and passkeys are always on, platform
+ * I-29: the per-product sign-in toggles (OIDC, magic link, key claim, auto-link) are retired and their columns dropped. Email and passkeys are always on, platform
  * single sign-on follows the platform's connections, and key claim is always on; a domain's
  * owner turns the email methods off for its addresses with an enforced domain (I-30), which the
- * sign-in routes check on their own. `releases_enabled` is retired too: downloads follow the
+ * sign-in routes check on their own. The releases toggle is retired too: downloads follow the
  * product's Release service (Ship builds).
  *
  * R5-06 stays: a `product` evaluates that one product's row with no cross-tenant term, and the

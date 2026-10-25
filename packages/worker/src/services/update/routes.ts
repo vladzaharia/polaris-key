@@ -133,6 +133,7 @@ const CHANNEL_PARAM = { channel: CHANNEL };
 export const UPDATE_ROUTES = serviceRoutes("update", [
   {
     path: "appcast.xml",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "handler" },
@@ -140,6 +141,7 @@ export const UPDATE_ROUTES = serviceRoutes("update", [
   },
   {
     path: "version",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "none" },
@@ -149,6 +151,7 @@ export const UPDATE_ROUTES = serviceRoutes("update", [
   // `feed.jws` sits beside `appcast.xml` without reserving a word.
   {
     path: ":channel/feed.jws",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "handler" },
@@ -159,6 +162,7 @@ export const UPDATE_ROUTES = serviceRoutes("update", [
   },
   {
     path: ":channel/appcast.xml",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "handler" },

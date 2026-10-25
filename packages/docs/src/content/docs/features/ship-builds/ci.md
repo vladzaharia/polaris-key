@@ -45,60 +45,46 @@ rules the Worker applies, are on [Trusted publishing](/docs/features/ship-builds
 ## The workflow
 
 ```yaml title=".github/workflows/release.yml"
+# Publishes my-app (the slug in .pkey/product) when a v* tag is pushed.
 name: Release
 on:
   push:
     tags: ["v*"]
 
 jobs:
-  build:
-    # … your export and signing jobs, uploading their outputs with actions/upload-artifact …
-
   publish:
-    needs: build
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: read
-      id-token: write # lets the step request the job's OIDC token
+      id-token: write
     steps:
-      - uses: actions/checkout@v4 # the step reads .pkey/ from the workspace
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist # one subdirectory per artifact; the step searches recursively
+      - uses: actions/checkout@v4
+      # Build your files into dist here, before the publish step.
       - uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
         with:
-          product: your-product
-          tag: ${{ github.ref_name }}
-          channel: beta
-          dir: dist
-          release-key: ${{ secrets.PKEY_RELEASE_KEY }} # when .pkey/release declares releaseKeys
+          args: --tag ${{ github.ref_name }} --channel beta --dir dist
+          release-key: ${{ secrets.PKEY_RELEASE_KEY }}
 ```
 
-Reference the Action by a full commit SHA of this repository, as above. It runs on the current Node runtime GitHub supports and needs no install
+Build in this job, or download a build job's artifacts into `dist` with `actions/download-artifact` before the step. Reference the Action by a full commit SHA of this repository, as above. It runs on the current Node runtime GitHub supports and needs no install
 step.
 
-| Input               | Default               | Meaning                                                                                                                   |
-| ------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `product`           | (required)            | The product slug; must equal `.pkey/product`'s.                                                                           |
-| `dir`               | (required)            | The built files, searched recursively, relative to the workspace.                                                         |
-| `tag`               |                       | The git tag, which is also the release id. It must spell the version (the tag minus a leading `v`).                       |
-| `version`           | `tag` without its `v` | The version; must parse under the deliverable's version scheme.                                                           |
-| `channel`           |                       | The canonical release track the release is published to: `stable`, `beta`, or one the product declares.                   |
-| `deliverable`       | `app`                 | `app`, or a pack id `.pkey/release` declares ([Publishing a pack](#publishing-a-pack)).                                   |
-| `source`            | `r2`                  | `r2` uploads the bytes to Polaris Key. `github` uploads nothing and locates every file on the tagged GitHub release.      |
-| `meta`              |                       | A JSON file of per-build facts (below).                                                                                   |
-| `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                                   |
-| `release-key`       |                       | The release key's PEM (an environment secret). Required when `.pkey/release` declares `releaseKeys`.                      |
-| `min-supported-seq` |                       | The record's `minSupportedSeq`: installs below that release on its platforms are prompted (never blocked).                |
-| `content-stamp`     |                       | App only, when packs are declared: the `pkey-content.json` the build embedded ([App releases](#app-releases-with-packs)). |
-| `embedded`          |                       | App only: compute the content from the pack markers under this directory instead of `content-stamp`.                      |
-| `pins`              |                       | App only: `<packId>@<version>` pins for packs the build does not embed, separated by spaces, commas or newlines.          |
-| `out`               |                       | Pack only: keep the signed record and payloads at `<out>/<packId>/<version>/` for the next publish's `bases`.             |
-| `bases`             |                       | Pack only: the earlier releases `out` kept; the newest ones Polaris Key confirms get deltas.                              |
-| `script-extensions` |                       | Pack only (`godot.pck`): extensions the lint refuses as scripts beside `.gd`, `.gdc`, `.cs` (a GDExtension language).     |
-| `script-types`      |                       | Pack only (`godot.pck`): that language's script class names (`LuaScript`), refused as markers and as reference types.     |
-| `dry-run`           | `false`               | `true` uploads, signs and writes no release ([Dry runs](#dry-runs)); it still requests upload tickets.                    |
+| Input               | Default               | Meaning                                                                                                                                                                                                        |
+| ------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `command`           | `release publish`     | The `pkey` command to run; another is `assets push` or `channel sync`.                                                                                                                                         |
+| `args`              |                       | The command's flags, split on whitespace and newlines. Quotes group; there is no shell. Never put untrusted text in it, such as a pull request title: a flag like `--base-url` would redirect the job's token. |
+| `release-key`       |                       | The release key's PEM (an environment secret). Required when `.pkey/release` declares `releaseKeys`.                                                                                                           |
+| `content-key`       |                       | A delegated content key's PEM, for a data-only pack release.                                                                                                                                                   |
+| `base-url`          | `https://key.plrs.im` | The Polaris Key origin.                                                                                                                                                                                        |
+| `working-directory` | the workspace         | Where the command runs.                                                                                                                                                                                        |
+| `dry-run`           | `false`               | `true` uploads, signs and writes no release ([Dry runs](#dry-runs)); it still requests upload tickets.                                                                                                         |
+| `channels`          | `auto`                | `auto` runs `pkey channel sync` once after a successful app publish; a pack or package publish never syncs. `none` skips it.                                                                                   |
+
+The product comes from `.pkey/product`. Every flag of `pkey release publish` goes in `args`:
+`--tag`, `--version`, `--channel`, `--deliverable`, `--dir`, `--source`, `--meta`,
+`--min-supported-seq`, `--content-stamp`, `--embedded`, `--pin`, `--out`, `--bases`,
+`--script-extensions` and `--script-types` (each is described under its section below).
 
 The step sets two outputs: `release-id` and `outcome` (`created`, `enriched`, or `unchanged`). A
 refusal fails the step with the server's reason as an error annotation.
@@ -224,12 +210,10 @@ missing on Linux).
     restore-keys: pkey-pack-diceroll.core3d-
 - uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
   with:
-    product: diceroll
-    deliverable: diceroll.core3d
-    version: 1.4.0
-    dir: packs/diceroll.core3d # <variant key or "default">/ per variant
-    out: pack-cache
-    bases: pack-cache
+    # dir: <variant key or "default">/ per variant
+    args: >-
+      --deliverable diceroll.core3d --version 1.4.0
+      --dir packs/diceroll.core3d --out pack-cache --bases pack-cache
     release-key: ${{ secrets.PKEY_RELEASE_KEY }}
 ```
 
@@ -349,10 +333,7 @@ must be pinned. Then publish the app with the same stamp:
 ```yaml title=".github/workflows/release.yml"
 - uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
   with:
-    product: diceroll
-    tag: ${{ github.ref_name }}
-    dir: dist
-    content-stamp: pkey-content.json
+    args: --tag ${{ github.ref_name }} --dir dist --content-stamp pkey-content.json
     release-key: ${{ secrets.PKEY_RELEASE_KEY }}
 ```
 
@@ -411,8 +392,7 @@ fingerprint is not in the product's key inventory is flagged and exits 1. See
 commands need `distribution:rollout`, which an operator adds deliberately; see
 [Rollouts and halts](/docs/features/ship-builds/channels/rollouts/).
 
-Store feeds, listing assets, hosted assets, itch.io and Snap pushes and package-manager pull
-requests are on [Publish to stores from CI](/docs/features/ship-builds/ci-stores/).
+itch.io and Snap pushes and package-manager pull requests are on [Channels that run in CI](/docs/features/ship-builds/channels/#channels-that-run-in-ci); listing and hosted assets are on [Polaris Key](/docs/features/ship-builds/channels/polaris-key/#listing-assets).
 
 ## Other CI systems
 

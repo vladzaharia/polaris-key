@@ -1,0 +1,2 @@
+packages/worker/src/a.ts	801
+packages/worker/src/docsCsp.generated.ts	900

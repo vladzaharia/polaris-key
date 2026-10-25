@@ -1,95 +1,64 @@
 /**
- * The `polaris-key/publish` GitHub Action (P2-06), as code: `actions/publish/action.yml` runs the
- * esbuild bundle of this CLI (`actions/publish/dist/index.js`) with no arguments, and the bundle's
- * entry (`bin/standalone.ts`) hands control here when it sees the Action's inputs.
+ * The `polaris-key/publish` GitHub Action (P2-06, v2 in A-25.5), as code: `actions/publish/action.yml`
+ * runs the esbuild bundle of this CLI (`actions/publish/dist/index.js`) with no arguments, and the
+ * bundle's entry (`bin/standalone.ts`) hands control here when it sees the Action's inputs.
+ *
+ * The Action is thin: eight inputs. `command` (default `release publish`) and `args` become one
+ * `pkey` argv, run in-process with no shell; `release-key` and `content-key` become
+ * `PKEY_RELEASE_KEY` / `PKEY_CONTENT_KEY` in that process's environment, never argv; `base-url`
+ * becomes `PKEY_BASE_URL`; `working-directory` is the cwd; `dry-run` appends `--dry-run`.
+ * `channels: auto` then runs `pkey channel sync` once after a successful app `release publish`.
  *
  * Inputs arrive as `INPUT_<NAME>` environment variables (GitHub upper-cases the name and keeps
- * hyphens: `INPUT_BASE-URL`, `INPUT_DRY-RUN`). They map one-to-one onto `pkey release publish`'s
- * flags. Outputs (`release-id`, `outcome`) go to `$GITHUB_OUTPUT`; a failure is an `::error::`
- * annotation and a non-zero exit, so a refused publish fails the job.
+ * hyphens: `INPUT_BASE-URL`). GitHub forwards undeclared `with:` keys too, so any `INPUT_*` that is
+ * not one of the eight fails the step before any network call, naming the flag that replaces it and
+ * never echoing its value. A failure is an `::error::` annotation and a non-zero exit.
  *
- * Server text never becomes a workflow command (`untrusted.ts`): stdout and stderr run behind the
- * output guard, the failure is cleaned before it is escaped into the annotation, and an output
- * is written only when its value has the shape the Worker gives it (`writeOutputs`).
+ * Outputs (`release-id`, `outcome`) are written by `pkey release publish` itself
+ * (`actionOutputs.ts`). Server text never becomes a workflow command (`untrusted.ts`).
  */
 
-import { execFileSync } from "node:child_process";
-import { appendFile } from "node:fs/promises";
+import path from "node:path";
+import { stat } from "node:fs/promises";
 import type { Out } from "./ci.js";
 import type { CiEnv } from "./oidc.js";
-import { publishRelease, type PublishSource } from "./publish.js";
-import { publishPack } from "./packPublish.js";
-import { isPackageDeliverable, publishPackage } from "./package/publish.js";
-import { MIN_ZSTD_VERSION, versionAtLeast } from "./packArtifacts.js";
-import type { TransportCommon } from "./transport.js";
-import { baPackage, baUpload } from "./transportAppleBa.js";
-import { padModules, type PadDelivery } from "./transportPlayPad.js";
-import { steamVdf } from "./transportSteam.js";
-import { cmdStorefront } from "./storefronts/command.js";
-import { parseAssetMap, pushAssets, resolveAssetMap } from "./assets.js";
-import {
-  escapeData,
-  guardOutput,
-  untrusted,
-  untrustedLines,
-} from "./untrusted.js";
-import path from "node:path";
+import { COMMANDS, VALUELESS_FLAGS } from "./help.js";
+import { runPkey } from "./index.js";
+import { CONTENT_KEY_ENV } from "./delegate.js";
+import { RELEASE_KEY_ENV } from "./releaseKeys.js";
+import { BASE_URL_ENV } from "./context.js";
+import type { TermOut } from "./terminal.js";
+import { escapeData, untrusted, untrustedLines } from "./untrusted.js";
 
 /** The Action's inputs, in `action.yml` order. */
 export const ACTION_INPUTS = [
-  "product",
-  "deliverable",
-  "version",
-  "tag",
-  "channel",
-  "dir",
-  "source",
-  "meta",
-  "base-url",
+  "command",
+  "args",
   "release-key",
   "content-key",
-  "delegation",
-  "min-supported-seq",
-  "content-stamp",
-  "embedded",
-  "pins",
-  "out",
-  "bases",
-  "script-extensions",
-  "script-types",
+  "base-url",
+  "working-directory",
   "dry-run",
-  "transport",
-  "content-api",
-  "variant",
-  "transport-out",
-  "gradle-project",
-  "pad-delivery",
-  "steam-depot",
-  "steam-branch",
-  "steam-setlive",
-  "asc-expect-resource",
-  "transport-report",
-  "storefront",
-  "itch-platform",
-  "storefront-outlet",
-  "assets",
+  "channels",
 ] as const;
 
-/** A-18h: the `storefront` input's steps, onto `pkey storefront …`. */
-export const ACTION_STOREFRONT_STEPS = [
-  "itch-push",
-  "snap-metadata",
-  "snap-upload",
-  "snap-upload-metadata",
-] as const;
+export type ActionInput = (typeof ACTION_INPUTS)[number];
 
-/** P5-08: the `transport` input's steps, onto `pkey transport …`. */
-export const ACTION_TRANSPORT_STEPS = [
-  "apple-ba-package",
-  "apple-ba-upload",
-  "play-pad-modules",
-  "steam-depot-vdf",
-] as const;
+/** The inputs 0.9 removed, each with the flag that replaces it (the registry's `action` maps). */
+export const REMOVED_INPUTS: Readonly<Record<string, string>> = (() => {
+  const out: Record<string, string> = {};
+  for (const c of COMMANDS)
+    for (const [input, flag] of Object.entries(c.action ?? {}))
+      out[input] ??= flag;
+  return out;
+})();
+
+/** The step-picking inputs, which have no flag: what replaces each. */
+const REMOVED_STEP: Readonly<Record<string, string>> = {
+  storefront: "Use channels: auto, or command: storefront <store> <step> …",
+  transport: "Use command: transport <step> …, with its flags in args.",
+  assets: "Use command: assets push, with the file and --slot in args.",
+};
 
 /** One input's value, or undefined when empty (GitHub passes an unset input as ""). */
 export function actionInput(env: CiEnv, name: string): string | undefined {
@@ -97,7 +66,7 @@ export function actionInput(env: CiEnv, name: string): string | undefined {
   return value ? value : undefined;
 }
 
-/** True when the bundle was started by the Action runner rather than as a CLI. */
+/** True when the bundle was started by the Action runner rather than as a CLI (D-A6). */
 export function isActionInvocation(
   argv: readonly string[],
   env: CiEnv,
@@ -105,8 +74,39 @@ export function isActionInvocation(
   return (
     argv.length === 0 &&
     env.GITHUB_ACTIONS === "true" &&
-    env.INPUT_PRODUCT !== undefined
+    env.INPUT_COMMAND !== undefined
   );
+}
+
+/**
+ * Split `args` into words: whitespace and newlines separate, single and double quotes group
+ * (and are dropped), nothing else is special. No backslash escapes, no variables, no globbing,
+ * no shell. An unterminated quote throws.
+ */
+export function splitArgs(text: string): string[] {
+  const words: string[] = [];
+  let word = "";
+  let started = false;
+  let quote: string | null = null;
+  for (const ch of text) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else word += ch;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      started = true;
+    } else if (/\s/.test(ch)) {
+      if (started) words.push(word);
+      word = "";
+      started = false;
+    } else {
+      word += ch;
+      started = true;
+    }
+  }
+  if (quote) throw new Error(`args has an unterminated ${quote} quote.`);
+  if (started) words.push(word);
+  return words;
 }
 
 export interface ActionIo {
@@ -116,627 +116,158 @@ export interface ActionIo {
   stderr: Out;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
-  /** The zstd install seam (tests): runs a command, throws on failure. */
-  exec?: (cmd: string, args: string[]) => string;
-  /** The platform seam (tests); `process.platform` otherwise. */
-  platform?: NodeJS.Platform;
 }
 
-/** A list input (`script-extensions`, `script-types`): entries separated by whitespace or commas. */
-export function listInput(value: string | undefined): string[] {
-  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
-}
-
-/** The `pins` input: `<packId>@<version>` entries separated by whitespace or commas. */
-export function pinsInput(value: string | undefined): string[] {
-  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
-}
-
-/**
- * A pack publish needs the zstd CLI at ≥ 1.5.5 (`MIN_ZSTD_VERSION`). GitHub's hosted runners carry
- * it. When it is missing or older on a Linux runner, refresh apt's lists and install it (fixed
- * arguments, no shell); if zstd is still missing or older afterwards (an old distribution's
- * package), fail with the minimum version. Elsewhere, fail with the same message.
- */
-export function ensureZstd(
-  io: Pick<ActionIo, "exec" | "stdout" | "platform">,
-): void {
-  const exec =
-    io.exec ??
-    ((cmd: string, args: string[]) =>
-      execFileSync(cmd, args, {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      }));
-  const version = (): string | null => {
-    try {
-      return /v(\d+\.\d+\.\d+)/.exec(exec("zstd", ["-V"]))?.[1] ?? null;
-    } catch {
-      return null;
-    }
-  };
-  const ok = (v: string | null) =>
-    v !== null && versionAtLeast(v, MIN_ZSTD_VERSION);
-  const found = version();
-  if (ok(found)) return;
-  const need = `A pack publish needs zstd ≥ ${MIN_ZSTD_VERSION}`;
-  if ((io.platform ?? process.platform) !== "linux")
-    throw new Error(
-      `${need}; ${found ? `this runner has ${found}` : "it is not on PATH"}. Install it before this step (brew install zstd).`,
-    );
-  io.stdout.write(
-    `zstd ${found ? `${found} is older than ${MIN_ZSTD_VERSION}` : "is not on PATH"}; installing it with apt-get\n`,
-  );
-  try {
-    exec("sudo", ["-n", "apt-get", "update", "-q"]);
-    exec("sudo", ["-n", "apt-get", "install", "-y", "-q", "zstd"]);
-  } catch (e) {
-    throw new Error(
-      `${need}, and installing it with apt-get failed (${(e as Error).message.split("\n")[0]}). Install it before this step.`,
-    );
+/** The line each removed `INPUT_*` earns, from the registry: names only, never a value. */
+function refusals(env: CiEnv): string[] {
+  const kept = new Set<string>(ACTION_INPUTS);
+  const lines: string[] = [];
+  for (const key of Object.keys(env).sort()) {
+    if (!key.startsWith("INPUT_")) continue;
+    const name = key.slice("INPUT_".length).toLowerCase();
+    if (kept.has(name)) continue;
+    const shown = untrusted(name, env);
+    const flag = REMOVED_INPUTS[name];
+    if (REMOVED_STEP[name])
+      lines.push(`Input ${shown} was removed in 0.9. ${REMOVED_STEP[name]}`);
+    else if (flag)
+      lines.push(
+        VALUELESS_FLAGS.has(flag.slice(2))
+          ? `Input ${shown} was removed in 0.9. Put ${flag} in args.`
+          : `Input ${shown} was removed in 0.9. Put ${flag} <value> in args.`,
+      );
+    else lines.push(`Input ${shown} is not an input of this Action.`);
   }
-  const after = version();
-  if (!ok(after))
-    throw new Error(
-      `${need}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`,
-    );
+  return lines;
 }
 
-export async function runAction(given: ActionIo): Promise<number> {
-  const stdout = guardOutput(given.stdout, given.env);
-  const stderr = guardOutput(given.stderr, given.env);
-  try {
-    return await runActionSteps({
-      ...given,
-      stdout: stdout.stream,
-      stderr: stderr.stream,
-    });
-  } finally {
-    stdout.flush();
-    stderr.flush();
+/** The value of `--name v` or `--name=v` in an argv, if any. */
+function flagValue(argv: readonly string[], name: string): string | undefined {
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i]!;
+    if (a === `--${name}`) return argv[i + 1];
+    if (a.startsWith(`--${name}=`)) return a.slice(name.length + 3);
   }
+  return undefined;
 }
 
-async function runActionSteps(io: ActionIo): Promise<number> {
-  const input = (name: (typeof ACTION_INPUTS)[number]) =>
-    actionInput(io.env, name);
-  try {
-    const product = input("product");
-    const dir = input("dir");
-    if (!product) throw new Error("The product input is required.");
-    // HA-06: the `assets` input is a step of its own, and the one step that needs no `dir`.
-    const assets = input("assets");
-    if (assets !== undefined) {
-      if (input("storefront") !== undefined || input("transport") !== undefined)
-        throw new Error(
-          "assets is a step of its own: set it without storefront or transport.",
-        );
-      await runAssetsStep(io, input, product, dir, assets);
-      return 0;
-    }
-    if (!dir) throw new Error("The dir input is required.");
-    const dryRun = input("dry-run");
-    if (dryRun !== undefined && dryRun !== "true" && dryRun !== "false")
-      throw new Error(
-        `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`,
-      );
-    const deliverable = input("deliverable");
-    const releaseKeyPem = input("release-key");
-    // P4-19: a content key and its delegation, exclusive of the release key.
-    const contentKeyPem = input("content-key");
-    const delegation = input("delegation");
-    if (contentKeyPem && releaseKeyPem)
-      throw new Error(
-        "release-key and content-key are exclusive: a pack release is signed by one or the other.",
-      );
-    if (
-      (contentKeyPem || delegation) &&
-      (!deliverable || deliverable === "app")
-    )
-      throw new Error(
-        "content-key and delegation apply only to a pack deliverable: a content key never signs an app record.",
-      );
-    const transport = input("transport");
-    const given0 = (names: readonly (typeof ACTION_INPUTS)[number][]) =>
-      names.filter((n) => input(n) !== undefined);
-    const storefront = input("storefront");
-    if (storefront !== undefined) {
-      if (transport !== undefined)
-        throw new Error(
-          "storefront and transport are separate steps: set one per step.",
-        );
-      await runStorefrontStep(io, input, given0, product, dir, storefront);
-      return 0;
-    }
-    const storefrontOnly = given0(["itch-platform", "storefront-outlet"]);
-    if (storefrontOnly.length)
-      throw new Error(
-        `${storefrontOnly.join(", ")} ${storefrontOnly.length === 1 ? "applies" : "apply"} only with the storefront input.`,
-      );
-    if (transport !== undefined) {
-      await runTransportStep(io, input, given0, product, dir, transport);
-      return 0;
-    }
-    const transportOnly = given0([
-      "content-api",
-      "variant",
-      "transport-out",
-      "gradle-project",
-      "pad-delivery",
-      "steam-depot",
-      "steam-branch",
-      "steam-setlive",
-      "asc-expect-resource",
-    ]);
-    if (input("transport-report") === "false")
-      transportOnly.push("transport-report");
-    if (transportOnly.length)
-      throw new Error(
-        `${transportOnly.join(", ")} ${transportOnly.length === 1 ? "applies" : "apply"} only with the transport input.`,
-      );
-    const minSupportedSeq =
-      input("min-supported-seq") !== undefined
-        ? Number(input("min-supported-seq"))
-        : undefined;
-    const given = (names: readonly (typeof ACTION_INPUTS)[number][]) =>
-      names.filter((n) => input(n) !== undefined);
-    // F-03: a package release: extracted from dir, never signed, no app or pack inputs.
-    if (
-      deliverable &&
-      deliverable !== "app" &&
-      (await isPackageDeliverable(io.cwd, deliverable))
-    ) {
-      const wrong = given([
-        "tag",
-        "source",
-        "meta",
-        "content-stamp",
-        "embedded",
-        "pins",
-        "out",
-        "bases",
-        "script-extensions",
-        "script-types",
-        "min-supported-seq",
-      ]);
-      if (wrong.length || releaseKeyPem || contentKeyPem || delegation)
-        throw new Error(
-          `${[...wrong, ...(releaseKeyPem ? ["release-key"] : []), ...(contentKeyPem ? ["content-key"] : []), ...(delegation ? ["delegation"] : [])].join(", ")} do not apply to a package deliverable (${deliverable}): a package's files are extracted from dir, and it is never signed.`,
-        );
-      const result = await publishPackage({
-        cwd: io.cwd,
-        product,
-        dir,
-        deliverable,
-        version: input("version"),
-        channel: input("channel"),
-        baseUrl: input("base-url"),
-        dryRun: dryRun === "true",
-        env: io.env,
-        stdout: io.stdout,
-        stderr: io.stderr,
-        fetchImpl: io.fetchImpl,
-        sleep: io.sleep,
-      });
-      await writeOutputs(io, result.releaseId, result.server);
-      return 0;
-    }
-    if (deliverable && deliverable !== "app") {
-      // P4-03: a pack release. Inputs that only stamp an app release are refused, not ignored.
-      const wrong = given(["content-stamp", "embedded", "pins"]);
-      const scriptExtensions = listInput(input("script-extensions"));
-      const scriptTypes = listInput(input("script-types"));
-      if (wrong.length)
-        throw new Error(
-          `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`,
-        );
-      ensureZstd(io);
-      const result = await publishPack({
-        cwd: io.cwd,
-        product,
-        dir,
-        deliverable,
-        version: input("version"),
-        tag: input("tag"),
-        channel: input("channel"),
-        out: input("out"),
-        bases: input("bases"),
-        baseUrl: input("base-url"),
-        ...(releaseKeyPem ? { releaseKeyPem } : {}),
-        ...(contentKeyPem ? { contentKeyPem } : {}),
-        ...(delegation ? { delegation } : {}),
-        ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
-        // P4-28: another script language for the PCK lint.
-        ...(scriptExtensions.length ? { scriptExtensions } : {}),
-        ...(scriptTypes.length ? { scriptTypes } : {}),
-        dryRun: dryRun === "true",
-        env: io.env,
-        stdout: io.stdout,
-        stderr: io.stderr,
-        fetchImpl: io.fetchImpl,
-        sleep: io.sleep,
-      });
-      await writeOutputs(io, result.releaseId, result.server);
-      return 0;
-    }
-    const wrong = given(["out", "bases", "script-extensions", "script-types"]);
-    if (wrong.length)
-      throw new Error(
-        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases or configure a pack's lint.`,
-      );
-    const result = await publishRelease({
-      cwd: io.cwd,
-      product,
-      dir,
-      deliverable,
-      version: input("version"),
-      tag: input("tag"),
-      channel: input("channel"),
-      // `r2` unless set. action.yml gives `source` no `default:`: GitHub passes every defaulted
-      // input, so a default there would reach the package and transport paths, which refuse it.
-      source: (input("source") ?? "r2") as PublishSource,
-      meta: input("meta"),
-      baseUrl: input("base-url"),
-      // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never
-      // echoed; absent, PKEY_RELEASE_KEY from the job's environment is used.
-      ...(releaseKeyPem ? { releaseKeyPem } : {}),
-      ...(minSupportedSeq !== undefined ? { minSupportedSeq } : {}),
-      // P4-03: the packs an app release pins and its builds embed.
-      contentStamp: input("content-stamp"),
-      embedded: input("embedded"),
-      pins: pinsInput(input("pins")),
-      dryRun: dryRun === "true",
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep,
-    });
-    await writeOutputs(io, result.releaseId, result.server);
-    return 0;
-  } catch (e) {
-    // The message may carry the server's words: cleaned per line first, so no control character
-    // reaches the annotation and no line of it reads as a command, then escaped into one line.
-    const message = untrustedLines((e as Error).message, io.env);
+/** True for `release publish` of the app (no `--deliverable`, or `--deliverable app`). */
+function isAppPublish(argv: readonly string[]): boolean {
+  if (argv[0] !== "release" || argv[1] !== "publish") return false;
+  const deliverable = flagValue(argv, "deliverable");
+  return deliverable === undefined || deliverable === "app";
+}
+
+/** The sync a successful app publish earns (`channels: auto`); its flags come from the publish's. */
+function syncArgv(argv: readonly string[], dryRun: boolean): string[] {
+  const out = ["channel", "sync"];
+  const version =
+    flagValue(argv, "version") ?? flagValue(argv, "tag")?.replace(/^v/, "");
+  const forward: [string, string | undefined][] = [
+    ["product", flagValue(argv, "product")],
+    ["base-url", flagValue(argv, "base-url")],
+    ["channel", flagValue(argv, "channel")],
+    ["version", version],
+    ["dir", flagValue(argv, "dir")],
+  ];
+  for (const [k, v] of forward) if (v !== undefined) out.push(`--${k}`, v);
+  if (dryRun) out.push("--dry-run");
+  return out;
+}
+
+export async function runAction(io: ActionIo): Promise<number> {
+  // The message may carry the server's words: cleaned per line first, so no control character
+  // reaches the annotation and no line of it reads as a command, then escaped into one line.
+  const annotate = (title: string, message: string) =>
     io.stdout.write(
-      `::error title=pkey release publish::${escapeData(message)}\n`,
+      `::error title=${escapeData(untrusted(title, io.env))}::${escapeData(untrustedLines(message, io.env))}\n`,
     );
-    io.stderr.write(`${message}\n`);
+  const fail = (message: string): number => {
+    annotate("pkey", message);
+    io.stderr.write(`${untrustedLines(message, io.env)}\n`);
     return 1;
-  }
-}
-
-/**
- * P5-08: one `pkey transport …` step for a pack release the Action published earlier: `dir` is
- * that publish's `out` (for `apple-ba-upload`, the package step's `transport-out`).
- * Publish-only inputs are refused, not ignored.
- */
-async function runTransportStep(
-  io: ActionIo,
-  input: (name: (typeof ACTION_INPUTS)[number]) => string | undefined,
-  given: (names: readonly (typeof ACTION_INPUTS)[number][]) => string[],
-  product: string,
-  dir: string,
-  step: string,
-): Promise<void> {
-  if (!(ACTION_TRANSPORT_STEPS as readonly string[]).includes(step))
-    throw new Error(
-      `transport must be one of ${ACTION_TRANSPORT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`,
-    );
-  const deliverable = input("deliverable");
-  const version = input("version");
-  if (!deliverable || deliverable === "app")
-    throw new Error(
-      "transport needs a pack deliverable: set deliverable to the pack id.",
-    );
-  if (!version)
-    throw new Error("transport needs version: the pack release to package.");
-  const wrong = given([
-    "tag",
-    "source",
-    "meta",
-    "release-key",
-    "content-key",
-    "delegation",
-    "min-supported-seq",
-    "content-stamp",
-    "embedded",
-    "pins",
-    "out",
-    "bases",
-    "script-extensions",
-    "script-types",
-  ]);
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a transport step (${step}): it packages a release published earlier.`,
-    );
-  const dryRun = input("dry-run");
-  if (dryRun !== undefined && dryRun !== "false")
-    throw new Error("dry-run does not apply to a transport step.");
-  const report = input("transport-report");
-  if (report !== undefined && report !== "true" && report !== "false")
-    throw new Error(
-      `transport-report must be true or false (got ${JSON.stringify(report)}).`,
-    );
-  const setlive = input("steam-setlive");
-  if (setlive !== undefined && setlive !== "true" && setlive !== "false")
-    throw new Error(
-      `steam-setlive must be true or false (got ${JSON.stringify(setlive)}).`,
-    );
-  const common: TransportCommon = {
-    cwd: io.cwd,
-    deliverable,
-    version,
-    product,
-    baseUrl: input("base-url"),
-    env: io.env,
-    stdout: io.stdout,
-    stderr: io.stderr,
-    fetchImpl: io.fetchImpl,
-    sleep: io.sleep,
-    report: report !== "false",
   };
-  const platform = io.platform ?? process.platform;
-  switch (step) {
-    case "apple-ba-package":
-      await baPackage({
-        ...common,
-        from: dir,
-        out: input("transport-out"),
-        contentApi: input("content-api"),
-        variant: input("variant"),
-        platform,
-      });
-      return;
-    case "apple-ba-upload":
-      if (input("transport-out") !== undefined)
-        throw new Error(
-          "apple-ba-upload reads the package step's output from dir; transport-out does not apply.",
-        );
-      await baUpload({
-        ...common,
-        dir,
-        contentApi: input("content-api"),
-        expectResource: input("asc-expect-resource"),
-      });
-      return;
-    case "play-pad-modules": {
-      const project = input("gradle-project");
-      if (!project)
-        throw new Error(
-          "play-pad-modules needs gradle-project: the Godot Android Gradle build (android/build).",
-        );
-      await padModules({
-        ...common,
-        from: dir,
-        project,
-        delivery: input("pad-delivery") as PadDelivery | undefined,
-        variant: input("variant"),
-      });
-      return;
-    }
-    default: {
-      const depot = input("steam-depot");
-      if (!depot)
-        throw new Error(
-          "steam-depot-vdf needs steam-depot: the pack's depot id.",
-        );
-      await steamVdf({
-        ...common,
-        from: dir,
-        depot,
-        branch: input("steam-branch"),
-        channel: input("channel"),
-        setlive: setlive === "true",
-        out: input("transport-out"),
-        variant: input("variant"),
-      });
-    }
-  }
-}
+  const input = (name: ActionInput) => actionInput(io.env, name);
+  const removed = refusals(io.env);
+  if (removed.length) return fail(removed.join("\n"));
 
-/**
- * A-18h: one CI-plane store step (`pkey storefront …`), through the store's command allow-list,
- * reported back into the ledger. `dir` is the build (itch-push), the `.snap` or the directory
- * holding exactly one (snap-upload, snap-upload-metadata), or snapcraft.yaml or its project
- * directory (snap-metadata). Publish and transport inputs are refused, not ignored.
- */
-async function runStorefrontStep(
-  io: ActionIo,
-  input: (name: (typeof ACTION_INPUTS)[number]) => string | undefined,
-  given: (names: readonly (typeof ACTION_INPUTS)[number][]) => string[],
-  product: string,
-  dir: string,
-  step: string,
-): Promise<void> {
-  if (!(ACTION_STOREFRONT_STEPS as readonly string[]).includes(step))
-    throw new Error(
-      `storefront must be one of ${ACTION_STOREFRONT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`,
-    );
-  const wrong = given([
-    "deliverable",
-    "tag",
-    "source",
-    "meta",
-    "release-key",
-    "content-key",
-    "delegation",
-    "min-supported-seq",
-    "content-stamp",
-    "embedded",
-    "pins",
-    "out",
-    "bases",
-    "script-extensions",
-    "script-types",
-    "content-api",
-    "variant",
-    "transport-out",
-    "gradle-project",
-    "pad-delivery",
-    "steam-depot",
-    "steam-branch",
-    "steam-setlive",
-    "asc-expect-resource",
-  ]).filter((n) => !(n === "deliverable" && input(n) === "app"));
-  if (input("transport-report") === "false") wrong.push("transport-report");
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a storefront step (${step}).`,
-    );
-  if (step !== "itch-push" && input("itch-platform") !== undefined)
-    throw new Error("itch-platform applies only to itch-push.");
-  const dryRun = input("dry-run");
-  const flags: Record<string, string | boolean> = {
-    product,
-    ...(input("base-url") ? { "base-url": input("base-url")! } : {}),
-    ...(dryRun === "true" ? { "dry-run": true } : {}),
-    ...(input("storefront-outlet")
-      ? { outlet: input("storefront-outlet")! }
-      : {}),
-  };
-  let positional: string[];
-  switch (step) {
-    case "itch-push": {
-      const platform = input("itch-platform");
-      const version = input("version") ?? input("tag")?.replace(/^v/, "");
-      if (!platform)
-        throw new Error(
-          "itch-push needs itch-platform: windows, linux, mac or android.",
-        );
-      if (!version)
-        throw new Error("itch-push needs version: butler's --userversion.");
-      positional = ["itch", "push"];
-      Object.assign(flags, { dir, platform, version });
-      if (input("channel")) flags.channel = input("channel")!;
-      break;
+  let argv: string[];
+  let dryRun = false;
+  let channelsAuto = false;
+  let cwd = io.cwd;
+  try {
+    const dry = input("dry-run");
+    if (dry !== undefined && dry !== "true" && dry !== "false")
+      throw new Error("dry-run must be true or false.");
+    dryRun = dry === "true";
+    const channels = input("channels") ?? "auto";
+    if (channels !== "auto" && channels !== "none")
+      throw new Error("channels must be auto or none.");
+    channelsAuto = channels === "auto";
+    argv = [
+      ...splitArgs(input("command") ?? "release publish"),
+      ...splitArgs(io.env["INPUT_ARGS"] ?? ""),
+    ];
+    if (!argv.length) throw new Error("command is empty.");
+    const wd = input("working-directory");
+    if (wd !== undefined) {
+      cwd = path.resolve(io.cwd, wd);
+      const isDir = await stat(cwd).then(
+        (s) => s.isDirectory(),
+        () => false,
+      );
+      if (!isDir) throw new Error("working-directory is not a directory.");
     }
-    case "snap-upload": {
-      const channel = input("channel");
-      if (!channel)
-        throw new Error(
-          "snap-upload needs channel: the release channel the outlet's channels map onto snap channels.",
-        );
-      positional = ["snap", "upload"];
-      Object.assign(flags, { snap: dir, channel });
-      break;
-    }
-    case "snap-upload-metadata":
-      positional = ["snap", "upload-metadata"];
-      flags.snap = dir;
-      break;
-    default:
-      positional = ["snap", "metadata"];
-      flags.yaml = dir;
+  } catch (e) {
+    return fail((e as Error).message);
   }
-  const code = await cmdStorefront(
-    { positional, flags, rest: [] },
-    {
-      cwd: io.cwd,
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep,
+  if (dryRun && !argv.includes("--dry-run")) argv.push("--dry-run");
+
+  // Secrets and the origin travel in the in-process environment, never on argv.
+  const env: CiEnv = { ...io.env };
+  const releaseKey = input("release-key");
+  const contentKey = input("content-key");
+  const baseUrl = input("base-url");
+  if (releaseKey) env[RELEASE_KEY_ENV] = releaseKey;
+  if (contentKey) env[CONTENT_KEY_ENV] = contentKey;
+  if (baseUrl) env[BASE_URL_ENV] = baseUrl;
+
+  // stderr is forwarded and kept: a failed step's annotation is its last words.
+  let errText = "";
+  const stderr = {
+    write(chunk: string | Uint8Array, ...rest: unknown[]) {
+      errText += typeof chunk === "string" ? chunk : Buffer.from(chunk);
+      return (io.stderr.write as (...a: unknown[]) => boolean)(chunk, ...rest);
     },
-  );
-  if (code !== 0) throw new Error(`storefront ${step} failed.`);
-}
-
-/**
- * HA-06: host the files the `assets` input maps (`<glob>: <slot>[@<locale>]` per line) in their
- * slots, through one upload ticket and one `POST /<p>/assets` (`pkey assets push`'s library).
- * Globs resolve against `dir` when it is set, else the workspace. Publish, transport and
- * storefront inputs are refused, not ignored. A refused file fails the step; a slot the console
- * claimed or a manifest declares is kept, which does not.
- */
-async function runAssetsStep(
-  io: ActionIo,
-  input: (name: (typeof ACTION_INPUTS)[number]) => string | undefined,
-  product: string,
-  dir: string | undefined,
-  assets: string,
-): Promise<void> {
-  const wrong = ACTION_INPUTS.filter(
-    (n) =>
-      ![
-        "product",
-        "dir",
-        "base-url",
-        "dry-run",
-        "assets",
-        "deliverable",
-        "transport-report",
-      ].includes(n) && input(n) !== undefined,
-  ) as string[];
-  if (input("deliverable") !== undefined && input("deliverable") !== "app")
-    wrong.push("deliverable");
-  if (input("transport-report") === "false") wrong.push("transport-report");
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to an assets step.`,
-    );
-  const dryRun = input("dry-run");
-  if (dryRun !== undefined && dryRun !== "true" && dryRun !== "false")
-    throw new Error(
-      `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`,
-    );
-  const base = dir ? path.resolve(io.cwd, dir) : io.cwd;
-  const entries = await resolveAssetMap(base, parseAssetMap(assets));
-  const answer = await pushAssets({
-    cwd: io.cwd,
-    product,
-    entries,
-    baseUrl: input("base-url"),
-    dryRun: dryRun === "true",
-    env: io.env,
-    stdout: io.stdout,
-    stderr: io.stderr,
+    get isTTY() {
+      return (io.stderr as { isTTY?: boolean }).isTTY;
+    },
+    get columns() {
+      return (io.stderr as { columns?: number }).columns;
+    },
+  } as unknown as TermOut;
+  const cli = {
+    cwd,
+    env,
+    stdout: io.stdout as TermOut,
+    stderr,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep,
-  });
-  if (answer && answer.refused.length > 0)
-    throw new Error(
-      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused
-        .map(
-          (r) =>
-            `${untrusted(r.slot, io.env)} (${untrusted(r.reason, io.env)})`,
-        )
-        .join(", ")}.`,
-    );
-}
-
-/** An outcome as the Worker answers one (`created`, `enriched`, `unchanged`, …). */
-export const OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
-
-/**
- * A release id as it is minted (`descriptorReleaseId`: the tag, else `<deliverable>@<version>`):
- * the descriptor's tag shape, 1–255 characters with no whitespace and no control or format
- * character, so it can never end the `name=value` line or start another.
- */
-export const RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
-
-/**
- * `release-id` and `outcome` into `$GITHUB_OUTPUT`, each only when it has the shape the Worker
- * gives it, else empty: `outcome` is the server's word, and a value with a line break in it
- * would write an output (or an environment file line) of its own.
- */
-export async function writeOutputs(
-  io: Pick<ActionIo, "env">,
-  releaseId: string,
-  server: Record<string, unknown> | undefined,
-): Promise<void> {
-  const outputFile = io.env.GITHUB_OUTPUT;
-  if (!outputFile) return;
-  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
-  const outcome =
-    typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome)
-      ? server.outcome
-      : "";
-  await appendFile(
-    outputFile,
-    `release-id=${id}\noutcome=${outcome}\n`,
-    "utf8",
+  };
+  let title = `pkey ${argv
+    .filter((w) => !w.startsWith("-"))
+    .slice(0, 2)
+    .join(" ")}`;
+  let code = await runPkey(argv, cli);
+  if (code === 0 && channelsAuto && isAppPublish(argv)) {
+    errText = "";
+    title = "pkey channel sync";
+    code = await runPkey(syncArgv(argv, dryRun), cli);
+  }
+  if (code === 0) return 0;
+  annotate(
+    title,
+    errText.trim().slice(-2000) || `pkey exited with code ${code}.`,
   );
+  return 1;
 }

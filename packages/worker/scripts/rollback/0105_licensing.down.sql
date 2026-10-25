@@ -29,7 +29,7 @@
 -- store grants' rows in place: the old Worker never names them. A roll-forward afterwards starts
 -- the provisioned-keys move over, exactly as the first deploy did (each sign-in and the catch-up
 -- move the keys out of the column again), and the catch-up re-projects the store grants the old
--- Worker wrote meanwhile. It is exercised by test/licensingExpand.test.ts.
+-- Worker wrote meanwhile. It is exercised by test/surfaces/licensingExpand.test.ts.
 
 UPDATE licenses
    SET overrides_json = json_patch(

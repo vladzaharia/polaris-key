@@ -1,0 +1,186 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-migrations",
+  "description": "An older client pushes keys the catalog has since renamed or dropped (cloudSync.migrations, §13.3). A renamed key is stored under its new name and the result says renamedTo; a dropped key is accepted and discarded with dropped: true; the answer's aliases member maps old names to new so the client can migrate its journal.",
+  "features": ["sync.settings"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_TISxYWxmOJ_7WslDd3jWHc0oAzAVt0UgqodDFlHJqRc",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPush",
+      "note": "A renamed key and a dropped key.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_HWBvjUoztwYC_Yf9kJ0Dcw",
+                "serverNow": 1700000000000,
+                "cursor": 1,
+                "more": false,
+                "lastMutationId": 2,
+                "catalogVersion": 2,
+                "aliases": { "old.vol": "audio.volume" },
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 15,
+                  "settings": 1,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "setting": "audio.volume",
+                    "scope": "user",
+                    "value": 0.2,
+                    "version": 1,
+                    "editedHlc": "018bcfe56418:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  {
+                    "mutationId": 1,
+                    "status": "ok",
+                    "version": 1,
+                    "renamedTo": "audio.volume"
+                  },
+                  { "mutationId": 2, "status": "ok", "dropped": true }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 1,
+        "more": false,
+        "empty": false,
+        "settings": ["audio.volume"],
+        "lastMutationId": 2,
+        "results": ["ok:renamedTo:audio.volume", "ok:dropped"],
+        "aliases": { "old.vol": "audio.volume" }
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "Stored under the new name only.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"1.0\""
+              },
+              "body": {
+                "subject": "ps_HWBvjUoztwYC_Yf9kJ0Dcw",
+                "serverNow": 1700000000000,
+                "cursor": 1,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 2,
+                "aliases": { "old.vol": "audio.volume" },
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 15,
+                  "settings": 1,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "setting": "audio.volume",
+                    "scope": "user",
+                    "value": 0.2,
+                    "version": 1,
+                    "editedHlc": "018bcfe56418:0000",
+                    "updatedBy": "c_AAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 1,
+        "more": false,
+        "empty": false,
+        "settings": ["audio.volume"]
+      }
+    }
+  ]
+}

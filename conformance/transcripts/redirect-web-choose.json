@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "redirect-web-choose",
-  "description": "The licence is chosen on the card (I-08b, WIRE-CONTRACT-V4 §12.4.1; plans/I-04.md §C). The account holds a Pro licence with a free seat and a Team licence whose only seat is taken. The card lists both (`licenses`), and Continue without a choice is refused with license_choice_required and consumes nothing. The person picks Pro; the code carries the choice; the SDK redeems it at token and the device is bound to Pro, seat-checked.",
+  "description": "The licence is chosen on the card (I-08b, WIRE-CONTRACT-V4 §12.4.1; plans/I-04.md §C). The account holds a Pro licence with room for another device and a Team licence at its device limit. The card lists both (`licenses`), and Continue without a choice is refused with license_choice_required and consumes nothing. The person picks Pro; the code carries the choice; the SDK redeems it at token and the device is bound to Pro, limit-checked.",
   "features": ["identity.choice"],
   "requires": [],
   "product": "djdl",

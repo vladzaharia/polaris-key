@@ -258,7 +258,7 @@ function rankIn(order: readonly PrecedenceSource[], s: ImportSource): number {
 }
 
 /** The problems with one candidate value, as the model's validators name them. */
-function candidateProblems(
+export function candidateProblems(
   path: string,
   locale: string | null,
   value: unknown,
@@ -558,3 +558,71 @@ export type SourceOutcome =
       reason: string;
       message: string;
     };
+
+/** The `.pkey/distribution` listing fields the mapping reads (a listing as stored or merged). */
+export type ManifestListingInput = Readonly<Record<string, unknown>>;
+
+/** The art fields a manifest listing may carry (HA-04's, and the pre-HA-04 aliases). */
+const MANIFEST_ART_FIELDS = [
+  "icon",
+  "header",
+  "iconUrl",
+  "headerUrl",
+  "screenshots",
+] as const;
+
+/**
+ * The ONE mapping from a `.pkey/distribution` listing to a model snapshot (A-27.3): the import's
+ * `manifest` source, the ingest's model write and the backfill all go through it.
+ *
+ *   name, developerName            -> app name, developer name
+ *   category                       -> app category (canonical id when it has one)
+ *   tintColor                      -> app tint
+ *   website, supportUrl            -> urls.website, urls.support
+ *   supportEmail                   -> contactEmail
+ *   subtitle, description          -> the `locale`'s subtitle and description
+ *
+ * Art refs are reported as skipped, never mapped: listing assets are uploaded blobs (A-18d).
+ */
+export function manifestListingSnapshot(
+  listing: ManifestListingInput,
+  ref: string | null,
+  locale: string,
+): ListingSnapshot {
+  const snap = emptySnapshot("manifest", ref);
+  const str = (v: unknown) =>
+    typeof v === "string" && v !== "" ? v : undefined;
+  const set = <K extends keyof SnapshotApp>(
+    k: K,
+    v: SnapshotApp[K] | undefined,
+  ) => {
+    if (v !== undefined) snap.app[k] = v;
+  };
+  set("name", str(listing.name));
+  set("developerName", str(listing.developerName));
+  const category = str(listing.category);
+  if (category) set("category", canonicalCategory(category) ?? category);
+  set("tint", str(listing.tintColor));
+  set("contactEmail", str(listing.supportEmail));
+  const urls: ListingUrls = {};
+  const website = str(listing.website);
+  if (website) urls.website = website;
+  const support = str(listing.supportUrl);
+  if (support) urls.support = support;
+  if (Object.keys(urls).length) snap.app.urls = urls;
+  const subtitle = str(listing.subtitle);
+  const description = str(listing.description);
+  if (subtitle || description)
+    snap.locales[locale] = {
+      ...(subtitle ? { subtitle } : {}),
+      ...(description ? { description } : {}),
+    };
+  for (const f of MANIFEST_ART_FIELDS)
+    if (listing[f] !== undefined)
+      snap.skipped.push({
+        field: f,
+        reason:
+          "asset URLs are not imported: listing assets are uploaded blobs (pkey listing assets)",
+      });
+  return snap;
+}

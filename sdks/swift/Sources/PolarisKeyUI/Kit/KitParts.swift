@@ -9,6 +9,9 @@ import SwiftUI
 #if canImport(UIKit)
     import UIKit
 #endif
+#if os(macOS)
+    import AppKit
+#endif
 
 // MARK: - Product identity
 
@@ -133,6 +136,15 @@ public struct KeyField: View {
         return prefix + "…" + rest.suffix(6)
     }
 
+    /// The resting overlay's inset: a native (bordered) field insets its own text by this much.
+    static func restingInset(native: Bool) -> CGFloat {
+        #if os(macOS)
+            return native ? 6 : 0
+        #else
+            return 0
+        #endif
+    }
+
     /// Only an input that is itself wrong takes the stroke (DL7): the key's own shape, or a key
     /// the service does not know. A refusal of a well-formed key is the neutral callout (DL6).
     private var invalid: Bool {
@@ -140,7 +152,16 @@ public struct KeyField: View {
             && (screen.shows("part.keyField.malformed")
                 || screen.shows("part.keyField.empty")
                 || screen.shows("core.activation.unauthorized.message"))
-            || screen.state == .cutShort
+            || screen.state == .cutShort || macRefused
+    }
+
+    /// On a Mac a refused key puts the danger stroke on the field and the callout names why.
+    private var macRefused: Bool {
+        #if os(macOS)
+            return screen.state == .rejected
+        #else
+            return false
+        #endif
     }
 
     public var body: some View {
@@ -167,6 +188,7 @@ public struct KeyField: View {
                             .foregroundStyle(style.palette.textStrong)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
+                            .padding(.leading, KeyField.restingInset(native: style.isNative))
                         }
                     }
                     .autocorrectionDisabled()
@@ -179,6 +201,13 @@ public struct KeyField: View {
                     .onSubmit(onSubmit)
                     .accessibilityLabel(strings.string("part.keyField.label"))
                     .privacySensitive()
+                    #if os(macOS)
+                        .onChange(of: text) { _, new in if new.isEmpty { focused = true } }
+                        // The system's rounded-border field wraps the text field itself, so the
+                        // text keeps its inset from the border (not the container).
+                        .modifier(KeyFieldNativeStyle(isNative: style.isNative))
+                        .onAppear { focused = true }
+                    #endif
                     #if os(iOS)
                         // Paste is for an empty field (every kit's model drops it once a key is
                         // there); the system dims it when the pasteboard holds no text, which read
@@ -196,20 +225,23 @@ public struct KeyField: View {
                             .tint(style.palette.accentFg)
                         }
                     #endif
+                    #if os(macOS)
+                        // Paste sits inside the field, small (desktop.html); the Tab order
+                        // reaches it like any control.
+                        if text.isEmpty {
+                            Button(strings.string("common.paste")) {
+                                if let pasted = NSPasteboard.general.string(forType: .string) {
+                                    text = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
+                                }
+                            }
+                            .controlSize(.small)
+                            .buttonStyle(.bordered)
+                            .buttonBorderShape(.capsule)
+                            .tint(style.palette.accentFg)
+                        }
+                    #endif
                 }
-                .padding(.horizontal, style.space(.md))
-                .frame(minHeight: style.controlHeight)
-                .background(
-                    RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
-                        .fill(style.palette.sunken)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
-                        .strokeBorder(
-                            invalid
-                                ? style.palette.danger : (focused ? style.palette.focus : .clear),
-                            lineWidth: 2)
-                )
+                .modifier(KeyFieldSurface(style: style, invalid: invalid, focused: focused))
                 verdict(style)
             }
         }
@@ -220,7 +252,19 @@ public struct KeyField: View {
     @ViewBuilder private func verdict(_ style: KitResolvedStyle) -> some View {
         Group {
             if let line = screen.line("part.keyField.forProduct") {
-                KitText(line, .meta, color: .muted)
+                #if os(macOS)
+                    // The mockup's verdict: the success glyph, then what the key names. The tier
+                    // and term are the server's answer and are not known before it.
+                    Label {
+                        KitText(line, .meta, color: .default)
+                    } icon: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(style.palette.success)
+                            .accessibilityHidden(true)
+                    }
+                #else
+                    KitText(line, .meta, color: .muted)
+                #endif
             } else if let line = screen.line("part.keyField.cutShort")
                 ?? screen.line("part.keyField.malformed") ?? screen.line("part.keyField.empty")
             {
@@ -235,6 +279,48 @@ public struct KeyField: View {
             }
         }
         .animation(style.morph, value: screen.stateName)
+    }
+}
+
+/// The field's surface. Under `polaris-key` it is filled (sunken) with the accent focus ring; on
+/// macOS under `native` it is the system's `.roundedBorder` large field, whose focus ring is the
+/// system's. A wrong key takes the danger stroke in both (DL7).
+private struct KeyFieldSurface: ViewModifier {
+    let style: KitResolvedStyle
+    let invalid: Bool
+    let focused: Bool
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+            if style.isNative {
+                content
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .strokeBorder(invalid ? style.palette.danger : .clear, lineWidth: 1.5)
+                    )
+            } else {
+                filled(content)
+            }
+        #else
+            filled(content)
+        #endif
+    }
+
+    private func filled(_ content: Content) -> some View {
+        content
+            .textFieldStyle(.plain)
+            .padding(.horizontal, style.space(.md))
+            .frame(minHeight: style.controlHeight)
+            .background(
+                RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                    .fill(style.palette.sunken)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                    .strokeBorder(
+                        invalid ? style.palette.danger : (focused ? style.palette.focus : .clear),
+                        lineWidth: 2)
+            )
     }
 }
 
@@ -274,10 +360,22 @@ public struct CodeDisplay: View {
                     KitPasteboard.copy(code)
                     copied = true
                 } label: {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                    #if os(macOS)
+                        // A labelled button: the code's Copy and the address's Copy link read
+                        // apart.
+                        Label(
+                            strings.string(copied ? "common.copied" : "common.copy"),
+                            systemImage: copied ? "checkmark" : "doc.on.doc"
+                        )
                         .font(style.font(.label))
-                        .frame(width: 44, height: 44)
+                        .frame(minHeight: 28)
                         .contentShape(Rectangle())
+                    #else
+                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                            .font(style.font(.label))
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    #endif
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(style.palette.textMuted)
@@ -287,7 +385,15 @@ public struct CodeDisplay: View {
             .padding(.vertical, style.space(.sm))
             .background(
                 RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
-                    .fill(style.palette.sunken))
+                    .fill(style.palette.sunken)
+            )
+            .overlay {
+                // The box keeps its fill on a sheet's panel: a hairline marks its edge there.
+                #if os(macOS)
+                    RoundedRectangle(cornerRadius: style.fieldRadius, style: .continuous)
+                        .strokeBorder(style.palette.border, lineWidth: 1)
+                #endif
+            }
         }
     }
 }
@@ -510,13 +616,15 @@ public struct StatusPill: View {
 /// A determinate bar, only for counted bytes (DL7: never an invented percentage).
 public struct ProgressBar: View {
     let fraction: Double
+    @Environment(\.polarisKeyStrings) private var strings
     public init(fraction: Double) { self.fraction = fraction }
 
     public var body: some View {
         kitStyle { style in
             ProgressView(value: max(0, min(1, fraction)))
                 .tint(style.palette.accentSolid)
-                .accessibilityLabel(KitFormat.percent(fraction))
+                .accessibilityLabel(Text(strings.string("common.updateProgressLabel")))
+                .accessibilityValue(Text(KitFormat.percent(fraction)))
         }
     }
 }
@@ -593,3 +701,18 @@ enum KitPasteboard {
         #endif
     }
 }
+
+#if os(macOS)
+    /// Under `native` the system's large rounded-border style goes on the text field itself.
+    private struct KeyFieldNativeStyle: ViewModifier {
+        let isNative: Bool
+
+        @ViewBuilder func body(content: Content) -> some View {
+            if isNative {
+                content.textFieldStyle(.roundedBorder).controlSize(.large)
+            } else {
+                content.textFieldStyle(.plain)
+            }
+        }
+    }
+#endif

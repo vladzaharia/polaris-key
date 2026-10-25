@@ -3,27 +3,26 @@
  * pill, the product's manual channels, and the "effective policy" read-out that names where
  * each value comes from (license, tier or product default; LIC-4).
  *
- * Every query here is the one fetcher per key the rest of the console uses (`queryKeyShapes`).
+ * Every query here is the one fetcher per key the rest of the console uses (`queryFactories`).
  */
 
 import * as React from "react";
 import { Clock } from "lucide-react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-} from "@tanstack/react-query";
-import {
-  api,
   type DeviceLimitSource,
-  LICENSE_PAGE_MAX,
   type LicenseListFilter,
-  type LicensePage,
   type LicenseSummary,
   type ProductDetail,
   type TierSummary,
 } from "../../../../api.js";
-import { qk } from "../../../data/queries.js";
+import {
+  licensePagesQuery,
+  licensesFirstQuery,
+  licensesQuery,
+  tiersQuery,
+} from "../data.js";
+import { useReleaseStore } from "../../release/data.js";
 import { fromSeconds, formatDate } from "../../../../lib/format.js";
 import { compareVersions } from "../../../../lib/version.js";
 import {
@@ -41,10 +40,7 @@ import {
 // ── Queries ────────────────────────────────────────────────────────────────────────────────────
 
 export function useLicenses(slug: string) {
-  return useQuery({
-    queryKey: qk.licenses(slug),
-    queryFn: () => api.licenses(slug),
-  });
+  return useQuery(licensesQuery(slug));
 }
 
 /**
@@ -52,12 +48,29 @@ export function useLicenses(slug: string) {
  * unknown. The key sits under `qk.licenses`, so a licence write refreshes it.
  */
 export function useHasLicenses(slug: string): boolean | null {
-  const q = useQuery({
-    queryKey: qk.licensesFirst(slug),
-    queryFn: () => api.licensesPage(slug, { limit: 1 }),
-  });
+  const q = useQuery(licensesFirstQuery(slug));
   if (!q.data) return null;
   return (q.data.total ?? (q.data.nextCursor ? 1 : q.data.licenses.length)) > 0;
+}
+
+/**
+ * LX-27c.4 (L15): whether an invitation can reach this product's licences (Identity on and auto-link
+ * on), and why not, from the same one-row page; `null` while unknown. The
+ * wizard and the record read this one fact.
+ */
+export function useInvitations(slug: string): {
+  invitations: boolean;
+  off: "identity_off" | "auto_link_off" | "no_mail" | null;
+  /** The list has not answered yet: what is offered may still change. */
+  pending: boolean;
+} {
+  const q = useQuery(licensesFirstQuery(slug));
+  const h = q.data?.holders;
+  return {
+    invitations: h?.invitations === true,
+    off: h?.invitationsOff ?? null,
+    pending: q.isPending,
+  };
 }
 
 /**
@@ -68,19 +81,7 @@ export function useHasLicenses(slug: string): boolean | null {
 export function useLicensePages(slug: string, filter: LicenseListFilter = {}) {
   /** Search all reads 90 a page instead of 50. */
   const big = React.useRef(false);
-  const query = useInfiniteQuery({
-    queryKey: [...qk.licensesPages(slug), filter],
-    queryFn: ({ pageParam }) =>
-      api.licensesPage(slug, {
-        cursor: pageParam,
-        ...(big.current ? { limit: LICENSE_PAGE_MAX } : {}),
-        ...filter,
-      }),
-    initialPageParam: null as string | null,
-    getNextPageParam: (last: LicensePage) => last.nextCursor ?? undefined,
-    // A tile or chip changes the filter: the rows stay until the new first page lands.
-    placeholderData: keepPreviousData,
-  });
+  const query = useInfiniteQuery(licensePagesQuery(slug, filter, big));
   const licenses = React.useMemo(
     () => query.data?.pages.flatMap((p) => p.licenses) ?? [],
     [query.data],
@@ -125,14 +126,7 @@ export function useLicensePages(slug: string, filter: LicenseListFilter = {}) {
 }
 
 export function useTiers(slug: string) {
-  return useQuery({ queryKey: qk.tiers(slug), queryFn: () => api.tiers(slug) });
-}
-
-export function useProfiles(slug: string) {
-  return useQuery({
-    queryKey: qk.profiles(slug),
-    queryFn: () => api.profiles(slug),
-  });
+  return useQuery(tiersQuery(slug));
 }
 
 /**
@@ -141,10 +135,7 @@ export function useProfiles(slug: string) {
  * error or a 404 (Release off) means there are none: the picker still offers the canonical ones.
  */
 export function useManualChannels(slug: string): string[] {
-  const res = useQuery({
-    queryKey: qk.releases(slug),
-    queryFn: () => api.releases(slug),
-  });
+  const res = useReleaseStore(slug);
   return React.useMemo(
     () => (res.data?.channels ?? []).map((c) => c.channel),
     [res.data],
@@ -268,49 +259,20 @@ export function deviceLimitFrom(
 /**
  * The device limit the Worker enforces on a licence, with its source. The Worker reports both
  * (`effectiveDeviceLimit`, `deviceLimitSource`: the licence's own limit, else the tier's, else a
- * `deviceLimit` entitlement, else the product default); a response without them (an older
- * Worker) falls back to the licence's own limit, else the tier's, else the product's.
+ * `deviceLimit` entitlement, else the product default).
  */
 export function seatLimitOf(
   license: Pick<
     LicenseSummary,
-    "tier" | "deviceLimit" | "effectiveDeviceLimit" | "deviceLimitSource"
+    "tier" | "effectiveDeviceLimit" | "deviceLimitSource"
   >,
   tiers: readonly TierSummary[],
-  productLimit: number | undefined,
 ): SeatLimit {
   const tier = license.tier
     ? tiers.find((t) => t.id === license.tier)
     : undefined;
-  let limit: number | undefined;
-  let source: DeviceLimitSource;
-  if (
-    license.effectiveDeviceLimit !== undefined &&
-    license.deviceLimitSource !== undefined
-  ) {
-    limit = license.effectiveDeviceLimit;
-    source = license.deviceLimitSource;
-  } else {
-    // An older Worker did not report it: resolve it here with the same resolver.
-    const terms = termsOf(
-      {
-        tier: license.tier,
-        deviceLimit: license.deviceLimit ?? null,
-        entitlementDeviceLimit: null,
-        maxOfflineDays: null,
-        channels: [],
-        minVersion: null,
-        maxVersion: null,
-      },
-      tier,
-      { defaultDeviceLimit: productLimit ?? 0, defaultMaxOfflineDays: 0 },
-    );
-    limit =
-      productLimit === undefined && terms.deviceLimit.source === "product"
-        ? undefined
-        : terms.deviceLimit.value;
-    source = terms.deviceLimit.source;
-  }
+  const limit = license.effectiveDeviceLimit;
+  const source = license.deviceLimitSource;
   return {
     limit: limit && limit > 0 ? limit : null,
     source,
@@ -533,6 +495,13 @@ export function resolvedDeviceLimit(
 }
 
 /** A tier's policy in one line, for pickers and tables: "365-day term · 5 devices · stable, beta". */
+/** The product's Default tier, if the Worker has seeded one (LX-33.7). */
+export function defaultTierOf(
+  tiers: readonly TierSummary[],
+): TierSummary | undefined {
+  return tiers.find((t) => t.implicit);
+}
+
 export function tierSummary(t: TierSummary): string {
   return [
     t.policyExpiryDays != null ? `${t.policyExpiryDays}-day term` : "No term",

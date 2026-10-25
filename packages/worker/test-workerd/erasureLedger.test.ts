@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── The erasure ledger on miniflare's R2, D1 and KV (I-11) ───────────────────────────────────
 //
-// The Node lane (`test/erasureLedger.test.ts`, `test/accountErasure.test.ts`) runs the ledger
+// The Node lane (`test/services/identity/erasureLedger.test.ts`, `test/surfaces/accountErasure.test.ts`) runs the ledger
 // against `test/r2Mock.ts` and better-sqlite3. This file runs it against the real bindings, which
 // is what proves the parts the fakes could get wrong: that R2 itself makes `If-None-Match: *` a
 // create-only write of the JSON record (a second one answers `null`, the first body stands), that

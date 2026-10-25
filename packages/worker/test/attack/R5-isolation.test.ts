@@ -46,13 +46,11 @@ import { handlePortalApi } from "../portalHarness.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   type SessionIdentity,
 } from "../../src/core/console/session.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../../src/services/identity/portal/session.js";
 import {
   attachWaitingLicensesByEmail,
@@ -72,6 +70,7 @@ import {
   installationTokenSlot,
 } from "../../src/services/release/githubApp.js";
 import { hashKey } from "../../src/platform/crypto.js";
+import { consoleTestSession } from "../consoleSessionHelper.js";
 
 const PORTAL_SECRET = "r5-portal-session-secret";
 const ADMIN_SECRET = "r5-admin-session-secret";
@@ -139,9 +138,10 @@ async function portalSessionFor(
 
 async function adminSessionFor(
   e: Env,
+  db: Db,
   identity: SessionIdentity,
 ): Promise<{ cookie: string; csrf: string }> {
-  const { token, session } = await issueSession(e, identity, NOW);
+  const { token, session } = await consoleTestSession(e, db, identity, NOW);
   return { cookie: `${ADMIN_COOKIE}=${token}`, csrf: session.csrf };
 }
 
@@ -280,7 +280,6 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
 
   it("the injected link also grants the victim's account release visibility for the attacker's product", async () => {
     const db = makeTestDb();
-    const e = env();
     await seedProduct(db, EVILCO);
     // NOTE: no seedOidcConfig here, so EVILCO reads as a PLATFORM-issuer product and
     // auto-linking is on by default. This arm therefore still documents that a verified email
@@ -691,7 +690,7 @@ describe("R5-05 no tenant-scoped admin role exists", () => {
     await seedLicenseWithKey(db, EVILCO, { id: "lic_evil_1" });
 
     // The operator of ACME, holding exactly ACME's declared admin_group.
-    const acmeOp = await adminSessionFor(e, {
+    const acmeOp = await adminSessionFor(e, db, {
       sub: "acme-op",
       email: "op@acme.example",
       name: "ACME Operator",
@@ -710,7 +709,7 @@ describe("R5-05 no tenant-scoped admin role exists", () => {
     expect(denied.status).toBe(403);
 
     // The only role that works is platform-wide, and it reaches EVERY tenant.
-    const platform = await adminSessionFor(e, {
+    const platform = await adminSessionFor(e, db, {
       sub: "plat",
       email: "plat@example.com",
       name: "Platform",
@@ -1006,7 +1005,7 @@ describe("REFUTED: IDOR sweep — ownership predicates hold", () => {
     await activateDevice(e, db, acme, "dev-a", "lic_a");
     await seedLicenseWithKey(db, ACME, { id: "lic_b" });
 
-    const platform = await adminSessionFor(e, {
+    const platform = await adminSessionFor(e, db, {
       sub: "plat",
       email: "p@e.com",
       name: "P",

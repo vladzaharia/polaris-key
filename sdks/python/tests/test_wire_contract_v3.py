@@ -432,7 +432,7 @@ def test_c2_cache_is_no_longer_a_key_source(tmp_path) -> None:
     assert c._trust.effective == TRUST
     assert c.sync(force=True).applied is False, "a forged doc must not be applied"
     assert c.status().status == "needs-activation"
-    assert c.license.is_entitled("polarisVpn") is False
+    assert c.entitlements.has("polarisVpn") is False
     assert c.config.get_secret("proxy.subscriptionUrl") is None
     c.close()
 
@@ -569,7 +569,7 @@ def test_r4_01_hand_written_cache_grants_nothing(tmp_path) -> None:
         )
         assert c.status().status == "needs-activation"
         assert c.is_licensed() is False
-        assert c.license.is_entitled("polarisVpn") is False
+        assert c.entitlements.has("polarisVpn") is False
         assert c.config.get_secret("proxy.subscriptionUrl") is None
         c.close()
 
@@ -652,7 +652,7 @@ def test_r4_01_a_failed_slice_is_absent_not_partial(tmp_path) -> None:
         store=FileStore(PRODUCT, str(tmp_path)),
     )
     assert c.status().status == "needs-activation"
-    assert c.config.get_config("run.concurrency") == 4, "the config slice is independent"
+    assert c.config.get("run.concurrency") == 4, "the config slice is independent"
     c.close()
 
 
@@ -1408,7 +1408,7 @@ def test_v3_env_prefix_is_pkey_config_and_plrs_config_is_not_read() -> None:
         env={"PLRS_CONFIG_ui__theme": '"dark"'},
     )
     c.license.activate_with_key("k")
-    assert c.config.get_config("ui.theme") == "light", "the withdrawn prefix must be inert"
+    assert c.config.get("ui.theme") == "light", "the withdrawn prefix must be inert"
     assert c.config.get_config_source("ui.theme") == "remote-default"
     c.close()
 
@@ -1417,7 +1417,7 @@ def test_v3_env_prefix_is_pkey_config_and_plrs_config_is_not_read() -> None:
         env={"PKEY_CONFIG_ui__theme": '"dark"'},
     )
     c2.license.activate_with_key("k")
-    assert c2.config.get_config("ui.theme") == "dark"
+    assert c2.config.get("ui.theme") == "dark"
     assert c2.config.get_config_source("ui.theme") == "env"
     c2.close()
 
@@ -1446,7 +1446,7 @@ def test_parity_insecure_base_url_is_refused_at_construction(url: str) -> None:
     from polaris_key import PolarisKeyClient
 
     with pytest.raises(InsecureBaseUrlError):
-        PolarisKeyClient(product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url=url)
+        PolarisKeyClient(product_slug=PRODUCT, version="1.0.0", pinned_keys=TRUST, base_url=url)
 
 
 @pytest.mark.parametrize(
@@ -1515,7 +1515,7 @@ def test_v3_config_document_is_issued_without_a_license(tmp_path) -> None:
     c.sync(force=True)
     assert c.status().status == "not-applicable"
     assert c.is_licensed() is True, "a config-only product boots USABLE"
-    assert c.config.get_config("run.concurrency") == 4
+    assert c.config.get("run.concurrency") == 4
     assert f"/{PRODUCT}/license/document" not in seen["paths"], (
         "a disabled service is never fetched"
     )

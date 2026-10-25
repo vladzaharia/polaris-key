@@ -55,6 +55,8 @@
     <string name="common_dismiss">Dismiss</string>
     <!-- Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
     <string name="common_byDeveloper">by %1$s</string>
+    <!-- Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed. -->
+    <string name="common_linkUnavailable">That link doesn't open anything here.</string>
     <!-- The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
     <string name="part_thisDevice">this device</string>
     <string name="part_thisDevice__iphone">this iPhone</string>
@@ -228,8 +230,8 @@
     <string name="boot_consent_bodyMetered">%1$s needs %2$s of new content, and you're on a metered connection.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Download</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. -->
-    <string name="boot_error_body">If this keeps happening, restart the app.</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="boot_error_body">If this keeps happening, restart %1$s.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Welcome to %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
@@ -240,8 +242,8 @@
     <string name="welcome_lede">Sign in or use a license key to continue.</string>
     <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->
     <string name="welcome_ledeKeyOnly">Enter a license key to continue.</string>
-    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="welcome_ledeSignInOnly">Sign in to use %1$s.</string>
+    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product. -->
+    <string name="welcome_ledeSignInOnly">Sign in to continue.</string>
     <!-- Welcome screen, the gate's first screen. Primary button. -->
     <string name="welcome_signIn">Sign in</string>
     <string name="welcome_signIn__macos">Sign In</string>
@@ -394,8 +396,12 @@
     <string name="update_availableTitle">An update is available</string>
     <!-- UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=version, 2=size. -->
     <string name="update_current">You have %1$s · %2$s download</string>
+    <!-- UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="common_updateCurrentNoSize">You have %1$s</string>
     <!-- UpdatePrompt: an app update. Label over the release notes. -->
     <string name="update_whatsNew">What's new</string>
+    <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control. -->
+    <string name="part_hint_select">Select</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="update_allChanges">All changes in %1$s</string>
     <string name="update_allChanges__macos">All Changes in %1$s</string>
@@ -407,21 +413,27 @@
     <string name="update_restartWhenReady__macos">Install and Relaunch</string>
     <!-- UpdatePrompt: an app update. The update is downloaded. -->
     <string name="update_restartNow">Restart now</string>
-    <string name="update_restartNow__macos">Restart Now</string>
+    <string name="update_restartNow__macos">Install and Relaunch</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_skipVersion">Skip this version</string>
     <string name="update_skipVersion__macos">Skip This Version</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_install">Update now</string>
-    <string name="update_install__macos">Update Now</string>
+    <string name="update_install__macos">Install and Relaunch</string>
+    <!-- UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="common_updateDownload">Download %1$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
     <string name="update_downloading">Downloading · %1$s of %2$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
     <string name="update_timeLeft">About %1$s left</string>
+    <!-- UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more. Arguments: 1=minutes. -->
+    <string name="common_updateTimeMinutes">About %1$s min</string>
+    <!-- UpdatePrompt: an app update. Time left on the download when under a minute remains. -->
+    <string name="common_updateTimeLessThanMinute">Less than a minute</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="update_readyTitle">%1$s %2$s is ready</string>
-    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_readyBody">Restart %1$s to finish updating.</string>
+    <!-- UpdatePrompt: an app update. The title already names the product. -->
+    <string name="update_readyBody">Restart to finish updating.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">Update to keep using %1$s</string>
     <!-- UpdatePrompt: an app update. Mandatory update. -->
@@ -464,12 +476,69 @@
     <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_platform_generic">It installs through the store or platform you got %1$s from.</string>
     <!-- UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_revokedContent">Some of %1$s's content was withdrawn and can't be used. Update %1$s to keep going.</string>
+    <string name="update_revokedContent">Some of %1$s's content was withdrawn and can't be used. Update to keep going.</string>
     <!-- UpdatePrompt: an app update. -->
-    <string name="update_upToDate">You're up to date</string>
+    <string name="update_upToDate">You’re up to date</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded. -->
+    <string name="common_updateInstallUpdate">Install update</string>
+    <string name="common_updateInstallUpdate__macos">Install Update</string>
+    <!-- UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits. -->
+    <string name="common_updateInstallOnQuit">Install on quit</string>
+    <string name="common_updateInstallOnQuit__macos">Install on Quit</string>
+    <!-- UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement. -->
+    <string name="common_updateDeclineChecks">Don’t check</string>
+    <string name="common_updateDeclineChecks__macos">Don’t Check</string>
+    <!-- UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish. -->
+    <string name="common_updateQuitAndInstall">Quit and install</string>
+    <string name="common_updateQuitAndInstall__macos">Quit and Install</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updateQuitToInstall">Quit %1$s to finish installing.</string>
+    <!-- UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=size. -->
+    <string name="common_updateDownloadingBytes">Downloading · %1$s</string>
+    <!-- UpdatePrompt: an app update. The accessibility name of the download's progress bar. -->
+    <string name="common_updateProgressLabel">Download</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network. -->
+    <string name="common_updateErrorNetwork">Couldn’t reach the update server. Check your connection and try again.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help. -->
+    <string name="common_updateErrorCannotInstall">This update can’t be installed on this Mac.</string>
+    <!-- UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help. -->
+    <string name="common_updateErrorSecurity">The update didn’t pass its security check, so it wasn’t installed.</string>
+    <!-- UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists. -->
+    <string name="common_updateChecking">Checking for updates…</string>
+    <!-- UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check. -->
+    <string name="common_updatePermissionTitle">Check for updates automatically?</string>
+    <!-- UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="common_updatePermissionBody">%1$s can look for new versions in the background and tell you when one is ready.</string>
+    <!-- UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow. -->
+    <string name="common_updatePermissionAllow">Check automatically</string>
+    <string name="common_updatePermissionAllow__macos">Check Automatically</string>
+    <!-- UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain. -->
+    <string name="common_updateFailedTitle">Couldn’t update</string>
+    <!-- UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser. -->
+    <string name="common_updateLearnMore">Learn more</string>
+    <string name="common_updateLearnMore__macos">Learn More</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Check for updates</string>
     <string name="update_checkNow__macos">Check for Updates…</string>
+    <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
+    <string name="menu_manageLicense">Manage license</string>
+    <string name="menu_manageLicense__macos">Manage License…</string>
+    <!-- App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71). -->
+    <string name="menu_signOut">Sign out</string>
+    <string name="menu_signOut__macos">Sign Out…</string>
+    <!-- The Account tab of the macOS Settings window, and the window's title while it is selected. -->
+    <string name="menu_account">Account</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out. -->
+    <string name="signin_signout_confirm">Sign out</string>
+    <string name="signin_signout_confirm__macos">Sign Out</string>
+    <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_title">Update ready</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_body">Restart to finish updating.</string>
+    <!-- Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_title">Signed in</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_body">You're signed in on this device.</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_contentTitle">Downloading content</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
@@ -604,8 +673,8 @@
     <string name="paywall_purchasing">Completing purchase…</string>
     <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="paywall_purchased">%1$s is unlocked</string>
-    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="paywall_notAvailable">Purchases aren't available in this version of %1$s.</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product. -->
+    <string name="paywall_notAvailable">Purchases aren't available in this version.</string>
     <!-- Paywall: what a tier adds, and how to get it. -->
     <string name="paywall_portal">Buy in your browser</string>
     <string name="paywall_portal__macos">Buy in Your Browser</string>
@@ -661,8 +730,8 @@
     <string name="signin_methods_title">Sign in to Polaris Locker</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">Sign in</string>
-    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_methods_ledeApp">Use your %1$s purchase email or a work or school email.</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product. -->
+    <string name="signin_methods_ledeApp">Use your purchase email or a work or school email.</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">Email</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
@@ -874,8 +943,8 @@
     <string name="signin_choice_freeDevice">Free a device</string>
     <string name="signin_choice_freeDevice__macos">Free a Device</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_continue">Use this license and continue</string>
-    <string name="signin_choice_continue__macos">Use This License and Continue</string>
+    <string name="signin_choice_continue">Use this license</string>
+    <string name="signin_choice_continue__macos">Use This License</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_raced">That device was just replaced. Choose again.</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
@@ -916,8 +985,7 @@
     <string name="signin_replace_confirm">Replace and continue</string>
     <string name="signin_replace_confirm__macos">Replace and Continue</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="signin_replace_confirmNamed">Replace %1$s and continue</string>
-    <string name="signin_replace_confirmNamed__macos">Replace %1$s and Continue</string>
+    <string name="signin_replace_confirmNamed">Replace %1$s</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_back">Back</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -1109,6 +1177,8 @@
     <string name="signin_approve_ask">Approve a new device?</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_warning">Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this.</string>
+    <!-- Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated. -->
+    <string name="signin_approve_checkDevice">Check that your device shows this code.</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">Approve and sign it in</string>
     <string name="signin_approve_approve__macos">Approve and Sign It In</string>
@@ -1148,7 +1218,11 @@
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">Sign out of %1$s on this device?</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
-    <string name="signin_signout_released">%1$s stops using your %2$s license here and frees its seat.</string>
+    <string name="signin_signout_released">%1$s stops using your %2$s license on this device and frees room for another device.</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_signout_titleMac">Sign out of %1$s on this Mac?</string>
+    <!-- Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_signout_releasedMac">This frees your %1$s license for another device.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="one">%1$d change hasn't synced yet.</item>
@@ -1172,7 +1246,7 @@
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%1$s signed out on %2$s</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%1$s was replaced by %2$s when you signed in to %3$s on %4$s. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.</string>
+    <string name="signin_mail_replaced_body">%1$s was replaced by %2$s when you signed in to %3$s on %4$s. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">A new device signed in to your Polaris Locker account</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
@@ -1216,7 +1290,7 @@
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">Get the free license, when %1$s offers one</string>
     <!-- Terminal help: what the deactivate command does. -->
-    <string name="cli_verb_deactivate">Stop using your license on this device and free its seat</string>
+    <string name="cli_verb_deactivate">Stop using your license on this device and make room for another</string>
     <!-- Terminal help: what the status command shows. -->
     <string name="cli_verb_status">Show your license, devices and offline time</string>
     <!-- Terminal help: what the offline-request command does. -->
@@ -1234,7 +1308,7 @@
     <!-- Terminal help: what 'devices rename' does. -->
     <string name="cli_verb_devicesRename">Rename a device (no name clears it)</string>
     <!-- Terminal help: what 'devices deauthorize' does. -->
-    <string name="cli_verb_devicesRemove">Remove a device and free its seat</string>
+    <string name="cli_verb_devicesRemove">Remove a device and make room for another</string>
     <!-- Terminal help: what 'config get' does. -->
     <string name="cli_verb_configGet">Show one setting and where its value comes from</string>
     <!-- Terminal help: what 'config list' does. -->
@@ -1319,8 +1393,8 @@
     <string name="cli_fix_signIn">Use the license on your account</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
     <string name="cli_logout_done">Signed out of %1$s on this device.</string>
-    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
-    <string name="cli_deactivate_done">%1$s no longer uses your license on this device. Its seat is free.</string>
+    <!-- Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product. -->
+    <string name="cli_deactivate_done">%1$s no longer uses your license on this device. It no longer counts toward your limit.</string>
     <!-- Terminal: the person answered no to a confirmation. -->
     <string name="cli_nothingChanged">Nothing changed.</string>
     <!-- Terminal: keyless device registration finished. -->
@@ -1330,7 +1404,7 @@
     <!-- Terminal: a device's name was cleared; {device} is the device's id. Arguments: 1=device. -->
     <string name="cli_devices_nameCleared">%1$s has no name now.</string>
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
-    <string name="cli_devices_removed">%1$s was removed. Its seat is free.</string>
+    <string name="cli_devices_removed">%1$s was removed. It no longer counts toward your limit.</string>
     <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
     <string name="cli_update_cancelled">Update canceled.</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->
@@ -1482,6 +1556,14 @@
     <!-- Approve dialog: looks the code up (reads only, never approves). -->
     <string name="signin_approve_look">Find it</string>
     <string name="signin_approve_look__macos">Find It</string>
+    <!-- Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is. Arguments: 1=host. -->
+    <string name="signin_approve_askPackages">pkey on %1$s asks for a read-only personal token for your packages.</string>
+    <!-- Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it. -->
+    <string name="signin_approve_askPackagesTitle">Give pkey a personal token?</string>
+    <!-- Approve dialog, confirm button for the pkey packages token. -->
+    <string name="signin_approve_approvePackages">Approve</string>
+    <!-- Approve dialog outcome after approving the pkey packages token. -->
+    <string name="signin_approve_approvedPackages">Approved. Go back to your terminal.</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
     <string name="signin_approve_askBody">Code %1$s asks to sign in to your account.</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->
@@ -2053,6 +2135,38 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_message">Sign in to your Polaris Locker account on this device, then try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_title">Sync out of date</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_message">This device hasn't synced in too long. It will start over from your saved data.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_title">Sync mismatch</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_message">This sync belongs to another device. Restart the app and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_title">Setting not saved</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_message">That value isn't valid for this setting.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_title">Change not allowed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_message">That change isn't allowed for this setting.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_title">Not synced</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_message">This setting isn't synced to your account.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_title">Unknown collection</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_message">This collection isn't available.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_title">Storage full</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_message">Your synced storage is full. Free some space, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_title">Sync paused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_message">Syncing is paused for a moment. Your changes are kept and will sync later.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">Email not verified</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.</string>
@@ -2558,8 +2672,8 @@
     <string name="core_gate_needs_activation_message">Enter a license key or sign in to continue.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_version_too_old_title">Update required</string>
-    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_old_message">This version is no longer supported. Update the app to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). Arguments: 1=product. -->
+    <string name="core_gate_version_too_old_message">This version is no longer supported. Update %1$s to continue.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_version_too_new_title">Not available on this license</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

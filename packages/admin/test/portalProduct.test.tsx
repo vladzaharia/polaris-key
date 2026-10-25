@@ -789,6 +789,9 @@ describe("product page on today's data (PX-04)", () => {
     expect(
       (await screen.findAllByRole("button", { name: "Try again" })).length,
     ).toBeGreaterThan(0);
+    // Each card says what failed (never the catch-all, never "Try again" twice).
+    expect(await screen.findByText("Couldn't load your license.")).toBeTruthy();
+    expect(screen.queryByText("Something went wrong")).toBeNull();
   });
 
   it("a sign-in licence: Standard pill, its device count, a quiet origin, and its devices with Remove", async () => {
@@ -943,7 +946,12 @@ describe("product page on today's data (PX-04)", () => {
 describe("a licence's origin names the store it came from (owner, 2026-10-05)", () => {
   it('a Steam-bound key licence reads "Steam key" on the card and in the picker', async () => {
     window.history.replaceState(null, "", "/#/p/quill");
-    const steam = license({ product: "quill", id: "lic_steam" });
+    const steam = license({
+      product: "quill",
+      id: "lic_steam",
+      origin: "store-key",
+      originStore: "steam",
+    });
     const other = license({
       product: "quill",
       id: "lic_dev",
@@ -995,6 +1003,7 @@ describe("a licence's origin names the store it came from (owner, 2026-10-05)", 
       product: "quill",
       keyCount: 0,
       activeKeyCount: 0,
+      originStore: "steam",
     });
     mockFetch(
       signedIn([bound], {
@@ -1099,7 +1108,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     sync = false,
     refuse?: { status: number; body: unknown },
   ) {
-    const held = given.map((l) => ({ removable: true, ...l }));
+    const held = given;
     let list = [...held];
     const removed: string[] = [];
     const extra: Record<string, unknown> = {
@@ -1225,25 +1234,6 @@ describe("licence origins and Remove from my library (PX-23)", () => {
       "Manage devices",
       "Copy link",
     ]);
-  });
-
-  it("an older Worker that doesn't say removable offers no Remove", async () => {
-    window.history.replaceState(null, "", "/#/p/mossgarden");
-    const old = license({ product: "mossgarden", productName: "Mossgarden" });
-    mockFetch(
-      signedIn([old], {
-        "/api/licenses/mossgarden/lic_mossgarden": detail(old),
-      }),
-    );
-    renderPortal();
-    await screen.findByRole("heading", { level: 1, name: "Mossgarden" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "More for Mossgarden" }),
-    );
-    await screen.findAllByRole("menuitem");
-    expect(
-      screen.queryByRole("menuitem", { name: "Remove from my library" }),
-    ).toBeNull();
   });
 
   it("focus starts on Keep it, the least destructive action", async () => {
@@ -1389,9 +1379,7 @@ describe("product page correctness (UX-04)", () => {
     ).toBeTruthy();
     // Never the raw slug (LF1): a name that did not load reads "Product" / "this product".
     expect(screen.queryByText(/nightfall/)).toBeNull();
-    expect(
-      screen.getByText("Couldn't load this product. Try again in a moment."),
-    ).toBeTruthy();
+    expect(screen.getByText("Couldn't load this product.")).toBeTruthy();
     expect(screen.queryByText("Something went wrong")).toBeNull();
     expect(screen.getAllByText(/^try again$/i)).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();

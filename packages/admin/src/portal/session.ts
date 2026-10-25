@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { portalKeys } from "./data.js";
+import { qk } from "./queries.js";
 
 /**
  * "Open it on this device and this page signs you in by itself" (PORTAL.md §4.4) is true by
@@ -17,7 +17,7 @@ export function useSessionRecheck(enabled: boolean): void {
   React.useEffect(() => {
     if (!enabled) return;
     const recheck = (): void => {
-      void qc.invalidateQueries({ queryKey: portalKeys.me });
+      void qc.invalidateQueries({ queryKey: qk.me() });
     };
     const onVisible = (): void => {
       if (document.visibilityState === "visible") recheck();

@@ -5,6 +5,7 @@
  *
  *   /manage/login      -> path "/login"      -> OIDC redirect
  *   /manage/callback   -> path "/callback"   -> verify + set session cookie
+ *   /manage/login/passkey/{options,verify} -> the console passkey sign-in (./passkeySignin.ts)
  *   /manage/api/...    -> path "/api/..."    -> handleAdminApi (JSON surface)
  *   /manage or /manage/ -> path "" or "/"     -> the built admin SPA asset.
  *
@@ -20,6 +21,8 @@ import {
   type IdTokenVerifier,
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
+import { handleConsolePasskey } from "./passkeySignin.js";
+import { handleDevicePage } from "./devicePage.js";
 import { appSecurityHeaders } from "../core/securityHeaders.js";
 import { imgOrigin } from "../core/hosts.js";
 import { isPublicSpaAssetPath } from "../platform/http.js";
@@ -85,6 +88,17 @@ export async function handleAdmin(
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
   if (clean === "/login") return handleAdminLogin(req, env, db);
+  if (clean === "/login/passkey/options" || clean === "/login/passkey/verify") {
+    return handleConsolePasskey(
+      req,
+      env,
+      db,
+      clean.endsWith("options") ? "options" : "verify",
+      now,
+    );
+  }
+  if (clean === "/device" || clean.startsWith("/device/"))
+    return handleDevicePage(req, env, db, clean, now);
   if (clean === "/callback")
     return handleAdminCallback(req, env, db, now, verifier);
   if (clean === "/api" || clean.startsWith("/api/")) {

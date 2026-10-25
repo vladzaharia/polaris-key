@@ -11,7 +11,7 @@
  *
  * Written for the Worker rather than taken as a dependency: it is a straight port of the Godot
  * addon's encoder (`sdks/godot/addons/polaris_key/ui/qr/qr_encoder.gd`, P1-07), and
- * `test/downloadPage.test.ts` holds it to the SAME fixtures that encoder is held to
+ * `test/surfaces/downloadPage.test.ts` holds it to the SAME fixtures that encoder is held to
  * (`sdks/godot/tests/qr/fixtures.json`, produced by Nayuki's qrcodegen 1.8.0 at the same version,
  * level and mask). No I/O, no clock, no randomness.
  */

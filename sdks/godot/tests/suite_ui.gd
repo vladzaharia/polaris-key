@@ -14,7 +14,7 @@ extends RefCounted
 #           Label, Button and placeholder is translated copy, unless the node is marked as data
 #
 # and the behaviour the acceptance rows name: an enforced setting is a disabled control with
-# "Set by …", editing a default setting writes the override store and get_source() becomes
+# "Set by …", editing a default setting writes the override store and get_config_source() becomes
 # `local`, a locked update answer is a banner with no dismiss that never covers the game, every
 # PKeyActivationResult kind and sign-in ending has its own copy, and COPY DIAGNOSTICS never holds a
 # credential.
@@ -62,6 +62,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _copy(t, all)
 	await _behaviour(t)
 	await _motion_and_transparency(t)
+	await _game_look(t)
 	await _settings_open(t)
 	await _key_field(t)
 	await _layout(t, all)
@@ -132,9 +133,9 @@ func _settings_open(t: PKeyTestContext) -> void:
 	t.check("DL18: open() covers its parent, closable, with Close", p.get_parent() == holder and p.closable and close != null and close.is_visible_in_tree() and close.text == "Close", "close %s" % close)
 	var closed := [false]
 	p.closed.connect(func() -> void: closed[0] = true)
-	t.check("DL18: Escape (ui_cancel) closes it", p._cancel() and closed[0])
-	await _tree().process_frame
-	await _tree().process_frame
+	var handled := p._cancel()
+	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("DL18: Escape (ui_cancel) closes it (after its fade)", handled and closed[0])
 	t.check("DL18: closed, it is freed and the game's control has the focus back", not is_instance_valid(p) and game_button.has_focus())
 	var embedded: Control = await _sc.settings(false, {})
 	await _tree().process_frame
@@ -169,6 +170,762 @@ func _motion_and_transparency(t: PKeyTestContext) -> void:
 	_free(d)
 	PKeyUiTheme.reset()
 	t.check("DL16: auto follows the system (off where the engine reports nothing)", PKeyUiTheme.reduce_motion_mode == "auto" and PKeyUiTheme.reduce_motion() == (DisplayServer.has_method("accessibility_should_reduce_animation") and bool(DisplayServer.call("accessibility_should_reduce_animation"))))
+
+
+## The game look (UK-11b): glass over the scrim and the opaque fallbacks, the system scheme, the
+## input glyphs, the sound events, the fade and the PKEY_UI_REDUCE_TRANSPARENCY override.
+func _game_look(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reset()
+	# The forced paths (the CI lanes run the matrix once on each).
+	OS.set_environment("PKEY_UI_REDUCE_TRANSPARENCY", "1")
+	t.check("env: PKEY_UI_REDUCE_TRANSPARENCY=1 forces the opaque page", PKeyUiTheme.reduce_transparency())
+	OS.set_environment("PKEY_UI_REDUCE_TRANSPARENCY", "0")
+	t.check("env: =0 forces the scrim", not PKeyUiTheme.reduce_transparency())
+	PKeyUiTheme.reduce_transparency_mode = "on"
+	t.check("env: an explicit option wins over the variable", PKeyUiTheme.reduce_transparency())
+	PKeyUiTheme.reduce_transparency_mode = "auto"
+	OS.set_environment("PKEY_UI_REDUCE_TRANSPARENCY", "")
+	# Glass: the card over the dimmed game is nearly opaque on the scrim path (until the blur ships), opaque elsewhere.
+	PKeyUiTheme.branding = PKeyUiTheme.BRANDING_POLARIS_KEY
+	PKeyUiTheme.reduce_transparency_mode = "off"
+	PKeyUiTheme.glass_opaque_override = false
+	PKeyUiFeedback.log_events = true
+	var d: Control = _sc.offline(false, "")
+	# On a desktop-sized screen (a phone's sheet is opaque by design).
+	var screen := SubViewport.new()
+	screen.size = Vector2i(1280, 720)
+	_tree().root.add_child(screen)
+	d.get_parent().remove_child(d)
+	screen.add_child(d)
+	d.theme = load(PKeyUiTheme.NEUTRAL_PATH)
+	d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await _tree().process_frame
+	d.refresh_view()
+	await _tree().process_frame
+	await _tree().process_frame
+	var card := d.find_child("Card", true, false) as PanelContainer
+	var glass := card.get_theme_stylebox("panel") as StyleBoxFlat if card != null else null
+	t.check("glass: the dark card over the scrim is 0.94", glass != null and is_equal_approx(glass.bg_color.a, 0.94) and card.has_meta(&"pkey_glass"), str(glass.bg_color) if glass != null else "no card")
+	PKeyUiTheme.scheme = "light"
+	d.refresh_view()
+	await _tree().process_frame
+	await _tree().process_frame
+	glass = card.get_theme_stylebox("panel") as StyleBoxFlat
+	t.check("glass: the light card over the scrim is 0.96", glass != null and is_equal_approx(glass.bg_color.a, 0.96), str(glass.bg_color) if glass != null else "")
+	PKeyUiTheme.scheme = "dark"
+	PKeyUiTheme.glass_opaque_override = true
+	d.refresh_view()
+	await _tree().process_frame
+	await _tree().process_frame
+	var plain := card.get_theme_stylebox("panel") as StyleBoxFlat
+	t.check("glass: opaque under the compatibility renderer, on the web or by override", plain != null and is_equal_approx(plain.bg_color.a, 1.0) and not card.has_meta(&"pkey_glass"), "%s meta %s" % [plain.bg_color if plain != null else null, card.has_meta(&"pkey_glass")])
+	PKeyUiTheme.glass_opaque_override = null
+	PKeyUiTheme.reduce_transparency_mode = "on"
+	d.refresh_view()
+	await _tree().process_frame
+	t.check("glass: reduced transparency is the opaque page and an opaque card", d.theme_type_variation != &"PKeyScrim" and not card.has_meta(&"pkey_glass") and PKeyUiTheme.glass_opaque())
+	t.check("glass: the product tile is opaque", (PKeyUiTheme.current().get_stylebox("panel", "PKeyAvatar") as StyleBoxFlat).bg_color.a == 1.0)
+	PKeyUiTheme.reduce_transparency_mode = "off"
+	_free(d)
+	screen.queue_free()
+	await _sound(t)
+	await _motion(t)
+	await _glyphs(t)
+	await _scheme(t)
+	await _focus_ring(t)
+	await _lead_fixes(t)
+	await _slice2(t)
+	await _standalone_a(t)
+	await _fix1(t)
+	await _standalone_b(t)
+	PKeyUiTheme.reset()
+
+
+## The sound events: open and close only for a dialog, focus only on navigation, back for dismissals
+## and Escape, error for a refusal; the hook, the signal and the options.
+func _sound(t: PKeyTestContext) -> void:
+	var heard := []
+	PKeyUiFeedback.hook = func(e): heard.append(e)
+	var sdk := _tree().root.get_node_or_null("PolarisKey")
+	var signalled := []
+	if sdk != null and sdk.has_signal("ui_sound"):
+		sdk.connect("ui_sound", func(e): signalled.append(e))
+	PKeyUiFeedback.log_events = true
+	PKeyUiFeedback.logged = []
+	var d: Control = _sc.sign_in("pending")
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("sound: opening plays open and nothing else (no focus sound)", heard == [&"open"], str(heard))
+	var copy := d.find_child("CopyLink", true, false) as Button
+	var cancel := d.find_child("Cancel", true, false) as Button
+	heard.clear()
+	if copy != null:
+		copy.grab_focus()
+	t.check("sound: focus from a click or code is silent", not heard.has(&"focus"), str(heard))
+	var nav := InputEventKey.new()
+	nav.keycode = KEY_DOWN
+	nav.pressed = true
+	PKeyUiFeedback.note_input(nav)
+	if cancel != null:
+		cancel.grab_focus()
+	t.check("sound: focus right after a navigation input plays focus", heard == [&"focus"], str(heard))
+	heard.clear()
+	if copy != null:
+		copy.pressed.emit()
+	t.check("sound: a button that acts plays confirm", heard == [&"confirm"], str(heard))
+	heard.clear()
+	if cancel != null:
+		cancel.pressed.emit()
+	t.check("sound: Cancel plays back, not confirm", heard.has(&"back") and not heard.has(&"confirm"), str(heard))
+	t.check("sound: the signal on PolarisKey carries the same events", sdk == null or not sdk.has_signal("ui_sound") or signalled.has(&"confirm") and signalled.has(&"back"), str(signalled))
+	heard.clear()
+	var failed: Control = _sc.sign_in("failed")
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("sound: a refusal shown plays error", heard.has(&"error"), str(heard))
+	_free(failed)
+	_free(d)
+	# The hook survives configure(): options with none do not wipe it, options with one replace it.
+	var o := PKeyOptions.new()
+	var hook_before := PKeyUiFeedback.hook
+	PKeyUiTheme.apply_options(o)
+	t.check("sound: configure() without a hook leaves one set directly", PKeyUiFeedback.hook == hook_before)
+	var seen := []
+	o.ui_sound_hook = func(e): seen.append(e)
+	PKeyUiTheme.apply_options(o)
+	PKeyUiFeedback.emit(&"open")
+	t.check("sound: PKeyOptions.ui_sound_hook is heard", seen == [&"open"])
+	PKeyUiTheme.apply_options(PKeyOptions.new())
+	t.check("sound: a later options object without one removes the options' hook", not PKeyUiFeedback.hook.is_valid())
+	# Haptics: on, a confirm and an error ask for a haptic; off, none.
+	PKeyUiFeedback.haptic_calls = []
+	PKeyUiFeedback.haptics = false
+	PKeyUiFeedback.emit(&"confirm")
+	t.check("haptics: off, nothing is asked", PKeyUiFeedback.haptic_calls.is_empty())
+	PKeyUiFeedback.haptics = true
+	PKeyUiFeedback.emit(&"confirm")
+	PKeyUiFeedback.emit(&"error")
+	PKeyUiFeedback.emit(&"focus")
+	t.check("haptics: on, confirm and error ask for one and focus does not", PKeyUiFeedback.haptic_calls == [&"confirm", &"error"], str(PKeyUiFeedback.haptic_calls))
+	PKeyUiFeedback.reset()
+
+
+## The fade: a dialog opened in the frame it was built still fades (it starts after the first
+## frames), it reaches full opacity with the clock stopped, and reduced motion shows it at once.
+func _motion(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var d: Control = _sc.sign_in("pending")
+	t.check("motion: built and shown in one frame, the dialog is still transparent", d.modulate.a < 0.05, str(d.modulate.a))
+	# R1: only the card scales; the view (the scrim) is never smaller than its viewport, at every frame.
+	var covered := true
+	var card_scaled := false
+	var bad := ""
+	for i in 40:
+		await _tree().process_frame
+		var vp := d.get_viewport().get_visible_rect()
+		if d.scale != Vector2.ONE or not d.get_global_rect().encloses(vp):
+			covered = false
+			bad = "frame %d %s %s" % [i, d.scale, d.get_global_rect()]
+		var card0 := PKeyUiMotion.card_of(d)
+		if card0 != null and card0.scale.x < 0.999:
+			card_scaled = true
+	t.check("motion: the scrim covers the whole viewport at every frame of the entry", covered, bad)
+	t.check("motion: the card itself scales in from 98 %", card_scaled or PKeyUiMotion.card_of(d) == null)
+	await _tree().create_timer(0.1, true, false, true).timeout
+	t.check("motion: it is part way (or done) after the settle frames", d.modulate.a > 0.0, str(d.modulate.a))
+	await _tree().create_timer(0.35, true, false, true).timeout
+	var card1 := PKeyUiMotion.card_of(d)
+	t.check("motion: it ends at full alpha and scale", is_equal_approx(d.modulate.a, 1.0) and (card1 == null or is_equal_approx(card1.scale.x, 1.0)), "%s" % d.modulate.a)
+	_free(d)
+	# The clock stopped (a game pausing with time_scale): the dialog still arrives.
+	Engine.time_scale = 0.0
+	var z: Control = _sc.sign_in("pending")
+	for i in 4:
+		await _tree().process_frame
+	await _tree().create_timer(0.5, true, false, true).timeout
+	var a := z.modulate.a
+	Engine.time_scale = 1.0
+	t.check("motion: with Engine.time_scale = 0 the dialog reaches full opacity", is_equal_approx(a, 1.0), str(a))
+	_free(z)
+	PKeyUiTheme.reduce_motion_mode = "on"
+	var r: Control = _sc.sign_in("pending")
+	await _tree().process_frame
+	t.check("motion: reduced motion shows it at once, unscaled", is_equal_approx(r.modulate.a, 1.0) and is_equal_approx(r.scale.x, 1.0))
+	_free(r)
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
+## The input glyphs: the button bound to ui_accept and ui_cancel, never an OS flag.
+func _glyphs(t: PKeyTestContext) -> void:
+	PKeyInputGlyphs.family_override = "xbox"
+	PKeyUiView.ensure_pad_bindings()
+	var k := PKeyInputGlyphs.KEYBOARD
+	var p := PKeyInputGlyphs.PAD
+	t.check("glyphs: keyboard confirm is Enter, back is Esc", PKeyInputGlyphs.label_for(&"confirm", k) == "Enter" and PKeyInputGlyphs.label_for(&"back", k) == "Esc")
+	t.check("glyphs: the default map shows A to confirm and B to go back, on every OS", PKeyInputGlyphs.label_for(&"confirm", p) == "A" and PKeyInputGlyphs.label_for(&"back", p) == "B")
+	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
+	var cancel := InputMap.action_get_events(&"ui_cancel").duplicate()
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_erase_event(&"ui_accept", e)
+	var east := InputEventJoypadButton.new()
+	east.button_index = JOY_BUTTON_B
+	InputMap.action_add_event(&"ui_accept", east)
+	t.check("glyphs: a game that remaps ui_accept to B is shown B", PKeyInputGlyphs.label_for(&"confirm", p) == "B")
+	InputMap.action_erase_event(&"ui_accept", east)
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_add_event(&"ui_accept", e)
+	PKeyInputGlyphs.family_override = "playstation"
+	t.check("glyphs: a PlayStation pad draws a cross to confirm and a circle to go back", PKeyInputGlyphs.shape_for(&"confirm", p) == "cross" and PKeyInputGlyphs.shape_for(&"back", p) == "circle" and PKeyInputGlyphs.label_for(&"confirm", p) == "")
+	PKeyInputGlyphs.family_override = "nintendo"
+	t.check("glyphs: a Nintendo pad prints B on the south button and A on the east one", PKeyInputGlyphs.label_for(&"confirm", p) == "B" and PKeyInputGlyphs.label_for(&"back", p) == "A")
+	PKeyInputGlyphs.family_override = "xbox"
+	var g := PKeyInputGlyphs.new()
+	g.kind = k
+	_tree().root.add_child(g)
+	await _tree().process_frame
+	var ms := g.get_combined_minimum_size()
+	t.check("glyphs: a keycap is at least as wide as it is tall; the letter is at least 17 px", ms.x >= ms.y and ms.y >= 2.0 * 17.0 * 0.8 and g._letter() >= 17, str(ms))
+	g.queue_free()
+	var panel: Control = _sc.activation(true, false, false, false)
+	await _tree().process_frame
+	if panel != null:
+		_free(panel)
+	# The pad family is the last pad used.
+	PKeyInputGlyphs.family_override = null
+	PKeyInputGlyphs.last_pad_device = 7
+	t.check("glyphs: an unconnected last pad falls back to the generic (Xbox) family", PKeyInputGlyphs.pad_family() == "xbox")
+	PKeyInputGlyphs.last_pad_device = -1
+	PKeyInputGlyphs.family_override = null
+
+
+## The system scheme: follows the OS, dark where it cannot say, re-checked on focus and on open,
+## and the kit never takes the engine's system-theme callback.
+func _scheme(t: PKeyTestContext) -> void:
+	PKeyUiTheme.scheme_mode = "system"
+	PKeyUiTheme.system_dark_override = false
+	PKeyUiTheme.resolve_scheme()
+	t.check("scheme: system follows a light OS", PKeyUiTheme.scheme == "light")
+	PKeyUiTheme.system_dark_override = true
+	PKeyUiTheme.recheck_system_scheme()
+	t.check("scheme: re-checked (the game regained focus), it follows the OS to dark", PKeyUiTheme.scheme == "dark")
+	var o := PKeyOptions.new()
+	o.ui_brand_scheme = "system"
+	PKeyUiTheme.system_dark_override = false
+	PKeyUiTheme.apply_options(o)
+	t.check("scheme: ui_brand_scheme = system reaches the kit", PKeyUiTheme.scheme_mode == "system" and PKeyUiTheme.scheme == "light")
+	o.ui_brand_scheme = "bogus"
+	PKeyUiTheme.apply_options(o)
+	t.check("scheme: an unknown value is dark", PKeyUiTheme.scheme == "dark")
+	t.check("scheme: the light scrim is 0.35 (UI-KITS Godot row)", is_equal_approx(PKeyKitTokens.SCRIM_LIGHT_OPACITY, 0.35) and is_equal_approx(PKeyKitTokens.SCRIM_LIGHT.a, 0.35))
+
+
+## Slice 2: the hint bar's verbs, the step crossfade, the exit tween and the TV title-safe toast.
+func _slice2(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var before_size := _tree().root.size
+	_tree().root.size = Vector2i(1280, 720)
+	PKeyUiView.pad_only_override = true
+	var d: Control = _sc.sign_in("pending")
+	for i in 30:
+		await _tree().process_frame
+	var bar := d.find_child("HintBar", true, false) as PKeyHintBar
+	t.check("hint bar: a pad-only sign-in shows Select and its own Cancel beside their glyphs", bar != null and bar.visible and _bar_words(bar) == ["Select", "Cancel"], str(_bar_words(bar)) if bar != null else "no bar")
+	var touch := InputEventScreenTouch.new()
+	bar._input(touch)
+	t.check("hint bar: touch hides it", not bar.visible)
+	var key := InputEventKey.new()
+	bar._input(key)
+	t.check("hint bar: a key on a pad-only device does not switch to keycaps", bar.kind() != &"keyboard")
+	PKeyUiView.pad_only_override = false
+	bar._input(key)
+	t.check("hint bar: the keyboard shows Enter and Esc", bar.get_child_count() == 2 and bar.parts().size() == 2)
+	PKeyUiView.pad_only_override = true
+	PKeyInputGlyphs.family_override = "xbox"
+	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
+	var shoulder := InputEventJoypadButton.new()
+	shoulder.button_index = JOY_BUTTON_START
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_erase_event(&"ui_accept", e)
+	InputMap.action_add_event(&"ui_accept", shoulder)
+	bar._input(InputEventJoypadButton.new())
+	t.check("hint bar: an item whose button has no glyph is left out (Start), the rest stay", _bar_words(bar) == ["Cancel"], str(_bar_words(bar)))
+	InputMap.action_erase_event(&"ui_accept", shoulder)
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_add_event(&"ui_accept", e)
+	PKeyInputGlyphs.family_override = null
+	# The step crossfade: a new screen of the same dialog crossfades its content in.
+	PKeyUiTheme.reduce_motion_mode = "off"
+	await _tree().create_timer(0.4, true, false, true).timeout
+	d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	await _tree().process_frame
+	var content: Control = d.step_target()
+	t.check("step: a new screen of a dialog crossfades the card's inner content, never the card", content != null and content != d._card_box and content.has_meta(PKeyUiMotion.STEP_META) and content.modulate.a < 1.0 and is_equal_approx(d._card_box.modulate.a, 1.0), str(content.modulate.a) if content != null else "")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("step: and ends at full alpha", is_equal_approx(content.modulate.a, 1.0))
+	_free(d)
+	_tree().root.size = before_size
+	PKeyUiView.pad_only_override = null
+	PKeyUiTheme.reduce_motion_mode = "on"
+	var held := Control.new()
+	_tree().root.add_child(held)
+	PKeyUiMotion.step(held)
+	t.check("step: reduced motion changes nothing", is_equal_approx(held.modulate.a, 1.0))
+	held.queue_free()
+	# The exit tween: a settings panel fades out before it is freed.
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var holder := Control.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tree().root.add_child(holder)
+	var p := PKeySettingsPanel.open(holder)
+	p.auto_sdk = false
+	p.sdk = await _sc.settings_sdk({})
+	for i in 30:
+		await _tree().process_frame
+	PKeyUiTheme.reduce_motion_mode = "off"
+	p.close()
+	await _tree().create_timer(0.07, true, false, true).timeout
+	t.check("exit: right after close the panel is still there, part way faded", is_instance_valid(p) and p.modulate.a < 1.0 and p.modulate.a > 0.0, str(p.modulate.a) if is_instance_valid(p) else "freed")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("exit: then it is freed", not is_instance_valid(p))
+	holder.queue_free()
+	# The toast keeps inside 5 % of the screen from every edge at TV size, whatever its anchor.
+	PKeyUiTheme.reduce_motion_mode = "on"
+	for anchor in ["bottom_right", "bottom_center", "top_right"]:
+		var vp := SubViewport.new()
+		vp.size = Vector2i(3840, 2160)
+		vp.size_2d_override = Vector2i(1920, 1080)
+		vp.size_2d_override_stretch = true
+		_tree().root.add_child(vp)
+		var tv: Control = await _sc.toast("update")
+		tv.get_parent().remove_child(tv)
+		tv.toast_anchor = anchor
+		vp.add_child(tv)
+		tv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		for i in 4:
+			await _tree().process_frame
+		var r: Rect2 = tv._card_box.get_global_rect()
+		var mx := 0.05 * 1920.0
+		var my := 0.05 * 1080.0
+		t.check("toast: title-safe at 1920x1080, 5 %% of the width and of the height (%s)" % anchor, r.position.x >= mx - 1.0 and r.position.y >= my - 1.0 and r.end.x <= 1920.0 - mx + 1.0 and r.end.y <= 1080.0 - my + 1.0, str(r))
+		vp.queue_free()
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
+## Slice 4: the standalone Paywall and DeviceLimit, on the models.
+func _standalone_a(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "on"
+	# Paywall: the primary is the store's or the portal's, never an invented checkout.
+	var pw: PKeyPaywall = _sc.paywall("offers-store")
+	var bought := [0]
+	var restored := [0]
+	pw.purchase_requested.connect(func(): bought[0] += 1)
+	pw.restore_requested.connect(func(): restored[0] += 1)
+	await _tree().process_frame
+	t.check("paywall: the store's primary says Upgrade to the tier and asks the game to purchase", pw._primary.text.contains("Upgrade to") and pw._primary.text.contains("Pro"))
+	pw._primary.pressed.emit()
+	pw._restore.pressed.emit()
+	t.check("paywall: purchase_requested and restore_requested fire", bought[0] == 1 and restored[0] == 1)
+	_free(pw)
+	var portal: PKeyPaywall = _sc.paywall("offers-portal")
+	var opened := [0]
+	portal.portal_requested.connect(func(): opened[0] += 1)
+	await _tree().process_frame
+	t.check("paywall: without a store the primary is Buy in your browser, no redeem without a handler", portal._primary.text == "Buy in your browser" and not portal._redeem.visible)
+	portal.offers_url = "http://insecure.example/buy"
+	portal.refresh_view()
+	portal._primary.pressed.emit()
+	t.check("paywall: portal_requested fires; a page that is not https is never opened", opened[0] == 1 and not PKeyOutletAdapter.is_https(portal.offers_url))
+	_free(portal)
+	var done_pw: PKeyPaywall = _sc.paywall("purchased")
+	var finished := [0]
+	done_pw.done.connect(func(): finished[0] += 1)
+	await _tree().process_frame
+	done_pw._primary.pressed.emit()
+	t.check("paywall: purchased shows Done and done fires", done_pw._primary.text == "Done" and finished[0] == 1)
+	_free(done_pw)
+	var busy_pw: PKeyPaywall = _sc.paywall("purchasing")
+	await _tree().process_frame
+	t.check("paywall: purchasing disables the primary", busy_pw._primary.disabled)
+	_free(busy_pw)
+	# The catalog's translations, not English with a mask: German.
+	TranslationServer.set_locale("de")
+	var de_pw: PKeyPaywall = _sc.paywall("offers-portal")
+	await _tree().process_frame
+	var de_title := de_pw._title.text
+	TranslationServer.set_locale("en")
+	t.check("paywall: German reads from the catalog's tables", de_title != "" and not de_title.begins_with("Get more with"), de_title)
+	_free(de_pw)
+	# DeviceLimit: the least recent other device is the one replaced.
+	var dl: PKeyDeviceLimit = _sc.device_limit("default")
+	var replaced: Array = []
+	dl.replace_requested.connect(func(d): replaced.append(d))
+	await _tree().process_frame
+	t.check("device limit: the preselected device is the least recently used other one", dl._pick.visible and dl._pick_name.text.contains("Work laptop"))
+	t.check("device limit: its lede names this device", dl._lede.text.contains("this Mac"), dl._lede.text)
+	dl._primary.pressed.emit()
+	t.check("device limit: Replace and continue hands the game that device", replaced.size() == 1 and replaced[0].get("name") == "Work laptop")
+	_free(dl)
+	var br: PKeyDeviceLimit = _sc.device_limit("browser")
+	var manage := [0]
+	br.manage_opened.connect(func(): manage[0] += 1)
+	await _tree().process_frame
+	t.check("device limit: browser mode offers Open in browser", br._primary.text == "Open in browser")
+	br._primary.pressed.emit()
+	t.check("device limit: manage_opened fires", manage[0] == 1)
+	_free(br)
+	var tv: PKeyDeviceLimit = _sc.device_limit("browser-tv")
+	await _tree().process_frame
+	t.check("device limit: a TV shows a QR code and no browser button", tv._qr.visible and not tv._primary.visible)
+	_free(tv)
+	var fl: PKeyDeviceLimit = _sc.device_limit("failed")
+	var retried := [0]
+	fl.retry_requested.connect(func(): retried[0] += 1)
+	await _tree().process_frame
+	fl._primary.pressed.emit()
+	t.check("device limit: a failed replacement offers Try again", retried[0] == 1)
+	var backs := [0]
+	fl.back_requested.connect(func(): backs[0] += 1)
+	fl._cancel()
+	t.check("device limit: Escape asks to go back", backs[0] == 1)
+	_free(fl)
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
+## Slice 2's review fixes: the step fades the card's content in every host, the hint bar is one
+## footer and reads the catalog, and a dialog closes once however often B is pressed.
+func _fix1(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var before_size := _tree().root.size
+	_tree().root.size = Vector2i(1280, 720)
+	PKeyUiView.pad_only_override = true
+	# B1: the step fades the card's inner content in a gate host (sign-in inside a gate) and never
+	# a card panel.
+	var gate: PKeyGateView = _sc.gate_flow("sign-in")
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var waited := 0
+	while waited < 300 and (waited < 20 or PKeyUiMotion.entering(gate)):
+		await _tree().process_frame
+		waited += 1
+	await _tree().create_timer(0.3, true, false, true).timeout
+	var dialog: PKeySignInDialog = gate.activation.sign_in_dialog
+	var cards := gate.find_children("Card", "PanelContainer", true, false)
+	var min_card := 1.0
+	var dipped := false
+	PKeyUiTheme.reduce_motion_mode = "off"
+	dialog.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	for i in 30:
+		await _tree().process_frame
+		for c in cards:
+			min_card = minf(min_card, (c as Control).modulate.a)
+		var target := dialog.step_target()
+		if target != null and (target.modulate.a < 0.99 or target.has_meta(PKeyUiMotion.STEP_META)):
+			dipped = true
+	t.check("step: in a gate host the dialog's inner content dips and no card panel ever does", dipped and is_equal_approx(min_card, 1.0), "dipped %s card %s" % [dipped, min_card])
+	_free(gate)
+	# B1: a boot never fades its art.
+	var boot: Control = _sc.boot("syncing")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var art := boot.find_child("Art", true, false) as Control
+	boot.refresh_view()
+	var min_art := 1.0
+	for i in 12:
+		await _tree().process_frame
+		if art != null:
+			min_art = minf(min_art, art.modulate.a)
+	t.check("step: the boot's key art is never animated", is_equal_approx(min_art, 1.0) and boot.step_target() != art, str(min_art))
+	_free(boot)
+	# B2: one footer at the bottom right of the title-safe area, off the panel.
+	var d: PKeySignInDialog = _sc.sign_in("pending")
+	await _tree().create_timer(0.5, true, false, true).timeout
+	var bar := d.find_child("HintBar", true, false) as PKeyHintBar
+	if bar == null:
+		bar = d._hint_bar
+	d.queue_layout()
+	await _tree().process_frame
+	await _tree().process_frame
+	var r := Rect2(bar.global_position, bar.size)
+	var vp := d.get_viewport().get_visible_rect()
+	var card := d.find_child("Card", true, false) as Control
+	t.check("hint bar: a footer, top level, outside the card", bar.top_level and bar.get_parent() == d and bar.visible and not r.intersects(card.get_global_rect()), "%s card %s" % [r, card.get_global_rect()])
+	t.check("hint bar: at the bottom right of the title-safe area (5 %)", r.end.x <= vp.end.x - 0.05 * vp.size.x + 1.5 and r.end.y <= vp.end.y - 0.05 * vp.size.y + 1.5 and r.end.x >= vp.end.x - 0.05 * vp.size.x - 12.0, "%s in %s" % [r, vp])
+	_free(d)
+	# B5: the words read from the catalog in the running locale.
+	TranslationServer.set_locale("de")
+	var dd: PKeySignInDialog = _sc.sign_in("pending")
+	await _tree().create_timer(0.3, true, false, true).timeout
+	var de_bar := dd._hint_bar
+	de_bar.refresh()
+	var de_words := _bar_words(de_bar)
+	TranslationServer.set_locale("en")
+	t.check("hint bar: German reads the catalog (Auswählen), not English", de_words.size() == 2 and de_words[0] == "Auswählen", str(de_words))
+	_free(dd)
+	# B5: the keycaps follow the bound keys.
+	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
+	for e in accept:
+		if e is InputEventKey:
+			InputMap.action_erase_event(&"ui_accept", e)
+	var space := InputEventKey.new()
+	space.keycode = KEY_SPACE
+	InputMap.action_add_event(&"ui_accept", space)
+	t.check("glyphs: the keycap follows the bound key (Space)", PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.KEYBOARD) == "Space", PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.KEYBOARD))
+	InputMap.action_erase_event(&"ui_accept", space)
+	for e in accept:
+		if e is InputEventKey:
+			InputMap.action_add_event(&"ui_accept", e)
+	# B5: a mouse that moves switches the bar to the keyboard's hints; a key on a pad-only device does not.
+	var probe := PKeyHintBar.new()
+	probe._kind = &"pad"
+	var motion := InputEventMouseMotion.new()
+	motion.relative = Vector2(8, 0)
+	PKeyUiView.pad_only_override = false
+	probe._input(motion)
+	t.check("hint bar: moving the mouse switches to the keyboard hints", probe._kind == &"keyboard")
+	probe.free()
+	PKeyUiView.pad_only_override = true
+	# B7: a dialog closes once, however often B is pressed during its fade; each scrim dialog fades.
+	var holder := Control.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tree().root.add_child(holder)
+	var p := PKeySettingsPanel.open(holder)
+	p.auto_sdk = false
+	p.sdk = await _sc.settings_sdk({})
+	for i in 20:
+		await _tree().process_frame
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var closes := [0]
+	p.closed.connect(func(): closes[0] += 1)
+	p._cancel()
+	p._cancel()
+	await _tree().create_timer(0.05, true, false, true).timeout
+	p._cancel()
+	await _tree().create_timer(0.5, true, false, true).timeout
+	t.check("close: a second B or Esc during the fade emits closed once (settings)", closes[0] == 1 and not is_instance_valid(p), str(closes[0]))
+	holder.queue_free()
+	var so: PKeySignInDialog = _sc.sign_in("pending")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var so_closes := [0]
+	so.closed.connect(func(): so_closes[0] += 1)
+	so._cancel()
+	so._cancel()
+	await _tree().create_timer(0.08, true, false, true).timeout
+	t.check("close: sign-in fades out part way before it closes", so_closes[0] == 0 and so.modulate.a < 1.0, "%s %s" % [so_closes[0], so.modulate.a])
+	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("close: sign-in emits closed once", so_closes[0] == 1, str(so_closes[0]))
+	_free(so)
+	var up: PKeyUpdatePrompt = _sc.update_prompt_notes()
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var uc := [0]
+	up.dismissed.connect(func(): uc[0] += 1)
+	up._on_dismiss()
+	up._on_dismiss()
+	await _tree().create_timer(0.5, true, false, true).timeout
+	t.check("close: the update modal fades out on Later and dismisses once", uc[0] == 1, str(uc[0]))
+	var offd: PKeyOfflineDialog = _sc.offline(false, "")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	var oc := [0]
+	offd.closed.connect(func(): oc[0] += 1)
+	offd._close_dialog()
+	offd._close_dialog()
+	await _tree().create_timer(0.5, true, false, true).timeout
+	t.check("close: the offline dialog fades out and closes once", oc[0] == 1, str(oc[0]))
+	_free(offd)
+	up.queue_free()
+	# Reduced motion closes at once.
+	PKeyUiTheme.reduce_motion_mode = "on"
+	var rm: PKeyOfflineDialog = _sc.offline(false, "")
+	await _tree().process_frame
+	var rc := [0]
+	rm.closed.connect(func(): rc[0] += 1)
+	rm._close_dialog()
+	t.check("close: reduced motion closes at once", rc[0] == 1)
+	_free(rm)
+	_tree().root.size = before_size
+	PKeyUiView.pad_only_override = null
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
+## Slice 5: the standalone CloudSyncStatus, About and ReleaseNotes, on the models.
+func _standalone_b(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "on"
+	var cs: PKeyCloudSyncStatus = _sc.cloud_sync("conflict")
+	var reviews := [0]
+	cs.review_requested.connect(func(): reviews[0] += 1)
+	await _tree().process_frame
+	t.check("cloud sync: a conflict reads 'Some changes conflict.' and offers Review", cs._text.text == "Some changes conflict." and cs._action.text == "Review")
+	cs._action.pressed.emit()
+	t.check("cloud sync: Review asks the game", reviews[0] == 1)
+	_free(cs)
+	var so: PKeyCloudSyncStatus = _sc.cloud_sync("signed-out")
+	var ins := [0]
+	so.sign_in_requested.connect(func(): ins[0] += 1)
+	await _tree().process_frame
+	t.check("cloud sync: signed out says so and offers Sign in to sync", so._text.text == "You're signed out." and so._action.text == "Sign in to sync")
+	so._action.pressed.emit()
+	t.check("cloud sync: Sign in to sync asks the game", ins[0] == 1)
+	_free(so)
+	var off: PKeyCloudSyncStatus = _sc.cloud_sync("synced")
+	off.service_on = false
+	off.refresh_view()
+	await _tree().process_frame
+	t.check("cloud sync: hidden while the Sync service is off", not off.visible)
+	_free(off)
+	var ab: PKeyAbout = _sc.about("full")
+	await _tree().process_frame
+	ab._on_copy()
+	t.check("about: Copy diagnostics copies the game's text and says so", (DisplayServer.clipboard_get() in ["", "version 2.5.0 build 4182 outlet steam"]) and ab._done.text == "Diagnostics copied")
+	t.check("about: Privacy and Get help show only with an https page", ab._privacy.visible and ab._support.visible)
+	_free(ab)
+	var plain: PKeyAbout = _sc.about("plain")
+	await _tree().process_frame
+	t.check("about: without pages or diagnostics only the licenses link shows", not plain._privacy.visible and not plain._support.visible and not plain._copy.visible and plain._licenses.visible)
+	_free(plain)
+	var rn: PKeyReleaseNotes = _sc.release_notes("list")
+	await _tree().process_frame
+	var texts: Array = []
+	for n in rn.find_children("Notes", "Label", true, false):
+		texts.append((n as Label).text)
+	t.check("release notes: newest first, notes are text", rn._list.get_child_count() == 2 and texts[1].contains("<b>Not markup.</b>"), str(texts))
+	_free(rn)
+	var re: PKeyReleaseNotes = _sc.release_notes("error")
+	var retried := [0]
+	re.retry_requested.connect(func(): retried[0] += 1)
+	await _tree().process_frame
+	re._retry.pressed.emit()
+	t.check("release notes: an error offers Try again", re._retry.text == "Try again" and retried[0] == 1)
+	_free(re)
+	var em: PKeyReleaseNotes = _sc.release_notes("empty")
+	await _tree().process_frame
+	t.check("release notes: empty says so", em._body.text == "No release notes yet.")
+	_free(em)
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
+func _bar_words(bar: PKeyHintBar) -> Array:
+	var out := []
+	for row in bar.get_children():
+		for ch in row.get_children():
+			if ch is Label:
+				out.append((ch as Label).text)
+	return out
+
+
+## Slice 1's lead fix list: echo navigation, error coverage, glyphs that disagree or do not exist,
+## all-device pad bindings, and the ring clipped to a scroll area.
+func _lead_fixes(t: PKeyTestContext) -> void:
+	# n1: a held key (echo) is navigation.
+	PKeyUiFeedback.reset()
+	PKeyUiFeedback.log_events = true
+	var echo := InputEventKey.new()
+	echo.keycode = KEY_DOWN
+	echo.physical_keycode = KEY_DOWN
+	echo.pressed = true
+	echo.echo = true
+	PKeyUiFeedback.note_input(echo)
+	PKeyUiFeedback._on_focus()
+	t.check("n1: a held direction (key repeat) plays focus", PKeyUiFeedback.logged == [&"focus"], str(PKeyUiFeedback.logged))
+	# n2: a rejected offline response and the account tab's error play error.
+	PKeyUiFeedback.reset()
+	PKeyUiFeedback.log_events = true
+	var off: Control = _sc.offline(false, "bundle-jws-rejected")
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("n2: the offline dialog's rejected response plays error", PKeyUiFeedback.logged.has(&"error"), str(PKeyUiFeedback.logged))
+	_free(off)
+	PKeyUiFeedback.logged = []
+	var acct: Control = _sc.account("signed-in")
+	acct.cloud_sync = "error"
+	acct.refresh_view()
+	await _tree().process_frame
+	t.check("n2: the account tab's sync error plays error", PKeyUiFeedback.logged.has(&"error"), str(PKeyUiFeedback.logged))
+	_free(acct)
+	# n3: a bound shoulder button has no glyph.
+	PKeyInputGlyphs.family_override = "xbox"
+	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_erase_event(&"ui_accept", e)
+	var rb := InputEventJoypadButton.new()
+	rb.button_index = JOY_BUTTON_RIGHT_SHOULDER
+	InputMap.action_add_event(&"ui_accept", rb)
+	t.check("n3: ui_accept on a shoulder button has no glyph, not a wrong one", not PKeyInputGlyphs.has_glyph(&"confirm", PKeyInputGlyphs.PAD) and PKeyInputGlyphs.has_glyph(&"back", PKeyInputGlyphs.PAD))
+	InputMap.action_erase_event(&"ui_accept", rb)
+	# n5: accept moved to east: the glyph follows the binding (B) and the words are only the verb.
+	var east := InputEventJoypadButton.new()
+	east.button_index = JOY_BUTTON_B
+	InputMap.action_add_event(&"ui_accept", east)
+	var panel: Control = _sc.activation(true, false, false, false)
+	panel._input_kind = &"pad"
+	panel.refresh_view()
+	await _tree().process_frame
+	t.check("n5: accept on east shows B with Select, never '[B] A to select'", _bar_words(panel._hint_bar) == ["Select"] and PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.PAD) == "B")
+	_free(panel)
+	InputMap.action_erase_event(&"ui_accept", east)
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_add_event(&"ui_accept", e)
+	PKeyInputGlyphs.family_override = null
+	# Older bug: the kit's pad bindings answer every device.
+	PKeyUiView.ensure_pad_bindings()
+	var press := InputEventJoypadButton.new()
+	press.device = 3
+	press.pressed = true
+	press.button_index = JOY_BUTTON_A
+	var press_b := InputEventJoypadButton.new()
+	press_b.device = 3
+	press_b.pressed = true
+	press_b.button_index = JOY_BUTTON_B
+	t.check("pads: device 3 confirms and goes back on kit screens", InputMap.event_is_action(press, &"ui_accept") and InputMap.event_is_action(press_b, &"ui_cancel"))
+	# n4: a field scrolled half out of its scroll area draws only the visible part of the ring.
+	if PKeyFocusRing.needed():
+		var sc := ScrollContainer.new()
+		sc.custom_minimum_size = Vector2(300, 100)
+		sc.size = Vector2(300, 100)
+		var box := VBoxContainer.new()
+		var pad := Control.new()
+		pad.custom_minimum_size = Vector2(10, 60)
+		box.add_child(pad)
+		var te := TextEdit.new()
+		te.custom_minimum_size = Vector2(280, 120)
+		box.add_child(te)
+		sc.add_child(box)
+		_tree().root.add_child(sc)
+		PKeyFocusRing.attach(te)
+		await _tree().process_frame
+		await _tree().process_frame
+		te.grab_focus()
+		await _tree().process_frame
+		await _tree().process_frame
+		var ring := te.get_node_or_null(^"FocusRing") as Control
+		var vis := sc.get_global_rect()
+		t.check("n4: the ring is clipped to the scroll area", ring != null and ring.visible and ring.clip_contents and vis.encloses(Rect2(ring.global_position, ring.size * ring.scale)) , "%s vs %s" % [ring.get_global_rect() if ring != null else null, vis])
+		sc.modulate.a = 0.5
+		await _tree().process_frame
+		await _tree().process_frame
+		t.check("n4: the ring follows the fade of its ancestors", ring != null and is_equal_approx(ring.modulate.a, 0.5), str(ring.modulate.a) if ring != null else "")
+		sc.queue_free()
+
+
+## The ring of a multi-line field on engines before 4.6 is drawn from a top-level child.
+func _focus_ring(t: PKeyTestContext) -> void:
+	var d: Control = _sc.offline(false, "")
+	await _tree().process_frame
+	var paste := d.find_child("Paste", true, false) as TextEdit
+	var ring := paste.get_node_or_null(^"FocusRing") if paste != null else null
+	if PKeyFocusRing.needed():
+		t.check("focus ring: before 4.6 the paste field's ring is drawn by a top-level child", ring != null and (ring as Control).top_level and paste.get_theme_stylebox("focus") is StyleBoxEmpty)
+		paste.grab_focus()
+		await _tree().process_frame
+		t.check("focus ring: it shows while the field has focus and sits over it", ring != null and (ring as Control).visible and (ring as Control).size.x > 0.0)
+		paste.release_focus()
+		await _tree().process_frame
+		t.check("focus ring: and hides when focus leaves", ring != null and not (ring as Control).visible)
+	else:
+		t.check("focus ring: from 4.6 the engine draws it and the kit adds nothing", ring == null)
+	_free(d)
 
 
 # ── Snapshots ────────────────────────────────────────────────────────────────────────────
@@ -232,12 +989,14 @@ static func _apply_look(look: String) -> void:
 
 
 func _layout(t: PKeyTestContext, all: Array) -> void:
+	# Layout is measured at rest (the entry scales the card for 280 ms; the motion tests own that).
+	PKeyUiTheme.reduce_motion_mode = "on"
 	var root := _tree().root
 	var before := root.size
 	var cases: Array = []
 	var seen := {}
 	for c in all:
-		if seen.has(c[0]) or c[0] in ["badge", "banner", "update_progress", "toast"]:
+		if seen.has(c[0]) or c[0] in ["badge", "banner", "update_progress", "toast", "cloud_sync"]:
 			continue
 		var probe: PKeyUiView = await _build(c)
 		var visible := probe.visible and _centred(probe) != null and _centred(probe).is_visible_in_tree()
@@ -257,6 +1016,8 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 				var v: PKeyUiView = await _build(c)
 				# A scenario configures a fake SDK (which applies its default ui_* options).
 				_apply_look(look)
+				PKeyUiTheme.reduce_motion_mode = "on"
+				PKeyUiMotion.cancel(v)
 				v.refresh_view()
 				v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 				v.refresh_view()
@@ -386,7 +1147,7 @@ func _copy(t: PKeyTestContext, all: Array) -> void:
 		for pair in PKeyUiSnapshot.texts(v):
 			var n: Node = pair[0]
 			var text: String = pair[1]
-			if n.has_meta(PKeyUiView.DATA_META):
+			if n.has_meta(PKeyUiView.DATA_META) or n.has_meta(PKeyUiView.CATALOG_META):
 				continue
 			if not text.begins_with("⟦"):
 				bad.append("%s \"%s\"" % [v.get_path_to(n), text])
@@ -409,6 +1170,7 @@ func _copy(t: PKeyTestContext, all: Array) -> void:
 func _behaviour(t: PKeyTestContext) -> void:
 	await _settings(t)
 	await _update_prompt(t)
+	await _play(t)
 	await _dialogs_take_focus(t)
 	await _gate_limit_focus(t)
 	await _focus_follows_screen(t)
@@ -438,19 +1200,19 @@ func _settings(t: PKeyTestContext) -> void:
 	var kill_input: Control = kill.get("input")
 	t.check("settings: an enforced setting is text, never a dimmed control", kill_input is Label and not (kill_input as Label).text.is_empty() and not kill_input is BaseButton, str(kill_input))
 	t.check("settings: an enforced setting says who set it (the product's name) with a lock", (kill["set_by"] as Label).visible and (kill["set_by"] as Label).text == "Set by %s" % PKeyUiTheme.isolate(PKeySettingsController.product_name(sdk)) and not PKeySettingsController.product_name(sdk).is_empty() and (kill["lock"] as Control).visible and (kill["lock_row"] as Control).visible)
-	var before: StringName = sdk.config.get_source("audio.volume")
+	var before: StringName = sdk.config.get_config_source("audio.volume")
 	var vol := _row_nodes(p, "audio.volume")
 	var spin: Range = vol.get("input")
 	spin.value = 35
 	await _tree().process_frame
 	var store: PKeyOverrideStore = sdk.config.get_override_store()
 	t.check("settings: editing a default setting writes the override store", store.has_override("audio.volume") and store.get_override("audio.volume") == 35, str(store.values))
-	t.check("settings: ... and get_source() becomes local", before == &"remote-default" and sdk.config.get_source("audio.volume") == &"local" and sdk.config.get_value("audio.volume") == 35, "%s -> %s" % [before, sdk.config.get_source("audio.volume")])
+	t.check("settings: ... and get_config_source() becomes local", before == &"remote-default" and sdk.config.get_config_source("audio.volume") == &"local" and sdk.config.get_value("audio.volume") == 35, "%s -> %s" % [before, sdk.config.get_config_source("audio.volume")])
 	vol = _row_nodes(p, "audio.volume")
 	t.check("settings: a local row shows its badge and Reset to default", (vol["status"] as Label).text == "Changed by you" and (vol["reset"] as Button).visible)
 	(vol["reset"] as Button).pressed.emit()
 	await _tree().process_frame
-	t.check("settings: Reset to default clears the override", not store.has_override("audio.volume") and sdk.config.get_source("audio.volume") == &"remote-default")
+	t.check("settings: Reset to default clears the override", not store.has_override("audio.volume") and sdk.config.get_config_source("audio.volume") == &"remote-default")
 	# An enforced key ignores an attempted write and keeps the saved player value untouched.
 	p._write("game.killSwitch", false)
 	t.check("settings: an enforced key is never written", not store.has_override("game.killSwitch"))
@@ -530,8 +1292,7 @@ func _dialogs_take_focus(t: PKeyTestContext) -> void:
 		await _tree().process_frame
 		t.check("dialog focus: %s, a pad's A never presses the game's button" % name, pressed[0] == 0, str(pressed[0]))
 		_joy_button(JOY_BUTTON_B)
-		await _tree().process_frame
-		await _tree().process_frame
+		await _tree().create_timer(0.5, true, false, true).timeout
 		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
 		_free(dialog)
 		_free(game)
@@ -690,6 +1451,126 @@ func _focus_follows_screen(t: PKeyTestContext) -> void:
 	f = _tree().root.gui_get_focus_owner()
 	t.check("focus follows the screen: an expired code moves focus to Get a new code", f != null and f.name == "TryAgain", str(f))
 	_free(d)
+
+
+## The kit in a running game (KX-GD-PLAY): it keeps running while the tree is paused, says when it
+## takes the input, shows an update only as a toast while `in_play`, and draws the changelog facts.
+func _play(t: PKeyTestContext) -> void:
+	# The headless runner's window is tiny, and a short screen gives the notes up (squeeze): measure on a game-sized one.
+	var saved_size := _tree().root.size
+	_tree().root.size = Vector2i(1152, 900)
+	var rel := {"version": "1.5.0", "seq": 15, "sha256": "ab"}
+	var offer: PKeyUpdateCheck = _sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false})
+	var locked: PKeyUpdateCheck = _sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": true, "critical": false, "prestage": [], "discardStaged": false})
+	var sdk: Node = load("res://addons/polaris_key/polaris_key.gd").new()
+	sdk.name = "PlaySdk"
+	_tree().root.add_child(sdk)
+	PKeyUiTheme.product_name = "Tidewater"
+	# Paused tree: every kit node runs, the autoload included; the game can override it.
+	var fresh_prompt := PKeyUpdatePrompt.new()
+	var fresh_toast := PKeyToast.new()
+	t.check("play: the SDK and every view run while the tree is paused", sdk.process_mode == Node.PROCESS_MODE_ALWAYS and fresh_prompt.process_mode == Node.PROCESS_MODE_ALWAYS and fresh_toast.process_mode == Node.PROCESS_MODE_ALWAYS)
+	fresh_prompt.free()
+	fresh_toast.free()
+	var p := PKeyUpdatePrompt.new()
+	p.modal = true
+	p.outlet = "direct"
+	p.release_url = "https://example.com/dl"
+	p.process_mode = Node.PROCESS_MODE_PAUSABLE
+	t.check("play: the game can override the process mode", p.process_mode == Node.PROCESS_MODE_PAUSABLE)
+	p.process_mode = Node.PROCESS_MODE_ALWAYS
+	p.auto_sdk = false
+	p.sdk = sdk
+	_tree().root.add_child(p)
+	_tree().paused = true
+	t.check("play: a prompt in a paused tree can process", p.can_process())
+	_tree().paused = false
+	# in_play: an available update is a toast; the prompt waits.
+	var caught: Array = []
+	sdk.input_captured.connect(func(on: bool) -> void: caught.append(on))
+	t.check("play: in_play is false by default and nothing is captured", sdk.in_play == false and not sdk.is_input_captured())
+	sdk.in_play = true
+	p.show_result(offer)
+	await _tree().process_frame
+	var host: PKeyToast = sdk.toasts()
+	t.check("play: in play an available update is only a toast", p.presentation() == "toast" and not p.visible and host.current.get("kind") == "update" and host.current.get("version") == "1.5.0", str(host.current))
+	t.check("play: the toast sits at the SDK's anchor (bottom centre by default) and takes no input", host.toast_anchor == "bottom_center" and caught.is_empty() and not sdk.is_input_captured())
+	sdk.toast_anchor = "top_right"
+	t.check("play: PolarisKey.toast_anchor places it", host.toast_anchor == "top_right")
+	sdk.toast_anchor = "bottom_center"
+	# A locked answer is a banner, in play too.
+	p.show_result(locked)
+	t.check("play: a mandatory answer stays the banner in play", p.presentation() == "banner" and p.visible)
+	p.show_result(offer)
+	await _tree().process_frame
+	# The toast runs out: the prompt still shows once play ends, the modal on Later with the guard.
+	host.dismiss()
+	t.check("play: Dismiss on the toast is Later", p.is_dismissed and not p.visible)
+	p.show_result(offer)
+	await _tree().process_frame
+	host._close("timeout")
+	t.check("play: a toast that ran out is not a dismissal", not p.is_dismissed and p.presentation() == "")
+	sdk.in_play = false
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("play: when play ends the modal opens", p.presentation() == "modal" and p.visible and host.current.is_empty())
+	var focus := _tree().root.gui_get_focus_owner()
+	t.check("play: the modal focuses Later and ignores input for 250 ms", focus != null and focus.name == "Dismiss" and p._guard_until > Time.get_ticks_msec(), str(focus))
+	t.check("play: the modal says the kit holds the input", caught == [true] and sdk.is_input_captured(), str(caught))
+	p._on_dismiss()
+	await _tree().create_timer(0.5, true, false, true).timeout
+	t.check("play: dismissing gives the input back", caught == [true, false] and not sdk.is_input_captured(), str(caught))
+	# What's new, You have, All changes.
+	p.is_dismissed = false
+	p._notes["1.5.0"] = {"lines": ["Faster loading", "New tide table"], "url": "https://example.com/r/1.5.0"}
+	p.show_result(offer)
+	await _tree().process_frame
+	var head := p.find_child("WhatsNew", true, false) as Label
+	var lines := p.find_child("WhatsNewLines", true, false) as Label
+	var all := p.find_child("AllChanges", true, false) as Button
+	t.check("play: the modal draws What's new, its lines and the All changes link", head.visible and head.text == "What's new" and lines.text == "Faster loading\nNew tide table" and all.visible and all.text == "All changes in 1.5.0", "%s|%s|%s" % [head.text, lines.text, all.text])
+	# A short screen gives the notes up before the action leaves it.
+	_tree().root.size = Vector2i(844, 390)
+	for i in 6:
+		await _tree().process_frame
+	var action := p.find_child("Action", true, false) as Button
+	t.check("play: on a short screen the notes give way and the action stays", (not lines.visible or lines.text.count("\n") < 2) and action.get_global_rect().end.y <= 390.5, "squeeze %d lines '%s' action %s" % [p.squeeze_level(), lines.text, action.get_global_rect()])
+	_tree().root.size = Vector2i(1152, 900)
+	for i in 3:
+		await _tree().process_frame
+	p._notes["1.5.0"] = {"lines": [], "url": ""}
+	p.refresh_view()
+	t.check("play: no summary hides the label, no page hides the link", not head.visible and not all.visible)
+	t.check("play: notes are at most three plain lines", PKeyUpdatePromptController.summary_lines("- one\n\n* two\r\n## three\nfour\n") == ["one", "two", "three"] and PKeyUpdatePromptController.summary_lines(null) == [] and PKeyUpdatePromptController.summary_lines("<b>x</b>") == ["<b>x</b>"])
+	var entries := [PKeyChangelogEntry.from_dict({"version": "1.4.0", "tag": "v1.4.0", "summary": "old", "url": "https://x/1.4"}), PKeyChangelogEntry.from_dict({"version": "1.5.0", "tag": "v1.5.0", "summary": "new", "url": "https://x/1.5"})]
+	t.check("play: the entry is the offered version's", PKeyUpdatePromptController.entry_for(entries, "1.5.0").url == "https://x/1.5" and PKeyUpdatePromptController.entry_for(entries, "9.9.9") == null)
+	_free(p)
+	await _tree().process_frame
+	t.check("play: freeing the modal gives the input back", not sdk.is_input_captured())
+	# Gate and boot: Signed in and Copied toasts through the shared host.
+	var g := PKeyGateView.new()
+	g.auto_sdk = false
+	g.sdk = sdk
+	_tree().root.add_child(g)
+	g._on_signed_in(PKeySignInResult.signed_in({"name": "Mara"}, "", true, null))
+	t.check("play: the gate toasts the sign-in", host.current.get("kind") == "success" and String(host.current.get("title")).contains("Mara") and String(host.current.get("title")).begins_with("Signed in as"), str(host.current))
+	g.note_copied()
+	t.check("play: the gate toasts a copied link", host.current.get("kind") == "copied")
+	var b := PKeyBoot.new()
+	b.auto_sdk = false
+	b.sdk = sdk
+	_tree().root.add_child(b)
+	host.dismiss()
+	b.gate.note_copied()
+	t.check("play: the boot toasts a copied code", host.current.get("kind") == "copied")
+	_free(g)
+	_free(b)
+	PKeyUiTheme.reset()
+	sdk.queue_free()
+	_tree().root.size = saved_size
+	# Let the frees land before the next test times a 250 ms input guard against its own frames.
+	for i in 3:
+		await _tree().process_frame
 
 
 func _update_prompt(t: PKeyTestContext) -> void:
@@ -960,7 +1841,7 @@ func _headers(t: PKeyTestContext, all: Array) -> void:
 	var checked := 0
 	var missing: PackedStringArray = []
 	for c in all:
-		if c[0] in ["badge", "banner", "dev_menu", "settings", "update_progress", "toast"] or String(c[1]) in NO_HEADER:
+		if c[0] in ["badge", "banner", "dev_menu", "settings", "update_progress", "toast", "cloud_sync"] or String(c[1]) in NO_HEADER:
 			continue
 		var v: Control = await _build(c)
 		var ok := false
@@ -994,6 +1875,7 @@ func _presentation(t: PKeyTestContext) -> void:
 	await _rerender(t)
 	await _keeps_texture(t)
 	await _identity_order(t)
+	await _kx_identity(t)
 	await _set_by(t)
 	PKeyUiTheme.reset()
 
@@ -1164,6 +2046,73 @@ func _identity_order(t: PKeyTestContext) -> void:
 	PKeyUiTheme.reset()
 
 
+## KX-GD-ID: the live verdict on the key field, the input hints, and the wordmark and art.
+func _kx_identity(t: PKeyTestContext) -> void:
+	var whole := "pkey_tidewater_" + "A".repeat(22)
+	var v := PKeyActivationController.key_verdict(whole)
+	t.check("verdict: a whole key reads 'Key for <Product>' from its prefix", v.get("copy") == "key_for_product" and not v["danger"], str(v))
+	t.check("verdict: a key still being typed says nothing", PKeyActivationController.key_verdict("pkey_tidewater_AB").is_empty() and PKeyActivationController.key_verdict("").is_empty())
+	var cut := PKeyActivationController.key_verdict("pkey_tidewater_" + "A".repeat(10), true)
+	t.check("verdict: a cut-short key on submit counts its characters", cut.get("copy") == "key_cut_short" and cut["danger"] and cut["args"] == ["pkey_tidewater_", 10, 22], str(cut))
+	t.check("verdict: the tier is unknown before the server answers", PKeyActivationController.done_verdict(null).is_empty())
+	t.check("hints: keyboard activates, a pad selects, touch has none", PKeyActivationController.input_hint(&"keyboard") == "core.gate.needs-activation.title" and PKeyActivationController.input_hint(&"pad") == "part.hint.select" and PKeyActivationController.input_hint(&"touch") == "")
+	PKeyUiTheme.reset()
+	PKeyUiTheme.product_name = "Tidewater"
+	var panel := PKeyActivationPanel.new()
+	panel.auto_sdk = false
+	panel.set_capabilities({"key_entry": true, "sign_in": false, "continue_free": false, "offline": false})
+	_sc.add(panel)
+	await _tree().process_frame
+	t.check("verdict: nothing under an empty field, no hint before any input", not panel._verdict.visible and not panel._hint_bar.visible)
+	panel._key.text = whole
+	panel._key.text_changed.emit(whole)
+	await _tree().process_frame
+	t.check("verdict: 'Key for Tidewater' under the field", panel._verdict.visible and panel._verdict.text == "Key for Tidewater", panel._verdict.text)
+	panel._key.text = "pkey_tidewater_" + "A".repeat(10)
+	panel._on_submit()
+	await _tree().process_frame
+	t.check("verdict: a cut-short key is not sent and says so", panel._msg_key.text == "This key is cut short: after pkey_tidewater_ it has 10 of 22 characters." and not panel.busy, panel._msg_key.text)
+	var ev := InputEventJoypadButton.new()
+	ev.button_index = JOY_BUTTON_A
+	panel._input(ev)
+	await _tree().process_frame
+	t.check("hints: a pad shows the A glyph and Select", _bar_words(panel._hint_bar) == ["Select"], str(_bar_words(panel._hint_bar)))
+	var key_ev := InputEventKey.new()
+	panel._input(key_ev)
+	await _tree().process_frame
+	t.check("hints: the keyboard shows the Enter glyph and Activate", _bar_words(panel._hint_bar) == ["Activate"], str(_bar_words(panel._hint_bar)))
+	var touch := InputEventScreenTouch.new()
+	panel._input(touch)
+	await _tree().process_frame
+	t.check("hints: touch shows none", not panel._hint_bar.visible)
+	# The panel's _input also tells PKeyUiView what the last input was: leave it as found.
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = false
+	_free(panel)
+	# Wordmark and art are integrator data: absent, the header and panes are as they were.
+	var header := PKeyProductHeader.new()
+	header.hero = true
+	_tree().root.add_child(header)
+	header.refresh()
+	var mark := header.find_child("Wordmark", false, false) as TextureRect
+	t.check("wordmark: none by default, the name shows", not mark.visible and header.find_child("Name", false, false).visible)
+	var img := Image.create(120, 30, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	PKeyUiTheme.product_wordmark = ImageTexture.create_from_image(img)
+	PKeyUiTheme.product_art = ImageTexture.create_from_image(img)
+	header.refresh()
+	t.check("wordmark: beside the icon on a hero header, standing in for the name's text", mark.visible and not header.find_child("Name", false, false).visible)
+	header.hero = false
+	header.refresh()
+	t.check("wordmark: a step header keeps icon and name", not mark.visible and header.find_child("Name", false, false).visible)
+	header.queue_free()
+	var art := PKeyUiTheme.art_ground("Art")
+	t.check("art: shown for the pane with art, hidden without", PKeyUiTheme.show_art(art, true) and art.visible and not PKeyUiTheme.show_art(art, false) and not art.visible)
+	art.free()
+	PKeyUiTheme.reset()
+	t.check("art and wordmark: reset puts the look back", PKeyUiTheme.product_art == null and PKeyUiTheme.product_wordmark == null)
+
+
 ## "Set by" names the presented developer, else the presented name, bidi-isolated.
 func _set_by(t: PKeyTestContext) -> void:
 	var sdk: Node = await _sc.settings_sdk({})
@@ -1213,6 +2162,8 @@ const CATALOG_KEYS := {
 	"update_install": "update.install",
 	"update_restart": "update.restartNow",
 	"update_modal_title": "update.title",
+	"update_notes": "update.whatsNew",
+	"update_all_changes": "update.allChanges",
 	"status_update": "status.update",
 	"banner_last_day": "grace.lastDay",
 	"banner_reconnect": "common.reconnect",

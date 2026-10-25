@@ -1,43 +1,48 @@
 /**
- * A feed's Settings tab (T4 nested in the feed's T3; notes/S-12 §10.1). One settings model with
- * per-ecosystem extensions, saved section by section: each section is its own form and SaveBar
- * over `PUT …/feeds/:eco/settings` with the version it read (`expectedVersion`, 409 when someone
- * saved first). Never one Save across two endpoints: the platform policy (platform scope only) is
- * its own resource and its own section.
+ * A feed's Settings tab (T4 nested in the feed's T3; notes/S-12 §10.1), in four sections. One
+ * settings model with per-ecosystem extensions, saved section by section: each section is its own
+ * form and SaveBar over `PUT …/feeds/:eco/settings` with the version it read (`expectedVersion`,
+ * 409 when someone saved first). Never one Save across two endpoints: the platform policy
+ * (platform scope only) is its own resource and its own section.
  *
- * - **General:** enabled. Turning a feed off is L1.
- * - **Access:** public, customers or entitled (F-21). Customers is the stored `authenticated` or
- *   `licensed`, one strictness for a feed, shown as one choice over the value already stored
- *   (P0-47). Leaving public is L1: anonymous clients get the native 401 within 30 seconds and
- *   need a registry token (the Tokens page). Entitled lists the feed's packages with no delivery
- *   gate, which licence tokens are refused.
+ * - **General:** enabled, and Access: Public or Licensed (F-34; `ACCESS_LABELS`). An old
+ *   `entitled` feed reads "Licensed, gated per package" and is not
+ *   rewritten unless the operator picks again. Turning a feed off, and moving access either way,
+ *   is L1: Public to Licensed refuses anonymous clients within 30 seconds; Licensed to Public
+ *   opens the feed to everyone.
  * - **Namespace:** the dependency-confusion rule ingest enforces, one row per namespace field
- *   the ecosystem's ingest rules declare (scope, prefixes, groups, publisher). OCI declares
- *   none: its namespace is the owner itself.
+ *   the ecosystem's ingest rules declare (scope, prefixes, groups, publisher). A namespace the
+ *   `.pkey/release` provisioning derived reads "Derived from .pkey/release" with Override. OCI
+ *   declares none: its namespace is the owner itself.
  * - **Limits:** the size ceiling, at most the platform's.
- * - **Yank policy:** what a yank does to clients; Maven's "hide yanked versions" where it applies.
  * - **The ecosystem panel:** `FEED_PANELS` (F-12): the extension settings the feed's adapter
- *   declares, edited by name from `FEED_EXTENSION_FIELDS` (HTML pages, signing, repository URLs,
- *   retention, the asset listing), saved into `ext_json`.
+ *   declares, edited by name from `FEED_EXTENSION_FIELDS` (HTML pages, signing, repository URLs),
+ *   saved into `ext_json`. Godot's asset listing is not shown: its stored values stay the
+ *   server's fallback (F8).
  * - **Platform policy** (platform scope): moved to Platform settings (ST-09); a pointer remains.
+ *
+ * Gone: Yank policy (Maven always hides yanked versions), Untagged manifests (OCI keeps every
+ * manifest) and the Godot category (stored values stay the fallback).
  */
 
 import * as React from "react";
-import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import type {
-  FeedDetailDto,
-  FeedEcosystem,
-  FeedSettingsWrite,
-} from "../../../../api.js";
 import {
-  Globe,
-  KeyRound,
-  Package,
-  ShieldCheck,
-  UsersRound,
-  type LucideIcon,
-} from "lucide-react";
-import { Callout } from "../../../../ui/Callout.js";
+  HttpError,
+  type FeedDetailDto,
+  type FeedEcosystem,
+  type FeedSettingsWrite,
+} from "../../../../api.js";
+import { AlertTriangle, Globe, Lock, Package } from "lucide-react";
+import { WriteLock } from "../../../../ui/WriteLock.js";
+import { useWriteGate } from "../../../access/useCan.js";
+import { r } from "../../../routes.js";
+import { NamespaceSection } from "./FeedNamespace.js";
+import {
+  ConflictNotice,
+  FeedSubmitError,
+  FeedSyncContext,
+  focusSection,
+} from "./feedForm.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { Form, FormField, useAdminForm } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
@@ -45,17 +50,16 @@ import { NumberInput } from "../../../../ui/NumberInput.js";
 import { RadioCards } from "../../../../ui/RadioCards.js";
 import { SaveBar } from "../../../../ui/SaveBar.js";
 import { Select } from "../../../../ui/Select.js";
-import { CapabilityStrip } from "../../../../ui/CapabilityBadge.js";
 import { Switch } from "../../../../ui/Switch.js";
 import { Textarea } from "../../../../ui/Textarea.js";
 import { toast } from "../../../../ui/toast.js";
-import { mutate } from "../../../data/mutations.js";
+import { invalidateAfter, mutate } from "../../../data/mutations.js";
 import { intentOf } from "../../core/pages/confirmGate.js";
-import { SaveCancelled, useConfirmGate } from "../../core/pages/confirmGate.js";
+import { useConfirmGate } from "../../core/pages/confirmGate.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import {
   serverFieldErrors,
-  SubmitError,
+  SubmitCancelled,
 } from "../../distribution/components/forms.js";
 import {
   ECOSYSTEMS,
@@ -63,12 +67,10 @@ import {
   FEED_ACCESS_DESCRIPTIONS,
   FEED_EXTENSION_FIELDS,
   FEED_PANEL_TITLES,
-  FEED_ACCESS_LABELS,
-  YANK_EFFECTS,
+  feedAccessLabel,
   bytesToMiB,
   feedAccessChoice,
   feedAccessMode,
-  feedVersionCapabilities,
   mibToBytes,
   tokensHref,
   type FeedScope,
@@ -103,126 +105,66 @@ export function FeedSettingsTab({
   detail: FeedDetailDto;
 }): React.ReactElement {
   const settings = detail.settings;
+  const gate = useWriteGate(
+    scope.kind === "platform" ? "platform" : "ship",
+    scope.kind === "platform" ? null : scope.slug,
+  );
+  // The versions this tab wrote: a sibling form's draft rebases silently onto them.
+  const own = React.useRef(new Set<number>());
+  const [tick, setTick] = React.useState(0);
+  const sync = React.useMemo(() => ({ own, tick }), [tick]);
   const save = React.useCallback(
     async (patch: Omit<FeedSettingsWrite, "expectedVersion">) => {
-      await mutate("saveFeedSettings", scope, eco, {
-        expectedVersion: settings.version,
-        ...patch,
-      });
+      const body = { expectedVersion: settings.version, ...patch };
+      try {
+        const done = await mutate("saveFeedSettings", scope, eco, body);
+        own.current.add(done.settings.version);
+        setTick((t) => t + 1);
+      } catch (e) {
+        // Someone saved first: fetch their version, so each form offers to review it and the next
+        // save carries the fresh version (a stale one would be refused again).
+        if (e instanceof HttpError && e.reason === "version_conflict")
+          invalidateAfter("saveFeedSettings", [scope, eco, body]);
+        throw e;
+      }
     },
     [scope, eco, settings.version],
   );
   const Panel = FEED_PANELS[eco];
   return (
-    <div className="space-y-6">
-      {settings.version === 0 ? (
-        <p className="text-sm text-fg-muted">
-          This feed has no settings yet. Saving any section creates them; give
-          it a namespace before enabling it.
-        </p>
-      ) : null}
-      <GeneralSection eco={eco} detail={detail} save={save} />
-      <AccessSection eco={eco} scope={scope} detail={detail} save={save} />
-      <NamespaceSection eco={eco} detail={detail} save={save} />
-      <LimitsSection detail={detail} save={save} />
-      <YankSection eco={eco} detail={detail} save={save} />
-      {Panel ? (
-        <Panel scope={scope} eco={eco} detail={detail} save={save} />
-      ) : null}
-      {scope.kind === "platform" && detail.policy ? (
-        <PolicyPointer eco={eco} detail={detail} />
-      ) : null}
-    </div>
+    <WriteLock locked={!gate.allowed} reason={gate.disabledReason}>
+      <FeedSyncContext.Provider value={sync}>
+        <div className="space-y-6">
+          {settings.version === 0 ? (
+            <p className="text-sm text-fg-muted">
+              This feed has no settings yet. Saving any section creates them;
+              give it a namespace before enabling it.
+            </p>
+          ) : null}
+          <GeneralSection eco={eco} scope={scope} detail={detail} save={save} />
+          <NamespaceSection eco={eco} detail={detail} save={save} />
+          <LimitsSection detail={detail} save={save} />
+          {Panel ? (
+            <Panel scope={scope} eco={eco} detail={detail} save={save} />
+          ) : null}
+          {scope.kind === "platform" && detail.policy ? (
+            <PolicyPointer eco={eco} />
+          ) : null}
+        </div>
+      </FeedSyncContext.Provider>
+    </WriteLock>
   );
 }
 
 type Save = FeedPanelProps["save"];
 
-function GeneralSection({
-  eco,
-  detail,
-  save,
-}: {
-  eco: FeedEcosystem;
-  detail: FeedDetailDto;
-  save: Save;
-}): React.ReactElement {
-  const gate = useConfirmGate<true>();
-  const form = useAdminForm<{ enabled: boolean }>({
-    values: { enabled: detail.settings.enabled },
-    resetOn: [detail.settings.version],
-    mapServerErrors: serverFieldErrors,
-    onSubmit: async (v) => {
-      if (detail.settings.enabled && !v.enabled && !(await gate.ask(true)))
-        throw new SaveCancelled();
-      await save({ enabled: v.enabled });
-      toast.success(
-        `${ECOSYSTEM_LABELS[eco]} feed ${v.enabled ? "enabled" : "switched off"}`,
-      );
-    },
-  });
-  const serving = form.rhf.watch("enabled");
-  return (
-    <Form form={form} aria-label="General">
-      <SettingsSection
-        id="feed-general"
-        title="General"
-        footer={
-          <>
-            <SubmitError
-              error={form.submitError}
-              context={{ area: "distribution", thing: "Feed" }}
-            />
-            <SaveBar form={form} section="General" />
-          </>
-        }
-      >
-        <SettingsRow
-          label="Serving"
-          help={
-            serving
-              ? "On: clients install and update from this feed."
-              : "Off: every client gets the registry's not-found, the same answer as a feed that does not exist."
-          }
-        >
-          <FormField<boolean> name="enabled" label="Enabled" hideLabel>
-            {(field) => (
-              <Switch
-                id={field.id}
-                checked={field.value}
-                onCheckedChange={field.onChange}
-                aria-describedby={field["aria-describedby"]}
-              />
-            )}
-          </FormField>
-        </SettingsRow>
-      </SettingsSection>
-      <ConfirmDialog
-        open={gate.open}
-        onOpenChange={(open) => {
-          if (!open) gate.cancel();
-        }}
-        intent={intentOf("feed.disable")}
-        title={`Switch off the ${ECOSYSTEM_LABELS[eco]} feed?`}
-        consequences={[
-          "Every client install and update from this feed gets not-found within 30 seconds.",
-          "Packages, versions and settings are kept and answer again when the feed is enabled.",
-        ]}
-        confirmLabel="Switch off feed"
-        onConfirm={gate.confirm}
-      />
-    </Form>
-  );
+/** What one General save asks the operator to confirm: switching off, and moving access. */
+interface GeneralAsk {
+  off: boolean;
+  access: "widen" | "tighten" | null;
 }
 
-/** One icon per access choice (every option carries one). */
-const FEED_ACCESS_ICONS: Record<string, LucideIcon> = {
-  public: Globe,
-  customers: UsersRound,
-  entitled: ShieldCheck,
-};
-
-function AccessSection({
+function GeneralSection({
   eco,
   scope,
   detail,
@@ -233,109 +175,165 @@ function AccessSection({
   detail: FeedDetailDto;
   save: Save;
 }): React.ReactElement {
-  const gate = useConfirmGate<string>();
+  const gate = useConfirmGate<GeneralAsk>();
   const stored = detail.settings.accessMode;
-  // The form holds the choice (Token and Licensed are one: Customers); a save writes the stored
-  // mode, keeping the one already there (P0-47).
-  const form = useAdminForm<{ accessMode: string }>({
-    values: { accessMode: feedAccessChoice(stored) },
+  const storedChoice = feedAccessChoice(stored);
+  const label = ECOSYSTEM_LABELS[eco];
+  const form = useAdminForm<{ enabled: boolean; accessMode: string }>({
+    values: { enabled: detail.settings.enabled, accessMode: storedChoice },
     resetOn: [detail.settings.version],
-    mapServerErrors: serverFieldErrors,
+    mapServerErrors: (e) => {
+      if (e instanceof HttpError && e.reason === "access_mode_unavailable")
+        return {
+          accessMode: "This page is out of date. Reload it, then choose again.",
+        };
+      return serverFieldErrors(e);
+    },
     onSubmit: async (v) => {
-      if (
-        stored === "public" &&
-        v.accessMode !== "public" &&
-        !(await gate.ask(v.accessMode))
-      )
-        throw new SaveCancelled();
-      await save({ accessMode: feedAccessMode(v.accessMode, stored) });
-      toast.success("Access saved");
+      const off = detail.settings.enabled && !v.enabled;
+      const moved = v.accessMode !== storedChoice;
+      const access = !moved
+        ? null
+        : v.accessMode === "public"
+          ? "widen"
+          : "tighten";
+      // One confirm per save, naming every change in it.
+      if ((off || access) && !(await gate.ask({ off, access })))
+        throw new SubmitCancelled();
+      // Only what changed: an untouched Access row never rewrites the stored mode.
+      await save({
+        ...(v.enabled !== detail.settings.enabled
+          ? { enabled: v.enabled }
+          : {}),
+        ...(moved ? { accessMode: feedAccessMode(v.accessMode) } : {}),
+      });
+      toast.success(
+        off
+          ? `${label} feed switched off`
+          : access === "widen"
+            ? `${label} feed is public`
+            : access === "tighten"
+              ? `${label} feed now needs a token`
+              : v.enabled !== detail.settings.enabled
+                ? `${label} feed switched on`
+                : "General saved",
+      );
+      focusSection("feed-general");
     },
   });
-  const choices = [
+  const serving = form.rhf.watch("enabled");
+  const chosen = form.rhf.watch("accessMode");
+  const gated = stored === "entitled";
+  const options = [
     ...new Set(
       detail.accessModes
         .filter((m) => m.available)
         .map((m) => feedAccessChoice(m.mode)),
     ),
-  ];
-  const options = choices.map((choice) => {
-    const Icon = FEED_ACCESS_ICONS[choice] ?? Globe;
+  ].map((choice) => {
+    const Icon = choice === "public" ? Globe : Lock;
     return {
       value: choice,
-      label: FEED_ACCESS_LABELS[choice] ?? choice,
-      description: FEED_ACCESS_DESCRIPTIONS[choice],
+      label: feedAccessLabel(choice),
+      description:
+        choice === "customers" && gated
+          ? "Packages gated individually: a customer's token gets a package only when their license holds its entitlement."
+          : FEED_ACCESS_DESCRIPTIONS[choice],
       icon: <Icon aria-hidden className="size-4" />,
     };
   });
-  const chosen = form.rhf.watch("accessMode");
   const ungated = detail.ungatedPackages ?? [];
+  const owner = detail.owner;
   return (
-    <Form form={form} aria-label="Access">
+    <Form form={form} aria-label="General">
       <SettingsSection
-        id="feed-access"
-        title="Access"
-        description="Who may install from this feed. The stricter of this and each package's delivery access applies."
+        id="feed-general"
+        title="General"
         footer={
           <>
-            <SubmitError
-              error={form.submitError}
-              context={{ area: "distribution", thing: "Feed" }}
-            />
-            <SaveBar form={form} section="Access" />
+            <FeedSubmitError error={form.submitError} />
+            <SaveBar form={form} section="General" />
           </>
         }
       >
-        <SettingsRow label="Who may install" align="block">
-          <FormField<string>
-            name="accessMode"
-            label="Who may install"
-            hideLabel
-            group
-          >
+        <ConflictNotice form={form} version={detail.settings.version} />
+        <SettingsRow
+          label="Serving"
+          help={
+            serving
+              ? "On: clients install and update from this feed."
+              : "Off: every client gets the registry's not-found, the same answer as a feed that does not exist."
+          }
+        >
+          <FormField<boolean> name="enabled" label="Serving" hideLabel>
             {(field) => (
-              <RadioCards<string>
-                {...field}
-                columns={options.length >= 3 ? 3 : 2}
-                options={options}
+              <Switch
+                id={field.id}
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                aria-describedby={field["aria-describedby"]}
               />
             )}
           </FormField>
         </SettingsRow>
-        {chosen !== "public" ? (
-          <SettingsRow
-            label="Registry tokens"
-            help="Clients authenticate with a registry token, minted on the Tokens page, or by a licensee in Polaris Locker."
-          >
-            <Link
-              to={tokensHref(scope)}
-              className="inline-flex items-center gap-1.5 text-sm text-accent-fg underline-offset-4 hover:underline"
-            >
-              <KeyRound aria-hidden className="size-4" />
-              Open Tokens
-            </Link>
-          </SettingsRow>
-        ) : null}
-        {chosen === "entitled" && ungated.length > 0 ? (
+        <SettingsRow
+          label="Access"
+          help="Who may install. The stricter of this and each package's delivery access applies."
+          align="block"
+        >
+          <FormField<string> name="accessMode" label="Access" hideLabel group>
+            {(field) => (
+              <RadioCards<string> {...field} columns={2} options={options} />
+            )}
+          </FormField>
+          {chosen !== "public" ? (
+            <p className="mt-2 text-sm text-fg-muted">
+              Customers mint tokens in Polaris Locker; yours and CI&rsquo;s are
+              on{" "}
+              <Link
+                to={tokensHref(scope)}
+                className="text-accent-fg underline underline-offset-4"
+              >
+                Tokens
+              </Link>
+              .
+            </p>
+          ) : null}
+        </SettingsRow>
+        {gated && chosen !== "public" && ungated.length > 0 && owner ? (
           <SettingsRow label="Packages without a gate" align="block">
-            <Callout
-              tone="warning"
-              title="License tokens are refused these packages"
+            <div
+              data-tone="warning"
+              className="rounded-lg border border-warning-border bg-warning-subtle px-4 py-3 text-sm"
             >
-              <p>
-                Entitled admits a license-bound token only for a package whose
-                delivery access names an entitlement flag the license holds.
-                These {ECOSYSTEM_LABELS[eco]} packages have none:
+              <p className="font-semibold text-warning">
+                <AlertTriangle
+                  aria-hidden
+                  className="me-2 inline size-4 align-text-bottom"
+                />
+                Customers' tokens are refused these packages
+              </p>
+              <p className="mt-1 text-fg">
+                A customer's token gets a package only when its delivery access
+                names an entitlement. Give each of these {label} packages one:
               </p>
               <ul className="mt-2 space-y-1">
                 {ungated.map((p) => (
                   <li key={p.id} className="flex items-center gap-1.5">
-                    <Package aria-hidden className="size-4 text-fg-muted" />
-                    <span className="font-mono text-xs">{p.name}</span>
+                    <Package
+                      aria-hidden
+                      className="size-4 shrink-0 text-fg-muted"
+                    />
+                    <Link
+                      to={r.deliverable(owner, p.id, "delivery")}
+                      className="min-w-0 font-mono text-xs underline underline-offset-4 [overflow-wrap:anywhere]"
+                    >
+                      {p.name}
+                    </Link>
                   </li>
                 ))}
               </ul>
-            </Callout>
+            </div>
           </SettingsRow>
         ) : null}
       </SettingsSection>
@@ -344,257 +342,72 @@ function AccessSection({
         onOpenChange={(open) => {
           if (!open) gate.cancel();
         }}
-        intent={intentOf("feed.tighten")}
-        title={`Require a token for the ${ECOSYSTEM_LABELS[eco]} feed?`}
-        consequences={[
-          "Clients without a registry token get the registry's 401 within 30 seconds.",
-          "Each client then needs the authenticated setup from the Tokens page.",
-          "Bytes already installed or cached by clients stay where they are.",
-        ]}
-        confirmLabel={`Switch to ${FEED_ACCESS_LABELS[gate.payload ?? ""] ?? "this mode"}`}
+        intent={intentOf(
+          gate.payload?.off
+            ? "feed.disable"
+            : gate.payload?.access === "widen"
+              ? "feed.widen"
+              : "feed.tighten",
+        )}
+        title={confirmTitle(label, gate.payload)}
+        consequences={confirmConsequences(gate.payload)}
+        confirmLabel={confirmLabelOf(gate.payload)}
         onConfirm={gate.confirm}
       />
     </Form>
   );
 }
 
-/** A list field as one entry per line (commas also split). */
-function linesOf(text: string): string[] {
-  return text
-    .split(/[\n,]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+const OFF_LINES = [
+  "Every client install and update from this feed gets not-found within 30 seconds.",
+  "Packages, versions and settings are kept and answer again when the feed is enabled.",
+];
+const WIDEN_LINES = [
+  "Within 30 seconds anyone can install its packages with no credentials, unless a package's own access is stricter.",
+  "Package names and versions become readable to everyone.",
+  "Anything installed while it is public stays installed.",
+];
+const TIGHTEN_LINES = [
+  "Clients without a registry token are refused within 30 seconds.",
+  "Each client then needs a registry token, set up from the Tokens page.",
+  "Bytes already installed or cached by clients stay where they are.",
+];
+// Switched off in the same save, the access change takes effect when the feed is on again.
+const OFF_WIDEN_LINES = [
+  "Every client install and update gets not-found within 30 seconds; nothing is deleted.",
+  "When it is switched on again, anyone can install with no credentials, unless a package's own access is stricter.",
+  "Anything installed while it is public stays installed.",
+];
+const OFF_TIGHTEN_LINES = [
+  "Every client install and update gets not-found within 30 seconds; nothing is deleted.",
+  "When it is switched on again, clients without a registry token are refused.",
+  "Each client then needs a registry token, set up from the Tokens page.",
+];
+
+function confirmTitle(label: string, ask: GeneralAsk | null): string {
+  if (ask?.off && ask.access === "widen")
+    return `Switch off the ${label} feed and make it public?`;
+  if (ask?.off && ask.access === "tighten")
+    return `Switch off the ${label} feed and switch it to Licensed?`;
+  if (ask?.off) return `Switch off the ${label} feed?`;
+  if (ask?.access === "widen") return `Make the ${label} feed public?`;
+  return `Switch the ${label} feed to Licensed?`;
 }
 
-/** How the Namespace section names one namespace field, per protocol (display copy only). */
-interface NamespaceFieldCopy {
-  row: string;
-  label: string;
-  help: string;
-  placeholder: string;
+function confirmConsequences(ask: GeneralAsk | null): string[] {
+  if (ask?.off && ask.access === "widen") return OFF_WIDEN_LINES;
+  if (ask?.off && ask.access === "tighten") return OFF_TIGHTEN_LINES;
+  if (ask?.off) return OFF_LINES;
+  return ask?.access === "widen" ? WIDEN_LINES : TIGHTEN_LINES;
 }
 
-const NAMESPACE_COPY: Record<
-  FeedEcosystem,
-  Record<string, NamespaceFieldCopy>
-> = {
-  npm: {
-    scope: {
-      row: "Package scope",
-      label: "Scope",
-      help: "Every package name must be in this scope, like @acme. Clients route only this scope here.",
-      placeholder: "@acme",
-    },
-  },
-  pypi: {
-    names: {
-      row: "Project names",
-      label: "Names",
-      help: "A published name must equal one of the names or start with one of the prefixes (PEP 503 normalised).",
-      placeholder: "acme-sdk",
-    },
-    prefixes: {
-      row: "Name prefixes",
-      label: "Prefixes",
-      help: "One per line.",
-      placeholder: "acme",
-    },
-  },
-  oci: {},
-  swift: {
-    scope: {
-      row: "Package scope",
-      label: "Scope",
-      help: "Every package identity must be in this scope, like acme in acme.Kit.",
-      placeholder: "acme",
-    },
-  },
-  maven: {
-    groupPrefixes: {
-      row: "Maven groups",
-      label: "Group prefixes",
-      help: "Every groupId must equal or sit under one of these prefixes, like gg.acme.",
-      placeholder: "gg.acme",
-    },
-  },
-  godot: {
-    publisher: {
-      row: "Addon publisher",
-      label: "Publisher",
-      help: "The publisher every addon is listed under.",
-      placeholder: "acme",
-    },
-  },
-  cargo: {},
-  go: {
-    modulePrefixes: {
-      row: "Module paths",
-      label: "Module prefixes",
-      help: "Every module path must equal or sit under one of these prefixes, like go.acme.dev. Clients name the same prefixes in GONOSUMDB.",
-      placeholder: "go.acme.dev",
-    },
-  },
-};
-
-/** How the Namespace section names a feed whose namespace is the owner itself (no fields). */
-const OWNER_NAMESPACE_COPY: Partial<
-  Record<FeedEcosystem, { label: string; help: string }>
-> = {
-  oci: {
-    label: "Repositories",
-    help: "Every repository sits under the owner's path; there is nothing else to claim.",
-  },
-  cargo: {
-    label: "Crates",
-    help: "Every crate sits in the owner's own index, and Cargo takes a crate from it only for a dependency that names it with registry =. There is nothing else to claim.",
-  },
-};
-
-/**
- * The namespace fields of `eco`, as its ingest rules declare them (`@polaris-key/manifest`
- * PACKAGE_ECOSYSTEM_RULES), in the copy table's order; a declared field the table lacks still
- * shows, under its own key.
- */
-function namespaceFields(
-  eco: FeedEcosystem,
-): { key: string; kind: "string" | "list"; copy: NamespaceFieldCopy }[] {
-  const fields = PACKAGE_ECOSYSTEM_RULES[eco].namespace.fields;
-  const copy = NAMESPACE_COPY[eco];
-  const keys = [
-    ...Object.keys(copy).filter((k) => Object.hasOwn(fields, k)),
-    ...Object.keys(fields).filter((k) => !Object.hasOwn(copy, k)),
-  ];
-  return keys.map((key) => ({
-    key,
-    kind: fields[key]!.kind,
-    copy: copy[key] ?? { row: key, label: key, help: "", placeholder: "" },
-  }));
-}
-
-type NamespaceDraft = Record<string, string>;
-
-function NamespaceSection({
-  eco,
-  detail,
-  save,
-}: {
-  eco: FeedEcosystem;
-  detail: FeedDetailDto;
-  save: Save;
-}): React.ReactElement {
-  const fields = namespaceFields(eco);
-  const ns = detail.settings.namespace;
-  const form = useAdminForm<NamespaceDraft>({
-    values: Object.fromEntries(
-      fields.map((f) => {
-        const v = ns[f.key];
-        return [
-          f.key,
-          f.kind === "list"
-            ? Array.isArray(v)
-              ? (v as string[]).join("\n")
-              : ""
-            : typeof v === "string"
-              ? v
-              : "",
-        ];
-      }),
-    ),
-    resetOn: [detail.settings.version],
-    mapServerErrors: (e) => {
-      const map = serverFieldErrors(e);
-      if (!map?.namespace || fields.length === 0) return map;
-      return { [fields[0]!.key]: map.namespace };
-    },
-    onSubmit: async (v) => {
-      await save({
-        namespace: Object.fromEntries(
-          fields.map((f) => [
-            f.key,
-            f.kind === "list"
-              ? linesOf(v[f.key] ?? "")
-              : (v[f.key] ?? "").trim(),
-          ]),
-        ),
-      });
-      toast.success("Namespace saved");
-    },
-  });
-  const owner = detail.owner ?? "owner";
-  return (
-    <Form form={form} aria-label="Namespace">
-      <SettingsSection
-        id="feed-namespace"
-        title="Namespace"
-        description="The names this feed may hold. Ingest refuses anything outside it, which is the defence against dependency confusion."
-        footer={
-          fields.length === 0 ? undefined : (
-            <>
-              <SubmitError
-                error={form.submitError}
-                context={{ area: "distribution", thing: "Feed" }}
-              />
-              <SaveBar form={form} section="Namespace" />
-            </>
-          )
-        }
-      >
-        {fields.length === 0 ? (
-          <SettingsRow
-            label={OWNER_NAMESPACE_COPY[eco]?.label ?? "Packages"}
-            help={
-              OWNER_NAMESPACE_COPY[eco]?.help ??
-              "Every package sits under the owner's path; there is nothing else to claim."
-            }
-          >
-            <span className="font-mono text-sm">{owner}/…</span>
-          </SettingsRow>
-        ) : (
-          fields.map((f) =>
-            f.kind === "list" ? (
-              <SettingsRow
-                key={f.key}
-                align="stretch"
-                label={f.copy.row}
-                help={f.copy.help}
-              >
-                <FormField<string> name={f.key} label={f.copy.label} hideLabel>
-                  {(field) => (
-                    <Textarea
-                      {...field}
-                      mono
-                      rows={3}
-                      spellCheck={false}
-                      placeholder={f.copy.placeholder}
-                    />
-                  )}
-                </FormField>
-              </SettingsRow>
-            ) : (
-              <SettingsRow key={f.key} label={f.copy.row} help={f.copy.help}>
-                <FormField<string>
-                  name={f.key}
-                  label={f.copy.label}
-                  hideLabel
-                  className="w-full sm:w-64"
-                >
-                  {(field) => (
-                    <Input
-                      {...field}
-                      mono
-                      autoComplete="off"
-                      spellCheck={false}
-                      placeholder={f.copy.placeholder}
-                    />
-                  )}
-                </FormField>
-              </SettingsRow>
-            ),
-          )
-        )}
-      </SettingsSection>
-    </Form>
-  );
+function confirmLabelOf(ask: GeneralAsk | null): string {
+  if (ask?.off && ask.access === "widen") return "Switch off and make public";
+  if (ask?.off && ask.access === "tighten")
+    return "Switch off and use Licensed";
+  if (ask?.off) return "Switch off feed";
+  if (ask?.access === "widen") return "Make feed public";
+  return "Switch to Licensed";
 }
 
 function LimitsSection({
@@ -623,6 +436,7 @@ function LimitsSection({
     onSubmit: async (v) => {
       await save({ maxPackageBytes: mibToBytes(v.mib!) });
       toast.success("Limits saved");
+      focusSection("feed-limits");
     },
   });
   return (
@@ -633,14 +447,12 @@ function LimitsSection({
         description="Ingest refuses a version whose largest file is over this size."
         footer={
           <>
-            <SubmitError
-              error={form.submitError}
-              context={{ area: "distribution", thing: "Feed" }}
-            />
+            <FeedSubmitError error={form.submitError} />
             <SaveBar form={form} section="Limits" />
           </>
         }
       >
+        <ConflictNotice form={form} version={detail.settings.version} />
         <SettingsRow
           label="Largest package"
           help={`The platform's ceiling for this ecosystem is ${bytesToMiB(ceiling)} MiB.`}
@@ -667,92 +479,11 @@ function LimitsSection({
   );
 }
 
-function YankSection({
-  eco,
-  detail,
-  save,
-}: {
-  eco: FeedEcosystem;
-  detail: FeedDetailDto;
-  save: Save;
-}): React.ReactElement {
-  const hides = detail.settings.ext.yankHidesFromIndex !== false;
-  const form = useAdminForm<{ hide: boolean }>({
-    values: { hide: hides },
-    resetOn: [detail.settings.version],
-    mapServerErrors: serverFieldErrors,
-    onSubmit: async (v) => {
-      await save({ ext: { yankHidesFromIndex: v.hide } });
-      toast.success("Yank policy saved");
-    },
-  });
-  const caps = detail.capabilities;
-  return (
-    <Form form={form} aria-label="Yank policy">
-      <SettingsSection
-        id="feed-yank"
-        title="Yank policy"
-        description={YANK_EFFECTS[eco]}
-        footer={
-          caps.yankPolicy ? (
-            <>
-              <SubmitError
-                error={form.submitError}
-                context={{ area: "distribution", thing: "Feed" }}
-              />
-              <SaveBar form={form} section="Yank policy" />
-            </>
-          ) : undefined
-        }
-      >
-        <SettingsRow
-          label="Version states"
-          help="Shown on each version of the package record, where they are set."
-        >
-          <CapabilityStrip
-            label="Version states"
-            className="w-full sm:w-72"
-            items={feedVersionCapabilities(caps)}
-          />
-        </SettingsRow>
-        {caps.yankPolicy ? (
-          <SettingsRow
-            label="Hide yanked versions"
-            help="Leave a yanked version out of maven-metadata.xml, so version ranges stop resolving to it. Exact coordinates still download. On by default."
-          >
-            <FormField<boolean> name="hide" label="Hide" hideLabel>
-              {(field) => (
-                <Switch
-                  id={field.id}
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  aria-describedby={field["aria-describedby"]}
-                />
-              )}
-            </FormField>
-          </SettingsRow>
-        ) : null}
-      </SettingsSection>
-    </Form>
-  );
-}
-
 /** The platform policy lives in Platform settings (ST-09); this feed points to it. */
-function PolicyPointer({
-  eco,
-  detail,
-}: {
-  eco: FeedEcosystem;
-  detail: FeedDetailDto;
-}): React.ReactElement {
-  const mib = detail.policy
-    ? `${bytesToMiB(detail.policy.maxPackageBytesCeiling)} MiB`
-    : null;
+function PolicyPointer({ eco }: { eco: FeedEcosystem }): React.ReactElement {
   return (
     <p className="text-sm text-fg-muted">
-      {mib
-        ? `The platform's ${ECOSYSTEM_LABELS[eco]} ceiling is ${mib}, and its switch applies to every product. `
-        : `The platform's ${ECOSYSTEM_LABELS[eco]} switch and ceiling apply to every product. `}
+      The {ECOSYSTEM_LABELS[eco]} switch and ceiling apply to every product.
       Change them in{" "}
       <Link
         to={`#/platform/settings?setting=feeds.policy.${eco}.enabled`}
@@ -832,7 +563,7 @@ function extPatchOf(keys: readonly string[], draft: ExtDraft) {
   for (const key of keys) {
     const input = FEED_EXTENSION_FIELDS[key]!.input;
     const v = draft[key];
-    if (input.kind === "select") patch[key] = input.numeric ? Number(v) : v;
+    if (input.kind === "select") patch[key] = v;
     else if (input.kind === "text")
       patch[key] = typeof v === "string" && v.trim() ? v.trim() : null;
     else if (input.kind === "repositoryMap") {
@@ -898,6 +629,7 @@ function EcosystemPanel({
     onSubmit: async (v) => {
       await save({ ext: extPatchOf(keys, v) });
       toast.success(`${FEED_PANEL_TITLES[eco]} saved`);
+      focusSection(`feed-${eco}`);
     },
   });
   if (keys.length === 0) return null;
@@ -909,14 +641,12 @@ function EcosystemPanel({
         title={title}
         footer={
           <>
-            <SubmitError
-              error={form.submitError}
-              context={{ area: "distribution", thing: "Feed" }}
-            />
+            <FeedSubmitError error={form.submitError} />
             <SaveBar form={form} section={title} />
           </>
         }
       >
+        <ConflictNotice form={form} version={detail.settings.version} />
         {keys.map((key) => {
           const field = FEED_EXTENSION_FIELDS[key]!;
           const input = field.input;

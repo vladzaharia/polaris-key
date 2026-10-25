@@ -22,9 +22,8 @@ export async function purgePrivacyResidue(
     now,
   );
   // Merge tombstones carry an email hash; erasure tombstones (merged_into NULL) hold only the id
-  // and are kept however old: the legacy catch-up relies on them to never resurrect an account,
-  // and one purged here would reopen that until the erasure ledger replay (`erasureLedger.ts`,
-  // which recreates a lost one from R2) next runs.
+  // and are kept however old: a purged one would let a restored account come back until the
+  // erasure ledger replay (`erasureLedger.ts`, which recreates a lost one from R2) next runs.
   const tombs = await db.runChanges(
     "DELETE FROM account_tombstones WHERE merged_into IS NOT NULL AND deleted_at < ?",
     now - TOMBSTONE_RETENTION_SECONDS,

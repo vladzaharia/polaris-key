@@ -25,7 +25,6 @@ import {
   Activity,
   AppWindow,
   Archive,
-  ArrowRightLeft,
   Blocks,
   Box,
   Boxes,
@@ -75,7 +74,8 @@ import {
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
-import type { ServiceSlug } from "../api.js";
+import { CHANNEL_IDS, type ChannelId } from "@polaris-key/manifest";
+import type { ProductDetail, ServiceSlug } from "../api.js";
 import {
   FEATURES,
   type FeatureRow,
@@ -110,12 +110,12 @@ export type GlobalPageId =
   | "sign-in-methods"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
+  | "platform-members"
   | "platform-status"
   | "platform-stores"
   | "platform-connections"
   | "platform-feeds"
-  | "platform-activity"
-  | "platform-override-migration";
+  | "platform-activity";
 
 /** Pages scoped to one product (`#/p/<slug>/…`). */
 export type ProductPageId =
@@ -154,7 +154,7 @@ export type ProductPageId =
   | "rollouts"
   | "outlets"
   | "storefronts"
-  | "listing"
+  | "presentation-listing"
   | "app-store"
   | "commerce"
   | "access"
@@ -167,6 +167,7 @@ export type ProductPageId =
   | "app-sign-in"
   // sync
   | "sync-setup"
+  | "sync-usage"
   | "sync-data"
   // commerce
   | "commerce-overview";
@@ -196,11 +197,43 @@ export interface NavChildRecord {
   tabs?: readonly string[];
 }
 
-/** What a nav item needs beyond its section's service (F-11: a Distribution sub-capability). */
-export type NavRequirement = "packageFeeds";
+/**
+ * What a nav item needs beyond its section's service: a channel in the product's scope (A-20.7:
+ * its platforms and deliverables fit the channel). Packages needs nothing beyond Distribution
+ * (F-34.7): the package-feeds switch is a state of its page, not a reason to hide it.
+ */
+export type NavRequirement = `channel:${ChannelId}`;
 
 /** The product facts a `requires` reads; `null` while the product is loading. */
 export type NavFeatures = Partial<Record<NavRequirement, boolean>> | null;
+
+/** The requirement that names a channel. */
+export const channelRequirement = (id: string): NavRequirement =>
+  `channel:${id as ChannelId}`;
+
+/**
+ * The nav's facts from a one-product read. The Worker lists a channel when it is in scope or the
+ * team declared it (an out-of-scope declared one stays, flagged), so a listed channel stays and
+ * an unlisted one is out. A product with no platform facts has an unknown scope, not an empty
+ * one: it leaves the channels unset, which shows every page as before.
+ */
+export function navFeaturesOf(
+  product: Pick<ProductDetail, "channels" | "platforms"> | null | undefined,
+): NavFeatures {
+  if (!product) return null;
+  const features: Partial<Record<NavRequirement, boolean>> = {};
+  if (product.channels && (product.platforms?.length ?? 0) > 0) {
+    const listed = new Set(product.channels.map((c) => c.id));
+    for (const id of CHANNEL_IDS)
+      features[channelRequirement(id)] = listed.has(id);
+  }
+  return features;
+}
+
+/** Is this channel in the product's scope? True while the facts load or are not sent. */
+export function channelInScope(features: NavFeatures, id: string): boolean {
+  return features === null || features[channelRequirement(id)] !== false;
+}
 
 export interface NavPage {
   page: PageId;
@@ -268,10 +301,16 @@ export interface NavSection {
  * The product settings hub's areas, in tab order (ST-08, `#/p/<slug>/settings/<area>`). Each is a
  * product page of Core; only `settings` (General) is a sidebar item, and the rest are its tabs.
  */
+/** The hub tab a hub page sits under, when it is not a tab itself (the trail "Settings → Presentation → Listing"). */
+export const SETTINGS_TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
+  "presentation-listing": "presentation",
+};
+
 export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
   "settings",
   "services",
   "presentation",
+  "presentation-listing",
   "portal",
   "keys",
   "settings-members",
@@ -279,7 +318,11 @@ export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
 ];
 
 /** Cloud Sync's route tabs, the first the default; one sidebar row, `sync-setup`. */
-export const SYNC_PAGES: readonly ProductPageId[] = ["sync-setup", "sync-data"];
+export const SYNC_PAGES: readonly ProductPageId[] = [
+  "sync-setup",
+  "sync-usage",
+  "sync-data",
+];
 
 /** A feed page's route tabs (F-11), the first the default. */
 export const FEED_TABS = ["packages", "setup", "settings", "activity"] as const;
@@ -358,6 +401,19 @@ export const SECTIONS: NavSection[] = [
         path: "settings/presentation",
         icon: Image,
         docs: "/docs/operate/console/presentation/",
+        inNav: false,
+      },
+      {
+        // A-27.11: the store listing's home (A-18j's Listing page moved here): the shared listing
+        // model's text, fit report, images, release notes and Push, for every channel or one.
+        page: "presentation-listing",
+        accent: "distribution",
+        tile: "product",
+        label: "Listing",
+        path: "settings/presentation/listing",
+        keywords: "store listing push listing fit report screenshots",
+        icon: SquarePen,
+        docs: "/docs/features/ship-builds/channels/polaris-key/",
         inNav: false,
       },
       {
@@ -644,17 +700,6 @@ export const SECTIONS: NavSection[] = [
         record: { noun: "Storefront" },
       },
       {
-        // A-18j: the shared listing model (T3): locales, fit report, slot board, release notes,
-        // and "Push listing" per store.
-        page: "listing",
-        accent: "distribution",
-        label: "Listing",
-        path: "distribution/listing",
-        icon: SquarePen,
-        docs: "/docs/features/ship-builds/channels/polaris-key/",
-        inNav: true,
-      },
-      {
         // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
         page: "app-store",
         accent: "distribution",
@@ -663,6 +708,7 @@ export const SECTIONS: NavSection[] = [
         icon: Send,
         docs: "/docs/features/ship-builds/channels/app-store/",
         inNav: true,
+        requires: "channel:app-store",
       },
       {
         page: "access",
@@ -673,15 +719,15 @@ export const SECTIONS: NavSection[] = [
         inNav: true,
       },
       {
-        // F-11: the product's package feeds on pkg.plrs.im, shown while `packageFeeds` is on.
-        // "Package feeds", so it does not collide with "Outlets & feeds" (storefront feeds).
+        // F-11: the product's package feeds on pkg.plrs.im. F-34.7: listed whenever Distribution
+        // is on (the empty and off states live on the page); "Packages" is the mockup's name.
         page: "package-feeds",
-        label: "Package feeds",
+        label: "Packages",
+        keywords: "package feeds npm pypi swift maven oci godot registry",
         path: "distribution/feeds",
         icon: Archive,
         docs: "/docs/features/ship-builds/packages/",
         inNav: true,
-        requires: "packageFeeds",
         record: {
           noun: "Feed",
           tabs: FEED_TABS,
@@ -771,6 +817,16 @@ export const SECTIONS: NavSection[] = [
         inNav: true,
       },
       {
+        // A tab of Cloud Sync, not a sidebar item.
+        page: "sync-usage",
+        tile: "service",
+        label: "Usage",
+        path: "sync/usage",
+        icon: Database,
+        docs: "/docs/features/cloud-sync/",
+        inNav: false,
+      },
+      {
         // A tab of Cloud Sync, not a sidebar item; its address is unchanged.
         page: "sync-data",
         tile: "service",
@@ -808,6 +864,8 @@ export const SECTIONS: NavSection[] = [
         icon: ShoppingBag,
         docs: "/docs/features/commerce/",
         inNav: true,
+        // The mappings are App Store products: a product the App Store is out of scope for has none.
+        requires: "channel:app-store",
       },
     ],
   },
@@ -829,6 +887,18 @@ const PLATFORM_PAGES: NavPage[] = [
     path: "platform/settings",
     icon: ServerCog,
     docs: "/docs/operate/platform/settings/",
+    inNav: true,
+    group: "platform",
+  },
+  {
+    // ST-31.11: everyone with a role, where each role came from, and the pending invites. The
+    // Worker answers Superadmins and Platform admins only (area `members`).
+    page: "platform-members",
+    label: "Members",
+    keywords: "people roles invite access admin superadmin",
+    path: "platform/members",
+    icon: UsersRound,
+    docs: "/docs/operate/console/tour/",
     inNav: true,
     group: "platform",
   },
@@ -899,19 +969,6 @@ const PLATFORM_PAGES: NavPage[] = [
     group: "platform",
     record: { noun: "Event" },
   },
-  {
-    // U-03: the one-time move of licence config and secret overrides onto account overrides,
-    // and its report for the 90 days after the run. The run is cancelled (owner decision 1), so
-    // the page leaves the sidebar and the palette (P0-47); it still answers its URL and the
-    // licence notice's link until U-27 removes it.
-    page: "platform-override-migration",
-    label: "Override migration",
-    path: "platform/override-migration",
-    icon: ArrowRightLeft,
-    docs: "/docs/features/managed-config/",
-    inNav: false,
-    group: "platform",
-  },
 ];
 
 /** The global pages: the sidebar's platform links, the new-product wizard and the Platform section. */
@@ -944,14 +1001,15 @@ export const GLOBAL_PAGES: NavPage[] = [
     inNav: true,
   },
   {
-    // People's personal tokens (`pkeyp_`, F-33): who holds one, when it was last used, revoke.
+    // Personal tokens (`pkeyp_`): your own, and for a Superadmin everyone's (F-33). Account menu.
     page: "personal-tokens",
     label: "Personal tokens",
     keywords: "pkeyp packages read registry person revoke",
     path: "personal-tokens",
-    icon: UserRound,
+    icon: KeyRound,
     docs: "/docs/features/ship-builds/packages/",
-    inNav: true,
+    // ST-34.11: reached from the account menu, not the sidebar (admin-4-21; D-9).
+    inNav: false,
   },
   {
     // The operator's own sign-in methods (ST-30c.4): reached from the account menu, not the sidebar.
@@ -1074,7 +1132,7 @@ export function meetsRequirement(
   features: NavFeatures,
 ): boolean {
   if (!page.requires || features === null) return true;
-  return features[page.requires] === true;
+  return features[page.requires] !== false;
 }
 
 /**

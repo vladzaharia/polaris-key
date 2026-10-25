@@ -85,6 +85,8 @@
     display: flex;
     align-self: stretch;
     gap: var(--pk-space-5, 1.25rem);
+    /* The tabs run the header's full height, so the current one's rule sits on its border. */
+    margin-block: calc(-1 * var(--sl-nav-pad-y));
   }
   .pk-doors a {
     display: inline-flex;
@@ -101,12 +103,37 @@
   .pk-doors a[aria-current="true"] {
     border-block-end-color: var(--pk-accent);
     color: var(--pk-text-strong);
-    font-weight: 700;
+    font-weight: var(--pk-font-weight-semibold);
   }
 }
-@media (min-width: 50rem) and (max-width: 63.99rem) {
-  .pk-header-end .pk-doc-link:first-child {
-    display: none;
+/* The header's own width, in the reader's text size: a media query in rem ignores the root text size
+   a reader sets, so 200 % text on a 1024 px window would keep the full header. */
+@supports (container-type: inline-size) {
+  @container pk-header (max-width: 64rem) {
+    .pk-header-end .pk-doc-link:first-child {
+      display: none;
+    }
+  }
+  /* Compact: the tabs, the search and the theme button. The links are in the page footer. */
+  @container pk-header (max-width: 48rem) {
+    .pk-header-end .pk-doc-link {
+      display: none;
+    }
+    .pk-header .title-wrapper {
+      flex: none;
+    }
+    .pk-header .pk-doors {
+      gap: var(--pk-space-3, 0.75rem);
+    }
+    .pk-doors a {
+      padding-inline: 0;
+    }
+  }
+}
+/* The sidebar and the contents never take more than a third of the window, whatever the text size. */
+@media (min-width: 50rem) {
+  :root {
+    --sl-sidebar-width: min(18.75rem, 33vw);
   }
 }
 /* The landing and the 404 have no tree: their search starts where the sidebar would end. */
@@ -135,7 +162,7 @@
   gap: var(--pk-space-2);
   color: var(--pk-text-strong);
   font-size: var(--sl-text-sm);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
 }
 .pk-section:not([data-brand="locker"])
   .sidebar-content
@@ -147,6 +174,9 @@
   content: "";
   width: 3px;
   height: 1rem;
+  /* One start for every top-level label: global.css gives a feature's group a 0.5 rem square with a
+     margin, and the gap above already spaces the marker. */
+  margin-inline-end: 0;
   border-radius: 2px;
   background-color: var(--pkd-group-accent, var(--pk-accent));
 }
@@ -183,7 +213,7 @@
   font-size: 1.5rem;
   line-height: 2rem;
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
   letter-spacing: -0.02em;
 }
 /* Copy page follows the accent's neutral ink like the other filled-less buttons. */
@@ -210,7 +240,7 @@
   line-height: 1.65;
 }
 .pk-section:not([data-brand="locker"]) .sl-markdown-content :is(h2, h3, h4) {
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
   letter-spacing: -0.01em;
 }
 @media (max-width: 39.99rem) {
@@ -290,7 +320,7 @@
 .pagination-links .link-title {
   color: var(--pk-text-strong);
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
 }
 .pagination-links span {
   color: var(--pk-text-muted);
@@ -301,7 +331,7 @@
 
 .right-sidebar-container .right-sidebar a[aria-current="true"] {
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
 }
 
 /* ---- Phone: the menu is a drawer (docs.mobile-menu) ------------------------------------------ */
@@ -325,7 +355,7 @@
 .pk-doors--drawer a[aria-current="true"] {
   border-block-end-color: var(--pk-accent);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
 }
 @media (min-width: 50rem) {
   .pk-doors--drawer {
@@ -393,5 +423,18 @@
 .pk-section:not([data-brand="locker"]) .sidebar-content ul ul summary .large {
   color: var(--pk-text-default);
   font-size: 0.9375rem;
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
+}
+
+/* Forced colours: the transparent tab borders turn visible, so only the current tab keeps one. */
+@media (forced-colors: active) {
+  .pk-doors a,
+  .pk-doors--drawer a {
+    border-block-end-color: Canvas;
+  }
+  .pk-doors a[aria-current="true"],
+  .pk-doors--drawer a[aria-current="true"] {
+    border-block-end-color: Highlight;
+    color: Highlight;
+  }
 }

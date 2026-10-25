@@ -6,7 +6,7 @@
 // Steam is the store recorded here because its verification is two plain Web API reads the
 // recording can fake at the global `fetch` (`test/commerceFake.ts`'s SteamFake), with no signed
 // store artefact to regenerate: the App Store and Play paths are the same two routes with other
-// payloads, and the Worker suites (`test/commerce.test.ts`) cover their verification. The
+// payloads, and the Worker suites (`test/services/commerce/commerce.test.ts`) cover their verification. The
 // publisher key is a placeholder sealed like an operator's; the settings and the product map are
 // written as the admin API writes them.
 

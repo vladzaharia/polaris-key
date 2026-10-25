@@ -1,0 +1,33 @@
+---
+title: "GitHub Action"
+description: "The publish Action's inputs and outputs, generated from action.yml."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+`polaris-key/publish` publishes a release from a GitHub Actions job. Run a pkey command from CI, by default publish a release to Polaris Key and sync its channels. The CI guide is [Ship builds from CI](/docs/features/ship-builds/ci/).
+
+## Inputs
+
+| Input | Required | Default | Description |
+| --- | --- | --- | --- |
+| `command` | no | `release publish` | The pkey command to run, as typed after `pkey` (for example `release publish`, `channel sync`, `assets push`). |
+| `args` | no | — | The command's flags and arguments, split on whitespace and newlines; single and double quotes group. No shell, no variable or glob expansion. The product is read from .pkey/product. |
+| `release-key` | no | — | The release key's PKCS#8 PEM, from a GitHub Environment secret (secrets.PKEY_RELEASE_KEY). Passed to the command as PKEY_RELEASE_KEY, never on argv, never logged or sent. |
+| `content-key` | no | — | A delegated content key's PKCS#8 PEM, for a data-only pack release (secrets.PKEY_CONTENT_KEY). Passed to the command as PKEY_CONTENT_KEY, never on argv, never logged or sent. |
+| `base-url` | no | — | The Polaris Key origin (PKEY_BASE_URL). Default key.plrs.im. |
+| `working-directory` | no | — | The directory the command runs in, relative to the workspace. Default the workspace. |
+| `dry-run` | no | `false` | Appends --dry-run. A release publish uploads nothing and writes no release; the channel sync prints its plan and runs no step. |
+| `channels` | no | `auto` | `auto` runs `pkey channel sync` once after a successful app `release publish`; `none` does not. |
+
+## Outputs
+
+| Output | Description |
+| --- | --- |
+| `release-id` | The release id (the tag, else `\<deliverable>@\<version>`), from `release publish`. |
+| `outcome` | The submit's outcome — `created`, `enriched` or `unchanged` (on a dry run, the outcome the submit would have), from `release publish`. |
+
+## Runs
+
+Runs on `node24`, entry point `dist/index.js`.

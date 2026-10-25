@@ -739,9 +739,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
       await screen.findByRole("heading", { level: 1, name: "Sign in" }),
     ).toBeTruthy();
     expect(
-      screen.getByText(
-        "Use your Nightfall purchase email or a work or school email.",
-      ),
+      screen.getByText("Use your purchase email or a work or school email."),
     ).toBeTruthy();
     expect(screen.getByText("Lanternworks", { exact: false }).textContent).toBe(
       "Nightfall · Lanternworks",

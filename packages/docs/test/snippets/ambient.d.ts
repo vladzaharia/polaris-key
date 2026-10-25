@@ -16,6 +16,7 @@ declare module "electron" {
     whenReady(): Promise<void>;
     getPath(name: "userData" | "downloads"): string;
     getVersion(): string;
+    name: string;
     quit(): void;
     on(event: string, listener: (...args: unknown[]) => void): void;
   };
@@ -43,5 +44,17 @@ declare module "electron" {
     });
     loadURL(url: string): Promise<void>;
     loadFile(path: string): Promise<void>;
+    isFocused(): boolean;
+    show(): void;
   }
+  export class Notification {
+    constructor(options: { title: string; body: string });
+    static isSupported(): boolean;
+    show(): void;
+    on(event: "click" | "close", listener: () => void): this;
+  }
+  export const Menu: {
+    buildFromTemplate(template: unknown[]): unknown;
+    setApplicationMenu(menu: unknown): void;
+  };
 }

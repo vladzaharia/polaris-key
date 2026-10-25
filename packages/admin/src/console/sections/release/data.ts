@@ -1,6 +1,6 @@
 /**
  * The Release section's queries (ADMIN.md §6.3). One fetcher per key family: the
- * `queryKeyShapes` guard compares every reader of a family by source text, so every Release page
+ * `queryFactories` guard compares every reader of a family by source text, so every Release page
  * reads through these hooks rather than writing its own `queryFn`.
  *
  * Writes go through `mutate()` (`console/data/mutations.ts`), whose table invalidates these keys:
@@ -8,7 +8,11 @@
  * under it) and `distribution.matrix.*` (the overlay lives under it).
  */
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useQuery,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   type CompatResponse,
@@ -32,55 +36,83 @@ export const COMPAT_PAGE = 10;
 export const MATRIX_WINDOW = 50;
 
 /** The release truth store: releases, the sync's channel map and the rollback floors. */
-export function useReleaseStore(
-  slug: string,
-): UseQueryResult<ReleaseStoreResponse> {
-  return useQuery({
+export const releaseStoreQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.releases(slug),
     queryFn: () => api.releases(slug),
   });
+
+export function useReleaseStore(
+  slug: string,
+): UseQueryResult<ReleaseStoreResponse> {
+  return useQuery(releaseStoreQuery(slug));
 }
 
 /** Every deliverable's channels: policy, source and per-platform resolution. */
-export function useReleaseChannels(
-  slug: string,
-): UseQueryResult<ReleaseChannelsResponse> {
-  return useQuery({
+export const releaseChannelsQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.channels(slug),
     queryFn: () => api.releaseChannels(slug),
   });
+
+export function useReleaseChannels(
+  slug: string,
+): UseQueryResult<ReleaseChannelsResponse> {
+  return useQuery(releaseChannelsQuery(slug));
 }
 
 /** The repo-sync health checks (GitHub access, the latest release's artifacts, Sparkle). */
-export function useReleaseHealth(slug: string): UseQueryResult<ReleaseHealth> {
-  return useQuery({
+export const releaseHealthQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.releaseHealth(slug),
     queryFn: () => api.releaseHealth(slug).then((r) => r.health),
   });
+
+export function useReleaseHealth(slug: string): UseQueryResult<ReleaseHealth> {
+  return useQuery(releaseHealthQuery(slug));
 }
 
 /** The app and every pack, with declaration, gate and latest release. */
-export function useDeliverables(
-  slug: string,
-): UseQueryResult<DeliverablesResponse> {
-  return useQuery({
+export const deliverablesQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.deliverables(slug),
     queryFn: () => api.deliverables(slug),
   });
+
+export function useDeliverables(
+  slug: string,
+): UseQueryResult<DeliverablesResponse> {
+  return useQuery(deliverablesQuery(slug));
 }
 
 /** One pack's releases, newest first, each with the app releases that pin it. */
+export const packReleasesQuery = (slug: string, id: string) =>
+  queryOptions({
+    queryKey: qk.packReleases(slug, id),
+    queryFn: () => api.packReleases(slug, id),
+  });
+
 export function usePackReleases(
   slug: string,
   deliverable: string | null,
 ): UseQueryResult<PackReleasesResponse> {
-  const id = deliverable ?? "";
   return useQuery({
-    queryKey: qk.packReleases(slug, id),
-    queryFn: () => api.packReleases(slug, id),
+    ...packReleasesQuery(slug, deliverable ?? ""),
     enabled: deliverable !== null,
   });
 }
+
+/** One variant's files index. */
+export const packFilesQuery = (
+  slug: string,
+  deliverable: string,
+  releaseId: string,
+  variant: string,
+) =>
+  queryOptions({
+    queryKey: qk.packFiles(slug, deliverable, releaseId, variant),
+    queryFn: () => api.packFiles(slug, deliverable, releaseId, variant),
+  });
 
 /** One variant's files index (cached: an index never changes for a published release). */
 export function usePackFiles(
@@ -89,34 +121,51 @@ export function usePackFiles(
 ): UseQueryResult<PackFilesResponse> {
   const t = target ?? { deliverable: "", releaseId: "", variant: "" };
   return useQuery({
-    queryKey: qk.packFiles(slug, t.deliverable, t.releaseId, t.variant),
-    queryFn: () => api.packFiles(slug, t.deliverable, t.releaseId, t.variant),
+    ...packFilesQuery(slug, t.deliverable, t.releaseId, t.variant),
     enabled: target !== null,
     staleTime: Infinity,
   });
 }
 
 /** The delegated content keys, read-only. */
-export function useDelegations(
-  slug: string,
-): UseQueryResult<DelegationsResponse> {
-  return useQuery({
+export const delegationsQuery = (slug: string) =>
+  queryOptions({
     queryKey: qk.delegations(slug),
     queryFn: () => api.delegations(slug),
   });
+
+export function useDelegations(
+  slug: string,
+): UseQueryResult<DelegationsResponse> {
+  return useQuery(delegationsQuery(slug));
 }
 
 /** One page of the compatibility matrix. */
+export const compatQuery = (slug: string, offset: number) =>
+  queryOptions({
+    queryKey: qk.compat(slug, offset),
+    queryFn: () => api.releaseCompat(slug, { limit: COMPAT_PAGE, offset }),
+  });
+
 export function useCompat(
   slug: string,
   offset: number,
 ): UseQueryResult<CompatResponse> {
   return useQuery({
-    queryKey: qk.compat(slug, offset),
-    queryFn: () => api.releaseCompat(slug, { limit: COMPAT_PAGE, offset }),
+    ...compatQuery(slug, offset),
     placeholderData: (previous) => previous,
   });
 }
+
+export const matrixOverlayQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.matrixOverlay(slug),
+    queryFn: () =>
+      api.distributionMatrix(slug, {
+        deliverable: "app",
+        limit: MATRIX_WINDOW,
+      }),
+  });
 
 /**
  * Distribution's matrix of the app's newest releases: the Compatibility overlay and a release
@@ -126,27 +175,21 @@ export function useMatrixOverlay(
   slug: string,
   enabled: boolean,
 ): UseQueryResult<DistributionMatrix> {
-  return useQuery({
-    queryKey: qk.matrixOverlay(slug),
-    queryFn: () =>
-      api.distributionMatrix(slug, {
-        deliverable: "app",
-        limit: MATRIX_WINDOW,
-      }),
-    enabled,
-  });
+  return useQuery({ ...matrixOverlayQuery(slug), enabled });
 }
 
 /** Delivery access per deliverable (Distribution's `dist_access`). */
+export const deliveryAccessQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.access(slug),
+    queryFn: () => api.deliveryAccess(slug),
+  });
+
 export function useDeliveryAccess(
   slug: string,
   enabled: boolean,
 ): UseQueryResult<DeliveryAccess> {
-  return useQuery({
-    queryKey: qk.access(slug),
-    queryFn: () => api.deliveryAccess(slug),
-    enabled,
-  });
+  return useQuery({ ...deliveryAccessQuery(slug), enabled });
 }
 
 /** The simulator inputs as one stable key string (sorted, blanks dropped). */
@@ -158,15 +201,17 @@ export function simulateKey(params: SimulateParams): string {
     .join("&");
 }
 
+export const simulationQuery = (slug: string, params: SimulateParams) =>
+  queryOptions({
+    queryKey: qk.simulate(slug, simulateKey(params)),
+    queryFn: () => api.simulateUpdate(slug, params),
+  });
+
 /** One simulation; runs whenever `params` is set (the submitted inputs in the URL). */
 export function useSimulation(
   slug: string,
   params: SimulateParams | null,
 ): UseQueryResult<SimulateResponse> {
   const p = params ?? { appRelease: "", platform: "" };
-  return useQuery({
-    queryKey: qk.simulate(slug, simulateKey(p)),
-    queryFn: () => api.simulateUpdate(slug, p),
-    enabled: params !== null,
-  });
+  return useQuery({ ...simulationQuery(slug, p), enabled: params !== null });
 }

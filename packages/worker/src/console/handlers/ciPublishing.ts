@@ -8,6 +8,9 @@
  *   POST   /api/products/<slug>/ci-tokens               — issue a static token (shown ONCE)
  *   DELETE /api/products/<slug>/ci-tokens/<tokenId>     — revoke it (and its open tickets)
  *
+ * `PUT …/ci-publisher` and `POST …/ci-tokens` need a fresh console step-up (table rows, F-33b.7); a
+ * revoke needs none.
+ *
  * A claim is how an operator takes the policy away from the manifest: once claimed, resync never
  * touches it (`core/publisher.ts`). It is also the only way to grant `release:yank`. A static
  * token is for a CI that is not GitHub; it expires at most 90 days out and only its peppered hash
@@ -32,16 +35,20 @@ import {
 import {
   claimPublisherPolicy,
   getPublisherPolicy,
+  isServiceTokenScopes,
   issueStaticCiToken,
   listCiTokens,
+  liveServiceTokens,
   normalizeScopes,
   revokeCiToken,
-  STATIC_CI_TOKEN_MAX_TTL_SECONDS,
+  revokeServiceToken,
+  staticCiTokenMaxTtl,
   type PublisherClaim,
 } from "../../core/publisher.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { getProduct } from "../../core/products/store.js";
 import { audit } from "../../core/audit.js";
+import { MAX_LIVE_TOKENS_PER_OWNER } from "../../core/registry/registryVocabulary.js";
 import { forgetRegistryTokens } from "../../core/registry/registryTokens.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
@@ -154,7 +161,7 @@ async function refuseSystem(
 
 export async function handleCiPublisher(
   req: Request,
-  env: Env,
+  _env: Env,
   db: Db,
   session: AdminSession,
   slug: string,
@@ -167,6 +174,10 @@ export async function handleCiPublisher(
     return adminJson({ ok: true, policy: await getPublisherPolicy(db, slug) });
   if (req.method !== "PUT")
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  // A trusted-publisher policy lets a repository mint CI tokens with no end date: durable access a
+  // break-glass hour may not leave behind (ST-30c.2 review).
+  const bg = refuseBreakGlass(session);
+  if (bg) return bg;
   if (await isSystemProduct(db, slug))
     return refuseSystem(
       db,
@@ -230,10 +241,10 @@ export async function handleCiTokens(
       typeof days !== "number" ||
       !Number.isSafeInteger(days) ||
       days < 1 ||
-      days * 86400 > STATIC_CI_TOKEN_MAX_TTL_SECONDS
+      days * 86400 > staticCiTokenMaxTtl(scopes)
     )
       return bad(
-        "expiresInDays must be an integer from 1 to 90",
+        `expiresInDays must be an integer from 1 to ${staticCiTokenMaxTtl(scopes) / 86400}`,
         "expiresInDays",
       );
     let label: string | null = null;
@@ -249,6 +260,21 @@ export async function handleCiTokens(
         );
       label = body.label;
     }
+    // A `packages:read`-only token is a service token: the same per-product cap as the feeds mint.
+    const serviceOnly = isServiceTokenScopes(scopes);
+    const limitHit = () =>
+      err(
+        409,
+        ErrorCode.BadRequest,
+        `at most ${MAX_LIVE_TOKENS_PER_OWNER} live service tokens per product; revoke one first`,
+        { reason: "token_limit" },
+      );
+    if (
+      serviceOnly &&
+      (await liveServiceTokens(db, slug, now)).length >=
+        MAX_LIVE_TOKENS_PER_OWNER
+    )
+      return limitHit();
     const issued = await issueStaticCiToken(env, db, {
       product: slug,
       scopes,
@@ -257,6 +283,15 @@ export async function handleCiTokens(
       createdBy: session.sub,
       now,
     });
+    // The cap again after the insert: two racing mints cannot both stay above it.
+    if (
+      serviceOnly &&
+      (await liveServiceTokens(db, slug, now)).length >
+        MAX_LIVE_TOKENS_PER_OWNER
+    ) {
+      await revokeServiceToken(db, slug, issued.tokenId, now);
+      return limitHit();
+    }
     await audit(
       db,
       slug,

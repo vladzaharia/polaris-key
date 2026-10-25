@@ -12,6 +12,21 @@
 | Human input | none                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                  |
 
+## Corrections (2026-10-23)
+
+Where the code and the earlier sections of this brief differ, the code is the fact (slice plan `UK-08-UK-10-slices.md` §0).
+
+- **S1. Mac scale was not wired.** `KitResolvedStyle.controlHeight` read the iOS column (52 pt). On macOS it now reads `PolarisKit.MacOS`: 28 pt controls (36 pt on the Welcome hero), form radius 10, sheet radius 18, card padding 24, type 13/22/26.
+- **S2. The inactive-window bug.** The glass primary forced `.foregroundStyle(label)`, so an inactive Mac window (the system drops the tint) left a white label on grey. On macOS a filled button's label now follows the system while inactive, and the macOS 15 capsule draws the neutral raised fill with `textStrong` (`appearsActive`).
+- **S3. The sheets are iOS-shaped.** `.presentationDetents([.large])` and the drag indicator become iOS-only; macOS 26 draws the inset sheet, the kit sizes it to about 440 pt (UK-08.3).
+- **S4. No `Commands` and no Mac Settings pane.** `PolarisKeySettings` is a set of `Section`s (UK-08.4).
+- **S5. Sparkle draws its own UI.** `PolarisSparkle` builds its controller with `userDriverDelegate: nil` and exposes `public let controller`; `PolarisKeyUI` never links Sparkle. The SwiftUI driver lives in a new product `PolarisKeyUpdateUI` (M2); `controller` becomes optional with an `updater` (M4); the driver takes `Options` now and P2-11's config later (M5).
+- **S6. The sample and the render harness are iOS only.** No CI job runs `run.sh`; the Mac target and baselines come in UK-08.2 and UK-08.8 (M3: baselines are recorded by CI).
+- **S7. This Mac runs macOS 27 with Xcode 27.1.** Local renders serve development and review only. The macOS 200 % row forces `.dynamicTypeSize(.accessibility3)` in the renders (M6).
+- **S8. The copy exists.** `update.checkNow`, `menu.manageLicense`, "Install and Relaunch", "Remind Me Later", "Skip This Version" are in `kit-copy/en.json`. The spec wins over the mockup: "Sign Out…".
+- **S9. P2-11 is todo.** The user driver ships with default options and a seam.
+- **S10. Parity.** Swift's ten `ui.*` rows are already `implemented` (UK-07); UK-08 only updates notes and proofs.
+
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
 [`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`

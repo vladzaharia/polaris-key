@@ -76,7 +76,12 @@ const table = (headers, rows) =>
   ].join("\n");
 
 // ── 1. Manifest validation codes ───────────────────────────────────────────────
-function manifestValidationCodes() {
+/**
+ * The validator's emit sites as plain data (no MDX escaping, no backticks): `rows` are
+ * [code, severity, document, path, message] sorted by code then path, `descriptor` is
+ * [code, path, message] for the release-descriptor validator. The skills generator reuses it.
+ */
+export function validationCodeRows() {
   // `.pkey/distribution`'s rules (P2b-02) and the duplicate-spelling pass (ST-19) live in their
   // own modules of the same validator. Each module is scanned on its own: the helper regex is lazy
   // across lines, so running it over concatenated sources lets a match start in one file and end
@@ -90,11 +95,11 @@ function manifestValidationCodes() {
     /add\(\s*(errors|warnings),\s*"(product|schema|release|distribution)",\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*(`[^`]*`|"(?:[^"\\]|\\.)*")/g;
   for (const m of sources.flatMap((source) => [...source.matchAll(addRe)])) {
     rows.push([
-      `\`${m[4]}\``,
+      m[4],
       m[1] === "warnings" ? "warning" : "error",
       m[2],
-      `\`${m[3].slice(1, -1)}\``,
-      mdxProse(m[5].slice(1, -1).replace(/\\"/g, '"')),
+      m[3].slice(1, -1),
+      m[5].slice(1, -1).replace(/\\"/g, '"'),
     ]);
   }
   // constrained/constrainedList/boundedText(errors, "<file>", value, <path>, "<code>", …, "<message>")
@@ -103,11 +108,11 @@ function manifestValidationCodes() {
     /(?:constrained|constrainedList|boundedText)\(\s*errors,\s*"(product|schema|release)",\s*[^;]*?,\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*[^;]*?(`[^`]*`|"(?:[^"\\]|\\.)*")\s*,?\s*\)/g;
   for (const m of sources.flatMap((source) => [...source.matchAll(helperRe)])) {
     rows.push([
-      `\`${m[3]}\``,
+      m[3],
       "error",
       m[1],
-      `\`${m[2].slice(1, -1)}\``,
-      mdxProse(m[4].slice(1, -1).replace(/\\"/g, '"')),
+      m[2].slice(1, -1),
+      m[4].slice(1, -1).replace(/\\"/g, '"'),
     ]);
   }
   // The requirement rule (ST-38) emits one code per `requires` edge through a generic loop, so no
@@ -121,11 +126,11 @@ function manifestValidationCodes() {
     /\[\s*"([a-z_]+)_requires_([a-z]+)",\s*("(?:[^"\\]|\\.)*")\s*,?\s*\]/g,
   )) {
     rows.push([
-      `\`${m[1]}_requires_${m[2]}\``,
+      `${m[1]}_requires_${m[2]}`,
       "error",
       "product",
-      `\`/modules/${m[1]}\``,
-      mdxProse(m[3].slice(1, -1).replace(/\\"/g, '"')),
+      `/modules/${m[1]}`,
+      m[3].slice(1, -1).replace(/\\"/g, '"'),
     ]);
   }
   const seen = new Set();
@@ -135,8 +140,31 @@ function manifestValidationCodes() {
     seen.add(key);
     return true;
   });
-  unique.sort((a, b) => a[0].localeCompare(b[0]) || a[3].localeCompare(b[3]));
-  const descriptor = releaseDescriptorCodes();
+  // Ordered as the rendered, backtick-wrapped cells compare (the closing backtick sorts against
+  // `_` and prefix-shorter codes), so the page keeps its order.
+  const tick = (v) => `\`${v}\``;
+  unique.sort(
+    (a, b) =>
+      tick(a[0]).localeCompare(tick(b[0])) ||
+      tick(a[3]).localeCompare(tick(b[3])),
+  );
+  return { rows: unique, descriptor: releaseDescriptorCodes() };
+}
+
+function manifestValidationCodes() {
+  const { rows, descriptor: rawDescriptor } = validationCodeRows();
+  const unique = rows.map(([code, severity, doc, path, message]) => [
+    `\`${code}\``,
+    severity,
+    doc,
+    `\`${path}\``,
+    mdxProse(message),
+  ]);
+  const descriptor = rawDescriptor.map(([code, path, message]) => [
+    `\`${code}\``,
+    `\`${path}\``,
+    mdxProse(message),
+  ]);
   return page(
     "Manifest validation codes",
     "Every error and warning validateManifestDocuments and validateIngestDocuments can emit, extracted from the validator source.",
@@ -170,16 +198,21 @@ function releaseDescriptorCodes() {
   const seen = new Set();
   for (const m of source.matchAll(errRe)) {
     const row = [
-      `\`${m[2]}\``,
-      `\`${m[1].slice(1, -1)}\``,
-      mdxProse(m[3].slice(1, -1).replace(/\\(["\\])/g, "$1")),
+      m[2],
+      m[1].slice(1, -1),
+      m[3].slice(1, -1).replace(/\\(["\\])/g, "$1"),
     ];
     const key = row.join("\0");
     if (seen.has(key)) continue;
     seen.add(key);
     rows.push(row);
   }
-  rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+  const tick = (v) => `\`${v}\``;
+  rows.sort(
+    (a, b) =>
+      tick(a[0]).localeCompare(tick(b[0])) ||
+      tick(a[1]).localeCompare(tick(b[1])),
+  );
   return rows;
 }
 
@@ -198,7 +231,19 @@ fail-closed validator supports); do not confuse the two schema layers.`,
 }
 
 // ── 3. Wire error codes ────────────────────────────────────────────────────────
+// The Help column: the code's message in Help when help-messages.json holds it, else the
+// developer-only note. Same URL shape as helpMessageUrl() in src/lib/helpMessages.ts.
+function helpCell(helpMap, code) {
+  const entry = helpMap.messages[code];
+  return entry
+    ? `[Help](/docs/help/messages/${entry.page}/#${code})`
+    : "developer only";
+}
+
 function errorCodes() {
+  const helpMap = JSON.parse(
+    readFileSync(join(docsRoot, "help-messages.json"), "utf8"),
+  );
   const core = read("packages", "shared-protocol", "src", "core.ts");
   const match = core.match(/export type PolarisErrorCode =([\s\S]*?);/);
   const codes = [...(match?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map(
@@ -211,7 +256,11 @@ function errorCodes() {
     workerErrors.match(/export const ErrorCode = \{([\s\S]*?)\n\};/);
   const enumRows = [
     ...(enumMatch?.[1] ?? "").matchAll(/([A-Za-z]+):\s*"([a-z_]+)"/g),
-  ].map((m) => [`\`${m[2]}\``, `\`ErrorCode.${m[1]}\``]);
+  ].map((m) => [
+    `\`${m[2]}\``,
+    `\`ErrorCode.${m[1]}\``,
+    helpCell(helpMap, m[2]),
+  ]);
   // The registry (P1b-02): every code, wire and client. `pnpm gen constants` generates each
   // SDK's ErrorCode constants from it; the client codes are listed here because no Worker
   // source names them.
@@ -224,6 +273,7 @@ function errorCodes() {
       `\`${entry.code}\``,
       `\`${entry.service}\``,
       mdxProse(entry.description),
+      helpCell(helpMap, entry.code),
     ]);
   // WIRE-CONTRACT-V4 §14.3 (SP-53): a product backend's problem `type` is this page with the code
   // as its fragment, so each code a backend answers with gets its own heading (its anchor).
@@ -244,7 +294,7 @@ function errorCodes() {
   ].flatMap((entry) => [
     `### \`${entry.code}\``,
     "",
-    `${mdxProse(entry.description)} Service: \`${entry.service}\`.`,
+    `${mdxProse(entry.description)} Service: \`${entry.service}\`. Help: ${helpCell(helpMap, entry.code)}.`,
     "",
   ]);
   return page(
@@ -265,14 +315,14 @@ from it. A new code needs an entry there first.`,
       "## Worker enum (`packages/worker/src/core/errors.ts`)",
       "",
       enumRows.length
-        ? table(["Wire code", "Enum member"], enumRows)
+        ? table(["Wire code", "Enum member", "Help"], enumRows)
         : "_(enum not found)_",
       "",
       "## Client codes (`conformance/parity/errors.json`)",
       "",
       "Raised by an SDK, never sent by the Worker. Hosts match on the exact string.",
       "",
-      table(["Code", "Service", "Meaning"], clientRows),
+      table(["Code", "Service", "Meaning", "Help"], clientRows),
       "",
       "## Backend codes (`conformance/parity/errors.json`)",
       "",
@@ -935,10 +985,16 @@ function consoleTour() {
       ? `${cell.replace(/^\[([^\]]+)\]\([^)]*\)$/, "$1")} (platform admins)`
       : cell;
   };
+  // Pages not in the sidebar that the account menu opens (UserMenu.tsx).
+  const ACCOUNT_MENU_PAGES = new Set(["personal-tokens"]);
   const row = (p, url) => [
     `**${p.label}**`,
     `\`${url}\``,
-    p.inNav ? "Sidebar" : "Tab or sub-page",
+    p.inNav
+      ? "Sidebar"
+      : ACCOUNT_MENU_PAGES.has(p.page)
+        ? "Account menu"
+        : "Tab or sub-page",
     docsCell(p.docs),
   ];
   const cols = ["Page", "URL", "Where", "Docs"];
@@ -1020,7 +1076,427 @@ ${parts.join("\n")}
 }
 
 // ── driver ─────────────────────────────────────────────────────────────────────
+// The canonical SDK names (conformance/parity/api.json): one table per namespace, the 0.9
+// removals and the naming policy.
+function apiNames() {
+  const api = JSON.parse(read("conformance", "parity", "api.json"));
+  const sdkOrder = ["node", "react", "python", "swift", "kotlin", "godot"];
+  const sdkLabel = {
+    node: "Node",
+    react: "React",
+    python: "Python",
+    swift: "Swift",
+    kotlin: "Kotlin",
+    godot: "Godot",
+  };
+  const words = (name) =>
+    name
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .toLowerCase()
+      .split(" ");
+  const cased = (sdk, name) => {
+    const w = words(name);
+    return api.casing[sdk] === "snake"
+      ? w.join("_")
+      : w[0] +
+          w
+            .slice(1)
+            .map((x) => x[0].toUpperCase() + x.slice(1))
+            .join("");
+  };
+  const generated = (sdk, id) =>
+    id
+      .split(".")
+      .map((seg) => cased(sdk, seg))
+      .join(".");
+  const code = (text) => `\`${text}\``;
+  const cell = (c, sdk) => {
+    const e = c.sdks?.[sdk];
+    if (!e) return "—";
+    const base =
+      e.path ?? e.spelling ?? (e.planned ? null : generated(sdk, c.id));
+    if (e.planned)
+      return base
+        ? `${code(base)} (planned: ${e.planned})`
+        : `planned (${e.planned})`;
+    return code(base);
+  };
+  const escapeCell = (text) => text.replace(/\|/g, "\\|");
+  const byNamespace = new Map();
+  for (const c of api.concepts) {
+    const ns = c.id.split(".")[0];
+    if (!byNamespace.has(ns)) byNamespace.set(ns, []);
+    byNamespace.get(ns).push(c);
+  }
+  const sections = [];
+  for (const [ns, concepts] of byNamespace) {
+    const rows = concepts.map((c) => {
+      if (c.reserved)
+        return `| ${code(c.id)} | reserved for ${c.reserved} | | | | | | ${c.feature ? code(c.feature) : "—"} |`;
+      return `| ${code(c.id)} | ${sdkOrder.map((sdk) => escapeCell(cell(c, sdk))).join(" | ")} | ${c.feature ? code(c.feature) : "—"} |`;
+    });
+    sections.push(
+      [
+        `## ${ns}`,
+        "",
+        `| Concept | ${sdkOrder.map((s) => sdkLabel[s]).join(" | ")} | Feature |`,
+        `| --- | ${sdkOrder.map(() => "---").join(" | ")} | --- |`,
+        ...rows,
+      ].join("\n"),
+    );
+  }
+  const removedRows = (api.removed ?? []).map(
+    (r) =>
+      `| ${sdkLabel[r.sdk] ?? r.sdk} | ${code(r.from)} | ${r.to ? code(r.to) : r.note} | ${r.package} |`,
+  );
+  const removed = removedRows.length
+    ? [
+        "| SDK | Old name | New name or note | Package |",
+        "| --- | --- | --- | --- |",
+        ...removedRows,
+      ].join("\n")
+    : "Nothing is removed yet. Each rename lists its old name here when it ships.";
+  return `---
+title: "SDK API names"
+description: "The canonical name of every SDK concept in each SDK, and the names removed in 0.9."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with \`pnpm --filter @polaris-key/docs gen\`.
+    Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
+
+Every SDK exposes the same concepts under the same names, up to casing. The tables list each
+concept's spelling per SDK, from \`conformance/parity/api.json\`. A dash means the SDK does
+not ship the concept. \`planned\` marks a name that changes, or a symbol that does not exist
+yet, in the named work package; the spelling shown is the SDK's current one.
+
+## Naming policy
+
+During 0.9 a release may rename or remove an SDK name without an alias. Every removal is listed
+here and in that release's notes, and a removed option fails with \`invalid-options\` naming
+its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver against
+\`api.json\`.
+
+${sections.join("\n\n")}
+
+## Removed in 0.9
+
+${removed}
+`;
+}
+
+// ── Publish Action ─────────────────────────────────────────────────────────────
+// Read from actions/publish/action.yml, never copied: the file is the source of truth.
+function githubAction() {
+  const action = loadYaml(read("actions", "publish", "action.yml"), {
+    schema: CORE_SCHEMA,
+  });
+  const cell = (s) => escapeCell(mdxProse(String(s).trim()));
+  const inputs = Object.entries(action.inputs ?? {}).map(([name, spec]) => [
+    `\`${name}\``,
+    spec.required ? "yes" : "no",
+    spec.default === undefined ? "—" : `\`${spec.default}\``,
+    cell(spec.description ?? ""),
+  ]);
+  const outputs = Object.entries(action.outputs ?? {}).map(([name, spec]) => [
+    `\`${name}\``,
+    cell(spec.description ?? ""),
+  ]);
+  const runs = action.runs ?? {};
+  return page(
+    "GitHub Action",
+    "The publish Action's inputs and outputs, generated from action.yml.",
+    `\`polaris-key/publish\` publishes a release from a GitHub Actions job. ${mdxProse(action.description)} The CI guide is [Ship builds from CI](/docs/features/ship-builds/ci/).`,
+    [
+      "## Inputs",
+      "",
+      table(["Input", "Required", "Default", "Description"], inputs),
+      "",
+      "## Outputs",
+      "",
+      table(["Output", "Description"], outputs),
+      "",
+      "## Runs",
+      "",
+      `Runs on \`${runs.using}\`, entry point \`${runs.main}\`.`,
+    ].join("\n"),
+  );
+}
+
+// ── Compatibility and versions: every floor is read from its source file ─────────────────────
+function compatibility() {
+  const must = (value, what) => {
+    if (!value) throw new Error(`compatibility: cannot read ${what}`);
+    return value;
+  };
+  const protocol = must(
+    /export const PROTOCOL_VERSION = (\d+);/.exec(
+      read("packages", "shared-protocol", "src", "core.ts"),
+    )?.[1],
+    "PROTOCOL_VERSION",
+  );
+  const engines = (pkg) =>
+    must(
+      JSON.parse(read("packages", pkg, "package.json")).engines?.node,
+      `${pkg} engines.node`,
+    );
+  const python = must(
+    /^requires-python\s*=\s*"([^"]+)"/m.exec(
+      read("sdks", "python", "pyproject.toml"),
+    )?.[1],
+    "requires-python",
+  );
+  const swiftPackage = read("sdks", "swift", "Package.swift");
+  const tools = must(
+    /swift-tools-version:\s*([\d.]+)/.exec(swiftPackage)?.[1],
+    "swift-tools-version",
+  );
+  const platforms = must(
+    /^\s+platforms:\s*\[([^\]]+)\]/m.exec(swiftPackage)?.[1],
+    "Swift platforms",
+  );
+  const apple = [...platforms.matchAll(/\.(\w+)\(\.v(\d+)\)/g)]
+    .map(([, os, v]) => `${os} ${v}`)
+    .join(", ");
+  must(apple, "Swift platforms");
+  const godot = must(
+    /Godot (\d+\.\d+) and later/.exec(
+      read("sdks", "godot", "addons", "polaris_key", "plugin.cfg"),
+    )?.[1],
+    "Godot minimum in plugin.cfg",
+  );
+  const toml = read("sdks", "kotlin", "gradle", "libs.versions.toml");
+  const tomlValue = (key) =>
+    must(
+      new RegExp(`^${key}\\s*=\\s*"([^"]+)"`, "m").exec(toml)?.[1],
+      `libs.versions.toml ${key}`,
+    );
+  const rows = [
+    ["Node", `Node ${engines("sdk-node")}`],
+    ["React", `Node ${engines("sdk-react")} for the desktop-over-node path`],
+    ["Python", `Python ${python}`],
+    ["Swift", `${apple}; swift-tools-version ${tools}`],
+    ["Godot", `Godot ${godot} or later`],
+    [
+      "Kotlin",
+      `JVM bytecode ${tomlValue("jvmTarget")}; Android min SDK ${tomlValue("androidMinSdk")} (compile and target ${tomlValue("androidCompileSdk")})`,
+    ],
+  ];
+  return page(
+    "Compatibility and versions",
+    "The protocol version and the minimum toolchain of each SDK.",
+    `The wire protocol is version ${protocol}. Every SDK and the server share one version, derived from the release tag, so pair an SDK with the server release of the same version.`,
+    `## Minimum toolchain
+
+${table(["SDK", "Minimum"], rows)}
+
+Each minimum is read from the SDK's own manifest: \`engines\`, \`requires-python\`, \`Package.swift\`, the Godot addon's \`plugin.cfg\` and the Kotlin version catalog.`,
+  );
+}
+
+// ── Developer changelog (DOC-12a.1) ───────────────────────────────────────────
+// Entries are data: packages/docs/changelog/<yyyy-mm-dd>-<slug>.md, frontmatter checked against
+// changelog/schema.json, the body a note of at most 150 words. One source writes two things:
+// reference/changelog/index.mdx (newest version first) and the Removed -> Use instead tables
+// between the GENERATED markers of build/upgrade-to-0-9.md, one table per surface.
+
+const changelogDir = join(docsRoot, "changelog");
+const CHANGELOG_BODY_WORDS = 150;
+const SURFACES = ["sdk", "manifest", "cli", "action", "console"];
+const SURFACE_LABELS = {
+  sdk: "SDK",
+  manifest: "Manifest",
+  cli: "CLI",
+  action: "Action",
+  console: "Console and API",
+};
+const TYPE_LABELS = {
+  feature: "Added",
+  fix: "Fixed",
+  breaking: "Breaking",
+  removed: "Removed",
+  security: "Security",
+};
+
+/** The subset of JSON Schema the changelog schema uses: type, enum, pattern, items, properties. */
+export function schemaErrors(schema, value, at = "") {
+  const errs = [];
+  const here = at || "entry";
+  if (schema.enum) {
+    if (!schema.enum.includes(value))
+      errs.push(
+        `${here}: ${JSON.stringify(value)} is not one of ${schema.enum.join(", ")}`,
+      );
+    return errs;
+  }
+  const kind = Array.isArray(value)
+    ? "array"
+    : value === null
+      ? "null"
+      : typeof value;
+  if (schema.type && kind !== schema.type) {
+    errs.push(`${here}: expected ${schema.type}, got ${kind}`);
+    return errs;
+  }
+  if (schema.type === "string") {
+    if (schema.minLength && value.length < schema.minLength)
+      errs.push(`${here}: empty`);
+    if (schema.pattern && !new RegExp(schema.pattern).test(value))
+      errs.push(
+        `${here}: ${JSON.stringify(value)} does not match ${schema.pattern}`,
+      );
+  }
+  if (schema.type === "array" && schema.items)
+    value.forEach((v, i) =>
+      errs.push(...schemaErrors(schema.items, v, `${at}[${i}]`)),
+    );
+  if (schema.type === "object") {
+    for (const key of schema.required ?? [])
+      if (!(key in value)) errs.push(`${here}: missing ${key}`);
+    for (const [key, v] of Object.entries(value)) {
+      const sub = schema.properties?.[key];
+      if (sub) errs.push(...schemaErrors(sub, v, at ? `${at}.${key}` : key));
+      else if (schema.additionalProperties === false)
+        errs.push(`${here}: unknown field ${key}`);
+    }
+  }
+  return errs;
+}
+
+/** The validated entries of a directory, newest first. Throws on the first bad entry. */
+export function loadChangelog(dir = changelogDir) {
+  const schema = JSON.parse(readFileSync(join(dir, "schema.json"), "utf8"));
+  const slugs = new Set(
+    JSON.parse(read("tools", "services.json")).services.map((svc) => svc.slug),
+  );
+  const entries = [];
+  for (const name of readdirSync(dir)
+    .filter((f) => f.endsWith(".md"))
+    .sort()) {
+    const { data, body } = splitFrontmatter(
+      readFileSync(join(dir, name), "utf8"),
+    );
+    const errs = schemaErrors(schema, data);
+    if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$/.test(name))
+      errs.push("file name is not <yyyy-mm-dd>-<slug>.md");
+    else if (data.date && !name.startsWith(`${data.date}-`))
+      errs.push("file name does not start with the entry's date");
+    for (const svc of data.services ?? [])
+      if (!slugs.has(svc)) errs.push(`unknown service ${svc}`);
+    const words = body.trim().split(/\s+/).filter(Boolean).length;
+    if (words > CHANGELOG_BODY_WORDS)
+      errs.push(`body is ${words} words, over ${CHANGELOG_BODY_WORDS}`);
+    for (const r of data.replaces ?? [])
+      if (r.surface !== "sdk" && r.sdk)
+        errs.push("sdk is only for surface sdk");
+    if (errs.length) throw new Error(`changelog/${name}: ${errs.join("; ")}`);
+    entries.push({ ...data, body: body.trim(), file: name });
+  }
+  return entries.sort(compareEntries);
+}
+
+const versionParts = (v) =>
+  v.split(".").map((n) => (n === "x" ? Infinity : Number(n)));
+/** Newest version first, then newest date, then file name. */
+function compareEntries(a, b) {
+  const [x, y] = [versionParts(a.version), versionParts(b.version)];
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i] ? 1 : -1;
+  return a.date !== b.date
+    ? a.date < b.date
+      ? 1
+      : -1
+    : a.file < b.file
+      ? 1
+      : -1;
+}
+
+function changelogPage() {
+  const entries = loadChangelog();
+  const byVersion = new Map();
+  for (const e of entries) {
+    if (!byVersion.has(e.version)) byVersion.set(e.version, []);
+    byVersion.get(e.version).push(e);
+  }
+  const sections = [...byVersion].map(([version, list]) => {
+    const items = list.map((e) => {
+      const tags = [TYPE_LABELS[e.type], e.date, ...e.services, ...e.sdks];
+      return `### ${e.title}\n\n${tags.join(" · ")}\n\n${e.body}`;
+    });
+    return `## ${version}\n\n${items.join("\n\n")}`;
+  });
+  return page(
+    "Developer changelog",
+    "Changes to the SDKs, the CLI, the manifest and the API, newest first.",
+    `Changes to the SDKs, the CLI, the manifest and the API, newest version first. The tables of what each removal is replaced by are in [Upgrade to 0.9](/docs/build/upgrade-to-0-9/).`,
+    sections.join("\n\n"),
+  );
+}
+
+/** The rows of one upgrade table: the entries' `replaces`, plus api.json's removed SDK names. */
+export function upgradeRows(surface, entries) {
+  const rows = [];
+  for (const e of entries)
+    for (const r of e.replaces ?? [])
+      if (r.surface === surface)
+        rows.push({ sdk: r.sdk, old: r.old, new: r.new, since: e.version });
+  if (surface === "sdk") {
+    const api = JSON.parse(read("conformance", "parity", "api.json"));
+    for (const r of api.removed)
+      rows.push({
+        sdk: r.sdk,
+        old: `\`${r.from}\``,
+        new: `\`${r.to}\``,
+        since: "0.9",
+      });
+  }
+  return rows;
+}
+
+function upgradeTable(surface, entries) {
+  const rows = upgradeRows(surface, entries);
+  if (!rows.length) return null;
+  const sdk = surface === "sdk";
+  const head = [...(sdk ? ["SDK"] : []), "Removed", "Use instead", "Since"];
+  return table(
+    head,
+    rows.map((r) => [...(sdk ? [r.sdk ?? ""] : []), r.old, r.new, r.since]),
+  );
+}
+
+const UPGRADE_PAGE = "build/upgrade-to-0-9.md";
+const upgradeMarker = (surface) => ({
+  open: `<!-- GENERATED:upgrade-${surface} — do not edit; regenerate with \`pnpm --filter @polaris-key/docs gen\` from packages/docs/changelog and conformance/parity/api.json -->`,
+  close: `<!-- /GENERATED:upgrade-${surface} -->`,
+});
+
+/** The upgrade page with each marked region rewritten; the prose around the markers stays. */
+function upgradePage() {
+  const entries = loadChangelog();
+  let text = readFileSync(join(outDir, UPGRADE_PAGE), "utf8");
+  for (const surface of SURFACES) {
+    const { open, close } = upgradeMarker(surface);
+    const tbl = upgradeTable(surface, entries);
+    const start = text.indexOf(`<!-- GENERATED:upgrade-${surface} `);
+    if (start < 0) {
+      if (tbl)
+        throw new Error(`${UPGRADE_PAGE}: no marker for the ${surface} table`);
+      continue;
+    }
+    if (!tbl)
+      throw new Error(`${UPGRADE_PAGE}: marker for ${surface}, no rows`);
+    const end = text.indexOf(close, start);
+    if (end < 0) throw new Error(`${UPGRADE_PAGE}: ${close} missing`);
+    text =
+      text.slice(0, start) +
+      `${open}\n\n${tbl}\n\n${close}` +
+      text.slice(end + close.length);
+  }
+  return text;
+}
+
 export const EMITTERS = {
+  "reference/github-action.mdx": githubAction,
+  "reference/compatibility.mdx": compatibility,
+  "reference/api-names.mdx": apiNames,
   "reference/validation-codes.mdx": manifestValidationCodes,
   "reference/config-entry.mdx": configEntryReference,
   "reference/error-codes.mdx": errorCodes,
@@ -1030,6 +1506,8 @@ export const EMITTERS = {
   "reference/protocol/corpus.mdx": corpusInventory,
   "reference/parity.mdx": parityMatrix,
   "operate/console/tour.mdx": consoleTour,
+  "reference/changelog/index.mdx": changelogPage,
+  [UPGRADE_PAGE]: upgradePage,
 };
 
 const check = process.argv.includes("--check");

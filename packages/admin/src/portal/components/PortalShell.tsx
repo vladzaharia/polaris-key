@@ -160,8 +160,8 @@ export function PortalShell({
           "mx-auto w-full max-w-[82rem] flex-1 px-4 pt-6 outline-none desk:px-6 sm:pt-10 short:pt-4",
           // Room for the phone bar; the Library's sticky strip ends the page, so it adds none.
           route.kind === "library"
-            ? "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-8"
-            : "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-12",
+            ? "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.6875rem)] desk:pb-8"
+            : "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.6875rem)] desk:pb-12",
         )}
       >
         <PortalErrorBoundary resetKey={window.location.hash}>
@@ -277,7 +277,7 @@ function NavLink({
       href={to}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative inline-flex items-center gap-2.5 px-1 text-md",
+        "relative inline-flex items-center gap-2 px-1 text-md",
         active
           ? "font-medium text-fg-strong after:absolute after:inset-x-0 after:-bottom-px after:rounded-full after:h-[3px] after:bg-[var(--pk-locker-accent)]"
           : "text-fg-muted hover:text-fg-strong",

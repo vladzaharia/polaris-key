@@ -33,7 +33,7 @@ The build gate here and on the license document route is one computation, so a b
 
 ## Key to session
 
-`POST /<product>/identity/session/license` exchanges a license key, in the body as `{ "key": "<license key>" }` or as a bearer header, for a session cookie. The key must be active, and its license runs through the same seat authorization as activation. A seat conflict answers `403 device_limit` with `limit` and `deviceCount`. Success is `201` with `Set-Cookie`, and on a product with Identity on the body carries `keyEntries`.
+`POST /<product>/identity/session/license` exchanges a license key, in the body as `{ "key": "<license key>" }` or as a bearer header, for a session cookie. The key must be active, and its license runs through the same device-limit authorization as activation. A device-limit conflict answers `403 device_limit` with `limit` and `deviceCount`. Success is `201` with `Set-Cookie`, and on a product with Identity on the body carries `keyEntries`.
 
 This endpoint is an online oracle for guessing keys, so it is limited to 30 requests a minute per address, the same budget as activation.
 
@@ -45,10 +45,10 @@ This endpoint is an online oracle for guessing keys, so it is limited to 30 requ
 
 When License is off and Identity is on, keyless registration is `requires-identity`. The browser session is the credential behind Core's `POST /<product>/devices/register`. Core asks Identity through the `authorizeRegistration` hook.
 
-The hook checks one step less than the session document does. It loads the session from the cookie and validates the device token by itself: is it a live device, not does it hold a usable license. That makes the path work for a Config-only or Release-only product with sign-in and no seats. It needs no CSRF check, because it mints a new credential returned only in the response body, which a cross-site caller could never read.
+The hook checks one step less than the session document does. It loads the session from the cookie and validates the device token by itself: is it a live device, not does it hold a usable license. That makes the path work for a Config-only or Release-only product with sign-in and no device limit. It needs no CSRF check, because it mints a new credential returned only in the response body, which a cross-site caller could never read.
 
 ## Next steps
 
 - [Product sign-in provider](/docs/features/sign-in/oidc/): how a sign-in ends up with a cookie.
 - [Device flow](/docs/features/sign-in/device-flow/): the token-issuing counterpart.
-- [Activation](/docs/features/licensing/activation/): the seat authorization both share.
+- [Activation](/docs/features/licensing/activation/): the device-limit authorization both share.

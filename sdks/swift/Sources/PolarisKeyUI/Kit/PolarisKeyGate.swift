@@ -23,6 +23,7 @@ public struct PolarisKeyGate<Content: View>: View {
 
     @State private var graceDismissed = false
     @State private var manageOpened = false
+    @State private var cameBack = false
 
     /// Gate `content` on `client`'s license.
     public init(
@@ -56,12 +57,13 @@ public struct PolarisKeyGate<Content: View>: View {
                 overlays
             }
         }
+        .onChange(of: model.route) { old, new in cameBack = new == .welcome && old != .welcome }
         .sheet(isPresented: mandatoryUpdate) {
             // No dismiss (§4.3): no drag, no Escape, no close button; only the verb.
             PolarisKeyScope(model: model) {
                 UpdatePromptView(
                     screen: model.updatePrompt, details: model.inputs.update,
-                    onUpdate: performUpdate, onLater: {})
+                    onUpdate: updateAction, onLater: {})
             }
             .interactiveDismissDisabled()
         }
@@ -125,8 +127,7 @@ public struct PolarisKeyGate<Content: View>: View {
                     PolarisKeyScope(model: model) {
                         SignInView(model: model, providers: providers) { model.backToWelcome() }
                     }
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .kitSignInSheetShape()
                 }
         case .welcome:
             welcome
@@ -145,6 +146,9 @@ public struct PolarisKeyGate<Content: View>: View {
             SignInView(model: model, providers: providers)
         }
     }
+
+    /// Back or Escape from a step: Welcome puts focus on "Use a License Key" again.
+    private var returnedToWelcome: Bool { cameBack }
 
     private var welcome: some View {
         WelcomeView(
@@ -170,8 +174,10 @@ public struct PolarisKeyGate<Content: View>: View {
             inlineActions: {
                 ActivateActions(
                     screen: model.activate, onSubmit: { Task { await model.submitKey() } },
-                    onReplaceDevice: replaceDevice, onCancel: nil)
-            })
+                    onReplaceDevice: replaceDevice, onCancel: nil,
+                    onDifferentKey: { model.keyText = "" })
+            },
+            refocusUseKey: returnedToWelcome)
     }
 
     /// The licensed app is showing: the only time the banner and the update sheet draw.
@@ -190,11 +196,15 @@ public struct PolarisKeyGate<Content: View>: View {
             set: { _ in })
     }
 
-    private func performUpdate() {
-        if let update = model.handlers.update {
-            update()
-        } else if let link = KitLinks.valid(model.inputs.update?.notesUrl) {
-            openURL(link)
+    /// What "Update now" does: the host's handler, else the store listing the decision named.
+    /// Never the release notes page; with neither there is no verb (decision 7).
+    private var updateAction: (() -> Void)? {
+        switch KitUpdateRoute.resolve(
+            hasHandler: model.handlers.update != nil, update: model.inputs.update)
+        {
+        case .handler: return { model.handlers.update?() }
+        case .open(let link): return { openURL(link) }
+        case .none: return nil
         }
     }
 
@@ -208,8 +218,11 @@ public struct PolarisKeyGate<Content: View>: View {
             }
             updateOverlay
             if let toast = model.toast {
-                GateToastView(toast: toast) { model.dismissToast(toast.id) }
-                    .id(toast.id)
+                GateToastView(
+                    toast: toast, onDismiss: { model.dismissToast(toast.id) },
+                    onUpdate: { model.reofferUpdate() }
+                )
+                .id(toast.id)
             }
         }
     }
@@ -228,18 +241,25 @@ public struct PolarisKeyGate<Content: View>: View {
                     UpdateProgressView(
                         screen: KitStates.updateProgress(model.inputs),
                         fraction: model.inputs.update?.progress?.fraction,
-                        onRetry: performUpdate
+                        title: progressTitle, onRetry: { updateAction?() }
                     )
                     .padding()
                     .modifier(KitFloatingProgressSurface())
                 } else {
                     UpdatePromptView(
                         screen: prompt, fraction: model.inputs.update?.progress?.fraction,
-                        details: model.inputs.update, onUpdate: performUpdate,
+                        details: model.inputs.update, onUpdate: updateAction,
                         onLater: { model.deferUpdate() })
                 }
             }
         }
+    }
+
+    /// What is downloading, for the progress row's title.
+    private var progressTitle: CopyLine? {
+        guard let version = model.inputs.update?.version else { return nil }
+        return CopyLine(
+            "update.title", ["product": .text(model.identity.name), "version": .text(version)])
     }
 
     private var replaceDevice: (() -> Void)? {
@@ -259,6 +279,19 @@ public struct PolarisKeyGate<Content: View>: View {
         default:
             Task { await model.refresh() }
         }
+    }
+}
+
+extension View {
+    /// The sign-in sheet's shape. iOS: full height with the drag indicator. macOS: one fitted
+    /// sheet, 440 pt wide; macOS 26 draws the inset rounded panel itself and the kit only sizes
+    /// it (S3).
+    @ViewBuilder fileprivate func kitSignInSheetShape() -> some View {
+        #if os(macOS)
+            kitMacSheet()
+        #else
+            presentationDetents([.large]).presentationDragIndicator(.visible)
+        #endif
     }
 }
 
@@ -330,8 +363,7 @@ extension View {
             PolarisKeyScope(model: model) {
                 SignInView(model: model, providers: providers) { isPresented.wrappedValue = false }
             }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            .kitSignInSheetShape()
             .onAppear { model.route = .signIn }
             .onDisappear { model.cancelSignIn() }
         }

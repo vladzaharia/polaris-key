@@ -22,9 +22,10 @@ class BrandRulesTest {
 
     @Test
     fun commonMainImportsNothingPlatformSpecific() {
-        // commonMain is what UK-10's desktop target compiles too; the Android-only target here cannot
-        // catch a platform import by itself, so this does.
-        val platform = Regex("""^import (android\.|java\.|javax\.|androidx\.(activity|lifecycle)|com\.google\.zxing)""")
+        // commonMain is what the desktop target compiles too (UK-10.3), and the desktop compile now
+        // refuses an Android import by itself; this names the Android-only libraries early. Both
+        // targets are JVM, so java.* is shared.
+        val platform = Regex("""^import (android\.|androidx\.(activity|lifecycle)|com\.google\.zxing)""")
         val problems = module.resolve("src/commonMain/kotlin").walkTopDown().filter { it.isFile && it.extension == "kt" }.flatMap { file ->
             file.readLines().filter { platform.containsMatchIn(it) }.map { "${file.name}: $it" }
         }.toList()
@@ -46,7 +47,7 @@ class BrandRulesTest {
     @Test
     fun fontsAndShapesComeFromTheTheme() {
         val font = Regex("""\bFont\(|FontFamily\((?!\))|RoundedCornerShape\(|CutCornerShape\(""")
-        val allowed = setOf("PolarisTypography.kt", "PolarisTheme.kt", "PolarisBrandTokens.generated.kt", "PolarisKitTokens.generated.kt")
+        val allowed = setOf("PolarisTypography.kt", "PolarisTypography.android.kt", "PolarisTheme.kt", "PolarisBrandTokens.generated.kt", "PolarisKitTokens.generated.kt")
         val problems = sources.filterNot { it.name in allowed }.flatMap { file ->
             file.readLines().mapIndexedNotNull { i, line -> if (font.containsMatchIn(line)) "${file.name}:${i + 1}: ${line.trim()}" else null }
         }

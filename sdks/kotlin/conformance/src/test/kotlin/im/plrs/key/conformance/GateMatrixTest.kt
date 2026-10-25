@@ -7,7 +7,7 @@
 // LICENCE-state inputs, paired with one expected decision. The build-gate half is a PORT, as in
 // every runner: `checkBuildGate` mirrors the Worker's (WIRE-CONTRACT-V3 §5.1), rebuilt from
 // `Semver`, with the fixture as the oracle (the Worker replays the same rows through its real gate
-// in packages/worker/test/gateMatrixCorpus.test.ts). The duplication is deliberate: the matrix
+// in packages/worker/test/core/gateMatrixCorpus.test.ts). The duplication is deliberate: the matrix
 // proves independent implementations agree. The licence half is :core's `licenseState`, which
 // `LicenseClient.status()` calls.
 //

@@ -4,9 +4,10 @@
 
 [resource]
 script = ExtResource("1")
-product = "acme"
+; 0.9 names (product_slug, pinned_keys): Polaris Key SDK v0.9.18 or later. https://key.plrs.im/docs/reference/api-names/
+product_slug = "acme"
 base_url = "https://key.plrs.im"
-pinned_trust_keys = {
+pinned_keys = {
 "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
 }
 pinned_release_keys = {

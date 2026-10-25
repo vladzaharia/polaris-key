@@ -75,6 +75,8 @@ A `secret` may declare `delivery`: `clientScoped`, `serverOnly` or `edgeMint`. A
 - `serverOnly` (retired: the validator warns) never leaves the Worker. The signing prune drops it from every device-facing document, bundles included.
 - `edgeMint` marks that the entry isn't read from the document at all: the client calls `mintToken(key)` and the Worker signs a token from the entry's `mint` block ([Edge mint](/docs/features/managed-config/edge-mint/)).
 
+A secret that sign-in provisioning sets lives on the owner's account row, sealed, when the signing identity is linked to the license's owner; otherwise on the license. See [Account overrides](/docs/features/managed-config/management-states/#account-overrides).
+
 A minted token carries its recipe on the entry:
 
 ```json

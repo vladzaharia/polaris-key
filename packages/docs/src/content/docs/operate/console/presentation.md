@@ -11,13 +11,21 @@ sidebar:
 own copy of each file and serves it from its image host (`img.plrs.im`); the developer's original,
 wherever it lives, is never changed.
 
+## The listing
+
+**Settings → Presentation → Listing** (also **Edit listing** on Storefronts) is where the store
+listing is edited: text, fit report, images, release notes and Push, for every storefront or one
+chosen in its **Storefront** switcher. Name, developer, accent and icon default to the rows on this
+page; a listing field you set wins. See
+[Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing).
+
 ## The slots
 
-| Section         | Slots                                                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Product**     | The product icon (`presentation.icon`), which the console's product card and the UI kits show.                           |
-| **Listing**     | The listing icon (`listing.icon`, which falls back to the product icon), the header and screenshots 1 to 16.             |
-| **Other slots** | Anything else hosted for the product: a store slot of the shared listing such as `play:feature-graphic`, a release file. |
+| Section            | Slots                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **Product**        | The product icon (`presentation.icon`), which the console's product card and the UI kits show.                           |
+| **Listing images** | The listing icon (`listing.icon`, which falls back to the product icon), the header and screenshots 1 to 16.             |
+| **Other slots**    | Anything else hosted for the product: a store slot of the shared listing such as `play:feature-graphic`, a release file. |
 
 Each slot shows:
 
@@ -62,7 +70,7 @@ row when that row holds the same file.
 ## From CI
 
 `pkey assets push <file> --slot <slot>` and the publish Action's `assets` input send files from a
-CI job; see [Hosted assets](/docs/features/ship-builds/ci-stores/#hosted-assets). The CI token needs the opt-in
+CI job; see [Hosted assets](/docs/features/ship-builds/channels/polaris-key/#hosted-assets). The CI token needs the opt-in
 `assets:write` scope, which you grant on **Keys and secrets → CI publishing**.
 
 ## Hosting and quotas

@@ -124,16 +124,31 @@ changes the shared listing. Nothing in it is signed or sent to devices.
 
 ## In the console
 
-**Ship builds → Listing** edits the model, with five tabs:
+**Settings → Presentation → Listing** is the home. The **Storefront** switcher in its header picks
+**Every storefront** (the whole listing) or one storefront. The page is also reached from
+**Edit listing** on Storefronts, and the old Ship builds → Listing address shows Page moved. Edits
+here show in Polaris Locker, on the download page and on every storefront.
 
-- **Text**: the app's fields and each locale's (switch locale, or add one), saved together, and the
-  import with its field-by-field diff;
+For every storefront there are five tabs:
+
+- **Text**: the app's fields and each locale's (switch locale, or add one), saved together, each
+  field with the place it came from (Console, `.pkey/distribution`, a store import, or From
+  Presentation; **Revert to manifest** and **Use Presentation** per field), and the import with its
+  field-by-field diff;
 - **Fit report**: every store's fit, with **Override…** on each field that does not fit;
 - **Images**: the [slot board](/docs/features/ship-builds/channels/storefronts/#the-slot-board), where every derived or
   composed image is accepted before any store receives it;
 - **Release notes**: each release's store notes per locale, with the proposed short form;
 - **Push**: **Push listing** for each store whose adapter writes listings (see
   [Storefronts](/docs/features/ship-builds/channels/storefronts/#listing-push)).
+
+With one storefront chosen, the page shows that storefront's view: its **Overrides** (Edit and
+Remove each; shared text is edited under Every storefront), its fit row, its image slots and its
+Push. Polaris Locker has nothing to push: it reads the listing directly.
+
+The listing's name, developer name, accent and icon default to
+Presentation (Settings → Presentation): a field you leave empty follows it, and a
+field you set wins.
 
 The same fit report, import and slot board are steps of
 [Add to storefronts](/docs/features/ship-builds/channels/storefronts/).
@@ -241,8 +256,8 @@ mismatch is visible.
 ### From a Godot project
 
 ```sh title="Terminal"
-# the console session: pkey bundle's admin API token cannot reach the import
-export PKEY_ADMIN_COOKIE='__Host-pkey_admin=<value>'
+# sign in once; the import uses that sign-in (an API token cannot reach it)
+pkey login
 # prints the diff
 pkey listing import --godot path/to/project --product <slug>
 # writes it
@@ -281,15 +296,86 @@ did before. An edit reaches the feeds at once: the feed cache follows the listin
 
 ## Listing assets
 
-The images come from CI, never from the console's own image tools:
-[`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) derives every store icon from the icon
-master and composes every store's art from the key art and the wordmark. It fits each screenshot
-for each store, using a crop or pad only where you accept it. It then uploads every output that passed (a red one stays in CI) with its digests, sizes and
-alpha. Each derived row records the master it came from (`derivedFrom`), so Google Play's adapter
-can declare template outputs as not AI-generated; masters and fitted screenshots get no
-declaration. A screenshot fitted for a
-store is stored as `<store>:screenshot:<class>:<n>`, and each store's ZIP pack as `pack:<store>`.
-An image you upload yourself is never replaced by CI.
+`pkey listing assets` makes every store's listing art from three images a person draws: a square
+icon master (1024×1024 is best), key art with no logo on it, and the wordmark on transparency.
+Export them in sRGB: an image with another embedded color profile is converted first, and that
+conversion is not guaranteed to give identical bytes on every device. It needs the `sharp` image
+library beside `pkey` (`npm install sharp`):
+
+```yaml title=".github/workflows/release.yml"
+- run: |
+    npm install sharp
+    node pkey.mjs listing assets --out listing --icon art/icon.png --key-art art/key-art.png \
+      --key-art-portrait art/key-art-portrait.png --wordmark art/wordmark.png --focal 0.4,0.35 \
+      --screenshots art/screenshots --accept play/phone-portrait/01-menu \
+      --upload --product your-product
+```
+
+- **Icons** are derived from the master: Google Play 512, the Microsoft tile 300, Steam's 184 JPG
+  and 256 icons, and Flathub, Snap, winget and F-Droid. Android's adaptive layers are derived only
+  when the mark sits inside the central 66 of 108 dp (about 61 %); otherwise the report marks them
+  `human`, for you to draw.
+- **Store art** is composed: the key art is cropped to each slot's shape around `--focal` (x,y as
+  fractions), and the wordmark is placed only on slots that allow a title. The Steam library hero,
+  the page background and the Microsoft super hero never get text. With no key art, every slot
+  gets an icon-only fallback marked red. A title slot with no wordmark is marked red too.
+- **Screenshots** sit under `--screenshots`, one directory per size class (`phone-portrait`,
+  `tablet`, `desktop-16x9`, `desktop-16x10`, `tv`, `wear`, `xr`). Each is checked for the App
+  Store, Google Play, the Microsoft Store and Steam. One that does not fit gets a crop or pad
+  proposal: an iPhone 6.9″ shot is over Play's 2:1, and a Mac 16:10 shot is not Steam's 16:9. The
+  proposal is previewed under `--out/proposals/` and used only for the images you name with
+  `--accept <store>/<class>/<name>` (the crop) or `--pad <store>/<class>/<name>`.
+
+Each derived row records the master it came from (`derivedFrom`), so Google Play's adapter can declare template outputs as not AI-generated; masters and fitted screenshots get no declaration. A screenshot fitted for a store is stored as `<store>:screenshot:<class>:<n>`, and each store's ZIP pack as `pack:<store>`.
+
+Everything lands under `--out`: one directory per store, `report.json` (every slot's status, size,
+alpha, format and digest), `preview.html` to look at, and a ZIP per store under `packs/` (Steam has
+no listing API, so its pack is what you upload by hand). `--upload` stores the images in the
+product's shared listing. It needs `distribution:listing`,
+which an operator adds deliberately. Only `ok` and `warn` outputs go up: a red output (an icon-only
+fallback, a title slot with no wordmark, a file over the store's size limit) stays in `--out` and is
+listed as not uploaded, as are `human` and `missing` slots and pending proposals. It never pushes
+anything to a store, and it never replaces an image an operator uploaded in the console. Rerunning with the same `--out` replaces only the files
+the last run wrote.
+
+## Hosted assets
+
+Some art is not on the web: an icon made for the store, screenshots CI captures. `pkey assets push`
+and the Action's `assets` input send such files to Polaris Key, which hosts a copy and serves it
+from its image host, exactly like the files a manifest names (`.pkey/product`
+`presentation.icon`, the `.pkey/distribution` listing's `icon`, `header` and `screenshots`).
+
+```yaml title=".github/workflows/release.yml"
+- uses: vladzaharia/polaris-key/actions/publish@<sha>
+  with:
+    product: diceroll
+    assets: |
+      art/icon.png: presentation.icon
+      # numbered 1, 2, 3, … in path order
+      art/screens/*.png: listing.screenshot
+      art/play-feature.png: play:feature-graphic@de-DE
+```
+
+Each line is `<glob>: <slot>[@<locale>]`. A slot is `presentation.icon`, `listing.icon`,
+`listing.header`, `listing.screenshot:<1-16>` or a store slot of the
+[shared listing](/docs/features/ship-builds/channels/polaris-key/) (`icon-master`, `play:feature-graphic`, …).
+Every glob must match exactly one file, except for the unnumbered `listing.screenshot`, whose
+matches become screenshots 1 to n. Globs resolve against `dir` when it is set, else the workspace.
+From a shell, one file at a time:
+
+```sh title="Terminal"
+pkey assets push art/icon.png --slot presentation.icon --product diceroll
+```
+
+- **Files.** PNG, JPEG, WebP, GIF or AVIF, decided from the file's first bytes (never SVG); up to
+  10 MiB for icon slots and 20 MiB for the rest. A refused file fails the step and changes
+  nothing.
+- **Who wins a slot.** An upload in the console, then the manifest, then CI. A slot an operator
+  uploaded, or one the manifest names, is reported as kept and left as it is; that is not a
+  failure. See Presentation (console members).
+- **Credentials.** The token needs `assets:write`, which an operator adds deliberately (it is not
+  a default scope). The files go up through the same upload ticket as a release, so Release must
+  be on for the product.
 
 ## The storefront listing API
 

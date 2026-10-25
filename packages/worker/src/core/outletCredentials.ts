@@ -16,7 +16,7 @@
  *     A blob copied into `product_secrets` fails to open there — the separation is
  *     cryptographic, not only a table boundary (`test/attack/R12-outlet-credentials.test.ts`).
  *   - **Platform-admin writes only.** `putOutletCredential` and `deleteOutletCredential` are
- *     called from the Core admin handler and nowhere else — `test/outletCredentialReach.test.ts`
+ *     called from the Core admin handler and nowhere else — `test/core/outletCredentialReach.test.ts`
  *     refuses any other file that names either function or the table, so no manifest ingest,
  *     resync, service hook or Distribution connector can write it.
  *   - **One reader, audited.** `openOutletCredential` is reachable only from the Distribution
@@ -770,8 +770,8 @@ export async function putOutletCredential(
     await db.run(
       `INSERT INTO outlet_credentials
          (product, credential_id, kind, outlet_id, enc_value_json, meta_json, status,
-          created_at, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+          created_at, created_by, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`,
       input.product,
       input.credentialId,
       input.kind,
@@ -780,6 +780,7 @@ export async function putOutletCredential(
       meta,
       input.now,
       input.actor,
+      input.expiresAt,
     );
   }
   return { ok: true, id: input.credentialId, created: !existing, pinChange };

@@ -133,6 +133,7 @@ func all() -> Array:
 	# ── PKeyUpdatePrompt: every decision state.
 	for c in update_cases():
 		out.append(["update_prompt", c[0], update_prompt.bind(c[1], c[2], c[3], c[4])])
+	out.append(["update_prompt", "binary, modal with release notes", update_prompt_notes])
 	# ── PKeyEntitlementBadge.
 	out.append(["badge", "two grants", badge.bind(["Supporter", "Founder"])])
 	out.append(["badge", "none", badge.bind([])])
@@ -162,6 +163,18 @@ func all() -> Array:
 	# ── PKeyDeviceList (UI-KITS.md Devices).
 	for c in [["list", "list"], ["list, an unnamed device", "unnamed"], ["list, this device not known", "unknown"], ["renaming", "renaming"], ["confirming a removal", "confirming"], ["empty", "empty"], ["browser mode", "browser"], ["loading", "loading"], ["error: the list could not load", "load-error"], ["error: a rename was refused", "rename-error"], ["error: a removal was refused", "remove-error"], ["list, this device only (from the SDK)", "self-only"]]:
 		out.append(["devices", c[0], devices.bind(c[1])])
+	# ── PKeyPaywall and PKeyDeviceLimit (UI-KITS.md §4.1), the model's states.
+	for c in [["offers, the browser", "offers-portal"], ["offers, the store", "offers-store"], ["offers, with what it includes", "offers-includes"], ["loading", "loading"], ["purchasing", "purchasing"], ["restoring", "restore"], ["purchased", "purchased"], ["not available", "not-available"], ["not available, the portal offered", "not-available-portal"]]:
+		out.append(["paywall", c[0], paywall.bind(c[1])])
+	for c in [["default: replace the least recent", "default"], ["default: the limit is not known", "unknown"], ["browser mode", "browser"], ["browser mode: a QR code on a TV", "browser-tv"], ["busy", "busy"], ["removed", "removed"], ["failed", "failed"]]:
+		out.append(["device_limit", c[0], device_limit.bind(c[1])])
+	# ── PKeyCloudSyncStatus, PKeyAbout and PKeyReleaseNotes (UI-KITS.md §4.1), the models' states.
+	for c in [["synced", "synced"], ["syncing", "syncing"], ["offline", "offline"], ["conflict, Review offered", "conflict"], ["error", "error"], ["error: signed out", "signed-out"]]:
+		out.append(["cloud_sync", c[0], cloud_sync.bind(c[1])])
+	for c in [["with every link", "full"], ["version only", "plain"]]:
+		out.append(["about", c[0], about.bind(c[1])])
+	for c in [["list", "list"], ["loading", "loading"], ["empty", "empty"], ["error", "error"]]:
+		out.append(["release_notes", c[0], release_notes.bind(c[1])])
 	# ── PKeyLicenseChoice (UI-KITS.md LicenseChoice): the corpus rows.
 	for c in CHOICE_CASES:
 		out.append(["license_choice", c[0], license_choice.bind(c[1])])
@@ -172,7 +185,7 @@ func all() -> Array:
 	for c in [["queued: content", "queued-content"], ["queued: an app update", "queued-app"], ["downloading", "downloading"], ["downloading: no time left known", "downloading-no-eta"], ["downloading: verified, not yet installed", "verified"], ["installing", "installing"], ["paused: a metered connection", "paused"], ["failed", "failed"], ["done", "done"], ["compact", "compact"]]:
 		out.append(["update_progress", c[0], update_progress.bind(c[1])])
 	# ── PKeyToast (UI-KITS.md Toast).
-	for c in [["info: an update is available", "update"], ["success: copied", "copied"], ["warning", "warning"], ["error: stays until dismissed", "error"], ["with progress", "progress"], ["bottom centre", "centre"]]:
+	for c in [["info: an update is available", "update"], ["success: copied", "copied"], ["success: signed in", "signed_in"], ["warning", "warning"], ["error: stays until dismissed", "error"], ["with progress", "progress"], ["bottom centre", "centre"]]:
 		out.append(["toast", c[0], toast.bind(c[1])])
 	# Every state starts from no presentation and no integrator name (the kit's identity is global).
 	for c in out:
@@ -463,6 +476,129 @@ func settings_account() -> Control:
 
 
 ## A Devices state: the three fixture devices, and what the player did to them.
+func cloud_sync(kind: String) -> Control:
+	var s := PKeyCloudSyncStatus.new()
+	s.auto_sdk = false
+	add(s)
+	s.sync_time = "2 minutes ago"
+	match kind:
+		"synced", "syncing", "offline", "error":
+			s.state = kind
+		"conflict":
+			s.state = "conflict"
+			s.can_review = true
+		"signed-out":
+			s.state = "error"
+			s.signed_in = false
+	s.refresh_view()
+	return s
+
+
+func about(kind: String) -> Control:
+	var a := PKeyAbout.new()
+	a.auto_sdk = false
+	a.version = "2.5.0 (4182)"
+	add(a)
+	if kind == "full":
+		a.privacy_url = "https://polaris.locker/privacy"
+		a.support_url = "https://polaris.locker/help"
+		a.diagnostics = "version 2.5.0 build 4182 outlet steam"
+	a.refresh_view()
+	return a
+
+
+const RELEASE_ENTRIES := [
+	{"version": "2.5.0", "date": "September 30, 2026", "notes": "Faster sync. Fixes a crash on launch."},
+	{"version": "2.4.1", "date": "August 12, 2026", "notes": "Fixes the mixer on Windows. <b>Not markup.</b>"},
+]
+
+
+func release_notes(kind: String) -> Control:
+	var r := PKeyReleaseNotes.new()
+	r.auto_sdk = false
+	add(r)
+	match kind:
+		"list":
+			r.entries = RELEASE_ENTRIES.duplicate(true)
+		"loading":
+			r.loading = true
+			r._loading_since = Time.get_ticks_msec() - 400
+		"error":
+			r.failed = true
+	r.refresh_view()
+	return r
+
+
+func paywall(kind: String) -> Control:
+	var p := PKeyPaywall.new()
+	p.auto_sdk = false
+	p.tier = "Pro"
+	add(p)
+	match kind:
+		"offers-portal":
+			p.offers_url = "https://polaris.locker/activate?product=tidewater"
+		"offers-store":
+			p.store_purchase = true
+			p.can_restore = true
+		"offers-includes":
+			p.offers_url = "https://polaris.locker/activate?product=tidewater"
+			p.includes = PackedStringArray(["Unlimited exports", "Cloud saves", "Every future expansion"])
+			p.redeem_requested.connect(func(): pass)
+		"loading":
+			p.loading = true
+			p._loading_since = Time.get_ticks_msec() - 400
+		"purchasing":
+			p.store_purchase = true
+			p.pending = "purchase"
+		"restore":
+			p.store_purchase = true
+			p.can_restore = true
+			p.pending = "restore"
+		"purchased":
+			p.store_purchase = true
+			p.purchased = true
+		"not-available":
+			p.offers_available = false
+		"not-available-portal":
+			p.offers_available = false
+			p.offers_url = "https://polaris.locker/activate?product=tidewater"
+	p.refresh_view()
+	return p
+
+
+func device_limit(kind: String) -> Control:
+	var d := PKeyDeviceLimit.new()
+	d.auto_sdk = false
+	d.used = 3
+	d.limit = 3
+	d.form_factor = "mac"
+	add(d)
+	match kind:
+		"default":
+			d.devices = DEVICE_ROWS.duplicate(true)
+		"unknown":
+			d.used = -1
+			d.limit = -1
+			d.devices = DEVICE_ROWS.duplicate(true)
+		"browser":
+			d.manage_url = "https://polaris.locker/devices?product=tidewater"
+		"browser-tv":
+			d.manage_url = "https://polaris.locker/devices?product=tidewater"
+			d.form_factor = "tv"
+			d.pad = true
+		"busy":
+			d.devices = DEVICE_ROWS.duplicate(true)
+			d.pending = true
+		"removed":
+			d.outcome = "done"
+			d.replaced_name = "Work laptop"
+		"failed":
+			d.outcome = "failed"
+			d.replaced_name = "Work laptop"
+	d.refresh_view()
+	return d
+
+
 func devices(kind: String) -> Control:
 	var d := PKeyDeviceList.new()
 	d.auto_sdk = false
@@ -618,6 +754,8 @@ func toast(kind: String) -> Control:
 			t.show_update("2.5.0")
 		"copied":
 			t.show_copied()
+		"signed_in":
+			t.show_success("Signed in as Mara", "Pro license")
 		"warning":
 			t.show_warning("Autosave is off", "Your progress is not being saved.")
 		"error":
@@ -679,6 +817,18 @@ func update_prompt(result: PKeyResult, outlet: String, release_url: String, moda
 	p.show_when_current = true
 	add(p)
 	p.show_result(result)
+	return p
+
+
+## The modal with the changelog entry of the offered version (up to three lines and the release page).
+func update_prompt_notes() -> Control:
+	var p := PKeyUpdatePrompt.new()
+	p.outlet = "direct"
+	p.release_url = "https://example.com/dl"
+	p.modal = true
+	p._notes["1.5.0"] = {"lines": ["Faster loading screens", "A new tide table", "Fixes a crash on resume"], "url": "https://example.com/r/1.5.0"}
+	add(p)
+	p.show_result(update_check({"action": "binary", "method": "download", "release": {"version": "1.5.0", "seq": 15, "sha256": "ab"}, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}))
 	return p
 
 

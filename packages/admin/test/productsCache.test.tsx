@@ -32,7 +32,7 @@ import {
  * `array.products` (nothing), or the switcher called `.filter` on an object (a crash outside the
  * page's error boundary). Both now fetch through `fetchProducts()`; this drives the two readers
  * together, in both load orders, against a registry of one product. The static guard for every
- * key family is `queryKeyShapes.test.ts`.
+ * key family is `queryFactories.test.ts`.
  */
 
 const ONE = [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }];

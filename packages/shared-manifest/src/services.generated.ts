@@ -80,3 +80,33 @@ export const MODULE_SERVICES: Readonly<
   sync: ["sync"],
   commerce: ["commerce"],
 };
+
+/** The console's features: the grouping of slugs an operator turns on (the wizard's "What is it for?"). */
+export type FeatureId =
+  | "licensing"
+  | "managed-config"
+  | "ship-builds"
+  | "sign-in"
+  | "cloud-sync"
+  | "commerce";
+
+export interface FeatureRow {
+  id: FeatureId;
+  label: string;
+  /** What the feature's own switch writes: its slugs, less those a `service` switch controls. */
+  primary: readonly ServiceSlug[];
+}
+
+/** The features, in canonical order. */
+export const FEATURES: readonly FeatureRow[] = [
+  { id: "licensing", label: "Licensing", primary: ["license"] },
+  { id: "managed-config", label: "Managed config", primary: ["config"] },
+  {
+    id: "ship-builds",
+    label: "Ship builds",
+    primary: ["release", "distribution"],
+  },
+  { id: "sign-in", label: "Sign-in", primary: ["identity"] },
+  { id: "cloud-sync", label: "Cloud Sync", primary: ["sync"] },
+  { id: "commerce", label: "Commerce", primary: ["commerce"] },
+];

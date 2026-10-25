@@ -268,6 +268,7 @@ class AsyncPolarisKeyClient:
     def __init__(self, sync_client: PolarisKeyClient) -> None:
         self.sync_client = sync_client
         self.license = _AsyncFacet(sync_client.license)
+        self.entitlements = _AsyncFacet(sync_client.entitlements)
         self.config = _AsyncFacet(sync_client.config)
         self.devices = _AsyncFacet(sync_client.devices)
         self.identity = _AsyncIdentity(sync_client.identity)

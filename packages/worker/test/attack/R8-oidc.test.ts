@@ -70,12 +70,7 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // these tests assert against.
 import { requireLicensedDevice } from "../../src/core/licensing/authz.js";
 import { authorizeDevice } from "../../src/core/licensing/authz.js";
-import {
-  countActiveDevices,
-  getDevice,
-  SEAT_DORMANCY_SECONDS,
-  seatActiveSince,
-} from "../../src/core/devices/store.js";
+import { countActiveDevices, getDevice } from "../../src/core/devices/store.js";
 import { getLicense, getLicenseBySub } from "../../src/core/licensing/store.js";
 import { handleEnroll } from "../../src/services/license/enroll.js";
 import {

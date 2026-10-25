@@ -320,7 +320,7 @@ describe("Catalog editor", () => {
     await userEvent.type(label, "Request timeout");
     expect(await screen.findByText(/1 changed/)).toBeTruthy();
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog", {
       name: "Publish version 9",
@@ -364,7 +364,7 @@ describe("Catalog editor", () => {
     // As a Secret at publish, the fields that do not apply are dropped.
     await userEvent.click(screen.getByRole("radio", { name: /^Secret/ }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "Review changes" }),
+      await screen.findByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog", {
       name: "Publish version 9",
@@ -439,7 +439,7 @@ describe("Catalog editor", () => {
     await userEvent.clear(secret);
     await userEvent.type(secret, "OTHER_KEY");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog", {
       name: "Publish version 9",
@@ -496,7 +496,7 @@ describe("Catalog editor", () => {
     );
     expect(await screen.findByText(/\+1 key/)).toBeTruthy();
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     await userEvent.click(
@@ -523,7 +523,7 @@ describe("Catalog editor", () => {
     ).toBeTruthy();
     expect(screen.getByText(/1 error/)).toBeTruthy();
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     const pinned = within(drawer).getByRole("region", {
@@ -560,7 +560,7 @@ describe("Catalog editor", () => {
       await screen.findByRole("button", { name: "Remove from catalog" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     expect(
@@ -601,7 +601,7 @@ describe("Catalog editor", () => {
       await screen.findByRole("button", { name: "Remove from catalog" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     expect(
@@ -616,14 +616,14 @@ describe("Catalog editor", () => {
     await openEditor({}, undefined, { releaseSource: "github" });
     await userEvent.type(await labelBox(), "!");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     expect(
       within(drawer).getByText("This catalog is manifest-owned"),
     ).toBeTruthy();
     expect(
-      within(drawer).getByText(/Publishing claims it for the console/),
+      within(drawer).getByText(/takes the catalog over from/),
     ).toBeTruthy();
   });
 
@@ -634,7 +634,7 @@ describe("Catalog editor", () => {
     });
     await userEvent.type(await labelBox(), "!");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     expect(
@@ -666,7 +666,7 @@ describe("Catalog editor", () => {
     });
     await userEvent.type(await labelBox(), "!");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     await userEvent.click(
@@ -694,7 +694,7 @@ describe("Catalog editor", () => {
     });
     await userEvent.type(await labelBox(), "!");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     let drawer = await screen.findByRole("dialog");
     await userEvent.click(
@@ -843,7 +843,7 @@ describe("Catalog entry form", () => {
       screen.getByRole("combobox", { name: /^Value type/ }).textContent,
     ).toContain("Whole number");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     await userEvent.click(

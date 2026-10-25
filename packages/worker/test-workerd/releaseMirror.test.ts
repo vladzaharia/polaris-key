@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── Release-file mirroring on miniflare's R2 and D1 (HA-08) ──────────────────────────────
 //
-// The Node lane (`test/releaseMirror.test.ts`) covers the rules against `test/r2Mock.ts`. This
+// The Node lane (`test/surfaces/console/releaseMirror.test.ts`) covers the rules against `test/r2Mock.ts`. This
 // file runs one mirror end to end against the real bindings, which is what proves the parts the
 // fake could get wrong: a GitHub asset streamed through `safeFetch`'s redirect hop into R2 under
 // workerd's `FixedLengthStream` lands byte for byte with R2's own SHA-256 checksum, the guarded

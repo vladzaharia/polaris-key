@@ -4223,7 +4223,7 @@ var require_identity = __commonJS({
     var NODE_TYPE = /* @__PURE__ */ Symbol.for("yaml.node.type");
     var isAlias = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === ALIAS;
     var isDocument = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === DOC;
-    var isMap2 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === MAP;
+    var isMap3 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === MAP;
     var isPair = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === PAIR;
     var isScalar = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === SCALAR;
     var isSeq2 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === SEQ;
@@ -4259,7 +4259,7 @@ var require_identity = __commonJS({
     exports.isAlias = isAlias;
     exports.isCollection = isCollection;
     exports.isDocument = isDocument;
-    exports.isMap = isMap2;
+    exports.isMap = isMap3;
     exports.isNode = isNode;
     exports.isPair = isPair;
     exports.isScalar = isScalar;
@@ -4288,17 +4288,17 @@ var require_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    function visit_(key, node, visitor, path32) {
-      const ctrl = callVisitor(key, node, visitor, path32);
+    function visit_(key, node, visitor, path36) {
+      const ctrl = callVisitor(key, node, visitor, path36);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path32, ctrl);
-        return visit_(key, ctrl, visitor, path32);
+        replaceNode(key, path36, ctrl);
+        return visit_(key, ctrl, visitor, path36);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path32 = Object.freeze(path32.concat(node));
+          path36 = Object.freeze(path36.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = visit_(i, node.items[i], visitor, path32);
+            const ci = visit_(i, node.items[i], visitor, path36);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -4309,13 +4309,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path32 = Object.freeze(path32.concat(node));
-          const ck = visit_("key", node.key, visitor, path32);
+          path36 = Object.freeze(path36.concat(node));
+          const ck = visit_("key", node.key, visitor, path36);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = visit_("value", node.value, visitor, path32);
+          const cv = visit_("value", node.value, visitor, path36);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -4336,17 +4336,17 @@ var require_visit = __commonJS({
     visitAsync.BREAK = BREAK;
     visitAsync.SKIP = SKIP;
     visitAsync.REMOVE = REMOVE;
-    async function visitAsync_(key, node, visitor, path32) {
-      const ctrl = await callVisitor(key, node, visitor, path32);
+    async function visitAsync_(key, node, visitor, path36) {
+      const ctrl = await callVisitor(key, node, visitor, path36);
       if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-        replaceNode(key, path32, ctrl);
-        return visitAsync_(key, ctrl, visitor, path32);
+        replaceNode(key, path36, ctrl);
+        return visitAsync_(key, ctrl, visitor, path36);
       }
       if (typeof ctrl !== "symbol") {
         if (identity.isCollection(node)) {
-          path32 = Object.freeze(path32.concat(node));
+          path36 = Object.freeze(path36.concat(node));
           for (let i = 0; i < node.items.length; ++i) {
-            const ci = await visitAsync_(i, node.items[i], visitor, path32);
+            const ci = await visitAsync_(i, node.items[i], visitor, path36);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -4357,13 +4357,13 @@ var require_visit = __commonJS({
             }
           }
         } else if (identity.isPair(node)) {
-          path32 = Object.freeze(path32.concat(node));
-          const ck = await visitAsync_("key", node.key, visitor, path32);
+          path36 = Object.freeze(path36.concat(node));
+          const ck = await visitAsync_("key", node.key, visitor, path36);
           if (ck === BREAK)
             return BREAK;
           else if (ck === REMOVE)
             node.key = null;
-          const cv = await visitAsync_("value", node.value, visitor, path32);
+          const cv = await visitAsync_("value", node.value, visitor, path36);
           if (cv === BREAK)
             return BREAK;
           else if (cv === REMOVE)
@@ -4390,23 +4390,23 @@ var require_visit = __commonJS({
       }
       return visitor;
     }
-    function callVisitor(key, node, visitor, path32) {
+    function callVisitor(key, node, visitor, path36) {
       if (typeof visitor === "function")
-        return visitor(key, node, path32);
+        return visitor(key, node, path36);
       if (identity.isMap(node))
-        return visitor.Map?.(key, node, path32);
+        return visitor.Map?.(key, node, path36);
       if (identity.isSeq(node))
-        return visitor.Seq?.(key, node, path32);
+        return visitor.Seq?.(key, node, path36);
       if (identity.isPair(node))
-        return visitor.Pair?.(key, node, path32);
+        return visitor.Pair?.(key, node, path36);
       if (identity.isScalar(node))
-        return visitor.Scalar?.(key, node, path32);
+        return visitor.Scalar?.(key, node, path36);
       if (identity.isAlias(node))
-        return visitor.Alias?.(key, node, path32);
+        return visitor.Alias?.(key, node, path36);
       return void 0;
     }
-    function replaceNode(key, path32, node) {
-      const parent = path32[path32.length - 1];
+    function replaceNode(key, path36, node) {
+      const parent = path36[path36.length - 1];
       if (identity.isCollection(parent)) {
         parent.items[key] = node;
       } else if (identity.isPair(parent)) {
@@ -5027,10 +5027,10 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema, path32, value) {
+    function collectionFromPath(schema, path36, value) {
       let v = value;
-      for (let i = path32.length - 1; i >= 0; --i) {
-        const k = path32[i];
+      for (let i = path36.length - 1; i >= 0; --i) {
+        const k = path36[i];
         if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
           const a = [];
           a[k] = v;
@@ -5049,7 +5049,7 @@ var require_Collection = __commonJS({
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
-    var isEmptyPath = (path32) => path32 == null || typeof path32 === "object" && !!path32[Symbol.iterator]().next().done;
+    var isEmptyPath = (path36) => path36 == null || typeof path36 === "object" && !!path36[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
       constructor(type, schema) {
         super(type);
@@ -5079,11 +5079,11 @@ var require_Collection = __commonJS({
        * be a Pair instance or a `{ key, value }` object, which may not have a key
        * that already exists in the map.
        */
-      addIn(path32, value) {
-        if (isEmptyPath(path32))
+      addIn(path36, value) {
+        if (isEmptyPath(path36))
           this.add(value);
         else {
-          const [key, ...rest] = path32;
+          const [key, ...rest] = path36;
           const node = this.get(key, true);
           if (identity.isCollection(node))
             node.addIn(rest, value);
@@ -5097,8 +5097,8 @@ var require_Collection = __commonJS({
        * Removes a value from the collection.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path32) {
-        const [key, ...rest] = path32;
+      deleteIn(path36) {
+        const [key, ...rest] = path36;
         if (rest.length === 0)
           return this.delete(key);
         const node = this.get(key, true);
@@ -5112,8 +5112,8 @@ var require_Collection = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path32, keepScalar) {
-        const [key, ...rest] = path32;
+      getIn(path36, keepScalar) {
+        const [key, ...rest] = path36;
         const node = this.get(key, true);
         if (rest.length === 0)
           return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -5131,8 +5131,8 @@ var require_Collection = __commonJS({
       /**
        * Checks if the collection includes a value with the key `key`.
        */
-      hasIn(path32) {
-        const [key, ...rest] = path32;
+      hasIn(path36) {
+        const [key, ...rest] = path36;
         if (rest.length === 0)
           return this.has(key);
         const node = this.get(key, true);
@@ -5142,8 +5142,8 @@ var require_Collection = __commonJS({
        * Sets a value in this collection. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path32, value) {
-        const [key, ...rest] = path32;
+      setIn(path36, value) {
+        const [key, ...rest] = path36;
         if (rest.length === 0) {
           this.set(key, value);
         } else {
@@ -5168,13 +5168,13 @@ var require_stringifyComment = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    var stringifyComment = (str6) => str6.replace(/^(?!$)(?: $)?/gm, "#");
+    var stringifyComment = (str8) => str8.replace(/^(?!$)(?: $)?/gm, "#");
     function indentComment(comment, indent) {
       if (/^\n+$/.test(comment))
         return comment.substring(1);
       return indent ? comment.replace(/^(?! *$)/gm, indent) : comment;
     }
-    var lineComment = (str6, indent, comment) => str6.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str6.endsWith(" ") ? "" : " ") + comment;
+    var lineComment = (str8, indent, comment) => str8.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str8.endsWith(" ") ? "" : " ") + comment;
     exports.indentComment = indentComment;
     exports.lineComment = lineComment;
     exports.stringifyComment = stringifyComment;
@@ -5189,22 +5189,22 @@ var require_foldFlowLines = __commonJS({
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
     var FOLD_QUOTED = "quoted";
-    function foldFlowLines(text, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
-      if (!lineWidth || lineWidth < 0)
-        return text;
-      if (lineWidth < minContentWidth)
+    function foldFlowLines(text3, indent, mode = "flow", { indentAtStart, lineWidth: lineWidth2 = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+      if (!lineWidth2 || lineWidth2 < 0)
+        return text3;
+      if (lineWidth2 < minContentWidth)
         minContentWidth = 0;
-      const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent.length);
-      if (text.length <= endStep)
-        return text;
+      const endStep = Math.max(1 + minContentWidth, 1 + lineWidth2 - indent.length);
+      if (text3.length <= endStep)
+        return text3;
       const folds = [];
       const escapedFolds = {};
-      let end = lineWidth - indent.length;
+      let end = lineWidth2 - indent.length;
       if (typeof indentAtStart === "number") {
-        if (indentAtStart > lineWidth - Math.max(2, minContentWidth))
+        if (indentAtStart > lineWidth2 - Math.max(2, minContentWidth))
           folds.push(0);
         else
-          end = lineWidth - indentAtStart;
+          end = lineWidth2 - indentAtStart;
       }
       let split = void 0;
       let prev = void 0;
@@ -5213,14 +5213,14 @@ var require_foldFlowLines = __commonJS({
       let escStart = -1;
       let escEnd = -1;
       if (mode === FOLD_BLOCK) {
-        i = consumeMoreIndentedLines(text, i, indent.length);
+        i = consumeMoreIndentedLines(text3, i, indent.length);
         if (i !== -1)
           end = i + endStep;
       }
-      for (let ch; ch = text[i += 1]; ) {
+      for (let ch; ch = text3[i += 1]; ) {
         if (mode === FOLD_QUOTED && ch === "\\") {
           escStart = i;
-          switch (text[i + 1]) {
+          switch (text3[i + 1]) {
             case "x":
               i += 3;
               break;
@@ -5237,12 +5237,12 @@ var require_foldFlowLines = __commonJS({
         }
         if (ch === "\n") {
           if (mode === FOLD_BLOCK)
-            i = consumeMoreIndentedLines(text, i, indent.length);
+            i = consumeMoreIndentedLines(text3, i, indent.length);
           end = i + indent.length + endStep;
           split = void 0;
         } else {
           if (ch === " " && prev && prev !== " " && prev !== "\n" && prev !== "	") {
-            const next = text[i + 1];
+            const next = text3[i + 1];
             if (next && next !== " " && next !== "\n" && next !== "	")
               split = i;
           }
@@ -5254,12 +5254,12 @@ var require_foldFlowLines = __commonJS({
             } else if (mode === FOLD_QUOTED) {
               while (prev === " " || prev === "	") {
                 prev = ch;
-                ch = text[i += 1];
+                ch = text3[i += 1];
                 overflow = true;
               }
               const j = i > escEnd + 1 ? i - 2 : escStart - 1;
               if (escapedFolds[j])
-                return text;
+                return text3;
               folds.push(j);
               escapedFolds[j] = true;
               end = j + endStep;
@@ -5274,39 +5274,39 @@ var require_foldFlowLines = __commonJS({
       if (overflow && onOverflow)
         onOverflow();
       if (folds.length === 0)
-        return text;
+        return text3;
       if (onFold)
         onFold();
-      let res = text.slice(0, folds[0]);
+      let res = text3.slice(0, folds[0]);
       for (let i2 = 0; i2 < folds.length; ++i2) {
         const fold = folds[i2];
-        const end2 = folds[i2 + 1] || text.length;
+        const end2 = folds[i2 + 1] || text3.length;
         if (fold === 0)
           res = `
-${indent}${text.slice(0, end2)}`;
+${indent}${text3.slice(0, end2)}`;
         else {
           if (mode === FOLD_QUOTED && escapedFolds[fold])
-            res += `${text[fold]}\\`;
+            res += `${text3[fold]}\\`;
           res += `
-${indent}${text.slice(fold + 1, end2)}`;
+${indent}${text3.slice(fold + 1, end2)}`;
         }
       }
       return res;
     }
-    function consumeMoreIndentedLines(text, i, indent) {
+    function consumeMoreIndentedLines(text3, i, indent) {
       let end = i;
       let start = i + 1;
-      let ch = text[start];
+      let ch = text3[start];
       while (ch === " " || ch === "	") {
         if (i < start + indent) {
-          ch = text[++i];
+          ch = text3[++i];
         } else {
           do {
-            ch = text[++i];
+            ch = text3[++i];
           } while (ch && ch !== "\n");
           end = i;
           start = i + 1;
-          ch = text[start];
+          ch = text3[start];
         }
       }
       return end;
@@ -5330,16 +5330,16 @@ var require_stringifyString = __commonJS({
       lineWidth: ctx.options.lineWidth,
       minContentWidth: ctx.options.minContentWidth
     });
-    var containsDocumentMarker = (str6) => /^(%|---|\.\.\.)/m.test(str6);
-    function lineLengthOverLimit(str6, lineWidth, indentLength) {
-      if (!lineWidth || lineWidth < 0)
+    var containsDocumentMarker = (str8) => /^(%|---|\.\.\.)/m.test(str8);
+    function lineLengthOverLimit(str8, lineWidth2, indentLength) {
+      if (!lineWidth2 || lineWidth2 < 0)
         return false;
-      const limit = lineWidth - indentLength;
-      const strLen = str6.length;
+      const limit = lineWidth2 - indentLength;
+      const strLen = str8.length;
       if (strLen <= limit)
         return false;
       for (let i = 0, start = 0; i < strLen; ++i) {
-        if (str6[i] === "\n") {
+        if (str8[i] === "\n") {
           if (i - start > limit)
             return true;
           start = i + 1;
@@ -5356,11 +5356,11 @@ var require_stringifyString = __commonJS({
       const { implicitKey } = ctx;
       const minMultiLineLength = ctx.options.doubleQuotedMinMultiLineLength;
       const indent = ctx.indent || (containsDocumentMarker(value) ? "  " : "");
-      let str6 = "";
+      let str8 = "";
       let start = 0;
       for (let i = 0, ch = json[i]; ch; ch = json[++i]) {
         if (ch === " " && json[i + 1] === "\\" && json[i + 2] === "n") {
-          str6 += json.slice(start, i) + "\\ ";
+          str8 += json.slice(start, i) + "\\ ";
           i += 1;
           start = i;
           ch = "\\";
@@ -5369,38 +5369,38 @@ var require_stringifyString = __commonJS({
           switch (json[i + 1]) {
             case "u":
               {
-                str6 += json.slice(start, i);
+                str8 += json.slice(start, i);
                 const code = json.substr(i + 2, 4);
                 switch (code) {
                   case "0000":
-                    str6 += "\\0";
+                    str8 += "\\0";
                     break;
                   case "0007":
-                    str6 += "\\a";
+                    str8 += "\\a";
                     break;
                   case "000b":
-                    str6 += "\\v";
+                    str8 += "\\v";
                     break;
                   case "001b":
-                    str6 += "\\e";
+                    str8 += "\\e";
                     break;
                   case "0085":
-                    str6 += "\\N";
+                    str8 += "\\N";
                     break;
                   case "00a0":
-                    str6 += "\\_";
+                    str8 += "\\_";
                     break;
                   case "2028":
-                    str6 += "\\L";
+                    str8 += "\\L";
                     break;
                   case "2029":
-                    str6 += "\\P";
+                    str8 += "\\P";
                     break;
                   default:
                     if (code.substr(0, 2) === "00")
-                      str6 += "\\x" + code.substr(2);
+                      str8 += "\\x" + code.substr(2);
                     else
-                      str6 += json.substr(i, 6);
+                      str8 += json.substr(i, 6);
                 }
                 i += 5;
                 start = i + 1;
@@ -5410,14 +5410,14 @@ var require_stringifyString = __commonJS({
               if (implicitKey || json[i + 2] === '"' || json.length < minMultiLineLength) {
                 i += 1;
               } else {
-                str6 += json.slice(start, i) + "\n\n";
+                str8 += json.slice(start, i) + "\n\n";
                 while (json[i + 2] === "\\" && json[i + 3] === "n" && json[i + 4] !== '"') {
-                  str6 += "\n";
+                  str8 += "\n";
                   i += 2;
                 }
-                str6 += indent;
+                str8 += indent;
                 if (json[i + 2] === " ")
-                  str6 += "\\";
+                  str8 += "\\";
                 i += 1;
                 start = i + 1;
               }
@@ -5426,8 +5426,8 @@ var require_stringifyString = __commonJS({
               i += 1;
           }
       }
-      str6 = start ? str6 + json.slice(start) : json;
-      return implicitKey ? str6 : foldFlowLines.foldFlowLines(str6, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
+      str8 = start ? str8 + json.slice(start) : json;
+      return implicitKey ? str8 : foldFlowLines.foldFlowLines(str8, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
     }
     function singleQuotedString(value, ctx) {
       if (ctx.options.singleQuote === false || ctx.implicitKey && value.includes("\n") || /[ \t]\n|\n[ \t]/.test(value))
@@ -5461,12 +5461,12 @@ ${indent}`) + "'";
       blockEndNewlines = /\n+(?!\n|$)/g;
     }
     function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
-      const { blockQuote, commentString, lineWidth } = ctx.options;
+      const { blockQuote, commentString, lineWidth: lineWidth2 } = ctx.options;
       if (!blockQuote || /\n[\t ]+$/.test(value)) {
         return quotedString(value, ctx);
       }
       const indent = ctx.indent || (ctx.forceBlockIndent || containsDocumentMarker(value) ? "  " : "");
-      const literal2 = blockQuote === "literal" ? true : blockQuote === "folded" || type === Scalar.Scalar.BLOCK_FOLDED ? false : type === Scalar.Scalar.BLOCK_LITERAL ? true : !lineLengthOverLimit(value, lineWidth, indent.length);
+      const literal2 = blockQuote === "literal" ? true : blockQuote === "folded" || type === Scalar.Scalar.BLOCK_FOLDED ? false : type === Scalar.Scalar.BLOCK_LITERAL ? true : !lineLengthOverLimit(value, lineWidth2, indent.length);
       if (!value)
         return literal2 ? "|\n" : ">\n";
       let chomp;
@@ -5555,15 +5555,15 @@ ${indent}${start}${value}${end}`;
           return quotedString(value, ctx);
         }
       }
-      const str6 = value.replace(/\n+/g, `$&
+      const str8 = value.replace(/\n+/g, `$&
 ${indent}`);
       if (actualString) {
-        const test = (tag2) => tag2.default && tag2.tag !== "tag:yaml.org,2002:str" && tag2.test?.test(str6);
+        const test = (tag2) => tag2.default && tag2.tag !== "tag:yaml.org,2002:str" && tag2.test?.test(str8);
         const { compat, tags } = ctx.doc.schema;
         if (tags.some(test) || compat?.some(test))
           return quotedString(value, ctx);
       }
-      return implicitKey ? str6 : foldFlowLines.foldFlowLines(str6, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
+      return implicitKey ? str8 : foldFlowLines.foldFlowLines(str8, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
     }
     function stringifyString(item, ctx, onComment, onChompKeep) {
       const { implicitKey, inFlow } = ctx;
@@ -5716,11 +5716,11 @@ var require_stringify = __commonJS({
       const props = stringifyProps(node, tagObj, ctx);
       if (props.length > 0)
         ctx.indentAtStart = (ctx.indentAtStart ?? 0) + props.length + 1;
-      const str6 = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
+      const str8 = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
       if (!props)
-        return str6;
-      return identity.isScalar(node) || str6[0] === "{" || str6[0] === "[" ? `${props} ${str6}` : `${props}
-${ctx.indent}${str6}`;
+        return str8;
+      return identity.isScalar(node) || str8[0] === "{" || str8[0] === "[" ? `${props} ${str8}` : `${props}
+${ctx.indent}${str8}`;
     }
     exports.createStringifyContext = createStringifyContext;
     exports.stringify = stringify2;
@@ -5756,8 +5756,8 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str6 = stringify2.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
-      if (!explicitKey && !ctx.inFlow && str6.length > 1024) {
+      let str8 = stringify2.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      if (!explicitKey && !ctx.inFlow && str8.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
         explicitKey = true;
@@ -5766,27 +5766,27 @@ var require_stringifyPair = __commonJS({
         if (allNullValues || value == null) {
           if (keyCommentDone && onComment)
             onComment();
-          return str6 === "" ? "?" : explicitKey ? `? ${str6}` : str6;
+          return str8 === "" ? "?" : explicitKey ? `? ${str8}` : str8;
         }
       } else if (allNullValues && !simpleKeys || value == null && explicitKey) {
-        str6 = `? ${str6}`;
+        str8 = `? ${str8}`;
         if (keyComment && !keyCommentDone) {
-          str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(keyComment));
+          str8 += stringifyComment.lineComment(str8, ctx.indent, commentString(keyComment));
         } else if (chompKeep && onChompKeep)
           onChompKeep();
-        return str6;
+        return str8;
       }
       if (keyCommentDone)
         keyComment = null;
       if (explicitKey) {
         if (keyComment)
-          str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(keyComment));
-        str6 = `? ${str6}
+          str8 += stringifyComment.lineComment(str8, ctx.indent, commentString(keyComment));
+        str8 = `? ${str8}
 ${indent}:`;
       } else {
-        str6 = `${str6}:`;
+        str8 = `${str8}:`;
         if (keyComment)
-          str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(keyComment));
+          str8 += stringifyComment.lineComment(str8, ctx.indent, commentString(keyComment));
       }
       let vsb, vcb, valueComment;
       if (identity.isNode(value)) {
@@ -5802,7 +5802,7 @@ ${indent}:`;
       }
       ctx.implicitKey = false;
       if (!explicitKey && !keyComment && identity.isScalar(value))
-        ctx.indentAtStart = str6.length + 1;
+        ctx.indentAtStart = str8.length + 1;
       chompKeep = false;
       if (!indentSeq && indentStep.length >= 2 && !ctx.inFlow && !explicitKey && identity.isSeq(value) && !value.flow && !value.tag && !value.anchor) {
         ctx.indent = ctx.indent.substring(2);
@@ -5828,8 +5828,8 @@ ${ctx.indent}`;
         const vs0 = valueStr[0];
         const nl0 = valueStr.indexOf("\n");
         const hasNewline = nl0 !== -1;
-        const flow = ctx.inFlow ?? value.flow ?? value.items.length === 0;
-        if (hasNewline || !flow) {
+        const flow3 = ctx.inFlow ?? value.flow ?? value.items.length === 0;
+        if (hasNewline || !flow3) {
           let hasPropsLine = false;
           if (hasNewline && (vs0 === "&" || vs0 === "!")) {
             let sp0 = valueStr.indexOf(" ");
@@ -5846,16 +5846,16 @@ ${ctx.indent}`;
       } else if (valueStr === "" || valueStr[0] === "\n") {
         ws = "";
       }
-      str6 += ws + valueStr;
+      str8 += ws + valueStr;
       if (ctx.inFlow) {
         if (valueCommentDone && onComment)
           onComment();
       } else if (valueComment && !valueCommentDone) {
-        str6 += stringifyComment.lineComment(str6, ctx.indent, commentString(valueComment));
+        str8 += stringifyComment.lineComment(str8, ctx.indent, commentString(valueComment));
       } else if (chompKeep && onChompKeep) {
         onChompKeep();
       }
-      return str6;
+      return str8;
     }
     exports.stringifyPair = stringifyPair;
   }
@@ -6060,8 +6060,8 @@ var require_stringifyCollection = __commonJS({
     var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyCollection(collection, ctx, options) {
-      const flow = ctx.inFlow ?? collection.flow;
-      const stringify3 = flow ? stringifyFlowCollection : stringifyBlockCollection;
+      const flow3 = ctx.inFlow ?? collection.flow;
+      const stringify3 = flow3 ? stringifyFlowCollection : stringifyBlockCollection;
       return stringify3(collection, ctx, options);
     }
     function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, flowChars, itemIndent, onChompKeep, onComment }) {
@@ -6087,31 +6087,31 @@ var require_stringifyCollection = __commonJS({
           }
         }
         chompKeep = false;
-        let str7 = stringify2.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str9 = stringify2.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
-          str7 += stringifyComment.lineComment(str7, itemIndent, commentString(comment2));
+          str9 += stringifyComment.lineComment(str9, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
           chompKeep = false;
-        lines4.push(blockItemPrefix + str7);
+        lines4.push(blockItemPrefix + str9);
       }
-      let str6;
+      let str8;
       if (lines4.length === 0) {
-        str6 = flowChars.start + flowChars.end;
+        str8 = flowChars.start + flowChars.end;
       } else {
-        str6 = lines4[0];
+        str8 = lines4[0];
         for (let i = 1; i < lines4.length; ++i) {
           const line = lines4[i];
-          str6 += line ? `
+          str8 += line ? `
 ${indent}${line}` : "\n";
         }
       }
       if (comment) {
-        str6 += "\n" + stringifyComment.indentComment(commentString(comment), indent);
+        str8 += "\n" + stringifyComment.indentComment(commentString(comment), indent);
         if (onComment)
           onComment();
       } else if (chompKeep && onChompKeep)
         onChompKeep();
-      return str6;
+      return str8;
     }
     function stringifyFlowCollection({ items }, ctx, { flowChars, itemIndent }) {
       const { indent, indentStep, flowCollectionPadding: fcPadding, options: { commentString } } = ctx;
@@ -6154,21 +6154,21 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str6 = stringify2.stringify(item, itemCtx, () => comment = null);
-        reqNewline || (reqNewline = lines4.length > linesAtValue || str6.includes("\n"));
+        let str8 = stringify2.stringify(item, itemCtx, () => comment = null);
+        reqNewline || (reqNewline = lines4.length > linesAtValue || str8.includes("\n"));
         if (i < items.length - 1) {
-          str6 += ",";
+          str8 += ",";
         } else if (ctx.options.trailingComma) {
           if (ctx.options.lineWidth > 0) {
-            reqNewline || (reqNewline = lines4.reduce((sum, line) => sum + line.length + 2, 2) + (str6.length + 2) > ctx.options.lineWidth);
+            reqNewline || (reqNewline = lines4.reduce((sum, line) => sum + line.length + 2, 2) + (str8.length + 2) > ctx.options.lineWidth);
           }
           if (reqNewline) {
-            str6 += ",";
+            str8 += ",";
           }
         }
         if (comment)
-          str6 += stringifyComment.lineComment(str6, itemIndent, commentString(comment));
-        lines4.push(str6);
+          str8 += stringifyComment.lineComment(str8, itemIndent, commentString(comment));
+        lines4.push(str8);
         linesAtValue = lines4.length;
       }
       const { start, end } = flowChars;
@@ -6180,11 +6180,11 @@ ${indent}${line}` : "\n";
           reqNewline = ctx.options.lineWidth > 0 && len > ctx.options.lineWidth;
         }
         if (reqNewline) {
-          let str6 = start;
+          let str8 = start;
           for (const line of lines4)
-            str6 += line ? `
+            str8 += line ? `
 ${indentStep}${indent}${line}` : "\n";
-          return `${str6}
+          return `${str8}
 ${indent}${end}`;
         } else {
           return `${start}${fcPadding}${lines4.join(" ")}${fcPadding}${end}`;
@@ -6521,7 +6521,7 @@ var require_string = __commonJS({
       identify: (value) => typeof value === "string",
       default: true,
       tag: "tag:yaml.org,2002:str",
-      resolve: (str6) => str6,
+      resolve: (str8) => str8,
       stringify(item, ctx, onComment, onChompKeep) {
         ctx = Object.assign({ actualString: true }, ctx);
         return stringifyString.stringifyString(item, ctx, onComment, onChompKeep);
@@ -6561,7 +6561,7 @@ var require_bool = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:bool",
       test: /^(?:[Tt]rue|TRUE|[Ff]alse|FALSE)$/,
-      resolve: (str6) => new Scalar.Scalar(str6[0] === "t" || str6[0] === "T"),
+      resolve: (str8) => new Scalar.Scalar(str8[0] === "t" || str8[0] === "T"),
       stringify({ source, value }, ctx) {
         if (source && boolTag.test.test(source)) {
           const sv = source[0] === "t" || source[0] === "T";
@@ -6615,7 +6615,7 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str6) => str6.slice(-3).toLowerCase() === "nan" ? NaN : str6[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str8) => str8.slice(-3).toLowerCase() === "nan" ? NaN : str8[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -6624,7 +6624,7 @@ var require_float = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)[eE][-+]?[0-9]+$/,
-      resolve: (str6) => parseFloat(str6),
+      resolve: (str8) => parseFloat(str8),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -6635,11 +6635,11 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+\.[0-9]*)$/,
-      resolve(str6) {
-        const node = new Scalar.Scalar(parseFloat(str6));
-        const dot = str6.indexOf(".");
-        if (dot !== -1 && str6[str6.length - 1] === "0")
-          node.minFractionDigits = str6.length - dot - 1;
+      resolve(str8) {
+        const node = new Scalar.Scalar(parseFloat(str8));
+        const dot = str8.indexOf(".");
+        if (dot !== -1 && str8[str8.length - 1] === "0")
+          node.minFractionDigits = str8.length - dot - 1;
         return node;
       },
       stringify: stringifyNumber.stringifyNumber
@@ -6657,7 +6657,7 @@ var require_int = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    var intResolve = (str6, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str6) : parseInt(str6.substring(offset), radix);
+    var intResolve = (str8, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str8) : parseInt(str8.substring(offset), radix);
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value) && value >= 0)
@@ -6670,7 +6670,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^0o[0-7]+$/,
-      resolve: (str6, _onError, opt) => intResolve(str6, 2, 8, opt),
+      resolve: (str8, _onError, opt) => intResolve(str8, 2, 8, opt),
       stringify: (node) => intStringify(node, 8, "0o")
     };
     var int = {
@@ -6678,7 +6678,7 @@ var require_int = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9]+$/,
-      resolve: (str6, _onError, opt) => intResolve(str6, 0, 10, opt),
+      resolve: (str8, _onError, opt) => intResolve(str8, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -6687,7 +6687,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^0x[0-9a-fA-F]+$/,
-      resolve: (str6, _onError, opt) => intResolve(str6, 2, 16, opt),
+      resolve: (str8, _onError, opt) => intResolve(str8, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -6705,7 +6705,7 @@ var require_schema = __commonJS({
     var _null = require_null();
     var seq = require_seq();
     var string = require_string();
-    var bool2 = require_bool();
+    var bool3 = require_bool();
     var float = require_float();
     var int = require_int();
     var schema = [
@@ -6713,7 +6713,7 @@ var require_schema = __commonJS({
       seq.seq,
       string.string,
       _null.nullTag,
-      bool2.boolTag,
+      bool3.boolTag,
       int.intOct,
       int.int,
       int.intHex,
@@ -6742,7 +6742,7 @@ var require_schema2 = __commonJS({
         identify: (value) => typeof value === "string",
         default: true,
         tag: "tag:yaml.org,2002:str",
-        resolve: (str6) => str6,
+        resolve: (str8) => str8,
         stringify: stringifyJSON
       },
       {
@@ -6759,7 +6759,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:bool",
         test: /^true$|^false$/,
-        resolve: (str6) => str6 === "true",
+        resolve: (str8) => str8 === "true",
         stringify: stringifyJSON
       },
       {
@@ -6767,7 +6767,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:int",
         test: /^-?(?:0|[1-9][0-9]*)$/,
-        resolve: (str6, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str6) : parseInt(str6, 10),
+        resolve: (str8, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str8) : parseInt(str8, 10),
         stringify: ({ value }) => intIdentify(value) ? value.toString() : JSON.stringify(value)
       },
       {
@@ -6775,7 +6775,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:float",
         test: /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$/,
-        resolve: (str6) => parseFloat(str6),
+        resolve: (str8) => parseFloat(str8),
         stringify: stringifyJSON
       }
     ];
@@ -6783,9 +6783,9 @@ var require_schema2 = __commonJS({
       default: true,
       tag: "",
       test: /^/,
-      resolve(str6, onError) {
-        onError(`Unresolved plain scalar ${JSON.stringify(str6)}`);
-        return str6;
+      resolve(str8, onError) {
+        onError(`Unresolved plain scalar ${JSON.stringify(str8)}`);
+        return str8;
       }
     };
     var schema = [map.map, seq.seq].concat(jsonScalars, jsonError);
@@ -6818,10 +6818,10 @@ var require_binary = __commonJS({
         if (typeof node_buffer.Buffer === "function") {
           return node_buffer.Buffer.from(src, "base64");
         } else if (typeof atob === "function") {
-          const str6 = atob(src.replace(/[\n\r]/g, ""));
-          const buffer = new Uint8Array(str6.length);
-          for (let i = 0; i < str6.length; ++i)
-            buffer[i] = str6.charCodeAt(i);
+          const str8 = atob(src.replace(/[\n\r]/g, ""));
+          const buffer = new Uint8Array(str8.length);
+          for (let i = 0; i < str8.length; ++i)
+            buffer[i] = str8.charCodeAt(i);
           return buffer;
         } else {
           onError("This environment does not support reading binary tags; either Buffer or atob is required");
@@ -6832,28 +6832,28 @@ var require_binary = __commonJS({
         if (!value)
           return "";
         const buf = value;
-        let str6;
+        let str8;
         if (typeof node_buffer.Buffer === "function") {
-          str6 = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
+          str8 = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
         } else if (typeof btoa === "function") {
           let s = "";
           for (let i = 0; i < buf.length; ++i)
             s += String.fromCharCode(buf[i]);
-          str6 = btoa(s);
+          str8 = btoa(s);
         } else {
           throw new Error("This environment does not support writing binary tags; either Buffer or btoa is required");
         }
         type ?? (type = Scalar.Scalar.BLOCK_LITERAL);
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
-          const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
-          const n = Math.ceil(str6.length / lineWidth);
+          const lineWidth2 = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
+          const n = Math.ceil(str8.length / lineWidth2);
           const lines4 = new Array(n);
-          for (let i = 0, o = 0; i < n; ++i, o += lineWidth) {
-            lines4[i] = str6.substr(o, lineWidth);
+          for (let i = 0, o = 0; i < n; ++i, o += lineWidth2) {
+            lines4[i] = str8.substr(o, lineWidth2);
           }
-          str6 = lines4.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
+          str8 = lines4.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
         }
-        return stringifyString.stringifyString({ comment, type, value: str6 }, ctx, onComment, onChompKeep);
+        return stringifyString.stringifyString({ comment, type, value: str8 }, ctx, onComment, onChompKeep);
       }
     };
     exports.binary = binary;
@@ -7063,7 +7063,7 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str6) => str6.slice(-3).toLowerCase() === "nan" ? NaN : str6[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str8) => str8.slice(-3).toLowerCase() === "nan" ? NaN : str8[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -7072,7 +7072,7 @@ var require_float2 = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:[0-9][0-9_]*)?(?:\.[0-9_]*)?[eE][-+]?[0-9]+$/,
-      resolve: (str6) => parseFloat(str6.replace(/_/g, "")),
+      resolve: (str8) => parseFloat(str8.replace(/_/g, "")),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -7083,11 +7083,11 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:[0-9][0-9_]*)?\.[0-9_]*$/,
-      resolve(str6) {
-        const node = new Scalar.Scalar(parseFloat(str6.replace(/_/g, "")));
-        const dot = str6.indexOf(".");
+      resolve(str8) {
+        const node = new Scalar.Scalar(parseFloat(str8.replace(/_/g, "")));
+        const dot = str8.indexOf(".");
         if (dot !== -1) {
-          const f = str6.substring(dot + 1).replace(/_/g, "");
+          const f = str8.substring(dot + 1).replace(/_/g, "");
           if (f[f.length - 1] === "0")
             node.minFractionDigits = f.length;
         }
@@ -7108,34 +7108,34 @@ var require_int2 = __commonJS({
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    function intResolve(str6, offset, radix, { intAsBigInt }) {
-      const sign2 = str6[0];
+    function intResolve(str8, offset, radix, { intAsBigInt }) {
+      const sign2 = str8[0];
       if (sign2 === "-" || sign2 === "+")
         offset += 1;
-      str6 = str6.substring(offset).replace(/_/g, "");
+      str8 = str8.substring(offset).replace(/_/g, "");
       if (intAsBigInt) {
         switch (radix) {
           case 2:
-            str6 = `0b${str6}`;
+            str8 = `0b${str8}`;
             break;
           case 8:
-            str6 = `0o${str6}`;
+            str8 = `0o${str8}`;
             break;
           case 16:
-            str6 = `0x${str6}`;
+            str8 = `0x${str8}`;
             break;
         }
-        const n2 = BigInt(str6);
+        const n2 = BigInt(str8);
         return sign2 === "-" ? BigInt(-1) * n2 : n2;
       }
-      const n = parseInt(str6, radix);
+      const n = parseInt(str8, radix);
       return sign2 === "-" ? -1 * n : n;
     }
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value)) {
-        const str6 = value.toString(radix);
-        return value < 0 ? "-" + prefix + str6.substr(1) : prefix + str6;
+        const str8 = value.toString(radix);
+        return value < 0 ? "-" + prefix + str8.substr(1) : prefix + str8;
       }
       return stringifyNumber.stringifyNumber(node);
     }
@@ -7145,7 +7145,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "BIN",
       test: /^[-+]?0b[0-1_]+$/,
-      resolve: (str6, _onError, opt) => intResolve(str6, 2, 2, opt),
+      resolve: (str8, _onError, opt) => intResolve(str8, 2, 2, opt),
       stringify: (node) => intStringify(node, 2, "0b")
     };
     var intOct = {
@@ -7154,7 +7154,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^[-+]?0[0-7_]+$/,
-      resolve: (str6, _onError, opt) => intResolve(str6, 1, 8, opt),
+      resolve: (str8, _onError, opt) => intResolve(str8, 1, 8, opt),
       stringify: (node) => intStringify(node, 8, "0")
     };
     var int = {
@@ -7162,7 +7162,7 @@ var require_int2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9][0-9_]*$/,
-      resolve: (str6, _onError, opt) => intResolve(str6, 0, 10, opt),
+      resolve: (str8, _onError, opt) => intResolve(str8, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -7171,7 +7171,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^[-+]?0x[0-9a-fA-F_]+$/,
-      resolve: (str6, _onError, opt) => intResolve(str6, 2, 16, opt),
+      resolve: (str8, _onError, opt) => intResolve(str8, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -7277,9 +7277,9 @@ var require_timestamp = __commonJS({
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
     var stringifyNumber = require_stringifyNumber();
-    function parseSexagesimal(str6, asBigInt) {
-      const sign2 = str6[0];
-      const parts = sign2 === "-" || sign2 === "+" ? str6.substring(1) : str6;
+    function parseSexagesimal(str8, asBigInt) {
+      const sign2 = str8[0];
+      const parts = sign2 === "-" || sign2 === "+" ? str8.substring(1) : str8;
       const num = (n) => asBigInt ? BigInt(n) : Number(n);
       const res = parts.replace(/_/g, "").split(":").reduce((res2, p) => res2 * num(60) + num(p), num(0));
       return sign2 === "-" ? num(-1) * res : res;
@@ -7316,7 +7316,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+$/,
-      resolve: (str6, _onError, { intAsBigInt }) => parseSexagesimal(str6, intAsBigInt),
+      resolve: (str8, _onError, { intAsBigInt }) => parseSexagesimal(str8, intAsBigInt),
       stringify: stringifySexagesimal
     };
     var floatTime = {
@@ -7325,7 +7325,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*$/,
-      resolve: (str6) => parseSexagesimal(str6, false),
+      resolve: (str8) => parseSexagesimal(str8, false),
       stringify: stringifySexagesimal
     };
     var timestamp = {
@@ -7336,13 +7336,13 @@ var require_timestamp = __commonJS({
       // may be omitted altogether, resulting in a date format. In such a case, the time part is
       // assumed to be 00:00:00Z (start of day, UTC).
       test: RegExp("^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})(?:(?:t|T|[ \\t]+)([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2}(\\.[0-9]+)?)(?:[ \\t]*(Z|[-+][012]?[0-9](?::[0-9]{2})?))?)?$"),
-      resolve(str6) {
-        const match = str6.match(timestamp.test);
+      resolve(str8) {
+        const match = str8.match(timestamp.test);
         if (!match)
           throw new Error("!!timestamp expects a date, starting with yyyy-mm-dd");
-        const [, year, month, day, hour, minute, second] = match.map(Number);
+        const [, year, month, day2, hour, minute, second] = match.map(Number);
         const millisec = match[7] ? Number((match[7] + "00").substr(1, 3)) : 0;
-        let date = Date.UTC(year, month - 1, day, hour || 0, minute || 0, second || 0, millisec);
+        let date = Date.UTC(year, month - 1, day2, hour || 0, minute || 0, second || 0, millisec);
         const tz = match[8];
         if (tz && tz !== "Z") {
           let d = parseSexagesimal(tz, false);
@@ -7370,7 +7370,7 @@ var require_schema3 = __commonJS({
     var seq = require_seq();
     var string = require_string();
     var binary = require_binary();
-    var bool2 = require_bool2();
+    var bool3 = require_bool2();
     var float = require_float2();
     var int = require_int2();
     var merge2 = require_merge();
@@ -7383,8 +7383,8 @@ var require_schema3 = __commonJS({
       seq.seq,
       string.string,
       _null.nullTag,
-      bool2.trueTag,
-      bool2.falseTag,
+      bool3.trueTag,
+      bool3.falseTag,
       int.intBin,
       int.intOct,
       int.int,
@@ -7414,7 +7414,7 @@ var require_tags = __commonJS({
     var _null = require_null();
     var seq = require_seq();
     var string = require_string();
-    var bool2 = require_bool();
+    var bool3 = require_bool();
     var float = require_float();
     var int = require_int();
     var schema = require_schema();
@@ -7435,7 +7435,7 @@ var require_tags = __commonJS({
     ]);
     var tagsByName = {
       binary: binary.binary,
-      bool: bool2.boolTag,
+      bool: bool3.boolTag,
       float: float.float,
       floatExp: float.floatExp,
       floatNaN: float.floatNaN,
@@ -7693,9 +7693,9 @@ var require_Document = __commonJS({
           this.contents.add(value);
       }
       /** Adds a value to the document. */
-      addIn(path32, value) {
+      addIn(path36, value) {
         if (assertCollection(this.contents))
-          this.contents.addIn(path32, value);
+          this.contents.addIn(path36, value);
       }
       /**
        * Create a new `Alias` node, ensuring that the target `node` has the required anchor.
@@ -7729,7 +7729,7 @@ var require_Document = __commonJS({
           options = replacer;
           replacer = void 0;
         }
-        const { aliasDuplicateObjects, anchorPrefix, flow, keepUndefined, onTagObj, tag: tag2 } = options ?? {};
+        const { aliasDuplicateObjects, anchorPrefix, flow: flow3, keepUndefined, onTagObj, tag: tag2 } = options ?? {};
         const { onAnchor, setAnchors, sourceObjects } = anchors.createNodeAnchors(
           this,
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -7745,7 +7745,7 @@ var require_Document = __commonJS({
           sourceObjects
         };
         const node = createNode.createNode(value, tag2, ctx);
-        if (flow && identity.isCollection(node))
+        if (flow3 && identity.isCollection(node))
           node.flow = true;
         setAnchors();
         return node;
@@ -7770,14 +7770,14 @@ var require_Document = __commonJS({
        * Removes a value from the document.
        * @returns `true` if the item was found and removed.
        */
-      deleteIn(path32) {
-        if (Collection.isEmptyPath(path32)) {
+      deleteIn(path36) {
+        if (Collection.isEmptyPath(path36)) {
           if (this.contents == null)
             return false;
           this.contents = null;
           return true;
         }
-        return assertCollection(this.contents) ? this.contents.deleteIn(path32) : false;
+        return assertCollection(this.contents) ? this.contents.deleteIn(path36) : false;
       }
       /**
        * Returns item at `key`, or `undefined` if not found. By default unwraps
@@ -7792,10 +7792,10 @@ var require_Document = __commonJS({
        * scalar values from their surrounding node; to disable set `keepScalar` to
        * `true` (collections are always returned intact).
        */
-      getIn(path32, keepScalar) {
-        if (Collection.isEmptyPath(path32))
+      getIn(path36, keepScalar) {
+        if (Collection.isEmptyPath(path36))
           return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-        return identity.isCollection(this.contents) ? this.contents.getIn(path32, keepScalar) : void 0;
+        return identity.isCollection(this.contents) ? this.contents.getIn(path36, keepScalar) : void 0;
       }
       /**
        * Checks if the document includes a value with the key `key`.
@@ -7806,10 +7806,10 @@ var require_Document = __commonJS({
       /**
        * Checks if the document includes a value at `path`.
        */
-      hasIn(path32) {
-        if (Collection.isEmptyPath(path32))
+      hasIn(path36) {
+        if (Collection.isEmptyPath(path36))
           return this.contents !== void 0;
-        return identity.isCollection(this.contents) ? this.contents.hasIn(path32) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path36) : false;
       }
       /**
        * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -7826,13 +7826,13 @@ var require_Document = __commonJS({
        * Sets a value in this document. For `!!set`, `value` needs to be a
        * boolean to add/remove the item from the set.
        */
-      setIn(path32, value) {
-        if (Collection.isEmptyPath(path32)) {
+      setIn(path36, value) {
+        if (Collection.isEmptyPath(path36)) {
           this.contents = value;
         } else if (this.contents == null) {
-          this.contents = Collection.collectionFromPath(this.schema, Array.from(path32), value);
+          this.contents = Collection.collectionFromPath(this.schema, Array.from(path36), value);
         } else if (assertCollection(this.contents)) {
-          this.contents.setIn(path32, value);
+          this.contents.setIn(path36, value);
         }
       }
       /**
@@ -7995,7 +7995,7 @@ var require_resolve_props = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/compose/resolve-props.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
+    function resolveProps(tokens, { flow: flow3, indicator, next, offset, onError, parentIndent, startOnNewline }) {
       let spaceBefore = false;
       let atNewline = startOnNewline;
       let hasSpace = startOnNewline;
@@ -8024,7 +8024,7 @@ var require_resolve_props = __commonJS({
         }
         switch (token.type) {
           case "space":
-            if (!flow && (indicator !== "doc-start" || next?.type !== "flow-collection") && token.source.includes("	")) {
+            if (!flow3 && (indicator !== "doc-start" || next?.type !== "flow-collection") && token.source.includes("	")) {
               tab = token;
             }
             hasSpace = true;
@@ -8080,15 +8080,15 @@ var require_resolve_props = __commonJS({
             if (anchor || tag2)
               onError(token, "BAD_PROP_ORDER", `Anchors and tags must be after the ${token.source} indicator`);
             if (found)
-              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow ?? "collection"}`);
+              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow3 ?? "collection"}`);
             found = token;
             atNewline = indicator === "seq-item-ind" || indicator === "explicit-key-ind";
             hasSpace = false;
             break;
           case "comma":
-            if (flow) {
+            if (flow3) {
               if (comma)
-                onError(token, "UNEXPECTED_TOKEN", `Unexpected , in ${flow}`);
+                onError(token, "UNEXPECTED_TOKEN", `Unexpected , in ${flow3}`);
               comma = token;
               atNewline = false;
               hasSpace = false;
@@ -8425,9 +8425,9 @@ var require_resolve_flow_collection = __commonJS({
     var blockMsg = "Block collections are not allowed within flow collections";
     var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
     function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag2) {
-      const isMap2 = fc.start.source === "{";
-      const fcName = isMap2 ? "flow map" : "flow sequence";
-      const NodeClass = tag2?.nodeClass ?? (isMap2 ? YAMLMap2.YAMLMap : YAMLSeq2.YAMLSeq);
+      const isMap3 = fc.start.source === "{";
+      const fcName = isMap3 ? "flow map" : "flow sequence";
+      const NodeClass = tag2?.nodeClass ?? (isMap3 ? YAMLMap2.YAMLMap : YAMLSeq2.YAMLSeq);
       const coll = new NodeClass(ctx.schema);
       coll.flow = true;
       const atRoot = ctx.atRoot;
@@ -8463,7 +8463,7 @@ var require_resolve_flow_collection = __commonJS({
             offset = props.end;
             continue;
           }
-          if (!isMap2 && ctx.options.strict && utilContainsNewline.containsNewline(key))
+          if (!isMap3 && ctx.options.strict && utilContainsNewline.containsNewline(key))
             onError(
               key,
               // checked by containsNewline()
@@ -8503,7 +8503,7 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap2 && !sep && !props.found) {
+        if (!isMap3 && !sep && !props.found) {
           const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
@@ -8526,7 +8526,7 @@ var require_resolve_flow_collection = __commonJS({
             startOnNewline: false
           });
           if (valueProps.found) {
-            if (!isMap2 && !props.found && ctx.options.strict) {
+            if (!isMap3 && !props.found && ctx.options.strict) {
               if (sep)
                 for (const st of sep) {
                   if (st === valueProps.found)
@@ -8558,7 +8558,7 @@ var require_resolve_flow_collection = __commonJS({
           const pair = new Pair.Pair(keyNode, valueNode);
           if (ctx.options.keepSourceTokens)
             pair.srcToken = collItem;
-          if (isMap2) {
+          if (isMap3) {
             const map = coll;
             if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
               onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
@@ -8574,7 +8574,7 @@ var require_resolve_flow_collection = __commonJS({
           offset = valueNode ? valueNode.range[2] : valueProps.end;
         }
       }
-      const expectedEnd = isMap2 ? "}" : "]";
+      const expectedEnd = isMap3 ? "}" : "]";
       const [ce, ...ee] = fc.end;
       let cePos = offset;
       if (ce?.source === expectedEnd)
@@ -9813,9 +9813,9 @@ var require_cst_visit = __commonJS({
     visit.BREAK = BREAK;
     visit.SKIP = SKIP;
     visit.REMOVE = REMOVE;
-    visit.itemAtPath = (cst, path32) => {
+    visit.itemAtPath = (cst, path36) => {
       let item = cst;
-      for (const [field, index] of path32) {
+      for (const [field, index] of path36) {
         const tok = item?.[field];
         if (tok && "items" in tok) {
           item = tok.items[index];
@@ -9824,23 +9824,23 @@ var require_cst_visit = __commonJS({
       }
       return item;
     };
-    visit.parentCollection = (cst, path32) => {
-      const parent = visit.itemAtPath(cst, path32.slice(0, -1));
-      const field = path32[path32.length - 1][0];
+    visit.parentCollection = (cst, path36) => {
+      const parent = visit.itemAtPath(cst, path36.slice(0, -1));
+      const field = path36[path36.length - 1][0];
       const coll = parent?.[field];
       if (coll && "items" in coll)
         return coll;
       throw new Error("Parent collection not found");
     };
-    function _visit(path32, item, visitor) {
-      let ctrl = visitor(item, path32);
+    function _visit(path36, item, visitor) {
+      let ctrl = visitor(item, path36);
       if (typeof ctrl === "symbol")
         return ctrl;
       for (const field of ["key", "value"]) {
         const token = item[field];
         if (token && "items" in token) {
           for (let i = 0; i < token.items.length; ++i) {
-            const ci = _visit(Object.freeze(path32.concat([[field, i]])), token.items[i], visitor);
+            const ci = _visit(Object.freeze(path36.concat([[field, i]])), token.items[i], visitor);
             if (typeof ci === "number")
               i = ci - 1;
             else if (ci === BREAK)
@@ -9851,10 +9851,10 @@ var require_cst_visit = __commonJS({
             }
           }
           if (typeof ctrl === "function" && field === "key")
-            ctrl = ctrl(item, path32);
+            ctrl = ctrl(item, path36);
         }
       }
-      return typeof ctrl === "function" ? ctrl(item, path32) : ctrl;
+      return typeof ctrl === "function" ? ctrl(item, path36) : ctrl;
     }
     exports.visit = visit;
   }
@@ -10593,15 +10593,15 @@ var require_parser = __commonJS({
     var node_process = __require("process");
     var cst = require_cst();
     var lexer = require_lexer();
-    function includesToken(list2, type) {
-      for (let i = 0; i < list2.length; ++i)
-        if (list2[i].type === type)
+    function includesToken(list3, type) {
+      for (let i = 0; i < list3.length; ++i)
+        if (list3[i].type === type)
           return true;
       return false;
     }
-    function findNonEmptyIndex(list2) {
-      for (let i = 0; i < list2.length; ++i) {
-        switch (list2[i].type) {
+    function findNonEmptyIndex(list3) {
+      for (let i = 0; i < list3.length; ++i) {
+        switch (list3[i].type) {
           case "space":
           case "comment":
           case "newline":
@@ -11611,13 +11611,23 @@ var require_dist = __commonJS({
   }
 });
 
+// scripts/keyring-stub.mjs
+var keyring_stub_exports = {};
+var init_keyring_stub = __esm({
+  "scripts/keyring-stub.mjs"() {
+    "use strict";
+    init_define_PKEY_EMBEDDED_SCHEMAS();
+    throw new Error("pkey-action-no-keyring");
+  }
+});
+
 // src/bin/standalone.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir12, readFile as readFile25, stat as stat11, writeFile as writeFile20 } from "node:fs/promises";
-import path30 from "node:path";
+import { mkdir as mkdir13, readFile as readFile26, stat as stat11, writeFile as writeFile21 } from "node:fs/promises";
+import path34 from "node:path";
 
 // src/bundle.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -11707,6 +11717,7 @@ var TERMINAL_LAYOUT = {
 };
 
 // ../sdk-node/dist/cli/term/caps.js
+var MIN_LAYOUT_COLUMNS = 32;
 var MIN_COLUMNS = 10;
 function layoutColumns(columns) {
   return Math.max(MIN_COLUMNS, Math.min(TERMINAL_LAYOUT.columns, Math.floor(columns)));
@@ -11794,8 +11805,8 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var HIDDEN_CHARS = /[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g;
 var EDGE_JOINERS = /^[\u200c\u200d]+|[\u200c\u200d]+$/g;
-function clean(text) {
-  return text.replace(HIDDEN_CHARS, (ch, at) => ch === "​" && (text.startsWith("::", at + 1) || text.slice(at - 2, at) === "##" && text[at + 1] === "[") ? ch : "").replace(EDGE_JOINERS, "");
+function clean(text3) {
+  return text3.replace(HIDDEN_CHARS, (ch, at) => ch === "​" && (text3.startsWith("::", at + 1) || text3.slice(at - 2, at) === "##" && text3[at + 1] === "[") ? ch : "").replace(EDGE_JOINERS, "");
 }
 var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 function safeLink(url) {
@@ -11817,11 +11828,11 @@ function safeLink(url) {
 }
 
 // ../sdk-node/dist/cli/term/osc.js
-function osc8(url, text) {
+function osc8(url, text3) {
   const safe = safeLink(url);
   if (!safe)
-    return text;
-  return `\x1B]8;;${safe}\x1B\\${text}\x1B]8;;\x1B\\`;
+    return text3;
+  return `\x1B]8;;${safe}\x1B\\${text3}\x1B]8;;\x1B\\`;
 }
 
 // ../sdk-node/dist/cli/term/paint.js
@@ -11877,17 +11888,17 @@ var Painter = class {
   }
   /** Apply roles to text. */
   style(raw, roles = []) {
-    const text = clean(raw);
+    const text3 = clean(raw);
     if (!this.colored) {
-      if (!this.attributes || text === "")
-        return text;
+      if (!this.attributes || text3 === "")
+        return text3;
       const keep = roles.filter((r) => r === "strong" || r === "code" || r === "chip");
       const names = keep.flatMap((r) => r === "chip" ? ["inverse"] : roleStyles(r));
-      return names.length ? styleText([...new Set(names)], text, { validateStream: false }) : text;
+      return names.length ? styleText([...new Set(names)], text3, { validateStream: false }) : text3;
     }
-    if (text === "" || roles.length === 0)
-      return text;
-    let out = text;
+    if (text3 === "" || roles.length === 0)
+      return text3;
+    let out = text3;
     for (const r of roles) {
       const role = this.ink && r === "accent" ? "strong" : r;
       const hex5 = this.caps.color === "truecolor" && role !== "code" && role !== "qr" ? this.overrides[role] : void 0;
@@ -11925,16 +11936,16 @@ var Painter = class {
   }
   /** The chip's colours over already padded text. */
   chipText(raw) {
-    const text = clean(raw);
+    const text3 = clean(raw);
     if (!this.colored)
-      return this.attributes && text ? styleText("inverse", text, { validateStream: false }) : text;
+      return this.attributes && text3 ? styleText("inverse", text3, { validateStream: false }) : text3;
     if (this.caps.color === "truecolor" && this.accent) {
       const bg = rgb(this.accent.solid);
       const fg = rgb(this.accent.on);
       if (bg && fg)
-        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text}\x1B[39m\x1B[49m`;
+        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text3}\x1B[39m\x1B[49m`;
     }
-    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text, { validateStream: false }) : styleText("inverse", text, { validateStream: false });
+    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text3, { validateStream: false }) : styleText("inverse", text3, { validateStream: false });
   }
 };
 
@@ -12030,10 +12041,10 @@ function pieces(span) {
   }
   return out;
 }
-function splitAt(text, after, before) {
+function splitAt(text3, after, before) {
   const out = [];
   let cur = "";
-  for (const ch of text) {
+  for (const ch of text3) {
     if (before?.test(ch) && cur !== "") {
       out.push(cur);
       cur = "";
@@ -12048,11 +12059,11 @@ function splitAt(text, after, before) {
     out.push(cur);
   return out;
 }
-function hardSplit(text, width) {
+function hardSplit(text3, width) {
   const out = [];
   let cur = "";
   let w = 0;
-  for (const ch of text) {
+  for (const ch of text3) {
     const cw = charWidth(ch);
     if (w + cw > width && cur !== "") {
       out.push(cur);
@@ -12066,9 +12077,9 @@ function hardSplit(text, width) {
     out.push(cur);
   return out;
 }
-function breakPieces(text, kind, width) {
+function breakPieces(text3, kind, width) {
   const w = Math.max(1, width);
-  const first = kind === "url" ? splitAt(text, /\//, /[?&]/) : splitAt(text, /-/);
+  const first = kind === "url" ? splitAt(text3, /\//, /[?&]/) : splitAt(text3, /-/);
   const second = kind === "url" ? first.flatMap((p) => cellWidth(p) > w ? splitAt(p, /-/, /\./) : [p]) : first;
   return second.flatMap((p) => cellWidth(p) > w ? hardSplit(p, w) : [p]);
 }
@@ -12172,11 +12183,11 @@ function wrapPieces(spans, width, ellipsis) {
             w += cellWidth(p.text);
           }
         }
-        for (const text of breakPieces(span.text, span.break, width)) {
-          const pw = cellWidth(text);
+        for (const text3 of breakPieces(span.text, span.break, width)) {
+          const pw = cellWidth(text3);
           if (w > 0 && w + pw > width)
             newLine();
-          cur().push({ ...span, text });
+          cur().push({ ...span, text: text3 });
           w += pw;
         }
         continue;
@@ -12237,7 +12248,92 @@ function merge(pieces2) {
 function symbolsFor(caps) {
   return caps.unicode ? TERMINAL_SYMBOLS.unicode : TERMINAL_SYMBOLS.ascii;
 }
+var MARKS = {
+  start: { symbol: "railStart", style: ["muted"] },
+  rail: { symbol: "rail", style: ["muted"] },
+  active: { symbol: "stepActive", style: ["accent"] },
+  done: { symbol: "stepDone", style: ["muted"] },
+  ok: { symbol: "ok", style: ["success"] },
+  fail: { symbol: "fail", style: ["danger"] },
+  warn: { symbol: "warn", style: ["warning"] },
+  end: { symbol: "railEnd", style: ["muted"] }
+};
 var GUTTER = TERMINAL_LAYOUT.gutter;
+function isNarrow(columns) {
+  return columns < MIN_LAYOUT_COLUMNS;
+}
+function contentWidth(columns) {
+  return isNarrow(columns) ? Math.max(5, columns) : columns - 1 - GUTTER;
+}
+function markGlyph(mark, symbols, painter) {
+  const rail = painter.style(symbols.rail, ["muted"]);
+  if (mark === "none")
+    return { first: "", next: "" };
+  if (typeof mark === "object") {
+    const g = painter.style(mark.glyph, mark.style ?? ["muted"]);
+    return { first: g, next: rail };
+  }
+  const m = MARKS[mark];
+  const glyph = painter.style(symbols[m.symbol], m.style);
+  return { first: glyph, next: mark === "end" ? " " : rail };
+}
+function closeRail(rows) {
+  const out = [...rows];
+  const last = out[out.length - 1];
+  const prev = out[out.length - 2];
+  if (last?.mark === "end" && last.spans.length === 0 && prev?.spans.length) {
+    if (prev.mark === "rail")
+      out.splice(out.length - 2, 2, { ...prev, mark: "end" });
+    else if (prev.mark === "ok" || prev.mark === "fail" || prev.mark === "warn" || prev.mark === "done" || prev.mark === "active")
+      out.pop();
+  }
+  return out;
+}
+function railLines(rows, painter, symbols, columns, meta) {
+  const out = [];
+  const gap = " ".repeat(GUTTER);
+  const narrow = isNarrow(columns);
+  for (const row2 of closeRail(rows)) {
+    const { first, next } = markGlyph(row2.mark, symbols, painter);
+    const noRail = row2.mark === "none" || narrow;
+    const marked = narrow && row2.mark !== "none" && row2.mark !== "rail" && row2.mark !== "start" && row2.mark !== "end";
+    const width = marked ? Math.max(5, contentWidth(columns) - 2) : contentWidth(columns);
+    const wrapped = row2.spans.length ? wrapSpans(row2.spans, width, symbols.ellipsis) : [[]];
+    const rail = painter.style(symbols.rail, ["muted"]);
+    const hasBreak = row2.spans.some((sp) => sp.break !== void 0);
+    wrapped.forEach((line, i) => {
+      meta?.keep.push(row2.keep === true && (!hasBreak || line.some((sp) => sp.break)));
+      meta?.header.push(row2.role === "header");
+      const last = i === wrapped.length - 1;
+      const glyph = row2.mark === "end" ? last ? first : rail : i === 0 ? first : next;
+      const body = painter.line(line);
+      if (narrow && row2.mark !== "none") {
+        out.push(marked && body ? `${i === 0 ? first : " "} ${body}` : body);
+      } else if (noRail)
+        out.push(body);
+      else
+        out.push(body ? `${glyph}${gap}${body}` : glyph);
+    });
+  }
+  return out;
+}
+function keyHints(text3, symbols) {
+  const sepRe = symbols.separator === "·" ? /\s+·\s+/ : /\s+[·-]\s+/;
+  const segments2 = text3.split(sepRe);
+  const spans = [];
+  segments2.forEach((seg, i) => {
+    if (i > 0)
+      spans.push({ text: ` ${symbols.separator} `, style: ["muted"] });
+    const m = /^(\S+)(\s+)([\s\S]*)$/.exec(seg);
+    if (!m) {
+      spans.push({ text: seg, style: ["strong"] });
+      return;
+    }
+    spans.push({ text: m[1], style: ["strong"], keep: true, unit: true });
+    spans.push({ text: `${m[2]}${m[3]}`, style: ["muted"], unit: true });
+  });
+  return spans;
+}
 
 // ../sdk-node/dist/cli/term/live.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -12485,10 +12581,10 @@ var LiveRegion = class {
    * Replace the region with its final screen (it stays) and stop. Without animation the first
    * frame was already printed once, so only `plain` (the result, no header) prints.
    */
-  commit(screen = [], plain2) {
+  commit(screen = [], plain4) {
     const animate2 = this.host.caps.animate;
     const extra = this.pendingRestore();
-    const rows = animate2 || plain2 === void 0 ? this.rows(screen) : rowsOf(plain2);
+    const rows = animate2 || plain4 === void 0 ? this.rows(screen) : rowsOf(plain4);
     const s = animate2 ? this.erase(extra) : "";
     const show3 = this.stop();
     const lines4 = this.host.render(rows);
@@ -12509,12 +12605,300 @@ function spinnerFrames(unicode) {
   return unicode ? TERMINAL_SPINNER.unicode : TERMINAL_SPINNER.ascii;
 }
 function animate(caps, render, ticker = realTicker, frameMs = TERMINAL_SPINNER.frameMs) {
-  let frame = 0;
-  render(frame);
+  let frame2 = 0;
+  render(frame2);
   if (!caps.animate)
     return () => void 0;
-  const h = ticker.setInterval(() => render(++frame), frameMs);
+  const h = ticker.setInterval(() => render(++frame2), frameMs);
   return () => ticker.clearInterval(h);
+}
+
+// ../sdk-node/dist/cli/term/keys.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { emitKeypressEvents } from "node:readline";
+function toKey(str8, key) {
+  return {
+    name: key?.name ?? str8 ?? "",
+    sequence: key?.sequence ?? str8 ?? "",
+    ctrl: key?.ctrl ?? false,
+    meta: key?.meta ?? false
+  };
+}
+function isInterrupt(k) {
+  return k.ctrl && k.name === "c";
+}
+function isCancel(k) {
+  return k.ctrl && (k.name === "c" || k.name === "d") || k.name === "escape" || k.sequence === "\x1B";
+}
+var KeyReader = class {
+  input;
+  queue = [];
+  waiting = null;
+  started = false;
+  closed = false;
+  cursor = null;
+  onKey = (str8, key) => {
+    const k = toKey(str8, key);
+    const report2 = /^\x1b\[(\d+);(\d+)R$/.exec(k.sequence);
+    if (report2) {
+      const answer = this.cursor;
+      this.cursor = null;
+      answer?.(Number(report2[1]));
+      return;
+    }
+    if (this.waiting) {
+      const w = this.waiting;
+      this.waiting = null;
+      w(k);
+    } else
+      this.queue.push(k);
+  };
+  constructor(input2) {
+    this.input = input2;
+  }
+  start() {
+    if (this.started)
+      return;
+    this.started = true;
+    emitKeypressEvents(input(this.input));
+    this.input.setRawMode?.(true);
+    this.input.on("keypress", this.onKey);
+    this.input.resume?.();
+  }
+  /**
+   * Ask the terminal where the cursor is: `ask` writes the request (ESC [ 6 n) and the answer comes
+   * back through the keys, filtered out of them. Null when it does not answer in `timeoutMs`.
+   */
+  cursorRow(ask, timeoutMs) {
+    if (this.closed)
+      return Promise.resolve(null);
+    this.start();
+    this.cursor?.(null);
+    return new Promise((resolve2) => {
+      const done = (row2) => {
+        clearTimeout(timer);
+        if (this.cursor === done)
+          this.cursor = null;
+        resolve2(row2);
+      };
+      const timer = setTimeout(() => done(null), timeoutMs);
+      this.cursor = done;
+      ask();
+    });
+  }
+  /** The next key, or null when the reader closed or `signal` aborted. */
+  next(signal) {
+    if (this.closed)
+      return Promise.resolve(null);
+    this.start();
+    const queued = this.queue.shift();
+    if (queued)
+      return Promise.resolve(queued);
+    return new Promise((resolve2) => {
+      const onAbort = () => {
+        this.waiting = null;
+        resolve2(null);
+      };
+      if (signal?.aborted)
+        return resolve2(null);
+      signal?.addEventListener("abort", onAbort, { once: true });
+      this.waiting = (k) => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve2(k);
+      };
+    });
+  }
+  /** Leave raw mode and stop listening. Safe to call twice. */
+  close() {
+    if (this.closed)
+      return;
+    this.closed = true;
+    if (!this.started)
+      return;
+    const off = this.input.off ?? this.input.removeListener;
+    off?.call(this.input, "keypress", this.onKey);
+    this.input.setRawMode?.(false);
+    this.input.pause?.();
+    this.waiting?.(null);
+    this.waiting = null;
+    this.cursor?.(null);
+  }
+};
+function input(i) {
+  return i;
+}
+
+// ../sdk-node/dist/cli/term/prompt.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var CANCEL = /* @__PURE__ */ Symbol("pkey.cancel");
+var INTERRUPT = /* @__PURE__ */ Symbol("pkey.interrupt");
+function cancelled(k) {
+  return k !== null && isInterrupt(k) ? INTERRUPT : CANCEL;
+}
+function interactiveRegion(out, host) {
+  return new LiveRegion(out, {
+    get caps() {
+      return { ...host.caps, animate: true };
+    },
+    refreshSize: () => host.refreshSize(),
+    render: (r) => host.render(r),
+    fit: (r) => host.fit(r),
+    cursorRow: () => host.cursorRow?.() ?? Promise.resolve(null)
+  });
+}
+function region(ctx) {
+  return interactiveRegion(ctx.out, ctx.host);
+}
+var frame = (_ctx, rows) => rows;
+async function promptConfirm(ctx, p) {
+  const live = region(ctx);
+  try {
+    live.draw(frame(ctx, [
+      { mark: "active", spans: p.title },
+      ...p.detail ? [
+        {
+          mark: "rail",
+          spans: p.detail.map((s) => ({ ...s, style: ["muted"] }))
+        }
+      ] : [],
+      ...p.hints ? [{ mark: "end", spans: p.hints }] : []
+    ]));
+    for (; ; ) {
+      const k = await ctx.keys.next(ctx.signal);
+      if (k === null || isCancel(k)) {
+        live.commit(frame(ctx, p.cancelled()));
+        return cancelled(k);
+      }
+      const yes = k.name === "y" ? true : k.name === "n" ? false : null;
+      const answer = yes ?? (k.name === "return" || k.name === "enter" ? !!p.initial : null);
+      if (answer !== null) {
+        live.commit(frame(ctx, p.done(answer)));
+        return answer;
+      }
+    }
+  } finally {
+    live.close();
+  }
+}
+function boxes(symbols) {
+  return symbols.rail === "|" ? { on: "[x]", off: "[ ]", focus: ">" } : { on: "◼", off: "◻", focus: "›" };
+}
+async function promptMultiSelect(ctx, p) {
+  const live = region(ctx);
+  const box = boxes(ctx.symbols);
+  let at = 0;
+  let chosen = p.initial ?? [];
+  let note = null;
+  const ordered2 = () => p.options.map((o) => o.value).filter((v) => chosen.includes(v));
+  const render = () => {
+    const blocks = p.options.map((o, i) => {
+      const focus = i === at;
+      const ticked = chosen.includes(o.value);
+      const lock = p.locked?.(o.value, chosen) ?? null;
+      const label = o.label.map((s) => lock ? { ...s, style: ["muted"] } : focus ? { ...s, style: [...s.style ?? [], "strong"] } : s);
+      const rows = [
+        {
+          mark: "rail",
+          spans: [
+            {
+              text: focus ? `${box.focus} ` : "  ",
+              style: ["accent"]
+            },
+            {
+              text: `${ticked ? box.on : box.off} `,
+              style: lock ? ["muted"] : focus || ticked ? ["accent"] : ["muted"]
+            },
+            ...focus && lock ? label.map((s) => ({
+              ...s,
+              style: [...s.style ?? [], "strong"]
+            })) : label
+          ]
+        }
+      ];
+      const meta = lock ?? o.meta;
+      if (meta)
+        rows.push({
+          mark: "rail",
+          spans: [
+            { text: "    " },
+            ...meta.map((s) => ({ ...s, style: ["muted"] }))
+          ]
+        });
+      return rows;
+    });
+    const tail = [];
+    if (note)
+      tail.push({ mark: "rail", spans: [] }, { mark: "rail", spans: note });
+    tail.push({ mark: "end", spans: p.hints });
+    const budget = Math.max(3, ctx.caps.rows - 1 - 1 - tail.length);
+    let from = 0;
+    let to = blocks.length;
+    const total = blocks.reduce((n, b) => n + b.length, 0);
+    if (total > budget) {
+      from = at;
+      to = at + 1;
+      let used = blocks[at].length;
+      for (; ; ) {
+        const next = to < blocks.length && used + blocks[to].length <= budget ? to : -1;
+        const prev = from > 0 && used + blocks[from - 1].length <= budget ? from - 1 : -1;
+        if (next < 0 && prev < 0)
+          break;
+        if (next >= 0) {
+          used += blocks[to].length;
+          to += 1;
+        } else {
+          used += blocks[from - 1].length;
+          from -= 1;
+        }
+      }
+    }
+    live.draw(frame(ctx, [
+      { mark: "active", spans: p.title },
+      ...blocks.slice(from, to).flat(),
+      ...tail
+    ]));
+  };
+  try {
+    render();
+    for (; ; ) {
+      const k = await ctx.keys.next(ctx.signal);
+      if (k === null || isCancel(k)) {
+        live.commit(frame(ctx, p.cancelled()));
+        return cancelled(k);
+      }
+      if (k.name === "up" || k.name === "k")
+        at = (at - 1 + p.options.length) % p.options.length;
+      else if (k.name === "down" || k.name === "j")
+        at = (at + 1) % p.options.length;
+      else if (k.name === "space" || k.sequence === " ") {
+        const v = p.options[at].value;
+        const lock = p.locked?.(v, chosen) ?? null;
+        if (lock)
+          note = p.lockedNote?.(v, chosen) ?? lock;
+        else {
+          const r = p.toggle(chosen, v);
+          chosen = r.chosen;
+          note = r.note;
+        }
+        render();
+        continue;
+      } else if (k.name === "return" || k.name === "enter") {
+        const refused = p.check?.(ordered2()) ?? null;
+        if (refused) {
+          note = refused;
+          render();
+          continue;
+        }
+        const out = ordered2();
+        live.commit(frame(ctx, p.done(out)));
+        return out;
+      }
+      note = null;
+      render();
+    }
+  } finally {
+    live.close();
+  }
 }
 
 // ../sdk-node/dist/cli/term/progress.js
@@ -12528,6 +12912,70 @@ function progressSpans(fraction, symbols, width = TERMINAL_LAYOUT.barWidth) {
   ];
 }
 
+// ../sdk-node/dist/cli/term/screen.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var widthOf2 = (spans) => cellWidth(spans.map((s) => s.text).join("").trimEnd());
+function inlineHints(rows, columns, separator) {
+  const h = rows.findIndex((r) => r.role === "hints");
+  const s = rows.findIndex((r) => r.role === "spinner");
+  if (h < 0 || s < 0)
+    return [...rows];
+  const joined = [
+    ...rows[s].spans,
+    { text: ` ${separator} `, style: ["muted"] },
+    ...rows[h].spans
+  ];
+  if (widthOf2(joined) > contentWidth(columns))
+    return [...rows];
+  return rows.map((r, i) => i === s ? { ...r, spans: joined, keep: true } : r).filter((_, i) => i !== h);
+}
+function fitScreen(rows, o) {
+  const max = Math.max(1, o.maxRows);
+  const headOf = (r, cut2 = 0) => {
+    let n = 0;
+    while (n < r.length && r[n].role === "header")
+      n++;
+    return Math.max(0, (n ? o.render(r.slice(0, n)).length : 0) - cut2);
+  };
+  let lines4 = o.render(rows);
+  if (lines4.length <= max)
+    return { lines: lines4, head: headOf(rows) };
+  let cur = inlineHints(rows, o.columns, o.separator);
+  lines4 = o.render(cur);
+  const tiers = [
+    ...new Set(cur.map((r) => r.drop).filter((d) => d !== void 0))
+  ].sort((a, b) => a - b);
+  for (const t of tiers) {
+    if (lines4.length <= max)
+      break;
+    cur = cur.filter((r) => r.drop !== t);
+    lines4 = o.render(cur);
+  }
+  while (lines4.length > max) {
+    const i = cur.findIndex((r) => !r.keep);
+    if (i < 0)
+      break;
+    cur = cur.filter((_, j) => j !== i);
+    lines4 = o.render(cur);
+  }
+  const meta = { keep: [], header: [] };
+  lines4 = o.render(cur, meta);
+  while (lines4.length > max) {
+    const j = meta.keep.indexOf(false);
+    if (j < 0)
+      break;
+    lines4.splice(j, 1);
+    meta.keep.splice(j, 1);
+    meta.header.splice(j, 1);
+  }
+  const cut = Math.max(0, lines4.length - max);
+  const head = meta.header.slice(cut).findIndex((h) => !h);
+  return {
+    lines: cut ? lines4.slice(cut) : lines4,
+    head: head < 0 ? meta.header.length - cut : head
+  };
+}
+
 // src/untrusted.ts
 var COMMAND_BREAK = "​";
 function underActions(env) {
@@ -12539,11 +12987,11 @@ function defuse(line) {
   return s.trimStart().startsWith("::") ? `${COMMAND_BREAK}${s}` : s;
 }
 function untrusted(value, env) {
-  const text = clean(String(value));
-  return underActions(env) ? defuse(text) : text;
+  const text3 = clean(String(value));
+  return underActions(env) ? defuse(text3) : text3;
 }
-function untrustedLines(text, env) {
-  return String(text).split("\n").map((line) => untrusted(line, env)).join("\n");
+function untrustedLines(text3, env) {
+  return String(text3).split("\n").map((line) => untrusted(line, env)).join("\n");
 }
 function untrustedJson(value, space) {
   return (JSON.stringify(value, null, space) ?? "null").replace(
@@ -12575,9 +13023,9 @@ function guardOutput(out, env) {
     }
     const complete = pending.slice(0, end);
     pending = pending.slice(end + 1);
-    const text = `${complete.split("\n").map(guardLine).join("\n")}
+    const text3 = `${complete.split("\n").map(guardLine).join("\n")}
 `;
-    return cb ? out.write(text, cb) : out.write(text);
+    return cb ? out.write(text3, cb) : out.write(text3);
   };
   const stream = {
     write,
@@ -12662,16 +13110,116 @@ function isInternalError(err) {
   return (err instanceof TypeError || err instanceof RangeError || err instanceof ReferenceError) && err.code === void 0;
 }
 function internalMessage(err) {
-  const text = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-  return `pkey hit an unexpected error: ${text}
+  const text3 = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  return `pkey hit an unexpected error: ${text3}
 This is a bug in pkey. Re-run with PKEY_DEBUG=1 for the stack, and report it.`;
+}
+
+// src/netErrors.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/refusal.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var Refusal = class extends Error {
+  constructor(message, fix, code = "refused") {
+    super(message);
+    this.fix = fix;
+    this.code = code;
+    this.name = "Refusal";
+  }
+  fix;
+  code;
+};
+
+// src/netErrors.ts
+var Failure = class extends Error {
+  constructor(message, fix, code, extra = {}, lines4) {
+    super(message);
+    this.fix = fix;
+    this.code = code;
+    this.extra = extra;
+    this.lines = lines4;
+    this.name = "Failure";
+  }
+  fix;
+  code;
+  extra;
+  lines;
+};
+var Unreachable = class extends Failure {
+  constructor(host, cause) {
+    super(
+      `Can't reach ${host}.`,
+      "Check your network, or --base-url.",
+      "network",
+      cause ? { cause } : {}
+    );
+    this.name = "Unreachable";
+  }
+};
+var Redirected = class extends Refusal {
+  constructor(host) {
+    super(
+      `${host} answered with a redirect, so pkey sent nothing further.`,
+      "Check --base-url.",
+      "redirect"
+    );
+    this.name = "Redirected";
+  }
+};
+function networkCode(e) {
+  if (e?.name === "TimeoutError")
+    return "TIMEOUT";
+  const code = e?.cause?.code;
+  return typeof code === "string" && /^[A-Z0-9_]{1,40}$/.test(code) ? code : null;
+}
+
+// src/httpRead.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var REQUEST_TIMEOUT_MS = 15e3;
+var MAX_JSON_BYTES = 64 * 1024;
+async function readCappedText(res, max = MAX_JSON_BYTES) {
+  try {
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > max) {
+      void res.body?.cancel().catch(() => void 0);
+      return null;
+    }
+    const reader = res.body?.getReader();
+    if (!reader) return "";
+    const chunks = [];
+    let size = 0;
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) {
+        void reader.cancel().catch(() => void 0);
+        return null;
+      }
+      chunks.push(value);
+    }
+    return Buffer.concat(chunks).toString("utf8");
+  } catch {
+    return null;
+  }
+}
+async function readCappedJson(res, max = MAX_JSON_BYTES) {
+  const text3 = await readCappedText(res, max);
+  if (text3 === null) return {};
+  try {
+    const v = JSON.parse(text3);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
 }
 
 // src/bundle.ts
 var DEFAULT_BASE_URL = "https://key.plrs.im";
 var ADMIN_TOKEN_ENV = "PKEY_ADMIN_TOKEN";
 var ADMIN_TOKEN_PREFIX = "pkeya_";
-var ADMIN_TOKEN = /^pkeya_[A-Za-z0-9_-]{43,}$/;
+var ADMIN_TOKEN = /^pkey[ap]_[A-Za-z0-9_-]{43,}$/;
 var MAX_GRACE_DAYS = 365;
 var DEVICE_ID = /^[A-Za-z0-9_-]{32}$/;
 var LOOPBACK_HOSTS = [
@@ -12682,7 +13230,7 @@ var LOOPBACK_HOSTS = [
 ];
 var BUNDLE_EXTENSION = ".pkeybundle";
 var NOFOLLOW = typeof fsc.O_NOFOLLOW === "number" ? fsc.O_NOFOLLOW : 0;
-var BUNDLE_USAGE = "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force]";
+var BUNDLE_USAGE = "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force] [--json]";
 function bundleFileName(product, deviceId) {
   const safe = product.replace(/[^A-Za-z0-9._-]+/g, "-");
   return `${safe}-${deviceId.slice(0, 8)}${BUNDLE_EXTENSION}`;
@@ -12703,7 +13251,7 @@ ${BUNDLE_USAGE}`);
     );
   }
   const licenseId = opts.licenseId?.trim() || void 0;
-  const token = adminToken(opts.token);
+  const token = await adminTokenFrom(opts.token);
   const baseUrl = normalizeBaseUrl(
     opts.baseUrl?.trim() || DEFAULT_BASE_URL,
     ADMIN_TOKEN_ENV
@@ -12732,13 +13280,13 @@ ${BUNDLE_USAGE}`);
     body,
     signal: opts.signal
   });
-  if (!res.ok) throw await httpError(res, `Minting a bundle at ${url}`);
+  if (!res.ok) throw await failureOf(res, url, "mint a bundle", bundleHint);
   const payload = await readJson(res, url);
   const bundleId = asString(payload.bundleId);
   const bundle = asString(payload.bundle);
   if (!bundleId || !bundle) {
     throw new Error(
-      `${url} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`
+      `${hostLabel(url)} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`
     );
   }
   writeNewFile(file, bundle, force);
@@ -12749,28 +13297,54 @@ ${BUNDLE_USAGE}`);
     deviceId,
     graceDays: opts.graceDays,
     baseUrl,
-    url
+    url,
+    documents: documentsOf(bundle)
   };
+}
+function documentsOf(jws) {
+  try {
+    const part = jws.split(".")[1] ?? "";
+    const doc = JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
+    return ["license", "config"].filter(
+      (k) => doc.docs !== void 0 && doc.docs[k] !== void 0
+    );
+  } catch {
+    return [];
+  }
+}
+function bundleHint(status, detail) {
+  if (status === 400 && (detail.fields?.includes("licenseId") || /licenseId/.test(detail.message ?? "")))
+    return /required/i.test(detail.message ?? "") ? "Add --license <id>." : "Check --license.";
+  return statusHint(status);
+}
+async function adminTokenFrom(source, command = "bundle") {
+  return adminToken(
+    typeof source === "function" ? await source() : source,
+    command
+  );
 }
 function adminToken(raw, command = "bundle") {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
-      `${ADMIN_TOKEN_ENV} is not set.
+      `${ADMIN_TOKEN_ENV} is not set. Run pkey login, or set a token.
 \`pkey ${command}\` calls the admin API, which authenticates it with an admin API token sent as \`Authorization: Bearer pkeya_…\`.
-` + (command === "migrate" ? "The token needs the `migrations:report` scope.\n" : "The token needs the `bundles:mint` scope.\n") + `Mint one in the console: /manage -> API tokens -> New token. Choose a label that says where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can reproduce it — so copy it then, and run:
+` + (command === "migrate" ? "The token needs the `migrations:report` scope.\n" : command === "listing" ? "The route takes a personal token (pkeyp_).\n" : "The token needs the `bundles:mint` scope.\n") + `Mint one in the console: /manage -> API tokens -> New token. Choose a label that says where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can reproduce it — so copy it then, and run:
   export ${ADMIN_TOKEN_ENV}='${ADMIN_TOKEN_PREFIX}…'
 ` + (command === "migrate" ? "It reaches the migration job list, reports and dry runs, and nothing else: " : "It can mint an offline bundle for any product on the platform: ") + "do not commit it, and do not export it into a shell other people share. If it leaks, revoke that one token in the console."
     );
   }
   if (!ADMIN_TOKEN.test(value)) {
-    const prefix = value.startsWith(ADMIN_TOKEN_PREFIX) ? "" : ` starting \`${clip(value.split(/[=\s]/, 1)[0] ?? "", 12)}\``;
+    const prefix = /^pkey[ap]_/.test(value) ? "" : ` starting \`${clip(value.split(/[=\s]/, 1)[0] ?? "", 12)}\``;
     throw new Error(
-      `${ADMIN_TOKEN_ENV} does not look like an admin API token. Expected \`${ADMIN_TOKEN_PREFIX}\` followed by 43 base64url characters (A-Z a-z 0-9 - _); got ${value.length} characters${prefix}.
+      `${ADMIN_TOKEN_ENV} does not look like an admin token. Expected \`${ADMIN_TOKEN_PREFIX}\` or \`pkeyp_\` followed by 43 base64url characters (A-Z a-z 0-9 - _); got ${value.length} characters${prefix}.
 A console session cookie is a DIFFERENT credential and is no longer accepted here. Mint a token in the console (/manage -> API tokens) and export that instead.`
     );
   }
   return value;
+}
+function maskTokens(text3) {
+  return text3.replace(/pkey[a-z]{1,2}t?_[A-Za-z0-9_-]{20,}/g, "[token]");
 }
 function normalizeBaseUrl(raw, credentialEnv) {
   let url;
@@ -12778,58 +13352,95 @@ function normalizeBaseUrl(raw, credentialEnv) {
     url = new URL(raw);
   } catch {
     throw new UsageError(
-      `--base-url is not a valid URL: ${raw}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`
+      `--base-url is not a valid URL: ${maskTokens(raw)}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`
     );
   }
   const loopback = url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname.toLowerCase());
   if (url.protocol !== "https:" && !loopback) {
     throw new UsageError(
-      `--base-url must be https: (got ${url.protocol}//${url.host}). ${credentialEnv} is sent to this origin as a credential, so plaintext http:// is only accepted for localhost/127.0.0.1 during local development.`
+      `--base-url must be https: (got ${maskTokens(`${url.protocol}//${url.host}`)}). ${credentialEnv} is sent to this origin as a credential, so plaintext http:// is only accepted for localhost/127.0.0.1 during local development.`
     );
   }
   return raw.replace(/\/+$/, "");
 }
-async function request(f, url, init) {
+function hostLabel(url) {
   try {
-    return await f(url, init);
-  } catch (e) {
-    throw new Error(`Could not reach ${url}: ${e.message}`);
+    return maskTokens(new URL(url).host);
+  } catch {
+    return "the server";
   }
+}
+async function request(f, url, init) {
+  let res;
+  try {
+    res = await f(url, {
+      ...init,
+      redirect: "manual",
+      signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+  } catch (e) {
+    if (isInternalError(e)) throw e;
+    throw new Unreachable(hostLabel(url), networkCode(e));
+  }
+  if (res.status >= 300 && res.status < 400)
+    throw new Redirected(hostLabel(url));
+  return res;
+}
+async function failureOf(res, url, verb, hintFor = (status) => statusHint(status)) {
+  const detail = await errorDetail(res);
+  const said = serverWords(detail.message);
+  const hint2 = hintFor(res.status, detail);
+  return new HttpFailure(
+    `${hostLabel(url)} couldn't ${verb} (HTTP ${res.status})${said ? `: ${said}` : ""}.${hint2 ? `
+${hint2}` : ""}`,
+    res.status,
+    detail
+  );
+}
+function serverWords(v) {
+  return v ? maskTokens(untrusted(v, {})).trim().replace(/\.+$/, "") : "";
 }
 async function httpError(res, what, hintFor = statusHint) {
   const detail = await errorDetail(res);
-  const u = (v) => untrusted(v, {});
+  const u = (v) => maskTokens(untrusted(v, {}));
   const label = [String(res.status), detail.code && u(detail.code)].filter(Boolean).join(" ");
   const message = detail.message ? `: ${u(detail.message)}` : "";
   const fields = detail.fields?.length ? ` (fields: ${detail.fields.map(u).join(", ")})` : "";
   const hint2 = hintFor(res.status);
-  return new Error(
-    `${what} failed (${label})${message}${fields}${hint2 ? `
-${hint2}` : ""}`
+  return new HttpFailure(
+    `${maskTokens(what)} failed (${label})${message}${fields}${hint2 ? `
+${hint2}` : ""}`,
+    res.status,
+    detail
   );
 }
+var HttpFailure = class extends Error {
+  constructor(message, status, detail) {
+    super(message);
+    this.status = status;
+    this.detail = detail;
+    this.name = "HttpFailure";
+  }
+  status;
+  detail;
+};
 function statusHint(status) {
-  if (status === 401) {
-    return `The admin API token in ${ADMIN_TOKEN_ENV} was refused. The server answers one 401 for unknown, revoked and expired alike, on purpose — check the roster in the console (/manage -> API tokens) to see which, and mint a replacement there.`;
-  }
-  if (status === 403) {
-    return "Authenticated, but not allowed. Two causes look identical from here: the token is not scoped for this route (a `pkeya_` token needs `bundles:mint`, and every admin route outside the bundle mint refuses tokens outright), or the identity behind it is not a platform admin.";
-  }
-  if (status === 404) {
-    return "No such product, or it has no usable signing key — a product that cannot sign cannot mint.";
-  }
-  if (status === 429) {
-    return "The admin API rate limit tripped. Wait a minute and retry.";
-  }
+  if (status === 401) return "Run pkey login.";
+  if (status === 403)
+    return `Use a token that covers this: an API token needs the bundles:mint scope.`;
+  if (status === 404)
+    return "Check --product, and that the product has a signing key.";
+  if (status === 429) return "Wait a minute, then try again.";
+  if (status >= 500) return "Try again in a minute.";
   return void 0;
 }
 async function errorDetail(res) {
-  const text = await res.text().catch(() => "");
+  const text3 = await readCappedText(res) ?? "";
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(text3);
   } catch {
-    const trimmed2 = text.trim();
+    const trimmed2 = text3.trim();
     return trimmed2 ? { message: clip(trimmed2) } : {};
   }
   if (!isRecord(parsed)) return {};
@@ -12841,21 +13452,32 @@ async function errorDetail(res) {
   if (code) detail.code = code;
   if (message) detail.message = message;
   if (fields) detail.fields = fields;
+  const reason = asString(parsed.reason) ?? asString(nested.reason);
+  const scope = asString(parsed.scope) ?? asString(nested.scope);
+  const area = asString(parsed.area) ?? asString(nested.area);
+  if (reason) detail.reason = reason;
+  if (scope) detail.scope = scope;
+  if (area) detail.area = area;
   return detail;
 }
 async function readJson(res, url) {
-  const text = await res.text();
+  const host = hostLabel(url);
+  const text3 = await readCappedText(res);
+  if (text3 === null)
+    throw new Error(
+      `${host} answered ${res.status} with a body over ${MAX_JSON_BYTES / 1024} KiB.`
+    );
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(text3);
   } catch {
     throw new Error(
-      `${url} answered ${res.status} with a body that is not JSON: ${clip(text.trim())}`
+      `${host} answered ${res.status} with a body that is not JSON.`
     );
   }
   if (!isRecord(parsed))
     throw new Error(
-      `${url} answered ${res.status} with a non-object JSON body.`
+      `${host} answered ${res.status} with a non-object JSON body.`
     );
   return parsed;
 }
@@ -12929,18 +13551,34 @@ function read() {
 }
 var CLI_VERSION = read();
 
+// src/actionOutputs.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { appendFile } from "node:fs/promises";
+var OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
+var RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
+async function writeOutputs(io, releaseId, server) {
+  const outputFile = io.env.GITHUB_OUTPUT;
+  if (!outputFile) return;
+  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
+  const outcome = typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome) ? server.outcome : "";
+  await appendFile(
+    outputFile,
+    `release-id=${id}
+outcome=${outcome}
+`,
+    "utf8"
+  );
+}
+
 // src/migrate.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MIGRATE_USAGE = "Usage: pkey migrate list | dry-run <job> | report <run> [--base-url <url>] [--json]";
 function hint(status) {
-  if (status === 401)
-    return `The token in ${ADMIN_TOKEN_ENV} was refused (unknown, revoked or expired). Mint a replacement in the console: /manage -> API tokens.`;
+  if (status === 401) return "Run pkey login.";
   if (status === 403)
-    return "Not allowed. The token needs the `migrations:report` scope, and its identity must be a platform admin.";
-  if (status === 404) return "No such job or run.";
-  if (status === 429)
-    return "The admin API rate limit tripped. Wait a minute and retry.";
-  return void 0;
+    return "An API token needs the migrations:report scope, and its owner must be a platform admin.";
+  if (status === 404) return "Check the job or run id.";
+  return statusHint(status);
 }
 async function runMigrate(opts) {
   const target = opts.target?.trim();
@@ -12949,7 +13587,7 @@ async function runMigrate(opts) {
       `${opts.verb === "dry-run" ? "A job id" : "A run id"} is required.
 ${MIGRATE_USAGE}`
     );
-  const token = adminToken(opts.token, "migrate");
+  const token = await adminTokenFrom(opts.token, "migrate");
   const baseUrl = normalizeBaseUrl(
     opts.baseUrl?.trim() || DEFAULT_BASE_URL,
     ADMIN_TOKEN_ENV
@@ -12967,16 +13605,24 @@ ${MIGRATE_USAGE}`
     ...post ? { body: JSON.stringify({ job: target }) } : {},
     signal: opts.signal
   });
-  if (!res.ok) throw await httpError(res, `Reading ${url}`, hint);
+  if (!res.ok)
+    throw await failureOf(
+      res,
+      url,
+      opts.verb === "list" ? "read the migration jobs" : opts.verb === "report" ? "read the report" : "run the dry run",
+      hint
+    );
   const payload = await readJson(res, url);
   if (opts.verb === "list") {
     if (!Array.isArray(payload.jobs))
-      throw new Error(`${url} answered ${res.status} without a job list.`);
+      throw new Error(
+        `${hostLabel(url)} answered ${res.status} without a job list.`
+      );
     return { verb: "list", jobs: payload.jobs };
   }
   const run2 = payload.run;
   if (!run2 || typeof run2.id !== "string")
-    throw new Error(`${url} answered ${res.status} without a run.`);
+    throw new Error(`${hostLabel(url)} answered ${res.status} without a run.`);
   return { verb: opts.verb, run: run2 };
 }
 function formatMigrate(r, env) {
@@ -13016,24 +13662,27 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-manifest/dist/chunk-GGLMZG7G.js
+// ../shared-manifest/dist/chunk-3D7AAKB4.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
+function sortedUnique(values) {
+  return [...new Set(values)].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+}
 function namespaceStrings(v) {
   return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
 }
 var ELEMENT = "[A-Za-z0-9_~-](?:[A-Za-z0-9._~-]*[A-Za-z0-9_~-])?";
 var HOST = "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+";
 var GO_MODULE_PATH = new RegExp(`^${HOST}(?:/${ELEMENT})*$`);
-function goMajorProblem(path32, version) {
+function goMajorProblem(path36, version) {
   const major = Number(/^([0-9]+)\./.exec(version)?.[1] ?? NaN);
   if (!Number.isInteger(major)) return null;
-  const suffix = /\/v([0-9]+)$/.exec(path32)?.[1];
+  const suffix = /\/v([0-9]+)$/.exec(path36)?.[1];
   if (suffix !== void 0 && (suffix.startsWith("0") || Number(suffix) < 2))
-    return `${path32} ends in /v${suffix}, which is not a Go major-version suffix (the first is /v2).`;
+    return `${path36} ends in /v${suffix}, which is not a Go major-version suffix (the first is /v2).`;
   if (major >= 2 && suffix !== String(major))
-    return `a v${major} Go module's path ends in /v${major}; ${path32} does not.`;
+    return `a v${major} Go module's path ends in /v${major}; ${path36} does not.`;
   if (major < 2 && suffix !== void 0)
-    return `a v${major} Go module's path carries no major suffix; ${path32} ends in /v${suffix}.`;
+    return `a v${major} Go module's path carries no major suffix; ${path36} ends in /v${suffix}.`;
   return null;
 }
 var GO_PACKAGE_RULES = {
@@ -13058,6 +13707,21 @@ var GO_PACKAGE_RULES = {
       const prefixes = namespaceStrings(ns.modulePrefixes);
       if (prefixes.length === 0) return "the Go feed has no module prefixes";
       return prefixes.some((p) => name === p || name.startsWith(`${p}/`)) ? null : `${name} is not under ${prefixes.join(", ")}`;
+    },
+    // The exact module paths. The field is a prefix list, so a module also admits its
+    // sub-paths (`example.com/m` takes `example.com/m/sub`): the narrowest it expresses.
+    derive(names) {
+      const modules = sortedUnique(names.filter((n) => n !== ""));
+      const wide = modules.filter((m) => !m.includes("/"));
+      if (wide.length > 0)
+        return {
+          namespace: {},
+          ambiguous: `the module ${wide.join(", ")} is only a host, which as a prefix would admit every module on it; an operator sets the namespace`
+        };
+      return {
+        namespace: modules.length === 0 ? {} : { modulePrefixes: modules },
+        ambiguous: null
+      };
     }
   }
 };
@@ -13102,6 +13766,21 @@ var NPM_PACKAGE_RULES = {
       const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
       if (!scope) return "the npm feed has no scope set";
       return npmScope(name.toLowerCase()) === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    },
+    derive(names) {
+      const scopes = sortedUnique(
+        names.flatMap((n) => {
+          const s = npmScope(n.toLowerCase());
+          return s ? [s] : [];
+        })
+      );
+      if (scopes.length === 0) return { namespace: {}, ambiguous: null };
+      if (scopes.length > 1)
+        return {
+          namespace: {},
+          ambiguous: `the packages span several npm scopes (${scopes.join(", ")}); a feed takes one`
+        };
+      return { namespace: { scope: scopes[0] }, ambiguous: null };
     }
   }
 };
@@ -13131,9 +13810,12 @@ var CARGO_PACKAGE_RULES = {
   ],
   namespace: {
     fields: {},
-    problem: () => null
+    problem: () => null,
+    // No namespace keys: nothing to derive.
+    derive: () => ({ namespace: {}, ambiguous: null })
   }
 };
+var GODOT_PUBLISHER = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 var GODOT_PACKAGE_RULES = {
   ecosystem: "godot",
   name: {
@@ -13148,9 +13830,19 @@ var GODOT_PACKAGE_RULES = {
   metadataKeys: ["displayName", "author", "description", "script"],
   namespace: {
     fields: {
-      publisher: { kind: "string", pattern: /^[a-z0-9][a-z0-9_-]{0,63}$/ }
+      publisher: { kind: "string", pattern: GODOT_PUBLISHER }
     },
-    problem: (_name, ns) => typeof ns.publisher === "string" && ns.publisher !== "" ? null : "the Godot feed has no publisher set"
+    problem: (_name, ns) => typeof ns.publisher === "string" && ns.publisher !== "" ? null : "the Godot feed has no publisher set",
+    // An addon id carries no publisher, so the publisher is the owner (the product slug).
+    derive(names, owner) {
+      if (names.length === 0) return { namespace: {}, ambiguous: null };
+      if (!GODOT_PUBLISHER.test(owner))
+        return {
+          namespace: {},
+          ambiguous: `the owner "${owner}" is not a valid Godot publisher`
+        };
+      return { namespace: { publisher: owner }, ambiguous: null };
+    }
   }
 };
 var MAVEN_PACKAGE_RULES = {
@@ -13179,6 +13871,23 @@ var MAVEN_PACKAGE_RULES = {
       if (prefixes.length === 0) return "the Maven feed has no group prefixes";
       const group = name.split(":")[0].toLowerCase();
       return prefixes.some((p) => group === p || group.startsWith(`${p}.`)) ? null : `${name}'s groupId is not under ${prefixes.join(", ")}`;
+    },
+    // The exact groupIds. The field is a prefix list, so a groupId also admits its subgroups
+    // (`com.acme` takes `com.acme.tools`): the narrowest the field expresses.
+    derive(names) {
+      const groups = sortedUnique(
+        names.map((n) => n.split(":")[0].toLowerCase()).filter((g) => g !== "")
+      );
+      const wide = groups.filter((g) => !g.includes("."));
+      if (wide.length > 0)
+        return {
+          namespace: {},
+          ambiguous: `the groupId ${wide.join(", ")} has one segment, which as a prefix would admit every group under it; an operator sets the namespace`
+        };
+      return {
+        namespace: groups.length === 0 ? {} : { groupPrefixes: groups },
+        ambiguous: null
+      };
     }
   }
 };
@@ -13198,7 +13907,9 @@ var OCI_PACKAGE_RULES = {
   metadataKeys: ["mediaType", "platforms", "root"],
   namespace: {
     fields: {},
-    problem: () => null
+    problem: () => null,
+    // No namespace keys: nothing to derive.
+    derive: () => ({ namespace: {}, ambiguous: null })
   }
 };
 function pep503(name) {
@@ -13228,6 +13939,14 @@ var PYPI_PACKAGE_RULES = {
       if (names.length === 0 && prefixes.length === 0)
         return "the PyPI feed has no names or prefixes";
       return names.includes(norm) || prefixes.some((p) => norm.startsWith(p)) ? null : `${name} is not one of the feed's names or prefixes`;
+    },
+    // Exact `names`, never `prefixes` (a prefix would also take a sibling like `<name>-evil`).
+    derive(names) {
+      const exact = sortedUnique(names.map(pep503));
+      return {
+        namespace: exact.length === 0 ? {} : { names: exact },
+        ambiguous: null
+      };
     }
   }
 };
@@ -13252,6 +13971,18 @@ var SWIFT_PACKAGE_RULES = {
       const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
       if (!scope) return "the Swift feed has no scope set";
       return name.split(".")[0].toLowerCase() === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    },
+    derive(names) {
+      const scopes = sortedUnique(
+        names.map((n) => n.split(".")[0].toLowerCase()).filter((s) => s !== "")
+      );
+      if (scopes.length === 0) return { namespace: {}, ambiguous: null };
+      if (scopes.length > 1)
+        return {
+          namespace: {},
+          ambiguous: `the packages span several Swift scopes (${scopes.join(", ")}); a feed takes one`
+        };
+      return { namespace: { scope: scopes[0] }, ambiguous: null };
     }
   }
 };
@@ -13927,23 +14658,23 @@ function renderFeedSetup(ecosystem, ctx) {
   const decl = FEED_SETUP[ecosystem];
   const declared = new Set(decl.inputs);
   const origin = noSlash(ctx.origin);
-  const resolve2 = (input) => {
-    if (input === "baseUrl")
+  const resolve2 = (input2) => {
+    if (input2 === "baseUrl")
       return feedSetupBaseUrl(ecosystem, origin, ctx.owner);
-    if (input === "registryHost") return hostOf(origin);
-    if (input === "owner") return ctx.owner;
-    if (input === "package.name") return ctx.package?.name;
-    if (input === "package.version") return ctx.package?.version ?? void 0;
-    return ctx.namespace?.[input.slice("namespace.".length)];
+    if (input2 === "registryHost") return hostOf(origin);
+    if (input2 === "owner") return ctx.owner;
+    if (input2 === "package.name") return ctx.package?.name;
+    if (input2 === "package.version") return ctx.package?.version ?? void 0;
+    return ctx.namespace?.[input2.slice("namespace.".length)];
   };
   const credential = ctx.credential ?? { kind: "none" };
   return decl.render({
-    get(input) {
-      if (!declared.has(input))
+    get(input2) {
+      if (!declared.has(input2))
         throw new Error(
-          `renderFeedSetup: ${ecosystem} reads "${input}", which its setup does not declare`
+          `renderFeedSetup: ${ecosystem} reads "${input2}", which its setup does not declare`
         );
-      return resolve2(input);
+      return resolve2(input2);
     },
     // A Godot feed authenticates only through its URL; the others never through one.
     credential: ecosystem === "godot" === (credential.kind === "godot-url") ? credential : { kind: "none" }
@@ -13965,6 +14696,21 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // ../shared-catalog/dist/cloudSync.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/sync.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var SYNC_MAX_MUTATIONS = 100;
+var SYNC_MAX_PUSH_BYTES = 262144;
+var SYNC_MAX_MERGE_MEMBERS = 256;
+var SYNC_MAX_VALUE_BYTES = 8192;
+var SYNC_MAX_SETTINGS = 256;
+var SYNC_MAX_SETTINGS_BYTES = 65536;
+var SYNC_MAX_RECORD_BYTES = 65536;
+var SYNC_SAVE_SLOTS = 16;
+var SYNC_QUOTA_BYTES = 268435456;
+var SYNC_UNLICENSED_QUOTA_BYTES = 1048576;
+
+// ../shared-catalog/dist/cloudSync.js
 var USER_SETTING_SYNC_SCOPES = [
   "user",
   "platform",
@@ -13990,8 +14736,8 @@ var CLOUD_SYNC_TEMPLATE_NAMES = [
   "session"
 ];
 var CLOUD_SYNC_COLLECTION_PATTERN = "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
-var CLOUD_SYNC_MAX_MERGE_MEMBERS = 256;
-var CLOUD_SYNC_SAVE_SLOTS = 16;
+var CLOUD_SYNC_MAX_MERGE_MEMBERS = SYNC_MAX_MERGE_MEMBERS;
+var CLOUD_SYNC_SAVE_SLOTS = SYNC_SAVE_SLOTS;
 var KiB = 1024;
 var MiB = 1024 * KiB;
 var GiB = 1024 * MiB;
@@ -14011,15 +14757,27 @@ var CLOUD_SYNC_CEILINGS = {
 var CLOUD_SYNC_DEFAULTS = {
   /** A person's quota when nothing sets `pkey.cloudSync.bytes` (the `cloudSync.quota.defaultBytes`
    *  setting's default). */
-  quotaBytes: 256 * MiB,
+  quotaBytes: SYNC_QUOTA_BYTES,
   /** A signed-in person with no usable licence, on a product with no Anonymous devices tier:
    *  1 MiB, and files are refused. */
-  unlicensedQuotaBytes: 1 * MiB,
+  unlicensedQuotaBytes: SYNC_UNLICENSED_QUOTA_BYTES,
   /** Declared and open settings share one budget (D3). `maxValueBytes` bounds an open setting. */
-  settings: { maxKeys: 256, maxValueBytes: 8 * KiB, maxBytes: 64 * KiB },
-  records: { maxRecordBytes: 64 * KiB, maxRecords: 1e4, maxCollections: 32 },
+  settings: {
+    maxKeys: SYNC_MAX_SETTINGS,
+    maxValueBytes: SYNC_MAX_VALUE_BYTES,
+    maxBytes: SYNC_MAX_SETTINGS_BYTES
+  },
+  records: {
+    maxRecordBytes: SYNC_MAX_RECORD_BYTES,
+    maxRecords: 1e4,
+    maxCollections: 32
+  },
   files: { maxBytes: 32 * MiB, keepRevisions: 5 },
-  push: { maxMutations: 100, maxBytes: 256 * KiB, perMinutePerDevice: 60 },
+  push: {
+    maxMutations: SYNC_MAX_MUTATIONS,
+    maxBytes: SYNC_MAX_PUSH_BYTES,
+    perMinutePerDevice: 60
+  },
   fileTransfersPerHour: 30
 };
 var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB / 3);
@@ -14667,7 +15425,7 @@ var CompiledPattern = class {
     this.mark = new Int32Array(insts.length).fill(-1);
   }
   /** Epsilon-closure of `pc`, appended to `list`. Returns true if `match` is reachable. */
-  addThread(list2, pc, pos, len) {
+  addThread(list3, pc, pos, len) {
     const stack = [pc];
     while (stack.length) {
       const at = stack.pop();
@@ -14694,19 +15452,19 @@ var CompiledPattern = class {
         case "match":
           return true;
         default:
-          list2.push(at);
+          list3.push(at);
       }
     }
     return false;
   }
-  test(input) {
-    if (input.length > MAX_PATTERN_INPUT)
+  test(input2) {
+    if (input2.length > MAX_PATTERN_INPUT)
       return false;
     if (this.generation > 2147483632) {
       this.mark.fill(-1);
       this.generation = 0;
     }
-    const cps = Array.from(input, (c) => c.codePointAt(0));
+    const cps = Array.from(input2, (c) => c.codePointAt(0));
     const len = cps.length;
     let cur = [];
     let next = [];
@@ -14888,20 +15646,20 @@ function numberInWireRange(n) {
 function representabilityIssue(value) {
   return walk(value, "", 0);
 }
-function walk(value, path32, depth) {
+function walk(value, path36, depth) {
   if (typeof value === "string") {
-    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path32 } : null;
+    return hasLoneSurrogate(value) ? { rule: "lone-surrogate", path: path36 } : null;
   }
   if (typeof value === "number") {
-    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path32 };
+    return numberInWireRange(value) ? null : { rule: "number-out-of-range", path: path36 };
   }
   if (value === null || typeof value !== "object")
     return null;
   if (depth + 1 > MAX_VALUE_DEPTH)
-    return { rule: "too-deep", path: path32 };
+    return { rule: "too-deep", path: path36 };
   if (Array.isArray(value)) {
     for (let k = 0; k < value.length; k++) {
-      const issue = walk(value[k], `${path32}/${k}`, depth + 1);
+      const issue = walk(value[k], `${path36}/${k}`, depth + 1);
       if (issue)
         return issue;
     }
@@ -14909,7 +15667,7 @@ function walk(value, path32, depth) {
   }
   const seen = /* @__PURE__ */ new Map();
   for (const [name, member] of Object.entries(value)) {
-    const memberPath = `${path32}/${escapePointer(name)}`;
+    const memberPath = `${path36}/${escapePointer(name)}`;
     if (hasLoneSurrogate(name))
       return { rule: "lone-surrogate", path: memberPath };
     if (name.includes("\0"))
@@ -15115,6 +15873,7 @@ var BUILD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 var DELEGATED_KID_PATTERN = /^pkd1-[0-9a-f]{64}$/;
 
 // ../shared-manifest/dist/index.js
+var import_yaml2 = __toESM(require_dist(), 1);
 var DEFAULT_RESERVED_DISPLAY_NAMES_MODE = "warn";
 var DISPLAY_NAME_EXEMPT_SLUG = "polaris-key";
 var RESERVED_DISPLAY_TERMS = [
@@ -15172,9 +15931,9 @@ var CONFUSABLES = {
   "χ": "x",
   "γ": "y"
 };
-function displayNameSkeleton(text) {
+function displayNameSkeleton(text3) {
   let s = "";
-  for (const ch of text) {
+  for (const ch of text3) {
     if (new RegExp("\\p{M}", "u").test(ch)) continue;
     if (!/[\p{L}\p{N}]/u.test(ch)) {
       s += " ";
@@ -15192,8 +15951,8 @@ var TERM_WORDS = RESERVED_DISPLAY_TERMS.map(
 function byLength(terms) {
   return terms.sort((a, b) => b.w.length - a.w.length);
 }
-function reservedDisplayTerm(text, extraTerms = []) {
-  const words2 = displayNameSkeleton(text);
+function reservedDisplayTerm(text3, extraTerms = []) {
+  const words2 = displayNameSkeleton(text3);
   const terms = byLength([
     ...RESERVED_DISPLAY_TERMS.map((term, i) => ({ term, w: TERM_WORDS[i] })),
     ...extraTerms.map((term) => ({ term, w: displayNameSkeleton(term) }))
@@ -15211,19 +15970,20 @@ function reservedDisplayTerm(text, extraTerms = []) {
   }
   return null;
 }
-function invalidDisplayText(text) {
-  if (/^\s|\s$/u.test(text)) return true;
-  for (const ch of text) {
+function invalidDisplayText(text3) {
+  if (/^\s|\s$/u.test(text3)) return true;
+  for (const ch of text3) {
     const cp3 = ch.codePointAt(0);
     for (const [lo, hi] of DISPLAY_TEXT_STRIP)
       if (cp3 >= lo && cp3 <= hi) return true;
   }
   return false;
 }
-function checkDisplayName(text, opts = {}) {
-  if (invalidDisplayText(text)) return "invalid";
-  if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG) return null;
-  return reservedDisplayTerm(text, opts.extraTerms) ? "reserved" : null;
+function checkDisplayName(text3, opts = {}) {
+  if (invalidDisplayText(text3)) return "invalid";
+  if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG || opts.approved === true)
+    return null;
+  return reservedDisplayTerm(text3, opts.extraTerms) ? "reserved" : null;
 }
 var DEFAULT_RESERVED_NAMES_MODE = "warn";
 var RESERVED_ENTITLEMENT_KEYS = [
@@ -15348,9 +16108,9 @@ function schemaProblem(type, schema, where2 = "schema") {
     if (items !== null) return items;
   }
   for (const k of ["enum", "examples"]) {
-    const list2 = schema[k];
-    if (list2 !== void 0) {
-      if (!Array.isArray(list2) || !list2.every((v) => valueMatches(type, v)))
+    const list3 = schema[k];
+    if (list3 !== void 0) {
+      if (!Array.isArray(list3) || !list3.every((v) => valueMatches(type, v)))
         return `${where2}.${k} must list ${TYPE_WORDS[type]} values`;
     }
   }
@@ -15454,10 +16214,10 @@ function validateCloudSync(errors, warnings, ctx) {
     );
   }
 }
-function validateUserBlock(errors, warnings, entry, path32) {
+function validateUserBlock(errors, warnings, entry, path36) {
   const issues = userSettingIssues(entry);
   for (const issue of issues) {
-    const where2 = issue.at === "schema" ? path32.replace(/\/user$/, "/schema") : issue.at === "user" ? path32 : `${path32}/${issue.at.slice("user.".length)}`;
+    const where2 = issue.at === "schema" ? path36.replace(/\/user$/, "/schema") : issue.at === "user" ? path36 : `${path36}/${issue.at.slice("user.".length)}`;
     add(
       issue.severity === "warning" ? warnings : errors,
       "schema",
@@ -15470,23 +16230,23 @@ function validateUserBlock(errors, warnings, entry, path32) {
     (i) => i.severity === "error" && i.code === "invalid_user_setting" && i.at !== "user.listed" && i.at !== "user.conflict"
   );
 }
-function mergeMemberLimit(errors, schema, path32) {
+function mergeMemberLimit(errors, schema, path36) {
   if (mergeMembersOverLimit(schema))
     add(
       errors,
       "schema",
-      path32,
+      path36,
       "merge_members_over_limit",
       `A merged value has at most ${CLOUD_SYNC_MAX_MERGE_MEMBERS} top-level members (maxProperties and declared properties).`
     );
 }
-function validateCatalogBlock(errors, block, flags, keys) {
+function validateCatalogBlock(errors, block2, flags, keys) {
   const base = "/cloudSync";
-  if (!isRecord22(block)) {
+  if (!isRecord22(block2)) {
     shape(errors, "schema", base, "cloudSync must be an object.");
     return;
   }
-  for (const k of Object.keys(block)) {
+  for (const k of Object.keys(block2)) {
     if (CATALOG_MEMBERS.has(k)) continue;
     const at = `${base}/${escapePointer2(k)}`;
     if (k === "saves")
@@ -15505,9 +16265,9 @@ function validateCatalogBlock(errors, block, flags, keys) {
       );
     else shape(errors, "schema", at, `${k} is not a member here.`);
   }
-  if (block.collections !== void 0) {
+  if (block2.collections !== void 0) {
     const max = CLOUD_SYNC_DEFAULTS.records.maxCollections;
-    if (!Array.isArray(block.collections) || block.collections.length > max) {
+    if (!Array.isArray(block2.collections) || block2.collections.length > max) {
       shape(
         errors,
         "schema",
@@ -15517,14 +16277,14 @@ function validateCatalogBlock(errors, block, flags, keys) {
     } else {
       validateCollections(
         errors,
-        block.collections,
+        block2.collections,
         flags,
         `${base}/collections`
       );
     }
   }
-  if (block.migrations !== void 0) {
-    if (!Array.isArray(block.migrations)) {
+  if (block2.migrations !== void 0) {
+    if (!Array.isArray(block2.migrations)) {
       shape(
         errors,
         "schema",
@@ -15532,7 +16292,7 @@ function validateCatalogBlock(errors, block, flags, keys) {
         "cloudSync.migrations must be a list."
       );
     } else {
-      for (const [i, m] of block.migrations.entries()) {
+      for (const [i, m] of block2.migrations.entries()) {
         validateMigration(errors, m, keys, `${base}/migrations/${i}`);
       }
     }
@@ -15541,9 +16301,9 @@ function validateCatalogBlock(errors, block, flags, keys) {
 function validateCollections(errors, collections, flags, base) {
   const names = [];
   for (const [i, raw] of collections.entries()) {
-    const path32 = `${base}/${i}`;
+    const path36 = `${base}/${i}`;
     if (!isRecord22(raw)) {
-      shape(errors, "schema", path32, "A collection must be an object.");
+      shape(errors, "schema", path36, "A collection must be an object.");
       continue;
     }
     for (const k of Object.keys(raw)) {
@@ -15552,14 +16312,14 @@ function validateCollections(errors, collections, flags, base) {
         shape(
           errors,
           "schema",
-          `${path32}/onAttach`,
+          `${path36}/onAttach`,
           "onAttach is retired with no replacement: the first sign-in is an ordinary sync, and records the device made before it are pushed create-only."
         );
       else
         shape(
           errors,
           "schema",
-          `${path32}/${escapePointer2(k)}`,
+          `${path36}/${escapePointer2(k)}`,
           `${k} is not a member here.`
         );
     }
@@ -15567,7 +16327,7 @@ function validateCollections(errors, collections, flags, base) {
       shape(
         errors,
         "schema",
-        `${path32}/access`,
+        `${path36}/access`,
         "A collection's access is owner, the only value (the signed-in person's devices read and write it); omit access. ownerRead, server and public collections are not supported."
       );
     }
@@ -15575,7 +16335,7 @@ function validateCollections(errors, collections, flags, base) {
       shape(
         errors,
         "schema",
-        `${path32}/label`,
+        `${path36}/label`,
         "A collection's label must be a non-empty string."
       );
     }
@@ -15584,7 +16344,7 @@ function validateCollections(errors, collections, flags, base) {
       shape(
         errors,
         "schema",
-        `${path32}/template`,
+        `${path36}/template`,
         `A collection's template must be one of ${CLOUD_SYNC_TEMPLATE_NAMES.join(", ")}.`
       );
     }
@@ -15593,7 +16353,7 @@ function validateCollections(errors, collections, flags, base) {
       shape(
         errors,
         "schema",
-        `${path32}/conflict`,
+        `${path36}/conflict`,
         `A collection's conflict must be one of ${SYNC_CONFLICTS.join(", ")}.`
       );
     }
@@ -15601,7 +16361,7 @@ function validateCollections(errors, collections, flags, base) {
       shape(
         errors,
         "schema",
-        `${path32}/schema`,
+        `${path36}/schema`,
         "A collection's schema must be an object."
       );
     }
@@ -15609,7 +16369,7 @@ function validateCollections(errors, collections, flags, base) {
       shape(
         errors,
         "schema",
-        `${path32}/conflictField`,
+        `${path36}/conflictField`,
         "A collection's conflictField must name a property of its schema."
       );
     }
@@ -15617,7 +16377,7 @@ function validateCollections(errors, collections, flags, base) {
       shape(
         errors,
         "schema",
-        `${path32}/requires`,
+        `${path36}/requires`,
         "A collection's requires must name an entitlement."
       );
     }
@@ -15628,14 +16388,14 @@ function validateCollections(errors, collections, flags, base) {
         shape(
           errors,
           "schema",
-          `${path32}/maxRecords`,
+          `${path36}/maxRecords`,
           `A saves collection keeps ${CLOUD_SYNC_SAVE_SLOTS} slots per person, a platform constant; remove maxRecords.`
         );
       } else if (!positiveInteger(raw.maxRecords)) {
         shape(
           errors,
           "schema",
-          `${path32}/maxRecords`,
+          `${path36}/maxRecords`,
           "A collection's maxRecords must be a positive integer."
         );
       } else {
@@ -15643,7 +16403,7 @@ function validateCollections(errors, collections, flags, base) {
           errors,
           raw.maxRecords,
           CLOUD_SYNC_DEFAULTS.records.maxRecords,
-          `${path32}/maxRecords`
+          `${path36}/maxRecords`
         );
       }
     }
@@ -15653,7 +16413,7 @@ function validateCollections(errors, collections, flags, base) {
         shape(
           errors,
           "schema",
-          `${path32}/files`,
+          `${path36}/files`,
           "A collection's files has maxBytes and keepRevisions (non-negative integers)."
         );
       } else {
@@ -15661,7 +16421,7 @@ function validateCollections(errors, collections, flags, base) {
           errors,
           f.maxBytes,
           CLOUD_SYNC_CEILINGS.perPerson.fileBytes,
-          `${path32}/files/maxBytes`
+          `${path36}/files/maxBytes`
         );
       }
     }
@@ -15669,7 +16429,7 @@ function validateCollections(errors, collections, flags, base) {
       add(
         errors,
         "schema",
-        `${path32}/requires`,
+        `${path36}/requires`,
         "cloud_sync_unknown_entitlement",
         `requires names ${raw.requires}, which is neither a flag in the catalog nor a system entitlement.`
       );
@@ -15682,7 +16442,7 @@ function validateCollections(errors, collections, flags, base) {
         add(
           errors,
           "schema",
-          `${path32}/conflictField`,
+          `${path36}/conflictField`,
           "collection_conflict_field",
           `A ${conflict} collection needs conflictField naming a number property of its schema; the server keeps the record whose field is ${conflict === "max" ? "larger" : "smaller"}.`
         );
@@ -15691,7 +16451,7 @@ function validateCollections(errors, collections, flags, base) {
       add(
         errors,
         "schema",
-        `${path32}/conflictField`,
+        `${path36}/conflictField`,
         "collection_conflict_field",
         "conflictField is only for a max or min collection."
       );
@@ -15700,19 +16460,19 @@ function validateCollections(errors, collections, flags, base) {
       add(
         errors,
         "schema",
-        `${path32}/schema`,
+        `${path36}/schema`,
         "union_collection_schema",
         "A union collection needs a schema of type array with uniqueItems: true."
       );
     }
     if (conflict === "merge") {
-      mergeMemberLimit(errors, schema, `${path32}/schema`);
+      mergeMemberLimit(errors, schema, `${path36}/schema`);
     }
     if (typeof raw.name !== "string" || !COLLECTION_RE.test(raw.name)) {
       add(
         errors,
         "schema",
-        `${path32}/name`,
+        `${path36}/name`,
         "collection_name_conflict",
         "A collection name uses [A-Za-z0-9._:-] (at most 128 characters), optionally ending in .* for a pattern."
       );
@@ -15723,7 +16483,7 @@ function validateCollections(errors, collections, flags, base) {
         add(
           errors,
           "schema",
-          `${path32}/name`,
+          `${path36}/name`,
           "collection_name_conflict",
           `Collection ${raw.name} overlaps collection ${other.name} (entry ${other.index}).`
         );
@@ -15741,17 +16501,17 @@ function namesOverlap(a, b) {
   if (pb && a.startsWith(pb)) return true;
   return false;
 }
-function validateMigration(errors, m, keys, path32) {
+function validateMigration(errors, m, keys, path36) {
   if (!isRecord22(m)) {
-    shape(errors, "schema", path32, "A migration must be an object.");
+    shape(errors, "schema", path36, "A migration must be an object.");
     return;
   }
-  unknownMembers(errors, "schema", m, MIGRATION_MEMBERS, path32);
+  unknownMembers(errors, "schema", m, MIGRATION_MEMBERS, path36);
   if (!nonNegativeInteger(m.toSchemaVersion)) {
     shape(
       errors,
       "schema",
-      `${path32}/toSchemaVersion`,
+      `${path36}/toSchemaVersion`,
       "A migration's toSchemaVersion is required and must be a non-negative integer."
     );
   }
@@ -15760,7 +16520,7 @@ function validateMigration(errors, m, keys, path32) {
     shape(
       errors,
       "schema",
-      `${path32}/rename`,
+      `${path36}/rename`,
       "A migration's rename maps old keys to new keys (strings)."
     );
   }
@@ -15769,7 +16529,7 @@ function validateMigration(errors, m, keys, path32) {
     shape(
       errors,
       "schema",
-      `${path32}/mapValues`,
+      `${path36}/mapValues`,
       "A migration's mapValues maps each key to an object of old value to new value."
     );
   }
@@ -15778,7 +16538,7 @@ function validateMigration(errors, m, keys, path32) {
     shape(
       errors,
       "schema",
-      `${path32}/drop`,
+      `${path36}/drop`,
       "A migration's drop is a list of keys."
     );
   }
@@ -15789,7 +16549,7 @@ function validateMigration(errors, m, keys, path32) {
         add(
           errors,
           "schema",
-          `${path32}/rename/${escapePointer2(from)}`,
+          `${path36}/rename/${escapePointer2(from)}`,
           "invalid_cloud_sync_migration",
           `rename target ${to} is not a key in the catalog.`
         );
@@ -15798,7 +16558,7 @@ function validateMigration(errors, m, keys, path32) {
         add(
           errors,
           "schema",
-          `${path32}/rename/${escapePointer2(from)}`,
+          `${path36}/rename/${escapePointer2(from)}`,
           "invalid_cloud_sync_migration",
           `${from} is both renamed and dropped.`
         );
@@ -15806,14 +16566,14 @@ function validateMigration(errors, m, keys, path32) {
     }
   }
 }
-function ceilingCheck(errors, value, ceiling, path32) {
+function ceilingCheck(errors, value, ceiling, path36) {
   if (!nonNegativeInteger(value) || value <= ceiling) return;
   add(
     errors,
     "schema",
-    path32,
+    path36,
     "cloud_sync_limit_over_ceiling",
-    `${path32.slice(1).replaceAll("/", ".")} is ${value}, above the platform ceiling of ${ceiling}.`
+    `${path36.slice(1).replaceAll("/", ".")} is ${value}, above the platform ceiling of ${ceiling}.`
   );
 }
 function flagEntries(entries) {
@@ -15838,20 +16598,20 @@ function schemaTypeIs(schema, types) {
     return t.every((v) => typeof v === "string" && types.includes(v));
   return false;
 }
-function unknownMembers(errors, file, obj, allowed, path32) {
+function unknownMembers(errors, file, obj, allowed, path36) {
   for (const k of Object.keys(obj)) {
     if (!allowed.has(k)) {
       shape(
         errors,
         file,
-        `${path32}/${escapePointer2(k)}`,
+        `${path36}/${escapePointer2(k)}`,
         `${k} is not a member here.`
       );
     }
   }
 }
-function shape(errors, file, path32, message) {
-  add(errors, file, path32, "invalid_cloud_sync", message);
+function shape(errors, file, path36, message) {
+  add(errors, file, path36, "invalid_cloud_sync", message);
 }
 function escapePointer2(s) {
   return s.replaceAll("~", "~0").replaceAll("/", "~1");
@@ -15868,8 +16628,8 @@ function isOneOf(v, values) {
 function isRecord22(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
-function add(list2, file, path32, code, message) {
-  list2.push({ file, path: path32, code, message });
+function add(list3, file, path36, code, message) {
+  list3.push({ file, path: path36, code, message });
 }
 var P = "product";
 var S = "schema";
@@ -16244,14 +17004,14 @@ function isPresent(value, how = "value") {
   return value !== void 0 && value !== null;
 }
 function show(value) {
-  const text = JSON.stringify(value);
-  if (text === void 0) return String(value);
-  return text.length > 40 ? `${text.slice(0, 37)}...` : text;
+  const text3 = JSON.stringify(value);
+  if (text3 === void 0) return String(value);
+  return text3.length > 40 ? `${text3.slice(0, 37)}...` : text3;
 }
 function describeCanonical(s) {
-  const [doc, path32] = s.canonical.split(":");
+  const [doc, path36] = s.canonical.split(":");
   if (s.row === 11) return "the release block in .pkey/release";
-  return doc === s.doc ? path32 : `${path32} in .pkey/${doc}`;
+  return doc === s.doc ? path36 : `${path36} in .pkey/${doc}`;
 }
 function checkSpellings(docs, warnings) {
   for (const s of DEPRECATED_SPELLINGS) {
@@ -16286,12 +17046,12 @@ function checkSpellings(docs, warnings) {
     }
   }
 }
-function emitDeprecated(warnings, doc, path32, old, write, ignored) {
+function emitDeprecated(warnings, doc, path36, old, write, ignored) {
   if (doc === "product")
     add2(
       warnings,
       "product",
-      `${path32}`,
+      `${path36}`,
       "deprecated_spelling",
       `${old} is a deprecated spelling${ignored}; write ${write}.`
     );
@@ -16299,7 +17059,7 @@ function emitDeprecated(warnings, doc, path32, old, write, ignored) {
     add2(
       warnings,
       "schema",
-      `${path32}`,
+      `${path36}`,
       "deprecated_spelling",
       `${old} is a deprecated spelling${ignored}; write ${write}.`
     );
@@ -16307,17 +17067,17 @@ function emitDeprecated(warnings, doc, path32, old, write, ignored) {
     add2(
       warnings,
       "release",
-      `${path32}`,
+      `${path36}`,
       "deprecated_spelling",
       `${old} is a deprecated spelling${ignored}; write ${write}.`
     );
 }
-function emitConflict(warnings, doc, path32, old, write, used) {
+function emitConflict(warnings, doc, path36, old, write, used) {
   if (doc === "product")
     add2(
       warnings,
       "product",
-      `${path32}`,
+      `${path36}`,
       "conflicting_spelling",
       `${old} and ${write} are both set; ${used} is used. Keep only ${write}.`
     );
@@ -16325,7 +17085,7 @@ function emitConflict(warnings, doc, path32, old, write, used) {
     add2(
       warnings,
       "schema",
-      `${path32}`,
+      `${path36}`,
       "conflicting_spelling",
       `${old} and ${write} are both set; ${used} is used. Keep only ${write}.`
     );
@@ -16333,13 +17093,13 @@ function emitConflict(warnings, doc, path32, old, write, used) {
     add2(
       warnings,
       "release",
-      `${path32}`,
+      `${path36}`,
       "conflicting_spelling",
       `${old} and ${write} are both set; ${used} is used. Keep only ${write}.`
     );
 }
-function add2(list2, file, path32, code, message) {
-  list2.push({ file, path: path32, code, message });
+function add2(list3, file, path36, code, message) {
+  list3.push({ file, path: path36, code, message });
 }
 function isRecord3(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -16493,6 +17253,18 @@ var MODULE_SERVICES = {
   sync: ["sync"],
   commerce: ["commerce"]
 };
+var FEATURES = [
+  { id: "licensing", label: "Licensing", primary: ["license"] },
+  { id: "managed-config", label: "Managed config", primary: ["config"] },
+  {
+    id: "ship-builds",
+    label: "Ship builds",
+    primary: ["release", "distribution"]
+  },
+  { id: "sign-in", label: "Sign-in", primary: ["identity"] },
+  { id: "cloud-sync", label: "Cloud Sync", primary: ["sync"] },
+  { id: "commerce", label: "Commerce", primary: ["commerce"] }
+];
 var ASSET_REF_EXTENSIONS = [
   "png",
   "jpg",
@@ -16558,6 +17330,418 @@ function normalizeAssetRef(v) {
   };
   if (typeof raw.sha256 === "string") out.sha256 = raw.sha256;
   return out;
+}
+var CHANNELS = [
+  {
+    id: "polaris-key",
+    aliases: ["direct"],
+    label: "Polaris Locker",
+    family: "first-party",
+    plane: "worker",
+    outlet: { kind: "direct" },
+    platforms: ["macos", "windows", "linux", "android", "ios"],
+    formats: ["dmg", "zip", "msi", "exe", "appimage", "deb", "apk", "ipa"],
+    deliverableKinds: ["app", "pack", "package"],
+    customerAction: "install",
+    verbs: ["connect", "readListing", "uploadBuild", "release", "status"],
+    auto: ["upload-build", "release"],
+    human: [],
+    storefront: { adapter: "polaris-key", credential: null }
+  },
+  {
+    id: "app-store",
+    aliases: ["appstore"],
+    label: "App Store",
+    family: "apple",
+    plane: "worker",
+    outlet: { kind: "app-store" },
+    platforms: ["ios", "macos"],
+    arches: { macos: ["universal", "arm64"] },
+    formats: ["ipa", "pkg"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "identifiers",
+      "createApp",
+      "readListing",
+      "writeListingText",
+      "writeListingAssets",
+      "category",
+      "contentRating",
+      "privacyDeclarations",
+      "pricing",
+      "iap",
+      "uploadBuild",
+      "notificationsUrl",
+      "submit",
+      "release",
+      "rollout",
+      "status"
+    ],
+    auto: ["upload-build", "listing", "submit"],
+    human: ["agreements", "app-privacy", "review"],
+    storefront: {
+      adapter: "app-store",
+      credential: "app-store.api-key",
+      verification: "app-store.in-app-purchase-key",
+      notification: "app-store-server",
+      sku: "app-store-product"
+    }
+  },
+  {
+    id: "testflight",
+    aliases: [],
+    label: "TestFlight",
+    family: "apple",
+    plane: "worker",
+    outlet: { kind: "testflight" },
+    platforms: ["ios", "macos"],
+    arches: { macos: ["universal", "arm64"] },
+    formats: ["ipa", "pkg"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["connect", "uploadBuild", "testers", "status"],
+    auto: ["upload-build", "testers"],
+    human: ["beta-review"],
+    storefront: { adapter: "app-store", credential: "app-store.api-key" }
+  },
+  {
+    id: "altstore",
+    aliases: [],
+    label: "AltStore",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "altstore" },
+    platforms: ["ios"],
+    formats: ["ipa"],
+    deliverableKinds: ["app"],
+    customerAction: "add-source",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "altstore-pal",
+    aliases: [],
+    label: "AltStore PAL",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "altstore-pal" },
+    platforms: ["ios"],
+    formats: ["ipa"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: ["marketplace-listing"],
+    storefront: null
+  },
+  {
+    id: "google-play",
+    aliases: ["play"],
+    label: "Google Play",
+    family: "google",
+    plane: "worker",
+    outlet: { kind: "play" },
+    platforms: ["android"],
+    formats: ["aab", "apk"],
+    deliverableKinds: ["app", "pack"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "readListing",
+      "writeListingText",
+      "writeListingAssets",
+      "category",
+      "contentRating",
+      "privacyDeclarations",
+      "pricing",
+      "iap",
+      "uploadBuild",
+      "submit",
+      "release",
+      "rollout",
+      "status"
+    ],
+    auto: ["upload-build", "listing", "release"],
+    human: ["first-release", "data-safety", "review"],
+    storefront: {
+      adapter: "google-play",
+      credential: "google-play.service-account",
+      verification: "google-play.service-account",
+      notification: "play-rtdn",
+      sku: "play-product"
+    }
+  },
+  {
+    id: "play-testing",
+    aliases: ["google-play-testing"],
+    label: "Google Play testing",
+    family: "google",
+    plane: "worker",
+    outlet: { kind: "play-testing" },
+    platforms: ["android"],
+    formats: ["aab", "apk"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["connect", "uploadBuild", "testers", "release", "status"],
+    auto: ["upload-build", "release"],
+    human: ["testers"],
+    storefront: {
+      adapter: "google-play",
+      credential: "google-play.service-account"
+    }
+  },
+  {
+    id: "obtainium",
+    aliases: [],
+    label: "Obtainium",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "obtainium" },
+    platforms: ["android"],
+    formats: ["apk"],
+    deliverableKinds: ["app"],
+    customerAction: "add-source",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "fdroid",
+    aliases: ["fdroid-repo"],
+    label: "F-Droid repository",
+    family: "sideload",
+    plane: "feed",
+    outlet: { kind: "fdroid-repo" },
+    platforms: ["android"],
+    formats: ["apk"],
+    deliverableKinds: ["app"],
+    customerAction: "add-source",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "microsoft-store",
+    aliases: ["ms-store"],
+    label: "Microsoft Store",
+    family: "microsoft",
+    plane: "worker",
+    outlet: { kind: "ms-store" },
+    platforms: ["windows"],
+    formats: ["msix", "msixbundle", "msi", "exe"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "readListing",
+      "writeListingText",
+      "writeListingAssets",
+      "uploadBuild",
+      "submit",
+      "release",
+      "rollout",
+      "status"
+    ],
+    auto: ["upload-build", "listing", "submit"],
+    human: ["certification"],
+    storefront: {
+      adapter: "microsoft-store",
+      credential: "microsoft-store.partner-center"
+    }
+  },
+  {
+    id: "app-installer",
+    aliases: [],
+    label: "App Installer",
+    family: "microsoft",
+    plane: "feed",
+    outlet: { kind: "app-installer" },
+    platforms: ["windows"],
+    formats: ["msix", "msixbundle", "appinstaller"],
+    deliverableKinds: ["app"],
+    customerAction: "download",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  },
+  {
+    id: "winget",
+    aliases: [],
+    label: "winget",
+    family: "package-manager",
+    plane: "pr",
+    outlet: { kind: "winget" },
+    platforms: ["windows"],
+    formats: ["msi", "exe", "msix", "zip"],
+    deliverableKinds: ["app"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["manifest-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "winget", credential: null }
+  },
+  {
+    id: "steam",
+    aliases: ["steamworks"],
+    label: "Steam",
+    family: "pc-store",
+    plane: "worker",
+    outlet: { kind: "steam" },
+    platforms: ["windows", "macos", "linux"],
+    formats: ["depot"],
+    deliverableKinds: ["app", "pack"],
+    customerAction: "open-listing",
+    verbs: [
+      "connect",
+      "listApps",
+      "readListing",
+      "pricing",
+      "iap",
+      "uploadBuild",
+      "submit",
+      "release",
+      "status"
+    ],
+    auto: ["upload-build", "branch"],
+    human: ["store-page-review", "build-review"],
+    storefront: {
+      adapter: "steam",
+      credential: "steam.publisher-key",
+      verification: "steam.publisher-key",
+      notification: "steam-microtxn",
+      sku: "steam-package"
+    }
+  },
+  {
+    id: "itch",
+    aliases: ["itch.io"],
+    label: "itch.io",
+    family: "pc-store",
+    plane: "ci",
+    outlet: { kind: "itch" },
+    platforms: ["windows", "macos", "linux"],
+    formats: ["zip", "tar.gz"],
+    deliverableKinds: ["app"],
+    customerAction: "open-listing",
+    verbs: ["uploadBuild", "status"],
+    auto: ["butler-push"],
+    human: ["project-page"],
+    storefront: { adapter: "itch", credential: null }
+  },
+  {
+    id: "flathub",
+    aliases: [],
+    label: "Flathub",
+    family: "linux",
+    plane: "pr",
+    outlet: { kind: "flathub" },
+    platforms: ["linux"],
+    formats: ["flatpak"],
+    deliverableKinds: ["app"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["manifest-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "flathub", credential: null }
+  },
+  {
+    id: "snap",
+    aliases: ["snap-store"],
+    label: "Snap Store",
+    family: "linux",
+    plane: "ci",
+    outlet: { kind: "snap" },
+    platforms: ["linux"],
+    formats: ["snap"],
+    deliverableKinds: ["app"],
+    customerAction: "run-command",
+    verbs: ["uploadBuild", "release", "status"],
+    auto: ["snapcraft-upload", "release"],
+    human: ["name-registration"],
+    storefront: { adapter: "snap", credential: null }
+  },
+  {
+    id: "homebrew",
+    aliases: [],
+    label: "Homebrew",
+    family: "package-manager",
+    plane: "pr",
+    outlet: { kind: "direct", subkind: "homebrew" },
+    platforms: ["macos", "linux"],
+    platformNeeds: { linux: "homebrewFormula" },
+    formats: ["dmg", "tar.gz", "zip"],
+    deliverableKinds: ["app", "package"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["formula-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "homebrew", credential: null }
+  },
+  {
+    id: "scoop",
+    aliases: [],
+    label: "Scoop",
+    family: "package-manager",
+    plane: "pr",
+    outlet: { kind: "direct", subkind: "scoop" },
+    platforms: ["windows"],
+    formats: ["zip", "exe"],
+    deliverableKinds: ["app", "package"],
+    customerAction: "run-command",
+    verbs: ["submit", "status"],
+    auto: ["manifest-pr"],
+    human: ["pr-review"],
+    storefront: { adapter: "scoop", credential: null }
+  },
+  {
+    id: "web",
+    aliases: [],
+    label: "Web",
+    family: "web",
+    plane: "feed",
+    outlet: { kind: "web" },
+    platforms: ["web"],
+    formats: ["html"],
+    deliverableKinds: ["app"],
+    customerAction: "open-in-browser",
+    verbs: ["status"],
+    auto: ["feed"],
+    human: [],
+    storefront: null
+  }
+];
+var CHANNEL_ALIASES2 = {
+  direct: "polaris-key",
+  appstore: "app-store",
+  play: "google-play",
+  "google-play-testing": "play-testing",
+  "fdroid-repo": "fdroid",
+  "ms-store": "microsoft-store",
+  steamworks: "steam",
+  "itch.io": "itch",
+  "snap-store": "snap"
+};
+function findChannel(idOrAlias) {
+  const id = Object.hasOwn(CHANNEL_ALIASES2, idOrAlias) ? CHANNEL_ALIASES2[idOrAlias] : idOrAlias;
+  return CHANNELS.find((c) => c.id === id) ?? null;
+}
+function channelLabel(idOrAlias) {
+  return findChannel(idOrAlias)?.label ?? idOrAlias;
+}
+function channelForOutlet(kind, subkind) {
+  return CHANNELS.find(
+    (c) => c.outlet.kind === kind && (c.outlet.subkind ?? null) === (subkind ?? null)
+  ) ?? null;
 }
 var MAX_OUTLETS = 32;
 var TRANSPORTS = [
@@ -16929,11 +18113,11 @@ function validateDistribution(errors, doc, ctx, warnings) {
       "apiVersion must be pkey.dev/v1 when present."
     );
   }
-  for (const path32 of capabilityPaths(doc)) {
+  for (const path36 of capabilityPaths(doc)) {
     add3(
       errors,
       "distribution",
-      path32,
+      path36,
       "capabilities_not_manifest_writable",
       "outlet capabilities are operator-owned and cannot be set in .pkey/distribution; they default per outlet kind and an operator narrows them in the console."
     );
@@ -16952,6 +18136,7 @@ function validateDistribution(errors, doc, ctx, warnings) {
     } else {
       for (const [id, entry] of Object.entries(outlets)) {
         validateOutlet(errors, warnings, id, entry, ctx, kinds);
+        if (warnings) warnOutletWithoutBuild(warnings, id, entry, ctx);
       }
     }
   } else {
@@ -16973,6 +18158,33 @@ function validateDistribution(errors, doc, ctx, warnings) {
   }
   if (doc.listing !== void 0) {
     reportListing(errors, warnings, doc.listing, "/listing", "listing");
+  }
+}
+function declaredChannels(id, entry) {
+  const kind = outletKindOf(id, entry);
+  if (!kind || !isRecord4(entry)) return [];
+  const has3 = (...fields) => fields.some((f) => entry[f] !== void 0);
+  return CHANNELS.filter((c) => {
+    if (c.outlet.kind !== kind) return false;
+    if (kind !== "direct") return true;
+    if (c.outlet.subkind === "homebrew")
+      return has3("homebrewCask", "homebrewFormula", "homebrewTap");
+    if (c.outlet.subkind === "scoop") return has3("scoop", "scoopBucket");
+    return false;
+  });
+}
+function warnOutletWithoutBuild(warnings, id, entry, ctx) {
+  const built = ctx.buildPlatforms;
+  if (!built || built.size === 0) return;
+  for (const c of declaredChannels(id, entry)) {
+    if (c.platforms.some((p) => built.has(p))) continue;
+    add3(
+      warnings,
+      "distribution",
+      `/outlets/${id}`,
+      "outlet_without_build",
+      `outlet ${id} (${c.label}) is declared but .pkey/release declares no ${c.platforms.join(" or ")} build in deliverables.app.artifacts, so nothing can ship to it.`
+    );
   }
 }
 function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
@@ -17095,13 +18307,13 @@ function validateTransports(errors, transports, ctx, kinds) {
       );
     }
   }
-  const checkMap = (path32, raw) => {
+  const checkMap = (path36, raw) => {
     if (raw === void 0) return;
     if (!isRecord4(raw)) {
       add3(
         errors,
         "distribution",
-        path32,
+        path36,
         "invalid_transport",
         "a transport map must be an object keyed by outlet id."
       );
@@ -17112,7 +18324,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add3(
           errors,
           "distribution",
-          `${path32}/${outletId}`,
+          `${path36}/${outletId}`,
           "invalid_transport",
           `transports must be one of ${TRANSPORTS.join(", ")}.`
         );
@@ -17123,7 +18335,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add3(
           errors,
           "distribution",
-          `${path32}/${outletId}`,
+          `${path36}/${outletId}`,
           "unknown_outlet_ref",
           `transport maps may only name outlets declared under outlets.`
         );
@@ -17131,7 +18343,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         add3(
           errors,
           "distribution",
-          `${path32}/${outletId}`,
+          `${path36}/${outletId}`,
           "transport_not_allowed",
           `transport ${transport} cannot carry a deliverable on a ${kind} outlet.`
         );
@@ -17181,11 +18393,11 @@ function capabilityPaths(doc) {
     { node: doc, path: "" }
   ];
   while (stack.length) {
-    const { node, path: path32 } = stack.pop();
+    const { node, path: path36 } = stack.pop();
     if (node === null || typeof node !== "object") continue;
     const entries = Array.isArray(node) ? node.map((v, i) => [String(i), v]) : Object.entries(node);
     for (const [key, child] of entries) {
-      const childPath = `${path32}/${key}`;
+      const childPath = `${path36}/${key}`;
       if (!Array.isArray(node) && key === "capabilities") found.push(childPath);
       stack.push({ node: child, path: childPath });
     }
@@ -17348,10 +18560,52 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add3(list2, file, path32, code, message) {
-  list2.push({ file, path: path32, code, message });
+function add3(list3, file, path36, code, message) {
+  list3.push({ file, path: path36, code, message });
 }
 var globWork = { steps: 0 };
+function withIncludedChannels(channels2) {
+  const out = [];
+  for (const c of channels2) {
+    if (c === "dev" && !channels2.includes("beta") && !out.includes("beta"))
+      out.push("beta");
+    out.push(c);
+  }
+  return out;
+}
+function featureNeeds(id) {
+  const f = FEATURES.find((x) => x.id === id);
+  const out = /* @__PURE__ */ new Set();
+  for (const s of f.primary)
+    for (const req of SERVICE_REQUIRES[s]) {
+      const owner = FEATURES.find((x) => x.primary.includes(req));
+      if (owner && owner.id !== id) out.add(owner.id);
+    }
+  return FEATURES.filter((x) => out.has(x.id)).map((x) => x.id);
+}
+var featureUnlocked = (id, chosen) => featureNeeds(id).every((n) => chosen.includes(n));
+function toggleFeature(chosen, id, on) {
+  if (on)
+    return {
+      features: featureUnlocked(id, chosen) ? [.../* @__PURE__ */ new Set([...chosen, id])] : [...chosen],
+      cleared: []
+    };
+  let next = chosen.filter((f) => f !== id);
+  const cleared = [];
+  for (; ; ) {
+    const drop = next.filter((f) => !featureUnlocked(f, next));
+    if (drop.length === 0) break;
+    cleared.push(...drop);
+    next = next.filter((f) => !drop.includes(f));
+  }
+  return { features: next, cleared };
+}
+function servicesForFeatures(features) {
+  const own = /* @__PURE__ */ new Set();
+  for (const f of FEATURES)
+    if (features.includes(f.id)) for (const s of f.primary) own.add(s);
+  return { services: SERVICE_SLUGS.filter((s) => own.has(s)) };
+}
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
 var LOCATION_PROVIDERS = [
@@ -17517,8 +18771,8 @@ var CONTROL_RE = /[\u0000-\u001f\u007f]/;
 function isRecord5(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
-function oneOf2(list2, v) {
-  return typeof v === "string" && list2.includes(v);
+function oneOf2(list3, v) {
+  return typeof v === "string" && list3.includes(v);
 }
 function codePoints(s) {
   return [...s].length;
@@ -17613,7 +18867,7 @@ function versionFitsScheme(version, scheme) {
 }
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
-  const err = (path32, code, message) => errors.push({ path: path32, code, message });
+  const err = (path36, code, message) => errors.push({ path: path36, code, message });
   if (!isRecord5(descriptor)) {
     err(
       "/",
@@ -18111,7 +19365,7 @@ var MAVEN_EXTENSION_RE = /^[a-z0-9][a-z0-9.]{0,15}$/;
 var MEDIA_TYPE_RE = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/;
 var OCI_TAG_RE = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$/;
 function validatePackageDescriptor(d, manifest, errors) {
-  const err = (path32, code, message) => errors.push({ path: path32, code, message });
+  const err = (path36, code, message) => errors.push({ path: path36, code, message });
   for (const key of Object.keys(d))
     if (!PACKAGE_DESCRIPTOR_FIELDS.has(key))
       err(
@@ -18440,6 +19694,113 @@ function validatePackageDescriptor(d, manifest, errors) {
     releaseId: `${desc.deliverable}@${desc.version}`
   };
 }
+var OUTLET_FIELD_LABELS = {
+  platforms: "Platforms the direct download offers.",
+  homebrewCask: "Homebrew cask token.",
+  homebrewFormula: "Homebrew formula name.",
+  homebrewTap: "Your own tap, <owner>/homebrew-<name>.",
+  scoop: "Scoop manifest details (bin, shortcuts).",
+  scoopBucket: "Your own Scoop bucket, <owner>/<repo> on GitHub.",
+  appleId: "App Store Connect app id (digits).",
+  bundleId: "Bundle id.",
+  publicLink: "Join code of the public TestFlight link.",
+  artifact: "Artifact id from .pkey/release.",
+  marketplaceId: "AltStore PAL marketplace id.",
+  packageName: "Android package name.",
+  tracks: "Release track to Play track.",
+  productId: "Microsoft Store product id.",
+  flights: "Release track to package flight.",
+  packageFamilyName: "MSIX package family name, <Name>_<PublisherId>.",
+  publisher: "MSIX Publisher, the signing certificate's subject (CN=...).",
+  updateSettings: "App Installer update behavior.",
+  appId: "App id.",
+  branches: "Release track to Steam branch.",
+  target: "butler target, user/game.",
+  gameId: "itch.io game id (digits).",
+  name: "Snap name.",
+  channels: "Release track to the Snap channel it releases to.",
+  packageIdentifier: "winget package identifier."
+};
+var KIND_FIELD_LABELS = {
+  steam: { appId: "Steam app id." },
+  flathub: { appId: "Flatpak application id, like com.example.App." }
+};
+function outletFieldLabel(kind, field) {
+  return KIND_FIELD_LABELS[kind]?.[field] ?? OUTLET_FIELD_LABELS[field];
+}
+var DIRECT_FIELDS = {
+  homebrew: ["homebrewTap", "homebrewCask", "homebrewFormula"],
+  scoop: ["scoopBucket", "scoop"]
+};
+function channelIdentityFields(channelId) {
+  const channel = channelFor(channelId);
+  const kind = channel.outlet.kind;
+  if (!isOutletKind(kind)) return [];
+  return (kind === "direct" ? DIRECT_FIELDS[channel.id] : void 0) ?? OUTLET_IDENTITY_FIELDS[kind];
+}
+function channelFor(channelId) {
+  const channel = findChannel(channelId);
+  if (!channel) {
+    throw new Error(
+      `unknown channel "${channelId}"; known channels: ${CHANNELS.map((c) => c.id).join(", ")}.`
+    );
+  }
+  return channel;
+}
+function outletBlockEntry(channelId, identity = {}, opts = {}) {
+  const channel = channelFor(channelId);
+  const kind = channel.outlet.kind;
+  if (!isOutletKind(kind)) {
+    throw new Error(`channel ${channel.id} has no outlet kind.`);
+  }
+  const id = opts.outletId ?? channel.id;
+  if (!OUTLET_ID_PATTERN.test(id)) {
+    throw new Error(
+      `outlet id "${id}" must match ${OUTLET_ID_PATTERN.source}.`
+    );
+  }
+  const fields = channelIdentityFields(channelId);
+  const unknown = Object.keys(identity).filter(
+    (k) => !fields.includes(k)
+  );
+  if (unknown.length > 0) {
+    throw new Error(
+      `unknown field${unknown.length > 1 ? "s" : ""} ${unknown.join(", ")} for channel ${channel.id}; known fields: ${fields.length > 0 ? fields.join(", ") : "none"}.`
+    );
+  }
+  const entry = { kind };
+  const comments = {};
+  for (const field of fields) {
+    if (identity[field] === void 0) continue;
+    entry[field] = identity[field];
+    comments[field] = outletFieldLabel(kind, field);
+  }
+  return { id, entry, label: channel.label, comments };
+}
+function renderOutletBlock(channelId, identity, opts) {
+  const { id, entry, label, comments } = outletBlockEntry(
+    channelId,
+    identity,
+    opts
+  );
+  if (opts.format === "json") {
+    const json = JSON.stringify({ outlets: { [id]: entry } }, null, 2).replace(
+      /\[\n\s+([^[\]{}]*?)\n\s*\]/g,
+      (_m, items) => `[${items.replace(/,\n\s+/g, ", ")}]`
+    );
+    return `${json}
+`;
+  }
+  const doc = new import_yaml2.default.Document({ outlets: { [id]: entry } });
+  const outlets = doc.get("outlets", true);
+  const pair = outlets.items[0];
+  pair.key.commentBefore = ` ${label}`;
+  for (const p of pair.value.items) {
+    const comment = comments[String(p.key.value)];
+    if (comment) p.key.commentBefore = ` ${comment}`;
+  }
+  return doc.toString({ lineWidth: 0 });
+}
 var PLATFORM_NAMES = {
   macos: "macOS",
   ios: "iOS / iPadOS",
@@ -18507,14 +19868,14 @@ function archLabel(arch, platform) {
   const a = arch === "any" ? "universal" : arch;
   return ARCH_NAMES[p]?.[a] ?? CONVENTIONAL_ARCH_NAMES[a] ?? arch;
 }
-function buildLabel(input, opts = {}) {
-  const arch = archLabel(input.arch, input.platform);
-  const platform = isAnyPlatform(input.platform) && arch !== null ? UNKNOWN_PLATFORM_LABEL : platformLabel(input.platform, opts);
-  const raw = present(input.arch) ? input.arch : null;
+function buildLabel(input2, opts = {}) {
+  const arch = archLabel(input2.arch, input2.platform);
+  const platform = isAnyPlatform(input2.platform) && arch !== null ? UNKNOWN_PLATFORM_LABEL : platformLabel(input2.platform, opts);
+  const raw = present(input2.arch) ? input2.arch : null;
   const archLong = arch === null ? null : raw !== null && raw !== "any" && arch.toLowerCase() !== raw.toLowerCase() ? `${arch} (${raw})` : arch;
-  const short = arch === null ? platform : `${platform} ${arch}`;
-  const long = [platform, archLong, present(input.format) ? input.format : null].filter((p) => p !== null).join(" · ");
-  return { platform, arch, short, long };
+  const short2 = arch === null ? platform : `${platform} ${arch}`;
+  const long = [platform, archLong, present(input2.format) ? input2.format : null].filter((p) => p !== null).join(" · ");
+  return { platform, arch, short: short2, long };
 }
 var ASSET_PACK_ID_PATTERN = /^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/;
 var ASSET_PACK_ID_MAX = 64;
@@ -18787,12 +20148,12 @@ var CONTENT_ID_PATTERN = /^[!-~]{1,128}$/;
 var MAX_PROVIDES = 4096;
 var DEFAULT_PROVIDES_FILE = ".pkey/provides.json";
 var PROVIDES_FILE_PATTERN = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+-]+(?:\/[A-Za-z0-9._@+-]+){0,31}$/;
-function providesListProblem(list2) {
-  if (!Array.isArray(list2)) return "is not an array of content ids";
-  if (list2.length > MAX_PROVIDES)
-    return `holds ${list2.length} ids; at most ${MAX_PROVIDES}`;
+function providesListProblem(list3) {
+  if (!Array.isArray(list3)) return "is not an array of content ids";
+  if (list3.length > MAX_PROVIDES)
+    return `holds ${list3.length} ids; at most ${MAX_PROVIDES}`;
   const seen = /* @__PURE__ */ new Set();
-  for (const [i, id] of list2.entries()) {
+  for (const [i, id] of list3.entries()) {
     if (typeof id !== "string" || !CONTENT_ID_PATTERN.test(id))
       return `entry ${i} (${JSON.stringify(id)?.slice(0, 80)}) is not a content id: printable ASCII without spaces, 1 to 128 characters`;
     if (seen.has(id)) return `lists ${id} twice`;
@@ -19085,7 +20446,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     GROUP_NAME_RE,
     "product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$)."
   );
-  for (const [key, path32] of [
+  for (const [key, path36] of [
     [productNode.compatMin ?? productRoot.compatMin, "/compatMin"],
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
   ]) {
@@ -19093,14 +20454,14 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       add4(
         errors,
         "product",
-        path32,
+        path36,
         "invalid_semver",
         "Version bounds must be semver strings."
       );
     }
   }
   const declaredDeviceLimit = productNode.defaultDeviceLimit ?? productRoot.defaultDeviceLimit ?? licensing.defaultDeviceLimit;
-  for (const [key, path32] of [
+  for (const [key, path36] of [
     [declaredDeviceLimit, "/licensing/defaultDeviceLimit"],
     [
       productNode.defaultMaxOfflineDays ?? productRoot.defaultMaxOfflineDays ?? licensing.defaultMaxOfflineDays,
@@ -19111,7 +20472,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       add4(
         errors,
         "product",
-        path32,
+        path36,
         "invalid_number",
         "Value must be a non-negative integer."
       );
@@ -19997,7 +21358,11 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   {
     const mode = opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
-    const verdict = (v) => typeof v === "string" && v !== "" ? checkDisplayName(v, { slug: productSlug }) : null;
+    const verdict = (v) => typeof v === "string" && v !== "" ? checkDisplayName(v, {
+      slug: productSlug,
+      extraTerms: opts.reservedDisplayTerms,
+      approved: opts.displayNameApproved
+    }) : null;
     const listing = isRecord6(manifest.distribution) ? asRecord(manifest.distribution.listing) : {};
     const name = verdict(productNode.name);
     if (name === "invalid")
@@ -20270,12 +21635,16 @@ function distributionContext(relRoot) {
   const declared = asRecord(rel.deliverables);
   const app = asRecord(declared[APP_DELIVERABLE_ID]);
   const artifactIds = /* @__PURE__ */ new Set();
+  const buildPlatforms = /* @__PURE__ */ new Set();
   for (const entry of arrayAt(app, "artifacts") ?? []) {
     if (isRecord6(entry) && typeof entry.id === "string")
       artifactIds.add(entry.id);
+    if (isRecord6(entry) && typeof entry.platform === "string")
+      buildPlatforms.add(entry.platform);
   }
   return {
     artifactIds,
+    buildPlatforms,
     channels: knownChannelNames(rel, Object.keys(asRecord(app.channels))),
     deliverables: new Map(
       distributionDeliverables(relRoot).map((d) => [d.id, d.kind])
@@ -21012,14 +22381,14 @@ function isAttachableEntry(s) {
   }
   if (!s.startsWith("res://")) return false;
   const rest = s.slice(6);
-  const path32 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  if (path32 === "" || path32.includes("..") || path32.includes("./")) return false;
-  for (let i = 0; i < path32.length; i++) {
-    const c = path32.charCodeAt(i);
-    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path32[i]))
+  const path36 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  if (path36 === "" || path36.includes("..") || path36.includes("./")) return false;
+  for (let i = 0; i < path36.length; i++) {
+    const c = path36.charCodeAt(i);
+    if (c < 32 || c > 126 || ATTACHABLE_BAD_CHARS.has(path36[i]))
       return false;
   }
-  const segments2 = path32.split("/");
+  const segments2 = path36.split("/");
   if (segments2[0].toLowerCase() === ".pkey") return false;
   for (const seg of segments2) {
     if (seg === "" || seg === "." || seg === "..") return false;
@@ -21406,11 +22775,11 @@ function parseManifest(files, opts = {}) {
     else docs[name] = res.value;
   }
   if (files.product === void 0) {
-    const missing = validateIngestDocuments({
+    const missing2 = validateIngestDocuments({
       product: void 0,
       schema: files.schema === void 0 ? void 0 : null
     });
-    for (const e of missing.errors) errors.push(formatIngestError(e));
+    for (const e of missing2.errors) errors.push(formatIngestError(e));
   }
   if (errors.length) return { ok: false, errors };
   if (!isRecord6(docs.product))
@@ -21802,7 +23171,9 @@ function normalizeTier(raw) {
     policyExpiryDays: typeof raw.policyExpiryDays === "number" ? raw.policyExpiryDays : typeof raw.expiryDays === "number" ? raw.expiryDays : typeof raw.maxOfflineDays === "number" ? raw.maxOfflineDays : null,
     policyDeviceLimit: typeof raw.policyDeviceLimit === "number" ? raw.policyDeviceLimit : null,
     policyFingerprint: isOneOf2(raw.policyFingerprint, FINGERPRINT_MODE_VALUES) ? raw.policyFingerprint : null,
-    channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
+    channels: withIncludedChannels(
+      arrayAt(raw, "channels")?.filter(isString) ?? []
+    ),
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
     maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
     rank: typeof raw.rank === "number" && nonNegativeInteger2(raw.rank) ? raw.rank : 0,
@@ -22238,36 +23609,36 @@ function validateCatalogShape(catalog) {
   }
   return issues;
 }
-function constrained(errors, file, value, path32, code, re, message) {
+function constrained(errors, file, value, path36, code, re, message) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string" || !re.test(value)) {
-    add4(errors, file, path32, code, message);
+    add4(errors, file, path36, code, message);
   }
 }
-function releaseString(errors, value, path32, code, re, message) {
-  constrained(errors, "release", value, path32, code, re, message);
+function releaseString(errors, value, path36, code, re, message) {
+  constrained(errors, "release", value, path36, code, re, message);
 }
-function boundedText(errors, file, value, path32, code, max, label) {
+function boundedText(errors, file, value, path36, code, max, label) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string") {
-    add4(errors, file, path32, code, `${label} must be a string.`);
+    add4(errors, file, path36, code, `${label} must be a string.`);
     return;
   }
   if (value.length > max || CONTROL_CHAR_RE.test(value)) {
     add4(
       errors,
       file,
-      path32,
+      path36,
       code,
       `${label} must be at most ${max} characters and free of control characters.`
     );
   }
 }
-function constrainedList(errors, file, values, path32, code, re, message) {
+function constrainedList(errors, file, values, path36, code, re, message) {
   if (!Array.isArray(values)) return;
   for (const [i, value] of values.entries()) {
     if (typeof value !== "string" || !re.test(value)) {
-      add4(errors, file, `${path32}/${i}`, code, message);
+      add4(errors, file, `${path36}/${i}`, code, message);
     }
   }
 }
@@ -22405,8 +23776,8 @@ function isReservedIpv6(b) {
   if (b[0] === 255) return true;
   return false;
 }
-function parseIpv6(text) {
-  const bare = text.split("%")[0] ?? "";
+function parseIpv6(text3) {
+  const bare = text3.split("%")[0] ?? "";
   const halves = bare.split("::");
   if (halves.length > 2) return null;
   const head = expandIpv6Groups(halves[0] ?? "");
@@ -22678,8 +24049,8 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
       );
     } else {
       const seen = /* @__PURE__ */ new Set();
-      for (const [i, path32] of paths.entries()) {
-        const problem = identityRedirectPathProblem(path32) ?? (seen.has(path32) ? "must not repeat an earlier entry" : null);
+      for (const [i, path36] of paths.entries()) {
+        const problem = identityRedirectPathProblem(path36) ?? (seen.has(path36) ? "must not repeat an earlier entry" : null);
         if (problem) {
           add4(
             errors,
@@ -22689,7 +24060,7 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
             `identity.redirectPaths entries ${problem}.`
           );
         }
-        if (typeof path32 === "string") seen.add(path32);
+        if (typeof path36 === "string") seen.add(path36);
       }
       const origins = asRecord(productRoot.web).origins;
       if (paths.length > 0 && !(Array.isArray(origins) && origins.length > 0)) {
@@ -22747,599 +24118,13 @@ function isOneOf2(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add4(list2, file, path32, code, message) {
-  list2.push({ file, path: path32, code, message });
-}
-
-// src/listing.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// src/godotProject.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash } from "node:crypto";
-import { readFile, stat as stat2 } from "node:fs/promises";
-import path2 from "node:path";
-var ConfigParser = class {
-  constructor(src, file) {
-    this.src = src;
-    this.file = file;
-  }
-  src;
-  file;
-  i = 0;
-  fail(message) {
-    const line = this.src.slice(0, this.i).split("\n").length;
-    throw new Error(`${this.file}:${line}: ${message}`);
-  }
-  peek() {
-    return this.src[this.i] ?? "";
-  }
-  skipSpace(newlines) {
-    for (; ; ) {
-      const c = this.peek();
-      if (c === " " || c === "	" || c === "\r" || newlines && c === "\n")
-        this.i++;
-      else if ((c === ";" || c === "#") && newlines) {
-        while (this.i < this.src.length && this.peek() !== "\n") this.i++;
-      } else return;
-    }
-  }
-  parse() {
-    const out = { "": {} };
-    let section = "";
-    for (; ; ) {
-      this.skipSpace(true);
-      if (this.i >= this.src.length) return out;
-      if (this.peek() === "[") {
-        const end = this.src.indexOf("]", this.i);
-        const eol = this.src.indexOf("\n", this.i);
-        if (end < 0 || eol >= 0 && end > eol) this.fail("unclosed section");
-        section = this.src.slice(this.i + 1, end).trim();
-        out[section] ??= {};
-        this.i = end + 1;
-        continue;
-      }
-      const key = this.key();
-      this.skipSpace(false);
-      if (this.peek() !== "=") this.fail(`expected "=" after ${key}`);
-      this.i++;
-      this.skipSpace(false);
-      out[section][key] = this.value();
-      this.skipSpace(false);
-      const c = this.peek();
-      if (c === ";" || c === "#") this.skipSpace(true);
-      else if (c !== "\n" && c !== "")
-        this.fail(`unexpected ${JSON.stringify(c)}`);
-    }
-  }
-  key() {
-    if (this.peek() === '"') return this.string();
-    const start = this.i;
-    while (this.i < this.src.length && !"=\n".includes(this.peek())) this.i++;
-    const key = this.src.slice(start, this.i).trim();
-    if (!key) this.fail("empty key");
-    return key;
-  }
-  string() {
-    const start = this.i;
-    this.i++;
-    let out = "";
-    for (; ; ) {
-      if (this.i >= this.src.length) {
-        this.i = start;
-        this.fail("unterminated string");
-      }
-      const c = this.src[this.i++];
-      if (c === '"') return out;
-      if (c !== "\\") {
-        out += c;
-        continue;
-      }
-      const e = this.src[this.i++] ?? "";
-      switch (e) {
-        case "n":
-          out += "\n";
-          break;
-        case "t":
-          out += "	";
-          break;
-        case "r":
-          out += "\r";
-          break;
-        case "b":
-          out += "\b";
-          break;
-        case "f":
-          out += "\f";
-          break;
-        case "u":
-        case "U": {
-          const len = e === "u" ? 4 : 6;
-          const hex5 = this.src.slice(this.i, this.i + len);
-          if (!/^[0-9A-Fa-f]+$/.test(hex5) || hex5.length !== len)
-            this.fail("invalid unicode escape");
-          out += String.fromCodePoint(parseInt(hex5, 16));
-          this.i += len;
-          break;
-        }
-        default:
-          out += e;
-      }
-    }
-  }
-  list(close) {
-    const out = [];
-    this.skipSpace(true);
-    if (this.peek() === close) {
-      this.i++;
-      return out;
-    }
-    for (; ; ) {
-      this.skipSpace(true);
-      out.push(this.value());
-      this.skipSpace(true);
-      const c = this.src[this.i++];
-      if (c === close) return out;
-      if (c !== ",") this.fail(`expected "," or "${close}"`);
-      this.skipSpace(true);
-      if (this.peek() === close) {
-        this.i++;
-        return out;
-      }
-    }
-  }
-  value() {
-    const c = this.peek();
-    if (c === '"') return this.string();
-    if ((c === "&" || c === "^") && this.src[this.i + 1] === '"') {
-      this.i++;
-      return this.string();
-    }
-    if (c === "[") {
-      this.i++;
-      return this.list("]");
-    }
-    if (c === "{") {
-      this.i++;
-      const out = {};
-      this.skipSpace(true);
-      if (this.peek() === "}") {
-        this.i++;
-        return out;
-      }
-      for (; ; ) {
-        this.skipSpace(true);
-        const k = this.value();
-        this.skipSpace(true);
-        if (this.src[this.i++] !== ":")
-          this.fail('expected ":" in a dictionary');
-        this.skipSpace(true);
-        out[typeof k === "string" ? k : JSON.stringify(k)] = this.value();
-        this.skipSpace(true);
-        const d = this.src[this.i++];
-        if (d === "}") return out;
-        if (d !== ",") this.fail('expected "," or "}"');
-        this.skipSpace(true);
-        if (this.peek() === "}") {
-          this.i++;
-          return out;
-        }
-      }
-    }
-    const num = /^[-+]?(?:\d+\.?\d*(?:e[-+]?\d+)?|\.\d+(?:e[-+]?\d+)?)/i.exec(
-      this.src.slice(this.i, this.i + 64)
-    );
-    if (num) {
-      this.i += num[0].length;
-      return Number(num[0]);
-    }
-    const ident = /^[A-Za-z_][A-Za-z0-9_]*/.exec(
-      this.src.slice(this.i, this.i + 128)
-    );
-    if (!ident) this.fail(`unexpected ${JSON.stringify(c)}`);
-    this.i += ident[0].length;
-    const word = ident[0];
-    if (word === "true") return true;
-    if (word === "false") return false;
-    if (word === "null") return null;
-    if (word === "inf" || word === "inf_neg" || word === "nan") return null;
-    let type = word;
-    if (this.peek() === "[") {
-      const end = this.src.indexOf("]", this.i);
-      if (end < 0) this.fail("unclosed type");
-      type += this.src.slice(this.i, end + 1);
-      this.i = end + 1;
-    }
-    this.skipSpace(false);
-    if (this.peek() !== "(") this.fail(`unexpected word ${word}`);
-    this.i++;
-    return { $type: type, args: this.list(")") };
-  }
-};
-function parseGodotConfig(text, file = "config") {
-  return new ConfigParser(text.replace(/^\uFEFF/, ""), file).parse();
-}
-var PLATFORMS = {
-  Android: "android",
-  iOS: "ios",
-  macOS: "macos",
-  "Windows Desktop": "windows",
-  Linux: "linux",
-  "Linux/X11": "linux",
-  Web: "web",
-  HTML5: "web"
-};
-var ANDROID_CATEGORIES = [
-  "accessibility",
-  "music",
-  "games",
-  "photo-and-video",
-  "navigation",
-  "news",
-  "productivity",
-  "social-networking",
-  "photo-and-video",
-  null
-];
-var str2 = (v) => typeof v === "string" && v.trim() !== "" ? v.trim() : void 0;
-async function exists(file) {
-  try {
-    return (await stat2(file)).isFile();
-  } catch {
-    return false;
-  }
-}
-function pngSize(bytes) {
-  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
-  if (bytes.length < 24 || !sig.every((b, i) => bytes[i] === b)) return null;
-  if (String.fromCharCode(...bytes.slice(12, 16)) !== "IHDR") return null;
-  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return { width: v.getUint32(16), height: v.getUint32(20) };
-}
-function resolveResPath(root, res) {
-  if (!res.startsWith("res://")) return null;
-  const rel = res.slice("res://".length);
-  const file = path2.resolve(root, rel);
-  const within = path2.relative(root, file);
-  if (!within || within.startsWith("..") || path2.isAbsolute(within))
-    return null;
-  return file;
-}
-async function readGodotListing(dir, opts = {}) {
-  const root = path2.basename(dir) === "project.godot" ? path2.dirname(dir) : path2.resolve(dir);
-  const projectFile = path2.join(root, "project.godot");
-  let projectText;
-  try {
-    projectText = await readFile(projectFile, "utf8");
-  } catch {
-    throw new Error(
-      `No project.godot in ${root}: --godot takes the Godot project's directory.`
-    );
-  }
-  const project = parseGodotConfig(projectText, "project.godot");
-  const app = project.application ?? {};
-  const warnings = [];
-  const listing = {
-    project: path2.basename(root),
-    versions: [],
-    bundleIds: [],
-    categoryHints: [],
-    icons: []
-  };
-  const name = str2(app["config/name"]);
-  if (name) listing.name = name;
-  const localized = app["config/name_localized"];
-  if (localized && typeof localized === "object" && !Array.isArray(localized) && !("$type" in localized)) {
-    const names = {};
-    for (const [locale, v] of Object.entries(localized)) {
-      const n = str2(v);
-      if (n) names[locale] = n;
-    }
-    if (Object.keys(names).length) listing.nameLocalized = names;
-  }
-  const version = str2(app["config/version"]);
-  if (version) listing.versions.push({ platform: "project", value: version });
-  const presetsFile = path2.join(root, "export_presets.cfg");
-  const presetsRead = [];
-  const options = {};
-  if (await exists(presetsFile)) {
-    const cfg = parseGodotConfig(
-      await readFile(presetsFile, "utf8"),
-      "export_presets.cfg"
-    );
-    const sections = Object.keys(cfg).map((s) => /^preset\.(\d+)$/.exec(s)).filter((m) => m !== null).sort((a, b) => Number(a[1]) - Number(b[1]));
-    for (const m of sections) {
-      const preset = cfg[m[0]];
-      const presetName = str2(preset.name) ?? m[0];
-      const godotPlatform = str2(preset.platform) ?? "";
-      const platform = PLATFORMS[godotPlatform];
-      if (opts.presets?.length ? !opts.presets.includes(presetName) : platform && options[platform])
-        continue;
-      if (!platform) {
-        warnings.push(
-          `preset "${presetName}": platform "${godotPlatform}" is not read`
-        );
-        continue;
-      }
-      if (options[platform]) {
-        warnings.push(
-          `preset "${presetName}": a ${platform} preset was already read`
-        );
-        continue;
-      }
-      options[platform] = cfg[`${m[0]}.options`] ?? {};
-      presetsRead.push(`${presetName} (${godotPlatform})`);
-    }
-    for (const p of opts.presets ?? [])
-      if (!presetsRead.some((r) => r.startsWith(`${p} (`)))
-        warnings.push(`no export preset named "${p}"`);
-  } else if (opts.presets?.length) {
-    throw new UsageError(
-      `--preset was given but ${root} has no export_presets.cfg.`
-    );
-  }
-  const opt = (platform, key) => str2(options[platform]?.[key]);
-  for (const [platform, key] of [
-    ["android", "version/name"],
-    ["ios", "application/short_version"],
-    ["macos", "application/short_version"],
-    ["windows", "application/product_version"]
-  ]) {
-    const v = opt(platform, key);
-    if (v) listing.versions.push({ platform, value: v });
-  }
-  for (const [platform, key] of [
-    ["ios", "application/bundle_identifier"],
-    ["macos", "application/bundle_identifier"],
-    ["android", "package/unique_name"]
-  ]) {
-    const v = opt(platform, key);
-    if (!v) continue;
-    if (v.includes("$"))
-      warnings.push(
-        `${platform} ${key} "${v}" is a template (it holds $), not an id`
-      );
-    else listing.bundleIds.push({ platform, value: v });
-  }
-  const macCategory = opt("macos", "application/app_category");
-  if (macCategory)
-    listing.categoryHints.push({ platform: "macos", value: macCategory });
-  const androidCategory = options.android?.["package/app_category"];
-  if (typeof androidCategory === "number") {
-    const hint2 = ANDROID_CATEGORIES[androidCategory];
-    if (hint2) listing.categoryHints.push({ platform: "android", value: hint2 });
-  }
-  const copyright = opt("macos", "application/copyright") ?? opt("windows", "application/copyright");
-  if (copyright) listing.copyright = copyright;
-  const company = opt("windows", "application/company_name");
-  if (company) listing.company = company;
-  const master = opt("ios", "icons/app_store_1024x1024") && {
-    setting: "icons/app_store_1024x1024",
-    path: opt("ios", "icons/app_store_1024x1024")
-  } || opt("ios", "icons/icon_1024x1024") && {
-    setting: "icons/icon_1024x1024",
-    path: opt("ios", "icons/icon_1024x1024")
-  } || str2(app["config/icon"]) && {
-    setting: "application/config/icon",
-    path: str2(app["config/icon"])
-  } || null;
-  const wanted = [];
-  if (master) wanted.push({ slot: "icon-master", ...master });
-  for (const [slot, layer] of [
-    ["icon-adaptive-fg", "foreground"],
-    ["icon-adaptive-bg", "background"],
-    ["icon-adaptive-mono", "monochrome"]
-  ]) {
-    const setting = `launcher_icons/adaptive_${layer}_432x432`;
-    const p = opt("android", setting);
-    if (p) wanted.push({ slot, setting, path: p });
-  }
-  for (const w of wanted) {
-    const icon2 = { slot: w.slot, path: w.path, setting: w.setting };
-    const file = resolveResPath(root, w.path);
-    if (!file) {
-      warnings.push(
-        `${w.setting} "${w.path}" is not a res:// path inside the project; it is reported without a digest`
-      );
-    } else if (!await exists(file)) {
-      warnings.push(`${w.setting} "${w.path}" does not exist in the project`);
-    } else {
-      const bytes = new Uint8Array(await readFile(file));
-      icon2.sha256 = createHash("sha256").update(bytes).digest("hex");
-      const size = pngSize(bytes);
-      if (size) {
-        icon2.width = size.width;
-        icon2.height = size.height;
-      }
-    }
-    listing.icons.push(icon2);
-  }
-  return { listing, presets: presetsRead, warnings };
-}
-
-// src/listing.ts
-var ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
-var ADMIN_COOKIE_NAME = "__Host-pkey_admin";
-var CSRF_HEADER = "X-PKey-CSRF";
-var LISTING_USAGE = "Usage: pkey listing import --godot <project> --product <slug> [--preset <name> ...]\n              [--locale <code>] [--overwrite] [--apply [--fields a,b]] [--json]\n              [--base-url <url>]\n       pkey listing import --godot <project> --dry-run [--preset <name> ...]";
-var LOCALE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/;
-function cookieHint(status) {
-  if (status === 401) {
-    return `The admin session cookie in ${ADMIN_COOKIE_ENV} is missing or expired. Sign in to the console again and copy a fresh \`${ADMIN_COOKIE_NAME}\` cookie (devtools -> Application -> Cookies).`;
-  }
-  if (status === 403) {
-    return `Rejected on authorization or CSRF. Confirm the account is a platform admin, and that ${ADMIN_COOKIE_ENV} holds the CURRENT \`${ADMIN_COOKIE_NAME}\` value — the ${CSRF_HEADER} token is read from /manage/api/me with that same cookie, so a half-stale session fails here.`;
-  }
-  return status === 429 ? statusHint(status) : void 0;
-}
-function listingHint(status) {
-  if (status === 404)
-    return "No such product, or the product has no Distribution service enabled.";
-  return cookieHint(status);
-}
-function adminCookie(raw) {
-  const value = raw?.trim();
-  if (!value) {
-    throw new Error(
-      `${ADMIN_COOKIE_ENV} is not set.
-\`pkey listing import\` imports through the admin API, which this command authenticates with the console's browser session: the admin API token \`pkey bundle\` uses is scoped to minting bundles and cannot reach this route.
-Sign in to the console, then in devtools: Application -> Cookies -> the console origin -> copy the \`${ADMIN_COOKIE_NAME}\` cookie, and run:
-  export ${ADMIN_COOKIE_ENV}='${ADMIN_COOKIE_NAME}=<value>'
-It is a short-lived session credential carrying full admin authority: do not commit it and do not export it into a shared shell.`
-    );
-  }
-  return value.includes("=") ? value : `${ADMIN_COOKIE_NAME}=${value}`;
-}
-async function readCsrf(f, baseUrl, cookie) {
-  const url = `${baseUrl}/manage/api/me`;
-  const res = await request(f, url, {
-    headers: { accept: "application/json", cookie }
-  });
-  if (!res.ok)
-    throw await httpError(
-      res,
-      `Reading the admin session at ${url}`,
-      cookieHint
-    );
-  const csrf = (await readJson(res, url)).csrf;
-  if (typeof csrf !== "string" || !csrf.trim()) {
-    throw new Error(
-      `${url} returned no CSRF token, so the import cannot be authorised. Check that ${ADMIN_COOKIE_ENV} holds a console session cookie and not, say, a proxy's.`
-    );
-  }
-  return csrf;
-}
-async function listingImport(opts) {
-  if (opts.locale !== void 0 && !LOCALE.test(opts.locale))
-    throw new UsageError(
-      `--locale must be a code such as en-US.
-${LISTING_USAGE}`
-    );
-  if (opts.fields?.length && !opts.apply)
-    throw new UsageError(`--fields goes with --apply.
-${LISTING_USAGE}`);
-  const read2 = await readGodotListing(opts.godot, {
-    ...opts.presets?.length ? { presets: opts.presets } : {}
-  });
-  const result = {
-    upload: read2.listing,
-    presets: read2.presets,
-    warnings: read2.warnings
-  };
-  if (opts.dryRun) return result;
-  const product = opts.product?.trim();
-  if (!product)
-    throw new UsageError(`--product is required.
-${LISTING_USAGE}`);
-  const cookie = adminCookie(opts.cookie);
-  const baseUrl = normalizeBaseUrl(
-    opts.baseUrl?.trim() || DEFAULT_BASE_URL,
-    ADMIN_COOKIE_ENV
-  );
-  const f = opts.fetchImpl ?? fetch;
-  const csrf = await readCsrf(f, baseUrl, cookie);
-  const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/distribution/listing/import`;
-  const body = {
-    source: "godot",
-    godot: read2.listing,
-    ...opts.locale ? { locale: opts.locale } : {},
-    ...opts.overwrite ? { overwrite: true } : {}
-  };
-  const post = async (extra) => {
-    const res = await request(f, url, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "content-type": "application/json",
-        cookie,
-        [CSRF_HEADER]: csrf
-      },
-      body: JSON.stringify({ ...body, ...extra })
-    });
-    if (res.status === 409) {
-      const payload2 = await readJson(res, url);
-      if (payload2.reason === "import_changed" && payload2.import) {
-        result.import = payload2.import;
-        throw new Error(
-          `The listing or its sources changed since the preview, so nothing was written. The new diff:
-${formatImport(result)}
-Re-run to review and apply it.`
-        );
-      }
-      throw new Error(
-        `Importing at ${url} failed (409): ${untrusted(payload2.message ?? payload2.reason ?? "conflict", {})}`
-      );
-    }
-    if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
-    const payload = await readJson(res, url);
-    const answer = payload.import;
-    if (!answer || typeof answer.digest !== "string")
-      throw new Error(`${url} answered ${res.status} without an import diff.`);
-    return answer;
-  };
-  const preview = await post({});
-  result.import = preview;
-  if (!opts.apply) return result;
-  result.import = await post({
-    confirm: preview.digest,
-    ...opts.fields?.length ? { fields: opts.fields } : {}
-  });
-  return result;
-}
-function show2(v, env) {
-  const s = JSON.stringify(v) ?? "null";
-  return untrusted(s.length > 72 ? `${s.slice(0, 71)}…` : s, env);
-}
-function formatImport(r, env = {}) {
-  const u = (v) => untrusted(v, env);
-  const lines4 = [];
-  if (r.presets.length) lines4.push(`Presets read: ${r.presets.join(", ")}`);
-  for (const w of r.warnings) lines4.push(`warning: ${u(w)}`);
-  const imp = r.import;
-  if (!imp) {
-    lines4.push(JSON.stringify(r.upload, null, 2));
-    return lines4.join("\n");
-  }
-  if (imp.createsListing)
-    lines4.push(
-      `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`
-    );
-  if (!imp.changes.length)
-    lines4.push("No changes: the listing already holds what the project has.");
-  const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
-  for (const c of imp.changes) {
-    const value = c.action === "replace" ? `${show2(c.current, env)} -> ${show2(c.proposed, env)}` : c.action === "keep" ? `${show2(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show2(c.proposed, env)})` : show2(c.proposed, env);
-    lines4.push(
-      `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`
-    );
-  }
-  for (const x of imp.refused)
-    lines4.push(`refused  ${u(x.field)}: ${u(x.message)}`);
-  for (const i of imp.identifiers) {
-    const where2 = i.outlets.length ? i.outlets.map(
-      (o) => `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`
-    ).join(", ") : "no outlet declares one";
-    lines4.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
-  }
-  for (const a of imp.assets)
-    lines4.push(
-      `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`
-    );
-  const applicable = imp.changes.filter((c) => c.action !== "keep").length;
-  if (imp.applied)
-    lines4.push(
-      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}` : "Nothing to apply."
-    );
-  else if (applicable)
-    lines4.push(
-      `Nothing written. Re-run with --apply to write ${applicable} change${applicable === 1 ? "" : "s"}.`
-    );
-  return lines4.join("\n");
+function add4(list3, file, path36, code, message) {
+  list3.push({ file, path: path36, code, message });
 }
 
 // src/oidc.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { appendFile } from "node:fs/promises";
+import { appendFile as appendFile2 } from "node:fs/promises";
 
 // src/ci.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -23367,11 +24152,13 @@ function normalizeBaseUrl2(baseUrl) {
   try {
     url = new URL(raw);
   } catch {
-    throw new UsageError(`--base-url ${JSON.stringify(raw)} is not a URL.`);
+    throw new UsageError(
+      `--base-url ${JSON.stringify(maskTokens(raw))} is not a URL.`
+    );
   }
   if (url.protocol !== "https:" && url.hostname !== "localhost")
     throw new UsageError(
-      `--base-url must be https (got ${url.protocol}//${url.host}); a CI token must never cross plain HTTP.`
+      `--base-url must be https (got ${url.protocol}//${maskTokens(url.host)}); a CI token must never cross plain HTTP.`
     );
   return raw;
 }
@@ -23386,9 +24173,9 @@ function ciClient(opts) {
   const sleep = opts.sleep ?? defaultSleep;
   const maxAttempts = opts.maxAttempts ?? MAX_ATTEMPTS;
   const env = opts.env ?? {};
-  const url = (path32) => `${baseUrl}/${encodeURIComponent(product)}/${path32.replace(/^\/+/, "")}`;
-  async function postJson(path32, p) {
-    const target = url(path32);
+  const url = (path36) => `${baseUrl}/${encodeURIComponent(product)}/${path36.replace(/^\/+/, "")}`;
+  async function postJson(path36, p) {
+    const target = url(path36);
     const auth = p.auth !== false;
     if (auth && !opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
@@ -23428,8 +24215,8 @@ function ciClient(opts) {
       await sleep(wait);
     }
   }
-  async function getJson(path32, p) {
-    const target = url(path32);
+  async function getJson2(path36, p) {
+    const target = url(path36);
     if (!opts.token)
       throw new Error(`${p.what}: no CI token (this is a bug in pkey).`);
     let res;
@@ -23455,7 +24242,7 @@ function ciClient(opts) {
       false
     );
   }
-  return { baseUrl, product, url, postJson, getJson };
+  return { baseUrl, product, url, postJson, getJson: getJson2 };
 }
 function backoff(attempt, retryAfter) {
   const seconds = retryAfter ? Number(retryAfter) : NaN;
@@ -23464,14 +24251,14 @@ function backoff(attempt, retryAfter) {
   return Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS);
 }
 async function readBody(res) {
-  const text = await res.text().catch(() => "");
+  const text3 = await res.text().catch(() => "");
   try {
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(text3);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
       return parsed;
   } catch {
   }
-  const trimmed2 = text.trim();
+  const trimmed2 = text3.trim();
   return trimmed2 ? { message: clip2(trimmed2) } : {};
 }
 function renderRefusal(what, target, status, body, env = {}) {
@@ -23488,9 +24275,9 @@ function renderRefusal(what, target, status, body, env = {}) {
     lines4.push(`  fields: ${body.fields.map(u).join(", ")}`);
   if (Array.isArray(body.errors)) {
     for (const e of body.errors.slice(0, 50)) {
-      const rec = e ?? {};
+      const rec2 = e ?? {};
       lines4.push(
-        `  ${u(rec.path ?? "")} ${u(rec.code ?? "")}: ${u(rec.message ?? "")}`
+        `  ${u(rec2.path ?? "")} ${u(rec2.code ?? "")}: ${u(rec2.message ?? "")}`
       );
     }
   }
@@ -23615,7 +24402,7 @@ async function authGithubOidc(opts) {
       `pkey auth github-oidc runs inside a GitHub Actions job with \`permissions: id-token: write\`. Elsewhere, export ${CI_TOKEN_ENV} with a static pkeyci_ token an operator issued.`
     );
   const issued = await exchangeGithubOidc(opts);
-  await appendFile(githubEnv, `${CI_TOKEN_ENV}=${issued.token}
+  await appendFile2(githubEnv, `${CI_TOKEN_ENV}=${issued.token}
 `, "utf8");
   return issued;
 }
@@ -23689,7 +24476,11 @@ function logoLines(term) {
 }
 
 // src/help.ts
+var ADDABLE_CHANNELS = CHANNELS.filter(
+  (c) => isOutletKind(c.outlet.kind)
+).map((c) => c.id);
 var GROUPS = [
+  ["account", "Account"],
   ["manifest", "Manifest"],
   ["sdk", "SDK and tools"],
   ["bundles", "Offline bundles"],
@@ -23709,15 +24500,72 @@ var CI_ENV = {
 };
 var TOKEN_ENV = {
   name: ADMIN_TOKEN_ENV,
-  text: "Required by `pkey bundle`. An admin API token (`pkeya_...`), sent as `Authorization: Bearer`. Mint one in the console: /manage -> API tokens -> New token; the value is shown ONCE, at mint. It is scoped to `bundles:mint`, individually revocable, and expires on the date you chose. It can still mint a bundle for any product: do not commit it, and do not export it into a shared shell."
-};
-var COOKIE_ENV = {
-  name: ADMIN_COOKIE_ENV,
-  text: `Required by \`pkey listing import\`. The console's admin session cookie, as \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too). The admin API token \`pkey bundle\` uses reaches the bundle mint only, so the import is authenticated by the console's browser session. Copy the cookie from an authenticated console tab: devtools -> Application -> Cookies -> the console origin. It is a SHORT-LIVED session credential carrying full admin authority: do not commit it, and do not export it into a shared shell.`
+  text: "Used instead of the sign-in pkey login saved: a personal token (pkeyp_...) or an admin API token (pkeya_...) with the bundles:mint scope, sent as Authorization: Bearer. Make an API token in the console under API tokens; its value is shown once, when you make it. It can be revoked on its own and ends on the date you chose. Do not commit it or export it into a shared shell."
 };
 var ciEnvFor = (subs) => ({ ...CI_ENV, subs });
 var STORE_SUBS = ["winget", "homebrew", "scoop", "flathub"];
 var COMMANDS = [
+  {
+    name: "login",
+    group: "account",
+    json: true,
+    valueless: ["json", "no-browser"],
+    context: ["baseUrl"],
+    summary: "Sign in to the console from this terminal",
+    rows: [["login", "Sign in to the console from this terminal"]],
+    usage: ["pkey login [--base-url url] [--no-browser] [--json]"],
+    about: [
+      {
+        text: "Shows a code, opens the console's approval page in your browser (not over SSH, without a display or with --no-browser: it prints the link instead) and waits. Check that the code in your browser matches the one here before you approve: it is how you know the request is yours. On approval a personal token (admin, 7 days) goes to your operating system's credential store, bound to the origin that issued it. The token is never printed. Keys: Enter opens the page again, c copies the code (not over SSH), Esc cancels."
+      },
+      {
+        text: "A second pkey login ends the token it replaces once the new one is saved; if you cancel, are denied, run out of time or lose the network, the old sign-in keeps working. It refuses (exit 4) in CI, where PKEY_ADMIN_TOKEN is the credential; without a credential store; and when you already have the most personal tokens allowed (revoke one at Personal tokens, then run it again). A code canceled in the browser exits 4; an expired code, an unreachable console or a credential store that won't save exits 1. Esc and Ctrl+D cancel and exit 1; Ctrl+C exits 130. A base URL that is not https is exit 2 (http works only on localhost)."
+      },
+      {
+        text: '--json prints one line when the code is ready, {"v":1, "command":"login", "event":"started", "host", "code", "url", "expiresIn", "replaces"}, then one result line, {"v":1, "command":"login", "event":"result", "ok", "exit"} with name, email, roles, token (no secret), storedIn and replaced on success, or error and message. error is denied, expired, token_limit, cancelled, interrupted, refused, network, server-error, store-failed, usage or internal. It never prompts or opens a browser.'
+      }
+    ]
+  },
+  {
+    name: "whoami",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Show who pkey is signed in as",
+    rows: [["whoami", "Show who pkey is signed in as"]],
+    usage: ["pkey whoami [--base-url url] [--json]"],
+    about: [
+      {
+        text: `Prints the person, their roles and when the sign-in ends. The token is never printed. It reads the sign-in stored for the origin (--base-url), or ${ADMIN_TOKEN_ENV} when that is set to a personal token (pkeyp_).`
+      },
+      {
+        text: '--json prints one line, the result line: {"v":1, "command":"whoami", "event":"result", "ok", "exit", "host", "name", "email", "roles", "token"}, with role ids. A refusal is {"ok":false, "exit":4, "error", "message"}: not-signed-in, sign-in-ended, sign-in-refused, no-credential-store, keychain-refused, admin-api-token, env-token-refused or redirect. A failure is exit 1: network, server-error or not-a-console. A base URL that is not https is exit 2, error usage.'
+      }
+    ],
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        text: "A personal token (pkeyp_), used instead of the stored sign-in."
+      }
+    ]
+  },
+  {
+    name: "logout",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Revoke the stored sign-in and remove it",
+    rows: [["logout", "Revoke the stored sign-in and remove it"]],
+    usage: ["pkey logout [--base-url url] [--json]"],
+    about: [
+      {
+        text: `Revokes the stored token on the server, then removes it from the credential store. The stored sign-in is per operating-system user and origin (--base-url). If the server can't be reached, or won't revoke the token, the stored copy is still removed, and pkey says the token works until its end date and where to revoke it. That exits 1. It refuses (exit 4) while ${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`
+      },
+      {
+        text: '--json prints one line, the result line: {"v":1, "command":"logout", "event":"result", "ok", "exit", "host", "revoked", "cleared"}. When the token still works it adds error (network, redirect, revoke-refused or server-error), message, tokenEndsAt and revokeUrl.'
+      }
+    ]
+  },
   {
     name: "init",
     group: "manifest",
@@ -23725,11 +24573,14 @@ var COMMANDS = [
     summary: "Scaffold .pkey/ in this directory",
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
-      `pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]`
+      "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] [--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]"
     ],
     about: [
       {
-        text: "pkey init scaffolds .pkey/ in the current directory: product.yaml and schema.yaml always, release.yaml when Release is on. --modules takes the service slugs or the legacy module names (licensing, releases, oidc, edgeMint) and writes service slugs; without it you get license,config. --product (or --slug) defaults to the directory's name and --name to a titleized slug. Existing files are never overwritten without --force."
+        text: "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file that exists is kept unless you pass --force. On a terminal it asks what the product is for and whether to start with a Free tier; --modules and --starter-tier answer instead."
+      },
+      {
+        text: `--modules takes service slugs (${SERVICE_SLUGS.join(", ")}); the default is license,config. --starter-tier none leaves out the Free tier (default free, with License). The old names licensing, releases, oidc and edgeMint still work. --product (or --slug) defaults to the directory name, --name to that name in title case.`
       }
     ]
   },
@@ -23745,13 +24596,18 @@ var COMMANDS = [
     usage: ["pkey validate [path] [--fix] [--json]"],
     about: [
       {
-        text: "pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid."
+        text: "Checks .pkey/ with the rules the platform applies. Prints the verdict, the features it turns on and the secrets it needs, then each warning and error with the file and field it points at. Exits 1 when it is invalid. path is relative to here; the default is here."
       },
       {
-        text: `--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a file is not valid JSON or YAML.`
+        text: "--fix moves a field written in an old spelling to its new place when that place is empty. It keeps your comments, never overwrites a value, and prints each move."
       },
       {
-        text: `--fix repairs what it safely can before it validates: a field written in an old spelling moves to its canonical place when that place is empty (the deprecated_spelling warnings), keeping YAML comments. It never overwrites a value and leaves a conflict for you. It prints each move, or "Nothing to fix." With --json the moves are the result's "fixed" list.`
+        text: "--json prints one line instead; its shape is at /docs/reference/cli/#validate."
+      }
+    ],
+    reference: [
+      {
+        text: `--json prints one JSON line on stdout, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. With --fix, "fixed" lists the moves. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a file is not valid JSON or YAML.`
       }
     ]
   },
@@ -23761,15 +24617,18 @@ var COMMANDS = [
     json: true,
     valueless: ["json"],
     context: ["product", "baseUrl"],
-    summary: "Validate, then check the live product's discovery",
-    rows: [["doctor", "Validate, then check the live product's discovery"]],
+    summary: "Check .pkey/ and the live product",
+    rows: [["doctor", "Check .pkey/ and the live product"]],
     usage: ["pkey doctor [--product slug] [--base-url url] [--json]"],
     about: [
       {
-        text: "pkey doctor runs validate first. When a product is known (--product, else the nearest .pkey/product) it also fetches <base-url>/<product>/.well-known/polaris.json (--base-url, else $PKEY_BASE_URL, else key.plrs.im) and reports whether discovery answers, which services it enables and which signing keys it exposes; a failed remote check exits 1. Without a product the remote checks are skipped and it says so."
+        text: "pkey doctor checks the product in four parts and always runs all of them: Manifest (.pkey/, the services the server enables, who is signed in, polaris-key.json), Keys (the signing and release key ids), Integration (per feature and platform Verified, Waiting or Not seen yet, with CI and Commerce) and Left to do, each with its fix. The product is --product, else the nearest .pkey/product; discovery is its .well-known/polaris.json under the base URL (--base-url, else $PKEY_BASE_URL, else key.plrs.im). Outside a repository it still checks sign-in, the base URL and polaris-key.json."
       },
       {
-        text: '--json prints one result line: {"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, discovery, services or signing-keys and state ok, warn or todo. It exits 1 while any fact is todo.'
+        text: "Signed in is pkey login, or $PKEY_ADMIN_TOKEN. Signed out, or refused access, is a warning, and signed out makes no console request. The summary counts what is to do and what is a warning, then the run time. It exits 1 while anything is to do: a manifest error, a failed discovery or an open console step."
+      },
+      {
+        text: '--json prints one result line with the same facts: {"v":1, "command":"doctor", "event":"result", "ok", "exit", "product", "baseUrl", "facts", "summary", "services", "signing", "keys"}. Each fact is {"id", "state", "detail"} with id manifest, discovery, services, signing-keys or config-file and state ok, warn or todo; a network failure also carries "code":"network". "summary" is {"todo", "warnings"}. "signedIn" has state in, out, ended or unreadable and when it ends; "integration" has state ok, skipped, denied or unavailable, and ok carries features, platforms, ci, commerce and todo.'
       }
     ]
   },
@@ -23843,7 +24702,7 @@ var COMMANDS = [
     ],
     about: [
       {
-        text: "pkey dev runs the Worker's real router in this process (Node 22.13 or newer; no account, no secrets, no install) on 127.0.0.1:8787. It seeds the product in ./.pkey/, else the built-in Tidewater Studio, with throwaway signing and release keys, a licence key for each state (ok, expired, disabled, revoked, device-limit-full, key-entry-limit, floating), a fake identity provider, and a signed release on stable and beta. It writes polaris-key.json and prints the pins; nothing outlives the process. --auto-approve signs people in without the approval page; --builtin ignores ./.pkey/. The control commands act on a running server: --url names it (default: the baseUrl in ./polaris-key.json, else http://127.0.0.1:8787). Run Polaris Key locally: /docs/build/local/."
+        text: "pkey dev runs the Worker's real router in this process (Node 22.13 or newer; no account, no secrets, no install) on 127.0.0.1:8787. It seeds the product in ./.pkey/, else the built-in Tidewater Studio, with throwaway signing and release keys, a license key for each state (ok, expired, disabled, revoked, device-limit-full, key-entry-limit, floating), a fake identity provider, and a signed release on stable and beta. It writes polaris-key.json and prints the pins; nothing outlives the process. --auto-approve signs people in without the approval page; --builtin ignores ./.pkey/. The control commands act on a running server: --url names it (default: the baseUrl in ./polaris-key.json, else http://127.0.0.1:8787). Run Polaris Key locally: /docs/build/local/."
       }
     ]
   },
@@ -23873,12 +24732,13 @@ var COMMANDS = [
   {
     name: "bundle",
     group: "bundles",
-    json: false,
+    json: true,
+    valueless: ["json"],
     context: ["product", "baseUrl"],
     summary: "Mint an offline activation bundle for one device",
     rows: [["bundle", "Mint an offline activation bundle for one device"]],
     usage: [
-      "pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] [--base-url url] [--out file] [--force]"
+      "pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] [--base-url url] [--out file] [--force] [--json]"
     ],
     about: [
       {
@@ -23886,6 +24746,9 @@ var COMMANDS = [
       },
       {
         text: "--base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: the token is sent to whatever origin you name, so any other origin is refused before anything is sent. The file is written with mode 0600, is never created over an existing one without --force, and is never written through a symbolic link."
+      },
+      {
+        text: "--json prints one line, the result: the bundle id, the file, the device, the grace days and the documents it carries; on a failure, the error and its message."
       }
     ],
     env: [TOKEN_ENV]
@@ -23919,7 +24782,7 @@ var COMMANDS = [
     env: [
       {
         name: ADMIN_TOKEN_ENV,
-        text: "Required. An admin API token (`pkeya_...`) with the `migrations:report` scope. Mint one in the console: /manage -> API tokens -> New token. It reaches the migration job list, reports and dry runs, and nothing else."
+        text: "Instead of the sign-in `pkey login` saved: a personal token (`pkeyp_...`), or an admin API token (`pkeya_...`) with the `migrations:report` scope. Mint one in the console: /manage -> API tokens -> New token. An API token reaches the migration job list, reports and dry runs, and nothing else."
       }
     ]
   },
@@ -23956,9 +24819,6 @@ var COMMANDS = [
       dir: "--dir",
       source: "--source",
       meta: "--meta",
-      "base-url": "--base-url",
-      "release-key": "--release-key-file",
-      "content-key": "--content-key-file",
       delegation: "--delegation",
       "min-supported-seq": "--min-supported-seq",
       "content-stamp": "--content-stamp",
@@ -23967,8 +24827,7 @@ var COMMANDS = [
       out: "--out",
       bases: "--bases",
       "script-extensions": "--script-extensions",
-      "script-types": "--script-types",
-      "dry-run": "--dry-run"
+      "script-types": "--script-types"
     },
     summary: "Publish, sign and move releases from CI",
     rows: [
@@ -24117,24 +24976,21 @@ var COMMANDS = [
     name: "feeds",
     group: "feeds",
     json: true,
+    valueless: ["no-browser"],
     context: ["product", "baseUrl"],
-    summary: "The F-Droid feed, package-feed setup and feed pruning",
+    summary: "Package-feed setup and feed pruning",
     rows: [
-      ["feeds fdroid", "Build, sign and register a channel's F-Droid repo"],
       ["feeds setup", "Print the setup for one package feed"],
+      ["feeds setup --write", "Sign in and set up your package tools"],
       ["feeds prune", "Delete main builds below the newest stable"]
     ],
-    tree: { fdroid: [], setup: [], prune: [] },
+    tree: { setup: [], prune: [] },
     usage: [
-      "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]",
+      "pkey feeds setup --write [--owner slug] [--no-browser] [--base-url url] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]"
     ],
     about: [
-      {
-        subs: ["fdroid"],
-        text: "pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops."
-      },
       {
         subs: ["prune"],
         text: "pkey feeds prune deletes each package's builds of main and dev (X-main.N, X-dev.N, PyPI X.devN) below its newest stable release, the backfill of the Worker's automatic feed cleanup, which is on by default after a one-time dry-run notice. It is a dry run unless --apply: it prints what would go, per package, with counts and bytes. With --apply it also lists any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The token needs release:yank, which an operator grants."
@@ -24143,9 +24999,13 @@ var COMMANDS = [
         subs: ["setup"],
         text: "pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the npm scope, uv explicit = true, Gradle exclusiveContent, SwiftPM --scope, a fully qualified image reference, the Godot editor URLs). --namespace sets the feed's namespace (scope=@acme, groupPrefixes=gg.acme,gg.acme.tools); --token-env NAME adds the credential lines, reading the registry token from that environment variable. Offline: nothing is sent anywhere."
       },
-      { subs: ["fdroid", "prune"], text: CI_PARA }
+      {
+        subs: ["setup"],
+        text: "pkey feeds setup --write signs in with a code and a read-only personal token that you approve in Polaris Locker, then sets up the tools it finds on PATH. It changes only the lines it owns, in files under your home directory at 0600, and keeps the first version of a changed file as <file>.pkey-backup. It refuses (exit 4) in CI and without a terminal, where you print the setup instead; --owner limits it to one product's feeds. A Godot feed is skipped: the editor needs its own URL, made in Polaris Locker under Packages."
+      },
+      { subs: ["prune"], text: CI_PARA }
     ],
-    env: [ciEnvFor(["fdroid", "prune"])]
+    env: [ciEnvFor(["prune"])]
   },
   {
     name: "listing",
@@ -24166,7 +25026,7 @@ var COMMANDS = [
     about: [
       {
         subs: ["import"],
-        text: "pkey listing import reads the Godot project and imports it into the product's shared listing: the diff first, written only with --apply. --base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: the console session cookie is sent to whatever origin you name, so any other origin is refused before anything is sent."
+        text: "pkey listing import reads the Godot project and imports it into the product's shared listing: the diff first, written only with --apply. --base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: your token is sent to whatever origin you name, so any other origin is refused before anything is sent. Run pkey login once; the import uses that sign-in."
       },
       {
         subs: ["assets"],
@@ -24174,7 +25034,14 @@ var COMMANDS = [
       },
       { subs: ["assets"], text: CI_PARA }
     ],
-    env: [{ ...COOKIE_ENV, subs: ["import"] }, ciEnvFor(["assets"])]
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        subs: ["import"],
+        text: "Instead of the sign-in `pkey login` saved: a personal token (`pkeyp_...`). The import refuses an admin API token (`pkeya_...`)."
+      },
+      ciEnvFor(["assets"])
+    ]
   },
   {
     name: "assets",
@@ -24250,6 +25117,35 @@ var COMMANDS = [
     env: [CI_ENV]
   },
   {
+    name: "channel",
+    group: "storefront",
+    json: true,
+    context: ["product", "baseUrl"],
+    summary: "Declare a delivery channel and sync it from CI",
+    rows: [
+      ["channel add <id>", "Declare a channel in .pkey/distribution"],
+      [
+        "channel sync",
+        "Open the declared channels' store pull requests and upload their builds"
+      ]
+    ],
+    tree: { add: [], sync: [] },
+    usage: [
+      "pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]",
+      "pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]"
+    ],
+    about: [
+      {
+        subs: ["add"],
+        text: `channel add declares one channel in .pkey/distribution, creating the file when absent and keeping the comments already there, with a comment on every field. Channels: ${ADDABLE_CHANNELS.join(", ")}. --field sets one of the channel's fields (a value starting [ or { is JSON); the answer names the ones still unset. --outlet-id names the entry when you declare a channel twice. Nothing is written if the id is taken or .pkey/ would stop validating.`
+      },
+      {
+        subs: ["sync"],
+        text: "channel sync runs what each declared channel needs: a pull request for winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and with --dir an itch.io push per platform, a Snap upload and the F-Droid repository build, from the files .pkey/release maps (no fitting file is a skip). --channel is the release track (default stable); --version is what itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first submission (pkey storefront flathub init). A failed step fails the command after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs nothing and prints each checked command."
+      }
+    ]
+  },
+  {
     name: "storefront",
     group: "storefront",
     json: true,
@@ -24271,6 +25167,10 @@ var COMMANDS = [
         "storefront snap upload-metadata",
         "Send the snap's summary, description and icon"
       ],
+      [
+        "storefront fdroid",
+        "Build, sign and register a channel's F-Droid repo"
+      ],
       ["storefront exec", "Run another allow-listed store command"],
       ["storefront allow-list", "Print the commands each store's CI admits"],
       [
@@ -24283,6 +25183,7 @@ var COMMANDS = [
     tree: {
       itch: ["push"],
       snap: ["metadata", "upload", "upload-metadata"],
+      fdroid: [],
       exec: [],
       "allow-list": [],
       winget: ["pr", "status"],
@@ -24295,6 +25196,7 @@ var COMMANDS = [
       "pkey storefront snap metadata --yaml snapcraft.yaml [--dry-run]",
       "pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] [--dry-run] [--no-report]",
       "pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]",
+      "pkey storefront fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey storefront exec store command --op operation [--outlet id] [--tool-path path] -- argv...",
       "pkey storefront allow-list [--store s] [--json]",
       "pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--dry-run [--out dir]] [--portable path] [--command name] [--license l] [--app name] [--project-license spdx] [--no-report]",
@@ -24307,8 +25209,12 @@ var COMMANDS = [
         text: "pkey storefront runs a store's vendor CLI from CI, and only as a command its CI allow-list admits (pkey storefront allow-list prints them): itch push is butler push <dir> <user/game>:<platform[-channel]> --userversion <v>, the target from the itch outlet's identity (BUTLER_API_KEY in the environment); snap upload is snapcraft upload <snap> --release=<snap channels>, only the channels the snap outlet's channels map declares, and snap upload-metadata sends the summary, description and icon the snap carries, which snap metadata writes into snapcraft.yaml from the listing model before the build (SNAPCRAFT_STORE_CREDENTIALS, a scoped export-login). exec runs any other allow-listed command (steamcmd +run_app_build, whose script may set live only a named branch; msstore publish, refused while the console has a staged draft; BuildPatchTool -mode=UploadBinary). Each step is reported back to Polaris Key before and after it runs (distribution:report), so the store's ledger shows it beside console steps; a step already done in the same run is skipped. --dry-run checks and prints the command lines."
       },
       {
+        subs: ["fdroid"],
+        text: "pkey storefront fdroid builds the channel's F-Droid repository (index-v2.json, entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs distribution:feeds. Without --keystore it writes the unsigned files and stops."
+      },
+      {
         subs: STORE_SUBS,
-        text: "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in your own Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch."
+        text: "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask and the formula in your own Homebrew tap (direct.homebrewTap; a formula installs a .tar.gz or .zip build for macOS and Linux, and --command names its executable, default the formula's name), the Scoop feed's manifest in your own bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the channel's newest release, and opens one pull request per version with the GitHub token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for the version is recorded and nothing is written. status reads the pull request's state and review labels. flathub init writes the first submission's files, which a person opens against flathub/flathub's new-pr branch."
       },
       { text: CI_PARA }
     ],
@@ -24385,7 +25291,7 @@ function twoColumns(term, rows, column, indent = 2) {
   const descCol = stacked ? indent + 2 : indent + column + 2;
   const width = Math.max(1, caps.columns - descCol);
   const out = [];
-  for (const [t, text] of rows) {
+  for (const [t, text3] of rows) {
     const name = painter.style(t, ["strong"]);
     const fits = !stacked && cellWidth(t) <= column;
     const termLines = fits ? [] : wrapSpans(
@@ -24394,7 +25300,7 @@ function twoColumns(term, rows, column, indent = 2) {
     );
     const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
     const lines4 = wrapSpans(
-      [{ text, style: ["muted"] }],
+      [{ text: text3, style: ["muted"] }],
       Math.max(1, caps.columns - col)
     );
     termLines.forEach(
@@ -24417,16 +25323,16 @@ function termColumn(term, terms, cap = term.caps.columns < 70 ? 18 : 26) {
     Math.max(0, ...terms.map(cellWidth).filter((w) => w <= cap))
   );
 }
-function logoHeader(term, art2, block) {
+function logoHeader(term, art2, block2) {
   const gap = 2;
   const room = Math.max(1, term.caps.columns - LOGO_COLS - gap);
-  const text = block.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
-  const top = Math.max(0, Math.floor((art2.length - text.length) / 2));
-  const rows = Math.max(art2.length, top + text.length);
+  const text3 = block2.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
+  const top = Math.max(0, Math.floor((art2.length - text3.length) / 2));
+  const rows = Math.max(art2.length, top + text3.length);
   const out = [];
   for (let r = 0; r < rows; r++) {
     const left = art2[r] ?? [];
-    const right = text[r - top] ?? [];
+    const right = text3[r - top] ?? [];
     const pad2 = LOGO_COLS + gap - cellWidth(left.map((x) => x.text).join(""));
     const spans = right.length ? [...left, { text: " ".repeat(pad2) }, ...right] : left;
     out.push(term.painter.line(spans));
@@ -24440,15 +25346,15 @@ var LABEL_WIDTH = 7;
 function hereLines(here, width, separator) {
   const product = here.product;
   const room = Math.max(1, width - LABEL_WIDTH);
-  const text = product ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${product.source === "manifest" ? ".pkey/product" : "--product"}` : "no product: no .pkey/product here or above; pass --product";
-  const lines4 = wrapSpans([{ text }], room);
+  const text3 = product ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${product.source === "manifest" ? ".pkey/product" : "--product"}` : "no product: no .pkey/product here or above; pass --product";
+  const lines4 = wrapSpans([{ text: text3 }], room);
   const url = shortUrl(here.baseUrl);
   const tail = lines4.at(-1) ?? [];
   const used = cellWidth(tail.map((x) => x.text).join(""));
   const joined = ` ${separator} ${url}`;
   if (used + cellWidth(joined) <= room)
     tail.push({ text: joined, style: ["muted"] });
-  else lines4.push([{ text: url, style: ["muted"] }]);
+  else lines4.push([{ text: `${separator} ${url}`, style: ["muted"] }]);
   return lines4.map(
     (l, i) => [
       i === 0 ? { text: "Here".padEnd(LABEL_WIDTH), style: ["muted"] } : { text: " ".repeat(LABEL_WIDTH) },
@@ -24523,11 +25429,11 @@ function renderHelp(term, here) {
   return `${out.join("\n")}
 `;
 }
-function usageUnits(text) {
+function usageUnits(text3) {
   const raw = [];
   let depth = 0;
   let cur = "";
-  for (const ch of text) {
+  for (const ch of text3) {
     if (ch === "[" || ch === "(") depth += 1;
     if (ch === "]" || ch === ")") depth -= 1;
     if (ch === " " && depth === 0) {
@@ -24549,10 +25455,10 @@ function usageUnits(text) {
   }
   return units;
 }
-function usageLines(term, cmd, text, indent = 2) {
+function usageLines(term, cmd, text3, indent = 2) {
   const { painter, caps } = term;
   const cont = indent + 4;
-  const units = usageUnits(text);
+  const units = usageUnits(text3);
   const isIn = (word, words2) => word !== void 0 && word.split("|").every((w2) => words2.includes(w2));
   let lead = 2;
   if (cmd.tree && isIn(units[2], Object.keys(cmd.tree))) {
@@ -24577,18 +25483,18 @@ function usageLines(term, cmd, text, indent = 2) {
     (l, i) => `${" ".repeat(i === 0 ? indent : cont)}${l.join(" ")}`
   );
 }
-function usageSubs(cmd, text) {
+function usageSubs(cmd, text3) {
   if (!cmd.tree) return null;
-  const word = text.split(" ")[2] ?? "";
+  const word = text3.split(" ")[2] ?? "";
   const subs = word.split("|");
   return subs.every((s) => s in cmd.tree) ? subs : null;
 }
 function rowSubs(term) {
   return (term.split(" ")[1] ?? "").split("|");
 }
-function paragraph(term, text, indent = 2) {
+function paragraph(term, text3, indent = 2) {
   const width = Math.max(1, term.caps.columns - indent);
-  return wrapSpans([{ text }], width).map(
+  return wrapSpans([{ text: text3 }], width).map(
     (l) => `${" ".repeat(indent)}${term.painter.line(l)}`
   );
 }
@@ -24666,7 +25572,7 @@ function completionTree() {
       words: COMMANDS.map((c) => ({ word: c.name, text: c.summary }))
     }
   ];
-  const describe = (cmd, words2) => {
+  const describe2 = (cmd, words2) => {
     const term = [cmd.name, ...words2].join(" ");
     const row2 = cmd.rows.find(([t]) => t === term) ?? (words2.length === 1 ? cmd.rows.find(([t]) => rowSubs(t).includes(words2[0])) : void 0);
     return row2?.[1] ?? "";
@@ -24687,14 +25593,14 @@ function completionTree() {
       path: [cmd.name],
       words: Object.keys(cmd.tree).map((w) => ({
         word: w,
-        text: describe(cmd, [w])
+        text: describe2(cmd, [w])
       }))
     });
     for (const [w, next] of Object.entries(cmd.tree))
       if (next.length)
         nodes.push({
           path: [cmd.name, w],
-          words: next.map((n) => ({ word: n, text: describe(cmd, [w, n]) }))
+          words: next.map((n) => ({ word: n, text: describe2(cmd, [w, n]) }))
         });
   }
   return nodes;
@@ -24795,15 +25701,15 @@ function completionScript(shell) {
 
 // src/devCommand.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile3, writeFile as writeFile2 } from "node:fs/promises";
-import path4 from "node:path";
+import { readFile as readFile2, writeFile as writeFile2 } from "node:fs/promises";
+import path3 from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 // src/manifest.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir, readFile as readFile2, stat as stat3, writeFile } from "node:fs/promises";
-import path3 from "node:path";
-var import_yaml2 = __toESM(require_dist(), 1);
+import { mkdir, readFile, stat as stat2, writeFile } from "node:fs/promises";
+import path2 from "node:path";
+var import_yaml3 = __toESM(require_dist(), 1);
 var SCHEMA_BASE = "../node_modules/@polaris-key/manifest/schemas/v1";
 var PRODUCT_FILES = ["product.json", "product.yaml", "product.yml"];
 var SCHEMA_FILES = ["schema.json", "schema.yaml", "schema.yml"];
@@ -24837,30 +25743,33 @@ function normalizeModules2(raw) {
   return servicesOf(parsed);
 }
 async function findProductManifest(cwd) {
-  for (let dir = path3.resolve(cwd); ; dir = path3.dirname(dir)) {
-    const file = await findExisting(path3.join(dir, ".pkey"), PRODUCT_FILES);
-    if (file) {
-      try {
-        const doc = parseFile(file, await readFile2(file, "utf8"));
-        if (!isRecord7(doc)) return null;
-        const wrapped = isRecord7(doc.product) ? doc.product : doc;
-        const slug = wrapped.slug;
-        if (typeof slug !== "string" || !slug.trim()) return null;
-        const name = wrapped.name;
-        return {
-          slug: slug.trim(),
-          ...typeof name === "string" && name.trim() ? { name: name.trim() } : {},
-          file
-        };
-      } catch {
-        return null;
-      }
-    }
-    if (path3.dirname(dir) === dir) return null;
+  const file = await findProductFile(cwd);
+  if (!file) return null;
+  try {
+    const doc = parseFile(file, await readFile(file, "utf8"));
+    if (!isRecord7(doc)) return null;
+    const wrapped = isRecord7(doc.product) ? doc.product : doc;
+    const slug = wrapped.slug;
+    if (typeof slug !== "string" || !slug.trim()) return null;
+    const name = wrapped.name;
+    return {
+      slug: slug.trim(),
+      ...typeof name === "string" && name.trim() ? { name: name.trim() } : {},
+      file
+    };
+  } catch {
+    return null;
+  }
+}
+async function findProductFile(cwd) {
+  for (let dir = path2.resolve(cwd); ; dir = path2.dirname(dir)) {
+    const file = await findExisting(path2.join(dir, ".pkey"), PRODUCT_FILES);
+    if (file) return file;
+    if (path2.dirname(dir) === dir) return null;
   }
 }
 async function loadManifest(cwd) {
-  const rootDir = path3.join(cwd, ".pkey");
+  const rootDir = path2.join(cwd, ".pkey");
   const productFile = await findExisting(rootDir, PRODUCT_FILES);
   if (!productFile) {
     throw new Error(
@@ -24883,10 +25792,10 @@ async function loadManifest(cwd) {
         `${found.map((f) => `.pkey/${f}`).join(" and ")} are one document; only .pkey/${found[0]} is read (json, then yaml, then yml), here and on the platform. Keep one file.`
       );
   }
-  const product = parseFile(productFile, await readFile2(productFile, "utf8"));
+  const product = parseFile(productFile, await readFile(productFile, "utf8"));
   if (!isRecord7(product))
     throw new Error(
-      `${path3.relative(cwd, productFile)} must parse to an object.`
+      `${path2.relative(cwd, productFile)} must parse to an object.`
     );
   return {
     rootDir,
@@ -24895,23 +25804,23 @@ async function loadManifest(cwd) {
     ...fileWarnings.length ? { fileWarnings } : {},
     ...schemaFile ? {
       schemaPath: schemaFile,
-      schema: parseFile(schemaFile, await readFile2(schemaFile, "utf8"))
+      schema: parseFile(schemaFile, await readFile(schemaFile, "utf8"))
     } : {},
     ...releaseFile ? {
       releasePath: releaseFile,
-      release: parseFile(releaseFile, await readFile2(releaseFile, "utf8"))
+      release: parseFile(releaseFile, await readFile(releaseFile, "utf8"))
     } : {},
     ...distributionFile ? {
       distributionPath: distributionFile,
       distribution: parseFile(
         distributionFile,
-        await readFile2(distributionFile, "utf8")
+        await readFile(distributionFile, "utf8")
       )
     } : {}
   };
 }
 async function findDistributionFile(cwd) {
-  return findExisting(path3.join(cwd, ".pkey"), DISTRIBUTION_FILES);
+  return findExisting(path2.join(cwd, ".pkey"), DISTRIBUTION_FILES);
 }
 function outletIdsFor(manifest, outletId) {
   return distributionOutletIds(
@@ -24928,14 +25837,14 @@ function validateLoadedManifest(manifest) {
   });
 }
 async function initManifest(opts) {
-  const rootDir = path3.join(opts.cwd, ".pkey");
+  const rootDir = path2.join(opts.cwd, ".pkey");
   await mkdir(rootDir, { recursive: true });
   const files = [];
   const services = servicesOf(opts.modules);
-  const productPath = path3.join(rootDir, "product.yaml");
+  const productPath = path2.join(rootDir, "product.yaml");
   await writeNewFile2(productPath, productYaml(opts, services), opts.force);
   files.push(productPath);
-  const schemaPath = path3.join(rootDir, "schema.yaml");
+  const schemaPath = path2.join(rootDir, "schema.yaml");
   await writeNewFile2(
     schemaPath,
     schemaYaml(services.includes("config")),
@@ -24943,7 +25852,7 @@ async function initManifest(opts) {
   );
   files.push(schemaPath);
   if (services.includes("release")) {
-    const releasePath = path3.join(rootDir, "release.yaml");
+    const releasePath = path2.join(rootDir, "release.yaml");
     await writeNewFile2(releasePath, releaseYaml(opts), opts.force);
     files.push(releasePath);
   }
@@ -24959,6 +25868,13 @@ oidc:
   provider: platform
   groupRoleMap: {}
 ` : "";
+  const tiers = services.includes("license") && opts.starterTier !== "none" ? `
+  tiers:
+    - id: free
+      label: Free
+      profileId: default
+      policyDeviceLimit: 5
+      channels: ["stable"]` : "";
   return `# yaml-language-server: $schema=${SCHEMA_BASE}/product.schema.json
 apiVersion: pkey.dev/v1
 product:
@@ -24969,8 +25885,8 @@ ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}
 ${moduleLines.join("\n")}
 
 profiles:
-  - id: standard-defaults
-    name: Standard defaults
+  - id: default
+    name: Default
     payload:
       config: {}
       secrets: {}
@@ -24978,13 +25894,7 @@ profiles:
 
 licensing:
   defaultDeviceLimit: 5
-  defaultMaxOfflineDays: 14
-  tiers:
-    - id: standard
-      label: Standard
-      profileId: standard-defaults
-      policyDeviceLimit: 5
-      channels: ["stable"]${oidc}
+  defaultMaxOfflineDays: 14${tiers}${oidc}
 
 secrets:
   required: []
@@ -25039,7 +25949,7 @@ release:
 async function writeNewFile2(file, body, force = false) {
   if (!force) {
     try {
-      await stat3(file);
+      await stat2(file);
       throw new Error(`${file} already exists. Pass --force to overwrite.`);
     } catch (err) {
       if (err.code !== "ENOENT") throw err;
@@ -25049,9 +25959,9 @@ async function writeNewFile2(file, body, force = false) {
 }
 async function findExisting(rootDir, names) {
   for (const name of names) {
-    const file = path3.join(rootDir, name);
+    const file = path2.join(rootDir, name);
     try {
-      await stat3(file);
+      await stat2(file);
       return file;
     } catch (err) {
       if (err.code !== "ENOENT") throw err;
@@ -25063,7 +25973,7 @@ async function findAll(rootDir, names) {
   const out = [];
   for (const name of names) {
     try {
-      await stat3(path3.join(rootDir, name));
+      await stat2(path2.join(rootDir, name));
       out.push(name);
     } catch (err) {
       if (err.code !== "ENOENT") throw err;
@@ -25071,14 +25981,39 @@ async function findAll(rootDir, names) {
   }
   return out;
 }
+function yamlReason(err) {
+  const first = err.message.split("\n")[0];
+  if (/end with a \]/.test(first)) return "an unclosed [";
+  if (/end with a \}/.test(first)) return "an unclosed {";
+  switch (err.code) {
+    case "BAD_INDENT":
+      return "the indentation is off";
+    case "TAB_AS_INDENT":
+      return "a tab where spaces go";
+    case "DUPLICATE_KEY":
+      return "a key is written twice";
+    case "MISSING_CHAR":
+      return "an unclosed quote or bracket";
+    default:
+      return "the syntax is off here";
+  }
+}
+var ManifestSyntaxError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ManifestSyntaxError";
+  }
+};
 function parseFile(file, raw) {
   const json = file.endsWith(".json");
   try {
-    return json ? JSON.parse(raw) : (0, import_yaml2.parse)(raw);
+    return json ? JSON.parse(raw) : (0, import_yaml3.parse)(raw);
   } catch (err) {
-    const reason = err.message.split("\n")[0].replace(/:$/, "");
-    throw new Error(
-      `.pkey/${file} is not valid ${json ? "JSON" : "YAML"}: ${reason}. Fix the syntax, then run pkey validate again.`
+    const e = err;
+    const line = e.linePos?.[0]?.line;
+    const why = json ? "the JSON is malformed" : yamlReason(e);
+    throw new ManifestSyntaxError(
+      `.pkey/${path2.basename(file)}${line ? ` line ${line}` : ""}: not valid ${json ? "JSON" : "YAML"} (${why}).`
     );
   }
 }
@@ -25126,8 +26061,8 @@ async function loadDevBundle(file) {
     throw new Error(
       `pkey dev needs Node ${MIN_NODE.join(".")} or newer (its built-in SQLite); this is ${process.versions.node}.`
     );
-  const target = file ?? path4.join(
-    path4.dirname(fileURLToPath(import.meta.url)),
+  const target = file ?? path3.join(
+    path3.dirname(fileURLToPath(import.meta.url)),
     "dev",
     "server.mjs"
   );
@@ -25212,10 +26147,10 @@ async function serveDev(args, io, bundlePath) {
     if (repo) info.notes.unshift(`Seeded from ${repo.dir}.`);
     let wrote = null;
     if (args.out !== null) {
-      const file = path4.resolve(io.cwd, args.out);
+      const file = path3.resolve(io.cwd, args.out);
       await writeFile2(file, `${JSON.stringify(configFile(info), null, 2)}
 `);
-      wrote = path4.relative(io.cwd, file) || file;
+      wrote = path3.relative(io.cwd, file) || file;
     }
     io.stdout.write(
       args.json ? `${JSON.stringify(info)}
@@ -25231,7 +26166,7 @@ async function serveDev(args, io, bundlePath) {
 async function devConfigUrl(cwd) {
   try {
     const file = JSON.parse(
-      await readFile3(path4.join(cwd, DEV_CONFIG_FILE), "utf8")
+      await readFile2(path3.join(cwd, DEV_CONFIG_FILE), "utf8")
     );
     if (typeof file.baseUrl === "string" && file.dev)
       return file.baseUrl.replace(/\/+$/, "");
@@ -25333,9 +26268,9 @@ ${DEV_USAGE.join("\n")}`
 
 // src/fix.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml3 = __toESM(require_dist(), 1);
-import { readFile as readFile4, writeFile as writeFile3 } from "node:fs/promises";
-import path5 from "node:path";
+var import_yaml4 = __toESM(require_dist(), 1);
+import { readFile as readFile3, writeFile as writeFile3 } from "node:fs/promises";
+import path4 from "node:path";
 function fixableSpellings() {
   return DEPRECATED_SPELLINGS.filter(
     (s) => s.code === "deprecated_spelling" && s.canonicalPointer !== null && s.canonicalPointer.doc === s.doc && !s.pointer.includes("*") && !s.canonicalPointer.pointer.includes("*") && (s.wins === "canonical" || s.wins === "deprecated") && !s.unreadWhenWrapped && !s.checkedElsewhere
@@ -25344,7 +26279,7 @@ function fixableSpellings() {
 var segments = (pointer) => pointer.split("/").slice(1).map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
 var isSet = (v) => v !== void 0 && v !== null;
 function jsonEditable(value) {
-  const walk3 = (p) => {
+  const walk2 = (p) => {
     let cur = value;
     for (const k of p) {
       if (cur === null || typeof cur !== "object") return void 0;
@@ -25353,8 +26288,8 @@ function jsonEditable(value) {
     return cur;
   };
   return {
-    get: walk3,
-    take: walk3,
+    get: walk2,
+    take: walk2,
     set(p, v) {
       let cur = value;
       for (const k of p.slice(0, -1)) {
@@ -25365,7 +26300,7 @@ function jsonEditable(value) {
       cur[p.at(-1)] = v;
     },
     remove(p) {
-      const parent = walk3(p.slice(0, -1));
+      const parent = walk2(p.slice(0, -1));
       if (Array.isArray(parent)) parent.splice(Number(p.at(-1)), 1);
       else if (parent && typeof parent === "object")
         delete parent[p.at(-1)];
@@ -25397,22 +26332,22 @@ function moveLegacyRecipes(docs, cwd, moves) {
       const recipe = plain(doc.edit.get(["edgeMint", String(i)]));
       const id = recipe?.id;
       if (typeof id !== "string") continue;
-      for (const list2 of ["entries", "catalog"]) {
-        const n = lengthOf(schema.edit.get([list2]));
+      for (const list3 of ["entries", "catalog"]) {
+        const n = lengthOf(schema.edit.get([list3]));
         for (let j = 0; j < n; j++) {
-          const at = [list2, String(j)];
+          const at = [list3, String(j)];
           if (schema.edit.get([...at, "key"]) !== id || schema.edit.get([...at, "kind"]) !== "secret" || schema.edit.get([...at, "delivery"]) !== "edgeMint" || isSet(schema.edit.get([...at, "mint"])))
             continue;
-          const { id: _id, ...block } = recipe;
-          schema.edit.set([...at, "mint"], block);
+          const { id: _id, ...block2 } = recipe;
+          schema.edit.set([...at, "mint"], block2);
           doc.edit.remove(["edgeMint", String(i)]);
           if (lengthOf(doc.edit.get(["edgeMint"])) === 0)
             doc.edit.remove(["edgeMint"]);
           schema.changed = doc.changed = true;
           moves.push({
-            file: path5.relative(cwd, doc.file),
+            file: path4.relative(cwd, doc.file),
             from: `/edgeMint/${i}`,
-            to: `${path5.relative(cwd, schema.file)}#/${list2}/${j}/mint`
+            to: `${path4.relative(cwd, schema.file)}#/${list3}/${j}/mint`
           });
         }
       }
@@ -25430,8 +26365,8 @@ async function fixManifest(manifest, cwd) {
   const open2 = {};
   for (const [name, file] of Object.entries(files)) {
     if (!file) continue;
-    const raw = await readFile4(file, "utf8");
-    const edit = file.endsWith(".json") ? jsonEditable(JSON.parse(raw)) : yamlEditable((0, import_yaml3.parseDocument)(raw));
+    const raw = await readFile3(file, "utf8");
+    const edit = file.endsWith(".json") ? jsonEditable(JSON.parse(raw)) : yamlEditable((0, import_yaml4.parseDocument)(raw));
     const doc = { file, edit, changed: false };
     open2[name] = doc;
     for (const s of fixableSpellings().filter((x) => x.doc === name)) {
@@ -25443,23 +26378,23 @@ async function fixManifest(manifest, cwd) {
       edit.remove(from);
       doc.changed = true;
       moves.push({
-        file: path5.relative(cwd, file),
+        file: path4.relative(cwd, file),
         from: s.pointer,
         to: s.canonicalPointer.pointer
       });
     }
     if (name === "schema") {
-      for (const list2 of ["entries", "catalog"]) {
-        const entries = edit.get([list2]);
+      for (const list3 of ["entries", "catalog"]) {
+        const entries = edit.get([list3]);
         const n = Array.isArray(entries) ? entries.length : entries?.items?.length ?? 0;
         for (let i = 0; i < n; i++) {
-          if (edit.get([list2, String(i), "kind"]) !== "secret" || edit.get([list2, String(i), "secret"]) !== true)
+          if (edit.get([list3, String(i), "kind"]) !== "secret" || edit.get([list3, String(i), "secret"]) !== true)
             continue;
-          edit.remove([list2, String(i), "secret"]);
+          edit.remove([list3, String(i), "secret"]);
           doc.changed = true;
           moves.push({
-            file: path5.relative(cwd, file),
-            from: `/${list2}/${i}/secret`,
+            file: path4.relative(cwd, file),
+            from: `/${list3}/${i}/secret`,
             to: "(dropped)"
           });
         }
@@ -25472,113 +26407,920 @@ async function fixManifest(manifest, cwd) {
   return moves;
 }
 
-// src/context.ts
+// src/account.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var BASE_URL_ENV = "PKEY_BASE_URL";
-async function resolveContext(input) {
-  const found = await findProductManifest(input.cwd);
-  const env = input.env[BASE_URL_ENV]?.trim();
-  return {
-    product: input.product ? {
-      slug: input.product,
-      source: "flag",
-      // The name is the manifest's only when the flag names the manifest's own product.
-      ...found?.slug === input.product && found.name ? { name: found.name } : {}
-    } : found ? {
-      slug: found.slug,
-      ...found.name ? { name: found.name } : {},
-      source: "manifest",
-      file: found.file
-    } : null,
-    baseUrl: input.baseUrl ? { url: input.baseUrl, source: "flag" } : env ? { url: env, source: "env" } : { url: DEFAULT_BASE_URL, source: "default" }
-  };
-}
-async function applyContext(keys, flags, input) {
-  if (!keys?.length) return;
-  const given = (name) => typeof flags[name] === "string" && String(flags[name]).trim() !== "";
-  const wantProduct = keys.includes("product") && !given("product");
-  const wantBase = keys.includes("baseUrl") && !given("base-url");
-  if (!wantProduct && !wantBase) return;
-  const ctx = await resolveContext(input);
-  if (wantProduct && ctx.product) flags["product"] = ctx.product.slug;
-  if (wantBase && ctx.baseUrl.source === "env")
-    flags["base-url"] = ctx.baseUrl.url;
+
+// src/credentials.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/retired.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var RETIRED_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
+var RETIRED_COOKIE_REFUSAL = {
+  message: `${RETIRED_COOKIE_ENV} isn't used any more.`,
+  fix: "Run pkey login once."
+};
+function retiredCookieSet(env) {
+  return (env[RETIRED_COOKIE_ENV] ?? "") !== "";
 }
 
-// src/doctor.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-function manifestFact(result, problem) {
-  if (!result)
-    return {
-      id: "manifest",
-      state: "todo",
-      detail: problem ?? "no .pkey/ manifest"
-    };
-  if (!result.ok)
-    return {
-      id: "manifest",
-      state: "todo",
-      detail: `${result.errors.length} error${result.errors.length === 1 ? "" : "s"}`
-    };
+// src/credentials.ts
+var KEYCHAIN_SERVICE = "pkey";
+var CREDENTIAL_SHAPE = /^pkey[ap]_[A-Za-z0-9_-]{43,}$/;
+var PERSONAL_SHAPE = /^pkeyp_[A-Za-z0-9_-]{43,}$/;
+function isCredentialShape(value) {
+  return CREDENTIAL_SHAPE.test(value);
+}
+function isPersonalShape(value) {
+  return PERSONAL_SHAPE.test(value);
+}
+function hintOf(c) {
+  return c.hint ?? c.token.slice(-4);
+}
+var COMMAND_AGAIN = "run the command again";
+var NoStoreError = class extends Refusal {
+  constructor() {
+    super(
+      "No credential store on this computer.",
+      `Set ${ADMIN_TOKEN_ENV} to a personal token (pkeyp_…) instead.`,
+      "no-credential-store"
+    );
+    this.name = "NoStoreError";
+  }
+};
+var KeychainRefusedError = class extends Refusal {
+  constructor() {
+    super(
+      "The credential store refused access.",
+      `Allow pkey when it asks, or unlock the store, then ${COMMAND_AGAIN}.`,
+      "keychain-refused"
+    );
+    this.name = "KeychainRefusedError";
+  }
+};
+function originOf(baseUrl) {
+  return new URL(normalizeBaseUrl(baseUrl, ADMIN_TOKEN_ENV)).origin;
+}
+function encode(c) {
+  if (!isPersonalShape(c.token))
+    throw new Error("The credential store keeps personal tokens only.");
+  return JSON.stringify({
+    t: c.token,
+    e: c.expiresAt,
+    l: c.label ?? null,
+    h: hintOf(c)
+  });
+}
+var short = (v) => typeof v === "string" && v.length > 0 && v.length <= 200 ? v : null;
+function decode(raw) {
+  try {
+    const v = JSON.parse(raw);
+    if (typeof v.t === "string" && isPersonalShape(v.t))
+      return {
+        token: v.t,
+        expiresAt: typeof v.e === "number" && v.e > 0 ? v.e : null,
+        label: short(v.l),
+        hint: typeof v.h === "string" && /^.{1,8}$/.test(v.h) ? v.h : null
+      };
+    return null;
+  } catch {
+  }
+  return isPersonalShape(raw) ? { token: raw, expiresAt: null } : null;
+}
+var REFUSED = /NoStorageAccess|denied|locked|cancel|interaction|authori[sz]|not allowed|permission/i;
+async function keyringStore(load = () => Promise.resolve().then(() => (init_keyring_stub(), keyring_stub_exports)), platform = process.platform) {
+  let mod;
+  try {
+    mod = await load();
+  } catch {
+    throw new NoStoreError();
+  }
+  const guard = (fn) => {
+    try {
+      return fn();
+    } catch (e) {
+      throw REFUSED.test(e instanceof Error ? e.message : String(e)) ? new KeychainRefusedError() : new NoStoreError();
+    }
+  };
+  const entry = (origin) => new mod.Entry(
+    KEYCHAIN_SERVICE,
+    origin,
+    platform === "linux" ? { linux: { store: "secret-service" } } : void 0
+  );
   return {
-    id: "manifest",
-    state: result.warnings.length ? "warn" : "ok",
-    detail: result.warnings.length ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}` : "valid"
+    get: (origin) => guard(() => {
+      const raw = entry(origin).getPassword();
+      return raw ? decode(raw) : null;
+    }),
+    set: (origin, c) => guard(() => entry(origin).setPassword(encode(c))),
+    delete: (origin) => guard(() => entry(origin).deletePassword())
   };
 }
-async function checkRemote(opts) {
-  const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+async function adminCredential(opts) {
+  if (retiredCookieSet(opts.env))
+    throw new Refusal(
+      RETIRED_COOKIE_REFUSAL.message,
+      RETIRED_COOKIE_REFUSAL.fix
+    );
+  const origin = originOf(opts.baseUrl);
+  const fromEnv = opts.env[ADMIN_TOKEN_ENV]?.trim();
+  if (fromEnv) {
+    if (!isCredentialShape(fromEnv))
+      throw new Refusal(
+        `${ADMIN_TOKEN_ENV} is not a pkeya_ or pkeyp_ token.`,
+        "Copy it again whole.",
+        "env-token-refused"
+      );
+    return { token: fromEnv, source: "env", origin, expiresAt: null };
+  }
+  const stored = (await opts.store()).get(origin);
+  if (!stored)
+    throw new Refusal(
+      `Not signed in to ${new URL(origin).host}.`,
+      "Run pkey login.",
+      "not-signed-in"
+    );
+  return {
+    token: stored.token,
+    source: "store",
+    origin,
+    expiresAt: stored.expiresAt,
+    label: stored.label ?? null,
+    hint: hintOf(stored)
+  };
+}
+
+// src/account.ts
+var Usage = class extends Refusal {
+  constructor(message, fix, lines4) {
+    super(message, fix, "usage");
+    this.lines = lines4;
+    this.name = "Usage";
+  }
+  lines;
+};
+function day(epochSeconds, env) {
+  const when = new Date(epochSeconds * 1e3);
+  const parts = (timeZone) => Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(when).map((p2) => [p2.type, p2.value])
+  );
+  let p;
+  try {
+    p = parts(env.TZ || void 0);
+  } catch {
+    p = parts(void 0);
+  }
+  return `${p["year"]}-${p["month"]}-${p["day"]}`;
+}
+var shown = (value, env) => maskTokens(untrusted(value, env));
+var hostOf2 = (origin) => maskTokens(new URL(origin).host);
+var text = (t, extra = {}) => ({
+  text: t,
+  ...extra
+});
+var GLYPH_ROLE = {
+  ok: ["success"],
+  warn: ["warning"],
+  fail: ["danger"]
+};
+function glyphOf(t, kind) {
+  return t.painter.style(t.symbols[kind], GLYPH_ROLE[kind]);
+}
+function block(t, kind, paragraphs) {
+  const { painter, caps } = t;
+  const glyph = glyphOf(t, kind);
+  const width = Math.max(1, caps.columns - 3);
+  const out = [];
+  for (const para of paragraphs)
+    for (const l of wrapSpans(fit(para, width), width))
+      out.push(`${out.length === 0 ? `${glyph}  ` : "   "}${painter.line(l)}`);
+  return `${out.join("\n")}
+`;
+}
+var plain2 = (...lines4) => lines4.filter((l) => !!l).map((l) => [text(l)]);
+function jsonLine(value) {
+  return `${untrustedJson(value).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
+`;
+}
+function envelope(command, exit, fields) {
+  return jsonLine({
+    v: 1,
+    command,
+    event: "result",
+    ok: exit === 0,
+    exit,
+    ...fields
+  });
+}
+async function call(io, cred, method, path36) {
   let res;
   try {
-    res = await (opts.fetchImpl ?? fetch)(url);
-  } catch (err) {
-    throw new Error(networkMessage(err, url));
-  }
-  if (!res.ok)
-    return {
-      url,
-      status: res.status,
-      services: [],
-      signing: null,
-      facts: [
-        {
-          id: "discovery",
-          state: "todo",
-          detail: `failed (${res.status})`
-        }
-      ]
-    };
-  const body = await res.json();
-  const services = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => slug);
-  const signing = body.signing ?? body.trust ?? {};
-  const keys = signing !== null && typeof signing === "object" ? Object.keys(signing).length : 0;
-  return {
-    url,
-    services,
-    signing,
-    facts: [
-      { id: "discovery", state: "ok", detail: "answers" },
-      {
-        id: "services",
-        state: services.length ? "ok" : "warn",
-        detail: services.length ? services.join(", ") : "none enabled"
-      },
-      {
-        id: "signing-keys",
-        state: keys ? "ok" : "warn",
-        detail: keys ? `${keys} exposed` : "none exposed"
+    res = await (io.fetchImpl ?? fetch)(`${cred.origin}/manage/api${path36}`, {
+      method,
+      redirect: "manual",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: {
+        authorization: `Bearer ${cred.token}`,
+        accept: "application/json"
       }
-    ]
+    });
+  } catch (e) {
+    throw new Unreachable(hostOf2(cred.origin), networkCode(e));
+  }
+  if (res.status >= 300 && res.status < 400)
+    throw new Redirected(hostOf2(cred.origin));
+  return res;
+}
+var jsonOf = readCappedJson;
+async function guarded(io, command, run2) {
+  try {
+    return await run2();
+  } catch (e) {
+    const refusal = e instanceof Refusal;
+    if (!refusal && !(e instanceof Failure)) {
+      if (!io.json) throw e;
+      io.stdout.write(
+        envelope(command, 1, {
+          error: networkCode(e) ? "network" : "internal",
+          message: shown(
+            e instanceof Error ? e.message : "pkey hit an unexpected error.",
+            io.env
+          )
+        })
+      );
+      return 1;
+    }
+    const exit = e instanceof Usage ? 2 : refusal ? 4 : 1;
+    const fix = e.fix?.replace(COMMAND_AGAIN, `run pkey ${command} again`);
+    const extra = e.extra ?? {};
+    if (io.json)
+      io.stdout.write(
+        envelope(command, exit, {
+          error: e.code,
+          message: [e.message, fix].filter(Boolean).join(" "),
+          ...extra
+        })
+      );
+    else
+      io.stderr.write(
+        block(
+          io.term(io.stderr),
+          refusal ? "warn" : "fail",
+          e.lines ?? plain2(e.message, fix)
+        )
+      );
+    return exit;
+  }
+}
+function originFor(io, command) {
+  try {
+    return originOf(io.baseUrl);
+  } catch (e) {
+    if (!(e instanceof UsageError)) throw e;
+    const message = `pkey ${command} needs an https address.`;
+    const use = text(DEFAULT_BASE_URL, { keep: true });
+    throw new Usage(
+      message,
+      `Use ${DEFAULT_BASE_URL}; http works only on localhost.`,
+      [
+        [text(message)],
+        [text("Use "), use, text("; http works only on localhost.")]
+      ]
+    );
+  }
+}
+function endedRefusal(cred) {
+  return cred.source === "env" ? new Refusal(
+    `${ADMIN_TOKEN_ENV} was refused. It may have ended, been revoked, or not be an admin token.`,
+    "Set a current one, or unset it and run pkey login.",
+    "env-token-refused"
+  ) : new Refusal(
+    `Your sign-in to ${hostOf2(cred.origin)} has ended.`,
+    "Run pkey login.",
+    "sign-in-ended"
+  );
+}
+function roleName(role, scope, productName) {
+  switch (role) {
+    case "superadmin":
+      return "Superadmin";
+    case "platform_admin":
+      return "Platform admin";
+    case "console_access":
+      return "Console access";
+    case "product_admin":
+      return scope.startsWith("product:") ? `${productName(scope.slice("product:".length))} admin` : "All products admin";
+    default:
+      return role;
+  }
+}
+var AREA_NAMES = {
+  console: "Console",
+  platform: "Platform",
+  members: "Members",
+  docs: "Docs",
+  core: "Core",
+  license: "Licensing",
+  config: "Managed config",
+  ship: "Ship builds",
+  signin: "Sign-in",
+  sync: "Cloud Sync",
+  commerce: "Commerce",
+  keys: "Keys and secrets",
+  settings: "Settings"
+};
+var areaName = (id) => Object.hasOwn(AREA_NAMES, id) ? AREA_NAMES[id] : id;
+function roleText(role, scope, areas, productName, sep, env) {
+  const label = shown(roleName(role, scope, productName), env);
+  const names = Array.isArray(areas) ? areas.filter((a) => typeof a === "string").map((a) => shown(areaName(a), env)) : [];
+  return names.length ? `${label} ${sep} ${names.join(", ")}` : label;
+}
+function tokenLine(t, label, hint2) {
+  const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+  const masked = `(pkeyp_${t.symbols.ellipsis}${hint2})`;
+  return label ? [
+    text(`${quote[0]}${label}${quote[1]}`, { unit: true }),
+    text(" "),
+    text(masked, { unit: true })
+  ] : [text(masked.slice(1, -1), { unit: true })];
+}
+function fit(line, width) {
+  return line.flatMap((span) => {
+    const loose = cellWidth(span.text) > width ? { ...span, keep: false } : span;
+    const parts = loose.text.split(/(\s+)/);
+    if (!parts.some((w) => cellWidth(w) > width))
+      return [loose === span ? span : loose];
+    return parts.filter((w) => w !== "").map(
+      (w) => cellWidth(w) > width ? {
+        ...loose,
+        text: w,
+        keep: false,
+        unit: false,
+        break: "url"
+      } : { ...loose, text: w }
+    );
+  });
+}
+function rowsText(t, rows, opts) {
+  const { caps, painter } = t;
+  const stacked = caps.columns < 32;
+  const lead = stacked ? 0 : opts.indent + opts.label;
+  const room = Math.max(1, caps.columns - lead);
+  const out = [];
+  for (const [k, v] of rows) {
+    if (!v.length) continue;
+    const lines4 = wrapSpans(fit(v, room), room);
+    if (stacked) {
+      out.push(painter.style(k, ["muted"]));
+      for (const l of lines4) out.push(painter.line(l));
+      continue;
+    }
+    lines4.forEach(
+      (l, i) => out.push(
+        `${" ".repeat(opts.indent)}${i === 0 ? painter.style(k.padEnd(opts.label), ["muted"]) : " ".repeat(opts.label)}${painter.line(l)}`
+      )
+    );
+  }
+  return out.length ? `${out.join("\n")}
+` : "";
+}
+function cmdWhoami(io) {
+  return guarded(io, "whoami", async () => {
+    originFor(io, "whoami");
+    const cred = await adminCredential({
+      env: io.env,
+      baseUrl: io.baseUrl,
+      store: io.store
+    });
+    const host = hostOf2(cred.origin);
+    if (cred.token.startsWith("pkeya_"))
+      throw new Refusal(
+        `${ADMIN_TOKEN_ENV} is an admin API token, not a person's sign-in.`,
+        "Unset it, then run pkey login.",
+        "admin-api-token"
+      );
+    const now = (io.now ?? (() => Math.floor(Date.now() / 1e3)))();
+    if (cred.expiresAt !== null && cred.expiresAt <= now)
+      throw endedRefusal(cred);
+    const res = await call(io, cred, "GET", "/me");
+    if (res.status === 401) throw endedRefusal(cred);
+    if (res.status === 403)
+      throw new Refusal(
+        "The console refused this sign-in.",
+        "Run pkey login again, or ask an admin for access.",
+        "sign-in-refused"
+      );
+    if (!res.ok)
+      throw new Failure(
+        `${host} answered ${res.status}.`,
+        "Try again in a minute.",
+        "server-error",
+        { status: res.status }
+      );
+    const me = await jsonOf(res);
+    if (!(typeof me["email"] === "string" && me["email"]) && !(typeof me["sub"] === "string" && me["sub"]))
+      throw new Failure(
+        `${host} didn't answer as a Polaris Key console.`,
+        "Check --base-url.",
+        "not-a-console"
+      );
+    const perms = me["permissions"] ?? {};
+    const rawRoles = Array.isArray(perms.roles) ? perms.roles : [];
+    const products = /* @__PURE__ */ new Map();
+    if (Array.isArray(me["products"])) {
+      for (const p of me["products"])
+        if (typeof p?.slug === "string" && typeof p.name === "string")
+          products.set(p.slug, p.name);
+    }
+    const t = io.term(io.stdout);
+    const roleNames = [
+      ...new Set(
+        rawRoles.map(
+          (r) => roleText(
+            String(r.role),
+            String(r.scope),
+            r.areas,
+            (slug) => products.get(slug) ?? slug,
+            t.symbols.separator,
+            io.env
+          )
+        )
+      )
+    ];
+    const supers = rawRoles.filter((r) => r.role === "superadmin");
+    const rootOnly = supers.length > 0 && supers.every((r) => r.source === "root");
+    const ends = typeof me["sessionExpiresAt"] === "number" ? me["sessionExpiresAt"] : cred.expiresAt;
+    const name = shown(me["name"] ?? "", io.env);
+    const email = shown(me["email"] ?? "", io.env);
+    const label = cred.source === "store" && cred.label ? shown(cred.label, io.env) : null;
+    const hint2 = cred.source === "store" ? shown(hintOf(cred), io.env) : null;
+    if (io.json) {
+      io.stdout.write(
+        envelope("whoami", 0, {
+          host,
+          name,
+          email,
+          roles: rawRoles.map((r) => ({
+            role: shown(r.role, io.env),
+            scope: shown(r.scope, io.env)
+          })),
+          token: {
+            type: "personal",
+            source: cred.source === "env" ? "environment" : "credential-store",
+            scope: "admin",
+            ...label ? { label } : {},
+            ...hint2 ? { hint: hint2 } : {},
+            expiresAt: ends === null ? null : new Date(ends * 1e3).toISOString()
+          }
+        })
+      );
+      return 0;
+    }
+    const rolesLine = roleNames.length ? roleNames.flatMap((r, i) => [
+      ...i ? [text(", ")] : [],
+      text(r, { unit: true })
+    ]) : [text("None")];
+    const rows = [
+      ["Host", [text(host, { break: "url" })]],
+      ["Name", name ? [text(name, { unit: true })] : []],
+      ["Email", email ? [text(email, { break: "url" })] : []],
+      ["Roles", rolesLine],
+      [
+        "Token",
+        cred.source === "store" ? tokenLine(t, label, hint2 ?? "") : [text(`personal token from ${ADMIN_TOKEN_ENV}`, { unit: true })]
+      ],
+      ["Ends", ends === null ? [] : [text(day(ends, io.env), { unit: true })]]
+    ];
+    io.stdout.write(rowsText(t, rows, { indent: 0, label: 8 }));
+    if (rootOnly)
+      io.stdout.write(
+        `
+${block(
+          t,
+          "warn",
+          plain2(
+            "Superadmin ends 8 hours after your last console sign-in. Ask for a stored Superadmin role to keep it."
+          )
+        )}`
+      );
+    return 0;
+  });
+}
+function cmdLogout(io) {
+  return guarded(io, "logout", async () => {
+    originFor(io, "logout");
+    const t = io.term(io.stdout);
+    const ok = (host2, state, message2) => {
+      if (io.json)
+        io.stdout.write(envelope("logout", 0, { host: host2, ...state, message: message2 }));
+      else io.stdout.write(block(t, "ok", plain2(message2)));
+      return 0;
+    };
+    if (io.env[ADMIN_TOKEN_ENV]?.trim())
+      throw new Refusal(
+        `pkey is using ${ADMIN_TOKEN_ENV}, which pkey logout doesn't end.`,
+        `Unset it, then run pkey logout.`,
+        "env-token-refused"
+      );
+    const origin = originOf(io.baseUrl);
+    const host = hostOf2(origin);
+    const store = await io.store();
+    const stored = store.get(origin);
+    if (!stored)
+      return ok(
+        host,
+        { revoked: false, cleared: false },
+        `Already signed out of ${host}.`
+      );
+    const cred = {
+      token: stored.token,
+      source: "store",
+      origin,
+      expiresAt: stored.expiresAt,
+      label: stored.label ?? null,
+      hint: hintOf(stored)
+    };
+    const now = (io.now ?? (() => Math.floor(Date.now() / 1e3)))();
+    let outcome;
+    if (cred.expiresAt !== null && cred.expiresAt <= now)
+      outcome = { kind: "ended" };
+    else {
+      try {
+        const res = await call(
+          io,
+          cred,
+          "DELETE",
+          "/me/personal-tokens/current"
+        );
+        if (res.ok) outcome = { kind: "revoked" };
+        else if (res.status === 401) outcome = { kind: "ended" };
+        else {
+          const body = await jsonOf(res);
+          const err = body["error"];
+          const notFound = res.status === 404 && (err?.code === "not_found" || body["code"] === "not_found");
+          if (notFound) outcome = { kind: "ended" };
+          else if (res.status === 403 || res.status === 409 || res.status === 429)
+            outcome = {
+              kind: "live",
+              why: `${host} refused to revoke it (HTTP ${res.status})`,
+              code: "revoke-refused"
+            };
+          else
+            outcome = {
+              kind: "live",
+              why: `${host} didn't revoke it (HTTP ${res.status})`,
+              code: res.status >= 500 ? "server-error" : "revoke-refused"
+            };
+        }
+      } catch (e) {
+        if (e instanceof Redirected)
+          outcome = {
+            kind: "live",
+            why: `${host} redirected the request`,
+            code: "redirect"
+          };
+        else if (e instanceof Unreachable)
+          outcome = {
+            kind: "live",
+            why: `couldn't reach ${host}`,
+            code: "network"
+          };
+        else throw e;
+      }
+    }
+    try {
+      store.delete(origin);
+    } catch (e) {
+      if (!(e instanceof Refusal)) throw e;
+      const gone = outcome.kind !== "live";
+      throw new Failure(
+        gone ? "The token is revoked, but pkey couldn't remove it from the credential store." : "pkey couldn't remove the sign-in from the credential store.",
+        e.code === "keychain-refused" ? "Allow pkey access to the credential store, then run pkey logout again." : "Run pkey logout again.",
+        e.code,
+        { host, revoked: gone, cleared: false }
+      );
+    }
+    if (outcome.kind === "revoked")
+      return ok(
+        host,
+        { revoked: true, cleared: true },
+        `Signed out of ${host}. The token is revoked.`
+      );
+    if (outcome.kind === "ended")
+      return ok(
+        host,
+        { revoked: false, cleared: true },
+        `Signed out of ${host}. The token had already ended.`
+      );
+    const until = cred.expiresAt !== null ? `until ${day(cred.expiresAt, io.env)}` : "until it ends";
+    const message = `Signed out on this computer, but ${outcome.why}, so it still works ${until}.`;
+    const revokeUrl = maskTokens(`${origin}/manage/#/personal-tokens`);
+    const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+    const hint2 = `pkeyp_${t.symbols.ellipsis}${shown(hintOf(stored), io.env)}`;
+    const revokeLine = stored.label ? `Revoke ${quote[0]}${shown(stored.label, io.env)}${quote[1]} (${hint2}) in Personal tokens:` : `Revoke ${hint2} in Personal tokens:`;
+    if (io.json) {
+      io.stdout.write(
+        envelope("logout", 1, {
+          error: outcome.code,
+          message: `${message} ${revokeLine} ${revokeUrl}`,
+          host,
+          revoked: false,
+          cleared: true,
+          tokenEndsAt: cred.expiresAt === null ? null : new Date(cred.expiresAt * 1e3).toISOString(),
+          revokeUrl
+        })
+      );
+    } else {
+      io.stderr.write(
+        block(io.term(io.stderr), "warn", [
+          [text(message)],
+          [text(revokeLine)],
+          [text(revokeUrl, { break: "url", link: revokeUrl })]
+        ])
+      );
+    }
+    return 1;
+  });
+}
+
+// src/adminAuth.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var STACK_BELOW = 40;
+var PEOPLE_INDENT = 5;
+function accessText(a, t) {
+  const { painter, caps } = t;
+  const arrow = caps.unicode ? "→" : "->";
+  const subject = a.platform ? "Platform" : `${a.product} ${arrow} ${a.area}`;
+  const ask = a.people.length ? "Ask one of these people:" : "Ask an admin to give you access.";
+  const roles = a.roles.length ? [
+    text("Your roles: "),
+    ...a.roles.flatMap(
+      (r, i) => [...i ? [text(", ")] : [], text(r, { unit: true })]
+    ),
+    text(`. ${ask}`)
+  ] : [text(ask)];
+  const out = [
+    block(t, "warn", [
+      [
+        text("You don't have access to "),
+        text(subject, { style: ["strong"], unit: true }),
+        text(".")
+      ]
+    ]).trimEnd()
+  ];
+  const width = Math.max(1, caps.columns - 3);
+  for (const l of wrapSpans(fit(roles, width), width))
+    out.push(`   ${painter.line(l)}`);
+  const room = Math.max(1, caps.columns - PEOPLE_INDENT);
+  const pad2 = " ".repeat(PEOPLE_INDENT);
+  const nameW = Math.max(0, ...a.people.map((p) => cellWidth(p.name)));
+  const mailW = Math.max(0, ...a.people.map((p) => cellWidth(p.email)));
+  for (const p of a.people) {
+    const name = [text(p.name, { unit: true })];
+    const mail = [text(p.email, { break: "url" })];
+    const role = [text(p.role, { style: ["muted"], unit: true })];
+    const rows = caps.columns < STACK_BELOW ? [name, mail, role] : nameW + 2 + mailW + 2 + cellWidth(p.role) <= room ? [
+      [
+        ...name,
+        text(" ".repeat(nameW - cellWidth(p.name) + 2)),
+        ...mail,
+        text(" ".repeat(mailW - cellWidth(p.email) + 2)),
+        ...role
+      ]
+    ] : [[...name, text("  "), ...mail, text("  "), ...role]];
+    for (const row2 of rows)
+      for (const l of wrapSpans(fit(row2, room), room))
+        out.push(`${pad2}${painter.line(l)}`);
+  }
+  return `${out.join("\n")}
+`;
+}
+async function getJson(io, cred, path36) {
+  try {
+    const res = await request(
+      io.fetchImpl ?? fetch,
+      `${cred.origin}/manage/api${path36}`,
+      {
+        // The caller's deadline when it has one (`pkey doctor`), else this request's own.
+        signal: io.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: {
+          authorization: `Bearer ${cred.token}`,
+          accept: "application/json"
+        }
+      }
+    );
+    if (!res.ok) return null;
+    return await readCappedJson(res);
+  } catch {
+    return null;
+  }
+}
+var str2 = (v, env) => untrusted(v, env);
+async function accessInfo(io, cred, f) {
+  const scope = f.detail.scope ?? "platform";
+  const area = f.detail.area ?? "console";
+  const [me, admins] = await Promise.all([
+    getJson(io, cred, "/me"),
+    getJson(
+      io,
+      cred,
+      `/access/admins?scope=${encodeURIComponent(scope)}&area=${encodeURIComponent(area)}`
+    )
+  ]);
+  const names = /* @__PURE__ */ new Map();
+  if (Array.isArray(me?.["products"])) {
+    for (const p of me["products"])
+      if (typeof p?.slug === "string" && typeof p.name === "string")
+        names.set(p.slug, p.name);
+  }
+  const productName = (slug) => names.get(slug) ?? slug;
+  const sep = io.term(io.stderr).symbols.separator;
+  const rawRoles = me?.["permissions"]?.roles ?? [];
+  const roles = [
+    ...new Set(
+      rawRoles.map(
+        (r) => roleText(
+          String(r.role),
+          String(r.scope),
+          r.areas,
+          productName,
+          sep,
+          io.env
+        )
+      )
+    )
+  ];
+  const people = (admins?.["admins"] ?? []).map((p) => ({
+    name: str2(p.name ?? p.email ?? "", io.env),
+    email: str2(p.email ?? "", io.env),
+    role: roleText(String(p.role), scope, null, productName, sep, io.env)
+  }));
+  const platform = !scope.startsWith("product:");
+  return {
+    product: platform ? "Platform" : str2(productName(scope.slice("product:".length)), io.env),
+    area: str2(
+      Object.hasOwn(AREA_NAMES, area) ? AREA_NAMES[area] : area,
+      io.env
+    ),
+    roles,
+    people,
+    ...platform ? { platform } : {}
   };
 }
-function doctorOk(facts) {
-  return facts.every((f) => f.state !== "todo");
+function report(io, t, command, exit, kind, code, lines4, extra = {}) {
+  if (io.json && io.stdout)
+    io.stdout.write(
+      envelope(command, exit, {
+        error: code,
+        message: lines4.map((l) => l.map((s) => s.text).join("")).join(" "),
+        ...extra
+      })
+    );
+  else io.stderr.write(block(t, kind, lines4));
+  return exit;
 }
+var errorText = (e) => e instanceof Error ? e.message : String(e);
+var accessMessage = (a) => a.platform ? "You don't have access to Platform." : `You don't have access to ${a.product} → ${a.area}.`;
+async function withAdminCredential(io, command, run2, personalOnly = false) {
+  let cred;
+  const token = async () => {
+    if (!cred) {
+      originFor(io, command);
+      const found = await adminCredential({
+        env: io.env,
+        baseUrl: io.baseUrl,
+        store: io.store
+      });
+      cred = found;
+      const now = (io.now ?? (() => Math.floor(Date.now() / 1e3)))();
+      if (found.source === "store" && found.expiresAt !== null && found.expiresAt <= now)
+        throw endedRefusal(found);
+    }
+    return cred.token;
+  };
+  try {
+    return await run2(token);
+  } catch (e) {
+    const t = io.term(io.stderr);
+    if (e instanceof Refusal)
+      return report(
+        io,
+        t,
+        command,
+        e instanceof Usage ? 2 : 4,
+        "warn",
+        e.code,
+        e.lines ?? plain2(e.message, e.fix)
+      );
+    if (e instanceof Failure)
+      return report(
+        io,
+        t,
+        command,
+        1,
+        "fail",
+        e.code,
+        e.lines ?? plain2(e.message, e.fix),
+        e.extra
+      );
+    if (e instanceof HttpFailure && cred) {
+      if (e.status === 401) {
+        const r = endedRefusal(cred);
+        return report(
+          io,
+          t,
+          command,
+          4,
+          "warn",
+          r.code,
+          plain2(r.message, r.fix)
+        );
+      }
+      if (e.status === 403) {
+        const isApi = cred.token.startsWith("pkeya_");
+        if (e.detail.reason === "no_access") {
+          const a = await accessInfo(io, cred, e);
+          if (io.json && io.stdout)
+            io.stdout.write(
+              envelope(command, 4, {
+                error: "no-access",
+                message: accessMessage(a),
+                product: a.product,
+                area: a.area,
+                roles: a.roles,
+                people: a.people
+              })
+            );
+          else io.stderr.write(accessText(a, t));
+          return 4;
+        }
+        if (!isApi || personalOnly) {
+          const what = `pkey ${command} isn't available to ${isApi ? "API" : "personal"} tokens.`;
+          const apiTokens = `${cred.origin}/manage/#/tokens`;
+          return report(
+            io,
+            t,
+            command,
+            4,
+            "warn",
+            "token-refused",
+            isApi ? plain2(what, "Run pkey login.") : [
+              [text(what)],
+              [
+                text("Make an API token at "),
+                text(apiTokens, { break: "url", link: apiTokens })
+              ]
+            ]
+          );
+        }
+      }
+    }
+    if (io.json && io.stdout) {
+      if (isInternalError(e)) {
+        io.stdout.write(
+          envelope(command, 1, {
+            error: "internal",
+            message: untrusted(errorText(e), io.env)
+          })
+        );
+        return 1;
+      }
+    }
+    if (!(e instanceof UsageError) && !isInternalError(e)) {
+      const message = untrustedLines(networkMessage(e), io.env);
+      if (!isUsageError(message)) {
+        const [first = "", ...rest] = message.split("\n");
+        if (io.json && io.stdout)
+          io.stdout.write(
+            envelope(command, 1, {
+              error: networkCode(e) ? "network" : "failed",
+              message: first,
+              ...rest.length ? { fix: rest.join(" ") } : {},
+              ...e instanceof HttpFailure ? { status: e.status } : {}
+            })
+          );
+        else io.stderr.write(block(t, "fail", plain2(first, ...rest)));
+        return 1;
+      }
+    }
+    throw e;
+  }
+}
+
+// src/login.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { spawn } from "node:child_process";
+import { hostname as osHostname, platform as osPlatform } from "node:os";
 
 // src/terminal.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-function termFor(out, env, flags = {}) {
-  const caps = detectTerminal({ env, stdout: out, flags });
+function termFor(out, env, flags = {}, stdin) {
+  const caps = detectTerminal({ env, stdout: out, stdin, flags });
   return {
     caps,
     painter: new Painter(caps, null, {}, true),
@@ -25599,13 +27341,20 @@ var Spinner = class {
         if (err.rows) caps.rows = err.rows;
       },
       render,
-      fit: (rows) => ({ lines: render(rows), head: 0 })
+      fit: (rows) => ({
+        lines: render(rows),
+        head: rows.filter((r) => r.role === "header").length
+      })
     }) : null;
   }
   ticker;
   term;
   region;
   label = "";
+  /** Lines held above the spinner in the same live region (a command's heading); already styled. */
+  header = null;
+  /** Lines held under the spinner in the same live region (key hints); already styled. */
+  footer = null;
   done = 0;
   total = 0;
   frame = 0;
@@ -25628,13 +27377,30 @@ var Spinner = class {
     if (!this.stopTicking)
       this.stopTicking = animate(
         this.term.caps,
-        (frame) => {
-          this.frame = frame;
+        (frame2) => {
+          this.frame = frame2;
           this.draw();
         },
         this.ticker
       );
     else this.draw();
+  }
+  /**
+   * Lines drawn above the spinner, inside its live region: laid out again at each redraw, so a
+   * resize reflows them as a fresh launch would. `null` takes them away (the caller prints its
+   * own copy, since the region erases them).
+   */
+  setHeader(lines4) {
+    this.header = lines4;
+    if (this.region && this.label) this.draw();
+  }
+  /**
+   * Lines drawn under the spinner, inside its live region (laid out again at each redraw, so a
+   * resize reflows them); `null` takes them away.
+   */
+  setFooter(lines4) {
+    this.footer = lines4;
+    if (this.region && this.label) this.draw();
   }
   advance(done, total) {
     if (!this.region) return;
@@ -25647,6 +27413,8 @@ var Spinner = class {
     this.stopTicking?.();
     this.stopTicking = null;
     this.label = "";
+    this.footer = null;
+    this.header = null;
     this.region?.close();
   }
   /**
@@ -25654,10 +27422,10 @@ var Spinner = class {
    * the next frame draws the spinner again below them. Off a terminal `out` comes back as is.
    */
   wrap(out) {
-    const region = this.region;
-    if (!region) return out;
+    const region2 = this.region;
+    if (!region2) return out;
     const write = (chunk, ...rest) => {
-      region.close();
+      region2.close();
       if (typeof chunk === "string" && chunk.length > 0)
         this.atLineStart = chunk.endsWith("\n");
       return out.write(
@@ -25674,7 +27442,20 @@ var Spinner = class {
   }
   draw() {
     if (!this.region || !this.label || !this.atLineStart) return;
-    this.region.draw(() => [{ mark: "none", spans: [{ text: this.line() }] }]);
+    this.region.draw(() => {
+      const header = this.header?.(this.term.caps.columns);
+      const row2 = (text3, role) => ({
+        mark: "none",
+        spans: [{ text: text3 }],
+        ...role ? { role } : {}
+      });
+      return [
+        ...(header?.head ?? []).map((t) => row2(t, "header")),
+        ...(header?.body ?? []).map((t) => row2(t)),
+        row2(this.line()),
+        ...(this.footer?.(this.term.caps.columns) ?? []).map((t) => row2(t))
+      ];
+    });
   }
   /** One line, never wider than the terminal (a wrapped line would break the redraw). */
   line() {
@@ -25705,17 +27486,4759 @@ var Spinner = class {
     return `${glyph}  ${truncateEnd(this.label, max - 3, symbols.ellipsis)}`;
   }
 };
+function failLine(text3, term, wrap = "always") {
+  const { painter, symbols, caps } = term;
+  const lines4 = wrap === "tty" && !caps.tty ? [[{ text: text3 }]] : wrapSpans([{ text: text3 }], Math.max(1, caps.columns - 3));
+  return `${lines4.map(
+    (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
+  ).join("\n")}
+`;
+}
+
+// src/login.ts
+var CODE_SHAPE = /^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/;
+var POLL_ID_SHAPE = /^dl_[A-Za-z0-9_-]{43}$/;
+var COOKIE_NAME = "__Host-pkey_device_login";
+var COOKIE_VALUE_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
+var NETWORK_FAILURES = 5;
+var MAX_INTERVAL_MS = 3e4;
+var MAX_EXPIRES_IN_S = 600;
+function hasDisplay(env, platform) {
+  if (platform === "darwin" || platform === "win32") return true;
+  return Boolean(env["DISPLAY"] || env["WAYLAND_DISPLAY"]);
+}
+function backendName(platform) {
+  if (platform === "darwin") return "macOS Keychain";
+  if (platform === "win32") return "Windows Credential Manager";
+  return "Secret Service";
+}
+function unlockAdvice(platform) {
+  if (platform === "darwin") return "Unlock the keychain";
+  if (platform === "win32") return "Check Windows Credential Manager";
+  return "Unlock your keyring";
+}
+function defaultOpen(url) {
+  const platform = osPlatform();
+  const [cmd, args] = platform === "darwin" ? ["open", [url]] : platform === "win32" ? ["rundll32", ["url.dll,FileProtocolHandler", url]] : ["xdg-open", [url]];
+  return new Promise((resolve2, reject) => {
+    const child = spawn(cmd, args, { stdio: "ignore", detached: true });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve2();
+    });
+  });
+}
+function defaultCopy(text3) {
+  const platform = osPlatform();
+  const [cmd, args] = platform === "darwin" ? ["pbcopy", []] : platform === "win32" ? ["clip", []] : ["xclip", ["-selection", "clipboard"]];
+  return new Promise((resolve2) => {
+    const child = spawn(cmd, args, { stdio: ["pipe", "ignore", "ignore"] });
+    child.once("error", () => resolve2(false));
+    child.stdin.on("error", () => {
+    });
+    child.once("close", (code) => resolve2(code === 0));
+    child.stdin.end(text3);
+  });
+}
+function defaultSeams() {
+  return {
+    openUrl: defaultOpen,
+    copyText: defaultCopy,
+    stdin: process.stdin.isTTY ? process.stdin : void 0,
+    onInterrupt: (cb) => {
+      process.on("SIGINT", cb);
+      return () => void process.removeListener("SIGINT", cb);
+    },
+    hostname: osHostname,
+    platform: osPlatform(),
+    now: Date.now,
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms))
+  };
+}
+function setCookieOf(res) {
+  const all = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [res.headers.get("set-cookie") ?? ""];
+  for (const line of all) {
+    const pair = line.split(";")[0].trim();
+    const eq = pair.indexOf("=");
+    if (pair.slice(0, eq) !== COOKIE_NAME) continue;
+    const value = pair.slice(eq + 1);
+    if (COOKIE_VALUE_SHAPE.test(value)) return value;
+  }
+  return null;
+}
+var Transport = class extends Error {
+  constructor(code) {
+    super("transport");
+    this.code = code;
+  }
+  code;
+};
+async function send(f, url, init, abort) {
+  try {
+    return await f(url, {
+      ...init,
+      redirect: "manual",
+      signal: AbortSignal.any([abort, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+    });
+  } catch (e) {
+    throw new Transport(networkCode(e));
+  }
+}
+function rerunLine(command, io, origin, before, after) {
+  return [
+    text(before),
+    text(command),
+    ...io.baseUrlGiven ? [text(" --base-url "), text(origin, { break: "url" })] : [],
+    text(after)
+  ];
+}
+var flat = (lines4) => lines4.map((l) => l.map((s) => s.text).join("")).join(" ");
+function resolveSeams(io) {
+  const given = Object.fromEntries(
+    Object.entries(io.seams).filter(([, v]) => v !== void 0)
+  );
+  return { ...defaultSeams(), ...given };
+}
+function cmdLogin(io) {
+  return runDeviceFlow(io, {
+    command: "login",
+    rerun: "pkey login",
+    scope: "admin",
+    title: "Polaris Key console",
+    copy: {
+      opening: "Opening Polaris Key in your browser",
+      rateLimited: {
+        message: "Too many sign-in attempts from this network.",
+        fix: "Wait a few minutes, then run pkey login again."
+      },
+      unsupportedFix: `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
+      tokenLimit: (limit, origin) => {
+        const url = `${origin}/manage/#/personal-tokens`;
+        return [
+          [
+            text(
+              limit ? `You already have ${limit} personal tokens, the most allowed.` : "You already have the most personal tokens allowed."
+            )
+          ],
+          rerunLine(
+            "pkey login",
+            io,
+            origin,
+            "Revoke one in Personal tokens, then run ",
+            " again."
+          ),
+          [text(url, { break: "url", link: url })]
+        ];
+      },
+      forbidden: [
+        "This account can't sign in.",
+        "Ask a Superadmin to check your access."
+      ],
+      denied: (code) => `Code ${code} was canceled in the browser.`,
+      maybeApproved: "If you approved it, the token may exist; check Personal tokens."
+    },
+    approvePath: (code) => `/manage/device?code=${code}`,
+    warnAdminEnv: true,
+    // 3. Open and probe the store BEFORE start: an approval mints a 7-day admin token.
+    begin: async () => {
+      const store = await io.store();
+      const existing = store.get(originFor(io, "login"));
+      const now = io.seams.now ?? Date.now;
+      const replaces = existing !== null && (existing.expiresAt === null || existing.expiresAt * 1e3 > now());
+      return {
+        replaces,
+        approved: (body, gap) => approved(io, {
+          origin: originFor(io, "login"),
+          host: hostOf2(originFor(io, "login")),
+          platform: io.seams.platform ?? osPlatform(),
+          store,
+          previous: replaces ? existing : null,
+          token: body["token"],
+          expiresAt: body["expiresAt"],
+          label: body["label"],
+          gap
+        })
+      };
+    }
+  });
+}
+function runDeviceFlow(io, mode) {
+  const seams = resolveSeams(io);
+  const deferred = {};
+  return guarded(io, mode.command, async () => {
+    try {
+      return await flow(io, seams, deferred, mode);
+    } catch (e) {
+      deferred.flush?.();
+      throw e;
+    }
+  });
+}
+async function flow(io, seams, deferred, mode) {
+  const rerun = (io2, origin2, before, after) => rerunLine(mode.rerun, io2, origin2, before, after);
+  mode.guard?.();
+  if (isCi(io.env))
+    throw new Refusal(
+      `${mode.rerun} needs a person; in CI use ${ADMIN_TOKEN_ENV}.`
+    );
+  const origin = originFor(io, mode.command);
+  const host = hostOf2(origin);
+  const platform = seams.platform ?? osPlatform();
+  const now = seams.now ?? Date.now;
+  const sleep = seams.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const f = io.fetchImpl ?? fetch;
+  const { replaces, note, approved: settle } = await mode.begin();
+  const out = io.term(io.stdout);
+  const errTerm = io.term(io.stderr);
+  const say = (s) => io.stdout.write(s);
+  const layout = (line, columns, indent = 0) => wrapSpans(line, Math.max(1, columns - indent)).map(
+    (l) => `${" ".repeat(indent)}${out.painter.line(l)}`
+  );
+  const put = (t, line, indent = 0) => wrapSpans(line, Math.max(1, t.caps.columns - indent)).map((l) => `${" ".repeat(indent)}${t.painter.line(l)}
+`).join("");
+  const spinner = new Spinner(io.stderr, io.env, io.flags);
+  const live = !io.json && spinner.active && Boolean(io.stdout.isTTY);
+  const titleRows = (columns) => {
+    const title = mode.title;
+    const sep = out.symbols.separator;
+    const fits = cellWidth(`${title} ${sep} ${host}`) <= columns;
+    return [
+      ...layout(
+        fits ? [
+          text(title, { style: ["strong"] }),
+          text(` ${sep} ${host}`, { style: ["muted"] })
+        ] : [text(`${title} ${sep}`, { style: ["strong"] })],
+        columns
+      ),
+      ...fits ? [] : layout([text(host, { style: ["muted"], break: "url" })], columns),
+      "",
+      ...replaces ? [
+        ...layout(
+          [
+            text(
+              "You're already signed in here. The old token ends once the new one is saved."
+            )
+          ],
+          columns
+        ),
+        ""
+      ] : [],
+      ...note ? [...layout([text(note)], columns), ""] : []
+    ];
+  };
+  if (!io.json) {
+    if (live)
+      deferred.flush = () => say(`${titleRows(out.caps.columns).join("\n")}
+`);
+    else say(`${titleRows(out.caps.columns).join("\n")}
+`);
+    if (mode.warnAdminEnv && io.env[ADMIN_TOKEN_ENV]?.trim())
+      io.stderr.write(
+        block(
+          errTerm,
+          "warn",
+          plain2(
+            `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in.`,
+            "Unset it to use the one pkey login saves."
+          )
+        )
+      );
+  }
+  const abort = new AbortController();
+  let cancelled2 = null;
+  let wake;
+  const cancelSignal = new Promise((resolve2) => wake = resolve2);
+  const cancel = (why) => {
+    if (cancelled2) return;
+    cancelled2 = why;
+    abort.abort();
+    wake?.();
+  };
+  const wait = (ms) => Promise.race([sleep(ms), cancelSignal]);
+  let startRes;
+  try {
+    startRes = await send(
+      f,
+      `${origin}/api/device-login/start`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json"
+        },
+        body: JSON.stringify({
+          purpose: "cli",
+          scope: mode.scope,
+          client: {
+            name: "pkey",
+            version: CLI_VERSION,
+            host: (seams.hostname ?? osHostname)()
+          }
+        })
+      },
+      abort.signal
+    );
+  } catch (e) {
+    if (!(e instanceof Transport)) throw e;
+    throw new Failure(
+      `Can't reach ${host}.`,
+      "Check your network, or --base-url.",
+      "network",
+      { host, ...e.code ? { cause: e.code } : {} }
+    );
+  }
+  if (startRes.status >= 300 && startRes.status < 400)
+    throw new Redirected(host);
+  if (startRes.status === 429)
+    throw new Refusal(
+      mode.copy.rateLimited.message,
+      mode.copy.rateLimited.fix,
+      "rate-limited"
+    );
+  if ([404, 405, 422, 501].includes(startRes.status))
+    throw new Refusal(
+      `${host} doesn't offer terminal sign-in.`,
+      mode.copy.unsupportedFix,
+      "unsupported"
+    );
+  if (startRes.status === 409 && mode.copy.unavailable) {
+    const err = (await jsonOf(startRes))["error"];
+    const code = typeof err === "string" ? err : err?.code;
+    if (code === "unavailable")
+      throw new Refusal(
+        mode.copy.unavailable[0],
+        mode.copy.unavailable[1],
+        "no-registry"
+      );
+  }
+  if (startRes.status !== 201)
+    throw new Failure(
+      `${host} couldn't start a sign-in (HTTP ${startRes.status}).`,
+      "Try again in a minute.",
+      "server-error",
+      { host, status: startRes.status }
+    );
+  const started = await jsonOf(startRes);
+  const pollId = String(started["id"] ?? "");
+  const userCode = String(started["code"] ?? "");
+  const cookie = setCookieOf(startRes);
+  if (!POLL_ID_SHAPE.test(pollId) || !CODE_SHAPE.test(userCode) || !cookie)
+    throw new Failure(
+      `${host} answered the sign-in start unexpectedly.`,
+      "Check --base-url.",
+      "unexpected-answer",
+      { host }
+    );
+  const expiresIn = Math.min(
+    typeof started["expiresIn"] === "number" && started["expiresIn"] > 0 ? started["expiresIn"] : 300,
+    MAX_EXPIRES_IN_S
+  );
+  let interval = clampInterval(started["interval"], 3e3);
+  const deadline = now() + expiresIn * 1e3;
+  const served = mode.useServedApproveUrl ? servedApproveUrl(started["approveUrl"], origin, userCode) : null;
+  const approveUrl = served ?? `${origin}${mode.approvePath(userCode)}`;
+  let heading;
+  const remote = Boolean(io.env["SSH_CONNECTION"] || io.env["SSH_TTY"]);
+  const mayOpen = !io.json && !io.noBrowser && !remote && hasDisplay(io.env, platform);
+  const mayCopy = !remote;
+  const interactive = !io.json && Boolean(seams.stdin?.isTTY);
+  const open2 = async () => {
+    try {
+      await (seams.openUrl ?? defaultOpen)(approveUrl);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (io.json) {
+    say(
+      jsonLine({
+        v: 1,
+        command: mode.command,
+        event: "started",
+        host,
+        code: userCode,
+        url: approveUrl,
+        expiresIn,
+        ...mode.scope === "admin" ? { replaces } : {}
+      })
+    );
+  } else {
+    const opened = mayOpen ? await open2() : false;
+    const codeRows = (columns) => {
+      const short2 = approveUrl.length >= columns;
+      const shown4 = short2 ? `${origin}${mode.approvePath("").split("?")[0]}` : approveUrl;
+      return [
+        ...opened ? layout(
+          [text(`${mode.copy.opening}${out.symbols.ellipsis}`)],
+          columns
+        ) : [],
+        ...layout(
+          opened ? [text("Didn't open? Go to", { style: ["muted"] })] : [text("Open this link in a browser:")],
+          columns
+        ),
+        ...layout([text(shown4, { break: "url", link: approveUrl })], columns),
+        "",
+        ...layout(
+          [
+            text(
+              short2 ? "Enter this code in your browser:" : "Check that the code in your browser matches:"
+            )
+          ],
+          columns
+        ),
+        out.painter.style(` ${userCode} `, ["code"]),
+        ""
+      ];
+    };
+    if (live) {
+      const rows = (columns) => [
+        ...titleRows(columns),
+        ...codeRows(columns)
+      ];
+      deferred.flush = void 0;
+      spinner.setHeader((columns) => ({
+        head: titleRows(columns),
+        body: codeRows(columns)
+      }));
+      heading = () => say(
+        `${rows(io.stdout.columns ? layoutColumns(io.stdout.columns) : out.caps.columns).join("\n")}
+`
+      );
+    } else say(`${codeRows(out.caps.columns).join("\n")}
+`);
+  }
+  const wrapped = spinner.wrap(io.stdout);
+  let cleanup = [];
+  const finish = () => {
+    spinner.stop();
+    heading?.();
+    heading = void 0;
+    for (const c of cleanup) c();
+    cleanup = [];
+  };
+  const gap = () => spinner.active ? "" : "\n";
+  cleanup.push(
+    (seams.onInterrupt ?? (() => () => {
+    }))(() => cancel("interrupt"))
+  );
+  let copyVerb = "copy the code";
+  const hintLines = (columns) => {
+    const keys = [
+      mayOpen ? "Enter open again" : "",
+      mayCopy ? `c ${copyVerb}` : "",
+      "Esc cancel"
+    ].filter(Boolean);
+    return wrapSpans(
+      keyHints(keys.join(` ${errTerm.symbols.separator} `), errTerm.symbols),
+      Math.max(1, columns - 4)
+    ).map((l) => `   ${errTerm.painter.line(l)}`);
+  };
+  if (interactive) {
+    const stdin = seams.stdin;
+    const onData = (chunk) => {
+      const k = chunk.toString();
+      if (k === "") cancel("interrupt");
+      else if (k === "\x1B" || k === "") cancel("esc");
+      else if ((k === "\r" || k === "\n") && mayOpen) void open2();
+      else if ((k === "c" || k === "C") && mayCopy)
+        void (seams.copyText ?? defaultCopy)(userCode).then((ok) => {
+          if (spinner.active) {
+            copyVerb = ok ? "copied" : "no clipboard here";
+            spinner.setFooter(hintLines);
+          } else
+            wrapped.write(
+              block(
+                out,
+                ok ? "ok" : "warn",
+                plain2(ok ? `Copied ${userCode}.` : "No clipboard here.")
+              )
+            );
+        });
+    };
+    try {
+      stdin.setRawMode?.(true);
+    } catch {
+    }
+    stdin.resume();
+    stdin.on("data", onData);
+    cleanup.push(() => {
+      stdin.removeListener("data", onData);
+      try {
+        stdin.setRawMode?.(false);
+      } catch {
+      }
+      stdin.pause();
+    });
+  }
+  const waiting = "Waiting for approval";
+  if (!io.json) {
+    if (spinner.active) {
+      if (interactive) spinner.setFooter(hintLines);
+      spinner.stage(waiting);
+    } else {
+      say(`${waiting}${out.symbols.ellipsis}
+`);
+      if (interactive) say(`${hintLines(out.caps.columns).join("\n")}
+`);
+    }
+  }
+  const report2 = (o) => {
+    finish();
+    if (io.json)
+      io.stdout.write(
+        envelope(mode.command, o.exit, {
+          error: o.state,
+          message: flat(o.lines),
+          host,
+          code: userCode,
+          ...o.extra
+        })
+      );
+    else io.stderr.write(`${gap()}${block(errTerm, o.kind, o.lines)}`);
+    return o.exit;
+  };
+  const cancelReport = (why) => report2({
+    state: why === "interrupt" ? "interrupted" : "cancelled",
+    exit: why === "interrupt" ? 130 : 1,
+    kind: "warn",
+    lines: plain2("Canceled. Nothing was saved.")
+  });
+  let sawFailure = false;
+  const maybeApproved = () => sawFailure ? plain2(mode.copy.maybeApproved) : [];
+  const expired = () => report2({
+    state: "expired",
+    exit: 1,
+    kind: "fail",
+    lines: [
+      [text(`Code ${userCode} expired before it was approved.`)],
+      rerun(io, origin, "Run ", " to get a new one."),
+      ...maybeApproved()
+    ]
+  });
+  let failures = 0;
+  while (true) {
+    await wait(interval);
+    if (cancelled2) return cancelReport(cancelled2);
+    if (now() >= deadline) return expired();
+    let res;
+    try {
+      res = await send(
+        f,
+        `${origin}/api/device-login/${pollId}`,
+        {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            cookie: `${COOKIE_NAME}=${cookie}`
+          }
+        },
+        abort.signal
+      );
+    } catch (e) {
+      if (!(e instanceof Transport)) throw e;
+      if (cancelled2) return cancelReport(cancelled2);
+      sawFailure = true;
+      if (++failures >= NETWORK_FAILURES)
+        return report2({
+          state: "network",
+          exit: 1,
+          kind: "fail",
+          lines: [
+            [
+              text(
+                `Lost contact with ${host} while waiting for code ${userCode}.`
+              )
+            ],
+            rerun(io, origin, "Run ", " to try again."),
+            ...maybeApproved()
+          ],
+          extra: e.code ? { cause: e.code } : {}
+        });
+      if (failures === 1 && !io.json) {
+        if (spinner.active)
+          spinner.stage(`Reconnecting to ${host}${out.symbols.ellipsis}`);
+        else say(`Reconnecting to ${host}${out.symbols.ellipsis}
+`);
+      }
+      interval = Math.min(interval * 2, MAX_INTERVAL_MS);
+      continue;
+    }
+    if (res.status >= 300 && res.status < 400) {
+      finish();
+      throw new Redirected(host);
+    }
+    if (res.status === 429 || res.status === 503) {
+      sawFailure = true;
+      if (++failures >= NETWORK_FAILURES)
+        return report2({
+          state: "network",
+          exit: 1,
+          kind: "fail",
+          lines: [
+            [text(`${host} is not answering right now (HTTP ${res.status}).`)],
+            rerun(io, origin, "Run ", " to try again."),
+            ...maybeApproved()
+          ],
+          extra: { status: res.status }
+        });
+      interval = Math.min(interval * 2, MAX_INTERVAL_MS);
+      continue;
+    }
+    if (failures > 0 && !io.json && spinner.active) spinner.stage(waiting);
+    failures = 0;
+    if (res.status === 410) return expired();
+    const body = await jsonOf(res);
+    if (res.status === 409 && body["reason"] === "token_limit") {
+      const limit = /at most (\d{1,3}) /.exec(
+        String(body["message"] ?? "")
+      )?.[1];
+      const lines4 = mode.copy.tokenLimit(limit, origin);
+      return report2({
+        state: "token_limit",
+        exit: 4,
+        kind: "warn",
+        lines: lines4,
+        extra: mode.scope === "admin" ? { url: `${origin}/manage/#/personal-tokens` } : {}
+      });
+    }
+    if (res.status === 403)
+      return report2({
+        state: "refused",
+        exit: 4,
+        kind: "warn",
+        lines: plain2(...mode.copy.forbidden)
+      });
+    if (!res.ok)
+      return report2({
+        state: "server-error",
+        exit: 1,
+        kind: "fail",
+        lines: [
+          [text(`${host} refused the sign-in (HTTP ${res.status}).`)],
+          rerun(io, origin, "Run ", " to try again.")
+        ],
+        extra: { status: res.status }
+      });
+    const status = body["status"];
+    if (status === "pending") {
+      interval = clampInterval(body["interval"], interval);
+      continue;
+    }
+    if (status === "denied")
+      return report2({
+        state: "denied",
+        exit: 1,
+        kind: "warn",
+        lines: [
+          [text(mode.copy.denied(userCode))],
+          rerun(io, origin, "Run ", " to try again.")
+        ]
+      });
+    if (status !== "approved")
+      return report2({
+        state: "unexpected-answer",
+        exit: 1,
+        kind: "fail",
+        lines: [
+          [text(`${host} answered the sign-in unexpectedly.`)],
+          rerun(io, origin, "Run ", " to try again.")
+        ]
+      });
+    finish();
+    return settle(body, gap());
+  }
+}
+function servedApproveUrl(v, origin, code) {
+  if (typeof v !== "string") return null;
+  try {
+    const u = new URL(v);
+    return u.origin === origin && u.pathname === "/approve" && u.search === `?code=${code}` && !u.hash && !u.username ? v : null;
+  } catch {
+    return null;
+  }
+}
+function clampInterval(v, fallback) {
+  return typeof v === "number" && v > 0 ? Math.min(Math.max(v * 1e3, 1e3), MAX_INTERVAL_MS) : fallback;
+}
+async function revoked(io, cred) {
+  try {
+    const res = await call(io, cred, "DELETE", "/me/personal-tokens/current");
+    if (res.ok || res.status === 401) return true;
+    if (res.status === 404) {
+      const body = await jsonOf(res);
+      const err = body["error"];
+      return err?.code === "not_found" || body["code"] === "not_found";
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+async function approved(io, a) {
+  const { origin, host, store } = a;
+  if (typeof a.token !== "string" || !a.token.startsWith("pkeyp_") || !isCredentialShape(a.token) || typeof a.expiresAt !== "number" || !Number.isInteger(a.expiresAt) || a.expiresAt <= 0)
+    throw new Failure(
+      `${host} answered the sign-in unexpectedly.`,
+      "Try again, or check --base-url.",
+      "unexpected-answer",
+      { host }
+    );
+  const token = a.token;
+  const expiresAt = a.expiresAt;
+  const label = typeof a.label === "string" && a.label.trim() ? shown(a.label, io.env).slice(0, 200) : null;
+  const hint2 = token.slice(-4);
+  const cred = {
+    token,
+    source: "store",
+    origin,
+    expiresAt,
+    label,
+    hint: hint2
+  };
+  const t = io.term(io.stdout);
+  const personalTokens = `${origin}/manage/#/personal-tokens`;
+  let kept = false;
+  try {
+    store.set(origin, { token, expiresAt, label, hint: hint2 });
+    kept = store.get(origin)?.token === token;
+  } catch {
+    kept = false;
+  }
+  if (!kept) {
+    let restored = true;
+    if (a.previous)
+      try {
+        store.set(origin, a.previous);
+      } catch {
+        restored = false;
+      }
+    const ended = await revoked(io, cred);
+    const name2 = backendName(a.platform);
+    const message = ended ? `${name2} wouldn't save the sign-in, so pkey revoked it.` : `${name2} wouldn't save the sign-in, and pkey couldn't revoke it.`;
+    const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+    throw new Failure(
+      message,
+      void 0,
+      "store-failed",
+      { host, revoked: ended },
+      [
+        [text(message)],
+        ended ? [
+          ...rerunLine(
+            "pkey login",
+            io,
+            origin,
+            `${unlockAdvice(a.platform)} and run `,
+            " again, or make a token at "
+          ),
+          text(personalTokens, { break: "url", link: personalTokens }),
+          text(` and set ${ADMIN_TOKEN_ENV}.`)
+        ] : [
+          text(
+            `Revoke ${label ? `${quote[0]}${label}${quote[1]} ` : ""}(pkeyp_${t.symbols.ellipsis}${hint2}) at `
+          ),
+          text(personalTokens, { break: "url", link: personalTokens })
+        ],
+        ...a.previous && !restored ? [
+          rerunLine(
+            "pkey login",
+            io,
+            origin,
+            "Your old sign-in may need ",
+            " again."
+          )
+        ] : []
+      ]
+    );
+  }
+  let previous = "none";
+  if (a.previous && a.previous.token !== token)
+    previous = await revoked(io, {
+      token: a.previous.token,
+      source: "store",
+      origin,
+      expiresAt: a.previous.expiresAt
+    }) ? "revoked" : "not-revoked";
+  let name = "";
+  let email = "";
+  let roles = [];
+  const products = /* @__PURE__ */ new Map();
+  try {
+    const res = await call(io, cred, "GET", "/me");
+    if (res.ok) {
+      const me = await jsonOf(res);
+      name = shown(me["name"] ?? "", io.env);
+      email = shown(me["email"] ?? "", io.env);
+      if (Array.isArray(me["products"])) {
+        for (const p of me["products"])
+          if (typeof p?.slug === "string" && typeof p.name === "string")
+            products.set(p.slug, shown(p.name, io.env));
+      }
+      const perms = me["permissions"] ?? {};
+      roles = (Array.isArray(perms.roles) ? perms.roles : []).map((r) => ({
+        role: shown(r.role, io.env),
+        scope: shown(r.scope, io.env),
+        areas: r.areas
+      }));
+    }
+  } catch {
+  }
+  const backend = backendName(a.platform);
+  if (io.json) {
+    io.stdout.write(
+      envelope("login", 0, {
+        host,
+        name,
+        email,
+        roles: roles.map((r) => ({ role: r.role, scope: r.scope })),
+        token: {
+          type: "personal",
+          scope: "admin",
+          ...label ? { label } : {},
+          hint: hint2,
+          expiresAt: new Date(expiresAt * 1e3).toISOString()
+        },
+        storedIn: backend,
+        replaced: previous
+      })
+    );
+    return 0;
+  }
+  const who = name ? [
+    text("Signed in as "),
+    text(name, { style: ["strong"], keep: true }),
+    ...email ? [text(" "), text(`(${email})`, { keep: true })] : []
+  ] : email ? [text("Signed in as "), text(email, { keep: true })] : [text("Signed in.")];
+  io.stdout.write(`${a.gap}${block(t, "ok", [who])}
+`);
+  const roleNames = [
+    ...new Set(
+      roles.map(
+        (r) => roleText(
+          r.role,
+          r.scope,
+          r.areas,
+          (slug) => products.get(slug) ?? slug,
+          t.symbols.separator,
+          io.env
+        )
+      )
+    )
+  ];
+  io.stdout.write(
+    rowsText(
+      t,
+      [
+        [
+          "Roles",
+          roleNames.length ? roleNames.flatMap(
+            (r, i) => [
+              ...i ? [text(", ")] : [],
+              text(r, { unit: true })
+            ]
+          ) : [text("None")]
+        ],
+        ["Token", tokenLine(t, label, hint2)],
+        ["Ends", [text(day(expiresAt, io.env), { unit: true })]],
+        ["Saved in", [text(backend, { unit: true })]]
+      ],
+      { indent: 3, label: 10 }
+    )
+  );
+  io.stdout.write(
+    `
+${t.caps.columns < 32 ? "" : "   "}End it with ${t.painter.style("pkey logout", ["strong"])}.
+`
+  );
+  if (previous === "not-revoked") {
+    const until = a.previous?.expiresAt ? ` until ${day(a.previous.expiresAt, io.env)}` : "";
+    const errT = io.term(io.stderr);
+    const old = a.previous ? shown(hintOf(a.previous), io.env) : "";
+    io.stderr.write(
+      `
+${block(errT, "warn", [
+        [
+          text(
+            `Couldn't end your previous sign-in (pkeyp_${errT.symbols.ellipsis}${old}), so it still works${until}. Revoke it at `
+          ),
+          text(personalTokens, { break: "url", link: personalTokens })
+        ]
+      ])}`
+    );
+  }
+  return 0;
+}
+
+// src/feedWrite.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { spawn as spawn2 } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import {
+  closeSync as closeSync2,
+  constants,
+  existsSync,
+  fchmodSync as fchmodSync2,
+  fsyncSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync as openSync2,
+  readFileSync as readFileSync2,
+  realpathSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  writeSync as writeSync2
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path5 from "node:path";
+
+// ../shared-manifest/dist/integration/index.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var SDK_LANGS = [
+  "node",
+  "react",
+  "python",
+  "swift",
+  "kotlin",
+  "godot"
+];
+var SDK_CONFIG_MARKER = "GENERATED by `pkey sdk";
+var SDK_CONFIG_DEFAULT_OUT = {
+  node: "polaris.config.ts",
+  react: "polaris.config.ts",
+  python: "polaris_config.py",
+  swift: "PolarisConfig.swift",
+  kotlin: "PolarisConfig.kt",
+  godot: "polaris_key.tres"
+};
+var KOTLIN_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
+function banner2(lang, facts, comment) {
+  return [
+    `${comment} ${SDK_CONFIG_MARKER} --lang ${lang} --write\` from`,
+    `${comment} ${facts.discoveryUrl}. Do not edit: run the command again to refresh.`,
+    `${comment} The trust pins came from discovery; compare each key with Public key under Core > Keys & secrets before`,
+    `${comment} you ship (pkey sdk prints them). Release keys match release.releaseKeyFingerprints.`
+  ].join("\n");
+}
+var q = (s) => JSON.stringify(s);
+function tsMap(map, indent) {
+  const rows = Object.entries(map);
+  if (rows.length === 0) return "{}";
+  return `{
+${rows.map(([k, v]) => `${indent}  ${q(k)}: ${q(v)},`).join("\n")}
+${indent}}`;
+}
+function renderNode(facts, js) {
+  const hasRelease = Object.keys(facts.pinnedReleaseKeys).length > 0;
+  const body = [
+    `  productSlug: ${q(facts.product)},`,
+    `  baseUrl: ${q(facts.baseUrl)},`,
+    `  trust: {
+    pinnedKeys: ${tsMap(facts.pinnedKeys, "    ")},
+  },`,
+    `  expectedServices: [${facts.services.map(q).join(", ")}],`,
+    ...hasRelease ? [
+      `  update: {
+    pinnedReleaseKeys: ${tsMap(facts.pinnedReleaseKeys, "    ")},
+  },`
+    ] : []
+  ].join("\n");
+  const doc = `/**
+ * Everything \`PolarisKeyClient.create()\` needs except the app's \`version\`:
+ *
+ *   const client = await PolarisKeyClient.create({ ...polarisConfig, version: "1.2.3" });
+ */`;
+  if (js)
+    return `${banner2("node", facts, "//")}
+
+${doc}
+/** @satisfies {Omit<import("@polaris-key/node").PolarisKeyClientOptions, "version">} */
+export const polarisConfig = {
+${body}
+};
+
+export default polarisConfig;
+`;
+  return `${banner2("node", facts, "//")}
+import type { PolarisKeyClientOptions } from "@polaris-key/node";
+
+${doc}
+export const polarisConfig = {
+${body}
+} satisfies Omit<PolarisKeyClientOptions, "version">;
+
+export default polarisConfig;
+`;
+}
+function renderReact(facts, js) {
+  const pins = `/** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
+ *  the page against them; a desktop host's \`@polaris-key/node\` client pins the same keys. */
+export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
+
+/** The pinned release keys, for a desktop host (\`update.pinnedReleaseKeys\`). */
+export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
+`;
+  const props = [
+    `  productSlug: ${q(facts.product)},`,
+    `  baseUrl: ${q(facts.baseUrl)},`,
+    `  trust: { pinnedKeys },`,
+    `  expectedServices: [${facts.services.map(q).join(", ")}],`
+  ].join("\n");
+  const doc = `/**
+ * The provider's product facts and trust pins:
+ *
+ *   <PolarisKeyProvider config={polarisKey}>…</PolarisKeyProvider>
+ */`;
+  if (js)
+    return `${banner2("react", facts, "//")}
+
+${pins}
+${doc}
+/** @satisfies {import("@polaris-key/react").PolarisKeyConfig} */
+export const polarisKey = {
+${props}
+};
+
+export default polarisKey;
+`;
+  return `${banner2("react", facts, "//")}
+import type { PolarisKeyConfig } from "@polaris-key/react";
+
+${pins}
+${doc}
+export const polarisKey = {
+${props}
+} satisfies PolarisKeyConfig;
+
+export default polarisKey;
+`;
+}
+function pyMap(map) {
+  const rows = Object.entries(map);
+  if (rows.length === 0) return "{}";
+  return `{
+${rows.map(([k, v]) => `    ${q(k)}: ${q(v)},`).join("\n")}
+}`;
+}
+function renderPython(facts) {
+  const hasRelease = Object.keys(facts.pinnedReleaseKeys).length > 0;
+  return `${banner2("python", facts, "#")}
+"""Polaris Key configuration for ${facts.product}.
+
+    from polaris_key import PolarisKeyClient
+    import polaris_config
+
+    client = PolarisKeyClient.create(**polaris_config.CONFIG, version=__version__)
+"""
+
+from typing import Any, Dict, List
+
+${hasRelease ? "from polaris_key import UpdateClientOptions\n\n" : ""}PRODUCT_SLUG = ${q(facts.product)}
+BASE_URL = ${q(facts.baseUrl)}
+PINNED_KEYS: Dict[str, str] = ${pyMap(facts.pinnedKeys)}
+PINNED_RELEASE_KEYS: Dict[str, str] = ${pyMap(facts.pinnedReleaseKeys)}
+EXPECTED_SERVICES: List[str] = [${facts.services.map(q).join(", ")}]
+
+#: Every \`PolarisKeyClient\` keyword except \`version\`.
+CONFIG: Dict[str, Any] = {
+    "product_slug": PRODUCT_SLUG,
+    "base_url": BASE_URL,
+    "pinned_keys": dict(PINNED_KEYS),
+    "expected_services": list(EXPECTED_SERVICES),
+${hasRelease ? `    "update": UpdateClientOptions(pinned_release_keys=dict(PINNED_RELEASE_KEYS)),
+` : ""}}
+`;
+}
+function swiftMap(map) {
+  const rows = Object.entries(map);
+  if (rows.length === 0) return "[:]";
+  return `[
+${rows.map(([k, v]) => `        ${q(k)}: ${q(v)},`).join("\n")}
+    ]`;
+}
+function renderSwift(facts) {
+  return `${banner2("swift", facts, "//")}
+
+import PolarisKey
+
+/// Polaris Key configuration for ${facts.product}:
+///
+///     let client = try PolarisKeyClient(options: PolarisConfig.clientOptions(version: appVersion))
+///
+/// Config reads use the 0.9 names: \`client.config.get(_:default:)\`, \`getConfigSource(_:)\`, \`getSecret(_:)\`.
+public enum PolarisConfig {
+    public static let productSlug = ${q(facts.product)}
+    public static let baseUrl = ${q(facts.baseUrl)}
+    public static let pinnedKeys: TrustSet = ${swiftMap(facts.pinnedKeys)}
+    /// For \`UpdateClientOptions(pinnedReleaseKeys:)\` (PolarisKeyUpdate, PolarisKeyPacks).
+    public static let pinnedReleaseKeys: TrustSet = ${swiftMap(facts.pinnedReleaseKeys)}
+    public static let expectedServices: [ServiceSlug] = [${facts.services.map((s) => `.${s}`).join(", ")}]
+
+    /// Every option the client needs; \`version\` is the app's own.
+    public static func clientOptions(version: String, channel: String? = nil) -> PolarisKeyClientOptions {
+        PolarisKeyClientOptions(
+            productSlug: productSlug, baseUrl: baseUrl, version: version, channel: channel,
+            pinnedKeys: pinnedKeys, expectedServices: expectedServices)
+    }
+}
+`;
+}
+function ktMap(map) {
+  const rows = Object.entries(map);
+  if (rows.length === 0) return "emptyMap()";
+  return `mapOf(
+${rows.map(([k, v]) => `        ${q(k)} to ${q(v)},`).join("\n")}
+    )`;
+}
+function renderKotlin(facts, pkg) {
+  return `${banner2("kotlin", facts, "//")}
+
+package ${pkg}
+
+import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.TrustSet
+import im.plrs.key.sdk.PolarisKeyClientOptions
+import im.plrs.key.update.UpdateClientOptions
+
+/**
+ * Polaris Key configuration for ${facts.product}:
+ *
+ *     val client = PolarisKeyClient.create(PolarisConfig.clientOptions(version = BuildConfig.VERSION_NAME))
+ *
+ * Config reads use the 0.9 names: \`client.config.get(key, default)\`, \`getConfigSource(key)\`, \`getSecret(key)\`.
+ */
+public object PolarisConfig {
+    public const val PRODUCT_SLUG: String = ${q(facts.product)}
+    public const val BASE_URL: String = ${q(facts.baseUrl)}
+    public val pinnedKeys: TrustSet = ${ktMap(facts.pinnedKeys)}
+    public val pinnedReleaseKeys: TrustSet = ${ktMap(facts.pinnedReleaseKeys)}
+    public val expectedServices: List<ServiceSlug> = listOf(${facts.services.map((s) => `ServiceSlug.${s}`).join(", ")})
+
+    /** Core's options; [version] is the app's own. */
+    public fun coreOptions(version: String, channel: String? = null): CoreOptions = CoreOptions(
+        productSlug = PRODUCT_SLUG,
+        baseUrl = BASE_URL,
+        version = version,
+        channel = channel,
+        pinnedKeys = pinnedKeys,
+        expectedServices = expectedServices,
+    )
+
+    /** The client's options, with the update client configured when release keys are pinned. */
+    public fun clientOptions(version: String, channel: String? = null): PolarisKeyClientOptions =
+        PolarisKeyClientOptions(
+            core = coreOptions(version, channel),
+            update = if (pinnedReleaseKeys.isEmpty()) null else UpdateClientOptions(pinnedReleaseKeys = pinnedReleaseKeys),
+        )
+}
+`;
+}
+var GODOT_SCRIPT_ID = "1";
+var GODOT_OPTIONS_SCRIPT = "res://addons/polaris_key/core/options.gd";
+var MIN_SDK_VERSION = { godot: "v0.9.18" };
+var GODOT_REMOVED_FIELDS = ["product", "pinned_trust_keys"];
+var GODOT_NAMES_NOTE = `; 0.9 names (product_slug, pinned_keys): Polaris Key SDK ${MIN_SDK_VERSION.godot} or later. https://key.plrs.im/docs/reference/api-names/`;
+function tresDict(map) {
+  const rows = Object.entries(map);
+  if (rows.length === 0) return "{}";
+  return `{
+${rows.map(([k, v]) => `${q(k)}: ${q(v)}`).join(",\n")}
+}`;
+}
+function godotOptionFields(facts) {
+  return [
+    ["product_slug", q(facts.product)],
+    ["base_url", q(facts.baseUrl)],
+    ["pinned_keys", tresDict(facts.pinnedKeys)],
+    ["pinned_release_keys", tresDict(facts.pinnedReleaseKeys)],
+    [
+      "expected_services",
+      `PackedStringArray(${facts.services.map(q).join(", ")})`
+    ]
+  ];
+}
+function renderGodot(facts) {
+  return [
+    `[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]`,
+    ``,
+    `[ext_resource type="Script" path="${GODOT_OPTIONS_SCRIPT}" id="${GODOT_SCRIPT_ID}"]`,
+    ``,
+    `[resource]`,
+    `script = ExtResource("${GODOT_SCRIPT_ID}")`,
+    GODOT_NAMES_NOTE,
+    ...godotOptionFields(facts).map(([k, v]) => `${k} = ${v}`),
+    ``
+  ].join("\n");
+}
+function tresValueEnd(src, from) {
+  let depth = 0;
+  let inStr = false;
+  for (let i = from; i < src.length; i++) {
+    const c = src[i];
+    if (inStr) {
+      if (c === "\\") i++;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if ("{[(".includes(c)) depth++;
+    else if ("}])".includes(c)) depth--;
+    else if (c === "\n" && depth <= 0) return i;
+  }
+  return src.length;
+}
+function mergeGodotOptions(existing, facts) {
+  const head = /^\[gd_resource [^\n]*\]/.exec(existing)?.[0] ?? "";
+  if (!head.includes('script_class="PKeyOptions"'))
+    throw new Error("it is not a PKeyOptions text resource");
+  const marker2 = /^\[resource\][ \t]*$/m.exec(existing);
+  if (!marker2) throw new Error("it has no [resource] section");
+  let pos = marker2.index + marker2[0].length;
+  let insertAt = pos;
+  const edits = [];
+  const owned = new Map(godotOptionFields(facts));
+  const seen = /* @__PURE__ */ new Set();
+  const gap = /(?:\s|;[^\n]*)*/y;
+  const prop = /([A-Za-z_][A-Za-z0-9_/]*)[ \t]*=[ \t]*/y;
+  for (; ; ) {
+    gap.lastIndex = pos;
+    gap.exec(existing);
+    pos = gap.lastIndex;
+    if (pos >= existing.length || existing[pos] === "[") break;
+    prop.lastIndex = pos;
+    const pm = prop.exec(existing);
+    if (!pm) throw new Error("it has a line that is not a property");
+    const end = tresValueEnd(existing, prop.lastIndex);
+    const key = pm[1];
+    const next = owned.get(key);
+    if (GODOT_REMOVED_FIELDS.includes(key)) {
+      const lineStart = existing.lastIndexOf("\n", pm.index - 1) + 1;
+      const after = existing[end] === "\n" ? end + 1 : end;
+      edits.push({ from: lineStart, to: after, text: "" });
+      pos = end;
+      continue;
+    } else if (key === "script" && !existing.includes(GODOT_NAMES_NOTE)) {
+      edits.push({ from: end, to: end, text: `
+${GODOT_NAMES_NOTE}` });
+    }
+    if (next !== void 0) {
+      seen.add(key);
+      edits.push({ from: prop.lastIndex, to: end, text: next });
+    }
+    insertAt = end;
+    pos = end;
+  }
+  const missing2 = [...owned].filter(([k]) => !seen.has(k));
+  if (missing2.length > 0)
+    edits.push({
+      from: insertAt,
+      to: insertAt,
+      text: missing2.map(([k, v]) => `
+${k} = ${v}`).join("")
+    });
+  let out = existing;
+  for (const e of edits.sort((a, b) => b.from - a.from))
+    out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  return out;
+}
+function renderSdkConfig(lang, facts, opts = {}) {
+  const js = /\.(m?js|cjs)$/.test(opts.out ?? "");
+  switch (lang) {
+    case "node":
+      return renderNode(facts, js);
+    case "react":
+      return renderReact(facts, js);
+    case "python":
+      return renderPython(facts);
+    case "swift":
+      return renderSwift(facts);
+    case "kotlin": {
+      const pkg = opts.kotlinPackage ?? "polaris.generated";
+      if (!KOTLIN_PACKAGE_RE.test(pkg))
+        throw new Error(`--package must be a Kotlin package name; got ${pkg}.`);
+      return renderKotlin(facts, pkg);
+    }
+    case "godot":
+      return renderGodot(facts);
+  }
+}
+function isSdkLang(v) {
+  return SDK_LANGS.includes(v);
+}
+var SDK_IDS = [
+  "node",
+  "react",
+  "python",
+  "swift",
+  "kotlin",
+  "godot"
+];
+var DEFAULT_USAGE_CONTEXT = {
+  entitlement: "pro",
+  configKey: "audio.musicVolume",
+  configFallback: 0.8,
+  secretKey: "api.token",
+  mintRecipe: "cdn",
+  packId: "hd-textures",
+  commerceFlag: "dlc.hd",
+  appName: "tidewater",
+  appVersion: "1.4.2"
+};
+var SDK_LIBRARY_DOCS = {
+  node: "/docs/build/sdks/node/your-own-ui/",
+  react: "/docs/build/sdks/react/your-own-ui/",
+  python: "/docs/build/sdks/python/your-own-ui/",
+  swift: "/docs/build/sdks/swift/your-own-ui/",
+  kotlin: "/docs/build/sdks/kotlin/your-own-ui/",
+  godot: "/docs/build/sdks/godot/your-own-ui/"
+};
+var SDK_KIT_DOCS = {
+  node: "/docs/build/ui/frameworks/terminal-node/",
+  react: "/docs/build/ui/frameworks/react/",
+  python: "/docs/build/ui/frameworks/terminal-python/",
+  swift: "/docs/build/ui/frameworks/swiftui/",
+  kotlin: "/docs/build/ui/frameworks/compose/",
+  godot: "/docs/build/ui/frameworks/godot/"
+};
+var SERVER_DOCS = "/docs/build/servers/";
+var q2 = (v) => JSON.stringify(v);
+var py = (v) => typeof v === "boolean" ? v ? "True" : "False" : JSON.stringify(v);
+var tsType = (v) => typeof v;
+var lines2 = (...l) => l.join("\n");
+var NODE_HEAD = (c, imports = "PolarisKeyClient") => lines2(
+  `import { ${imports} } from "@polaris-key/node";`,
+  `import { polarisConfig } from "./polaris.config.js";`,
+  ``,
+  `const client = await PolarisKeyClient.create({`,
+  `  ...polarisConfig,`,
+  `  version: ${q2(c.appVersion)}, // your app's version`,
+  `});`
+);
+var NODE_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the license",
+    filename: "license.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c, "copy, PolarisKeyClient"),
+      ``,
+      `export async function activate(key: string): Promise<string | null> {`,
+      `  const r = await client.license.activateWithKey(key);`,
+      `  return r.kind === "ok" ? null : copy.activation(r.kind, { code: r.code });`,
+      `}`,
+      ``,
+      `await client.sync();`,
+      `if (!client.isLicensed()) console.log(copy.message(client.status().status));`,
+      `const pro = client.entitlements.has(${q2(c.entitlement)});`,
+      `console.log(pro);`
+    )
+  }),
+  config: (c) => ({
+    title: "Read managed config",
+    filename: "config.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `await client.sync();`,
+      `const value = client.config.get(${q2(c.configKey)}, ${q2(c.configFallback)});`,
+      `const secret = client.config.getSecret(${q2(c.secretKey)});`,
+      `const minted = await client.config.mintToken(${q2(c.mintRecipe)});`,
+      `client.events.on("config", () => console.log("settings changed"));`,
+      `console.log(value, secret, minted);`
+    )
+  }),
+  identity: (c) => ({
+    title: "Sign in in the browser",
+    filename: "sign-in.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `const result = await client.identity.signInWithBrowser({`,
+      `  deviceName: ${q2(`${c.appName} on this computer`)},`,
+      `  onPrompt: (p) => console.log(p.userCode, p.verificationUri),`,
+      `});`,
+      `if (result.status === "ready") {`,
+      `  const profile = client.license.getProfile();`,
+      `  console.log(profile?.name, profile?.email);`,
+      `}`
+    )
+  }),
+  update: (c) => ({
+    title: "Ask for an update",
+    filename: "update.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `const { decision } = await client.update.decide();`,
+      `switch (decision.action) {`,
+      `  case "binary":`,
+      `  case "store":`,
+      `  case "platform":`,
+      `  case "code-ready":`,
+      `    console.log(decision.release.version);`,
+      `    break;`,
+      `  case "blocked":`,
+      `    console.log(decision.reason);`,
+      `    break;`,
+      `  default:`,
+      `    break; // "none" or "packs"`,
+      `}`
+    )
+  }),
+  packs: (c) => ({
+    title: "Install a content pack",
+    filename: "packs.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `client.update.packs.on((progress) => console.log(progress));`,
+      `await client.update.packs.ensure([${q2(c.packId)}]);`,
+      `const dir = await client.update.packs.path(${q2(c.packId)}); // null until it runs`,
+      `console.log(dir);`
+    )
+  }),
+  sync: (c) => ({
+    title: "Save a setting the person keeps across devices",
+    filename: "settings.ts",
+    language: "ts",
+    status: "planned",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `// A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
+      `// later: today the value stays on this device.`,
+      `const volume = client.config.setting<${tsType(c.configFallback)}>(${q2(c.configKey)});`,
+      `await volume.set(${q2(c.configFallback)});`,
+      `console.log(volume.value);`
+    )
+  }),
+  commerce: (c) => ({
+    title: "Claim a store purchase",
+    filename: "commerce.ts",
+    language: "ts",
+    code: lines2(
+      NODE_HEAD(c),
+      ``,
+      `// Steam shown; claimAppStore and claimPlay take their store's fields.`,
+      `export async function claim(ticketHex: string, dlcAppId: string) {`,
+      `  const r = await client.commerce.claimSteam(ticketHex, dlcAppId);`,
+      `  if (r.kind !== "ok") return r.message;`,
+      `  return client.entitlements.has(r.flag) ? "unlocked" : "pending";`,
+      `}`,
+      `console.log(client.entitlements.has(${q2(c.commerceFlag)}));`
+    )
+  })
+};
+var NODE_KIT = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.ts",
+    language: "ts",
+    code: lines2(
+      `import { Command } from "commander";`,
+      `import { PolarisKeyClient } from "@polaris-key/node";`,
+      `import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const program = new Command(${q2(c.appName)});`,
+      `registerPolarisCommands(`,
+      `  program,`,
+      `  // Spread the generated config: a factory built from the slug and pins alone drops baseUrl`,
+      `  // and the release keys, and its writes go to production.`,
+      `  (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }),`,
+      `  {`,
+      `    productSlug: polarisConfig.productSlug,`,
+      `    version: ${q2(c.appVersion)},`,
+      `    pinnedKeys: polarisConfig.trust.pinnedKeys,`,
+      `    expectedServices: polarisConfig.expectedServices,`,
+      `  },`,
+      `);`,
+      `program`,
+      `  .command("export")`,
+      `  .action(requireLicense(() => console.log("exported"), { entitlement: ${q2(c.entitlement)} }));`,
+      `await program.parseAsync();`
+    )
+  })
+};
+var NODE_ELECTRON = {
+  licensing: () => ({
+    title: "Own the client in the main process",
+    filename: "main.ts",
+    language: "ts",
+    code: lines2(
+      `import { app, ipcMain, safeStorage } from "electron";`,
+      `import { PolarisKeyClient } from "@polaris-key/node";`,
+      `import {`,
+      `  exposePolarisBridge,`,
+      `  SafeStorageStore,`,
+      `} from "@polaris-key/node/electron";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `// Do not await whenReady() at the top level: a CommonJS main has no top-level await.`,
+      `void app.whenReady().then(async () => {`,
+      `  const client = await PolarisKeyClient.create({`,
+      `    ...polarisConfig,`,
+      `    store: new SafeStorageStore(`,
+      `      polarisConfig.productSlug,`,
+      `      app.getPath("userData"),`,
+      `      { safeStorage },`,
+      `    ),`,
+      `  });`,
+      `  exposePolarisBridge(client, {`,
+      `    ipcMain,`,
+      `    allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,`,
+      `  });`,
+      `});`
+    )
+  })
+};
+var NODE_SERVER = {
+  licensing: (c) => ({
+    title: "Verify a license your app sends",
+    filename: "verify.ts",
+    language: "ts",
+    code: lines2(
+      `import { verifyLicenseDocument } from "@polaris-key/server";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `// The app sends its cached license document and its device id with the request.`,
+      `export async function allowed(jws: string, deviceId: string): Promise<boolean> {`,
+      `  const v = await verifyLicenseDocument(jws, {`,
+      `    trust: polarisConfig.trust.pinnedKeys,`,
+      `    product: polarisConfig.productSlug,`,
+      `    deviceId,`,
+      `  });`,
+      `  return v.ok && v.usable && v.isEntitled(${q2(c.entitlement)});`,
+      `}`
+    )
+  })
+};
+var NODE_EXPRESS = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import express from "express";`,
+      `import { polarisKey, requireEntitlement } from "@polaris-key/server/express";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = express();`,
+      `app.use(polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/pro", requireEntitlement(${q2(c.entitlement)}), (_req, res) => {`,
+      `  res.json({ ok: true });`,
+      `});`,
+      ``,
+      `app.listen(3000);`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import express from "express";`,
+      `import {`,
+      `  getPolarisAuth,`,
+      `  polarisKey,`,
+      `  requireSignIn,`,
+      `} from "@polaris-key/server/express";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = express();`,
+      `app.use(polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/me", requireSignIn(), (req, res) => {`,
+      `  res.json({ subject: getPolarisAuth(req).user?.subject });`,
+      `});`,
+      ``,
+      `app.listen(3000);`
+    )
+  })
+};
+var NODE_HONO = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import { Hono } from "hono";`,
+      `import {`,
+      `  polarisKey,`,
+      `  requireEntitlement,`,
+      `  type PolarisEnv,`,
+      `} from "@polaris-key/server/hono";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = new Hono<PolarisEnv>();`,
+      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/pro", requireEntitlement(${q2(c.entitlement)}), (c) =>`,
+      `  c.json({ tier: c.var.polaris.license.tier }),`,
+      `);`,
+      ``,
+      `export default app;`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import { Hono } from "hono";`,
+      `import {`,
+      `  polarisKey,`,
+      `  requireSignIn,`,
+      `  type PolarisEnv,`,
+      `} from "@polaris-key/server/hono";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = new Hono<PolarisEnv>();`,
+      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/me", requireSignIn(), (c) =>`,
+      `  c.json({ subject: c.var.polaris.user?.subject }),`,
+      `);`,
+      ``,
+      `export default app;`
+    )
+  })
+};
+var NODE_NEXT = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app/api/pro/route.ts",
+    language: "ts",
+    code: lines2(
+      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
+      ``,
+      `export const GET = polaris.requireEntitlement(`,
+      `  ${q2(c.entitlement)},`,
+      `  async (_req, { license }) => Response.json({ tier: license.tier }),`,
+      `);`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app/api/me/route.ts",
+    language: "ts",
+    code: lines2(
+      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
+      ``,
+      `export const GET = polaris.requireSignIn(async (_req, { user }) =>`,
+      `  Response.json({ subject: user?.subject }),`,
+      `);`
+    )
+  })
+};
+var REACT_KIT = {
+  licensing: () => ({
+    title: "Wrap the app in the gate",
+    filename: "App.tsx",
+    language: "tsx",
+    code: lines2(
+      `import type { ReactNode } from "react";`,
+      `import { PolarisKeyProvider } from "@polaris-key/react";`,
+      `import { PolarisKeyGate } from "@polaris-key/react/kit";`,
+      `import { polarisKey as productPolarisKey } from "./polaris.config";`,
+      ``,
+      `const polarisKey = { ...productPolarisKey, version: "1.4.2" }; // your app's version`,
+      ``,
+      `export function App({ children }: { children: ReactNode }) {`,
+      `  return (`,
+      `    <PolarisKeyProvider config={polarisKey}>`,
+      `      <PolarisKeyGate>{children}</PolarisKeyGate>`,
+      `    </PolarisKeyProvider>`,
+      `  );`,
+      `}`
+    )
+  })
+};
+var REACT_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the license",
+    filename: "Gate.tsx",
+    language: "tsx",
+    code: lines2(
+      `import type { ReactNode } from "react";`,
+      `import { copyMessage, useEntitlement, useLicenseGate } from "@polaris-key/react";`,
+      ``,
+      `// Inside <PolarisKeyProvider config={polarisKey}>.`,
+      `export function Gate({ children }: { children: ReactNode }) {`,
+      `  const { screen, status } = useLicenseGate();`,
+      `  if (screen === "loading") return <p role="status">Loading…</p>;`,
+      `  if (screen === "ok" || screen === "not-applicable" || screen === "grace")`,
+      `    return <>{children}</>;`,
+      `  return <p role="alert">{copyMessage(status)}</p>;`,
+      `}`,
+      ``,
+      `export function ProOnly({ children }: { children: ReactNode }) {`,
+      `  return useEntitlement(${q2(c.entitlement)}) ? <>{children}</> : <p>Upgrade to use this.</p>;`,
+      `}`
+    )
+  }),
+  config: (c) => ({
+    title: "Read and set a managed setting",
+    filename: "Volume.tsx",
+    language: "tsx",
+    code: lines2(
+      `import { useConfigSetting } from "@polaris-key/react";`,
+      ``,
+      `export function Volume() {`,
+      `  const volume = useConfigSetting<${tsType(c.configFallback)}>(${q2(c.configKey)}, ${q2(c.configFallback)});`,
+      `  return (`,
+      `    <button disabled={volume.locked} onClick={() => void volume.set(${q2(c.configFallback)})}>`,
+      `      {String(volume.value)} ({volume.source})`,
+      `    </button>`,
+      `  );`,
+      `}`
+    )
+  }),
+  identity: () => ({
+    title: "Sign in",
+    filename: "SignIn.tsx",
+    language: "tsx",
+    code: lines2(
+      `import { describeError, usePolarisAuth } from "@polaris-key/react";`,
+      ``,
+      `export function SignIn() {`,
+      `  const auth = usePolarisAuth();`,
+      `  if (!auth.supportsOidcLogin) return null;`,
+      `  return (`,
+      `    <>`,
+      `      <button disabled={auth.busy} onClick={() => void auth.signInWithOidc()}>`,
+      `        Sign in`,
+      `      </button>`,
+      `      {auth.error && <p role="alert">{describeError(auth.error)}</p>}`,
+      `    </>`,
+      `  );`,
+      `}`
+    )
+  }),
+  update: () => ({
+    title: "Show an update offer",
+    filename: "UpdateBanner.tsx",
+    language: "tsx",
+    code: lines2(
+      `import { useUpdateDecision } from "@polaris-key/react";`,
+      ``,
+      `export function UpdateBanner() {`,
+      `  const { decision, undismissable } = useUpdateDecision();`,
+      `  if (!decision || decision.action === "none" || decision.action === "packs")`,
+      `    return null;`,
+      `  if (decision.action === "blocked")`,
+      `    return <p role="alert">{decision.reason}</p>;`,
+      `  return (`,
+      `    <p role={undismissable ? "alert" : "status"}>`,
+      `      Version {decision.release.version} is available.`,
+      `    </p>`,
+      `  );`,
+      `}`
+    )
+  })
+};
+var PY_HEAD = (c, imports = "PolarisKeyClient") => lines2(
+  `from polaris_key import ${imports}`,
+  ``,
+  `import polaris_config`,
+  ``,
+  `client = PolarisKeyClient.create(**polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`
+);
+var PY_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the license",
+    filename: "license.py",
+    language: "python",
+    code: lines2(
+      `from typing import Optional`,
+      ``,
+      `from polaris_key import ActivationOk, PolarisKeyClient`,
+      `from polaris_key.copy import activation_message`,
+      ``,
+      `import polaris_config`,
+      ``,
+      `client = PolarisKeyClient.create(**polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
+      ``,
+      ``,
+      `def activate(key: str) -> Optional[str]:`,
+      `    """None when activated, else what to show."""`,
+      `    r = client.license.activate_with_key(key)`,
+      `    return None if isinstance(r, ActivationOk) else activation_message(r.kind, code=r.code)`,
+      ``,
+      ``,
+      `client.sync()`,
+      `if not client.is_licensed():`,
+      `    print(client.status().status)`,
+      `pro = client.entitlements.has(${q2(c.entitlement)})`
+    )
+  }),
+  config: (c) => ({
+    title: "Read managed config",
+    filename: "config.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `client.sync()`,
+      `value = client.config.get(${q2(c.configKey)}, ${py(c.configFallback)})`,
+      `secret = client.config.get_secret(${q2(c.secretKey)})`,
+      `minted = client.config.mint_token(${q2(c.mintRecipe)})`,
+      `client.config.on_config_change(${q2(c.configKey)}, lambda v: print("changed", v))`,
+      `print(value, secret, minted)`
+    )
+  }),
+  identity: (c) => ({
+    title: "Sign in in the browser",
+    filename: "sign_in.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `result = client.identity.sign_in_with_browser(device_name=${q2(`${c.appName} on this computer`)})`,
+      `if result.status == "ready":`,
+      `    profile = client.license.get_profile()`,
+      `    print(profile.name if profile else "Signed in")`
+    )
+  }),
+  update: (c) => ({
+    title: "Ask for an update",
+    filename: "update.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `d = client.update.decide().decision`,
+      `if d.action == "blocked":`,
+      `    print("Update required", d.reason)`,
+      `elif d.action not in ("none", "packs") and d.release:`,
+      `    print(d.release.version, "is available")`
+    )
+  }),
+  packs: (c) => ({
+    title: "Install a content pack",
+    filename: "packs.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `installs = client.update.packs.ensure([${q2(c.packId)}])`,
+      `print(installs)`
+    )
+  }),
+  sync: (c) => ({
+    title: "Save a setting the person keeps across devices",
+    filename: "settings.py",
+    language: "python",
+    status: "planned",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `# A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
+      `# later: today the value stays on this device.`,
+      `volume = client.config.setting(${q2(c.configKey)})`,
+      `volume.set(${py(c.configFallback)})`,
+      `print(volume.value)`
+    )
+  }),
+  commerce: (c) => ({
+    title: "Claim a store purchase",
+    filename: "commerce.py",
+    language: "python",
+    code: lines2(
+      PY_HEAD(c),
+      ``,
+      `# Steam shown; claim_app_store and claim_play take their store's fields.`,
+      `def claim(ticket_hex: str, dlc_app_id: str) -> str:`,
+      `    r = client.commerce.claim_steam(ticket_hex, dlc_app_id)`,
+      `    return "unlocked" if client.entitlements.has(${q2(c.commerceFlag)}) else str(r)`
+    )
+  })
+};
+var PY_KIT = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.py",
+    language: "python",
+    code: lines2(
+      `import argparse`,
+      ``,
+      `from polaris_key.cli import register_argparse, require_license`,
+      ``,
+      `import polaris_config`,
+      ``,
+      ``,
+      `@require_license(entitlement=${q2(c.entitlement)})`,
+      `def export(args: argparse.Namespace) -> int:`,
+      `    print("exported")`,
+      `    return 0`,
+      ``,
+      ``,
+      `parser = argparse.ArgumentParser(prog=${q2(c.appName)})`,
+      `sub = parser.add_subparsers(dest="command", required=True)`,
+      `register_argparse(`,
+      `    sub,`,
+      `    config=polaris_config.CONFIG,`,
+      `    version=${q2(c.appVersion)},  # your app's version`,
+      `)`,
+      `sub.add_parser("export", help="Export a mix.").set_defaults(func=export)`,
+      `args = parser.parse_args()`,
+      `raise SystemExit(args.func(args))`
+    )
+  })
+};
+var SWIFT_KIT = {
+  licensing: (c) => ({
+    title: "Gate the app",
+    filename: "MyApp.swift",
+    language: "swift",
+    code: lines2(
+      `import PolarisKey`,
+      `import PolarisKeyUI`,
+      `import SwiftUI`,
+      ``,
+      `@main`,
+      `struct MyApp: App {`,
+      `    @State private var client: PolarisKeyClient?`,
+      ``,
+      `    var body: some Scene {`,
+      `        WindowGroup {`,
+      `            if let client {`,
+      `                ContentView().polarisKeyGate(client)`,
+      `            } else {`,
+      `                ProgressView().task {`,
+      `                    client = try? await PolarisKeyClient.create(`,
+      `                        options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
+      `                }`,
+      `            }`,
+      `        }`,
+      `    }`,
+      `}`
+    )
+  })
+};
+var SWIFT_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the license",
+    filename: "License.swift",
+    language: "swift",
+    code: lines2(
+      `import PolarisKey`,
+      ``,
+      `let client = try await PolarisKeyClient.create(`,
+      `    options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
+      `_ = await client.sync()`,
+      `if await !client.isLicensed() {`,
+      `    let result = await client.license.activateWithKey(userEnteredKey)`,
+      `    print(result)`,
+      `}`
+    )
+  })
+};
+var KOTLIN_KIT = {
+  licensing: () => ({
+    title: "Gate the app",
+    filename: "MainActivity.kt",
+    language: "kotlin",
+    code: lines2(
+      `import android.os.Bundle`,
+      `import androidx.activity.ComponentActivity`,
+      `import androidx.activity.compose.setContent`,
+      `import androidx.compose.material3.MaterialTheme`,
+      `import androidx.compose.material3.Text`,
+      `import im.plrs.key.ui.PolarisKeyApp`,
+      ``,
+      `class MainActivity : ComponentActivity() {`,
+      `    override fun onCreate(savedInstanceState: Bundle?) {`,
+      `        super.onCreate(savedInstanceState)`,
+      `        setContent {`,
+      `            MaterialTheme {`,
+      `                PolarisKeyApp(client, signIn = true) { Text("Licensed") }`,
+      `            }`,
+      `        }`,
+      `    }`,
+      `}`
+    )
+  })
+};
+var KOTLIN_LIBRARY = {
+  licensing: (c) => ({
+    title: "Gate on the license",
+    filename: "License.kt",
+    language: "kotlin",
+    code: lines2(
+      `import com.acme.polaris.PolarisConfig`,
+      `import im.plrs.key.desktop.PolarisKeyDesktop`,
+      ``,
+      `suspend fun start() {`,
+      `    val client = PolarisKeyDesktop.create(PolarisConfig.clientOptions(${q2(c.appVersion)}))`,
+      `    println(client.status())`,
+      `    client.close() // ends the client's threads so a JVM main can exit`,
+      `}`
+    )
+  })
+};
+var GODOT_KIT = {
+  licensing: () => ({
+    title: "Boot Polaris Key before the first scene",
+    filename: "boot.gd",
+    language: "gdscript",
+    code: lines2(
+      `extends Node`,
+      ``,
+      ``,
+      `func _ready() -> void:`,
+      `	await PolarisKey.boot()  # reads res://polaris_key.tres`,
+      `	get_tree().change_scene_to_file("res://game/title.tscn")`
+    )
+  })
+};
+var GODOT_LIBRARY = {
+  licensing: () => ({
+    title: "React to the license state",
+    filename: "gate.gd",
+    language: "gdscript",
+    code: lines2(
+      `extends Node`,
+      ``,
+      ``,
+      `func _ready() -> void:`,
+      `	PolarisKey.state_changed.connect(_on_state_changed)`,
+      ``,
+      ``,
+      `func _on_state_changed(state: Dictionary) -> void:`,
+      `	var screen := PKeyGateController.screen_for(String(state["status"]))`,
+      `	print(screen)  # usable, grace, activation, revoked, expired, ...`
+    )
+  })
+};
+var PY_FASTAPI = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "main.py",
+    language: "python",
+    code: lines2(
+      `from typing import Annotated, Dict`,
+      ``,
+      `from fastapi import Depends, FastAPI`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
+      ``,
+      `app = FastAPI()`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.install(app)`,
+      ``,
+      ``,
+      `@app.get("/api/pro")`,
+      `def pro(`,
+      `    auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement(${q2(c.entitlement)}))],`,
+      `) -> Dict[str, bool]:`,
+      `    return {"ok": True}`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "main.py",
+    language: "python",
+    code: lines2(
+      `from typing import Annotated, Dict, Optional`,
+      ``,
+      `from fastapi import Depends, FastAPI`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
+      ``,
+      `app = FastAPI()`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.install(app)`,
+      ``,
+      ``,
+      `@app.get("/api/me")`,
+      `def me(auth: Annotated[PolarisAuth, Depends(polaris.require_sign_in())]) -> Dict[str, Optional[str]]:`,
+      `    return {"subject": auth.user.subject if auth.user else None}`
+    )
+  })
+};
+var PY_STARLETTE = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.py",
+    language: "python",
+    code: lines2(
+      `from starlette.applications import Starlette`,
+      `from starlette.requests import Request`,
+      `from starlette.responses import JSONResponse`,
+      `from starlette.routing import Route`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.starlette import PolarisKey, get_polaris_license`,
+      ``,
+      `polaris = PolarisKey(config=polaris_config)`,
+      ``,
+      ``,
+      `@polaris.require_entitlement(${q2(c.entitlement)})`,
+      `async def pro(request: Request) -> JSONResponse:`,
+      `    return JSONResponse({"tier": get_polaris_license(request).tier})`,
+      ``,
+      ``,
+      `app = Starlette(routes=[Route("/api/pro", pro)])`,
+      `polaris.install(app)`
+    )
+  })
+};
+var PY_FLASK = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.py",
+    language: "python",
+    code: lines2(
+      `from typing import Any, Dict`,
+      ``,
+      `from flask import Flask`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.flask import PolarisKey, get_polaris_license`,
+      ``,
+      `app = Flask(__name__)`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.init_app(app)`,
+      ``,
+      ``,
+      `@app.get("/api/pro")`,
+      `@polaris.require_entitlement(${q2(c.entitlement)})`,
+      `def pro() -> Dict[str, Any]:`,
+      `    return {"tier": get_polaris_license().tier}`
+    )
+  })
+};
+var PY_DJANGO = {
+  licensing: (c) => ({
+    title: "Gate a view with the license",
+    filename: "views.py",
+    language: "python",
+    code: lines2(
+      `from typing import Any`,
+      ``,
+      `from django.http import HttpRequest, JsonResponse`,
+      ``,
+      `from polaris_key.server.django import get_polaris_license, require_entitlement`,
+      ``,
+      `# settings.py: add "polaris_key.server.django.PolarisKeyMiddleware" to MIDDLEWARE, and`,
+      `# POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
+      ``,
+      ``,
+      `@require_entitlement(${q2(c.entitlement)})`,
+      `def pro(request: HttpRequest) -> Any:`,
+      `    return JsonResponse({"tier": get_polaris_license(request).tier})`
+    )
+  })
+};
+var PY_DRF = {
+  licensing: (c) => ({
+    title: "Gate a view with the license",
+    filename: "views.py",
+    language: "python",
+    code: lines2(
+      `from typing import Any`,
+      ``,
+      `from rest_framework.response import Response`,
+      `from rest_framework.views import APIView`,
+      ``,
+      `from polaris_key.server.drf import PolarisKeyAuthentication, get_polaris_license, has_entitlement`,
+      ``,
+      `# settings.py: REST_FRAMEWORK = {"EXCEPTION_HANDLER": "polaris_key.server.drf.exception_handler"}`,
+      `# and POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
+      ``,
+      ``,
+      `class ProView(APIView):`,
+      `    authentication_classes = [PolarisKeyAuthentication]`,
+      `    permission_classes = [has_entitlement(${q2(c.entitlement)})]`,
+      ``,
+      `    def get(self, request: Any) -> Response:`,
+      `        return Response({"tier": get_polaris_license(request).tier})`
+    )
+  })
+};
+var KOTLIN_KTOR = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "Application.kt",
+    language: "kotlin",
+    code: lines2(
+      `import com.acme.polaris.PolarisConfig`,
+      `import im.plrs.key.server.ktor.polarisKey`,
+      `import im.plrs.key.server.ktor.requireEntitlement`,
+      `import io.ktor.server.application.Application`,
+      `import io.ktor.server.application.install`,
+      `import io.ktor.server.auth.Authentication`,
+      `import io.ktor.server.response.respondText`,
+      `import io.ktor.server.routing.get`,
+      `import io.ktor.server.routing.routing`,
+      ``,
+      `fun Application.module() {`,
+      `    install(Authentication) {`,
+      `        polarisKey {`,
+      `            product(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)`,
+      `        }`,
+      `    }`,
+      `    routing {`,
+      `        requireEntitlement(${q2(c.entitlement)}) {`,
+      `            get("/api/pro") { call.respondText("ok") }`,
+      `        }`,
+      `    }`,
+      `}`
+    )
+  })
+};
+var KOTLIN_SPRING = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "SecurityConfig.kt",
+    language: "kotlin",
+    code: lines2(
+      `import im.plrs.key.server.spring.PolarisKey`,
+      `import im.plrs.key.server.spring.polarisKey`,
+      `import org.springframework.context.annotation.Bean`,
+      `import org.springframework.context.annotation.Configuration`,
+      `import org.springframework.security.config.annotation.web.builders.HttpSecurity`,
+      `import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity`,
+      `import org.springframework.security.web.SecurityFilterChain`,
+      ``,
+      `@Configuration(proxyBeanMethods = false)`,
+      `@EnableWebSecurity`,
+      `class SecurityConfig {`,
+      `    @Bean`,
+      `    fun api(http: HttpSecurity): SecurityFilterChain {`,
+      `        http.csrf { it.disable() }`,
+      `        http.polarisKey()`,
+      `        http.authorizeHttpRequests {`,
+      `            it.requestMatchers("/health").permitAll()`,
+      `                .requestMatchers("/api/pro").access(PolarisKey.entitlement(${q2(c.entitlement)}))`,
+      `                .anyRequest().denyAll()`,
+      `        }`,
+      `        return http.build()`,
+      `    }`,
+      `}`
+    )
+  })
+};
+var NODE_YARGS = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.ts",
+    language: "ts",
+    code: lines2(
+      `import yargs from "yargs";`,
+      `import { hideBin } from "yargs/helpers";`,
+      `import { requireLicense } from "@polaris-key/node/cli";`,
+      `import { registerPolarisCommands } from "@polaris-key/node/cli/yargs";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const cli = yargs(hideBin(process.argv)).scriptName(${q2(c.appName)});`,
+      `registerPolarisCommands(cli, { config: polarisConfig, version: ${q2(c.appVersion)} });`,
+      `cli.command(`,
+      `  "export",`,
+      `  "Export a mix",`,
+      `  {},`,
+      `  requireLicense(() => console.log("exported"), { entitlement: ${q2(c.entitlement)} }),`,
+      `);`,
+      `await cli.parseAsync();`
+    )
+  })
+};
+var PY_CLICK = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.py",
+    language: "python",
+    code: lines2(
+      `import click`,
+      ``,
+      `from polaris_key.cli import register_click, require_license`,
+      ``,
+      `import polaris_config`,
+      ``,
+      ``,
+      `@click.group()`,
+      `def cli() -> None:`,
+      `    pass`,
+      ``,
+      ``,
+      `@cli.command()`,
+      `@click.option("--json", "as_json", is_flag=True, help="Machine-readable refusal.")`,
+      `@require_license(entitlement=${q2(c.entitlement)})`,
+      `def export(as_json: bool) -> None:`,
+      `    click.echo("exported")`,
+      ``,
+      ``,
+      `register_click(cli, config=polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
+      ``,
+      `if __name__ == "__main__":`,
+      `    cli()`
+    )
+  })
+};
+var PY_TYPER = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.py",
+    language: "python",
+    code: lines2(
+      `import typer`,
+      ``,
+      `from polaris_key.cli import register_typer, require_license`,
+      ``,
+      `import polaris_config`,
+      ``,
+      `app = typer.Typer()`,
+      ``,
+      ``,
+      `@app.command()`,
+      `@require_license(entitlement=${q2(c.entitlement)})`,
+      `def export(as_json: bool = typer.Option(False, "--json", help="Machine-readable refusal.")) -> None:`,
+      `    typer.echo("exported")`,
+      ``,
+      ``,
+      `register_typer(app, config=polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
+      ``,
+      `if __name__ == "__main__":`,
+      `    app()`
+    )
+  })
+};
+var TABLE = {
+  node: {
+    kit: {
+      _: NODE_KIT,
+      commander: NODE_KIT,
+      yargs: NODE_YARGS,
+      electron: NODE_ELECTRON
+    },
+    library: { _: NODE_LIBRARY },
+    server: {
+      _: NODE_SERVER,
+      express: NODE_EXPRESS,
+      hono: NODE_HONO,
+      next: NODE_NEXT
+    }
+  },
+  react: { kit: { _: REACT_KIT }, library: { _: REACT_LIBRARY } },
+  python: {
+    kit: { _: PY_KIT, argparse: PY_KIT, click: PY_CLICK, typer: PY_TYPER },
+    library: { _: PY_LIBRARY },
+    server: {
+      fastapi: PY_FASTAPI,
+      starlette: PY_STARLETTE,
+      flask: PY_FLASK,
+      django: PY_DJANGO,
+      drf: PY_DRF
+    }
+  },
+  swift: { kit: { _: SWIFT_KIT }, library: { _: SWIFT_LIBRARY } },
+  kotlin: {
+    kit: { _: KOTLIN_KIT },
+    library: { _: KOTLIN_LIBRARY },
+    server: { ktor: KOTLIN_KTOR, spring: KOTLIN_SPRING }
+  },
+  godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } }
+};
+var COMPILED_SDKS = /* @__PURE__ */ new Set(["node", "react", "python"]);
+function usageFrameworks(sdk, lane) {
+  return Object.keys(TABLE[sdk]?.[lane] ?? {}).filter((f) => f !== "_");
+}
+function renderUsage(feature, sdk, lane, framework = null, ctx = {}) {
+  const group = TABLE[sdk]?.[lane];
+  if (!group) return null;
+  const features = group[framework ?? "_"];
+  const make = features?.[feature];
+  if (!make) return null;
+  const made = make({ ...DEFAULT_USAGE_CONTEXT, ...ctx });
+  const docs = lane === "server" ? framework ? `${SERVER_DOCS}${framework}/` : SERVER_DOCS : lane === "kit" ? SDK_KIT_DOCS[sdk] : SDK_LIBRARY_DOCS[sdk];
+  return {
+    id: `${feature}.${sdk}.${lane}${framework ? `.${framework}` : ""}`,
+    feature,
+    sdk,
+    lane,
+    framework,
+    title: made.title,
+    filename: made.filename,
+    language: made.language,
+    code: `${made.code}
+`,
+    docs,
+    status: made.status ?? "available",
+    compiled: made.compiled ?? COMPILED_SDKS.has(sdk)
+  };
+}
+var SDK_REGISTRY_ORIGIN = "https://pkg.plrs.im";
+var DEFAULT_BASE_URL2 = "https://key.plrs.im";
+var FEED_OWNER = "polaris-key";
+var INSTALL = {
+  node: {
+    ecosystem: "npm",
+    namespace: { scope: "@polaris-key" },
+    name: "@polaris-key/node",
+    snippets: ["npmrc", "install"]
+  },
+  react: {
+    ecosystem: "npm",
+    namespace: { scope: "@polaris-key" },
+    name: "@polaris-key/react",
+    snippets: ["npmrc", "install"]
+  },
+  python: {
+    ecosystem: "pypi",
+    namespace: { names: ["polaris-key"], prefixes: [] },
+    name: "polaris-key",
+    snippets: ["uv", "pip"]
+  },
+  swift: {
+    ecosystem: "swift",
+    namespace: { scope: "polaris-key" },
+    name: "polaris-key.PolarisKey",
+    snippets: ["registries-json", "package-swift", "xcode"]
+  },
+  kotlin: {
+    ecosystem: "maven",
+    namespace: { groupPrefixes: ["im.plrs.key"] },
+    name: "im.plrs.key:polaris-key-sdk",
+    snippets: ["gradle", "gradle-dependency"]
+  },
+  godot: {
+    ecosystem: "godot",
+    namespace: { publisher: "polaris-key" },
+    name: "polaris_key",
+    snippets: ["editor-4.7", "editor-4.6"]
+  }
+};
+var SERVER_INSTALL = {
+  ...INSTALL.node,
+  name: "@polaris-key/server"
+};
+function sdkInstall(sdk, host = "app") {
+  const spec = sdk === "node" && host === "server" ? SERVER_INSTALL : INSTALL[sdk];
+  const all = renderFeedSetup(spec.ecosystem, {
+    origin: SDK_REGISTRY_ORIGIN,
+    owner: FEED_OWNER,
+    namespace: spec.namespace,
+    package: { name: spec.name }
+  });
+  return spec.snippets.flatMap((id) => all.filter((s) => s.id === id));
+}
+function sdkInstallNote(sdk, host = "app", framework = null) {
+  if (host === "server") {
+    if (sdk === "python")
+      return `Install the extra for your framework: polaris-key[${framework ?? "fastapi"}].`;
+    if (sdk === "kotlin")
+      return framework === "spring" ? "Add im.plrs.key:polaris-key-spring-boot-starter from the same feed." : "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
+  }
+  if (sdk === "godot")
+    return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";
+  return null;
+}
+var CONFIG_LANGUAGE = {
+  node: "ts",
+  react: "ts",
+  python: "python",
+  swift: "swift",
+  kotlin: "kotlin",
+  godot: "gdscript"
+};
+var PLACEHOLDER_PIN = {
+  kid: "<kid>",
+  publicKey: "<public key>"
+};
+function startFor(sdk, fit2, ctx) {
+  const framework = sdk === "node" && fit2.target === "electron" ? "electron" : fit2.framework ?? null;
+  const library = renderUsage("licensing", sdk, "library", null, ctx);
+  let start = null;
+  if (fit2.host === "server") {
+    start = renderUsage("licensing", sdk, "server", framework, ctx) ?? renderUsage("licensing", sdk, "server", null, ctx) ?? renderUsage(
+      "licensing",
+      sdk,
+      "server",
+      usageFrameworks(sdk, "server")[0] ?? null,
+      ctx
+    ) ?? library;
+  } else {
+    start = renderUsage("licensing", sdk, "kit", framework, ctx) ?? renderUsage("licensing", sdk, "kit", null, ctx) ?? library;
+  }
+  if (!start) throw new Error(`renderSdkSetup: no start block for ${sdk}`);
+  return { start, headless: library && library !== start ? library : null };
+}
+function renderSdkSetup(sdk, o) {
+  if (!SDK_IDS.includes(sdk))
+    throw new Error(`renderSdkSetup: unknown SDK ${String(sdk)}`);
+  const origin = (o.origin ?? DEFAULT_BASE_URL2).replace(/\/+$/, "");
+  const pins = o.pins.length > 0 ? o.pins : [PLACEHOLDER_PIN];
+  const facts = {
+    product: o.slug,
+    baseUrl: origin,
+    discoveryUrl: `${origin}/${o.slug}/.well-known/polaris.json`,
+    pinnedKeys: Object.fromEntries(pins.map((p) => [p.kid, p.publicKey])),
+    pinnedReleaseKeys: Object.fromEntries(
+      (o.releaseKeys ?? []).map((p) => [p.kid, p.publicKey])
+    ),
+    services: [...o.services]
+  };
+  const lang = sdk;
+  const out = SDK_CONFIG_DEFAULT_OUT[lang];
+  const code = renderSdkConfig(lang, facts, {
+    out,
+    ...o.kotlinPackage ? { kotlinPackage: o.kotlinPackage } : {}
+  });
+  const fit2 = o.fit ?? { host: "app", target: null, framework: null };
+  const { start, headless } = startFor(sdk, fit2, o.usage ?? {});
+  const warnings = [];
+  if (o.pins.length === 0)
+    warnings.push(
+      "This product has no signing key yet. Create one in the console, then copy the file again."
+    );
+  if (o.services.includes("update") && (o.releaseKeys ?? []).length === 0)
+    warnings.push(
+      "Update is on but no release key is pinned, so the app refuses every release. Run pkey sdk in the product repo: it reads the keys from .pkey/release."
+    );
+  return {
+    sdk,
+    install: sdkInstall(sdk, fit2.host),
+    installNote: sdkInstallNote(sdk, fit2.host, fit2.framework ?? null),
+    config: { filename: out, language: CONFIG_LANGUAGE[sdk], code },
+    start,
+    headless,
+    warnings
+  };
+}
+function ordered(feeds) {
+  const rank = (f) => PACKAGE_ECOSYSTEMS.indexOf(f.ecosystem);
+  return [...feeds].sort(
+    (a, b) => rank(a) - rank(b) || a.owner.localeCompare(b.owner)
+  );
+}
+function isExecStep(step) {
+  return "exec" in step;
+}
+function userConfigPlan(feeds, ctx) {
+  const token = ctx.token;
+  const host = new URL(ctx.origin).host;
+  const files = [];
+  const execs = [];
+  const skipped = [];
+  const netrcDone = /* @__PURE__ */ new Set();
+  for (const feed of ordered(feeds)) {
+    const { ecosystem, owner } = feed;
+    const problem = feedSetupProblem(ecosystem, {
+      origin: ctx.origin,
+      owner,
+      ...feed.namespace ? { namespace: feed.namespace } : {},
+      credential: { kind: "token", value: token }
+    });
+    if (problem !== null) throw new Error(`userConfigPlan: ${problem}`);
+    const base = feedSetupBaseUrl(ecosystem, ctx.origin, owner);
+    const at = { ecosystem, owner };
+    const file = (tool, onPath, path36, edit, secret = false) => files.push({ tool, onPath, file: path36, edit, secret, ...at });
+    const netrc = (onPath) => {
+      if (netrcDone.has(host)) {
+        const at2 = files.findIndex((f) => f.file === ".netrc");
+        const prev = files[at2];
+        files[at2] = {
+          ...prev,
+          onPath: [.../* @__PURE__ */ new Set([...prev.onPath, ...onPath])]
+        };
+        return;
+      }
+      netrcDone.add(host);
+      file(
+        "netrc",
+        onPath,
+        ".netrc",
+        { kind: "netrc", machine: host, login: "__token__", password: token },
+        true
+      );
+    };
+    if (ecosystem === "npm") {
+      const scope = feed.namespace?.["scope"];
+      if (typeof scope !== "string" || scope === "") {
+        skipped.push({ ...at, reason: "the feed has no npm scope to route" });
+        continue;
+      }
+      const bare = scope.slice(1);
+      const authPath = base.replace(/^https?:/, "");
+      file("npm", ["npm", "pnpm"], ".npmrc", {
+        kind: "line",
+        prefix: `${scope}:registry=`,
+        line: `${scope}:registry=${base}`
+      });
+      file(
+        "npm",
+        ["npm", "pnpm"],
+        ".npmrc",
+        {
+          kind: "line",
+          prefix: `${authPath}:_authToken=`,
+          line: `${authPath}:_authToken=${token}`
+        },
+        true
+      );
+      file("yarn", ["yarn"], ".yarnrc.yml", {
+        kind: "yaml",
+        path: ["npmScopes", bare, "npmRegistryServer"],
+        value: base
+      });
+      file(
+        "yarn",
+        ["yarn"],
+        ".yarnrc.yml",
+        {
+          kind: "yaml",
+          path: ["npmScopes", bare, "npmAuthToken"],
+          value: token
+        },
+        true
+      );
+      file("yarn", ["yarn"], ".yarnrc.yml", {
+        kind: "yaml",
+        path: ["npmScopes", bare, "npmAlwaysAuth"],
+        value: true
+      });
+      file(
+        "bun",
+        ["bun"],
+        ".bunfig.toml",
+        {
+          kind: "toml",
+          table: "install.scopes",
+          key: JSON.stringify(scope),
+          value: `{ url = ${JSON.stringify(base)}, token = ${JSON.stringify(token)} }`
+        },
+        true
+      );
+    } else if (ecosystem === "pypi") {
+      netrc(["pip", "pip3", "uv", "poetry"]);
+    } else if (ecosystem === "go") {
+      netrc(["go"]);
+    } else if (ecosystem === "maven") {
+      const repo = owner.replace(/[^A-Za-z0-9]/g, "_");
+      file("gradle", ["gradle"], ".gradle/gradle.properties", {
+        kind: "property",
+        key: `${repo}Username`,
+        value: "__token__"
+      });
+      file(
+        "gradle",
+        ["gradle"],
+        ".gradle/gradle.properties",
+        { kind: "property", key: `${repo}Password`, value: token },
+        true
+      );
+    } else if (ecosystem === "cargo") {
+      file("cargo", ["cargo"], ".cargo/config.toml", {
+        kind: "toml",
+        table: `registries.${owner}`,
+        key: "index",
+        value: JSON.stringify(`sparse+${base}`)
+      });
+      file("cargo", ["cargo"], ".cargo/config.toml", {
+        kind: "toml",
+        table: `registries.${owner}`,
+        key: "credential-provider",
+        value: JSON.stringify("cargo:token")
+      });
+      execs.push({
+        tool: "cargo",
+        onPath: ["cargo"],
+        exec: {
+          argv: ["cargo", "login", "--registry", owner],
+          stdin: `${token}
+`
+        },
+        secret: true,
+        ...at
+      });
+    } else if (ecosystem === "oci") {
+      execs.push({
+        tool: "docker",
+        onPath: ["docker"],
+        exec: {
+          argv: [
+            "docker",
+            "login",
+            host,
+            "-u",
+            "__token__",
+            "--password-stdin"
+          ],
+          stdin: `${token}
+`
+        },
+        secret: true,
+        ...at
+      });
+    } else if (ecosystem === "swift") {
+      execs.push({
+        tool: "swift",
+        onPath: ["swift"],
+        exec: {
+          argv: [
+            "swift",
+            "package-registry",
+            "login",
+            base.replace(/\/$/, ""),
+            "--no-confirm"
+          ],
+          tokenFile: { flag: "--token-file", content: token }
+        },
+        secret: true,
+        ...at
+      });
+    } else {
+      skipped.push({
+        ...at,
+        reason: "needs an editor URL from Polaris Locker, under Packages"
+      });
+    }
+  }
+  return { steps: [...files, ...execs], skipped };
+}
+
+// src/feedWrite.ts
+var MAX_FEEDS = 64;
+var EXEC_TIMEOUT_MS = 6e4;
+var BACKUP_SUFFIX = ".pkey-backup";
+function defaultOnPath(name, pathVar) {
+  const exts = process.platform === "win32" ? [".exe", ".cmd", ".bat", ""] : [""];
+  for (const dir of pathVar.split(path5.delimiter)) {
+    if (!dir) continue;
+    for (const ext of exts) {
+      try {
+        const st = statSync(path5.join(dir, name + ext));
+        if (st.isFile() && (process.platform === "win32" || st.mode & 73))
+          return true;
+      } catch {
+      }
+    }
+  }
+  return false;
+}
+function defaultRun(argv2, opts) {
+  return new Promise((resolve2) => {
+    let out = "";
+    let child;
+    try {
+      child = spawn2(argv2[0], argv2.slice(1), {
+        cwd: opts.cwd,
+        env: opts.env,
+        shell: false,
+        stdio: ["pipe", "pipe", "pipe"],
+        windowsHide: true
+      });
+    } catch {
+      resolve2({ code: null, out: "" });
+      return;
+    }
+    const timer = setTimeout(() => child.kill("SIGKILL"), EXEC_TIMEOUT_MS);
+    const keep = (b) => {
+      if (out.length < 16384) out += b.toString("utf8");
+    };
+    child.stdout.on("data", keep);
+    child.stderr.on("data", keep);
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve2({ code: null, out });
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve2({ code, out });
+    });
+    child.stdin.on("error", () => void 0);
+    child.stdin.end(opts.stdin ?? "");
+  });
+}
+var Unmergeable = class extends Error {
+};
+var blank = (l) => /^\s*(#.*)?$/.test(l);
+var indentOf = (l) => l.length - l.trimStart().length;
+var esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function mergeLine(lines4, prefix, line) {
+  const at = lines4.findIndex((l) => l.trimStart().startsWith(prefix));
+  if (at >= 0) lines4[at] = line;
+  else lines4.push(line);
+}
+function mergeProperty(lines4, key, value) {
+  const re = new RegExp(`^\\s*${esc(key)}\\s*[=:]`);
+  const at = lines4.findIndex((l) => re.test(l));
+  const line = `${key}=${value}`;
+  if (at >= 0) lines4[at] = line;
+  else lines4.push(line);
+}
+function yamlValue(v) {
+  return typeof v === "boolean" ? String(v) : JSON.stringify(v);
+}
+function mergeYaml(lines4, keys, value) {
+  let start = 0;
+  let end = lines4.length;
+  let parent = -1;
+  for (let depth = 0; depth < keys.length; depth++) {
+    const key = keys[depth];
+    const last = depth === keys.length - 1;
+    let child = -1;
+    let found = -1;
+    let regionEnd = end;
+    for (let i = start; i < end; i++) {
+      const l = lines4[i];
+      if (blank(l)) continue;
+      if (/^\t/.test(l) || /^ *\t/.test(l)) throw new Unmergeable("tabs");
+      const ind2 = indentOf(l);
+      if (ind2 <= parent) {
+        regionEnd = i;
+        break;
+      }
+      if (child < 0) child = ind2;
+      if (ind2 !== child) continue;
+      if (new RegExp(`^(["']?)${esc(key)}\\1\\s*:(\\s|$)`).test(l.trimStart())) {
+        found = i;
+        break;
+      }
+    }
+    if (found < 0) {
+      let at = regionEnd;
+      while (at > start && /^\s*$/.test(lines4[at - 1])) at--;
+      const base = child >= 0 ? child : parent < 0 ? 0 : parent + 2;
+      const add5 = [];
+      keys.slice(depth).forEach((k, n) => {
+        const pad2 = " ".repeat(base + 2 * n);
+        const isLast = depth + n === keys.length - 1;
+        add5.push(isLast ? `${pad2}${k}: ${yamlValue(value)}` : `${pad2}${k}:`);
+      });
+      lines4.splice(at, 0, ...add5);
+      return;
+    }
+    const ind = indentOf(lines4[found]);
+    let childEnd = found + 1;
+    for (let i = found + 1; i < lines4.length; i++) {
+      if (blank(lines4[i])) continue;
+      if (indentOf(lines4[i]) <= ind) break;
+      childEnd = i + 1;
+    }
+    if (last) {
+      if (childEnd > found + 1)
+        throw new Unmergeable("a block value at the key");
+      lines4[found] = `${" ".repeat(ind)}${key}: ${yamlValue(value)}`;
+      return;
+    }
+    if (!/^[^:]*:\s*(#.*)?$/.test(lines4[found].trimStart()))
+      throw new Unmergeable("an inline value where a mapping is needed");
+    start = found + 1;
+    end = childEnd;
+    parent = ind;
+  }
+}
+function tomlBalanced(s) {
+  let n = 0;
+  let quote = "";
+  for (const c of s) {
+    if (quote) {
+      if (c === quote) quote = "";
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === "{" || c === "[") n++;
+    else if (c === "}" || c === "]") n--;
+  }
+  return n === 0 && !quote;
+}
+function tomlKeyOf(line) {
+  const m = /^\s*("[^"]*"|'[^']*'|[A-Za-z0-9_-]+)\s*=/.exec(line);
+  return m ? m[1].replace(/^["']|["']$/g, "") : null;
+}
+function tomlPath(src) {
+  const out = [];
+  const re = /\s*("(?:[^"\\]|\\.)*"|'[^']*'|[A-Za-z0-9_-]+)\s*(\.|$)/y;
+  let at = 0;
+  while (at < src.length) {
+    re.lastIndex = at;
+    const m = re.exec(src);
+    if (!m) return null;
+    out.push(m[1].replace(/^["']|["']$/g, ""));
+    at = re.lastIndex;
+    if (m[2] === "") break;
+  }
+  return out.length ? out : null;
+}
+function tomlHeader(line) {
+  const m = /^\s*\[(?!\[)\s*(.+?)\s*\]\s*(#.*)?$/.exec(line);
+  return m ? tomlPath(m[1]) : null;
+}
+function mergeToml(lines4, table, key, value) {
+  const regionOf = (t) => {
+    const want = tomlPath(t);
+    const h = lines4.findIndex((l) => {
+      const got = tomlHeader(l);
+      return got !== null && want !== null && got.length === want.length && got.every((g, n) => g === want[n]);
+    });
+    if (h < 0) return null;
+    let e = lines4.length;
+    for (let i = h + 1; i < lines4.length; i++)
+      if (/^\s*\[/.test(lines4[i])) {
+        e = i;
+        break;
+      }
+    return [h + 1, e];
+  };
+  const bare = key.replace(/^["']|["']$/g, "");
+  const region2 = regionOf(table);
+  if (!region2) {
+    const dot = table.lastIndexOf(".");
+    if (dot > 0) {
+      const outer = regionOf(table.slice(0, dot));
+      const leaf = table.slice(dot + 1);
+      if (outer) {
+        for (let i = outer[0]; i < outer[1]; i++)
+          if (tomlKeyOf(lines4[i]) === leaf)
+            throw new Unmergeable(`${leaf} is already a value`);
+      }
+    }
+    if (lines4.length && !blank(lines4[lines4.length - 1])) lines4.push("");
+    lines4.push(`[${table}]`, `${key} = ${value}`);
+    return;
+  }
+  const [from, to] = region2;
+  for (let i = from; i < to; i++)
+    if (tomlKeyOf(lines4[i]) === bare) {
+      if (!tomlBalanced(lines4[i].slice(lines4[i].indexOf("=") + 1)))
+        throw new Unmergeable("a multi-line value");
+      lines4[i] = `${key} = ${value}`;
+      return;
+    }
+  let at = to;
+  while (at > from && blank(lines4[at - 1])) at--;
+  lines4.splice(at, 0, `${key} = ${value}`);
+}
+function mergeNetrc(lines4, machine, login, password) {
+  const startsEntry = (l) => /^\s*(machine|default)\b/.test(l);
+  const mine = new RegExp(`^\\s*machine\\s+${esc(machine)}(\\s|$)`);
+  const at = lines4.findIndex((l) => mine.test(l));
+  if (at < 0) {
+    const block2 = [
+      `machine ${machine}`,
+      `  login ${login}`,
+      `  password ${password}`
+    ];
+    const dflt = lines4.findIndex((l) => /^\s*default\b/.test(l));
+    if (dflt >= 0) {
+      lines4.splice(dflt, 0, ...block2, "");
+      return;
+    }
+    if (lines4.length && !blank(lines4[lines4.length - 1])) lines4.push("");
+    lines4.push(...block2);
+    return;
+  }
+  let to = lines4.length;
+  for (let i = at + 1; i < lines4.length; i++)
+    if (startsEntry(lines4[i])) {
+      to = i;
+      break;
+    }
+  let hasLogin = false;
+  let hasPassword = false;
+  for (let i = at; i < to; i++) {
+    lines4[i] = lines4[i].replace(
+      /\blogin\s+\S+/,
+      () => (hasLogin = true, `login ${login}`)
+    ).replace(
+      /\bpassword\s+\S+/,
+      () => (hasPassword = true, `password ${password}`)
+    );
+  }
+  let tail = to;
+  while (tail > at + 1 && blank(lines4[tail - 1])) tail--;
+  const add5 = [];
+  if (!hasLogin) add5.push(`  login ${login}`);
+  if (!hasPassword) add5.push(`  password ${password}`);
+  lines4.splice(tail, 0, ...add5);
+}
+function mergeEdits(content, edits) {
+  const eol = content.includes("\r\n") ? "\r\n" : "\n";
+  const lines4 = content === "" ? [] : content.split(/\r?\n/);
+  if (lines4.length && lines4[lines4.length - 1] === "") lines4.pop();
+  for (const e of edits) {
+    switch (e.kind) {
+      case "line":
+        mergeLine(lines4, e.prefix, e.line);
+        break;
+      case "property":
+        mergeProperty(lines4, e.key, e.value);
+        break;
+      case "yaml":
+        mergeYaml(lines4, e.path, e.value);
+        break;
+      case "toml":
+        mergeToml(lines4, e.table, e.key, e.value);
+        break;
+      case "netrc":
+        mergeNetrc(lines4, e.machine, e.login, e.password);
+        break;
+    }
+  }
+  return lines4.length ? lines4.join(eol) + eol : "";
+}
+var Unsafe = class extends Error {
+};
+var within = (root, p) => p === root || p.startsWith(root.endsWith(path5.sep) ? root : root + path5.sep);
+function safeTarget(realHome, rel) {
+  const parts = rel.split("/");
+  if (parts.some((p) => p === "" || p === "." || p === ".."))
+    throw new Unsafe("a path that is not inside the home directory");
+  let cur = realHome;
+  for (let i = 0; i < parts.length; i++) {
+    const next = path5.join(cur, parts[i]);
+    let st;
+    try {
+      st = lstatSync(next);
+    } catch {
+      return path5.join(cur, ...parts.slice(i));
+    }
+    let real = next;
+    if (st.isSymbolicLink()) {
+      try {
+        real = realpathSync(next);
+      } catch {
+        throw new Unsafe("a symbolic link that goes nowhere");
+      }
+      if (!within(realHome, real))
+        throw new Unsafe("links outside your home directory");
+    }
+    cur = real;
+  }
+  if (!statSync(cur).isFile()) throw new Unsafe("not a regular file");
+  return cur;
+}
+function writeMerged(target, edits, secret) {
+  const exists2 = existsSync(target);
+  const before = exists2 ? readFileSync2(target, "utf8") : "";
+  const after = mergeEdits(before, edits);
+  let mode = 384;
+  if (exists2) {
+    const m = statSync(target).mode & 511;
+    if (after === before && (!secret || (m & 63) === 0))
+      return { state: "unchanged", backup: false };
+    mode = secret ? m & 384 || 384 : m;
+  }
+  const dir = path5.dirname(target);
+  mkdirSync(dir, { recursive: true, mode: 448 });
+  let backup = false;
+  if (exists2 && after !== before) {
+    const bak = target + BACKUP_SUFFIX;
+    if (!existsSync(bak)) {
+      writeFileSync(bak, before, { mode: 384, flag: "wx" });
+      backup = true;
+    }
+  }
+  const tmp = path5.join(
+    dir,
+    `.${path5.basename(target)}.pkey-${randomBytes(6).toString("hex")}.tmp`
+  );
+  let fd;
+  try {
+    fd = openSync2(
+      tmp,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL,
+      384
+    );
+    writeSync2(fd, after);
+    fchmodSync2(fd, mode);
+    fsyncSync(fd);
+    closeSync2(fd);
+    fd = void 0;
+    renameSync(tmp, target);
+  } catch (e) {
+    if (fd !== void 0) closeSync2(fd);
+    rmSync(tmp, { force: true });
+    throw e;
+  }
+  return { state: exists2 ? "updated" : "created", backup };
+}
+function readFeeds(raw, owner) {
+  if (!Array.isArray(raw) || raw.length > MAX_FEEDS) throw new Error("feeds");
+  const feeds = [];
+  for (const f of raw) {
+    if (!f || typeof f !== "object" || typeof f["ecosystem"] !== "string" || !isPackageEcosystem(f["ecosystem"]) || typeof f["product"] !== "string" || typeof f["namespace"] !== "object" || f["namespace"] === null || Array.isArray(f["namespace"]))
+      throw new Error("feed");
+    if (owner !== void 0 && f["product"] !== owner) continue;
+    feeds.push({
+      ecosystem: f["ecosystem"],
+      owner: f["product"],
+      namespace: f["namespace"]
+    });
+  }
+  return feeds;
+}
+function registryOf(v) {
+  if (typeof v !== "string") return null;
+  try {
+    const u = new URL(v);
+    if (u.protocol !== "https:" || u.origin !== v || u.username || u.password)
+      return null;
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+var CLIENTS = [
+  ["npm", ["npm", "pnpm"]],
+  ["yarn", ["yarn"]],
+  ["bun", ["bun"]],
+  ["pip/uv", ["pip", "pip3", "uv", "poetry"]],
+  ["go", ["go"]],
+  ["gradle", ["gradle"]],
+  ["cargo", ["cargo"]],
+  ["swift", ["swift"]],
+  ["docker", ["docker"]]
+];
+var list2 = (items) => items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+var PrintRefusal = class extends Refusal {
+  lines;
+  constructor(message, lead, code) {
+    const units = [
+      "pkey feeds setup",
+      "--ecosystem npm",
+      "--owner slug",
+      "--token-env NAME"
+    ];
+    super(message, `${lead} ${units.join(" ")}`, code);
+    this.lines = [
+      [text(message)],
+      [text(lead)],
+      units.flatMap(
+        (u, n) => [...n ? [text(" ")] : [], text(u, { unit: true })]
+      )
+    ];
+  }
+};
+function installed(io, o) {
+  const onPath = o.seams.onPath ?? defaultOnPath;
+  const pathVar = io.env["PATH"] ?? "";
+  return CLIENTS.filter(
+    ([, names]) => names.some((n) => onPath(n, pathVar))
+  ).map(([label]) => label);
+}
+function cmdFeedsWrite(io, o) {
+  const mode = {
+    command: "feeds setup",
+    rerun: "pkey feeds setup --write",
+    scope: "packages:read",
+    title: "Polaris Key packages",
+    copy: {
+      opening: "Opening Polaris Locker in your browser",
+      rateLimited: {
+        message: "Too many sign-in attempts from this network.",
+        fix: "Wait a few minutes, then run pkey feeds setup --write again."
+      },
+      unsupportedFix: "Check that this is your Polaris Key server.",
+      unavailable: [
+        "This Polaris Key server has no package registry.",
+        "Check --base-url."
+      ],
+      tokenLimit: () => [
+        [text("You already have the most personal tokens.")],
+        [
+          text(
+            "Revoke one in Polaris Locker, under Packages, then run pkey feeds setup --write again."
+          )
+        ]
+      ],
+      forbidden: [
+        "This Polaris Locker account can't get a token.",
+        "Sign in to Polaris Locker to check it."
+      ],
+      denied: (code) => `Code ${code} was denied in Polaris Locker.`,
+      maybeApproved: "If you approved it, a token may exist: check Polaris Locker, under Packages."
+    },
+    // The Polaris Locker page that approves it, built from the origin pkey resolved.
+    approvePath: (code) => `/approve?code=${code}`,
+    useServedApproveUrl: true,
+    warnAdminEnv: false,
+    // The refusals come first: before the origin is resolved, so before any request.
+    guard: () => guards(io, o),
+    begin: async () => ({
+      replaces: false,
+      note: `Sets up ${list2(installed(io, o))}.`,
+      approved: (body, gap) => apply(io, o, body, gap)
+    })
+  };
+  return runDeviceFlow(io, mode);
+}
+function guards(io, o) {
+  if (isCi(io.env))
+    throw new PrintRefusal(
+      "pkey feeds setup --write needs a person at a terminal.",
+      "In CI, print the setup instead:",
+      "ci"
+    );
+  const seams = resolveSeams(io);
+  if (!seams.stdin?.isTTY || !io.stdout.isTTY)
+    throw new PrintRefusal(
+      "pkey feeds setup --write needs a person at a terminal.",
+      "Without one, print the setup instead:",
+      "no-tty"
+    );
+  home(io, o.cwd);
+  if (!installed(io, o).length)
+    throw new Refusal(
+      "None of the tools pkey sets up are installed.",
+      "Install npm, pip, go, cargo, docker or swift, or print the setup with pkey feeds setup.",
+      "no-tools"
+    );
+}
+function home(io, cwd) {
+  const raw = io.env["HOME"] ?? io.env["USERPROFILE"];
+  if (!raw || !path5.isAbsolute(raw))
+    throw new Refusal(
+      "HOME is not set, so there is nowhere safe to write.",
+      "Set HOME to your home directory, or print the setup instead.",
+      "no-home"
+    );
+  let real;
+  try {
+    real = realpathSync(raw);
+    if (!statSync(real).isDirectory()) throw new Error("not a directory");
+  } catch {
+    throw new Refusal(
+      "HOME is not a directory pkey can use.",
+      "Set HOME to your home directory.",
+      "no-home"
+    );
+  }
+  let here = cwd;
+  try {
+    here = realpathSync(cwd);
+  } catch {
+  }
+  if (real !== here && within(here, real))
+    throw new Refusal(
+      "Your home directory is inside the current directory.",
+      "Run pkey from another directory.",
+      "home-in-cwd"
+    );
+  return real;
+}
+function gitTree(realHome, file) {
+  let dir = path5.dirname(file);
+  while (within(realHome, dir)) {
+    if (existsSync(path5.join(dir, ".git"))) return display(realHome, dir);
+    if (dir === realHome) break;
+    dir = path5.dirname(dir);
+  }
+  return void 0;
+}
+var display = (realHome, p) => p === realHome ? "~" : `~/${path5.relative(realHome, p).split(path5.sep).join("/")}`;
+function toolLabel(s) {
+  if (s.tool !== "netrc") return s.tool;
+  const names = CLIENTS.filter(([, n]) => n.some((x) => s.onPath.includes(x))).map(([label]) => label).join("/");
+  return names || "netrc";
+}
+async function apply(io, o, body, gap) {
+  const origin = originFor(io, "feeds setup");
+  const host = hostOf2(origin);
+  const label = typeof body["label"] === "string" && body["label"].trim() ? shown(body["label"], io.env).slice(0, 200) : null;
+  const t = io.term(io.stdout);
+  const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+  const revoke = `Revoke ${quote[0]}${label ?? `pkey on ${host}`}${quote[1]} in Polaris Locker, under Packages.`;
+  const odd = () => new Failure(
+    `${host} answered the sign-in unexpectedly. Nothing was written.`,
+    `Check --base-url. ${revoke}`,
+    "unexpected-answer",
+    { host }
+  );
+  if (body["scope"] !== "packages:read")
+    throw new Refusal(
+      `${host} issued a token for a different scope than the one pkey asked for. Nothing was written.`,
+      `Check that ${host} is your Polaris Key server. ${revoke}`,
+      "wrong-scope"
+    );
+  const token = body["token"];
+  const expiresAt = body["expiresAt"];
+  if (typeof token !== "string" || !token.startsWith("pkeyp_") || !isCredentialShape(token) || typeof expiresAt !== "number" || !Number.isInteger(expiresAt) || expiresAt <= 0 || body["username"] !== "__token__")
+    throw odd();
+  const registry = registryOf(body["registryOrigin"]);
+  if (body["registryOrigin"] === null || body["registryOrigin"] === void 0)
+    throw new Refusal(
+      `${host} has no package registry. Nothing was written.`,
+      `Check that ${host} is your Polaris Key server. ${revoke}`,
+      "no-registry"
+    );
+  if (!registry) throw odd();
+  let feeds;
+  try {
+    feeds = readFeeds(body["feeds"], o.owner);
+  } catch {
+    throw odd();
+  }
+  const hint2 = token.slice(-4);
+  const replaced = typeof body["replaced"] === "string" && /^[A-Za-z0-9_-]{4}$/.test(body["replaced"]) ? body["replaced"] : null;
+  let plan;
+  try {
+    plan = userConfigPlan(feeds, { origin: registry, token });
+  } catch {
+    throw odd();
+  }
+  const realHome = home(io, o.cwd);
+  const registryHost = new URL(registry).host;
+  const pathVar = io.env["PATH"] ?? "";
+  const onPath = o.seams.onPath ?? defaultOnPath;
+  const runner = o.seams.run ?? defaultRun;
+  const have = (s) => s.onPath.some((n) => onPath(n, pathVar));
+  const outcomes = [];
+  const byFile = /* @__PURE__ */ new Map();
+  for (const s of plan.steps) {
+    if (isExecStep(s)) continue;
+    if (!have(s)) {
+      const tool = toolLabel(s);
+      if (!outcomes.some((x) => x.tool === tool && x.state === "missing"))
+        outcomes.push({
+          tool,
+          state: "missing",
+          text: `~/${s.file}`,
+          file: `~/${s.file}`
+        });
+      continue;
+    }
+    byFile.set(s.file, [...byFile.get(s.file) ?? [], s]);
+  }
+  for (const [file, steps] of byFile) {
+    const tool = [...new Set(steps.map(toolLabel))].join(" ");
+    const shownFile = `~/${file}`;
+    try {
+      const real = safeTarget(realHome, file);
+      const r = writeMerged(
+        real,
+        steps.map((s) => s.edit),
+        steps.some((s) => s.secret)
+      );
+      const where2 = display(realHome, real);
+      const git = r.state === "unchanged" ? void 0 : gitTree(realHome, real);
+      outcomes.push({
+        tool,
+        state: r.state,
+        text: shownFile,
+        file: where2,
+        ...where2 !== shownFile ? { link: shownFile } : {},
+        ...r.backup ? { backup: `${where2}${BACKUP_SUFFIX}` } : {},
+        ...git ? { git } : {}
+      });
+    } catch (e) {
+      const known = e instanceof Unsafe || e instanceof Unmergeable;
+      outcomes.push({
+        tool,
+        state: known ? "refused" : "failed",
+        text: shownFile,
+        file: shownFile,
+        note: known ? e.message : "could not be written"
+      });
+    }
+  }
+  for (const s of plan.steps) {
+    if (!isExecStep(s)) continue;
+    const command = s.exec.argv.slice(0, 3).join(" ");
+    if (!have(s)) {
+      outcomes.push({ tool: s.tool, state: "missing", text: command, command });
+      continue;
+    }
+    outcomes.push(
+      await runStep(io, o, s, command, realHome, token, runner, {
+        host: registryHost
+      })
+    );
+  }
+  for (const k of plan.skipped)
+    outcomes.push({
+      tool: k.ecosystem,
+      state: "skipped",
+      text: k.owner,
+      product: k.owner,
+      note: k.reason
+    });
+  const bad = outcomes.filter((x) => x.state === "failed");
+  const refused = outcomes.filter((x) => x.state === "refused");
+  const exit = bad.length ? 1 : refused.length ? 4 : 0;
+  const warnings = [
+    ...new Set(
+      outcomes.flatMap(
+        (x) => x.git ? [
+          `${x.git} is a git repository: the token is now in a tracked file.`
+        ] : []
+      )
+    )
+  ];
+  if (io.json) {
+    io.stdout.write(
+      envelope("feeds setup", exit, {
+        host,
+        registry,
+        token: {
+          type: "personal",
+          scope: "packages:read",
+          ...label ? { label } : {},
+          hint: hint2,
+          ...replaced ? { replaced } : {},
+          expiresAt: new Date(expiresAt * 1e3).toISOString()
+        },
+        steps: outcomes.map((x) => ({
+          tool: x.tool,
+          state: x.state,
+          ...x.file ? { file: x.file } : {},
+          ...x.link ? { link: x.link } : {},
+          ...x.backup ? { backup: x.backup } : {},
+          ...x.command ? { command: x.command } : {},
+          ...x.product ? { product: x.product } : {},
+          ...x.note ? { note: x.note } : {}
+        })),
+        ...warnings.length ? { warnings } : {}
+      })
+    );
+    return exit;
+  }
+  const ok = outcomes.filter(
+    (x) => ["created", "updated", "unchanged", "ran"].includes(x.state)
+  ).length;
+  const tried = ok + bad.length + refused.length;
+  const missing2 = outcomes.filter((x) => x.state === "missing");
+  const shownRows = outcomes.filter((x) => x.state !== "missing");
+  const sep = t.symbols.separator;
+  const columns = t.caps.columns;
+  const sentence = (line) => wrapSpans([text(line)], Math.max(1, columns - (columns < 32 ? 0 : 3))).map((l) => `${columns < 32 ? "" : "   "}${t.painter.line(l)}
+`).join("");
+  if (!feeds.length) {
+    io.stdout.write(
+      `${gap}${block(
+        t,
+        "warn",
+        plain2(
+          o.owner ? `This account has no private feeds for ${o.owner}.` : "This account has no private package feeds."
+        )
+      )}
+`
+    );
+  } else {
+    const headline = bad.length || refused.length ? `Set up ${ok} of ${tried} ${tried === 1 ? "tool" : "tools"}.` : ok ? `Set up ${ok} ${ok === 1 ? "tool" : "tools"}.` : "Nothing to set up.";
+    io.stdout.write(
+      `${gap}${block(t, ok && !bad.length && !refused.length ? "ok" : "warn", plain2(headline))}
+`
+    );
+  }
+  const word = {
+    created: " created",
+    updated: " updated",
+    unchanged: " already set",
+    ran: "",
+    missing: "",
+    skipped: "",
+    refused: " refused",
+    failed: " failed"
+  };
+  const rows = shownRows.map((x) => [
+    x.tool,
+    [
+      text(x.text, { unit: true }),
+      ...x.link || x.file && x.file !== x.text && x.state !== "refused" ? [text(` → ${x.file}`, { unit: true })] : [],
+      text(word[x.state]),
+      ...x.backup ? [text(` ${sep} backup ${x.backup}`)] : [],
+      ...x.note ? [text(` ${sep} ${x.note}`)] : []
+    ]
+  ]);
+  if (missing2.length)
+    rows.push([
+      "Not installed",
+      [
+        text([...new Set(missing2.map((x) => x.tool))].join(", "), {
+          unit: true
+        })
+      ]
+    ]);
+  if (rows.length) io.stdout.write(rowsText(t, rows, { indent: 3, label: 15 }));
+  for (const w of warnings) io.stdout.write(`
+${block(t, "warn", plain2(w))}`);
+  io.stdout.write(
+    `
+${rowsText(
+      t,
+      [
+        [
+          "Token",
+          [
+            text(
+              label ? `${quote[0]}${label}${quote[1]} (pkeyp_${t.symbols.ellipsis}${hint2})` : `pkeyp_${t.symbols.ellipsis}${hint2}`,
+              { unit: true }
+            ),
+            ...replaced ? [
+              text(` replaces ${t.symbols.ellipsis}${replaced}`, {
+                unit: true
+              })
+            ] : []
+          ]
+        ],
+        ["Expires", [text(day(expiresAt, io.env), { unit: true })]]
+      ],
+      { indent: 3, label: 15 }
+    )}`
+  );
+  io.stdout.write("\n");
+  if (bad.length || refused.length)
+    io.stdout.write(
+      sentence(
+        `Fix ${list2([...new Set([...bad, ...refused].map((x) => x.tool))])}, then run pkey feeds setup --write again.`
+      )
+    );
+  io.stdout.write(
+    sentence("Revoke it any time in Polaris Locker, under Packages.")
+  );
+  return exit;
+}
+function lastLine(out, token, env) {
+  const line = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).pop() ?? "";
+  return shown(
+    line.split(token).join("…").replace(/pkeyp_[A-Za-z0-9_-]+/g, "…"),
+    env
+  ).slice(0, 120);
+}
+async function runStep(io, o, s, command, cwd, token, run2, at) {
+  const env = {};
+  for (const [k, v] of Object.entries(io.env))
+    if (typeof v === "string" && !k.startsWith("PKEY_")) env[k] = v;
+  env["HOME"] = cwd;
+  const argv2 = [...s.exec.argv];
+  const base = { tool: s.tool, command, product: s.owner };
+  let dir;
+  try {
+    const tf = s.exec.tokenFile;
+    if (tf) {
+      const probe = await run2([...argv2, "--help"], { cwd, env });
+      if (!probe.out.includes(tf.flag))
+        return {
+          ...base,
+          state: "skipped",
+          text: command,
+          note: `this ${s.tool} has no ${tf.flag}; set it up by hand`
+        };
+      dir = mkdtempSync(path5.join((o.seams.tmpdir ?? tmpdir)(), "pkey-"));
+      const file = path5.join(dir, "token");
+      writeFileSync(file, tf.content, { mode: 384, flag: "wx" });
+      argv2.push(tf.flag, file);
+    }
+    const r = await run2(argv2, { cwd, env, stdin: s.exec.stdin });
+    return r.code === 0 ? {
+      ...base,
+      state: "ran",
+      text: s.tool === "cargo" ? `signed in to registry ${s.owner}` : `signed in to ${at.host}`
+    } : {
+      ...base,
+      state: "failed",
+      text: argv2.slice(0, 2).join(" "),
+      note: lastLine(r.out, token, io.env) || (r.code === null ? "did not run" : `exit ${r.code}`)
+    };
+  } catch {
+    return {
+      ...base,
+      state: "failed",
+      text: argv2.slice(0, 2).join(" "),
+      note: "could not run"
+    };
+  } finally {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// src/context.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var BASE_URL_ENV = "PKEY_BASE_URL";
+async function resolveContext(input2) {
+  const found = await findProductManifest(input2.cwd);
+  const env = input2.env[BASE_URL_ENV]?.trim();
+  return {
+    product: input2.product ? {
+      slug: input2.product,
+      source: "flag",
+      // The name is the manifest's only when the flag names the manifest's own product.
+      ...found?.slug === input2.product && found.name ? { name: found.name } : {}
+    } : found ? {
+      slug: found.slug,
+      ...found.name ? { name: found.name } : {},
+      source: "manifest",
+      file: found.file
+    } : null,
+    baseUrl: input2.baseUrl ? { url: input2.baseUrl, source: "flag" } : env ? { url: env, source: "env" } : { url: DEFAULT_BASE_URL, source: "default" }
+  };
+}
+async function applyContext(keys, flags, input2) {
+  if (!keys?.length) return;
+  const given = (name) => typeof flags[name] === "string" && String(flags[name]).trim() !== "";
+  const wantProduct = keys.includes("product") && !given("product");
+  const wantBase = keys.includes("baseUrl") && !given("base-url");
+  if (!wantProduct && !wantBase) return;
+  const ctx = await resolveContext(input2);
+  if (wantProduct && ctx.product) flags["product"] = ctx.product.slug;
+  if (wantBase && ctx.baseUrl.source === "env")
+    flags["base-url"] = ctx.baseUrl.url;
+}
+
+// src/doctor.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var DOCTOR_TIMEOUT_MS = 15e3;
+async function readCapped(res) {
+  const text3 = await readCappedText(res);
+  if (text3 === null) throw new ReadFailure("too large or unreadable");
+  try {
+    return JSON.parse(text3);
+  } catch {
+    throw new ReadFailure("not JSON");
+  }
+}
+var ReadFailure = class extends Error {
+  constructor(why) {
+    super(`The answer could not be read: ${why}.`);
+    this.name = "ReadFailure";
+  }
+};
+var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+function manifestFact(result, problem, fileWarnings = []) {
+  if (!result)
+    return {
+      id: "manifest",
+      state: "todo",
+      detail: problem ?? "no .pkey/ manifest"
+    };
+  if (!result.ok)
+    return {
+      id: "manifest",
+      state: "todo",
+      detail: plural(result.errors.length, "error")
+    };
+  const warnings = result.warnings.length + fileWarnings.length;
+  return {
+    id: "manifest",
+    state: warnings ? "warn" : "ok",
+    detail: warnings ? plural(warnings, "warning") : "valid",
+    ...hasFixable(result) ? { fix: VALIDATE_FIX } : {}
+  };
+}
+var VALIDATE_FIX = "pkey validate --fix";
+var hasFixable = (result) => result.warnings.some((w) => w.code === "deprecated_spelling");
+function syncFact(manifest, live) {
+  const onlyManifest = manifest.filter((s) => !live.includes(s));
+  const onlyLive = live.filter((s) => !manifest.includes(s));
+  if (!onlyManifest.length && !onlyLive.length)
+    return { id: "in-sync", state: "ok", detail: "matches" };
+  const parts = [
+    onlyManifest.length ? `only in .pkey/: ${onlyManifest.join(", ")}` : "",
+    onlyLive.length ? `only live: ${onlyLive.join(", ")}` : ""
+  ].filter(Boolean);
+  return {
+    id: "in-sync",
+    state: "warn",
+    detail: parts.join("; "),
+    fix: "Resync the product from .pkey/ in the console."
+  };
+}
+function hostOf3(url) {
+  try {
+    return maskTokens(new URL(url).host);
+  } catch {
+    return maskTokens(url);
+  }
+}
+async function checkRemote(opts) {
+  const raw = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  const url = maskTokens(raw);
+  const host = hostOf3(raw);
+  const down = (detail, code, status) => ({
+    url,
+    host,
+    keys: [],
+    keyStates: [],
+    pinned: [],
+    ...status === void 0 ? {} : { status },
+    services: [],
+    signing: null,
+    facts: [
+      {
+        id: "discovery",
+        state: "todo",
+        detail,
+        ...code ? { code } : {}
+      }
+    ]
+  });
+  let res;
+  try {
+    res = await (opts.fetchImpl ?? fetch)(
+      raw,
+      opts.signal ? { signal: opts.signal } : void 0
+    );
+  } catch (err) {
+    if (opts.signal?.aborted)
+      return down("The server did not answer in time.", "timeout");
+    void err;
+    return down(`Can't reach ${host}.`, "network");
+  }
+  if (!res.ok)
+    return down(
+      `Answered ${res.status} at ${host}`,
+      "discovery-failed",
+      res.status
+    );
+  let body;
+  try {
+    body = await readCapped(res);
+  } catch {
+    return down(
+      `${host} did not answer with discovery.`,
+      "discovery-unreadable"
+    );
+  }
+  const services = Object.entries(rec(rec(body)["services"])).filter(([, service]) => rec(service)["enabled"] === true).map(([slug]) => slug);
+  const trust = rec(rec(body)["trust"]);
+  const keyStates = asArray(trust["keys"]).map(rec).filter((k) => typeof k["kid"] === "string" && k["kid"] !== "").map((k) => ({
+    kid: k["kid"],
+    status: typeof k["status"] === "string" ? k["status"] : k["active"] === true ? "active" : "unknown"
+  }));
+  const signing = rec(trust["pinnedKeys"]);
+  const pinned = Object.keys(signing);
+  const keys = keyStates.map((k) => k.kid);
+  return {
+    url,
+    host,
+    keys,
+    keyStates,
+    pinned,
+    services,
+    signing,
+    facts: [
+      { id: "discovery", state: "ok", detail: "answers" },
+      {
+        id: "services",
+        state: services.length ? "ok" : "warn",
+        detail: services.length ? services.join(", ") : "none enabled"
+      },
+      {
+        id: "signing-keys",
+        state: keys.length ? "ok" : "warn",
+        detail: keys.length ? `${keys.length} exposed` : "none exposed"
+      }
+    ]
+  };
+}
+var FEATURE_LABELS = {
+  licensing: "Licensing",
+  config: "Managed config",
+  identity: "Sign-in",
+  update: "Ship builds",
+  packs: "Content packs",
+  sync: "Cloud Sync",
+  commerce: "Commerce"
+};
+var PLATFORM_LABELS = {
+  macos: "macOS",
+  ios: "iOS",
+  windows: "Windows",
+  linux: "Linux",
+  android: "Android",
+  web: "Web",
+  godot: "Godot",
+  server: "Server"
+};
+var STEPS = {
+  tiers: { label: "A tier", page: "license/tiers" },
+  catalog: { label: "A published catalog", page: "config/catalog" },
+  oidc: { label: "A sign-in provider", page: "identity/app-sign-in" },
+  release: { label: "A release", page: "release/releases" },
+  distribution: { label: "Distribution turned on", page: "settings/features" },
+  outlets: { label: "A channel", page: "distribution/outlets" },
+  repository: { label: "A linked repository", page: "release/releases" }
+};
+var STEP_IDS = { outlets: "channels" };
+var platformLabel2 = (id) => PLATFORM_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1);
+var asArray = (v) => Array.isArray(v) ? v : [];
+var rec = (v) => v && typeof v === "object" ? v : {};
+function bareFix(fix) {
+  const m = /^Run (pkey [^.]*?)(?: once| again)?\.?$/.exec(fix ?? "");
+  return m?.[1] ?? fix ?? "pkey login";
+}
+function integrationFacts(view2, slug, origin, env) {
+  const u = (v) => untrusted(v, env);
+  const features = asArray(rec(view2)["features"]).map(rec);
+  const seen = /* @__PURE__ */ new Set();
+  for (const f of features)
+    for (const v of asArray(f["verifiedOn"])) {
+      const p = rec(v)["platform"];
+      if (typeof p === "string" && p) seen.add(p);
+    }
+  for (const s of asArray(rec(view2)["sightings"])) {
+    const p = rec(s)["platform"];
+    if (typeof p === "string" && p) seen.add(p);
+  }
+  const platforms = [...seen].map((id) => ({ id: u(id), label: u(platformLabel2(id)) })).sort((a, b) => a.label.localeCompare(b.label));
+  const out = [];
+  const todo = [];
+  const have = /* @__PURE__ */ new Set();
+  for (const f of features) {
+    const id = String(f["id"] ?? "");
+    have.add(id);
+    const label = u(FEATURE_LABELS[id] ?? id);
+    const status = f["status"];
+    const verifiedOn = new Set(
+      asArray(f["verifiedOn"]).map((v) => String(rec(v)["platform"]))
+    );
+    const base = status === "verified" ? "verified" : status === "not_seen" ? "waiting" : "unseen";
+    const per = {};
+    for (const p of platforms)
+      per[p.id] = verifiedOn.has(p.id) ? "verified" : base === "waiting" ? "waiting" : "unseen";
+    out.push({ id: u(id), label, state: base, platforms: per });
+    if (f["unavailable"] === true) continue;
+    for (const pre of asArray(f["prerequisites"]).map(rec)) {
+      if (pre["met"] !== false) continue;
+      const pid = String(pre["id"] ?? "");
+      const step = STEPS[pid];
+      const stepId = u(STEP_IDS[pid] ?? pid);
+      const dup = todo.find((t) => t.id === stepId);
+      if (dup) {
+        if (!dup.feature.split(", ").includes(label))
+          dup.feature += `, ${label}`;
+        continue;
+      }
+      todo.push({
+        id: stepId,
+        label: u(step?.label ?? pid),
+        feature: label,
+        link: `${origin}/manage/#/p/${encodeURIComponent(slug)}/${step?.page ?? "settings/features"}`
+      });
+    }
+  }
+  let ci = null;
+  for (const f of features) {
+    const facts = rec(f["facts"]);
+    if (typeof facts["packages"] === "number" && facts["packages"] > 0)
+      ci = {
+        firstAt: typeof facts["firstPackageAt"] === "number" ? facts["firstPackageAt"] : null
+      };
+  }
+  const releaseKeys = asArray(rec(rec(view2)["snippet"])["releaseKeys"]).map((k) => rec(k)["kid"]).filter((k) => typeof k === "string" && k !== "").map(u);
+  return {
+    features: out,
+    platforms,
+    ci,
+    releaseKeys,
+    commerce: have.has("commerce") ? "on" : "off",
+    commerceNeedsLicensing: !have.has("licensing"),
+    todo
+  };
+}
+async function gatherSession(opts) {
+  const { io, slug, signal } = opts;
+  const f = io.fetchImpl ?? fetch;
+  const u = (v) => untrusted(v, io.env);
+  let cred;
+  try {
+    cred = await adminCredential({
+      env: io.env,
+      baseUrl: io.baseUrl,
+      store: io.store
+    });
+  } catch (e) {
+    if (!(e instanceof Refusal)) throw e;
+    const out = e.code === "not-signed-in";
+    return {
+      signedIn: {
+        state: "out",
+        detail: out ? "Integration needs it" : maskTokens(e.message),
+        fix: bareFix(e.fix)
+      },
+      integration: { state: "skipped", reason: "signed-out" }
+    };
+  }
+  const get2 = (path36) => request(f, `${cred.origin}/manage/api${path36}`, {
+    redirect: "manual",
+    ...signal ? { signal } : {},
+    headers: {
+      authorization: `Bearer ${cred.token}`,
+      accept: "application/json"
+    }
+  });
+  const api = cred.token.startsWith("pkeya_");
+  const host = hostOf3(cred.origin);
+  const failed = (e) => {
+    if (signal?.aborted)
+      return {
+        detail: "The console did not answer in time.",
+        fix: "pkey doctor",
+        code: "timeout"
+      };
+    if (e instanceof Redirected)
+      return {
+        detail: maskTokens(e.message),
+        fix: "Check --base-url.",
+        code: "redirect"
+      };
+    if (e instanceof Unreachable || !(e instanceof ReadFailure))
+      return {
+        detail: `Can't reach ${host}.`,
+        fix: "Check your network, or --base-url.",
+        code: "network"
+      };
+    return {
+      detail: `${host} didn't answer as a Polaris Key console.`,
+      fix: "Check --base-url.",
+      code: "not-a-console"
+    };
+  };
+  const ended = () => ({
+    signedIn: {
+      state: "ended",
+      detail: `Your sign-in to ${host} has ended.`,
+      fix: "pkey login"
+    },
+    integration: { state: "skipped", reason: "ended" }
+  });
+  let signedIn;
+  if (api) {
+    signedIn = {
+      state: "in",
+      tokenType: "api",
+      endsAt: cred.expiresAt
+    };
+  } else {
+    try {
+      const res = await get2("/me");
+      if (res.status === 401) return ended();
+      if (!res.ok) {
+        signedIn = {
+          state: "unreadable",
+          detail: `The console answered HTTP ${res.status} for your identity.`,
+          fix: "pkey doctor"
+        };
+      } else {
+        const me = rec(await readCapped(res));
+        const ends = typeof me["sessionExpiresAt"] === "number" ? me["sessionExpiresAt"] : cred.expiresAt;
+        signedIn = {
+          state: "in",
+          tokenType: "personal",
+          name: u(me["name"] ?? ""),
+          email: u(me["email"] ?? ""),
+          endsAt: ends
+        };
+      }
+    } catch (e) {
+      signedIn = { state: "unreadable", ...failed(e) };
+    }
+  }
+  if (!slug)
+    return {
+      signedIn,
+      integration: { state: "skipped", reason: "no-product" }
+    };
+  try {
+    const res = await get2(`/products/${encodeURIComponent(slug)}/integration`);
+    if (res.status === 401) return ended();
+    if (res.status === 403) {
+      const failure = await httpError(res, "Integration");
+      if (failure.detail.reason === "no_access")
+        return {
+          signedIn,
+          integration: {
+            state: "denied",
+            reason: "no_access",
+            access: await accessInfo(
+              { ...io, ...signal ? { signal } : {} },
+              cred,
+              failure
+            )
+          }
+        };
+      return {
+        signedIn,
+        integration: {
+          state: "denied",
+          reason: api ? "api_token" : "personal_token",
+          access: null
+        }
+      };
+    }
+    if (!res.ok)
+      return {
+        signedIn,
+        integration: {
+          state: "unavailable",
+          detail: `The console answered HTTP ${res.status}.`,
+          fix: "pkey doctor"
+        }
+      };
+    return {
+      signedIn,
+      integration: {
+        state: "ok",
+        ...integrationFacts(await readCapped(res), slug, cred.origin, io.env)
+      }
+    };
+  } catch (e) {
+    return {
+      signedIn,
+      integration: { state: "unavailable", ...failed(e) }
+    };
+  }
+}
+var STATE_WORD = {
+  verified: "Verified",
+  waiting: "Waiting",
+  unseen: "Not seen yet"
+};
+var STATE_MARK = {
+  verified: "ok",
+  waiting: "wait",
+  unseen: "none"
+};
+var featureState = (st) => ({
+  mark: STATE_MARK[st],
+  word: STATE_WORD[st]
+});
+var dim = (text3) => ({ text: text3 });
+var plain3 = (text3) => ({ text: text3, role: "plain" });
+function buildReport(input2) {
+  const { session: s, remote, config } = input2;
+  const u = (v) => untrusted(v, input2.env);
+  const facts = [];
+  const sections = [];
+  const hostName = hostOf3(input2.baseUrl);
+  const manifest = [];
+  const m = input2.manifest;
+  if (m.state === "missing") {
+    facts.push(manifestFact(null, m.problem));
+    manifest.push({
+      lead: "todo",
+      name: ".pkey/",
+      parts: [
+        dim(/^No \.pkey\//.test(m.problem) ? "Not found here" : u(m.problem))
+      ],
+      fix: /^No \.pkey\//.test(m.problem) ? "pkey init" : "pkey validate"
+    });
+  } else {
+    facts.push(manifestFact(m.result, void 0, m.fileWarnings));
+    const r = m.result;
+    if (r.ok)
+      manifest.push({
+        lead: "ok",
+        name: ".pkey/",
+        parts: [
+          dim("valid"),
+          ...r.enabledModules.length ? [dim(r.enabledModules.join(", "))] : []
+        ]
+      });
+    for (const w of m.fileWarnings)
+      manifest.push({
+        lead: "warn",
+        name: ".pkey/",
+        parts: [dim(u(w))]
+      });
+    for (const w of r.warnings)
+      manifest.push({
+        lead: "warn",
+        name: u(`${w.file}${w.path}`),
+        parts: [dim(u(w.message))],
+        ...w.code === "deprecated_spelling" ? { fix: VALIDATE_FIX } : {}
+      });
+    for (const e of r.errors)
+      manifest.push({
+        lead: "todo",
+        name: u(`${e.file}${e.path}`),
+        parts: [dim(u(e.message))],
+        fix: "pkey validate"
+      });
+  }
+  const signed = s.signedIn;
+  if (signed.state === "in") {
+    const person = signed.tokenType === "api" ? [dim("API token, no person")] : signed.name && signed.email ? [dim(signed.name), { text: `(${signed.email})`, glue: true }] : [dim(signed.name || signed.email || "yes")];
+    manifest.push({
+      lead: "ok",
+      name: "Signed in",
+      parts: [
+        ...person,
+        ...signed.endsAt ? [dim(`ends ${day(signed.endsAt, input2.env)}`)] : []
+      ]
+    });
+  } else
+    manifest.push({
+      lead: "warn",
+      name: signed.state === "out" && signed.detail === "Integration needs it" ? "Not signed in" : "Signed in",
+      parts: [dim(u(signed.detail ?? "Not signed in"))],
+      ...signed.fix ? { fix: signed.fix } : {}
+    });
+  if (config.dirs.length) {
+    const bad = config.elsewhere.length || config.stalePins?.length;
+    facts.push({
+      id: "config-file",
+      state: bad ? "warn" : "ok",
+      detail: bad ? "does not match the base URL" : "matches"
+    });
+    manifest.push({
+      lead: bad ? "warn" : "ok",
+      name: "polaris-key.json",
+      parts: [
+        dim(config.dirs.join(" and ")),
+        dim(
+          config.elsewhere.length ? `points at ${config.elsewhere.map(u).join(", ")}, not ${hostName}` : config.stalePins?.length ? `pins ${config.stalePins.map(u).join(", ")} are not exposed by ${hostName}` : config.stalePins ? `pins match ${hostName}` : `points at ${hostName}`
+        )
+      ],
+      ...bad ? { fix: "pkey help sdk" } : {}
+    });
+  } else
+    manifest.push({
+      lead: "none",
+      name: "polaris-key.json",
+      parts: [dim("Not found here")]
+    });
+  const keys = [];
+  if (remote) {
+    facts.push(...remote.facts);
+    const d = remote.facts[0];
+    if (d.state === "todo") {
+      keys.push({
+        lead: "todo",
+        name: "Discovery",
+        parts: [dim(d.detail)],
+        fix: d.code === "network" || d.code === "timeout" ? "Check your network, or --base-url." : "Check --base-url, or register the product in the console."
+      });
+    } else {
+      const svc = remote.facts.find((f) => f.id === "services");
+      if (m.state === "read" && m.result.ok) {
+        const sync = syncFact(m.result.enabledModules, remote.services);
+        facts.push(sync);
+        manifest.splice(1, 0, {
+          lead: sync.state === "ok" ? "ok" : "warn",
+          name: "In sync",
+          parts: [dim(sync.state === "ok" ? "Features match" : u(sync.detail))],
+          ...sync.fix ? { fix: sync.fix } : {}
+        });
+      }
+      manifest.splice(1, 0, {
+        lead: svc.state === "ok" ? "ok" : "warn",
+        name: "Services",
+        parts: [
+          dim(
+            remote.services.length ? remote.services.map(u).join(", ") : "none enabled"
+          )
+        ]
+      });
+      if (!remote.keyStates.length)
+        keys.push({
+          lead: "warn",
+          name: "Signing key",
+          parts: [dim("none exposed")]
+        });
+      for (const k of remote.keyStates) {
+        if (k.status === "staged") {
+          const folders = config.dirs.length ? config.dirs : ["./"];
+          keys.push({
+            lead: "warn",
+            name: "Next signing key",
+            parts: [plain3(u(k.kid)), dim("is staged")],
+            fixes: folders.map(
+              (d2) => `pkey sdk --lang <sdk> --write --out ${d2 === "./" ? "" : d2}`.trimEnd()
+            ),
+            notes: [
+              [dim(`Pin ${u(k.kid)} beside the active key in each folder.`)]
+            ]
+          });
+        } else
+          keys.push({
+            lead: k.status === "active" ? "ok" : "none",
+            name: "Signing key",
+            parts: [plain3(u(k.kid)), dim(u(k.status))]
+          });
+      }
+    }
+  } else
+    manifest.push({
+      lead: "none",
+      name: "Discovery",
+      parts: [dim("Needs a product: pass --product")]
+    });
+  if (s.integration.state === "ok")
+    for (const kid of s.integration.releaseKeys)
+      keys.push({
+        lead: "ok",
+        name: "Release key",
+        parts: [plain3(kid), dim("pinned")]
+      });
+  sections.push({ title: "Manifest", rows: manifest });
+  if (keys.length) sections.push({ title: "Keys", rows: keys });
+  const i = s.integration;
+  if (i.state === "denied") {
+    if (i.access) {
+      const a = i.access;
+      const notes = [
+        [
+          dim(
+            a.roles.length ? `Your roles: ${a.roles.map(u).join(", ")}.` : "You have no role here."
+          )
+        ],
+        [
+          dim(
+            a.people.length ? "Ask one of these people:" : "Ask an admin to give you access."
+          )
+        ],
+        ...a.people.map((p) => [
+          dim(u(p.name)),
+          { text: u(p.email), glue: true },
+          dim(u(p.role))
+        ])
+      ];
+      sections.push({
+        rows: [
+          {
+            lead: "warn",
+            name: "Integration",
+            parts: [
+              dim(`You don't have access to ${u(a.product)} (${u(a.area)}).`)
+            ],
+            notes
+          }
+        ]
+      });
+    } else
+      sections.push({
+        rows: [
+          {
+            lead: "warn",
+            name: "Integration",
+            parts: [
+              dim(
+                `Isn't available to ${i.reason === "api_token" ? "API" : "personal"} tokens.`
+              )
+            ],
+            fix: "pkey login"
+          }
+        ]
+      });
+  } else if (i.state === "unavailable") {
+    sections.push({
+      rows: [
+        {
+          lead: "warn",
+          name: "Integration",
+          parts: [dim(i.detail)],
+          fix: i.fix
+        }
+      ]
+    });
+  } else if (i.state === "skipped" && i.reason === "no-product") {
+    manifest.push({
+      lead: "none",
+      name: "Integration",
+      parts: [dim("Needs a product: pass --product")]
+    });
+  } else if (i.state === "ok") {
+    const block2 = (title, pick) => {
+      const states = i.features.map(pick);
+      return states.length && states.every((x) => x === states[0]) ? { title, collapsed: featureState(states[0]), rows: [] } : {
+        title,
+        rows: i.features.map((f) => ({
+          name: f.label,
+          state: featureState(pick(f))
+        }))
+      };
+    };
+    if (i.features.length) {
+      if (!i.platforms.length)
+        sections.push(block2("Integration", (f) => f.state));
+      for (const p of i.platforms)
+        sections.push(
+          block2(
+            `Integration on ${p.label}`,
+            (f) => f.platforms[p.id] ?? "unseen"
+          )
+        );
+    }
+    if (i.ci)
+      sections.push({
+        title: "CI",
+        rows: [
+          {
+            lead: "ok",
+            name: "First release",
+            parts: i.ci.firstAt ? [dim(day(i.ci.firstAt, input2.env))] : []
+          }
+        ]
+      });
+    sections.push({
+      title: "Commerce",
+      collapsed: i.commerce === "on" ? { mark: "ok", word: "on" } : {
+        mark: null,
+        word: i.commerceNeedsLicensing ? "off, needs Licensing" : "off"
+      },
+      rows: []
+    });
+    if (i.todo.length)
+      sections.push({
+        title: "Left to do",
+        rows: i.todo.map((step) => ({
+          lead: "todo",
+          name: step.label,
+          parts: [dim(`${step.feature} needs it`)],
+          link: step.link
+        }))
+      });
+  }
+  let todo = 0;
+  let warnings = 0;
+  for (const sec of sections)
+    for (const row2 of sec.rows) {
+      if (row2.lead === "todo") todo++;
+      if (row2.lead === "warn") warnings++;
+    }
+  return {
+    header: {
+      name: input2.product?.name ?? input2.product?.slug ?? "Polaris Key",
+      slug: input2.product?.name ? input2.product.slug : null,
+      host: hostName
+    },
+    sections,
+    facts,
+    todo,
+    warnings,
+    exit: todo ? 1 : 0
+  };
+}
+function sessionJson(s) {
+  const iso2 = (seconds) => typeof seconds === "number" ? new Date(seconds * 1e3).toISOString() : null;
+  const { endsAt, ...rest } = s.signedIn;
+  const i = s.integration;
+  return {
+    signedIn: {
+      ...rest,
+      ...endsAt === void 0 ? {} : { endsAt: iso2(endsAt) }
+    },
+    integration: i.state === "ok" ? { ...i, ci: i.ci ? { firstAt: iso2(i.ci.firstAt) } : null } : { ...i }
+  };
+}
+var STACK_BELOW2 = 36;
+var WIDE = 60;
+var VALUE_COL = 30;
+var NAME_CAP = 24;
+function breakLink(text3, width) {
+  const parts = text3.match(/[^/#]*[/#]?/g)?.filter(Boolean) ?? [text3];
+  const lines4 = [];
+  let cur = "";
+  for (let part of parts) {
+    while (cellWidth(part) > width) {
+      const room = width - cellWidth(cur);
+      if (room > 0 && cur) {
+        lines4.push(cur + part.slice(0, room));
+        part = part.slice(room);
+        cur = "";
+      } else {
+        lines4.push(part.slice(0, width));
+        part = part.slice(width);
+      }
+    }
+    if (cellWidth(cur) + cellWidth(part) > width && cur) {
+      lines4.push(cur);
+      cur = "";
+    }
+    cur += part;
+  }
+  if (cur) lines4.push(cur);
+  return lines4;
+}
+var glued = /* @__PURE__ */ new WeakSet();
+var lineWidth = (l) => l.reduce((n, sp) => n + cellWidth(sp.text), 0);
+function flow2(pieces2, width, sep) {
+  const bar = [{ text: ` ${sep} `, style: ["muted"] }];
+  const space = [{ text: " " }];
+  const lines4 = [];
+  let cur = null;
+  for (const piece of pieces2) {
+    const wrapped = wrapSpans(piece, Math.max(1, width));
+    if (!wrapped.length) continue;
+    const joint = glued.has(piece) ? space : bar;
+    const jw = lineWidth(joint);
+    if (cur && wrapped.length === 1 && lineWidth(cur) + jw + lineWidth(wrapped[0]) <= width) {
+      cur = [...cur, ...joint, ...wrapped[0]];
+      continue;
+    }
+    if (cur) lines4.push(cur);
+    lines4.push(...wrapped.slice(0, -1));
+    cur = wrapped[wrapped.length - 1];
+  }
+  if (cur) lines4.push(cur);
+  return lines4;
+}
+function renderReport(report2, t, runMs) {
+  const { painter, symbols, caps } = t;
+  const cyan = new Painter(caps, null, {}, false);
+  const width = Math.max(20, caps.columns);
+  const wide = width >= WIDE;
+  const stackAll = width < STACK_BELOW2;
+  const sep = symbols.separator;
+  const arrow = caps.unicode ? "→" : "->";
+  const out = [];
+  const glyph = (mark) => mark === "ok" ? painter.style(symbols.ok, ["success"]) : mark === "warn" ? painter.style(symbols.warn, ["warning"]) : mark === "todo" ? painter.style(symbols.fail, ["danger"]) : mark === "wait" ? cyan.style(symbols.radioOn, ["accent"]) : painter.style(symbols.radioOff, ["muted"]);
+  const glyphCells = caps.unicode ? 1 : 3;
+  const glyphWidth = (mark) => cellWidth(
+    mark === "ok" ? symbols.ok : mark === "warn" ? symbols.warn : mark === "todo" ? symbols.fail : mark === "wait" ? symbols.radioOn : symbols.radioOff
+  );
+  const piece = (p) => {
+    const line = [
+      {
+        text: p.text,
+        ...p.role === "plain" ? {} : { style: [p.role ?? "muted"] }
+      }
+    ];
+    if (p.glue) glued.add(line);
+    return line;
+  };
+  const stateText = (st) => st.mark === null ? painter.style(st.word, ["muted"]) : `${glyph(st.mark)} ${st.mark === "wait" ? cyan.style(st.word, ["accent"]) : st.mark === "ok" ? painter.style(st.word, ["success"]) : st.mark === "none" ? painter.style(st.word, ["muted"]) : st.word}`;
+  const heading = (v) => painter.style(v, ["strong"]);
+  const paint = (l) => painter.line(l);
+  const stateWidth = (st) => st.mark === null ? cellWidth(st.word) : cellWidth(
+    st.mark === "ok" ? symbols.ok : st.mark === "warn" ? symbols.warn : st.mark === "todo" ? symbols.fail : st.mark === "wait" ? symbols.radioOn : symbols.radioOff
+  ) + 1 + cellWidth(st.word);
+  const collapsed = (title, st) => {
+    const col = wide ? VALUE_COL : cellWidth(title) + 2;
+    if (!stackAll && col + stateWidth(st) <= width)
+      out.push(
+        `${heading(title)}${" ".repeat(Math.max(2, col - cellWidth(title)))}${stateText(st)}`
+      );
+    else {
+      out.push(heading(title));
+      out.push(`  ${stateText(st)}`);
+    }
+  };
+  const row2 = (r, nameW) => {
+    const ns = r.lead ? 3 + glyphCells : 2;
+    const prefix = `  ${r.lead ? `${glyph(r.lead)}${" ".repeat(glyphCells + 1 - glyphWidth(r.lead))}` : ""}`;
+    const valuePieces = (r.parts ?? []).map(piece);
+    const stateWords = r.state ? stateText(r.state) : null;
+    const valueCol = wide ? VALUE_COL : ns + nameW + 2;
+    const avail = width - valueCol;
+    const valueLines = (w) => {
+      const lines4 = flow2(
+        valuePieces,
+        w - (r.state ? stateWidth(r.state) + 1 : 0),
+        sep
+      ).map(paint);
+      if (!r.state) return lines4;
+      const lead = stateWords;
+      if (!lines4.length) return [lead];
+      const [first, ...rest] = lines4;
+      return [`${lead} ${first}`, ...rest];
+    };
+    const hasValue = valuePieces.length > 0 || r.state;
+    let used = false;
+    if (hasValue && !(stackAll && r.state) && cellWidth(r.name) <= (wide ? VALUE_COL - ns - 2 : nameW) && avail >= 12) {
+      const lines4 = valueLines(avail);
+      if (wide || lines4.length === 1) {
+        const pad2 = " ".repeat(Math.max(2, valueCol - ns - cellWidth(r.name)));
+        lines4.forEach(
+          (l, n) => out.push(
+            n === 0 ? `${prefix}${r.name}${pad2}${l}` : `${" ".repeat(valueCol)}${l}`
+          )
+        );
+        used = true;
+      }
+    }
+    if (!used) {
+      const nameLines = wrapSpans([{ text: r.name }], Math.max(1, width - ns));
+      nameLines.forEach(
+        (l, n) => out.push(
+          n === 0 ? `${prefix}${paint(l)}` : `${" ".repeat(ns)}${paint(l)}`
+        )
+      );
+      if (hasValue) for (const l of valueLines(width - 4)) out.push(`    ${l}`);
+    }
+    for (const note of r.notes ?? [])
+      for (const l of flow2(note.map(piece), width - 4, sep))
+        out.push(`    ${paint(l)}`);
+    const fixIndent = stackAll ? 4 : 6;
+    for (const fixText of [...r.fix ? [r.fix] : [], ...r.fixes ?? []])
+      wrapSpans(
+        [{ text: fixText }],
+        Math.max(1, width - fixIndent - 2)
+      ).forEach(
+        (l, n) => out.push(
+          `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${paint(l)}`
+        )
+      );
+    if (r.link) {
+      const link = r.link.replace(/^https?:\/\//, "");
+      breakLink(link, width - fixIndent - 2).forEach(
+        (l, n) => out.push(
+          `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${painter.style(l, ["muted"])}`
+        )
+      );
+    }
+  };
+  const h = report2.header;
+  const headPieces = [
+    [
+      { text: h.name, style: ["strong"] },
+      ...h.slug ? [{ text: ` (${h.slug})`, style: ["muted"] }] : []
+    ],
+    [{ text: h.host, style: ["muted"] }]
+  ];
+  for (const l of flow2(headPieces, width, sep)) out.push(paint(l));
+  for (const sec of report2.sections) {
+    out.push("");
+    if (sec.collapsed && sec.title) {
+      collapsed(sec.title, sec.collapsed);
+      continue;
+    }
+    if (sec.title) out.push(heading(sec.title));
+    const room = Math.min(NAME_CAP, width - 4 - 2 - 14);
+    const nameW = Math.max(
+      8,
+      ...sec.rows.map((r) => cellWidth(r.name)).filter((w) => w <= room)
+    );
+    for (const r of sec.rows) row2(r, nameW);
+  }
+  out.push("");
+  const summary = [
+    [
+      {
+        text: `${report2.todo} to do`,
+        style: [report2.todo ? "danger" : "success"]
+      }
+    ],
+    [
+      {
+        text: plural(report2.warnings, "warning"),
+        style: [report2.warnings ? "warning" : "muted"]
+      }
+    ],
+    [{ text: `${(runMs / 1e3).toFixed(1)} s`, style: ["muted"] }]
+  ];
+  for (const l of flow2(summary, width, sep)) out.push(paint(l));
+  return `${out.join("\n")}
+`;
+}
+function reportJson(report2) {
+  return {
+    facts: report2.facts,
+    summary: { todo: report2.todo, warnings: report2.warnings }
+  };
+}
+async function checkConfigFiles(opts) {
+  const { readdir: readdir13, readFile: readFile27 } = await import("node:fs/promises");
+  const path36 = await import("node:path");
+  const found = [];
+  const tryRead = async (dir, label) => {
+    try {
+      const text3 = await readFile27(path36.join(dir, "polaris-key.json"), "utf8");
+      found.push({ dir: label, file: JSON.parse(text3) });
+    } catch {
+    }
+  };
+  await tryRead(opts.cwd, "./");
+  try {
+    const entries = await readdir13(opts.cwd, { withFileTypes: true });
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name)))
+      if (e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules")
+        await tryRead(path36.join(opts.cwd, e.name), `${e.name}/`);
+  } catch {
+  }
+  const elsewhere = [];
+  const pinned = /* @__PURE__ */ new Set();
+  for (const { file } of found) {
+    const base = rec(file)["baseUrl"];
+    if (typeof base === "string") {
+      const host = hostOf3(base);
+      if (host !== opts.host && !elsewhere.includes(host)) elsewhere.push(host);
+    }
+    for (const k of Object.keys(rec(rec(rec(file)["trust"])["pinnedKeys"])))
+      pinned.add(k);
+  }
+  return {
+    dirs: found.map((f) => f.dir),
+    elsewhere,
+    stalePins: opts.exposed ? [...pinned].filter((k) => !opts.exposed.includes(k)) : null
+  };
+}
+
+// src/suggest.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function nearest(word, candidates) {
+  let best;
+  let bestDistance = Infinity;
+  for (const c of candidates) {
+    const d = distance(word, c);
+    if (d < bestDistance) {
+      best = c;
+      bestDistance = d;
+    }
+  }
+  return best !== void 0 && bestDistance <= Math.min(2, Math.floor(Math.max(word.length, 3) / 2)) ? best : void 0;
+}
+function distance(a, b) {
+  const rows = [];
+  for (let i = 0; i <= a.length; i++) {
+    rows[i] = [i];
+    for (let j = 1; j <= b.length; j++) rows[i][j] = i === 0 ? j : 0;
+  }
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let d = Math.min(
+        rows[i - 1][j] + 1,
+        rows[i][j - 1] + 1,
+        rows[i - 1][j - 1] + cost
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        d = Math.min(d, rows[i - 2][j - 2] + 1);
+      rows[i][j] = d;
+    }
+  return rows[a.length][b.length];
+}
+
+// src/initPrompt.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var INITIAL_FEATURES = [
+  "licensing",
+  "ship-builds"
+];
+var KEYS = (ascii2) => `${ascii2 ? "Up/Down" : "↑↓"} move · Space toggle · Enter confirm · Esc cancel`;
+var CONFIRM_KEYS = "y yes · n no · Esc cancel";
+var andList = (xs) => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : xs[0] ?? "";
+function initInput(given) {
+  return given ?? process.stdin;
+}
+function mayPrompt(term, stdin) {
+  return term.caps.interactive && stdin.isTTY === true;
+}
+var missing = (id, chosen) => featureNeeds(id).filter((n) => !chosen.includes(n)).map(labelOf);
+var labelOf = (id) => FEATURES.find((f) => f.id === id).label;
+var text2 = (t, style) => [
+  style ? { text: t, style } : { text: t }
+];
+async function askInit(ask) {
+  const { term, stdout } = ask;
+  const keys = ask.keys ?? new KeyReader(ask.stdin);
+  const caps = { ...term.caps };
+  const render = (rows) => railLines(rows, term.painter, term.symbols, caps.columns);
+  const ctx = {
+    caps,
+    painter: term.painter,
+    symbols: term.symbols,
+    out: stdout,
+    keys,
+    host: {
+      caps,
+      refreshSize: () => {
+        if (stdout.columns) caps.columns = layoutColumns(stdout.columns);
+        if (stdout.rows) caps.rows = stdout.rows;
+      },
+      render,
+      fit: (rows) => fitScreen(rows, {
+        maxRows: caps.rows - 1,
+        columns: caps.columns,
+        separator: term.symbols.separator,
+        render
+      })
+    }
+  };
+  const cancelled2 = () => [
+    { mark: "warn", spans: text2("Canceled. Nothing was written.") }
+  ];
+  const exit = (r) => r === INTERRUPT ? 130 : r === CANCEL ? 1 : null;
+  try {
+    const answers = {};
+    let licensing = false;
+    if (!ask.givenServices) {
+      const r = await promptMultiSelect(ctx, {
+        title: text2(`What is ${clean(ask.name)} for?`),
+        options: FEATURES.map((f) => ({
+          value: f.id,
+          label: text2(f.label)
+        })),
+        initial: INITIAL_FEATURES,
+        hints: keyHints(KEYS(term.symbols.rail === "|"), term.symbols),
+        toggle: (chosen, id) => {
+          const t = toggleFeature(chosen, id, !chosen.includes(id));
+          return {
+            chosen: t.features,
+            note: t.cleared.length ? text2(
+              `${andList(t.cleared.map(labelOf))} ${t.cleared.length === 1 ? "is" : "are"} off too: ${t.cleared.length === 1 ? "it needs" : "they need"} ${labelOf(id)}.`,
+              ["muted"]
+            ) : null
+          };
+        },
+        locked: (id, chosen) => featureUnlocked(id, chosen) ? null : text2(`Needs ${andList(missing(id, chosen))}`),
+        lockedNote: (id, chosen) => text2(`Tick ${andList(missing(id, chosen))} first.`),
+        check: (chosen) => chosen.length ? null : text2("Tick at least one."),
+        done: (chosen) => [
+          {
+            mark: "done",
+            spans: [
+              ...text2("Features  "),
+              {
+                text: chosen.map(labelOf).join(", "),
+                style: ["strong"]
+              }
+            ]
+          }
+        ],
+        cancelled: cancelled2
+      });
+      const code = exit(r);
+      if (code !== null) return code;
+      const features = r;
+      licensing = features.includes("licensing");
+      answers.modules = servicesForFeatures(features).services;
+    } else licensing = ask.givenServices.includes("license");
+    if (licensing && !ask.tierGiven) {
+      const r = await promptConfirm(ctx, {
+        title: text2("Start with a Free tier? (Y/n)"),
+        detail: text2("Lifetime, 5 devices."),
+        hints: keyHints(CONFIRM_KEYS, term.symbols),
+        initial: true,
+        done: (yes) => [
+          {
+            mark: "done",
+            spans: [
+              ...text2("Free tier  "),
+              { text: yes ? "Yes" : "No", style: ["strong"] }
+            ]
+          }
+        ],
+        cancelled: cancelled2
+      });
+      const code = exit(r);
+      if (code !== null) return code;
+      answers.starterTier = r === true ? "free" : "none";
+    }
+    return answers;
+  } finally {
+    keys.close();
+  }
+}
 
 // src/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash7 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
-import { readdir as readdir3, readFile as readFile8, stat as stat4 } from "node:fs/promises";
+import { readdir as readdir3, readFile as readFile7, stat as stat3 } from "node:fs/promises";
 import path9 from "node:path";
 
 // src/s3.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash2, createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 var MAX_SINGLE_PUT_BYTES = 5 * 1024 ** 3 - 5 * 1024 ** 2;
@@ -25723,7 +32246,7 @@ function hmac(key, data) {
   return createHmac("sha256", key).update(data, "utf8").digest();
 }
 function hex(data) {
-  return createHash2("sha256").update(data, "utf8").digest("hex");
+  return createHash("sha256").update(data, "utf8").digest("hex");
 }
 function encodeSegment(segment) {
   return encodeURIComponent(segment).replace(
@@ -25734,9 +32257,9 @@ function encodeSegment(segment) {
 function amzDateOf(date) {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
-function signV4(input) {
-  const headers = { ...input.headers };
-  if (headers.host === void 0) headers.host = input.url.host;
+function signV4(input2) {
+  const headers = { ...input2.headers };
+  if (headers.host === void 0) headers.host = input2.url.host;
   const names = Object.keys(headers).map((n) => n.toLowerCase()).sort();
   const lower = Object.fromEntries(
     Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])
@@ -25744,34 +32267,34 @@ function signV4(input) {
   const canonicalHeaders = names.map((n) => `${n}:${String(lower[n]).trim().replace(/\s+/g, " ")}
 `).join("");
   const signedHeaders = names.join(";");
-  const canonicalUri = input.url.pathname.split("/").map((s) => encodeSegment(decodeURIComponent(s))).join("/") || "/";
+  const canonicalUri = input2.url.pathname.split("/").map((s) => encodeSegment(decodeURIComponent(s))).join("/") || "/";
   const canonicalRequest = [
-    input.method,
+    input2.method,
     canonicalUri,
     "",
     canonicalHeaders,
     signedHeaders,
-    input.payloadHash
+    input2.payloadHash
   ].join("\n");
-  const day = input.amzDate.slice(0, 8);
-  const scope = `${day}/${input.region}/${input.service}/aws4_request`;
+  const day2 = input2.amzDate.slice(0, 8);
+  const scope = `${day2}/${input2.region}/${input2.service}/aws4_request`;
   const stringToSign = [
     "AWS4-HMAC-SHA256",
-    input.amzDate,
+    input2.amzDate,
     scope,
     hex(canonicalRequest)
   ].join("\n");
-  const kDate = hmac(`AWS4${input.secretAccessKey}`, day);
-  const kRegion = hmac(kDate, input.region);
-  const kService = hmac(kRegion, input.service);
+  const kDate = hmac(`AWS4${input2.secretAccessKey}`, day2);
+  const kRegion = hmac(kDate, input2.region);
+  const kService = hmac(kRegion, input2.service);
   const kSigning = hmac(kService, "aws4_request");
   const signature = createHmac("sha256", kSigning).update(stringToSign, "utf8").digest("hex");
-  return `AWS4-HMAC-SHA256 Credential=${input.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  return `AWS4-HMAC-SHA256 Credential=${input2.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 }
 function objectUrl(creds, key) {
   const base = creds.endpoint.replace(/\/+$/, "");
-  const path32 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
-  return new URL(`${base}/${path32}`);
+  const path36 = [creds.bucket, ...key.split("/")].map(encodeSegment).join("/");
+  return new URL(`${base}/${path36}`);
 }
 var TRANSIENT = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 504]);
 async function putFile(opts) {
@@ -25822,8 +32345,8 @@ async function putFile(opts) {
         await res.body?.cancel().catch(() => void 0);
         return;
       }
-      const text = (await res.text().catch(() => "")).slice(0, 300);
-      failure = `${res.status}${text ? ` ${text.replace(/\s+/g, " ")}` : ""}`;
+      const text3 = (await res.text().catch(() => "")).slice(0, 300);
+      failure = `${res.status}${text3 ? ` ${text3.replace(/\s+/g, " ")}` : ""}`;
       if (!TRANSIENT.has(res.status))
         throw new Error(
           `Uploading ${opts.file} to ${opts.key} failed: ${failure}`
@@ -25844,7 +32367,7 @@ async function putFile(opts) {
 
 // src/buildMetadata.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash3 } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 
 // src/plist.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -25887,7 +32410,7 @@ function parseBinary(buf) {
     if (visiting.has(ref)) throw new PlistError("binary plist: cycle");
     visiting.add(ref);
     try {
-      return decode2(offsets[ref], depth);
+      return decode3(offsets[ref], depth);
     } finally {
       visiting.delete(ref);
     }
@@ -25899,7 +32422,7 @@ function parseBinary(buf) {
     const size = 1 << (marker2 & 15);
     return { len: readUInt(buf, at + 2, size), start: at + 2 + size };
   };
-  const decode2 = (at, depth) => {
+  const decode3 = (at, depth) => {
     if (at >= t) throw new PlistError("binary plist: object out of range");
     const marker2 = buf[at];
     const type = marker2 >> 4;
@@ -25994,8 +32517,8 @@ function unescapeXml(s) {
     }
   );
 }
-function parseXml(text) {
-  const body = text.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[\s\S]*?>/g, "");
+function parseXml(text3) {
+  const body = text3.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[\s\S]*?>/g, "");
   const tokens = body.match(/<\/?[A-Za-z]+(?:\s[^>]*)?\/?>|[^<]+/g) ?? [];
   let i = 0;
   const skipSpace = () => {
@@ -26104,9 +32627,9 @@ function u64(buf, at) {
   return Number(v);
 }
 var ZipReader = class _ZipReader {
-  constructor(fh, path32, fileSize, entries, centralDirectoryOffset) {
+  constructor(fh, path36, fileSize, entries, centralDirectoryOffset) {
     this.fh = fh;
-    this.path = path32;
+    this.path = path36;
     this.fileSize = fileSize;
     this.entries = entries;
     this.centralDirectoryOffset = centralDirectoryOffset;
@@ -26116,8 +32639,8 @@ var ZipReader = class _ZipReader {
   fileSize;
   entries;
   centralDirectoryOffset;
-  static async open(path32) {
-    const fh = await open(path32, "r");
+  static async open(path36) {
+    const fh = await open(path36, "r");
     try {
       const { size } = await fh.stat();
       const tailLen = Math.min(size, 65557);
@@ -26130,32 +32653,32 @@ var ZipReader = class _ZipReader {
           break;
         }
       }
-      if (eocd < 0) throw new ZipError(`${path32} is not a ZIP archive`);
+      if (eocd < 0) throw new ZipError(`${path36} is not a ZIP archive`);
       let count = tail.readUInt16LE(eocd + 10);
       let cdSize = tail.readUInt32LE(eocd + 12);
       let cdOffset = tail.readUInt32LE(eocd + 16);
       if (count === 65535 || cdSize === 4294967295 || cdOffset === 4294967295) {
         const loc = eocd - 20;
         if (loc < 0 || tail.readUInt32LE(loc) !== ZIP64_LOCATOR_SIG)
-          throw new ZipError(`${path32}: ZIP64 locator missing`);
+          throw new ZipError(`${path36}: ZIP64 locator missing`);
         const recOffset = u64(tail, loc + 8);
-        const rec = Buffer.alloc(56);
-        await fh.read(rec, 0, 56, recOffset);
-        if (rec.readUInt32LE(0) !== ZIP64_EOCD_SIG)
-          throw new ZipError(`${path32}: ZIP64 end record missing`);
-        count = u64(rec, 32);
-        cdSize = u64(rec, 40);
-        cdOffset = u64(rec, 48);
+        const rec2 = Buffer.alloc(56);
+        await fh.read(rec2, 0, 56, recOffset);
+        if (rec2.readUInt32LE(0) !== ZIP64_EOCD_SIG)
+          throw new ZipError(`${path36}: ZIP64 end record missing`);
+        count = u64(rec2, 32);
+        cdSize = u64(rec2, 40);
+        cdOffset = u64(rec2, 48);
       }
       if (cdOffset + cdSize > size)
-        throw new ZipError(`${path32}: the central directory runs past the end`);
+        throw new ZipError(`${path36}: the central directory runs past the end`);
       const cd = Buffer.alloc(cdSize);
       await fh.read(cd, 0, cdSize, cdOffset);
       const entries = [];
       let p = 0;
       for (let i = 0; i < count; i++) {
         if (p + 46 > cd.length || cd.readUInt32LE(p) !== CDH_SIG)
-          throw new ZipError(`${path32}: a central directory entry is malformed`);
+          throw new ZipError(`${path36}: a central directory entry is malformed`);
         const flags = cd.readUInt16LE(p + 8);
         const method = cd.readUInt16LE(p + 10);
         const crc322 = cd.readUInt32LE(p + 16);
@@ -26196,7 +32719,7 @@ var ZipReader = class _ZipReader {
         });
         p = xEnd + commentLen;
       }
-      return new _ZipReader(fh, path32, size, entries, cdOffset);
+      return new _ZipReader(fh, path36, size, entries, cdOffset);
     } catch (e) {
       await fh.close();
       throw e;
@@ -26234,8 +32757,8 @@ var ZipReader = class _ZipReader {
     return this.fh.close();
   }
 };
-async function withZip(path32, fn) {
-  const zip = await ZipReader.open(path32);
+async function withZip(path36, fn) {
+  const zip = await ZipReader.open(path36);
   try {
     return await fn(zip);
   } finally {
@@ -26312,7 +32835,7 @@ var MetadataError = class extends Error {
     this.name = "MetadataError";
   }
 };
-var sha256 = (b) => createHash3("sha256").update(b).digest("hex");
+var sha256 = (b) => createHash2("sha256").update(b).digest("hex");
 function dict(v) {
   return v && typeof v === "object" && !Array.isArray(v) && !Buffer.isBuffer(v) ? v : null;
 }
@@ -26397,7 +32920,7 @@ async function iosBuildMetadata(ipa) {
   return withZip(ipa, async (zip) => {
     const root = appRoot(zip);
     const info = await readPlistEntry(zip, `${root}Info.plist`);
-    const str6 = (k) => {
+    const str8 = (k) => {
       const v = info[k];
       if (typeof v !== "string" || !v)
         throw new MetadataError(`${root}Info.plist has no ${k}`);
@@ -26424,9 +32947,9 @@ async function iosBuildMetadata(ipa) {
         privacy[k] = v;
     const minOS = info.MinimumOSVersion;
     return {
-      bundleIdentifier: str6("CFBundleIdentifier"),
-      version: str6("CFBundleShortVersionString"),
-      buildVersion: str6("CFBundleVersion"),
+      bundleIdentifier: str8("CFBundleIdentifier"),
+      version: str8("CFBundleShortVersionString"),
+      buildVersion: str8("CFBundleVersion"),
       ...typeof minOS === "string" && minOS ? { minOSVersion: minOS } : {},
       appPermissions: {
         entitlements: [...entitlements].filter((e) => !EXCLUDED_ENTITLEMENTS.has(e)).sort(),
@@ -26554,9 +33077,9 @@ function lpItems(buf, at, end) {
   }
   return out;
 }
-function schemeBlockCertificate(block) {
-  if (block.length < 4) return null;
-  const signers = lpItems(block, 4, 4 + block.readUInt32LE(0));
+function schemeBlockCertificate(block2) {
+  if (block2.length < 4) return null;
+  const signers = lpItems(block2, 4, 4 + block2.readUInt32LE(0));
   const signer = signers[0];
   if (!signer || signer.length < 4) return null;
   const signedData = signer.subarray(4, 4 + signer.readUInt32LE(0));
@@ -26578,14 +33101,14 @@ async function signingBlockCertificate(zip) {
   if (footer.toString("latin1", 8, 24) !== APK_SIG_BLOCK_MAGIC) return null;
   const size = Number(footer.readBigUInt64LE(0));
   if (size < 24 || size + 8 > cd) return null;
-  const block = await zip.readRaw(cd - size - 8, size + 8);
+  const block2 = await zip.readRaw(cd - size - 8, size + 8);
   const pairs = /* @__PURE__ */ new Map();
   let p = 8;
-  const end = block.length - 24;
+  const end = block2.length - 24;
   while (p + 12 <= end) {
-    const len = Number(block.readBigUInt64LE(p));
+    const len = Number(block2.readBigUInt64LE(p));
     if (len < 4 || p + 8 + len > end) break;
-    pairs.set(block.readUInt32LE(p + 8), block.subarray(p + 12, p + 8 + len));
+    pairs.set(block2.readUInt32LE(p + 8), block2.subarray(p + 12, p + 8 + len));
     p += 8 + len;
   }
   for (const id of [
@@ -26689,8 +33212,8 @@ async function buildMetadataFor(platform, format, file) {
 
 // src/saveCompat.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash4 } from "node:crypto";
-import { readFile as readFile5 } from "node:fs/promises";
+import { createHash as createHash3 } from "node:crypto";
+import { readFile as readFile4 } from "node:fs/promises";
 import path6 from "node:path";
 var byCodeUnit = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function canonicalJson(value) {
@@ -26702,16 +33225,16 @@ function canonicalJson(value) {
   return JSON.stringify(value) ?? "null";
 }
 async function readJson2(file, what) {
-  let text;
+  let text3;
   try {
-    text = await readFile5(file, "utf8");
+    text3 = await readFile4(file, "utf8");
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`${what} ${file} does not exist.`);
     throw e;
   }
   try {
-    return JSON.parse(text);
+    return JSON.parse(text3);
   } catch (e) {
     throw new Error(`${what} ${file} is not JSON: ${e.message}`);
   }
@@ -26727,7 +33250,7 @@ async function collectProvides(o) {
   else if (policy) {
     const declared = path6.resolve(o.cwd, policy.from);
     try {
-      await readFile5(declared);
+      await readFile4(declared);
       file = declared;
     } catch {
       if (policy.required)
@@ -26740,13 +33263,13 @@ async function collectProvides(o) {
     }
   }
   if (file !== null) {
-    const list2 = await readJson2(file, "The provides file");
-    const problem = providesListProblem(list2);
+    const list3 = await readJson2(file, "The provides file");
+    const problem = providesListProblem(list3);
     if (problem)
       throw new Error(
         `The provides file ${path6.relative(o.cwd, file) || file} ${problem}.`
       );
-    out.provides = [...list2].sort(byCodeUnit);
+    out.provides = [...list3].sort(byCodeUnit);
   }
   if (o.removes && o.removes.length > 0) {
     const problem = providesListProblem(o.removes);
@@ -26760,7 +33283,7 @@ async function contentInterfaceFingerprint(cwd, file) {
     path6.resolve(cwd, file),
     "The content-interface registry"
   );
-  return createHash4("sha256").update(canonicalJson(value)).digest("hex");
+  return createHash3("sha256").update(canonicalJson(value)).digest("hex");
 }
 function judgeContentInterface(answer, fingerprint, contentApi, strict) {
   const a = answer ?? {};
@@ -26795,7 +33318,7 @@ function judgeContentInterface(answer, fingerprint, contentApi, strict) {
 // src/releaseKeys.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import {
-  createHash as createHash5,
+  createHash as createHash4,
   createPrivateKey,
   createPublicKey,
   generateKeyPairSync
@@ -26928,7 +33451,7 @@ var PointerSet = class {
 var StrictJsonRefused = class extends Error {
 };
 var NUMBER_TOKEN_RE = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
-function scanStrictJson(text) {
+function scanStrictJson(text3) {
   let i = 0;
   const nonWire = new PointerSet();
   const segs = [];
@@ -26947,32 +33470,32 @@ function scanStrictJson(text) {
     throw new StrictJsonRefused();
   };
   const ws = () => {
-    while (i < text.length) {
-      const c = text.charCodeAt(i);
+    while (i < text3.length) {
+      const c = text3.charCodeAt(i);
       if (c === 32 || c === 9 || c === 10 || c === 13) i++;
       else break;
     }
   };
   const hex42 = () => {
-    const h = text.slice(i, i + 4);
+    const h = text3.slice(i, i + 4);
     if (!/^[0-9a-fA-F]{4}$/.test(h)) refuse2();
     i += 4;
     return parseInt(h, 16);
   };
-  const str6 = () => {
-    if (text.charCodeAt(i) !== 34) refuse2();
+  const str8 = () => {
+    if (text3.charCodeAt(i) !== 34) refuse2();
     i++;
     let out = "";
     for (; ; ) {
-      if (i >= text.length) refuse2();
-      const c = text.charCodeAt(i);
+      if (i >= text3.length) refuse2();
+      const c = text3.charCodeAt(i);
       if (c === 34) {
         i++;
         break;
       }
       if (c < 32) refuse2();
       if (c === 92) {
-        const e = text[i + 1];
+        const e = text3[i + 1];
         i += 2;
         switch (e) {
           case '"':
@@ -27007,7 +33530,7 @@ function scanStrictJson(text) {
         }
         continue;
       }
-      out += text[i];
+      out += text3[i];
       i++;
     }
     for (let k = 0; k < out.length; k++) {
@@ -27025,7 +33548,7 @@ function scanStrictJson(text) {
   };
   const num = () => {
     NUMBER_TOKEN_RE.lastIndex = i;
-    const m = NUMBER_TOKEN_RE.exec(text);
+    const m = NUMBER_TOKEN_RE.exec(text3);
     if (!m) refuse2();
     const token = m[0];
     i += token.length;
@@ -27034,24 +33557,24 @@ function scanStrictJson(text) {
   };
   const value = (depth) => {
     ws();
-    const c = text[i];
+    const c = text3[i];
     if (c === "{") {
       if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       const names = /* @__PURE__ */ new Set();
       ws();
-      if (text[i] === "}") {
+      if (text3[i] === "}") {
         i++;
         return;
       }
       for (; ; ) {
         ws();
-        const name = str6();
+        const name = str8();
         if (name.indexOf("\0") !== -1) refuse2();
         if (names.has(name)) refuse2();
         names.add(name);
         ws();
-        if (text[i] !== ":") refuse2();
+        if (text3[i] !== ":") refuse2();
         i++;
         segs.push(name);
         ids.push(-1);
@@ -27059,11 +33582,11 @@ function scanStrictJson(text) {
         segs.pop();
         ids.pop();
         ws();
-        if (text[i] === ",") {
+        if (text3[i] === ",") {
           i++;
           continue;
         }
-        if (text[i] === "}") {
+        if (text3[i] === "}") {
           i++;
           return;
         }
@@ -27074,7 +33597,7 @@ function scanStrictJson(text) {
       if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       ws();
-      if (text[i] === "]") {
+      if (text3[i] === "]") {
         i++;
         return;
       }
@@ -27085,11 +33608,11 @@ function scanStrictJson(text) {
         segs.pop();
         ids.pop();
         ws();
-        if (text[i] === ",") {
+        if (text3[i] === ",") {
           i++;
           continue;
         }
-        if (text[i] === "]") {
+        if (text3[i] === "]") {
           i++;
           return;
         }
@@ -27097,7 +33620,7 @@ function scanStrictJson(text) {
       }
     }
     if (c === '"') {
-      str6();
+      str8();
       return;
     }
     if (c === "-" || c !== void 0 && c >= "0" && c <= "9") {
@@ -27105,7 +33628,7 @@ function scanStrictJson(text) {
       return;
     }
     for (const lit of ["true", "false", "null"]) {
-      if (text.startsWith(lit, i)) {
+      if (text3.startsWith(lit, i)) {
         i += lit.length;
         return;
       }
@@ -27114,11 +33637,11 @@ function scanStrictJson(text) {
   };
   try {
     ws();
-    if (text[i] !== "{")
+    if (text3[i] !== "{")
       return { ok: false, nonWireIntegers: new PointerSet() };
     value(0);
     ws();
-    if (i !== text.length)
+    if (i !== text3.length)
       return { ok: false, nonWireIntegers: new PointerSet() };
     return { ok: true, nonWireIntegers: nonWire };
   } catch (e) {
@@ -27128,18 +33651,18 @@ function scanStrictJson(text) {
   }
 }
 function parseStrictJson(bytes) {
-  let text;
+  let text3;
   try {
-    text = dec.decode(bytes);
+    text3 = dec.decode(bytes);
   } catch {
     return null;
   }
-  if (text.charCodeAt(0) === 65279) return null;
-  const scan = scanStrictJson(text);
+  if (text3.charCodeAt(0) === 65279) return null;
+  const scan = scanStrictJson(text3);
   if (!scan.ok) return null;
   try {
     return {
-      value: JSON.parse(text),
+      value: JSON.parse(text3),
       nonWireIntegers: scan.nonWireIntegers
     };
   } catch {
@@ -27247,8 +33770,8 @@ var StrictJsonError = class extends Error {
   }
   part;
 };
-function assertStrictJson(text, part) {
-  if (!scanStrictJson(text).ok) {
+function assertStrictJson(text3, part) {
+  if (!scanStrictJson(text3).ok) {
     throw new StrictJsonError(
       part,
       `the ${part} breaks WIRE-CONTRACT-V4 §1.2 (a lone surrogate, U+0000 in a member name, a number out of range, or nesting past ${MAX_JSON_DEPTH} levels), so no strict verifier would accept it`
@@ -28039,7 +34562,7 @@ function publicKeyOfPem(pem, source = RELEASE_KEY_ENV) {
   return jwk.x;
 }
 function fingerprintOf(publicKey) {
-  return createHash5("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
+  return createHash4("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
 }
 async function generateReleaseKey(opts) {
   if (!RELEASE_KEY_KID_PATTERN.test(opts.kid))
@@ -28123,7 +34646,7 @@ async function checkSignedRecord(jws, record, declared) {
 
 // src/contentStamp.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir2, readFile as readFile7, writeFile as writeFile5 } from "node:fs/promises";
+import { readdir as readdir2, readFile as readFile6, writeFile as writeFile5 } from "node:fs/promises";
 import path8 from "node:path";
 
 // ../client-core/dist/packs/index.js
@@ -28140,16 +34663,16 @@ var DEVICES = /* @__PURE__ */ new Set([
   ..."123456789".split("").flatMap((d) => [`com${d}`, `lpt${d}`])
 ]);
 var asciiLower = (s) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
-function pathSafe(path32) {
-  const n = utf8Length(path32);
+function pathSafe(path36) {
+  const n = utf8Length(path36);
   if (n < 1 || n > MAX_PACK_PATH_BYTES)
     return false;
-  for (let i = 0; i < path32.length; i++) {
-    const c = path32.charCodeAt(i);
-    if (c < 32 || c > 126 || BAD_CHARS.has(path32[i]))
+  for (let i = 0; i < path36.length; i++) {
+    const c = path36.charCodeAt(i);
+    if (c < 32 || c > 126 || BAD_CHARS.has(path36[i]))
       return false;
   }
-  const segments2 = path32.split("/");
+  const segments2 = path36.split("/");
   if (asciiLower(segments2[0]) === ".pkey")
     return false;
   for (const s of segments2) {
@@ -28166,21 +34689,21 @@ function checkPaths(paths) {
   const seen = /* @__PURE__ */ new Set();
   const lower = /* @__PURE__ */ new Set();
   const dirs = /* @__PURE__ */ new Set();
-  for (const path32 of paths) {
-    if (typeof path32 !== "string" || !pathSafe(path32))
-      return { ok: false, error: "files-unsafe-path", path: String(path32) };
-    if (seen.has(path32))
-      return { ok: false, error: "files-duplicate-path", path: path32 };
-    const lp = asciiLower(path32);
+  for (const path36 of paths) {
+    if (typeof path36 !== "string" || !pathSafe(path36))
+      return { ok: false, error: "files-unsafe-path", path: String(path36) };
+    if (seen.has(path36))
+      return { ok: false, error: "files-duplicate-path", path: path36 };
+    const lp = asciiLower(path36);
     if (lower.has(lp))
-      return { ok: false, error: "files-case-collision", path: path32 };
+      return { ok: false, error: "files-case-collision", path: path36 };
     const parts = lp.split("/");
     const prefixes = [];
     for (let k = 1; k < parts.length; k++)
       prefixes.push(parts.slice(0, k).join("/"));
     if (dirs.has(lp) || prefixes.some((x) => lower.has(x)))
-      return { ok: false, error: "files-path-conflict", path: path32 };
-    seen.add(path32);
+      return { ok: false, error: "files-path-conflict", path: path36 };
+    seen.add(path36);
     lower.add(lp);
     for (const x of prefixes)
       dirs.add(x);
@@ -28207,20 +34730,20 @@ var invalid = {
   error: "files-index-invalid"
 };
 function strictParse(bytes) {
-  let text;
+  let text3;
   try {
-    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    text3 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return null;
   }
-  if (text.charCodeAt(0) === 65279)
+  if (text3.charCodeAt(0) === 65279)
     return null;
-  const scan = scanStrictJson(text);
+  const scan = scanStrictJson(text3);
   if (!scan.ok)
     return null;
   try {
     return {
-      value: JSON.parse(text),
+      value: JSON.parse(text3),
       nonWire: scan.nonWireIntegers
     };
   } catch {
@@ -28528,13 +35051,13 @@ var DATA_ONLY_SCRIPT_MARKERS = [
   "script/source",
   "source_code"
 ];
-function asciiEscape(text) {
-  for (let at = text.indexOf("\\"); at >= 0; at = text.indexOf("\\", at + 1)) {
-    const c = text[at + 1];
+function asciiEscape(text3) {
+  for (let at = text3.indexOf("\\"); at >= 0; at = text3.indexOf("\\", at + 1)) {
+    const c = text3[at + 1];
     if (c !== "u" && c !== "U")
       continue;
     const n = c === "u" ? 4 : 6;
-    const digits = text.slice(at + 2, at + 2 + n);
+    const digits = text3.slice(at + 2, at + 2 + n);
     if (!new RegExp(`^[0-9A-Fa-f]{${n}}$`).test(digits))
       return true;
     if (parseInt(digits, 16) < 128)
@@ -28543,39 +35066,39 @@ function asciiEscape(text) {
   return false;
 }
 function dataOnlyTextRefusal(bytes) {
-  let text;
+  let text3;
   try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    text3 = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     return "content";
   }
-  if (text.includes("\0"))
+  if (text3.includes("\0"))
     return "content";
-  if (asciiEscape(text))
+  if (asciiEscape(text3))
     return "content";
-  const bare = text.replaceAll("\\", "");
+  const bare = text3.replaceAll("\\", "");
   for (const m of DATA_ONLY_SCRIPT_MARKERS)
-    if (text.includes(m) || bare.includes(m))
+    if (text3.includes(m) || bare.includes(m))
       return "content";
   return null;
 }
-function dataOnlyExtension(path32) {
-  const last = path32.slice(path32.lastIndexOf("/") + 1);
+function dataOnlyExtension(path36) {
+  const last = path36.slice(path36.lastIndexOf("/") + 1);
   const dot = last.lastIndexOf(".");
   if (dot < 0)
     return null;
   return last.slice(dot + 1).replace(/[A-Z]/g, (c) => c.toLowerCase());
 }
-function dataOnlyPathRefusal(path32) {
-  if (typeof path32 !== "string" || !pathSafe(path32))
+function dataOnlyPathRefusal(path36) {
+  if (typeof path36 !== "string" || !pathSafe(path36))
     return "extension";
-  const ext = dataOnlyExtension(path32);
+  const ext = dataOnlyExtension(path36);
   if (ext === null || !DATA_ONLY_EXTENSIONS.includes(ext))
     return "extension";
   return null;
 }
-function dataOnlyRefusal(path32, head, tail, full) {
-  const p = dataOnlyPathRefusal(path32);
+function dataOnlyRefusal(path36, head, tail, full) {
+  const p = dataOnlyPathRefusal(path36);
   if (p !== null)
     return p;
   const h = head.subarray(0, DATA_ONLY_HEAD_BYTES);
@@ -28605,12 +35128,12 @@ function dataOnlyRefusal(path32, head, tail, full) {
   for (let k = 0; k + 4 <= t.length; k++)
     if (t[k] === 80 && startsWith(t, k, ZIP_EOCD))
       return "content";
-  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path32)))
+  if (DATA_ONLY_TEXT_EXTENSIONS.includes(dataOnlyExtension(path36)))
     return full === void 0 ? "content" : dataOnlyTextRefusal(full);
   return null;
 }
-function dataOnlyFileRefusal(path32, bytes) {
-  return dataOnlyRefusal(path32, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
+function dataOnlyFileRefusal(path36, bytes) {
+  return dataOnlyRefusal(path36, bytes.subarray(0, DATA_ONLY_HEAD_BYTES), bytes.subarray(Math.max(0, bytes.length - DATA_ONLY_TAIL_BYTES)), bytes);
 }
 
 // ../client-core/dist/packs/stamp.js
@@ -28619,27 +35142,27 @@ var invalid2 = {
   ok: false,
   error: "content-stamp-invalid"
 };
-function parseContentStamp(input) {
+function parseContentStamp(input2) {
   try {
-    let text;
-    if (typeof input === "string")
-      text = input;
+    let text3;
+    if (typeof input2 === "string")
+      text3 = input2;
     else {
       try {
-        text = new TextDecoder("utf-8", {
+        text3 = new TextDecoder("utf-8", {
           fatal: true,
           ignoreBOM: true
-        }).decode(input);
+        }).decode(input2);
       } catch {
         return invalid2;
       }
     }
-    if (text.charCodeAt(0) === 65279)
+    if (text3.charCodeAt(0) === 65279)
       return invalid2;
-    const scan = scanStrictJson(text);
+    const scan = scanStrictJson(text3);
     if (!scan.ok)
       return invalid2;
-    const doc = JSON.parse(text);
+    const doc = JSON.parse(text3);
     if (!isObject(doc) || doc.format !== CONTENT_STAMP_FORMAT)
       return invalid2;
     if (!contentClaims(doc, { nonWire: scan.nonWireIntegers, pointer: "" }))
@@ -28703,9 +35226,9 @@ function windowLogMax(memBytes, p = 31) {
     n++;
   return Math.max(10, Math.min(p, n));
 }
-function windowAllowed(frame, memBytes, p = 31) {
+function windowAllowed(frame2, memBytes, p = 31) {
   const limit = windowLogMax(memBytes, p);
-  const window = frameWindow(frame);
+  const window = frameWindow(frame2);
   return limit !== null && window !== null && window <= 2 ** limit;
 }
 
@@ -28727,16 +35250,16 @@ function sameLocale(a, b) {
   return asciiLower2(a.replace(/_/g, "-")) === asciiLower2(b.replace(/_/g, "-"));
 }
 var fail3 = { ok: false, detail: "table" };
-function parseL10nFile(path32, bytes) {
-  let text;
+function parseL10nFile(path36, bytes) {
+  let text3;
   try {
-    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    text3 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return fail3;
   }
-  if (text.includes("\0"))
+  if (text3.includes("\0"))
     return fail3;
-  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  const body = text3.charCodeAt(0) === 65279 ? text3.slice(1) : text3;
   let at = 0;
   while (at < body.length && " 	\n\r".includes(body[at]))
     at++;
@@ -28756,12 +35279,12 @@ function parseL10nFile(path32, bytes) {
     const locale = bcp47Canonical(t.locale);
     if (locale === null)
       return { ok: false, detail: "locale" };
-    tables.push({ path: path32, locale, messages: t.messages });
+    tables.push({ path: path36, locale, messages: t.messages });
   }
   return { ok: true, tables };
 }
-function parseJsonTable(text) {
-  const parsed = strictParse(new TextEncoder().encode(text));
+function parseJsonTable(text3) {
+  const parsed = strictParse(new TextEncoder().encode(text3));
   if (parsed === null)
     return null;
   const v = parsed.value;
@@ -28817,12 +35340,12 @@ function poString(s) {
       return null;
   return out;
 }
-function parsePo(text) {
+function parsePo(text3) {
   const entries = [];
   let cur = null;
   let last = null;
   const complete = (e) => e.id !== null && e.strings.length > 0;
-  for (let line of text.split("\n")) {
+  for (let line of text3.split("\n")) {
     if (line.endsWith("\r"))
       line = line.slice(0, -1);
     if (/^[ \t]*$/.test(line)) {
@@ -28937,23 +35460,23 @@ function parsePo(text) {
     return null;
   return [{ locale, messages }];
 }
-function csvRecords(text) {
+function csvRecords(text3) {
   const records = [];
   let record = [];
   let i = 0;
-  const n = text.length;
+  const n = text3.length;
   let started = false;
   while (i < n) {
     let field = "";
-    if (text[i] === '"') {
+    if (text3[i] === '"') {
       started = true;
       i++;
       for (; ; ) {
         if (i >= n)
           return null;
-        const c = text[i];
+        const c = text3[i];
         if (c === '"') {
-          if (text[i + 1] === '"') {
+          if (text3[i + 1] === '"') {
             field += '"';
             i += 2;
             continue;
@@ -28964,13 +35487,13 @@ function csvRecords(text) {
         field += c;
         i++;
       }
-      if (i < n && text[i] !== "," && text[i] !== "\n" && !(text[i] === "\r" && text[i + 1] === "\n"))
+      if (i < n && text3[i] !== "," && text3[i] !== "\n" && !(text3[i] === "\r" && text3[i + 1] === "\n"))
         return null;
     } else {
-      while (i < n && text[i] !== "," && text[i] !== "\n" && !(text[i] === "\r" && text[i + 1] === "\n")) {
-        if (text[i] === '"')
+      while (i < n && text3[i] !== "," && text3[i] !== "\n" && !(text3[i] === "\r" && text3[i + 1] === "\n")) {
+        if (text3[i] === '"')
           return null;
-        field += text[i];
+        field += text3[i];
         i++;
       }
       if (field.length > 0)
@@ -28979,14 +35502,14 @@ function csvRecords(text) {
     record.push(field);
     if (i >= n)
       break;
-    if (text[i] === ",") {
+    if (text3[i] === ",") {
       started = true;
       i++;
       if (i >= n)
         record.push("");
       continue;
     }
-    i += text[i] === "\r" ? 2 : 1;
+    i += text3[i] === "\r" ? 2 : 1;
     if (started)
       records.push(record);
     record = [];
@@ -28996,8 +35519,8 @@ function csvRecords(text) {
     records.push(record);
   return records;
 }
-function parseCsv(text) {
-  const records = csvRecords(text);
+function parseCsv(text3) {
+  const records = csvRecords(text3);
   if (records === null || records.length === 0)
     return null;
   const header = records[0];
@@ -29038,9 +35561,9 @@ function parseCsv(text) {
 var DEFAULT_MAX_TYPE_FILE_BYTES = 16 * 1024 * 1024;
 var MAX_DESCRIPTOR_BYTES2 = 65536;
 var TYPE_TOKEN_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
-var refuse = (detail, path32, message) => ({
+var refuse = (detail, path36, message) => ({
   detail,
-  ...path32 !== void 0 ? { path: path32 } : {},
+  ...path36 !== void 0 ? { path: path36 } : {},
   ...message !== void 0 ? { message } : {}
 });
 var formatsOf = (v) => new Set(v ?? [1]);
@@ -29236,15 +35759,15 @@ async function requirePacksDiscovery(client, fetchImpl = fetch) {
 // src/packArtifacts.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { execFileSync } from "node:child_process";
-import { createHash as createHash6 } from "node:crypto";
-import { mkdirSync, readFileSync as readFileSync2, writeFileSync } from "node:fs";
-import { lstat, readdir, readFile as readFile6 } from "node:fs/promises";
+import { createHash as createHash5 } from "node:crypto";
+import { mkdirSync as mkdirSync2, readFileSync as readFileSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { lstat, readdir, readFile as readFile5 } from "node:fs/promises";
 import path7 from "node:path";
 var PATCH_METHOD = "zstd-patch-from";
 var ZSTD_LEVEL = 19;
 var MIN_ZSTD_VERSION = "1.5.5";
 function sha256Hex2(b) {
-  return createHash6("sha256").update(b).digest("hex");
+  return createHash5("sha256").update(b).digest("hex");
 }
 function concat(parts) {
   const n = parts.reduce((a, p) => a + p.byteLength, 0);
@@ -29295,7 +35818,7 @@ function zstdCli(workDir, bin = "zstd") {
   };
   const fresh = (label) => {
     const d = path7.join(workDir, `${label}${n++}`);
-    mkdirSync(d, { recursive: true });
+    mkdirSync2(d, { recursive: true });
     return d;
   };
   const many = (inputs, args, inExt, outExt) => {
@@ -29306,13 +35829,13 @@ function zstdCli(workDir, bin = "zstd") {
       const outDir = fresh("out");
       const names = slice.map((b, i) => {
         const f = path7.join(inDir, `${i}${inExt}`);
-        writeFileSync(f, b);
+        writeFileSync2(f, b);
         return f;
       });
       run2([...args, "--output-dir-flat", outDir, ...names]);
       for (const i of slice.keys())
         results.push(
-          new Uint8Array(readFileSync2(path7.join(outDir, `${i}${outExt}`)))
+          new Uint8Array(readFileSync3(path7.join(outDir, `${i}${outExt}`)))
         );
     }
     return results;
@@ -29326,29 +35849,29 @@ function zstdCli(workDir, bin = "zstd") {
       const b = path7.join(d, "base");
       const t = path7.join(d, "target");
       const o = path7.join(d, "out.zst");
-      writeFileSync(b, base);
-      writeFileSync(t, target);
+      writeFileSync2(b, base);
+      writeFileSync2(t, target);
       run2([`-${ZSTD_LEVEL}`, `--patch-from=${b}`, t, "-o", o]);
-      return new Uint8Array(readFileSync2(o));
+      return new Uint8Array(readFileSync3(o));
     },
-    decodePatch(frame, base) {
+    decodePatch(frame2, base) {
       const d = fresh("dp");
       const b = path7.join(d, "base");
       const f = path7.join(d, "in.zst");
       const o = path7.join(d, "out");
-      writeFileSync(b, base);
-      writeFileSync(f, frame);
+      writeFileSync2(b, base);
+      writeFileSync2(f, frame2);
       run2(["-d", "--long=31", `--patch-from=${b}`, f, "-o", o]);
-      return new Uint8Array(readFileSync2(o));
+      return new Uint8Array(readFileSync3(o));
     }
   };
 }
 function storeMany(z, datas) {
   const frames = z.compressMany(datas);
   return datas.map((data, i) => {
-    const frame = frames[i];
-    const zstd = frame.byteLength < data.byteLength;
-    const stored = zstd ? frame : data;
+    const frame2 = frames[i];
+    const zstd = frame2.byteLength < data.byteLength;
+    const stored = zstd ? frame2 : data;
     return {
       ref: {
         sha256: sha256Hex2(stored),
@@ -29384,7 +35907,7 @@ function containerPayload(bytes, dir) {
 async function readTree(root) {
   const files = [];
   const errors = [];
-  async function walk3(dir, prefix) {
+  async function walk2(dir, prefix) {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const e of entries) {
       const rel = prefix ? `${prefix}/${e.name}` : e.name;
@@ -29398,14 +35921,14 @@ async function readTree(root) {
         continue;
       }
       if (st.isDirectory()) {
-        await walk3(full, rel);
+        await walk2(full, rel);
         continue;
       }
       if (!st.isFile()) {
         errors.push(`${rel}: not a regular file.`);
         continue;
       }
-      const data = new Uint8Array(await readFile6(full));
+      const data = new Uint8Array(await readFile5(full));
       files.push({
         path: rel,
         size: data.byteLength,
@@ -29415,7 +35938,7 @@ async function readTree(root) {
     }
   }
   try {
-    await walk3(root, "");
+    await walk2(root, "");
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`${root} does not exist.`);
@@ -29450,18 +35973,18 @@ async function buildPayload(z, p) {
   const distinct = /* @__PURE__ */ new Map();
   for (const f of p.files)
     if (!distinct.has(f.sha256)) distinct.set(f.sha256, f);
-  const list2 = [...distinct.values()];
+  const list3 = [...distinct.values()];
   const gapBytes = p.layout === "container" ? gapsOf(p.bytes, p.files) : null;
   const fullBytes = fullBytesOf(p);
   const stored = storeMany(z, [
     fullBytes,
     ...gapBytes ? [gapBytes] : [],
-    ...list2.map((f) => f.data)
+    ...list3.map((f) => f.data)
   ]);
   const full = stored[0];
   const gaps = gapBytes ? stored[1] : void 0;
   const blobs = /* @__PURE__ */ new Map();
-  list2.forEach((f, i) => blobs.set(f.sha256, stored[(gapBytes ? 2 : 1) + i]));
+  list3.forEach((f, i) => blobs.set(f.sha256, stored[(gapBytes ? 2 : 1) + i]));
   const index = {
     format: FILES_FORMAT,
     layout: p.layout,
@@ -29503,18 +36026,18 @@ function filesRefOf(b) {
   };
 }
 async function selfCheckPayload(z, b) {
-  const decode2 = (frame) => z.decodeMany([frame])[0];
+  const decode3 = (frame2) => z.decodeMany([frame2])[0];
   const parsed = await parseFilesIndex(
     b.indexStored.stored,
     { ...filesRefOf(b) },
     { payload: b.payload },
-    { decode: (frame) => decode2(frame), maxBytes: MAX_PUBLISHED_INDEX_BYTES }
+    { decode: (frame2) => decode3(frame2), maxBytes: MAX_PUBLISHED_INDEX_BYTES }
   );
   if (!parsed.ok)
     throw new Error(
       `Self-check: the files index fails parseFilesIndex (${parsed.error}${parsed.path ? ` at ${parsed.path}` : ""}); nothing was published.`
     );
-  const open2 = (s, frame) => s.ref.codec === "none" ? s.stored : frame;
+  const open2 = (s, frame2) => s.ref.codec === "none" ? s.stored : frame2;
   const zBlobs = [...b.blobs.values()].filter((s) => s.ref.codec === "zstd");
   const decoded = /* @__PURE__ */ new Map();
   z.decodeMany(zBlobs.map((s) => s.stored)).forEach(
@@ -29538,7 +36061,7 @@ async function selfCheckPayload(z, b) {
     const gaps = b.gaps;
     const gapBytes = open2(
       gaps,
-      gaps.ref.codec === "zstd" ? decode2(gaps.stored) : void 0
+      gaps.ref.codec === "zstd" ? decode3(gaps.stored) : void 0
     );
     const parts = [];
     let g = 0;
@@ -29563,7 +36086,7 @@ async function selfCheckPayload(z, b) {
   }
   const full = open2(
     b.full,
-    b.full.ref.codec === "zstd" ? decode2(b.full.stored) : void 0
+    b.full.ref.codec === "zstd" ? decode3(b.full.stored) : void 0
   );
   if (full.byteLength !== b.full.ref.size || Buffer.compare(full, rebuilt) !== 0)
     throw new Error(
@@ -29577,17 +36100,17 @@ function buildPayloadDelta(z, base, target, targetBytes) {
     return {
       skipped: `the base starts with the zstd dictionary magic 37 A4 30 EC (§2.7 rule 5)`
     };
-  const frame = z.patchFrom(base.bytes, targetBytes);
+  const frame2 = z.patchFrom(base.bytes, targetBytes);
   const memBytes = base.bytes.byteLength + targetBytes.byteLength;
-  if (frame.byteLength >= target.full.ref.bytes)
+  if (frame2.byteLength >= target.full.ref.bytes)
     return {
-      skipped: `the delta (${frame.byteLength} B) is not smaller than full`
+      skipped: `the delta (${frame2.byteLength} B) is not smaller than full`
     };
-  if (!windowAllowed(frame, memBytes))
+  if (!windowAllowed(frame2, memBytes))
     throw new Error(
       "Self-check: a payload delta's frame window is above its memBytes limit (§2.7 rule 3)."
     );
-  const back = z.decodePatch(frame, base.bytes);
+  const back = z.decodePatch(frame2, base.bytes);
   if (sha256Hex2(back) !== target.payload.sha256)
     throw new Error(
       "Self-check: the payload delta does not decode to the payload."
@@ -29598,9 +36121,9 @@ function buildPayloadDelta(z, base, target, targetBytes) {
       scope: "payload",
       from: base.sha256,
       memBytes,
-      artifact: { sha256: sha256Hex2(frame), bytes: frame.byteLength }
+      artifact: { sha256: sha256Hex2(frame2), bytes: frame2.byteLength }
     },
-    stored: frame
+    stored: frame2
   };
 }
 function buildFilesDelta(z, base, target) {
@@ -29619,7 +36142,7 @@ function buildFilesDelta(z, base, target) {
     done.add(f.path);
     const b = baseByPath.get(f.path);
     const blob = target.blobs.get(f.sha256);
-    let frame = null;
+    let frame2 = null;
     if (b) {
       if (startsWithDictMagic(b.data)) magicBases.push(f.path);
       else {
@@ -29634,11 +36157,11 @@ function buildFilesDelta(z, base, target) {
             throw new Error(
               `Self-check: ${f.path}'s delta does not decode to the file.`
             );
-          frame = pf;
+          frame2 = pf;
         }
       }
     }
-    if (frame !== null) {
+    if (frame2 !== null) {
       entries.push({
         path: f.path,
         op: "delta",
@@ -29646,10 +36169,10 @@ function buildFilesDelta(z, base, target) {
         to: f.sha256,
         size: f.size,
         offset: off,
-        length: frame.byteLength
+        length: frame2.byteLength
       });
-      parts.push(frame);
-      off += frame.byteLength;
+      parts.push(frame2);
+      off += frame2.byteLength;
       mem = Math.max(mem, b.size + f.size);
     } else {
       entries.push({
@@ -29762,17 +36285,17 @@ var CONTENT_STAMP_USAGE = "Usage: pkey release content-stamp --product <slug> --
 var VERSION_RE4 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 async function findMarkers(dir) {
   const out = [];
-  async function walk3(d) {
+  async function walk2(d) {
     const entries = await readdir2(d, { withFileTypes: true });
     for (const e of entries) {
       const full = path8.join(d, e.name);
-      if (e.isDirectory()) await walk3(full);
+      if (e.isDirectory()) await walk2(full);
       else if (e.isFile() && (e.name.endsWith(MARKER_SUFFIX) || e.name === "pack.json" && path8.basename(d) === ".pkey"))
         out.push(full);
     }
   }
   try {
-    await walk3(dir);
+    await walk2(dir);
   } catch (e) {
     if (e.code === "ENOENT")
       throw new UsageError(`--embedded ${dir} does not exist.`);
@@ -29784,9 +36307,9 @@ async function readMarker(file, ctx) {
   const fail4 = (step, why) => {
     throw new Error(`${file}: marker rejected at ${step}: ${why}`);
   };
-  const text = await readFile7(file, "utf8");
-  if (!scanStrictJson(text).ok) fail4("format", "not strict JSON");
-  const m = JSON.parse(text);
+  const text3 = await readFile6(file, "utf8");
+  if (!scanStrictJson(text3).ok) fail4("format", "not strict JSON");
+  const m = JSON.parse(text3);
   if (!m || typeof m !== "object" || m.format !== MARKER_FORMAT || !isPackId(m.packId) || typeof m.version !== "string" || !VERSION_RE4.test(m.version) || typeof m.release !== "string")
     fail4("format", `not a ${MARKER_FORMAT} document`);
   const jws = m.release;
@@ -29808,7 +36331,7 @@ async function readMarker(file, ctx) {
     const payloadFile = file.slice(0, -MARKER_SUFFIX.length);
     let bytes;
     try {
-      bytes = await readFile7(payloadFile);
+      bytes = await readFile6(payloadFile);
     } catch {
       return fail4("payload", `${path8.basename(payloadFile)} is not beside it`);
     }
@@ -29993,8 +36516,8 @@ function contentRuleProblems(content, contentApi, packs, embeds = {}) {
         `${p.id} is baseline: embedded, so every app release pins it.`
       );
   }
-  for (const [build, list2] of Object.entries(embeds))
-    for (const p of list2)
+  for (const [build, list3] of Object.entries(embeds))
+    for (const p of list3)
       if (!pinned.has(p))
         problems.push(
           `build ${build} embeds ${p}, which the release does not pin.`
@@ -30010,18 +36533,18 @@ function stampText(content) {
     expects: content.expects,
     ...holds.length > 0 ? { holds } : {}
   };
-  const text = `${JSON.stringify(doc, null, 2)}
+  const text3 = `${JSON.stringify(doc, null, 2)}
 `;
-  if (!parseContentStamp(text).ok)
+  if (!parseContentStamp(text3).ok)
     throw new Error("Self-check: the content stamp fails parseContentStamp.");
-  if (JSON.stringify(holdsOf(JSON.parse(text), void 0, "")) !== JSON.stringify(holds))
+  if (JSON.stringify(holdsOf(JSON.parse(text3), void 0, "")) !== JSON.stringify(holds))
     throw new Error("Self-check: the content stamp's holds fail holdsOf.");
-  return text;
+  return text3;
 }
 async function readContentStamp(file) {
   let bytes;
   try {
-    bytes = await readFile7(file);
+    bytes = await readFile6(file);
   } catch {
     throw new UsageError(`--content-stamp ${file} is not readable.`);
   }
@@ -30151,17 +36674,17 @@ var SIDECARS = [
 ];
 async function scanDir(dir) {
   const out = [];
-  async function walk3(d) {
+  async function walk2(d) {
     const entries = await readdir3(d, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
       const full = path9.join(d, e.name);
-      if (e.isDirectory()) await walk3(full);
+      if (e.isDirectory()) await walk2(full);
       else if (e.isFile()) out.push({ path: full, name: e.name });
     }
   }
   try {
-    await walk3(dir);
+    await walk2(dir);
   } catch (e) {
     if (e.code === "ENOENT")
       throw new UsageError(`--dir ${dir} does not exist.`);
@@ -30232,7 +36755,7 @@ function matchArtifacts(files, entries) {
   return { builds, warnings, errors };
 }
 async function hashFile(file) {
-  const hash = createHash7("sha256");
+  const hash = createHash6("sha256");
   let size = 0;
   for await (const chunk of createReadStream2(file)) {
     const buf = chunk;
@@ -30244,7 +36767,7 @@ async function hashFile(file) {
 async function readMeta(file, entryIds) {
   let raw;
   try {
-    raw = JSON.parse(await readFile8(file, "utf8"));
+    raw = JSON.parse(await readFile7(file, "utf8"));
   } catch (e) {
     throw new UsageError(
       `--meta ${file} is not readable JSON: ${e.message}`
@@ -30310,9 +36833,9 @@ function provenanceFrom(env) {
     out.workflowRun = `${server.replace(/\/+$/, "")}/${repo}/actions/runs/${run2}`;
   return out.commit || out.workflowRun ? out : void 0;
 }
-function buildDescriptor(input) {
-  const builds = input.builds.map(({ entry, files }) => {
-    const m = input.meta[entry.id] ?? {};
+function buildDescriptor(input2) {
+  const builds = input2.builds.map(({ entry, files }) => {
+    const m = input2.meta[entry.id] ?? {};
     return {
       id: entry.id,
       platform: entry.platform,
@@ -30321,25 +36844,25 @@ function buildDescriptor(input) {
       ...m.buildNumber !== void 0 ? { buildNumber: m.buildNumber } : {},
       ...m.minOS !== void 0 ? { minOS: m.minOS } : {},
       ...m.requires !== void 0 ? { requires: m.requires } : {},
-      ...input.extracted?.[entry.id] ? { metadata: input.extracted[entry.id] } : {},
+      ...input2.extracted?.[entry.id] ? { metadata: input2.extracted[entry.id] } : {},
       artifacts: files.map((f) => ({
         name: f.name,
         role: f.role,
         sha256: f.sha256,
         size: f.size,
-        locations: input.source === "github" ? [{ provider: "github", asset: f.name }] : [{ provider: "r2", key: blobKey(f.sha256) }]
+        locations: input2.source === "github" ? [{ provider: "github", asset: f.name }] : [{ provider: "r2", key: blobKey(f.sha256) }]
       }))
     };
   });
   return {
     descriptorVersion: 1,
-    product: input.product,
-    deliverable: input.deliverable,
+    product: input2.product,
+    deliverable: input2.deliverable,
     kind: "app",
-    version: input.version,
-    ...input.tag !== void 0 ? { tag: input.tag } : {},
-    ...input.channel !== void 0 ? { channel: input.channel } : {},
-    ...input.provenance ? { provenance: input.provenance } : {},
+    version: input2.version,
+    ...input2.tag !== void 0 ? { tag: input2.tag } : {},
+    ...input2.channel !== void 0 ? { channel: input2.channel } : {},
+    ...input2.provenance ? { provenance: input2.provenance } : {},
     builds
   };
 }
@@ -30437,7 +36960,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   for (const b of match.builds) {
     const files = [];
     for (const f of b.files) {
-      const { size } = await stat4(f.path);
+      const { size } = await stat3(f.path);
       if (source === "r2" && size > MAX_SINGLE_PUT_BYTES)
         throw new Error(
           `${f.name} is ${size} bytes; one upload is at most ${MAX_SINGLE_PUT_BYTES} bytes (a single-part PUT).`
@@ -30723,7 +37246,7 @@ ${JSON.stringify(record, null, 2)}
       await checkSignedRecord(recordJws, record, declared);
       result.recordJws = recordJws;
       out.write(
-        `Signed the release record (seq ${record.seq}, sha256 ${createHash7("sha256").update(recordJws).digest("hex").slice(0, 12)}…)
+        `Signed the release record (seq ${record.seq}, sha256 ${createHash6("sha256").update(recordJws).digest("hex").slice(0, 12)}…)
 `
       );
     }
@@ -30809,1638 +37332,29 @@ ${JSON.stringify(record, null, 2)}
   return result;
 }
 
-// ../shared-manifest/dist/integration/index.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var SDK_LANGS = [
-  "node",
-  "react",
-  "python",
-  "swift",
-  "kotlin",
-  "godot"
-];
-var SDK_CONFIG_MARKER = "GENERATED by `pkey sdk";
-var SDK_CONFIG_DEFAULT_OUT = {
-  node: "polaris.config.ts",
-  react: "polaris.config.ts",
-  python: "polaris_config.py",
-  swift: "PolarisConfig.swift",
-  kotlin: "PolarisConfig.kt",
-  godot: "polaris_key.tres"
-};
-var KOTLIN_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
-function banner2(lang, facts, comment) {
-  return [
-    `${comment} ${SDK_CONFIG_MARKER} --lang ${lang} --write\` from`,
-    `${comment} ${facts.discoveryUrl}. Do not edit: run the command again to refresh.`,
-    `${comment} The trust pins came from discovery; compare each key with Public key under Core > Keys & secrets before`,
-    `${comment} you ship (pkey sdk prints them). Release keys match release.releaseKeyFingerprints.`
-  ].join("\n");
-}
-var q = (s) => JSON.stringify(s);
-function tsMap(map, indent) {
-  const rows = Object.entries(map);
-  if (rows.length === 0) return "{}";
-  return `{
-${rows.map(([k, v]) => `${indent}  ${q(k)}: ${q(v)},`).join("\n")}
-${indent}}`;
-}
-function renderNode(facts, js) {
-  const hasRelease = Object.keys(facts.pinnedReleaseKeys).length > 0;
-  const body = [
-    `  productSlug: ${q(facts.product)},`,
-    `  baseUrl: ${q(facts.baseUrl)},`,
-    `  trust: {
-    pinnedKeys: ${tsMap(facts.pinnedKeys, "    ")},
-  },`,
-    `  expectedServices: [${facts.services.map(q).join(", ")}],`,
-    ...hasRelease ? [
-      `  update: {
-    pinnedReleaseKeys: ${tsMap(facts.pinnedReleaseKeys, "    ")},
-  },`
-    ] : []
-  ].join("\n");
-  const doc = `/**
- * Everything \`PolarisKeyClient.create()\` needs except the app's \`version\`:
- *
- *   const client = await PolarisKeyClient.create({ ...polarisConfig, version: "1.2.3" });
- */`;
-  if (js)
-    return `${banner2("node", facts, "//")}
-
-${doc}
-/** @satisfies {Omit<import("@polaris-key/node").PolarisKeyClientOptions, "version">} */
-export const polarisConfig = {
-${body}
-};
-
-export default polarisConfig;
-`;
-  return `${banner2("node", facts, "//")}
-import type { PolarisKeyClientOptions } from "@polaris-key/node";
-
-${doc}
-export const polarisConfig = {
-${body}
-} satisfies Omit<PolarisKeyClientOptions, "version">;
-
-export default polarisConfig;
-`;
-}
-function renderReact(facts, js) {
-  const pins = `/** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
- *  the page against them; a desktop host's \`@polaris-key/node\` client pins the same keys. */
-export const pinnedKeys = ${tsMap(facts.pinnedKeys, "")};
-
-/** The pinned release keys, for a desktop host (\`update.pinnedReleaseKeys\`). */
-export const pinnedReleaseKeys = ${tsMap(facts.pinnedReleaseKeys, "")};
-`;
-  const props = [
-    `  productSlug: ${q(facts.product)},`,
-    `  baseUrl: ${q(facts.baseUrl)},`,
-    `  trust: { pinnedKeys },`,
-    `  expectedServices: [${facts.services.map(q).join(", ")}],`
-  ].join("\n");
-  const doc = `/**
- * The provider's product facts and trust pins:
- *
- *   <PolarisKeyProvider config={polarisKey}>…</PolarisKeyProvider>
- */`;
-  if (js)
-    return `${banner2("react", facts, "//")}
-
-${pins}
-${doc}
-/** @satisfies {import("@polaris-key/react").PolarisKeyConfig} */
-export const polarisKey = {
-${props}
-};
-
-export default polarisKey;
-`;
-  return `${banner2("react", facts, "//")}
-import type { PolarisKeyConfig } from "@polaris-key/react";
-
-${pins}
-${doc}
-export const polarisKey = {
-${props}
-} satisfies PolarisKeyConfig;
-
-export default polarisKey;
-`;
-}
-function pyMap(map) {
-  const rows = Object.entries(map);
-  if (rows.length === 0) return "{}";
-  return `{
-${rows.map(([k, v]) => `    ${q(k)}: ${q(v)},`).join("\n")}
-}`;
-}
-function renderPython(facts) {
-  const hasRelease = Object.keys(facts.pinnedReleaseKeys).length > 0;
-  return `${banner2("python", facts, "#")}
-"""Polaris Key configuration for ${facts.product}.
-
-    from polaris_key import PolarisKeyClient
-    import polaris_config
-
-    client = PolarisKeyClient.create(**polaris_config.CONFIG, version=__version__)
-"""
-
-from typing import Any, Dict, List
-
-${hasRelease ? "from polaris_key import UpdateClientOptions\n\n" : ""}PRODUCT_SLUG = ${q(facts.product)}
-BASE_URL = ${q(facts.baseUrl)}
-PINNED_KEYS: Dict[str, str] = ${pyMap(facts.pinnedKeys)}
-PINNED_RELEASE_KEYS: Dict[str, str] = ${pyMap(facts.pinnedReleaseKeys)}
-EXPECTED_SERVICES: List[str] = [${facts.services.map(q).join(", ")}]
-
-#: Every \`PolarisKeyClient\` keyword except \`version\`.
-CONFIG: Dict[str, Any] = {
-    "product_slug": PRODUCT_SLUG,
-    "base_url": BASE_URL,
-    "trust": dict(PINNED_KEYS),
-    "expected_services": list(EXPECTED_SERVICES),
-${hasRelease ? `    "update": UpdateClientOptions(pinned_release_keys=dict(PINNED_RELEASE_KEYS)),
-` : ""}}
-`;
-}
-function swiftMap(map) {
-  const rows = Object.entries(map);
-  if (rows.length === 0) return "[:]";
-  return `[
-${rows.map(([k, v]) => `        ${q(k)}: ${q(v)},`).join("\n")}
-    ]`;
-}
-function renderSwift(facts) {
-  return `${banner2("swift", facts, "//")}
-
-import PolarisKey
-
-/// Polaris Key configuration for ${facts.product}:
-///
-///     let client = try PolarisKeyClient(options: PolarisConfig.clientOptions(version: appVersion))
-public enum PolarisConfig {
-    public static let productSlug = ${q(facts.product)}
-    public static let baseUrl = ${q(facts.baseUrl)}
-    public static let pinnedKeys: TrustSet = ${swiftMap(facts.pinnedKeys)}
-    /// For \`UpdateClientOptions(pinnedReleaseKeys:)\` (PolarisKeyUpdate, PolarisKeyPacks).
-    public static let pinnedReleaseKeys: TrustSet = ${swiftMap(facts.pinnedReleaseKeys)}
-    public static let expectedServices: [ServiceSlug] = [${facts.services.map((s) => `.${s}`).join(", ")}]
-
-    /// Every option the client needs; \`version\` is the app's own.
-    public static func clientOptions(version: String, channel: String? = nil) -> PolarisKeyClientOptions {
-        PolarisKeyClientOptions(
-            productSlug: productSlug, baseUrl: baseUrl, version: version, channel: channel,
-            pinnedKeys: pinnedKeys, expectedServices: expectedServices)
-    }
-}
-`;
-}
-function ktMap(map) {
-  const rows = Object.entries(map);
-  if (rows.length === 0) return "emptyMap()";
-  return `mapOf(
-${rows.map(([k, v]) => `        ${q(k)} to ${q(v)},`).join("\n")}
-    )`;
-}
-function renderKotlin(facts, pkg) {
-  return `${banner2("kotlin", facts, "//")}
-
-package ${pkg}
-
-import im.plrs.key.core.CoreOptions
-import im.plrs.key.core.ServiceSlug
-import im.plrs.key.core.TrustSet
-import im.plrs.key.sdk.PolarisKeyClientOptions
-import im.plrs.key.update.UpdateClientOptions
-
-/**
- * Polaris Key configuration for ${facts.product}:
- *
- *     val client = PolarisKeyClient.create(PolarisConfig.clientOptions(version = BuildConfig.VERSION_NAME))
- */
-public object PolarisConfig {
-    public const val PRODUCT_SLUG: String = ${q(facts.product)}
-    public const val BASE_URL: String = ${q(facts.baseUrl)}
-    public val pinnedKeys: TrustSet = ${ktMap(facts.pinnedKeys)}
-    public val pinnedReleaseKeys: TrustSet = ${ktMap(facts.pinnedReleaseKeys)}
-    public val expectedServices: List<ServiceSlug> = listOf(${facts.services.map((s) => `ServiceSlug.${s}`).join(", ")})
-
-    /** Core's options; [version] is the app's own. */
-    public fun coreOptions(version: String, channel: String? = null): CoreOptions = CoreOptions(
-        productSlug = PRODUCT_SLUG,
-        baseUrl = BASE_URL,
-        version = version,
-        channel = channel,
-        pinnedKeys = pinnedKeys,
-        expectedServices = expectedServices,
-    )
-
-    /** The client's options, with the update client configured when release keys are pinned. */
-    public fun clientOptions(version: String, channel: String? = null): PolarisKeyClientOptions =
-        PolarisKeyClientOptions(
-            core = coreOptions(version, channel),
-            update = if (pinnedReleaseKeys.isEmpty()) null else UpdateClientOptions(pinnedReleaseKeys = pinnedReleaseKeys),
-        )
-}
-`;
-}
-var GODOT_SCRIPT_ID = "1";
-var GODOT_OPTIONS_SCRIPT = "res://addons/polaris_key/core/options.gd";
-function tresDict(map) {
-  const rows = Object.entries(map);
-  if (rows.length === 0) return "{}";
-  return `{
-${rows.map(([k, v]) => `${q(k)}: ${q(v)}`).join(",\n")}
-}`;
-}
-function godotOptionFields(facts) {
-  return [
-    ["product", q(facts.product)],
-    ["base_url", q(facts.baseUrl)],
-    ["pinned_trust_keys", tresDict(facts.pinnedKeys)],
-    ["pinned_release_keys", tresDict(facts.pinnedReleaseKeys)],
-    [
-      "expected_services",
-      `PackedStringArray(${facts.services.map(q).join(", ")})`
-    ]
-  ];
-}
-function renderGodot(facts) {
-  return [
-    `[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]`,
-    ``,
-    `[ext_resource type="Script" path="${GODOT_OPTIONS_SCRIPT}" id="${GODOT_SCRIPT_ID}"]`,
-    ``,
-    `[resource]`,
-    `script = ExtResource("${GODOT_SCRIPT_ID}")`,
-    ...godotOptionFields(facts).map(([k, v]) => `${k} = ${v}`),
-    ``
-  ].join("\n");
-}
-function tresValueEnd(src, from) {
-  let depth = 0;
-  let inStr = false;
-  for (let i = from; i < src.length; i++) {
-    const c = src[i];
-    if (inStr) {
-      if (c === "\\") i++;
-      else if (c === '"') inStr = false;
-    } else if (c === '"') inStr = true;
-    else if ("{[(".includes(c)) depth++;
-    else if ("}])".includes(c)) depth--;
-    else if (c === "\n" && depth <= 0) return i;
-  }
-  return src.length;
-}
-function mergeGodotOptions(existing, facts) {
-  const head = /^\[gd_resource [^\n]*\]/.exec(existing)?.[0] ?? "";
-  if (!head.includes('script_class="PKeyOptions"'))
-    throw new Error("it is not a PKeyOptions text resource");
-  const marker2 = /^\[resource\][ \t]*$/m.exec(existing);
-  if (!marker2) throw new Error("it has no [resource] section");
-  let pos = marker2.index + marker2[0].length;
-  let insertAt = pos;
-  const edits = [];
-  const owned = new Map(godotOptionFields(facts));
-  const seen = /* @__PURE__ */ new Set();
-  const gap = /(?:\s|;[^\n]*)*/y;
-  const prop = /([A-Za-z_][A-Za-z0-9_/]*)[ \t]*=[ \t]*/y;
-  for (; ; ) {
-    gap.lastIndex = pos;
-    gap.exec(existing);
-    pos = gap.lastIndex;
-    if (pos >= existing.length || existing[pos] === "[") break;
-    prop.lastIndex = pos;
-    const pm = prop.exec(existing);
-    if (!pm) throw new Error("it has a line that is not a property");
-    const end = tresValueEnd(existing, prop.lastIndex);
-    const key = pm[1];
-    const next = owned.get(key);
-    if (next !== void 0) {
-      seen.add(key);
-      edits.push({ from: prop.lastIndex, to: end, text: next });
-    }
-    insertAt = end;
-    pos = end;
-  }
-  const missing = [...owned].filter(([k]) => !seen.has(k));
-  if (missing.length > 0)
-    edits.push({
-      from: insertAt,
-      to: insertAt,
-      text: missing.map(([k, v]) => `
-${k} = ${v}`).join("")
-    });
-  let out = existing;
-  for (const e of edits.sort((a, b) => b.from - a.from))
-    out = out.slice(0, e.from) + e.text + out.slice(e.to);
-  return out;
-}
-function renderSdkConfig(lang, facts, opts = {}) {
-  const js = /\.(m?js|cjs)$/.test(opts.out ?? "");
-  switch (lang) {
-    case "node":
-      return renderNode(facts, js);
-    case "react":
-      return renderReact(facts, js);
-    case "python":
-      return renderPython(facts);
-    case "swift":
-      return renderSwift(facts);
-    case "kotlin": {
-      const pkg = opts.kotlinPackage ?? "polaris.generated";
-      if (!KOTLIN_PACKAGE_RE.test(pkg))
-        throw new Error(`--package must be a Kotlin package name; got ${pkg}.`);
-      return renderKotlin(facts, pkg);
-    }
-    case "godot":
-      return renderGodot(facts);
-  }
-}
-function isSdkLang(v) {
-  return SDK_LANGS.includes(v);
-}
-var SDK_IDS = [
-  "node",
-  "react",
-  "python",
-  "swift",
-  "kotlin",
-  "godot"
-];
-var DEFAULT_USAGE_CONTEXT = {
-  entitlement: "pro",
-  configKey: "audio.musicVolume",
-  configFallback: 0.8,
-  secretKey: "api.token",
-  mintRecipe: "cdn",
-  packId: "hd-textures",
-  commerceFlag: "dlc.hd",
-  appName: "tidewater",
-  appVersion: "1.4.2"
-};
-var SDK_LIBRARY_DOCS = {
-  node: "/docs/build/sdks/node/your-own-ui/",
-  react: "/docs/build/sdks/react/your-own-ui/",
-  python: "/docs/build/sdks/python/your-own-ui/",
-  swift: "/docs/build/sdks/swift/your-own-ui/",
-  kotlin: "/docs/build/sdks/kotlin/your-own-ui/",
-  godot: "/docs/build/sdks/godot/your-own-ui/"
-};
-var SDK_KIT_DOCS = {
-  node: "/docs/build/ui/frameworks/terminal-node/",
-  react: "/docs/build/ui/frameworks/react/",
-  python: "/docs/build/ui/frameworks/terminal-python/",
-  swift: "/docs/build/ui/frameworks/swiftui/",
-  kotlin: "/docs/build/ui/frameworks/compose/",
-  godot: "/docs/build/ui/frameworks/godot/"
-};
-var SERVER_DOCS = "/docs/build/servers/";
-var q2 = (v) => JSON.stringify(v);
-var py = (v) => typeof v === "boolean" ? v ? "True" : "False" : JSON.stringify(v);
-var tsType = (v) => typeof v;
-var lines2 = (...l) => l.join("\n");
-var NODE_HEAD = (c, imports = "PolarisKeyClient") => lines2(
-  `import { ${imports} } from "@polaris-key/node";`,
-  `import { polarisConfig } from "./polaris.config.js";`,
-  ``,
-  `const client = await PolarisKeyClient.create({`,
-  `  ...polarisConfig,`,
-  `  version: ${q2(c.appVersion)}, // your app's version`,
-  `});`
-);
-var NODE_LIBRARY = {
-  licensing: (c) => ({
-    title: "Gate on the license",
-    filename: "license.ts",
-    language: "ts",
-    code: lines2(
-      NODE_HEAD(c, "copy, PolarisKeyClient"),
-      ``,
-      `export async function activate(key: string): Promise<string | null> {`,
-      `  const r = await client.license.activateWithKey(key);`,
-      `  return r.kind === "ok" ? null : copy.activation(r.kind, { code: r.code });`,
-      `}`,
-      ``,
-      `await client.sync();`,
-      `if (!client.isLicensed()) console.log(copy.message(client.status().status));`,
-      `const pro = client.license.isEntitled(${q2(c.entitlement)});`,
-      `console.log(pro);`
-    )
-  }),
-  config: (c) => ({
-    title: "Read managed config",
-    filename: "config.ts",
-    language: "ts",
-    code: lines2(
-      NODE_HEAD(c),
-      ``,
-      `await client.sync();`,
-      `const value = client.config.getConfig(${q2(c.configKey)}, ${q2(c.configFallback)});`,
-      `const secret = client.config.getSecret(${q2(c.secretKey)});`,
-      `const minted = await client.config.mintToken(${q2(c.mintRecipe)});`,
-      `client.events.on("config", () => console.log("settings changed"));`,
-      `console.log(value, secret, minted);`
-    )
-  }),
-  identity: (c) => ({
-    title: "Sign in in the browser",
-    filename: "sign-in.ts",
-    language: "ts",
-    code: lines2(
-      NODE_HEAD(c),
-      ``,
-      `const result = await client.identity.signInWithBrowser({`,
-      `  deviceName: ${q2(`${c.appName} on this computer`)},`,
-      `  onPrompt: (p) => console.log(p.userCode, p.verificationUri),`,
-      `});`,
-      `if (result.status === "ready") {`,
-      `  const profile = client.license.getProfile();`,
-      `  console.log(profile?.name, profile?.email);`,
-      `}`
-    )
-  }),
-  update: (c) => ({
-    title: "Ask for an update",
-    filename: "update.ts",
-    language: "ts",
-    code: lines2(
-      NODE_HEAD(c),
-      ``,
-      `const { decision } = await client.update.decide();`,
-      `switch (decision.action) {`,
-      `  case "binary":`,
-      `  case "store":`,
-      `  case "platform":`,
-      `  case "code-ready":`,
-      `    console.log(decision.release.version);`,
-      `    break;`,
-      `  case "blocked":`,
-      `    console.log(decision.reason);`,
-      `    break;`,
-      `  default:`,
-      `    break; // "none" or "packs"`,
-      `}`
-    )
-  }),
-  packs: (c) => ({
-    title: "Install a content pack",
-    filename: "packs.ts",
-    language: "ts",
-    code: lines2(
-      NODE_HEAD(c),
-      ``,
-      `client.update.packs.on((progress) => console.log(progress));`,
-      `await client.update.packs.ensure([${q2(c.packId)}]);`,
-      `const dir = await client.update.packs.path(${q2(c.packId)}); // null until it runs`,
-      `console.log(dir);`
-    )
-  }),
-  sync: (c) => ({
-    title: "Save a setting the person keeps across devices",
-    filename: "settings.ts",
-    language: "ts",
-    status: "planned",
-    code: lines2(
-      NODE_HEAD(c),
-      ``,
-      `// A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
-      `// later: today the value stays on this device.`,
-      `const volume = client.config.setting<${tsType(c.configFallback)}>(${q2(c.configKey)});`,
-      `await volume.set(${q2(c.configFallback)});`,
-      `console.log(volume.get(${q2(c.configFallback)}));`
-    )
-  }),
-  commerce: (c) => ({
-    title: "Claim a store purchase",
-    filename: "commerce.ts",
-    language: "ts",
-    code: lines2(
-      NODE_HEAD(c),
-      ``,
-      `// Steam shown; claimAppStore and claimPlay take their store's fields.`,
-      `export async function claim(ticketHex: string, dlcAppId: string) {`,
-      `  const r = await client.commerce.claimSteam(ticketHex, dlcAppId);`,
-      `  if (r.kind !== "ok") return r.message;`,
-      `  return client.license.isEntitled(r.flag) ? "unlocked" : "pending";`,
-      `}`,
-      `console.log(client.license.isEntitled(${q2(c.commerceFlag)}));`
-    )
-  })
-};
-var NODE_KIT = {
-  licensing: (c) => ({
-    title: "Mount the Polaris Key verbs and gate a command",
-    filename: "cli.ts",
-    language: "ts",
-    code: lines2(
-      `import { Command } from "commander";`,
-      `import { PolarisKeyClient } from "@polaris-key/node";`,
-      `import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const program = new Command(${q2(c.appName)});`,
-      `registerPolarisCommands(`,
-      `  program,`,
-      `  // Spread the generated config: a factory built from the slug and pins alone drops baseUrl`,
-      `  // and the release keys, and its writes go to production.`,
-      `  (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }),`,
-      `  {`,
-      `    productSlug: polarisConfig.productSlug,`,
-      `    version: ${q2(c.appVersion)},`,
-      `    pinnedKeys: polarisConfig.trust.pinnedKeys,`,
-      `    expectedServices: polarisConfig.expectedServices,`,
-      `  },`,
-      `);`,
-      `program`,
-      `  .command("export")`,
-      `  .action(requireLicense(() => console.log("exported"), { entitlement: ${q2(c.entitlement)} }));`,
-      `await program.parseAsync();`
-    )
-  })
-};
-var NODE_ELECTRON = {
-  licensing: () => ({
-    title: "Own the client in the main process",
-    filename: "main.ts",
-    language: "ts",
-    code: lines2(
-      `import { app, ipcMain, safeStorage } from "electron";`,
-      `import { PolarisKeyClient } from "@polaris-key/node";`,
-      `import {`,
-      `  exposePolarisBridge,`,
-      `  SafeStorageStore,`,
-      `} from "@polaris-key/node/electron";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `// Do not await whenReady() at the top level: a CommonJS main has no top-level await.`,
-      `void app.whenReady().then(async () => {`,
-      `  const client = await PolarisKeyClient.create({`,
-      `    ...polarisConfig,`,
-      `    store: new SafeStorageStore(`,
-      `      polarisConfig.productSlug,`,
-      `      app.getPath("userData"),`,
-      `      { safeStorage },`,
-      `    ),`,
-      `  });`,
-      `  exposePolarisBridge(client, {`,
-      `    ipcMain,`,
-      `    allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,`,
-      `  });`,
-      `});`
-    )
-  })
-};
-var NODE_SERVER = {
-  licensing: (c) => ({
-    title: "Verify a license your app sends",
-    filename: "verify.ts",
-    language: "ts",
-    code: lines2(
-      `import { verifyLicenseDocument } from "@polaris-key/server";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `// The app sends its cached license document and its device id with the request.`,
-      `export async function allowed(jws: string, deviceId: string): Promise<boolean> {`,
-      `  const v = await verifyLicenseDocument(jws, {`,
-      `    trust: polarisConfig.trust.pinnedKeys,`,
-      `    product: polarisConfig.productSlug,`,
-      `    deviceId,`,
-      `  });`,
-      `  return v.ok && v.usable && v.isEntitled(${q2(c.entitlement)});`,
-      `}`
-    )
-  })
-};
-var NODE_EXPRESS = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "app.ts",
-    language: "ts",
-    code: lines2(
-      `import express from "express";`,
-      `import { polarisKey, requireEntitlement } from "@polaris-key/server/express";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const app = express();`,
-      `app.use(polarisKey({ config: polarisConfig }));`,
-      ``,
-      `app.get("/api/pro", requireEntitlement(${q2(c.entitlement)}), (_req, res) => {`,
-      `  res.json({ ok: true });`,
-      `});`,
-      ``,
-      `app.listen(3000);`
-    )
-  }),
-  identity: () => ({
-    title: "Read the signed-in account",
-    filename: "app.ts",
-    language: "ts",
-    code: lines2(
-      `import express from "express";`,
-      `import {`,
-      `  getPolarisAuth,`,
-      `  polarisKey,`,
-      `  requireSignIn,`,
-      `} from "@polaris-key/server/express";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const app = express();`,
-      `app.use(polarisKey({ config: polarisConfig }));`,
-      ``,
-      `app.get("/api/me", requireSignIn(), (req, res) => {`,
-      `  res.json({ subject: getPolarisAuth(req).user?.subject });`,
-      `});`,
-      ``,
-      `app.listen(3000);`
-    )
-  })
-};
-var NODE_HONO = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "app.ts",
-    language: "ts",
-    code: lines2(
-      `import { Hono } from "hono";`,
-      `import {`,
-      `  polarisKey,`,
-      `  requireEntitlement,`,
-      `  type PolarisEnv,`,
-      `} from "@polaris-key/server/hono";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const app = new Hono<PolarisEnv>();`,
-      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
-      ``,
-      `app.get("/api/pro", requireEntitlement(${q2(c.entitlement)}), (c) =>`,
-      `  c.json({ tier: c.var.polaris.license.tier }),`,
-      `);`,
-      ``,
-      `export default app;`
-    )
-  }),
-  identity: () => ({
-    title: "Read the signed-in account",
-    filename: "app.ts",
-    language: "ts",
-    code: lines2(
-      `import { Hono } from "hono";`,
-      `import {`,
-      `  polarisKey,`,
-      `  requireSignIn,`,
-      `  type PolarisEnv,`,
-      `} from "@polaris-key/server/hono";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const app = new Hono<PolarisEnv>();`,
-      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
-      ``,
-      `app.get("/api/me", requireSignIn(), (c) =>`,
-      `  c.json({ subject: c.var.polaris.user?.subject }),`,
-      `);`,
-      ``,
-      `export default app;`
-    )
-  })
-};
-var NODE_NEXT = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "app/api/pro/route.ts",
-    language: "ts",
-    code: lines2(
-      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
-      ``,
-      `export const GET = polaris.requireEntitlement(`,
-      `  ${q2(c.entitlement)},`,
-      `  async (_req, { license }) => Response.json({ tier: license.tier }),`,
-      `);`
-    )
-  }),
-  identity: () => ({
-    title: "Read the signed-in account",
-    filename: "app/api/me/route.ts",
-    language: "ts",
-    code: lines2(
-      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
-      ``,
-      `export const GET = polaris.requireSignIn(async (_req, { user }) =>`,
-      `  Response.json({ subject: user?.subject }),`,
-      `);`
-    )
-  })
-};
-var REACT_KIT = {
-  licensing: () => ({
-    title: "Wrap the app in the gate",
-    filename: "App.tsx",
-    language: "tsx",
-    code: lines2(
-      `import type { ReactNode } from "react";`,
-      `import { PolarisKeyProvider } from "@polaris-key/react";`,
-      `import { PolarisKeyGate } from "@polaris-key/react/kit";`,
-      `import { polarisKey as productPolarisKey } from "./polaris.config";`,
-      ``,
-      `const polarisKey = { ...productPolarisKey, version: "1.4.2" }; // your app's version`,
-      ``,
-      `export function App({ children }: { children: ReactNode }) {`,
-      `  return (`,
-      `    <PolarisKeyProvider config={polarisKey}>`,
-      `      <PolarisKeyGate>{children}</PolarisKeyGate>`,
-      `    </PolarisKeyProvider>`,
-      `  );`,
-      `}`
-    )
-  })
-};
-var REACT_LIBRARY = {
-  licensing: (c) => ({
-    title: "Gate on the license",
-    filename: "Gate.tsx",
-    language: "tsx",
-    code: lines2(
-      `import type { ReactNode } from "react";`,
-      `import { copyMessage, useEntitlement, useLicenseGate } from "@polaris-key/react";`,
-      ``,
-      `// Inside <PolarisKeyProvider config={polarisKey}>.`,
-      `export function Gate({ children }: { children: ReactNode }) {`,
-      `  const { screen, status } = useLicenseGate();`,
-      `  if (screen === "loading") return <p role="status">Loading…</p>;`,
-      `  if (screen === "ok" || screen === "not-applicable" || screen === "grace")`,
-      `    return <>{children}</>;`,
-      `  return <p role="alert">{copyMessage(status)}</p>;`,
-      `}`,
-      ``,
-      `export function ProOnly({ children }: { children: ReactNode }) {`,
-      `  return useEntitlement(${q2(c.entitlement)}) ? <>{children}</> : <p>Upgrade to use this.</p>;`,
-      `}`
-    )
-  }),
-  config: (c) => ({
-    title: "Read and set a managed setting",
-    filename: "Volume.tsx",
-    language: "tsx",
-    code: lines2(
-      `import { useConfigSetting } from "@polaris-key/react";`,
-      ``,
-      `export function Volume() {`,
-      `  const volume = useConfigSetting<${tsType(c.configFallback)}>(${q2(c.configKey)}, ${q2(c.configFallback)});`,
-      `  return (`,
-      `    <button disabled={volume.locked} onClick={() => void volume.set(${q2(c.configFallback)})}>`,
-      `      {String(volume.value)} ({volume.source})`,
-      `    </button>`,
-      `  );`,
-      `}`
-    )
-  }),
-  identity: () => ({
-    title: "Sign in",
-    filename: "SignIn.tsx",
-    language: "tsx",
-    code: lines2(
-      `import { describeError, usePolarisAuth } from "@polaris-key/react";`,
-      ``,
-      `export function SignIn() {`,
-      `  const auth = usePolarisAuth();`,
-      `  if (!auth.supportsOidcLogin) return null;`,
-      `  return (`,
-      `    <>`,
-      `      <button disabled={auth.busy} onClick={() => void auth.signInWithOidc()}>`,
-      `        Sign in`,
-      `      </button>`,
-      `      {auth.error && <p role="alert">{describeError(auth.error)}</p>}`,
-      `    </>`,
-      `  );`,
-      `}`
-    )
-  }),
-  update: () => ({
-    title: "Show an update offer",
-    filename: "UpdateBanner.tsx",
-    language: "tsx",
-    code: lines2(
-      `import { useUpdateDecision } from "@polaris-key/react";`,
-      ``,
-      `export function UpdateBanner() {`,
-      `  const { decision, undismissable } = useUpdateDecision();`,
-      `  if (!decision || decision.action === "none" || decision.action === "packs")`,
-      `    return null;`,
-      `  if (decision.action === "blocked")`,
-      `    return <p role="alert">{decision.reason}</p>;`,
-      `  return (`,
-      `    <p role={undismissable ? "alert" : "status"}>`,
-      `      Version {decision.release.version} is available.`,
-      `    </p>`,
-      `  );`,
-      `}`
-    )
-  })
-};
-var PY_HEAD = (c, imports = "PolarisKeyClient") => lines2(
-  `from polaris_key import ${imports}`,
-  ``,
-  `import polaris_config`,
-  ``,
-  `client = PolarisKeyClient.create(**polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`
-);
-var PY_LIBRARY = {
-  licensing: (c) => ({
-    title: "Gate on the license",
-    filename: "license.py",
-    language: "python",
-    code: lines2(
-      `from typing import Optional`,
-      ``,
-      `from polaris_key import ActivationOk, PolarisKeyClient`,
-      `from polaris_key.copy import activation_message`,
-      ``,
-      `import polaris_config`,
-      ``,
-      `client = PolarisKeyClient.create(**polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
-      ``,
-      ``,
-      `def activate(key: str) -> Optional[str]:`,
-      `    """None when activated, else what to show."""`,
-      `    r = client.license.activate_with_key(key)`,
-      `    return None if isinstance(r, ActivationOk) else activation_message(r.kind, code=r.code)`,
-      ``,
-      ``,
-      `client.sync()`,
-      `if not client.is_licensed():`,
-      `    print(client.status().status)`,
-      `pro = client.license.is_entitled(${q2(c.entitlement)})`
-    )
-  }),
-  config: (c) => ({
-    title: "Read managed config",
-    filename: "config.py",
-    language: "python",
-    code: lines2(
-      PY_HEAD(c),
-      ``,
-      `client.sync()`,
-      `value = client.config.get_config(${q2(c.configKey)}, ${py(c.configFallback)})`,
-      `secret = client.config.get_secret(${q2(c.secretKey)})`,
-      `minted = client.config.mint_token(${q2(c.mintRecipe)})`,
-      `client.config.on_change(${q2(c.configKey)}, lambda v: print("changed", v))`,
-      `print(value, secret, minted)`
-    )
-  }),
-  identity: (c) => ({
-    title: "Sign in in the browser",
-    filename: "sign_in.py",
-    language: "python",
-    code: lines2(
-      PY_HEAD(c),
-      ``,
-      `result = client.identity.sign_in_with_browser(device_name=${q2(`${c.appName} on this computer`)})`,
-      `if result.status == "ready":`,
-      `    profile = client.license.get_profile()`,
-      `    print(profile.name if profile else "Signed in")`
-    )
-  }),
-  update: (c) => ({
-    title: "Ask for an update",
-    filename: "update.py",
-    language: "python",
-    code: lines2(
-      PY_HEAD(c),
-      ``,
-      `d = client.update.decide().decision`,
-      `if d.action == "blocked":`,
-      `    print("Update required", d.reason)`,
-      `elif d.action not in ("none", "packs") and d.release:`,
-      `    print(d.release.version, "is available")`
-    )
-  }),
-  packs: (c) => ({
-    title: "Install a content pack",
-    filename: "packs.py",
-    language: "python",
-    code: lines2(
-      PY_HEAD(c),
-      ``,
-      `installs = client.update.packs.ensure([${q2(c.packId)}])`,
-      `print(installs)`
-    )
-  }),
-  sync: (c) => ({
-    title: "Save a setting the person keeps across devices",
-    filename: "settings.py",
-    language: "python",
-    status: "planned",
-    code: lines2(
-      PY_HEAD(c),
-      ``,
-      `# A catalog key with a \`user.sync\` block roams once the person signs in. The routes ship`,
-      `# later: today the value stays on this device.`,
-      `volume = client.config.setting(${q2(c.configKey)}, ${py(c.configFallback)})`,
-      `volume.set(${py(c.configFallback)})`,
-      `print(volume.value)`
-    )
-  }),
-  commerce: (c) => ({
-    title: "Claim a store purchase",
-    filename: "commerce.py",
-    language: "python",
-    code: lines2(
-      PY_HEAD(c),
-      ``,
-      `# Steam shown; claim_app_store and claim_play take their store's fields.`,
-      `def claim(ticket_hex: str, dlc_app_id: str) -> str:`,
-      `    r = client.commerce.claim_steam(ticket_hex, dlc_app_id)`,
-      `    return "unlocked" if client.license.is_entitled(${q2(c.commerceFlag)}) else str(r)`
-    )
-  })
-};
-var PY_KIT = {
-  licensing: (c) => ({
-    title: "Mount the Polaris Key verbs and gate a command",
-    filename: "cli.py",
-    language: "python",
-    code: lines2(
-      `import argparse`,
-      ``,
-      `from polaris_key.cli import register_argparse, require_license`,
-      ``,
-      `import polaris_config`,
-      ``,
-      ``,
-      `@require_license(entitlement=${q2(c.entitlement)})`,
-      `def export(args: argparse.Namespace) -> int:`,
-      `    print("exported")`,
-      `    return 0`,
-      ``,
-      ``,
-      `parser = argparse.ArgumentParser(prog=${q2(c.appName)})`,
-      `sub = parser.add_subparsers(dest="command", required=True)`,
-      `register_argparse(`,
-      `    sub,`,
-      `    config=polaris_config.CONFIG,`,
-      `    version=${q2(c.appVersion)},  # your app's version`,
-      `)`,
-      `sub.add_parser("export", help="Export a mix.").set_defaults(func=export)`,
-      `args = parser.parse_args()`,
-      `raise SystemExit(args.func(args))`
-    )
-  })
-};
-var SWIFT_KIT = {
-  licensing: (c) => ({
-    title: "Gate the app",
-    filename: "MyApp.swift",
-    language: "swift",
-    code: lines2(
-      `import PolarisKey`,
-      `import PolarisKeyUI`,
-      `import SwiftUI`,
-      ``,
-      `@main`,
-      `struct MyApp: App {`,
-      `    @State private var client: PolarisKeyClient?`,
-      ``,
-      `    var body: some Scene {`,
-      `        WindowGroup {`,
-      `            if let client {`,
-      `                ContentView().polarisKeyGate(client)`,
-      `            } else {`,
-      `                ProgressView().task {`,
-      `                    client = try? await PolarisKeyClient.create(`,
-      `                        options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
-      `                }`,
-      `            }`,
-      `        }`,
-      `    }`,
-      `}`
-    )
-  })
-};
-var SWIFT_LIBRARY = {
-  licensing: (c) => ({
-    title: "Gate on the license",
-    filename: "License.swift",
-    language: "swift",
-    code: lines2(
-      `import PolarisKey`,
-      ``,
-      `let client = try await PolarisKeyClient.create(`,
-      `    options: PolarisConfig.clientOptions(version: ${q2(c.appVersion)}))`,
-      `_ = await client.sync()`,
-      `if await !client.isLicensed() {`,
-      `    let result = await client.activate(key: userEnteredKey)`,
-      `    print(result)`,
-      `}`
-    )
-  })
-};
-var KOTLIN_KIT = {
-  licensing: () => ({
-    title: "Gate the app",
-    filename: "MainActivity.kt",
-    language: "kotlin",
-    code: lines2(
-      `import android.os.Bundle`,
-      `import androidx.activity.ComponentActivity`,
-      `import androidx.activity.compose.setContent`,
-      `import androidx.compose.material3.MaterialTheme`,
-      `import androidx.compose.material3.Text`,
-      `import im.plrs.key.ui.PolarisKeyApp`,
-      ``,
-      `class MainActivity : ComponentActivity() {`,
-      `    override fun onCreate(savedInstanceState: Bundle?) {`,
-      `        super.onCreate(savedInstanceState)`,
-      `        setContent {`,
-      `            MaterialTheme {`,
-      `                PolarisKeyApp(client, signIn = true) { Text("Licensed") }`,
-      `            }`,
-      `        }`,
-      `    }`,
-      `}`
-    )
-  })
-};
-var KOTLIN_LIBRARY = {
-  licensing: (c) => ({
-    title: "Gate on the license",
-    filename: "License.kt",
-    language: "kotlin",
-    code: lines2(
-      `import com.acme.polaris.PolarisConfig`,
-      `import im.plrs.key.desktop.PolarisKeyDesktop`,
-      ``,
-      `suspend fun start() {`,
-      `    val client = PolarisKeyDesktop.create(PolarisConfig.clientOptions(${q2(c.appVersion)}))`,
-      `    println(client.status())`,
-      `    client.close() // ends the client's threads so a JVM main can exit`,
-      `}`
-    )
-  })
-};
-var GODOT_KIT = {
-  licensing: () => ({
-    title: "Boot Polaris Key before the first scene",
-    filename: "boot.gd",
-    language: "gdscript",
-    code: lines2(
-      `extends Node`,
-      ``,
-      ``,
-      `func _ready() -> void:`,
-      `	await PolarisKey.boot()  # reads res://polaris_key.tres`,
-      `	get_tree().change_scene_to_file("res://game/title.tscn")`
-    )
-  })
-};
-var GODOT_LIBRARY = {
-  licensing: () => ({
-    title: "React to the license state",
-    filename: "gate.gd",
-    language: "gdscript",
-    code: lines2(
-      `extends Node`,
-      ``,
-      ``,
-      `func _ready() -> void:`,
-      `	PolarisKey.state_changed.connect(_on_state_changed)`,
-      ``,
-      ``,
-      `func _on_state_changed(state: Dictionary) -> void:`,
-      `	var screen := PKeyGateController.screen_for(String(state["status"]))`,
-      `	print(screen)  # usable, grace, activation, revoked, expired, ...`
-    )
-  })
-};
-var PY_FASTAPI = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "main.py",
-    language: "python",
-    code: lines2(
-      `from typing import Annotated, Dict`,
-      ``,
-      `from fastapi import Depends, FastAPI`,
-      ``,
-      `import polaris_config`,
-      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
-      ``,
-      `app = FastAPI()`,
-      `polaris = PolarisKey(config=polaris_config)`,
-      `polaris.install(app)`,
-      ``,
-      ``,
-      `@app.get("/api/pro")`,
-      `def pro(`,
-      `    auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement(${q2(c.entitlement)}))],`,
-      `) -> Dict[str, bool]:`,
-      `    return {"ok": True}`
-    )
-  }),
-  identity: () => ({
-    title: "Read the signed-in account",
-    filename: "main.py",
-    language: "python",
-    code: lines2(
-      `from typing import Annotated, Dict, Optional`,
-      ``,
-      `from fastapi import Depends, FastAPI`,
-      ``,
-      `import polaris_config`,
-      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
-      ``,
-      `app = FastAPI()`,
-      `polaris = PolarisKey(config=polaris_config)`,
-      `polaris.install(app)`,
-      ``,
-      ``,
-      `@app.get("/api/me")`,
-      `def me(auth: Annotated[PolarisAuth, Depends(polaris.require_sign_in())]) -> Dict[str, Optional[str]]:`,
-      `    return {"subject": auth.user.subject if auth.user else None}`
-    )
-  })
-};
-var PY_STARLETTE = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "app.py",
-    language: "python",
-    code: lines2(
-      `from starlette.applications import Starlette`,
-      `from starlette.requests import Request`,
-      `from starlette.responses import JSONResponse`,
-      `from starlette.routing import Route`,
-      ``,
-      `import polaris_config`,
-      `from polaris_key.server.starlette import PolarisKey, get_polaris_license`,
-      ``,
-      `polaris = PolarisKey(config=polaris_config)`,
-      ``,
-      ``,
-      `@polaris.require_entitlement(${q2(c.entitlement)})`,
-      `async def pro(request: Request) -> JSONResponse:`,
-      `    return JSONResponse({"tier": get_polaris_license(request).tier})`,
-      ``,
-      ``,
-      `app = Starlette(routes=[Route("/api/pro", pro)])`,
-      `polaris.install(app)`
-    )
-  })
-};
-var PY_FLASK = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "app.py",
-    language: "python",
-    code: lines2(
-      `from typing import Any, Dict`,
-      ``,
-      `from flask import Flask`,
-      ``,
-      `import polaris_config`,
-      `from polaris_key.server.flask import PolarisKey, get_polaris_license`,
-      ``,
-      `app = Flask(__name__)`,
-      `polaris = PolarisKey(config=polaris_config)`,
-      `polaris.init_app(app)`,
-      ``,
-      ``,
-      `@app.get("/api/pro")`,
-      `@polaris.require_entitlement(${q2(c.entitlement)})`,
-      `def pro() -> Dict[str, Any]:`,
-      `    return {"tier": get_polaris_license().tier}`
-    )
-  })
-};
-var PY_DJANGO = {
-  licensing: (c) => ({
-    title: "Gate a view with the license",
-    filename: "views.py",
-    language: "python",
-    code: lines2(
-      `from typing import Any`,
-      ``,
-      `from django.http import HttpRequest, JsonResponse`,
-      ``,
-      `from polaris_key.server.django import get_polaris_license, require_entitlement`,
-      ``,
-      `# settings.py: add "polaris_key.server.django.PolarisKeyMiddleware" to MIDDLEWARE, and`,
-      `# POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
-      ``,
-      ``,
-      `@require_entitlement(${q2(c.entitlement)})`,
-      `def pro(request: HttpRequest) -> Any:`,
-      `    return JsonResponse({"tier": get_polaris_license(request).tier})`
-    )
-  })
-};
-var PY_DRF = {
-  licensing: (c) => ({
-    title: "Gate a view with the license",
-    filename: "views.py",
-    language: "python",
-    code: lines2(
-      `from typing import Any`,
-      ``,
-      `from rest_framework.response import Response`,
-      `from rest_framework.views import APIView`,
-      ``,
-      `from polaris_key.server.drf import PolarisKeyAuthentication, get_polaris_license, has_entitlement`,
-      ``,
-      `# settings.py: REST_FRAMEWORK = {"EXCEPTION_HANDLER": "polaris_key.server.drf.exception_handler"}`,
-      `# and POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
-      ``,
-      ``,
-      `class ProView(APIView):`,
-      `    authentication_classes = [PolarisKeyAuthentication]`,
-      `    permission_classes = [has_entitlement(${q2(c.entitlement)})]`,
-      ``,
-      `    def get(self, request: Any) -> Response:`,
-      `        return Response({"tier": get_polaris_license(request).tier})`
-    )
-  })
-};
-var KOTLIN_KTOR = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "Application.kt",
-    language: "kotlin",
-    code: lines2(
-      `import com.acme.polaris.PolarisConfig`,
-      `import im.plrs.key.server.ktor.polarisKey`,
-      `import im.plrs.key.server.ktor.requireEntitlement`,
-      `import io.ktor.server.application.Application`,
-      `import io.ktor.server.application.install`,
-      `import io.ktor.server.auth.Authentication`,
-      `import io.ktor.server.response.respondText`,
-      `import io.ktor.server.routing.get`,
-      `import io.ktor.server.routing.routing`,
-      ``,
-      `fun Application.module() {`,
-      `    install(Authentication) {`,
-      `        polarisKey {`,
-      `            product(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)`,
-      `        }`,
-      `    }`,
-      `    routing {`,
-      `        requireEntitlement(${q2(c.entitlement)}) {`,
-      `            get("/api/pro") { call.respondText("ok") }`,
-      `        }`,
-      `    }`,
-      `}`
-    )
-  })
-};
-var KOTLIN_SPRING = {
-  licensing: (c) => ({
-    title: "Gate a route with the license",
-    filename: "SecurityConfig.kt",
-    language: "kotlin",
-    code: lines2(
-      `import im.plrs.key.server.spring.PolarisKey`,
-      `import im.plrs.key.server.spring.polarisKey`,
-      `import org.springframework.context.annotation.Bean`,
-      `import org.springframework.context.annotation.Configuration`,
-      `import org.springframework.security.config.annotation.web.builders.HttpSecurity`,
-      `import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity`,
-      `import org.springframework.security.web.SecurityFilterChain`,
-      ``,
-      `@Configuration(proxyBeanMethods = false)`,
-      `@EnableWebSecurity`,
-      `class SecurityConfig {`,
-      `    @Bean`,
-      `    fun api(http: HttpSecurity): SecurityFilterChain {`,
-      `        http.csrf { it.disable() }`,
-      `        http.polarisKey()`,
-      `        http.authorizeHttpRequests {`,
-      `            it.requestMatchers("/health").permitAll()`,
-      `                .requestMatchers("/api/pro").access(PolarisKey.entitlement(${q2(c.entitlement)}))`,
-      `                .anyRequest().denyAll()`,
-      `        }`,
-      `        return http.build()`,
-      `    }`,
-      `}`
-    )
-  })
-};
-var NODE_YARGS = {
-  licensing: (c) => ({
-    title: "Mount the Polaris Key verbs and gate a command",
-    filename: "cli.ts",
-    language: "ts",
-    code: lines2(
-      `import yargs from "yargs";`,
-      `import { hideBin } from "yargs/helpers";`,
-      `import { requireLicense } from "@polaris-key/node/cli";`,
-      `import { registerPolarisCommands } from "@polaris-key/node/cli/yargs";`,
-      `import { polarisConfig } from "./polaris.config.js";`,
-      ``,
-      `const cli = yargs(hideBin(process.argv)).scriptName(${q2(c.appName)});`,
-      `registerPolarisCommands(cli, { config: polarisConfig, version: ${q2(c.appVersion)} });`,
-      `cli.command(`,
-      `  "export",`,
-      `  "Export a mix",`,
-      `  {},`,
-      `  requireLicense(() => console.log("exported"), { entitlement: ${q2(c.entitlement)} }),`,
-      `);`,
-      `await cli.parseAsync();`
-    )
-  })
-};
-var PY_CLICK = {
-  licensing: (c) => ({
-    title: "Mount the Polaris Key verbs and gate a command",
-    filename: "cli.py",
-    language: "python",
-    code: lines2(
-      `import click`,
-      ``,
-      `from polaris_key.cli import register_click, require_license`,
-      ``,
-      `import polaris_config`,
-      ``,
-      ``,
-      `@click.group()`,
-      `def cli() -> None:`,
-      `    pass`,
-      ``,
-      ``,
-      `@cli.command()`,
-      `@click.option("--json", "as_json", is_flag=True, help="Machine-readable refusal.")`,
-      `@require_license(entitlement=${q2(c.entitlement)})`,
-      `def export(as_json: bool) -> None:`,
-      `    click.echo("exported")`,
-      ``,
-      ``,
-      `register_click(cli, config=polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
-      ``,
-      `if __name__ == "__main__":`,
-      `    cli()`
-    )
-  })
-};
-var PY_TYPER = {
-  licensing: (c) => ({
-    title: "Mount the Polaris Key verbs and gate a command",
-    filename: "cli.py",
-    language: "python",
-    code: lines2(
-      `import typer`,
-      ``,
-      `from polaris_key.cli import register_typer, require_license`,
-      ``,
-      `import polaris_config`,
-      ``,
-      `app = typer.Typer()`,
-      ``,
-      ``,
-      `@app.command()`,
-      `@require_license(entitlement=${q2(c.entitlement)})`,
-      `def export(as_json: bool = typer.Option(False, "--json", help="Machine-readable refusal.")) -> None:`,
-      `    typer.echo("exported")`,
-      ``,
-      ``,
-      `register_typer(app, config=polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
-      ``,
-      `if __name__ == "__main__":`,
-      `    app()`
-    )
-  })
-};
-var TABLE = {
-  node: {
-    kit: {
-      _: NODE_KIT,
-      commander: NODE_KIT,
-      yargs: NODE_YARGS,
-      electron: NODE_ELECTRON
-    },
-    library: { _: NODE_LIBRARY },
-    server: {
-      _: NODE_SERVER,
-      express: NODE_EXPRESS,
-      hono: NODE_HONO,
-      next: NODE_NEXT
-    }
-  },
-  react: { kit: { _: REACT_KIT }, library: { _: REACT_LIBRARY } },
-  python: {
-    kit: { _: PY_KIT, argparse: PY_KIT, click: PY_CLICK, typer: PY_TYPER },
-    library: { _: PY_LIBRARY },
-    server: {
-      fastapi: PY_FASTAPI,
-      starlette: PY_STARLETTE,
-      flask: PY_FLASK,
-      django: PY_DJANGO,
-      drf: PY_DRF
-    }
-  },
-  swift: { kit: { _: SWIFT_KIT }, library: { _: SWIFT_LIBRARY } },
-  kotlin: {
-    kit: { _: KOTLIN_KIT },
-    library: { _: KOTLIN_LIBRARY },
-    server: { ktor: KOTLIN_KTOR, spring: KOTLIN_SPRING }
-  },
-  godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } }
-};
-var COMPILED_SDKS = /* @__PURE__ */ new Set(["node", "react", "python"]);
-function usageFrameworks(sdk, lane) {
-  return Object.keys(TABLE[sdk]?.[lane] ?? {}).filter((f) => f !== "_");
-}
-function renderUsage(feature, sdk, lane, framework = null, ctx = {}) {
-  const group = TABLE[sdk]?.[lane];
-  if (!group) return null;
-  const features = group[framework ?? "_"];
-  const make = features?.[feature];
-  if (!make) return null;
-  const made = make({ ...DEFAULT_USAGE_CONTEXT, ...ctx });
-  const docs = lane === "server" ? framework ? `${SERVER_DOCS}${framework}/` : SERVER_DOCS : lane === "kit" ? SDK_KIT_DOCS[sdk] : SDK_LIBRARY_DOCS[sdk];
-  return {
-    id: `${feature}.${sdk}.${lane}${framework ? `.${framework}` : ""}`,
-    feature,
-    sdk,
-    lane,
-    framework,
-    title: made.title,
-    filename: made.filename,
-    language: made.language,
-    code: `${made.code}
-`,
-    docs,
-    status: made.status ?? "available",
-    compiled: made.compiled ?? COMPILED_SDKS.has(sdk)
-  };
-}
-var SDK_REGISTRY_ORIGIN = "https://pkg.plrs.im";
-var DEFAULT_BASE_URL2 = "https://key.plrs.im";
-var FEED_OWNER = "polaris-key";
-var INSTALL = {
-  node: {
-    ecosystem: "npm",
-    namespace: { scope: "@polaris-key" },
-    name: "@polaris-key/node",
-    snippets: ["npmrc", "install"]
-  },
-  react: {
-    ecosystem: "npm",
-    namespace: { scope: "@polaris-key" },
-    name: "@polaris-key/react",
-    snippets: ["npmrc", "install"]
-  },
-  python: {
-    ecosystem: "pypi",
-    namespace: { names: ["polaris-key"], prefixes: [] },
-    name: "polaris-key",
-    snippets: ["uv", "pip"]
-  },
-  swift: {
-    ecosystem: "swift",
-    namespace: { scope: "polaris-key" },
-    name: "polaris-key.PolarisKey",
-    snippets: ["registries-json", "package-swift", "xcode"]
-  },
-  kotlin: {
-    ecosystem: "maven",
-    namespace: { groupPrefixes: ["im.plrs.key"] },
-    name: "im.plrs.key:polaris-key-sdk",
-    snippets: ["gradle", "gradle-dependency"]
-  },
-  godot: {
-    ecosystem: "godot",
-    namespace: { publisher: "polaris-key" },
-    name: "polaris_key",
-    snippets: ["editor-4.7", "editor-4.6"]
-  }
-};
-var SERVER_INSTALL = {
-  ...INSTALL.node,
-  name: "@polaris-key/server"
-};
-function sdkInstall(sdk, host = "app") {
-  const spec = sdk === "node" && host === "server" ? SERVER_INSTALL : INSTALL[sdk];
-  const all = renderFeedSetup(spec.ecosystem, {
-    origin: SDK_REGISTRY_ORIGIN,
-    owner: FEED_OWNER,
-    namespace: spec.namespace,
-    package: { name: spec.name }
-  });
-  return spec.snippets.flatMap((id) => all.filter((s) => s.id === id));
-}
-function sdkInstallNote(sdk, host = "app", framework = null) {
-  if (host === "server") {
-    if (sdk === "python")
-      return `Install the extra for your framework: polaris-key[${framework ?? "fastapi"}].`;
-    if (sdk === "kotlin")
-      return framework === "spring" ? "Add im.plrs.key:polaris-key-spring-boot-starter from the same feed." : "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
-  }
-  if (sdk === "godot")
-    return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";
-  return null;
-}
-var CONFIG_LANGUAGE = {
-  node: "ts",
-  react: "ts",
-  python: "python",
-  swift: "swift",
-  kotlin: "kotlin",
-  godot: "gdscript"
-};
-var PLACEHOLDER_PIN = {
-  kid: "<kid>",
-  publicKey: "<public key>"
-};
-function startFor(sdk, fit, ctx) {
-  const framework = sdk === "node" && fit.target === "electron" ? "electron" : fit.framework ?? null;
-  const library = renderUsage("licensing", sdk, "library", null, ctx);
-  let start = null;
-  if (fit.host === "server") {
-    start = renderUsage("licensing", sdk, "server", framework, ctx) ?? renderUsage("licensing", sdk, "server", null, ctx) ?? renderUsage(
-      "licensing",
-      sdk,
-      "server",
-      usageFrameworks(sdk, "server")[0] ?? null,
-      ctx
-    ) ?? library;
-  } else {
-    start = renderUsage("licensing", sdk, "kit", framework, ctx) ?? renderUsage("licensing", sdk, "kit", null, ctx) ?? library;
-  }
-  if (!start) throw new Error(`renderSdkSetup: no start block for ${sdk}`);
-  return { start, headless: library && library !== start ? library : null };
-}
-function renderSdkSetup(sdk, o) {
-  if (!SDK_IDS.includes(sdk))
-    throw new Error(`renderSdkSetup: unknown SDK ${String(sdk)}`);
-  const origin = (o.origin ?? DEFAULT_BASE_URL2).replace(/\/+$/, "");
-  const pins = o.pins.length > 0 ? o.pins : [PLACEHOLDER_PIN];
-  const facts = {
-    product: o.slug,
-    baseUrl: origin,
-    discoveryUrl: `${origin}/${o.slug}/.well-known/polaris.json`,
-    pinnedKeys: Object.fromEntries(pins.map((p) => [p.kid, p.publicKey])),
-    pinnedReleaseKeys: Object.fromEntries(
-      (o.releaseKeys ?? []).map((p) => [p.kid, p.publicKey])
-    ),
-    services: [...o.services]
-  };
-  const lang = sdk;
-  const out = SDK_CONFIG_DEFAULT_OUT[lang];
-  const code = renderSdkConfig(lang, facts, {
-    out,
-    ...o.kotlinPackage ? { kotlinPackage: o.kotlinPackage } : {}
-  });
-  const fit = o.fit ?? { host: "app", target: null, framework: null };
-  const { start, headless } = startFor(sdk, fit, o.usage ?? {});
-  const warnings = [];
-  if (o.pins.length === 0)
-    warnings.push(
-      "This product has no signing key yet. Create one in the console, then copy the file again."
-    );
-  if (o.services.includes("update") && (o.releaseKeys ?? []).length === 0)
-    warnings.push(
-      "Update is on but no release key is pinned, so the app refuses every release. Run pkey sdk in the product repo: it reads the keys from .pkey/release."
-    );
-  return {
-    sdk,
-    install: sdkInstall(sdk, fit.host),
-    installNote: sdkInstallNote(sdk, fit.host, fit.framework ?? null),
-    config: { filename: out, language: CONFIG_LANGUAGE[sdk], code },
-    start,
-    headless,
-    warnings
-  };
-}
-
 // src/sdkConfig.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 var SDK_CONFIG_USAGE = "Usage: pkey sdk --lang node|react|python|swift|kotlin|godot --product <slug> [--base-url <url>]\n                [--write] [--out <path>] [--force] [--kid <kid> --public-key <key>]\n                [--release-key <kid>=<key> ...] [--package <kotlin package>]\n       pkey sdk add <lang> --expect <kid>@sha256:<fingerprint>[,...] [--product <slug>] [--base-url <url>]\n                [--out <path>] [--force] [--release-key <kid>=<key> ...] [--package <kotlin package>]";
-var shown = (v) => untrusted(v, {});
+var shown2 = (v) => untrusted(v, {});
 var PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
 var KID_RE2 = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 var KEY_RE = /^[A-Za-z0-9_-]{43}$/;
 var URL_CHARS_RE = /^[A-Za-z0-9:/._~%-]+$/;
 function fingerprintOf2(publicKey) {
-  return createHash8("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
+  return createHash7("sha256").update(Buffer.from(publicKey, "base64url")).digest("hex");
 }
 function normalizeBaseUrl3(raw) {
   let url;
   try {
     url = new URL(raw);
   } catch {
-    throw new UsageError(`--base-url ${raw} is not a URL.`);
+    throw new UsageError(`--base-url ${maskTokens(raw)} is not a URL.`);
   }
   const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
   if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
     throw new UsageError(
-      `--base-url must be https: (http: only for localhost); got ${raw}.`
+      `--base-url must be https: (http: only for localhost); got ${maskTokens(raw)}.`
     );
   if (url.search || url.hash || url.username || url.password)
     throw new UsageError(
@@ -32493,11 +37407,11 @@ async function resolveSdkFacts(opts) {
   if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
-      `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`
+      `Discovery names product ${shown2(JSON.stringify(doc.product))}, not ${opts.product}.`
     );
   if (doc.protocolVersion !== PROTOCOL_VERSION)
     throw new Error(
-      `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
+      `Discovery speaks protocol ${shown2(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
     );
   const trust = isRecord8(doc.trust) ? doc.trust : {};
   const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
@@ -32506,7 +37420,7 @@ async function resolveSdkFacts(opts) {
     const key = pins[kid];
     if (!KID_RE2.test(kid) || typeof key !== "string" || !KEY_RE.test(key))
       throw new Error(
-        `Discovery's trust.pinnedKeys has a malformed entry (${shown(kid)}).`
+        `Discovery's trust.pinnedKeys has a malformed entry (${shown2(kid)}).`
       );
     pinnedKeys[kid] = key;
   }
@@ -32556,7 +37470,7 @@ async function resolveSdkFacts(opts) {
   const undeclared = advertised.filter((fp) => !declaredPrints.has(fp));
   if (undeclared.length > 0)
     throw new Error(
-      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
+      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown2).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
     );
   return {
     product: opts.product,
@@ -32588,7 +37502,7 @@ function factsSummary(facts) {
 
 // src/mirrors.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir2, readFile as readFile9, writeFile as writeFile6 } from "node:fs/promises";
+import { mkdir as mkdir2, readFile as readFile8, writeFile as writeFile6 } from "node:fs/promises";
 import path10 from "node:path";
 var BANNER = "// @generated by tools/gen-mirrors.ts — do not edit. Run `pnpm gen mirrors`.";
 var PY_BANNER = "# @generated by tools/gen-mirrors.ts — do not edit. Run `pnpm gen mirrors`.";
@@ -33181,7 +38095,7 @@ ${MIRROR_USAGE}`);
   let catalog;
   if (opts.catalog) {
     const file = path10.resolve(opts.cwd, opts.catalog);
-    catalog = assertCatalog(JSON.parse(await readFile9(file, "utf8")), file);
+    catalog = assertCatalog(JSON.parse(await readFile8(file, "utf8")), file);
   } else if (opts.product) {
     if (!/^[a-z0-9][a-z0-9_-]*$/.test(opts.product))
       throw new UsageError(`--product must be a lower-case slug.`);
@@ -33207,7 +38121,7 @@ ${MIRROR_USAGE}`
     const content = renderCliMirror(lang, catalog, {
       ...opts.kotlinPackage ? { kotlinPackage: opts.kotlinPackage } : {}
     });
-    const current = await readFile9(target, "utf8").catch(() => null);
+    const current = await readFile8(target, "utf8").catch(() => null);
     const changed = current !== content;
     if (changed && !opts.check) {
       await mkdir2(path10.dirname(target), { recursive: true });
@@ -33288,8 +38202,8 @@ ${CHANNEL_USAGE}`);
 
 // src/package/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdtemp, rm, stat as stat6 } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdtemp, rm, stat as stat5 } from "node:fs/promises";
+import { tmpdir as tmpdir2 } from "node:os";
 import path15 from "node:path";
 
 // src/package/extract.ts
@@ -33677,10 +38591,10 @@ function parseNumber(ctx, startPtr, startChr, sign2, endChr) {
   }
   if (!(state & 1))
     TomlError.x("unfinished numeric value", ctx, startPtr);
-  let str6 = ctx.s.slice(startPtr, ctx.p);
+  let str8 = ctx.s.slice(startPtr, ctx.p);
   if (hasUnderscores)
-    str6 = str6.replaceAll("_", "");
-  return state > 1 ? parseFloat(str6) : parseInteger(ctx, str6, 10, startPtr);
+    str8 = str8.replaceAll("_", "");
+  return state > 1 ? parseFloat(str8) : parseInteger(ctx, str8, 10, startPtr);
 }
 function parseIntegerBaseN(ctx, startPtr, base, endChr) {
   let c, underscore = 1;
@@ -33696,15 +38610,15 @@ function parseIntegerBaseN(ctx, startPtr, base, endChr) {
   }
   if (underscore & 1)
     TomlError.x("unfinished numeric value", ctx);
-  let str6 = ctx.s.slice(startPtr + 2, ctx.p);
+  let str8 = ctx.s.slice(startPtr + 2, ctx.p);
   if (underscore)
-    str6 = str6.replaceAll("_", "");
-  return parseInteger(ctx, str6, base, startPtr);
+    str8 = str8.replaceAll("_", "");
+  return parseInteger(ctx, str8, base, startPtr);
 }
-function parseInteger(ctx, str6, base, startPtr) {
+function parseInteger(ctx, str8, base, startPtr) {
   if (ctx.bi !== true)
     int: {
-      let val = parseInt(str6, base);
+      let val = parseInt(str8, base);
       if (!Number.isSafeInteger(val)) {
         if (ctx.bi)
           break int;
@@ -33712,7 +38626,7 @@ function parseInteger(ctx, str6, base, startPtr) {
       }
       return val;
     }
-  return base === 10 ? BigInt(str6) : BigInt((base === 2 ? "0b" : base === 8 ? "0o" : "0x") + str6);
+  return base === 10 ? BigInt(str8) : BigInt((base === 2 ? "0b" : base === 8 ? "0o" : "0x") + str8);
 }
 function parseDate(ctx, c, endChr) {
   let startPtr = ctx.p++, unsafeSeparator;
@@ -33759,25 +38673,25 @@ function parseTime(ctx, c, endChr) {
   let t = ctx.s.slice(start, ctx.p);
   return readDate(ctx, t, 4, false, start);
 }
-function readDate(ctx, str6, type, unsafeDelim, errPtr, temporalSuffix) {
+function readDate(ctx, str8, type, unsafeDelim, errPtr, temporalSuffix) {
   if (ctx.ld) {
-    let date = new TomlDate(str6, type, unsafeDelim);
+    let date = new TomlDate(str8, type, unsafeDelim);
     if (!date.isValid())
       TomlError.x("invalid date", ctx, errPtr);
     return date;
   }
   try {
     if (temporalSuffix)
-      str6 += temporalSuffix;
+      str8 += temporalSuffix;
     switch (type) {
       case 1:
-        return Temporal.ZonedDateTime.from(str6);
+        return Temporal.ZonedDateTime.from(str8);
       case 2:
-        return Temporal.PlainDateTime.from(str6);
+        return Temporal.PlainDateTime.from(str8);
       case 3:
-        return Temporal.PlainDate.from(str6);
+        return Temporal.PlainDate.from(str8);
       case 4:
-        return Temporal.PlainTime.from(str6);
+        return Temporal.PlainTime.from(str8);
     }
   } catch (e) {
     TomlError.x(e instanceof Error ? e.message : "" + e, ctx, errPtr);
@@ -34146,9 +39060,9 @@ async function readTarMember(file, want, maxBytes = 4 * 1024 * 1024) {
 
 // src/package/files.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-async function declaredFiles(input) {
-  const globs = Object.values(input.declaration.artifacts).map((a) => a.match);
-  const all = await scanDir(input.dir);
+async function declaredFiles(input2) {
+  const globs = Object.values(input2.declaration.artifacts).map((a) => a.match);
+  const all = await scanDir(input2.dir);
   const hits = all.filter(
     (f) => globs.some((g) => matchesArtifactGlob(g, f.name))
   );
@@ -34277,10 +39191,10 @@ function cargoFeatures(manifest) {
     out[k] = strings(v, `Cargo.toml's features.${k}`);
   return out;
 }
-function cargoMetadata(text) {
+function cargoMetadata(text3) {
   let manifest;
   try {
-    manifest = parse(text);
+    manifest = parse(text3);
   } catch (e) {
     throw new PackageExtractError(
       `the crate's Cargo.toml is not TOML (${e.message}).`
@@ -34305,8 +39219,8 @@ function cargoMetadata(text) {
   metadata.features = cargoFeatures(manifest);
   return { name: pkg.name, version: pkg.version, metadata };
 }
-async function extractCargo(input) {
-  const crate = exactlyOne(await declaredFiles(input), "crate (.crate)");
+async function extractCargo(input2) {
+  const crate = exactlyOne(await declaredFiles(input2), "crate (.crate)");
   const member = await readTarMember(
     crate.path,
     (p) => /^[^/]+\/Cargo\.toml$/.test(p)
@@ -34318,9 +39232,9 @@ async function extractCargo(input) {
   const { name, version, metadata } = cargoMetadata(
     member.data.toString("utf8")
   );
-  if (name !== input.declaration.name)
+  if (name !== input2.declaration.name)
     throw new PackageExtractError(
-      `${crate.name} packs ${name}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `${crate.name} packs ${name}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   return {
     version,
@@ -34331,8 +39245,8 @@ async function extractCargo(input) {
 
 // src/package/go.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash9 } from "node:crypto";
-import { lstat as lstat2, readFile as readFile10, readdir as readdir4, writeFile as writeFile7 } from "node:fs/promises";
+import { createHash as createHash8 } from "node:crypto";
+import { lstat as lstat2, readFile as readFile9, readdir as readdir4, writeFile as writeFile7 } from "node:fs/promises";
 import path11 from "node:path";
 var GO_MAX_ZIP_BYTES = 500 << 20;
 var GO_MAX_GO_MOD_BYTES = 16 << 20;
@@ -34342,13 +39256,13 @@ function goHash1(files) {
   const sorted = [...files].sort(
     (a, b) => Buffer.compare(Buffer.from(a.name), Buffer.from(b.name))
   );
-  const summary = createHash9("sha256");
+  const summary = createHash8("sha256");
   for (const f of sorted) {
     if (f.name.includes("\n"))
       throw new PackageExtractError(
         `${JSON.stringify(f.name)}: a file name with a newline cannot be hashed.`
       );
-    const h = createHash9("sha256").update(f.data).digest("hex");
+    const h = createHash8("sha256").update(f.data).digest("hex");
     summary.update(`${h}  ${f.name}
 `);
   }
@@ -34357,9 +39271,9 @@ function goHash1(files) {
 function goModHash1(data) {
   return goHash1([{ name: "go.mod", data }]);
 }
-function parseGoMod(text) {
+function parseGoMod(text3) {
   const out = {};
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text3.split(/\r?\n/)) {
     const m = /^module\s+(?:"([^"]+)"|`([^`]+)`|([^\s"`]+?))\s*(?:\/\/.*)?$/.exec(
       raw.trim()
     );
@@ -34388,8 +39302,8 @@ function goFilePathProblem(rel) {
     for (const ch of elem)
       if (!/[A-Za-z0-9!#$%&()+,\-.=@[\]^_{}~ ]/.test(ch) && !new RegExp("\\p{L}", "u").test(ch))
         return `the character ${JSON.stringify(ch)}`;
-    const short = elem.split(".")[0].toUpperCase();
-    if (WINDOWS_RESERVED.has(short)) return `the Windows reserved name ${elem}`;
+    const short2 = elem.split(".")[0].toUpperCase();
+    if (WINDOWS_RESERVED.has(short2)) return `the Windows reserved name ${elem}`;
   }
   return null;
 }
@@ -34444,11 +39358,11 @@ function checkModuleFiles(files) {
 }
 async function goModuleFiles(root) {
   const out = [];
-  const rootMod = await readFile10(path11.join(root, "go.mod"), "utf8").catch(
+  const rootMod = await readFile9(path11.join(root, "go.mod"), "utf8").catch(
     () => null
   );
   const go = rootMod === null ? void 0 : parseGoMod(rootMod).go;
-  async function walk3(dir, rel) {
+  async function walk2(dir, rel) {
     const entries = await readdir4(dir, { withFileTypes: true });
     entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     for (const e of entries) {
@@ -34458,11 +39372,11 @@ async function goModuleFiles(root) {
         if ([".bzr", ".git", ".hg", ".svn"].includes(e.name)) continue;
         const nested = await lstat2(path11.join(full, "go.mod")).catch(() => null);
         if (nested?.isFile()) continue;
-        await walk3(full, r);
+        await walk2(full, r);
       } else if (e.isFile() && !goVendored(r, go)) out.push(r);
     }
   }
-  await walk3(root, "");
+  await walk2(root, "");
   return out;
 }
 async function goZipFromDir(root, module, version) {
@@ -34470,7 +39384,7 @@ async function goZipFromDir(root, module, version) {
   const files = await Promise.all(
     rels.map(async (rel) => ({
       rel,
-      data: new Uint8Array(await readFile10(path11.join(root, ...rel.split("/"))))
+      data: new Uint8Array(await readFile9(path11.join(root, ...rel.split("/"))))
     }))
   );
   checkModuleFiles(files.map((f) => ({ rel: f.rel, size: f.data.length })));
@@ -34518,10 +39432,10 @@ async function readModuleZip(zipPath, zipName, module) {
     return { version, files };
   });
 }
-async function extractGo(input) {
-  const module = input.declaration.name;
-  const globs = Object.values(input.declaration.artifacts).map((a) => a.match);
-  const found = (await scanDir(input.dir)).filter(
+async function extractGo(input2) {
+  const module = input2.declaration.name;
+  const globs = Object.values(input2.declaration.artifacts).map((a) => a.match);
+  const found = (await scanDir(input2.dir)).filter(
     (f) => globs.some((g) => matchesArtifactGlob(g, f.name))
   );
   const zips = found.filter((f) => f.name.endsWith(".zip"));
@@ -34543,21 +39457,21 @@ async function extractGo(input) {
       throw new PackageExtractError(
         "no module zip and no go.mod under --dir matches the package's artifacts globs."
       );
-    if (!input.version)
+    if (!input2.version)
       throw new PackageExtractError(
         "a Go module's source tree carries no version: pass --version (semver, without the v)."
       );
-    if (!SEMVER_NO_BUILD.test(input.version))
+    if (!SEMVER_NO_BUILD.test(input2.version))
       throw new PackageExtractError(
-        `--version ${input.version} is not a semantic version without the v and without build metadata.`
+        `--version ${input2.version} is not a semantic version without the v and without build metadata.`
       );
-    version = input.version;
+    version = input2.version;
     const depth = (p) => p.split(path11.sep).length;
     const root = path11.dirname(
       [...mods].sort((a, b) => depth(a.path) - depth(b.path))[0].path
     );
     zipFiles = await goZipFromDir(root, module, version);
-    const out = path11.join(input.workDir, `v${version}.zip`);
+    const out = path11.join(input2.workDir, `v${version}.zip`);
     await writeFile7(out, zipStore(zipFiles));
     zipFile = { path: out, name: `v${version}.zip`, type: "go-zip" };
   }
@@ -34575,7 +39489,7 @@ async function extractGo(input) {
     throw new PackageExtractError(
       `go.mod declares module ${parsed.module ?? "(none)"}, not ${module}: the module path is the package name.`
     );
-  const goModPath = path11.join(input.workDir, "go.mod");
+  const goModPath = path11.join(input2.workDir, "go.mod");
   await writeFile7(goModPath, goModEntry.data);
   return {
     version,
@@ -34592,10 +39506,10 @@ async function extractGo(input) {
 
 // src/package/godot.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-function parsePluginCfg(text) {
+function parsePluginCfg(text3) {
   const out = /* @__PURE__ */ new Map();
   let section = "";
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text3.split(/\r?\n/)) {
     const line = raw.trim();
     const s = /^\[([^\]]+)\]$/.exec(line);
     if (s) {
@@ -34612,8 +39526,8 @@ function parsePluginCfg(text) {
   }
   return out;
 }
-async function extractGodot(input) {
-  const found = await declaredFiles(input);
+async function extractGodot(input2) {
+  const found = await declaredFiles(input2);
   const zip = exactlyOne(
     found.filter((f) => f.name.endsWith(".zip")),
     "addon zip"
@@ -34625,11 +39539,11 @@ async function extractGodot(input) {
     );
   const cfg = await withZip(zip.path, async (z) => {
     const entry = z.entries.find(
-      (e) => e.name === `addons/${input.declaration.name}/plugin.cfg`
+      (e) => e.name === `addons/${input2.declaration.name}/plugin.cfg`
     );
     if (!entry)
       throw new PackageExtractError(
-        `${zip.name} has no addons/${input.declaration.name}/plugin.cfg (the addon id is the package name).`
+        `${zip.name} has no addons/${input2.declaration.name}/plugin.cfg (the addon id is the package name).`
       );
     return parsePluginCfg((await z.read(entry)).toString("utf8"));
   });
@@ -34641,7 +39555,7 @@ async function extractGodot(input) {
     ...icons[0] ? [{ path: icons[0].path, name: icons[0].name, type: "godot-icon" }] : []
   ];
   const metadata = {
-    name: input.declaration.name,
+    name: input2.declaration.name,
     version
   };
   for (const [k, key] of [
@@ -34658,20 +39572,20 @@ async function extractGodot(input) {
 
 // src/package/maven.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile11 } from "node:fs/promises";
+import { readFile as readFile10 } from "node:fs/promises";
 var SIDECAR = /\.(md5|sha1|sha256|sha512|asc)$/;
 function pomField(xml2, field) {
-  const flat = xml2.replace(/<!--[\s\S]*?-->/g, "").replace(
+  const flat2 = xml2.replace(/<!--[\s\S]*?-->/g, "").replace(
     /<(parent|dependencies|dependencyManagement|build|plugins|profiles|reporting|distributionManagement|modules|licenses|developers|scm)\b[\s\S]*?<\/\1>/g,
     ""
   );
   const m = new RegExp(`<${field}>\\s*([^<\\s][^<]*?)\\s*</${field}>`).exec(
-    flat
+    flat2
   );
   return m ? m[1] : null;
 }
-async function extractMaven(input) {
-  const found = (await declaredFiles(input)).filter(
+async function extractMaven(input2) {
+  const found = (await declaredFiles(input2)).filter(
     (f) => !SIDECAR.test(f.name)
   );
   const poms = found.filter((f) => f.name.endsWith(".pom"));
@@ -34679,7 +39593,7 @@ async function extractMaven(input) {
     throw new PackageExtractError(
       poms.length === 0 ? "no POM (.pom) under --dir matches the package's artifacts globs." : `${poms.length} POMs match (${poms.map((p) => p.name).join(", ")}); one version's directory has one.`
     );
-  const pom = await readFile11(poms[0].path, "utf8");
+  const pom = await readFile10(poms[0].path, "utf8");
   const artifactId = pomField(pom, "artifactId");
   const version = pomField(pom, "version");
   const groupId = pomField(pom, "groupId") ?? // A POM may inherit its groupId from its parent.
@@ -34688,9 +39602,9 @@ async function extractMaven(input) {
     throw new PackageExtractError(
       `${poms[0].name} carries no groupId, artifactId and version.`
     );
-  if (`${groupId}:${artifactId}` !== input.declaration.name)
+  if (`${groupId}:${artifactId}` !== input2.declaration.name)
     throw new PackageExtractError(
-      `the POM is ${groupId}:${artifactId}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `the POM is ${groupId}:${artifactId}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   const stem = `${artifactId}-${version}`;
   const files = [];
@@ -34718,7 +39632,7 @@ async function extractMaven(input) {
     version,
     files,
     metadata: {
-      name: input.declaration.name,
+      name: input2.declaration.name,
       version,
       groupId,
       artifactId,
@@ -34747,8 +39661,8 @@ var KEPT = [
   "homepage",
   "repository"
 ];
-async function extractNpm(input) {
-  const tgz = exactlyOne(await declaredFiles(input), "npm tarball (.tgz)");
+async function extractNpm(input2) {
+  const tgz = exactlyOne(await declaredFiles(input2), "npm tarball (.tgz)");
   const member = await readTarMember(
     tgz.path,
     (p) => p === "package/package.json"
@@ -34767,9 +39681,9 @@ async function extractNpm(input) {
     throw new PackageExtractError(
       `${tgz.name}'s package.json carries no name and version.`
     );
-  if (pkg.name !== input.declaration.name)
+  if (pkg.name !== input2.declaration.name)
     throw new PackageExtractError(
-      `${tgz.name} packs ${pkg.name}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `${tgz.name} packs ${pkg.name}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   const metadata = {
     name: pkg.name,
@@ -34785,7 +39699,7 @@ async function extractNpm(input) {
 
 // src/package/oci.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir5, readFile as readFile12, stat as stat5 } from "node:fs/promises";
+import { readdir as readdir5, readFile as readFile11, stat as stat4 } from "node:fs/promises";
 import path12 from "node:path";
 var INDEX_TYPES = /* @__PURE__ */ new Set([
   "application/vnd.oci.image.index.v1+json",
@@ -34805,17 +39719,17 @@ async function layoutRoot(dir) {
     );
   return path12.dirname(layout.path);
 }
-async function extractOci(input) {
-  const root = await layoutRoot(input.dir);
+async function extractOci(input2) {
+  const root = await layoutRoot(input2.dir);
   const index = JSON.parse(
-    await readFile12(path12.join(root, "index.json"), "utf8")
+    await readFile11(path12.join(root, "index.json"), "utf8")
   );
   const entries = index.manifests ?? [];
   if (entries.length !== 1 || !entries[0]?.digest)
     throw new PackageExtractError(
       `the layout's index.json lists ${entries.length} images; publish one (a multi-arch image is one image index).`
     );
-  if (!input.version)
+  if (!input2.version)
     throw new PackageExtractError(
       "an OCI image carries no version: pass --version (it is also the image's tag)."
     );
@@ -34835,7 +39749,7 @@ async function extractOci(input) {
       );
     const file = path12.join(blobDir, m[1]);
     try {
-      await stat5(file);
+      await stat4(file);
     } catch {
       throw new PackageExtractError(`the layout has no blob ${digest}.`);
     }
@@ -34848,7 +39762,7 @@ async function extractOci(input) {
         throw new PackageExtractError(
           `the image references more than ${MAX_DOCUMENTS} manifests.`
         );
-      const doc = JSON.parse(await readFile12(file, "utf8"));
+      const doc = JSON.parse(await readFile11(file, "utf8"));
       for (const child of [
         ...doc.manifests ?? [],
         ...doc.config ? [doc.config] : [],
@@ -34866,11 +39780,11 @@ async function extractOci(input) {
     mediaType: v.mediaType
   }));
   return {
-    version: input.version,
+    version: input2.version,
     files,
     metadata: {
-      name: input.declaration.name,
-      version: input.version,
+      name: input2.declaration.name,
+      version: input2.version,
       root: entries[0].digest,
       mediaType: entries[0].mediaType ?? "application/vnd.oci.image.index.v1+json",
       ...platforms.size ? { platforms: [...platforms].sort() } : {}
@@ -34882,9 +39796,9 @@ async function extractOci(input) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { writeFile as writeFile8 } from "node:fs/promises";
 import path13 from "node:path";
-function parseCoreMetadata(text) {
+function parseCoreMetadata(text3) {
   const out = /* @__PURE__ */ new Map();
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of text3.split(/\r?\n/)) {
     if (line === "") break;
     const m = /^([A-Za-z0-9-]+):\s?(.*)$/.exec(line);
     if (m && !out.has(m[1].toLowerCase()))
@@ -34892,8 +39806,8 @@ function parseCoreMetadata(text) {
   }
   return out;
 }
-async function extractPypi(input) {
-  const found = await declaredFiles(input);
+async function extractPypi(input2) {
+  const found = await declaredFiles(input2);
   const wheels = found.filter((f) => f.name.endsWith(".whl"));
   const sdists = found.filter((f) => f.name.endsWith(".tar.gz"));
   if (wheels.length + sdists.length === 0)
@@ -34903,7 +39817,7 @@ async function extractPypi(input) {
   const files = [];
   let headers = null;
   for (const w of wheels) {
-    const text = await withZip(w.path, async (zip) => {
+    const text3 = await withZip(w.path, async (zip) => {
       const entry = zip.entries.find(
         (e) => /^[^/]+\.dist-info\/METADATA$/.test(e.name)
       );
@@ -34912,13 +39826,13 @@ async function extractPypi(input) {
       return (await zip.read(entry)).toString("utf8");
     });
     const metaName = `${w.name}.metadata`;
-    const metaPath = path13.join(input.workDir, metaName);
-    await writeFile8(metaPath, text);
+    const metaPath = path13.join(input2.workDir, metaName);
+    await writeFile8(metaPath, text3);
     files.push(
       { path: w.path, name: w.name, type: "wheel" },
       { path: metaPath, name: metaName, type: "core-metadata" }
     );
-    headers ??= parseCoreMetadata(text);
+    headers ??= parseCoreMetadata(text3);
   }
   for (const s of sdists) {
     files.push({ path: s.path, name: s.name, type: "sdist" });
@@ -34937,12 +39851,12 @@ async function extractPypi(input) {
       "the wheel's METADATA (or the sdist's PKG-INFO) carries no Name and Version."
     );
   const norm = (n) => n.toLowerCase().replace(/[-_.]+/g, "-");
-  if (norm(name) !== norm(input.declaration.name))
+  if (norm(name) !== norm(input2.declaration.name))
     throw new PackageExtractError(
-      `the files are ${name}, but .pkey/release declares ${input.declaration.id} as ${input.declaration.name}.`
+      `the files are ${name}, but .pkey/release declares ${input2.declaration.id} as ${input2.declaration.name}.`
     );
   const metadata = {
-    name: input.declaration.name,
+    name: input2.declaration.name,
     version
   };
   const summary = headers?.get("summary");
@@ -34958,12 +39872,12 @@ async function extractPypi(input) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import path14 from "node:path";
 import { readdir as readdir6 } from "node:fs/promises";
-async function extractSwift(input) {
+async function extractSwift(input2) {
   const zip = exactlyOne(
-    (await declaredFiles(input)).filter((f) => f.name.endsWith(".zip")),
+    (await declaredFiles(input2)).filter((f) => f.name.endsWith(".zip")),
     "Swift source archive (.zip)"
   );
-  if (!input.version)
+  if (!input2.version)
     throw new PackageExtractError(
       "a Swift registry archive carries no version: pass --version."
     );
@@ -34990,11 +39904,11 @@ async function extractSwift(input) {
     files.push({ path: path14.join(dir, m), name: m, type: "manifest" });
   const toolsVersions = manifests.map((m) => /^Package@swift-([0-9.]+)\.swift$/.exec(m)?.[1]).filter((v) => v !== void 0);
   return {
-    version: input.version,
+    version: input2.version,
     files,
     metadata: {
-      name: input.declaration.name,
-      version: input.version,
+      name: input2.declaration.name,
+      version: input2.version,
       ...toolsVersions.length ? { toolsVersions } : {},
       ...sigs[0] ? { signatureFormat: "cms-1.0.0" } : {}
     }
@@ -35002,24 +39916,24 @@ async function extractSwift(input) {
 }
 
 // src/package/extract.ts
-function extractPackage(ecosystem, input) {
+function extractPackage(ecosystem, input2) {
   switch (ecosystem) {
     case "npm":
-      return extractNpm(input);
+      return extractNpm(input2);
     case "pypi":
-      return extractPypi(input);
+      return extractPypi(input2);
     case "swift":
-      return extractSwift(input);
+      return extractSwift(input2);
     case "maven":
-      return extractMaven(input);
+      return extractMaven(input2);
     case "oci":
-      return extractOci(input);
+      return extractOci(input2);
     case "godot":
-      return extractGodot(input);
+      return extractGodot(input2);
     case "cargo":
-      return extractCargo(input);
+      return extractCargo(input2);
     case "go":
-      return extractGo(input);
+      return extractGo(input2);
   }
 }
 
@@ -35067,7 +39981,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     throw new UsageError(
       `--deliverable ${opts.deliverable} is not a package deliverable .pkey/release declares.`
     );
-  const workDir = await mkdtemp(path15.join(tmpdir(), "pkey-package-"));
+  const workDir = await mkdtemp(path15.join(tmpdir2(), "pkey-package-"));
   try {
     const extracted = await extractPackage(declared.ecosystem, {
       declaration: declared,
@@ -35082,7 +39996,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       );
     const hashed = [];
     for (const f of extracted.files) {
-      const { size } = await stat6(f.path);
+      const { size } = await stat5(f.path);
       if (size > MAX_SINGLE_PUT_BYTES)
         throw new Error(
           `${f.name} is ${size} bytes; one upload is at most ${MAX_SINGLE_PUT_BYTES} bytes (a single-part PUT).`
@@ -35256,8 +40170,8 @@ Dry run: nothing uploaded, nothing written.
 
 // src/packPublish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdtempSync, rmSync } from "node:fs";
-import { cp, mkdir as mkdir3, readdir as readdir7, readFile as readFile14, writeFile as writeFile10 } from "node:fs/promises";
+import { mkdtempSync as mkdtempSync2, rmSync as rmSync2 } from "node:fs";
+import { cp, mkdir as mkdir3, readdir as readdir7, readFile as readFile13, writeFile as writeFile10 } from "node:fs/promises";
 import os from "node:os";
 import path17 from "node:path";
 
@@ -35290,8 +40204,8 @@ var REFUSALS = {
   [-7]: ["argument", "windowLogMax is outside 10..31"]
 };
 var MAX_SIZE = 2 ** 31;
-function run(module, frame, prefix, size, windowLogMax2) {
-  if (!(frame instanceof Uint8Array))
+function run(module, frame2, prefix, size, windowLogMax2) {
+  if (!(frame2 instanceof Uint8Array))
     throw new ZstdWasmError("argument", "frame must be a Uint8Array");
   if (!Number.isSafeInteger(size) || size < 0 || size > MAX_SIZE)
     throw new ZstdWasmError("argument", `size ${size} is not 0..2^31`);
@@ -35309,12 +40223,12 @@ function run(module, frame, prefix, size, windowLogMax2) {
     new Uint8Array(x.memory.buffer, p, bytes.byteLength).set(bytes);
     return p;
   };
-  const src = put(frame);
+  const src = put(frame2);
   const pre = prefix === null ? 0 : put(prefix);
   const dst = x.zd_alloc(size);
   if (dst === 0)
     throw new ZstdWasmError("memory", "the decoder could not allocate");
-  const r = Number(x.zd_decode(dst, size, src, frame.byteLength, pre, prefix === null ? 0 : prefix.byteLength, prefix === null ? 0 : windowLogMax2));
+  const r = Number(x.zd_decode(dst, size, src, frame2.byteLength, pre, prefix === null ? 0 : prefix.byteLength, prefix === null ? 0 : windowLogMax2));
   if (r < 0) {
     const known = REFUSALS[r];
     if (known)
@@ -35325,8 +40239,8 @@ function run(module, frame, prefix, size, windowLogMax2) {
 }
 function createZstdWasm(module) {
   return {
-    decode: (frame, size) => run(module, frame, null, size, 0),
-    decodeWithPrefix: (frame, prefix, size, windowLogMax2) => run(module, frame, prefix, size, windowLogMax2),
+    decode: (frame2, size) => run(module, frame2, null, size, 0),
+    decodeWithPrefix: (frame2, prefix, size, windowLogMax2) => run(module, frame2, prefix, size, windowLogMax2),
     version: () => new WebAssembly.Instance(module, {}).exports.zd_version()
   };
 }
@@ -35337,7 +40251,7 @@ var zdec_default = __toBinaryNode("AGFzbQEAAAABxwEXYAJ/fwF/YAJ/fwBgAX8Bf2ADf39/A
 // pkey-zstd-wasm:zstd-wasm-embedded
 var decoder = null;
 var get = () => decoder ??= createZstdWasm(new WebAssembly.Module(zdec_default));
-var decode = (frame, size) => get().decode(frame, size);
+var decode2 = (frame2, size) => get().decode(frame2, size);
 
 // ../client-core/dist/version.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -35368,7 +40282,7 @@ function parseVersion(scheme, v) {
 
 // src/pck.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash10 } from "node:crypto";
+import { createHash as createHash9 } from "node:crypto";
 var PCK_MAGIC = 1129333831;
 var PACK_DIR_ENCRYPTED = 1;
 var PACK_REL_FILEBASE = 2;
@@ -35443,24 +40357,24 @@ function readPck(b, name = "the payload") {
       const md5 = Buffer.from(b.subarray(p + 16, p + 32)).toString("hex");
       const flags = dv.getUint32(p + 32, true);
       p += 36;
-      const path32 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
+      const path36 = rawPath.startsWith("res://") ? rawPath.slice("res://".length) : rawPath;
       if (flags & PACK_FILE_ENCRYPTED)
         throw new PckError(
-          `${path32}: an encrypted entry; a published pack is never encrypted.`
+          `${path36}: an encrypted entry; a published pack is never encrypted.`
         );
       if (flags & (PACK_FILE_REMOVAL | PACK_FILE_DELTA))
         throw new PckError(
-          `${path32}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
+          `${path36}: a patch pack's ${flags & PACK_FILE_REMOVAL ? "removal" : "delta"} entry (flags ${flags}); a published pack stands alone.`
         );
       if (flags !== 0)
-        throw new PckError(`${path32}: unknown entry flags ${flags}.`);
-      if (!pckPathOk(path32))
+        throw new PckError(`${path36}: unknown entry flags ${flags}.`);
+      if (!pckPathOk(path36))
         throw new PckError(
-          `${path32}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
+          `${path36}: an unsafe path (a \`..\`, \`.\` or empty segment, or a character the path rules refuse).`
         );
       if (offset + size > b.byteLength)
-        throw new PckError(`${path32}: its bytes run past the end of the file.`);
-      entries.push({ rawPath, path: path32, offset, size, md5, flags });
+        throw new PckError(`${path36}: its bytes run past the end of the file.`);
+      entries.push({ rawPath, path: path36, offset, size, md5, flags });
     }
     const all = checkPaths(entries.map((e) => e.path));
     if (!all.ok)
@@ -35476,9 +40390,9 @@ function readPck(b, name = "the payload") {
     );
   }
 }
-function pckPathOk(path32) {
-  if (!checkPaths([path32]).ok) return false;
-  return !(path32.includes("..") || path32.includes("./") || path32.includes("//") || path32.endsWith("/") || path32.endsWith("/."));
+function pckPathOk(path36) {
+  if (!checkPaths([path36]).ok) return false;
+  return !(path36.includes("..") || path36.includes("./") || path36.includes("//") || path36.endsWith("/") || path36.endsWith("/."));
 }
 function pad(n, align) {
   const r = n % align;
@@ -35524,11 +40438,11 @@ function writePck(src, header, keep) {
   dv.setUint32(p, keep.length, true);
   p += 4;
   for (const [i, e] of keep.entries()) {
-    const path32 = paths[i];
-    dv.setUint32(p, path32.byteLength, true);
+    const path36 = paths[i];
+    dv.setUint32(p, path36.byteLength, true);
     p += 4;
-    out.set(path32, p);
-    p += path32.byteLength;
+    out.set(path36, p);
+    p += path36.byteLength;
     dv.setBigUint64(p, BigInt(rel[i]), true);
     dv.setBigUint64(p + 8, BigInt(e.size), true);
     out.set(Buffer.from(e.md5, "hex"), p + 16);
@@ -35538,7 +40452,7 @@ function writePck(src, header, keep) {
   return out;
 }
 function sha2562(b) {
-  return createHash10("sha256").update(b).digest("hex");
+  return createHash9("sha256").update(b).digest("hex");
 }
 function stripPck(src, name = "the payload") {
   const dir = readPck(src, name);
@@ -35565,7 +40479,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 var BANK_VERSION_PATTERN = /^[0-9]{1,9}\.[0-9]{1,9}(\.[0-9]{1,9})?$/;
 var TOKEN = /^[a-z][a-z0-9-]{0,31}$/;
 var MAX_DESCRIPTOR_BYTES3 = 65536;
-function installed(files) {
+function installed2(files) {
   return files.map((f) => ({
     path: f.path,
     size: f.size,
@@ -35579,7 +40493,7 @@ function staged(files, variant) {
     record: {},
     variant: { variant },
     location: "",
-    files: installed(files),
+    files: installed2(files),
     payload: null
   };
 }
@@ -35599,7 +40513,7 @@ async function lintTypeTree(type, files, variant) {
         `${r.path ?? ""}: ${type} ${DETAIL_TEXT[r.detail] ?? r.detail}${r.message ? ` (${r.message})` : ""}.`
       );
   } else if (type === "ml.model") {
-    const d = await readModelDescriptor(installed(files));
+    const d = await readModelDescriptor(installed2(files));
     if (!d.ok)
       errors.push(
         'model.json: an ml.model pack carries a model.json at its root, strict JSON declaring runtime (a lowercase token such as "onnx" or "gguf"), file (exactly a path of the payload) and memBytes (the RAM it needs, a non-negative integer), with optional vramBytes and quantization.'
@@ -35684,7 +40598,7 @@ function readGodotZip(b, name = "the zip") {
   const entries = [];
   const seen = /* @__PURE__ */ new Set();
   const ranges = [];
-  const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  const text3 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
     if (p + 46 > e || u32(p) !== CDH)
@@ -35703,7 +40617,7 @@ function readGodotZip(b, name = "the zip") {
     if (end > e) fail4(`central directory entry ${i} runs past the directory.`);
     let entryName;
     try {
-      entryName = text.decode(b.subarray(p + 46, p + 46 + nameLen));
+      entryName = text3.decode(b.subarray(p + 46, p + 46 + nameLen));
     } catch {
       return fail4(`central directory entry ${i}'s name is not UTF-8.`);
     }
@@ -35772,8 +40686,8 @@ function readGodotZip(b, name = "the zip") {
 
 // src/delegate.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash11, generateKeyPairSync as generateKeyPairSync2 } from "node:crypto";
-import { readFile as readFile13, writeFile as writeFile9 } from "node:fs/promises";
+import { createHash as createHash10, generateKeyPairSync as generateKeyPairSync2 } from "node:crypto";
+import { readFile as readFile12, writeFile as writeFile9 } from "node:fs/promises";
 import path16 from "node:path";
 var CONTENT_KEY_ENV = "PKEY_CONTENT_KEY";
 var CONTENT_KEYS_USAGE = "Usage: pkey release keys generate --content --out <file>";
@@ -35783,7 +40697,7 @@ var MAX_DELEGATION_DAYS = MAX_DELEGATION_TTL_SECONDS / SECONDS_PER_DAY;
 var WINDOW_WARN_DAYS = 14;
 var KEY_B64URL_RE2 = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 var SHA256_RE5 = /^[0-9a-f]{64}$/;
-var sha256Hex3 = (s) => createHash11("sha256").update(s).digest("hex");
+var sha256Hex3 = (s) => createHash10("sha256").update(s).digest("hex");
 var iso = (t) => new Date(t * 1e3).toISOString();
 async function generateContentKey(opts) {
   const { privateKey, publicKey } = generateKeyPairSync2("ed25519");
@@ -35879,14 +40793,14 @@ function delegationVersion(jws) {
   return payload.version;
 }
 function parseDelegationTypes(types) {
-  const list2 = (typeof types === "string" ? types.split(/[\s,]+/) : [...types]).filter(Boolean);
-  if (list2.length < 1 || list2.length > MAX_DELEGATION_TYPES)
+  const list3 = (typeof types === "string" ? types.split(/[\s,]+/) : [...types]).filter(Boolean);
+  if (list3.length < 1 || list3.length > MAX_DELEGATION_TYPES)
     throw new UsageError(
-      `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list2.length}).`
+      `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list3.length}).`
     );
-  if (new Set(list2).size !== list2.length)
+  if (new Set(list3).size !== list3.length)
     throw new UsageError("--types lists a type twice.");
-  for (const t of list2) {
+  for (const t of list3) {
     if (!PACK_TYPE_PATTERN.test(t))
       throw new UsageError(`--types: ${JSON.stringify(t)} is not a pack type.`);
     if (!DELEGABLE_PACK_TYPES.includes(t))
@@ -35894,7 +40808,7 @@ function parseDelegationTypes(types) {
         `--types: ${t} can never be delegated; a content key signs only ${DELEGABLE_PACK_TYPES.join(", ")} (godot.pck, godot.zip, audio.bank, ml.model and custom types can load code).`
       );
   }
-  return list2;
+  return list3;
 }
 async function keepSignedDelegation(cwd, jws, sha2566) {
   const file = path16.join(cwd, `pkey-delegation-${sha2566}.jws`);
@@ -36217,7 +41131,7 @@ function zstdFrameOk(f, size) {
   }
   return p === n;
 }
-function rsccBody(data, decode2 = decode, budget) {
+function rsccBody(data, decode3 = decode2, budget) {
   const n = data.byteLength;
   if (n < 16) return { why: "whose header is truncated" };
   const dv = new DataView(data.buffer, data.byteOffset, n);
@@ -36260,9 +41174,9 @@ function rsccBody(data, decode2 = decode, budget) {
     return { why: "without its closing RSCC magic" };
   if (pos + 4 !== n) return { why: "with bytes after its closing RSCC magic" };
   const want = (i) => i === bc - 1 ? total - (bc - 1) * bs : bs;
-  const frame = (i) => data.subarray(starts[i], starts[i] + sizes[i]);
+  const frame2 = (i) => data.subarray(starts[i], starts[i] + sizes[i]);
   for (let i = 0; i < bc; i++)
-    if (!zstdFrameOk(frame(i), want(i)))
+    if (!zstdFrameOk(frame2(i), want(i)))
       return {
         why: `whose block ${i} is not one zstd frame of ${want(i)} bytes`
       };
@@ -36272,7 +41186,7 @@ function rsccBody(data, decode2 = decode, budget) {
     if (w === 0) continue;
     let out;
     try {
-      out = decode2(frame(i), w);
+      out = decode3(frame2(i), w);
     } catch {
       return { why: `whose block ${i} does not decode to ${w} bytes` };
     }
@@ -36302,9 +41216,9 @@ function uidText(id) {
   } while (v > 0n);
   return `uid://${out}`;
 }
-function canonicalUid(text) {
-  if (!text.startsWith("uid://")) return null;
-  const s = text.slice(6);
+function canonicalUid(text3) {
+  if (!text3.startsWith("uid://")) return null;
+  const s = text3.slice(6);
   if (s.length < 1 || s.length > 13) return null;
   let v = 0n;
   for (const ch of s) {
@@ -36313,21 +41227,21 @@ function canonicalUid(text) {
     if (v > (UID_MAX - BigInt(d)) / 34n) return null;
     v = v * 34n + BigInt(d);
   }
-  return uidText(v) === text ? v : null;
+  return uidText(v) === text3 ? v : null;
 }
 function attachableEntryProblem(s) {
   if (s.startsWith("uid://"))
     return canonicalUid(s) === null ? "not a canonical uid://" : null;
   if (!s.startsWith("res://")) return "neither res:// nor uid://";
   const rest = s.slice(6);
-  const path32 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
-  return pckPathOk(path32) ? null : "not a normal res:// path";
+  const path36 = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+  return pckPathOk(path36) ? null : "not a normal res:// path";
 }
-function parseAttachable(list2 = []) {
+function parseAttachable(list3 = []) {
   const paths = /* @__PURE__ */ new Set();
   const dirs = [];
   const uids = /* @__PURE__ */ new Set();
-  for (const s of list2) {
+  for (const s of list3) {
     const why = attachableEntryProblem(s);
     if (why !== null)
       throw new Error(
@@ -36374,8 +41288,8 @@ function refProblem(ref, ctx) {
 var EXT_LINE_RE = /^[ \t]*\[ext_resource((?: [a-z_]+="[^"\\]*")+)\][ \t]*$/;
 var EXT_ATTR_RE = / ([a-z_]+)="([^"\\]*)"/g;
 var EXT_KEYS = ["type", "uid", "path", "id"];
-function textRefs(text) {
-  const t = text.replace(/\r/g, "\n");
+function textRefs(text3) {
+  const t = text3.replace(/\r/g, "\n");
   if (t.includes("resource_path") || t.replace(/\\/g, "").includes("resource_path"))
     return { why: RESOURCE_PATH_WHY };
   const lines4 = t.split("\n");
@@ -36455,14 +41369,14 @@ function binaryRefs(b, start) {
     need2(n);
     pos += n;
   };
-  const str6 = () => {
+  const str8 = () => {
     const n = u32();
     need2(n);
     const s = b.subarray(pos, pos + n);
     pos += n;
     return s;
   };
-  const text = (s) => {
+  const text3 = (s) => {
     const z = s.indexOf(0);
     const cut = z === -1 ? s : s.subarray(0, z);
     if (Buffer.from(cut).indexOf(BOM) !== -1) throw fail4();
@@ -36483,46 +41397,46 @@ function binaryRefs(b, start) {
       return {
         why: `is a binary resource in format ${format}, above ${BINARY_FORMAT_MAX}${AMBIGUOUS}`
       };
-    str6();
+    str8();
     skip(8);
     const flags = u32();
     skip(8);
-    if (flags & FLAG_SCRIPT_CLASS) str6();
+    if (flags & FLAG_SCRIPT_CLASS) str8();
     skip(4 * RESERVED_FIELDS);
     part = "reference tables";
     const nstr = u32();
     const rpNames = /* @__PURE__ */ new Set();
     const badNames = /* @__PURE__ */ new Set();
     for (let i = 0; i < nstr; i++) {
-      const entry = str6();
+      const entry = str8();
       if (isResourcePath(entry)) rpNames.add(i);
       if (!nameUtf8(entry)) badNames.add(i);
     }
     const refs = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
-      const type = text(str6());
-      const path32 = text(str6());
+      const type = text3(str8());
+      const path36 = text3(str8());
       let uid = null;
       if (flags & FLAG_UIDS) {
         need2(8);
         uid = dv.getBigInt64(pos, true);
         pos += 8;
       }
-      refs.push({ type, path: path32, uid });
+      refs.push({ type, path: path36, uid });
     }
     const nint = u32();
     const offsets = [];
     let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
-      const path32 = text(str6());
+      const path36 = text3(str8());
       need2(8);
       const lo = dv.getUint32(pos, true);
       const hi = dv.getUint32(pos + 4, true);
       pos += 8;
-      if (i < nint - 1 && !path32.startsWith("local://"))
+      if (i < nint - 1 && !path36.startsWith("local://"))
         return {
-          why: `has a sub-resource path that is not local:// (${path32})${AMBIGUOUS}`
+          why: `has a sub-resource path that is not local:// (${path36})${AMBIGUOUS}`
         };
       offsets.push(hi > 2097151 ? -1 : hi * 4294967296 + lo);
     }
@@ -36549,7 +41463,7 @@ function binaryRefs(b, start) {
       if (off < 0 || off <= prev || off > b.byteLength) throw fail4();
       limit = i + 1 < offsets.length ? Math.max(off, Math.min(offsets[i + 1], b.byteLength)) : b.byteLength;
       pos = off;
-      str6();
+      str8();
       const pc = u32();
       for (let j = 0; j < pc; j++) {
         name(true);
@@ -36582,7 +41496,7 @@ function binaryRefs(b, start) {
             case 5:
             // STRING
             case 44:
-              str6();
+              str8();
               break;
             case 10:
               skip(2 * real);
@@ -36668,7 +41582,7 @@ function binaryRefs(b, start) {
               break;
             case 34: {
               const n = u32();
-              for (let k = 0; k < n; k++) str6();
+              for (let k = 0; k < n; k++) str8();
               break;
             }
             case 37:
@@ -36761,16 +41675,16 @@ function isScript(p, kinds) {
 }
 var NATIVE_RE = /\.(so|dll|dylib|wasm|gdextension)$|\.so\.\d+(\.\d+)*$/i;
 var NATIVE_DIR_RE = /\.(framework|xcframework)$/i;
-function isNative(path32) {
-  if (NATIVE_RE.test(path32)) return true;
-  return path32.split("/").some((s) => NATIVE_DIR_RE.test(s));
+function isNative(path36) {
+  if (NATIVE_RE.test(path36)) return true;
+  return path36.split("/").some((s) => NATIVE_DIR_RE.test(s));
 }
 function resPath(p) {
   return p.startsWith("res://") ? p.slice("res://".length) : null;
 }
-function remapTargets(text) {
+function remapTargets(text3) {
   const out = /* @__PURE__ */ new Set();
-  for (const v of remapValues(text)) {
+  for (const v of remapValues(text3)) {
     const p = resPath(v);
     if (p !== null) out.add(p);
   }
@@ -36779,12 +41693,12 @@ function remapTargets(text) {
 var PATH_ANY_RE = /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
-function lines3(text) {
-  return text.replace(/\r/g, "\n").split("\n");
+function lines3(text3) {
+  return text3.replace(/\r/g, "\n").split("\n");
 }
-function remapValues(text) {
+function remapValues(text3) {
   const out = /* @__PURE__ */ new Set();
-  const ls = lines3(text);
+  const ls = lines3(text3);
   for (const l of ls) {
     const m = PATH_LINE_RE.exec(l);
     if (m) out.add(m[1]);
@@ -36804,8 +41718,8 @@ function remapProblem(data) {
   if (!utf8Valid(data)) return "a .remap or .import that is not valid UTF-8";
   if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM2) !== -1)
     return "a .remap or .import with a byte-order mark";
-  const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
-  for (const l of lines3(text))
+  const text3 = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
+  for (const l of lines3(text3))
     if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
       return `a path line the engine could read differently (${l})`;
   return null;
@@ -36893,7 +41807,7 @@ function lintPck(dir, bytes, opts) {
   const stripped = new Set(PCK_STRIP_PATHS);
   const named = /* @__PURE__ */ new Set();
   const deferred = [];
-  const text = new TextDecoder("utf-8", { fatal: false });
+  const text3 = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
   const cache = dir.entries.find((e) => e.path === ".godot/uid_cache.bin");
@@ -36957,7 +41871,7 @@ function lintPck(dir, bytes, opts) {
           continue;
         }
         const targets = remapTargets(
-          text.decode(bytes.subarray(e.offset, e.offset + e.size))
+          text3.decode(bytes.subarray(e.offset, e.offset + e.size))
         );
         const source = p.slice(0, p.lastIndexOf("."));
         const script = targets.find((t) => isScript(t, kinds));
@@ -36968,7 +41882,7 @@ function lintPck(dir, bytes, opts) {
           continue;
         }
         const outside = remapValues(
-          text.decode(bytes.subarray(e.offset, e.offset + e.size))
+          text3.decode(bytes.subarray(e.offset, e.offset + e.size))
         ).find((v) => {
           if (v === "") return false;
           const t = resPath(v);
@@ -37078,7 +41992,7 @@ function lintTreePaths(paths) {
 
 // src/packChunks.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash12 } from "node:crypto";
+import { createHash as createHash11 } from "node:crypto";
 var CHUNK_MIN_PAYLOAD_BYTES = 4 * 1024 * 1024;
 var CHUNK_PARAMS = {
   chunker: "fastcdc-2016-nc1",
@@ -37096,7 +42010,7 @@ var HEADER_BYTES2 = 64;
 var RECORD_BYTES2 = 48;
 var FLAG_FILE_AWARE2 = 1;
 var TWO_322 = 4294967296;
-var sha256Hex4 = (b) => createHash12("sha256").update(b).digest("hex");
+var sha256Hex4 = (b) => createHash11("sha256").update(b).digest("hex");
 function hexBytes(h) {
   const out = new Uint8Array(h.length / 2);
   for (let i = 0; i < out.length; i++)
@@ -37311,10 +42225,10 @@ function writeChunkIndex(doc) {
 function chunkIndexBytes(records, bundles) {
   return HEADER_BYTES2 + RECORD_BYTES2 * (records + bundles);
 }
-function frameContentSize(frame) {
-  if (frame.byteLength < 5 || frame[0] !== 40 || frame[1] !== 181 || frame[2] !== 47 || frame[3] !== 253)
+function frameContentSize(frame2) {
+  if (frame2.byteLength < 5 || frame2[0] !== 40 || frame2[1] !== 181 || frame2[2] !== 47 || frame2[3] !== 253)
     return null;
-  const d = frame[4];
+  const d = frame2[4];
   if ((d & 8) !== 0) return null;
   const single = (d & 32) !== 0;
   const dictBytes = [0, 1, 2, 4][d & 3];
@@ -37322,9 +42236,9 @@ function frameContentSize(frame) {
   const fcsBytes = fcsFlag === 0 ? single ? 1 : 0 : [0, 2, 4, 8][fcsFlag];
   if (fcsBytes === 0) return null;
   const at = 5 + (single ? 0 : 1) + dictBytes;
-  if (frame.byteLength < at + fcsBytes) return null;
+  if (frame2.byteLength < at + fcsBytes) return null;
   let v = 0;
-  for (let i = fcsBytes - 1; i >= 0; i--) v = v * 256 + frame[at + i];
+  for (let i = fcsBytes - 1; i >= 0; i--) v = v * 256 + frame2[at + i];
   if (fcsBytes === 2) v += 256;
   return Number.isSafeInteger(v) ? v : null;
 }
@@ -37360,7 +42274,7 @@ async function buildChunks(z, payload, chunks, base, reuse, opts = {}) {
           `Self-check: chunk ${id.slice(0, 12)}…'s zstd frame declares content size ${fcs ?? "none"}, not ${c.len}; nothing was published.`
         );
       try {
-        data = decode(s.stored, c.len);
+        data = decode2(s.stored, c.len);
       } catch (e) {
         throw new Error(
           `Self-check: chunk ${id.slice(0, 12)}…'s frame does not decode with @polaris-key/zstd-wasm (${e.message}); nothing was published.`
@@ -37438,7 +42352,7 @@ async function buildChunks(z, payload, chunks, base, reuse, opts = {}) {
     params
   };
   const parsed = await parseChunkIndex(index.stored, ref, payload, {
-    decode: (frame, size) => decode(frame, size),
+    decode: (frame2, size) => decode2(frame2, size),
     maxBytes: maxIndexBytes
   });
   if (!parsed.ok)
@@ -37513,7 +42427,7 @@ async function loadVariant(pack, variant, root, settings = {}) {
   const dir = path17.join(root, variantDirName(variant));
   if (pack.type === "godot.pck") {
     const file = await findPck(dir);
-    const src = new Uint8Array(await readFile14(file));
+    const src = new Uint8Array(await readFile13(file));
     const name = path17.basename(file);
     const strip = stripPck(src, name);
     const lint = lintPck(strip.directory, strip.bytes, {
@@ -37539,7 +42453,7 @@ async function loadVariant(pack, variant, root, settings = {}) {
   }
   if (pack.type === "godot.zip") {
     const file = await findPck(dir, ".zip");
-    const bytes = new Uint8Array(await readFile14(file));
+    const bytes = new Uint8Array(await readFile13(file));
     const name = path17.basename(file);
     let zipDir;
     try {
@@ -37614,7 +42528,7 @@ async function cachedReleases(bases, packId, warn) {
     const dir = path17.join(root, version);
     let jws;
     try {
-      jws = (await readFile14(path17.join(dir, "record.jws"), "utf8")).trim();
+      jws = (await readFile13(path17.join(dir, "record.jws"), "utf8")).trim();
     } catch {
       warn(`--bases: ${dir} has no record.jws; it is not a base.`);
       continue;
@@ -37655,7 +42569,7 @@ async function loadBase(pack, release, keys, warn) {
       if (isMountedPackType(pack.type)) {
         const zip = pack.type === "godot.zip";
         const bytes = new Uint8Array(
-          await readFile14(await findPck(dir, zip ? ".zip" : ".pck"))
+          await readFile13(await findPck(dir, zip ? ".zip" : ".pck"))
         );
         const sha = sha256Hex2(bytes);
         if (sha !== v.payload.sha256 || bytes.byteLength !== v.payload.size) {
@@ -37698,7 +42612,7 @@ async function chunkChainBase(proven, key, gateClass, warn) {
     );
     let stored;
     try {
-      stored = new Uint8Array(await readFile14(file));
+      stored = new Uint8Array(await readFile13(file));
     } catch {
       warn(
         `chunk chain ${label}: the cached index ${path17.basename(file)} is missing; an older cached release is tried, else the chunks are packed fresh.`
@@ -37706,7 +42620,7 @@ async function chunkChainBase(proven, key, gateClass, warn) {
       continue;
     }
     const parsed = await parseChunkIndex(stored, v.chunks, v.payload, {
-      decode: (frame, size) => decode(frame, size),
+      decode: (frame2, size) => decode2(frame2, size),
       maxBytes: MAX_PUBLISHED_INDEX_BYTES
     });
     if (!parsed.ok) {
@@ -37857,7 +42771,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
     out.write("Data-only: every file passes (plans/P4-19.md §2.5)\n");
   }
   const issuedNow = opts.now ?? Math.floor(Date.now() / 1e3);
-  const work = mkdtempSync(path17.join(os.tmpdir(), "pkey-pack-"));
+  const work = mkdtempSync2(path17.join(os.tmpdir(), "pkey-pack-"));
   try {
     const z = zstdCli(work, opts.zstdBin);
     const built = /* @__PURE__ */ new Map();
@@ -38058,20 +42972,20 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       const ask = /* @__PURE__ */ new Map();
       for (const c of chains.values())
         for (const [sha, size] of c.index.bundles) ask.set(sha, size);
-      const list3 = [...ask].map(([sha2566, size]) => ({ sha256: sha2566, size }));
+      const list4 = [...ask].map(([sha2566, size]) => ({ sha256: sha2566, size }));
       if (client)
-        for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
+        for (let i = 0; i < list4.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
             client,
-            list3.slice(i, i + STAGE_ROUND_OBJECTS),
+            list4.slice(i, i + STAGE_ROUND_OBJECTS),
             gated,
             opts
           );
           for (const o of ticket.objects)
             if (o.present) presentBundles.add(o.sha256);
         }
-      else if (list3.length > 0) {
-        for (const o of list3) presentBundles.add(o.sha256);
+      else if (list4.length > 0) {
+        for (const o of list4) presentBundles.add(o.sha256);
         warn(
           "the cached chunk bundles are assumed stored: without a CI credential the dry run cannot ask Polaris Key which it holds."
         );
@@ -38095,7 +43009,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       for (const [fileSha, s] of b.blobs)
         addObject(s.stored, `file ${fileSha.slice(0, 12)}…`);
       const deltas = [];
-      const report = {
+      const report2 = {
         key: v.key,
         payload: b.payload,
         stripped: v.stripped,
@@ -38113,7 +43027,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         const bp = base.payloads.get(v.key);
         if (!bp) continue;
         const from = base.release.version;
-        report.noise.push(
+        report2.noise.push(
           ...noiseReport(bp.files, b.files).map((n) => `against ${from}: ${n}`)
         );
         if (b.layout === "container" && bp.bytes) {
@@ -38124,7 +43038,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             v.payload.bytes
           );
           if ("skipped" in pd)
-            report.skippedDeltas.push(
+            report2.skippedDeltas.push(
               `payload delta from ${from}: ${pd.skipped}`
             );
           else {
@@ -38133,7 +43047,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
               pd.stored,
               `${v.key || "default"} payload delta from ${from}`
             );
-            report.bytes.deltas.push({
+            report2.bytes.deltas.push({
               from: bp.sha256,
               version: from,
               scope: "payload",
@@ -38147,10 +43061,10 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           b
         );
         if ("skipped" in fd)
-          report.skippedDeltas.push(`files delta from ${from}: ${fd.skipped}`);
+          report2.skippedDeltas.push(`files delta from ${from}: ${fd.skipped}`);
         else {
           for (const p of fd.magicBases)
-            report.skippedDeltas.push(
+            report2.skippedDeltas.push(
               `files delta from ${from}: ${p}'s base starts with the zstd dictionary magic 37 A4 30 EC, so it ships as a blob entry (§2.7 rule 5)`
             );
           deltas.push(fd.delta);
@@ -38159,7 +43073,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             fd.dataStored,
             `${v.key || "default"} patch data from ${from}`
           );
-          report.bytes.deltas.push({
+          report2.bytes.deltas.push({
             from: bp.sha256,
             version: from,
             scope: "files",
@@ -38168,13 +43082,13 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         }
       }
       const label = v.key || "default";
-      for (const s of report.skippedDeltas) warn(`${label}: ${s}`);
-      for (const n of report.noise) warn(`${label}: re-import noise ${n}`);
+      for (const s of report2.skippedDeltas) warn(`${label}: ${s}`);
+      for (const n of report2.noise) warn(`${label}: re-import noise ${n}`);
       let chunksRef;
       const omittedWhy = chunksOmitted.get(v.key);
-      if (omittedWhy) report.chunksOmitted = omittedWhy;
-      const list3 = chunked.get(v.key);
-      if (list3) {
+      if (omittedWhy) report2.chunksOmitted = omittedWhy;
+      const list4 = chunked.get(v.key);
+      if (list4) {
         const base = chains.get(v.key) ?? null;
         const reuse = base ? priorLocations(base.index, (sha) => presentBundles.has(sha)) : /* @__PURE__ */ new Map();
         if (base) {
@@ -38192,13 +43106,13 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             bytes: v.payload.bytes,
             ...b.payload
           },
-          list3,
+          list4,
           base,
           reuse,
           { maxIndexBytes: opts.maxChunkIndexBytes }
         );
         if ("omitted" in outcome) {
-          report.chunksOmitted = outcome.omitted;
+          report2.chunksOmitted = outcome.omitted;
           warn(`${label}: no chunk index: ${outcome.omitted}.`);
         } else {
           chunksRef = outcome.ref;
@@ -38206,7 +43120,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           addObject(outcome.index.stored, `${label} chunk index`);
           for (const [sha, bytes] of outcome.bundles)
             addObject(bytes, `${label} chunk bundle ${sha.slice(0, 12)}…`);
-          report.chunks = {
+          report2.chunks = {
             ...outcome.stats,
             sha256: outcome.index.ref.sha256,
             bytes: outcome.index.ref.bytes,
@@ -38214,7 +43128,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           };
         }
       }
-      reports.push(report);
+      reports.push(report2);
       recordVariants.push({
         variant: v.variant,
         payload: b.payload,
@@ -38282,30 +43196,30 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       variants: reports,
       markers: []
     };
-    const list2 = [...objects.values()];
+    const list3 = [...objects.values()];
     if (opts.dryRun) {
       if (client) {
         opts.progress?.stage("Asking which objects are stored");
         let present2 = 0;
-        for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
+        for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
           const ticket = await requestTicket(
             client,
-            list2.slice(i, i + STAGE_ROUND_OBJECTS),
+            list3.slice(i, i + STAGE_ROUND_OBJECTS),
             gated,
             opts
           );
           present2 += ticket.objects.filter((o) => o.present).length;
         }
         out.write(
-          `Objects: ${list2.length - present2} new, ${present2} already stored (deduplicated)
+          `Objects: ${list3.length - present2} new, ${present2} already stored (deduplicated)
 `
         );
       }
-      const { seq: _seq, ...shown2 } = record;
+      const { seq: _seq, ...shown4 } = record;
       out.write(
         `
 Pack record (unsigned; a dry run signs nothing${seq === void 0 ? "; seq is the preflight's answer" : ""}):
-${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
+${JSON.stringify(seq === void 0 ? shown4 : record, null, 2)}
 `
       );
       out.write("Dry run: nothing uploaded, signed or written.\n");
@@ -38343,10 +43257,10 @@ ${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
     const objDir = path17.join(work, "objects");
     await mkdir3(objDir, { recursive: true });
     opts.progress?.stage(
-      `Uploading ${list2.length} object${list2.length === 1 ? "" : "s"}`
+      `Uploading ${list3.length} object${list3.length === 1 ? "" : "s"}`
     );
-    for (let i = 0; i < list2.length; i += STAGE_ROUND_OBJECTS) {
-      const round = list2.slice(i, i + STAGE_ROUND_OBJECTS);
+    for (let i = 0; i < list3.length; i += STAGE_ROUND_OBJECTS) {
+      const round = list3.slice(i, i + STAGE_ROUND_OBJECTS);
       let attempt = 0;
       for (; ; ) {
         try {
@@ -38358,7 +43272,7 @@ ${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
             objDir,
             opts,
             result,
-            list2.length
+            list3.length
           );
           break;
         } catch (e) {
@@ -38431,7 +43345,7 @@ ${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
     }
     return result;
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    rmSync2(work, { recursive: true, force: true });
   }
 }
 async function requestTicket(client, objects, gated, opts) {
@@ -38464,12 +43378,12 @@ async function stageRound(client, round, gated, packId, objDir, opts, result, ob
   const ticket = await requestTicket(client, round, gated, opts);
   const bySha = new Map(round.map((o) => [o.sha256, o]));
   const answered = new Set(ticket.objects.map((o) => o.sha256));
-  const missing = round.filter((o) => !answered.has(o.sha256));
-  if (missing.length)
+  const missing2 = round.filter((o) => !answered.has(o.sha256));
+  if (missing2.length)
     throw new Error(
-      `${client.url("release/publish/uploads")} answered a ticket without ${missing.length} of the ${round.length} requested objects (${missing.slice(0, 3).map((o) => `${o.sha256.slice(0, 12)}…`).join(
+      `${client.url("release/publish/uploads")} answered a ticket without ${missing2.length} of the ${round.length} requested objects (${missing2.slice(0, 3).map((o) => `${o.sha256.slice(0, 12)}…`).join(
         ", "
-      )}${missing.length > 3 ? ", …" : ""}); nothing of this round was staged.`
+      )}${missing2.length > 3 ? ", …" : ""}); nothing of this round was staged.`
     );
   const uploaded = [];
   const skipped = [];
@@ -38547,7 +43461,7 @@ ${objectCount} distinct objects
 
 // src/revoke.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readFile as readFile15 } from "node:fs/promises";
+import { readFile as readFile14 } from "node:fs/promises";
 import path18 from "node:path";
 var REVOKE_USAGE = "Usage: pkey release revoke <packId>@<version> --reason <text> --product <slug> [--replacement <version>] [--release-key-file pem] [--base-url <url>] [--dry-run]";
 async function requireRevocationsDiscovery(client, fetchImpl = fetch) {
@@ -38728,7 +43642,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   let fileJws = null;
   if (!byHash) {
     try {
-      fileJws = (await readFile15(path18.resolve(opts.cwd, opts.delegation), "utf8")).trim();
+      fileJws = (await readFile14(path18.resolve(opts.cwd, opts.delegation), "utf8")).trim();
     } catch (e) {
       throw new UsageError(
         `--delegation is neither a sha256 nor a readable file (${e.message}).
@@ -38949,10 +43863,10 @@ async function reportDistribution(opts) {
     );
     return { body, ok: false };
   }
-  const rec = body[opts.type] ?? {};
-  const target = `${u(rec.releaseId)}${rec.buildId ? `/${u(rec.buildId)}` : ""}`;
+  const rec2 = body[opts.type] ?? {};
+  const target = `${u(rec2.releaseId)}${rec2.buildId ? `/${u(rec2.buildId)}` : ""}`;
   opts.stdout.write(
-    `Reported ${opts.type} of ${target} on ${u(rec.outletId)}: ${u(rec.state)}
+    `Reported ${opts.type} of ${target} on ${u(rec2.outletId)}: ${u(rec2.state)}
 `
   );
   return { body, ok: true };
@@ -38978,8 +43892,8 @@ ${DISTRIBUTION_CI_USAGE}`
   }
   const client = await clientFor2(opts);
   const base = `distribution/rollouts/${encodeURIComponent(opts.outlet)}/${encodeURIComponent(opts.channel)}`;
-  const path32 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
-  const body = await client.postJson(path32, {
+  const path36 = opts.command === "rollout" ? base : `${base}/${opts.command}`;
+  const body = await client.postJson(path36, {
     what: opts.command === "rollout" ? `Rolling out ${opts.releaseId} on ${opts.outlet}/${opts.channel}` : `${opts.command[0].toUpperCase()}${opts.command.slice(1)} on ${opts.outlet}/${opts.channel}`,
     body: {
       ...opts.releaseId ? { releaseId: opts.releaseId } : {},
@@ -38998,7 +43912,7 @@ ${DISTRIBUTION_CI_USAGE}`
 
 // src/schemas.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir4, readdir as readdir8, readFile as readFile16, writeFile as writeFile11 } from "node:fs/promises";
+import { mkdir as mkdir4, readdir as readdir8, readFile as readFile15, writeFile as writeFile11 } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path19 from "node:path";
 async function manifestSchemas() {
@@ -39009,7 +43923,7 @@ async function manifestSchemas() {
   const names = (await readdir8(dir)).filter((n) => n.endsWith(".schema.json")).sort();
   const out = {};
   for (const name of names)
-    out[name] = await readFile16(path19.join(dir, name), "utf8");
+    out[name] = await readFile15(path19.join(dir, name), "utf8");
   return out;
 }
 async function writeManifestSchemas(outDir) {
@@ -39025,11 +43939,11 @@ async function writeManifestSchemas(outDir) {
 
 // src/transport.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash13 } from "node:crypto";
-import { cp as cp2, mkdir as mkdir5, readFile as readFile17, writeFile as writeFile12 } from "node:fs/promises";
+import { createHash as createHash12 } from "node:crypto";
+import { cp as cp2, mkdir as mkdir5, readFile as readFile16, writeFile as writeFile12 } from "node:fs/promises";
 import path20 from "node:path";
 var TRANSPORT_USAGE = "Usage: pkey transport apple-ba package --deliverable <packId> --release <v> --from <dir> [--content-api n]\n              [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]\n       pkey transport apple-ba upload --deliverable <packId> --release <v> --dir <package out> [--from <dir>] [--content-api n]\n              [--expect-resource id] [--lock file] [--wait minutes] [--no-report]\n       pkey transport play-pad modules --deliverable <packId> --release <v> --from <dir> --project <gradle dir>\n              [--delivery fast-follow|on-demand] [--default-texture fmt] [--variant key] [--no-report]\n       pkey transport steam-depot vdf --deliverable <packId> --release <v> --from <dir> --depot <id>\n              (--branch <name> | --channel <c>) [--setlive] [--app <id>] [--out dir] [--no-report]\n  (each also takes --product slug, --base-url url; reports need distribution:report, the default CI grant)";
-var sha256Hex5 = (b) => createHash13("sha256").update(b).digest("hex");
+var sha256Hex5 = (b) => createHash12("sha256").update(b).digest("hex");
 function jwsPayload(jws) {
   const parts = jws.split(".");
   if (parts.length !== 3) throw new Error("record.jws is not a compact JWS.");
@@ -39078,7 +43992,7 @@ async function loadTransportPack(common, from) {
   const root = path20.resolve(common.cwd, from, pack.id, common.version);
   let recordJws;
   try {
-    recordJws = (await readFile17(path20.join(root, "record.jws"), "utf8")).trim();
+    recordJws = (await readFile16(path20.join(root, "record.jws"), "utf8")).trim();
   } catch {
     throw new Error(
       `No cached release at ${path20.relative(common.cwd, root) || root}: run pkey release publish --deliverable ${pack.id} --version ${common.version} --out ${from} first (or restore that cache).`
@@ -39259,7 +44173,7 @@ function prettyJson(v) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createPrivateKey as createPrivateKey2, sign } from "node:crypto";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { mkdir as mkdir6, readFile as readFile18, rm as rm2, stat as stat7, writeFile as writeFile13 } from "node:fs/promises";
+import { mkdir as mkdir6, readFile as readFile17, rm as rm2, stat as stat6, writeFile as writeFile13 } from "node:fs/promises";
 import path21 from "node:path";
 var ASC_API = "https://api.appstoreconnect.apple.com";
 var DEFAULT_BA_OUT = "build/pkey-transport/apple-ba";
@@ -39357,7 +44271,7 @@ async function ascCredentials(o) {
   const issuerId = o.env.ASC_ISSUER_ID?.trim();
   let pem = o.env.ASC_PRIVATE_KEY?.trim();
   if (!pem && o.env.ASC_KEY_PATH?.trim())
-    pem = await readFile18(
+    pem = await readFile17(
       path21.resolve(o.cwd, o.env.ASC_KEY_PATH.trim()),
       "utf8"
     );
@@ -39403,7 +44317,7 @@ var AscApi = class {
         },
         ...body !== void 0 ? { body: JSON.stringify(body) } : {}
       });
-      const text = await r.text();
+      const text3 = await r.text();
       if ((r.status === 429 || r.status >= 500) && attempt < 4) {
         await this.sleep(2 ** attempt * 5e3);
         continue;
@@ -39411,15 +44325,15 @@ var AscApi = class {
       if (!r.ok)
         throw new AscUploadError(
           "asc-http-error",
-          `${method} ${p} answered ${r.status}: ${untrusted(text.slice(0, 500), {})}`
+          `${method} ${p} answered ${r.status}: ${untrusted(text3.slice(0, 500), {})}`
         );
-      return text ? JSON.parse(text) : {};
+      return text3 ? JSON.parse(text3) : {};
     }
   }
 };
 async function readLock(file) {
   try {
-    const v = JSON.parse(await readFile18(file, "utf8"));
+    const v = JSON.parse(await readFile17(file, "utf8"));
     if (v?.format !== ASSET_PACK_LOCK_FORMAT || typeof v.assetPacks !== "object")
       throw new Error(`${file} is not a ${ASSET_PACK_LOCK_FORMAT} document.`);
     return v;
@@ -39451,7 +44365,7 @@ async function baUpload(o) {
   const aar = path21.join(dir, `${assetPackId}.aar`);
   const manifestFile = path21.join(dir, assetPackId, "Manifest.json");
   const inputs = JSON.parse(
-    await readFile18(path21.join(dir, `${assetPackId}.inputs.json`), "utf8").catch(
+    await readFile17(path21.join(dir, `${assetPackId}.inputs.json`), "utf8").catch(
       () => {
         throw new AscUploadError(
           "asset-pack-inputs-mismatch",
@@ -39460,12 +44374,12 @@ async function baUpload(o) {
       }
     )
   );
-  if (inputs.packId !== product.pack.id || inputs.version !== o.version || inputs.contentApi !== level || inputs.manifestSha256 !== sha256Hex5(await readFile18(manifestFile)))
+  if (inputs.packId !== product.pack.id || inputs.version !== o.version || inputs.contentApi !== level || inputs.manifestSha256 !== sha256Hex5(await readFile17(manifestFile)))
     throw new AscUploadError(
       "asset-pack-inputs-mismatch",
       `${path21.relative(o.cwd, dir) || dir} holds ${String(inputs.packId)}@${String(inputs.version)} at level ${String(inputs.contentApi)}, not ${product.pack.id}@${o.version} at level ${level} (or its Manifest.json changed since packaging).`
     );
-  await stat7(aar).catch(() => {
+  await stat6(aar).catch(() => {
     throw new AscUploadError(
       "asset-pack-inputs-mismatch",
       `${path21.relative(o.cwd, aar)} is missing: package on macOS (without --no-archive) first.`
@@ -39628,11 +44542,11 @@ async function baUpload(o) {
 async function packagedPayload(content, name) {
   for (const ext of [".pck", ".zip"]) {
     const file = path21.join(content, `${name}${ext}`);
-    const bytes = await readFile18(file).catch(() => null);
+    const bytes = await readFile17(file).catch(() => null);
     if (bytes)
       return {
         sha256: sha256Hex5(bytes),
-        marker: await readFile18(`${file}${MARKER_SUFFIX}`, "utf8").catch(
+        marker: await readFile17(`${file}${MARKER_SUFFIX}`, "utf8").catch(
           () => null
         )
       };
@@ -39645,14 +44559,14 @@ async function packagedPayload(content, name) {
     );
   return {
     sha256: await treeDigest(tree.files),
-    marker: await readFile18(
+    marker: await readFile17(
       path21.join(content, ...TREE_MARKER_PATH.split("/")),
       "utf8"
     ).catch(() => null)
   };
 }
 async function uploadFile(api, o, versionId, file, assetType) {
-  const bytes = new Uint8Array(await readFile18(file));
+  const bytes = new Uint8Array(await readFile17(file));
   const r = await api.call("POST", "/v1/backgroundAssetUploadFiles", {
     data: {
       type: "backgroundAssetUploadFiles",
@@ -39706,7 +44620,7 @@ async function uploadFile(api, o, versionId, file, assetType) {
 
 // src/transportPlayPad.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir7, readFile as readFile19, rm as rm3, writeFile as writeFile14 } from "node:fs/promises";
+import { mkdir as mkdir7, readFile as readFile18, rm as rm3, writeFile as writeFile14 } from "node:fs/promises";
 import path22 from "node:path";
 var TCF_ALIASES = {
   astc: "astc",
@@ -39746,31 +44660,31 @@ android {
     }
 }
 `;
-function patchSettingsGradle(text, name) {
+function patchSettingsGradle(text3, name) {
   const line = `include ':${name}'`;
-  if (text.split(/\r?\n/).some((l) => l.trim() === line)) return text;
-  const lines4 = text.split("\n");
+  if (text3.split(/\r?\n/).some((l) => l.trim() === line)) return text3;
+  const lines4 = text3.split("\n");
   let at = -1;
   lines4.forEach((l, i) => {
     if (/^\s*include\s+['"]:/.test(l)) at = i;
   });
   if (at < 0) {
-    const sep = text.endsWith("\n") ? "" : "\n";
-    return `${text}${sep}${line}
+    const sep = text3.endsWith("\n") ? "" : "\n";
+    return `${text3}${sep}${line}
 `;
   }
   lines4.splice(at + 1, 0, line);
   return lines4.join("\n");
 }
-function patchAppGradle(text, name, textureSplit) {
+function patchAppGradle(text3, name, textureSplit) {
   const re = /^(\s*assetPacks\s*=\s*\[)([^\]]*)(\])/m;
-  const m = re.exec(text);
+  const m = re.exec(text3);
   if (!m)
     throw new Error(
       'build.gradle declares no assetPacks = [...] list: --project must be a Godot Android Gradle build (android/build, from "Install Android Build Template").'
     );
   const items = m[2].split(",").map((s) => s.trim()).filter(Boolean);
-  let out = text;
+  let out = text3;
   if (!items.some((s) => s === `":${name}"` || s === `':${name}'`)) {
     const next = [...items, `":${name}"`].join(", ");
     out = out.replace(re, `$1${next}$3`);
@@ -39827,12 +44741,12 @@ async function padModules(o) {
   const project = path22.resolve(o.cwd, o.project);
   const settingsFile = path22.join(project, "settings.gradle");
   const appFile = path22.join(project, "build.gradle");
-  const settings = await readFile19(settingsFile, "utf8").catch(() => {
+  const settings = await readFile18(settingsFile, "utf8").catch(() => {
     throw new Error(
       `${path22.relative(o.cwd, settingsFile)} is missing: --project must be a Godot Android Gradle build (android/build).`
     );
   });
-  const app = await readFile19(appFile, "utf8");
+  const app = await readFile18(appFile, "utf8");
   const textured = [...dirs.values()].some((d) => d !== "pkey");
   const nextApp = patchAppGradle(app, name, textured);
   const nextSettings = patchSettingsGradle(settings, name);
@@ -39998,8 +44912,8 @@ async function steamVdf(o) {
 
 // src/storefronts/command.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { readdir as readdir9, stat as stat8 } from "node:fs/promises";
-import path26 from "node:path";
+import { readdir as readdir10, stat as stat7 } from "node:fs/promises";
+import path27 from "node:path";
 
 // src/storefronts/ciPlane.generated.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -40496,17 +45410,84 @@ var CI_PLANE = {
             ],
             confirm: "plain",
             why: "read the pull request's state and review labels (the verifier; it writes nothing)"
+          },
+          "formula-pull-request": {
+            argv: [
+              "pull-request",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "the formula in the product's own tap; never homebrew/core, which has notability rules and needs the owner"
+          },
+          "formula-status": {
+            argv: [
+              "status",
+              "--repo",
+              {
+                param: "repo",
+                pattern: "(?![Hh][Oo][Mm][Ee][Bb][Rr][Ee][Ww]/)[A-Za-z0-9][A-Za-z0-9-]{0,38}/homebrew-[A-Za-z0-9._-]{1,90}",
+                identity: {
+                  field: "homebrewTap",
+                  match: "equal"
+                }
+              },
+              "--formula",
+              {
+                param: "formula",
+                pattern: "(?!.*\\.\\.)[a-z0-9][a-z0-9.@+_-]{0,99}",
+                identity: {
+                  field: "homebrewFormula",
+                  match: "equal"
+                }
+              },
+              "--version",
+              {
+                param: "version",
+                pattern: "[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}"
+              }
+            ],
+            confirm: "plain",
+            why: "read the pull request's state and review labels (the verifier; it writes nothing)"
           }
         }
       },
       commandOps: {
         "pull-request": ["uploadBuild", "release", "writeListingText"],
-        status: ["status"]
+        status: ["status"],
+        "formula-pull-request": ["uploadBuild", "release", "writeListingText"],
+        "formula-status": ["status"]
       },
       paths: [
         {
           template: "Casks/{cask}.rb",
           why: "the cask"
+        },
+        {
+          command: "formula-pull-request",
+          template: "Formula/{formula}.rb",
+          why: "the formula"
         }
       ],
       naturalKey: ["cask", "version"],
@@ -40530,6 +45511,44 @@ var CI_PLANE = {
           "--repo",
           "homebrew/homebrew-core",
           "--cask",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "Homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "homebrew/homebrew-core",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "formula-pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--formula",
+          "dice",
+          "--version",
+          "1.0.0"
+        ],
+        [
+          "pull-request",
+          "--repo",
+          "vlad/homebrew-games",
+          "--cask",
+          "dice",
+          "--formula",
           "dice",
           "--version",
           "1.0.0"
@@ -40776,9 +45795,9 @@ function bindingHolds(b, value, identity) {
     }
   }
 }
-function checkCiCommand(list2, id, argv2, identity) {
-  if (!Object.hasOwn(list2.commands, id)) return "not_allowed";
-  const rule = list2.commands[id];
+function checkCiCommand(list3, id, argv2, identity) {
+  if (!Object.hasOwn(list3.commands, id)) return "not_allowed";
+  const rule = list3.commands[id];
   if (argv2.length !== rule.argv.length) return "not_allowed";
   let bound = false;
   for (let i = 0; i < argv2.length; i++) {
@@ -40805,8 +45824,8 @@ function checkCiCommand(list2, id, argv2, identity) {
   }
   return null;
 }
-function ciParamValue(list2, id, argv2, param) {
-  const rule = list2.commands[id];
+function ciParamValue(list3, id, argv2, param) {
+  const rule = list3.commands[id];
   if (!rule) return void 0;
   const i = rule.argv.findIndex(
     (a) => typeof a !== "string" && a.param === param
@@ -40814,8 +45833,8 @@ function ciParamValue(list2, id, argv2, param) {
   if (i < 0 || argv2[i] === void 0) return void 0;
   return argv2[i].slice((rule.argv[i].prefix ?? "").length);
 }
-function bindsIdentity(list2, id) {
-  return (list2.commands[id]?.argv ?? []).some(
+function bindsIdentity(list3, id) {
+  return (list3.commands[id]?.argv ?? []).some(
     (a) => typeof a !== "string" && a.identity !== void 0
   );
 }
@@ -40881,7 +45900,7 @@ function prStore(store) {
 var PR_LOCALE_PATTERN = String.raw`[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8}){0,3}`;
 var escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function prPathPattern(template, values) {
-  let missing = false;
+  let missing2 = false;
   const source = template.split(/(\{[A-Za-z]+(?:\|[a-z]+)?\})/).map((part) => {
     const m = /^\{([A-Za-z]+)(?:\|([a-z]+))?\}$/.exec(part);
     if (!m) return escapeRe(part);
@@ -40889,17 +45908,17 @@ function prPathPattern(template, values) {
     if (name === "locale") return PR_LOCALE_PATTERN;
     const v = values[name];
     if (v === void 0 || v === "") {
-      missing = true;
+      missing2 = true;
       return "";
     }
     if (filter === "segments") return escapeRe(v.split(".").join("/"));
     if (filter === "first") return escapeRe(v.charAt(0).toLowerCase());
     return escapeRe(v);
   }).join("");
-  return missing ? null : new RegExp(`^${source}$`);
+  return missing2 ? null : new RegExp(`^${source}$`);
 }
-function prParams(list2, command, argv2) {
-  const rule = list2.commands[command];
+function prParams(list3, command, argv2) {
+  const rule = list3.commands[command];
   const out = {};
   if (!rule) return out;
   rule.argv.forEach((a, i) => {
@@ -40910,17 +45929,22 @@ function prParams(list2, command, argv2) {
   });
   return out;
 }
-function prPathAllowed(store, argv2, path32) {
-  if (path32.length > 512 || path32.includes("..") || path32.startsWith("/"))
+function prPathAllowed(store, argv2, path36, command = "pull-request") {
+  if (!prWritesFiles(command) || path36.length > 512 || path36.includes("..") || path36.includes("\\") || path36.startsWith("/"))
     return false;
-  const values = prParams(store.list, "pull-request", argv2);
+  const values = prParams(store.list, command, argv2);
   return store.paths.some(
-    (rule) => prPathPattern(rule.template, values)?.test(path32) ?? false
+    (rule) => (rule.command ?? "pull-request") === command && (prPathPattern(rule.template, values)?.test(path36) ?? false)
   );
+}
+function prWritesFiles(command) {
+  return command === "pull-request" || command === "formula-pull-request";
 }
 function prNaturalKey(store, command, argv2) {
   const values = prParams(store.list, command, argv2);
-  const [pkg, version] = store.naturalKey.map((k) => values[k]);
+  const [pkg, version] = (store.commandKeys?.[command] ?? store.naturalKey).map(
+    (k) => values[k]
+  );
   return pkg && version ? `pr:${pkg}:${version}` : null;
 }
 function prVerdict(store, pr) {
@@ -40948,9 +45972,9 @@ function checkPrCommand(store, command, argv2, identity) {
     `Refused by the PR plane's allow-list: ${store.list.tool} ${argv2.join(" ")} ${why[refusal]}.`
   );
 }
-function checkPrPaths(store, argv2, paths) {
+function checkPrPaths(store, argv2, paths, command = "pull-request") {
   for (const p of paths)
-    if (!prPathAllowed(store, argv2, p))
+    if (!prPathAllowed(store, argv2, p, command))
       throw new Error(
         `Refused by the PR plane: ${p} is not a path ${store.label}'s pull request may write (${store.paths.map((r) => r.template).join(", ")}).`
       );
@@ -40960,13 +45984,13 @@ function checkPrPaths(store, argv2, paths) {
 
 // src/storefronts/prRun.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash14 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 import { mkdir as mkdir9, writeFile as writeFile16 } from "node:fs/promises";
 import path25 from "node:path";
 
 // src/storefronts/flathub.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml4 = __toESM(require_dist(), 1);
+var import_yaml5 = __toESM(require_dist(), 1);
 
 // src/storefronts/prInputs.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -41082,17 +46106,17 @@ function oarsAttributes(descriptors) {
 function xmlEscape(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function metainfoMarkup(text, indent) {
+function metainfoMarkup(text3, indent) {
   const out = [];
   const isItem = (l) => /^[-*]\s+/.test(l);
-  for (const block of text.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
-    const lines4 = block.split("\n").map((l) => l.trim()).filter(Boolean);
+  for (const block2 of text3.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
+    const lines4 = block2.split("\n").map((l) => l.trim()).filter(Boolean);
     for (let n = 0; n < lines4.length; ) {
-      const list2 = isItem(lines4[n]);
+      const list3 = isItem(lines4[n]);
       const run2 = [];
-      while (n < lines4.length && isItem(lines4[n]) === list2)
+      while (n < lines4.length && isItem(lines4[n]) === list3)
         run2.push(lines4[n++]);
-      if (list2) {
+      if (list3) {
         out.push(`${indent}<ul>`);
         for (const l of run2)
           out.push(
@@ -41129,7 +46153,7 @@ function developerId(appId) {
 function generateMetainfo(i, o = {}) {
   const appId = flathubAppId(i);
   const release = needRelease(i);
-  const payload = needPayload(i, "Flathub");
+  const payload = needPayload(i, channelLabel("flathub"));
   const warnings = [];
   const def = i.app.defaultLocale;
   const dl = payload.locales[def] ?? {};
@@ -41325,7 +46349,7 @@ function generateFlathubSkeleton(i, o = {}) {
     { type: "file", path: `${appId}.metainfo.xml` },
     { type: "file", path: `${appId}.desktop` }
   );
-  const manifest = new import_yaml4.Document({
+  const manifest = new import_yaml5.Document({
     id: appId,
     runtime: "org.freedesktop.Platform",
     "runtime-version": runtimeVersion,
@@ -41377,33 +46401,33 @@ function generateFlathubSkeleton(i, o = {}) {
   };
 }
 function extraDataSources(modules, out = []) {
-  if (!(0, import_yaml4.isSeq)(modules)) return out;
+  if (!(0, import_yaml5.isSeq)(modules)) return out;
   for (const m of modules.items) {
-    if (!(0, import_yaml4.isMap)(m)) continue;
+    if (!(0, import_yaml5.isMap)(m)) continue;
     const sources = m.get("sources");
-    if ((0, import_yaml4.isSeq)(sources)) {
+    if ((0, import_yaml5.isSeq)(sources)) {
       for (const s of sources.items)
-        if ((0, import_yaml4.isMap)(s) && s.get("type") === "extra-data") out.push(s);
+        if ((0, import_yaml5.isMap)(s) && s.get("type") === "extra-data") out.push(s);
     }
     extraDataSources(m.get("modules"), out);
   }
   return out;
 }
-function updateFlathubManifest(text, path32, i) {
+function updateFlathubManifest(text3, path36, i) {
   const builds = new Map(linuxBuilds(i));
-  const json = path32.endsWith(".json");
-  const doc = (0, import_yaml4.parseDocument)(text);
+  const json = path36.endsWith(".json");
+  const doc = (0, import_yaml5.parseDocument)(text3);
   if (doc.errors.length)
-    throw new Error(`${path32} does not parse: ${doc.errors[0].message}`);
+    throw new Error(`${path36} does not parse: ${doc.errors[0].message}`);
   const sources = extraDataSources(doc.get("modules"));
   if (!sources.length)
     throw new Error(
-      `${path32} has no extra-data source to update: edit it by hand, or let Flathub's external-data checker open the PR.`
+      `${path36} has no extra-data source to update: edit it by hand, or let Flathub's external-data checker open the PR.`
     );
   let changed = 0;
   for (const s of sources) {
     const arches = s.get("only-arches");
-    const archList = (0, import_yaml4.isSeq)(arches) ? arches.items.map((a) => String(a.value ?? a)) : null;
+    const archList = (0, import_yaml5.isSeq)(arches) ? arches.items.map((a) => String(a.value ?? a)) : null;
     const b = archList ? archList.map((a) => builds.get(a)).find((x) => x !== void 0) : builds.size === 1 ? [...builds.values()][0] : void 0;
     if (!b) continue;
     s.set("url", b.url);
@@ -41413,7 +46437,7 @@ function updateFlathubManifest(text, path32, i) {
   }
   if (!changed)
     throw new Error(
-      `${path32}'s extra-data sources name no architecture this release has a Linux build for (${[...builds.keys()].join(", ")}).`
+      `${path36}'s extra-data sources name no architecture this release has a Linux build for (${[...builds.keys()].join(", ")}).`
     );
   return json ? `${JSON.stringify(doc.toJS(), null, 4)}
 ` : doc.toString({ lineWidth: 0 });
@@ -41446,7 +46470,7 @@ function githubClient(o = {}) {
   const f = o.fetchImpl ?? fetch;
   const base = o.apiBase ?? GITHUB_API;
   const sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-  async function call(method, path32, body, allow404 = false) {
+  async function call2(method, path36, body, allow404 = false) {
     const headers = {
       accept: "application/vnd.github+json",
       "x-github-api-version": "2022-11-28",
@@ -41454,16 +46478,16 @@ function githubClient(o = {}) {
     };
     if (o.token) headers.authorization = `Bearer ${o.token}`;
     if (body !== void 0) headers["content-type"] = "application/json";
-    const res = await f(`${base}${path32}`, {
+    const res = await f(`${base}${path36}`, {
       method,
       headers,
       ...body !== void 0 ? { body: JSON.stringify(body) } : {}
     });
     if (res.status === 404 && allow404) return null;
-    const text = await res.text();
+    const text3 = await res.text();
     let parsed = null;
     try {
-      parsed = text ? JSON.parse(text) : null;
+      parsed = text3 ? JSON.parse(text3) : null;
     } catch {
       parsed = null;
     }
@@ -41471,21 +46495,21 @@ function githubClient(o = {}) {
     const message = parsed && typeof parsed === "object" && "message" in parsed ? untrusted(parsed.message, {}) : `HTTP ${res.status}`;
     const remaining = res.headers.get("x-ratelimit-remaining");
     throw new GitHubError(
-      `GitHub ${method} ${path32.split("?")[0]}: ${res.status} ${message}${remaining === "0" ? " (the token's rate limit is spent; retry after X-RateLimit-Reset)" : ""}`,
+      `GitHub ${method} ${path36.split("?")[0]}: ${res.status} ${message}${remaining === "0" ? " (the token's rate limit is spent; retry after X-RateLimit-Reset)" : ""}`,
       res.status
     );
   }
   const client = {
     async login() {
-      const u = await call("GET", "/user");
+      const u = await call2("GET", "/user");
       return u.login;
     },
     async defaultBranch(repo) {
-      const r = await call("GET", `/repos/${repo}`);
+      const r = await call2("GET", `/repos/${repo}`);
       return r.default_branch;
     },
     async refSha(repo, branch) {
-      const r = await call(
+      const r = await call2(
         "GET",
         `/repos/${repo}/git/ref/heads/${enc2(branch)}`,
         void 0,
@@ -41493,27 +46517,27 @@ function githubClient(o = {}) {
       );
       return r?.object.sha ?? null;
     },
-    async fileText(repo, path32, ref) {
-      const r = await call(
+    async fileText(repo, path36, ref) {
+      const r = await call2(
         "GET",
-        `/repos/${repo}/contents/${enc2(path32)}?ref=${encodeURIComponent(ref)}`,
+        `/repos/${repo}/contents/${enc2(path36)}?ref=${encodeURIComponent(ref)}`,
         void 0,
         true
       );
       if (!r || r.type !== "file" || typeof r.content !== "string") return null;
       return Buffer.from(r.content, "base64").toString("utf8");
     },
-    async exists(repo, path32, ref) {
-      const r = await call(
+    async exists(repo, path36, ref) {
+      const r = await call2(
         "GET",
-        `/repos/${repo}/contents/${enc2(path32)}?ref=${encodeURIComponent(ref)}`,
+        `/repos/${repo}/contents/${enc2(path36)}?ref=${encodeURIComponent(ref)}`,
         void 0,
         true
       );
       return r !== null;
     },
     async pullsFromHead(repo, head) {
-      const r = await call(
+      const r = await call2(
         "GET",
         `/repos/${repo}/pulls?state=all&per_page=20&head=${encodeURIComponent(head)}`
       );
@@ -41521,24 +46545,24 @@ function githubClient(o = {}) {
     },
     async pullsByTitle(repo, phrase) {
       const q3 = `repo:${repo} is:pr in:title "${phrase.replace(/"/g, "")}"`;
-      const r = await call(
+      const r = await call2(
         "GET",
         `/search/issues?per_page=20&q=${encodeURIComponent(q3)}`
       );
       return (r?.items ?? []).map(toPull).filter((p) => p.title.includes(phrase));
     },
     async pull(repo, n) {
-      return toPull(await call("GET", `/repos/${repo}/pulls/${n}`));
+      return toPull(await call2("GET", `/repos/${repo}/pulls/${n}`));
     },
     async fork(repo) {
-      const r = await call(
+      const r = await call2(
         "POST",
         `/repos/${repo}/forks`,
         { default_branch_only: true }
       );
       const name = r.full_name;
       for (let attempt = 0; attempt < 10; attempt++) {
-        const there = await call(
+        const there = await call2(
           "GET",
           `/repos/${name}`,
           void 0,
@@ -41551,16 +46575,16 @@ function githubClient(o = {}) {
     },
     async syncFork(fork, branch) {
       try {
-        await call("POST", `/repos/${fork}/merge-upstream`, { branch });
+        await call2("POST", `/repos/${fork}/merge-upstream`, { branch });
       } catch {
       }
     },
     async commit(repo, parent, files, message) {
-      const c = await call(
+      const c = await call2(
         "GET",
         `/repos/${repo}/git/commits/${parent}`
       );
-      const tree = await call(
+      const tree = await call2(
         "POST",
         `/repos/${repo}/git/trees`,
         {
@@ -41573,7 +46597,7 @@ function githubClient(o = {}) {
           }))
         }
       );
-      const commit = await call(
+      const commit = await call2(
         "POST",
         `/repos/${repo}/git/commits`,
         { message, tree: tree.sha, parents: [parent] }
@@ -41581,20 +46605,20 @@ function githubClient(o = {}) {
       return commit.sha;
     },
     async createBranch(repo, branch, sha) {
-      await call("POST", `/repos/${repo}/git/refs`, {
+      await call2("POST", `/repos/${repo}/git/refs`, {
         ref: `refs/heads/${branch}`,
         sha
       });
     },
     async advanceBranch(repo, branch, sha) {
-      await call("PATCH", `/repos/${repo}/git/refs/heads/${enc2(branch)}`, {
+      await call2("PATCH", `/repos/${repo}/git/refs/heads/${enc2(branch)}`, {
         sha,
         force: false
       });
     },
     async openPull(repo, p) {
       return toPull(
-        await call("POST", `/repos/${repo}/pulls`, {
+        await call2("POST", `/repos/${repo}/pulls`, {
           ...p,
           maintainer_can_modify: true
         })
@@ -41606,13 +46630,39 @@ function githubClient(o = {}) {
 
 // src/storefronts/homebrew.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-function rubyString(s) {
-  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#\{/g, "\\#{").replace(/\n/g, "\\n")}"`;
+function homebrewKinds(i) {
+  const id = i.outlet.identity;
+  const kinds = [];
+  if (typeof id.homebrewCask === "string" && id.homebrewCask)
+    kinds.push("cask");
+  if (typeof id.homebrewFormula === "string" && id.homebrewFormula)
+    kinds.push("formula");
+  if (!kinds.length)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares neither homebrewCask nor homebrewFormula in .pkey/distribution.`
+    );
+  return kinds;
 }
+function rubyString(s) {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/#(?=[{@$])/g, "\\#").replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t").replace(new RegExp("\\p{Cf}", "gu"), "").replace(
+    /[\u0000-\u001f\u007f]/g,
+    (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`
+  )}"`;
+}
+var SHA256 = /^[0-9a-f]{64}$/;
+function plainHttps(u) {
+  if (!isHttps(u) || !URL_SAFE.test(u)) return false;
+  const url = new URL(u);
+  const authority = u.slice(u.indexOf("//") + 2).split(/[/?#]/)[0];
+  return !url.username && !url.password && !authority.includes("@");
+}
+var URL_SAFE = /^[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
 function checkBuild(b) {
-  if (!isHttps(b.url))
-    throw new Error(`${b.name}: a cask needs an HTTPS URL (got ${b.url}).`);
-  if (!b.sha256)
+  if (!plainHttps(b.url))
+    throw new Error(
+      `${b.name}: a cask needs a plain HTTPS URL (got ${b.url}).`
+    );
+  if (!b.sha256 || !SHA256.test(b.sha256))
     throw new Error(`${b.name}: the release records no SHA-256 for it.`);
   if (!/\.(dmg|zip)$/i.test(b.name))
     throw new Error(
@@ -41695,12 +46745,136 @@ function generateCask(i, o = {}) {
   lines4.push(`  app ${rubyString(app)}`, "end", "");
   return { path: `Casks/${cask}.rb`, content: lines4.join("\n") };
 }
+var ARCHIVE = /\.(tar\.gz|zip)$/i;
+var FORMULA_NAME = /^(?!.*\.\.)[a-z0-9][a-z0-9.@+_-]{0,99}$/;
+var COMMAND_NAME = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,99}$/;
+var SPDX = /^[A-Za-z0-9][A-Za-z0-9.+-]*(?: (?:AND|OR|WITH) [A-Za-z0-9][A-Za-z0-9.+-]*)*$/;
+function formulaClass(name) {
+  const cls = name.replace(/@/g, "-AT-").replace(/\+/g, "-x").split(/[-_.]+/).filter(Boolean).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join("");
+  if (!/^[A-Z][A-Za-z0-9]*$/.test(cls))
+    throw new Error(
+      `${name}: no Ruby class name for the formula (it must start with a letter).`
+    );
+  return cls;
+}
+function formulaSource(b) {
+  if (!plainHttps(b.url))
+    throw new Error(
+      `${b.name}: a formula needs a plain HTTPS URL without credentials (got ${b.url}).`
+    );
+  if (!b.sha256 || !SHA256.test(b.sha256))
+    throw new Error(`${b.name}: the release records no SHA-256 for it.`);
+  return { url: b.url, sha256: b.sha256 };
+}
+var ARM = ["arm64", "aarch64"];
+var INTEL = ["x86_64", "x64"];
+var ANY = ["universal", "neutral"];
+function generateFormula(i, o = {}) {
+  const name = i.outlet.identity.homebrewFormula;
+  if (typeof name !== "string" || !name)
+    throw new Error(
+      `The ${i.outlet.id} outlet declares no homebrewFormula in .pkey/distribution.`
+    );
+  if (!FORMULA_NAME.test(name))
+    throw new Error(`homebrewFormula ${name} is not a Homebrew formula name.`);
+  const command = o.command ?? name;
+  if (command.includes("/") || command.includes("\\") || command.includes("..") || !COMMAND_NAME.test(command))
+    throw new UsageError(
+      `--command must be a bare file name, the executable in the archive (got ${command}).`
+    );
+  if (o.projectLicense !== void 0 && !SPDX.test(o.projectLicense))
+    throw new UsageError(
+      `--project-license must be an SPDX expression (got ${o.projectLicense}).`
+    );
+  const release = needRelease(i);
+  const candidates = release.builds.filter(
+    (b) => b.platform === "macos" || b.platform === "linux"
+  );
+  if (!candidates.length)
+    throw new Error(
+      `${release.version} has no macOS or Linux build on the ${i.outlet.id} outlet.`
+    );
+  const archives = candidates.filter((b) => ARCHIVE.test(b.name));
+  if (!archives.length)
+    throw new Error(
+      `${candidates.map((b) => b.name).join(", ")}: a formula installs a .tar.gz or .zip archive (a .dmg or .pkg is the cask's).`
+    );
+  const pick = (platform, archs) => archives.filter((b) => b.platform === platform && archs.includes(b.arch)).sort(
+    (a, b) => Number(/\.zip$/i.test(a.name)) - Number(/\.zip$/i.test(b.name))
+  )[0];
+  const stanza = (indent, b) => {
+    const src = formulaSource(b);
+    return [
+      `${indent}url ${rubyString(src.url)}`,
+      `${indent}sha256 ${rubyString(src.sha256)}`
+    ];
+  };
+  const blocks = [];
+  for (const [platform, block2] of [
+    ["macos", "on_macos"],
+    ["linux", "on_linux"]
+  ]) {
+    const any = pick(platform, ANY);
+    const arm = pick(platform, ARM);
+    const intel = pick(platform, INTEL);
+    if (!any && !arm && !intel) continue;
+    const body = [];
+    const a = any ?? arm;
+    const x = any ?? intel;
+    if (a) body.push("    on_arm do", ...stanza("      ", a), "    end");
+    if (x) body.push("    on_intel do", ...stanza("      ", x), "    end");
+    blocks.push(`  ${block2} do`, ...body, "  end", "");
+  }
+  const raw = (i.app.shortDescription ?? i.app.subtitle ?? i.app.name).trim().replace(/\.$/, "").replace(/^(?:a|an|the)\s+/i, "");
+  const desc = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const lines4 = [
+    `class ${formulaClass(name)} < Formula`,
+    `  desc ${rubyString(desc)}`
+  ];
+  if (i.app.website) {
+    if (!isHttps(i.app.website))
+      throw new Error(`The listing's website is not an HTTPS URL.`);
+    lines4.push(`  homepage ${rubyString(i.app.website)}`);
+  }
+  lines4.push(`  version ${rubyString(release.version)}`);
+  if (o.projectLicense) lines4.push(`  license ${rubyString(o.projectLicense)}`);
+  lines4.push("");
+  if (i.channel === "stable")
+    lines4.push(
+      "  livecheck do",
+      `    url ${rubyString(i.links.downloadJson)}`,
+      "    strategy :json do |json|",
+      '      json.dig("release", "version")',
+      "    end",
+      "  end"
+    );
+  else
+    lines4.push(
+      "  livecheck do",
+      `    skip ${rubyString(`follows the ${i.channel} channel through pkey storefront homebrew pr`)}`,
+      "  end"
+    );
+  lines4.push("", ...blocks.slice(0, -1));
+  lines4.push(
+    "",
+    "  def install",
+    `    bin.install ${rubyString(command)}`,
+    "  end",
+    "",
+    "  test do",
+    `    assert_path_exists bin/${rubyString(command)}`,
+    "  end",
+    "end",
+    ""
+  );
+  return { path: `Formula/${name}.rb`, content: lines4.join("\n") };
+}
 
 // src/storefronts/run.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { spawn } from "node:child_process";
+import { spawn as spawn3 } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readFile as readFile20 } from "node:fs/promises";
+import { readFile as readFile19 } from "node:fs/promises";
 import path24 from "node:path";
 function commandLine(tool, argv2) {
   const q3 = (s) => /^[A-Za-z0-9_@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`;
@@ -41803,7 +46977,7 @@ async function runFileChecks(step, cwd) {
     const check = fc.check;
     if (check === "steam-vdf-setlive-named") {
       const problem = vdfSetliveProblem(
-        await readFile20(path24.resolve(cwd, file), "utf8")
+        await readFile19(path24.resolve(cwd, file), "utf8")
       );
       if (problem)
         throw new Error(
@@ -41815,12 +46989,12 @@ async function runFileChecks(step, cwd) {
 function toolEnv(env) {
   const out = {};
   for (const [k, v] of Object.entries(env))
-    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_"))
+    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_") && !k.startsWith("INPUT_"))
       out[k] = v;
   return out;
 }
 var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve2, reject) => {
-  const child = spawn(tool, [...argv2], {
+  const child = spawn3(tool, [...argv2], {
     cwd,
     env: toolEnv(process.env),
     stdio: "inherit",
@@ -41846,8 +47020,8 @@ async function runStoreSteps(steps, o) {
   if (o.toolPath !== void 0)
     for (const step of steps) checkToolPath(o.toolPath, step.tool);
   for (const step of steps) await runFileChecks(step, o.cwd);
-  const report = o.report !== false;
-  if (!report) {
+  const report2 = o.report !== false;
+  if (!report2) {
     for (const step of steps)
       if (ciStore(step.store).list.commands[step.command].unlessWorkerStaged)
         throw new Error(
@@ -41863,7 +47037,7 @@ async function runStoreSteps(steps, o) {
     return steps.map((step) => ({ step, outcome: "dry-run", exitCode: null }));
   }
   let client = null;
-  if (report) {
+  if (report2) {
     const token = await resolveCiToken({
       baseUrl: o.baseUrl,
       product: o.product,
@@ -42025,7 +47199,7 @@ function withHashAutoupdate(manifest) {
 
 // src/storefronts/winget.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml5 = __toESM(require_dist(), 1);
+var import_yaml6 = __toESM(require_dist(), 1);
 var WINGET_MANIFEST_VERSION = "1.12.0";
 var ARCH = {
   x86_64: "x64",
@@ -42061,7 +47235,7 @@ function yamlFile(kind, body) {
   const clean2 = Object.fromEntries(
     Object.entries(body).filter(([, v]) => v !== void 0 && v !== null)
   );
-  const doc = new import_yaml5.Document(clean2);
+  const doc = new import_yaml6.Document(clean2);
   doc.commentBefore = ` Created with Polaris Key (pkey storefront winget)
  yaml-language-server: $schema=https://aka.ms/winget-manifest.${kind}.${WINGET_MANIFEST_VERSION}.schema.json`;
   return doc.toString({ lineWidth: 0 });
@@ -42219,8 +47393,10 @@ function generateWinget(i, o = {}) {
 }
 
 // src/storefronts/prRun.ts
+var FirstSubmissionError = class extends Error {
+};
 var PR_TOKEN_ENV = "PKEY_PR_TOKEN";
-var sha2563 = (s) => createHash14("sha256").update(s).digest("hex");
+var sha2563 = (s) => createHash13("sha256").update(s).digest("hex");
 function identityString(i, field) {
   const v = i.outlet.identity[field];
   if (typeof v !== "string" || !v)
@@ -42229,7 +47405,13 @@ function identityString(i, field) {
     );
   return v;
 }
-function prArgv(store, i, command, version, o = {}) {
+function prCommandKey(command, kind) {
+  return kind === "formula" ? `formula-${command}` : command;
+}
+function prKinds(store, i) {
+  return store.store === "homebrew" ? homebrewKinds(i) : [null];
+}
+function prArgv(store, i, command, version, o = {}, kind) {
   switch (store.store) {
     case "winget":
       return [
@@ -42241,16 +47423,21 @@ function prArgv(store, i, command, version, o = {}) {
         "--version",
         version
       ];
-    case "homebrew":
+    case "homebrew": {
+      kind ??= homebrewKinds(i)[0];
       return [
         command,
         "--repo",
         identityString(i, "homebrewTap"),
-        "--cask",
-        identityString(i, "homebrewCask"),
+        kind === "formula" ? "--formula" : "--cask",
+        identityString(
+          i,
+          kind === "formula" ? "homebrewFormula" : "homebrewCask"
+        ),
         "--version",
         version
       ];
+    }
     case "scoop":
       return [
         command,
@@ -42273,9 +47460,9 @@ function prArgv(store, i, command, version, o = {}) {
       throw new Error(`${store.store} is not a PR-plane store.`);
   }
 }
-async function planPr(store, i, o, gh) {
+async function planPr(store, i, o, gh, kind = prKinds(store, i)[0] ?? null) {
   const version = needRelease(i).version;
-  const argv2 = prArgv(store, i, "pull-request", version, o);
+  const argv2 = prArgv(store, i, "pull-request", version, o, kind ?? void 0);
   const repo = argv2[2];
   let files;
   let warnings = [];
@@ -42292,10 +47479,16 @@ async function planPr(store, i, o, gh) {
       break;
     }
     case "homebrew": {
-      const cask = argv2[4];
-      files = [generateCask(i, o)];
-      title = `${cask} ${version}`;
-      branch = `pkey/${cask}-${version}`;
+      const name = argv2[4];
+      if (kind === "formula") {
+        files = [generateFormula(i, o)];
+        title = `${name} ${version} (formula)`;
+        branch = `pkey/f/${name}-${version}`;
+      } else {
+        files = [generateCask(i, o)];
+        title = `${name} ${version}`;
+        branch = `pkey/${name}-${version}`;
+      }
       break;
     }
     case "scoop": {
@@ -42314,17 +47507,17 @@ async function planPr(store, i, o, gh) {
         const base = await gh.defaultBranch(repo);
         let found = false;
         for (const name of [`${appId}.yml`, `${appId}.yaml`, `${appId}.json`]) {
-          const text = await gh.fileText(repo, name, base);
-          if (text === null) continue;
+          const text3 = await gh.fileText(repo, name, base);
+          if (text3 === null) continue;
           files.unshift({
             path: name,
-            content: updateFlathubManifest(text, name, i)
+            content: updateFlathubManifest(text3, name, i)
           });
           found = true;
           break;
         }
         if (!found)
-          throw new Error(
+          throw new FirstSubmissionError(
             `${repo} has no ${appId}.yml, .yaml or .json manifest: the first submission is a person's (pkey storefront flathub init writes its files).`
           );
       } else
@@ -42338,6 +47531,7 @@ async function planPr(store, i, o, gh) {
   return {
     store,
     repo,
+    command: prCommandKey("pull-request", kind),
     argv: argv2,
     version,
     branch,
@@ -42435,13 +47629,27 @@ async function runPrStep(o) {
   );
   const gh = gitHub(o, !o.dryRun);
   const canRead = Boolean(o.env.PKEY_PR_TOKEN) || !o.dryRun;
-  const plan = await planPr(store, inputs, o.generator, canRead ? gh : null);
-  checkPrCommand(store, "pull-request", plan.argv, inputs.outlet.identity);
-  checkPrPaths(
-    store,
-    plan.argv,
-    plan.files.map((f) => f.path)
-  );
+  const plans = [];
+  for (const kind of prKinds(store, inputs))
+    plans.push(
+      await planPr(store, inputs, o.generator, canRead ? gh : null, kind)
+    );
+  for (const plan of plans) {
+    checkPrCommand(store, plan.command, plan.argv, inputs.outlet.identity);
+    checkPrPaths(
+      store,
+      plan.argv,
+      plan.files.map((f) => f.path),
+      plan.command
+    );
+  }
+  const outcomes = [];
+  for (const plan of plans)
+    outcomes.push(await runPlan(o, store, inputs, gh, plan));
+  const [first, ...rest] = outcomes;
+  return rest.length ? { ...first, also: rest } : first;
+}
+async function runPlan(o, store, inputs, gh, plan) {
   const u = (v) => untrusted(v, o.env);
   for (const w of plan.warnings) o.stderr.write(`warning: ${u(w)}
 `);
@@ -42477,7 +47685,7 @@ async function runPrStep(o) {
     type: "store-step",
     store: store.store,
     op: "release",
-    command: "pull-request",
+    command: plan.command,
     argv: plan.argv,
     outlet: inputs.outlet.id,
     runId,
@@ -42485,7 +47693,7 @@ async function runPrStep(o) {
     ...runUrl ? { runUrl } : {},
     ...extra
   });
-  const key = prNaturalKey(store, "pull-request", plan.argv);
+  const key = prNaturalKey(store, plan.command, plan.argv);
   const existing = await existingPull(github, plan, headOwner);
   if (existing) {
     o.stdout.write(
@@ -42607,14 +47815,29 @@ async function runPrStatus(o) {
     o.channel,
     o.outlet
   );
+  const outcomes = [];
+  for (const kind of prKinds(store, inputs))
+    outcomes.push(await statusOne(o, store, inputs, kind));
+  const [first, ...rest] = outcomes;
+  return rest.length ? { ...first, also: rest } : first;
+}
+async function statusOne(o, store, inputs, kind) {
   const version = o.version ?? needRelease(inputs).version;
-  const argv2 = prArgv(store, inputs, "status", version, o.generator);
-  checkPrCommand(store, "status", argv2, inputs.outlet.identity);
+  const argv2 = prArgv(
+    store,
+    inputs,
+    "status",
+    version,
+    o.generator,
+    kind ?? void 0
+  );
+  const command = prCommandKey("status", kind);
+  checkPrCommand(store, command, argv2, inputs.outlet.identity);
   const gh = gitHub(o, false);
   const repo = argv2[2];
-  const key = prNaturalKey(store, "status", argv2);
+  const key = prNaturalKey(store, command, argv2);
   const pkg = argv2[4] ?? "";
-  const branch = store.store === "flathub" ? `pkey/${version}` : `pkey/${pkg}-${version}`;
+  const branch = store.store === "flathub" ? `pkey/${version}` : `pkey/${kind === "formula" ? "f/" : ""}${pkg}-${version}`;
   const headOwner = store.fork ? o.env.PKEY_PR_TOKEN ? await gh.login() : null : repo.split("/")[0];
   const candidates = [
     ...headOwner ? await gh.pullsFromHead(repo, `${headOwner}:${branch}`) : [],
@@ -42635,7 +47858,7 @@ async function runPrStatus(o) {
         type: "store-step",
         store: store.store,
         op: "status",
-        command: "status",
+        command,
         argv: argv2,
         outlet: inputs.outlet.id,
         runId: stepRunId(o.env),
@@ -42649,6 +47872,7 @@ async function runPrStatus(o) {
   const plan = {
     store,
     repo,
+    command,
     argv: argv2,
     version,
     branch,
@@ -42681,6 +47905,590 @@ async function writeFlathubInit(o) {
     "Open the first submission by hand: a PR to flathub/flathub against the new-pr branch (https://docs.flathub.org/docs/for-app-authors/submission). Later versions: pkey storefront flathub pr, or Flathub's external-data checker.\n"
   );
   return files;
+}
+
+// src/feeds.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash14 } from "node:crypto";
+import { execFile } from "node:child_process";
+import { existsSync as existsSync2 } from "node:fs";
+import {
+  lstat as lstat3,
+  mkdir as mkdir10,
+  readdir as readdir9,
+  readFile as readFile20,
+  rm as rm5,
+  rmdir,
+  writeFile as writeFile17
+} from "node:fs/promises";
+import path26 from "node:path";
+import { promisify } from "node:util";
+var FEEDS_USAGE = "Usage: pkey storefront fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
+var FDROID_INDEX_VERSION = 3e4;
+var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
+var LOCALE = "en-US";
+var SAFE_NAME = /^[A-Za-z0-9_~.-]+$/;
+var sha2564 = (b) => createHash14("sha256").update(b).digest("hex");
+function sortedJson2(value) {
+  return JSON.stringify(value, (_k, v) => {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const out = {};
+      for (const k of Object.keys(v).sort())
+        out[k] = v[k];
+      return out;
+    }
+    return v;
+  });
+}
+function dictDiff(source, target) {
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  if (!isObj(source) || !isObj(target)) return target;
+  const out = {};
+  for (const k of Object.keys(source)) if (!(k in target)) out[k] = null;
+  for (const [k, v] of Object.entries(target)) {
+    if (!(k in source)) out[k] = v;
+    else if (sortedJson2(v) !== sortedJson2(source[k]))
+      out[k] = dictDiff(source[k], v);
+  }
+  return out;
+}
+function buildFdroidIndex(inputs, timestamp, icon2) {
+  const listing = inputs.listing ?? {};
+  const name = listing.name ?? inputs.productName ?? inputs.product;
+  const problems = [];
+  const pkg = inputs.packageName ?? (typeof inputs.versions[0]?.metadata?.packageName === "string" ? inputs.versions[0].metadata.packageName : null);
+  if (!pkg)
+    problems.push(
+      "the fdroid-repo outlet names no packageName and no APK metadata does"
+    );
+  const versions = {};
+  let previousCode = Number.POSITIVE_INFINITY;
+  let hasBeta = false;
+  let added = Number.POSITIVE_INFINITY;
+  let lastUpdated = 0;
+  let preferredSigner;
+  const apkNames = /* @__PURE__ */ new Set();
+  for (const v of inputs.versions) {
+    const m = v.metadata ?? {};
+    const where2 = `${v.releaseId} (${v.apk.name})`;
+    if (!SAFE_NAME.test(v.apk.name))
+      problems.push(
+        `${where2}: the file name must be [A-Za-z0-9_~.-] for the relay to serve it`
+      );
+    if (apkNames.has(v.apk.name))
+      problems.push(
+        `${where2}: another listed release has the same APK file name; the relay serves APKs by name, so give each release's APK a distinct name (put the version in it)`
+      );
+    apkNames.add(v.apk.name);
+    if (!v.apk.sha256 || v.apk.size === null)
+      problems.push(`${where2}: the APK has no recorded sha256 and size`);
+    if (typeof m.versionCode !== "number" || typeof m.versionName !== "string" || typeof m.signerSha256 !== "string") {
+      problems.push(
+        `${where2}: no APK metadata (publish it with a pkey that reads build metadata)`
+      );
+      continue;
+    }
+    if (m.packageName !== pkg)
+      problems.push(`${where2}: package ${String(m.packageName)} is not ${pkg}`);
+    if (!(m.versionCode < previousCode))
+      problems.push(
+        `${where2}: versionCode ${m.versionCode} does not strictly decrease from the newer release's ${previousCode}; keep versionCode strictly increasing across releases and channels`
+      );
+    previousCode = m.versionCode;
+    const at = (v.publishedAt ?? timestamp / 1e3) * 1e3;
+    added = Math.min(added, at);
+    lastUpdated = Math.max(lastUpdated, at);
+    preferredSigner ??= m.signerSha256;
+    const minSdk = typeof m.minSdk === "number" ? m.minSdk : void 0;
+    const targetSdk = typeof m.targetSdk === "number" ? m.targetSdk : void 0;
+    const nativecode = Array.isArray(m.nativecode) ? m.nativecode : [];
+    if (!v.stable) hasBeta = true;
+    versions[v.apk.sha256 ?? where2] = {
+      added: at,
+      file: { name: `/${v.apk.name}`, sha256: v.apk.sha256, size: v.apk.size },
+      manifest: {
+        versionName: m.versionName,
+        versionCode: m.versionCode,
+        ...minSdk !== void 0 && targetSdk !== void 0 ? { usesSdk: { minSdkVersion: minSdk, targetSdkVersion: targetSdk } } : {},
+        ...nativecode.length ? { nativecode } : {},
+        signer: { sha256: [m.signerSha256] }
+      },
+      ...v.stable ? {} : { releaseChannels: ["Beta"] },
+      ...v.notes ? { whatsNew: { [LOCALE]: v.notes } } : {}
+    };
+  }
+  if (problems.length)
+    throw new Error(
+      `The F-Droid repository cannot be built:
+  ${problems.join("\n  ")}`
+    );
+  const iconFile = icon2 ? {
+    [LOCALE]: {
+      name: `/${icon2.path}`,
+      sha256: icon2.sha256,
+      size: icon2.size
+    }
+  } : void 0;
+  const packages = {};
+  if (inputs.versions.length && pkg)
+    packages[pkg] = {
+      metadata: {
+        added,
+        lastUpdated,
+        name: { [LOCALE]: name },
+        ...listing.subtitle ? { summary: { [LOCALE]: listing.subtitle } } : {},
+        ...listing.description ? { description: { [LOCALE]: listing.description } } : {},
+        ...listing.website ? { webSite: listing.website } : {},
+        ...listing.developerName ? { authorName: listing.developerName } : {},
+        ...preferredSigner ? { preferredSigner } : {},
+        ...iconFile ? { icon: iconFile } : {}
+      },
+      versions
+    };
+  return {
+    repo: {
+      name: {
+        [LOCALE]: inputs.channel === "stable" ? name : `${name} (${inputs.channel})`
+      },
+      description: {
+        [LOCALE]: listing.subtitle ?? `${name}, ${inputs.channel} channel, from Polaris Key.`
+      },
+      ...iconFile ? { icon: iconFile } : {},
+      address: inputs.repo.address,
+      timestamp,
+      ...hasBeta ? { releaseChannels: { Beta: { name: { [LOCALE]: "Beta" } } } } : {}
+    },
+    packages
+  };
+}
+function indexV2Problems(index) {
+  const out = [];
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  const isInt = (v) => Number.isSafeInteger(v);
+  const isLocalized = (v) => v === void 0 || isObj(v) && Object.values(v).every((s) => typeof s === "string");
+  const isFile = (v, needHash) => isObj(v) && typeof v.name === "string" && v.name.startsWith("/") && (needHash ? typeof v.sha256 === "string" && /^[0-9a-f]{64}$/.test(v.sha256) : true);
+  if (!isObj(index)) return ["the index is not an object"];
+  const repo = index.repo;
+  if (!isObj(repo)) return ["repo is missing"];
+  if (typeof repo.address !== "string")
+    out.push("repo.address is not a string");
+  if (!isInt(repo.timestamp)) out.push("repo.timestamp is not an integer");
+  for (const k of ["name", "description"])
+    if (!isLocalized(repo[k])) out.push(`repo.${k} is not localized text`);
+  if (repo.releaseChannels !== void 0) {
+    if (!isObj(repo.releaseChannels))
+      out.push("repo.releaseChannels is not an object");
+    else
+      for (const [k, c] of Object.entries(repo.releaseChannels))
+        if (!isObj(c) || !isLocalized(c.name) || c.name === void 0)
+          out.push(`repo.releaseChannels.${k}.name is required`);
+  }
+  if (index.packages !== void 0 && !isObj(index.packages)) {
+    out.push("packages is not an object");
+    return out;
+  }
+  for (const [id, p] of Object.entries(
+    index.packages ?? {}
+  )) {
+    if (!isObj(p) || !isObj(p.metadata)) {
+      out.push(`packages.${id}.metadata is missing`);
+      continue;
+    }
+    const meta = p.metadata;
+    if (!isInt(meta.added))
+      out.push(`packages.${id}.metadata.added is not an integer`);
+    if (!isInt(meta.lastUpdated))
+      out.push(`packages.${id}.metadata.lastUpdated is not an integer`);
+    for (const k of ["name", "summary", "description"])
+      if (!isLocalized(meta[k]))
+        out.push(`packages.${id}.metadata.${k} is not localized text`);
+    if (p.versions !== void 0 && !isObj(p.versions)) {
+      out.push(`packages.${id}.versions is not an object`);
+      continue;
+    }
+    for (const [key, v] of Object.entries(
+      p.versions ?? {}
+    )) {
+      const at = `packages.${id}.versions.${key}`;
+      if (!isObj(v)) {
+        out.push(`${at} is not an object`);
+        continue;
+      }
+      if (!isInt(v.added)) out.push(`${at}.added is not an integer`);
+      if (!isFile(v.file, true))
+        out.push(`${at}.file needs a /name and a sha256`);
+      else if (v.file.sha256 !== key)
+        out.push(`${at} is not keyed by its file's sha256`);
+      const m = v.manifest;
+      if (!isObj(m)) {
+        out.push(`${at}.manifest is missing`);
+        continue;
+      }
+      if (typeof m.versionName !== "string")
+        out.push(`${at}.manifest.versionName is required`);
+      if (!isInt(m.versionCode))
+        out.push(`${at}.manifest.versionCode is required`);
+      if (m.usesSdk !== void 0 && !(isObj(m.usesSdk) && isInt(m.usesSdk.minSdkVersion) && isInt(m.usesSdk.targetSdkVersion)))
+        out.push(
+          `${at}.manifest.usesSdk needs minSdkVersion and targetSdkVersion`
+        );
+      if (m.signer !== void 0 && !(isObj(m.signer) && Array.isArray(m.signer.sha256) && m.signer.sha256.every((s) => typeof s === "string")))
+        out.push(`${at}.manifest.signer.sha256 must be a list`);
+      if (v.releaseChannels !== void 0 && !(Array.isArray(v.releaseChannels) && v.releaseChannels.every((c) => typeof c === "string")))
+        out.push(`${at}.releaseChannels must be a list of names`);
+    }
+  }
+  return out;
+}
+function buildRepoFiles(inputs, timestamp, opts = {}) {
+  const files = /* @__PURE__ */ new Map();
+  let icon2;
+  if (opts.icon) {
+    const p = `icons/${opts.icon.name}`;
+    files.set(p, opts.icon.bytes);
+    icon2 = {
+      path: p,
+      sha256: sha2564(opts.icon.bytes),
+      size: opts.icon.bytes.length
+    };
+  }
+  const index = buildFdroidIndex(inputs, timestamp, icon2);
+  const problems = indexV2Problems(index);
+  if (problems.length)
+    throw new Error(
+      `index-v2.json would not parse:
+  ${problems.join("\n  ")}`
+    );
+  const indexBytes = Buffer.from(sortedJson2(index), "utf8");
+  files.set("index-v2.json", indexBytes);
+  const numPackages = Object.keys(index.packages).length;
+  const entry = {
+    timestamp,
+    version: FDROID_INDEX_VERSION,
+    index: {
+      name: "/index-v2.json",
+      sha256: sha2564(indexBytes),
+      size: indexBytes.length,
+      numPackages
+    },
+    diffs: {}
+  };
+  const prev = opts.previous;
+  const prevTs = prev?.repo?.timestamp;
+  if (prev && Number.isSafeInteger(prevTs) && prevTs < timestamp) {
+    const diff = dictDiff(prev, index);
+    const bytes = Buffer.from(sortedJson2(diff), "utf8");
+    const p = `diff/${prevTs}.json`;
+    files.set(p, bytes);
+    entry.diffs[String(prevTs)] = {
+      name: `/${p}`,
+      sha256: sha2564(bytes),
+      size: bytes.length,
+      numPackages: Object.keys(diff.packages ?? {}).length
+    };
+  }
+  files.set("entry.json", Buffer.from(sortedJson2(entry), "utf8"));
+  return { files, index, entry };
+}
+async function findApksigner(explicit, env) {
+  if (explicit) return explicit;
+  const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
+  if (sdk) {
+    const bt = path26.join(sdk, "build-tools");
+    try {
+      const versions = (await readdir9(bt)).sort(
+        (a, b) => a.localeCompare(b, void 0, { numeric: true })
+      );
+      for (const v of versions.reverse()) {
+        const p = path26.join(bt, v, "apksigner");
+        if (existsSync2(p)) return p;
+      }
+    } catch {
+    }
+  }
+  return "apksigner";
+}
+async function signEntryJar(jar, opts) {
+  const tool = await findApksigner(opts.apksigner, opts.env);
+  if (!opts.env[opts.passEnv])
+    throw new Error(
+      `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
+    );
+  const unsigned = `${jar}.unsigned`;
+  await writeFile17(unsigned, await readFile20(jar));
+  try {
+    await promisify(execFile)(
+      tool,
+      [
+        "sign",
+        "--min-sdk-version",
+        "23",
+        "--v1-signing-enabled",
+        "true",
+        "--v2-signing-enabled",
+        "false",
+        "--v3-signing-enabled",
+        "false",
+        "--v4-signing-enabled",
+        "false",
+        "--ks",
+        opts.keystore,
+        "--ks-key-alias",
+        opts.alias,
+        "--ks-pass",
+        `env:${opts.passEnv}`,
+        "--out",
+        jar,
+        unsigned
+      ],
+      { env: { ...process.env, ...opts.env } }
+    );
+  } catch (e) {
+    const err = e;
+    throw new Error(`apksigner failed: ${(err.stderr || err.message).trim()}`);
+  } finally {
+    await rm5(unsigned, { force: true });
+  }
+}
+var OUT_FILES = /* @__PURE__ */ new Set(["entry.jar", "entry.json", "index-v2.json"]);
+var OUT_DIRS = {
+  diff: /^[0-9]+\.json$/,
+  icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
+};
+async function staleOutFiles(dir, cwd) {
+  const up = path26.relative(dir, path26.resolve(cwd));
+  if (up === "" || up.split(path26.sep)[0] !== ".." && !path26.isAbsolute(up))
+    throw new UsageError(
+      `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
+    );
+  let top;
+  try {
+    top = await lstat3(dir);
+  } catch {
+    return { files: [], dirs: [] };
+  }
+  if (!top.isDirectory())
+    throw new UsageError(`--out ${dir} exists and is not a directory.`);
+  const files = [];
+  const dirs = [];
+  const foreign = [];
+  for (const name of (await readdir9(dir)).sort()) {
+    const full = path26.join(dir, name);
+    const st = await lstat3(full);
+    if (OUT_FILES.has(name) && st.isFile()) {
+      files.push(full);
+      continue;
+    }
+    const pattern2 = OUT_DIRS[name];
+    if (pattern2 && st.isDirectory()) {
+      let clean2 = true;
+      for (const inner of (await readdir9(full)).sort()) {
+        const f = path26.join(full, inner);
+        if (pattern2.test(inner) && (await lstat3(f)).isFile()) files.push(f);
+        else {
+          foreign.push(path26.join(name, inner));
+          clean2 = false;
+        }
+      }
+      if (clean2) dirs.push(full);
+      continue;
+    }
+    foreign.push(name);
+  }
+  if (foreign.length)
+    throw new UsageError(
+      `--out ${dir} holds files pkey storefront fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`
+    );
+  return { files, dirs };
+}
+async function currentIndex(inputs, fetchImpl, log, env) {
+  const reg = inputs.files.find((f) => f.path === "index-v2.json");
+  if (!reg) return null;
+  try {
+    const res = await fetchImpl(`${inputs.repo.address}/index-v2.json`);
+    if (!res.ok) return null;
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (sha2564(bytes) !== reg.sha256) return null;
+    return JSON.parse(bytes.toString("utf8"));
+  } catch (e) {
+    log.write(
+      `warning: could not read the current index (${untrusted(e.message, env)}); no diff is written.
+`
+    );
+    return null;
+  }
+}
+async function buildFdroidFeed(opts) {
+  const out = opts.stdout;
+  if (!opts.channel?.trim() || !opts.out?.trim()) throw new Error(FEEDS_USAGE);
+  if (opts.keystore === void 0 !== (opts.alias === void 0))
+    throw new UsageError(`--keystore and --alias go together.
+${FEEDS_USAGE}`);
+  const dir = path26.resolve(opts.cwd, opts.out);
+  await staleOutFiles(dir, opts.cwd);
+  const token = await resolveCiToken({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    env: opts.env,
+    out,
+    log: opts.stderr,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep
+  });
+  const client = ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    token,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.stderr,
+    env: opts.env
+  });
+  const route = `distribution/feeds/fdroid/${encodeURIComponent(opts.channel.trim())}`;
+  const inputs = await client.getJson(route, {
+    what: "Reading the F-Droid feed inputs"
+  });
+  const u = (v) => untrusted(v, opts.env);
+  out.write(
+    `F-Droid ${u(inputs.channel)}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${u(inputs.packageName ?? "(no package)")}
+`
+  );
+  const previous = await currentIndex(
+    inputs,
+    opts.fetchImpl ?? fetch,
+    opts.stderr,
+    opts.env
+  );
+  const now = (opts.now ?? Date.now)();
+  const prevTs = previous?.repo?.timestamp ?? 0;
+  const timestamp = Math.max(now, prevTs + 1);
+  const icon2 = opts.icon ? {
+    name: path26.basename(opts.icon),
+    bytes: await readFile20(path26.resolve(opts.cwd, opts.icon))
+  } : void 0;
+  if (icon2 && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon2.name))
+    throw new UsageError(
+      "--icon must be a .png, .jpg or .webp file with a plain name."
+    );
+  const repo = buildRepoFiles(inputs, timestamp, {
+    previous,
+    ...icon2 ? { icon: icon2 } : {}
+  });
+  const stale = await staleOutFiles(dir, opts.cwd);
+  for (const f of stale.files) await rm5(f, { force: true });
+  for (const d of stale.dirs) await rmdir(d);
+  const written = {};
+  for (const [p, bytes] of repo.files) {
+    const file = path26.join(dir, ...p.split("/"));
+    await mkdir10(path26.dirname(file), { recursive: true });
+    await writeFile17(file, bytes);
+    written[p] = file;
+  }
+  const jar = path26.join(dir, "entry.jar");
+  await writeFile17(
+    jar,
+    zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
+  );
+  written["entry.jar"] = jar;
+  const result = {
+    channel: inputs.channel,
+    written,
+    index: repo.index,
+    entry: repo.entry,
+    signed: false,
+    registered: false,
+    uploaded: []
+  };
+  if (!opts.keystore || !opts.alias) {
+    out.write(
+      `Wrote the unsigned repository to ${path26.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
+`
+    );
+    return result;
+  }
+  await (opts.sign ?? signEntryJar)(jar, {
+    keystore: path26.resolve(opts.cwd, opts.keystore),
+    alias: opts.alias,
+    passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
+    env: opts.env,
+    ...opts.apksigner ? { apksigner: opts.apksigner } : {}
+  });
+  result.signed = true;
+  const signer = await withZip(jar, (z) => apkSignerSha256(z));
+  if (!signer) throw new Error("entry.jar is not signed after apksigner ran.");
+  if (inputs.repo.fingerprints.length && !inputs.repo.fingerprints.includes(signer))
+    throw new Error(
+      `entry.jar is signed by ${signer}, which is not an fdroid-repo key in the product's key inventory (${inputs.repo.fingerprints.join(", ")}). Check --keystore and --alias.`
+    );
+  if (opts.dryRun) {
+    out.write("Dry run: signed locally; nothing uploaded or registered.\n");
+    return result;
+  }
+  const all = await Promise.all(
+    Object.entries(written).map(async ([p, file]) => {
+      const bytes = await readFile20(file);
+      return { path: p, file, sha256: sha2564(bytes), size: bytes.length };
+    })
+  );
+  all.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  const unique = new Map(all.map((f) => [f.sha256, f]));
+  const ticket = await client.postJson("release/publish/uploads", {
+    what: "Requesting an upload ticket",
+    body: {
+      objects: [...unique.values()].map((f) => ({
+        sha256: f.sha256,
+        size: f.size
+      }))
+    }
+  });
+  if (typeof ticket.ticket !== "string" || !Array.isArray(ticket.objects))
+    throw new Error("The uploads route answered without a ticket.");
+  mask(opts.env, out, ticket.ticket);
+  mask(opts.env, out, ticket.credentials.secretAccessKey);
+  mask(opts.env, out, ticket.credentials.sessionToken);
+  const registered = new Set(inputs.files.map((f) => `${f.sha256}:${f.size}`));
+  for (const o of ticket.objects) {
+    if (o.present && registered.has(`${o.sha256}:${o.size}`)) continue;
+    const f = unique.get(o.sha256);
+    if (!f)
+      throw new Error(
+        `The ticket names ${o.sha256}, which pkey did not ask for.`
+      );
+    await putFile({
+      creds: ticket.credentials,
+      key: o.key,
+      file: f.file,
+      size: f.size,
+      sha256: f.sha256,
+      fetchImpl: opts.fetchImpl,
+      sleep: opts.sleep,
+      log: opts.stderr,
+      env: opts.env
+    });
+    result.uploaded.push(f.path);
+  }
+  await client.postJson(route, {
+    what: "Registering the F-Droid repository",
+    body: {
+      ticket: ticket.ticket,
+      files: all.map((f) => ({ path: f.path, sha256: f.sha256, size: f.size }))
+    }
+  });
+  result.registered = true;
+  out.write(
+    `Registered ${all.length} files for ${u(inputs.channel)} (${result.uploaded.length} uploaded): ${u(inputs.repo.address)}
+`
+  );
+  if (inputs.repo.fingerprints.length)
+    out.write(
+      `Add with: ${u(inputs.repo.address)}?fingerprint=${u(inputs.repo.fingerprints[0])}
+`
+    );
+  else
+    out.write(
+      "warning: the key inventory has no fdroid-repo key; record the repo key's fingerprint in the console so users can verify the repository.\n"
+    );
+  return result;
 }
 
 // src/storefronts/outlets.ts
@@ -42755,8 +48563,8 @@ function pickOutlet(p, kinds, outletId, label) {
 
 // src/storefronts/snap.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml6 = __toESM(require_dist(), 1);
-import { readFile as readFile21, writeFile as writeFile17 } from "node:fs/promises";
+var import_yaml7 = __toESM(require_dist(), 1);
+import { readFile as readFile21, writeFile as writeFile18 } from "node:fs/promises";
 function snapReleaseChannels(outlet, channels2) {
   const declared = outlet.identity.channels;
   const map = effectiveTrackMap(
@@ -42820,7 +48628,7 @@ function snapMetadataFields(p) {
   return { summary, description };
 }
 function applySnapMetadata(yamlText, fields) {
-  const doc = (0, import_yaml6.parseDocument)(yamlText);
+  const doc = (0, import_yaml7.parseDocument)(yamlText);
   if (doc.errors.length)
     throw new Error(`snapcraft.yaml does not parse: ${doc.errors[0].message}`);
   if (!doc.contents || typeof doc.get !== "function" || !doc.has("name"))
@@ -42868,7 +48676,7 @@ async function writeSnapMetadata(o) {
     );
     return fields;
   }
-  if (next !== current) await writeFile17(o.yamlPath, next, "utf8");
+  if (next !== current) await writeFile18(o.yamlPath, next, "utf8");
   o.stdout.write(
     `${next === current ? "Unchanged" : "Wrote"} the Snap listing's summary and description in ${o.yamlPath} (${untrusted(body.listing.defaultLocale, o.env)}).
 `
@@ -42877,7 +48685,7 @@ async function writeSnapMetadata(o) {
 }
 
 // src/storefronts/command.ts
-var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
+var STOREFRONT_USAGE = "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n       pkey storefront snap metadata --yaml <snapcraft.yaml>\n       pkey storefront snap upload --snap <file.snap> --channel c[,c...] [--outlet id]\n       pkey storefront snap upload-metadata --snap <file.snap>\n       pkey storefront exec <store> <command> --op <operation> [--outlet id] [--tool-path p] -- <argv...>\n       pkey storefront allow-list [--store s] [--json]\n       pkey storefront fdroid --product <slug> --channel <c> --out <dir> [--keystore <path> --alias <a>]\n       pkey storefront winget|homebrew|scoop|flathub pr [--channel c] [--outlet id] [--out dir]\n              [--portable path] [--command name] [--license l] [--app name] [--project-license spdx]\n       pkey storefront winget|homebrew|scoop|flathub status [--channel c] [--version v] [--outlet id]\n       pkey storefront flathub init [--out dir] [--channel c] [--outlet id] [--command path] [--runtime-version v]\n  (each step also takes --product slug, --base-url url, --dry-run, --no-report)";
 function str5(a, name) {
   const v = a.flags[name];
   return typeof v === "string" && v.trim() ? v : void 0;
@@ -42893,22 +48701,22 @@ ${STOREFRONT_USAGE}`);
   return v;
 }
 async function resolveSnapFile(cwd, p) {
-  const abs = path26.resolve(cwd, p);
-  if ((await stat8(abs)).isFile()) return p;
-  const snaps = (await readdir9(abs)).filter((f) => f.endsWith(".snap"));
+  const abs = path27.resolve(cwd, p);
+  if ((await stat7(abs)).isFile()) return p;
+  const snaps = (await readdir10(abs)).filter((f) => f.endsWith(".snap"));
   if (snaps.length !== 1)
     throw new Error(
       `${p} holds ${snaps.length} .snap files; name one (${snaps.join(", ") || "none"}).`
     );
-  return path26.join(p, snaps[0]);
+  return path27.join(p, snaps[0]);
 }
 async function resolveSnapcraftYaml(cwd, p) {
-  const abs = path26.resolve(cwd, p);
-  if ((await stat8(abs)).isFile()) return abs;
+  const abs = path27.resolve(cwd, p);
+  if ((await stat7(abs)).isFile()) return abs;
   for (const candidate of ["snapcraft.yaml", "snap/snapcraft.yaml"]) {
-    const f = path26.join(abs, candidate);
+    const f = path27.join(abs, candidate);
     try {
-      if ((await stat8(f)).isFile()) return f;
+      if ((await stat7(f)).isFile()) return f;
     } catch {
     }
   }
@@ -42972,6 +48780,32 @@ async function cmdStorefront(a, io) {
       outlet: pickOutlet(p, s.outletKinds, str5(a, "outlet"), s.label)
     };
   };
+  if (store === "fdroid") {
+    const product = str5(a, "product");
+    const channel = str5(a, "channel");
+    const out = str5(a, "out");
+    if (step !== void 0 || !product || !channel || !out)
+      throw new UsageError(FEEDS_USAGE);
+    await buildFdroidFeed({
+      cwd: io.cwd,
+      product,
+      channel,
+      out,
+      keystore: str5(a, "keystore"),
+      alias: str5(a, "alias"),
+      ksPassEnv: str5(a, "ks-pass-env"),
+      apksigner: str5(a, "apksigner"),
+      icon: str5(a, "icon"),
+      dryRun: bool(a, "dry-run"),
+      baseUrl: str5(a, "base-url"),
+      env: io.env,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep
+    });
+    return 0;
+  }
   switch (`${store ?? ""} ${step ?? ""}`) {
     case "itch push": {
       const { slug, outlet } = await outletFor("itch");
@@ -43123,588 +48957,662 @@ ${STOREFRONT_USAGE}`
   return 2;
 }
 
-// src/feeds.ts
+// src/channel.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { createHash as createHash15 } from "node:crypto";
-import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
-import {
-  lstat as lstat3,
-  mkdir as mkdir10,
-  readdir as readdir10,
-  readFile as readFile22,
-  rm as rm5,
-  rmdir,
-  writeFile as writeFile18
-} from "node:fs/promises";
-import path27 from "node:path";
-import { promisify } from "node:util";
-var FEEDS_USAGE = "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n              [--keystore <path> --alias <alias>] [--ks-pass-env NAME] [--apksigner <path>]\n              [--icon <png>] [--base-url <url>] [--dry-run]";
-var FDROID_INDEX_VERSION = 3e4;
-var DEFAULT_KS_PASS_ENV = "PKEY_FDROID_KS_PASS";
-var LOCALE2 = "en-US";
-var SAFE_NAME = /^[A-Za-z0-9_~.-]+$/;
-var sha2564 = (b) => createHash15("sha256").update(b).digest("hex");
-function sortedJson2(value) {
-  return JSON.stringify(value, (_k, v) => {
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-      const out = {};
-      for (const k of Object.keys(v).sort())
-        out[k] = v[k];
-      return out;
-    }
-    return v;
-  });
-}
-function dictDiff(source, target) {
-  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-  if (!isObj(source) || !isObj(target)) return target;
+import path30 from "node:path";
+
+// src/channelAdd.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var import_yaml8 = __toESM(require_dist(), 1);
+import { mkdir as mkdir11, readFile as readFile22, writeFile as writeFile19 } from "node:fs/promises";
+import path28 from "node:path";
+var KNOWN_FLAGS = ["field", "outlet-id", "json", "product", "base-url"];
+function parseFields(values) {
   const out = {};
-  for (const k of Object.keys(source)) if (!(k in target)) out[k] = null;
-  for (const [k, v] of Object.entries(target)) {
-    if (!(k in source)) out[k] = v;
-    else if (sortedJson2(v) !== sortedJson2(source[k]))
-      out[k] = dictDiff(source[k], v);
+  for (const raw of values) {
+    const at = raw.indexOf("=");
+    if (at < 1)
+      throw new UsageError(`--field must be name=value, not "${raw}".`);
+    const name = raw.slice(0, at);
+    const text3 = raw.slice(at + 1);
+    if (name in out) throw new UsageError(`--field ${name} is given twice.`);
+    if (/^\s*[[{]/.test(text3)) {
+      try {
+        out[name] = JSON.parse(text3);
+      } catch {
+        throw new UsageError(`--field ${name} is not valid JSON.`);
+      }
+    } else out[name] = text3;
   }
   return out;
 }
-function buildFdroidIndex(inputs, timestamp, icon2) {
-  const listing = inputs.listing ?? {};
-  const name = listing.name ?? inputs.productName ?? inputs.product;
-  const problems = [];
-  const pkg = inputs.packageName ?? (typeof inputs.versions[0]?.metadata?.packageName === "string" ? inputs.versions[0].metadata.packageName : null);
-  if (!pkg)
-    problems.push(
-      "the fdroid-repo outlet names no packageName and no APK metadata does"
-    );
-  const versions = {};
-  let previousCode = Number.POSITIVE_INFINITY;
-  let hasBeta = false;
-  let added = Number.POSITIVE_INFINITY;
-  let lastUpdated = 0;
-  let preferredSigner;
-  const apkNames = /* @__PURE__ */ new Set();
-  for (const v of inputs.versions) {
-    const m = v.metadata ?? {};
-    const where2 = `${v.releaseId} (${v.apk.name})`;
-    if (!SAFE_NAME.test(v.apk.name))
-      problems.push(
-        `${where2}: the file name must be [A-Za-z0-9_~.-] for the relay to serve it`
-      );
-    if (apkNames.has(v.apk.name))
-      problems.push(
-        `${where2}: another listed release has the same APK file name; the relay serves APKs by name, so give each release's APK a distinct name (put the version in it)`
-      );
-    apkNames.add(v.apk.name);
-    if (!v.apk.sha256 || v.apk.size === null)
-      problems.push(`${where2}: the APK has no recorded sha256 and size`);
-    if (typeof m.versionCode !== "number" || typeof m.versionName !== "string" || typeof m.signerSha256 !== "string") {
-      problems.push(
-        `${where2}: no APK metadata (publish it with a pkey that reads build metadata)`
-      );
-      continue;
-    }
-    if (m.packageName !== pkg)
-      problems.push(`${where2}: package ${String(m.packageName)} is not ${pkg}`);
-    if (!(m.versionCode < previousCode))
-      problems.push(
-        `${where2}: versionCode ${m.versionCode} does not strictly decrease from the newer release's ${previousCode}; keep versionCode strictly increasing across releases and channels`
-      );
-    previousCode = m.versionCode;
-    const at = (v.publishedAt ?? timestamp / 1e3) * 1e3;
-    added = Math.min(added, at);
-    lastUpdated = Math.max(lastUpdated, at);
-    preferredSigner ??= m.signerSha256;
-    const minSdk = typeof m.minSdk === "number" ? m.minSdk : void 0;
-    const targetSdk = typeof m.targetSdk === "number" ? m.targetSdk : void 0;
-    const nativecode = Array.isArray(m.nativecode) ? m.nativecode : [];
-    if (!v.stable) hasBeta = true;
-    versions[v.apk.sha256 ?? where2] = {
-      added: at,
-      file: { name: `/${v.apk.name}`, sha256: v.apk.sha256, size: v.apk.size },
-      manifest: {
-        versionName: m.versionName,
-        versionCode: m.versionCode,
-        ...minSdk !== void 0 && targetSdk !== void 0 ? { usesSdk: { minSdkVersion: minSdk, targetSdkVersion: targetSdk } } : {},
-        ...nativecode.length ? { nativecode } : {},
-        signer: { sha256: [m.signerSha256] }
-      },
-      ...v.stable ? {} : { releaseChannels: ["Beta"] },
-      ...v.notes ? { whatsNew: { [LOCALE2]: v.notes } } : {}
-    };
-  }
-  if (problems.length)
-    throw new Error(
-      `The F-Droid repository cannot be built:
-  ${problems.join("\n  ")}`
-    );
-  const iconFile = icon2 ? {
-    [LOCALE2]: {
-      name: `/${icon2.path}`,
-      sha256: icon2.sha256,
-      size: icon2.size
-    }
-  } : void 0;
-  const packages = {};
-  if (inputs.versions.length && pkg)
-    packages[pkg] = {
-      metadata: {
-        added,
-        lastUpdated,
-        name: { [LOCALE2]: name },
-        ...listing.subtitle ? { summary: { [LOCALE2]: listing.subtitle } } : {},
-        ...listing.description ? { description: { [LOCALE2]: listing.description } } : {},
-        ...listing.website ? { webSite: listing.website } : {},
-        ...listing.developerName ? { authorName: listing.developerName } : {},
-        ...preferredSigner ? { preferredSigner } : {},
-        ...iconFile ? { icon: iconFile } : {}
-      },
-      versions
-    };
-  return {
-    repo: {
-      name: {
-        [LOCALE2]: inputs.channel === "stable" ? name : `${name} (${inputs.channel})`
-      },
-      description: {
-        [LOCALE2]: listing.subtitle ?? `${name}, ${inputs.channel} channel, from Polaris Key.`
-      },
-      ...iconFile ? { icon: iconFile } : {},
-      address: inputs.repo.address,
-      timestamp,
-      ...hasBeta ? { releaseChannels: { Beta: { name: { [LOCALE2]: "Beta" } } } } : {}
-    },
-    packages
-  };
+function isMap2(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
 }
-function indexV2Problems(index) {
-  const out = [];
-  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-  const isInt = (v) => Number.isSafeInteger(v);
-  const isLocalized = (v) => v === void 0 || isObj(v) && Object.values(v).every((s) => typeof s === "string");
-  const isFile = (v, needHash) => isObj(v) && typeof v.name === "string" && v.name.startsWith("/") && (needHash ? typeof v.sha256 === "string" && /^[0-9a-f]{64}$/.test(v.sha256) : true);
-  if (!isObj(index)) return ["the index is not an object"];
-  const repo = index.repo;
-  if (!isObj(repo)) return ["repo is missing"];
-  if (typeof repo.address !== "string")
-    out.push("repo.address is not a string");
-  if (!isInt(repo.timestamp)) out.push("repo.timestamp is not an integer");
-  for (const k of ["name", "description"])
-    if (!isLocalized(repo[k])) out.push(`repo.${k} is not localized text`);
-  if (repo.releaseChannels !== void 0) {
-    if (!isObj(repo.releaseChannels))
-      out.push("repo.releaseChannels is not an object");
-    else
-      for (const [k, c] of Object.entries(repo.releaseChannels))
-        if (!isObj(c) || !isLocalized(c.name) || c.name === void 0)
-          out.push(`repo.releaseChannels.${k}.name is required`);
-  }
-  if (index.packages !== void 0 && !isObj(index.packages)) {
-    out.push("packages is not an object");
-    return out;
-  }
-  for (const [id, p] of Object.entries(
-    index.packages ?? {}
-  )) {
-    if (!isObj(p) || !isObj(p.metadata)) {
-      out.push(`packages.${id}.metadata is missing`);
-      continue;
-    }
-    const meta = p.metadata;
-    if (!isInt(meta.added))
-      out.push(`packages.${id}.metadata.added is not an integer`);
-    if (!isInt(meta.lastUpdated))
-      out.push(`packages.${id}.metadata.lastUpdated is not an integer`);
-    for (const k of ["name", "summary", "description"])
-      if (!isLocalized(meta[k]))
-        out.push(`packages.${id}.metadata.${k} is not localized text`);
-    if (p.versions !== void 0 && !isObj(p.versions)) {
-      out.push(`packages.${id}.versions is not an object`);
-      continue;
-    }
-    for (const [key, v] of Object.entries(
-      p.versions ?? {}
-    )) {
-      const at = `packages.${id}.versions.${key}`;
-      if (!isObj(v)) {
-        out.push(`${at} is not an object`);
-        continue;
-      }
-      if (!isInt(v.added)) out.push(`${at}.added is not an integer`);
-      if (!isFile(v.file, true))
-        out.push(`${at}.file needs a /name and a sha256`);
-      else if (v.file.sha256 !== key)
-        out.push(`${at} is not keyed by its file's sha256`);
-      const m = v.manifest;
-      if (!isObj(m)) {
-        out.push(`${at}.manifest is missing`);
-        continue;
-      }
-      if (typeof m.versionName !== "string")
-        out.push(`${at}.manifest.versionName is required`);
-      if (!isInt(m.versionCode))
-        out.push(`${at}.manifest.versionCode is required`);
-      if (m.usesSdk !== void 0 && !(isObj(m.usesSdk) && isInt(m.usesSdk.minSdkVersion) && isInt(m.usesSdk.targetSdkVersion)))
-        out.push(
-          `${at}.manifest.usesSdk needs minSdkVersion and targetSdkVersion`
-        );
-      if (m.signer !== void 0 && !(isObj(m.signer) && Array.isArray(m.signer.sha256) && m.signer.sha256.every((s) => typeof s === "string")))
-        out.push(`${at}.manifest.signer.sha256 must be a list`);
-      if (v.releaseChannels !== void 0 && !(Array.isArray(v.releaseChannels) && v.releaseChannels.every((c) => typeof c === "string")))
-        out.push(`${at}.releaseChannels must be a list of names`);
-    }
-  }
-  return out;
-}
-function buildRepoFiles(inputs, timestamp, opts = {}) {
-  const files = /* @__PURE__ */ new Map();
-  let icon2;
-  if (opts.icon) {
-    const p = `icons/${opts.icon.name}`;
-    files.set(p, opts.icon.bytes);
-    icon2 = {
-      path: p,
-      sha256: sha2564(opts.icon.bytes),
-      size: opts.icon.bytes.length
-    };
-  }
-  const index = buildFdroidIndex(inputs, timestamp, icon2);
-  const problems = indexV2Problems(index);
-  if (problems.length)
-    throw new Error(
-      `index-v2.json would not parse:
-  ${problems.join("\n  ")}`
-    );
-  const indexBytes = Buffer.from(sortedJson2(index), "utf8");
-  files.set("index-v2.json", indexBytes);
-  const numPackages = Object.keys(index.packages).length;
-  const entry = {
-    timestamp,
-    version: FDROID_INDEX_VERSION,
-    index: {
-      name: "/index-v2.json",
-      sha256: sha2564(indexBytes),
-      size: indexBytes.length,
-      numPackages
-    },
-    diffs: {}
-  };
-  const prev = opts.previous;
-  const prevTs = prev?.repo?.timestamp;
-  if (prev && Number.isSafeInteger(prevTs) && prevTs < timestamp) {
-    const diff = dictDiff(prev, index);
-    const bytes = Buffer.from(sortedJson2(diff), "utf8");
-    const p = `diff/${prevTs}.json`;
-    files.set(p, bytes);
-    entry.diffs[String(prevTs)] = {
-      name: `/${p}`,
-      sha256: sha2564(bytes),
-      size: bytes.length,
-      numPackages: Object.keys(diff.packages ?? {}).length
-    };
-  }
-  files.set("entry.json", Buffer.from(sortedJson2(entry), "utf8"));
-  return { files, index, entry };
-}
-async function findApksigner(explicit, env) {
-  if (explicit) return explicit;
-  const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
-  if (sdk) {
-    const bt = path27.join(sdk, "build-tools");
-    try {
-      const versions = (await readdir10(bt)).sort(
-        (a, b) => a.localeCompare(b, void 0, { numeric: true })
-      );
-      for (const v of versions.reverse()) {
-        const p = path27.join(bt, v, "apksigner");
-        if (existsSync(p)) return p;
-      }
-    } catch {
-    }
-  }
-  return "apksigner";
-}
-async function signEntryJar(jar, opts) {
-  const tool = await findApksigner(opts.apksigner, opts.env);
-  if (!opts.env[opts.passEnv])
-    throw new Error(
-      `The keystore password is not in $${opts.passEnv}; export it from the CI secret (never pass it on the command line).`
-    );
-  const unsigned = `${jar}.unsigned`;
-  await writeFile18(unsigned, await readFile22(jar));
-  try {
-    await promisify(execFile)(
-      tool,
-      [
-        "sign",
-        "--min-sdk-version",
-        "23",
-        "--v1-signing-enabled",
-        "true",
-        "--v2-signing-enabled",
-        "false",
-        "--v3-signing-enabled",
-        "false",
-        "--v4-signing-enabled",
-        "false",
-        "--ks",
-        opts.keystore,
-        "--ks-key-alias",
-        opts.alias,
-        "--ks-pass",
-        `env:${opts.passEnv}`,
-        "--out",
-        jar,
-        unsigned
-      ],
-      { env: { ...process.env, ...opts.env } }
-    );
-  } catch (e) {
-    const err = e;
-    throw new Error(`apksigner failed: ${(err.stderr || err.message).trim()}`);
-  } finally {
-    await rm5(unsigned, { force: true });
-  }
-}
-var OUT_FILES = /* @__PURE__ */ new Set(["entry.jar", "entry.json", "index-v2.json"]);
-var OUT_DIRS = {
-  diff: /^[0-9]+\.json$/,
-  icons: /^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/
+var Refusal2 = class extends Error {
 };
-async function staleOutFiles(dir, cwd) {
-  const up = path27.relative(dir, path27.resolve(cwd));
-  if (up === "" || up.split(path27.sep)[0] !== ".." && !path27.isAbsolute(up))
-    throw new UsageError(
-      `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
+function appendYaml(raw, b) {
+  const doc = import_yaml8.default.parseDocument(raw);
+  if (doc.errors.length > 0)
+    throw new Refusal2(
+      `distribution is not valid YAML: ${doc.errors[0].message}`
     );
-  let top;
-  try {
-    top = await lstat3(dir);
-  } catch {
-    return { files: [], dirs: [] };
+  if (doc.contents === null) doc.contents = doc.createNode({});
+  if (!import_yaml8.default.isMap(doc.contents))
+    throw new Refusal2("distribution must be a mapping.");
+  let outlets = doc.contents.get("outlets", true);
+  if (outlets === void 0 || outlets === null) {
+    outlets = doc.createNode({});
+    doc.contents.set("outlets", outlets);
   }
-  if (!top.isDirectory())
-    throw new UsageError(`--out ${dir} exists and is not a directory.`);
-  const files = [];
-  const dirs = [];
-  const foreign = [];
-  for (const name of (await readdir10(dir)).sort()) {
-    const full = path27.join(dir, name);
-    const st = await lstat3(full);
-    if (OUT_FILES.has(name) && st.isFile()) {
-      files.push(full);
-      continue;
+  if (!import_yaml8.default.isMap(outlets))
+    throw new Refusal2("outlets in distribution must be a mapping.");
+  const node = doc.createNode(b.entry);
+  for (const p of node.items) {
+    const comment = b.comments[String(p.key.value)];
+    if (comment) p.key.commentBefore = ` ${comment}`;
+  }
+  const key = new import_yaml8.default.Scalar(b.id);
+  key.commentBefore = ` ${b.label}`;
+  outlets.items.push(new import_yaml8.default.Pair(key, node));
+  return doc.toString({ lineWidth: 0 });
+}
+var MARKERS = {
+  homebrew: "homebrew needs --field homebrewTap=owner/homebrew-name and --field homebrewCask=token (or homebrewFormula=name).",
+  scoop: `scoop needs --field scoopBucket=owner/repo (or --field scoop='{"bin":"app.exe"}').`
+};
+function unsetFields(channelId, kind, given) {
+  const rest = channelIdentityFields(channelId).filter(
+    (f) => given[f] === void 0
+  );
+  if (!rest.length) return null;
+  const items = rest.map(
+    (f) => `${f} (${outletFieldLabel(kind, f).replace(/(?: \([^)]*\))?\.$/, "")})`
+  );
+  return `Fields not set: ${items.join(", ")}. Set one with --field name=value.`;
+}
+async function channelAdd(a, io) {
+  const bad = unknownOption(a, io, KNOWN_FLAGS);
+  if (bad !== null) return bad;
+  const [, id, ...extra] = a.positional;
+  if (!id || extra.length > 0) throw new UsageError(ADD_USAGE);
+  const json = a.flags.json === true || a.flags.json === "true";
+  const outletId = a.flags["outlet-id"];
+  if (outletId !== void 0 && typeof outletId !== "string")
+    throw new UsageError("--outlet-id needs a value.");
+  if (a.flags.field === true) throw new UsageError("--field needs a value.");
+  const identity = parseFields(a.multi.field ?? []);
+  if (outletId !== void 0 && !OUTLET_ID_PATTERN.test(outletId))
+    throw new UsageError(
+      `--outlet-id "${outletId}": use lowercase letters, digits and hyphens, starting with a letter, like itch-beta.`
+    );
+  const channel = findChannel(id);
+  if (!channel || !ADDABLE_CHANNELS.includes(channel.id)) {
+    const near = nearest(id, ADDABLE_CHANNELS);
+    throw new UsageError(
+      `Unknown channel "${id}". ${near ? `Did you mean ${near}?` : "Run pkey help channel for the list."}`
+    );
+  }
+  const fields = channelIdentityFields(channel.id);
+  const wrong = Object.keys(identity).find((k) => !fields.includes(k));
+  if (wrong !== void 0)
+    throw new UsageError(
+      `Unknown field ${wrong} for ${channel.id}. ${fields.length ? `Its fields: ${fields.join(", ")}.` : "It takes no fields."}`
+    );
+  const block2 = outletBlockEntry(channel.id, identity, {
+    outletId
+  });
+  let loaded2;
+  try {
+    loaded2 = await loadManifest(io.cwd);
+  } catch (e) {
+    return manifestFailure("channel add", e, io, json);
+  }
+  const term = termOf(io, io.stderr);
+  const file = loaded2.distributionPath ?? path28.join(loaded2.rootDir, "distribution.yaml");
+  const asJson = file.endsWith(".json");
+  const existing = loaded2.distributionPath !== void 0;
+  const rel = path28.relative(io.cwd, file);
+  const refuse2 = (text4, problems) => {
+    if (json)
+      io.stdout.write(
+        envelope("channel add", 1, {
+          channel: channel.id,
+          outlet: block2.id,
+          errors: problems
+        })
+      );
+    else io.stderr.write(`${untrustedLines(text4, io.env)}
+`);
+    return 1;
+  };
+  const simple = (code, message) => ({
+    code,
+    message,
+    at: rel,
+    file: rel
+  });
+  const nothing = (code, message) => refuse2(`Nothing written. ${message}`, [simple(code, message)]);
+  const marker2 = MARKERS[channel.id];
+  if (marker2 && !fields.some((f) => identity[f] !== void 0))
+    return nothing("missing-field", marker2);
+  const before = validateLoadedManifest(loaded2);
+  if (!before.ok)
+    return refuse2(
+      `Nothing written: .pkey/ already has ${before.errors.length} error${before.errors.length === 1 ? "" : "s"}. Fix it first (pkey validate):
+${before.errors.map((e) => errorLine(loaded2, e, io.cwd, term)).join("\n")}`,
+      before.errors.map((e) => messageEntry(loaded2, e, io.cwd))
+    );
+  if (existing && !isMap2(loaded2.distribution) && loaded2.distribution != null)
+    return nothing("invalid-file", `${rel} must be a mapping.`);
+  const outlets = isMap2(loaded2.distribution) ? loaded2.distribution.outlets : void 0;
+  if (outlets != null && !isMap2(outlets))
+    return nothing("invalid-file", `outlets in ${rel} must be a mapping.`);
+  if (isMap2(outlets) && block2.id in outlets) {
+    const message = `${rel} already declares ${block2.id}. Name this one with --outlet-id, like --outlet-id ${block2.id}-beta.`;
+    return refuse2(message, [simple("duplicate-outlet", message)]);
+  }
+  let text3;
+  try {
+    if (!existing) {
+      text3 = renderOutletBlock(channel.id, identity, {
+        format: "yaml",
+        outletId
+      });
+    } else if (asJson) {
+      const doc = isMap2(loaded2.distribution) ? loaded2.distribution : {};
+      text3 = `${JSON.stringify({ ...doc, outlets: { ...outlets ?? {}, [block2.id]: block2.entry } }, null, 2)}
+`;
+    } else {
+      text3 = appendYaml(await readFile22(file, "utf8"), block2);
     }
-    const pattern2 = OUT_DIRS[name];
-    if (pattern2 && st.isDirectory()) {
-      let clean2 = true;
-      for (const inner of (await readdir10(full)).sort()) {
-        const f = path27.join(full, inner);
-        if (pattern2.test(inner) && (await lstat3(f)).isFile()) files.push(f);
-        else {
-          foreign.push(path27.join(name, inner));
-          clean2 = false;
+  } catch (e) {
+    if (e instanceof Refusal2) return nothing("invalid-file", e.message);
+    throw e;
+  }
+  const next = asJson ? JSON.parse(text3) : import_yaml8.default.parse(text3);
+  const after = { ...loaded2, distributionPath: file, distribution: next };
+  const result = validateLoadedManifest(after);
+  if (!result.ok) {
+    const own = `/outlets/${block2.id}/`;
+    const lines4 = result.errors.map((e) => {
+      const field = e.path.startsWith(own) ? e.path.slice(own.length) : "";
+      return field in identity ? `--field ${field} ${e.message.replace(`outlets.${block2.id}.${field} `, "")}` : `${e.file}${e.path}: ${e.message}`;
+    });
+    return refuse2(
+      `Nothing written. ${lines4.length === 1 ? lines4[0] : `${lines4.length} problems:
+${lines4.map((l) => `  ${l}`).join("\n")}`}`,
+      result.errors.map((e) => messageEntry(after, e, io.cwd))
+    );
+  }
+  await mkdir11(path28.dirname(file), { recursive: true });
+  await writeFile19(file, text3);
+  if (json) {
+    io.stdout.write(
+      envelope("channel add", 0, {
+        channel: channel.id,
+        outlet: block2.id,
+        file: rel,
+        created: !existing
+      })
+    );
+    return 0;
+  }
+  const shown4 = renderOutletBlock(channel.id, identity, {
+    format: asJson ? "json" : "yaml",
+    outletId
+  });
+  const unset = unsetFields(channel.id, channel.outlet.kind, identity);
+  io.stdout.write(
+    `${untrustedLines(
+      [
+        existing ? `Added ${block2.id} to ${rel}.` : `Created ${rel} with ${block2.id}.`,
+        "",
+        shown4.trimEnd(),
+        "",
+        ...unset ? [unset] : [],
+        "Next: pkey channel sync --dry-run"
+      ].join("\n"),
+      io.env
+    )}
+`
+  );
+  return 0;
+}
+
+// src/channelSync.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import path29 from "node:path";
+var FDROID_KEYSTORE_ENV = "PKEY_FDROID_KEYSTORE";
+var FDROID_ALIAS_ENV = "PKEY_FDROID_ALIAS";
+var FDROID_OUT = "fdroid-repo";
+var SECRETS = {
+  winget: [PR_TOKEN_ENV],
+  homebrew: [PR_TOKEN_ENV],
+  scoop: [PR_TOKEN_ENV],
+  flathub: [PR_TOKEN_ENV],
+  itch: ["BUTLER_API_KEY"],
+  snap: ["SNAPCRAFT_STORE_CREDENTIALS"],
+  fdroid: [DEFAULT_KS_PASS_ENV, FDROID_KEYSTORE_ENV, FDROID_ALIAS_ENV]
+};
+var ITCH_PLATFORM = {
+  windows: "windows",
+  linux: "linux",
+  macos: "mac",
+  android: "android"
+};
+function channelsOf(o) {
+  if (o.kind !== "direct") {
+    const c = channelForOutlet(o.kind);
+    return c ? [c] : [];
+  }
+  const has3 = (...f) => f.some((k) => o.identity[k] !== void 0);
+  const out = [];
+  if (has3("homebrewCask", "homebrewFormula", "homebrewTap")) {
+    const c = channelForOutlet("direct", "homebrew");
+    if (c) out.push(c);
+  }
+  if (has3("scoop", "scoopBucket")) {
+    const c = channelForOutlet("direct", "scoop");
+    if (c) out.push(c);
+  }
+  return out;
+}
+var payloadOf = (b) => b.files.find((f) => f.role === b.entry.role)?.path;
+function filesFor(channel, builds) {
+  const out = [];
+  for (const b of builds) {
+    const file = payloadOf(b);
+    if (!file) continue;
+    const { platform, format } = b.entry;
+    if (channel === "itch") {
+      const word = ITCH_PLATFORM[platform];
+      const fits = format === "zip" || platform === "android" && format === "apk";
+      if (word && fits && !out.some((x) => x.platform === word))
+        out.push({ platform: word, file });
+    } else if (channel === "snap") {
+      if (format === "snap" && out.length === 0)
+        out.push({ platform, file });
+    } else if (channel === "fdroid") {
+      if (format === "apk" && platform === "android" && out.length === 0)
+        out.push({ platform, file });
+    }
+  }
+  return out;
+}
+function planSync(outlets, o) {
+  const rows = [];
+  for (const outlet of outlets)
+    for (const c of channelsOf(outlet)) {
+      const pr = c.plane === "pr";
+      if (!pr && c.plane !== "ci" && c.id !== "fdroid") continue;
+      const row2 = {
+        outlet: outlet.id,
+        channel: c.id,
+        step: pr ? "pr" : "local-files",
+        store: c.id,
+        state: "planned"
+      };
+      let extras = [];
+      const secret = (SECRETS[c.id] ?? []).find((e) => !o.env[e]);
+      if (secret) {
+        row2.state = "skipped";
+        row2.reason = "missing-secret";
+        row2.secret = secret;
+      } else if (!pr && !o.dir) {
+        row2.state = "skipped";
+        row2.reason = "needs-dir";
+      } else if (!pr) {
+        const found = filesFor(c.id, o.builds ?? []);
+        if (!found.length) {
+          row2.state = "skipped";
+          row2.reason = "no-file";
+        } else {
+          Object.assign(row2, found[0]);
+          extras = found.slice(1).map((x) => ({ ...row2, ...x }));
         }
       }
-      if (clean2) dirs.push(full);
-      continue;
+      rows.push(row2, ...extras);
     }
-    foreign.push(name);
-  }
-  if (foreign.length)
-    throw new UsageError(
-      `--out ${dir} holds files pkey feeds fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`
-    );
-  return { files, dirs };
+  return rows;
 }
-async function currentIndex(inputs, fetchImpl, log, env) {
-  const reg = inputs.files.find((f) => f.path === "index-v2.json");
-  if (!reg) return null;
-  try {
-    const res = await fetchImpl(`${inputs.repo.address}/index-v2.json`);
-    if (!res.ok) return null;
-    const bytes = Buffer.from(await res.arrayBuffer());
-    if (sha2564(bytes) !== reg.sha256) return null;
-    return JSON.parse(bytes.toString("utf8"));
-  } catch (e) {
-    log.write(
-      `warning: could not read the current index (${untrusted(e.message, env)}); no diff is written.
-`
-    );
-    return null;
-  }
-}
-async function buildFdroidFeed(opts) {
-  const out = opts.stdout;
-  if (!opts.channel?.trim() || !opts.out?.trim()) throw new Error(FEEDS_USAGE);
-  if (opts.keystore === void 0 !== (opts.alias === void 0))
-    throw new UsageError(`--keystore and --alias go together.
-${FEEDS_USAGE}`);
-  const dir = path27.resolve(opts.cwd, opts.out);
-  await staleOutFiles(dir, opts.cwd);
-  const token = await resolveCiToken({
-    baseUrl: opts.baseUrl,
-    product: opts.product,
-    env: opts.env,
-    out,
-    log: opts.stderr,
-    fetchImpl: opts.fetchImpl,
-    sleep: opts.sleep
-  });
-  const client = ciClient({
-    baseUrl: opts.baseUrl,
-    product: opts.product,
-    token,
-    fetchImpl: opts.fetchImpl,
-    sleep: opts.sleep,
-    log: opts.stderr,
-    env: opts.env
-  });
-  const route = `distribution/feeds/fdroid/${encodeURIComponent(opts.channel.trim())}`;
-  const inputs = await client.getJson(route, {
-    what: "Reading the F-Droid feed inputs"
-  });
-  const u = (v) => untrusted(v, opts.env);
-  out.write(
-    `F-Droid ${u(inputs.channel)}: ${inputs.versions.length} APK${inputs.versions.length === 1 ? "" : "s"} for ${u(inputs.packageName ?? "(no package)")}
-`
-  );
-  const previous = await currentIndex(
-    inputs,
-    opts.fetchImpl ?? fetch,
-    opts.stderr,
-    opts.env
-  );
-  const now = (opts.now ?? Date.now)();
-  const prevTs = previous?.repo?.timestamp ?? 0;
-  const timestamp = Math.max(now, prevTs + 1);
-  const icon2 = opts.icon ? {
-    name: path27.basename(opts.icon),
-    bytes: await readFile22(path27.resolve(opts.cwd, opts.icon))
-  } : void 0;
-  if (icon2 && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon2.name))
-    throw new UsageError(
-      "--icon must be a .png, .jpg or .webp file with a plain name."
-    );
-  const repo = buildRepoFiles(inputs, timestamp, {
-    previous,
-    ...icon2 ? { icon: icon2 } : {}
-  });
-  const stale = await staleOutFiles(dir, opts.cwd);
-  for (const f of stale.files) await rm5(f, { force: true });
-  for (const d of stale.dirs) await rmdir(d);
-  const written = {};
-  for (const [p, bytes] of repo.files) {
-    const file = path27.join(dir, ...p.split("/"));
-    await mkdir10(path27.dirname(file), { recursive: true });
-    await writeFile18(file, bytes);
-    written[p] = file;
-  }
-  const jar = path27.join(dir, "entry.jar");
-  await writeFile18(
-    jar,
-    zipStore([{ name: "entry.json", data: repo.files.get("entry.json") }])
-  );
-  written["entry.jar"] = jar;
-  const result = {
-    channel: inputs.channel,
-    written,
-    index: repo.index,
-    entry: repo.entry,
-    signed: false,
-    registered: false,
-    uploaded: []
+function sink() {
+  let text3 = "";
+  return {
+    out: { write: (s) => (text3 += s, true) },
+    text: () => text3
   };
-  if (!opts.keystore || !opts.alias) {
-    out.write(
-      `Wrote the unsigned repository to ${path27.relative(opts.cwd, dir) || "."}; pass --keystore and --alias to sign, upload and register it.
-`
-    );
-    return result;
-  }
-  await (opts.sign ?? signEntryJar)(jar, {
-    keystore: path27.resolve(opts.cwd, opts.keystore),
-    alias: opts.alias,
-    passEnv: opts.ksPassEnv ?? DEFAULT_KS_PASS_ENV,
-    env: opts.env,
-    ...opts.apksigner ? { apksigner: opts.apksigner } : {}
-  });
-  result.signed = true;
-  const signer = await withZip(jar, (z) => apkSignerSha256(z));
-  if (!signer) throw new Error("entry.jar is not signed after apksigner ran.");
-  if (inputs.repo.fingerprints.length && !inputs.repo.fingerprints.includes(signer))
-    throw new Error(
-      `entry.jar is signed by ${signer}, which is not an fdroid-repo key in the product's key inventory (${inputs.repo.fingerprints.join(", ")}). Check --keystore and --alias.`
-    );
-  if (opts.dryRun) {
-    out.write("Dry run: signed locally; nothing uploaded or registered.\n");
-    return result;
-  }
-  const all = await Promise.all(
-    Object.entries(written).map(async ([p, file]) => {
-      const bytes = await readFile22(file);
-      return { path: p, file, sha256: sha2564(bytes), size: bytes.length };
-    })
-  );
-  all.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-  const unique = new Map(all.map((f) => [f.sha256, f]));
-  const ticket = await client.postJson("release/publish/uploads", {
-    what: "Requesting an upload ticket",
-    body: {
-      objects: [...unique.values()].map((f) => ({
-        sha256: f.sha256,
-        size: f.size
-      }))
+}
+var str6 = (a, k) => {
+  const v = a.flags[k];
+  return typeof v === "string" && v.trim() ? v : void 0;
+};
+var bool2 = (a, k) => a.flags[k] === true || a.flags[k] === "true";
+function versionOf(a, env) {
+  const v = str6(a, "version");
+  if (v) return v;
+  const tag2 = env.GITHUB_REF_TYPE === "tag" ? env.GITHUB_REF_NAME : void 0;
+  return tag2?.replace(/^v(?=\d)/, "") || void 0;
+}
+function shown3(cwd, file) {
+  const rel = path29.relative(cwd, file);
+  return rel && !rel.startsWith("..") && !path29.isAbsolute(rel) ? rel : file;
+}
+async function runLocal(row2, outlet, a, io, product, dryRun, log, err) {
+  const channel = str6(a, "channel") ?? "stable";
+  const file = shown3(io.cwd, row2.file);
+  if (row2.store === "fdroid") {
+    const keystore = io.env[FDROID_KEYSTORE_ENV];
+    const alias = io.env[FDROID_ALIAS_ENV];
+    if (dryRun) {
+      row2.command = `pkey storefront fdroid --product ${product} --channel ${channel} --out ${FDROID_OUT} --keystore ${keystore} --alias ${alias}`;
+      return;
     }
-  });
-  if (typeof ticket.ticket !== "string" || !Array.isArray(ticket.objects))
-    throw new Error("The uploads route answered without a ticket.");
-  mask(opts.env, out, ticket.ticket);
-  mask(opts.env, out, ticket.credentials.secretAccessKey);
-  mask(opts.env, out, ticket.credentials.sessionToken);
-  const registered = new Set(inputs.files.map((f) => `${f.sha256}:${f.size}`));
-  for (const o of ticket.objects) {
-    if (o.present && registered.has(`${o.sha256}:${o.size}`)) continue;
-    const f = unique.get(o.sha256);
-    if (!f)
-      throw new Error(
-        `The ticket names ${o.sha256}, which pkey did not ask for.`
-      );
-    await putFile({
-      creds: ticket.credentials,
-      key: o.key,
-      file: f.file,
-      size: f.size,
-      sha256: f.sha256,
-      fetchImpl: opts.fetchImpl,
-      sleep: opts.sleep,
-      log: opts.stderr,
-      env: opts.env
+    await buildFdroidFeed({
+      cwd: io.cwd,
+      product,
+      channel,
+      out: FDROID_OUT,
+      keystore,
+      alias,
+      baseUrl: str6(a, "base-url"),
+      env: io.env,
+      stdout: log,
+      stderr: err,
+      fetchImpl: io.fetchImpl,
+      sleep: io.sleep
     });
-    result.uploaded.push(f.path);
+    row2.state = "done";
+    return;
   }
-  await client.postJson(route, {
-    what: "Registering the F-Droid repository",
-    body: {
-      ticket: ticket.ticket,
-      files: all.map((f) => ({ path: f.path, sha256: f.sha256, size: f.size }))
-    }
+  let step;
+  if (row2.store === "itch") {
+    const version = versionOf(a, io.env);
+    if (!version)
+      throw new UsageError(
+        "--version is required for itch push (the --userversion butler records)."
+      );
+    step = itchPushStep({
+      outlet,
+      dir: file,
+      platform: row2.platform,
+      channel,
+      version
+    });
+  } else step = snapUploadStep({ outlet, snap: file, channels: [channel] });
+  const lines4 = sink();
+  await runStoreSteps([step], {
+    cwd: io.cwd,
+    product,
+    baseUrl: str6(a, "base-url"),
+    env: io.env,
+    stdout: dryRun ? lines4.out : log,
+    stderr: err,
+    fetchImpl: io.fetchImpl,
+    sleep: io.sleep,
+    dryRun,
+    report: !bool2(a, "no-report"),
+    ...io.spawnTool ? { spawnTool: io.spawnTool } : {}
   });
-  result.registered = true;
+  if (dryRun) row2.command = commandLine(step.tool, step.argv);
+  else row2.state = "done";
+}
+async function runRows(rows, a, io, product, outlets, dryRun) {
+  for (const row2 of rows) {
+    if (row2.state !== "planned") continue;
+    if (dryRun && row2.step === "pr") continue;
+    const stdout = sink();
+    const stderr = sink();
+    try {
+      if (row2.step === "local-files") {
+        const outlet = outlets.find((o) => o.id === row2.outlet);
+        await runLocal(
+          row2,
+          outlet,
+          a,
+          io,
+          product,
+          dryRun,
+          stdout.out,
+          stderr.out
+        );
+      } else {
+        const r = await runPrStep({
+          store: row2.store,
+          product,
+          channel: str6(a, "channel") ?? "stable",
+          outlet: row2.outlet,
+          generator: {},
+          baseUrl: str6(a, "base-url"),
+          env: io.env,
+          stdout: sink().out,
+          stderr: stderr.out,
+          fetchImpl: io.fetchImpl,
+          sleep: io.sleep,
+          report: !bool2(a, "no-report"),
+          cwd: io.cwd
+        });
+        row2.state = r.outcome === "opened" || r.outcome === "existing" || r.outcome === "unchanged" ? r.outcome : "unchanged";
+        if (r.pr?.url) row2.url = r.pr.url;
+      }
+    } catch (err) {
+      if (err instanceof FirstSubmissionError) {
+        row2.state = "skipped";
+        row2.reason = "first-submission";
+        continue;
+      }
+      row2.state = "failed";
+      row2.error = (err instanceof Error ? err.message : String(err)).split(
+        "\n"
+      )[0];
+    }
+    const notes = [
+      ...stdout.text().split("\n"),
+      ...stderr.text().split("\n")
+    ].filter(Boolean);
+    if (notes.length && !dryRun) row2.notes = notes;
+  }
+}
+function describe(r, dryRun) {
+  switch (r.state) {
+    case "planned":
+      return !dryRun ? "pending" : r.command ? `would run ${r.command}` : r.step === "pr" ? "would open a pull request" : "would run";
+    case "skipped":
+      return r.reason === "missing-secret" ? `skipped: ${r.secret} is not set` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
+    case "done":
+      return r.platform && r.store === "itch" ? `pushed ${r.platform}` : r.store === "snap" ? "uploaded" : "built and registered";
+    case "opened":
+      return `opened ${r.url ?? "a pull request"}`;
+    case "existing":
+      return `pull request exists: ${r.url ?? ""}`.trim();
+    case "unchanged":
+      return "already up to date";
+    case "failed":
+      return `failed: ${r.error ?? "see above"}`;
+  }
+}
+var labelOf2 = (r) => r.outlet === r.channel ? r.channel : `${r.channel} (${r.outlet})`;
+function writeText(rows, product, track, dryRun, io, term) {
+  const { painter, symbols, caps } = term;
+  const u = (v) => untrusted(v, io.env);
+  const out = io.stdout;
+  if (!rows.length) {
+    out.write(
+      "Nothing to sync. Sync covers winget, Homebrew, Scoop, Flathub, itch.io, Snap and F-Droid; add one with pkey channel add <id>.\n"
+    );
+    return;
+  }
+  const count = (s) => rows.filter((r) => s.includes(r.state)).length;
+  const failed = count(["failed"]);
+  const parts = [
+    failed && `${failed} failed`,
+    dryRun ? count(["planned"]) && `${count(["planned"])} planned` : count(["opened", "existing", "unchanged", "done"]) && `${count(["opened", "existing", "unchanged", "done"])} done`,
+    count(["skipped"]) && `${count(["skipped"])} skipped`
+  ].filter(Boolean);
+  const glyph = failed ? painter.style(symbols.fail, ["danger"]) : dryRun ? painter.style(symbols.stepActive, ["muted"]) : parts.length === 1 && count(["skipped"]) ? painter.style(symbols.warn, ["warning"]) : painter.style(symbols.ok, ["success"]);
   out.write(
-    `Registered ${all.length} files for ${u(inputs.channel)} (${result.uploaded.length} uploaded): ${u(inputs.repo.address)}
+    `${glyph}  ${painter.line([
+      { text: u(product), style: ["strong"] },
+      {
+        text: ` ${symbols.separator} track ${u(track)}${dryRun ? ` ${symbols.separator} dry run` : ""}`,
+        style: ["muted"]
+      },
+      { text: `: ${parts.join(", ")}` }
+    ])}
 `
   );
-  if (inputs.repo.fingerprints.length)
-    out.write(
-      `Add with: ${u(inputs.repo.address)}?fingerprint=${u(inputs.repo.fingerprints[0])}
+  const width = Math.max(10, caps.columns - 3);
+  const markOf = (r) => r.state === "failed" ? painter.style(symbols.fail, ["danger"]) : r.state === "skipped" ? painter.style(symbols.warn, ["warning"]) : r.state === "planned" ? painter.style(symbols.stepActive, ["muted"]) : painter.style(symbols.ok, ["success"]);
+  for (const r of rows) {
+    const spans = [
+      { text: u(labelOf2(r)), style: ["strong"] },
+      { text: ": ", style: ["muted"] },
+      { text: u(describe(r, dryRun)) }
+    ];
+    const lines4 = caps.tty ? wrapSpans(spans, width, symbols.ellipsis) : [spans];
+    lines4.forEach(
+      (l, i) => out.write(
+        `${i === 0 ? markOf(r) : " ".repeat(cellWidth(symbols.ok))}  ${painter.line(l)}
 `
+      )
     );
-  else
-    out.write(
-      "warning: the key inventory has no fdroid-repo key; record the repo key's fingerprint in the console so users can verify the repository.\n"
+    for (const n of r.notes ?? [])
+      out.write(
+        `${" ".repeat(cellWidth(symbols.ok))}  ${painter.style(u(n), ["muted"])}
+`
+      );
+  }
+}
+async function matchBuilds(cwd, dir) {
+  const loaded2 = await loadManifest(cwd);
+  const entries = descriptorManifestOf(loaded2).release?.app?.artifacts ?? [];
+  if (!entries.length)
+    throw new Error(
+      ".pkey/release declares no deliverables.app with an artifacts map; --dir files are matched by it."
     );
-  return result;
+  const m = matchArtifacts(await scanDir(path29.resolve(cwd, dir)), entries);
+  const real = m.errors.filter((e) => !e.startsWith("No file under --dir"));
+  if (real.length) throw new Error(real.join("\n"));
+  return m.builds;
+}
+var NO_CI_CREDENTIAL = "No CI credential: in GitHub Actions add permissions: id-token: write; elsewhere set PKEY_CI_TOKEN.";
+var KNOWN_FLAGS2 = [
+  "channel",
+  "version",
+  "dir",
+  "dry-run",
+  "json",
+  "product",
+  "base-url",
+  "no-report"
+];
+async function channelSync(a, io) {
+  const bad = unknownOption(a, io, KNOWN_FLAGS2);
+  if (bad !== null) return bad;
+  if (a.positional.length > 1) throw new UsageError(SYNC_USAGE);
+  const track = str6(a, "channel") ?? "stable";
+  if (findChannel(track))
+    throw new UsageError(
+      `--channel is the release track (stable, beta, dev, …); ${track} is a distribution channel.`
+    );
+  const dryRun = bool2(a, "dry-run");
+  const json = bool2(a, "json");
+  let product;
+  try {
+    product = await loadStepProduct(io.cwd, str6(a, "product"));
+  } catch (e) {
+    return manifestFailure("channel sync", e, io, json);
+  }
+  const dir = str6(a, "dir");
+  const builds = dir ? await matchBuilds(io.cwd, dir) : [];
+  const rows = planSync(product.outlets, { dir, builds, env: io.env });
+  if (rows.some((r) => r.state === "planned") && !io.env[CI_TOKEN_ENV]?.trim() && !canRequestGithubOidc(io.env)) {
+    if (json)
+      io.stdout.write(
+        envelope("channel sync", 1, {
+          error: "no-ci-credential",
+          message: NO_CI_CREDENTIAL
+        })
+      );
+    else
+      io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
+    return 1;
+  }
+  await runRows(rows, a, io, product.slug, product.outlets, dryRun);
+  const failed = rows.some((r) => r.state === "failed");
+  if (json) {
+    io.stdout.write(
+      envelope("channel sync", failed ? 1 : 0, {
+        dryRun,
+        product: product.slug,
+        track,
+        steps: rows.map(({ store: _store, notes: _notes, ...r }) => r)
+      })
+    );
+  } else {
+    writeText(rows, product.slug, track, dryRun, io, termOf(io, io.stdout));
+  }
+  return failed ? 1 : 0;
+}
+
+// src/channel.ts
+var ADD_USAGE = "Usage: pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]";
+var SYNC_USAGE = "Usage: pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]";
+var CHANNEL_USAGE2 = `${ADD_USAGE}
+       ${SYNC_USAGE.replace("Usage: ", "")}`;
+async function cmdChannel(a, io) {
+  const [sub] = a.positional;
+  if (sub === "add") return channelAdd(a, io);
+  if (sub === "sync") return channelSync(a, io);
+  throw new UsageError(CHANNEL_USAGE2);
+}
+function termOf(io, out) {
+  return (io.term ?? ((o) => termFor(o, io.env)))(out);
+}
+function unknownOption(a, io, known) {
+  const unknown = Object.keys(a.flags).find((k) => !known.includes(k));
+  if (unknown === void 0) return null;
+  const near = nearest(unknown, known);
+  io.stderr.write(
+    failLine(
+      `Unknown option --${unknown}.${near ? ` Did you mean --${near}?` : " Run pkey help channel to see the options."}`,
+      termOf(io, io.stderr)
+    )
+  );
+  return 2;
+}
+function manifestError(e) {
+  const message = e.message;
+  return {
+    error: /^\.pkey\/ (?:is invalid|does not parse)/.test(message) ? "invalid-manifest" : /not valid (?:JSON|YAML)/.test(message) ? "unreadable-manifest" : "no-manifest",
+    message
+  };
+}
+function manifestFailure(command, e, io, json) {
+  if (!json || e instanceof UsageError) throw e;
+  io.stdout.write(envelope(command, 1, manifestError(e)));
+  return 1;
+}
+function messageFile(m, msg, cwd) {
+  const file = {
+    product: m.productPath,
+    schema: m.schemaPath,
+    release: m.releasePath,
+    distribution: m.distributionPath
+  }[msg.file];
+  return file ? path30.relative(cwd, file) : null;
+}
+function messageEntry(m, msg, cwd) {
+  return {
+    code: msg.code,
+    message: msg.message,
+    at: `${msg.file}${msg.path}`,
+    file: messageFile(m, msg, cwd)
+  };
+}
+function errorLine(m, msg, cwd, term) {
+  const file = messageFile(m, msg, cwd);
+  return `${term.painter.style(term.symbols.fail, ["danger"])}  error ${msg.file}${msg.path}${file ? ` (${file})` : ""}: ${msg.message}`;
 }
 
 // src/feedSetup.ts
@@ -43790,9 +49698,9 @@ function renderPruneReport(r, env = {}) {
   );
   const notice = r.retention?.notice;
   if (r.retention?.source === "default") {
-    const day = notice ? new Date(notice.startsAt * 1e3).toISOString().slice(0, 10) : null;
+    const day2 = notice ? new Date(notice.startsAt * 1e3).toISOString().slice(0, 10) : null;
     lines4.push(
-      day ? `Automatic cleanup ${r.prunePrereleases ? "turned on" : "turns on"} ${day}: the first stable release after that deletes what is listed here. Nothing is deleted before then. Turn it off in the feed settings to keep these builds.` : "Automatic cleanup is on by default and starts a week after a first dry-run notice; nothing is deleted before then."
+      day2 ? `Automatic cleanup ${r.prunePrereleases ? "turned on" : "turns on"} ${day2}: the first stable release after that deletes what is listed here. Nothing is deleted before then. Turn it off in the feed settings to keep these builds.` : "Automatic cleanup is on by default and starts a week after a first dry-run notice; nothing is deleted before then."
     );
   }
   for (const p of r.packages) {
@@ -43852,44 +49760,587 @@ ${FEEDS_PRUNE_USAGE}`);
       ...opts.deliverable ? { deliverable: opts.deliverable } : {}
     }
   });
-  let report = await ask();
-  for (let round = 1; opts.apply && report.more && round < MAX_ROUNDS; round++) {
+  let report2 = await ask();
+  for (let round = 1; opts.apply && report2.more && round < MAX_ROUNDS; round++) {
     const next = await ask();
-    report = {
+    report2 = {
       ...next,
-      packages: [...report.packages, ...next.packages].filter(
+      packages: [...report2.packages, ...next.packages].filter(
         (p) => p.prune.length || p.kept.length || p.failed?.length || p.skipped?.length
       ),
       totals: {
-        versions: report.totals.versions + next.totals.versions,
-        bytes: report.totals.bytes + next.totals.bytes,
-        freedBytes: report.totals.freedBytes + next.totals.freedBytes,
-        failed: report.totals.failed + next.totals.failed,
-        skipped: (report.totals.skipped ?? 0) + (next.totals.skipped ?? 0)
+        versions: report2.totals.versions + next.totals.versions,
+        bytes: report2.totals.bytes + next.totals.bytes,
+        freedBytes: report2.totals.freedBytes + next.totals.freedBytes,
+        failed: report2.totals.failed + next.totals.failed,
+        skipped: (report2.totals.skipped ?? 0) + (next.totals.skipped ?? 0)
       }
     };
   }
   opts.stdout.write(
-    opts.json ? `${untrustedJson(report, 2)}
-` : renderPruneReport(report, opts.env)
+    opts.json ? `${untrustedJson(report2, 2)}
+` : renderPruneReport(report2, opts.env)
   );
-  return report;
+  return report2;
+}
+
+// src/listing.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/godotProject.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+import { createHash as createHash15 } from "node:crypto";
+import { readFile as readFile23, stat as stat8 } from "node:fs/promises";
+import path31 from "node:path";
+var ConfigParser = class {
+  constructor(src, file) {
+    this.src = src;
+    this.file = file;
+  }
+  src;
+  file;
+  i = 0;
+  fail(message) {
+    const line = this.src.slice(0, this.i).split("\n").length;
+    throw new Error(`${this.file}:${line}: ${message}`);
+  }
+  peek() {
+    return this.src[this.i] ?? "";
+  }
+  skipSpace(newlines) {
+    for (; ; ) {
+      const c = this.peek();
+      if (c === " " || c === "	" || c === "\r" || newlines && c === "\n")
+        this.i++;
+      else if ((c === ";" || c === "#") && newlines) {
+        while (this.i < this.src.length && this.peek() !== "\n") this.i++;
+      } else return;
+    }
+  }
+  parse() {
+    const out = { "": {} };
+    let section = "";
+    for (; ; ) {
+      this.skipSpace(true);
+      if (this.i >= this.src.length) return out;
+      if (this.peek() === "[") {
+        const end = this.src.indexOf("]", this.i);
+        const eol = this.src.indexOf("\n", this.i);
+        if (end < 0 || eol >= 0 && end > eol) this.fail("unclosed section");
+        section = this.src.slice(this.i + 1, end).trim();
+        out[section] ??= {};
+        this.i = end + 1;
+        continue;
+      }
+      const key = this.key();
+      this.skipSpace(false);
+      if (this.peek() !== "=") this.fail(`expected "=" after ${key}`);
+      this.i++;
+      this.skipSpace(false);
+      out[section][key] = this.value();
+      this.skipSpace(false);
+      const c = this.peek();
+      if (c === ";" || c === "#") this.skipSpace(true);
+      else if (c !== "\n" && c !== "")
+        this.fail(`unexpected ${JSON.stringify(c)}`);
+    }
+  }
+  key() {
+    if (this.peek() === '"') return this.string();
+    const start = this.i;
+    while (this.i < this.src.length && !"=\n".includes(this.peek())) this.i++;
+    const key = this.src.slice(start, this.i).trim();
+    if (!key) this.fail("empty key");
+    return key;
+  }
+  string() {
+    const start = this.i;
+    this.i++;
+    let out = "";
+    for (; ; ) {
+      if (this.i >= this.src.length) {
+        this.i = start;
+        this.fail("unterminated string");
+      }
+      const c = this.src[this.i++];
+      if (c === '"') return out;
+      if (c !== "\\") {
+        out += c;
+        continue;
+      }
+      const e = this.src[this.i++] ?? "";
+      switch (e) {
+        case "n":
+          out += "\n";
+          break;
+        case "t":
+          out += "	";
+          break;
+        case "r":
+          out += "\r";
+          break;
+        case "b":
+          out += "\b";
+          break;
+        case "f":
+          out += "\f";
+          break;
+        case "u":
+        case "U": {
+          const len = e === "u" ? 4 : 6;
+          const hex5 = this.src.slice(this.i, this.i + len);
+          if (!/^[0-9A-Fa-f]+$/.test(hex5) || hex5.length !== len)
+            this.fail("invalid unicode escape");
+          out += String.fromCodePoint(parseInt(hex5, 16));
+          this.i += len;
+          break;
+        }
+        default:
+          out += e;
+      }
+    }
+  }
+  list(close) {
+    const out = [];
+    this.skipSpace(true);
+    if (this.peek() === close) {
+      this.i++;
+      return out;
+    }
+    for (; ; ) {
+      this.skipSpace(true);
+      out.push(this.value());
+      this.skipSpace(true);
+      const c = this.src[this.i++];
+      if (c === close) return out;
+      if (c !== ",") this.fail(`expected "," or "${close}"`);
+      this.skipSpace(true);
+      if (this.peek() === close) {
+        this.i++;
+        return out;
+      }
+    }
+  }
+  value() {
+    const c = this.peek();
+    if (c === '"') return this.string();
+    if ((c === "&" || c === "^") && this.src[this.i + 1] === '"') {
+      this.i++;
+      return this.string();
+    }
+    if (c === "[") {
+      this.i++;
+      return this.list("]");
+    }
+    if (c === "{") {
+      this.i++;
+      const out = {};
+      this.skipSpace(true);
+      if (this.peek() === "}") {
+        this.i++;
+        return out;
+      }
+      for (; ; ) {
+        this.skipSpace(true);
+        const k = this.value();
+        this.skipSpace(true);
+        if (this.src[this.i++] !== ":")
+          this.fail('expected ":" in a dictionary');
+        this.skipSpace(true);
+        out[typeof k === "string" ? k : JSON.stringify(k)] = this.value();
+        this.skipSpace(true);
+        const d = this.src[this.i++];
+        if (d === "}") return out;
+        if (d !== ",") this.fail('expected "," or "}"');
+        this.skipSpace(true);
+        if (this.peek() === "}") {
+          this.i++;
+          return out;
+        }
+      }
+    }
+    const num = /^[-+]?(?:\d+\.?\d*(?:e[-+]?\d+)?|\.\d+(?:e[-+]?\d+)?)/i.exec(
+      this.src.slice(this.i, this.i + 64)
+    );
+    if (num) {
+      this.i += num[0].length;
+      return Number(num[0]);
+    }
+    const ident = /^[A-Za-z_][A-Za-z0-9_]*/.exec(
+      this.src.slice(this.i, this.i + 128)
+    );
+    if (!ident) this.fail(`unexpected ${JSON.stringify(c)}`);
+    this.i += ident[0].length;
+    const word = ident[0];
+    if (word === "true") return true;
+    if (word === "false") return false;
+    if (word === "null") return null;
+    if (word === "inf" || word === "inf_neg" || word === "nan") return null;
+    let type = word;
+    if (this.peek() === "[") {
+      const end = this.src.indexOf("]", this.i);
+      if (end < 0) this.fail("unclosed type");
+      type += this.src.slice(this.i, end + 1);
+      this.i = end + 1;
+    }
+    this.skipSpace(false);
+    if (this.peek() !== "(") this.fail(`unexpected word ${word}`);
+    this.i++;
+    return { $type: type, args: this.list(")") };
+  }
+};
+function parseGodotConfig(text3, file = "config") {
+  return new ConfigParser(text3.replace(/^\uFEFF/, ""), file).parse();
+}
+var PLATFORMS = {
+  Android: "android",
+  iOS: "ios",
+  macOS: "macos",
+  "Windows Desktop": "windows",
+  Linux: "linux",
+  "Linux/X11": "linux",
+  Web: "web",
+  HTML5: "web"
+};
+var ANDROID_CATEGORIES = [
+  "accessibility",
+  "music",
+  "games",
+  "photo-and-video",
+  "navigation",
+  "news",
+  "productivity",
+  "social-networking",
+  "photo-and-video",
+  null
+];
+var str7 = (v) => typeof v === "string" && v.trim() !== "" ? v.trim() : void 0;
+async function exists(file) {
+  try {
+    return (await stat8(file)).isFile();
+  } catch {
+    return false;
+  }
+}
+function pngSize(bytes) {
+  const sig = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (bytes.length < 24 || !sig.every((b, i) => bytes[i] === b)) return null;
+  if (String.fromCharCode(...bytes.slice(12, 16)) !== "IHDR") return null;
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: v.getUint32(16), height: v.getUint32(20) };
+}
+function resolveResPath(root, res) {
+  if (!res.startsWith("res://")) return null;
+  const rel = res.slice("res://".length);
+  const file = path31.resolve(root, rel);
+  const within2 = path31.relative(root, file);
+  if (!within2 || within2.startsWith("..") || path31.isAbsolute(within2))
+    return null;
+  return file;
+}
+async function readGodotListing(dir, opts = {}) {
+  const root = path31.basename(dir) === "project.godot" ? path31.dirname(dir) : path31.resolve(dir);
+  const projectFile = path31.join(root, "project.godot");
+  let projectText;
+  try {
+    projectText = await readFile23(projectFile, "utf8");
+  } catch {
+    throw new Error(
+      `No project.godot in ${root}: --godot takes the Godot project's directory.`
+    );
+  }
+  const project = parseGodotConfig(projectText, "project.godot");
+  const app = project.application ?? {};
+  const warnings = [];
+  const listing = {
+    project: path31.basename(root),
+    versions: [],
+    bundleIds: [],
+    categoryHints: [],
+    icons: []
+  };
+  const name = str7(app["config/name"]);
+  if (name) listing.name = name;
+  const localized = app["config/name_localized"];
+  if (localized && typeof localized === "object" && !Array.isArray(localized) && !("$type" in localized)) {
+    const names = {};
+    for (const [locale, v] of Object.entries(localized)) {
+      const n = str7(v);
+      if (n) names[locale] = n;
+    }
+    if (Object.keys(names).length) listing.nameLocalized = names;
+  }
+  const version = str7(app["config/version"]);
+  if (version) listing.versions.push({ platform: "project", value: version });
+  const presetsFile = path31.join(root, "export_presets.cfg");
+  const presetsRead = [];
+  const options = {};
+  if (await exists(presetsFile)) {
+    const cfg = parseGodotConfig(
+      await readFile23(presetsFile, "utf8"),
+      "export_presets.cfg"
+    );
+    const sections = Object.keys(cfg).map((s) => /^preset\.(\d+)$/.exec(s)).filter((m) => m !== null).sort((a, b) => Number(a[1]) - Number(b[1]));
+    for (const m of sections) {
+      const preset = cfg[m[0]];
+      const presetName = str7(preset.name) ?? m[0];
+      const godotPlatform = str7(preset.platform) ?? "";
+      const platform = PLATFORMS[godotPlatform];
+      if (opts.presets?.length ? !opts.presets.includes(presetName) : platform && options[platform])
+        continue;
+      if (!platform) {
+        warnings.push(
+          `preset "${presetName}": platform "${godotPlatform}" is not read`
+        );
+        continue;
+      }
+      if (options[platform]) {
+        warnings.push(
+          `preset "${presetName}": a ${platform} preset was already read`
+        );
+        continue;
+      }
+      options[platform] = cfg[`${m[0]}.options`] ?? {};
+      presetsRead.push(`${presetName} (${godotPlatform})`);
+    }
+    for (const p of opts.presets ?? [])
+      if (!presetsRead.some((r) => r.startsWith(`${p} (`)))
+        warnings.push(`no export preset named "${p}"`);
+  } else if (opts.presets?.length) {
+    throw new UsageError(
+      `--preset was given but ${root} has no export_presets.cfg.`
+    );
+  }
+  const opt = (platform, key) => str7(options[platform]?.[key]);
+  for (const [platform, key] of [
+    ["android", "version/name"],
+    ["ios", "application/short_version"],
+    ["macos", "application/short_version"],
+    ["windows", "application/product_version"]
+  ]) {
+    const v = opt(platform, key);
+    if (v) listing.versions.push({ platform, value: v });
+  }
+  for (const [platform, key] of [
+    ["ios", "application/bundle_identifier"],
+    ["macos", "application/bundle_identifier"],
+    ["android", "package/unique_name"]
+  ]) {
+    const v = opt(platform, key);
+    if (!v) continue;
+    if (v.includes("$"))
+      warnings.push(
+        `${platform} ${key} "${v}" is a template (it holds $), not an id`
+      );
+    else listing.bundleIds.push({ platform, value: v });
+  }
+  const macCategory = opt("macos", "application/app_category");
+  if (macCategory)
+    listing.categoryHints.push({ platform: "macos", value: macCategory });
+  const androidCategory = options.android?.["package/app_category"];
+  if (typeof androidCategory === "number") {
+    const hint2 = ANDROID_CATEGORIES[androidCategory];
+    if (hint2) listing.categoryHints.push({ platform: "android", value: hint2 });
+  }
+  const copyright = opt("macos", "application/copyright") ?? opt("windows", "application/copyright");
+  if (copyright) listing.copyright = copyright;
+  const company = opt("windows", "application/company_name");
+  if (company) listing.company = company;
+  const master = opt("ios", "icons/app_store_1024x1024") && {
+    setting: "icons/app_store_1024x1024",
+    path: opt("ios", "icons/app_store_1024x1024")
+  } || opt("ios", "icons/icon_1024x1024") && {
+    setting: "icons/icon_1024x1024",
+    path: opt("ios", "icons/icon_1024x1024")
+  } || str7(app["config/icon"]) && {
+    setting: "application/config/icon",
+    path: str7(app["config/icon"])
+  } || null;
+  const wanted = [];
+  if (master) wanted.push({ slot: "icon-master", ...master });
+  for (const [slot, layer] of [
+    ["icon-adaptive-fg", "foreground"],
+    ["icon-adaptive-bg", "background"],
+    ["icon-adaptive-mono", "monochrome"]
+  ]) {
+    const setting = `launcher_icons/adaptive_${layer}_432x432`;
+    const p = opt("android", setting);
+    if (p) wanted.push({ slot, setting, path: p });
+  }
+  for (const w of wanted) {
+    const icon2 = { slot: w.slot, path: w.path, setting: w.setting };
+    const file = resolveResPath(root, w.path);
+    if (!file) {
+      warnings.push(
+        `${w.setting} "${w.path}" is not a res:// path inside the project; it is reported without a digest`
+      );
+    } else if (!await exists(file)) {
+      warnings.push(`${w.setting} "${w.path}" does not exist in the project`);
+    } else {
+      const bytes = new Uint8Array(await readFile23(file));
+      icon2.sha256 = createHash15("sha256").update(bytes).digest("hex");
+      const size = pngSize(bytes);
+      if (size) {
+        icon2.width = size.width;
+        icon2.height = size.height;
+      }
+    }
+    listing.icons.push(icon2);
+  }
+  return { listing, presets: presetsRead, warnings };
+}
+
+// src/listing.ts
+var LISTING_USAGE = "Usage: pkey listing import --godot <project> --product <slug> [--preset <name> ...]\n              [--locale <code>] [--overwrite] [--apply [--fields a,b]] [--json]\n              [--base-url <url>]\n       pkey listing import --godot <project> --dry-run [--preset <name> ...]";
+var LOCALE2 = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/;
+function listingHint(status) {
+  if (status === 404)
+    return "No such product, or the product has no Distribution service enabled.";
+  return status === 403 ? void 0 : statusHint(status);
+}
+async function listingImport(opts) {
+  if (opts.locale !== void 0 && !LOCALE2.test(opts.locale))
+    throw new UsageError(
+      `--locale must be a code such as en-US.
+${LISTING_USAGE}`
+    );
+  if (opts.fields?.length && !opts.apply)
+    throw new UsageError(`--fields goes with --apply.
+${LISTING_USAGE}`);
+  const read2 = await readGodotListing(opts.godot, {
+    ...opts.presets?.length ? { presets: opts.presets } : {}
+  });
+  const result = {
+    upload: read2.listing,
+    presets: read2.presets,
+    warnings: read2.warnings
+  };
+  if (opts.dryRun) return result;
+  const product = opts.product?.trim();
+  if (!product)
+    throw new UsageError(`--product is required.
+${LISTING_USAGE}`);
+  const token = await adminTokenFrom(opts.token, "listing");
+  const baseUrl = normalizeBaseUrl(
+    opts.baseUrl?.trim() || DEFAULT_BASE_URL,
+    ADMIN_TOKEN_ENV
+  );
+  const f = opts.fetchImpl ?? fetch;
+  const url = `${baseUrl}/manage/api/products/${encodeURIComponent(product)}/distribution/listing/import`;
+  const body = {
+    source: "godot",
+    godot: read2.listing,
+    ...opts.locale ? { locale: opts.locale } : {},
+    ...opts.overwrite ? { overwrite: true } : {}
+  };
+  const post = async (extra) => {
+    const res = await request(f, url, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ ...body, ...extra })
+    });
+    if (res.status === 409) {
+      const payload2 = await readJson(res, url);
+      if (payload2.reason === "import_changed" && payload2.import) {
+        result.import = payload2.import;
+        throw new Error(
+          `The listing or its sources changed since the preview, so nothing was written. The new diff:
+${formatImport(result)}
+Re-run to review and apply it.`
+        );
+      }
+      throw new Error(
+        `${hostLabel(url)} couldn't import the listing (HTTP 409): ${maskTokens(untrusted(payload2.message ?? payload2.reason ?? "conflict", {}))}.`
+      );
+    }
+    if (!res.ok)
+      throw await failureOf(res, url, "import the listing", listingHint);
+    const payload = await readJson(res, url);
+    const answer = payload.import;
+    if (!answer || typeof answer.digest !== "string")
+      throw new Error(
+        `${hostLabel(url)} answered ${res.status} without an import diff.`
+      );
+    return answer;
+  };
+  const preview = await post({});
+  result.import = preview;
+  if (!opts.apply) return result;
+  result.import = await post({
+    confirm: preview.digest,
+    ...opts.fields?.length ? { fields: opts.fields } : {}
+  });
+  return result;
+}
+function show2(v, env) {
+  const s = JSON.stringify(v) ?? "null";
+  return untrusted(s.length > 72 ? `${s.slice(0, 71)}…` : s, env);
+}
+function formatImport(r, env = {}) {
+  const u = (v) => untrusted(v, env);
+  const lines4 = [];
+  if (r.presets.length) lines4.push(`Presets read: ${r.presets.join(", ")}`);
+  for (const w of r.warnings) lines4.push(`warning: ${u(w)}`);
+  const imp = r.import;
+  if (!imp) {
+    lines4.push(JSON.stringify(r.upload, null, 2));
+    return lines4.join("\n");
+  }
+  if (imp.createsListing)
+    lines4.push(
+      `The product has no listing yet: this creates it (default locale ${u(imp.defaultLocale)}).`
+    );
+  if (!imp.changes.length)
+    lines4.push("No changes: the listing already holds what the project has.");
+  const width = Math.max(0, ...imp.changes.map((c) => u(c.field).length));
+  for (const c of imp.changes) {
+    const value = c.action === "replace" ? `${show2(c.current, env)} -> ${show2(c.proposed, env)}` : c.action === "keep" ? `${show2(c.current, env)} (kept: ${u(c.reason ?? "kept")}; godot has ${show2(c.proposed, env)})` : show2(c.proposed, env);
+    lines4.push(
+      `  ${u(c.action).padEnd(7)}  ${u(c.field).padEnd(width)}  ${value}`
+    );
+  }
+  for (const x of imp.refused)
+    lines4.push(`refused  ${u(x.field)}: ${u(x.message)}`);
+  for (const i of imp.identifiers) {
+    const where2 = i.outlets.length ? i.outlets.map(
+      (o) => `${u(o.outlet)} ${o.matches ? "matches" : `has ${u(o.value)}`}`
+    ).join(", ") : "no outlet declares one";
+    lines4.push(`${u(i.kind)} (${u(i.platform)}) ${u(i.value)}: ${where2}`);
+  }
+  for (const a of imp.assets)
+    lines4.push(
+      `icon ${u(a.slot)}: ${u(a.ref)}${a.width && a.height ? ` (${u(a.width)}x${u(a.height)})` : ""}; upload it with pkey listing assets`
+    );
+  const applicable = imp.changes.filter((c) => c.action !== "keep").length;
+  if (imp.applied)
+    lines4.push(
+      imp.written.length ? `Applied ${imp.written.length} change${imp.written.length === 1 ? "" : "s"}: ${imp.written.map(u).join(", ")}` : "Nothing to apply."
+    );
+  else if (applicable)
+    lines4.push(
+      `Nothing written. Re-run with --apply to write ${applicable} change${applicable === 1 ? "" : "s"}.`
+    );
+  return lines4.join("\n");
 }
 
 // src/listingAssets.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash17 } from "node:crypto";
-import { existsSync as existsSync2 } from "node:fs";
+import { existsSync as existsSync3 } from "node:fs";
 import {
-  mkdir as mkdir11,
+  mkdir as mkdir12,
   readdir as readdir11,
-  readFile as readFile23,
+  readFile as readFile24,
   rm as rm6,
   rmdir as rmdir2,
   stat as stat9,
-  writeFile as writeFile19
+  writeFile as writeFile20
 } from "node:fs/promises";
-import path28 from "node:path";
+import path32 from "node:path";
 
 // src/listing/io.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -44531,20 +50982,20 @@ var SCREENSHOT_RULES = [
     classes: ["phone-portrait", "tablet", "tv", "wear"],
     check(_cls, width, height) {
       const long = Math.max(width, height);
-      const short = Math.min(width, height);
+      const short2 = Math.min(width, height);
       const problems = [];
       const notes = [];
-      if (short < 320) {
-        problems.push(`a side of ${short} px is under Play's 320 px minimum`);
+      if (short2 < 320) {
+        problems.push(`a side of ${short2} px is under Play's 320 px minimum`);
         return { fits: false, problems, notes };
       }
       if (long > 3840)
         problems.push(`a side of ${long} px is over Play's 3840 px maximum`);
-      if (long > 2 * short)
+      if (long > 2 * short2)
         problems.push(
-          `${width}x${height} is ${(long / short).toFixed(2)}:1, over Play's 2:1 ("can't be more than twice")`
+          `${width}x${height} is ${(long / short2).toFixed(2)}:1, over Play's 2:1 ("can't be more than twice")`
         );
-      if (short < 1080)
+      if (short2 < 1080)
         notes.push("under 1080 px: not eligible for Play's featuring");
       if (problems.length === 0) return { fits: true, problems, notes };
       if (long > 3840) return { fits: false, problems, notes };
@@ -44951,8 +51402,8 @@ function fitScreenshots(inputs, accepted, background) {
           slot: `${rule.store}:screenshot:${cls}:${index}`,
           source: { width: shot.raster.width, height: shot.raster.height }
         };
-        const fit = rule.check(cls, shot.raster.width, shot.raster.height);
-        const notes = [...fit.notes];
+        const fit2 = rule.check(cls, shot.raster.width, shot.raster.height);
+        const notes = [...fit2.notes];
         const opaque = (r) => {
           if (!hasTransparency(r)) return r;
           notes.push(
@@ -44960,7 +51411,7 @@ function fitScreenshots(inputs, accepted, background) {
           );
           return flatten(r, background);
         };
-        if (fit.fits) {
+        if (fit2.fits) {
           outputs.push({
             ...base,
             status: "fits",
@@ -44971,17 +51422,17 @@ function fitScreenshots(inputs, accepted, background) {
           });
           return;
         }
-        if (!fit.proposal) {
+        if (!fit2.proposal) {
           outputs.push({
             ...base,
             status: "red",
             method: null,
-            problems: fit.problems,
+            problems: fit2.problems,
             notes
           });
           return;
         }
-        const proposal = fit.proposal;
+        const proposal = fit2.proposal;
         const choice = accepted.get(id);
         if (choice) used.add(id);
         const method = choice === "pad" ? "pad" : proposal.crop ? "crop" : "pad";
@@ -45002,7 +51453,7 @@ function fitScreenshots(inputs, accepted, background) {
           status: choice ? "accepted" : "pending",
           method,
           proposal,
-          problems: fit.problems,
+          problems: fit2.problems,
           notes,
           raster
         });
@@ -45024,8 +51475,8 @@ var sha2565 = (b) => createHash17("sha256").update(b).digest("hex");
 var hex4 = (c) => `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 async function loadMaster(cwd, slot, file) {
   if (!file) return null;
-  const p = path28.resolve(cwd, file);
-  const bytes = await readFile23(p);
+  const p = path32.resolve(cwd, file);
+  const bytes = await readFile24(p);
   const decoded = await decodeImage(
     bytes,
     `--${slot === "icon-master" ? "icon" : slot} ${file}`
@@ -45034,7 +51485,7 @@ async function loadMaster(cwd, slot, file) {
 }
 async function loadScreenshots(cwd, dir) {
   if (!dir) return [];
-  const root = path28.resolve(cwd, dir);
+  const root = path32.resolve(cwd, dir);
   const out = [];
   const entries = (await readdir11(root, { withFileTypes: true })).sort(
     (a, b) => a.name < b.name ? -1 : 1
@@ -45046,15 +51497,15 @@ async function loadScreenshots(cwd, dir) {
         `--screenshots ${dir}: ${e.name} is not a size-class directory (${SCREENSHOT_CLASSES.join(", ")}).`
       );
     const cls = e.name;
-    const files = (await readdir11(path28.join(root, cls))).filter((f) => !f.startsWith(".")).sort();
+    const files = (await readdir11(path32.join(root, cls))).filter((f) => !f.startsWith(".")).sort();
     for (const f of files) {
       if (!SCREENSHOT_EXT.test(f) || !/^[A-Za-z0-9_.-]+$/.test(f))
         throw new UsageError(
           `--screenshots ${dir}/${cls}/${f}: screenshots are .png, .jpg or .webp files with plain names.`
         );
-      const p = path28.join(root, cls, f);
+      const p = path32.join(root, cls, f);
       const decoded = await decodeImage(
-        await readFile23(p),
+        await readFile24(p),
         `${dir}/${cls}/${f}`
       );
       out.push({
@@ -45078,13 +51529,13 @@ async function loadScreenshots(cwd, dir) {
   return out;
 }
 async function clearOut(dir) {
-  if (!existsSync2(dir)) return;
+  if (!existsSync3(dir)) return;
   const entries = await readdir11(dir);
   if (entries.length === 0) return;
-  const reportPath = path28.join(dir, "report.json");
+  const reportPath = path32.join(dir, "report.json");
   let previous;
   try {
-    previous = JSON.parse(await readFile23(reportPath, "utf8"));
+    previous = JSON.parse(await readFile24(reportPath, "utf8"));
   } catch {
     previous = null;
   }
@@ -45096,9 +51547,9 @@ async function clearOut(dir) {
   for (const rel of previous.files) {
     if (typeof rel !== "string" || rel.startsWith("/") || rel.split("/").includes(".."))
       continue;
-    const p = path28.join(dir, ...rel.split("/"));
+    const p = path32.join(dir, ...rel.split("/"));
     await rm6(p, { force: true });
-    for (let d = path28.dirname(p); d.startsWith(dir) && d !== dir; d = path28.dirname(d))
+    for (let d = path32.dirname(p); d.startsWith(dir) && d !== dir; d = path32.dirname(d))
       dirs.add(d);
   }
   for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
@@ -45119,10 +51570,10 @@ function acceptances(accept, pad2) {
   }
   return out;
 }
-function previewHtml(report) {
-  const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-  const card = (title, status, file, meta, notes) => `<figure class="${esc(status)}"><figcaption><b>${esc(title)}</b> <i>${esc(status)}</i><br>${esc(meta)}${notes.map((n) => `<br><small>${esc(n)}</small>`).join("")}</figcaption>${file ? `<img src="${esc(file)}" alt="${esc(title)}" loading="lazy">` : ""}</figure>`;
-  const slots = report.slots.map(
+function previewHtml(report2) {
+  const esc2 = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const card = (title, status, file, meta, notes) => `<figure class="${esc2(status)}"><figcaption><b>${esc2(title)}</b> <i>${esc2(status)}</i><br>${esc2(meta)}${notes.map((n) => `<br><small>${esc2(n)}</small>`).join("")}</figcaption>${file ? `<img src="${esc2(file)}" alt="${esc2(title)}" loading="lazy">` : ""}</figure>`;
+  const slots = report2.slots.map(
     (s) => card(
       s.slot,
       s.status,
@@ -45131,7 +51582,7 @@ function previewHtml(report) {
       s.notes
     )
   ).join("\n");
-  const shots = report.screenshots.map(
+  const shots = report2.screenshots.map(
     (s) => card(
       s.id,
       s.status,
@@ -45184,8 +51635,8 @@ ${LISTING_ASSETS_USAGE}`);
   const focal = opts.focal ? parseFocal(opts.focal) : { x: 0.5, y: 0.5 };
   const focalPortrait = opts.focalPortrait ? parseFocal(opts.focalPortrait) : focal;
   const accepted = acceptances(opts.accept ?? [], opts.pad ?? []);
-  const dir = path28.resolve(opts.cwd, opts.out);
-  if (existsSync2(dir) && !(await stat9(dir)).isDirectory())
+  const dir = path32.resolve(opts.cwd, opts.out);
+  if (existsSync3(dir) && !(await stat9(dir)).isDirectory())
     throw new UsageError(`--out ${opts.out} is not a directory.`);
   opts.progress?.stage("Reading the masters");
   const masterList = (await Promise.all([
@@ -45215,21 +51666,21 @@ ${LISTING_ASSETS_USAGE}`);
       `${fitted.unused.join(", ")}: no screenshot proposal has ${fitted.unused.length === 1 ? "that id" : "those ids"}. Ids are <store>/<class>/<name>, as the report lists them; an image that already fits needs none.`
     );
   await clearOut(dir);
-  await mkdir11(dir, { recursive: true });
+  await mkdir12(dir, { recursive: true });
   const files = [];
   const writeRel = async (rel2, bytes) => {
-    const p = path28.join(dir, ...rel2.split("/"));
-    await mkdir11(path28.dirname(p), { recursive: true });
-    await writeFile19(p, bytes);
+    const p = path32.join(dir, ...rel2.split("/"));
+    await mkdir12(path32.dirname(p), { recursive: true });
+    await writeFile20(p, bytes);
     files.push(rel2);
     return p;
   };
   const packEntries = /* @__PURE__ */ new Map();
   const addToPack = (store, name, data, meta) => {
     if (!PACK_STORES.includes(store)) return;
-    const list2 = packEntries.get(store) ?? [];
-    list2.push({ name, data, meta });
-    packEntries.set(store, list2);
+    const list3 = packEntries.get(store) ?? [];
+    list3.push({ name, data, meta });
+    packEntries.set(store, list3);
   };
   const reportSlots = [];
   const encodeTotal = slots.filter((s) => s.raster).length + fitted.outputs.filter((s) => s.raster).length;
@@ -45371,7 +51822,7 @@ ${LISTING_ASSETS_USAGE}`);
       size: zip.length
     });
   }
-  const report = {
+  const report2 = {
     format: REPORT_FORMAT,
     locale,
     focal,
@@ -45379,7 +51830,7 @@ ${LISTING_ASSETS_USAGE}`);
     background: hex4(background),
     masters: masterList.map((m) => ({
       slot: m.slot,
-      file: path28.relative(opts.cwd, m.path).split(path28.sep).join("/"),
+      file: path32.relative(opts.cwd, m.path).split(path32.sep).join("/"),
       width: m.decoded.raster.width,
       height: m.decoded.raster.height,
       alpha: m.decoded.alpha,
@@ -45391,15 +51842,15 @@ ${LISTING_ASSETS_USAGE}`);
     packs,
     files: []
   };
-  await writeRel("preview.html", new TextEncoder().encode(previewHtml(report)));
-  report.files = [...files, "report.json"].sort();
-  await writeFile19(
-    path28.join(dir, "report.json"),
-    `${JSON.stringify(report, null, 2)}
+  await writeRel("preview.html", new TextEncoder().encode(previewHtml(report2)));
+  report2.files = [...files, "report.json"].sort();
+  await writeFile20(
+    path32.join(dir, "report.json"),
+    `${JSON.stringify(report2, null, 2)}
 `
   );
   opts.progress?.stage("");
-  const relDir = path28.relative(opts.cwd, dir);
+  const relDir = path32.relative(opts.cwd, dir);
   const rel = relDir === "" ? "." : relDir.startsWith("..") ? dir : relDir;
   const count = (st) => reportSlots.filter((s) => s.status === st).length;
   out.write(
@@ -45432,10 +51883,10 @@ ${LISTING_ASSETS_USAGE}`);
       );
     }
   }
-  out.write(`Look before accepting: ${path28.join(rel, "preview.html")}
+  out.write(`Look before accepting: ${path32.join(rel, "preview.html")}
 `);
   const result = {
-    report,
+    report: report2,
     dir,
     uploaded: [],
     registered: null
@@ -45459,7 +51910,7 @@ ${LISTING_ASSETS_USAGE}`);
     if (s.file && (s.status === "ok" || s.status === "warn"))
       rows.push({
         slot: s.slot,
-        file: path28.join(dir, ...s.file.split("/")),
+        file: path32.join(dir, ...s.file.split("/")),
         sha256: s.sha256,
         size: s.size,
         width: s.width ?? null,
@@ -45472,7 +51923,7 @@ ${LISTING_ASSETS_USAGE}`);
     if (s.file && (s.status === "fits" || s.status === "accepted"))
       rows.push({
         slot: s.slot,
-        file: path28.join(dir, ...s.file.split("/")),
+        file: path32.join(dir, ...s.file.split("/")),
         sha256: s.sha256,
         size: s.size,
         width: s.width ?? null,
@@ -45484,7 +51935,7 @@ ${LISTING_ASSETS_USAGE}`);
   for (const p of packs)
     rows.push({
       slot: p.slot,
-      file: path28.join(dir, ...p.file.split("/")),
+      file: path32.join(dir, ...p.file.split("/")),
       sha256: p.sha256,
       size: p.size,
       width: null,
@@ -45596,8 +52047,8 @@ ${LISTING_ASSETS_USAGE}`);
 // src/assets.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash18 } from "node:crypto";
-import { readdir as readdir12, readFile as readFile24, stat as stat10 } from "node:fs/promises";
-import path29 from "node:path";
+import { readdir as readdir12, readFile as readFile25, stat as stat10 } from "node:fs/promises";
+import path33 from "node:path";
 var ASSETS_PUSH_USAGE = "Usage: pkey assets push <file> --slot <slot> [--locale <code>] --product <slug>\n              [--base-url <url>] [--dry-run]";
 var MAX_PUSH_ASSETS = 32;
 var MAX_SCREENSHOTS = 16;
@@ -45642,7 +52093,7 @@ async function prepare(cwd, entries) {
         `${where(e.slot, e.locale)} is named twice; one file per slot.`
       );
     seen.add(id);
-    const abs = path29.resolve(cwd, e.file);
+    const abs = path33.resolve(cwd, e.file);
     let info;
     try {
       info = await stat10(abs);
@@ -45656,7 +52107,7 @@ async function prepare(cwd, entries) {
       throw new Error(
         `${e.file} is ${info.size} bytes; ${e.slot} takes files up to ${cap} bytes.`
       );
-    const bytes = await readFile24(abs);
+    const bytes = await readFile25(abs);
     out.push({
       ...e,
       abs,
@@ -45672,7 +52123,7 @@ async function pushAssets(opts) {
   if (opts.dryRun) {
     for (const f of files)
       out.write(
-        `Would push ${path29.relative(opts.cwd, f.abs) || f.file} → ${where(f.slot, f.locale)} (${f.size} bytes, sha256 ${f.sha256})
+        `Would push ${path33.relative(opts.cwd, f.abs) || f.file} → ${where(f.slot, f.locale)} (${f.size} bytes, sha256 ${f.sha256})
 `
       );
     out.write(`Dry run: ${files.length} file(s); nothing sent.
@@ -45769,89 +52220,6 @@ async function pushAssets(opts) {
   );
   return result;
 }
-function parseAssetMap(input) {
-  const out = [];
-  for (const [i, raw] of input.split(/\r?\n/).entries()) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const at = line.lastIndexOf(": ");
-    if (at <= 0)
-      throw new Error(
-        `assets line ${i + 1} must be "<glob>: <slot>[@<locale>]" (got ${JSON.stringify(line)}).`
-      );
-    const glob = line.slice(0, at).trim();
-    const target = line.slice(at + 2).trim();
-    const [slot, locale, extra] = target.split("@");
-    if (!glob || !slot || extra !== void 0 || locale === "")
-      throw new Error(
-        `assets line ${i + 1} must be "<glob>: <slot>[@<locale>]" (got ${JSON.stringify(line)}).`
-      );
-    out.push({ glob, slot, ...locale !== void 0 ? { locale } : {} });
-  }
-  if (out.length === 0) throw new Error("The assets input names no file.");
-  return out;
-}
-function globToRegExp(glob) {
-  let re = "";
-  const g = glob.replace(/\\/g, "/").replace(/^\.\//, "");
-  for (let i = 0; i < g.length; i++) {
-    const c = g[i];
-    if (c === "*") {
-      if (g[i + 1] === "*") {
-        if (g[i + 2] === "/") {
-          re += "(?:.*/)?";
-          i += 2;
-        } else {
-          re += ".*";
-          i += 1;
-        }
-      } else re += "[^/]*";
-    } else if (c === "?") re += "[^/]";
-    else re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  }
-  return new RegExp(`^${re}$`);
-}
-async function walk2(dir, rel = "") {
-  const out = [];
-  for (const e of await readdir12(path29.join(dir, rel), { withFileTypes: true })) {
-    if (e.name === ".git" || e.name === "node_modules") continue;
-    const child = rel ? `${rel}/${e.name}` : e.name;
-    if (e.isDirectory()) out.push(...await walk2(dir, child));
-    else if (e.isFile()) out.push(child);
-  }
-  return out;
-}
-async function resolveAssetMap(base, lines4) {
-  const files = (await walk2(base)).sort();
-  const out = [];
-  for (const l of lines4) {
-    const re = globToRegExp(l.glob);
-    const hits = files.filter((f) => re.test(f));
-    const loc = l.locale !== void 0 ? { locale: l.locale } : {};
-    if (l.slot === "listing.screenshot") {
-      if (hits.length === 0)
-        throw new Error(`assets: ${l.glob} matches no file.`);
-      if (hits.length > MAX_SCREENSHOTS)
-        throw new Error(
-          `assets: ${l.glob} matches ${hits.length} screenshots; the listing holds ${MAX_SCREENSHOTS}.`
-        );
-      hits.forEach(
-        (f, i) => out.push({
-          file: path29.join(base, f),
-          slot: `listing.screenshot:${i + 1}`,
-          ...loc
-        })
-      );
-      continue;
-    }
-    if (hits.length !== 1)
-      throw new Error(
-        hits.length === 0 ? `assets: ${l.glob} matches no file.` : `assets: ${l.glob} matches ${hits.length} files (${hits.slice(0, 5).join(", ")}); ${l.slot} takes exactly one.`
-      );
-    out.push({ file: path29.join(base, hits[0]), slot: l.slot, ...loc });
-  }
-  return out;
-}
 
 // src/index.ts
 function globalFlags(argv2) {
@@ -45917,7 +52285,7 @@ async function runCommand(argv2, io) {
     const cmd = findCommand(parsed.command);
     const handler = cmd ? HANDLERS[cmd.name] : void 0;
     if (!cmd && parsed.command.startsWith("-")) {
-      stderr.write(unknownOption(parsed.command, term(stderr)));
+      stderr.write(unknownOption2(parsed.command, term(stderr)));
       return 2;
     }
     if (!cmd || !handler) {
@@ -45932,8 +52300,24 @@ async function runCommand(argv2, io) {
       return 2;
     }
     await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
-    return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
+    return await handler(parsed, {
+      cwd,
+      stdout,
+      stderr,
+      ci,
+      g,
+      term,
+      store: io.credentialStore ?? defaultStore,
+      login: io.login,
+      stdin: io.prompt?.stdin,
+      keys: io.prompt?.keys,
+      feedWrite: io.feedWrite
+    });
   } catch (err) {
+    if (err instanceof ManifestSyntaxError) {
+      stderr.write(failLine(untrustedLines(err.message, ci.env), term(stderr)));
+      return 1;
+    }
     const message = isInternalError(err) ? internalMessage(err) : networkMessage(err);
     stderr.write(`${untrustedLines(message, ci.env)}
 `);
@@ -45944,13 +52328,49 @@ async function runCommand(argv2, io) {
   }
 }
 var HANDLERS = {
-  init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
-  validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
+  login: (p, rt) => cmdLogin({
+    ...accountIo(p, rt),
+    noBrowser: flagBool(p, "no-browser"),
+    flags: rt.g,
+    seams: { sleep: rt.ci.sleep, ...rt.login }
+  }),
+  whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
+  logout: (p, rt) => cmdLogout(accountIo(p, rt)),
+  init: (p, rt) => cmdInit(p, rt),
+  validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) => cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
-  bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
-  migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
+  doctor: (p, rt) => guarded(
+    accountIo(p, rt),
+    "doctor",
+    () => cmdDoctor(
+      p,
+      rt.cwd,
+      rt.stdout,
+      rt.stderr,
+      rt.term(rt.stdout),
+      rt.ci,
+      adminIo(p, rt)
+    )
+  ),
+  bundle: (p, rt) => withAdminCredential(
+    adminIo(p, rt),
+    "bundle",
+    (token) => cmdBundle(
+      p,
+      rt.cwd,
+      rt.stdout,
+      rt.term(rt.stdout),
+      rt.ci.env,
+      token,
+      rt.ci.fetchImpl
+    )
+  ),
+  migrate: (p, rt) => withAdminCredential(
+    adminIo(p, rt),
+    "migrate",
+    (token) => cmdMigrate(p, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl)
+  ),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
   sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
   dev: (p, rt) => cmdDev(p, rt),
@@ -45958,34 +52378,74 @@ var HANDLERS = {
   auth: (p, rt) => cmdAuth(p, rt.stdout, rt.stderr, rt.ci),
   release: (p, rt) => cmdRelease(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
   manifest: (p, rt) => cmdManifest(p, rt.cwd, rt.stdout),
-  feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  listing: (p, rt) => cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
+  feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt),
+  listing: (p, rt) => cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g, adminIo(p, rt)),
   assets: (p, rt) => cmdAssets(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   transport: (p, rt) => cmdTransport(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   storefront: (p, rt) => cmdStorefront(
     { positional: p.positional, flags: p.flags, rest: p.rest },
     { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci }
+  ),
+  channel: (p, rt) => cmdChannel(
+    { positional: p.positional, flags: p.flags, multi: p.multi },
+    {
+      cwd: rt.cwd,
+      stdout: rt.stdout,
+      stderr: rt.stderr,
+      term: rt.term,
+      ...rt.ci
+    }
   )
 };
+var osStore;
+var defaultStore = () => osStore ??= keyringStore();
+function accountIo(parsed, rt) {
+  return {
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    baseUrlGiven: flagString(parsed, "base-url") !== void 0,
+    json: flagBool(parsed, "json"),
+    env: rt.ci.env,
+    stdout: rt.stdout,
+    stderr: rt.stderr,
+    term: rt.term,
+    store: rt.store,
+    fetchImpl: rt.ci.fetchImpl
+  };
+}
+function adminIo(parsed, rt) {
+  return {
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    env: rt.ci.env,
+    stderr: rt.stderr,
+    term: rt.term,
+    store: rt.store,
+    fetchImpl: rt.ci.fetchImpl,
+    json: flagBool(parsed, "json"),
+    stdout: rt.stdout
+  };
+}
 function unknownCommand(name, term, parent) {
+  const sub = parent ? name.slice(parent.length + 1) : name;
+  if (parent === "feeds" && sub === "fdroid")
+    return failLine(
+      "pkey feeds fdroid moved. Run pkey storefront fdroid.",
+      term
+    );
+  const near = nearest(
+    sub,
+    parent ? Object.keys(findCommand(parent)?.tree ?? {}) : COMMANDS.map((c) => c.name)
+  );
+  const hint2 = near ? ` Did you mean ${parent ? `${parent} ${near}` : near}?` : "";
   return failLine(
-    parent ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.` : `Unknown command "${name}". Run pkey help to see every command.`,
+    parent ? `Unknown ${parent} command "${sub}".${hint2} Run pkey help ${parent} to see its commands.` : `Unknown command "${name}".${hint2} Run pkey help to see every command.`,
     term
   );
 }
-function unknownOption(flag, term) {
+function unknownOption2(flag, term) {
   return failLine(
     `Unknown option ${flag.split("=")[0]}. Run pkey help to see the options.`,
     term
   );
-}
-function failLine(text, term) {
-  const { painter, symbols, caps } = term;
-  const lines4 = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
-  return `${lines4.map(
-    (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
-  ).join("\n")}
-`;
 }
 function cmdHelp(words2, stdout, stderr, term, here) {
   const [name, sub] = words2;
@@ -46049,16 +52509,50 @@ function parseArgs(argv2) {
   }
   return { command, flags, multi, bare, positional, rest: after };
 }
-async function cmdInit(parsed, cwd, stdout) {
-  const basename = path30.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
+async function cmdInit(parsed, rt) {
+  const { cwd, stdout } = rt;
+  const basename = path34.basename(cwd).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") || "my-product";
   const slug = flagString(parsed, "product") ?? flagString(parsed, "slug") ?? basename;
   const name = flagString(parsed, "name") ?? titleize(slug);
-  const modules = normalizeModules2(flagString(parsed, "modules"));
+  const modulesFlag = flagString(parsed, "modules");
+  let modules = normalizeModules2(modulesFlag);
+  const tierFlag = flagString(parsed, "starter-tier");
+  if (tierFlag !== void 0 && tierFlag !== "free" && tierFlag !== "none")
+    throw new UsageError("--starter-tier takes free or none.");
+  let starterTier = tierFlag;
+  const stdin = initInput(rt.stdin);
+  const term = termFor(stdout, rt.ci.env, rt.g, stdin);
+  if (mayPrompt(term, stdin)) {
+    const clash = async (rels) => {
+      if (flagBool(parsed, "force")) return;
+      for (const rel of rels)
+        if (await stat11(path34.join(cwd, rel)).then(
+          () => true,
+          () => false
+        ))
+          throw new Error(`${rel} already exists. Pass --force to overwrite.`);
+    };
+    await clash([".pkey/product.yaml", ".pkey/schema.yaml"]);
+    const asked = await askInit({
+      name,
+      term,
+      stdout,
+      stdin,
+      keys: rt.keys,
+      givenServices: modulesFlag ? modules : void 0,
+      tierGiven: tierFlag !== void 0
+    });
+    if (typeof asked === "number") return asked;
+    if (asked.modules) modules = asked.modules;
+    if (modules.includes("release")) await clash([".pkey/release.yaml"]);
+    if (asked.starterTier) starterTier = asked.starterTier;
+  }
   const result = await initManifest({
     cwd,
     slug,
     name,
     modules,
+    starterTier,
     adminGroup: flagString(parsed, "admin-group"),
     releaseOwner: flagString(parsed, "release-owner"),
     releaseRepo: flagString(parsed, "release-repo"),
@@ -46069,16 +52563,21 @@ async function cmdInit(parsed, cwd, stdout) {
 `
   );
   for (const file of result.files)
-    stdout.write(`- ${path30.relative(cwd, file)}
+    stdout.write(`- ${path34.relative(cwd, file)}
 `);
   stdout.write("\nNext: pkey validate\n");
   return 0;
 }
 var VALIDATE_USAGE = "Usage: pkey validate [path] [--fix] [--json]";
-async function cmdValidate(parsed, cwd, stdout, term) {
+async function cmdValidate(parsed, cwd, stdout, stderr, term) {
+  const bad = checkFlags(parsed, "validate", ["fix", "json"], term);
+  if (bad) {
+    stderr.write(bad);
+    return 2;
+  }
   if (parsed.positional.length > 1) throw new Error(VALIDATE_USAGE);
   const target = parsed.positional[0];
-  const dir = target === void 0 ? cwd : path30.resolve(cwd, target);
+  const dir = target === void 0 ? cwd : path34.resolve(cwd, target);
   const json = flagBool(parsed, "json");
   let fixed;
   if (flagBool(parsed, "fix")) {
@@ -46106,7 +52605,22 @@ function writeFixed(moves, stdout, term) {
 async function validateText(dir, cwd, stdout, term) {
   const manifest = await loadManifest(dir);
   const result = validateLoadedManifest(manifest);
+  writeRows(validateRows(manifest, result, cwd, term), stdout, term);
+  return result.ok ? 0 : 1;
+}
+function writeRows(rows, stdout, term) {
   const { painter, symbols, caps } = term;
+  const gap = " ".repeat(2);
+  for (const row2 of rows) {
+    const lines4 = caps.tty ? wrapSpans(row2.spans, Math.max(1, caps.columns - 3), symbols.ellipsis) : [row2.spans];
+    lines4.forEach(
+      (l, i) => stdout.write(`${i === 0 ? row2.mark : " "}${gap}${painter.line(l)}
+`)
+    );
+  }
+}
+function validateRows(manifest, result, cwd, term) {
+  const { painter, symbols } = term;
   const rows = [];
   const mark = (glyph, role) => painter.style(glyph, [role]);
   rows.push({
@@ -46121,7 +52635,7 @@ async function validateText(dir, cwd, stdout, term) {
   rows.push({
     mark: " ",
     spans: [
-      { text: "Modules: ", style: ["muted"] },
+      { text: "Features: ", style: ["muted"] },
       {
         text: result.enabledModules.length ? result.enabledModules.join(", ") : "none"
       }
@@ -46135,14 +52649,14 @@ async function validateText(dir, cwd, stdout, term) {
         { text: result.requiredSecrets.join(", ") }
       ]
     });
-  const message = (kind, at, text) => {
+  const message = (kind, at, text3) => {
     const role = kind === "warning" ? "warning" : "danger";
     return {
       mark: mark(kind === "warning" ? symbols.warn : symbols.fail, role),
       spans: [
         { text: `${kind} `, style: [role] },
         ...at,
-        { text: `: ${text}` }
+        { text: `: ${text3}` }
       ]
     };
   };
@@ -46156,26 +52670,18 @@ async function validateText(dir, cwd, stdout, term) {
     rows.push(
       message("error", pointerSpans(manifest, cwd, error), error.message)
     );
-  const gap = " ".repeat(2);
-  for (const row2 of rows) {
-    const lines4 = caps.tty ? wrapSpans(row2.spans, Math.max(1, caps.columns - 3), symbols.ellipsis) : [row2.spans];
-    lines4.forEach(
-      (l, i) => stdout.write(`${i === 0 ? row2.mark : " "}${gap}${painter.line(l)}
-`)
-    );
-  }
-  return result.ok ? 0 : 1;
+  return rows;
 }
 async function validateJson(dir, cwd, stdout, fixed) {
-  const envelope = (exit, rest) => `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
+  const envelope2 = (exit, rest) => `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
 `;
   let manifest;
   try {
     manifest = await loadManifest(dir);
   } catch (e) {
     stdout.write(
-      envelope(1, {
-        error: /is not valid (?:JSON|YAML)/.test(e.message) ? "unreadable-manifest" : "no-manifest",
+      envelope2(1, {
+        error: /not valid (?:JSON|YAML)/.test(e.message) ? "unreadable-manifest" : "no-manifest",
         message: e.message
       })
     );
@@ -46188,12 +52694,12 @@ async function validateJson(dir, cwd, stdout, fixed) {
       code: m.code,
       message: m.message,
       at: `${m.file}${m.path}`,
-      file: file ? path30.relative(cwd, file) : null
+      file: file ? path34.relative(cwd, file) : null
     };
   };
   const exitCode = result.ok ? 0 : 1;
   stdout.write(
-    envelope(exitCode, {
+    envelope2(exitCode, {
       ...fixed ? { fixed } : {},
       valid: result.ok,
       modules: result.enabledModules,
@@ -46228,7 +52734,7 @@ function pointerSpans(manifest, cwd, msg) {
   const file = fileOf(manifest, msg);
   return [
     { text: `${msg.file}${msg.path}` },
-    ...file ? [{ text: ` (${path30.relative(cwd, file)})`, style: ["muted"] }] : []
+    ...file ? [{ text: ` (${path34.relative(cwd, file)})`, style: ["muted"] }] : []
   ];
 }
 var DISTRIBUTION_USAGE = `Usage: pkey distribution outlet-ids --outlet <id>
@@ -46257,7 +52763,7 @@ async function cmdDistribution(parsed, cwd, stdout, stderr, ci) {
   const ids = outletIdsFor(manifest, outlet);
   if (!ids) {
     stderr.write(
-      `outlet ${JSON.stringify(outlet)} is not declared in ${path30.relative(cwd, manifest.distributionPath)}
+      `outlet ${JSON.stringify(outlet)} is not declared in ${path34.relative(cwd, manifest.distributionPath)}
 `
     );
     return 1;
@@ -46313,99 +52819,99 @@ async function cmdDistributionCi(parsed, stdout, stderr, ci) {
   });
   return 0;
 }
-async function cmdDoctor(parsed, cwd, stdout, term, ci) {
-  const u = (v) => untrusted(v, ci.env);
+async function cmdDoctor(parsed, cwd, stdout, stderr, term, ci, admin) {
+  const bad = checkFlags(
+    parsed,
+    "doctor",
+    ["product", "base-url", "json"],
+    term
+  );
+  if (bad) {
+    stderr.write(bad);
+    return 2;
+  }
+  const started = performance.now();
   const ctx = await resolveContext({
     cwd,
     env: ci.env,
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url")
   });
-  if (flagBool(parsed, "json")) return doctorJson(ctx, cwd, stdout, ci);
-  const localCode = await validateText(cwd, cwd, stdout, term);
-  if (!ctx.product) {
-    stdout.write(
-      "\nRemote checks skipped. No product: pass --product, or run where .pkey/product is.\n"
-    );
-    return localCode;
+  originFor({ baseUrl: ctx.baseUrl.url }, "doctor");
+  const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
+  const io = { ...admin, baseUrl: ctx.baseUrl.url, signal };
+  let manifest;
+  try {
+    const loaded2 = await loadManifest(cwd);
+    manifest = {
+      state: "read",
+      result: validateLoadedManifest(loaded2),
+      fileWarnings: loaded2.fileWarnings ?? []
+    };
+  } catch (e) {
+    manifest = { state: "missing", problem: e.message };
   }
-  const remote = await checkRemote({
+  const remote = ctx.product ? await checkRemote({
     baseUrl: ctx.baseUrl.url,
     product: ctx.product.slug,
-    fetchImpl: ci.fetchImpl
+    fetchImpl: ci.fetchImpl,
+    signal
+  }) : null;
+  const session = await gatherSession({
+    io,
+    slug: ctx.product?.slug ?? null,
+    signal
   });
-  if (remote.status !== void 0) {
+  const reached = remote?.facts[0]?.state === "ok";
+  const config = await checkConfigFiles({
+    cwd,
+    host: hostOf3(ctx.baseUrl.url),
+    exposed: reached ? remote.pinned : null
+  });
+  const report2 = buildReport({
+    product: ctx.product,
+    baseUrl: ctx.baseUrl.url,
+    manifest,
+    remote,
+    session,
+    config,
+    env: ci.env
+  });
+  if (flagBool(parsed, "json")) {
     stdout.write(
-      `
-Remote discovery: failed (${remote.status}) ${remote.url}
-Is the product registered, and is --base-url (or $PKEY_BASE_URL) the right origin?
-`
+      envelope("doctor", report2.exit, {
+        product: ctx.product?.slug ?? null,
+        baseUrl: maskTokens(ctx.baseUrl.url),
+        ...reportJson(report2),
+        services: remote?.services ?? [],
+        signing: remote?.signing ?? null,
+        keys: remote?.keys ?? [],
+        ...sessionJson(session)
+      })
     );
-    return 1;
+    return report2.exit;
   }
-  stdout.write(`
-Remote discovery: ok ${remote.url}
-`);
-  const enabled = remote.services.map((slug) => u(slug));
-  stdout.write(
-    `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}
-`
-  );
-  stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}
-`);
-  return localCode;
+  stdout.write(renderReport(report2, term, performance.now() - started));
+  return report2.exit;
 }
-async function doctorJson(ctx, cwd, stdout, ci) {
-  let result = null;
-  let problem;
-  try {
-    result = validateLoadedManifest(await loadManifest(cwd));
-  } catch (e) {
-    problem = e.message;
+function checkFlags(parsed, command, known, term) {
+  const unknown = Object.keys(parsed.flags).find((k) => !known.includes(k));
+  if (unknown !== void 0) {
+    const near = nearest(unknown, known);
+    return failLine(
+      `Unknown option --${unknown}.${near ? ` Did you mean --${near}?` : ` Run pkey help ${command} to see the options.`}`,
+      term
+    );
   }
-  const facts = [manifestFact(result, problem)];
-  let services = [];
-  let signing = null;
-  if (ctx.product) {
-    try {
-      const remote = await checkRemote({
-        baseUrl: ctx.baseUrl.url,
-        product: ctx.product.slug,
-        fetchImpl: ci.fetchImpl
-      });
-      facts.push(...remote.facts);
-      services = remote.services;
-      signing = remote.signing;
-    } catch (e) {
-      facts.push({
-        id: "discovery",
-        state: "todo",
-        detail: e.message
-      });
-    }
-  }
-  const exit = doctorOk(facts) ? 0 : 1;
-  stdout.write(
-    `${untrustedJson({
-      v: 1,
-      command: "doctor",
-      event: "result",
-      ok: exit === 0,
-      exit,
-      product: ctx.product?.slug ?? null,
-      baseUrl: ctx.baseUrl.url,
-      facts,
-      services,
-      signing
-    }).replace(
-      /[\u007f-\uffff]/g,
-      (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`
-    )}
-`
+  const valueless = new Set(
+    findCommand(command)?.valueless ?? []
   );
-  return exit;
+  const missing2 = known.find((k) => parsed.bare.has(k) && !valueless.has(k));
+  if (missing2 !== void 0)
+    return failLine(`Option --${missing2} needs a value.`, term);
+  return null;
 }
-async function cmdBundle(parsed, cwd, stdout, env) {
+async function cmdBundle(parsed, cwd, stdout, term, env, token, fetchImpl) {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
   const graceRaw = flagString(parsed, "grace-days");
@@ -46421,25 +52927,39 @@ async function cmdBundle(parsed, cwd, stdout, env) {
     baseUrl: flagString(parsed, "base-url"),
     out: flagString(parsed, "out"),
     force: flagBool(parsed, "force"),
-    token: env[ADMIN_TOKEN_ENV]
+    token,
+    ...fetchImpl ? { fetchImpl } : {}
   });
-  const rel = path30.relative(cwd, result.file);
-  stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}
-`);
-  stdout.write(`- File: ${rel}
-`);
-  stdout.write(`- Device: ${result.deviceId}
-`);
+  const rel = path34.relative(cwd, result.file);
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("bundle", 0, {
+        bundleId: untrusted(result.bundleId, env),
+        file: result.file,
+        deviceId: result.deviceId,
+        graceDays: result.graceDays,
+        documents: result.documents
+      })
+    );
+    return 0;
+  }
+  const carries = result.documents.length ? `${result.documents.join(" and ")}, ` : "";
   stdout.write(
-    `- Grace window: ${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline
-`
-  );
-  stdout.write(
-    "\nNext: transfer this file to the offline device and import it there.\n"
+    block(term, "ok", [
+      [
+        text("Wrote "),
+        text(rel, { break: "url" }),
+        text(
+          ` (${carries}${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline)`
+        )
+      ],
+      [text("Bundle "), text(untrusted(result.bundleId, env), { unit: true })],
+      [text("Take it to the offline device and import it there.")]
+    ])
   );
   return 0;
 }
-async function cmdMigrate(parsed, stdout, env, fetchImpl) {
+async function cmdMigrate(parsed, stdout, env, token, fetchImpl) {
   const [verb, target, ...extra] = parsed.positional;
   if (verb !== "list" && verb !== "dry-run" && verb !== "report" || extra.length > 0 || verb === "list" && target !== void 0)
     throw new Error(MIGRATE_USAGE);
@@ -46447,12 +52967,11 @@ async function cmdMigrate(parsed, stdout, env, fetchImpl) {
     verb,
     target,
     baseUrl: flagString(parsed, "base-url"),
-    token: env[ADMIN_TOKEN_ENV],
+    token,
     fetchImpl
   });
   stdout.write(
-    flagBool(parsed, "json") ? `${untrustedJson(result, 2)}
-` : formatMigrate(result, env)
+    flagBool(parsed, "json") ? envelope("migrate", 0, { ...result }) : formatMigrate(result, env)
   );
   return 0;
 }
@@ -46598,16 +53117,16 @@ ${SDK_CONFIG_USAGE}`
     ...pkg !== void 0 ? { kotlinPackage: pkg } : {}
   });
   if (lang === "godot") {
-    if (out !== void 0) target = path30.resolve(cwd, out);
+    if (out !== void 0) target = path34.resolve(cwd, out);
     else {
       const project = await findGodotProject(cwd);
-      if (project) target = path30.join(project, SDK_CONFIG_DEFAULT_OUT.godot);
+      if (project) target = path34.join(project, SDK_CONFIG_DEFAULT_OUT.godot);
       else if (writing)
         throw new Error(
           `No project.godot at or above ${cwd}; run pkey sdk in the Godot project, or pass --out.`
         );
     }
-    const current = target ? await readFile25(target, "utf8").catch(() => null) : null;
+    const current = target ? await readFile26(target, "utf8").catch(() => null) : null;
     if (current !== null && !flagBool(parsed, "force")) {
       try {
         content = mergeGodotOptions(current, facts);
@@ -46622,19 +53141,19 @@ ${SDK_CONFIG_USAGE}`
     stdout.write(content);
     return 0;
   }
-  target ??= path30.resolve(cwd, out ?? SDK_CONFIG_DEFAULT_OUT[lang]);
-  const existing = await readFile25(target, "utf8").catch(() => null);
+  target ??= path34.resolve(cwd, out ?? SDK_CONFIG_DEFAULT_OUT[lang]);
+  const existing = await readFile26(target, "utf8").catch(() => null);
   if (lang !== "godot" && existing !== null && !existing.includes(SDK_CONFIG_MARKER) && !flagBool(parsed, "force"))
     throw new Error(
       `${target} exists and was not written by pkey sdk; pass --force to replace it.`
     );
-  await mkdir12(path30.dirname(target), { recursive: true });
-  await writeFile20(target, content, "utf8");
+  await mkdir13(path34.dirname(target), { recursive: true });
+  await writeFile21(target, content, "utf8");
   stdout.write(`${factsSummary(facts)}
 Wrote ${target}
 `);
   if (lang === "godot") {
-    const old = path30.join(path30.dirname(target), "polaris_key_config.gd");
+    const old = path34.join(path34.dirname(target), "polaris_key_config.gd");
     if (await stat11(old).then(
       () => true,
       () => false
@@ -46648,13 +53167,13 @@ Wrote ${target}
   return 0;
 }
 async function findGodotProject(from) {
-  for (let dir = path30.resolve(from); ; ) {
-    if (await stat11(path30.join(dir, "project.godot")).then(
+  for (let dir = path34.resolve(from); ; ) {
+    if (await stat11(path34.join(dir, "project.godot")).then(
       () => true,
       () => false
     ))
       return dir;
-    const up = path30.dirname(dir);
+    const up = path34.dirname(dir);
     if (up === dir) return null;
     dir = up;
   }
@@ -46762,15 +53281,15 @@ async function releasePublish(parsed, cwd, product, common, progress) {
   const dir = flagString(parsed, "dir");
   if (!product || !dir) throw new Error(PUBLISH_USAGE);
   const deliverable = flagString(parsed, "deliverable");
-  const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile25(
-    path30.resolve(cwd, flagString(parsed, "release-key-file")),
+  const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile26(
+    path34.resolve(cwd, flagString(parsed, "release-key-file")),
     "utf8"
   ) : void 0;
   const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
   if (parsed.bare.has("pin"))
     throw new UsageError("--pin needs a value: --pin <packId>@<version>.");
-  const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile25(
-    path30.resolve(cwd, flagString(parsed, "content-key-file")),
+  const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile26(
+    path34.resolve(cwd, flagString(parsed, "content-key-file")),
     "utf8"
   ) : void 0;
   const delegation = flagString(parsed, "delegation");
@@ -46803,7 +53322,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
         "--no-record does not apply to a package: a package release never carries a record."
       );
     progress.stage(`Publishing ${deliverable}`);
-    await publishPackage({
+    const result2 = await publishPackage({
       ...common,
       cwd,
       product,
@@ -46813,6 +53332,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       channel: flagString(parsed, "channel"),
       dryRun: flagBool(parsed, "dry-run")
     });
+    await writeOutputs(common, result2.releaseId, result2.server);
     return 0;
   }
   if (deliverable && deliverable !== "app") {
@@ -46838,7 +53358,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       parsed.multi["script-extensions"] ?? []
     );
     const scriptTypes = parseRemoves(parsed.multi["script-types"] ?? []);
-    await publishPack({
+    const result2 = await publishPack({
       ...common,
       progress,
       cwd,
@@ -46861,6 +53381,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       ...scriptExtensions.length ? { scriptExtensions } : {},
       ...scriptTypes.length ? { scriptTypes } : {}
     });
+    await writeOutputs(common, result2.releaseId, result2.server);
     return 0;
   }
   refuseFlags(
@@ -46883,7 +53404,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
     ["content-key-file", "delegation"],
     "a content key signs only data-only pack releases, never an app record"
   );
-  await publishRelease({
+  const result = await publishRelease({
     ...common,
     progress,
     cwd,
@@ -46905,6 +53426,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
     ...flagString(parsed, "content-interface") !== void 0 ? { contentInterface: flagString(parsed, "content-interface") } : {},
     strict: flagBool(parsed, "strict")
   });
+  await writeOutputs(common, result.releaseId, result.server);
   return 0;
 }
 async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
@@ -46968,8 +53490,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
           ["replacement"],
           "no release replaces a delegation"
         );
-        const pem = flagString(parsed, "release-key-file") ? await readFile25(
-          path30.resolve(cwd, flagString(parsed, "release-key-file")),
+        const pem = flagString(parsed, "release-key-file") ? await readFile26(
+          path34.resolve(cwd, flagString(parsed, "release-key-file")),
           "utf8"
         ) : void 0;
         await revokeDelegation({
@@ -46984,8 +53506,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
         return 0;
       }
       if (!product || !releaseId || !reason) throw new Error(REVOKE_USAGE);
-      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile25(
-        path30.resolve(cwd, flagString(parsed, "release-key-file")),
+      const releaseKeyPem = flagString(parsed, "release-key-file") ? await readFile26(
+        path34.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await revokePackRelease({
@@ -47007,8 +53529,8 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
       if (!product || !prefix || !types || !publicKey)
         throw new Error(DELEGATE_USAGE);
       const expires = flagString(parsed, "expires-in");
-      const pem = flagString(parsed, "release-key-file") ? await readFile25(
-        path30.resolve(cwd, flagString(parsed, "release-key-file")),
+      const pem = flagString(parsed, "release-key-file") ? await readFile26(
+        path34.resolve(cwd, flagString(parsed, "release-key-file")),
         "utf8"
       ) : void 0;
       await delegateContentKey({
@@ -47032,7 +53554,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
         if (parsed.positional[1] !== "generate" || !outFile || kid)
           throw new Error(CONTENT_KEYS_USAGE);
         const generated2 = await generateContentKey({
-          out: path30.resolve(cwd, outFile)
+          out: path34.resolve(cwd, outFile)
         });
         stdout.write(generatedContentKeyText(generated2));
         return 0;
@@ -47042,7 +53564,7 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
 ${CONTENT_KEYS_USAGE}`);
       const generated = await generateReleaseKey({
         kid,
-        out: path30.resolve(cwd, outFile),
+        out: path34.resolve(cwd, outFile),
         force: flagBool(parsed, "force")
       });
       stdout.write(generatedKeyText(generated));
@@ -47084,7 +53606,21 @@ ${CONTENT_KEYS_USAGE}`);
       );
   }
 }
-async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
+async function cmdFeeds(parsed, cwd, stdout, stderr, ci, rt) {
+  if (parsed.positional[0] === "setup" && flagBool(parsed, "write"))
+    return cmdFeedsWrite(
+      {
+        ...accountIo(parsed, rt),
+        noBrowser: flagBool(parsed, "no-browser"),
+        flags: rt.g,
+        seams: { sleep: rt.ci.sleep, ...rt.login }
+      },
+      {
+        cwd,
+        owner: flagString(parsed, "owner"),
+        seams: rt.feedWrite ?? {}
+      }
+    );
   if (parsed.positional[0] === "setup") {
     stdout.write(
       feedsSetup({
@@ -47103,7 +53639,7 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
   if (parsed.positional[0] === "prune") {
     const prunedProduct = flagString(parsed, "product");
     if (!prunedProduct) throw new Error(FEEDS_PRUNE_USAGE);
-    const report = await feedsPrune({
+    const report2 = await feedsPrune({
       product: prunedProduct,
       deliverable: flagString(parsed, "deliverable"),
       apply: flagBool(parsed, "apply"),
@@ -47115,41 +53651,20 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
       fetchImpl: ci.fetchImpl,
       sleep: ci.sleep
     });
-    return report.totals.failed > 0 ? 1 : 0;
+    return report2.totals.failed > 0 ? 1 : 0;
   }
-  const product = flagString(parsed, "product");
-  const channel = flagString(parsed, "channel");
-  const out = flagString(parsed, "out");
-  if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
-    throw new Error(
-      `${FEEDS_USAGE}
-${FEEDS_SETUP_USAGE}
-${FEEDS_PRUNE_USAGE}`
-    );
-  await buildFdroidFeed({
-    cwd,
-    product,
-    channel,
-    out,
-    keystore: flagString(parsed, "keystore"),
-    alias: flagString(parsed, "alias"),
-    ksPassEnv: flagString(parsed, "ks-pass-env"),
-    apksigner: flagString(parsed, "apksigner"),
-    icon: flagString(parsed, "icon"),
-    dryRun: flagBool(parsed, "dry-run"),
-    baseUrl: flagString(parsed, "base-url"),
-    env: ci.env,
-    stdout,
-    stderr,
-    fetchImpl: ci.fetchImpl,
-    sleep: ci.sleep
-  });
-  return 0;
+  throw new UsageError(`${FEEDS_SETUP_USAGE}
+${FEEDS_PRUNE_USAGE}`);
 }
-async function cmdListing(parsed, cwd, stdout, stderr, ci, g) {
+async function cmdListing(parsed, cwd, stdout, stderr, ci, g, admin) {
   switch (parsed.positional[0]) {
     case "import":
-      return cmdListingImport(parsed, cwd, stdout, ci);
+      return flagBool(parsed, "dry-run") ? cmdListingImport(parsed, cwd, stdout, ci, void 0) : withAdminCredential(
+        admin,
+        "listing import",
+        (token) => cmdListingImport(parsed, cwd, stdout, ci, token),
+        true
+      );
     case "assets": {
       const spinner = new Spinner(stderr, ci.env, g);
       try {
@@ -47227,10 +53742,10 @@ async function cmdManifest(parsed, cwd, stdout) {
   const outDir = flagString(parsed, "out");
   if (parsed.positional[0] !== "schemas" || !outDir)
     throw new Error(MANIFEST_USAGE);
-  const written = await writeManifestSchemas(path30.resolve(cwd, outDir));
+  const written = await writeManifestSchemas(path34.resolve(cwd, outDir));
   stdout.write(`Wrote ${written.length} schemas:
 `);
-  for (const file of written) stdout.write(`- ${path30.relative(cwd, file)}
+  for (const file of written) stdout.write(`- ${path34.relative(cwd, file)}
 `);
   return 0;
 }
@@ -47261,7 +53776,7 @@ ${TRANSPORT_USAGE}`
       );
     return f;
   };
-  const list2 = (name) => flagString(parsed, name)?.split(",").map((s) => s.trim()).filter(Boolean);
+  const list3 = (name) => flagString(parsed, name)?.split(",").map((s) => s.trim()).filter(Boolean);
   switch (`${transport ?? ""} ${step ?? ""}`) {
     case "apple-ba package":
       await baPackage({
@@ -47270,7 +53785,7 @@ ${TRANSPORT_USAGE}`
         out: flagString(parsed, "out"),
         contentApi: flagString(parsed, "content-api"),
         variant: flagString(parsed, "variant"),
-        platforms: list2("platforms"),
+        platforms: list3("platforms"),
         archive: !flagBool(parsed, "no-archive")
       });
       return 0;
@@ -47347,13 +53862,13 @@ function flagBool(parsed, name) {
 function titleize(slug) {
   return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
-async function cmdListingImport(parsed, cwd, stdout, ci) {
+async function cmdListingImport(parsed, cwd, stdout, ci, token) {
   const godot = flagString(parsed, "godot");
   if (parsed.positional[0] !== "import" || !godot)
     throw new Error(LISTING_USAGE);
   const fields = flagString(parsed, "fields");
   const result = await listingImport({
-    godot: path30.resolve(cwd, godot),
+    godot: path34.resolve(cwd, godot),
     product: flagString(parsed, "product"),
     presets: parsed.multi["preset"] ?? [],
     locale: flagString(parsed, "locale"),
@@ -47364,11 +53879,11 @@ async function cmdListingImport(parsed, cwd, stdout, ci) {
     } : {},
     dryRun: flagBool(parsed, "dry-run"),
     baseUrl: flagString(parsed, "base-url"),
-    cookie: ci.env[ADMIN_COOKIE_ENV],
+    ...token ? { token } : {},
     ...ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}
   });
   stdout.write(
-    flagBool(parsed, "json") || flagBool(parsed, "dry-run") ? `${untrustedJson(flagBool(parsed, "dry-run") ? result.upload : result, 2)}
+    flagBool(parsed, "json") ? envelope("listing import", 0, { ...result }) : flagBool(parsed, "dry-run") ? `${untrustedJson(result.upload, 2)}
 ` : `${formatImport(result, ci.env)}
 `
   );
@@ -47377,583 +53892,194 @@ async function cmdListingImport(parsed, cwd, stdout, ci) {
 
 // src/action.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { execFileSync as execFileSync3 } from "node:child_process";
-import { appendFile as appendFile2 } from "node:fs/promises";
-import path31 from "node:path";
+import path35 from "node:path";
+import { stat as stat12 } from "node:fs/promises";
 var ACTION_INPUTS = [
-  "product",
-  "deliverable",
-  "version",
-  "tag",
-  "channel",
-  "dir",
-  "source",
-  "meta",
-  "base-url",
+  "command",
+  "args",
   "release-key",
   "content-key",
-  "delegation",
-  "min-supported-seq",
-  "content-stamp",
-  "embedded",
-  "pins",
-  "out",
-  "bases",
-  "script-extensions",
-  "script-types",
+  "base-url",
+  "working-directory",
   "dry-run",
-  "transport",
-  "content-api",
-  "variant",
-  "transport-out",
-  "gradle-project",
-  "pad-delivery",
-  "steam-depot",
-  "steam-branch",
-  "steam-setlive",
-  "asc-expect-resource",
-  "transport-report",
-  "storefront",
-  "itch-platform",
-  "storefront-outlet",
-  "assets"
+  "channels"
 ];
-var ACTION_STOREFRONT_STEPS = [
-  "itch-push",
-  "snap-metadata",
-  "snap-upload",
-  "snap-upload-metadata"
-];
-var ACTION_TRANSPORT_STEPS = [
-  "apple-ba-package",
-  "apple-ba-upload",
-  "play-pad-modules",
-  "steam-depot-vdf"
-];
+var REMOVED_INPUTS = (() => {
+  const out = {};
+  for (const c of COMMANDS)
+    for (const [input2, flag] of Object.entries(c.action ?? {}))
+      out[input2] ??= flag;
+  return out;
+})();
+var REMOVED_STEP = {
+  storefront: "Use channels: auto, or command: storefront <store> <step> …",
+  transport: "Use command: transport <step> …, with its flags in args.",
+  assets: "Use command: assets push, with the file and --slot in args."
+};
 function actionInput(env, name) {
   const value = env[`INPUT_${name.toUpperCase()}`]?.trim();
   return value ? value : void 0;
 }
 function isActionInvocation(argv2, env) {
-  return argv2.length === 0 && env.GITHUB_ACTIONS === "true" && env.INPUT_PRODUCT !== void 0;
+  return argv2.length === 0 && env.GITHUB_ACTIONS === "true" && env.INPUT_COMMAND !== void 0;
 }
-function listInput(value) {
-  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
-}
-function pinsInput(value) {
-  return value ? value.split(/[\s,]+/).filter(Boolean) : [];
-}
-function ensureZstd(io) {
-  const exec = io.exec ?? ((cmd, args) => execFileSync3(cmd, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"]
-  }));
-  const version = () => {
-    try {
-      return /v(\d+\.\d+\.\d+)/.exec(exec("zstd", ["-V"]))?.[1] ?? null;
-    } catch {
-      return null;
+function splitArgs(text3) {
+  const words2 = [];
+  let word = "";
+  let started = false;
+  let quote = null;
+  for (const ch of text3) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else word += ch;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      started = true;
+    } else if (/\s/.test(ch)) {
+      if (started) words2.push(word);
+      word = "";
+      started = false;
+    } else {
+      word += ch;
+      started = true;
     }
-  };
-  const ok = (v) => v !== null && versionAtLeast(v, MIN_ZSTD_VERSION);
-  const found = version();
-  if (ok(found)) return;
-  const need2 = `A pack publish needs zstd ≥ ${MIN_ZSTD_VERSION}`;
-  if ((io.platform ?? process.platform) !== "linux")
-    throw new Error(
-      `${need2}; ${found ? `this runner has ${found}` : "it is not on PATH"}. Install it before this step (brew install zstd).`
-    );
-  io.stdout.write(
-    `zstd ${found ? `${found} is older than ${MIN_ZSTD_VERSION}` : "is not on PATH"}; installing it with apt-get
+  }
+  if (quote) throw new Error(`args has an unterminated ${quote} quote.`);
+  if (started) words2.push(word);
+  return words2;
+}
+function refusals(env) {
+  const kept = new Set(ACTION_INPUTS);
+  const lines4 = [];
+  for (const key of Object.keys(env).sort()) {
+    if (!key.startsWith("INPUT_")) continue;
+    const name = key.slice("INPUT_".length).toLowerCase();
+    if (kept.has(name)) continue;
+    const shown4 = untrusted(name, env);
+    const flag = REMOVED_INPUTS[name];
+    if (REMOVED_STEP[name])
+      lines4.push(`Input ${shown4} was removed in 0.9. ${REMOVED_STEP[name]}`);
+    else if (flag)
+      lines4.push(
+        VALUELESS_FLAGS.has(flag.slice(2)) ? `Input ${shown4} was removed in 0.9. Put ${flag} in args.` : `Input ${shown4} was removed in 0.9. Put ${flag} <value> in args.`
+      );
+    else lines4.push(`Input ${shown4} is not an input of this Action.`);
+  }
+  return lines4;
+}
+function flagValue(argv2, name) {
+  for (let i = 0; i < argv2.length; i += 1) {
+    const a = argv2[i];
+    if (a === `--${name}`) return argv2[i + 1];
+    if (a.startsWith(`--${name}=`)) return a.slice(name.length + 3);
+  }
+  return void 0;
+}
+function isAppPublish(argv2) {
+  if (argv2[0] !== "release" || argv2[1] !== "publish") return false;
+  const deliverable = flagValue(argv2, "deliverable");
+  return deliverable === void 0 || deliverable === "app";
+}
+function syncArgv(argv2, dryRun) {
+  const out = ["channel", "sync"];
+  const version = flagValue(argv2, "version") ?? flagValue(argv2, "tag")?.replace(/^v/, "");
+  const forward = [
+    ["product", flagValue(argv2, "product")],
+    ["base-url", flagValue(argv2, "base-url")],
+    ["channel", flagValue(argv2, "channel")],
+    ["version", version],
+    ["dir", flagValue(argv2, "dir")]
+  ];
+  for (const [k, v] of forward) if (v !== void 0) out.push(`--${k}`, v);
+  if (dryRun) out.push("--dry-run");
+  return out;
+}
+async function runAction(io) {
+  const annotate = (title2, message) => io.stdout.write(
+    `::error title=${escapeData(untrusted(title2, io.env))}::${escapeData(untrustedLines(message, io.env))}
 `
   );
-  try {
-    exec("sudo", ["-n", "apt-get", "update", "-q"]);
-    exec("sudo", ["-n", "apt-get", "install", "-y", "-q", "zstd"]);
-  } catch (e) {
-    throw new Error(
-      `${need2}, and installing it with apt-get failed (${e.message.split("\n")[0]}). Install it before this step.`
-    );
-  }
-  const after = version();
-  if (!ok(after))
-    throw new Error(
-      `${need2}; apt-get installed ${after ?? "no zstd"}. Use a newer runner image (ubuntu-24.04 or later) or install zstd ≥ ${MIN_ZSTD_VERSION} before this step.`
-    );
-}
-async function runAction(given) {
-  const stdout = guardOutput(given.stdout, given.env);
-  const stderr = guardOutput(given.stderr, given.env);
-  try {
-    return await runActionSteps({
-      ...given,
-      stdout: stdout.stream,
-      stderr: stderr.stream
-    });
-  } finally {
-    stdout.flush();
-    stderr.flush();
-  }
-}
-async function runActionSteps(io) {
-  const input = (name) => actionInput(io.env, name);
-  try {
-    const product = input("product");
-    const dir = input("dir");
-    if (!product) throw new Error("The product input is required.");
-    const assets = input("assets");
-    if (assets !== void 0) {
-      if (input("storefront") !== void 0 || input("transport") !== void 0)
-        throw new Error(
-          "assets is a step of its own: set it without storefront or transport."
-        );
-      await runAssetsStep(io, input, product, dir, assets);
-      return 0;
-    }
-    if (!dir) throw new Error("The dir input is required.");
-    const dryRun = input("dry-run");
-    if (dryRun !== void 0 && dryRun !== "true" && dryRun !== "false")
-      throw new Error(
-        `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`
-      );
-    const deliverable = input("deliverable");
-    const releaseKeyPem = input("release-key");
-    const contentKeyPem = input("content-key");
-    const delegation = input("delegation");
-    if (contentKeyPem && releaseKeyPem)
-      throw new Error(
-        "release-key and content-key are exclusive: a pack release is signed by one or the other."
-      );
-    if ((contentKeyPem || delegation) && (!deliverable || deliverable === "app"))
-      throw new Error(
-        "content-key and delegation apply only to a pack deliverable: a content key never signs an app record."
-      );
-    const transport = input("transport");
-    const given0 = (names) => names.filter((n) => input(n) !== void 0);
-    const storefront = input("storefront");
-    if (storefront !== void 0) {
-      if (transport !== void 0)
-        throw new Error(
-          "storefront and transport are separate steps: set one per step."
-        );
-      await runStorefrontStep(io, input, given0, product, dir, storefront);
-      return 0;
-    }
-    const storefrontOnly = given0(["itch-platform", "storefront-outlet"]);
-    if (storefrontOnly.length)
-      throw new Error(
-        `${storefrontOnly.join(", ")} ${storefrontOnly.length === 1 ? "applies" : "apply"} only with the storefront input.`
-      );
-    if (transport !== void 0) {
-      await runTransportStep(io, input, given0, product, dir, transport);
-      return 0;
-    }
-    const transportOnly = given0([
-      "content-api",
-      "variant",
-      "transport-out",
-      "gradle-project",
-      "pad-delivery",
-      "steam-depot",
-      "steam-branch",
-      "steam-setlive",
-      "asc-expect-resource"
-    ]);
-    if (input("transport-report") === "false")
-      transportOnly.push("transport-report");
-    if (transportOnly.length)
-      throw new Error(
-        `${transportOnly.join(", ")} ${transportOnly.length === 1 ? "applies" : "apply"} only with the transport input.`
-      );
-    const minSupportedSeq = input("min-supported-seq") !== void 0 ? Number(input("min-supported-seq")) : void 0;
-    const given = (names) => names.filter((n) => input(n) !== void 0);
-    if (deliverable && deliverable !== "app" && await isPackageDeliverable(io.cwd, deliverable)) {
-      const wrong2 = given([
-        "tag",
-        "source",
-        "meta",
-        "content-stamp",
-        "embedded",
-        "pins",
-        "out",
-        "bases",
-        "script-extensions",
-        "script-types",
-        "min-supported-seq"
-      ]);
-      if (wrong2.length || releaseKeyPem || contentKeyPem || delegation)
-        throw new Error(
-          `${[...wrong2, ...releaseKeyPem ? ["release-key"] : [], ...contentKeyPem ? ["content-key"] : [], ...delegation ? ["delegation"] : []].join(", ")} do not apply to a package deliverable (${deliverable}): a package's files are extracted from dir, and it is never signed.`
-        );
-      const result2 = await publishPackage({
-        cwd: io.cwd,
-        product,
-        dir,
-        deliverable,
-        version: input("version"),
-        channel: input("channel"),
-        baseUrl: input("base-url"),
-        dryRun: dryRun === "true",
-        env: io.env,
-        stdout: io.stdout,
-        stderr: io.stderr,
-        fetchImpl: io.fetchImpl,
-        sleep: io.sleep
-      });
-      await writeOutputs(io, result2.releaseId, result2.server);
-      return 0;
-    }
-    if (deliverable && deliverable !== "app") {
-      const wrong2 = given(["content-stamp", "embedded", "pins"]);
-      const scriptExtensions = listInput(input("script-extensions"));
-      const scriptTypes = listInput(input("script-types"));
-      if (wrong2.length)
-        throw new Error(
-          `${wrong2.join(", ")} ${wrong2.length === 1 ? "does" : "do"} not apply to a pack deliverable (${deliverable}): they stamp an app release's packs.`
-        );
-      ensureZstd(io);
-      const result2 = await publishPack({
-        cwd: io.cwd,
-        product,
-        dir,
-        deliverable,
-        version: input("version"),
-        tag: input("tag"),
-        channel: input("channel"),
-        out: input("out"),
-        bases: input("bases"),
-        baseUrl: input("base-url"),
-        ...releaseKeyPem ? { releaseKeyPem } : {},
-        ...contentKeyPem ? { contentKeyPem } : {},
-        ...delegation ? { delegation } : {},
-        ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
-        // P4-28: another script language for the PCK lint.
-        ...scriptExtensions.length ? { scriptExtensions } : {},
-        ...scriptTypes.length ? { scriptTypes } : {},
-        dryRun: dryRun === "true",
-        env: io.env,
-        stdout: io.stdout,
-        stderr: io.stderr,
-        fetchImpl: io.fetchImpl,
-        sleep: io.sleep
-      });
-      await writeOutputs(io, result2.releaseId, result2.server);
-      return 0;
-    }
-    const wrong = given(["out", "bases", "script-extensions", "script-types"]);
-    if (wrong.length)
-      throw new Error(
-        `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to the app: they keep and read a pack's earlier releases or configure a pack's lint.`
-      );
-    const result = await publishRelease({
-      cwd: io.cwd,
-      product,
-      dir,
-      deliverable,
-      version: input("version"),
-      tag: input("tag"),
-      channel: input("channel"),
-      // `r2` unless set. action.yml gives `source` no `default:`: GitHub passes every defaulted
-      // input, so a default there would reach the package and transport paths, which refuse it.
-      source: input("source") ?? "r2",
-      meta: input("meta"),
-      baseUrl: input("base-url"),
-      // P3-03: the release key's PKCS#8 PEM, from a GitHub Environment secret. Read here, never
-      // echoed; absent, PKEY_RELEASE_KEY from the job's environment is used.
-      ...releaseKeyPem ? { releaseKeyPem } : {},
-      ...minSupportedSeq !== void 0 ? { minSupportedSeq } : {},
-      // P4-03: the packs an app release pins and its builds embed.
-      contentStamp: input("content-stamp"),
-      embedded: input("embedded"),
-      pins: pinsInput(input("pins")),
-      dryRun: dryRun === "true",
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep
-    });
-    await writeOutputs(io, result.releaseId, result.server);
-    return 0;
-  } catch (e) {
-    const message = untrustedLines(e.message, io.env);
-    io.stdout.write(
-      `::error title=pkey release publish::${escapeData(message)}
-`
-    );
-    io.stderr.write(`${message}
+  const fail4 = (message) => {
+    annotate("pkey", message);
+    io.stderr.write(`${untrustedLines(message, io.env)}
 `);
     return 1;
-  }
-}
-async function runTransportStep(io, input, given, product, dir, step) {
-  if (!ACTION_TRANSPORT_STEPS.includes(step))
-    throw new Error(
-      `transport must be one of ${ACTION_TRANSPORT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`
-    );
-  const deliverable = input("deliverable");
-  const version = input("version");
-  if (!deliverable || deliverable === "app")
-    throw new Error(
-      "transport needs a pack deliverable: set deliverable to the pack id."
-    );
-  if (!version)
-    throw new Error("transport needs version: the pack release to package.");
-  const wrong = given([
-    "tag",
-    "source",
-    "meta",
-    "release-key",
-    "content-key",
-    "delegation",
-    "min-supported-seq",
-    "content-stamp",
-    "embedded",
-    "pins",
-    "out",
-    "bases",
-    "script-extensions",
-    "script-types"
-  ]);
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a transport step (${step}): it packages a release published earlier.`
-    );
-  const dryRun = input("dry-run");
-  if (dryRun !== void 0 && dryRun !== "false")
-    throw new Error("dry-run does not apply to a transport step.");
-  const report = input("transport-report");
-  if (report !== void 0 && report !== "true" && report !== "false")
-    throw new Error(
-      `transport-report must be true or false (got ${JSON.stringify(report)}).`
-    );
-  const setlive = input("steam-setlive");
-  if (setlive !== void 0 && setlive !== "true" && setlive !== "false")
-    throw new Error(
-      `steam-setlive must be true or false (got ${JSON.stringify(setlive)}).`
-    );
-  const common = {
-    cwd: io.cwd,
-    deliverable,
-    version,
-    product,
-    baseUrl: input("base-url"),
-    env: io.env,
-    stdout: io.stdout,
-    stderr: io.stderr,
-    fetchImpl: io.fetchImpl,
-    sleep: io.sleep,
-    report: report !== "false"
   };
-  const platform = io.platform ?? process.platform;
-  switch (step) {
-    case "apple-ba-package":
-      await baPackage({
-        ...common,
-        from: dir,
-        out: input("transport-out"),
-        contentApi: input("content-api"),
-        variant: input("variant"),
-        platform
-      });
-      return;
-    case "apple-ba-upload":
-      if (input("transport-out") !== void 0)
-        throw new Error(
-          "apple-ba-upload reads the package step's output from dir; transport-out does not apply."
-        );
-      await baUpload({
-        ...common,
-        dir,
-        contentApi: input("content-api"),
-        expectResource: input("asc-expect-resource")
-      });
-      return;
-    case "play-pad-modules": {
-      const project = input("gradle-project");
-      if (!project)
-        throw new Error(
-          "play-pad-modules needs gradle-project: the Godot Android Gradle build (android/build)."
-        );
-      await padModules({
-        ...common,
-        from: dir,
-        project,
-        delivery: input("pad-delivery"),
-        variant: input("variant")
-      });
-      return;
+  const input2 = (name) => actionInput(io.env, name);
+  const removed = refusals(io.env);
+  if (removed.length) return fail4(removed.join("\n"));
+  let argv2;
+  let dryRun = false;
+  let channelsAuto = false;
+  let cwd = io.cwd;
+  try {
+    const dry = input2("dry-run");
+    if (dry !== void 0 && dry !== "true" && dry !== "false")
+      throw new Error("dry-run must be true or false.");
+    dryRun = dry === "true";
+    const channels2 = input2("channels") ?? "auto";
+    if (channels2 !== "auto" && channels2 !== "none")
+      throw new Error("channels must be auto or none.");
+    channelsAuto = channels2 === "auto";
+    argv2 = [
+      ...splitArgs(input2("command") ?? "release publish"),
+      ...splitArgs(io.env["INPUT_ARGS"] ?? "")
+    ];
+    if (!argv2.length) throw new Error("command is empty.");
+    const wd = input2("working-directory");
+    if (wd !== void 0) {
+      cwd = path35.resolve(io.cwd, wd);
+      const isDir = await stat12(cwd).then(
+        (s) => s.isDirectory(),
+        () => false
+      );
+      if (!isDir) throw new Error("working-directory is not a directory.");
     }
-    default: {
-      const depot = input("steam-depot");
-      if (!depot)
-        throw new Error(
-          "steam-depot-vdf needs steam-depot: the pack's depot id."
-        );
-      await steamVdf({
-        ...common,
-        from: dir,
-        depot,
-        branch: input("steam-branch"),
-        channel: input("channel"),
-        setlive: setlive === "true",
-        out: input("transport-out"),
-        variant: input("variant")
-      });
-    }
+  } catch (e) {
+    return fail4(e.message);
   }
-}
-async function runStorefrontStep(io, input, given, product, dir, step) {
-  if (!ACTION_STOREFRONT_STEPS.includes(step))
-    throw new Error(
-      `storefront must be one of ${ACTION_STOREFRONT_STEPS.join(", ")} (got ${JSON.stringify(step)}).`
-    );
-  const wrong = given([
-    "deliverable",
-    "tag",
-    "source",
-    "meta",
-    "release-key",
-    "content-key",
-    "delegation",
-    "min-supported-seq",
-    "content-stamp",
-    "embedded",
-    "pins",
-    "out",
-    "bases",
-    "script-extensions",
-    "script-types",
-    "content-api",
-    "variant",
-    "transport-out",
-    "gradle-project",
-    "pad-delivery",
-    "steam-depot",
-    "steam-branch",
-    "steam-setlive",
-    "asc-expect-resource"
-  ]).filter((n) => !(n === "deliverable" && input(n) === "app"));
-  if (input("transport-report") === "false") wrong.push("transport-report");
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to a storefront step (${step}).`
-    );
-  if (step !== "itch-push" && input("itch-platform") !== void 0)
-    throw new Error("itch-platform applies only to itch-push.");
-  const dryRun = input("dry-run");
-  const flags = {
-    product,
-    ...input("base-url") ? { "base-url": input("base-url") } : {},
-    ...dryRun === "true" ? { "dry-run": true } : {},
-    ...input("storefront-outlet") ? { outlet: input("storefront-outlet") } : {}
+  if (dryRun && !argv2.includes("--dry-run")) argv2.push("--dry-run");
+  const env = { ...io.env };
+  const releaseKey = input2("release-key");
+  const contentKey = input2("content-key");
+  const baseUrl = input2("base-url");
+  if (releaseKey) env[RELEASE_KEY_ENV] = releaseKey;
+  if (contentKey) env[CONTENT_KEY_ENV] = contentKey;
+  if (baseUrl) env[BASE_URL_ENV] = baseUrl;
+  let errText = "";
+  const stderr = {
+    write(chunk, ...rest) {
+      errText += typeof chunk === "string" ? chunk : Buffer.from(chunk);
+      return io.stderr.write(chunk, ...rest);
+    },
+    get isTTY() {
+      return io.stderr.isTTY;
+    },
+    get columns() {
+      return io.stderr.columns;
+    }
   };
-  let positional;
-  switch (step) {
-    case "itch-push": {
-      const platform = input("itch-platform");
-      const version = input("version") ?? input("tag")?.replace(/^v/, "");
-      if (!platform)
-        throw new Error(
-          "itch-push needs itch-platform: windows, linux, mac or android."
-        );
-      if (!version)
-        throw new Error("itch-push needs version: butler's --userversion.");
-      positional = ["itch", "push"];
-      Object.assign(flags, { dir, platform, version });
-      if (input("channel")) flags.channel = input("channel");
-      break;
-    }
-    case "snap-upload": {
-      const channel = input("channel");
-      if (!channel)
-        throw new Error(
-          "snap-upload needs channel: the release channel the outlet's channels map onto snap channels."
-        );
-      positional = ["snap", "upload"];
-      Object.assign(flags, { snap: dir, channel });
-      break;
-    }
-    case "snap-upload-metadata":
-      positional = ["snap", "upload-metadata"];
-      flags.snap = dir;
-      break;
-    default:
-      positional = ["snap", "metadata"];
-      flags.yaml = dir;
-  }
-  const code = await cmdStorefront(
-    { positional, flags, rest: [] },
-    {
-      cwd: io.cwd,
-      env: io.env,
-      stdout: io.stdout,
-      stderr: io.stderr,
-      fetchImpl: io.fetchImpl,
-      sleep: io.sleep
-    }
-  );
-  if (code !== 0) throw new Error(`storefront ${step} failed.`);
-}
-async function runAssetsStep(io, input, product, dir, assets) {
-  const wrong = ACTION_INPUTS.filter(
-    (n) => ![
-      "product",
-      "dir",
-      "base-url",
-      "dry-run",
-      "assets",
-      "deliverable",
-      "transport-report"
-    ].includes(n) && input(n) !== void 0
-  );
-  if (input("deliverable") !== void 0 && input("deliverable") !== "app")
-    wrong.push("deliverable");
-  if (input("transport-report") === "false") wrong.push("transport-report");
-  if (wrong.length)
-    throw new Error(
-      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to an assets step.`
-    );
-  const dryRun = input("dry-run");
-  if (dryRun !== void 0 && dryRun !== "true" && dryRun !== "false")
-    throw new Error(
-      `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`
-    );
-  const base = dir ? path31.resolve(io.cwd, dir) : io.cwd;
-  const entries = await resolveAssetMap(base, parseAssetMap(assets));
-  const answer = await pushAssets({
-    cwd: io.cwd,
-    product,
-    entries,
-    baseUrl: input("base-url"),
-    dryRun: dryRun === "true",
-    env: io.env,
+  const cli = {
+    cwd,
+    env,
     stdout: io.stdout,
-    stderr: io.stderr,
+    stderr,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep
-  });
-  if (answer && answer.refused.length > 0)
-    throw new Error(
-      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused.map(
-        (r) => `${untrusted(r.slot, io.env)} (${untrusted(r.reason, io.env)})`
-      ).join(", ")}.`
-    );
-}
-var OUTCOME_RE = /^[a-z][a-z_-]{0,63}$/;
-var RELEASE_ID_RE = /^[^\s\p{Cc}\p{Cf}]{1,255}$/u;
-async function writeOutputs(io, releaseId, server) {
-  const outputFile = io.env.GITHUB_OUTPUT;
-  if (!outputFile) return;
-  const id = RELEASE_ID_RE.test(releaseId) ? releaseId : "";
-  const outcome = typeof server?.outcome === "string" && OUTCOME_RE.test(server.outcome) ? server.outcome : "";
-  await appendFile2(
-    outputFile,
-    `release-id=${id}
-outcome=${outcome}
-`,
-    "utf8"
+  };
+  let title = `pkey ${argv2.filter((w) => !w.startsWith("-")).slice(0, 2).join(" ")}`;
+  let code = await runPkey(argv2, cli);
+  if (code === 0 && channelsAuto && isAppPublish(argv2)) {
+    errText = "";
+    title = "pkey channel sync";
+    code = await runPkey(syncArgv(argv2, dryRun), cli);
+  }
+  if (code === 0) return 0;
+  annotate(
+    title,
+    errText.trim().slice(-2e3) || `pkey exited with code ${code}.`
   );
+  return 1;
 }
 
 // src/bin/standalone.ts

@@ -14,8 +14,8 @@
  *     the product `_platform` (`PLATFORM_TERMS_PRODUCT`), which no product slug can be. Only a
  *     terms document is accepted: a privacy notice is linked beside it and gets no row.
  *
- * `accounts.terms_json` (I-05's column) is superseded and neither read nor written (see the
- * migration's header).
+ * `accounts.terms_json` (I-05's column) is superseded and dormant: nothing reads or writes
+ * it, and the merge undo no longer snapshots it (I-28; I-28b decides `DROP COLUMN`).
  */
 
 import type { Db, DbStatement } from "../../../db/types.js";

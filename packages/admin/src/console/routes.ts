@@ -439,11 +439,17 @@ export const r = {
   home: (query?: QueryInit) => globalPage("home", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
   apiTokens: () => globalPage("api-tokens"),
-  personalTokens: () => globalPage("personal-tokens"),
+  /** Personal tokens: Yours, or the Everyone tab (`?who=everyone`). */
+  personalTokens: (who?: "everyone") =>
+    globalPage("personal-tokens", who ? { who } : undefined),
   signInMethods: () => globalPage("sign-in-methods"),
   /** The Platform group's root, which redirects to its first page. */
   platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),
+  /** Settings, landing on one setting's row (`?setting=<key>`). */
+  platformSettingRow: (key: string) =>
+    globalPage("platform-settings", { setting: key }),
+  platformMembers: (query?: QueryInit) => globalPage("platform-members", query),
   platformStatus: () => globalPage("platform-status"),
   platformStores: () => globalPage("platform-stores"),
   platformConnections: (query?: QueryInit) =>
@@ -457,7 +463,6 @@ export const r = {
     globalPage("platform-activity", query),
   platformActivityEvent: (id: string, query?: QueryInit) =>
     globalPage("platform-activity", query, { id }),
-  platformOverrideMigration: () => globalPage("platform-override-migration"),
   platformFeed: (eco: string, tab?: string) =>
     globalPage("platform-feeds", undefined, { id: eco, tab }),
   platformFeedPackage: (
@@ -539,7 +544,7 @@ export const r = {
   storefront: (slug: string, store: string) =>
     productPage(slug, "storefronts", { id: store }),
   listing: (slug: string, query?: QueryInit) =>
-    productPage(slug, "listing", { query }),
+    productPage(slug, "presentation-listing", { query }),
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
   commerce: (slug: string) => productPage(slug, "commerce"),
@@ -559,6 +564,7 @@ export const r = {
   feed: (slug: string) => productPage(slug, "feed"),
   appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncSetup: (slug: string) => productPage(slug, "sync-setup"),
+  syncUsage: (slug: string) => productPage(slug, "sync-usage"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 
@@ -577,6 +583,17 @@ export function slugOfRoute(route: Route): string | null {
 }
 
 /**
+ * Global pages whose record opens as a drawer over the list: the list stays mounted across the
+ * record id, so its loaded pages, scroll and the opener's focus survive an open and a close.
+ */
+const DRAWER_RECORD_PAGES: ReadonlySet<string> = new Set(["platform-activity"]);
+
+/** Does this global page open its record as a drawer over the list (its title stays the page's)? */
+export function opensRecordInDrawer(page: string): boolean {
+  return DRAWER_RECORD_PAGES.has(page);
+}
+
+/**
  * The identity a view is keyed on (ADMIN.md §2.6 remount policy): product + page + record id.
  * A query parameter or a record tab does not remount the page, so a filter change keeps its draft.
  */
@@ -589,7 +606,7 @@ export function viewKey(route: Route): string {
     return `${route.slug}\u0000${route.page}\u0000${route.id ?? ""}${child}`;
   }
   if (route.kind === "global")
-    return route.id === undefined
+    return route.id === undefined || opensRecordInDrawer(route.page)
       ? route.page
       : `${route.page}\u0000${route.id}${child}`;
   return `not-found\u0000${route.slug ?? ""}\u0000${route.path}`;

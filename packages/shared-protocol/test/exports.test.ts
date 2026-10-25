@@ -10,6 +10,7 @@ import * as distribution from "../src/distribution.js";
 import * as identity from "../src/identity.js";
 import * as packs from "../src/packs.js";
 import * as release from "../src/release.js";
+import * as sync from "../src/sync.js";
 import * as trust from "../src/trust.js";
 import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
@@ -471,5 +472,41 @@ describe("@polaris-key/protocol layout", () => {
       "image/png",
       "image/webp",
     ]);
+  });
+
+  it("the /sync subpath (plans/U-01.md §2.6 as amended by plans/U-01b.md §2.5, WIRE-CONTRACT-V4 §13)", () => {
+    expect(sync.SYNC_CLIENT_ID_PATTERN).toBe("^c_[A-Za-z0-9_-]{22}$");
+    expect(sync.SYNC_HLC_PATTERN).toBe("^[0-9a-f]{12}:[0-9a-f]{4}$");
+    expect(sync.SYNC_KEY_PATTERN).toBe("^[A-Za-z0-9._:-]{1,128}$");
+    expect(sync.SYNC_MAX_MUTATIONS).toBe(100);
+    expect(sync.SYNC_MAX_PUSH_BYTES).toBe(256 * 1024);
+    expect(sync.SYNC_MAX_CLOCK_SKEW_MS).toBe(300_000);
+    expect(sync.SYNC_TOMBSTONE_DAYS).toBe(90);
+    expect(sync.SYNC_DEBOUNCE_MS).toBe(2000);
+    expect(sync.SYNC_SIGNOUT_FLUSH_MS).toBe(5000);
+    expect(sync.SYNC_PENDING_DAYS).toBe(30);
+    expect(sync.SYNC_MAX_MERGE_MEMBERS).toBe(256);
+    expect(sync.SYNC_MAX_UNION_ELEMENT_BYTES).toBe(1024);
+    expect(sync.SYNC_MAX_VALUE_BYTES).toBe(8 * 1024);
+    expect(sync.SYNC_MAX_SETTINGS).toBe(256);
+    expect(sync.SYNC_MAX_SETTINGS_BYTES).toBe(64 * 1024);
+    expect(sync.SYNC_MAX_RECORD_BYTES).toBe(64 * 1024);
+    expect(sync.SYNC_SAVE_SLOTS).toBe(16);
+    expect(sync.SYNC_QUOTA_BYTES).toBe(256 * 1024 * 1024);
+    expect(sync.SYNC_UNLICENSED_QUOTA_BYTES).toBe(1024 * 1024);
+    expect(sync.SYNC_IMPORT_HLC).toBe("000000000000:0000");
+    expect(sync.SYNC_PULL_PAGE_CHANGES).toBe(500);
+    expect(sync.SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS).toBe(300);
+    expect(new RegExp(sync.SYNC_HLC_PATTERN).test(sync.SYNC_IMPORT_HLC)).toBe(
+      true,
+    );
+    expect(
+      new RegExp(sync.SYNC_CLIENT_ID_PATTERN).test(`c_${"A".repeat(22)}`),
+    ).toBe(true);
+    // Constants are strings and integers only, so `gen constants` can emit them (U-05.2).
+    for (const [name, v] of Object.entries(sync)) {
+      expect(name.startsWith("SYNC_")).toBe(true);
+      expect(typeof v === "string" || Number.isInteger(v)).toBe(true);
+    }
   });
 });

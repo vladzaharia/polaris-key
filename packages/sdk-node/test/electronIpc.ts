@@ -13,6 +13,7 @@ export function ipcPair() {
   >();
   const sender = {
     id: 7,
+    mainFrame: { url: "app://main" } as { url: string },
     send(channel: string, ...args: unknown[]) {
       for (const l of listeners.get(channel) ?? [])
         l({}, ...structuredClone(args));
@@ -48,6 +49,7 @@ export function ipcPair() {
     ipcMain,
     ipcRenderer,
     handlers,
+    sender,
     deny: () => {
       allowed = false;
     },

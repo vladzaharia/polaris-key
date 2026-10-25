@@ -4,7 +4,7 @@
  * The F-Droid repository relay (P2b-05, notes/E2 §C2): one repository per channel at
  * `/<p>/distribution/fdroid/<channel>/repo`, beta including stable.
  *
- * The repository is SIGNED BY CI with the product's repo key (`pkey feeds fdroid` runs
+ * The repository is SIGNED BY CI with the product's repo key (`pkey storefront fdroid` runs
  * `apksigner` on `entry.jar`), and Polaris Key never holds that key. So the Worker generates
  * nothing here: CI builds `index-v2.json`, `entry.json`, `entry.jar` and diffs from the inputs the
  * CI read route hands it, uploads them through P2-02's upload ticket (`distribution:feeds`), and
@@ -343,7 +343,7 @@ async function registeredIndexLists(
 
 // ── The CI read: the generator's inputs ──────────────────────────────────────────────────────
 
-/** `GET /<p>/distribution/feeds/fdroid/<channel>` — what `pkey feeds fdroid` builds from. */
+/** `GET /<p>/distribution/feeds/fdroid/<channel>` — what `pkey storefront fdroid` builds from. */
 export async function fdroidInputs(
   ctx: FeedReadContext & { env: Env },
   rawChannel: string,

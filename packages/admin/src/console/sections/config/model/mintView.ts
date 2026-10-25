@@ -13,9 +13,18 @@ export function ttlLabel(seconds: number): string {
   return unit(seconds, "second");
 }
 
+/** A moment in en-US words and UTC, for the preview ("Oct 22, 2026, 11:00 AM UTC"). */
+const when = (sec: number): string =>
+  new Date(sec * 1000).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }) + " UTC";
+
 /**
- * What the app receives, decoded: the header and the claims a mint at `nowSec` would carry. Built
- * from the recipe as shown, never from a token; the signature is not part of it.
+ * What the app receives, decoded: the header and the claims a mint at `nowSec` would carry, one
+ * claim per line with `exp` said in words. Built from the recipe as shown, never from a token; the
+ * signature is not part of it.
  */
 export function previewText(
   block: MintBlock,
@@ -36,12 +45,15 @@ export function previewText(
   };
   const note =
     asApproved !== null && asApproved !== ttl
-      ? `  // ${ttlLabel(ttl)} after iat`
-      : "";
+      ? `${ttlLabel(ttl)} after iat`
+      : `expires ${when(nowSec + ttl)}`;
+  const lines = JSON.stringify(claims, null, 2).split("\n");
   return [
     "// Header",
-    JSON.stringify(header),
-    `// Claims: if minted ${new Date(nowSec * 1000).toISOString().replace(".000Z", "Z")}`,
-    JSON.stringify(claims) + note,
+    JSON.stringify(header, null, 2),
+    `// Claims, if minted ${when(nowSec)}`,
+    ...lines.map((l) =>
+      l.trimStart().startsWith('"exp"') ? `${l}  // ${note}` : l,
+    ),
   ].join("\n");
 }

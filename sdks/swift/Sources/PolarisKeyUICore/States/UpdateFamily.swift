@@ -70,8 +70,8 @@ extension KitStates {
                     [
                         c.line("update.downloading", c.progressArgs),
                         c.line("update.timeLeft", c.progressArgs),
-                        c.line("a11y.progress", c.progressArgs), c.line("update.later"),
-                        c.line("update.restartWhenReady"),
+                        c.line("a11y.progress", c.progressArgs),
+                        c.line("update.restartWhenReady"), c.line("update.later"),
                     ])
             }
             var lines: [CopyLine]
@@ -108,6 +108,27 @@ extension KitStates {
         case "ms-store": return c.line("update.openStore", ["store": "Microsoft Store"])
         default: return c.line("update.openStore", ["store": ""])
         }
+    }
+
+    /// The verb a store outlet allows ("Update on the App Store"), nil when the outlet is not a store.
+    public static func outletVerb(_ outlet: String?) -> CopyLine? {
+        switch outlet {
+        case "app-store": return CopyLine("update.appStore")
+        case "play", "play-testing": return CopyLine("update.googlePlay")
+        case "testflight": return CopyLine("update.testflight")
+        case "altstore", "altstore-pal": return CopyLine("update.altstore")
+        case "steam": return CopyLine("update.steam")
+        case "ms-store": return CopyLine("update.openStore", ["store": .text("Microsoft Store")])
+        default: return nil
+        }
+    }
+
+    /// The sentence that says where to update when the kit has nothing to open: the store verb
+    /// read as an instruction, else who installs it on this platform.
+    public static func whereToUpdate(outlet: String?, product: String) -> CopyLine {
+        if let verb = outletVerb(outlet) { return verb }
+        let c = Ctx(KitInputs(bundle: KitBundle(slug: product, name: product), platform: .current))
+        return platformLine(outlet, c)
     }
 
     /// Who installs the update when the platform does it.

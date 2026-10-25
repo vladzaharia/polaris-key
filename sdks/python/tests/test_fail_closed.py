@@ -29,7 +29,7 @@ def _opts(**kw):
     return dict(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE_URL,
         store=InMemoryStore(PRODUCT),
         client=mock_client(routes()),

@@ -165,6 +165,8 @@ export async function licenseSummaries(
       // The licence that replaced this one (a merge's survivor), else `null`.
       supersededBy: row.superseded_by ?? null,
       activatedAt: row.activated_at,
+      // LX-27c: when the last invitation email went out, `null` when none did.
+      invitedAt: row.invited_at ?? null,
       expiresAt: row.expires_at,
       keyCount: counts.total,
       activeKeyCount: counts.active,

@@ -1,0 +1,67 @@
+---
+/**
+ * The React kit's desktop chrome baselines (UK-06): the same screen in the macOS, Windows and
+ * GNOME chromes, both themes, at 1440 px. The images are the kit's own files under
+ * packages/sdk-react/test/visual/chrome-themes, so the page shows what the kit's tests compare
+ * against. The forced-colors renders sit beside them in the directory and are not published here.
+ */
+import type { ImageMetadata } from "astro";
+
+interface Props {
+  /** The state directory, e.g. "Settings.list". */
+  state: string;
+  /** The component the state belongs to, for the alt text. */
+  component: string;
+}
+
+const { state, component } = Astro.props;
+const FILES = import.meta.glob<ImageMetadata>(
+  "../../../../sdk-react/test/visual/chrome-themes/*/*-native-1440-{dark,light}.png",
+  { eager: true, import: "default" },
+);
+const CHROMES = [
+  { id: "macos", label: "macOS" },
+  { id: "windows", label: "Windows" },
+  { id: "gnome", label: "GNOME" },
+] as const;
+const THEMES = [
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light" },
+] as const;
+const find = (chrome: string, theme: string) =>
+  Object.entries(FILES).find(([key]) =>
+    key.endsWith(`/${state}/${chrome}-native-1440-${theme}.png`),
+  )?.[1];
+---
+
+<div class="pk-ui-shots">
+  {
+    CHROMES.map((chrome) => (
+      <figure class="pk-ui-shot">
+        <figcaption class="pk-ui-shot__title">
+          <code>{chrome.label}</code>
+        </figcaption>
+        <div class="pk-ui-shot__pair">
+          {THEMES.map((theme) => {
+            const shot = find(chrome.id, theme.id);
+            return shot === undefined ? (
+              <p class="pk-ui-shot__missing">No {theme.id} baseline</p>
+            ) : (
+              <a class="pk-ui-shot__frame" href={shot.src}>
+                <img
+                  src={shot.src}
+                  width={shot.width}
+                  height={shot.height}
+                  loading="lazy"
+                  decoding="async"
+                  alt={`${component} in the ${chrome.label} chrome, ${theme.id} theme`}
+                />
+                <span class="pk-ui-shot__theme">{theme.label}</span>
+              </a>
+            );
+          })}
+        </div>
+      </figure>
+    ))
+  }
+</div>

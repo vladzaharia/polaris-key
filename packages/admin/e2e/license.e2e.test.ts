@@ -6,6 +6,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * Licence deletion's three dialogs in real Chromium under the Worker's CSP, in both themes: the
@@ -40,7 +41,7 @@ function summary(
   name: string,
   over: Record<string, unknown> = {},
 ): Record<string, unknown> {
-  return {
+  return workerFields({
     id,
     name,
     email: "ada@example.com",
@@ -60,7 +61,7 @@ function summary(
     origin: "admin",
     deletion: ISSUED,
     ...over,
-  };
+  });
 }
 
 const LICENSES = [

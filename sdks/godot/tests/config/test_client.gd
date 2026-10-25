@@ -24,10 +24,10 @@ func _values(t: PKeyTestContext) -> void:
 	var cfg: PKeyConfig = sdk.config
 	cfg.set_override_store(PKeyOverrideStore.new({"quality.floor": "mp3", "local.only": "yes"}))
 	cfg.env = S.env_from({"PKEY_CONFIG_quality__floor": "wav", "PKEY_CONFIG_run__concurrency": "16"})
-	t.check("client: enforced wins over a local and an env value", cfg.get_value("quality.floor", "x") == "flac" and cfg.get_source("quality.floor") == &"enforced")
-	t.check("client: env beats remote default", S.same(cfg.get_value("run.concurrency", 1), 16) and cfg.get_source("run.concurrency") == &"env")
-	t.check("client: a key only the store has resolves locally", cfg.get_value("local.only") == "yes" and cfg.get_source("local.only") == &"local")
-	t.check("client: the caller's fallback when nothing resolves", cfg.get_value("missing", 99) == 99 and cfg.get_value("missing") == null and cfg.get_source("missing") == &"fallback")
+	t.check("client: enforced wins over a local and an env value", cfg.get_value("quality.floor", "x") == "flac" and cfg.get_config_source("quality.floor") == &"enforced")
+	t.check("client: env beats remote default", S.same(cfg.get_value("run.concurrency", 1), 16) and cfg.get_config_source("run.concurrency") == &"env")
+	t.check("client: a key only the store has resolves locally", cfg.get_value("local.only") == "yes" and cfg.get_config_source("local.only") == &"local")
+	t.check("client: the caller's fallback when nothing resolves", cfg.get_value("missing", 99) == 99 and cfg.get_value("missing") == null and cfg.get_config_source("missing") == &"fallback")
 	var v: Dictionary = cfg.get_value("tuning")
 	v["easy"].append(3)
 	t.check("client: containers are copies (the document is not mutated)", cfg.get_value("tuning") == {"easy": [1, 2]})
@@ -35,7 +35,7 @@ func _values(t: PKeyTestContext) -> void:
 	t.check("client: enabled() follows the capability map", cfg.enabled())
 	# The compiled mirror's default stands in for a missing fallback, and only then.
 	cfg.set_compiled_catalog({"CATALOG_VERSION": 3, "ENTRIES": [{"key": "dice.animSpeed", "kind": "config", "accessor": "dice.animSpeed"}], "DEFAULTS": {"dice.animSpeed": 1.25}})
-	t.check("client: no fallback uses the compiled default", cfg.get_value("dice.animSpeed") == 1.25 and cfg.get_source("dice.animSpeed") == &"fallback")
+	t.check("client: no fallback uses the compiled default", cfg.get_value("dice.animSpeed") == 1.25 and cfg.get_config_source("dice.animSpeed") == &"fallback")
 	t.check("client: the caller's fallback beats the compiled default", cfg.get_value("dice.animSpeed", 2.0) == 2.0)
 	t.check("client: the compiled catalog backs catalog()", cfg.catalog().get("schemaVersion") == 3 and cfg.catalog_entry("dice.animSpeed").get("accessor") == "dice.animSpeed")
 	sdk.queue_free()
@@ -58,6 +58,7 @@ func _list(t: PKeyTestContext) -> void:
 	t.check("client: an enforced row is flagged at its remote value", by["quality.floor"].enforced and by["quality.floor"].value == "flac" and by["quality.floor"].source == &"enforced")
 	t.check("client: an overridable row shows its effective value", not by["run.concurrency"].enforced and by["run.concurrency"].value == 9 and by["run.concurrency"].source == &"local")
 	t.check("client: a hidden key is still applied", cfg.get_value("secret.knob", "x") == "locked")
+	t.check("client: setting.visibility follows the state (enforced readonly, hidden hidden, default editable)", cfg.setting("quality.floor").visibility == PKeyConstants.SettingVisibility.READONLY and cfg.setting("secret.knob").visibility == PKeyConstants.SettingVisibility.HIDDEN and cfg.setting("run.concurrency").visibility == PKeyConstants.SettingVisibility.EDITABLE and cfg.setting("missing.key").visibility == PKeyConstants.SettingVisibility.EDITABLE)
 	t.check("client: list rows are typed PKeyConfigEntry", list.get_typed_script() == PKeyConfigEntry)
 	sdk.queue_free()
 
@@ -81,7 +82,7 @@ func _disabled(t: PKeyTestContext) -> void:
 	var sdk: Node = await S.sdk_with({}, {}, PackedStringArray(["license"]))
 	var cfg: PKeyConfig = sdk.config
 	t.check("client: Config disabled reports enabled() false", not cfg.enabled())
-	t.check("client: Config disabled falls back everywhere", cfg.get_value("run.concurrency", 1) == 1 and cfg.get_source("run.concurrency") == &"fallback" \
+	t.check("client: Config disabled falls back everywhere", cfg.get_value("run.concurrency", 1) == 1 and cfg.get_config_source("run.concurrency") == &"fallback" \
 			and cfg.list_user_config().is_empty() and cfg.get_secret("api.key") == null and cfg.schema_version() == null)
 	cfg.set_override_store(PKeyOverrideStore.new({"run.concurrency": 8}))
 	cfg.env = S.env_from({"PKEY_CONFIG_log__level": "debug"})
@@ -96,7 +97,7 @@ func _before_configure(t: PKeyTestContext) -> void:
 	var sdk := PKeyTestFixtures.new_sdk()
 	var cfg: PKeyConfig = sdk.config
 	t.check("client: config exists before configure()", cfg != null and not cfg.enabled())
-	t.check("client: reads fall back before configure()", cfg.get_value("k", 5) == 5 and cfg.get_source("k") == &"fallback" and cfg.get_secret("k") == null)
+	t.check("client: reads fall back before configure()", cfg.get_value("k", 5) == 5 and cfg.get_config_source("k") == &"fallback" and cfg.get_secret("k") == null)
 	var m: PKeyMintResult = await cfg.mint_token("x")
 	t.check("client: mint before configure() is refused", m.code == PKeyErrors.NOT_CONFIGURED)
 	t.check("client: fetch before configure() is null", (await cfg.fetch_schema()) == null)

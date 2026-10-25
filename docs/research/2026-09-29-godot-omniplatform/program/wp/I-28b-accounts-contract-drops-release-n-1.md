@@ -16,6 +16,18 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **IX-01b** in [Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity).
 
+## Corrections from I-28 (2026-10-23)
+
+Written by I-28.4 from the slice plan (`_lead/plans/I-28-MO-13-slices.md`, "What I-28b inherits"). The code is the fact.
+
+- **Names.** I-28's migrations are `0141_a_portal_contract_purge.sql` and `0141_b_index_assertion.sql` (not `0140_*`; `LATEST_MIGRATION` is `0141_b`). The `_v` views never existed.
+- **Timing and check.** I-28b ships at least 14 days after release N is live. The production check before it is `scripts/portal-contract-check.sql` at zero AND all four `portal_*` tables empty (`SELECT COUNT(*)` on each). Record it under RUNBOOK Entries first.
+- **Drop and down script.** The drop migration is replay-safe; its down script in `scripts/rollback/` recreates the four empty tables and their indexes (the 0017 shapes). Release N already removed the index requirement (`REQUIRED_INDEXES`, `0141_b`), so there is no index coupling.
+- **Remove with the drop.** The four `TABLE_OWNERS` rows, the settings-coverage row `column:portal_license_links.source` (`pnpm gen settings`), the data-model rows (`pnpm gen docs-reference`), and empty `RETIRED_TABLES` in `db/owners.ts` (the `tableCrossings` retired-table assertion then guards an empty list; drop it with the list).
+- **Tests that seed portal rows** move to a scratch DB of the migrations before the drop: R11's cascade test (`attack/R11-data`), `portalIdentityIssuer` (0059), `accountsMigration` (0068) and `subjectStores`. `licenseDelete` and the schema-walking completeness tests read `RETIRED_TABLES`.
+- **RUNBOOK.** Mark `scripts/rollback/0068_accounts.down.sql` as superseded. Close P0-24's "Portal tables" ledger row with an Entry. If release N shipped with a non-zero purge, the erased-person residue note in "Portal tables purge" closes with this drop.
+- **`terms_json`.** I-28.4 made it dormant (out of `ACCOUNT_COLUMNS` and `AccountRow`; `DORMANT_ACCOUNT_COLUMNS` in `mergeUndo.ts`, accepted by the pin test). SQLite drops a plain column without a rebuild, but `gen-reference.mjs` (~:449) has no `DROP COLUMN` arm: extend it, or leave the column dormant and say so here.
+
 ## Goal
 
 Accounts contract drops (release N+1), as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -3,7 +3,7 @@
 // §12.7.1, plans/PX-W13.md §4). It covers React too: both JS SDKs normalise through the same
 // `client-core` function. The Python (`tests/test_device_label.py`), Swift
 // (`DeviceLabelTests.swift`), Godot (`tests/suite_conformance.gd`) and Kotlin
-// (`DeviceLabelTest.kt`) runners and the Worker (`test/deviceLabelCorpus.test.ts`) run the same
+// (`DeviceLabelTest.kt`) runners and the Worker (`test/services/identity/deviceLabelCorpus.test.ts`) run the same
 // rows.
 
 import { readFileSync } from "node:fs";

@@ -48,7 +48,7 @@ describe("status vocabulary (components.md §6.4)", () => {
     ["compat", "incompatible", "Incompatible", "danger"],
     ["compat", "current", "Current", "outline"],
     ["edgeMint", "pending", "Needs approval", "warning"],
-    ["edgeMint", "changed", "Changed since approval", "danger"],
+    ["edgeMint", "changed", "Changed since approval", "warning"],
     ["secret", "missing", "Missing", "warning"],
     ["source", "manifest", "From manifest", "neutral"],
     ["source", "admin", "Set in console", "info"],
@@ -67,8 +67,11 @@ describe("status vocabulary (components.md §6.4)", () => {
     expect(humanize("")).toBe("Unknown");
   });
 
-  it("edge mint pending and changed are distinct (EMR-2)", () => {
-    expect(STATUS.edgeMint.pending.tone).not.toBe(STATUS.edgeMint.changed.tone);
+  it("edge mint pending and changed are distinct by icon and words (EMR-2)", () => {
+    // Both stop minting, so both are warnings (CX-CFG review C9); the glyph and label tell them apart.
+    expect(STATUS.edgeMint.pending.label).not.toBe(
+      STATUS.edgeMint.changed.label,
+    );
     expect(STATUS.edgeMint.pending.icon).not.toBe(STATUS.edgeMint.changed.icon);
   });
 

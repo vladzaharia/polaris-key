@@ -1,5 +1,5 @@
 {
-  "$comment": "The one distribution-channel catalogue (A-19). An entry is a place builds reach customers. Ids are the storefront adapter ids; `outlet` is the wire outlet kind (never a new one). Edit here and run `pnpm gen channels`.",
+  "$comment": "The one distribution-channel catalogue (A-19). An entry is a place builds reach customers. Ids are the storefront adapter ids; `outlet` is the wire outlet kind (never a new one). `arches` (optional) maps a platform to the CPU arches the channel accepts there; absent means any. `universal` and `any` builds fit every requirement. Edit here and run `pnpm gen channels`.",
   "channels": [
     {
       "id": "polaris-key",
@@ -25,6 +25,7 @@
       "plane": "worker",
       "outlet": { "kind": "app-store" },
       "platforms": ["ios", "macos"],
+      "arches": { "macos": ["universal", "arm64"] },
       "formats": ["ipa", "pkg"],
       "deliverableKinds": ["app"],
       "customerAction": "open-listing",
@@ -66,6 +67,7 @@
       "plane": "worker",
       "outlet": { "kind": "testflight" },
       "platforms": ["ios", "macos"],
+      "arches": { "macos": ["universal", "arm64"] },
       "formats": ["ipa", "pkg"],
       "deliverableKinds": ["app"],
       "customerAction": "open-listing",
@@ -252,7 +254,7 @@
       "plane": "pr",
       "outlet": { "kind": "winget" },
       "platforms": ["windows"],
-      "formats": ["msi", "exe", "msix"],
+      "formats": ["msi", "exe", "msix", "zip"],
       "deliverableKinds": ["app"],
       "customerAction": "run-command",
       "verbs": ["submit", "status"],
@@ -348,7 +350,8 @@
       "plane": "pr",
       "outlet": { "kind": "direct", "subkind": "homebrew" },
       "platforms": ["macos", "linux"],
-      "formats": ["tar.gz", "zip"],
+      "platformNeeds": { "linux": "homebrewFormula" },
+      "formats": ["dmg", "tar.gz", "zip"],
       "deliverableKinds": ["app", "package"],
       "customerAction": "run-command",
       "verbs": ["submit", "status"],

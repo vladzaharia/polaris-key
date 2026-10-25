@@ -7,7 +7,7 @@ import { outOfRange } from "./settings.js";
 import { html, nothing, svg, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
-import { styleMap } from "lit/directives/style-map.js";
+import { ref } from "lit/directives/ref.js";
 import {
   countdown,
   renewTarget,
@@ -15,6 +15,7 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
+import { platformVariant } from "@polaris-key/ui-core/theme";
 
 import { KIT_GLYPHS } from "@polaris-key/brand";
 import { encodeQr } from "@polaris-key/node/qr";
@@ -35,6 +36,12 @@ export interface RenderCtx {
   fill?: boolean;
   /** The step is the sign-in form's body: every step shares one card width (the split). */
   form?: boolean;
+  /** The view is drawn inside a modal dialog (the sign-in sheet, the update prompt). */
+  dialog?: boolean;
+  /** The arrangement of the box (DL1): GNOME lays two responses in a row unless it is portrait. */
+  shape?: "landscape" | "portrait" | "short";
+  /** The window is wider than a docked sheet (35 rem). */
+  wide?: boolean;
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */
@@ -91,22 +98,30 @@ function argsOf(
   const developer = c.resolved.identity.developer;
   if (args.developer === undefined && developer) args.developer = developer;
   fillFromInput(c, key, args);
-  // The installed version's line says the size of a download only when it knows one.
-  if (key === "update.current" && args.size === undefined) args.size = "";
   return args;
 }
 
-/** One string of the catalog; "You have 2.4.1 · {size} download" is just "You have 2.4.1" with
- *  no size to say. */
+/** The key to draw: the installed version's line names a download size only when the decision
+ *  carries one; otherwise it is the catalog's "You have {version}". */
+function drawnKey(
+  c: RenderCtx,
+  key: string,
+  args: Record<string, string | number>,
+): string {
+  return key === "update.current" &&
+    args.size === undefined &&
+    c.copy.has("common.updateCurrentNoSize")
+    ? "common.updateCurrentNoSize"
+    : key;
+}
+
+/** One string of the catalog. */
 function formatKey(
   c: RenderCtx,
   key: string,
   args: Record<string, string | number>,
 ): string {
-  const s = c.copy.format(key, args);
-  return key === "update.current" && args.size === ""
-    ? s.split("·")[0]!.trim()
-    : s;
+  return c.copy.format(drawnKey(c, key, args), args);
 }
 
 /** The names of a message's own arguments (`{name}`, `{n, plural, …}`), not those nested in a
@@ -136,9 +151,9 @@ export function missingArgs(
   key: string,
   extra: Record<string, string | number> = {},
 ): string[] {
-  const raw = c.copy.raw(key);
-  if (!raw) return [];
   const args = argsOf(c, key, extra);
+  const raw = c.copy.raw(drawnKey(c, key, args));
+  if (!raw) return [];
   return argNames(raw).filter((n) => args[n] === undefined || args[n] === null);
 }
 
@@ -442,8 +457,8 @@ export function button(
     c.view.state === "available" &&
     c.input.platform?.os === "web" &&
     version &&
-    c.copy.has("boot.consent.download")
-      ? `${c.copy.format("boot.consent.download", {})} ${version}`
+    c.copy.has("common.updateDownload")
+      ? c.copy.format("common.updateDownload", { version })
       : null;
   // Renew opens a page only when the host gave one; otherwise the host handles the press.
   const external =
@@ -551,7 +566,12 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
     aria-valuenow=${pct}
     aria-label=${ifDefined(label)}
     data-key=${ifDefined(named ? "a11y.progress" : undefined)}
-    style=${styleMap({ "--pk-fraction": String(pct / 100) })}
+    ${ref((el) =>
+      (el as HTMLElement | undefined)?.style.setProperty(
+        "--pk-fraction",
+        String(pct / 100),
+      ),
+    )}
   >
     <span></span>
   </div>`;
@@ -768,11 +788,28 @@ export function actions(
   controls: string[],
   layoutRow = false,
   primaryLast = false,
+  group?: "choices",
 ): TemplateResult | typeof nothing {
   if (controls.length === 0) return nothing;
   const primary = c.view.decisions.primary;
+  // GNOME: two responses in a row (landscape or short boxes) put the suggested action last, at
+  // the trailing end, in the DOM too so Tab follows the eye; stacked (portrait, or three or more)
+  // it is first, on top. A group of choices keeps its order. No CSS reordering either way.
+  // A Mac row reads Cancel then the default, the default last in the DOM too.
+  const last =
+    primaryLast ||
+    (layoutRow && platformVariant(c.resolved.theme) === "macos") ||
+    (group !== "choices" &&
+      controls.length === 2 &&
+      c.view.component !== "StatusScreen" &&
+      c.view.component !== "Boot" &&
+      // A dialog floats (a row) in a window wider than a docked sheet; a page follows its shape.
+      (c.dialog
+        ? c.wide === true
+        : c.shape !== undefined && c.shape !== "portrait") &&
+      platformVariant(c.resolved.theme) === "gnome");
   const sorted = [...controls].sort((a, b) =>
-    primaryLast
+    last
       ? Number(a === primary) - Number(b === primary)
       : Number(b === primary) - Number(a === primary),
   );
@@ -784,6 +821,8 @@ export function actions(
     part="actions"
     data-part="actions"
     data-layout=${layoutRow ? "row" : "stack"}
+    data-group=${ifDefined(group)}
+    data-primary=${ifDefined(last ? "last" : undefined)}
   >
     ${sorted.map((k) =>
       button(

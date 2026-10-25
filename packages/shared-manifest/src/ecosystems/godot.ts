@@ -5,6 +5,8 @@
 
 import type { PackageEcosystemRules } from "./rules.js";
 
+const GODOT_PUBLISHER = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
 export const GODOT_PACKAGE_RULES: PackageEcosystemRules<"godot"> = {
   ecosystem: "godot",
   name: {
@@ -19,11 +21,21 @@ export const GODOT_PACKAGE_RULES: PackageEcosystemRules<"godot"> = {
   metadataKeys: ["displayName", "author", "description", "script"],
   namespace: {
     fields: {
-      publisher: { kind: "string", pattern: /^[a-z0-9][a-z0-9_-]{0,63}$/ },
+      publisher: { kind: "string", pattern: GODOT_PUBLISHER },
     },
     problem: (_name, ns) =>
       typeof ns.publisher === "string" && ns.publisher !== ""
         ? null
         : "the Godot feed has no publisher set",
+    // An addon id carries no publisher, so the publisher is the owner (the product slug).
+    derive(names, owner) {
+      if (names.length === 0) return { namespace: {}, ambiguous: null };
+      if (!GODOT_PUBLISHER.test(owner))
+        return {
+          namespace: {},
+          ambiguous: `the owner "${owner}" is not a valid Godot publisher`,
+        };
+      return { namespace: { publisher: owner }, ambiguous: null };
+    },
   },
 };

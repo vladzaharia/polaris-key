@@ -76,7 +76,7 @@ export function TooltipContent({
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 max-w-xs rounded-md border border-border bg-surface-overlay px-2.5 py-1.5 text-xs text-fg shadow-elevation-2 animate-pk-in",
+          "z-50 max-w-xs rounded-md border border-border bg-surface-overlay px-2 py-1.5 text-xs text-fg shadow-elevation-2 animate-pk-in",
           className,
         )}
         {...props}

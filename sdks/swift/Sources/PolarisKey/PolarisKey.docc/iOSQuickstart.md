@@ -34,8 +34,8 @@ struct MyApp: App {
 }
 ```
 
-`.polarisKey(client)` puts the observable model in the environment and syncs when the scene
-becomes active. Subscribe to `client.events` for licence, entitlement, config, update, pack and store events.
+`.polarisKey(client)` draws the kit gate, puts the observable model in the environment and syncs
+when the scene becomes active. Subscribe to `client.events` for licence, entitlement, config, update, pack and store events.
 
 ## Sell with StoreKit 2
 

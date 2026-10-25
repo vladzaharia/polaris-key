@@ -5,7 +5,7 @@
  * Column-backed is PERMANENT for these keys: the device hot paths keep reading `products.*` (and
  * the storefront columns) exactly as before, so nothing here is on a hot path. The adapters exist
  * so the one write path can store a value without each handler issuing its own `UPDATE`, which
- * `test/settings-writes.test.ts` now refuses. A service's own tables are adapted in that service
+ * `test/core/settings-writes.test.ts` now refuses. A service's own tables are adapted in that service
  * (`services/release/settingsColumns.ts`), contributed through its slice.
  *
  * Every statement ANDs the write's guard (`ColumnWriteArgs.guard`) into its `WHERE`, so a refused
@@ -206,7 +206,7 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
   },
   // `.pkey/product` `presentation` (HA-12): manifest-only, so decode-only. There is no `set`, so
   // `writeSetting()` refuses a console write; link, resync and the system product's deploy hook
-  // write the column (`serializePresentation`), as `test/settings-writes.test.ts` sanctions.
+  // write the column (`serializePresentation`), as `test/core/settings-writes.test.ts` sanctions.
   "core.presentation": {
     table: "products",
     keyColumn: "slug",

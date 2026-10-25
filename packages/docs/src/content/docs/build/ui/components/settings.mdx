@@ -64,7 +64,50 @@ Settings driven by the product's config catalog: typed controls, categories, sea
 
     **Headless.** `KitStates.settings(_:)`.
 
+    **On a Mac.** `Settings { PolarisKeySettingsPane(client) }` is the Account tab, and `.commands { PolarisKeyCommands(client) }` adds Manage License… and Sign Out… to the app menu.
+
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** `<Settings />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider>`: given no `input`, it reads the bridge itself. **Manage license** in the app menu opens it over the app, with a Done button and an Account group.
+
+    **Styled part.** The React kit's `<Settings />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Settings", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** **Manage license** in the desktop menu opens `PolarisSettingsWindow` on the Account pane. On Android, `PolarisSettings(settings)`.
+
+    **Styled part.** `PolarisSettingsScreen`, over `PolarisSettingsState(client.settingsActions(), scope)`.
+
+    **Headless.** `PolarisSettingsState` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisSettings
+    import im.plrs.key.ui.PolarisSettingsState
+    import im.plrs.key.ui.settingsActions
+
+    @Composable
+    fun MySettings(client: PolarisKeyClient) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) { PolarisSettingsState(client.settingsActions(), scope) }
+        PolarisSettings(state)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
 
   </TabItem>
   <TabItem label="Godot">

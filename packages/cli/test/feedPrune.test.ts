@@ -2,7 +2,7 @@
  * `pkey feeds prune` (feed retention) against a fake Worker: the request it sends (dry run by
  * default, `apply` only with `--apply`), the report it prints (skipped and failed versions
  * included), the exit code of an apply with failures, and a refusal. The real Worker route is
- * exercised by `packages/worker/test/feedPruneRoutes.test.ts`.
+ * exercised by `packages/worker/test/surfaces/console/feedPruneRoutes.test.ts`.
  */
 
 import { describe, expect, it } from "vitest";

@@ -6,9 +6,19 @@ import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { hostOrigin } from "../../../core/hosts.js";
+import { apiOrigin } from "../../../core/customerHost.js";
+import {
+  renderAuthCard,
+  icon,
+  DEVICE_CARD_LINKS,
+} from "../../../core/brandHtml.js";
+import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
+import { escapeHtml } from "../../../platform/html.js";
+import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
 import {
   DEVICE_ENTRY_WIDE_LIMIT,
   DEVICE_ENTRY_WIDE_WINDOW_SEC,
+  ENTRY_FOOTER,
   typedCode,
 } from "../../../core/deviceEntry.js";
 import { appForPage } from "../../../core/brandPage.js";
@@ -27,6 +37,7 @@ import {
   updateArtefact,
 } from "../../../core/singleUse.js";
 import { readBodyText } from "../../../core/cappedBody.js";
+import { sameOriginPost } from "../../../core/accounts/browserRequestGuard.js";
 import { beginAuthFlow } from "./browserFlow.js";
 import { startAgainPage } from "./chooser.js";
 import {
@@ -292,6 +303,36 @@ export async function confirmDeviceFlow(
     return deniedPage(denyFlow, view, []);
   }
 
+  const bound = await bindDeviceFlow(
+    req,
+    env,
+    product,
+    deviceCode,
+    record,
+    token,
+    now,
+    view,
+  );
+  if (bound instanceof Response) return bound;
+  return handOff(req, env, product, record, bound, false);
+}
+
+/** The binder the confirming browser will hold, or the response that ends the visit. */
+async function bindDeviceFlow(
+  req: Request,
+  env: Env,
+  product: Product,
+  deviceCode: string,
+  record: DeviceFlowRecord,
+  /** The CSRF token the confirmation form posted; `null` when no page was shown (the customer
+   *  host's straight start), where the single use is the flow not yet having been confirmed. */
+  token: string | null,
+  now: number,
+  view: PageView,
+  /** Started on the customer host: mint the second secret C for that host as well. */
+  withCustomerBinder = false,
+): Promise<BoundFlow | Response> {
+  const refused = errorResponse(403, "forbidden", "confirmation failed");
   // The confirmation is an authorization input for the poll, so it is recorded on
   // the flow the pollers actually read, not only on the device record (R8-01). The flow must
   // still exist (checked first, so an expired flow spends nothing).
@@ -308,13 +349,23 @@ export async function confirmDeviceFlow(
       errorResponse(404, "not_found", "device code expired"),
       view,
     );
-  // Spend the CSRF token atomically (single-use): of two racing POSTs carrying it, one
-  // confirms and the other is refused like any stale token.
-  const spent = await updateArtefact(env, deviceKey, {
-    expect: { csrf: token },
-    set: { confirmedAt: now },
-    unset: ["csrf"],
-  });
+  // Spend the single use atomically: of two racing requests carrying it, one confirms and the
+  // other is refused like any stale token.
+  const spent = await updateArtefact(
+    env,
+    deviceKey,
+    token === null
+      ? {
+          expect: { confirmedAt: null },
+          set: { confirmedAt: now },
+          unset: ["csrf"],
+        }
+      : {
+          expect: { csrf: token, confirmedAt: null },
+          set: { confirmedAt: now },
+          unset: ["csrf"],
+        },
+  );
   if (!spent.ok) return gone(req, product, 403, "stale", refused, view);
   // I-26: the confirming browser is the one the licence chooser will answer (delegated decision
   // 13). Minted here, never at `/device/start`: that request comes from the device, not from
@@ -322,12 +373,20 @@ export async function confirmDeviceFlow(
   // Every device-code flow is bound to its confirming browser, so the IdP leg can
   // only finish where the human confirmed, not in a victim's browser the starter phished.
   const binder = randomToken(32);
+  // B never crosses to the customer host: that host gets its own secret C, and its hash is the
+  // only thing the flow keeps of it (R2-B1).
+  const customerBinder = withCustomerBinder ? randomToken(32) : null;
   const stamped = await updateArtefact(env, stateKey, {
+    // One binder per flow: a second confirmation never replaces it.
+    expect: { binder: null },
     set: {
       confirmedAt: now,
       // The large-type variant follows the person through the IdP and the chooser.
       ...(view.tv ? { tv: true } : {}),
-      ...(binder ? { binder: await hashKey(binder, env.KEY_HASH_PEPPER) } : {}),
+      binder: await hashKey(binder, env.KEY_HASH_PEPPER),
+      ...(customerBinder
+        ? { customerBinder: await hashKey(customerBinder, env.KEY_HASH_PEPPER) }
+        : {}),
     },
   });
   if (!stamped.ok)
@@ -343,34 +402,179 @@ export async function confirmDeviceFlow(
   // photographed QR code, a guess) can re-render the page, re-mint the CSRF token or read the
   // authorize URL after the human has confirmed.
   await deleteUserCodeIndex(env, product.slug, record.userCode);
+  return { binder, customerBinder };
+}
+
+/** The secrets minted for a confirmed device flow: B (API host) and, when the customer host
+ *  started it, C (customer host). */
+interface BoundFlow {
+  binder: string;
+  customerBinder: string | null;
+}
+
+/** The 303 to the IdP. On the customer host the binder cookie cannot be set here (`__Host-`
+ *  cookies are host-only, and the IdP's callback lands on the API host), so a single-use bind
+ *  token carries it to the API host, which sets it and 303s on to the authorize URL it reads
+ *  back from the store (LK-04's bind hop, for the device pages). */
+async function handOff(
+  req: Request,
+  env: Env,
+  product: Product,
+  record: DeviceFlowRecord,
+  bound: BoundFlow,
+  crossHost: boolean,
+): Promise<Response> {
   const headers = new Headers({
-    location: record.authorizeUrl,
     // The authorize URL carries `state` and `nonce`: keep it out of the Referer chain and
     // out of every cache (R8-02).
     "referrer-policy": "no-referrer",
     "cache-control": "no-store",
   });
-  if (binder)
-    headers.append("set-cookie", binderSetCookie(binder, FLOW_TTL_SECONDS));
+  const api = crossHost ? apiOrigin(env) : null;
+  if (api) {
+    const token = await issueBindToken(env, {
+      kind: "device-start",
+      slug: product.slug,
+      binder: bound.binder,
+      next: record.authorizeUrl,
+    });
+    const hop = `${api}/${product.slug}/identity/auth/device?bind=${token}`;
+    // The customer host's own binder cookie (host-only): the approval page, back on this host,
+    // answers only the browser that opened the code. The hop URL alone binds nothing here (B1).
+    const cookie = binderSetCookie(bound.customerBinder!, FLOW_TTL_SECONDS);
+    headers.append("set-cookie", cookie);
+    // A typed code is a form submission under `form-action 'self'`, and browsers check that
+    // directive on every redirect of the chain: answer with a page that moves on by itself (B2).
+    if (req.headers.get("sec-fetch-site") === "same-origin")
+      return hopPage(hop, cookie);
+    headers.set("location", hop);
+  } else {
+    headers.set("location", record.authorizeUrl);
+    headers.append(
+      "set-cookie",
+      binderSetCookie(bound.binder, FLOW_TTL_SECONDS),
+    );
+  }
   return new Response(null, { status: 303, headers });
 }
 
-/** Refuse a cross-site POST to a device-flow page.
- *
- *  Fetch Metadata decides when the browser sends it: only `same-origin` passes. Without it, an
- *  absent `Origin`, this origin, or the literal `"null"` pass. `"null"` is not optional: both
- *  device pages are served with `referrer-policy: no-referrer`, and under that policy the Fetch
- *  standard serialises a same-origin form POST's `Origin` as `null`. With the single-use CSRF
- *  token minted on the page's render, this guards only against cross-site forgery of SOMEONE
- *  ELSE'S flow. It does not stop a flow's starter, who can mint the token for their own code
- *  and POST it with no `Origin` (curl): that is the open R1-07 / R8-03 residual (no binding
- *  between the confirming browser and the IdP callback) — see THREAT-MODEL.md "Remote
- *  phishing". */
-export function sameOriginPost(req: Request): boolean {
-  const site = req.headers.get("sec-fetch-site");
-  if (site !== null) return site === "same-origin";
-  const origin = req.headers.get("origin");
-  return !origin || origin === "null" || origin === new URL(req.url).origin;
+/** Lone surrogates (a slice through an emoji) would make `encodeURIComponent` throw. */
+function wellFormed(s: string): string {
+  return s.replace(
+    /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g,
+    "\ufffd",
+  );
+}
+
+/** The 200 that carries a form-started sign-in to the bind hop: `<meta refresh>` plus a plain
+ *  link. Not a redirect, so the form's `form-action 'self'` never meets the cross-origin hop. */
+function hopPage(hop: string, cookie: string): Response {
+  const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
+    title: "Continuing",
+    heading: "Continuing to sign in",
+    body: `<a class="button" href="${escapeHtml(hop)}">Continue${icon("arrow-right")}</a>`,
+    footer: ENTRY_FOOTER,
+  }).replace(
+    '<meta charset="utf-8">',
+    `<meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(hop)}">`,
+  );
+  const headers = brandedHtmlSecurityHeaders(
+    new Headers({
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "referrer-policy": "no-referrer",
+    }),
+  );
+  headers.append("set-cookie", cookie);
+  return new Response(html, { status: 200, headers });
+}
+
+/**
+ * The customer host's start of a device sign-in: a live code opened (typed here, or the device's
+ * own link) goes straight to the IdP, with no page in between, so the flow reads code, sign in,
+ * confirm. Nothing is approved: the binder only ties the sign-in to this browser, and the
+ * approval page after sign-in is the one explicit step (I-37).
+ */
+export async function startDeviceSignIn(
+  req: Request,
+  env: Env,
+  product: Product,
+  deviceCode: string,
+  record: DeviceFlowRecord,
+  now: number,
+  view: PageView,
+): Promise<Response> {
+  const bound = await bindDeviceFlow(
+    req,
+    env,
+    product,
+    deviceCode,
+    record,
+    null,
+    now,
+    view,
+    true,
+  );
+  if (bound instanceof Response) return bound;
+  return handOff(req, env, product, record, bound, true);
+}
+
+/**
+ * The API host's half of the bind hop: redeem the token the customer host issued, set the
+ * binder cookie on THIS host (where the IdP's callback lands), and 303 to the authorize URL the
+ * token carries from the store. Nothing in the query reaches the `Location`.
+ */
+export async function completeDeviceBindHop(
+  req: Request,
+  env: Env,
+  product: Product,
+): Promise<Response> {
+  const token = new URL(req.url).searchParams.get("bind") ?? "";
+  const bound = await consumeBindToken(env, token);
+  if (!bound || bound.kind !== "device-start" || bound.slug !== product.slug) {
+    // A spent or expired hop: back to the customer host (from configuration), not a key.plrs.im page.
+    const customer = hostOrigin("customer", env);
+    return customer === null
+      ? startAgainPage()
+      : new Response(null, {
+          status: 303,
+          headers: {
+            location: `${customer}/device/approve`,
+            "referrer-policy": "no-referrer",
+            "cache-control": "no-store",
+          },
+        });
+  }
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: bound.next,
+      "set-cookie": binderSetCookie(bound.binder, FLOW_TTL_SECONDS),
+      "referrer-policy": "no-referrer",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+// `sameOriginPost` (Fetch Metadata, then `Origin`, `"null"` allowed under no-referrer) lives in Core,
+// next to the other browser request guards. With the single-use CSRF token minted on the page's
+// render it guards only against cross-site forgery of SOMEONE ELSE'S flow. It does not stop a
+// flow's starter, who can mint the token for their own code and POST it with no `Origin` (curl):
+// that is the open R1-07 / R8-03 residual (no binding between the confirming browser and the IdP
+// callback), see THREAT-MODEL.md "Remote phishing".
+
+/** `sameOriginPost` for the pages that DECIDE (the approval and the licence chooser): a POST
+ *  that carries neither Fetch Metadata nor an `Origin` is a script, not a browser, and is
+ *  refused. This is defence in depth only (a script can send `Origin: null`); the guard is the
+ *  second secret the customer host asks for (R2-B1). */
+export function sameOriginDecisionPost(req: Request): boolean {
+  if (
+    req.headers.get("sec-fetch-site") === null &&
+    req.headers.get("origin") === null
+  )
+    return false;
+  return sameOriginPost(req);
 }
 
 /** The user code and CSRF token from an entry-route POST. `csrf` is `undefined` when the field
@@ -467,6 +671,36 @@ export async function handleAuthDeviceEntry(
       ? limited
       : renderDeviceEntry(product, action, 429, null, undefined, tv);
 
+  // The customer host (Polaris Locker) runs the whole device sign-in on its own origin; the API
+  // host's product page only forwards to it, and finishes the one hop the IdP leg needs.
+  const customer = hostOrigin("customer", env);
+  const onCustomer = customer !== null && url.origin === customer;
+  if (req.method === "GET" && customer !== null && !onCustomer) {
+    if (url.searchParams.has("bind"))
+      return completeDeviceBindHop(req, env, product);
+    const typed = url.searchParams.get("user_code");
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: `${customer}${tv ? "/tv" : "/device"}${typed?.trim() ? `?user_code=${encodeURIComponent(wellFormed(typed.slice(0, 64)))}` : ""}`,
+        "cache-control": "no-store",
+        "referrer-policy": "no-referrer",
+      },
+    });
+  }
+  // The old confirm page's POST (a stale form, a script) is not kept as a second path: it goes to
+  // the customer host's own entry, carrying nothing the customer host would trust.
+  if (req.method === "POST" && customer !== null && !onCustomer)
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: `${customer}${tv ? "/tv" : "/device"}`,
+        "cache-control": "no-store",
+        "referrer-policy": "no-referrer",
+      },
+    });
+  if (onCustomer && req.method !== "GET") return methodNotAllowed();
+
   let rawCode: string | null;
   let csrf: string | undefined;
   let decision: DeviceDecision = "approve";
@@ -483,7 +717,15 @@ export async function handleAuthDeviceEntry(
   const app = await appFor(env, product, ctx);
   const view: PageView = { tv, app };
   if (!rawCode?.trim() && csrf === undefined)
-    return renderDeviceEntry(product, action, 200, null, app, tv);
+    return onCustomer
+      ? new Response(null, {
+          status: 303,
+          headers: {
+            location: `${customer}${tv ? "/tv" : "/device"}`,
+            "cache-control": "no-store",
+          },
+        })
+      : renderDeviceEntry(product, action, 200, null, app, tv);
 
   const userCode = normalizeUserCode(rawCode);
   const deviceCode = userCode
@@ -507,8 +749,13 @@ export async function handleAuthDeviceEntry(
         errorResponse(403, "forbidden", "confirmation failed"),
         view,
       );
-    return renderDeviceEntry(product, action, 404, typedCode(rawCode), app, tv);
+    return onCustomer
+      ? deviceGonePage(product, 404, "expired", { tv })
+      : renderDeviceEntry(product, action, 404, typedCode(rawCode), app, tv);
   }
+
+  if (onCustomer)
+    return startDeviceSignIn(req, env, product, deviceCode, record, now, view);
 
   if (csrf !== undefined)
     return confirmDeviceFlow(

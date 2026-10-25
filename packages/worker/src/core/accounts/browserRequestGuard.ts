@@ -80,3 +80,18 @@ export async function readGuardedJsonObject(
     return null;
   }
 }
+
+/**
+ * Whether a state-changing FORM post comes from this origin's own page. Fetch Metadata decides
+ * when the browser sends it: only `same-origin` passes. Without it, an absent `Origin`, this
+ * origin, or the literal `"null"` pass. `"null"` is not optional: the device pages are served
+ * with `referrer-policy: no-referrer`, and under that policy the Fetch standard serialises a
+ * same-origin form POST's `Origin` as `null` (Chromium and WebKit do). The caller's CSRF token
+ * is the other half of the check.
+ */
+export function sameOriginPost(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  if (site !== null) return site === "same-origin";
+  const origin = req.headers.get("origin");
+  return !origin || origin === "null" || origin === new URL(req.url).origin;
+}

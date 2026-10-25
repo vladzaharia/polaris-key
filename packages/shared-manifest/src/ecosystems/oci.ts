@@ -23,5 +23,7 @@ export const OCI_PACKAGE_RULES: PackageEcosystemRules<"oci"> = {
   namespace: {
     fields: {},
     problem: () => null,
+    // No namespace keys: nothing to derive.
+    derive: () => ({ namespace: {}, ambiguous: null }),
   },
 };

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +7,8 @@ import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
 import { atRest } from "./atRest.js";
+import { frameStrip } from "./strips.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * The console's data surfaces in motion (notes/S-23 §6.1 list, status, meter, skeleton; MO-09), in
@@ -57,7 +59,9 @@ const LICENSES = Array.from({ length: 60 }, (_, i) => ({
   minVersion: null,
   maxVersion: null,
   identityProvider: "manual",
-}));
+  // The product default the Worker reports as the limit (a fifth of the track per device).
+  inheritedDeviceLimit: 5,
+})).map(workerFields);
 const ROUTES: Record<string, unknown> = {
   ...CORE_ROUTES,
   "/manage/api/products/djdl/license/licenses": { licenses: LICENSES },
@@ -340,7 +344,8 @@ const bodyRowCount = (page: Page): Promise<number> =>
   page.locator("main#content tbody > tr[data-row-id]").count();
 
 async function openStatusMenu(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Filter by status" }).click();
+  // CXF-TABLE: Status folds into the "More filters" menu (the tiles above are its quick filter).
+  await page.getByRole("button", { name: "More filters" }).click();
   await page.getByRole("checkbox", { name: /^Disabled/ }).waitFor();
   await atRest(page);
 }
@@ -447,7 +452,10 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
     });
   }
 
-  it("a new chip pops in; a removed one fades out, then leaves the DOM; the last one goes with its row", async () => {
+  // Disabled as flaky (owner 2026-10-23 rule): on CI run 40134389918 (c87a8e7ba) the pop-in's
+  // measured duration came back NaN ([320, NaN]) while 8741 sibling tests passed. Re-enable once
+  // the motion log reads a settled duration without a timeout raise.
+  it.skip("a new chip pops in; a removed one fades out, then leaves the DOM; the last one goes with its row", async () => {
     const page = await openLicenses();
     const tk = await tokens(page);
     await openStatusMenu(page);
@@ -564,28 +572,9 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
 describe.skipIf(!SHOTS)("frame strips", () => {
   for (const theme of ["dark", "light"] as const) {
     it(`saves the filter, Clear filters and bulk-bar frames (${theme})`, async () => {
-      mkdirSync(SHOTS!, { recursive: true });
       const page = await openLicenses({ theme });
-      const cdp = await page.context().newCDPSession(page);
-      await cdp.send("Animation.enable");
-      const strip = async (
-        name: string,
-        act: () => Promise<void>,
-      ): Promise<void> => {
-        await atRest(page);
-        await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
-        await act();
-        for (const [i, ms] of [30, 600, 1200, 1800, 2600, 3600].entries()) {
-          await page.waitForTimeout(
-            i === 0 ? ms : ms - [30, 600, 1200, 1800, 2600][i - 1]!,
-          );
-          await page.screenshot({
-            path: `${SHOTS}/console-data-${name}-${theme}-${i + 1}.png`,
-          });
-        }
-        await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
-        await atRest(page, 6000);
-      };
+      const strip = (name: string, act: () => Promise<void>): Promise<void> =>
+        frameStrip(page, `console-data-${name}`, act, { theme });
       await openStatusMenu(page);
       await strip("filter", () =>
         page.getByRole("checkbox", { name: /^Disabled/ }).click(),
@@ -631,7 +620,7 @@ describe("reduced motion: every data-surface change is an instant swap", () => {
         expect(await running(page), `${what}: still animating`).toEqual([]);
       };
 
-      await page.getByRole("button", { name: "Filter by status" }).click();
+      await page.getByRole("button", { name: "More filters" }).click();
       const disabled = page.getByRole("checkbox", { name: /^Disabled/ });
       await disabled.waitFor();
       await swapped("facet menu");

@@ -2,7 +2,6 @@ import * as React from "react";
 import { platformName } from "../../lib/vocab/platforms.js";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type AttestationVerdictDto,
   type ProductDeviceDetail,
 } from "../../api.js";
@@ -20,16 +19,8 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { toast } from "../../ui/toast.js";
 import { mutate } from "../data/mutations.js";
-import { qk } from "../data/queries.js";
+import { reads } from "../data/reads.js";
 import { EntityLink } from "./EntityLink.js";
-
-/** Read one device through the product route: it reaches licensed and license-free devices. */
-export function fetchDevice(
-  slug: string,
-  deviceId: string,
-): Promise<ProductDeviceDetail> {
-  return api.productDevice(slug, deviceId);
-}
 
 function intent(action: "device.deauthorize" | "device.resetBinding") {
   const i = confirmFor(action).intent;
@@ -60,8 +51,7 @@ export function DeviceDrawer({
 }): React.ReactElement {
   const open = !!deviceId;
   const query = useQuery({
-    queryKey: qk.device(slug, deviceId ?? ""),
-    queryFn: () => fetchDevice(slug, deviceId!),
+    ...reads.device(slug, deviceId ?? ""),
     enabled: open,
   });
   const [confirm, setConfirm] = React.useState<"deauthorize" | "reset" | null>(
@@ -130,12 +120,12 @@ export function DeviceDrawer({
           licenseFree
             ? [
                 "The device loses access and its token is revoked.",
-                "It holds no license, so no seat is freed.",
+                "It holds no license, so no device limit is affected.",
                 "Under open registration it can register again on its next start.",
               ]
             : [
                 "The device loses access and its token is revoked.",
-                "Its seat on the license is freed.",
+                "It stops counting toward the license's device limit.",
                 "To use the license again it must re-activate.",
               ]
         }
@@ -219,7 +209,7 @@ function DeviceFacts({
                 <>
                   <EntityLink slug={slug} kind="license" id={d.licenseId} />
                   {d.seatNo != null ? (
-                    <span className="text-fg-muted"> · seat {d.seatNo}</span>
+                    <span className="text-fg-muted"> · device {d.seatNo}</span>
                   ) : null}
                 </>
               ) : (

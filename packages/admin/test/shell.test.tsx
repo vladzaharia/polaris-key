@@ -1,3 +1,4 @@
+import { lastAnnouncement } from "../src/ui/LiveRegion.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   act,
@@ -71,7 +72,7 @@ interface Group {
 const GROUPS: Group[] = [];
 for (const s of SECTIONS) {
   if (s.key === "core") continue;
-  const pages = navItems(s, { packageFeeds: false });
+  const pages = navItems(s, {});
   const ship = SHIP_BUILDS_KEYS.includes(s.key);
   const held = ship ? GROUPS.find((g) => g.label === "Ship builds") : undefined;
   if (held) held.pages.push(...pages);
@@ -224,7 +225,7 @@ describe("items and headers (owner, 2026-10-03)", () => {
     const coreItems = navItems(core).filter((p) => p.page !== "settings");
     expect(links.map((a) => a.textContent)).toEqual([
       ...coreItems.map((p) => p.label),
-      // The product row says nothing of package feeds, so Distribution → Package feeds is absent.
+      // Ship builds → Packages is listed whenever Distribution is on (F-34.7).
       ...FEATURES.flatMap((g) =>
         isSingle(g) ? [g.label] : g.pages.map((p) => p.label),
       ),
@@ -632,6 +633,40 @@ describe("the product switcher keeps the page (SH-11)", () => {
     await waitFor(() =>
       expect(window.location.hash).toBe("#/p/acme/config/profiles"),
     );
+  });
+
+  it("the platform's attention item (product null) is no product's badge (ST-44b.2)", async () => {
+    boot("#/p/djdl", {
+      services: ALL_ON,
+      extra: {
+        "/manage/api/attention": {
+          items: [
+            {
+              id: "@platform:sync.paused",
+              product: null,
+              kind: "sync.paused",
+              tone: "warning",
+              service: "sync",
+              short: "Writes paused",
+              lines: ["Cloud Sync writes are paused for every product."],
+              action: {
+                label: "Resume writes",
+                page: "platform-settings",
+                query: { setting: "cloudSync.writesPaused" },
+              },
+              area: "platform",
+            },
+          ],
+        },
+      },
+    });
+    await ready();
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Product: DJDL \(djdl\)/ }),
+    );
+    const options = await screen.findAllByRole("option");
+    expect(options.length).toBeGreaterThan(1);
+    for (const o of options) expect(o.textContent).not.toMatch(/attention/);
   });
 
   it("names itself for assistive tech, and filters as you type", async () => {
@@ -1084,9 +1119,7 @@ describe("page heading, title and focus", () => {
     await userEvent.click(within(nav()).getByRole("link", { name: "Tiers" }));
     const h1 = await screen.findByRole("heading", { level: 1, name: "Tiers" });
     await waitFor(() => expect(document.activeElement).toBe(h1));
-    expect(document.getElementById("route-announcer")!.textContent).toBe(
-      "Tiers, page loaded",
-    );
+    expect(lastAnnouncement()).toBe("Tiers, page loaded");
   });
 
   it("scrolls back to the top on every page change, but not when only the query changes (owner, 2026-10-03)", async () => {
@@ -1188,14 +1221,21 @@ describe("the top bar", () => {
     ).toBe("/");
   });
 
-  it("a break-glass session shows the warning banner and no My library; a normal one shows neither", async () => {
-    boot("#/", { me: { breakGlass: true } });
+  it("an emergency sign-in shows a labelled banner with the end time, a top-bar pill and no My library; a normal one shows none", async () => {
+    const ends = Math.floor(new Date(2026, 9, 3, 18, 40).getTime() / 1000);
+    boot("#/", { me: { breakGlass: true, sessionExpiresAt: ends } });
+    const region = await screen.findByRole("region", {
+      name: "Emergency sign-in",
+    });
+    expect(region.textContent).toMatch(
+      /You're using emergency sign-in until .+\. Sign out when you're done\./,
+    );
     expect(
-      await screen.findByText(
-        /You’re signed in with break-glass\. Sign out when you’re done\./,
-      ),
+      within(region).getByRole("button", { name: "Sign out" }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    expect(
+      document.querySelector("[data-emergency] .sr-only")?.textContent,
+    ).toMatch(/^Emergency sign-in until /);
     await userEvent.click(
       await screen.findByRole("button", { name: "Account menu" }),
     );
@@ -1207,7 +1247,10 @@ describe("the top bar", () => {
     cleanup();
     boot("#/");
     await screen.findByRole("button", { name: "Account menu" });
-    expect(screen.queryByText(/signed in with break-glass/)).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: "Emergency sign-in" }),
+    ).toBeNull();
+    expect(document.querySelector("[data-emergency]")).toBeNull();
   });
 
   it("omits the session end when the worker does not send it", async () => {

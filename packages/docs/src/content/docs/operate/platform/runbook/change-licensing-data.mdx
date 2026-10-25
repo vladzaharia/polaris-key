@@ -1,6 +1,6 @@
 ---
 title: "Change licensing data"
-description: "Run the license override migration, the offline grace clamp report and the licensing model expand."
+description: "Run the offline grace clamp report and the licensing model expand."
 type: "runbook"
 lastReviewed: "2026-10-16"
 sidebar:
@@ -15,21 +15,17 @@ import RunbookSection from "../../../../../components/docs/RunbookSection.astro"
 
 Use this when a release carries one of these changes and production data has to move with it.
 
-<RunbookSection file="RUNBOOK" heading="License override migration" />
-
 <RunbookSection file="RUNBOOK" heading="Offline grace clamp" />
 
 <RunbookSection file="RUNBOOK" heading="Licensing model expand" />
 
 ## Verify
 
-- Override migration: run the dry run first, in the console (**Platform**, **Override migration**, **Dry run**) or offline. After the run, each license it touched has a `license.overrides.migrated` or `license.overrides.dropped` audit row, and the report lists every dropped or lost value.
 - Grace clamp: read the affected-license report before the release that turns the clamp on.
 - Model expand: reads move over the following releases; check the drift report the section names before any later step.
 
 ## Roll back
 
-- Override migration: before the run nothing changed. Between the run and 90 days later a Worker built before the migration delivers the old values again. Do not roll back once the columns are emptied.
 - Model expand: after rolling the Worker back, run the down script `0105_licensing.down.sql` once, from the owner's session. It is idempotent.
 - Grace clamp: a product can opt out in **License**, **Settings**, **Clamp offline grace to expiry**, with a reason.
 

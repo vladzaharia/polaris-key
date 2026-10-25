@@ -25,6 +25,7 @@ import {
   formatRelative,
   fromSeconds,
 } from "../../../../lib/format.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 import { actorName, type SeatLimit } from "./shared.js";
 
 const ORIGIN_TITLES = {
@@ -46,7 +47,7 @@ function Fact({
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-3 text-sm">
       <dt className="shrink-0 text-fg-muted">{label}</dt>
-      <dd className="min-w-0 break-words text-right text-fg-strong">
+      <dd className="min-w-0 break-words text-end text-fg-strong">
         {children}
         {sub ? (
           <span className="mt-0.5 block text-xs text-fg-muted">{sub}</span>
@@ -112,12 +113,14 @@ export function DurationCard({
           </strong>
         </div>
         {end !== null ? (
-          <p
-            className="text-xs text-fg-muted"
-            style={{ paddingInlineStart: `min(${pct}%, calc(100% - 9rem))` }}
-          >
-            {expired ? "Expired" : `Today · ${formatDate(now)}`}
-          </p>
+          <div className="relative h-4">
+            <p
+              className="absolute top-0 whitespace-nowrap text-xs text-fg-muted"
+              style={{ insetInlineStart: `min(${pct}%, calc(100% - 9rem))` }}
+            >
+              {expired ? "Expired" : `Today · ${formatDate(now)}`}
+            </p>
+          </div>
         ) : null}
       </div>
     </Section>
@@ -171,7 +174,7 @@ export function OriginCard({
   return (
     <Section
       id="origin"
-      title={license.origin ? ORIGIN_TITLES[license.origin] : "Origin"}
+      title="Origin"
       variant="settings"
       actions={
         <Button asChild variant="link" size="sm">
@@ -183,6 +186,9 @@ export function OriginCard({
       }
     >
       <dl className="divide-y divide-border">
+        {license.origin ? (
+          <Fact label="Method">{ORIGIN_TITLES[license.origin]}</Fact>
+        ) : null}
         <Fact label="Created">{created}</Fact>
       </dl>
     </Section>
@@ -194,33 +200,56 @@ export function OriginCard({
 /** Waiting: the invitation went to an email that has not signed in yet. */
 export function InvitationCard({
   email,
+  invitedAt,
+  canInvite,
   onChangeEmail,
 }: {
   email: string;
+  /** When the last invitation email went out (LX-27c); null when none did. */
+  invitedAt: number | null;
+  /** The product can invite (Identity and auto-link on): the card says what was sent. */
+  canInvite: boolean;
   onChangeEmail: () => void;
 }): React.ReactElement {
+  // Where invitations don't work the card is as before. Where they do, it says what went out;
+  // there is no "opened" state: nothing tracks opens (privacy).
+  const sent = canInvite && invitedAt !== null;
   return (
     <Section
       id="invitation"
       title="Invitation"
       variant="settings"
       actions={
-        <Button variant="outline" size="sm" onClick={onChangeEmail}>
-          Change email…
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={onChangeEmail}>
+            Change email…
+          </Button>
+        </div>
       }
     >
       <dl className="divide-y divide-border">
-        <Fact label="Sent to" sub="Waiting for sign-in">
+        <Fact
+          label={canInvite ? "Address" : "Sent to"}
+          sub="Waiting for sign-in"
+        >
           {email}
         </Fact>
+        {canInvite ? (
+          <Fact label="Invitation">
+            {invitedAt !== null
+              ? `Sent ${formatDate(fromSeconds(invitedAt))}`
+              : "Not sent"}
+          </Fact>
+        ) : null}
       </dl>
     </Section>
   );
 }
 
 function deviceLine(d: DeviceDto): string {
-  return [d.platform, d.appVersion].filter(Boolean).join(" · ");
+  return [d.platform ? platformName(d.platform) : "", d.appVersion]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** Floating: no holder, so the key itself activates devices. */
@@ -323,7 +352,7 @@ export function DevicesCard({
                   </span>
                 ) : null}
               </span>
-              <span className="shrink-0 text-right text-xs text-fg-muted">
+              <span className="shrink-0 text-end text-xs text-fg-muted">
                 {formatRelative(fromSeconds(d.lastSeen))}
                 <span
                   className="block"

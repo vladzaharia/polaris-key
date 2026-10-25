@@ -1,0 +1,6 @@
+outlets:
+  # Homebrew
+  homebrew:
+    kind: direct
+    # Homebrew formula name.
+    homebrewFormula: dice

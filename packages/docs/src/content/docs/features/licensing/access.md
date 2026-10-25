@@ -59,11 +59,11 @@ A sign-in can merge an anonymously enrolled license into an identity. The only c
 Only a license with `origin = enroll` and no subject is claimable. Any other license the device holds is left alone.
 
 - **Claim.** The identity is new, so it attaches to the same row: subject, name and email are written, the tier and expiry follow the group mapping, `origin` becomes `oidc` and the key is kept. Devices and local state survive. The result carries `merged: "claimed"`.
-- **Migrate.** The identity already has a license. The enrolled row's devices move onto it, each taking a free seat, and the migrate is refused when they don't fit. Store purchases follow. The enrolled row is disabled and keeps its key. It is one batch: everything moves or nothing does. The result carries `merged: "migrated"`.
+- **Migrate.** The identity already has a license. The enrolled row's devices move onto it, each taking room for another device, and the migrate is refused when they don't fit. Store purchases follow. The enrolled row is disabled and keeps its key. It is one batch: everything moves or nothing does. The result carries `merged: "migrated"`.
 
 The retired row keeps its key because the unique index is the only guard on one free license per device.
 
-An enrolled license is an ordinary license. Seat limits, fingerprint drift, re-licensing and the build gate apply to it unchanged.
+An enrolled license is an ordinary license. Device limits, fingerprint drift, re-licensing and the build gate apply to it unchanged.
 
 ## The policy and who owns it
 
@@ -83,7 +83,7 @@ The fallbacks differ on purpose: a malformed fingerprint policy must never take 
 
 The two policies are the settings `license.fingerprint` and `license.autoIssue`, at `/manage/api/products/<slug>/settings/<key>` (`GET`, `PATCH` with the whole policy as `value`, and `DELETE` to revert). A rejected `PATCH` is `422` with every failing member in `fields`, and it writes nothing. Probes are validated by running the runtime parser: a probe it would drop, such as one with no `id`, is refused. Enabling access policy against a tier that doesn't exist is refused. `pkey validate` reports the same rules as manifest codes; see [Validation codes](/docs/reference/validation-codes/).
 
-To clear a false-positive drift lockout without costing the user a seat, reset the device's fingerprint with the endpoint below (a `POST`). It clears the binding and leaves the device authorized.
+To clear a false-positive drift lockout without using up a device, reset the device's fingerprint with the endpoint below (a `POST`). It clears the binding and leaves the device authorized.
 
 ```text title="Admin endpoint"
 /manage/api/products/<slug>/license/licenses/<id>/devices/<deviceId>/fingerprint/reset
@@ -91,6 +91,6 @@ To clear a false-positive drift lockout without costing the user a seat, reset t
 
 ## Next steps
 
-- [The license model](/docs/features/licensing/model/): origins and seat pools.
+- [The license model](/docs/features/licensing/model/): origins and device pools.
 - [Fingerprints](/docs/features/licensing/fingerprints/): modes and tolerances.
 - [Manage licenses](/docs/features/licensing/manage-licenses/): the console side.

@@ -1,0 +1,203 @@
+---
+title: "Electron"
+description: "The desktop kit for Electron: two lines wire the bridge, the React kit draws the macOS, Windows or GNOME chrome in the renderer, and the app menu, notifications and update progress come from the main process."
+type: "reference"
+lastReviewed: "2026-10-23"
+sidebar:
+  order: 4
+lanes: ["kit"]
+---
+
+import ChromeBaselines from "../../../../../components/ui/ChromeBaselines.astro";
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+import StatesToHandle from "../../../../../components/docs/StatesToHandle.astro";
+
+The Electron kit is the [React kit](/docs/build/ui/frameworks/react/) in the renderer over a bridge the main process exposes. The main process owns the client, the token and the network; the window holds no credential. The kit draws the macOS, Windows or GNOME chrome of the OS it runs on, follows the system accent, high contrast and reduced transparency, and reaches the app menu, OS notifications and the updater.
+
+<KitFacts kit="electron" />
+
+There are two paths. The drop-in kit is this page. To draw your own screens over the same bridge, read [Your own UI](/docs/build/sdks/node/your-own-ui/).
+
+## Install
+
+The main process and preload use `@polaris-key/node`, the renderer `@polaris-key/react`. Both come from Polaris Key's npm feed ([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)), with the config `pkey sdk --lang node --write` generates ([Node quickstart](/docs/build/quickstart/node/)).
+
+```sh
+# .npmrc: @polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/
+pnpm add @polaris-key/node @polaris-key/react
+```
+
+The renderer imports `@polaris-key/react/styles.css` and `@polaris-key/react/fonts.css`. Under the native preset the kit draws in the platform's own face, so the fonts are the fallback.
+
+## The one-line flow
+
+Two lines wire it, one in main and one in the preload. The renderer wraps the app in the gate.
+
+```ts title="main.ts"
+import { app, ipcMain, safeStorage } from "electron";
+import { PolarisKeyClient } from "@polaris-key/node";
+import {
+  exposePolarisBridge,
+  SafeStorageStore,
+} from "@polaris-key/node/electron";
+import { polarisConfig } from "./polaris.config.js";
+
+// A CommonJS main has no top-level await.
+void app.whenReady().then(async () => {
+  const client = await PolarisKeyClient.create({
+    ...polarisConfig,
+    store: new SafeStorageStore(
+      polarisConfig.productSlug,
+      app.getPath("userData"),
+      { safeStorage },
+    ),
+  });
+  exposePolarisBridge(client, { ipcMain, appOrigin: "app://main" });
+});
+```
+
+```ts title="preload.ts"
+// Bundle the preload: a sandboxed preload loads no ES modules from node_modules.
+import "@polaris-key/node/electron/preload";
+```
+
+```tsx title="renderer.tsx"
+import { PolarisKeyProvider } from "@polaris-key/react";
+import { PolarisKeyGate } from "@polaris-key/react/kit";
+import { polarisKey as productPolarisKey } from "./polaris.config";
+
+const polarisKey = {
+  ...productPolarisKey,
+  mode: "desktop" as const,
+  version: "1.4.2", // your app's version
+};
+
+export function App() {
+  return (
+    <PolarisKeyProvider config={polarisKey}>
+      <PolarisKeyGate theme={{ platform: "auto" }}>
+        <YourApp />
+      </PolarisKeyGate>
+    </PolarisKeyProvider>
+  );
+}
+```
+
+The gate, its screens and the license flow are the React kit's: see [The one-line flow](/docs/build/ui/frameworks/react/#the-one-line-flow). It shows no sign-in while a cached session is checked.
+
+### Sender and origin
+
+The bridge answers the top frame of the app's own origin and nothing else, so an iframe, a navigated-away window or remote content cannot drive it. `appOrigin` pins that origin:
+
+- A custom scheme such as `app://main` is pinned by scheme and host, because its origin is opaque.
+- A remote `https:` page is pinned by its origin.
+- A `file:` pin is refused at startup: every `file:` URL shares one origin. Serve the app from a custom scheme.
+
+To decide per sender yourself, pass `allowSender`; it replaces the default. The window should also keep `contextIsolation` and `sandbox` on, and refuse popups and navigation away from the app.
+
+## Menu
+
+`exposePolarisBridge` returns a handle. `menuItems()` gives the two items for the app menu as plain objects that Electron's menu template accepts: **Check for updates** and **Manage license**. Their words come from the kit copy; on macOS they use title case with an ellipsis. A click calls `open(view)` on the handle, which asks the window to show Settings or the update check.
+
+```ts title="menu.ts"
+import { Menu, app } from "electron";
+import type { PolarisBridgeHandle } from "@polaris-key/node/electron";
+
+export function setMenu(bridge: PolarisBridgeHandle) {
+  const items = bridge.menuItems();
+  const mac = process.platform === "darwin";
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      ...(mac
+        ? [{ label: app.name, submenu: [{ role: "about" as const }, ...items] }]
+        : []),
+      { role: "editMenu" },
+      { role: "help", submenu: mac ? [] : items },
+    ]),
+  );
+}
+```
+
+Place the items in the app menu on macOS and the Help menu elsewhere. `<PolarisKeyGate>` listens for the request. Settings opened from the menu has a **Done** button and an Account group, and Done returns to your app. `open("settings")` and `open("update")` work from your own code too.
+
+## Notifications
+
+Notifications are off until you pass `notifications`. There are two events, each shown only while the app is unfocused: an update is ready, and a sign-in finished. The text is a fixed sentence from the kit copy and never carries a key, code or email.
+
+```ts title="notify.ts"
+import { BrowserWindow, Notification } from "electron";
+import type { BridgeNotifications } from "@polaris-key/node/electron";
+
+export function notifications(win: BrowserWindow): BridgeNotifications {
+  return {
+    Notification,
+    isAppFocused: () => win.isFocused(),
+    onClick: () => win.show(),
+  };
+}
+```
+
+## Updater progress
+
+The Update prompt installs through the update driver you set on the client. In Electron that is `electronUpdaterDriver` from `@polaris-key/node/update/drivers/electron-updater`. While it installs, the main process pushes progress to the window that started it and to no other. The bar is determinate when the driver knows the size and indeterminate otherwise; the kit invents no percentage. On macOS the primary action reads **Install and Relaunch**.
+
+## Chrome and sizes
+
+`theme.platform: "auto"` picks the chrome from the host facts the bridge reports: the OS, its accent, high contrast and reduced transparency. Pass `electron: { systemPreferences, nativeTheme }` to `exposePolarisBridge` to supply them; without it the host reports the OS only. Linux draws the GNOME chrome. To force a chrome, give the theme `"macos"`, `"windows"` or `"linux"`.
+
+| Chrome  | Look               |
+| ------- | ------------------ |
+| macOS   | The Mac sheet      |
+| Windows | Fluent             |
+| GNOME   | libadwaita dialogs |
+
+Under forced colors the kit draws in the system's colors. Reduced transparency hides the blurred product icon and makes sheets and scrims opaque. The kit adapts from a 390 px window to 1440 px and beyond, and still works at 200 % zoom. Controls are 24 px with spacing under a fine pointer and 44 px under a coarse one.
+
+Mica and other window materials belong to the window, and the kit creates none. Set them on your own window.
+
+The kit's baselines for the Settings screen in each chrome, at 1440 px:
+
+<ChromeBaselines state="Settings.list" component="Settings" />
+
+The same renders for Welcome and the update prompt, and the forced-colors variants, are in `packages/sdk-react/test/visual/chrome-themes/`. The component pages show each state under [Baselines](/docs/build/ui/components/).
+
+## Your own UI over the bridge
+
+The bridge is the same without the kit. The renderer talks to `window.polarisKey` through `@polaris-key/react`'s hooks, or to the client's calls in main, and draws its own screens. [Your own UI](/docs/build/sdks/node/your-own-ui/) gives each call. Whatever the screens, the app has to handle these gate states; the sample pins each with `TIDEWATER_STATE`.
+
+<StatesToHandle
+  states={[
+    { state: "Offline grace", copyKey: "gate.grace" },
+    { state: "License expired", copyKey: "gate.expired" },
+    { state: "License revoked", copyKey: "gate.revoked" },
+    { state: "Activate", copyKey: "gate.needs-activation" },
+    { state: "Update required", copyKey: "gate.version-too-old" },
+    { state: "Build not on this license", copyKey: "gate.version-too-new" },
+    { state: "Channel not included", copyKey: "gate.channel-not-entitled" },
+  ]}
+/>
+
+`examples/node-electron/` is this path in code.
+
+## Piecemeal and headless
+
+Every catalog component is a React component on `@polaris-key/react/kit`, and the models are `viewOf` and `SignInModel`, as on the [React kit](/docs/build/ui/frameworks/react/#piecemeal). Inside the renderer they use the same bridge.
+
+## Theming
+
+The theme is the React kit's: wrap parts in `<PolarisKeyTheme theme={…}>` or pass the gate a `theme`. The fields are on [Theming](/docs/build/ui/theming/).
+
+## Localization
+
+The kit loads its generated copy for the OS locale. `copy` overrides take the same keys as on [Localization](/docs/build/ui/localization/#overriding-copy). The menu labels and notification text follow the `locale` you pass to `menuItems` and `notifications`.
+
+## Baselines
+
+<KitCoverage kit="react" />
+
+## Sample
+
+`examples/ui/electron/` is Tidewater Studio in Electron Forge with Vite. It runs against fixtures with no Worker, or against yours with `npm run live`. The README lists the keys and `TIDEWATER_STATE` values that pin each gate state. For your own UI on the same bridge see `examples/node-electron/`.
+
+The sample runs in a real Electron window in the end-to-end harness: `pnpm --filter @polaris-key/node test:electron`.

@@ -40,6 +40,8 @@ toasts.
   a **Page moved** state with the new destination; the console does not silently redirect the
   bookmark.
 - Page changes reset the content scroll, focus the page `h1`, and announce that the page loaded.
+  The hash store, redirects, blockers and View Transitions live in `lib/router-core.ts`, shared with
+  the portal; focus and the announcement are `ui/focusRoute.ts`. Each app keeps its own route table.
   Filtering through a query parameter does not remount the page or move focus.
 - Product sections are shown only for enabled services. A deep link to an unavailable service
   names the problem and links to Services rather than rendering a failing page.
@@ -98,6 +100,7 @@ the table.
 | `devices`                     | `#/p/<slug>/devices`                         | Core → Devices (`#/p/<slug>/devices`)                                      | live             |
 | `users`                       | `#/p/<slug>/users`                           | Core → Users (`#/p/<slug>/users`)                                          | live             |
 | `presentation`                | `#/p/<slug>/settings/presentation`           | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | live             |
+| `presentation-listing`        | `#/p/<slug>/settings/presentation/listing`   | Core → Listing (`#/p/<slug>/settings/presentation/listing`)                | live             |
 | `keys`                        | `#/p/<slug>/settings/keys`                   | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | live             |
 | `activity`                    | `#/p/<slug>/activity`                        | Core → Activity (`#/p/<slug>/activity`)                                    | live             |
 | `settings`                    | `#/p/<slug>/settings`                        | Core → Settings (`#/p/<slug>/settings`)                                    | live             |
@@ -121,10 +124,10 @@ the table.
 | `rollouts`                    | `#/p/<slug>/distribution/rollouts`           | Distribution → Rollouts (`#/p/<slug>/distribution/rollouts`)               | live             |
 | `outlets`                     | `#/p/<slug>/distribution/outlets`            | Distribution → Channel setup (`#/p/<slug>/distribution/outlets`)           | live             |
 | `storefronts`                 | `#/p/<slug>/distribution/storefronts`        | Distribution → Storefronts (`#/p/<slug>/distribution/storefronts`)         | live             |
-| `listing`                     | `#/p/<slug>/distribution/listing`            | Distribution → Listing (`#/p/<slug>/distribution/listing`)                 | live             |
+| `listing`                     | `#/p/<slug>/distribution/listing`            | Core → Listing (`#/p/<slug>/settings/presentation/listing`)                | moved (A-27)     |
 | `app-store`                   | `#/p/<slug>/distribution/app-store`          | Distribution → App Store (`#/p/<slug>/distribution/app-store`)             | live             |
 | `access`                      | `#/p/<slug>/distribution/access`             | Distribution → Access (`#/p/<slug>/distribution/access`)                   | live             |
-| `package-feeds`               | `#/p/<slug>/distribution/feeds`              | Distribution → Package feeds (`#/p/<slug>/distribution/feeds`)             | live             |
+| `package-feeds`               | `#/p/<slug>/distribution/feeds`              | Distribution → Packages (`#/p/<slug>/distribution/feeds`)                  | live             |
 | `health`                      | `#/p/<slug>/distribution/health`             | Distribution → Health (`#/p/<slug>/distribution/health`)                   | live             |
 | `credentials`                 | `#/p/<slug>/distribution/credentials`        | Distribution → Channel credentials (`#/p/<slug>/distribution/credentials`) | live             |
 | `feed`                        | `#/p/<slug>/update/feed`                     | Update → Feed (`#/p/<slug>/update/feed`)                                   | live             |
@@ -139,6 +142,7 @@ the table.
 | `platform-stores`             | `#/platform/store-connections`               | Store connections (`#/platform/store-connections`)                         | live             |
 | `platform-feeds`              | `#/platform/feeds`                           | Package feeds (`#/platform/feeds`)                                         | live             |
 | `platform-activity`           | `#/platform/activity`                        | Activity (`#/platform/activity`)                                           | live             |
+| `platform-members`            | `#/platform/members`                         | Members (`#/platform/members`)                                             | live             |
 | `platform-override-migration` | `#/platform/override-migration`              | deleted (U-27)                                                             | deleted (U-27)   |
 | `home`                        | `#`                                          | Home (`#`)                                                                 | live             |
 | `products`                    | `#/products`                                 | Home (`#`)                                                                 | moved (ST-44)    |
@@ -192,8 +196,8 @@ licences, newest release, storefronts, users per product) are dropped, not plann
 | Package feeds     | `#/platform/feeds`             |
 
 **New product** is `#/products/new` and is reached from the switcher rather than the
-sidebar. Override migration (`#/platform/override-migration`) remains addressable but is not in
-navigation or the palette.
+sidebar. Override migration (`#/platform/override-migration`) was deleted (U-27) and no longer
+addresses a page.
 
 ### Product context
 
@@ -259,7 +263,7 @@ another product.
 The console uses TanStack Query. Successful reads are fresh for 30 seconds, refetch on window focus,
 and do not retry silently. Failed reads surface an error and an explicit retry.
 
-Every API write goes through `console/data/mutations.ts`. That mutation table declares the query
+Every read is a `queryOptions` factory in a data module (`console/data/reads.ts` or a section's `data.ts`), with its key in `console/data/queries.ts`; `test/queryFactories.test.ts` rejects a `queryFn` or bare `api.*` read elsewhere. All requests go through the one HTTP client in `lib/http.ts` (the only `fetch`, and the only error class, `HttpError`). Every API write goes through `console/data/mutations.ts`, built on the shared write engine `lib/writes.ts`. That mutation table declares the query
 keys made stale after the server confirms the write; tests reject direct write calls and missing
 invalidation declarations. This includes product creation, repository linking and resync, service
 changes, release and rollout operations, credentials and secrets, licensing, managed configuration,

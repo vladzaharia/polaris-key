@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
+import { missingPaths, missingPnpmScripts } from "./repo-names.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (...path: string[]) => readFileSync(join(ROOT, ...path), "utf8");
@@ -147,10 +148,14 @@ const MOVE_ROWS: readonly MoveRow[] = [
     ],
   },
   {
+    rule: "scoped gate command",
+    marker: "pnpm gate",
+    destinations: [{ file: "AGENTS.md", section: "Testing" }],
+  },
+  {
     rule: "scoped lead gate",
     marker: "$PKEY_LEAD/gate.sh",
     destinations: [
-      { file: "AGENTS.md", section: "Testing" },
       {
         file: ".claude/skills/running-the-omniplatform-program/SKILL.md",
         section: "Integrating and closing agents",
@@ -214,7 +219,8 @@ const ROLE_MODELS = {
 const tracked = execFileSync(
   "git",
   ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-  { cwd: ROOT },
+  // The file list passed the 1 MiB default (1.05 MB at 16.5k files); lift it, not the repo.
+  { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 },
 )
   .toString()
   .split("\0")
@@ -317,7 +323,10 @@ describe("instruction-file hygiene", () => {
       file === "AGENTS.md" ||
       file === "CLAUDE.md" ||
       /^\.claude\/agents\/[^/]+\.md$/.test(file) ||
-      /^\.claude\/skills\/.+/.test(file),
+      // The kit's skills are linked from .claude/skills (AX-07.3): read them where they live.
+      (/^\.claude\/skills\/.+/.test(file) &&
+        !lstatSync(join(ROOT, file)).isSymbolicLink()) ||
+      /^packages\/agent-kit\/skills\/.+/.test(file),
   );
 
   it("does not put machine paths in tracked instructions", () => {
@@ -358,5 +367,177 @@ describe("role agents", () => {
     for (const file of agentFiles) {
       expect(read(file), file).not.toMatch(countedRules);
     }
+  });
+});
+
+const NESTED_DIRS = [
+  "packages/worker",
+  "packages/docs",
+  "conformance",
+  "sdks/godot",
+] as const;
+
+const INSTRUCTION_ROOTS = [".", ...NESTED_DIRS] as const;
+
+describe("nested instruction files", () => {
+  for (const dir of NESTED_DIRS) {
+    it(`${dir}/AGENTS.md is short and links its README`, () => {
+      const lines = read(dir, "AGENTS.md").trimEnd().split(/\r?\n/);
+      expect(lines.length, `${dir}/AGENTS.md`).toBeLessThan(40);
+      expect(read(dir, "AGENTS.md")).toMatch(/\]\(README\.md\)/);
+      expect(existsSync(join(ROOT, dir, "README.md"))).toBe(true);
+    });
+
+    it(`${dir}/CLAUDE.md only imports AGENTS.md`, () => {
+      expect(read(dir, "CLAUDE.md")).toBe("@AGENTS.md\n");
+    });
+
+    it(`${dir} instruction files carry no machine paths`, () => {
+      for (const file of ["AGENTS.md", "CLAUDE.md"]) {
+        expect(read(dir, file), `${dir}/${file}`).not.toMatch(/\/Users\/|~\//);
+      }
+    });
+  }
+
+  it("does not hardcode a hard-rule count", () => {
+    const countedRules = /\beleven\b|\b\d+\s+hard rules\b/i;
+    for (const dir of INSTRUCTION_ROOTS) {
+      expect(read(dir, "AGENTS.md"), dir).not.toMatch(countedRules);
+    }
+  });
+});
+
+// The root cites some paths relative to the directory it is describing.
+const PATH_BASES = [
+  ".",
+  "packages/worker",
+  "packages/docs",
+  "conformance",
+  "conformance/corpus/v2",
+  "conformance/corpus/v2/content",
+  "conformance/corpus/v2/content/blobs",
+  "packages/worker/src",
+  "packages/worker/src/core",
+  "packages/docs/scripts",
+  "packages/docs/src/content/docs",
+] as const;
+
+// Names the root cites on purpose although they are not in the tree: moved or retired
+// files, dead naming, unreleased paths and the deployed host.
+const INTENTIONALLY_ABSENT = new Set([
+  ".opencode",
+  ".polaris",
+  "key.plrs.im/docs",
+]);
+
+describe("names cited by AGENTS.md exist", () => {
+  for (const dir of INSTRUCTION_ROOTS) {
+    const file = join(dir, "AGENTS.md");
+    const text = read(file);
+    // The repo map quotes each README's own words, relative to that README; its links are built
+    // from directories that exist.
+    const cited = text.replace(
+      /<!-- repo-map:start[\s\S]*?<!-- repo-map:end -->/,
+      "",
+    );
+    const spans = [...cited.matchAll(/`([^`\n]+)`/g)].map(
+      (m) => m[1] as string,
+    );
+
+    it(`${file}: every backticked repo path resolves`, () => {
+      const missing = missingPaths(spans, {
+        dir,
+        bases: PATH_BASES,
+        absent: INTENTIONALLY_ABSENT,
+      });
+      expect(missing, `${file} cites paths that do not exist`).toEqual([]);
+    });
+
+    it(`${file}: every pnpm script exists`, () => {
+      const bad = missingPnpmScripts(spans, dir);
+      expect(bad, `${file} cites pnpm commands that do not exist`).toEqual([]);
+    });
+
+    it(`${file}: every skill a table row names exists`, () => {
+      const skills = new Set(
+        execFileSync("ls", [join(ROOT, ".claude/skills")])
+          .toString()
+          .split("\n")
+          .filter(Boolean),
+      );
+      const bad: string[] = [];
+      for (const line of text.split(/\r?\n/)) {
+        if (!line.startsWith("|") || !/skill/i.test(line)) continue;
+        for (const m of line.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)) {
+          const name = m[1] as string;
+          if (!skills.has(name) && !existsSync(join(ROOT, dir, name))) {
+            bad.push(name);
+          }
+        }
+      }
+      expect(bad).toEqual([]);
+    });
+  }
+});
+
+/** D-R6: the root stays under 24 KB, generated blocks included. */
+export const AGENTS_MD_CAP = 24_576;
+
+describe("the root AGENTS.md shape", () => {
+  const text = read("AGENTS.md");
+
+  it(`is at most ${AGENTS_MD_CAP} bytes`, () => {
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(AGENTS_MD_CAP);
+  });
+
+  it("anchors the hard rules as rule-1 … rule-N, in order", () => {
+    const ids = [...text.matchAll(/<a id="rule-(\d+)"><\/a>\*\*(\d+)\. /g)];
+    expect(ids.length).toBeGreaterThan(0);
+    ids.forEach((m, i) => {
+      expect(m[1], m[0]).toBe(String(i + 1));
+      expect(m[2], m[0]).toBe(String(i + 1));
+    });
+    // Every "rule N" link resolves to an anchor.
+    for (const m of text.matchAll(/\]\(#rule-(\d+)\)/g))
+      expect(Number(m[1])).toBeLessThanOrEqual(ids.length);
+  });
+
+  it("routes tasks: every row names a task, an existing skill or —, files and a check", () => {
+    const rows = section(text, "Task router")
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith("|"))
+      .slice(2)
+      .map((l) =>
+        l
+          .slice(1, -1)
+          .split("|")
+          .map((c) => c.trim()),
+      );
+    expect(rows.length).toBeGreaterThanOrEqual(10);
+    for (const [task, skill, files, check] of rows) {
+      expect(task, "task").toBeTruthy();
+      expect(files, `${task}: files`).toBeTruthy();
+      expect(check, `${task}: check`).toBeTruthy();
+      if (skill === "—") continue;
+      const name = /^`([a-z0-9-]+)`$/.exec(skill ?? "")?.[1];
+      expect(name, `${task}: skill cell ${skill}`).toBeTruthy();
+      expect(
+        existsSync(join(ROOT, ".claude/skills", name as string, "SKILL.md")),
+        `${task}: skill ${name}`,
+      ).toBe(true);
+    }
+  });
+
+  it("has no typed repo tree (the repo map is generated)", () => {
+    expect(text).not.toMatch(/^```\r?\npackages\//m);
+  });
+
+  it("has no tool-specific copies: those tools read AGENTS.md", () => {
+    const copies = tracked.filter((file) =>
+      /^(\.cursor\/|\.cursorrules$|\.windsurfrules$|\.github\/copilot-instructions\.md$)/.test(
+        file,
+      ),
+    );
+    expect(copies).toEqual([]);
   });
 });

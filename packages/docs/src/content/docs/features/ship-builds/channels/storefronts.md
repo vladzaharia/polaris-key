@@ -7,7 +7,7 @@ sidebar:
   order: 15
 ---
 
-**Ship builds → Storefronts** shows every storefront Polaris Key has an adapter for, and
+**Ship builds → Storefronts** shows every storefront Polaris Key has an adapter for and that fits the product, and
 **Add to storefronts** provisions the product onto any of them in one flow. Both are for platform
 admins.
 
@@ -15,6 +15,10 @@ Each store's tile and each step is drawn from what the store's adapter declares:
 Polaris Key performs through the store's API, which the release workflow performs in CI, which a
 pull request covers, and which you do yourself from a link. The console has no store-specific
 code, so a store added to the Worker appears here once its adapter is registered.
+
+## Scope
+
+Storefronts lists the stores that fit the product. A Windows-only product shows no Apple store, and a declared store that does not fit stays listed with an **Out of scope** pill. The page opens with a line such as "Stores for Windows". A product with no platform facts yet shows every store. How scope is decided: [Which channels a product sees](/docs/features/ship-builds/channels/#which-channels-a-product-sees).
 
 ## The tiles
 
@@ -95,10 +99,27 @@ step names it and links to it.
 A link step stays done once it is done: a later check replays the recorded result, even if the
 object was removed on the store since.
 
+## Other store tools in CI
+
+`pkey storefront exec` runs any other allow-listed command, with its arguments after `--`, and
+reports it the same way (`pkey storefront allow-list` prints every list):
+
+```sh title="Terminal"
+node pkey.mjs storefront exec steam run-app-build --op uploadBuild -- \
+  +login "$STEAM_BUILDER" +run_app_build build/app_480.vdf +quit
+node pkey.mjs storefront exec msstore publish --op uploadBuild -- \
+  publish build/Dice.msixupload --appId 9NBLGGH4R315
+```
+
+A Steam build script may set a build live only on a named branch, never `default` or `public`.
+`msstore publish` is refused while the console has a Microsoft Store draft staged for the product.
+Epic's `BuildPatchTool` may only `-mode=UploadBinary`, with its secret passed by
+`-ClientSecretEnvVar`.
+
 ## The slot board
 
 Every image slot of the listing, grouped by store, from what
-[`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) registered:
+[`pkey listing assets`](/docs/features/ship-builds/channels/polaris-key/#listing-assets) registered:
 
 - **Masters** a person makes (icon master, key art, wordmark, screenshots). A missing one is marked
   **Needed** with the store's exact specification, such as "1024×1024 PNG" or "16:9, at least
@@ -110,7 +131,7 @@ Every image slot of the listing, grouped by store, from what
 
 ## Listing push
 
-**Ship builds → Listing → Push** sends a store its listing text and accepted images, outside the
+**Settings → Presentation → Listing → Push** sends a store its listing text and accepted images, outside the
 flow, with a plain confirmation. It never submits for review: Google Play always stages the change
 (it waits until you send it with the flow's typed **Submit**), and the Microsoft Store keeps its
 pending submission uncommitted. A store appears there once its adapter can push a listing.

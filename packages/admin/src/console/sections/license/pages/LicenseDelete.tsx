@@ -16,8 +16,7 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  api,
-  ApiError,
+  HttpError,
   type LicenseBulkDeleteResult,
   type LicenseCleanupCandidate,
   type LicenseDeletion,
@@ -25,6 +24,7 @@ import {
   type LicenseSummary,
 } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
+import { licenseCleanupQuery } from "../data.js";
 import { qk } from "../../../data/queries.js";
 import { r } from "../../../routes.js";
 import { navigate } from "../../../router.js";
@@ -112,14 +112,14 @@ function assertAllDeleted(res: LicenseBulkDeleteResult, n: number): void {
   );
 }
 
-/** Whether a summary may be deleted (an older Worker that sends no verdict: let it decide). */
+/** Whether a summary may be deleted, by the Worker's verdict. */
 export function deletable(l: Pick<LicenseSummary, "deletion">): boolean {
-  return l.deletion?.allowed ?? true;
+  return l.deletion.allowed;
 }
 
 /** The Worker's refusal names every reason; anything else gets the console's usual copy. */
 function describeDelete(e: unknown): { title: string; description?: string } {
-  if (e instanceof ApiError && e.code === "license_not_deletable")
+  if (e instanceof HttpError && e.code === "license_not_deletable")
     return { title: "This license can't be deleted", description: e.message };
   return errorCopy(e, { thing: "License" });
 }
@@ -258,11 +258,7 @@ export function BulkDeleteDialog({
 // ── the cleanup helper ───────────────────────────────────────────────────────────────────────
 
 export function useLicenseCleanup(slug: string, enabled: boolean) {
-  return useQuery({
-    queryKey: qk.licenseCleanup(slug),
-    queryFn: () => api.licenseCleanupCandidates(slug),
-    enabled,
-  });
+  return useQuery({ ...licenseCleanupQuery(slug), enabled });
 }
 
 /**
@@ -356,7 +352,7 @@ function CandidateList({
       <p className="text-fg">{heading}</p>
       <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-md border border-border bg-surface-sunken text-xs">
         {items.map((c) => (
-          <li key={c.id} className="flex items-start gap-2 px-2.5 py-2">
+          <li key={c.id} className="flex items-start gap-2 px-2 py-2">
             <StatusPill
               tone={skipped ? "neutral" : "warning"}
               icon={false}

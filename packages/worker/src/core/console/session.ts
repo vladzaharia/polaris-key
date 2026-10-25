@@ -98,6 +98,8 @@ export interface AdminSession {
    * it (`console/lib/accountSession.ts`).
    */
   breakGlass?: boolean;
+  /** An admin-scope personal token (`ptok_…`, ST-34.3): the credential this request presented. */
+  tokenId?: string;
   /** Epoch-seconds expiry. */
   exp: number;
   /**
@@ -243,6 +245,8 @@ export async function verifySession(
   // A v1 cookie names no account: stored bindings (ST-31.2) are read for a v2 session only.
   delete session.aid;
   delete session.sid;
+  // ST-34.3: a token session is built in memory by the dispatcher; a cookie body cannot name one.
+  delete session.tokenId;
   // `root` is the v2 computed rule, set per request from the account link; a v1 body cannot claim it.
   delete session.root;
   // Only the break-glass realm may claim to be one.

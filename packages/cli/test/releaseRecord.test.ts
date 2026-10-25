@@ -263,9 +263,9 @@ describe("pkey release publish — the release record", () => {
       cwd,
       env: actionsEnv({
         PKEY_CI_TOKEN: CI_TOKEN,
-        INPUT_PRODUCT: SLUG,
-        INPUT_DIR: "dist",
-        INPUT_TAG: "v0.3.0",
+        INPUT_COMMAND: "release publish",
+        INPUT_ARGS: "--dir dist --tag v0.3.0",
+        INPUT_CHANNELS: "none",
         "INPUT_BASE-URL": BASE,
         "INPUT_RELEASE-KEY": RELEASE_PEM,
       }),

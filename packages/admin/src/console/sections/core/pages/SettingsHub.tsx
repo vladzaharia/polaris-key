@@ -4,8 +4,8 @@
  * secrets, Members). Each tab is a Core page rendered under it with no header of its own.
  *
  * `#/p/<slug>/settings` (the product's own settings) is Features with its last row unfolded.
- * All settings is a link in the header, not a tab. Keys and secrets answers to the `keys` area: a
- * member without it does not see the tab (the page itself is refused by the dispatcher). The tabs
+ * All settings is a link in the header, not a tab. Keys and secrets answers to the `keys` area and Members to `members`: a
+ * member without one does not see its tab (the page itself is refused by the dispatcher). The tabs
  * are route tabs, so the area is in the URL and a phone scrolls the row inside its own region.
  */
 
@@ -17,17 +17,17 @@ import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { WriteLock } from "../../../../ui/WriteLock.js";
 import { PageTabs, type PageTab } from "../../../components/PageTabs.js";
-import {
-  useAccessAdmins,
-  useCan,
-  useWriteGate,
-} from "../../../access/useCan.js";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../../../api.js";
+import { useCan, useWriteGate } from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
+import { qk } from "../../../data/queries.js";
 import type { ProductPageId } from "../../../nav.js";
 import { Link } from "../../../router.js";
 import { useSettingTarget } from "../../../useSettingTarget.js";
 import { anchorOfKey } from "../model/settingHomes.js";
 import { productPage, r } from "../../../routes.js";
+import { coreBReads } from "../data.js";
 
 /**
  * The hub's tabs in order; All settings words its destinations with these labels. `settings`
@@ -44,6 +44,7 @@ export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
 /** The tab a hub page sits under: the product's own settings are on Features. */
 const TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
   settings: "services",
+  "presentation-listing": "presentation",
 };
 
 /**
@@ -61,10 +62,12 @@ export function SettingsHub({
 }): React.ReactElement {
   useSettingTarget(true, undefined, anchorOfKey);
   // The access is named by the tab's words, never the area's internal name ("Core").
+  // The listing is Distribution's data, so it answers to the `ship` area.
+  const listing = page === "presentation-listing";
   const gate = useWriteGate(
-    page === "keys" ? "keys" : "core",
+    page === "keys" ? "keys" : listing ? "ship" : "core",
     slug,
-    page === "keys" ? "Keys and secrets" : "Settings",
+    page === "keys" ? "Keys and secrets" : listing ? "Listing" : "Settings",
   );
   // One notice per page, on every tab that has something to edit. Features gates its own
   // switches; the other tabs lock whole.
@@ -75,18 +78,29 @@ export function SettingsHub({
     page !== "settings-members";
   const lock = viewOnly && page !== "services";
   const canKeys = useCan("keys", slug);
+  // ST-31.14: Members answers to the `members` area, as Keys and secrets does to `keys`.
+  const canMembers = useCan("members", slug);
   const product = useProduct(slug);
-  const admins = useAccessAdmins("core", slug);
+  // The tab's count is the Admins table: people and the invites waiting. The page reads the same
+  // query, so one request serves both.
+  const roster = useQuery({
+    ...coreBReads.productMembers(slug),
+    enabled: canMembers,
+  });
   const name = product.data?.name ?? slug;
   const tabs: PageTab[] = SETTINGS_AREAS.filter(
-    (a) => a.page !== "keys" || canKeys,
+    (a) =>
+      (a.page !== "keys" || canKeys) &&
+      (a.page !== "settings-members" || canMembers),
   ).map((a) => ({
     value: a.page,
     label: a.label,
     to: productPage(slug, a.page),
     count:
-      a.page === "settings-members" && admins.data?.admins
-        ? admins.data.admins.length
+      a.page === "settings-members" && roster.data
+        ? new Intl.NumberFormat("en").format(
+            roster.data.members.length + roster.data.invites.length,
+          )
         : undefined,
   }));
   return (

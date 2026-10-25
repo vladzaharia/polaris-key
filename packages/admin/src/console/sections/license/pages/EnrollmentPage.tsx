@@ -18,14 +18,14 @@ import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  api,
   type FingerprintMode,
   type FingerprintPolicyDto,
   type FingerprintProbeDto,
 } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
+import { fingerprintPolicyQuery } from "../data.js";
+import { coreBReads } from "../../core/data.js";
 import { r } from "../../../routes.js";
 import { Link } from "../../../router.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -74,12 +74,12 @@ export const MODES: {
   {
     value: "lenient",
     label: "Lenient",
-    description: "Up to 4 changed components still count as the same machine.",
+    description: "Up to 4 changed components still count as the same device.",
   },
   {
     value: "normal",
     label: "Normal",
-    description: "Up to 2 changed components still count as the same machine.",
+    description: "Up to 2 changed components still count as the same device.",
   },
   {
     value: "strict",
@@ -113,10 +113,7 @@ export function policyPatch(mode: FingerprintMode): {
 }
 
 export function EnrollmentPage({ slug }: { slug: string }): React.ReactElement {
-  const policyQ = useQuery({
-    queryKey: qk.fingerprintPolicy(slug),
-    queryFn: () => api.fingerprintPolicy(slug),
-  });
+  const policyQ = useQuery(fingerprintPolicyQuery(slug));
   return (
     <SettingsTemplate
       header={
@@ -207,10 +204,7 @@ function ProbesShell({
 }
 
 function RegistrationSection({ slug }: { slug: string }): React.ReactElement {
-  const servicesQ = useQuery({
-    queryKey: qk.services(slug),
-    queryFn: () => api.services(slug),
-  });
+  const servicesQ = useQuery(coreBReads.services(slug));
   const data = servicesQ.data;
   const label = (v: string) => REGISTRATION_LABELS[v] ?? v;
   return (
@@ -301,7 +295,7 @@ function PolicySection({
             name="mode"
             label="Mode"
             group
-            help="A tier may set its own mode. A device that still presents the machine anchor is allowed one extra changed component."
+            help="A tier may set its own mode. A device that still presents its anchor (machineUuid) is allowed one extra changed component."
           >
             {(f) => <RadioCards {...f} columns={4} options={MODES} />}
           </FormField>

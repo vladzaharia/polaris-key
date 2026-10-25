@@ -1,0 +1,23 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "experimentalDecorators": true,
+    "types": [],
+    "paths": {
+      "@polaris-key/elements": ["../../../../packages/elements/dist/index.js"],
+      "@polaris-key/elements/headless": [
+        "../../../../packages/elements/dist/headless.js"
+      ]
+    }
+  },
+  "angularCompilerOptions": { "strictTemplates": true },
+  "files": ["src/main.ts"],
+  "include": ["src/**/*.ts"]
+}

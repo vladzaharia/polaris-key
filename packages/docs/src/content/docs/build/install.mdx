@@ -3,7 +3,7 @@ title: "Install the SDKs and the CLI"
 description: "Route the Polaris Key feed for your package manager, then install the pkey CLI and your SDK."
 type: "how-to"
 sdks: ["node", "react", "python", "swift", "kotlin", "godot"]
-lastReviewed: "2026-10-11"
+lastReviewed: "2026-10-22"
 ---
 
 import Requires from "../../../components/docs/Requires.astro";
@@ -118,11 +118,28 @@ A product's own feeds prune by default. Before the first cleanup, the feeds send
 
 ### Private feeds
 
-A product's own feeds can require a token. A person with a license uses a personal token (`pkeyp_…`), created under **Account → Packages** at key.plrs.im: one token reads every feed their licenses reach. A product's own CI uses a registry token (`pkeyr_…`) from the console. Keep either in an environment variable and print the setup for any client:
+A product's own feeds are **Licensed** by default: installing needs a token, and the feed's setup page shows the token setup. A feed the developer made Public needs none. Which token you use depends on who you are:
+
+| You are                 | Token                                                                                                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A person with a license | A personal token (`pkeyp_…`) from **Account → Packages** in Polaris Locker: one token reads every feed your licenses reach. See [Install packages with a personal token](/docs/help/packages/) |
+| The product's own CI    | A service token (`pkeyci_…`, scope `packages:read`) from **Packages → Tokens** in the console; creating one needs a sign-in from the last 5 minutes                                            |
+
+On your own computer, one command signs in and sets up every package tool it finds:
+
+```sh title="Terminal"
+pkey feeds setup --write
+```
+
+It needs no token on your side: you approve pkey's request in Polaris Locker. The files and tools are listed in [Set up a machine](/docs/features/ship-builds/packages/#set-up-a-machine).
+
+In CI, store the service token as a secret, expose it as `PKEY_REGISTRY_TOKEN`, and print the setup for any client:
 
 ```sh title="Terminal"
 pkey feeds setup --ecosystem <ecosystem> --owner <slug> --token-env PKEY_REGISTRY_TOKEN
 ```
+
+A `401` means the token is missing, expired or revoked. A `403` means the token is a license-bound one and its license isn't active. Installs answer not-found while the product has package feeds turned off.
 
 The Godot editor sends no credentials. Its token goes in the feed URL, which only the console shows.
 

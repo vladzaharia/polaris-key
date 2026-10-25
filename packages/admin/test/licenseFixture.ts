@@ -19,7 +19,11 @@ import {
   type Enablement,
   type FetchLog,
 } from "./consoleHarness.js";
+import { termsOnTier } from "../src/console/sections/license/components/shared.js";
 
+// The console harness's product defaults.
+const PRODUCT_DEVICE_LIMIT = 3;
+const PRODUCT_OFFLINE_DAYS = 14;
 export const API = "/manage/api/products/djdl";
 export const NOW_S = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
@@ -31,11 +35,64 @@ export const axe: ReturnType<typeof configureAxe> = configureAxe({
   },
 });
 
+export const PRO: TierSummary = {
+  id: "pro",
+  label: "Pro",
+  profile: "base",
+  policyExpiryDays: 365,
+  policyDeviceLimit: 5,
+  channels: ["stable"],
+  minVersion: "1.0.0",
+  maxVersion: null,
+};
+export const EDU: TierSummary = {
+  id: "edu",
+  label: "Edu",
+  profile: null,
+  policyExpiryDays: 180,
+  policyDeviceLimit: 1,
+  channels: [],
+  minVersion: null,
+  maxVersion: null,
+};
+export const UNUSED: TierSummary = {
+  id: "trial",
+  label: "Trial",
+  profile: null,
+  policyExpiryDays: null,
+  policyDeviceLimit: null,
+  channels: [],
+  minVersion: null,
+  maxVersion: null,
+};
+/** The product's Default tier (LX-33.7): implicit, used when a license names no tier. */
+export const DEFAULT_TIER: TierSummary = {
+  id: "default",
+  label: "Default",
+  profile: null,
+  policyExpiryDays: null,
+  policyDeviceLimit: 5,
+  channels: [],
+  minVersion: null,
+  maxVersion: null,
+  source: "console",
+  implicit: true,
+};
+export const TIERS = [PRO, EDU, UNUSED];
+
 export function summary(
   id: string,
   over: Partial<LicenseSummary> = {},
 ): LicenseSummary {
-  return {
+  // The fields the Worker always sends: the limit it enforces, where that comes from, what
+  // "Use inherited limit" falls back to, and every term with its layer.
+  const tierId = "tier" in over ? (over.tier ?? null) : "pro";
+  const tier = tierId ? TIERS.find((t) => t.id === tierId) : undefined;
+  const inheritedDeviceLimit = tier?.policyDeviceLimit ?? PRODUCT_DEVICE_LIMIT;
+  const inheritedDeviceLimitSource =
+    tier?.policyDeviceLimit != null ? ("tier" as const) : ("product" as const);
+  const own = over.deviceLimit ?? null;
+  const base: Omit<LicenseSummary, "terms"> = {
     id,
     name: id,
     email: `${id}@example.com`,
@@ -52,7 +109,20 @@ export function summary(
     minVersion: null,
     maxVersion: null,
     identityProvider: "manual",
+    deletion: { allowed: true, reasons: [] },
+    holder: { kind: "assigned", inAccount: false, email: `${id}@example.com` },
+    effectiveDeviceLimit: own ?? inheritedDeviceLimit,
+    deviceLimitSource: own !== null ? "license" : inheritedDeviceLimitSource,
+    inheritedDeviceLimit,
+    inheritedDeviceLimitSource,
     ...over,
+  };
+  return {
+    ...base,
+    terms: termsOnTier(base, base.tier, TIERS, {
+      defaultDeviceLimit: PRODUCT_DEVICE_LIMIT,
+      defaultMaxOfflineDays: PRODUCT_OFFLINE_DAYS,
+    }),
   };
 }
 
@@ -89,38 +159,6 @@ export const LICENSES: LicenseSummary[] = [
   summary("lic_4", { name: "Chargeback Ltd", status: "disabled" }),
 ];
 
-export const PRO: TierSummary = {
-  id: "pro",
-  label: "Pro",
-  profile: "base",
-  policyExpiryDays: 365,
-  policyDeviceLimit: 5,
-  channels: ["stable"],
-  minVersion: "1.0.0",
-  maxVersion: null,
-};
-export const EDU: TierSummary = {
-  id: "edu",
-  label: "Edu",
-  profile: null,
-  policyExpiryDays: 180,
-  policyDeviceLimit: 1,
-  channels: [],
-  minVersion: null,
-  maxVersion: null,
-};
-export const UNUSED: TierSummary = {
-  id: "trial",
-  label: "Trial",
-  profile: null,
-  policyExpiryDays: null,
-  policyDeviceLimit: null,
-  channels: [],
-  minVersion: null,
-  maxVersion: null,
-};
-export const TIERS = [PRO, EDU, UNUSED];
-
 export const PROFILES = [
   { id: "base", name: "Base" },
   { id: "studio", name: "Studio" },
@@ -128,6 +166,12 @@ export const PROFILES = [
 
 export const DETAIL: LicenseDetail = {
   ...ADA,
+  seatDeviceCount: 2,
+  terms: termsOnTier({ ...ADA, maxOfflineDays: 14 }, ADA.tier, TIERS, {
+    defaultDeviceLimit: PRODUCT_DEVICE_LIMIT,
+    defaultMaxOfflineDays: PRODUCT_OFFLINE_DAYS,
+  }),
+  configOverrides: { owned: false, ownerSubject: null, signUpUrl: null },
   maxOfflineDays: 14,
   profiles: ["base", "studio"],
   overrides: {

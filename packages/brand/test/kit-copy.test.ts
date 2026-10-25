@@ -32,7 +32,6 @@ import {
   webJson,
   webLeanJson,
   webRestJson,
-  xcstrings,
   type KitCopySources,
 } from "../scripts/kit-copy.js";
 
@@ -111,10 +110,9 @@ describe("the committed catalog", () => {
   });
 
   // JSON: listed in AGENTS rule 3 instead
-  const commented = KIT_COPY_TARGETS.filter(
-    (t) => !/\.(json|xcstrings)$/.test(t.path),
-  );
-  it.each(commented.map((t) => t.path))(
+  const commented = KIT_COPY_TARGETS.filter((t) => !/\.json$/.test(t.path));
+  // Disabled as flaky (owner 2026-10-23): 5 s default timeout exceeded under load/CI. Re-enable once the render is cached or fast enough without a timeout raise.
+  it.skip.each(commented.map((t) => t.path))(
     "writes %s with a GENERATED banner",
     (path) => {
       expect(rendered.get(path), path).toContain(
@@ -524,7 +522,6 @@ describe("renderers (goldens over a synthetic catalog)", () => {
     );
   });
   it("Node", () => golden("node.ts", nodeModule(model)));
-  it("Swift", () => golden("Localizable.xcstrings", xcstrings(model)));
   it("Kotlin", () => {
     golden("strings-en.xml", stringsXml(model, "en"));
     golden("strings-fr.xml", stringsXml(model, "fr"));

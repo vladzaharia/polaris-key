@@ -20,6 +20,7 @@ import { handleEnroll } from "./enroll.js";
 export const LICENSE_ROUTES = serviceRoutes("license", [
   {
     path: "activate",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "handler" },
     handler: ({ req, env, db, product, now, waitUntil, settings }) =>
@@ -27,6 +28,7 @@ export const LICENSE_ROUTES = serviceRoutes("license", [
   },
   {
     path: "enroll",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "handler" },
     handler: ({ req, env, db, product, now, waitUntil }) =>
@@ -34,6 +36,7 @@ export const LICENSE_ROUTES = serviceRoutes("license", [
   },
   {
     path: "token",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now }) =>
@@ -41,6 +44,7 @@ export const LICENSE_ROUTES = serviceRoutes("license", [
   },
   {
     path: "deauthorize",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "device" },
     handler: ({ req, env, db, product }) =>
@@ -48,6 +52,7 @@ export const LICENSE_ROUTES = serviceRoutes("license", [
   },
   {
     path: "document",
+    cors: true,
     methods: ["GET"],
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now, settings }) =>

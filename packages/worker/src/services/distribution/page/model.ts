@@ -45,7 +45,10 @@
 import {
   APP_DELIVERABLE_ID,
   HOMEBREW_CASK_PATTERN,
+  HOMEBREW_FORMULA_PATTERN,
+  HOMEBREW_TAP_PATTERN,
   NUMERIC_ID_PATTERN,
+  channelLabel,
 } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -55,6 +58,8 @@ import type {
   ServiceHooks,
 } from "../../../core/hooks.js";
 import { listOutlets } from "../outlets.js";
+import { modelListing } from "../listing/resolved.js";
+import { presentationText } from "../../../core/presentation.js";
 import { FULL_ROLLOUT_BP } from "../rollouts.js";
 import {
   feedOutlet,
@@ -589,7 +594,7 @@ export function storeLink(
       const id = idOf(identity.appleId, NUMERIC_ID_PATTERN, 20);
       return id
         ? {
-            label: "App Store",
+            label: channelLabel("app-store"),
             url: `https://apps.apple.com/app/id${id}`,
             deepLink: null,
             command: null,
@@ -601,7 +606,7 @@ export function storeLink(
       const id = idOf(identity.packageName, ANDROID_PACKAGE_RE);
       return id
         ? {
-            label: "Google Play",
+            label: channelLabel("google-play"),
             url: `https://play.google.com/store/apps/details?id=${encodeURIComponent(id)}`,
             deepLink: null,
             command: null,
@@ -613,7 +618,7 @@ export function storeLink(
       const id = idOf(identity.productId, MS_PRODUCT_ID_RE);
       return id
         ? {
-            label: "Microsoft Store",
+            label: channelLabel("microsoft-store"),
             url: `https://apps.microsoft.com/detail/${encodeURIComponent(id)}`,
             deepLink: `ms-windows-store://pdp/?productid=${encodeURIComponent(id)}`,
             command: null,
@@ -625,7 +630,7 @@ export function storeLink(
       const id = idOf(identity.appId, NUMERIC_ID_PATTERN, 20);
       return id
         ? {
-            label: "Steam",
+            label: channelLabel("steam"),
             url: `https://store.steampowered.com/app/${id}/`,
             deepLink: `steam://store/${id}`,
             command: null,
@@ -641,7 +646,7 @@ export function storeLink(
       if (!m) return null;
       const user = m[1]!.toLowerCase().replace(/_/g, "-");
       return {
-        label: "itch.io",
+        label: channelLabel("itch"),
         url: `https://${user}.itch.io/${encodeURIComponent(m[2]!)}`,
         deepLink: null,
         command: null,
@@ -652,7 +657,7 @@ export function storeLink(
       const id = idOf(identity.appId, FLATPAK_ID_RE);
       return id
         ? {
-            label: "Flathub",
+            label: channelLabel("flathub"),
             url: `https://flathub.org/apps/${encodeURIComponent(id)}`,
             deepLink: null,
             command: `flatpak install flathub ${id}`,
@@ -664,7 +669,7 @@ export function storeLink(
       const id = idOf(identity.name, SNAP_NAME_RE);
       return id
         ? {
-            label: "Snap Store",
+            label: channelLabel("snap"),
             url: `https://snapcraft.io/${id}`,
             deepLink: null,
             command: `sudo snap install ${id}`,
@@ -676,7 +681,7 @@ export function storeLink(
       const id = idOf(identity.packageIdentifier, WINGET_ID_RE);
       return id
         ? {
-            label: "winget",
+            label: channelLabel("winget"),
             url: null,
             deepLink: null,
             command: `winget install --id ${id} --exact`,
@@ -778,6 +783,7 @@ export async function buildDownloadModel(
           : // A direct outlet that names no platforms offers what can be installed from a file:
             // an iOS build cannot (it goes through AltStore or a store), unless named.
             PAGE_PLATFORMS.filter((p) => p !== "ios");
+        const formulaPlatforms: PagePlatform[] = [];
         for (const platform of offered) {
           const sel = await one(outlet, platform, { allBuilds: true });
           if (!sel?.entries.length) continue;
@@ -789,7 +795,7 @@ export async function buildDownloadModel(
                 kind: "scoop",
                 outletId: outlet.id,
                 platforms: ["windows"],
-                label: "Scoop",
+                label: channelLabel("scoop"),
                 url: null,
                 deepLink: null,
                 command: `scoop install ${feedBase}/scoop/${encodeURIComponent(history.channel)}.json${q}`,
@@ -797,6 +803,11 @@ export async function buildDownloadModel(
               }),
             );
           }
+          // The product's own tap, `<owner>/homebrew-<name>`, is spelled `<owner>/<name>` in a
+          // command; without one the bare token resolves against homebrew/cask only.
+          const tap = idOf(outlet.identity.homebrewTap, HOMEBREW_TAP_PATTERN);
+          const tapped = (token: string) =>
+            tap ? `${tap.replace("/homebrew-", "/")}/${token}` : token;
           const cask = idOf(
             outlet.identity.homebrewCask,
             HOMEBREW_CASK_PATTERN,
@@ -807,12 +818,41 @@ export async function buildDownloadModel(
                 kind: "homebrew",
                 outletId: outlet.id,
                 platforms: ["macos"],
-                label: "Homebrew",
+                label: channelLabel("homebrew"),
                 url: null,
                 deepLink: null,
-                command: `brew install --cask ${cask}`,
+                command: `brew install --cask ${tapped(cask)}`,
                 version: null,
               }),
+            );
+          const formula = idOf(
+            outlet.identity.homebrewFormula,
+            HOMEBREW_FORMULA_PATTERN,
+          );
+          if ((platform === "macos" || platform === "linux") && formula && tap)
+            formulaPlatforms.push(platform);
+        }
+        if (formulaPlatforms.length > 0) {
+          const formula = idOf(
+            outlet.identity.homebrewFormula,
+            HOMEBREW_FORMULA_PATTERN,
+          );
+          const tap = idOf(outlet.identity.homebrewTap, HOMEBREW_TAP_PATTERN);
+          if (formula && tap)
+            actions.push(
+              action(
+                {
+                  kind: "homebrew",
+                  outletId: outlet.id,
+                  platforms: formulaPlatforms,
+                  label: channelLabel("homebrew"),
+                  url: null,
+                  deepLink: null,
+                  command: `brew install ${tap.replace("/homebrew-", "/")}/${formula}`,
+                  version: null,
+                },
+                ":formula",
+              ),
             );
         }
         break;
@@ -1050,12 +1090,18 @@ export async function buildDownloadModel(
     outlets.find((o) => o.kind === "direct" && o.listing)?.listing ??
     outlets.find((o) => o.listing)?.listing ??
     null;
-  const listingName = lineOf(listingSource?.name);
-  const description =
-    typeof listingSource?.description === "string" &&
-    PROSE_RE.test(listingSource.description)
-      ? listingSource.description
-      : null;
+  // A-27.8: the shared listing model first, field by field, then the direct outlet's merged copy
+  // (D10: today's source, so a product with no model reads exactly what it always did).
+  const model = await modelListing(ctx.db, slug);
+  const first = <T>(...c: (T | null)[]): T | null =>
+    c.find((v) => v !== null) ?? null;
+  const prose = (v: unknown): string | null =>
+    typeof v === "string" && PROSE_RE.test(v) ? v : null;
+  const listingName = first(lineOf(model?.name), lineOf(listingSource?.name));
+  const description = first(
+    prose(model?.description),
+    prose(listingSource?.description),
+  );
 
   const keys = (await delivery.keys())
     .filter(
@@ -1074,11 +1120,19 @@ export async function buildDownloadModel(
     channel: history.channel,
     pageUrl: ctx.bytesOrigin ? `${ctx.bytesOrigin}/${slug}` : null,
     listing: {
-      name: listingName ?? lineOf(ctx.product.name) ?? slug,
-      subtitle: lineOf(listingSource?.subtitle),
+      name:
+        lineOf(presentationText(ctx.product, { name: listingName }).name) ??
+        slug,
+      subtitle: first(lineOf(model?.subtitle), lineOf(listingSource?.subtitle)),
       description,
-      developerName: lineOf(listingSource?.developerName),
-      website: httpsUrl(listingSource?.website),
+      developerName: first(
+        lineOf(model?.developerName),
+        lineOf(listingSource?.developerName),
+      ),
+      website: first(
+        httpsUrl(model?.website),
+        httpsUrl(listingSource?.website),
+      ),
     },
     release: newest
       ? {

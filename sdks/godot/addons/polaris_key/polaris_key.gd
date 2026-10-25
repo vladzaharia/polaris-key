@@ -18,7 +18,7 @@ extends Node
 ## Sub-objects: `config` (PKeyConfig: managed config, secrets, the catalog, edge-mint; its
 ## `config_changed(keys)` fires after start, each sync and each bundle import), `devices`
 ## (PKeyDevices: fingerprint, keyless register, the device roster, telemetry after each sync),
-## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitlements, entitled
+## `license` (PKeyLicense: the gate, activate_with_key, enroll, deactivate, entitled
 ## channels, and the 401 re-acquire it installs into Core), `identity` (PKeyIdentity:
 ## device-code sign-in with a QR code; a `ready` stores the token and runs a forced sync),
 ## `update` (PKeyUpdate: the signed decision and acting on it — apply, restart_to_update,
@@ -32,7 +32,7 @@ extends Node
 ## developerName, accent, accentDark, icon) as a Dictionary, {} for none; `presentation_icon(px,
 ## scale)` its verified icon as a texture; `presentation_source` (PKeyPresentationSource) the seam
 ## the UI kit reads, with its `changed` signal.
-## `config`, `identity`, `update`, `release`, `commerce`, `distribution` and `presentation_source`
+## `config`, `identity`, `entitlements`, `update`, `release`, `commerce`, `distribution` and `presentation_source`
 ## exist before `configure()`, so a signal connected early survives it.
 
 const SDK_VERSION := "0.1.0"
@@ -49,6 +49,25 @@ signal boot_finished(result: PKeyBootResult)
 ## A sliced bundle verify's progress, 0.0 to 1.0 (web builds without threads, where a bundle
 ## verify takes seconds in frame slices; S-04). PKeyBoot drives its progress bar from it.
 signal verify_progress(fraction: float)
+## The kit took (true) or gave back (false) the player's input: a dialog, the gate or the boot is
+## now (or no longer) the screen that answers the pad, keyboard and pointer. The game owns pause
+## and input: the kit never sets `SceneTree.paused`, so a game that wants to pause its own
+## simulation or mute its action map listens to this.
+signal input_captured(captured: bool)
+## The kit has a sound to play: `open`, `close`, `focus` (navigation only), `confirm`, `back` or
+## `error` (PKeyUiFeedback). The game plays its own sound. Survives `configure()`.
+signal ui_sound(event: StringName)
+## One stream of what changed (the `events` stream every SDK has), emitted beside the signals above
+## once `configure()` has run. `kind` is a `PKeyConstants.EventKind` value; `data` has snake_case keys:
+##   license          {status, previous}                      beside `state_changed`
+##   config           {key, value, previous, source}          one per key of `config.config_changed`
+##   updateAvailable  {version, action, mandatory, channel}   beside `update.update_available` (decide())
+##   packs            {pack, phase, done, total}              pack progress, every phase
+##   store            {reason, detail}                        beside `store_error`
+## `entitlement` and `cloudSync` follow with their features. Payloads carry no token or raw hardware value.
+signal event(kind: String, data: Dictionary)
+## `in_play` changed.
+signal in_play_changed(playing: bool)
 
 ## The drop-in boot scene `boot()` shows when no view is given.
 const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
@@ -58,6 +77,9 @@ var core: PKeyCore = null
 var devices: PKeyDevices = null
 ## The licence surface (services/license.gd); null until configure().
 var license: PKeyLicense = null
+## The licence's grants: has, value, all (services/entitlements.gd). Present before `configure()`
+## (false, null, {}).
+var entitlements := PKeyEntitlements.new()
 var last_store_error: Dictionary = {}
 ## Managed config. Usable before `configure()` (every key falls back).
 var config := PKeyConfig.new()
@@ -106,6 +128,29 @@ var boot_gate: Node:
 
 var _boot_layer: CanvasLayer = null
 
+## Whether the player is in the middle of play (true) or in a menu, a results screen or a pause
+## screen (false, the default). While it is true an available update is only a toast at the
+## toast anchor and the modal prompt waits; the game sets it (UI-KITS.md §4.3 Games).
+var in_play := false:
+	set(value):
+		if value == in_play:
+			return
+		in_play = value
+		in_play_changed.emit(value)
+
+var _capturers := {}
+
+## Where the kit's toasts sit over the game: "bottom_center" (the default, above the hints),
+## "bottom_right" or "top_right". They stay inside the title-safe area. The game sets it once.
+var toast_anchor := "bottom_center":
+	set(value):
+		toast_anchor = value
+		if _toaster != null and is_instance_valid(_toaster):
+			_toaster.toast_anchor = value
+
+var _toaster: PKeyToast = null
+var _toast_layer: CanvasLayer = null
+
 var _timer: Timer = null
 var _syncing := false
 var _last_state: Dictionary = {}
@@ -136,7 +181,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	license.install(core)
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
-	commerce.attach(core, license)
+	entitlements.attach(license)
+	commerce.attach(core, entitlements)
 	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
@@ -207,6 +253,14 @@ func use_friendly_device_name() -> void:
 
 func _on_boot_finished(r: PKeyBootResult) -> void:
 	boot_finished.emit(r)
+
+
+## This device from local state, no network: {id, current: true, status, license_id?,
+## last_verified_at?}. {} before configure().
+func current_device() -> Dictionary:
+	if devices == null:
+		return {}
+	return devices._current_device()
 
 
 ## The offline load: device id, token, cached documents re-verified. No network. A coroutine.
@@ -369,6 +423,60 @@ func _on_license_wiped() -> void:
 	config.refresh()
 
 
+func _init() -> void:
+	# The kit's nodes keep running while the game pauses the tree (a sign-in opened from a pause
+	# menu must not freeze). Children inherit it; a game overrides it by setting `process_mode`.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	config.config_changes.connect(_on_config_changes)
+	update.update_available.connect(_on_update_available)
+	update.packs.pack_phase.connect(_on_pack_phase)
+
+
+## The one toast host the kit's screens share (the update prompt in play, the gate's and boot's
+## "Signed in" and "Copied"): a PKeyToast on its own canvas layer above the game's UI, created on
+## first use and kept for the session. It never takes focus from play.
+func toasts() -> PKeyToast:
+	if _toaster == null or not is_instance_valid(_toaster):
+		_toast_layer = CanvasLayer.new()
+		_toast_layer.name = "PKeyToastLayer"
+		_toast_layer.layer = 101
+		add_child(_toast_layer)
+		_toaster = PKeyToast.new()
+		_toaster.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_toaster.sdk = self
+		_toaster.toast_anchor = toast_anchor
+		_toast_layer.add_child(_toaster)
+	return _toaster
+
+
+## Whether any kit screen holds the player's input now.
+func is_input_captured() -> bool:
+	_prune_capturers()
+	return not _capturers.is_empty()
+
+
+## A kit view reports that it takes (`on`) or releases the player's input. `input_captured` is
+## emitted when the first view takes it and when the last gives it back.
+func capture_input(owner: Object, on: bool) -> void:
+	if owner == null:
+		return
+	var was := is_input_captured()
+	var id := owner.get_instance_id()
+	if on:
+		_capturers[id] = true
+	else:
+		_capturers.erase(id)
+	var now := is_input_captured()
+	if now != was:
+		input_captured.emit(now)
+
+
+func _prune_capturers() -> void:
+	for id in _capturers.keys():
+		if not is_instance_id_valid(id):
+			_capturers.erase(id)
+
+
 func _enter_tree() -> void:
 	# One listener: the autoload, or the first SDK node when there is no autoload (tests).
 	if name == "PolarisKey" or not PKeyJws.progress_listener.is_valid():
@@ -394,13 +502,46 @@ func _on_verify_progress(fraction: float) -> void:
 func _on_store_error(err: Dictionary) -> void:
 	last_store_error = err
 	store_error.emit(err)
+	_emit_event(PKeyConstants.EventKind.STORE, {"reason": PKeyConstants.ErrorCode.STORE_FAILED, "detail": str(err.get("message", ""))})
+
+
+## Raise `event` once the SDK is configured.
+func _emit_event(kind: String, data: Dictionary) -> void:
+	if core != null:
+		event.emit(kind, data)
+
+
+func _on_config_changes(changes: Array) -> void:
+	for c in changes:
+		_emit_event(PKeyConstants.EventKind.CONFIG, c)
+
+
+func _on_update_available(result: PKeyResult) -> void:
+	if not (result is PKeyUpdateCheck):
+		return
+	var d: Dictionary = result.decision
+	var release = d.get("release")
+	_emit_event(PKeyConstants.EventKind.UPDATEAVAILABLE, {
+		"version": release["version"] if release is Dictionary and release.get("version") is String else "",
+		"action": String(d.get("action", "")),
+		"mandatory": d.get("mandatory") == true,
+		"channel": result.channel,
+	})
+
+
+func _on_pack_phase(info: Dictionary) -> void:
+	_emit_event(PKeyConstants.EventKind.PACKS, info)
 
 
 func _emit_state() -> void:
 	var s := status()
 	if s != _last_state:
+		var previous = _last_state.get("status")
 		_last_state = s
 		state_changed.emit(s)
+		# `license` is a STATUS change only (as Swift and Node); state_changed fires on any change.
+		if s.get("status") != previous:
+			_emit_event(PKeyConstants.EventKind.LICENSE, {"status": s.get("status"), "previous": previous})
 
 
 func _start_timer() -> void:

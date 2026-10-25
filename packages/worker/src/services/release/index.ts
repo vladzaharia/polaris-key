@@ -26,19 +26,28 @@ import { releaseCatalog } from "./catalog.js";
 import { releaseKeyFingerprints } from "./records.js";
 import { sweepNativeSessions } from "./packages/native/index.js";
 import { sweepPruneNotice } from "./packages/prune.js";
+import { releaseFreshness } from "./freshness.js";
 import { RELEASE_SETTINGS_SLICE } from "./settings.js";
 
 import { releaseIntegration } from "./integration.js";
 import { releaseMaintenance } from "./maintenance.js";
 
 import { scrubManifestSnapshotsJob } from "./snapshotScrub.js";
+import {
+  backfillStoreJob,
+  materialiseWorkflowBetaJob,
+} from "./resolverJobs.js";
 export const releaseService: ServiceDescriptor = {
   slug: "release",
   contributes: {
     manifest: releaseManifest,
     integration: releaseIntegration,
     maintenance: releaseMaintenance,
-    migrations: [scrubManifestSnapshotsJob],
+    migrations: [
+      scrubManifestSnapshotsJob,
+      backfillStoreJob,
+      materialiseWorkflowBetaJob,
+    ],
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: RELEASE_SETTINGS_SLICE,
@@ -62,11 +71,19 @@ export const releaseService: ServiceDescriptor = {
    * finished rows (`packages/native/sessions.ts`). One indexed read for a product with none.
    * F-36: the same tick raises the one-time dry-run notice of feed cleanup for a product that
    * never chose (`packages/prune.ts` `sweepPruneNotice`).
+   * P2-12: the same tick runs the freshness pass (`freshness.ts`), which re-syncs a linked
+   * product's truth store when no webhook did (at most 25 syncs per tick).
    */
-  scheduled: async (ctx) => ({
-    nativeUploads: await sweepNativeSessions(ctx),
-    pruneNotice: await sweepPruneNotice(ctx),
-  }),
+  scheduled: async (ctx) => {
+    // First, and on its own: it never throws, and a sweep that does must not cost the store its
+    // catch-up.
+    const freshness = await releaseFreshness(ctx);
+    return {
+      nativeUploads: await sweepNativeSessions(ctx),
+      pruneNotice: await sweepPruneNotice(ctx),
+      ...freshness,
+    };
+  },
   /**
    * Release's slice of `/.well-known/polaris.json` (design spec §4.3).
    *
@@ -97,7 +114,7 @@ export const releaseService: ServiceDescriptor = {
       // `install`, `download`, `builds` and `blobs` are Distribution's routes since P2b-04, and
       // Distribution's fragment advertises their CANONICAL `/<p>/distribution/…` URLs. These four
       // keys stay because the discovery document is wire (removing a key is a plan-mode change,
-      // `test/discoveryGolden.test.ts`); the URLs they name are permanent router aliases that
+      // `test/core/discoveryGolden.test.ts`); the URLs they name are permanent router aliases that
       // answer byte-identically, so a client reading them keeps working.
       endpoints: {
         changelog: `${base}/release/changelog`,

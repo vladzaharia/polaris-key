@@ -14,7 +14,8 @@
 import type { Db, DbStatement } from "../../../db/types.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Env } from "../../../platform/env.js";
-import { onAccountEmailVerified } from "../../../core/licensing/licenseHolders.js";
+import { sendLibraryNotices } from "./libraryNotice.js";
+import { onAccountEmailVerifiedJoined } from "../../../core/licensing/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
 import {
@@ -158,7 +159,12 @@ export async function linkIdentity(
   });
   // LX-26 (S-24 §5.4): a newly verified address brings the licences waiting on it.
   if (id.email && id.emailVerified)
-    await onAccountEmailVerified(db, account.id, id.email, now);
+    await sendLibraryNotices(ctx.env, db, {
+      to: id.email,
+      joined: await onAccountEmailVerifiedJoined(db, account.id, id.email, now),
+      origin: ctx.origin,
+      now,
+    });
   await sendSecurityNotice(
     ctx.env,
     db,
@@ -185,8 +191,7 @@ export type UnlinkResult =
  * email address while that address is the primary email (`only_email`: notices, passkey enrolment
  * and the licence claim rules need a verified address), guarded in the same DELETE; and removing
  * the primary address while another exists makes the oldest other address primary in the same
- * batch. The matching `portal_*` row goes too, so a Worker rollback never resurrects a removed
- * method.
+ * batch.
  */
 export async function unlinkIdentity(
   ctx: AccountContext,
@@ -261,7 +266,7 @@ export async function unlinkIdentity(
             : "not_found",
     };
   }
-  await mirrorLinkRemoval(db, link);
+  await deletePasskeyMaterial(db, link);
   await portalAudit(db, {
     accountId: proof.accountId,
     action: "account.link.remove",
@@ -286,31 +291,15 @@ export async function unlinkIdentity(
   return { ok: true };
 }
 
-/** Keep the pre-I-05 `portal_*` tables from resurrecting a removed method on a rollback, and a
- *  removed passkey's WebAuthn material from outliving its method (I-16). */
-async function mirrorLinkRemoval(db: Db, link: AccountLinkRow): Promise<void> {
-  if (link.issuer_key === PASSKEY_ISSUER) {
-    await db.run(
-      "DELETE FROM account_passkeys WHERE credential_id = ? AND account_id = ?",
-      link.subject,
-      link.account_id,
-    );
-    return;
-  }
-  if (link.issuer_key === EMAIL_ISSUER) {
-    await db.run(
-      "DELETE FROM portal_account_emails WHERE email = ? AND account_id = ?",
-      link.subject,
-      link.account_id,
-    );
-    return;
-  }
-  if (link.tenant_scope === "") {
-    await db.run(
-      "DELETE FROM portal_account_identities WHERE provider = ? AND subject = ? AND account_id = ?",
-      link.issuer_key,
-      link.subject,
-      link.account_id,
-    );
-  }
+/** A removed passkey's WebAuthn material must not outlive its method (I-16). */
+async function deletePasskeyMaterial(
+  db: Db,
+  link: AccountLinkRow,
+): Promise<void> {
+  if (link.issuer_key !== PASSKEY_ISSUER) return;
+  await db.run(
+    "DELETE FROM account_passkeys WHERE credential_id = ? AND account_id = ?",
+    link.subject,
+    link.account_id,
+  );
 }

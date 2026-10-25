@@ -57,12 +57,17 @@ export type Route =
   | { kind: "adminSpa" }
   | { kind: "adminApi" }
   | { kind: "adminLogin" }
+  | { kind: "adminDevice" }
   | { kind: "adminCallback" }
+  | { kind: "adminPasskey" }
   | { kind: "portalSpa" }
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
   | { kind: "deviceEntry"; tv: boolean }
+  | { kind: "deviceApprove" }
   | { kind: "signInEntry" }
+  /** F-37.1b: the key host's hop into Polaris Locker (`/approve?code=`, `/account/packages`). */
+  | { kind: "lockerLink"; to: "approve" | "packages" }
   /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
   | { kind: "portalProviderSignIn" }
   | { kind: "portalCallback" }
@@ -170,7 +175,16 @@ export function matchRoute(pathname: string): Route {
   if (path === "/webhooks/github") return { kind: "githubWebhook" };
   if (path === "/webhooks/deploy") return { kind: "deployHook" };
   if (path === "/manage/login") return { kind: "adminLogin" };
+  // ST-34.6: the approval card for `pkey login`, before the `/manage/` SPA catch-all. The code may
+  // ride in the query (`?code=`, which the login's `returnTo` sanitizer allows) or in the path.
+  if (path === "/manage/device" || path.startsWith("/manage/device/"))
+    return { kind: "adminDevice" };
   if (path === "/manage/callback") return { kind: "adminCallback" };
+  if (
+    path === "/manage/login/passkey/options" ||
+    path === "/manage/login/passkey/verify"
+  )
+    return { kind: "adminPasskey" };
   if (path === "/manage/api" || path.startsWith("/manage/api/"))
     return { kind: "adminApi" };
   if (path === "/manage" || path.startsWith("/manage/"))
@@ -200,6 +214,11 @@ export function matchRoute(pathname: string): Route {
   if (path === "/signin") return { kind: "signInEntry" };
   if (path === "/device") return { kind: "deviceEntry", tv: false };
   if (path === "/tv") return { kind: "deviceEntry", tv: true };
+  // The approval after sign-in, on the customer host only (the product is found by the binder).
+  if (path === "/device/approve") return { kind: "deviceApprove" };
+  if (path === "/approve") return { kind: "lockerLink", to: "approve" };
+  if (path === "/account/packages")
+    return { kind: "lockerLink", to: "packages" };
   // I-06: `/login/<provider>`, its callback and Apple's notifications (`login` is a reserved
   // slug), and I-30's `/login/sso/<connection id>` (finished by `/callback`). The provider, step
   // and connection are validated by the handler; any other shape under `/login/` is its

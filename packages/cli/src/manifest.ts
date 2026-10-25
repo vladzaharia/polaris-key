@@ -68,6 +68,8 @@ export interface InitOptions {
   adminGroup?: string;
   releaseOwner?: string;
   releaseRepo?: string;
+  /** `free` (the default) writes the console wizard's Free tier when License is on. */
+  starterTier?: "free" | "none";
   force?: boolean;
 }
 
@@ -141,29 +143,41 @@ export interface FoundProduct {
 export async function findProductManifest(
   cwd: string,
 ): Promise<FoundProduct | null> {
+  const file = await findProductFile(cwd);
+  if (!file) return null;
+  try {
+    const doc = parseFile(file, await readFile(file, "utf8"));
+    if (!isRecord(doc)) return null;
+    const wrapped = isRecord(doc.product) ? doc.product : doc;
+    const slug = wrapped.slug;
+    if (typeof slug !== "string" || !slug.trim()) return null;
+    const name = wrapped.name;
+    return {
+      slug: slug.trim(),
+      ...(typeof name === "string" && name.trim() ? { name: name.trim() } : {}),
+      file,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** The nearest `.pkey/product` file at or above `cwd`, readable or not. */
+async function findProductFile(cwd: string): Promise<string | null> {
   for (let dir = path.resolve(cwd); ; dir = path.dirname(dir)) {
     const file = await findExisting(path.join(dir, ".pkey"), PRODUCT_FILES);
-    if (file) {
-      try {
-        const doc = parseFile(file, await readFile(file, "utf8"));
-        if (!isRecord(doc)) return null;
-        const wrapped = isRecord(doc.product) ? doc.product : doc;
-        const slug = wrapped.slug;
-        if (typeof slug !== "string" || !slug.trim()) return null;
-        const name = wrapped.name;
-        return {
-          slug: slug.trim(),
-          ...(typeof name === "string" && name.trim()
-            ? { name: name.trim() }
-            : {}),
-          file,
-        };
-      } catch {
-        return null;
-      }
-    }
+    if (file) return file;
     if (path.dirname(dir) === dir) return null;
   }
+}
+
+/**
+ * The directory that holds the nearest `.pkey/` (at or above `cwd`), whether or not its product
+ * file reads, so `pkey doctor` validates what `pkey help` named. `cwd` itself when there is none.
+ */
+export async function findManifestRoot(cwd: string): Promise<string> {
+  const file = await findProductFile(cwd);
+  return file ? path.dirname(path.dirname(file)) : cwd;
 }
 
 export async function loadManifest(cwd: string): Promise<LoadedManifest> {
@@ -297,6 +311,11 @@ function productYaml(opts: InitOptions, services: ServiceSlug[]): string {
   const oidc = services.includes("identity")
     ? `\noidc:\n  provider: platform\n  groupRoleMap: {}\n`
     : "";
+  // The wizard's rows: a Free tier only when License is on and the starter tier is `free`.
+  const tiers =
+    services.includes("license") && opts.starterTier !== "none"
+      ? `\n  tiers:\n    - id: free\n      label: Free\n      profileId: default\n      policyDeviceLimit: 5\n      channels: ["stable"]`
+      : "";
   return `# yaml-language-server: $schema=${SCHEMA_BASE}/product.schema.json
 apiVersion: pkey.dev/v1
 product:
@@ -306,8 +325,8 @@ ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}\n` : ""}modules
 ${moduleLines.join("\n")}
 
 profiles:
-  - id: standard-defaults
-    name: Standard defaults
+  - id: default
+    name: Default
     payload:
       config: {}
       secrets: {}
@@ -315,13 +334,7 @@ profiles:
 
 licensing:
   defaultDeviceLimit: 5
-  defaultMaxOfflineDays: 14
-  tiers:
-    - id: standard
-      label: Standard
-      profileId: standard-defaults
-      policyDeviceLimit: 5
-      channels: ["stable"]${oidc}
+  defaultMaxOfflineDays: 14${tiers}${oidc}
 
 secrets:
   required: []
@@ -423,15 +436,50 @@ async function findAll(rootDir: string, names: string[]): Promise<string[]> {
   return out;
 }
 
+/** The words for a YAML parser error, in the reader's terms (the parser's own are for its authors). */
+function yamlReason(err: { code?: string; message: string }): string {
+  const first = err.message.split("\n")[0]!;
+  if (/end with a \]/.test(first)) return "an unclosed [";
+  if (/end with a \}/.test(first)) return "an unclosed {";
+  switch (err.code) {
+    case "BAD_INDENT":
+      return "the indentation is off";
+    case "TAB_AS_INDENT":
+      return "a tab where spaces go";
+    case "DUPLICATE_KEY":
+      return "a key is written twice";
+    case "MISSING_CHAR":
+      return "an unclosed quote or bracket";
+    default:
+      return "the syntax is off here";
+  }
+}
+
+/**
+ * A manifest file that does not parse. `message` is the one plain sentence
+ * (`.pkey/schema.yaml line 23: not valid YAML (an unclosed [).`): it names the file by its
+ * `.pkey/` name, never its path, and carries no next step, which the command that prints it adds.
+ */
+export class ManifestSyntaxError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ManifestSyntaxError";
+  }
+}
+
 function parseFile(file: string, raw: string): unknown {
   const json = file.endsWith(".json");
   try {
     return json ? (JSON.parse(raw) as unknown) : (parseYaml(raw) as unknown);
   } catch (err) {
-    // The parser's first line says what and where; the rest is a code frame.
-    const reason = (err as Error).message.split("\n")[0]!.replace(/:$/, "");
-    throw new Error(
-      `.pkey/${file} is not valid ${json ? "JSON" : "YAML"}: ${reason}. Fix the syntax, then run pkey validate again.`,
+    const e = err as Error & {
+      code?: string;
+      linePos?: Array<{ line: number }>;
+    };
+    const line = e.linePos?.[0]?.line;
+    const why = json ? "the JSON is malformed" : yamlReason(e);
+    throw new ManifestSyntaxError(
+      `.pkey/${path.basename(file)}${line ? ` line ${line}` : ""}: not valid ${json ? "JSON" : "YAML"} (${why}).`,
     );
   }
 }

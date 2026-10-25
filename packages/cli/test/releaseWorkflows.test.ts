@@ -343,7 +343,6 @@ describe("publishing is automatic and in lockstep (owner decision 2026-10-04)", 
         "maven.ui-core",
         "maven.server",
         "maven.server-ktor",
-        "maven.spring-boot-starter",
       ]),
     );
     const check = (wf.jobs.drift!.steps ?? []).find((s) =>
@@ -426,9 +425,10 @@ describe("publish-package.yml (the trusted publisher)", () => {
     expect(guard.run).toContain("exit 1");
     const publish = steps.find((s) => s.uses === "./actions/publish");
     expect(publish?.with).toMatchObject({
-      product: "polaris-key",
-      dir: "dist-feed/${{ inputs.dir }}",
-      channel: "${{ inputs.channel }}",
+      channels: "none",
+      args: expect.stringContaining(
+        "--channel ${{ inputs.channel }} --dir dist-feed/${{ inputs.dir }}",
+      ),
     });
     expect(raw("publish-package.yml")).toContain(
       'git merge-base --is-ancestor "$GITHUB_SHA" origin/main',
@@ -967,9 +967,28 @@ describe("no publishing anywhere else (owner decision 2026-10-04, feeds only)", 
         .split("\n")
         .filter((line) => !/^\s*#/.test(line))
         .join("\n");
-      for (const [re, what] of FORBIDDEN)
+      for (const [re, what] of FORBIDDEN) {
+        // AX-07.5: the agent kit is attached to the tag's GitHub Release by deploy.yml's
+        // `agent-kit-release` job, the one place (pinned by the next test); not a package feed.
+        if (file === "deploy.yml" && what === "a GitHub Release") continue;
         expect(re.test(text), `${file} publishes to ${what}`).toBe(false);
+      }
     }
+  });
+
+  it("only deploy.yml's agent-kit-release job touches a GitHub Release, with contents: write alone and no checkout", () => {
+    const job = workflow("deploy.yml").jobs["agent-kit-release"]!;
+    expect(job).toBeDefined();
+    expect(job.permissions).toEqual({ contents: "write" });
+    expect(job.environment).toBeUndefined();
+    expect(job.needs).toEqual(["verify", "deploy-worker"]);
+    const steps = JSON.stringify(job.steps);
+    expect(steps).not.toContain("actions/checkout");
+    expect(steps).not.toContain("secrets.");
+    for (const file of workflowFiles)
+      for (const [id, j] of Object.entries(workflow(file).jobs ?? {}))
+        if (/gh release (create|upload)/.test(JSON.stringify(j.steps ?? [])))
+          expect(`${file}:${id}`).toBe("deploy.yml:agent-kit-release");
   });
 
   it("the root .npmrc routes no scope to a public registry", () => {
@@ -1107,7 +1126,22 @@ describe("workflow hardening", () => {
       for (const [id, job] of Object.entries(workflow(file).jobs ?? {})) {
         // A job that calls a reusable workflow cannot set it; the called jobs do.
         if (job.uses) continue;
-        expect(job["timeout-minutes"], `${file} ${id}`).toBeGreaterThan(0);
+        // A bound read from the matrix (`${{ matrix.timeout }}`) must be a positive number on
+        // every leg.
+        const t = job["timeout-minutes"];
+        const ref =
+          typeof t === "string"
+            ? /^\$\{\{\s*matrix\.(\w+)\s*\}\}$/.exec(t)
+            : null;
+        if (ref) {
+          const legs = (job.strategy?.matrix?.include ?? []) as Record<
+            string,
+            unknown
+          >[];
+          expect(legs.length, `${file} ${id}`).toBeGreaterThan(0);
+          for (const leg of legs)
+            expect(leg[ref[1] as string], `${file} ${id}`).toBeGreaterThan(0);
+        } else expect(t, `${file} ${id}`).toBeGreaterThan(0);
       }
   });
 

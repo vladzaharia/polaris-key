@@ -81,7 +81,7 @@ async function countLinks(db: Db, issuerKey: string): Promise<number> {
 export async function planPlatformConnectionSeed(
   env: Env,
   db: Db,
-  now: number,
+  _now: number,
 ): Promise<PlatformConnectionSeedPlan> {
   const cfg = platformOidcConfig(env);
   const existing = await resolveConnection(db, PLATFORM_ENV_CONNECTION_ID);

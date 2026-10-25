@@ -248,6 +248,11 @@ export interface SettingDef<T = unknown> {
    * one area cannot widen that area's trust (`SECURITY_WIDENING_AREAS`, rules.ts).
    */
   rbacArea: AreaId;
+  /**
+   * A product entry only the platform's own admins write (PX-W13c): a console write also needs
+   * `platform` edit, so a product admin holding `rbacArea` cannot grant it to their own product.
+   */
+  platformOnly?: boolean;
   /** When the owning service is off: hide the row, show it read-only, or show it as usual. */
   visibleWhen?: {
     service?: ServiceSlug;
@@ -298,7 +303,7 @@ export interface ColumnWriteArgs {
  * How one COLUMN-backed setting is read and written (ST-04, notes/S-18 §4.3: "column-backed is
  * permanent, not an interim adapter"). The hot paths keep reading the typed column directly;
  * the resolver reads it through `decode`, and `writeSetting()` is the only caller of `set` and
- * `reset` (`test/settings-writes.test.ts` refuses a handler that writes the column itself).
+ * `reset` (`test/core/settings-writes.test.ts` refuses a handler that writes the column itself).
  *
  * The adapter lives with the TABLE's owner: Core's (`core/settings/columns.ts`) for `products` and
  * the storefront columns Core owns, a service's (its `settingsColumns.ts`, contributed through its
@@ -411,9 +416,16 @@ export interface SettingAdapter {
     value: unknown;
     ctx: SettingAdapterContext;
     guard: SqlGuard;
+    /** The author of the write (an admin subject), for a table that records `updated_by`. */
+    by?: string;
   }): DbStatement[];
   /** A RICH key's reset (hand back to the manifest). Absent: the key cannot be reset. */
-  reset?(a: { ctx: SettingAdapterContext; guard: SqlGuard }): DbStatement[];
+  reset?(a: {
+    ctx: SettingAdapterContext;
+    guard: SqlGuard;
+    /** The author of the reset (an admin subject), for a table that records `updated_by`. */
+    by?: string;
+  }): DbStatement[];
 }
 
 /**

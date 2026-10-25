@@ -4,6 +4,8 @@
 // property logical (RTL-safe, §1.5), type in rem (DL11); the cascade layer `polaris-key` lets a
 // host's own rule win without `!important`.
 
+import { DESKTOP_CSS } from "./desktopStyles.js";
+import { platformTokenCss } from "./desktopTokens.js";
 import { tokenCss } from "./tokens.js";
 
 const KIT_CSS = String.raw`
@@ -289,12 +291,12 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="short"] .stage[data-split] .panel-icon {
   display: contents;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .identity[data-size="hero"] .icon,
-.pk-root[data-shape="short"] .stage[data-split] .identity[data-size="hero"] .icon {
+.pk-root[data-shape="landscape"] .stage[data-split] .identity .icon,
+.pk-root[data-shape="short"] .stage[data-split] .identity .icon {
   display: none;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .identity[data-size="hero"]:not(:has(.name)):not(:has(.by)),
-.pk-root[data-shape="short"] .stage[data-split] .identity[data-size="hero"]:not(:has(.name)):not(:has(.by)) {
+.pk-root[data-shape="landscape"] .stage[data-split] .identity:not(:has(.name)):not(:has(.by)),
+.pk-root[data-shape="short"] .stage[data-split] .identity:not(:has(.name)):not(:has(.by)) {
   display: none;
 }
 .pk-root[data-shape="landscape"] .stage[data-split] .actions,
@@ -374,6 +376,14 @@ const KIT_CSS = String.raw`
   position: static;
   margin-block: 0;
   padding-block: 0;
+}
+/* A split's docked bar stays in the end column: its band never spans the window, which would cut
+   through the identity panel beside it. The window-filling stage centres the card. */
+.pk-root[data-shape="short"] .stage[data-split][data-kind="screen"] .card > .actions::before {
+  content: none;
+}
+.pk-root[data-shape="short"][data-fill] .stage {
+  align-content: center;
 }
 /* Height is what a short window lacks: a group of links is two columns, not a column. */
 .pk-root[data-shape="short"] .links:has(> :nth-child(3)) {
@@ -1074,6 +1084,19 @@ bdi {
   transition: inline-size var(--pk-duration-base) var(--pk-ease-standard);
 }
 
+/* Unknown size (a desktop install whose driver reports no total): a sweep, never a percentage.
+   Standing still, centred, under reduced motion. */
+.progress[data-indeterminate] > span {
+  position: relative;
+  inline-size: 40%;
+  transition: none;
+  animation: pk-sweep var(--pk-duration-shimmer) var(--pk-ease-standard) infinite;
+}
+.pk-root[data-motion="reduced"] .progress[data-indeterminate] > span {
+  animation: none;
+  inset-inline-start: 30%;
+}
+
 /* §1.5 rule 4: the indeterminate 2 px shimmer along the container's top edge. */
 .shimmer {
   position: absolute;
@@ -1182,8 +1205,19 @@ bdi {
   flex-direction: row;
   gap: var(--pk-space-2);
 }
+.banner .actions {
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
 .banner .actions .btn {
   inline-size: auto;
+  /* Wrapped (large text, a narrow box), the buttons stack full-width at one width, not ragged. */
+  flex: 1 1 auto;
+}
+@container pk (max-width: 30rem) {
+  .banner .actions {
+    flex-basis: 100%;
+  }
 }
 .toast {
   position: relative;
@@ -1317,7 +1351,7 @@ dialog.sheet .card,
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .panel-icon {
   display: none;
 }
-.pk-root[data-shape] dialog.sheet .stage[data-split] .identity[data-size="hero"] .icon {
+.pk-root[data-shape] dialog.sheet .stage[data-split] .identity .icon {
   display: revert;
 }
 /* In the sheet the identity is the compact header over the title, never the wide panel. */
@@ -1602,7 +1636,10 @@ dialog.sheet .identity {
 
 /* ── Forced colours: system colours, borders where fills carried the shape ───────────────── */
 @media (forced-colors: active) {
-  .card,
+  /* The card carries no padding when it is split or full-bleed: its frame would touch the title
+     and buttons and sit on the viewport edge. Those frame their panes instead. */
+  .pk-root:not([data-fill]) .stage:not([data-split]) .card,
+  .stage[data-split] .passport,
   .pane,
   .list,
   .banner,
@@ -1627,6 +1664,23 @@ dialog.sheet .identity {
     forced-color-adjust: none;
     background: CanvasText;
   }
+  /* A switch's track and thumb are backgrounds, which forced colours drop: draw them in system colours. */
+  .switch {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+  .switch[aria-checked="true"] {
+    border-color: Highlight;
+    background: Highlight;
+  }
+  .switch-thumb {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .switch[aria-checked="true"] .switch-thumb {
+    background: HighlightText;
+  }
   .row[aria-checked="true"] {
     outline: 2px solid Highlight;
     outline-offset: -2px;
@@ -1641,7 +1695,7 @@ dialog.sheet .identity {
   }
 }
 @media (prefers-contrast: more) {
-  .pk-root {
+  .pk-root[data-theme] {
     --pk-border-subtle: var(--pk-border-strong);
     --pk-text-muted: var(--pk-text-default);
     --pk-text-subtle: var(--pk-text-default);
@@ -1657,6 +1711,13 @@ dialog.sheet .identity {
     background: var(--pk-surface-page);
   }
 }
+/* The desktop host's own report (the bridge host facts, UK-06) draws what the media features draw:
+   Increase Contrast, and Reduce Transparency, which makes the glass sheet and the scrim opaque. */
+.pk-root[data-contrast="more"][data-theme] {
+  --pk-border-subtle: var(--pk-border-strong);
+  --pk-text-muted: var(--pk-text-default);
+  --pk-text-subtle: var(--pk-text-default);
+}
 .visually-hidden {
   position: absolute;
   inline-size: 1px;
@@ -1665,13 +1726,31 @@ dialog.sheet .identity {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* The step morph (§1.4 Web): while a step change runs, the one card is the transition's named
+   surface (in a shadow root the host is, named inline from outside). Only one kit at a time
+   carries the attribute, so two never share the name. */
+.pk-root[data-morphing] .card {
+  view-transition-name: pk-card;
+}
 }
 `;
 
 /** The whole stylesheet: tokens, then the kit's rules, all in the `polaris-key` layer (an
- *  unlayered token block would outrank every layered rule, `native`'s surfaces included). */
+ *  unlayered token block would outrank every layered rule, `native`'s surfaces included). The
+ *  desktop chrome's rules come last. */
 export function stylesCss(): string {
-  return `@layer polaris-key {\n${tokenCss()}\n}\n\n${KIT_CSS.trim()}\n`;
+  const kit = KIT_CSS.trim();
+  return `@layer polaris-key {\n${tokenCss()}\n}\n\n${kit.slice(0, -1)}${DESKTOP_CSS}}\n`;
+}
+
+/** Everything but the desktop chrome (UK-06): what a web page draws. */
+export function webStylesCss(): string {
+  return `@layer polaris-key {\n${tokenCss(false)}\n}\n\n${KIT_CSS.trim()}\n`;
+}
+
+/** The desktop chrome's tokens and rules, to follow `webStylesCss()`. */
+export function desktopStylesCss(): string {
+  return `@layer polaris-key {\n${platformTokenCss()}\n}\n\n@layer polaris-key {${DESKTOP_CSS}}\n`;
 }
 
 let shared: CSSStyleSheet | null = null;
@@ -1688,4 +1767,122 @@ export function sharedSheet(): CSSStyleSheet | null {
   shared = new CSSStyleSheet();
   shared.replaceSync(stylesCss());
   return shared;
+}
+
+// ── The step morph ───────────────────────────────────────────────────────────────────────────
+// A View Transition on the one card when the step changes: a cross-fade and an 8 px slide at the
+// `base` duration token, `ease-standard` (DL16). The pseudo-elements belong to the document, so
+// their rules ride a document sheet of their own (adopted, never a `<style>`, for a strict CSP).
+
+/** The document-level rules of the morph; the duration and easing come from the root's tokens. */
+export const MORPH_CSS = `::view-transition-group(pk-card),
+::view-transition-group(pk-host) {
+  animation-duration: var(--pk-morph-ms, 0ms);
+  animation-timing-function: var(--pk-morph-ease, ease);
+}
+::view-transition-old(pk-card),
+::view-transition-old(pk-host) {
+  animation: pk-morph-out var(--pk-morph-ms, 0ms) var(--pk-morph-ease, ease) both;
+}
+::view-transition-new(pk-card) {
+  animation: pk-morph-in var(--pk-morph-ms, 0ms) var(--pk-morph-ease, ease) both;
+}
+::view-transition-new(pk-host) {
+  animation: pk-morph-fade var(--pk-morph-ms, 0ms) var(--pk-morph-ease, ease) both;
+}
+@keyframes pk-morph-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pk-morph-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes pk-morph-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(pk-card),
+  ::view-transition-old(pk-card),
+  ::view-transition-new(pk-card),
+  ::view-transition-group(pk-host),
+  ::view-transition-old(pk-host),
+  ::view-transition-new(pk-host) {
+    animation: none;
+  }
+}`;
+
+/** True where the browser can run the morph and the person has not asked for less motion. */
+export function canMorph(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    typeof document.startViewTransition === "function" &&
+    !(
+      typeof matchMedia === "function" &&
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+  );
+}
+
+let morphSheet: CSSStyleSheet | null = null;
+let running = 0;
+
+/**
+ * Run `swap` (which changes the card's content, synchronously) inside the morph. Where the browser
+ * has no View Transitions, the person prefers less motion or the root's `base` duration is 0
+ * (reduced motion in the theme), it is an instant swap: `swap` runs now, with no error. A kit in a
+ * shadow root passes its `host`: the transition names the host (a fade), and the incoming card
+ * slides its 8 px itself.
+ */
+export function morph(root: Element, swap: () => void, host?: Element): void {
+  const cs = getComputedStyle(root);
+  const ms = Number.parseFloat(cs.getPropertyValue("--pk-duration-base"));
+  if (!canMorph() || !(ms > 0)) return swap();
+  const doc = document;
+  const named = host ?? root;
+  try {
+    if (!morphSheet && "adoptedStyleSheets" in doc) {
+      morphSheet = new CSSStyleSheet();
+      morphSheet.replaceSync(MORPH_CSS);
+    }
+    if (morphSheet && !doc.adoptedStyleSheets.includes(morphSheet))
+      doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, morphSheet];
+    const style = doc.documentElement.style;
+    style.setProperty("--pk-morph-ms", `${ms}ms`);
+    const ease = cs.getPropertyValue("--pk-ease-standard").trim() || "ease";
+    style.setProperty("--pk-morph-ease", ease);
+    named.setAttribute("data-morphing", "");
+    // A name declared inside a shadow tree is scoped to it: the host's own, from outside, is not.
+    if (host) (host as HTMLElement).style.viewTransitionName = "pk-host";
+    running++;
+    const done = () => {
+      named.removeAttribute("data-morphing");
+      if (host) (host as HTMLElement).style.viewTransitionName = "";
+      // The document's variables go when the last of overlapping morphs ends.
+      if (--running > 0) return;
+      style.removeProperty("--pk-morph-ms");
+      style.removeProperty("--pk-morph-ease");
+    };
+    doc
+      .startViewTransition(() => {
+        swap();
+        if (host)
+          root
+            .querySelector(".card")
+            ?.animate?.([{ opacity: 0, transform: "translateY(8px)" }, {}], {
+              duration: ms,
+              easing: ease,
+            });
+      })
+      .finished.then(done, done);
+  } catch {
+    named.removeAttribute("data-morphing");
+    if (host) (host as HTMLElement).style.viewTransitionName = "";
+    swap();
+  }
 }

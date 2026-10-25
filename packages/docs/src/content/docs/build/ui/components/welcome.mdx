@@ -39,6 +39,44 @@ The gate's first screen: the product hero, Sign in, Use a license key, and the e
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` when the license state calls for it, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<Welcome />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Welcome", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate's first screen; nothing to place.
+
+    **Styled part.** `PolarisKitScreen(screen, onAction)` draws the hero, Sign in and Use a license key; restyle through `PolarisTheme`.
+
+    **Headless.** `KitStates.resolve(KitComponent.welcome, inputs)`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.KitAction
+    import im.plrs.key.ui.KitComponent
+    import im.plrs.key.ui.KitInputs
+    import im.plrs.key.ui.KitStates
+    import im.plrs.key.ui.PolarisKitScreen
+
+    @Composable
+    fun MyWelcome(inputs: KitInputs, onAction: (KitAction?) -> Unit) {
+        PolarisKitScreen(KitStates.resolve(KitComponent.welcome, inputs), onAction = onAction)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

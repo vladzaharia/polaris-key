@@ -7,6 +7,7 @@ options:
   bundleIdPrefix: dev.polariskey.kitsample
   deploymentTarget:
     iOS: "18.0"
+    macOS: "15.0"
 packages:
   PolarisKey:
     path: ../../../sdks/swift
@@ -63,7 +64,14 @@ targets:
   TidewaterKitUITests:
     type: bundle.ui-testing
     platform: iOS
-    sources: [UITests]
+    sources:
+      - path: UITests
+        excludes:
+          [
+            KitRenderMacTests.swift,
+            KitKeyboardMacTests.swift,
+            KitSettingsMacTests.swift,
+          ]
     dependencies:
       - target: TidewaterKit
       - package: SnapshotTesting
@@ -73,6 +81,56 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: TidewaterKit
         PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.kitsample.uitests
+  # The macOS sample (UK-08.2): the same App/ sources as the iOS target, a window instead of a
+  # screen. TidewaterKitMacUITests is the Mac render harness (UITests/KitRenderMacTests.swift).
+  TidewaterKitMac:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: PolarisKey
+        product: PolarisKey
+      - package: PolarisKey
+        product: PolarisKeyUI
+      - package: PolarisKey
+        product: PolarisKeyUICore
+      - package: PolarisKey
+        product: PolarisKeyUpdate
+      - package: PolarisKey
+        product: PolarisKeyUpdateUI
+    info:
+      path: build/generated/Info-Mac.plist
+      properties:
+        CFBundleDisplayName: Tidewater Studio
+        CFBundleShortVersionString: "2.4.1"
+        CFBundleVersion: "241"
+        LSMinimumSystemVersion: "15.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.kitsample.mac
+        PRODUCT_NAME: TidewaterKitMac
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+  TidewaterKitMacUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      [
+        UITests/KitRenderMacTests.swift,
+        UITests/KitKeyboardMacTests.swift,
+        UITests/KitSettingsMacTests.swift,
+      ]
+    dependencies:
+      - target: TidewaterKitMac
+      # PolarisKeyPreviewState.all: the harness renders every preview state.
+      - package: PolarisKey
+        product: PolarisKeyUICore
+      - package: SnapshotTesting
+        product: SnapshotTesting
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: TidewaterKitMac
+        PRODUCT_BUNDLE_IDENTIFIER: dev.polariskey.kitsample.mac.uitests
 schemes:
   TidewaterKit:
     build:
@@ -82,3 +140,11 @@ schemes:
     test:
       config: Debug
       targets: [TidewaterKitUITests]
+  TidewaterKitMac:
+    build:
+      targets:
+        TidewaterKitMac: all
+        TidewaterKitMacUITests: [test]
+    test:
+      config: Debug
+      targets: [TidewaterKitMacUITests]

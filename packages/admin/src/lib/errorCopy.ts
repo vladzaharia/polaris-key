@@ -1,11 +1,12 @@
 /**
  * `errorCopy(error, context)`: the console's one error mapper (docs/design/ADMIN.md §5.9,
- * components.md §5.5). It reads an `ApiError` (status, code, reason, errors, fields) and returns a
+ * components.md §5.5). It reads an `HttpError` (status, code, reason, errors, fields) and returns a
  * title, a description and the next step, so no view ever shows "api 422" again (P9). Toasts,
  * `ErrorState` and confirm dialogs all render through it.
  */
 
-import { ApiError, SERVICE_ERROR_MESSAGES } from "../api.js";
+import { HttpError } from "./http.js";
+import { SERVICE_ERROR_MESSAGES } from "./serviceErrorMessages.js";
 import { AREA_NAMES } from "./areaNames.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./releasePolicyMessages.js";
 
@@ -27,6 +28,8 @@ export type ErrorAction =
   | "none";
 
 export interface ErrorContext {
+  /** The request only reads: a 403 is "no access", never "you need edit access". */
+  read?: boolean;
   /** The thing the request was about, for "{Thing} not found": "License", "Profile". */
   thing?: string;
   /** Where that thing's collection lives, for the not-found link. */
@@ -57,7 +60,8 @@ export type ErrorArea =
   | "manifest"
   | "slug"
   | "github"
-  | "services";
+  | "services"
+  | "commerce";
 
 /** One `.pkey/` manifest problem, with the file and the JSON path it is about. */
 export interface ManifestProblem {
@@ -252,7 +256,7 @@ function withoutStatus(message: string | null): string | null {
 type SlugProblem = "taken" | "reserved" | "invalid";
 
 function slugProblem(
-  error: ApiError,
+  error: HttpError,
   message: string,
   area: ErrorArea | undefined,
 ): SlugProblem | null {
@@ -312,27 +316,29 @@ function githubProblem(
 }
 
 /** The field a refused request should focus: the first one the server named. */
-function firstField(error: ApiError): string | undefined {
+function firstField(error: HttpError): string | undefined {
   return error.fields?.[0];
 }
 
 /**
  * Is this a network failure (fetch rejected before any response)? Only fetch's own failure is:
- * the api client tags it (`isFetchFailure`), and other fetch callers' errors read as one by their
+ * the client throws it as status 0, and other fetch callers' errors read as one by their
  * message. A bare `TypeError` is usually a render crash, which is not "Can't reach Polaris Key".
  */
 function isNetworkError(error: unknown): boolean {
-  if ((error as { isFetchFailure?: unknown } | null)?.isFetchFailure === true)
-    return true;
+  if (error instanceof HttpError) return error.status === 0;
   return (
     error instanceof Error &&
     /network|failed to fetch|load failed/i.test(error.message)
   );
 }
 
-/** The server's own message, when it sent one (ApiError's default message is "api {status}"). */
-function serverMessage(error: ApiError): string | null {
-  return error.message && error.message !== `api ${error.status}`
+/** The server's own message, when it sent one (the default message is "api {status}" or "http {status}"). */
+function serverMessage(error: HttpError): string | null {
+  return error.message &&
+    error.message !== `api ${error.status}` &&
+    error.message !== `http ${error.status}` &&
+    error.status !== 0
     ? error.message
     : null;
 }
@@ -342,7 +348,7 @@ function detailsOf(error: unknown): Record<string, unknown> {
     time: new Date().toISOString(),
     path: typeof window !== "undefined" ? window.location.hash : undefined,
   };
-  if (error instanceof ApiError) {
+  if (error instanceof HttpError) {
     return {
       ...base,
       status: error.status,
@@ -357,8 +363,8 @@ function detailsOf(error: unknown): Record<string, unknown> {
   return { ...base, value: String(error) };
 }
 
-function referencesOf(error: ApiError): string[] | undefined {
-  const refs = (error as ApiError & { references?: unknown }).references;
+function referencesOf(error: HttpError): string[] | undefined {
+  const refs = (error as HttpError & { references?: unknown }).references;
   return Array.isArray(refs) ? refs.map(String) : undefined;
 }
 
@@ -380,7 +386,7 @@ export function errorCopy(
   const details = detailsOf(error);
   const thing = context.thing ?? "This item";
 
-  if (!(error instanceof ApiError)) {
+  if (!(error instanceof HttpError) || error.status === 0) {
     if (isNetworkError(error)) {
       return {
         title: "Can't reach Polaris Key",
@@ -458,18 +464,33 @@ export function errorCopy(
         details,
       };
     }
+    if (context.read)
+      return {
+        title: "You don't have access to this",
+        description: "Ask a platform admin to give you access.",
+        action: "none",
+        details,
+      };
     // ST-29: the route table's refusal (`reason: "no_access"`): the member lacks the area.
     if (reason === "no_access")
       return {
         title: "You don't have access to this",
-        description: needsEdit(error.area),
+        description: needsEdit(error.area ?? context.area),
+        action: "none",
+        details,
+      };
+    // ST-30c.2 (N3): an emergency sign-in names no account and creates no durable credential.
+    if (reason === "break_glass_session")
+      return {
+        title: "Emergency sign-in can't do this",
+        description: "Sign out, then sign in with your account to continue.",
         action: "none",
         details,
       };
     return {
       title: "You can't do that",
       // The server's words stay in `details`: a 403 message is a policy line, not copy.
-      description: needsEdit(),
+      description: needsEdit(context.area),
       action: "none",
       details,
     };
@@ -484,6 +505,15 @@ export function errorCopy(
     };
   }
   if (status === 409) {
+    // Someone unassigned the app between the page loading and the click.
+    if (reason === "no_assigned_app")
+      return {
+        title: "No app is assigned",
+        description:
+          "The app was unassigned. A platform admin assigns it in Platform → Store connections.",
+        action: "none",
+        details,
+      };
     const references = referencesOf(error);
     if (references || /in use|referenc/i.test(message ?? "")) {
       return {
@@ -564,6 +594,15 @@ export function errorCopy(
       details,
     };
   }
+  if (status === 504 || status === 408) {
+    // A timeout names its cause; the status stays in `details`.
+    return {
+      title: "The server took too long",
+      description: "Polaris Key took too long to answer. Try again.",
+      action: "retry",
+      details,
+    };
+  }
   if (code === "catalog_unavailable") {
     return {
       title: "The catalog couldn't be read",
@@ -610,7 +649,7 @@ function problemCount(n: number): string {
  * that don't fit together. Null when the error is none of these, so the status table words it.
  */
 function setupCopy(
-  error: ApiError,
+  error: HttpError,
   message: string,
   context: ErrorContext,
   details: Record<string, unknown>,

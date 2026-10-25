@@ -12,6 +12,7 @@ import im.plrs.key.core.PolarisTransport
 import im.plrs.key.core.TrustSet
 import java.security.KeyPairGenerator
 import java.security.PrivateKey
+import java.security.Security
 import java.security.Signature
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -19,13 +20,51 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+/**
+ * One throwaway Ed25519 key pair. The JDK's provider signs on the JVM; on Android `getInstance("Ed25519")` resolves to
+ * the AndroidKeyStore provider (API 33+), which cannot make a plain key, so the key is made by another JCA provider and,
+ * where none has Ed25519, by Tink (`tink-android`, which `:android` brings; reached by reflection, as `:core` only
+ * compiles against it).
+ */
+private class Ed25519Keys(val publicKey: ByteArray, val sign: (ByteArray) -> ByteArray) {
+    fun sign(data: ByteArray): ByteArray = sign.invoke(data)
+
+    companion object {
+        fun create(): Ed25519Keys = jca() ?: tink()
+
+        private fun jca(): Ed25519Keys? = Security.getProviders().filter { it.name != "AndroidKeyStore" }.firstNotNullOfOrNull { provider ->
+            runCatching {
+                val pair = KeyPairGenerator.getInstance("Ed25519", provider).generateKeyPair()
+                val privateKey: PrivateKey = pair.private
+                Ed25519Keys(pair.public.encoded.takeLast(32).toByteArray()) { data ->
+                    Signature.getInstance("Ed25519", provider).run {
+                        initSign(privateKey)
+                        update(data)
+                        sign()
+                    }
+                }
+            }.getOrNull()
+        }
+
+        private fun tink(): Ed25519Keys {
+            val signClass = Class.forName("com.google.crypto.tink.subtle.Ed25519Sign")
+            val pairClass = Class.forName("com.google.crypto.tink.subtle.Ed25519Sign\$KeyPair")
+            val pair = pairClass.getMethod("newKeyPair").invoke(null)
+            val publicKey = pairClass.getMethod("getPublicKey").invoke(pair) as ByteArray
+            val privateKey = pairClass.getMethod("getPrivateKey").invoke(pair) as ByteArray
+            val signer = signClass.getConstructor(ByteArray::class.java).newInstance(privateKey)
+            val sign = signClass.getMethod("sign", ByteArray::class.java)
+            return Ed25519Keys(publicKey) { data -> sign.invoke(signer, data) as ByteArray }
+        }
+    }
+}
+
 /** A throwaway Ed25519 key and the documents it signs. */
 public class TestSigner(public val kid: String = "test-key") {
-    private val pair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
-    private val privateKey: PrivateKey = pair.private
+    private val keys: Ed25519Keys = Ed25519Keys.create()
 
     /** The raw 32-byte public key, base64url: the X.509 encoding's last 32 bytes. */
-    public val publicKey: String = Base64Url.encode(pair.public.encoded.takeLast(32).toByteArray())
+    public val publicKey: String = Base64Url.encode(keys.publicKey)
 
     /** The trust set that pins this key. */
     public val trust: TrustSet = mapOf(kid to publicKey)
@@ -34,11 +73,7 @@ public class TestSigner(public val kid: String = "test-key") {
     public fun sign(typ: String, payload: JsonObject, headerKid: String = kid): String {
         val header = JsonObject(mapOf("alg" to JsonPrimitive("EdDSA"), "typ" to JsonPrimitive(typ), "kid" to JsonPrimitive(headerKid)))
         val input = Base64Url.encode(header.toString()) + "." + Base64Url.encode(payload.toString())
-        val signature = Signature.getInstance("Ed25519").run {
-            initSign(privateKey)
-            update(input.toByteArray(Charsets.UTF_8))
-            sign()
-        }
+        val signature = keys.sign(input.toByteArray(Charsets.UTF_8))
         return input + "." + Base64Url.encode(signature)
     }
 

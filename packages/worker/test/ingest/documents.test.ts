@@ -62,7 +62,7 @@ describe("create from documents (D8)", () => {
     ).toEqual({ n: 0 });
     expect(
       (await db.all("SELECT id FROM tiers WHERE product = ?", SLUG)).length,
-    ).toBe(1);
+    ).toBe(2); // the manifest's tier and the Default tier (LX-33.7)
   });
 
   it("accepts documents with no release block", async () => {

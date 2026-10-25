@@ -1,13 +1,14 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { findChannel } from "@polaris-key/manifest";
 import { OUTLET_SUBKINDS } from "@polaris-key/protocol/distribution";
 import {
   ACCESS_DESCRIPTIONS,
   ACCESS_LABELS,
-  OUTLET_KIND_LABELS,
-  OUTLET_SUBKIND_LABELS,
+  outletKindName,
   outletLabel,
+  outletSubkindLabel,
   PROVIDER_LABELS,
   REGISTRATION_LABELS,
   SIGN_IN_LABELS,
@@ -39,7 +40,7 @@ describe("labels (ADMIN.md §5.8)", () => {
 
 describe("the direct outlet reads Polaris Locker (S-21 §6.8)", () => {
   it("labels the kind and its subkinds, keeping the id direct", () => {
-    expect(label(OUTLET_KIND_LABELS, "direct")).toBe("Polaris Locker");
+    expect(outletKindName("direct")).toBe("Polaris Locker");
     expect(outletLabel("direct")).toBe("Polaris Locker");
     expect(outletLabel("direct", "homebrew")).toBe(
       "Polaris Locker · via Homebrew",
@@ -52,9 +53,17 @@ describe("the direct outlet reads Polaris Locker (S-21 §6.8)", () => {
   });
 
   it("labels every protocol subkind", () => {
-    expect(Object.keys(OUTLET_SUBKIND_LABELS).sort()).toEqual(
-      [...OUTLET_SUBKINDS].sort(),
-    );
+    const names = OUTLET_SUBKINDS.map(outletSubkindLabel);
+    expect(names).toContain("Homebrew");
+    expect(names).toContain("Scoop");
+    expect(names).toContain("AppImage");
+    for (const s of OUTLET_SUBKINDS) {
+      // a catalogue channel reads its catalogue label; the rest come from the local table
+      expect(outletSubkindLabel(s), s).toBe(
+        findChannel(s)?.label ?? outletSubkindLabel(s),
+      );
+      expect(outletSubkindLabel(s), s).not.toBe("");
+    }
   });
 
   it("no console source says Direct download", () => {

@@ -10,7 +10,7 @@
 //                         (the replayer failing on a doctored recording is in transcripts.test.ts);
 //   release.distribution  `thisPlatform()`, the platform the page reports, the desktop
 //                         forwarding;
-//   crash.tags            the Sentry vectors of packages/worker/test/sentry.test.ts (the ones the
+//   crash.tags            the Sentry vectors of packages/worker/test/surfaces/console/sentry.test.ts (the ones the
 //                         Node SDK's hostConveniences.test.ts asserts), and both adapters.
 
 import { describe, expect, it } from "vitest";
@@ -477,7 +477,7 @@ describe("release.distribution", () => {
 
 describe("crash.tags", () => {
   it("crashTagsFor writes the release the Worker's Sentry hook parses back", () => {
-    // packages/worker/test/sentry.test.ts (parseSentryRelease): `<deliverable>@<version>[+<build>]`,
+    // packages/worker/test/surfaces/console/sentry.test.ts (parseSentryRelease): `<deliverable>@<version>[+<build>]`,
     // the channel as `environment`, the outlet as `pkey.outlet`.
     expect(
       crashTagsFor({

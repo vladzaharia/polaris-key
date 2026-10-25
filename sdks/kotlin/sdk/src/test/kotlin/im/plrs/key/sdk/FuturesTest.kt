@@ -44,7 +44,7 @@ class FuturesTest {
         pk.start().get(10, TimeUnit.SECONDS)
         pk.sync().get(10, TimeUnit.SECONDS)
         assertEquals(LicenseStatus.ok, pk.status().get(10, TimeUnit.SECONDS).status)
-        assertTrue(pk.isEntitled("pro").get(10, TimeUnit.SECONDS))
+        assertTrue(pk.hasEntitlement("pro").get(10, TimeUnit.SECONDS))
         try {
             pk.setChannel("nightly").get(10, TimeUnit.SECONDS)
             fail("refused")

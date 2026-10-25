@@ -326,7 +326,7 @@ func _license_choice(t: PKeyTestContext) -> void:
 	await _settle()
 	t.check("choice: choosing a row moves the selection", changed[0] == "lic_key" and v.selection()["id"] == "lic_key")
 	var primary := v.find_child("Continue", true, false) as Button
-	t.check("choice: one primary, 'Use this license and continue'", primary.visible and primary.text == "Use this license and continue" and primary.theme_type_variation == &"PKeyPrimary")
+	t.check("choice: one primary, 'Use this license'", primary.visible and primary.text == "Use this license" and primary.theme_type_variation == &"PKeyPrimary")
 	var got := [{}]
 	v.chosen.connect(func(s: Dictionary) -> void: got[0] = s)
 	primary.pressed.emit()

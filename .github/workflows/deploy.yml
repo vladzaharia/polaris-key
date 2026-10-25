@@ -29,6 +29,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Nothing here pushes; `git fetch origin main` reads a public repository.
+          persist-credentials: false
       - name: Tag is a release tag on main
         env:
           REF: ${{ github.ref }}
@@ -141,14 +143,15 @@ jobs:
           node-version: 22
           cache: pnpm
       # The docs snippet lane compiles every Python block on a covered page against the SDK with
-      # mypy, so `pnpm test` needs the SDK's own venv, as in ci.yml's JS/TS job.
+      # mypy, so `pnpm test` needs the SDK's own venv with the same extras as ci.yml's JS/TS job
+      # (`qt`: the Qt kit page imports PySide6).
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Python venv for the docs snippet lane
         run: |
           python -m venv sdks/python/.venv
-          sdks/python/.venv/bin/pip install -e "sdks/python[dev]"
+          sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]"
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
@@ -158,6 +161,29 @@ jobs:
         env:
           PKEY_DOCS_SKIP_LANES: swift,kotlin,gdscript
       - run: pnpm lint
+      # AX-07.5: the agent kit, built and validated here (unprivileged: no environment, no
+      # secrets) and handed to `agent-kit-release` as an artifact. The pinned Claude Code CLI is
+      # the same pin as ci.yml's js job (tools/agent-kit-release.ts, PINNED_CLAUDE_CODE).
+      - name: Derive the version
+        id: version
+        run: node tools/sdk-version.mjs derive --ref "$GITHUB_REF" --github-output
+      - name: Build the agent kit
+        env:
+          KIT_VERSION: ${{ steps.version.outputs.version }}
+        run: pnpm exec tsx tools/agent-kit-release.ts --kit packages/agent-kit --version "$KIT_VERSION" --out dist/agent-kit
+      - name: Validate the agent kit
+        env:
+          PKEY_CLAUDE_BIN: npx --yes @anthropic-ai/claude-code@2.1.296
+        run: pnpm skills:validate
+      - name: Upload the agent kit
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: agent-kit
+          path: |
+            dist/agent-kit/polaris-key-*.zip
+            dist/agent-kit/marketplace.json
+          if-no-files-found: error
+          retention-days: 7
 
   deploy-worker:
     name: Deploy worker
@@ -299,7 +325,7 @@ jobs:
           # Always the NEWEST *_index_assertion.sql (0018, then 0027_i, ...): each successor
           # DELETEs and re-INSERTs the full list, so re-running an older file would overwrite
           # the row with a shorter list and stop checking the indexes added since.
-          # test/scheduled.test.ts pins this step to that selection.
+          # test/surfaces/scheduled.test.ts pins this step to that selection.
           ASSERTION="$(ls migrations/*_index_assertion.sql | sort | tail -1)"
           echo "Re-asserting required indexes from $ASSERTION"
           npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote --file "$ASSERTION"
@@ -472,7 +498,7 @@ jobs:
       # fail the deploy: continue-on-error, and a miss prints a ::warning:: annotation instead.
       # It runs whenever the request Worker deploy succeeded, even if the smoke check failed,
       # because the row records what is live. Same token: it already holds D1 edit (migrations).
-      # test/recordDeploy.test.ts pins this step's position and guards.
+      # test/core/recordDeploy.test.ts pins this step's position and guards.
       - name: Record deploy
         if: ${{ !cancelled() && steps.deploy-main.outcome == 'success' }}
         continue-on-error: true
@@ -491,6 +517,39 @@ jobs:
         run: |
           cd packages/worker
           node scripts/record-deploy.mjs
+
+  # AX-07.5: attach the agent kit to the tag's GitHub release.
+  #
+  # SECURITY: this job holds `contents: write` and nothing else, so it runs NO repository code:
+  # no checkout, no install, no script from the tag's tree. The only inputs are the `agent-kit`
+  # artifact that `verify` built (unprivileged) and `gh`, which the runner image provides. It has
+  # no `environment` (so no environment secret is reachable) and no secret beyond the job's own
+  # GITHUB_TOKEN. It runs after `deploy-worker` succeeded, so a tag that did not deploy gets no
+  # kit. As with the other gates in this file, `if:` stops a mistake, not an actor who can write a
+  # tag; the worst such an actor reaches here is a release asset on their own tag.
+  agent-kit-release:
+    name: Agent kit release
+    needs: [verify, deploy-worker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.repository == 'vladzaharia/polaris-key' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: agent-kit
+          path: agent-kit
+      - name: Create the release if the tag has none, then upload the kit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes "Agent kit for $TAG" $([[ "$TAG" == *-* ]] && echo --prerelease)
+          fi
+          gh release upload "$TAG" agent-kit/polaris-key-*.zip agent-kit/marketplace.json --clobber
 
   # F-10 automation: every SDK at exactly this tag's version, published to the feeds once the
   # Worker that serves them is live and the root .pkey/ of this tag is registered (the step

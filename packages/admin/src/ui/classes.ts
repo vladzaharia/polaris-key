@@ -82,7 +82,8 @@ export const TABLE = {
     "h-9 px-3 align-middle text-xs leading-4 font-medium whitespace-nowrap text-fg-muted",
   rowCompact: "h-9",
   rowComfortable: "h-14",
-  row: "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border hover:bg-state-hover-tint focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-focus data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
+  // outline-none, not outline-hidden: a transparent outline is drawn in forced colours (a doubled rule).
+  row: "bg-surface-raised text-sm text-fg outline-none [&>td]:border-b [&>td]:border-border hover:bg-state-hover-tint focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-2 focus-visible:outline-focus data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
   cell: "px-3 align-middle",
   /** A column of running text (docs tables): wide enough to read, instead of squeezed by its neighbours. */
   proseCell: "min-w-72",

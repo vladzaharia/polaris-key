@@ -17,7 +17,7 @@ from polaris_key.server import PolarisKeyError  # noqa: E402
 from polaris_key.server.starlette import PolarisKey, PolarisKeyMiddleware  # noqa: E402
 from helpers import KID, NOW, PUBKEY_RAW, license_payload, sign_license  # noqa: E402
 
-CFG = {"product_slug": "djdl", "base_url": "https://key.example", "trust": {KID: PUBKEY_RAW}}
+CFG = {"product_slug": "djdl", "base_url": "https://key.example", "pinned_keys": {KID: PUBKEY_RAW}}
 
 
 def _client(**kw: Any) -> TestClient:

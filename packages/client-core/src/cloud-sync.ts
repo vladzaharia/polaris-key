@@ -20,6 +20,18 @@
 // Nothing here touches licence state. No module reachable from `gate.ts`, `store.ts` or
 // `verify.ts` imports this one (`test/cloudSyncIsolation.test.ts`, T5).
 
+import {
+  SYNC_CLIENT_ID_PATTERN as PROTOCOL_SYNC_CLIENT_ID_PATTERN,
+  SYNC_DEBOUNCE_MS as PROTOCOL_SYNC_DEBOUNCE_MS,
+  SYNC_HLC_PATTERN as PROTOCOL_SYNC_HLC_PATTERN,
+  SYNC_IMPORT_HLC as PROTOCOL_SYNC_IMPORT_HLC,
+  SYNC_MAX_CLOCK_SKEW_MS as PROTOCOL_SYNC_MAX_CLOCK_SKEW_MS,
+  SYNC_MAX_MUTATIONS as PROTOCOL_SYNC_MAX_MUTATIONS,
+  SYNC_MAX_VALUE_BYTES as PROTOCOL_SYNC_MAX_VALUE_BYTES,
+  SYNC_PENDING_DAYS as PROTOCOL_SYNC_PENDING_DAYS,
+  SYNC_SIGNOUT_FLUSH_MS as PROTOCOL_SYNC_SIGNOUT_FLUSH_MS,
+} from "@polaris-key/protocol/sync";
+
 /** A JSON value. */
 export type Json =
   | null
@@ -29,24 +41,29 @@ export type Json =
   | Json[]
   | { [k: string]: Json };
 
-/** Per-key debounce of `set` (S-17 §5.4). U-05 moves these into `@polaris-key/protocol/sync`. */
-export const SYNC_DEBOUNCE_MS = 2000;
+// The numbers and patterns are `@polaris-key/protocol/sync`'s (U-05.1; plans/U-01b.md §2.5): this
+// module re-exports them under its own names, values unchanged.
+
+/** Per-key debounce of `set` (S-17 §5.4). */
+export const SYNC_DEBOUNCE_MS = PROTOCOL_SYNC_DEBOUNCE_MS;
 /** The most canonical-JSON bytes one setting value may take (D3); a larger `set` is `bad_request`. */
-export const SYNC_MAX_VALUE_BYTES = 8192;
+export const SYNC_MAX_VALUE_BYTES = PROTOCOL_SYNC_MAX_VALUE_BYTES;
 /** The clock every imported `config.local` value carries: any cloud value or tombstone beats it. */
-export const SYNC_IMPORT_HLC = "000000000000:0000";
+export const SYNC_IMPORT_HLC = PROTOCOL_SYNC_IMPORT_HLC;
 /** How long `signOut` waits for its flush before reporting what stayed unsynced (rule 5). */
-export const SYNC_SIGNOUT_FLUSH_MS = 5000;
+export const SYNC_SIGNOUT_FLUSH_MS = PROTOCOL_SYNC_SIGNOUT_FLUSH_MS;
 /** Days a signed-out partition keeps its pending operations (rule 5). */
-export const SYNC_PENDING_DAYS = 30;
+export const SYNC_PENDING_DAYS = PROTOCOL_SYNC_PENDING_DAYS;
 /** The most mutations one push carries. */
-export const SYNC_MAX_MUTATIONS = 100;
+export const SYNC_MAX_MUTATIONS = PROTOCOL_SYNC_MAX_MUTATIONS;
 /** The future-skew clamp, and the pre-contact re-stamp threshold (rule 8, S-17 §5.5). */
-export const SYNC_MAX_CLOCK_SKEW_MS = 300_000;
+export const SYNC_MAX_CLOCK_SKEW_MS = PROTOCOL_SYNC_MAX_CLOCK_SKEW_MS;
 /** `^[0-9a-f]{12}:[0-9a-f]{4}$`: 48-bit milliseconds, a 16-bit counter. */
-export const SYNC_HLC_PATTERN = /^[0-9a-f]{12}:[0-9a-f]{4}$/;
+export const SYNC_HLC_PATTERN = new RegExp(PROTOCOL_SYNC_HLC_PATTERN);
 /** One per (install, partition); 128 random bits. */
-export const SYNC_CLIENT_ID_PATTERN = /^c_[A-Za-z0-9_-]{22}$/;
+export const SYNC_CLIENT_ID_PATTERN = new RegExp(
+  PROTOCOL_SYNC_CLIENT_ID_PATTERN,
+);
 
 /** The partition of a device nobody has signed in on (`owner: "local"`). */
 export const LOCAL_PARTITION = "local";

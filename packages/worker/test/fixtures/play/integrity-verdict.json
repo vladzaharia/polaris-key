@@ -1,5 +1,5 @@
 {
-  "$comment": "P6-02: a decodeIntegrityToken response in the shape Google documents for a STANDARD request (developer.android.com/google/play/integrity/verdicts), recorded as a template: the fake decoder (test/attest.test.ts) fills requestDetails.requestHash with the hash the token was minted for and timestampMillis with the mint time, and a test may override any member. No real token, app or device.",
+  "$comment": "P6-02: a decodeIntegrityToken response in the shape Google documents for a STANDARD request (developer.android.com/google/play/integrity/verdicts), recorded as a template: the fake decoder (test/surfaces/attest.test.ts) fills requestDetails.requestHash with the hash the token was minted for and timestampMillis with the mint time, and a test may override any member. No real token, app or device.",
   "tokenPayloadExternal": {
     "requestDetails": {
       "requestPackageName": "gg.acme.djdl",

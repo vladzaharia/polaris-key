@@ -56,6 +56,13 @@
  *   - 13-link-secret-default (plans/P0-26.md D5, delta 1): link screens the catalog for delivery
  *     issues, as resync and the console do. Captured from the pre-pipeline code (the link
  *     succeeded), then re-captured from the pipeline when the delta landed (the link refuses).
+ *   - A-27.4 (2026-10-22): Distribution's ingest also writes the root listing into the shared
+ *     listing model, as guarded UPDATEs of `dist_listings` / `dist_listing_locales` (nine
+ *     statements when the document declares no listing; the inserts and sets when it does).
+ *     Every scenario that runs Distribution's ingest while Distribution is on gained exactly
+ *     those writes and their end-state rows: 1, 3, 4, 5, 6a, 8, 9-license, 9-config,
+ *     9-identity, 11a and 11b. Re-captured by diffing: no other table, no result and no trip
+ *     count moved (9-distribution, with Distribution off, is unchanged).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -67,7 +74,6 @@ import {
   fresh,
   full,
   minimal,
-  schemaJson,
   ENTRIES,
   SLUG,
   URL_,

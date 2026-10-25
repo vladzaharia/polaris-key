@@ -52,7 +52,7 @@ def test_enforced_remote_value_wins_over_local_and_env() -> None:
     )
     c.license.activate_with_key("my-license-key")
     # enforced -> remote wins regardless of override/env.
-    assert c.config.get_config("run.concurrency") == 4
+    assert c.config.get("run.concurrency") == 4
     assert c.config.get_config_source("run.concurrency") == "enforced"
     c.close()
 
@@ -62,21 +62,21 @@ def test_default_state_local_override_then_env_then_remote() -> None:
     # local override wins over env + remote-default.
     c = make_client(_ok_routes(), local_overrides={"ui.theme": "solarized"})
     c.license.activate_with_key("k")
-    assert c.config.get_config("ui.theme") == "solarized"
+    assert c.config.get("ui.theme") == "solarized"
     assert c.config.get_config_source("ui.theme") == "local"
     c.close()
 
     # env wins over remote-default; JSON-parsed when it parses.
     c = make_client(_ok_routes(), env={"PKEY_CONFIG_ui__theme": '"dark"'})
     c.license.activate_with_key("k")
-    assert c.config.get_config("ui.theme") == "dark"
+    assert c.config.get("ui.theme") == "dark"
     assert c.config.get_config_source("ui.theme") == "env"
     c.close()
 
     # no override/env -> remote default value.
     c = make_client(_ok_routes(), env={})
     c.license.activate_with_key("k")
-    assert c.config.get_config("ui.theme") == "light"
+    assert c.config.get("ui.theme") == "light"
     assert c.config.get_config_source("ui.theme") == "remote-default"
     c.close()
 
@@ -85,10 +85,10 @@ def test_default_state_local_override_then_env_then_remote() -> None:
 def test_env_raw_string_when_not_json_and_fallback_source() -> None:
     c = make_client(_ok_routes(), env={"PKEY_CONFIG_ui__theme": "not json {"})
     c.license.activate_with_key("k")
-    assert c.config.get_config("ui.theme") == "not json {"
+    assert c.config.get("ui.theme") == "not json {"
     assert c.config.get_config_source("ui.theme") == "env"
     # An unknown key falls back.
-    assert c.config.get_config("missing.key", "fb") == "fb"
+    assert c.config.get("missing.key", "fb") == "fb"
     assert c.config.get_config_source("missing.key") == "fallback"
     c.close()
 
@@ -152,14 +152,14 @@ def test_activation_then_reads_across_both_documents() -> None:
 
     assert c.is_licensed(now=NOW + 100) is True
     assert c.status(now=NOW + 100).status == "ok"
-    assert c.config.get_config("run.concurrency", 1) == 4
-    assert c.config.get_config("missing", "fallback") == "fallback"
+    assert c.config.get("run.concurrency", 1) == 4
+    assert c.config.get("missing", "fallback") == "fallback"
     assert c.config.get_secret("proxy.subscriptionUrl") == "https://vpn.example.com/sub/abc"
     assert c.config.get_secret("missing") is None
     assert c.config.schema_version() == 4
-    assert c.license.is_entitled("polarisVpn") is True
-    assert c.license.is_entitled("nope") is False
-    assert c.license.get_entitlements() == {"polarisVpn": True, "license.tier": "pro"}
+    assert c.entitlements.has("polarisVpn") is True
+    assert c.entitlements.has("nope") is False
+    assert c.entitlements.all() == {"polarisVpn": True, "license.tier": "pro"}
     assert c.license.get_license_id() == "lic_v3"
     profile = c.license.get_profile()
     assert profile is not None and profile.firstName == "Grace"
@@ -550,7 +550,7 @@ def test_deactivate_wipes_local_state() -> None:
     assert c.is_licensed(now=NOW + 100) is True
     c.license.deactivate()
     assert c.status(now=NOW + 100).status == "needs-activation"
-    assert c.config.get_config("run.concurrency", 0) == 0
+    assert c.config.get("run.concurrency", 0) == 0
     assert c.core.high_water_mark == 0
     c.close()
 

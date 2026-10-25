@@ -12,12 +12,20 @@ import SwiftUI
 public struct PolarisKeyPreview: View {
     let state: PolarisKeyPreviewState
     let frozen: Date?
+    let asSheet: Bool
     @State private var model: PolarisKeyGateModel
 
     /// `frozenTime` stops the countdowns at the moment the preview was made, for renders that
     /// must match a baseline.
-    public init(_ state: PolarisKeyPreviewState, iconData: Data? = nil, frozenTime: Bool = false) {
+    ///
+    /// `asSheet` draws the state as the content of a sheet (the form alone, fitted to 440 pt on a
+    /// Mac) for a host that presents it with `.sheet`.
+    public init(
+        _ state: PolarisKeyPreviewState, iconData: Data? = nil, frozenTime: Bool = false,
+        asSheet: Bool = false
+    ) {
         self.state = state
+        self.asSheet = asSheet
         let now = Date()
         self.frozen = frozenTime ? now : nil
         let route: KitGateRoute
@@ -42,6 +50,7 @@ public struct PolarisKeyPreview: View {
         PolarisKeyScope(model: model) {
             screen
         }
+        .environment(\.kitInSheet, asSheet)
         .environment(\.polarisKeyNow, frozen)
     }
 
@@ -50,7 +59,10 @@ public struct PolarisKeyPreview: View {
         case .gate:
             PolarisKeyGate(model: model) { PreviewHostApp() }
         case .boot:
-            BootView(boot: model.boot)
+            // A still: every action is drawn as the host would wire it.
+            BootView(
+                boot: model.boot, onDownload: {}, onNotNow: {}, onContinueOffline: {},
+                onTryAgain: {}, onUpdate: {})
         case .welcome:
             WelcomeView(
                 screen: model.welcome, onSignIn: {}, onUseKey: {},
@@ -167,8 +179,6 @@ public struct PolarisKeyPreview: View {
                             return i
                         }()), features: offers.features ?? [], onPortal: {}, onRedeem: {})
             }
-        default:
-            PreviewHostApp()
         }
     }
 }

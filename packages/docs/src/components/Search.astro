@@ -14,17 +14,22 @@ const label = help ? "Search help" : "Search the docs";
 // What the dialog lists before a query: Help's Top tasks, else the developer landing's Get started.
 const suggestions = help ? HELP_TOP_TASKS : START_HERE;
 const suggestionsLabel = help ? "Top tasks" : "Start here";
+// The page-not-found page is one static file for every host. Its search is the developer's until
+// the address says Help (the pre-paint script in help/MissingPage.astro marks <html data-help-miss>),
+// and search.ts then swaps to Help's words, opening state and bundle.
+const miss = Astro.locals.starlightRoute.id === "404";
 ---
 
 <site-search
   class={Astro.props.class}
   data-scope={help ? "help" : "all"}
   data-base={import.meta.env.BASE_URL.replace(/\/$/, "")}
+  data-miss={miss ? "" : undefined}
 >
   <button data-open-modal disabled aria-label={label} aria-keyshortcuts="Control+K">
     <Fragment set:html={HELP_ICONS.search} />
     <span class="pk-search-label" aria-hidden="true">{help ? "Search help" : "Search docs"}</span>
-    <kbd class="pk-search-kbd" hidden><kbd>Ctrl</kbd><kbd>K</kbd></kbd>
+    <kbd class="pk-search-kbd" hidden>Ctrl K</kbd>
   </button>
 
   <dialog class="pk-search" aria-label={label}>
@@ -90,6 +95,13 @@ const suggestionsLabel = help ? "Top tasks" : "Start here";
   <template data-suggest={suggestionsLabel}>
     {suggestions.map((s) => <a href={s.href}><strong>{s.title}</strong><small>{s.description}</small></a>)}
   </template>
+  {
+    miss && (
+      <template data-suggest-help="Top tasks">
+        {HELP_TOP_TASKS.map((s) => <a href={s.href}><strong>{s.title}</strong><small>{s.description}</small></a>)}
+      </template>
+    )
+  }
   <template data-icon="door-help"><Fragment set:html={DOOR_ICONS.help} /></template>
   <template data-icon="door-developers"><Fragment set:html={DOOR_ICONS.code} /></template>
   <template data-icon="door-operate"><Fragment set:html={DOOR_ICONS.dashboard} /></template>

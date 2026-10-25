@@ -5,8 +5,9 @@ import { configureAxe } from "vitest-axe";
 import { boot, resetConsole } from "./consoleHarness.js";
 
 /**
- * Platform → Activity (ST-51): the product union with the Product facet, Timeline and Table, Load
- * more by cursor, CSV of the loaded rows, and the routed event drawer.
+ * Platform → Activity (ST-51): platform events by default (D10) with the Product facet, the
+ * platform's own action and target lists, Timeline and Table, Load more by cursor, CSV of the
+ * loaded rows, and the routed event drawer.
  */
 
 const axe = configureAxe({ rules: { "color-contrast": { enabled: false } } });
@@ -68,7 +69,7 @@ function activity(q: URLSearchParams) {
 const main = (): HTMLElement => screen.getByRole("main");
 
 describe("Platform → Activity", () => {
-  it("lists every product's events and the platform's, asking for the union", async () => {
+  it("lists the platform's events by default and names a product's when one shows", async () => {
     const log = boot("#/platform/activity", {
       extra: { "/manage/api/platform/activity": activity },
     });
@@ -85,7 +86,7 @@ describe("Platform → Activity", () => {
     const call = log.calls.find(
       (c) => c.path === "/manage/api/platform/activity",
     );
-    expect(call?.query).toContain("product=all");
+    expect(call?.query).toContain("product=platform");
     expect(call?.query).toContain("since=");
     expect(main().textContent).toContain("2 events");
   });
@@ -99,6 +100,10 @@ describe("Platform → Activity", () => {
     await screen.findByText("Re-sealed 12 values");
     expect(main().textContent).toContain("3 events");
     expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
+    // The button went with the last page: focus is on the first new row.
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Re-sealed 12 values"),
+    );
   });
 
   it("filters on the server by product, and the choice is in the URL", async () => {
@@ -106,18 +111,68 @@ describe("Platform → Activity", () => {
       extra: { "/manage/api/platform/activity": activity },
     });
     await screen.findByRole("table", { name: "Activity" });
-    await userEvent.click(screen.getByRole("combobox", { name: "Product" }));
     await userEvent.click(
-      await screen.findByRole("option", { name: "Platform" }),
+      screen.getByRole("combobox", { name: /^Product: Platform/ }),
     );
-    await waitFor(() =>
-      expect(window.location.hash).toContain("product=platform"),
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Any product" }),
     );
+    await waitFor(() => expect(window.location.hash).toContain("product=all"));
     await waitFor(() =>
       expect(
-        log.calls.some((c) => String(c.query).includes("product=platform")),
+        log.calls.some((c) => String(c.query).includes("product=all")),
       ).toBe(true),
     );
+  });
+
+  it("offers the platform's own actions and targets, and marks a set facet", async () => {
+    boot("#/platform/activity?action=kek.", {
+      extra: { "/manage/api/platform/activity": activity },
+    });
+    await screen.findByRole("table", { name: "Activity" });
+    const action = screen.getByRole("combobox", { name: /^Action: / });
+    expect(action.closest("[data-set]")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("combobox", { name: /^Actor: Anyone/ })
+        .closest("[data-set]"),
+    ).toBeNull();
+    await userEvent.click(action);
+    for (const label of [
+      "Platform settings",
+      "Key encryption",
+      "API tokens",
+      "Console sign-ins",
+      "Trust policy",
+    ])
+      expect(await screen.findByRole("option", { name: label })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Licenses" })).toBeNull();
+  });
+
+  it("keeps the loaded pages when an event opens and closes, and focuses the row", async () => {
+    boot("#/platform/activity", {
+      extra: { "/manage/api/platform/activity": activity },
+    });
+    await screen.findByRole("table", { name: "Activity" });
+    await userEvent.click(screen.getByRole("button", { name: /^Load more/ }));
+    await screen.findByText("Re-sealed 12 values");
+    const link = screen.getByRole("link", {
+      name: "Turned on Commerce",
+    });
+    await userEvent.click(link);
+    await screen.findByRole("dialog");
+    expect(screen.getByText("Re-sealed 12 values")).toBeTruthy();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/platform/activity"),
+    );
+    expect(main().textContent).toContain("3 events");
+    expect(
+      screen.queryByRole("status", { name: /Loading activity/ }),
+    ).toBeNull();
+    // Focus goes back to the row that opened the drawer, not to the heading.
+    await waitFor(() => expect(document.activeElement).toBe(link));
+    expect(document.title).not.toContain("Event");
   });
 
   it("opens an event in a drawer the URL names, with before and after", async () => {
@@ -140,6 +195,80 @@ describe("Platform → Activity", () => {
     await waitFor(() =>
       expect(window.location.hash).toBe("#/platform/activity"),
     );
+  });
+
+  it("shows a setting change's effective values in words, and a secret as Set", async () => {
+    const snap = (effective: unknown) => ({
+      stored: effective,
+      version: 1,
+      effective,
+      source: "runtime",
+    });
+    const change = item("e9", {
+      action: "platform.setting.set",
+      target: { kind: "setting", id: "blobs.gc.graceDays" },
+      summary: "Set blobs.gc.graceDays to 14",
+      before: snap(30),
+      after: snap(14),
+    });
+    // The settings read keys the row by its A-13 alias, the audit by the registry key.
+    const row = {
+      key: "BLOB_GC_GRACE_DAYS",
+      area: "background-jobs",
+      label: "Blob collector grace period",
+      kind: "integer",
+      unit: "days",
+      min: 1,
+      max: 365,
+      default: 30,
+      value: 14,
+    };
+    boot("#/platform/activity/e9", {
+      extra: {
+        "/manage/api/platform/activity": () => ({
+          items: [change],
+          nextCursor: null,
+        }),
+        "/manage/api/platform/settings": { settings: [row] },
+      },
+    });
+    const drawer = await screen.findByRole("dialog");
+    expect(
+      await within(drawer).findByRole("heading", {
+        name: "Blob collector grace period changed",
+      }),
+    ).toBeTruthy();
+    expect(drawer.textContent).not.toContain("{");
+    expect(await within(drawer).findByText("30 days")).toBeTruthy();
+    expect(within(drawer).getByText("14 days")).toBeTruthy();
+    expect(drawer.textContent).toContain("Platform → Settings → Jobs");
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Open the setting" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/platform/settings?setting=blobs.gc.graceDays",
+      ),
+    );
+  });
+
+  it("reads a secret's snapshot as Set and Not set", async () => {
+    const secret = item("e8", {
+      target: { kind: "setting", id: "x.secret" },
+      before: { stored: { set: false }, version: 0, effective: { set: false } },
+      after: { stored: { set: true }, version: 1, effective: { set: true } },
+    });
+    boot("#/platform/activity/e8", {
+      extra: {
+        "/manage/api/platform/activity": () => ({
+          items: [secret],
+          nextCursor: null,
+        }),
+      },
+    });
+    const drawer = await screen.findByRole("dialog");
+    expect(await within(drawer).findByText("Not set")).toBeTruthy();
+    expect(within(drawer).getByText("Set")).toBeTruthy();
   });
 
   it("says so when the event is gone", async () => {
@@ -179,6 +308,19 @@ describe("Platform → Activity", () => {
     expect(
       await screen.findByRole("button", { name: "Try again" }),
     ).toBeTruthy();
+  });
+
+  it("answers a 403 with read-access copy, not edit access", async () => {
+    boot("#/platform/activity", {
+      extra: {
+        "/manage/api/platform/activity": new Response(
+          JSON.stringify({ code: "forbidden", message: "no" }),
+          { status: 403, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    expect(await screen.findByText(/access to this/)).toBeTruthy();
+    expect(main().textContent).not.toContain("edit access");
   });
 
   it("sits in the Platform sidebar and passes axe in both views", async () => {

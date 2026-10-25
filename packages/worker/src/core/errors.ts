@@ -60,6 +60,20 @@ export const ErrorCode = {
   LicenseEmailBound: "license_email_bound",
   /** I-09 (§12.3): the request needs an account signed in on the device. */
   AccountRequired: "account_required",
+  /** U-05 (§13.4, §13.6, §13.9): the pull cursor is older than the tombstone horizon (410). */
+  CursorExpired: "cursor_expired",
+  /** U-05 (§13.3): the `clientId` belongs to another device (409). */
+  ClientMismatch: "client_mismatch",
+  /** U-05 (§13.3): a per-mutation result, the value fails validation. */
+  ValueInvalid: "value_invalid",
+  /** U-05 (§13.3, §13.7): a per-mutation result, the operation does not fit the merge policy. */
+  OpInvalidForPolicy: "op_invalid_for_policy",
+  /** U-05 (§13.1, §13.3): a per-mutation result, not a synced setting or the wrong scope. */
+  SettingNotSynced: "setting_not_synced",
+  /** U-05 (§13.1, §13.3): a per-mutation result (403 for files), over quota. */
+  QuotaExceeded: "quota_exceeded",
+  /** U-05 (§13.9): `cloudSync.writesPaused` is on (503, `Retry-After`). */
+  WritesPaused: "writes_paused",
   /** I-08 (§12.4, §12.5): the OAuth-shaped passthrough's codes. The grant's own refusals are the
    *  flat RFC 6749 §5.2 bodies; `RedirectUriMismatch` is a card page and never travels. */
   InvalidRequest: "invalid_request",

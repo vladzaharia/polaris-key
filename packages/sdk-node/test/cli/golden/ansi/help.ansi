@@ -8,8 +8,8 @@
   [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
-  [1mdeactivate[22m                Stop using your license on this device and free
-                            its seat
+  [1mdeactivate[22m                Stop using your license on this device and make room
+                            for another
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -21,7 +21,7 @@
   [1mdevices rename <deviceId> [label...][22m
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                            Remove a device and free its seat
+                            Remove a device and make room for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -66,8 +66,8 @@
   [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
-  [1mdeactivate[22m                Stop using your license on this device and free
-                            its seat
+  [1mdeactivate[22m                Stop using your license on this device and make room
+                            for another
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -79,7 +79,7 @@
   [1mdevices rename <deviceId> [label...][22m
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                            Remove a device and free its seat
+                            Remove a device and make room for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -124,8 +124,8 @@
   [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
-  [1mdeactivate[22m                Stop using your license on this device and free
-                            its seat
+  [1mdeactivate[22m                Stop using your license on this device and make room
+                            for another
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -137,7 +137,7 @@
   [1mdevices rename <deviceId> [label...][22m
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                            Remove a device and free its seat
+                            Remove a device and make room for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -182,8 +182,8 @@ Usage  tidewater <command> [options]
   [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
-  [1mdeactivate[22m                Stop using your license on this device and free
-                            its seat
+  [1mdeactivate[22m                Stop using your license on this device and make room
+                            for another
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -195,7 +195,7 @@ Usage  tidewater <command> [options]
   [1mdevices rename <deviceId> [label...][22m
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                            Remove a device and free its seat
+                            Remove a device and make room for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -240,8 +240,8 @@ Run tidewater <command> --help for one command's options.
   [1mstatus[22m                    Show your license, devices and offline time
   [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
-  [1mdeactivate[22m                Stop using your license on this device and free
-                            its seat
+  [1mdeactivate[22m                Stop using your license on this device and make room
+                            for another
 
 [1mAccount[22m
   [1mlogin[22m                     Sign in with your account in the browser
@@ -253,7 +253,7 @@ Run tidewater <command> --help for one command's options.
   [1mdevices rename <deviceId> [label...][22m
                             Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                            Remove a device and free its seat
+                            Remove a device and make room for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m          Show one setting and where its value comes from
@@ -301,7 +301,7 @@ Run tidewater <command> --help for one command's options.
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
-                    and free its seat
+                    and make room for another
 
 [1mAccount[22m
   [1mlogin[22m             Sign in with your account in the browser
@@ -314,7 +314,8 @@ Run tidewater <command> --help for one command's options.
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                    Remove a device and free its seat
+                    Remove a device and make room
+                    for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -372,7 +373,7 @@ Run tidewater <command> --help for one command's options.
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
-                    and free its seat
+                    and make room for another
 
 [1mAccount[22m
   [1mlogin[22m             Sign in with your account in the browser
@@ -385,7 +386,8 @@ Run tidewater <command> --help for one command's options.
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                    Remove a device and free its seat
+                    Remove a device and make room
+                    for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -443,7 +445,7 @@ Run tidewater <command> --help for one command's options.
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
-                    and free its seat
+                    and make room for another
 
 [1mAccount[22m
   [1mlogin[22m             Sign in with your account in the browser
@@ -456,7 +458,8 @@ Run tidewater <command> --help for one command's options.
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                    Remove a device and free its seat
+                    Remove a device and make room
+                    for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -514,7 +517,7 @@ Usage  tidewater <command> [options]
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
-                    and free its seat
+                    and make room for another
 
 [1mAccount[22m
   [1mlogin[22m             Sign in with your account in the browser
@@ -527,7 +530,8 @@ Usage  tidewater <command> [options]
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                    Remove a device and free its seat
+                    Remove a device and make room
+                    for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value
@@ -585,7 +589,7 @@ Run tidewater <command> --help for one command's options.
   [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
   [1mdeactivate[22m        Stop using your license on this device
-                    and free its seat
+                    and make room for another
 
 [1mAccount[22m
   [1mlogin[22m             Sign in with your account in the browser
@@ -598,7 +602,8 @@ Run tidewater <command> --help for one command's options.
   [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
   [1mdevices deauthorize <deviceId>[22m
-                    Remove a device and free its seat
+                    Remove a device and make room
+                    for another
 
 [1mSettings[22m
   [1mconfig get <key>[22m  Show one setting and where its value

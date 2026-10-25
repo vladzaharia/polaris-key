@@ -79,7 +79,7 @@ def _client(plane: Plane) -> Any:
     c = polaris_key.create(
         product_slug=PRODUCT,
         version="1.2.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE_URL,
         store=InMemoryStore(PRODUCT),
         client=mock_client(plane),
@@ -317,14 +317,14 @@ def test_update_check_and_changelog_name_each_refusal(which: str, answer: httpx.
 # ── one error type ─────────────────────────────────────────────────────────────────────
 def test_insecure_base_url_and_device_management_errors_are_polaris_errors() -> None:
     with pytest.raises(PolarisError) as exc:
-        polaris_key.create(product_slug=PRODUCT, version="1.0.0", trust=TRUST, base_url="http://key.example")
+        polaris_key.create(product_slug=PRODUCT, version="1.0.0", pinned_keys=TRUST, base_url="http://key.example")
     assert isinstance(exc.value, InsecureBaseUrlError)
     assert exc.value.code == "insecure-base-url"
 
     c = polaris_key.create(
         product_slug=PRODUCT,
         version="1.0.0",
-        trust=TRUST,
+        pinned_keys=TRUST,
         base_url=BASE_URL,
         store=InMemoryStore(PRODUCT),
         client=mock_client(Plane()),

@@ -17,7 +17,6 @@
  */
 
 import type {
-  ChoiceCancelRequest,
   ChoiceCompleteRequest,
   ChoiceDevicesRequest,
   ChoiceLicensesRequest,

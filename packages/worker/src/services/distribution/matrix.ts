@@ -19,7 +19,7 @@
  * transports one, and each release's builds and artifacts one each. The derivation applies the
  * same helpers (`outletMatches`, `hasServingLocation`, `DERIVED_*`) and the `files` route's
  * first-artifact-by-name rule `availabilityFor` reaches through `resolve`;
- * `test/distributionMatrix.test.ts` checks the two agree cell by cell.
+ * `test/surfaces/console/distributionMatrix.test.ts` checks the two agree cell by cell.
  *
  * A pack deliverable's cells derive by the pack rule (`packDerivedAvailability`, P4-05), the one
  * `availabilityFor` applies; store-mirrored states are P5-02 to P5-04's (they arrive here through

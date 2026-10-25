@@ -1,0 +1,17 @@
+{
+  "name": "polaris-key-recipe-solid",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "solid-js": "1.9.17"
+  },
+  "devDependencies": {
+    "vite": "8.3.4",
+    "vite-plugin-solid": "2.11.14"
+  }
+}

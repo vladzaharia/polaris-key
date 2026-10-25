@@ -31,7 +31,7 @@ export function MethodRow({
     <li
       data-method-id={method.id}
       tabIndex={-1}
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 focus:outline-2 focus:-outline-offset-2 focus:outline-focus"
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
     >
       <span
         aria-hidden

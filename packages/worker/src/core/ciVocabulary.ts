@@ -20,6 +20,9 @@ export const CI_TOKEN_PREFIX = "pkeyci_";
  * opt-in as well. `assets:write` (HA-06) buys an upload ticket for the files `pkey assets push`
  * and the publish Action's `assets` input send, and hosts them (`POST /<p>/assets`); opt-in too,
  * and it never replaces a slot an operator uploaded or a manifest declares.
+ * `packages:read` (F-33b.2) is the service read token: it reads its own product's non-public
+ * package feeds on the registry host and does nothing else. It is opt-in, passes no `/ci/*`
+ * route guard, never publishes and never pushes.
  */
 export const CI_SCOPES = [
   "release:publish",
@@ -30,8 +33,12 @@ export const CI_SCOPES = [
   "distribution:feeds",
   "distribution:listing",
   "assets:write",
+  "packages:read",
 ] as const;
 export type CiScope = (typeof CI_SCOPES)[number];
+
+/** The CI scope of the read-only service token (F-33b.2). */
+export const PACKAGES_READ_CI_SCOPE = "packages:read";
 
 /** Who a valid `pkeyci_` token belongs to. */
 export interface CiPrincipal {

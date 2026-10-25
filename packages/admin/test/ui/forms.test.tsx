@@ -8,7 +8,7 @@ import {
   screen,
 } from "@testing-library/react";
 import * as React from "react";
-import { ApiError } from "../../src/api.js";
+import { HttpError } from "../../src/api.js";
 import { DateInput } from "../../src/ui/DateInput.js";
 import { useAdminForm } from "../../src/ui/form.js";
 
@@ -89,10 +89,12 @@ describe("useAdminForm", () => {
     expect(result.current.isDirty).toBe(false);
   });
 
-  it("maps an ApiError's fields onto the fields and keeps the draft", async () => {
+  it("maps an HttpError's fields onto the fields and keeps the draft", async () => {
     const onSubmit = vi
       .fn()
-      .mockRejectedValue(new ApiError(422, ["seats"], "invalid"));
+      .mockRejectedValue(
+        new HttpError(422, { fields: ["seats"], code: "invalid" }),
+      );
     const { result } = renderHook(() =>
       useTerms({ name: "Pro", seats: 3 }, onSubmit),
     );
@@ -102,7 +104,7 @@ describe("useAdminForm", () => {
     await act(() => result.current.submit());
     expect(onSubmit).toHaveBeenCalledOnce();
     expect(result.current.errors).toEqual({ seats: "Check this value." });
-    expect(result.current.submitError).toBeInstanceOf(ApiError);
+    expect(result.current.submitError).toBeInstanceOf(HttpError);
     expect(result.current.rhf.getValues("seats")).toBe(-1);
   });
 

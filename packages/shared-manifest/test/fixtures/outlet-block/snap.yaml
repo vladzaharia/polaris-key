@@ -1,0 +1,9 @@
+outlets:
+  # Snap Store
+  snap:
+    kind: snap
+    # Snap name.
+    name: dice
+    # Release track to the Snap channel it releases to.
+    channels:
+      stable: stable

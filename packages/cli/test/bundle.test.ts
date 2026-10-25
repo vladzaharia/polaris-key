@@ -32,6 +32,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { memoryStore } from "../src/credentials.js";
 import { ADMIN_TOKEN_ENV, mintBundle, runPkey } from "../src/index.js";
 
 const PRODUCT = "acme";
@@ -224,7 +225,7 @@ describe("pkey bundle — the request", () => {
     expect(io.out()).toContain(BUNDLE_ID);
     expect(io.out()).toContain(DEFAULT_FILE);
     expect(io.out()).toContain("30 days offline");
-    expect(io.out()).toContain("transfer this file to the offline device");
+    expect(io.out()).toContain("Take it to the offline device");
     expect(io.err()).toBe("");
   });
 
@@ -392,9 +393,9 @@ describe("pkey bundle — the --base-url allow-list", () => {
       }),
     ).toBe(2);
 
-    expect(io.err()).toContain("--base-url must be https:");
-    expect(io.err()).toContain("http://evil.example");
-    expect(io.err()).toContain("localhost/127.0.0.1");
+    expect(io.err()).toContain("▲  pkey bundle needs an https address.");
+    expect(io.err()).toContain("http works only on localhost");
+    expect(io.err()).not.toContain("PKEY_ADMIN_TOKEN");
     // The refusal is the point: the token must never leave the machine over plaintext, not even
     // once, so this cannot be a post-hoc complaint about a request already sent.
     expect(m.calls).toHaveLength(0);
@@ -410,7 +411,7 @@ describe("pkey bundle — the --base-url allow-list", () => {
       await runPkey(argv().slice(0, -1).concat("key.plrs.im"), { cwd, ...io }),
     ).toBe(2);
 
-    expect(io.err()).toContain("--base-url is not a valid URL");
+    expect(io.err()).toContain("▲  pkey bundle needs an https address.");
     expect(m.calls).toHaveLength(0);
   });
 });
@@ -427,7 +428,7 @@ describe("pkey bundle — the output file", () => {
 
     expect(await readFile(path.join(cwd, DEFAULT_FILE), "utf8")).toBe(JWS);
     // Reported RELATIVE to the cwd the handler was given, not to process.cwd().
-    expect(io.out()).toContain(`- File: ${DEFAULT_FILE}\n`);
+    expect(io.out()).toContain(`✓  Wrote ${DEFAULT_FILE} (`);
   });
 
   it("honours --out, resolving it against the handler's cwd", async () => {
@@ -675,17 +676,22 @@ describe("pkey bundle — local refusals", () => {
     expect(m.calls).toHaveLength(0);
   });
 
-  it("names PKEY_ADMIN_TOKEN and how to get it when it is unset", async () => {
+  it("is a refusal, not a failure, when nobody is signed in: exit 4 and pkey login", async () => {
     const cwd = await tempDir();
     const io = capture();
     setTokenEnv(undefined);
     const m = stub(server());
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(
+      await runPkey(argv(), {
+        cwd,
+        ...io,
+        credentialStore: async () => memoryStore(),
+      }),
+    ).toBe(4);
 
-    expect(io.err()).toContain("PKEY_ADMIN_TOKEN is not set");
-    expect(io.err()).toContain("API tokens");
-    expect(io.err()).toContain("Authorization: Bearer");
+    expect(io.err()).toContain("▲  Not signed in to key.example.");
+    expect(io.err()).toContain("Run pkey login.");
     expect(m.calls).toHaveLength(0);
   });
 
@@ -695,12 +701,10 @@ describe("pkey bundle — local refusals", () => {
     setTokenEnv(COOKIE);
     const m = stub(server());
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(await runPkey(argv(), { cwd, ...io })).toBe(4);
 
-    // The server answers ONE 401 for malformed / unknown / revoked / expired, so it cannot tell
-    // an operator which; the shape is knowable here, so it is said here.
-    expect(io.err()).toContain("does not look like an admin API token");
-    expect(io.err()).toContain("session cookie is a DIFFERENT credential");
+    expect(io.err()).toContain("PKEY_ADMIN_TOKEN is not a pkeya_ or pkeyp_");
+    expect(io.err()).toContain("Copy it again whole.");
     expect(m.calls).toHaveLength(0);
     // And the value itself is never echoed back into a terminal or a CI log.
     expect(io.err()).not.toContain("session-token-value");
@@ -712,10 +716,10 @@ describe("pkey bundle — local refusals", () => {
     setTokenEnv(TOKEN.slice(0, 20));
     const m = stub(server());
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(await runPkey(argv(), { cwd, ...io })).toBe(4);
 
-    expect(io.err()).toContain("does not look like an admin API token");
-    expect(io.err()).toContain("got 20 characters");
+    expect(io.err()).toContain("is not a pkeya_ or pkeyp_ token");
+    expect(io.err()).not.toContain(TOKEN.slice(0, 20));
     expect(m.calls).toHaveLength(0);
   });
 });
@@ -740,11 +744,14 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    expect(io.err()).toContain(
+    // The ✗ block wraps to the terminal: compare the words, not the line breaks.
+    const err = io.err().replace(/\s+/g, " ");
+    expect(err).toContain(
       "licenseId is required when the License service is enabled",
     );
-    expect(io.err()).toContain("400 bad_request");
-    expect(io.err()).toContain("fields: licenseId");
+    expect(err).toContain("key.example couldn't mint a bundle (HTTP 400)");
+    expect(err).toContain("Add --license <id>.");
+    expect(err).not.toContain("/manage/api");
   });
 
   it("blames the API token for a 401 on the mint", async () => {
@@ -755,11 +762,14 @@ describe("pkey bundle — server failures", () => {
       server({ mint: apiError(401, "unauthorized", "no session") }),
     );
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(await runPkey(argv(), { cwd, ...io })).toBe(4);
 
-    expect(io.err()).toContain("PKEY_ADMIN_TOKEN");
-    expect(io.err()).toContain("unknown, revoked and expired alike");
-    expect(io.err()).toContain("API tokens");
+    const err = io.err().replace(/\s+/g, " ");
+    expect(err).toContain(
+      "▲ PKEY_ADMIN_TOKEN was refused. It may have ended, been revoked, or not be an admin token.",
+    );
+    expect(err).toContain("unset it and run pkey login");
+    expect(io.err()).not.toContain("unknown, revoked and expired alike");
     expect(m.calls).toHaveLength(1);
   });
 
@@ -775,9 +785,7 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    // Both causes answer 403 and look identical from the client, so the hint names both.
     expect(io.err()).toContain("bundles:mint");
-    expect(io.err()).toContain("platform admin");
   });
 
   it("reports a non-JSON body rather than a bare status", async () => {
@@ -806,9 +814,10 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    expect(io.err()).toContain(
-      `Could not reach ${ORIGIN}/manage/api/products/${PRODUCT}/bundles`,
-    );
+    expect(io.err()).toContain("✗  Can't reach key.example.");
+    expect(io.err()).toContain("Check your network, or --base-url.");
+    expect(io.err()).not.toContain("/manage/api");
+    expect(io.err()).not.toContain("fetch failed");
   });
 
   it("refuses a 200 that carries no bundle", async () => {
@@ -819,7 +828,7 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    expect(io.err()).toContain("without a bundle");
+    expect(io.err().replace(/\s+/g, " ")).toContain("without a bundle");
   });
 });
 

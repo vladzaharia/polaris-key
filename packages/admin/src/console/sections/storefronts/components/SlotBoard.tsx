@@ -111,8 +111,11 @@ function SlotRow({
 export function SlotBoard({
   slug,
   groups,
+  groupLabels,
 }: {
   slug: string;
+  /** Storefront labels for groups (`play` -> "Google Play Console"), over the built-in words. */
+  groupLabels?: Readonly<Record<string, string>>;
   /** Only these groups (a store's listing column, plus `masters`); every group when absent. */
   groups?: readonly string[];
 }): React.ReactElement {
@@ -171,11 +174,11 @@ export function SlotBoard({
           return (
             <section
               key={g}
-              aria-label={LISTING_GROUP_LABELS[g] ?? g}
+              aria-label={groupLabels?.[g] ?? LISTING_GROUP_LABELS[g] ?? g}
               className="rounded-lg border border-border bg-surface-raised px-4 py-2"
             >
               <h3 className="py-2 text-sm font-semibold text-fg-strong">
-                {LISTING_GROUP_LABELS[g] ?? g}
+                {groupLabels?.[g] ?? LISTING_GROUP_LABELS[g] ?? g}
               </h3>
               <ul className="divide-y divide-border">
                 {rows.map((s) => (

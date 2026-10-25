@@ -24,7 +24,7 @@ VERSION = "1.0.0"
 TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
 
-CONFIG = {"product_slug": PRODUCT, "trust": TRUST}
+CONFIG = {"product_slug": PRODUCT, "pinned_keys": TRUST}
 
 
 @require_license
@@ -33,7 +33,7 @@ def run(_args: argparse.Namespace) -> int:
     try:
         # @require_license has already refused an unlicensed run (exit 4), so the work starts here.
         client.boot()
-        print("Working with", client.config.get_config("run.concurrency", 4), "workers")
+        print("Working with", client.config.get("run.concurrency", 4), "workers")
         return 0
     finally:
         client.close()

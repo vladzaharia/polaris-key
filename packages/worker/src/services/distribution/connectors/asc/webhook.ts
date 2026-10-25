@@ -60,7 +60,6 @@ import {
   INSTANCE_TYPES,
   eventTypeOf,
   instanceOf,
-  isBackgroundAssetInstanceType,
   type AscEventEffect,
 } from "./map.js";
 import { ascRun, finishRun } from "./run.js";

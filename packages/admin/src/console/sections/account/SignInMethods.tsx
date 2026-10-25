@@ -11,7 +11,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Fingerprint, Lock } from "lucide-react";
-import { api, type ConsoleMethod } from "../../../api.js";
+import { type ConsoleMethod } from "../../../api.js";
 import {
   PasskeyError,
   createPasskey,
@@ -28,7 +28,7 @@ import { Skeleton } from "../../../ui/Skeleton.js";
 import { toast } from "../../../ui/toast.js";
 import { useMe } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
-import { qk } from "../../data/queries.js";
+import { accountReads } from "./data.js";
 import { MethodRow } from "./MethodRow.js";
 import {
   LOCKER_ONLY,
@@ -40,10 +40,7 @@ import {
 } from "./methodsModel.js";
 
 export function useMyMethods() {
-  return useQuery({
-    queryKey: qk.myMethods(),
-    queryFn: () => api.myMethods(),
-  });
+  return useQuery(accountReads.myMethods());
 }
 
 /** Focus the page's heading: where focus goes when the control that had it is gone. */

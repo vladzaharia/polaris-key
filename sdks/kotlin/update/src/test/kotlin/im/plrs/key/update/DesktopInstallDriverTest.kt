@@ -360,4 +360,40 @@ class DesktopInstallDriverTest {
             assertEquals(sha, opened.files.single().second)
         }
     }
+
+    @Test
+    fun progressIsDownloadingThenIdleAndStillCallsTheCallback() = runBlocking {
+        val seen = mutableListOf<InstallStage>()
+        val calls = mutableListOf<Pair<Long, Long>>()
+        lateinit var d: DesktopInstallDriver
+        d = DesktopInstallDriver(
+            records = { record() },
+            buildUrl = { v, b -> "https://key.plrs.im/djdl/distribution/builds/$v/$b" },
+            fetch = { _, part, size, progress ->
+                progress?.invoke(1_000, size)
+                seen += d.progress.value
+                part.writeBytes(bytes)
+                progress?.invoke(size, size)
+                seen += d.progress.value
+            },
+            dir = tempDir(),
+            opener = Opened(),
+            onBytes = { done, total -> calls += done to total },
+        )
+        assertEquals(InstallStage.Idle, d.progress.value)
+        assertEquals(InstallResult.Started, d.install(binary()))
+        val size = bytes.size.toLong()
+        assertEquals(listOf(InstallStage.Downloading(1_000, size), InstallStage.Downloading(size, size)), seen)
+        assertEquals(listOf(1_000L to size, size to size), calls)
+        assertEquals(InstallStage.Idle, d.progress.value)
+    }
+
+    @Test
+    fun aFailedInstallEndsFailedWithNoBytes() = runBlocking {
+        val opened = Opened()
+        val d = driver(tempDir(), opened, payload = bytes + byteArrayOf(1))
+        val r = d.install(binary()) as InstallResult.Failed
+        assertEquals(InstallStage.Failed(r.code, r.detail), d.progress.value)
+        assertTrue(opened.files.isEmpty())
+    }
 }

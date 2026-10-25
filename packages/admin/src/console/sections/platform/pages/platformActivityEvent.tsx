@@ -7,8 +7,8 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import {
-  api,
   type PlatformActivityItem,
+  type PlatformSetting,
   type ProductDetail,
 } from "../../../../api.js";
 import { formatIso, fromSeconds } from "../../../../lib/format.js";
@@ -22,18 +22,30 @@ import {
 } from "../../../../ui/Drawer.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
-import { qk } from "../../../data/queries.js";
+
+import { platformReads } from "../data.js";
 import { navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { actorName, whatOf } from "./platformActivityParts.js";
+import {
+  areaOf,
+  settingOf,
+  titleOf,
+  valueText,
+} from "./platformActivityValues.js";
+import { sectionTitleOfArea } from "./platformSettings.js";
 
-/** A before or after value as the Worker stored it: plain values as text, anything else compact JSON. */
-function valueText(v: unknown): React.ReactNode {
-  if (v === null || v === undefined) return null;
-  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean")
-    return String(v);
-  return (
-    <code className="break-all font-mono text-xs">{JSON.stringify(v)}</code>
+/** A before or after value, formatted as the setting's row formats it (B2). */
+function valueNode(
+  raw: unknown,
+  setting: PlatformSetting | undefined,
+): React.ReactNode {
+  const v = valueText(raw, setting);
+  if (!v) return null;
+  return v.json ? (
+    <code className="break-all font-mono text-xs">{v.text}</code>
+  ) : (
+    v.text
   );
 }
 
@@ -41,34 +53,38 @@ export function EventDrawer({
   id,
   loaded,
   products,
+  settings,
   onClose,
 }: {
   id: string | undefined;
   loaded: PlatformActivityItem[];
   products: Map<string, ProductDetail>;
+  settings: Map<string, PlatformSetting>;
   onClose: () => void;
 }): React.ReactElement {
   const known = id ? loaded.find((i) => i.id === id) : undefined;
   const fetched = useQuery({
-    queryKey: qk.platformActivityEvent(id ?? ""),
-    queryFn: () => api.platformActivity(null, { product: "all", id }, 1),
+    ...platformReads.activityEvent(id),
     enabled: Boolean(id) && !known,
   });
   const item = known ?? fetched.data?.items[0];
   const missing = Boolean(id) && !known && !fetched.isPending && !item;
   const product = item?.product ? products.get(item.product) : undefined;
-  const before = valueText(item?.before);
-  const after = valueText(item?.after);
+  const setting = item ? settingOf(item, settings) : undefined;
+  const before = valueNode(item?.before, setting);
+  const after = valueNode(item?.after, setting);
+  const area = item ? areaOf(item, setting) : undefined;
   return (
     <Drawer
       {...routedDrawer(id, onClose)}
-      title={item ? whatOf(item) : "Event"}
+      title={item ? (titleOf(item, setting) ?? whatOf(item)) : "Event"}
     >
       <DrawerBody className="space-y-4">
         {fetched.isError && !item ? (
           <ErrorState
             compact
             error={fetched.error}
+            context={{ read: true }}
             onRetry={() => void fetched.refetch()}
           />
         ) : missing ? (
@@ -82,6 +98,7 @@ export function EventDrawer({
           </div>
         ) : (
           <DescriptionList
+            rows
             items={[
               ...(before ? [{ term: "Before", detail: before }] : []),
               ...(after
@@ -104,6 +121,14 @@ export function EventDrawer({
                   </time>
                 ),
               },
+              ...(area
+                ? [
+                    {
+                      term: "Where",
+                      detail: `Platform → Settings → ${sectionTitleOfArea(area)}`,
+                    },
+                  ]
+                : []),
               {
                 term: "Product",
                 detail: item.product
@@ -132,11 +157,15 @@ export function EventDrawer({
           />
         )}
       </DrawerBody>
-      {item && item.action.startsWith("platform.setting.") ? (
+      {item &&
+      item.action.startsWith("platform.setting.") &&
+      item.target?.kind === "setting" ? (
         <DrawerFooter>
           <Button
             variant="outline"
-            onClick={() => navigate(r.platformSettings())}
+            onClick={() =>
+              navigate(r.platformSettingRow(item.target?.id ?? ""))
+            }
             iconEnd={<ArrowRight aria-hidden />}
           >
             Open the setting

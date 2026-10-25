@@ -9,12 +9,12 @@
  * `{ value, source, chain, lockedBy?, clamped?, drift?, version }`: the console renders the chain
  * ("Clamped by Platform: set 30, effective 14"), `writeSetting()` compares `version`, and the
  * discovery builder and the enforcement path read the same value, so they cannot drift (S-18
- * §4.11; `test/settings-discovery.test.ts`).
+ * §4.11; `test/services/release/settings-discovery.test.ts`).
  *
  * Two halves:
  *
  *   - PURE: `resolvePlatformValue` and `resolveProductValue` take the layers as data. The property
- *     tests (`test/settings-resolver.test.ts`) drive them over every source and both clamp
+ *     tests (`test/core/settings-resolver.test.ts`) drive them over every source and both clamp
  *     directions, and pin them to A-13's resolver for A-13's keys.
  *   - LOADERS: `resolvePlatformSetting` / `resolveProductSettings` read the layers. Platform rows
  *     come from A-13's 30-second per-isolate cache (`platformStoreRows`); product rows are read

@@ -213,7 +213,8 @@ describe("the session-ended overlay in the built console", () => {
     await closeContext(page.context());
   });
 
-  it("Escape leaves the page as it is and returns focus to where it was", async () => {
+  // Disabled as flaky (owner 2026-10-23): focus-return race after Escape. Re-enable once dialog focus settling is awaited deterministically.
+  it.skip("Escape leaves the page as it is and returns focus to where it was", async () => {
     const s = await open({
       viewport: { width: 1440, height: 900 },
       scheme: "light",

@@ -82,7 +82,12 @@ export function platformOverview(): FeedsOverviewDto {
     owner: "polaris-key",
     ownerName: "Polaris Key",
     distributionEnabled: true,
-    packageFeeds: { enabled: true, version: 1, updatedAt: T0 - 900_000 },
+    packageFeeds: {
+      enabled: true,
+      version: 1,
+      updatedAt: T0 - 900_000,
+      updatedBy: "manifest",
+    },
     registryOrigin: ORIGIN,
     feeds,
     summary: {
@@ -146,7 +151,12 @@ export function productOverview(): FeedsOverviewDto {
     owner: "djdl",
     ownerName: "DJDL",
     distributionEnabled: true,
-    packageFeeds: { enabled: true, version: 2, updatedAt: T0 - 100_000 },
+    packageFeeds: {
+      enabled: true,
+      version: 2,
+      updatedAt: T0 - 100_000,
+      updatedBy: "u1",
+    },
     registryOrigin: ORIGIN,
     feeds,
     summary: {
@@ -219,7 +229,7 @@ const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
     ...BASE_CAPS,
     yank: true,
     deprecate: false,
-    yankPolicy: true,
+    yankPolicy: false,
     channels: "latest",
   },
   oci: {
@@ -254,14 +264,14 @@ const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
   },
 };
 
-/** The adapters' extension settings (`settings.ext` keys, less `yankHidesFromIndex`). */
+/** The adapters' extension settings (`settings.ext` keys). */
 export const EXTENSIONS: Record<FeedEcosystem, string[]> = {
   npm: [],
   pypi: ["htmlFallback"],
   swift: ["requireSigned", "repositoryUrls"],
   maven: [],
-  oci: ["retainUntaggedDays"],
-  godot: ["categoryId", "supportLevel", "license", "minGodotVersion"],
+  oci: [],
+  godot: ["supportLevel", "license", "minGodotVersion"],
   cargo: [],
   go: [],
 };
@@ -284,7 +294,10 @@ export function feedDetail(
     feed,
     settings: {
       enabled: feed.enabled,
-      accessMode: "public",
+      // A feed never saved reads as the server defaults it: Licensed.
+      accessMode: feed.configured ? "public" : "licensed",
+      accessDisplay: feed.configured ? "public" : "licensed",
+      namespaceSource: "console",
       namespace: NAMESPACES[owner]![eco],
       maxPackageBytes: eco === "oci" ? 5_368_709_120 : 52_428_800,
       upstream: "none",
@@ -304,9 +317,9 @@ export function feedDetail(
     extensions: EXTENSIONS[eco],
     accessModes: [
       { mode: "public", available: true },
-      { mode: "authenticated", available: true },
+      { mode: "authenticated", available: false },
       { mode: "licensed", available: true },
-      { mode: "entitled", available: true },
+      { mode: "entitled", available: false },
     ],
     ungatedPackages:
       eco === "npm" ? [{ id: "npm.sdk", name: "@djdl/sdk" }] : [],
@@ -338,6 +351,7 @@ export function registryTokens(scope: "platform" | "product") {
         revokedBy: null,
         revokeReason: null,
         status: "active",
+        ...(scope === "product" ? { legacy: true } : {}),
       },
       {
         tokenId: "rtok_old",
@@ -358,12 +372,47 @@ export function registryTokens(scope: "platform" | "product") {
         status: "revoked",
       },
     ],
+    ...(scope === "product"
+      ? {
+          serviceTokens: [
+            {
+              tokenId: "cit_deploy",
+              label: "Deploy box",
+              scopes: ["packages:read"],
+              createdBy: "admin:ada@x.io",
+              createdAt: T0 - 2 * 86_400,
+              expiresAt: T0 + 88 * 86_400,
+              lastUsedAt: T0 - 600,
+              hint: "R8VQ",
+              revokedAt: null,
+              revokedBy: null,
+              revokeReason: null,
+              status: "active",
+            },
+            {
+              tokenId: "cit_idle",
+              label: "Idle runner",
+              scopes: ["packages:read"],
+              createdBy: "admin:ada@x.io",
+              createdAt: T0 - 5 * 86_400,
+              expiresAt: T0 + 85 * 86_400,
+              lastUsedAt: null,
+              hint: "Zk2m",
+              revokedAt: null,
+              revokedBy: null,
+              revokeReason: null,
+              status: "active",
+            },
+          ],
+        }
+      : {}),
     feeds: ECOS.map((eco) => ({
       ecosystem: eco,
       label: eco,
       enabled: eco === "npm" || eco === "godot",
       accessMode: eco === "npm" ? "licensed" : "public",
       baseUrl: `https://pkg.plrs.im/${eco === "oci" ? "v2" : eco}/${owner}/`,
+      namespace: eco === "npm" ? { scope: "@djdl" } : {},
     })),
     limits: {
       minDays: 1,
@@ -372,6 +421,8 @@ export function registryTokens(scope: "platform" | "product") {
       urlDefaultDays: 30,
       perOwner: 500,
       perLicense: 10,
+      serviceDefaultDays: 90,
+      serviceMaxDays: 365,
     },
   };
 }
@@ -599,7 +650,12 @@ export function feedRoutes(): Record<string, unknown> {
     "/manage/api/platform/feeds": platformOverview(),
     "/manage/api/products/djdl/distribution/feeds": productOverview(),
     "/manage/api/products/djdl/distribution/package-feeds": {
-      packageFeeds: { enabled: true, version: 2, updatedAt: T0 - 100_000 },
+      packageFeeds: {
+        enabled: true,
+        version: 2,
+        updatedAt: T0 - 100_000,
+        updatedBy: "u1",
+      },
     },
   };
   for (const eco of ECOS) {

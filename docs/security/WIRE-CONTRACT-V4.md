@@ -1795,7 +1795,7 @@ expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, 
 
 This discloses nothing new: discovery already publishes `identity: {enabled:false}` for every
 existing product, and an unknown slug keeps its 404. The transcript `identity-disabled.json`
-pins rules 1 and 5 for the SDKs; the Worker suite (`test/identityPerProduct.test.ts`) pins 2 to 4.
+pins rules 1 and 5 for the SDKs; the Worker suite (`test/surfaces/identityPerProduct.test.ts`) pins 2 to 4.
 
 ### 12.9 The customer host
 
@@ -1832,7 +1832,7 @@ unchanged, and a client reads every value below as any https URL.
 
 The transcripts `locker-refusal-links.json`, `locker-discovery-identity.json`,
 `locker-devicecode.json` and `locker-redirect-web.json` pin rules 1 and 3 for the SDKs; the Worker
-suite (`test/signInBind.test.ts`, `test/customerDevicePage.test.ts`) pins the rest.
+suite (`test/surfaces/signInBind.test.ts`, `test/surfaces/customerDevicePage.test.ts`) pins the rest.
 
 ### 12.10 The device-code poll [C]
 
@@ -1936,6 +1936,8 @@ Body: `{"clientId":"c_…","cursor":N,"atomic":false,"mutations":[{"mutationId":
 | Record `max`, `min`            | `set`, `delete`, each with `editedHlc`; the server compares the record's `conflictField`                                  |
 | Record `merge`                 | `setField`, `removeField`, `delete`, each with `editedHlc`                                                                |
 | Record `union`                 | `add {element}`, `remove {element, observedSeq}`, `delete`                                                                |
+
+A `setMember` or `removeMember` whose `member` is longer than 1 KiB of UTF-8 (`SYNC_MAX_UNION_ELEMENT_BYTES`) is `rejected` with `value_invalid`, whatever the quota: a removal is never refused for quota, so the name is what bounds it.
 
 The `200` body is `{subject, serverNow, results, lastMutationId, …the pull members of §13.4}`. Each result is `{mutationId, status}`:
 

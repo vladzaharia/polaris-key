@@ -60,8 +60,30 @@ class ChannelPickerTest {
     }
 
     @Test
+    fun aLicenceLockedPickerSaysWhyAndNamesTheLock() {
+        show { PolarisChannelPicker(sampleChannel.copy(lockedByLicense = true)) }
+        rule.onNodeWithText("Your license includes this channel only.").assertIsDisplayed()
+        rule.onNodeWithText("Stable").assertIsDisplayed()
+        rule.onNodeWithText("Beta").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Locked").assertExists()
+    }
+
+    @Test
+    fun aStoreLockWinsOverTheLicenceLock() {
+        show { PolarisChannelPicker(sampleChannel.copy(lockedBy = "play", lockedByLicense = true)) }
+        rule.onNodeWithText("Google Play sets the channel.").assertIsDisplayed()
+        rule.onNodeWithText("Your license includes this channel only.").assertDoesNotExist()
+    }
+
+    @Test
     fun aPickerWithOneChannelAndNoLockIsNotDrawn() {
         show { PolarisChannelPicker(PolarisChannelUi("stable", listOf("stable")), onSelect = {}) }
+        rule.onNodeWithText("Release channel").assertDoesNotExist()
+    }
+
+    @Test
+    fun withReleaseOffTheSettingsScreenDrawsNoPicker() {
+        show { PolarisSettingsScreen(sampleSettings.copy(channel = null), onChannel = {}) }
         rule.onNodeWithText("Release channel").assertDoesNotExist()
     }
 

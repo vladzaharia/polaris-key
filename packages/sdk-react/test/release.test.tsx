@@ -71,10 +71,10 @@ function browserWith(
     fetchImpl,
     now: () => NOW_SEC,
     offlineStore: null,
-    expectServices:
+    expectedServices:
       opts.release === false
-        ? services("license", "config")
-        : services("license", "config", "release"),
+        ? ["license", "config"]
+        : ["license", "config", "release"],
   });
   return { adapter, calls };
 }

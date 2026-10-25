@@ -82,7 +82,7 @@ A wrong verifier ends the code. Start again from `authorize`.
 
 ## Choose a license
 
-When the account holds licenses for the product, the card asks which one this device runs on, and **Continue** needs the answer. A full license offers **Replace a device**: the person picks a device that signs out, and this one takes its seat in the same step. With no license, and a product that grants one to everyone who signs in, **Continue** creates it once.
+When the account holds licenses for the product, the card asks which one this device runs on, and **Continue** needs the answer. A full license offers **Replace a device**: the person picks a device that signs out, and this one takes its place in the same step. With no license, and a product that grants one to everyone who signs in, **Continue** creates it once.
 
 To run the choice in your own form instead, add `license_choice=app` to `authorize`. Send it only when discovery lists `choiceLicenses`, `choiceDevices`, `choiceComplete` and `choiceCancel`. The card skips the choice, and `token` answers a pending sign-in when one is due:
 

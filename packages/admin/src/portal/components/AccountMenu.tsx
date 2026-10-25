@@ -63,6 +63,9 @@ export function AccountMenu({
   const activate = useActivate();
   // The Activate dialog takes focus itself: the menu must not hand it back to its trigger.
   const activating = React.useRef(false);
+  // A menu link that navigates: the page swaps at once and the route takes focus (the h1, or the
+  // section), so the menu must not hand focus back to its trigger (it would scroll the page back).
+  const leaving = React.useRef(false);
   // The person's name when we have one (profile import, a provider), else their email.
   const name = account.name?.trim();
   const named = Boolean(name) && name !== account.email;
@@ -82,7 +85,7 @@ export function AccountMenu({
             // px the full name and the chevron, the name truncating (min-w-0) only once the ⌘K
             // trigger has given way (PortalShell).
             className={cn(
-              "inline-flex min-h-10 w-10 min-w-0 max-w-[18rem] shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-surface-raised p-[3px] text-sm text-fg-strong hover:bg-hover pointer-coarse:min-h-11",
+              "inline-flex min-h-10 w-10 min-w-0 max-w-[18rem] shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-surface-raised p-0.5 text-sm text-fg-strong hover:bg-hover pointer-coarse:min-h-11",
               named
                 ? "max-wide:pointer-coarse:w-11 wide:w-auto wide:shrink wide:justify-start wide:pe-3"
                 : "pointer-coarse:w-11",
@@ -112,9 +115,14 @@ export function AccountMenu({
         <DropdownMenuContent
           align="end"
           className="min-w-64"
+          onClickCapture={(e) => {
+            if ((e.target as Element).closest("a[href^='#']"))
+              leaving.current = true;
+          }}
           onCloseAutoFocus={(e) => {
-            if (!activating.current) return;
+            if (!activating.current && !leaving.current) return;
             activating.current = false;
+            leaving.current = false;
             e.preventDefault();
           }}
         >

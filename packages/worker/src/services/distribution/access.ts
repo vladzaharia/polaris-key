@@ -1,7 +1,7 @@
 /**
  * Delivery access — who may download a deliverable (P2b-04, README §3.5 and §3.8 `dist_access`).
  *
- * The successor to Release's `release_config.artifacts_access`, per deliverable instead of per
+ * The successor to Release's per-product artifacts access mode, per deliverable instead of per
  * product: "today's Release access modes move here as distribution's delivery access". The four
  * modes are the same ladder (`public` < `authenticated` = `licensed` < `entitled`) with the same
  * meaning everywhere, because every surface that hands out bytes reads THIS answer through
@@ -252,9 +252,9 @@ export function revertAccessStatements(
  * The ingest statement for the `app` row. With a release block: the manifest's
  * `release.access.artifacts`, upserted unless an operator owns the row; idempotent, the row
  * moves only when the mode actually changes. Without one: a SEED only — `public` for a product
- * that has no row yet (the default `release_config.artifacts_access` took on link), and nothing
+ * that has no row yet (the default the per-product Release column took on link), and nothing
  * at all for one that has. Dropping `.pkey/release` never rewrites an existing row, exactly as
- * resync never touched `artifacts_access` without a release block: an upsert there would turn a
+ * Release's resync never touched the old column without a release block: an upsert there would turn a
  * `licensed` product public on the next push (and, while Release is off, the moment an operator
  * turns it back on). A value outside the four modes cannot pass the manifest validator; if one
  * ever did, it is written as `entitled`, never skipped (a skipped write would leave a looser row
@@ -297,8 +297,8 @@ export function accessIngestStatements(
  * follows it in the batch will actually change the row. The condition is the upsert's own
  * (`source = 'manifest'` and a different mode), evaluated against the row as the batch finds it,
  * so an operator-owned row, a resync of an unchanged manifest and a first write (the row did not
- * exist: nothing moved) leave no row. It reads `dist_access`, the truth store: the
- * `release_config.artifacts_access` column the resync also writes is read by nothing. Must stay
+ * exist: nothing moved) leave no row. It reads `dist_access`, the only store of the artifacts
+ * mode (Release's resync no longer writes it). Must stay
  * ahead of the upsert in the batch: afterwards the old mode is gone.
  */
 function accessIngestAudit(

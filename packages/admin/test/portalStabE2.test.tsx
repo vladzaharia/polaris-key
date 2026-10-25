@@ -28,26 +28,24 @@ describe("Discover's grid (B-080)", () => {
 });
 
 describe("the key tile (B-077)", () => {
-  it("is one line from 36 rem, its button is capped, and the icon stacks above the title when tiny", () => {
+  it("is one cell, its button fills it, and the icon stacks above the title when tiny", () => {
     render(
       <ul>
-        <LibraryKeyTile count={3} />
+        <LibraryKeyTile />
       </ul>,
     );
     const li = screen.getByRole("listitem");
     const box = li.firstElementChild as HTMLElement;
-    expect(box.className).toContain("@xl:flex-row");
-    expect(box.className).not.toContain("@2xl");
+    expect(box.className).not.toContain("@xl:flex-row");
+    expect(li.className).not.toContain("col-span");
     const button = within(li).getByRole("button", {
       name: "Activate a license",
     });
-    expect(button.className).toContain("max-w-64");
-    expect(
-      (
-        within(li).getByRole("heading", { level: 3 })
-          .parentElement as HTMLElement
-      ).className,
-    ).toContain("@max-[13rem]:flex-col");
+    expect(button.className).toContain("w-full");
+    // Under 13 rem the key band is as short as its glyph, and the button drops its icon.
+    expect(box.firstElementChild!.className).toContain(
+      "@max-[13rem]:aspect-auto",
+    );
   });
 });
 
@@ -80,10 +78,10 @@ describe("a Your data row's extra lines (B-088)", () => {
       </DataRow>,
     );
     expect(screen.getByText("below").parentElement!.className).toContain(
-      "ms-13",
+      "ms-12",
     );
     expect(screen.getByRole("button").parentElement!.className).toContain(
-      "ms-13",
+      "ms-12",
     );
   });
 });

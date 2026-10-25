@@ -52,12 +52,20 @@ export function artPng(
         Math.min(bands.length - 1, Math.floor((y / height) * bands.length))
       ]!;
     for (let x = 0; x < width; x++) {
-      const inDisc = (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
-      const c = inDisc ? disc : band;
+      // 4 x 4 samples per pixel: the disc's edge is smooth, like art a developer would ship.
+      let hit = 0;
+      for (let sy = 0; sy < 4; sy++)
+        for (let sx = 0; sx < 4; sx++)
+          if (
+            (x + (sx + 0.5) / 4 - cx) ** 2 + (y + (sy + 0.5) / 4 - cy) ** 2 <=
+            r * r
+          )
+            hit++;
+      const k = hit / 16;
       const o = row + 1 + x * 3;
-      raw[o] = c[0];
-      raw[o + 1] = c[1];
-      raw[o + 2] = c[2];
+      raw[o] = Math.round(band[0] + (disc[0] - band[0]) * k);
+      raw[o + 1] = Math.round(band[1] + (disc[1] - band[1]) * k);
+      raw[o + 2] = Math.round(band[2] + (disc[2] - band[2]) * k);
     }
   }
   const ihdr = Buffer.alloc(13);

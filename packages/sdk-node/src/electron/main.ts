@@ -29,11 +29,17 @@ import {
   DEFAULT_BRIDGE_CHANNEL,
   DEFAULT_INVOKE_VERBS,
   POLARIS_BRIDGE_VERSION,
+  KIT_VIEWS,
   channelOf,
+  openChannel,
   stateChannel,
+  updateProgressChannel,
   type BridgeEnvelope,
   type BridgeMethod,
+  type KitView,
 } from "./protocol.js";
+import { resolveLocale } from "../cli/copy.js";
+import { KIT_COPY, KIT_COPY_VARIANTS } from "../kitCopy.generated.js";
 
 /** The part of Electron's `WebContents` the bridge uses. */
 export interface WebContentsLike {
@@ -41,6 +47,10 @@ export interface WebContentsLike {
   send(channel: string, ...args: unknown[]): void;
   isDestroyed?(): boolean;
   once?(event: "destroyed", listener: () => void): unknown;
+  removeListener?(event: "destroyed", listener: () => void): unknown;
+  /** The window's top frame (Electron's `webContents.mainFrame`). Pushes that are not a reply to
+   *  a call (`open`) are re-checked against it; a window that reports none gets no such push. */
+  readonly mainFrame?: { url: string; parent?: unknown } | null;
 }
 
 /** The part of Electron's `IpcMainInvokeEvent` the bridge uses. */
@@ -58,8 +68,59 @@ export interface IpcMainLike {
   removeHandler(channel: string): void;
 }
 
+/** The parts of Electron's `systemPreferences` and `nativeTheme` the host facts read. Passed in
+ *  (`electron: { systemPreferences, nativeTheme }`) so this module imports no `electron`. Every
+ *  member is optional: a fact the runtime cannot answer is left out of `host`. */
+export interface HostElectronLike {
+  systemPreferences?: { getAccentColor?(): string };
+  nativeTheme?: {
+    shouldUseHighContrastColors?: boolean;
+    prefersReducedTransparency?: boolean;
+  };
+}
+
+/** The OS facts a state carries (`BridgeState.host`, UK-06.3): the kit picks its desktop chrome
+ *  from them. */
+export interface BridgeHostFacts {
+  os: "macos" | "windows" | "linux";
+  accentColor?: string;
+  highContrast?: boolean;
+  reducedTransparency?: boolean;
+}
+
+/** The part of an Electron `Notification` instance the bridge uses. */
+export interface NotificationLike {
+  show(): void;
+  on(event: "click" | "close", listener: () => void): unknown;
+}
+
+/** Electron's `Notification` class, injected (this module imports no `electron`). */
+export interface NotificationClassLike {
+  new (options: { title: string; body: string }): NotificationLike;
+  isSupported?(): boolean;
+}
+
+/** Opt-in OS notifications (UK-06.5): two events, each only while the app is not focused. */
+export interface BridgeNotifications {
+  /** Electron's `Notification` class. */
+  Notification: NotificationClassLike;
+  /** Whether the app has focus right now; a notification is shown only when this is false. */
+  isAppFocused: () => boolean;
+  /** Runs when the person clicks a notification: focus the host window. */
+  onClick?: () => void;
+  /** The kit-copy locale of the text (default English). */
+  locale?: string;
+}
+
 export interface ExposePolarisBridgeOptions {
   ipcMain: IpcMainLike;
+  /** OS notifications for "update ready to restart" and "signed in", only while the app is not
+   *  focused. Without it the bridge shows none. The text is the kit copy's `notify.*` keys:
+   *  static sentences, never a key, code, email or license id. */
+  notifications?: BridgeNotifications;
+  /** Electron's `systemPreferences` and `nativeTheme`, for the accent colour, high contrast and
+   *  reduced transparency in `state.host`. Without it `host` carries the OS only. */
+  electron?: HostElectronLike;
   /** Renderers that get `stateChanged` pushes without subscribing (the preload subscribes on
    *  its own, so this is only for a custom preload). */
   webContents?: WebContentsLike | WebContentsLike[];
@@ -71,7 +132,9 @@ export interface ExposePolarisBridgeOptions {
    *  predicate replaces the default. */
   allowSender?: (event: IpcMainInvokeEventLike) => boolean;
   /** The origin(s) the app's window loads from, for the default `allowSender`. Set it when the
-   *  app loads a remote `https:` page; the bridge then answers that origin's top frame only. */
+   *  app loads a remote `https:` page; the bridge then answers that origin's top frame only.
+   *  A custom scheme (`app://main`) has an opaque origin, so it is pinned by scheme and host.
+   *  A `file:` pin is refused (no host to pin): serve the app from a custom scheme. */
   appOrigin?: string | string[];
   /** `invoke` verbs beyond the default allowlist, as `service.method`, each with its handler. */
   invoke?: {
@@ -89,6 +152,13 @@ export interface ExposePolarisBridgeOptions {
   flowGraceSeconds?: number;
 }
 
+/** The key a URL is pinned and compared by: `.origin` for http(s), `scheme//host` for a custom
+ *  scheme (its `.origin` is the opaque "null", shared by every such URL). */
+function originKey(url: URL): string {
+  if (url.origin !== "null") return url.origin;
+  return `${url.protocol}//${url.host}`.toLowerCase();
+}
+
 /** The default sender rule: the top frame, on the app's origin (no `data:`, `blob:` or `about:` document). A frame the app did
  *  not load itself (an iframe, a navigated-away window, remote content) cannot drive the
  *  bridge. */
@@ -99,11 +169,17 @@ function defaultAllowSender(
     appOrigin === undefined
       ? null
       : (Array.isArray(appOrigin) ? appOrigin : [appOrigin]).map((o) => {
+          let u: URL;
           try {
-            return new URL(o).origin;
+            u = new URL(o);
           } catch {
             return o;
           }
+          if (u.protocol === "file:")
+            throw new Error(
+              "appOrigin cannot pin a file: page (every file: URL shares one origin); serve the app from a custom scheme such as app://main",
+            );
+          return originKey(u);
         });
   return (event) => {
     const frame = event.senderFrame;
@@ -114,7 +190,7 @@ function defaultAllowSender(
     } catch {
       return false;
     }
-    if (pinned) return pinned.includes(url.origin);
+    if (pinned) return pinned.includes(originKey(url));
     if (url.protocol === "http:" || url.protocol === "https:")
       return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
     // Without a pinned origin only the app's own content may drive the bridge: a file or a custom
@@ -125,11 +201,51 @@ function defaultAllowSender(
   };
 }
 
+/** At most this often (10 per second) an install pushes progress to its window. */
+const PROGRESS_INTERVAL_MS = 100;
+
+/** One app-menu item the host places: Electron's `MenuItemConstructorOptions` accepts it as is
+ *  (this module imports no `electron`). */
+export interface PolarisMenuItem {
+  id: string;
+  label: string;
+  click: () => void;
+}
+
+/** The menu items' copy keys, in menu order, and the view each opens. */
+const MENU_ITEMS: readonly { id: string; key: string; view: KitView }[] = [
+  {
+    id: "polaris-key.checkForUpdates",
+    key: "update.checkNow",
+    view: "update",
+  },
+  {
+    id: "polaris-key.manageLicense",
+    key: "menu.manageLicense",
+    view: "settings",
+  },
+];
+
 /** What `exposePolarisBridge` returns: tear down every handler and listener. */
 export type PolarisBridgeHandle = {
   close(): void;
   /** Push the current state to every subscribed renderer now. */
   pushState(): void;
+  /**
+   * Ask the subscribed renderers to open a view in their window: Settings (the license) or the
+   * update check (`polaris-key:open`). A renderer subscribes by listening (the preload's
+   * `onOpen`, which `<PolarisKeyGate>` uses); one that does not listen, or an older renderer,
+   * ignores it. An unknown view is refused with a thrown error, never pushed.
+   */
+  open(view: KitView): void;
+  /**
+   * The app-menu items for the host to place ("Check for updates" and "Manage license"), as plain
+   * `{ id, label, click }` objects. The labels come from the kit copy in `locale` (default
+   * English): sentence case, and on macOS (`platform` "darwin" or "macos", default
+   * `process.platform`) title case with an ellipsis, in English only (§1.5 rule 11). A click calls
+   * `open(view)`.
+   */
+  menuItems(opts?: { platform?: string; locale?: string }): PolarisMenuItem[];
 };
 
 interface FlowEntry {
@@ -137,9 +253,51 @@ interface FlowEntry {
   timer: ReturnType<typeof setTimeout>;
 }
 
+/** `process.platform` as the kit's `os`. */
+function hostOs(platform: string): BridgeHostFacts["os"] {
+  return platform === "darwin"
+    ? "macos"
+    : platform === "win32"
+      ? "windows"
+      : "linux";
+}
+
+/** The host facts for a state. Each Electron read is guarded: a throwing or missing accessor
+ *  leaves its fact out rather than failing the state. The accent is Electron's `rrggbbaa` as
+ *  `#rrggbb`; anything else is dropped. */
+export function hostFacts(electron?: HostElectronLike): BridgeHostFacts {
+  const host: BridgeHostFacts = { os: hostOs(process.platform) };
+  try {
+    const raw = electron?.systemPreferences?.getAccentColor?.();
+    if (typeof raw === "string") {
+      const m = /^#?([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(raw);
+      if (m) host.accentColor = `#${m[1]!.toLowerCase()}`;
+    }
+  } catch {
+    // No accent on this OS.
+  }
+  try {
+    const hc = electron?.nativeTheme?.shouldUseHighContrastColors;
+    if (typeof hc === "boolean") host.highContrast = hc;
+  } catch {
+    // Unknown.
+  }
+  try {
+    const rt = electron?.nativeTheme?.prefersReducedTransparency;
+    if (typeof rt === "boolean") host.reducedTransparency = rt;
+  } catch {
+    // Unknown.
+  }
+  return host;
+}
+
 /** A BridgeState: the client's SyncState plus the capability map, the config entries, the
- *  device-local overrides (v4 `config.local`) and the presentation member. */
-export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
+ *  device-local overrides (v4 `config.local`), the presentation member and, when the caller
+ *  passes them, the host facts (UK-06.3). */
+export function bridgeState(
+  client: PolarisKeyClient,
+  host?: BridgeHostFacts,
+): Record<string, unknown> {
   const state: Record<string, unknown> = {
     ...client.getSyncState(),
     capabilities: client.capabilities(),
@@ -151,6 +309,7 @@ export function bridgeState(client: PolarisKeyClient): Record<string, unknown> {
   // Discovery's `core.presentation` (HA-13): the member rides every state, null for none.
   state.presentation =
     typeof client.presentation === "function" ? client.presentation() : null;
+  if (host) state.host = host;
   return state;
 }
 
@@ -167,6 +326,7 @@ export function bridgeActivation(r: ActivationResult): Record<string, unknown> {
       const out: Record<string, unknown> = { kind: "device-limit" };
       if (r.limit !== undefined) out.limit = r.limit;
       if (r.deviceCount !== undefined) out.deviceCount = r.deviceCount;
+      if (r.manageUrl !== undefined) out.manageUrl = r.manageUrl;
       return out;
     }
     case "unauthorized":
@@ -399,15 +559,22 @@ export function exposePolarisBridge(
   const flows = new Map<string, FlowEntry>();
   for (const wc of [opts.webContents ?? []].flat()) subscribers.set(wc.id, wc);
 
+  const currentState = (): Record<string, unknown> =>
+    bridgeState(client, hostFacts(opts.electron));
+
   const pushState = (): void => {
     if (subscribers.size === 0) return;
-    const state = bridgeState(client);
+    const state = currentState();
     for (const [id, wc] of subscribers) {
       if (wc.isDestroyed?.()) {
         subscribers.delete(id);
         continue;
       }
       try {
+        // Re-checked at push time, like `open` and the progress push: a window that navigated off
+        // the app since it subscribed gets no state (no frame, no push).
+        if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+          continue;
         wc.send(stateChannel(prefix), state);
       } catch {
         subscribers.delete(id);
@@ -437,7 +604,97 @@ export function exposePolarisBridge(
   // (the adapter names the decision only, so a non-default channel is kept here, not re-sent).
   let lastDecide: Parameters<PolarisKeyClient["update"]["decide"]>[0] = {};
 
-  const invokeVerbs: Record<string, (args: unknown) => Promise<unknown>> = {
+  const senderAllowed = opts.allowSender ?? defaultAllowSender(opts.appOrigin);
+
+  /** Update-install progress for ONE `update.install` call: pushed to the invoking sender only
+   *  (never `subscribers`), at most 10 per second, and never after the install settled or its
+   *  window went away. The sender is re-checked against `allowSender` on every push: a frame
+   *  that navigated off the app's origin mid-install stops receiving. A custom `allowSender`
+   *  that admits subframes still receives the push on the window's MAIN frame (`wc.send`): the
+   *  push is addressed to the window, not to the frame that asked.
+   *
+   *  `finish()` (the install succeeded) sends the newest event the throttle held back, so a UI
+   *  can reach `done === total`; `end()` (any outcome) stops everything and removes the
+   *  `destroyed` listener. After a failure or a cancel nothing is sent, not even the held event. */
+  const installProgress = (
+    event: IpcMainInvokeEventLike,
+    decision: UpdateDecision,
+  ): {
+    onProgress: (done: number, total: number) => void;
+    signal: AbortSignal;
+    finish: () => void;
+    end: () => void;
+  } => {
+    const wc = event.sender;
+    const ctl = new AbortController();
+    let ended = false;
+    let last = -Infinity;
+    let held: Record<string, unknown> | null = null;
+    const onDestroyed = (): void => {
+      ended = true;
+      held = null;
+      ctl.abort();
+    };
+    // The window closing cancels the install: nobody is left to restart into.
+    wc.once?.("destroyed", onDestroyed);
+    const version =
+      decision.action === "binary" || decision.action === "store"
+        ? decision.release.version
+        : undefined;
+    const push = (payload: Record<string, unknown>): boolean => {
+      try {
+        if (!senderAllowed(event)) return false;
+        wc.send(updateProgressChannel(prefix), payload);
+        return true;
+      } catch {
+        // A window that cannot receive is not the install's problem.
+        return false;
+      }
+    };
+    return {
+      signal: ctl.signal,
+      finish: () => {
+        const h = held;
+        held = null;
+        if (h && !ended && !wc.isDestroyed?.()) push(h);
+      },
+      end: () => {
+        ended = true;
+        held = null;
+        wc.removeListener?.("destroyed", onDestroyed);
+      },
+      onProgress: (done, total) => {
+        if (ended || wc.isDestroyed?.()) return;
+        if (typeof done !== "number" || !Number.isFinite(done) || done < 0)
+          return;
+        // A total is a count only when it is a positive number no smaller than what arrived;
+        // anything else is "unknown", never a guessed percentage.
+        const known =
+          typeof total === "number" &&
+          Number.isFinite(total) &&
+          total > 0 &&
+          total >= done;
+        const payload = {
+          ...(version ? { version } : {}),
+          done,
+          total: known ? total : null,
+          phase: "download",
+        };
+        const now = Date.now();
+        if (now - last < PROGRESS_INTERVAL_MS) {
+          held = payload;
+          return;
+        }
+        held = null;
+        if (push(payload)) last = now;
+      },
+    };
+  };
+
+  const invokeVerbs: Record<
+    string,
+    (args: unknown, event: IpcMainInvokeEventLike) => Promise<unknown>
+  > = {
     "devices.list": async () => client.listDevices(),
     "devices.rename": async (a) => {
       const b = bag(a);
@@ -472,7 +729,7 @@ export function exposePolarisBridge(
       lastDecide = o;
       return client.update.decide(o);
     },
-    "update.install": async (a) => {
+    "update.install": async (a, event) => {
       const b = bag(a);
       const offered = b.decision;
       if (typeof offered !== "object" || offered === null)
@@ -488,11 +745,24 @@ export function exposePolarisBridge(
           "invalid-argument",
           "that update is no longer offered; check for updates again.",
         );
-      const outcome = await client.update.install(current);
+      const progress = installProgress(event, current);
+      let outcome: Awaited<ReturnType<PolarisKeyClient["update"]["install"]>>;
+      try {
+        outcome = await client.update.install(current, {
+          onProgress: progress.onProgress,
+          signal: progress.signal,
+        });
+        // Installed: the newest held-back event goes out before the answer.
+        progress.finish();
+      } finally {
+        // Success, failure or cancel: nothing is pushed after the install has settled.
+        progress.end();
+      }
       // Any install clears a restart left pending from an earlier one.
       pendingRestart = null;
       if (outcome.kind === "restartRequired") {
         pendingRestart = outcome.restart;
+        notify("updateReady");
         return { kind: outcome.kind, version: outcome.version };
       }
       return outcome;
@@ -584,7 +854,7 @@ export function exposePolarisBridge(
       return r.kind === "ok" ? r.manifest : null;
     },
     "core.storeStatus": async () => client.storeStatus(),
-    "devices.id": async () => client.getCurrentDevice().id,
+    "devices.id": async () => client.currentDevice().id,
     // ── v4 (SP-12) ─────────────────────────────────────────────────────────────────────
     "core.boot": async (a) => {
       const b = bag(a);
@@ -748,10 +1018,10 @@ export function exposePolarisBridge(
     BridgeMethod,
     (event: IpcMainInvokeEventLike, ...args: unknown[]) => Promise<unknown>
   > = {
-    getSyncState: async () => bridgeState(client),
+    getSyncState: async () => currentState(),
     refresh: async () => {
       await client.sync({ force: true });
-      return bridgeState(client);
+      return currentState();
     },
     beginSignIn: async (_e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
@@ -794,6 +1064,7 @@ export function exposePolarisBridge(
         case "ready":
           forgetFlow(flowId as string);
           pushState();
+          notify("signedIn");
           return r.identity
             ? { kind: "ok", identity: r.identity }
             : { kind: "ok" };
@@ -817,7 +1088,7 @@ export function exposePolarisBridge(
       pushState();
       return null;
     },
-    invoke: async (_e, service, method, args) => {
+    invoke: async (event, service, method, args) => {
       const name = `${str(service, "service")}.${str(method, "method")}`;
       const fn = Object.hasOwn(invokeVerbs, name) ? invokeVerbs[name] : null;
       if (!fn)
@@ -825,7 +1096,7 @@ export function exposePolarisBridge(
           "invoke-not-allowed",
           `This desktop host does not expose ${name} to the renderer.`,
         );
-      const value = await fn(args);
+      const value = await fn(args, event);
       if (name === "devices.deauthorize") pushState();
       return value ?? null;
     },
@@ -849,8 +1120,6 @@ export function exposePolarisBridge(
     },
   };
 
-  const senderAllowed = opts.allowSender ?? defaultAllowSender(opts.appOrigin);
-
   for (const method of BRIDGE_METHODS) {
     const handler = handlers[method];
     opts.ipcMain.handle(
@@ -870,8 +1139,81 @@ export function exposePolarisBridge(
     );
   }
 
+  // OS notifications (opt-in). A failure here is never the verb's failure.
+  const live = new Set<NotificationLike>();
+  const notify = (kind: "updateReady" | "signedIn"): void => {
+    const n = opts.notifications;
+    if (!n) return;
+    try {
+      if (n.isAppFocused()) return;
+      if (n.Notification.isSupported && !n.Notification.isSupported()) return;
+      const locale = resolveLocale(n.locale);
+      const text = (part: "title" | "body"): string =>
+        KIT_COPY[locale][`notify.${kind}.${part}`] ??
+        KIT_COPY.en[`notify.${kind}.${part}`]!;
+      const note = new n.Notification({
+        title: text("title"),
+        body: text("body"),
+      });
+      live.add(note); // kept until it is clicked or closed, so it is not collected unseen
+      note.on("click", () => {
+        live.delete(note);
+        try {
+          n.onClick?.();
+        } catch {
+          // The host's focus handler failing is its own.
+        }
+      });
+      note.on("close", () => void live.delete(note));
+      note.show();
+    } catch {
+      // No notification is better than a failed install or sign-in.
+    }
+  };
+
+  const open = (view: KitView): void => {
+    if (!KIT_VIEWS.includes(view))
+      throw new Error(`open(): ${String(view)} is not a view the kit opens.`);
+    for (const [id, wc] of subscribers) {
+      if (wc.isDestroyed?.()) {
+        subscribers.delete(id);
+        continue;
+      }
+      try {
+        // Re-checked at push time, as the progress push is: a window that navigated off the app
+        // since it subscribed gets nothing. `allowSender` runs against the window's main frame
+        // (what a call from the window's top frame would have carried); no frame, no push.
+        if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+          continue;
+        wc.send(openChannel(prefix), view);
+      } catch {
+        subscribers.delete(id);
+      }
+    }
+  };
+
+  const menuItems = (
+    o: { platform?: string; locale?: string } = {},
+  ): PolarisMenuItem[] => {
+    const locale = resolveLocale(o.locale);
+    const platform = o.platform ?? process.platform;
+    const mac = platform === "darwin" || platform === "macos";
+    return MENU_ITEMS.map(({ id, key, view }) => ({
+      id,
+      // The macOS wording is English's (the catalog's `macos` variants); other locales keep
+      // their own text on every platform.
+      label:
+        (mac && locale === "en" ? KIT_COPY_VARIANTS[key]?.macos : undefined) ??
+        KIT_COPY[locale][key] ??
+        KIT_COPY.en[key]!,
+      click: () => open(view),
+    }));
+  };
+
   return {
     pushState,
+    open,
+    menuItems,
     close() {
       for (const method of BRIDGE_METHODS)
         opts.ipcMain.removeHandler(channelOf(prefix, method));
@@ -880,6 +1222,7 @@ export function exposePolarisBridge(
       offPresentation();
       for (const id of [...flows.keys()]) forgetFlow(id);
       subscribers.clear();
+      live.clear();
     },
   };
 }

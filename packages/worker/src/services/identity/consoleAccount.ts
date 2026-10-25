@@ -38,7 +38,16 @@ import { erasureVerdict } from "../../core/accounts/erasureFence.js";
 import { portalAudit } from "../../core/accounts/portalAudit.js";
 import { operatorIssuerAllowed } from "../../core/rbac/operatorIssuer.js";
 import { memberIdFor, isMemberId } from "../../core/console/memberId.js";
-import { rootRuleHolds } from "../../core/rbac/principal.js";
+import { holdsRoot, rootRuleHolds } from "../../core/rbac/principal.js";
+import { consoleOrigin } from "../../core/hosts.js";
+import { portalOriginOf } from "../../core/licensing/manageUrl.js";
+import {
+  artefactRef,
+  consumeArtefact,
+  putArtefact,
+} from "../../core/singleUse.js";
+import { hashKey } from "../../platform/crypto.js";
+import { randomToken } from "../../platform/random.js";
 import type { Db } from "../../db/types.js";
 import { normalizeEmail } from "../../platform/email.js";
 import type { Env } from "../../platform/env.js";
@@ -59,15 +68,24 @@ import {
   openAccountSessionRow,
   sessionIdHash,
 } from "./portal/accountSessions.js";
-import {
-  portalIdentityIssuerKey,
-  recordLinkGroups,
-  rekeyLegacyPortalIdentities,
-} from "./portal/repo.js";
+import { portalIdentityIssuerKey, recordLinkGroups } from "./portal/repo.js";
 import { providerVouchesForEmail } from "./providers/vouch.js";
 import { handleAccountPasskeys, passkeyAddable } from "./passkeys/routes.js";
-import { parseDetails } from "./passkeys/repo.js";
-import { passkeyRelyingParty } from "./passkeys/webauthn.js";
+import {
+  PASSKEY_CEREMONY_TTL_SECONDS,
+  assertionUserHandle,
+  parseAuthenticationResponse,
+  passkeyRelyingParty,
+  signInOptions,
+  verifyAssertion,
+  type RelyingParty,
+} from "./passkeys/webauthn.js";
+import {
+  findPasskey,
+  parseDetails,
+  parseTransports,
+  recordPasskeyUse,
+} from "./passkeys/repo.js";
 import { PASSKEY_ISSUER } from "./accounts/repo.js";
 
 /** What the console IdP verified at the callback. */
@@ -125,7 +143,6 @@ export async function consoleSignIn(
   const issuerKey = portalIdentityIssuerKey(rp.issuer);
   // A pre-I-01 row keyed by the literal `oidc` is this IdP's subject: re-key before the lookup, or
   // the operator would get a second account (as the portal callback does).
-  await rekeyLegacyPortalIdentities(db, issuerKey);
   await rekeyLegacyAccountLinks(db, issuerKey);
 
   const asserted = identity.email?.trim()
@@ -279,53 +296,129 @@ export async function consoleSubject(
     row.account_id !== cookie.aid
   )
     return null;
-  if ((await erasureVerdict(env, now, cookie.aid)) !== "clear") return null;
-  const account = await resolveAccount(db, cookie.aid, now);
-  // A merge moved the account: the cookie names a row that is no longer this account.
-  if (!account || account.id !== cookie.aid || account.status !== "active")
+  return subjectForAccount(env, db, cookie.aid, now);
+}
+
+/**
+ * Who an account is in the console right now, or `null`: the part of `consoleSubject` after the
+ * session-row check, shared so a session and a token (ST-34.3) cannot disagree. It never writes.
+ * Callers hold no session row for the account, so nothing here may echo `accountId`.
+ */
+export async function subjectForAccount(
+  env: Env,
+  db: Db,
+  accountId: string,
+  now: number,
+): Promise<ResolvedConsoleSubject | null> {
+  if ((await erasureVerdict(env, now, accountId)) !== "clear") return null;
+  const account = await resolveAccount(db, accountId, now);
+  // A merge moved the account: the id named is no longer this account.
+  if (!account || account.id !== accountId || account.status !== "active")
     return null;
 
-  const rp = adminOidcConfig(env);
-  if (!rp || !operatorIssuerAllowed(env, rp.issuer)) return null;
-  const issuerKey = portalIdentityIssuerKey(rp.issuer);
-  // SM-1: only a STRONG link through a qualifying issuer opens the console, the one the operator
-  // signed in through last (`touchLink` moves `last_used_at`). An account left with no strong
-  // link (an email code only, a removed method) keeps its membership and loses entry (SM-5).
-  const link = await db.first<{
-    subject: string;
-    display_name: string | null;
-    email: string | null;
-    groups_json: string | null;
-    strong_at: number | null;
-    asserted_at: number | null;
-  }>(
-    `SELECT subject, display_name, email, groups_json, strong_at, asserted_at FROM account_links
-      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' AND strong_at IS NOT NULL
-      ORDER BY last_used_at DESC, id LIMIT 1`,
-    account.id,
-    issuerKey,
-  );
-  if (!link) return null;
-  const stored = parseJsonStringList(link.groups_json);
-  const root = rootRuleHolds(
-    env,
-    { strongAt: link.strong_at, assertedAt: link.asserted_at, groups: stored },
-    now,
-    ADMIN_SESSION_TTL_SECONDS,
-  );
+  // SM-5: an account is a console member while it holds ANY strong method: a strong link through
+  // the console IdP, or a strong passkey enrolled under the console's RP id. Each is read fresh
+  // here on every check, so removing the last strong method ends entry within the 30 s window.
+  const idp = await consoleIdpLink(env, db, account.id);
+  const passkey = idp ? null : await strongConsolePasskey(env, db, account.id);
+  if (!idp && !passkey) return null;
+  // The root rule comes from the console-IdP link ALONE (SM-5): a passkey never carries groups,
+  // so a passkey-only member is root-less and is a member only through stored bindings.
+  const stored = idp ? parseJsonStringList(idp.groups_json) : [];
+  const root = idp
+    ? rootRuleHolds(
+        env,
+        {
+          strongAt: idp.strong_at,
+          assertedAt: idp.asserted_at,
+          groups: stored,
+        },
+        now,
+        ADMIN_SESSION_TTL_SECONDS,
+      )
+    : false;
+  const memberId = await memberIdFor(env, account.id);
   return {
-    sub: await memberIdFor(env, account.id),
-    idpSub: link.subject,
+    sub: memberId,
+    idpSub: idp?.subject ?? "",
     name:
       account.display_name ??
-      link.display_name ??
+      idp?.display_name ??
       account.primary_email ??
-      link.subject,
-    email: account.primary_email ?? link.email ?? "",
+      idp?.subject ??
+      memberId,
+    email: account.primary_email ?? idp?.email ?? "",
     // Groups are offered only while the IdP's assertion is fresh: a stale one grants nothing.
     groups: root ? stored : [],
     root,
   };
+}
+
+interface ConsoleIdpLink {
+  subject: string;
+  display_name: string | null;
+  email: string | null;
+  groups_json: string | null;
+  strong_at: number | null;
+  asserted_at: number | null;
+}
+
+/**
+ * The account's strong link through the console IdP, the one the operator signed in through last
+ * (`touchLink` moves `last_used_at`), or `null`: no console IdP, one that may not sign operators in
+ * (SM-2), or no strong link (an email code only, a removed method).
+ */
+async function consoleIdpLink(
+  env: Env,
+  db: Db,
+  accountId: string,
+): Promise<ConsoleIdpLink | null> {
+  const rp = adminOidcConfig(env);
+  if (!rp || !operatorIssuerAllowed(env, rp.issuer)) return null;
+  return db.first<ConsoleIdpLink>(
+    `SELECT subject, display_name, email, groups_json, strong_at, asserted_at FROM account_links
+      WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' AND strong_at IS NOT NULL
+      ORDER BY last_used_at DESC, id LIMIT 1`,
+    accountId,
+    portalIdentityIssuerKey(rp.issuer),
+  );
+}
+
+/** The console's RP id from configuration alone (no request): the host of `CONSOLE_ORIGIN`. */
+function configuredConsoleRpId(env: Env): string | null {
+  const origin = consoleOrigin(env, "");
+  if (!origin) return null;
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * SM-5: a strong passkey of the account enrolled under the console's RP id. The link must be
+ * strong (SM-1) AND twinned with a passkey row of the same account whose `rp_id` is the console's:
+ * a passkey marked strong, then re-enrolled elsewhere or whose row is gone, admits nobody. The
+ * link is deleted when the holder removes the passkey, so the next check (at most 30 s) refuses.
+ */
+async function strongConsolePasskey(
+  env: Env,
+  db: Db,
+  accountId: string,
+): Promise<{ linkId: string } | null> {
+  const rpId = configuredConsoleRpId(env);
+  if (!rpId) return null;
+  const row = await db.first<{ id: string }>(
+    `SELECT l.id FROM account_links l
+       JOIN account_passkeys p ON p.credential_id = l.subject AND p.account_id = l.account_id
+      WHERE l.account_id = ? AND l.issuer_key = ? AND l.tenant_scope = '' AND l.kind = 'passkey'
+        AND l.strong_at IS NOT NULL AND p.rp_id = ?
+      ORDER BY l.last_used_at DESC, l.id LIMIT 1`,
+    accountId,
+    PASSKEY_ISSUER,
+    rpId,
+  );
+  return row ? { linkId: row.id } : null;
 }
 
 /**
@@ -408,6 +501,12 @@ export async function consoleVerifiedPrimaryEmail(
   );
   return row?.primary_email ? normalizeEmail(row.primary_email) : null;
 }
+
+/**
+ * `subjectForAccount` for a credential with no session row (a personal token, ST-34.3). Never
+ * cache it longer than `LIVE_CHECK_SECONDS`.
+ */
+export const consoleTokenSubject = subjectForAccount;
 
 /** End one console session now (sign out). The 30 s cache elsewhere is dropped by the caller. */
 export async function endConsoleSession(
@@ -926,4 +1025,291 @@ export async function markConsoleMethodStrong(
   return changed > 0
     ? { status: "marked", kind: mine.kind }
     : { status: "already_strong" };
+}
+
+// ── Passkey sign-in to the console (ST-30c.5) ─────────────────────────────────────────────────
+
+/**
+ * The console's ceremony record, in the single-use store under its own id namespace and its own
+ * browser cookie (`__Host-pkey_console_passkey`): the portal's `passkey-signin:` record and cookie
+ * can neither start nor finish a console sign-in, nor the reverse.
+ */
+interface ConsoleCeremony {
+  v: 1;
+  purpose: "console-signin";
+  challenge: string;
+  rpId: string;
+  createdAt: number;
+  /** The account of the session that asked for a step-up; absent for a plain sign-in. */
+  stepUpFor?: string;
+  returnTo?: string;
+}
+
+async function consoleCeremonyRef(env: Env, secret: string) {
+  return artefactRef(
+    "webauthn-challenge",
+    await hashKey(`console-passkey-signin:${secret}`, env.KEY_HASH_PEPPER),
+  );
+}
+
+/**
+ * The relying party for a console ceremony: this request must have arrived on the console origin
+ * itself (the related customer origin never mints one), and a response may name that origin alone.
+ */
+function consoleCeremonyRp(env: Env, req: Request): RelyingParty | null {
+  // Without a configured console origin no passkey can admit (`subjectForAccount`), so refuse the
+  // ceremony up front rather than verify, record a use and only then refuse.
+  const configured = configuredConsoleRpId(env);
+  const rp = passkeyRelyingParty(env, req);
+  if (!configured || !rp || rp.id !== configured) return null;
+  if (rp.origin !== portalOriginOf(env, req)) return null;
+  return { ...rp, origins: [rp.origin] };
+}
+
+/**
+ * Whether a console passkey ceremony can run for this request at all: the console origin is
+ * configured and the request arrived on it (the same test `consolePasskeyOptions` applies). The
+ * sign-in card shows its passkey button, and its script, only then.
+ */
+export function consolePasskeyAvailable(env: Env, req: Request): boolean {
+  return consoleCeremonyRp(env, req) !== null;
+}
+
+/** Whether the account holds a console-eligible (strong, console-RP) passkey: step-up's offer. */
+export async function accountHasConsolePasskey(
+  env: Env,
+  db: Db,
+  accountId: string,
+): Promise<boolean> {
+  return (await strongConsolePasskey(env, db, accountId)) !== null;
+}
+
+/**
+ * `POST /manage/login/passkey/options`: a challenge for THIS browser. `secret` goes into the
+ * ceremony cookie and is never stored; the record is addressed by its hash. `stepUpFor` is the
+ * `aid` of the caller's current session when it asked for a step-up (the caller has verified it).
+ * `null` when the request did not arrive on the console origin.
+ */
+export async function consolePasskeyOptions(
+  env: Env,
+  req: Request,
+  opts: { stepUpFor?: string; returnTo?: string },
+  now: number,
+): Promise<{
+  options: Awaited<ReturnType<typeof signInOptions>>;
+  secret: string;
+  expiresIn: number;
+} | null> {
+  const rp = consoleCeremonyRp(env, req);
+  if (!rp) return null;
+  const options = await signInOptions(rp);
+  const secret = randomToken(32);
+  const ceremony: ConsoleCeremony = {
+    v: 1,
+    purpose: "console-signin",
+    challenge: options.challenge,
+    rpId: rp.id,
+    createdAt: now,
+    ...(opts.stepUpFor ? { stepUpFor: opts.stepUpFor } : {}),
+    ...(opts.returnTo ? { returnTo: opts.returnTo } : {}),
+  };
+  await putArtefact(
+    env,
+    await consoleCeremonyRef(env, secret),
+    JSON.stringify(ceremony),
+    PASSKEY_CEREMONY_TTL_SECONDS,
+  );
+  return { options, secret, expiresIn: PASSKEY_CEREMONY_TTL_SECONDS };
+}
+
+export type ConsolePasskeyRefusal =
+  /** No usable ceremony: absent, spent, expired, or for another RP. */
+  | "expired"
+  /** Anything that failed to prove a console-eligible passkey: one answer, whatever failed. */
+  | "invalid"
+  /** SM-1: nobody marked the passkey strong for entry. */
+  | "method"
+  /** The account is disabled, erased or being erased, or has no console entry. */
+  | "account"
+  /** A step-up must be answered by the account that asked for it (checklist 14). */
+  | "step_up_account";
+
+export type ConsolePasskeySignInResult =
+  | {
+      status: "ok";
+      accountId: string;
+      sid: string;
+      /** The resolved subject (`subjectForAccount`): member id, name, email, groups, root. */
+      subject: ResolvedConsoleSubject;
+      /** The ceremony asked for a step-up and the same account answered it. */
+      stepUp: boolean;
+      /**
+       * The account holds a console-IdP link that asserts the root group but is no longer fresh:
+       * "Sign in with Pocket ID first" is the guidance when it holds no other grant.
+       */
+      rootStale: boolean;
+      returnTo: string | null;
+    }
+  | { status: "refused"; reason: ConsolePasskeyRefusal };
+
+/**
+ * `POST /manage/login/passkey/verify`: finish a console passkey sign-in (SM-1, SM-5, I-16).
+ *
+ * `secret` is the ceremony cookie's value and `currentAid` the `aid` of the caller's live console
+ * session (or `null`). The checks, in order, and every one before anything is written:
+ *
+ *   1. the ceremony of THIS browser is taken (single use: spent whatever happens next) and its RP
+ *      id is the console's;
+ *   2. the response parses, the credential exists, was enrolled under the console's RP id, the
+ *      user handle is the one it was created under, and its link belongs to the same account;
+ *   3. `verifyAssertion` (I-16, unchanged): challenge, exact console origin, RP id hash, user
+ *      verification, signature, counter. A regressed counter is audited and refused;
+ *   4. SM-1: the passkey's link has `strong_at`, else `method`;
+ *   5. the account is active and the erasure verdict is clear;
+ *   6. a step-up is answered by the account that asked: the ceremony's `stepUpFor` and
+ *      `currentAid` both equal this account, else `step_up_account`.
+ *
+ * Only then does it write: the counter, the link's use, the member-id mark and an
+ * `account_sessions` row (`amr: ["passkey"]`, the console TTL). The caller applies the console
+ * gate (a grant; the root rule) and ends the row when it fails.
+ */
+export async function consolePasskeySignIn(
+  env: Env,
+  db: Db,
+  req: Request,
+  input: { secret: string; response: unknown; currentAid: string | null },
+  now: number,
+): Promise<ConsolePasskeySignInResult> {
+  const rp = consoleCeremonyRp(env, req);
+  if (!rp) return { status: "refused", reason: "expired" };
+  // Taken BEFORE anything is checked: a challenge verifies at most once.
+  const raw = await consumeArtefact(
+    env,
+    await consoleCeremonyRef(env, input.secret),
+  );
+  let ceremony: ConsoleCeremony | null = null;
+  try {
+    ceremony = raw ? (JSON.parse(raw) as ConsoleCeremony) : null;
+  } catch {
+    ceremony = null;
+  }
+  if (
+    !ceremony ||
+    ceremony.v !== 1 ||
+    ceremony.purpose !== "console-signin" ||
+    typeof ceremony.challenge !== "string" ||
+    ceremony.challenge === "" ||
+    ceremony.rpId !== rp.id
+  )
+    return { status: "refused", reason: "expired" };
+  const refuseInvalid = (): ConsolePasskeySignInResult => ({
+    status: "refused",
+    reason: "invalid",
+  });
+
+  const response = parseAuthenticationResponse(input.response);
+  if (!response) return refuseInvalid();
+  const passkey = await findPasskey(db, response.id);
+  if (!passkey || passkey.rp_id !== rp.id) return refuseInvalid();
+  if (assertionUserHandle(response) !== passkey.user_handle)
+    return refuseInvalid();
+  const link = await findLink(db, {
+    issuerKey: PASSKEY_ISSUER,
+    tenantScope: "",
+    subject: passkey.credential_id,
+  });
+  if (!link || link.account_id !== passkey.account_id) return refuseInvalid();
+
+  const verdict = await verifyAssertion({
+    response,
+    challenge: ceremony.challenge,
+    rp,
+    passkey,
+    transports: parseTransports(passkey.transports_json),
+  });
+  if (!verdict.ok) {
+    if (verdict.reason === "counter")
+      await portalAudit(db, {
+        accountId: passkey.account_id,
+        action: "account.passkey.counter_regressed",
+        targetKind: "link",
+        targetId: link.id,
+        summary:
+          "Refused a passkey sign-in: its signature counter went backwards",
+        now,
+      });
+    return refuseInvalid();
+  }
+
+  const accountId = link.account_id;
+  // SM-1, after the signature (only the key's holder learns the answer) and before any write.
+  if (!link.strong_at) return { status: "refused", reason: "method" };
+  const account = await getAccountRow(db, accountId);
+  if (
+    !account ||
+    account.status !== "active" ||
+    (await erasureVerdict(env, now, accountId)) !== "clear"
+  )
+    return { status: "refused", reason: "account" };
+  // Checklist item 14: a step-up for account A can never mint a session for account B.
+  const stepUp = ceremony.stepUpFor !== undefined;
+  if (
+    stepUp &&
+    (ceremony.stepUpFor !== accountId || input.currentAid !== accountId)
+  )
+    return { status: "refused", reason: "step_up_account" };
+
+  if (!(await recordPasskeyUse(db, passkey, verdict, now)))
+    return refuseInvalid();
+  const signed = await signIn(
+    db,
+    {
+      issuerKey: PASSKEY_ISSUER,
+      subject: passkey.credential_id,
+      kind: "passkey",
+      amr: ["passkey"],
+    },
+    now,
+    { env, linkedOnly: true },
+  );
+  if (
+    signed.status !== "signed_in" ||
+    signed.account.id !== accountId ||
+    signed.account.status !== "active"
+  )
+    return { status: "refused", reason: "account" };
+  const subject = await subjectForAccount(env, db, accountId, now);
+  if (!subject) return { status: "refused", reason: "account" };
+  // The member id is derived, never trusted from here: it only indexes the audit alias lookup.
+  await db.run(
+    "UPDATE account_links SET member_id = ? WHERE id = ?",
+    subject.sub,
+    link.id,
+  );
+  const { sid } = await openAccountSessionRow(
+    env,
+    db,
+    {
+      accountId,
+      req,
+      amr: ["passkey"],
+      ttlSeconds: ADMIN_SESSION_TTL_SECONDS,
+    },
+    now,
+  );
+  let rootStale = false;
+  if (!subject.root) {
+    const idp = await consoleIdpLink(env, db, accountId);
+    rootStale =
+      idp !== null && holdsRoot(env, parseJsonStringList(idp.groups_json));
+  }
+  return {
+    status: "ok",
+    accountId,
+    sid,
+    subject,
+    stepUp,
+    rootStale,
+    returnTo: ceremony.returnTo ?? null,
+  };
 }

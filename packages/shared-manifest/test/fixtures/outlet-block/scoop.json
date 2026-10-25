@@ -1,0 +1,11 @@
+{
+  "outlets": {
+    "scoop": {
+      "kind": "direct",
+      "scoopBucket": "acme/scoop-bucket",
+      "scoop": {
+        "bin": "dice.exe"
+      }
+    }
+  }
+}

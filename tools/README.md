@@ -61,21 +61,25 @@ Run the JavaScript commands under Node 22 (see [`AGENTS.md`](../AGENTS.md)).
 
 Generator families that read or write files here (a family regenerates with `pnpm gen <family>`, and `pnpm gen --check` is the drift gate):
 
-| Family          | Here it          | Run                                 |
-| --------------- | ---------------- | ----------------------------------- |
-| `corpus`        | reads            | `pnpm gen corpus`                   |
-| `ui-matrix`     | reads            | runs with `corpus`                  |
-| `services`      | reads            | `pnpm gen services`                 |
-| `channels`      | reads            | `pnpm gen channels`                 |
-| `constants`     | reads            | `pnpm gen constants`                |
-| `registry-docs` | reads            | `pnpm gen registry-docs`            |
-| `readme-work`   | reads and writes | `pnpm gen readme-work`              |
-| `parity`        | reads            | `pnpm gen parity`                   |
-| `ux-rows`       | reads            | `pnpm gen ux-rows`                  |
-| `route-ledger`  | reads            | `pnpm gen route-ledger`             |
-| `integration`   | reads            | `pnpm gen integration`              |
-| `mirrors`       | reads            | `pnpm gen mirrors` (named run only) |
-| `mockup-kit`    | reads            | `pnpm gen mockup-kit`               |
+| Family           | Here it          | Run                                 |
+| ---------------- | ---------------- | ----------------------------------- |
+| `corpus`         | reads            | `pnpm gen corpus`                   |
+| `ui-matrix`      | reads            | runs with `corpus`                  |
+| `services`       | reads            | `pnpm gen services`                 |
+| `channels`       | reads            | `pnpm gen channels`                 |
+| `roles-matrix`   | reads            | `pnpm gen roles-matrix`             |
+| `skills`         | reads            | `pnpm gen skills`                   |
+| `constants`      | reads            | `pnpm gen constants`                |
+| `docs-reference` | reads            | `pnpm gen docs-reference`           |
+| `registry-docs`  | reads and writes | `pnpm gen registry-docs`            |
+| `readme-work`    | reads and writes | `pnpm gen readme-work`              |
+| `parity`         | reads            | `pnpm gen parity`                   |
+| `api`            | reads            | `pnpm gen api`                      |
+| `ux-rows`        | reads            | `pnpm gen ux-rows`                  |
+| `route-ledger`   | reads            | `pnpm gen route-ledger`             |
+| `integration`    | reads            | `pnpm gen integration`              |
+| `mirrors`        | reads            | `pnpm gen mirrors` (named run only) |
+| `mockup-kit`     | reads            | `pnpm gen mockup-kit`               |
 
 <!-- work-on-it:end -->
 

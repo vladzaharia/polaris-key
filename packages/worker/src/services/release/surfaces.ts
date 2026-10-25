@@ -20,12 +20,8 @@ import { listReleases } from "./github.js";
 import { type ChangelogEntry, extractSummary } from "./changelog.js";
 import { versionFromTag } from "./channels.js";
 import { isResolved, type ReleaseConfigRow } from "./config.js";
-import {
-  installationToken,
-  serveReleaseSurface,
-  type ReleaseParams,
-  type SurfaceContext,
-} from "./gateway.js";
+import { installationToken, type ReleaseParams } from "./gateway.js";
+import { serveReleaseSurface, type SurfaceContext } from "./surface.js";
 
 /** The surface this service serves. Update owns the feed's three; Distribution the bytes. */
 export type ReleaseSurfaceKind = "changelog";

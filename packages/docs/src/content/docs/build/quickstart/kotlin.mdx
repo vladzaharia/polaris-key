@@ -39,7 +39,7 @@ Then add the artifact for your host. `polaris-key-sdk` comes with each. Add `im.
 dependencies {
     // Android: one flavor per build, play for Google Play or direct for a build you distribute yourself
     implementation("im.plrs.key:polaris-key-android-direct:<version>")
-    implementation("im.plrs.key:polaris-key-ui:<version>") // the Compose screens, Android only
+    implementation("im.plrs.key:polaris-key-ui:<version>") // the Compose screens, Android and Compose Desktop (PolarisKeyWindow)
     // Compose Desktop and JVM tools: the OS keyring is included
     implementation("im.plrs.key:polaris-key-desktop:<version>")
 }
@@ -111,12 +111,12 @@ You should see the client create with no network request.
 
 ## 4. Gate the app
 
-**App** The host decides the lane. Android has the Compose kit. Compose Desktop and a JVM tool use the library.
+**App** The host decides the lane. Android and Compose Desktop have the Compose kit. A JVM tool uses the library.
 
-<Lanes intro="The Compose kit gates an Android app and runs activation and the update banner. Your own UI calls the client and draws its own, on Android, Compose Desktop or the JVM.">
+<Lanes intro="The Compose kit gates an Android or Compose Desktop app and runs activation and the update banner. Your own UI calls the client and draws its own, on Android, Compose Desktop or the JVM.">
   <Fragment slot="kit">
 
-`PolarisKeyApp` starts from the client, gates your content, and runs activation and the update banner over it. `signIn = true` adds the device-code sign-in to the gate.
+`PolarisKeyGate` starts from the client, gates your content, and runs activation and the update banner over it. `signIn = true` adds the device-code sign-in to the gate.
 
 ```kotlin android title="MainActivity.kt"
 import android.os.Bundle
@@ -124,14 +124,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import im.plrs.key.ui.PolarisKeyApp
+import im.plrs.key.ui.PolarisKeyGate
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                PolarisKeyApp(client, signIn = true) { Text("Licensed") }
+                PolarisKeyGate(client, signIn = true) { Text("Licensed") }
             }
         }
     }
@@ -143,7 +143,7 @@ Here `client` is the one `App` built: `(application as App).client`. Screens, br
   </Fragment>
   <Fragment slot="library">
 
-Call the client and handle each state yourself. Activate with `client.activate(key)`, read the state with `client.status()` and then `client.licenseChanges`, and sign in with `client.identity.beginSignIn()` and `waitForSignIn(prompt)`. [Your own UI](/docs/build/sdks/kotlin/your-own-ui/) gives each call with its states and words, for [Compose Desktop](/docs/build/sdks/kotlin/your-own-ui/#compose-desktop) and [a command-line tool](/docs/build/sdks/kotlin/your-own-ui/#a-command-line-tool).
+Call the client and handle each state yourself. Activate with `client.license.activateWithKey(key)`, read the state with `client.status()` and then `client.events` (`PolarisEvent.License`), and sign in with `client.identity.beginSignIn()` and `waitForSignIn(prompt)`. [Your own UI](/docs/build/sdks/kotlin/your-own-ui/) gives each call with its states and words, for [Compose Desktop](/docs/build/sdks/kotlin/your-own-ui/#compose-desktop) and [a command-line tool](/docs/build/sdks/kotlin/your-own-ui/#a-command-line-tool).
 
 ```kotlin title="OwnUi.kt"
 import im.plrs.key.core.Copy
@@ -151,7 +151,7 @@ import im.plrs.key.license.ActivationResult
 import im.plrs.key.sdk.PolarisKeyClient
 
 suspend fun activate(client: PolarisKeyClient, key: String): Boolean =
-    client.activate(key) is ActivationResult.Ok
+    client.license.activateWithKey(key) is ActivationResult.Ok
 
 // What to show instead of your app: null when the license is usable.
 suspend fun lockedMessage(client: PolarisKeyClient): String? =

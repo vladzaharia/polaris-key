@@ -110,7 +110,7 @@ export const STATUS = {
   edgeMint: {
     approved: e("Approved", "success"),
     pending: e("Needs approval", "warning", Clock),
-    changed: e("Changed since approval", "danger", AlertTriangle),
+    changed: e("Changed since approval", "warning", AlertTriangle),
   },
   secret: {
     configured: e("Configured", "success"),
@@ -126,6 +126,7 @@ export const STATUS = {
     ready: e("Ready", "success"),
     unset: e("Not set up", "neutral", Circle),
     credential: e("Needs a credential", "warning"),
+    mismatch: e("App mismatch", "warning"),
   },
   source: {
     manifest: e("From manifest", "neutral"),

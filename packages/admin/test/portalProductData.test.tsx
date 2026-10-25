@@ -506,11 +506,6 @@ describe("Remove my data from a product (I-11)", () => {
       /Your license stays in your library/,
     ],
     [
-      "a Worker that doesn't say which licenses can go",
-      [mine({ removable: undefined })],
-      /Your license stays in your library/,
-    ],
-    [
       "one license of two that can't be added back",
       [mine(), mine({ id: "lic_two", removable: false })],
       /Your licenses stay in your library/,

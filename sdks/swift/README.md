@@ -103,8 +103,8 @@ Everything below hangs off one `PolarisKeyClient`. Names match the other SDKs up
 
 | Surface                                                                    | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `activate(key:)`, `enroll()`                                               | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
-| `isEnabled(flag:)`, `license.isEntitled(_:)`                               | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
+| `activateWithKey(_:)`, `enroll()`                                          | A typed `ActivationResult` sorted by the server's error code: `unauthorized`, `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)`, `refused(code:status:message:)` or, with no usable answer, `error(code:message:status:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                   |
+| `entitlements.has(_:)`, `entitlements.value(_:)`, `entitlements.all()`     | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                                    |
 | `licenseInfo()`                                                            | License id, tier and tier label, device limit, expiry, profile and channels.                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `config.bool` / `int` / `double` / `string` / `decode(_:as:)`              | Typed reads of the resolved value.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `config.set(_:_:)`, `clear(_:)`, `localValues()`                           | The user's own values, persisted in UserDefaults (an app-group suite with `appGroup`). They beat the environment and a remote `default`, never `enforced` or `hidden`, and are checked against the catalog's `type` and `enum`.                                                                                                                                                                                                                                                                          |
@@ -129,7 +129,7 @@ import PolarisKey
 
 // `create` throws on a non-https base URL and when the credential store itself is unavailable
 // (locked keychain, unwritable config dir) — the latter used to be swallowed, silently
-// re-activating every launch and burning a seat each time.
+// re-activating every launch and using up a device each time.
 let client = try await PolarisKeyClient.create(options: .init(
     productSlug: "djdl",
     version: "1.4.2",
@@ -142,13 +142,13 @@ let client = try await PolarisKeyClient.create(options: .init(
 
 // Offline-first: status comes from the cached signed documents with no network.
 if await client.isLicensed() {
-    let concurrency = await client.config.config("run.concurrency", default: .int(4))
-    let vpnUrl = await client.config.secret("proxy.subscriptionUrl")
-    let hasVpn = await client.license.isEntitled("polarisVpn")
+    let concurrency = await client.config.get("run.concurrency", default: .int(4))
+    let vpnUrl = await client.config.getSecret("proxy.subscriptionUrl")
+    let hasVpn = await client.entitlements.has("polarisVpn")
 }
 
 // Activate with a license key (key → token, persisted, then a forced sync).
-let result = await client.activate(key: userEnteredKey)
+let result = await client.license.activateWithKey(userEnteredKey)
 
 // Or, for a config-only product, mint a credential with no key at all (§6).
 let registered = await client.register()
@@ -163,11 +163,11 @@ try await client.deactivate()
 ```
 
 The suite's shape is `client.<service>.<verb>`: `client.license.{status,activate,enroll,
-isEntitled,entitlements,entitledChannels,profile,deactivate}`, `client.config.{config,
-configSource,secret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
+entitledChannels,getProfile,deactivate}`, `client.entitlements.{has,value,all}`, `client.config.{get,
+getConfigSource,getSecret,listUserConfig,schemaVersion,fetchSchema,mintToken}`,
 `client.identity.{beginSignIn,pollSignIn,waitForSignIn}` and `client.release.{changelog,
-installURL,downloadURL(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,config,
-activate,enroll,register,report,sync,deactivate,importBundle,syncState}` are convenience
+installUrl,downloadUrl(version:binary:arch:checksum:dmg:)}`. `client.{status,isLicensed,
+activate,enroll,register,report,sync,deactivate,importBundle,getSyncState}` are convenience
 passthroughs for the calls a host makes before it knows which service it is talking to.
 
 `client.report()` posts the telemetry snapshot now (`sync()` already reports after each pass);
@@ -228,8 +228,8 @@ runtime fetch; routine key rotation is handled by the signed trust manifest at
 
 ### Layered config
 
-`client.config.config(_:default:)` resolves a value through the **same precedence** as every
-Polaris Key SDK; `configSource(_:)` returns which layer won:
+`client.config.get(_:default:)` resolves a value through the **same precedence** as every
+Polaris Key SDK; `getConfigSource(_:)` returns which layer won:
 
 ```
 enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default  >  fallback
@@ -237,7 +237,7 @@ enforced | hidden (remote)  >  localOverrides  >  environment  >  remote default
 
 `enforced`/`hidden` remote values are **locked to the server** — `localOverrides` and env vars
 are ignored for those keys; `hidden` keys are additionally withheld from `listUserConfig()` (but
-still applied by `config(_:default:)`).
+still applied by `get(_:default:)`).
 
 The env var for a key is `envPrefix + key` with dots replaced by `__` (default prefix
 `PKEY_CONFIG_`): `run.concurrency` → `PKEY_CONFIG_run__concurrency`. The value is the decoded
@@ -298,8 +298,8 @@ attach opt-in is retired). A Deny on the approval page ends as `.error(message:c
 complete the sign-in on the verification page, so the player must be able to see a mis-binding.
 `.ready(let ready)` carries `ready.identity` (name and email, when the Worker said) and
 `ready.attached`; the post-acquisition sync has already run, so `await client.currentDevice().profile`
-(or `LicenseClient.profile()`) returns the signed license profile too. Show "Signed in as Ada
-Lovelace <ada@example.com>" with a way out: `PolarisSignIn` does, ending in Continue and
+(or `LicenseClient.getProfile()`) returns the signed license profile too. Show "Signed in as Ada
+Lovelace <ada@example.com>" with a way out: the kit's sign-in form does, ending in Continue and
 "Not you?" (which signs out and starts again).
 
 `SignInPrompt` and `MintedToken` print (`print`, `String(describing:)`, `debugPrint`, `dump`)
@@ -372,17 +372,17 @@ floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that r
 content; `core.feedFloors` shows the floors. A record from any other cache
 version is **discarded, never migrated**.
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation returns `.deviceLimit(limit:deviceCount:manageURL:)`. `manageURL` is the
-customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while the product's portal
+customer-portal link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while the product's portal
 is on and already validated by `ManageLink.read`. It is never an auth failure.
 
 ```swift
 import PolarisKey
 
 func replaceDeviceLink(_ client: PolarisKeyClient, key: String) async -> String? {
-    if case .deviceLimit(_, _, let manageURL?) = await client.activate(key: key) {
+    if case .deviceLimit(_, _, let manageURL?) = await client.license.activateWithKey(key) {
         // Offer "Replace a device", opening this link behind a tap.
         return ManageLink.withReturn(ManageLink.withKey(manageURL, key), "myapp://activated")
     }
@@ -390,12 +390,10 @@ func replaceDeviceLink(_ client: PolarisKeyClient, key: String) async -> String?
 }
 ```
 
-The SwiftUI gates do this for you. `.polarisKeyGate` shows **Replace a device** under the error,
-opens the link as the portal served it, and retries the key once when the app becomes active again.
-The earlier `.polarisKey` gate takes `GateOptions(returnURL:)` and adds the key and the return URL
-itself; on tvOS it shows the link as a QR code that never carries the key (anyone who can see the
-screen can scan it), so the phone's page asks for it. Leave `withKey` out of any QR you draw
-yourself. Release note: the case gained a third associated value, so an exhaustive
+The SwiftUI gate does this for you. `.polarisKeyGate` (and `.polarisKey`) shows **Replace a
+device** under the error, opens the link as the portal served it, and retries the key once when the
+app becomes active again. Leave `withKey` out of any QR you draw yourself: anyone who can see the
+screen can scan it, so the phone's page asks for the key. Release note: the case gained a third associated value, so an exhaustive
 `case .deviceLimit(let l, let c)` binding needs a third pattern.
 
 ## supports() and capabilities
@@ -515,18 +513,47 @@ struct GatedRoot: View {
 }
 ```
 
-### The earlier gate: `.polarisKey`
+### On a Mac
 
-The first SwiftUI gate still ships beside it. One modifier gates the app: it puts the model in the
-environment, syncs when the scene becomes active and wraps your content in the gate. The gate
-draws nothing but its ground until the client has been read, shows the activation form when a
-license is needed, an offline-grace banner over your content, and for a blocking state the actions
-that can change it, then your own UI once usable (`ok` / `grace` / `not-applicable`). Its words are
-English unless you set them through `PolarisTheme(copy:)`. The rest of this section describes it.
+The same gate runs on macOS 15 and later. Add `PolarisKeyUI` (and `PolarisKeyUpdate` plus
+`PolarisKeyUpdateUI` for the kit's Sparkle update window), then two lines wire the Settings tab and
+the app menu:
+
+```swift
+#if os(macOS)
+import PolarisKey
+import PolarisKeyUI
+import SwiftUI
+
+struct MacScenes: Scene {
+    let client: PolarisKeyClient
+
+    var body: some Scene {
+        WindowGroup { Text("Licensed").polarisKeyGate(client) }
+            .commands { PolarisKeyCommands(client) }
+        Settings { PolarisKeySettingsPane(client) }
+    }
+}
+#endif
+```
+
+`PolarisSparkleUserDriver(client:)` passed as `PolarisSparkle.start(client:userDriver:)` draws
+Sparkle's flow in the kit's update window. The Settings tab, the commands, the AppKit hosting recipe
+(`NSHostingController`, `beginSheet`) and Replace a Device are on the
+[SwiftUI kit](https://key.plrs.im/docs/build/ui/frameworks/swiftui/#macos) page.
+
+### `.polarisKey`: the model and the gate in one modifier
+
+`.polarisKey(client)` is `.polarisKeyGate(client)` plus the observable `PolarisKeyModel` in the
+environment: it syncs when the scene becomes active (at most once a minute) and wraps your content
+in `PolarisKeyGate`, so there is one gate, whichever modifier you use. Read the model with
+`@Environment(PolarisKeyModel.self)` for the license state, the signed profile and `refresh()`.
+Pass `gate: false` for the model and the sync alone.
 
 ```swift
 import PolarisKey
 import PolarisKeyUI
+import PolarisKeyUICore
 import SwiftUI
 
 @main
@@ -539,8 +566,8 @@ struct MyApp: App {
                 if let client {
                     MyAppRootView().polarisKey(
                         client,
-                        theme: PolarisTheme(copy: PolarisCopy(productName: "DJDL")),
-                        options: GateOptions(returnURL: "myapp://activated"))
+                        theme: PolarisTheme(branding: .native),
+                        options: KitGateOptions(keyEntry: false))
                 }
             }
             .task {
@@ -557,94 +584,29 @@ struct MyAppRootView: View {
 }
 ```
 
-`GateOptions` is what you decide about the gate (`PolarisTheme` is how it looks):
+`KitGateOptions` is what you decide about the gate: `keyEntry` (off where the store's rules forbid
+key entry, App Store 3.1.1), `offlineActivation` (off on iOS), `trial`, `restore`, `enroll`, the
+`signInPresentation` and `replace` modes and the `integrator` identity. `offersFreeTier: true`
+turns on **Continue free** (keyless enrolment). `handlers:` carries your Trial, Restore, update
+and Replace a device actions. How the gate looks is `.polarisKeyTheme(PolarisKeyTheme(...))`
+(UI-KITS §3.1). The legacy `theme:` argument still maps `branding` (to the preset) and `accent`;
+its `palette`, `typography`, `copy`, `logo` and `accentOn` have no counterpart there and are
+ignored, so move them to `PolarisKeyTheme`'s `colors`, `typography`, `copy` and `product`.
 
-| Option                    | Default                     | What it does                                                                                                                        |
-| ------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `showsKeyEntry`           | `true`                      | The license-key field. Turn it off where the store's rules forbid key entry (App Store 3.1.1); sign-in and your own actions remain. |
-| `offersOfflineActivation` | `false` on iOS, else `true` | "Activate offline", for a machine with no network. A phone has one, so iOS leaves it out unless you ask.                            |
-| `offersFreeTier`          | `false`                     | "Continue free" (keyless enrolment); hidden for good once the server answers `enroll_disabled`.                                     |
-| `returnURL`               | none                        | Where the portal sends the person back after **Replace a device** (the device-limit refusal's link carries it).                     |
-| `renewURL`                | none                        | Your renewal or account page. An expired license then leads with **Renew or manage**; without it, with **Try again**.               |
-| `blockedAction`           | none                        | Your own action on an expired, revoked or version-blocked gate (a support link, an Update button), drawn under the gate's.          |
+A blocking state always has a way out, and the product leads every screen: your
+`PolarisKeyTheme.product`, else the product's presentation (name, developer, accent and the
+verified icon, through `.polarisKeyPresentation(_:)`), else your app's icon, else a monogram.
+An accent goes through the contrast resolver (`PolarisAccent`): the button fill and its label
+clear 4.5:1, and so does the accent text, in both color schemes.
 
-A blocking state always has a way out (one filled action, the rest quiet): **expired** offers Renew
-or manage (when `renewURL` is set), Try again, Use a different key and Sign in; **revoked** offers
-Use a different key and Sign in; a version block offers Try again and your own action. **Use a
-different key** shows the activation form on the same screen and **Cancel** goes back, so nothing
-needs a relaunch. The explanation is worded for the controls the gate really has.
+**"Powered by Polaris Locker" is optional and off by default**, and never on the gate (UI-KITS
+§1.6). The account pane draws the line as its last section footer when the theme opts in
+(`poweredBy`). On your about or credits screen place `PolarisPoweredByAttribution(style: .badge)`:
+the Locker `powered-by` badge (320 × 104 points, never narrower) where 320 points are free, else
+the line. `PolarisPoweredByBadge` draws the badge alone.
 
-An accent you pass (`accent:`) goes through the same contrast resolver as a product's registered
-accent: the button fill and its label clear 4.5:1 and so does the accent text, in both color
-schemes (white on `#FF6A3D` is 2.85:1 as given).
-
-**Native by default.** Out of the box the gate looks like your app: system fonts with Dynamic Type,
-your app's tint (`.tint(_:)` / the asset catalog accent), system colors that follow dark and
-light, system button shapes, and no Polaris Key branding. The product leads every screen: your
-`logo:`, else the product's presentation icon (below), else your app's icon from the bundle, else
-a monogram tile of the product's initial.
-
-**Every screen lays out for the space it gets**, not for a device: the gate's Welcome, the
-device-code sign-in (`PolarisSignIn`) and offline activation are one centered column on a phone in
-portrait and in narrow windows; in landscape and short windows the form, or the code and its
-actions, sit beside the welcome; and on iPad and roomy Mac windows (760 × 520 pt and up) they use
-the split Welcome, the product's identity pane beside the form. When a column is taller than the
-screen (the largest accessibility sizes on a small phone), the code and the primary action move up
-under the heading and the rest scrolls, so the action is never below the fold. The user code stays
-on one line (it shrinks rather than wrap), a long license key gives way in the middle, and the
-device-code view shows a QR code on TV screens only. The grace banner sits on the native bar
-material. On macOS the kit's sheets size to their content and fit a 480 × 520 window.
-
-**Polaris Key branding is an opt-in**, with one modifier on the gate or any ancestor:
-
-```swift
-import PolarisKey
-import PolarisKeyUI
-import SwiftUI
-
-struct BrandedRoot: View {
-    let client: PolarisKeyClient
-
-    var body: some View {
-        Text("Licensed")
-            .polarisKey(client)
-            .polarisKeyBranding(.polarisKey)
-    }
-}
-```
-
-(or `PolarisTheme(branding: .polarisKey)` for one gate). That switches to the Polaris Key design
-system (`docs/design/BRAND.md`), read from the generated `PolarisBrand` tokens in
-`BrandTokens.generated.swift`: the brand's dark or light palette from the `colorScheme`
-environment with the core violet accent; Rubik (Bold for headings, Regular for body), bundled
-unchanged with its SIL Open Font License (`Resources/Brand/fonts/OFL.txt`) and registered for your
-process only the first time a branded gate draws, falling back to the system font if it cannot
-register. The product stays the hero there too: no Polaris Key mark on the gate (UI-KITS §1.6).
-
-**The product's presentation** (discovery `core.presentation`: name, developer, accent and the
-verified icon) reaches the kit through `.polarisKeyPresentation(_:)`, the seam the SDK's
-accessor fills once the product's presentation arrives. Under `.polarisKey` branding its accent (`accentDark` in the dark
-scheme) colors the kit through the contrast resolver (`PolarisAccent`); natively your app's tint
-still leads. Your theme wins over the presentation field by field.
-
-Overrides apply in either mode and win over the branding: `accent:` / `accentOn:` re-point the
-primary button in both schemes, `palette:` replaces every color per scheme, `typography:` picks
-`.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the product icon.
-
-**"Powered by Polaris Locker" is optional and off by default** in both modes, and never on the gate
-(UI-KITS §1.6). The kit's account pane draws the line (the Locker micro mark, which grows with Dynamic
-Type from 16 points, and the phrase) as its last section footer when the theme opts in. On your
-about or credits screen place `PolarisPoweredByAttribution(style: .badge)`: the Locker `powered-by`
-badge (320 × 104 points, never narrower) where 320 points are free, else the line. `PolarisPoweredByBadge`
-draws the badge alone.
-
-Xcode previews in `PolarisLoginView.swift` cover every gate state, native and branded, in dark and
-light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size. The layout tests
-host the gate, the device-code sign-in and offline activation at iPhone SE, 440 × 956 and iPad
-sizes in both orientations and in 480 × 520, 900 × 640 and 1440 × 900 Mac windows, at Dynamic Type
-L and AX3, native and branded, and assert the code and the primary action are on screen without
-scrolling (run it on an iOS simulator for the phone and tablet type sizes; `PKEY_KIT_SNAPSHOTS=<dir>`
-writes the renders).
+Release note: the 0.8 gate family is gone; `PolarisKeyGate`, `KitGateOptions` and the kit's own
+screens replace it. The [CHANGELOG](CHANGELOG.md) lists the removed names.
 
 ## Updates (macOS)
 
@@ -667,7 +629,7 @@ func makeUpdater(_ client: PolarisKeyClient) async throws
     let update = UpdateClient(core: client.core)
     let feed = await update.feed(
         channel: "stable",
-        entitlements: await client.license.entitlements())
+        entitlements: await client.entitlements.all())
 
     // Sparkle holds its delegate weakly: keep both objects for the app's lifetime.
     let delegate = PolarisSparkleUpdaterDelegate(feed: feed)
@@ -696,6 +658,11 @@ func makeUpdater(_ client: PolarisKeyClient) async throws
 `PolarisSparkle.start(client:)` does all of it in one call and keeps it current: it asserts
 `SUPublicEDKey`, starts a standard updater controller, and re-derives the feed, the headers and the
 channels on every `license` event. Keep the object it returns for the app's lifetime.
+
+To draw your own update UI, pass an `SPUUserDriver`: `PolarisSparkle.start(client:userDriver:)` builds
+an `SPUUpdater` on it instead of the standard controller (`controller` is then `nil`; `updater` is
+set on both paths). Only the UI changes: the feed, the `SUPublicEDKey` check and the install path
+stay Sparkle's. Sparkle keeps the driver for you; keep the returned object as before.
 
 ```swift
 #if os(macOS)
@@ -748,7 +715,7 @@ func checkForUpdate(_ client: PolarisKeyClient) async throws {
         // open listingUrl, or the page you compiled in when it is nil (AltStore, iOS web distribution)
         _ = listingUrl
     case .binary(_, let release, let build, _, _, _, _, _):
-        let url = await update.buildURL(version: release.version, buildId: build)
+        let url = await update.buildUrl(version: release.version, buildId: build)
         _ = url  // download, check the payload's `size` and `sha256` against the record, then stage
     case .none, .codeReady, .platform, .blocked, .packs:
         break
@@ -834,7 +801,7 @@ Store or TestFlight install is detected without any stamp; nothing is persisted.
 - `channelFeed(channel:)` returns the verified feed `decide()` would use, without the record and
   without release keys (it is named apart from `feed(channel:)`, the Sparkle helper);
   `releaseRecord(hash:)` verifies one record by hash (cross-checked and cached when a committed
-  feed pins it); `buildURL(version:buildId:)` is the `distribution/builds` route, never the
+  feed pins it); `buildUrl(version:buildId:)` is the `distribution/builds` route, never the
   R2-only blob route.
 
 ## Packs (`update.packs`)

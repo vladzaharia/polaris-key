@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { cellWidth, stripAnsi } from "@polaris-key/node/terminal";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACTION_INPUTS } from "../src/action.js";
+import { ACTION_INPUTS, REMOVED_INPUTS } from "../src/action.js";
 import { applyContext, resolveContext } from "../src/context.js";
 import {
   checkRegistry,
@@ -23,6 +23,7 @@ import {
   VALUELESS_FLAGS,
   type PkeyCommand,
 } from "../src/help.js";
+import { memoryStore } from "../src/credentials.js";
 import { HANDLERS, runPkey } from "../src/index.js";
 import { termFor } from "../src/terminal.js";
 import { CLI_VERSION } from "../src/version.js";
@@ -64,6 +65,8 @@ async function run(
     stdout,
     stderr,
     env: opts.env ?? {},
+    // No one is signed in: doctor must not open the machine's keychain.
+    credentialStore: async () => memoryStore(),
     ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
   });
   return { code, out: stdout.text(), err: stderr.text() };
@@ -109,13 +112,18 @@ describe("the command table", () => {
         .map((c) => c.name)
         .sort(),
     ).toEqual([
+      "bundle",
+      "channel",
       "dev",
       "doctor",
       "feeds",
       "listing",
+      "login",
+      "logout",
       "migrate",
       "storefront",
       "validate",
+      "whoami",
     ]);
   });
 
@@ -236,18 +244,57 @@ describe("help and completion come from the table", () => {
 // ── The Action mapping ───────────────────────────────────────────────────────────────────────
 
 describe("the Action mapping", () => {
+  // The 28 inputs 0.9 removed (A-25.5). Losing one from the table would let an old workflow's
+  // key through as "not an input" instead of naming its replacement.
+  const REMOVED = [
+    "product",
+    "deliverable",
+    "version",
+    "tag",
+    "channel",
+    "dir",
+    "source",
+    "meta",
+    "delegation",
+    "min-supported-seq",
+    "content-stamp",
+    "embedded",
+    "pins",
+    "out",
+    "bases",
+    "script-extensions",
+    "script-types",
+    "transport",
+    "content-api",
+    "variant",
+    "transport-out",
+    "gradle-project",
+    "pad-delivery",
+    "steam-depot",
+    "steam-branch",
+    "steam-setlive",
+    "asc-expect-resource",
+    "transport-report",
+    "storefront",
+    "itch-platform",
+    "storefront-outlet",
+    "assets",
+  ];
   const claimed = (cmds: readonly PkeyCommand[]) =>
     new Set(cmds.flatMap((c) => Object.keys(c.action ?? {})));
 
-  it("claims every Action input, and nothing that is not one", () => {
+  it("the registry's action maps are exactly the removed-input table, and hold none of the eight current inputs", () => {
     const names = claimed(COMMANDS);
-    expect([...names].sort()).toEqual([...ACTION_INPUTS].sort());
+    expect([...names].sort()).toEqual([...REMOVED].sort());
+    expect(Object.keys(REMOVED_INPUTS).sort()).toEqual([...REMOVED].sort());
+    for (const input of ACTION_INPUTS) expect(names.has(input)).toBe(false);
   });
 
-  it("negative control: a table that forgets a command leaves an input unclaimed", () => {
+  it("negative control: a table that forgets a command leaves a removed input unclaimed", () => {
     const without = COMMANDS.filter((c) => c.name !== "transport");
-    const missing = ACTION_INPUTS.filter((i) => !claimed(without).has(i));
-    expect(missing).toContain("steam-depot");
+    expect(REMOVED.filter((i) => !claimed(without).has(i))).toContain(
+      "steam-depot",
+    );
   });
 });
 
@@ -452,7 +499,10 @@ describe("pkey doctor", () => {
       return new Response(
         JSON.stringify({
           services: { license: { enabled: true }, config: { enabled: false } },
-          signing: { "djdl-2026": "key" },
+          trust: {
+            keys: [{ kid: "djdl-2026", status: "active" }],
+            pinnedKeys: { "djdl-2026": "key" },
+          },
         }),
       );
     }) as typeof fetch;
@@ -483,6 +533,7 @@ describe("pkey doctor", () => {
         ["discovery", "ok"],
         ["services", "ok"],
         ["signing-keys", "ok"],
+        ["in-sync", "ok"],
       ]);
       expect(out.out.trim().split("\n")).toHaveLength(1);
     } finally {
@@ -502,7 +553,8 @@ describe("pkey doctor", () => {
       expect(line.facts).toContainEqual({
         id: "discovery",
         state: "todo",
-        detail: "failed (404)",
+        detail: "Answered 404 at key.plrs.im",
+        code: "discovery-failed",
       });
     } finally {
       globalThis.fetch = real;
@@ -540,15 +592,17 @@ describe("pkey doctor", () => {
     const real = globalThis.fetch;
     globalThis.fetch = discovery({
       services: { license: { enabled: true } },
-      signing: { "djdl-2026": "key" },
+      trust: {
+        keys: [{ kid: "djdl-2026", status: "active" }],
+        pinnedKeys: { "djdl-2026": "key" },
+      },
     });
     try {
       const out = await run(["doctor"], { cwd });
       expect(out.code).toBe(0);
-      expect(out.out).toContain(
-        "Remote discovery: ok https://key.plrs.im/djdl/.well-known/polaris.json",
-      );
-      expect(out.out).toContain("Services enabled: license");
+      expect(out.out).toContain("DJDL (djdl) · key.plrs.im");
+      expect(out.out).toMatch(/✓ Services +license/);
+      expect(out.out).toMatch(/✓ Signing key +djdl-2026 · active/);
     } finally {
       globalThis.fetch = real;
     }
@@ -738,7 +792,7 @@ describe("reference/cli.mdx", () => {
     const page = renderPage();
     for (const c of COMMANDS) expect(page).toContain(`### \`pkey ${c.name}\``);
     for (const [, heading] of GROUPS) expect(page).toContain(`## ${heading}`);
-    for (const input of ACTION_INPUTS)
+    for (const input of Object.keys(REMOVED_INPUTS))
       expect(page).toContain(`| \`${input}\` |`);
   });
 

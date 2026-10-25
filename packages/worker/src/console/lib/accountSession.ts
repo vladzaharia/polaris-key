@@ -26,7 +26,7 @@ export function requireAccountSession(
     return err(
       403,
       ErrorCode.Forbidden,
-      "Break-glass sessions have no account. Sign in normally to do this.",
+      "Emergency sign-in has no account. Sign in normally to do this.",
       { reason: "break_glass_session" },
     );
   if (!session.aid)
@@ -48,7 +48,7 @@ export function refuseBreakGlass(
   return err(
     403,
     ErrorCode.Forbidden,
-    "Break-glass sessions can't create tokens. Sign in normally to do this.",
+    "Emergency sign-in can’t create tokens. Sign in with your account to do this.",
     { reason: "break_glass_session" },
   );
 }

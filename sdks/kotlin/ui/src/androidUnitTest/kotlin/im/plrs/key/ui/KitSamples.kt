@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -183,24 +184,28 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "signInHandoff-denied" to { PolarisSignInScreen(PolarisSignInUi.Denied) },
     "settings-list" to { PolarisSettingsScreen(sampleSettings, onSet = { _, _ -> }, onReset = {}) },
     "devices-list" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
+    "account-list-detail" to {
+        PolarisAccountScreen(sampleSettings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ -> }, onReset = {})
+    },
     "updatePrompt-ready" to {
         Column(Modifier.fillMaxSize()) {
             PolarisUpdateBanner(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart), onDismiss = {})
             Box(Modifier.weight(1f)) { SampleProduct() }
         }
     },
+    // The sheet or card as the dialog draws it (a phone gets the bottom sheet, a wide or short window the card).
     "updatePrompt-available" to {
-        PolarisScreen(showLogo = false) {
-            PolarisUpdatePrompt(
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            PolarisUpdatePromptHosted(
                 PolarisUpdateUi(
-            "2.5.0",
-            currentVersion = "2.4.1",
-            size = 61_000_000L,
-            notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
-            notesUrl = "https://example.com/releases/2.5.0",
-            outlet = "play",
-        ),
-                Modifier.padding(0.dp),
+                    "2.5.0",
+                    currentVersion = "2.4.1",
+                    size = 61_000_000L,
+                    notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
+                    notesUrl = "https://example.com/releases/2.5.0",
+                    outlet = "play",
+                ),
+                onUpdate = {},
                 onLater = {},
                 onSkip = {},
             )
@@ -243,6 +248,25 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             PolarisTitle("Settings")
             Spacer(Modifier.height(16.dp))
             PolarisChannelPicker(sampleChannel.copy(lockedBy = "play"))
+        }
+    },
+    // Locked by the license (no store fixes the channel), and a pick the host refused.
+    "channelPicker-license-locked" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Settings")
+            Spacer(Modifier.height(16.dp))
+            PolarisChannelPicker(sampleChannel.copy(lockedByLicense = true))
+        }
+    },
+    "channelPicker-error" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Settings")
+            Spacer(Modifier.height(16.dp))
+            PolarisChannelPicker(
+                PolarisChannelUi("stable", listOf("stable", "early-access")),
+                onSelect = {},
+                error = "Your license doesn't include this channel.",
+            )
         }
     },
     "about-default" to {

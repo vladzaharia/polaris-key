@@ -6,7 +6,7 @@ import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import {
-  PortalApiError,
+  HttpError,
   type PortalMethods,
   type PortalRemoveRefusal,
 } from "../../api.js";
@@ -158,7 +158,7 @@ export function MethodRow({
   return (
     <li className="py-3" data-method={id}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong [&_svg]:size-5">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong [&_svg]:size-5">
           {icon}
         </span>
         <div className="min-w-0 flex-1 basis-48">
@@ -195,12 +195,12 @@ export function MethodRow({
       </div>
       {open ? null : extra}
       {notice ? (
-        <p className="mt-2 text-sm text-warning sm:ms-13">{notice}</p>
+        <p className="mt-2 text-sm text-warning sm:ms-12">{notice}</p>
       ) : null}
       {guarded ? (
         <p
           id={reasonId}
-          className="mt-2 flex items-start gap-2 rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-fg sm:ms-13"
+          className="mt-2 flex items-start gap-2 rounded-md border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-fg sm:ms-12"
         >
           <Lock aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
           {reason === "last_link"
@@ -219,7 +219,7 @@ export function MethodRow({
           })
         }
       >
-        <div className="pt-3 sm:ms-13">
+        <div className="pt-3 sm:ms-12">
           <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4">
             <h4
               ref={headingRef}
@@ -294,7 +294,7 @@ export function MethodRow({
 }
 
 function removeErrorText(err: unknown): string {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     // The Worker's own sentence for its two guards ("This is your only way to sign in. …").
     if (
       (err.code === "last_link" || err.reason === "only_email") &&

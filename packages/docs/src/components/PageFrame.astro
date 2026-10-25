@@ -51,6 +51,8 @@ const helpReviewed = help ? reviewedLabel(reviewed) : undefined;
         <a href="/docs/help/">Help</a>
         <span aria-hidden="true">·</span>
         <a href="/docs/help/your-data/">Privacy</a>
+        <span aria-hidden="true">·</span>
+        <a href="https://key.plrs.im/docs/start/">Building an app? Polaris Key developer docs</a>
         {helpReviewed && <span class="pk-help-footer__end">Last reviewed {helpReviewed}</span>}
       </footer>
     ) : null
@@ -73,7 +75,7 @@ const helpReviewed = help ? reviewedLabel(reviewed) : undefined;
           <>
             <a href="/docs/help/">Help</a>
             <span aria-hidden="true">·</span>
-            <a href="/docs/help/your-data/">Privacy</a>
+            <a href="/docs/reference/what-apps-collect/">Privacy</a>
           </>
         )}
         {reviewedText && <span class="pk-help-footer__end">Last reviewed {reviewedText}</span>}

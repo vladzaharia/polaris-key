@@ -16,7 +16,8 @@ deleting are on [Product actions](/docs/operate/console/product-actions/).
 
 - **Needs attention**: what is broken across your products, one fact per line, each with the one
   link that fixes it. A failed resync, a required secret with no value, a missing signing key, an
-  edge-mint recipe awaiting approval and a store credential expiring within 14 days appear. What a
+  edge-mint recipe awaiting approval, a store credential expiring within 14 days and, for platform
+  admins, paused Cloud Sync writes (one item for the whole platform, with **Resume**) appear. What a
   product has not set up yet does not: that is its Overview. You see only items whose fix you can
   open.
 - **Platform ready**, for platform admins until every step is done: the open steps with their fix,
@@ -208,6 +209,7 @@ server call, `GET /manage/api/attention`, recomputed on every read. It lists bro
 | **Needs approval**    | An edge-mint recipe is not [approved](/docs/features/managed-config/edge-mint/#approving-a-recipe) as it stands. |
 | **Resync failed**     | The most recent manifest resync errored.                                                                         |
 | **Credential**        | A store credential has expired or expires within the window.                                                     |
+| **Writes paused**     | Cloud Sync writes are paused for every product (platform admins; one item).                                      |
 
 Each item links to the page that fixes it. The **required secrets** list on
 [Keys and secrets](/docs/operate/console/keys-and-secrets/) is drawn from the same configuration.
@@ -267,8 +269,8 @@ product's packages are served on the registry host. It is operator-owned (a mani
 it), blocked until Ship builds is on, and saves on its own, through
 `/manage/api/products/<slug>/distribution/package-feeds` (PUT) with `{enabled, expectedVersion}`; a
 stale version is a 409 and nothing changes. Turning it off asks first, because every feed of the
-product answers not-found within 30 seconds. While it is on, **Ship builds → Package feeds** is in
-the sidebar: see [Package feeds](/docs/features/ship-builds/packages/).
+product answers not-found within 30 seconds. **Ship builds → Packages** is in the sidebar whenever Ship builds is on, and shows
+the off state with **Turn on**: see [Package feeds](/docs/features/ship-builds/packages/).
 
 ## Reference
 

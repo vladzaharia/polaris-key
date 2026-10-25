@@ -177,7 +177,8 @@ export function gitDescribe(cwd = process.cwd()) {
 
 /**
  * Every version file of every SDK, and the one line in each that carries the version. `pep440`
- * targets take the PEP 440 spelling. The npm packages are every public `packages/*` package
+ * targets take the PEP 440 spelling. A `json` target names a key of a JSON object file; the stamp
+ * sets it (and refuses a file that is not an object). The npm packages are every public `packages/*` package
  * (`publicPackageJsons`); `pnpm pack` then rewrites their `workspace:*` ranges to this version.
  */
 export const STAMP_TARGETS = [
@@ -211,6 +212,11 @@ export const STAMP_TARGETS = [
   {
     file: "packages/ui-core/src/browser/sdk/version.ts",
     pattern: /^(export const SDK_VERSION = ")[^"]*(";)$/m,
+  },
+  // The agent kit's plugin manifest carries no committed version (AX-07); the stamp sets it.
+  {
+    file: "packages/agent-kit/.claude-plugin/plugin.json",
+    json: "version",
   },
 ];
 
@@ -249,6 +255,15 @@ export function stampText(text, pattern, version, file) {
   return text.replace(pattern, (_m, pre, post) => `${pre}${version}${post}`);
 }
 
+/** Set `key` in the JSON object `text` to `version`; throws unless the document is an object. */
+export function stampJson(text, key, version, file) {
+  const doc = JSON.parse(text);
+  if (doc === null || typeof doc !== "object" || Array.isArray(doc))
+    throw new Error(`${file}: expected a JSON object to stamp "${key}" into`);
+  doc[key] = version;
+  return `${JSON.stringify(doc, null, 2)}\n`;
+}
+
 /** Write `version` (and `pep440` for PyPI) into every SDK under `root`; answer the files written. */
 export function stampVersions(root, { version, pep440 }) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version))
@@ -260,12 +275,10 @@ export function stampVersions(root, { version, pep440 }) {
   const written = [];
   for (const t of STAMP_TARGETS) {
     const path = join(root, t.file);
-    const next = stampText(
-      readFileSync(path, "utf8"),
-      t.pattern,
-      t.pep440 ? pep440 : version,
-      t.file,
-    );
+    const text = readFileSync(path, "utf8");
+    const next = t.json
+      ? stampJson(text, t.json, version, t.file)
+      : stampText(text, t.pattern, t.pep440 ? pep440 : version, t.file);
     writeFileSync(path, next);
     written.push(t.file);
   }

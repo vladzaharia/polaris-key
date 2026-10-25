@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import ts from "typescript";
 import { recordHash } from "@polaris-key/client-core";
 import type {
@@ -30,6 +30,7 @@ import {
 } from "../src/client.js";
 import {
   DEFAULT_INVOKE_VERBS,
+  bridgeActivation,
   exposePolarisBridge,
   POLARIS_BRIDGE_VERSION,
   SafeStorageStore,
@@ -124,6 +125,32 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     expect((s.doc as { licenseId: string }).licenseId).toBe("lic_parity");
     expect(s.capabilities).toMatchObject({ license: { enabled: true } });
     expect(typeof s.highWaterMark).toBe("number");
+  });
+
+  it("passes the device-limit manageUrl through", async () => {
+    const manageUrl = "https://key.plrs.im/activate?next=free-device";
+    const { bridge } = await setup(
+      {
+        "POST /djdl/license/activate": () =>
+          json(
+            { error: { code: "device_limit", limit: 2, deviceCount: 2 } },
+            403,
+          ),
+      },
+      null,
+    );
+    const r = await bridge.submitKey("KEY-1");
+    expect(r.kind).toBe("device-limit");
+    // The renderer's "Replace a device" link needs it: without it the refusal is a dead end.
+    expect(
+      bridgeActivation({
+        kind: "device-limit",
+        code: "device_limit",
+        limit: 2,
+        deviceCount: 2,
+        manageUrl,
+      }),
+    ).toMatchObject({ manageUrl });
   });
 
   it("maps activation refusals by code, never inferring device-limit", async () => {
@@ -395,9 +422,20 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
       "src",
     );
     const calls = new Set<string>();
+    // `core/presentation.ts` moved to ui-core's browser adapter (KX-EL-DRIVE); React keeps a
+    // re-export shim, so the scan reads the module that holds the invoke calls.
+    const uiCoreBrowser = join(
+      root,
+      "..",
+      "..",
+      "ui-core",
+      "src",
+      "browser",
+      "sdk",
+    );
     for (const file of [
       join(root, "desktop", "desktopAdapter.ts"),
-      join(root, "core", "presentation.ts"),
+      join(uiCoreBrowser, "core", "presentation.ts"),
     ]) {
       const source = ts.createSourceFile(
         file,
@@ -1136,6 +1174,466 @@ describe("release.fetch through the bridge (SP-31)", () => {
     }
     expect(filesUnder(downloadDir)).toEqual([]);
     expect(existsSync(join(dirname(downloadDir), "escape.zip"))).toBe(false);
+  });
+});
+
+describe("host facts and update progress over the bridge (UK-06.3)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const OFFER = {
+    action: "binary",
+    method: "direct",
+    release: { version: "2.0.0" },
+    build: "b2",
+    mandatory: false,
+    critical: false,
+    prestage: [],
+    discardStaged: false,
+  };
+
+  /** A window that records what main sends it. */
+  function windowAt(url: string, id: number) {
+    const sent: { channel: string; payload: unknown }[] = [];
+    const destroyed: (() => void)[] = [];
+    return {
+      sent,
+      listeners: () => destroyed.length,
+      destroy: () => destroyed.forEach((f) => f()),
+      event: {
+        sender: {
+          id,
+          send: (channel: string, payload: unknown) =>
+            void sent.push({ channel, payload }),
+          once: (_e: "destroyed", f: () => void) => void destroyed.push(f),
+          removeListener: (_e: "destroyed", f: () => void) => {
+            const i = destroyed.indexOf(f);
+            if (i >= 0) destroyed.splice(i, 1);
+          },
+        },
+        senderFrame: { url },
+      },
+    };
+  }
+
+  async function installSetup() {
+    const s = await setup();
+    const client = s.client as unknown as {
+      update: {
+        decide: (o?: unknown) => Promise<{ decision: unknown }>;
+        install: (d: unknown, o?: Record<string, unknown>) => Promise<unknown>;
+      };
+    };
+    client.update.decide = async () => ({ decision: OFFER });
+    const call = (
+      win: ReturnType<typeof windowAt>,
+      verb = "install",
+    ): Promise<{ ok: boolean; code?: string; value?: unknown }> =>
+      (
+        s.ipc.handlers.get(channelOf(DEFAULT_BRIDGE_CHANNEL, "invoke")) as (
+          e: unknown,
+          ...a: unknown[]
+        ) => Promise<never>
+      )(win.event, "update", verb, { decision: OFFER });
+    return { ...s, client, call };
+  }
+
+  const PROGRESS = "polaris-key:updateProgress";
+
+  it("pushes real progress to the invoking window only, and no one else", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const mine = windowAt("app://main", 1);
+    const other = windowAt("app://main", 2);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(1000, 4000);
+      vi.advanceTimersByTime(150);
+      on(2000, 4000);
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    const r = await call(mine);
+    expect(r).toMatchObject({ ok: true });
+    expect(mine.sent).toEqual([
+      {
+        channel: PROGRESS,
+        payload: {
+          version: "2.0.0",
+          done: 1000,
+          total: 4000,
+          phase: "download",
+        },
+      },
+      {
+        channel: PROGRESS,
+        payload: {
+          version: "2.0.0",
+          done: 2000,
+          total: 4000,
+          phase: "download",
+        },
+      },
+    ]);
+    expect(other.sent).toEqual([]);
+  });
+
+  it("a refused sender is refused and gets no progress", async () => {
+    const { client, call } = await installSetup();
+    const evil = windowAt("https://evil.test/", 3);
+    let installs = 0;
+    client.update.install = async () => {
+      installs++;
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    expect(await call(evil)).toMatchObject({
+      ok: false,
+      code: "sender-refused",
+    });
+    expect(installs).toBe(0);
+    expect(evil.sent).toEqual([]);
+  });
+
+  it("stops pushing to a window that left the app's origin mid-install", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const win = windowAt("app://main", 4);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(1, 10);
+      win.event.senderFrame.url = "https://evil.test/";
+      vi.advanceTimersByTime(150);
+      on(2, 10);
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(win);
+    expect(win.sent).toHaveLength(1);
+  });
+
+  it("invents no percentage: an unknown or inconsistent total is null", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const win = windowAt("app://main", 5);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      for (const [d, t] of [
+        [10, 0],
+        [20, Number.NaN],
+        [30, 25],
+        [-1, 100],
+      ] as const) {
+        on(d, t);
+        vi.advanceTimersByTime(150);
+      }
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(win);
+    expect(win.sent.map((m) => m.payload)).toEqual([
+      expect.objectContaining({ done: 10, total: null }),
+      expect.objectContaining({ done: 20, total: null }),
+      expect.objectContaining({ done: 30, total: null }),
+    ]);
+  });
+
+  it("throttles to 10 per second", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const win = windowAt("app://main", 6);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      for (let i = 1; i <= 100; i++) {
+        on(i, 100);
+        vi.advanceTimersByTime(10); // 100 events over one second
+      }
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(win);
+    // Ten leading pushes in the second, then the held final one when the install completes.
+    expect(win.sent.length).toBeGreaterThanOrEqual(10);
+    expect(win.sent.length).toBeLessThanOrEqual(11);
+    expect(win.sent.at(-1)!.payload).toMatchObject({ done: 100, total: 100 });
+  });
+
+  it("a throttled final event is flushed on success, never after a failure or a cancel", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const ok = windowAt("app://main", 20);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100); // inside the 100 ms window: held back
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(ok);
+    expect(ok.sent.map((m) => (m.payload as { done: number }).done)).toEqual([
+      10, 100,
+    ]);
+    expect(ok.listeners()).toBe(0); // the destroyed listener is gone
+
+    const failed = windowAt("app://main", 21);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100);
+      throw new Error("verify failed");
+    };
+    expect(await call(failed)).toMatchObject({ ok: false });
+    expect(failed.sent).toHaveLength(1);
+    expect(failed.listeners()).toBe(0);
+
+    const cancelled = windowAt("app://main", 22);
+    client.update.install = async (_d, o) => {
+      const on = o!.onProgress as (d: number, t: number) => void;
+      on(10, 100);
+      on(100, 100);
+      cancelled.destroy();
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(cancelled);
+    expect(cancelled.sent).toHaveLength(1);
+  });
+
+  it("pushes nothing after an error, a late callback, or the window closing", async () => {
+    vi.useFakeTimers();
+    const { client, call } = await installSetup();
+    const failed = windowAt("app://main", 7);
+    let late!: (d: number, t: number) => void;
+    client.update.install = async (_d, o) => {
+      late = o!.onProgress as typeof late;
+      late(1, 10);
+      throw new Error("download failed");
+    };
+    expect(await call(failed)).toMatchObject({ ok: false });
+    vi.advanceTimersByTime(500);
+    late(5, 10);
+    expect(failed.sent).toHaveLength(1);
+
+    const cancelled = windowAt("app://main", 8);
+    let signal!: AbortSignal;
+    client.update.install = async (_d, o) => {
+      signal = o!.signal as AbortSignal;
+      const on = o!.onProgress as (d: number, t: number) => void;
+      cancelled.destroy();
+      vi.advanceTimersByTime(500);
+      on(9, 10);
+      return { kind: "handedOff", version: "2.0.0" };
+    };
+    await call(cancelled);
+    expect(signal.aborted).toBe(true);
+    expect(cancelled.sent).toEqual([]);
+  });
+
+  it("the preload delivers progress and unsubscribes", async () => {
+    const ipc = ipcPair();
+    const bridge = createPreloadBridge(ipc.ipcRenderer);
+    const typed: PolarisBridge = bridge;
+    const got: unknown[] = [];
+    const off = typed.onUpdateProgress!((p) => got.push(p));
+    ipc.sender.send(PROGRESS, {
+      done: 3,
+      total: 9,
+      version: "2.0.0",
+      phase: "download",
+      leaked: "dropped",
+    });
+    ipc.sender.send(PROGRESS, { done: "many" });
+    expect(got).toEqual([
+      { done: 3, total: 9, version: "2.0.0", phase: "download" },
+    ]);
+    off();
+    ipc.sender.send(PROGRESS, { done: 4, total: 9 });
+    expect(got).toHaveLength(1);
+  });
+
+  it("maps the host's OS and the injected Electron facts into state.host", async () => {
+    const real = process.platform;
+    try {
+      for (const [platform, os] of [
+        ["darwin", "macos"],
+        ["win32", "windows"],
+        ["linux", "linux"],
+      ] as const) {
+        Object.defineProperty(process, "platform", { value: platform });
+        const { bridge } = await setup({}, "pkeyt_seed", {
+          host: {
+            electron: {
+              systemPreferences: { getAccentColor: () => "FF8800FF" },
+              nativeTheme: {
+                shouldUseHighContrastColors: true,
+                prefersReducedTransparency: false,
+              },
+            },
+          },
+        });
+        expect((await bridge.getSyncState()).host).toEqual({
+          os,
+          accentColor: "#ff8800",
+          highContrast: true,
+          reducedTransparency: false,
+        });
+      }
+      // Without the option, or with a throwing accessor, only what is known.
+      Object.defineProperty(process, "platform", { value: "linux" });
+      const bare = await setup();
+      expect((await bare.bridge.getSyncState()).host).toEqual({ os: "linux" });
+      const throwing = await setup({}, "pkeyt_seed", {
+        host: {
+          electron: {
+            systemPreferences: {
+              getAccentColor: () => {
+                throw new Error("no accent");
+              },
+            },
+          },
+        },
+      });
+      expect((await throwing.bridge.getSyncState()).host).toEqual({
+        os: "linux",
+      });
+    } finally {
+      Object.defineProperty(process, "platform", { value: real });
+    }
+  });
+});
+
+describe("menu items and open(view) (UK-06.4)", () => {
+  const OPEN = "polaris-key:open";
+
+  it("labels follow the platform and the locale: title case only on macOS, English only", async () => {
+    const { handle } = await setup();
+    const labels = (o?: { platform?: string; locale?: string }) =>
+      handle.menuItems(o).map((m) => m.label);
+    expect(labels({ platform: "linux" })).toEqual([
+      "Check for updates",
+      "Manage license",
+    ]);
+    expect(labels({ platform: "win32" })).toEqual(
+      labels({ platform: "linux" }),
+    );
+    expect(labels({ platform: "darwin" })).toEqual([
+      "Check for Updates…",
+      "Manage License…",
+    ]);
+    expect(labels({ platform: "macos", locale: "en-US" })).toEqual(
+      labels({ platform: "darwin" }),
+    );
+    // Another locale keeps its own sentence on macOS too.
+    expect(labels({ platform: "darwin", locale: "de" })).toEqual([
+      "Nach Updates suchen",
+      "Lizenz verwalten",
+    ]);
+    expect(labels({ platform: "linux", locale: "pt-BR" })[1]).toBe(
+      "Gerenciar a licença",
+    );
+    // Every launch locale has both labels, none an untranslated placeholder.
+    for (const locale of [
+      "en",
+      "de",
+      "fr",
+      "es",
+      "pt-BR",
+      "it",
+      "ja",
+      "ko",
+      "zh-Hans",
+    ])
+      for (const label of labels({ locale })) {
+        expect(label).not.toBe("");
+        expect(label).not.toMatch(/[{}]|menu\./);
+      }
+    expect(handle.menuItems().map((m) => m.id)).toEqual([
+      "polaris-key.checkForUpdates",
+      "polaris-key.manageLicense",
+    ]);
+    // Plain objects (Electron's MenuItemConstructorOptions takes them as they are).
+    for (const m of handle.menuItems())
+      expect(Object.keys(m).sort()).toEqual(["click", "id", "label"]);
+  });
+
+  it("a click pushes open to the subscribed windows only", async () => {
+    const ipc = ipcPair();
+    const { client } = await setup();
+    const handle = exposePolarisBridge(client, {
+      ipcMain: ipc.ipcMain,
+      allowSender: allowApp,
+      channel: "polaris-key",
+    });
+    const bridge = createPreloadBridge(ipc.ipcRenderer);
+    const typed: PolarisBridge = bridge;
+    const seen: string[] = [];
+    const [update, settings] = handle.menuItems();
+    update!.click(); // nobody subscribed yet
+    const off = typed.onOpen!((v) => seen.push(v));
+    await new Promise((r) => setTimeout(r, 0)); // the preload's subscribe call lands
+    update!.click();
+    settings!.click();
+    expect(seen).toEqual(["update", "settings"]);
+    off();
+    await new Promise((r) => setTimeout(r, 0));
+    settings!.click();
+    expect(seen).toEqual(["update", "settings"]);
+    handle.close();
+  });
+
+  it("refuses an unknown view, and the preload drops one it does not know", async () => {
+    const { handle, ipc, bridge } = await setup();
+    expect(() => handle.open("admin" as never)).toThrow(/not a view/);
+    const seen: string[] = [];
+    (bridge as PolarisBridge).onOpen!((v) => seen.push(v));
+    ipc.sender.send(OPEN, "admin");
+    ipc.sender.send(OPEN, { view: "settings" });
+    ipc.sender.send(OPEN, "settings");
+    expect(seen).toEqual(["settings"]);
+  });
+
+  it("a window that navigated off the app after subscribing gets no state push", async () => {
+    const { handle, ipc, bridge } = await setup();
+    const states: unknown[] = [];
+    bridge.on("stateChanged", (s) => states.push(s));
+    await new Promise((r) => setTimeout(r, 0));
+    handle.pushState();
+    expect(states).toHaveLength(1);
+    ipc.sender.mainFrame.url = "https://evil.test/";
+    handle.pushState();
+    expect(states).toHaveLength(1);
+  });
+
+  it("a window that navigated off the app after subscribing gets no open", async () => {
+    const { handle, ipc, bridge } = await setup();
+    const seen: string[] = [];
+    (bridge as PolarisBridge).onOpen!((v) => seen.push(v));
+    await new Promise((r) => setTimeout(r, 0));
+    handle.open("settings");
+    expect(seen).toEqual(["settings"]);
+    ipc.sender.mainFrame.url = "https://evil.test/";
+    handle.open("update");
+    expect(seen).toEqual(["settings"]);
+    // A window that reports no frame at all is not pushed to either.
+    ipc.sender.mainFrame = undefined as never;
+    handle.open("update");
+    expect(seen).toEqual(["settings"]);
+  });
+
+  it("a destroyed window is dropped and the others still get the push", async () => {
+    const sent: unknown[] = [];
+    const live = {
+      id: 1,
+      mainFrame: { url: "app://main" },
+      send: (_c: string, v: unknown) => void sent.push(v),
+    };
+    const dead = {
+      id: 2,
+      send: () => {
+        throw new Error("gone");
+      },
+      isDestroyed: () => true,
+    };
+    const { handle } = await setup({}, "pkeyt_seed", {
+      host: { webContents: [dead, live] },
+    });
+    handle.open("settings");
+    expect(sent).toEqual(["settings"]);
   });
 });
 

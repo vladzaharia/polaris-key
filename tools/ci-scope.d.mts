@@ -1,4 +1,4 @@
-/** Types for `ci-scope.mjs` (the one CI scope shared by ci.yml and gate.sh, P0-43). */
+/** Types for `ci-scope.mjs` (the one CI scope shared by ci.yml and `pnpm gate` (tools/gate.mjs), P0-43). */
 
 export interface CiScope {
   shared: string[];

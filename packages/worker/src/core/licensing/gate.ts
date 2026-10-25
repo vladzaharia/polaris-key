@@ -39,9 +39,6 @@ import {
 import {
   compareSemver,
   entitledChannels,
-  parseSemver,
-  tighterMax,
-  tighterMin,
   versionInWindow,
   versionWindow,
 } from "./entitlements.js";

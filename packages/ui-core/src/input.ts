@@ -331,6 +331,9 @@ export interface UiInput {
     devices?: { used: number; limit: number | null };
     /** True when the app updates itself. */
     autoUpdate?: boolean;
+    /** False when the host has no page to open for "Manage": the button is left out. Absent
+     *  means it can (the web kits' page link). */
+    canManage?: boolean;
   };
   /**
    * The host can renew an expired license. `url` is the https page Renew opens; left out, the

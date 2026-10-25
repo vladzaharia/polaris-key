@@ -239,15 +239,14 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
 
   // PX-W13 (§8 Q4, as amended): terms the platform reserves on top of the code's floor
   // (`RESERVED_DISPLAY_TERMS` in @polaris-key/manifest). It can only add terms, never remove one.
-  // PX-W13b wires it into the validator and the Worker's reserved-name check.
+  // Read by core/accounts/reservedDisplayNames.ts for every display-name check (PX-W13b).
   setting({
     key: "identity.reservedDisplayTerms",
     scope: "platform",
     service: "platform",
     area: "identity",
     label: "Extra reserved display terms",
-    description:
-      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    description: "Names to treat like the built-in reserved list.",
     keywords: ["reserved", "display name", "spoofing"],
     docs: "/docs/operate/platform/settings/",
     value: { kind: "list", of: { kind: "string", maxLength: 64 }, max: 64 },
@@ -255,8 +254,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     ownership: "operator",
     confirm: { change: "L1" },
+    readers: ["core/accounts/reservedDisplayNames.ts"],
     storage: { kind: "scalar" },
-    pending: { wp: "PX-W13b" },
+    since: "PX-W13b",
   }),
 
   // ── Identity: Polaris Key's own terms (I-33, plans/I-27.md §2.4, Q2) ─────────────────────
@@ -269,9 +269,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     scope: "platform",
     service: "platform",
     area: "identity",
-    label: "Polaris Key terms",
+    label: "Polaris Locker terms",
     description:
-      "The version and URLs of Polaris Key's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
+      "The version and URLs of Polaris Locker's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
     keywords: ["terms", "privacy", "legal", "FinishStep", "_platform"],
     docs: "/docs/operate/platform/settings/",
     value: {
@@ -292,7 +292,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
   // PX-W9 (plans/PX-W9.md §3) made the refusal switch an A-13 store entry. Its row and `[vars]`
   // name is `KEYENTRY_REFUSALS`, "key entry" as one word and no `IDENTITY_` prefix: a `KEY` token
   // or a `_KEY` would read as key material to the AT-2 deny-list (`rules.ts`,
-  // `test/platformSettings.test.ts`). Counting runs whatever it says; it decides
+  // `test/surfaces/console/platformSettings.test.ts`). Counting runs whatever it says; it decides
   // only whether a license past its limit is refused (WIRE-CONTRACT-V4 §12.2 step 4). I-09 adds
   // its own reader (`license_owned`).
   setting({
@@ -489,9 +489,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     critical: true,
     confirm: { on: "L2", off: "L1" },
+    readers: ["services/sync/handlers/push.ts"],
     storage: { kind: "scalar" },
     since: "U-01b",
-    pending: { wp: "U-05" },
   }),
   // The quota a person gets when no tier, license override or add-on sets `pkey.cloudSync.bytes`.
   // Clamped to the per-person ceiling; lowering it deletes nothing (a person over it can still
@@ -519,9 +519,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     critical: true,
     confirm: { up: "L2", down: "L2" },
+    readers: ["core/accounts/syncAccess.ts"],
     storage: { kind: "scalar" },
     since: "U-01b",
-    pending: { wp: "U-05" },
   }),
 
   // ── Email and alerts (ST-09; I-18) ──────────────────────────────────────────────────────

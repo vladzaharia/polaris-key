@@ -3,6 +3,7 @@
  * raw value gets a label), the rollout summary, and the storefront feed URLs.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { Rollout, RolloutVerb } from "../../../../api.js";
 import { formatBasisPoints } from "../../../../lib/format.js";
 import { label, outletLabel } from "../../../../lib/labels.js";
@@ -77,8 +78,8 @@ export const SOURCE_NAMES: Record<string, string> = {
   admin: "Console",
   ci: "CI",
   asc: "App Store Connect",
-  play: "Google Play",
-  "ms-store": "Microsoft Store",
+  play: channelLabel("google-play"),
+  "ms-store": channelLabel("microsoft-store"),
   system: "Automatic",
   "auto-halt": "Auto-halt",
 };
@@ -113,7 +114,7 @@ export const FEED_KINDS: Record<
   },
   obtainium: { label: "Obtainium config", path: (c) => `obtainium/${c}.json` },
   "fdroid-repo": {
-    label: "F-Droid repository",
+    label: channelLabel("fdroid"),
     path: (c) => `fdroid/${c}/repo`,
   },
   direct: { label: "Scoop manifest", path: (c) => `scoop/${c}.json` },

@@ -183,10 +183,20 @@ describe("pnpm gen selection", () => {
       "corpus",
       "services",
       "channels",
+      "roles-matrix",
+      "skills",
       "registry-docs",
       "readme-work",
       "ux-rows",
     ]);
+  });
+
+  it("--base is its own flag and --changed diffs from it", () => {
+    const o = parseArgs(["--changed", "--check", "--base", "integ/next-stage"]);
+    expect(o).toMatchObject({ changed: true, base: "integ/next-stage" });
+    expect(o.forward).toEqual([]);
+    expect(parseArgs([]).base).toBeUndefined();
+    expect(() => parseArgs(["--base"])).toThrow(/needs a revision/);
   });
 
   it("--changed selects the families whose inputs or outputs changed", () => {

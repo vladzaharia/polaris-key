@@ -120,7 +120,7 @@ final class EventsAndSignInTests: XCTestCase {
             "/djdl/license/activate", body: #"{"token":"pkeyt_new","schemaVersion":1}"#)
         let c = try await licensedClient(token: false, services: [.license])
         var it = c.events.makeAsyncIterator()
-        _ = await c.activate(key: "PKEY-1")
+        _ = await c.license.activateWithKey("PKEY-1")
         let seen = await collect(&it) { if case .entitlement(let n, _, _) = $0 { return n == "pro" }; return false }
         XCTAssertEqual(seen.first, .license(status: .ok, previous: .needsActivation))
         XCTAssertTrue(seen.contains(.entitlement(name: "pro", value: .bool(true), previous: nil)))

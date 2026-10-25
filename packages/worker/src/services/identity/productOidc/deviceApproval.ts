@@ -15,6 +15,8 @@
 
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { checkDisplayName } from "@polaris-key/manifest";
+import { displayCheckOptions } from "../../../core/accounts/reservedDisplayNames.js";
+import { constantTimeEqual } from "../../../platform/compare.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { escapeHtmlKeepApostrophe as escapeHtml } from "../../../platform/html.js";
@@ -22,9 +24,9 @@ import { parseFlowRecord } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { methodNotAllowed } from "../../../core/errors.js";
+import { methodNotAllowed, notFound } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
-import { clientNetwork } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import {
   appHeader,
@@ -32,18 +34,30 @@ import {
   note,
   personRow,
   renderAuthCard,
+  DEVICE_CARD_LINKS,
 } from "../../../core/brandHtml.js";
+import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import {
+  artefactRef,
   deleteArtefact,
   getArtefact,
+  putArtefact,
   updateArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import { binderClearCookie, readBinder } from "../licenseChoice.js";
+import { hostOrigin } from "../../../core/hosts.js";
+import { apiOrigin } from "../../../core/customerHost.js";
+import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
 import { requestLocation } from "../place.js";
-import { choiceKey, redirectToChooser, startAgainPage } from "./chooser.js";
+import {
+  choiceKey,
+  choicePage,
+  redirectToChooser,
+  startAgainPage,
+} from "./chooser.js";
 import {
   CHOICE_FIELDS,
   FLOW_TTL_SECONDS,
@@ -52,7 +66,7 @@ import {
   isDeviceCodeFlow,
   rateLimited,
 } from "./config.js";
-import { sameOriginPost } from "./deviceFlow.js";
+import { sameOriginDecisionPost } from "./deviceFlow.js";
 import { deviceHtmlHeaders, listingDeveloper, type PageView } from "./pages.js";
 
 /** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
@@ -172,6 +186,8 @@ async function findFlow(
   env: Env,
   product: Product,
 ): Promise<Found | Response> {
+  // On the customer host the secret is C (`customerBinder`), never B; elsewhere it is B.
+  const onCustomer = onCustomerHost(req, env);
   const binder = readBinder(req);
   if (!binder) return startAgainPage();
   const binderHash = await hashKey(binder, env.KEY_HASH_PEPPER);
@@ -187,7 +203,10 @@ async function findFlow(
     !flow.confirmedAt ||
     !flow.consumedAt ||
     !flow.identity ||
-    flow.binder !== binderHash ||
+    (onCustomer
+      ? !flow.customerBinder ||
+        !constantTimeEqual(flow.customerBinder, binderHash)
+      : flow.binder !== binderHash) ||
     flow.approvedAt !== undefined ||
     flow.error !== undefined
   ) {
@@ -195,28 +214,177 @@ async function findFlow(
     return startAgainPage();
   }
   // The licence chooser is still open: that is the explicit step, not this page.
-  if (flow.choiceOpen) return redirectToChooser(req, product);
+  // The chooser lives on the API host (until PX-14b retires it): the customer host has no such path.
+  if (flow.choiceOpen) {
+    const api = onCustomer ? apiOrigin(env) : null;
+    // C has been shown on this host: the device chooser (API host, B) opens only after this.
+    if (onCustomer && !flow.customerOk) {
+      const marked = await updateArtefact(env, stateKey, {
+        set: { customerOk: true },
+      });
+      if (!marked.ok) return startAgainPage();
+    }
+    return api === null
+      ? redirectToChooser(req, product)
+      : new Response(null, {
+          status: 303,
+          headers: {
+            location: `${api}/${product.slug}/identity/auth/choose`,
+            "referrer-policy": "no-referrer",
+            "cache-control": "no-store",
+          },
+        });
+  }
   return { stateKey, indexKey, binderHash, flow };
 }
 
-function approvePath(req: Request, product: Product): string {
-  return `${new URL(req.url).origin}/${product.slug}/identity/auth/device/approve`;
+/** Is this request on the customer host (Polaris Locker)? */
+function onCustomerHost(req: Request, env: Env): boolean {
+  const customer = hostOrigin("customer", env);
+  return customer !== null && new URL(req.url).origin === customer;
 }
 
-export function redirectToApprove(
+/** Where the approval page lives for this request's host: `/device/approve` on the customer host
+ *  (the product is found through the binder), the product's own path otherwise. */
+function approvePath(req: Request, env: Env, product: Product): string {
+  const origin = new URL(req.url).origin;
+  return onCustomerHost(req, env)
+    ? `${origin}/device/approve`
+    : `${origin}/${product.slug}/identity/auth/device/approve`;
+}
+
+/**
+ * After the IdP's callback (API host) the person goes on to the approval page. With a customer
+ * host that page is `<customer>/device/approve`; the binder cookie is host-only, so a single-use
+ * bind token carries the binder there (the response sets no cookie, and the `Location` is built
+ * from configuration and the token, never from the request).
+ */
+export async function redirectToApprove(
   req: Request,
+  env: Env,
   product: Product,
   again = false,
-): Response {
-  return new Response(null, {
-    status: 303,
-    headers: {
-      // `?again=1` carries no state: the page only adds "check and choose again".
-      location: approvePath(req, product) + (again ? "?again=1" : ""),
-      "referrer-policy": "no-referrer",
-      "cache-control": "no-store",
-    },
+): Promise<Response> {
+  const customer = hostOrigin("customer", env);
+  const binder = readBinder(req);
+  const headers = new Headers({
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
   });
+  if (customer !== null && !onCustomerHost(req, env) && binder) {
+    const token = await issueBindToken(env, {
+      kind: "device-approve",
+      slug: product.slug,
+      binder,
+    });
+    headers.set(
+      "location",
+      `${customer}/device/approve?bind=${token}${again ? "&again=1" : ""}`,
+    );
+  } else {
+    // `?again=1` carries no state: the page only adds "check and choose again".
+    headers.set(
+      "location",
+      approvePath(req, env, product) + (again ? "?again=1" : ""),
+    );
+  }
+  return new Response(null, { status: 303, headers });
+}
+
+/** The ref of the slug a binder's approval page belongs to (customer host only). */
+function slugRef(binderHash: string): ArtefactRef {
+  return artefactRef("device-approve-slug", binderHash);
+}
+
+/**
+ * The customer host's `/device/approve` has no product in its URL. A bind token (`?bind=`) is
+ * redeemed here: the binder cookie is set on THIS host, the product's slug is remembered against
+ * the binder's hash, and the browser is sent to the clean path. Otherwise the binder cookie
+ * names the product, and the dispatcher serves the product's approval handler on this host.
+ * Anything unknown, spent or foreign is the generic start-again page.
+ */
+export async function customerApproveTarget(
+  req: Request,
+  env: Env,
+  now: number,
+): Promise<{ slug: string } | Response> {
+  if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
+  if (
+    !(await rateLimitOk(
+      env,
+      "_portal",
+      {
+        bucket: "deviceApproveCustomer",
+        id: clientNetwork(req),
+        limit: 60,
+        windowSec: 60,
+      },
+      now,
+    ))
+  )
+    return tooManyPage();
+  const url = new URL(req.url);
+  if (req.method === "GET" && url.searchParams.has("bind")) {
+    const bound = await consumeBindToken(env, url.searchParams.get("bind")!);
+    if (!bound || bound.kind !== "device-approve") return startAgainPage();
+    // The token names the flow's browser, it never makes one: the cookie this host set when the
+    // code was opened must be the token's binder. A token handed to another browser (a hop URL
+    // forwarded to a victim) finds no such cookie and ends here (B1).
+    // The token carries B (the API host's secret); this host's cookie is C, a different value
+    // whose hash only the flow knows. The flow is found by B and must name this C (R2-B1).
+    const mine = readBinder(req);
+    if (!mine) return startAgainPage();
+    const mineHash = await hashKey(mine, env.KEY_HASH_PEPPER);
+    const state = await getArtefact(
+      env,
+      choiceKey(bound.slug, await hashKey(bound.binder, env.KEY_HASH_PEPPER)),
+    );
+    const raw = state
+      ? await getArtefact(env, await flowKey(env, bound.slug, state))
+      : null;
+    const flow = raw ? parseFlowRecord<FlowRecord>(raw) : null;
+    if (
+      !state ||
+      !flow ||
+      !flow.customerBinder ||
+      !constantTimeEqual(flow.customerBinder, mineHash)
+    )
+      return startAgainPage();
+    // Both indexes are by hash(C): the slug of the approval page and the flow it decides.
+    await putArtefact(env, slugRef(mineHash), bound.slug, FLOW_TTL_SECONDS);
+    await putArtefact(
+      env,
+      choiceKey(bound.slug, mineHash),
+      state,
+      FLOW_TTL_SECONDS,
+    );
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: `/device/approve${url.searchParams.get("again") === "1" ? "?again=1" : ""}`,
+        "referrer-policy": "no-referrer",
+        "cache-control": "no-store",
+      },
+    });
+  }
+  const binder = readBinder(req);
+  if (!binder) return startAgainPage();
+  const slug = await getArtefact(
+    env,
+    slugRef(await hashKey(binder, env.KEY_HASH_PEPPER)),
+  );
+  return slug ? { slug } : startAgainPage();
+}
+
+/** The branded 429 of the customer host's approval route. */
+function tooManyPage(): Response {
+  const res = choicePage(429, {
+    title: "Too many tries",
+    heading: "Too many tries",
+    body: `<p class="muted">Wait a minute, then try again.</p>`,
+  });
+  res.headers.set("retry-after", "60");
+  return res;
 }
 
 /** "14:32": the UTC time of day of a Unix time in seconds. */
@@ -256,7 +424,22 @@ export async function handleAuthDeviceApprove(
     windowSec: 60,
   });
   if (limited) return limited;
-  if (req.method === "POST" && !sameOriginPost(req)) return startAgainPage();
+  // With a customer host the decision lives there, behind C. The API host's copy of this route
+  // never decides: GET goes to the customer page, POST is not found (R2-B1).
+  const customer = hostOrigin("customer", env);
+  if (customer !== null && !onCustomerHost(req, env)) {
+    if (req.method === "POST") return notFound();
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: `${customer}/device/approve`,
+        "referrer-policy": "no-referrer",
+        "cache-control": "no-store",
+      },
+    });
+  }
+  if (req.method === "POST" && !sameOriginDecisionPost(req))
+    return startAgainPage();
 
   const found = await findFlow(req, env, product);
   if (found instanceof Response) return found;
@@ -281,7 +464,7 @@ export async function handleAuthDeviceApprove(
   const token = form.get("token") ?? "";
   const decision = form.get("decision");
   if (!token || (decision !== "approve" && decision !== "deny"))
-    return redirectToApprove(req, product, true);
+    return redirectToApprove(req, env, product, true);
   const won = await decideDeviceFlow(
     env,
     db,
@@ -292,7 +475,7 @@ export async function handleAuthDeviceApprove(
     decision,
     now,
   );
-  if (!won) return redirectToApprove(req, product, true);
+  if (!won) return redirectToApprove(req, env, product, true);
   // Finished with the browser either way: the index and the binder go.
   await deleteArtefact(env, indexKey);
   const cookies = [binderClearCookie()];
@@ -321,6 +504,7 @@ export function deviceDonePage(
     ? `${isolate(view.app.name)} is signed in on ${isolate(label)}`
     : `Signed in on ${isolate(label)}`;
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: view.app?.name ? `${view.app.name} is signed in` : "Signed in",
     heading,
@@ -358,12 +542,10 @@ async function approvalApp(
     artUrl: null,
   }));
   const developer = await listingDeveloper(hooks);
+  const check = await displayCheckOptions(env, db, product.slug);
   const named = {
     ...raw,
-    name:
-      checkDisplayName(raw.name, { slug: product.slug }) === null
-        ? raw.name
-        : product.slug,
+    name: checkDisplayName(raw.name, check) === null ? raw.name : product.slug,
   };
   const shown = pageApp(named);
   return {
@@ -373,7 +555,7 @@ async function approvalApp(
       artUrl: shown.app.artUrl ?? null,
     },
     developer:
-      developer && checkDisplayName(developer, { slug: product.slug }) === null
+      developer && checkDisplayName(developer, check) === null
         ? developer
         : null,
     imgOrigin: shown.imgOrigin,
@@ -458,6 +640,7 @@ async function renderApproval(
   const startedAt = typeof flow.startedAt === "number" ? flow.startedAt : null;
   const formId = "pk-approve";
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     title: `Sign in on ${label}?`,
     heading: `Sign in on ${dev}?`,
     ...(flow.tv ? { variant: "tv" as const } : {}),
@@ -490,7 +673,9 @@ async function renderApproval(
           }</p>`
         : "") +
       originWarning(req, flow) +
-      `<form id="${formId}" method="post" action="${escapeHtml(approvePath(req, product))}">` +
+      // Always on, whatever the place says: the person checks the device, not just the place.
+      `<p class="note">${escapeHtml(KIT_COPY_EN["signin.approve.checkDevice"] ?? "")}</p>` +
+      `<form id="${formId}" method="post" action="${escapeHtml(approvePath(req, env, product))}">` +
       `<input type="hidden" name="token" value="${escapeHtml(token)}">` +
       `<div class="stack"><button class="button" type="submit" name="decision" value="approve"><span>Sign in on <bdi>${escapeHtml(label)}</bdi></span></button>` +
       `<button class="button secondary" type="submit" name="decision" value="deny">Deny</button>` +
@@ -540,6 +725,7 @@ export function deniedPage(
 ): Response {
   const shown = pageApp(view.app ?? { name: "" });
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: "Sign-in denied",
     heading: "Sign-in denied",

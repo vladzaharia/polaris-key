@@ -161,6 +161,8 @@ public struct SyncResult: Sendable, Equatable {
     public var deviceCap: Bool = false
     /// Per-service detail, for callers that fetch more than one document.
     public var documents: [DocumentSlice: DocOutcome] = [:]
+
+    public init() {}
 }
 
 /// One re-verified document slice: the decoded payload plus the artifact it came from.
@@ -330,6 +332,24 @@ public actor CoreContext {
     public nonisolated func setEventSink(_ sink: (@Sendable (CoreEvent) -> Void)?) {
         eventSink.set(sink)
     }
+
+    /// The store listing the latest `store` offer named (its `listingUrl`), set by the update
+    /// client just before it emits `updateAvailable`; nil when the offer names none. The UI kits
+    /// read it so a mandatory update with no host handler can still open the store.
+    public nonisolated let offerListingUrl = LockedValue<String?>(nil)
+
+    /// What an update check found, for a UI that asks without linking the update module.
+    public enum UpdateProbe: Sendable, Equatable {
+        /// A newer release is offered (its version).
+        case offered(String)
+        case upToDate
+        /// The check could not be answered (network, feed or record refused).
+        case failed
+    }
+
+    /// Asks the update client for a decision, set by a configured `UpdateClient`; nil when the
+    /// host runs no signed update decision.
+    public nonisolated let updateProbe = LockedValue<(@Sendable () async -> UpdateProbe)?>(nil)
 
     /// Hand an event to the facade, if one listens.
     public nonisolated func emit(_ event: CoreEvent) {

@@ -51,10 +51,13 @@ import {
   signinState,
   type NoticeAction,
 } from "./signinPage.js";
+import { SIGNIN_SCRIPT_HASH } from "./signinScript.js";
 import { resolveConsoleCaller } from "./api.js";
 import {
   consoleAssertedEmail,
+  accountHasConsolePasskey,
   consoleLinkedAccount,
+  consolePasskeyAvailable,
   consoleSignIn,
   endConsoleSession,
   type ConsoleRefusal,
@@ -65,7 +68,6 @@ import {
   isSameOriginRequest,
   readTextCapped,
 } from "../core/accounts/browserRequestGuard.js";
-import { escapeHtml } from "../platform/html.js";
 import { randomToken } from "../platform/random.js";
 import { can, PLATFORM, resolvePrincipal } from "./authz.js";
 import { holdsRoot } from "../core/rbac/principal.js";
@@ -130,7 +132,7 @@ export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
 export const CONSOLE_HINT_COOKIE = "__Host-pkey_console_hint";
 const CONSOLE_HINT_TTL_SECONDS = 30 * 86400;
 
-function consoleHintCookie(email: string | null): string {
+export function consoleHintCookie(email: string | null): string {
   return [
     `${CONSOLE_HINT_COOKIE}=${email ? encodeURIComponent(email) : ""}`,
     "Path=/",
@@ -179,8 +181,15 @@ const RETURN_TO_RE = /^\/(?:docs|manage)(?:\/[A-Za-z0-9\-._~/]*)?$/;
  */
 const RETURN_TO_HASH_RE = /^\/manage\/#\/[A-Za-z0-9\-._~/]*$/;
 
+/**
+ * ST-34.6: the `pkey login` approval card, with its code: the one place a `returnTo` may carry a
+ * query, so a step-up lands back on the request. Exactly `?code=` and a short code, nothing else.
+ */
+const RETURN_TO_DEVICE_RE = /^\/manage\/device\?code=[A-Za-z0-9-]{4,20}$/;
+
 export function sanitizeReturnTo(raw: string | null): string | null {
   if (!raw || raw.length > RETURN_TO_MAX_LENGTH) return null;
+  if (RETURN_TO_DEVICE_RE.test(raw)) return raw;
   if (!RETURN_TO_RE.test(raw) && !RETURN_TO_HASH_RE.test(raw)) return null;
   if (raw.includes("//")) return null;
   if (raw.split(/[/#]/).some((seg) => seg === "." || seg === "..")) return null;
@@ -430,23 +439,30 @@ async function signinCard(
   // D-S5: "Change" clears the remembered address and shows the empty field.
   const change = url.searchParams.get("change") === "1";
   const remembered = change ? null : readConsoleHint(req);
-  const known =
+  const caller =
     state === "stepUp"
-      ? ((
-          await resolveConsoleCaller(
-            env,
-            db,
-            req,
-            Math.floor(Date.now() / 1000),
-          )
-        )?.session.email ?? null)
+      ? await resolveConsoleCaller(env, db, req, Math.floor(Date.now() / 1000))
       : null;
+  const known = caller?.session.email ?? null;
+  // The passkey button and its script (hash in the CSP) only where a ceremony can run: the console
+  // RP resolves for this request, and on a step-up the signed-in account holds a console passkey.
+  let passkey = state !== "breakGlass" && consolePasskeyAvailable(env, req);
+  if (passkey && state === "stepUp") {
+    const aid =
+      caller && !caller.session.breakGlass ? caller.session.aid : null;
+    passkey = Boolean(
+      aid && db && (await accountHasConsolePasskey(env, db, aid)),
+    );
+  }
   const headers = brandedHtmlSecurityHeaders(
     new Headers({
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
     }),
-    { brand: "console" },
+    {
+      brand: "console",
+      ...(passkey ? { scriptHash: SIGNIN_SCRIPT_HASH } : {}),
+    },
   );
   allowFormAction(headers, origins);
   if (change) headers.append("set-cookie", consoleHintCookie(null));
@@ -459,13 +475,15 @@ async function signinCard(
       // A typed address in the URL wins over the remembered one (it is the retry's field).
       chip: ctx.hint ? null : remembered,
       knownEmail: known,
+      focusEmail: change,
+      passkey,
     }),
     { status: 200, headers },
   );
 }
 
 /** A usable `login_hint`: one plausible address, never longer than an email may be. */
-function loginHint(raw: string | null): string | null {
+export function loginHint(raw: string | null): string | null {
   const v = raw?.trim() ?? "";
   return v.length > 0 && v.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(v)
     ? v
@@ -896,15 +914,15 @@ async function breakGlassCallback(
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin break-glass refused: not in the platform admin group",
+      summary: "Emergency sign-in refused: not in the platform admin group",
       now,
     });
     return htmlError(
       403,
       identity.email
-        ? `${identity.email} can’t use break-glass`
-        : "This account can’t use break-glass",
-      { lede: "Break-glass is for Superadmins only.", action: retry },
+        ? `${identity.email} can’t use emergency sign-in`
+        : "This account can’t use emergency sign-in",
+      { lede: "Emergency sign-in is for Superadmins only.", action: retry },
     );
   }
   // A fresh authentication is the point: an IdP that ignored `prompt=login` and `max_age=0`, or
@@ -916,7 +934,7 @@ async function breakGlassCallback(
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin break-glass refused: sign-in was not recent",
+      summary: "Emergency sign-in refused: sign-in was not recent",
       now,
     });
     return htmlError(401, "Your provider didn’t ask you to sign in again", {
@@ -931,7 +949,7 @@ async function breakGlassCallback(
   await recordPlatformSecurityEvent(db, {
     action: "rbac.breakglass",
     sub: identity.sub,
-    summary: "Break-glass console sign-in",
+    summary: "Emergency sign-in used",
     now,
   });
   await notifySuperadmins(

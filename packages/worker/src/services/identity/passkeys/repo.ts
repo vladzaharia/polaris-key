@@ -9,7 +9,7 @@
  * and deletion. The passkey row holds what only WebAuthn needs: the COSE public key, the signature
  * counter, the transports, the RP id and the user handle it was created under. Both rows are
  * written in ONE batch; removal deletes the link first (under the guard) and then the passkey row
- * (`links.ts`, `mirrorLinkRemoval`), and a passkey row whose link is gone is inert: sign-in
+ * (`links.ts`, `deletePasskeyMaterial`), and a passkey row whose link is gone is inert: sign-in
  * refuses it and the settings list does not show it.
  *
  * The account id is INTERNAL (Identity and Core). Nothing here hands it out; the credential id

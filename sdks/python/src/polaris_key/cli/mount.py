@@ -366,11 +366,11 @@ def check_config(config: Any) -> None:
     slug = config.get("product_slug") or config.get("product")
     if not isinstance(slug, str) or not slug:
         raise bad("config has no product_slug")
-    trust = config.get("trust")
+    trust = config.get("pinned_keys")
     if not isinstance(trust, Mapping):
-        raise bad(f'config for "{slug}" has no trust')
+        raise bad(f'config for "{slug}" has no pinned_keys')
     if not trust:
-        raise bad(f'trust for "{slug}" is empty, so no license could verify')
+        raise bad(f'pinned_keys for "{slug}" is empty, so no license could verify')
     for kid, key in trust.items():
         if not isinstance(key, str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", key):
             raise bad(f'the pinned key "{kid}" for "{slug}" is not a raw Ed25519 public key (43 base64url characters), as a placeholder is')

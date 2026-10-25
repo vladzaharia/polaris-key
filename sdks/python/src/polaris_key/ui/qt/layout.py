@@ -24,7 +24,7 @@ from .rows import Group, RowData, Seat, build_rows
 
 __all__ = ["Button", "Code", "Field", "ScreenSpec", "Step", "build_spec", "button_role", "is_button_key"]
 
-_HEADING = re.compile(r"\.(title|heading|codeTitle|addTitle)$|^(gate\.error\.title|part\.status\.blocked)$")
+_HEADING = re.compile(r"\.(title|heading|codeTitle|addTitle|mandatoryTitle|availableTitle)$|^(gate\.error\.title|part\.status\.blocked)$")
 _ACTION_KEYS = frozenset(key for keys in ACTION_KEYS.values() for key in keys)
 #: The last catalog segment of every key that is a control, not a sentence.
 _VERBS = frozenset(
@@ -33,14 +33,16 @@ _VERBS = frozenset(
         "signIn useKey trial continueFree restore offline submit install later checkNow skipVersion "
         "restartNow restartWhenReady openStore resume remove rename reset update renew contact "
         "switchChannel useAnotherLicense openBrowser undo copyCode loadFile primary allChanges whatsNew "
-        "appStore googlePlay steam altstore testflight differentKey continue start keyInstead useCode openSystem again newCode"
+        "appStore googlePlay steam altstore testflight differentKey continue start keyInstead useCode openSystem again newCode "
+        "upgrade redeem portal unlock otherAccount get confirm"
     ).split()
 )
 #: Quiet text buttons (the mockup's "Start a free trial", "Activate offline").
 _QUIET = frozenset(
     ("welcome.trial", "welcome.offline", "welcome.restore", "welcome.continueFree", "common.notNow",
      "common.dismiss", "update.later", "update.skipVersion", "common.cancel", "common.back",
-     "update.allChanges", "update.whatsNew", "signin.choice.keyInstead", "signin.handoff.useCode")
+     "update.allChanges", "update.whatsNew", "signin.choice.keyInstead", "signin.handoff.useCode",
+     "paywall.redeem", "signin.none.otherAccount", "signin.replace.back")
 
 )
 #: Keys the Qt kit never draws: the provider logo row and the passkey and email rows need a
@@ -55,7 +57,7 @@ _NOT_DRAWN = frozenset(
 )
 #: Screens whose one filled action is not always a catalog key of their copy (the model's primary is
 #: the control the message sits on): it is drawn when the copy leaves it out.
-_PRIMARY_ALWAYS = frozenset(("Activate", "SignIn", "Welcome"))
+_PRIMARY_ALWAYS = frozenset(("Activate", "SignIn", "Welcome", "LicenseChoice"))
 #: The code view's own parts: its label, its copy button and its QR are drawn as one block.
 _CODE_PARTS = frozenset(("part.code.label", "a11y.copyCode", "a11y.copyAddress", "a11y.qr"))
 #: Keys that read as status chips or meters, not paragraphs.
@@ -95,6 +97,11 @@ _ROW_FRAGMENTS = frozenset(
 )
 #: Components whose lone action is not the screen's primary (a dismissal, a banner's own control).
 _NOT_FILLED = frozenset(("Toast", "GraceBanner"))
+#: The screens whose heading and sentences name the tier the host passes (``tier``): without one a
+#: sentence is left out rather than drawn with its braces, and no stand-in heading is made up.
+_TIER_SCREENS = frozenset(("Paywall", "EntitlementGate"))
+#: LicenseChoice states that keep the step's own title (the rest name their own: none, replace).
+_CHOICE_TITLED = frozenset(("current", "keep", "new", "create", "mixed", "all-full", "raced"))
 #: When a heading needs data the view lacks (no product name), this neutral one stands in.
 _FALLBACK_TITLE = "core.fallback.title"
 
@@ -357,6 +364,7 @@ def build_spec(
     selected_id: Optional[str] = None,
     advanced: bool = False,
     request_code: str = "",
+    facts: Optional[Mapping[str, Any]] = None,
 ) -> ScreenSpec:
     """Lay one view out. Heading, then sentences, then the buttons in catalog order with the
     model's primary first among equals; at most one filled button.
@@ -365,12 +373,19 @@ def build_spec(
     carry (a file size, a row's name) is left out rather than drawn with its braces: rows and meters
     come from the rich models in ``polaris_key.ui.core.models`` or the view's own ``rows``, which
     ``data`` (a :class:`~.rows.RowData`) replaces; with them the list, the seat meter and the account
-    rows are laid out too (``rows.py``)."""
+    rows are laid out too (``rows.py``).
+
+    ``facts`` is what an offered update knows that its view cannot carry (UI-KITS decision 1):
+    ``current`` (the running version), ``size`` (bytes or text, only when known) and ``notes`` (at
+    most three plain lines of the release's summary). With them "You have 1.4.0 · 61 MB download"
+    (or "Version 1.4.0" without a size) and the notes under "What's new" are drawn."""
     args = {**({"product": product, "app": product} if product else {}), **_args(view)}
     if developer:
         args.setdefault("developer", bidi_isolate(developer))
     if isinstance(args.get("size"), int) and not isinstance(args.get("size"), bool):
         args["size"] = format_bytes(args["size"])  # a byte count reads "50 MB", never 52428800
+    if view.component == "LicenseChoice":  # "{product} will use it on {device}": the device is this one
+        args.setdefault("device", copy("part.thisDevice", formFactor=args.get("formFactor") or "computer"))
     rows = build_rows(view, copy, data, args, selected_id=selected_id, advanced=advanced) if data is not None else None
     consumed = rows.consumed if rows is not None else frozenset()
     if rows is not None and rows.args:
@@ -406,7 +421,20 @@ def build_spec(
             continue
         if key in _PROGRESS and args.get("fraction") is None and not args.get("total"):
             progress = -1.0
-        if key in _ROW_FRAGMENTS:
+        if key in _ROW_FRAGMENTS and view.component != "Toast":
+            continue
+        if facts is not None and view.component == "UpdatePrompt" and key in ("update.current", "update.whatsNew"):
+            if key == "update.current":
+                current, size = str(facts.get("current") or ""), facts.get("size")
+                if current and size:
+                    body.append(copy(key, version=current, size=format_bytes(size) if isinstance(size, int) else size))
+                elif current:
+                    body.append(copy("common.updateCurrentNoSize", version=current))
+            else:
+                notes = [str(n) for n in (facts.get("notes") or ())][:3]
+                if notes:
+                    body.append(copy(key))
+                    body.extend("\u2022 " + n for n in notes)
             continue
         if key in _FIELD_PARTS:
             text = copy(key, **args)
@@ -438,6 +466,10 @@ def build_spec(
         uri = _qr_uri(request_code)
         if uri:  # fail closed: no payload, no QR
             steps = [Step(s.number, s.text, uri, qr_label) if s.number == 1 else s for s in steps]
+    features = [str(f) for f in (args.get("features") or ())][:6] if view.component == "Paywall" else []
+    if features and "paywall.includes" in keyed:  # what the tier adds, under the line that introduces it
+        at = body.index(keyed["paywall.includes"])
+        body[at + 1 : at + 1] = ["\u2022 " + bidi_isolate(f) for f in features]
     after: List[Tuple[str, bool]] = []
     if rows is not None and rows.before is not None:
         # The list sits between the sentences that introduce it and the ones that follow it.
@@ -445,11 +477,16 @@ def build_spec(
         rest = [text for key, text in keyed.items() if key not in placed]
         body = [keyed[k] for k in rows.before if k in keyed] + rest
         after = [(keyed[k], k == "deviceLimit.confirmTitle") for k in rows.after if k in keyed]
-    if open_heading and not title:
+    if open_heading and not title and view.component not in _TIER_SCREENS:
         title = copy(_FALLBACK_TITLE)  # never a screen with a button and no words
     if rows is not None and not title and rows.title_key:
         title = copy(rows.title_key)
-    if not title and view.component in ("SignIn", "SignInHandoff") and view.state not in ("hidden", "code"):
+    if not title and view.component == "LicenseChoice" and view.state in _CHOICE_TITLED:
+        title = copy("signin.choice.title")
+    if not title and (
+        (view.component in ("SignIn", "SignInHandoff") and view.state not in ("hidden", "code"))
+        or (view.component == "LicenseChoice" and view.state == "grant-expired")
+    ):
         title = copy("signIn.title", **args)  # every step of the form keeps its name
         if _open(title):
             title = ""
@@ -493,7 +530,12 @@ def build_spec(
         text = copy(primary, **args)
         if not _open(text):
             buttons.append(Button(primary, text, "primary"))
-    elif not any(b.role == "primary" for b in buttons) and len(buttons) == 1 and view.component not in _NOT_FILLED:
+    elif (
+        not any(b.role == "primary" for b in buttons)
+        and len(buttons) == 1
+        and view.component not in _NOT_FILLED
+        and buttons[0].key != "common.back"  # a way out of a pane is never its one filled action
+    ):
         only = buttons[0]
         buttons = [Button(only.key, only.text, "primary")]
     busy_primary = busy and bool(primary) and any(b.key == primary for b in buttons)

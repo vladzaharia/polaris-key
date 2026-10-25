@@ -17,6 +17,8 @@ export interface PageAction {
   disabledReason?: string;
   /** Left out of the phone's "More actions" menu: the page draws it another way there. */
   hideOnPhone?: boolean;
+  /** Only in the phone's "More actions": the page draws it another way from `sm` up. */
+  phoneOnly?: boolean;
   /**
    * `ghost` draws a quiet inline action (no border) for a link-like destination beside the
    * outline ones (Licenses' Batches). Default `outline`.
@@ -34,12 +36,22 @@ export interface PageHeaderProps {
    * only.
    */
   size?: "default" | "display";
+  /**
+   * Let a title of fixed copy (not a record's name) wrap to every line it needs: the two-line clamp
+   * is for a name of any length, and would cut a sentence at a large text size (no-access pages).
+   */
+  unclampedTitle?: boolean;
   /** Beside the title: a `StatusPill`, a count. */
   titleAside?: React.ReactNode;
   /** Scope and context, one line. */
   description?: React.ReactNode;
   /** Badges after the description: `SourceBadge`, ids. */
   meta?: React.ReactNode;
+  /**
+   * A line of facts under the title row, the full width of the header (not just the title's
+   * column, which the actions narrow): a record's id and "Changed …".
+   */
+  factsRow?: React.ReactNode;
   /** T1: "Updated 2 min ago" plus Refresh. */
   freshness?: {
     updatedAt: number;
@@ -60,12 +72,19 @@ export interface PageHeaderProps {
       label: string;
     };
   };
+  /** A control that leads the action cluster (an editor's Form/JSON switch). */
+  toolbar?: React.ReactNode;
   /** The one primary action (a `Button`). */
   primaryAction?: React.ReactNode;
   /** Up to two show inline on ≥ 640 px (`inlineSecondary`); the rest go to "More actions". */
   secondaryActions?: PageAction[];
   /** How many secondary actions show inline on ≥ 640 px (default 2; 0: all in "More actions"). */
   inlineSecondary?: number;
+  /**
+   * Draw "More actions" after the primary action, as the last thing on the row (a record with a
+   * control beside its primary action). Not for headers with freshness.
+   */
+  menuLast?: boolean;
   /** Always last in "More actions", after a separator, styled danger. */
   dangerActions?: PageAction[];
   /** `PageTabs`, under the header. */
@@ -103,21 +122,26 @@ export function PageHeader({
   eyebrow,
   title,
   size = "default",
+  unclampedTitle = false,
   titleAside,
   description,
   meta,
+  factsRow,
   freshness,
+  toolbar,
   primaryAction,
   secondaryActions = [],
   inlineSecondary = INLINE_SECONDARY,
+  menuLast = false,
   dangerActions = [],
   tabs,
   refetching = false,
   sticky = false,
   className,
 }: PageHeaderProps): React.ReactElement {
-  const inline = secondaryActions.slice(0, inlineSecondary);
-  const overflow = secondaryActions.slice(inlineSecondary);
+  const wide = secondaryActions.filter((a) => !a.phoneOnly);
+  const inline = wide.slice(0, inlineSecondary);
+  const overflow = wide.slice(inlineSecondary);
   const toItems = (actions: PageAction[], tone?: "danger") =>
     actions.map((a) => ({
       label: a.label,
@@ -179,11 +203,33 @@ export function PageHeader({
     !primaryAction,
   );
 
+  const trailing = menuLast && !freshness;
   const hasCluster =
     Boolean(freshness) ||
+    Boolean(toolbar) ||
     inline.length > 0 ||
     desktopMenu.length > 0 ||
     mobileMenu.length > 0;
+
+  const primaryEl = primaryAction ? (
+    <div
+      className={cn(
+        "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end",
+        trailing
+          ? "sm:@2xl:col-start-2"
+          : cn(
+              "sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-2",
+              // With a cluster the two share row 2; alone, the action sits beside the title.
+              hasCluster
+                ? "sm:@max-2xl:short:row-start-2"
+                : "sm:@max-2xl:short:row-start-1",
+              hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
+            ),
+      )}
+    >
+      {primaryAction}
+    </div>
+  ) : null;
 
   return (
     <header
@@ -224,7 +270,14 @@ export function PageHeader({
             </span>
           ) : null}
           <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div
+              className={cn(
+                "flex items-center gap-x-3 gap-y-1",
+                // A status beside the title stays beside it: a long name shrinks (two lines,
+                // then an ellipsis) instead of pushing the status onto a third row.
+                titleAside ? "sm:flex-nowrap flex-wrap" : "flex-wrap",
+              )}
+            >
               {nested ? (
                 <h2 className="text-lg font-medium tracking-tight text-fg-strong">
                   {title}
@@ -240,7 +293,8 @@ export function PageHeader({
                       : // 24/32 on a phone, 36/44 on a collection, 32/40 on a record (B4, B6:
                         // never a display size in the console). A long name wraps twice, then ends.
                         cn(
-                          "line-clamp-2 text-2xl leading-8 [overflow-wrap:anywhere]",
+                          unclampedTitle ? "" : "line-clamp-2",
+                          "text-2xl leading-8 [overflow-wrap:anywhere]",
                           masthead?.record
                             ? "sm:text-headline-lg sm:leading-10"
                             : "sm:text-4xl sm:leading-11",
@@ -257,26 +311,31 @@ export function PageHeader({
               // description and the meta share lines instead of stacking (masthead <= 140 px).
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted [&>span.flex]:contents">
                 {description ? (
-                  <p className="max-w-[72ch]">{description}</p>
+                  <p className="min-w-0 max-w-[72ch]">{description}</p>
                 ) : null}
                 {meta}
               </div>
             ) : null}
           </div>
         </div>
+        {trailing ? primaryEl : null}
         {hasCluster ? (
           <div
             className={cn(
               "flex shrink-0 items-center justify-end gap-2",
+              // Last: beside the title on the first row, after the primary action when wide.
+              trailing && "col-start-2 row-start-1 sm:@2xl:col-start-3",
               // Below 42 rem the cluster takes its own row under the title. Alone (no primary
               // action to share the row with) it only does so below 36 rem: a lone action beside
               // a two-line title costs less height than a row of its own at 200 % browser zoom.
-              primaryAction
-                ? "sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end"
-                : "sm:@max-xl:col-span-2 sm:@max-xl:justify-self-end",
+              !trailing &&
+                (primaryAction
+                  ? "sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end"
+                  : "sm:@max-xl:col-span-2 sm:@max-xl:justify-self-end"),
               // A short window (200 % zoom on a laptop): the cluster and the primary action share
               // one row under the title instead of taking one each.
               primaryAction &&
+                !trailing &&
                 "sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-1 sm:@max-2xl:short:row-start-2",
               // With an auto-refresh switch the cluster is too wide to share a phone's title row.
               freshness?.auto && "col-span-2 sm:col-span-1",
@@ -286,6 +345,7 @@ export function PageHeader({
               freshness && "max-sm:@max-sm:col-span-2",
             )}
           >
+            {toolbar}
             {freshness ? (
               <span className="inline-flex flex-wrap items-center justify-end gap-x-1 text-sm text-fg-muted">
                 {/* Shown on a phone too: the freshness is the page's one trust cue (B-022). */}
@@ -315,9 +375,11 @@ export function PageHeader({
                       refreshTrailsPhone || refreshTrailsWide ? "" : undefined
                     }
                     className={cn(
-                      refreshTrailsPhone && "-me-3 conbig:-me-2",
+                      // The overshoot matches the button's padding: big text and the condensed console
+                      // cut it to 8 px (`px-2`), so the margin follows.
+                      refreshTrailsPhone && "-me-3 bigtext:-me-2 conbig:-me-2",
                       refreshTrailsWide
-                        ? "sm:-me-3 sm:conbig:-me-2"
+                        ? "sm:-me-3 sm:bigtext:-me-2 sm:conbig:-me-2"
                         : "sm:me-0",
                     )}
                     loading={freshness.refreshing}
@@ -361,21 +423,13 @@ export function PageHeader({
             ) : null}
           </div>
         ) : null}
-        {primaryAction ? (
-          <div
-            className={cn(
-              "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-2",
-              // With a cluster the two share row 2; alone, the action sits beside the title.
-              hasCluster
-                ? "sm:@max-2xl:short:row-start-2"
-                : "sm:@max-2xl:short:row-start-1",
-              hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
-            )}
-          >
-            {primaryAction}
-          </div>
-        ) : null}
+        {trailing ? null : primaryEl}
       </div>
+      {factsRow ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+          {factsRow}
+        </div>
+      ) : null}
       {tabs ? (
         <div data-masthead-tabs="" className="border-b border-border pt-1">
           {tabs}

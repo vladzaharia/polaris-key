@@ -432,7 +432,7 @@ useUnsavedChangesGuard(form.isDirty, {
 });
 ```
 
-- Registers with the router's blocker and with `beforeunload`.
+- Registers with the shared router core's blocker (`lib/router-core.ts` `blockNavigation`, so the console and the portal share one guard path) and with `beforeunload`.
 - Route changes, product switches and tab changes away from a mounted dirty panel prompt with a
   `ConfirmDialog` offering "Keep editing" / "Discard".
 - Fixes SH-6, LDT-4, PRF-6 and the MPE guard gap.
@@ -866,16 +866,16 @@ Hand-rolled SVG, no chart library. All charts follow the repo's `dataviz` guidan
 
 ## 7. Data and routing hooks (not visual, but part of the system)
 
-| Hook                                | Purpose                                                                                                                                                                        |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `useMe()`                           | TanStack Query `["me"]`. Invalidated by product create and delete (fixes SH-1).                                                                                                |
-| `useProducts()`, `useProduct(slug)` | One query each (the five inline fetchers collapse into this). `useProduct` reads `["products"]` as initial data.                                                               |
-| `queries.ts`                        | Every query key and fetcher in one module, typed: `qk.license(slug, id)` etc.                                                                                                  |
-| `mutations.ts`                      | Every mutation declares its **invalidation set** beside the write. A test asserts that every mutation declares one (fixes CC-1 to CC-4).                                       |
-| `useTableUrlState(id)`              | Reads and writes a table's sort, filters, search and cursor from the hash query.                                                                                               |
-| `useSearchParam(name, codec)`       | Typed hash-query params for page-level state (tab, window, deliverable, drawer id).                                                                                            |
-| `useAttention(slug)`                | Derives sidebar badges and the overview's attention list from already-cached queries (setup, mint recipes, readiness holds, Sentry candidates, expiring licenses). No new API. |
-| `useShortcut(keys, handler, opts)`  | Registers a shortcut with the global help sheet (`?`); suppressed in text inputs.                                                                                              |
+| Hook                                | Purpose                                                                                                                                                                                                                     |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useMe()`                           | TanStack Query `["me"]`. Invalidated by product create and delete (fixes SH-1).                                                                                                                                             |
+| `useProducts()`, `useProduct(slug)` | One query each (the five inline fetchers collapse into this). `useProduct` reads `["products"]` as initial data.                                                                                                            |
+| `queries.ts`                        | Every query key in one module, typed: `qk.license(slug, id)` etc. Reads are `queryOptions` factories beside it (`reads.ts`, a section's `data.ts`).                                                                         |
+| `mutations.ts`                      | Every mutation declares its **invalidation set** beside the write, on the shared engine `lib/writes.ts` (the portal's twin is `portal/mutations.ts`). A test asserts that every mutation declares one (fixes CC-1 to CC-4). |
+| `useTableUrlState(id)`              | Reads and writes a table's sort, filters, search and cursor from the hash query.                                                                                                                                            |
+| `useSearchParam(name, codec)`       | Typed hash-query params for page-level state (tab, window, deliverable, drawer id).                                                                                                                                         |
+| `useAttention(slug)`                | Derives sidebar badges and the overview's attention list from already-cached queries (setup, mint recipes, readiness holds, Sentry candidates, expiring licenses). No new API.                                              |
+| `useShortcut(keys, handler, opts)`  | Registers a shortcut with the global help sheet (`?`); suppressed in text inputs.                                                                                                                                           |
 
 ---
 

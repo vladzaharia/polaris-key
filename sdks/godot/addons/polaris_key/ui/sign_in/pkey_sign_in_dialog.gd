@@ -172,6 +172,10 @@ func _build() -> void:
 	_try_again = button(_actions, "TryAgain", begin, "PKeyPrimary")
 	_copy = button(_actions, "CopyLink", _on_copy)
 	_cancel_btn = button(_actions, "Cancel", _on_cancel)
+	_hint_bar = hint_bar(_info, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": "part.hint.select"}, {"action": PKeyInputGlyphs.BACK, "key": "common.cancel"}])
+
+
+var _hint_bar: PKeyHintBar
 
 
 func _bleeds() -> bool:
@@ -281,6 +285,7 @@ func _column_mode() -> bool:
 
 
 func _arrange(m: Dictionary) -> void:
+	_hint_bar.enabled = state in ["pending", "confirm"]
 	super(m)
 	var phone := phone_bleed()
 	# Squeezed, the header sits a tight gap above the title (DL3: spacing gives way before the code).
@@ -458,6 +463,7 @@ func _render() -> void:
 		status = t.text("sign_in_copied")
 	show_text(_status, status)
 	_status.theme_type_variation = "PKeyError" if failed and not expired else "PKeyMuted"
+	fx_error(status if failed and not expired else "")
 	set_loading(state == "starting")
 	# Never a fragment above the address. With a QR code (a pad) one whole sentence leads and the
 	# address is on a line of its own below it; without one the code leads and the address follows it
@@ -558,6 +564,7 @@ func _on_copy() -> void:
 		return
 	DisplayServer.clipboard_set(prompt.verification_uri_complete)
 	copied = true
+	note_copied()
 	refresh_view()
 
 
@@ -576,16 +583,17 @@ func _on_continue() -> void:
 
 
 func _on_cancel() -> void:
-	if state == "ended":
-		closed.emit()
-		restore_opener()
+	if is_closing():
 		return
-	if sdk != null and sdk.get("identity") != null:
+	var ended := state == "ended"
+	if not ended and sdk != null and sdk.get("identity") != null:
 		sdk.identity.cancel()
-	# Cancelling closes the dialog at once; the flow's own cancelled result changes nothing more.
-	state = "cancelled"
-	closed.emit()
-	restore_opener()
+	# Cancelling closes the dialog (it fades out first); the flow's own cancelled result changes nothing more.
+	close_then(func() -> void:
+		if not ended:
+			state = "cancelled"
+		closed.emit()
+		restore_opener())
 
 
 func _cancel() -> bool:

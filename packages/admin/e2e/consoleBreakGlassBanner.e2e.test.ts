@@ -101,7 +101,7 @@ describe("the break-glass banner in the built console shell", () => {
     async (scheme, width, height) => {
       const { ctx, page } = await shell(true, { width, height }, scheme);
       const banner = page.getByText(
-        "You’re signed in with break-glass. Sign out when you’re done.",
+        /You're using emergency sign-in( until .+)?\. Sign out when you're done\./,
       );
       await banner.waitFor();
       expect(
@@ -132,7 +132,7 @@ describe("the break-glass banner in the built console shell", () => {
       { width: 1440, height: 900 },
       "dark",
     );
-    expect(await page.getByText(/signed in with break-glass/).count()).toBe(0);
+    expect(await page.getByText(/emergency sign-in until/).count()).toBe(0);
     await closeContext(ctx);
   });
 });

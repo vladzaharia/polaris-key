@@ -35,6 +35,7 @@ import androidx.test.core.app.ActivityScenario
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import org.junit.Rule
 import org.junit.Test
 import org.robolectric.RuntimeEnvironment
@@ -105,6 +106,8 @@ internal fun ComposeTestRule.capture(
     settle: Boolean = false,
     /** Real milliseconds to wait for work off the compose clock (an icon decoding) before the capture. */
     waitMs: Long = 0,
+    /** Capture the whole screen, not the activity's root: a dialog's window is not under the root. */
+    screenCapture: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     RuntimeEnvironment.setQualifiers(variant.qualifiers)
@@ -137,7 +140,11 @@ internal fun ComposeTestRule.capture(
             mainClock.autoAdvance = true
             waitForIdle()
         }
-        onRoot().captureRoboImage(filePath = "src/test/snapshots/$name.png", roborazziOptions = snapshotOptions)
+        if (screenCapture) {
+            captureScreenRoboImage(filePath = "src/test/snapshots/$name.png", roborazziOptions = snapshotOptions)
+        } else {
+            onRoot().captureRoboImage(filePath = "src/test/snapshots/$name.png", roborazziOptions = snapshotOptions)
+        }
     }
 }
 
@@ -200,5 +207,56 @@ class PoweredBySnapshotTest {
         }
         rule.capture("powered-by/account-pane-branded-dark", snapshotVariants[2], showPoweredBy = true, content = account)
         rule.capture("powered-by/account-pane-neutral-light", snapshotVariants[0], showPoweredBy = true, content = account)
+    }
+}
+
+/** The update prompt at compact height, as the dialog's 560 dp card (Skip at the start, Later and the verb at the end). */
+@RunWith(org.robolectric.RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35])
+class UpdateCardCompactSnapshotTest {
+    @get:Rule
+    val rule = createEmptyComposeRule()
+
+    @Test
+    fun theCardAtCompactHeight() {
+        val looks = listOf(
+            SnapshotVariant("card-landscape-891x411-polaris-light", PolarisBranding.PolarisKey, dark = false, widthDp = 891, heightDp = 411),
+            SnapshotVariant("card-landscape-640x360-native-dark", PolarisBranding.None, dark = true, widthDp = 640, heightDp = 360),
+        )
+        for (look in looks) rule.capture("updatePrompt-available/${look.name}", look, screenCapture = true) { updateDialog() }
+    }
+}
+
+/**
+ * The update prompt as a phone shows it (UI-KITS.md DL2): the bottom sheet over the host with its
+ * scrim, offered and while downloading, captured as the whole screen because the dialog is a window
+ * of its own. Baselines: updatePrompt-{available,downloading}/sheet-phone-{polaris-light,native-dark}.png.
+ */
+@RunWith(org.robolectric.RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35])
+class UpdateSheetSnapshotTest {
+    @get:Rule
+    val rule = createEmptyComposeRule()
+
+    @Test
+    fun theSheetOfferedAndDownloading() {
+        val looks = listOf(
+            SnapshotVariant("sheet-phone-polaris-light", PolarisBranding.PolarisKey, dark = false),
+            SnapshotVariant("sheet-phone-native-dark", PolarisBranding.None, dark = true),
+        )
+        for (look in looks) {
+            rule.capture("updatePrompt-available/${look.name}", look, screenCapture = true) { updateDialog() }
+            rule.capture("updatePrompt-downloading/${look.name}", look, screenCapture = true) {
+                SampleProduct()
+                PolarisUpdatePromptDialog(
+                    PolarisUpdateUi("2.5.0", currentVersion = "2.4.1", progress = 38_000_000L to 61_000_000L, secondsLeft = 20, outlet = "play"),
+                    onUpdate = {},
+                    onLater = {},
+                    onSkip = {},
+                )
+            }
+        }
     }
 }

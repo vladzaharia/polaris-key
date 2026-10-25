@@ -18,7 +18,7 @@ export function PlatformMeters({
   const rows = platformProgress(view);
   if (rows.length === 0) return null;
   return (
-    <ul aria-label={label} className="space-y-2.5">
+    <ul aria-label={label} className="space-y-2">
       {rows.map((p) => (
         <li key={p.platform} className="space-y-1">
           <p className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">

@@ -1,6 +1,6 @@
 import type { ConfigEntry, UserSettingConflict } from "@polaris-key/catalog";
 
-import type { SchemaType } from "./CatalogEntryForm.js";
+import type { SchemaType } from "./entryDefaults.js";
 import { typeLabel } from "../../../../lib/labels.js";
 
 /** The console's type, over the stored `kind` and `delivery` (U-30). */
@@ -32,23 +32,15 @@ export function inAppHelp(state: string, syncs: boolean): string {
   return state === "default" && syncs ? `${base} Their choice syncs.` : base;
 }
 
-/** The one line under the Type control. */
-export const TYPE_HELP: Record<EntryType, string> = {
-  setting:
-    "A value the app reads, with a default. It can be listed for people to change.",
-  secret:
-    "Write-only. The app reads it in code; it is never listed. Set it per profile or license.",
-  minted: "Signed on request from a recipe. It is never stored or listed.",
-  flag: "An entitlement the license includes.",
-};
-
-/** The two short lines on a Type card. */
-export const TYPE_CARD_HELP: Record<EntryType, string> = {
-  setting: "A value the app reads",
-  secret: "Write-only here. Never listed in the app",
-  minted: "Signed on request from a recipe. Never stored",
-  flag: "An entitlement the license includes",
-};
+/** The short lines on a Type card, in the product's name. */
+export function typeCardHelp(type: EntryType, app = "the app"): string {
+  return {
+    setting: `A value ${app} reads`,
+    secret: `Write-only here. Never listed in ${app}`,
+    minted: "Signed on request from a recipe. Never stored",
+    flag: "An entitlement the license includes",
+  }[type];
+}
 
 /** The In the app row for a type that is never listed. */
 export function codeOnlyText(

@@ -400,6 +400,39 @@ export function ProductShelf({
     </div>
   ) : null;
 
+  // In the Table view the view switch and the overflow menu join the table's one workbench band
+  // (filters, view, columns, density) instead of making a second row above it.
+  const inBand = many && view === "table" && !loading && filtered.length > 0;
+  const viewControls = (
+    <>
+      {phone ? null : (
+        <SegmentedControl
+          size="sm"
+          aria-label="View"
+          options={VIEW_OPTIONS}
+          value={view}
+          onChange={(v) => {
+            setView(v);
+            writePref(PREF_KEYS.homeView, v);
+          }}
+        />
+      )}
+      <ActionMenu
+        label="More product actions"
+        items={[
+          {
+            label: "Export CSV",
+            icon: <Download />,
+            disabledReason:
+              filtered.length === 0 ? "No products to export." : undefined,
+            onSelect: () =>
+              downloadCsv("products.csv", tableCsv(filtered, COLUMNS)),
+          },
+        ]}
+      />
+    </>
+  );
+
   return (
     <section ref={sectionRef} aria-labelledby={headingId} className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -421,35 +454,9 @@ export function ProductShelf({
             </span>
           ) : null}
         </div>
-        {many ? (
+        {many && !inBand ? (
           <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
-            {phone ? null : (
-              <SegmentedControl
-                size="sm"
-                aria-label="View"
-                options={VIEW_OPTIONS}
-                value={view}
-                onChange={(v) => {
-                  setView(v);
-                  writePref(PREF_KEYS.homeView, v);
-                }}
-              />
-            )}
-            <ActionMenu
-              label="More product actions"
-              items={[
-                {
-                  label: "Export CSV",
-                  icon: <Download />,
-                  disabledReason:
-                    filtered.length === 0
-                      ? "No products to export."
-                      : undefined,
-                  onSelect: () =>
-                    downloadCsv("products.csv", tableCsv(filtered, COLUMNS)),
-                },
-              ]}
-            />
+            {viewControls}
           </div>
         ) : null}
       </div>
@@ -511,6 +518,7 @@ export function ProductShelf({
           loading={false}
           exportCsv={false}
           toolbarLead={filters}
+          toolbarActions={viewControls}
           mobile="cards"
         />
       )}

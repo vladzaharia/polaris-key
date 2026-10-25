@@ -5,7 +5,7 @@
 -- `visionOS` as `visionos` and `watchOS` as `watchos` (`src/core/clientMetadata.ts`). Before, it
 -- stored them as sent (rule 3). This converges those rows, in the pattern of
 -- `0040_canonical_client_metadata.sql`. Each statement is idempotent, and replaying the file
--- changes nothing (`test/canonicalClientMetadata.test.ts`). SQLite's `lower()` folds ASCII only,
+-- changes nothing (`test/core/canonicalClientMetadata.test.ts`). SQLite's `lower()` folds ASCII only,
 -- which is §5.2's folding rule.
 
 UPDATE devices SET platform = 'tvos'

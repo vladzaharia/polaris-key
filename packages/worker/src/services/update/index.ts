@@ -28,6 +28,7 @@ import type { AdminSession } from "../../core/console/session.js";
 import { getReleaseConfig } from "../release/config.js";
 import { knownChannels } from "../release/resolve.js";
 import { UPDATE_ROUTES } from "./routes.js";
+import { resolverCompareJob } from "./resolverCompare.js";
 import { handleUpdateAdmin } from "./admin.js";
 import { UPDATE_SETTINGS_SLICE } from "./settings.js";
 
@@ -37,6 +38,7 @@ export const updateService: ServiceDescriptor = {
   slug: "update",
   contributes: {
     integration: updateIntegration,
+    migrations: [resolverCompareJob],
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: UPDATE_SETTINGS_SLICE,

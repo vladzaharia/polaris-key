@@ -65,7 +65,7 @@ export function Section({
       )}
     >
       {settings ? (
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-3 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)">
           <div className="min-w-0 flex-[1_1_8rem] space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <Heading
@@ -96,7 +96,7 @@ export function Section({
         // an action wider than what is left (a phone) wraps under the title.
         <div
           data-card-header=""
-          className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)"
+          className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3 console:min-h-14 console:rounded-t-[inherit] console:bg-(--pk-admin-band)"
         >
           <div className="min-w-0 flex-[1_1_8rem]">
             <div className="flex flex-wrap items-center gap-2">

@@ -45,6 +45,7 @@ import {
   shapeDevice,
 } from "../../core/devices.js";
 import { authorizeDevice, tierExpiresAt } from "../../core/licensing/authz.js";
+import { customerTierId } from "../../core/licensing/implicitTier.js";
 import type { WaitUntil } from "../../core/licensing/refusals.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 
@@ -280,6 +281,6 @@ export async function handleEnroll(
     token: authorized.token,
     schemaVersion: product.schemaVersion,
     device: shapeDevice(authorized.device, deviceId),
-    license: shapeLicense(license),
+    license: shapeLicense(license, await customerTierId(db, license)),
   });
 }

@@ -15,7 +15,13 @@ import type {
 } from "@polaris-key/protocol/license";
 import type { BlockedState } from "@polaris-key/client-core";
 import { BRIDGE_VERSION, resolveBridge } from "../src/desktop/bridge.js";
-import type { BridgeState, PolarisBridge } from "../src/desktop/bridge.js";
+import type {
+  BridgeHost,
+  BridgeState,
+  BridgeUpdateProgress,
+  KitView,
+  PolarisBridge,
+} from "../src/desktop/bridge.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import {
   emptyBridgeState,
@@ -124,7 +130,7 @@ describe("desktopAdapter reads the v2 additions", () => {
     adapter.dispose();
   });
 
-  it("installs the bridge's capability map, and keeps expectServices when absent", async () => {
+  it("installs the bridge's capability map, and keeps expectedServices when absent", async () => {
     const reported = desktopAdapter({
       bridge: makeFakeBridge(
         okBridgeState({
@@ -141,7 +147,7 @@ describe("desktopAdapter reads the v2 additions", () => {
     const silent = desktopAdapter({
       bridge: makeFakeBridge({ activation: "token", doc: makeDoc() }),
       now: () => NOW_SEC,
-      expectServices: services("license"),
+      expectedServices: ["license"],
     });
     await ready(silent);
     expect(silent.snapshot().capabilities).toEqual(services("license"));
@@ -208,7 +214,7 @@ describe("a host-side re-register on 401 (P1b-06)", () => {
     // build that expects it.
     const adapter = desktopAdapter({
       bridge,
-      expectServices: services("config"),
+      expectedServices: ["config"],
       now: () => NOW_SEC,
     });
     await ready(adapter);
@@ -331,5 +337,40 @@ describe("resolveBridge", () => {
 
   it("returns null when neither explicit nor global is present", () => {
     expect(resolveBridge()).toBeNull();
+  });
+});
+
+describe("the optional v4 members of UK-06 (host, onUpdateProgress, onOpen)", () => {
+  it("a v4 state and bridge without them still type-check, and with them too", () => {
+    const host: BridgeHost = {
+      os: "linux",
+      accentColor: "#3584e4",
+      highContrast: false,
+      reducedTransparency: true,
+    };
+    const withHost: BridgeState = { ...emptyBridgeState(), host };
+    const without: BridgeState = emptyBridgeState();
+    expect(withHost.host?.os).toBe("linux");
+    expect(without.host).toBeUndefined();
+
+    const progress: BridgeUpdateProgress = { done: 10, total: 100 };
+    const view: KitView = "update";
+    const seen: Array<BridgeUpdateProgress | KitView> = [];
+    const bridge: PolarisBridge = {
+      ...makeFakeBridge(emptyBridgeState()),
+      onUpdateProgress: (cb) => {
+        cb(progress);
+        return () => {};
+      },
+      onOpen: (cb) => {
+        cb(view);
+        return () => {};
+      },
+    };
+    bridge.onUpdateProgress?.((p) => seen.push(p));
+    bridge.onOpen?.((v) => seen.push(v));
+    expect(seen).toEqual([progress, "update"]);
+    // The unchanged fake has neither: an older host.
+    expect(makeFakeBridge(emptyBridgeState()).onOpen).toBeUndefined();
   });
 });

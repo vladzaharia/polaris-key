@@ -64,6 +64,44 @@ The changelog for one version or many, read from the release service. Notes rend
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** A host places `<ReleaseNotes />` from `@polaris-key/react/kit`, given an `input`.
+
+    **Styled part.** The React kit's `<ReleaseNotes />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("ReleaseNotes", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisKitScreen` draws the changelog when the screen is ReleaseNotes and the rows carry the notes.
+
+    **Styled part.** `PolarisReleaseNotes(screen, notes, onRetry)`: one card per version, the date in the reader's style, notes as plain text.
+
+    **Headless.** `KitStates.resolve(KitComponent.releaseNotes, inputs)` and `KitReleaseNote(version, date, notes)`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.KitComponent
+    import im.plrs.key.ui.KitInputs
+    import im.plrs.key.ui.KitReleaseNote
+    import im.plrs.key.ui.KitStates
+    import im.plrs.key.ui.PolarisReleaseNotes
+
+    @Composable
+    fun MyReleaseNotes(inputs: KitInputs, notes: List<KitReleaseNote>, retry: () -> Unit) {
+        PolarisReleaseNotes(KitStates.resolve(KitComponent.releaseNotes, inputs), notes, onRetry = retry)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

@@ -177,7 +177,7 @@ export function landingShell(environment: string | null): {
 } {
   return {
     title: `Downloads${environment ? ` (${environment})` : ""} · Polaris Locker`,
-    lockups: lockerLockup(BRAND_LOCKUP_HEIGHT.locker, "lockup", true),
+    lockups: lockerLockup(BRAND_LOCKUP_HEIGHT.lockerBar, "lockup", true),
     faviconHref: lockerFaviconHref(),
   };
 }

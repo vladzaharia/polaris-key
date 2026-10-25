@@ -88,6 +88,7 @@ import {
   type ManifestDistribution,
 } from "./distribution.js";
 import { globWork } from "./globWork.js";
+import { withIncludedChannels } from "./includedChannels.js";
 
 /**
  * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
@@ -113,6 +114,19 @@ export {
   type ServiceSlug,
 } from "./services.generated.js";
 
+/** The console's features and their rules (ST-46.1): shared by the New product wizard and `pkey init`. */
+export {
+  FEATURES as MANIFEST_FEATURES,
+  type FeatureId as ManifestFeatureId,
+  type FeatureRow as ManifestFeatureRow,
+} from "./services.generated.js";
+export {
+  featureNeeds,
+  featureUnlocked,
+  servicesForFeatures,
+  toggleFeature,
+} from "./features.js";
+
 /** The distribution-channel catalogue (A-19): generated from `tools/channels.json` by `pnpm gen channels`. */
 export {
   CHANNELS,
@@ -127,6 +141,21 @@ export {
   type ChannelPlane,
   type ChannelStorefrontFacet,
 } from "./channels.generated.js";
+
+/** Product facts, pure (A-20.1): the known-format table, file-to-format, arch fit and channel fit. */
+export {
+  KNOWN_FORMATS,
+  archFits,
+  channelFit,
+  channelFitById,
+  formatOfFile,
+  type ChannelFitResult,
+  type FitBuild,
+  type FitReason,
+  type FormatKind,
+  type KnownFormat,
+  type KnownFormatId,
+} from "./formats.js";
 
 /**
  * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, every
@@ -156,7 +185,7 @@ export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
 /**
  * The requirement rule's codes and messages, one per `requires` edge of the service table
  * (ST-38). Keys are LITERAL on purpose: rule 9's parity sweep reads codes from source, and
- * `test/serviceTable.test.ts` fails when an edge has no literal code here.
+ * `test/core/serviceTable.test.ts` fails when an edge has no literal code here.
  */
 const REQUIREMENT_MESSAGES: ReadonlyMap<string, string> = new Map([
   [
@@ -484,7 +513,8 @@ export interface ManifestRelease {
    * `deliverables.<id>` with `kind: package` (F-03, plans/F-01.md §3.1), by id. `[]` when none is
    * declared. Resync writes one `release_deliverables` row per package (kind `package`, with its
    * ecosystem and name), at most {@link MAX_PACKAGE_DELIVERABLES}. The manifest DECLARES packages;
-   * it never enables a feed (that is operator-owned, `dist_registry_*`).
+   * its ingest only INSERTS a missing feed row at Customers (F-34.2); it never updates,
+   * re-enables or widens one (that is operator-owned, `dist_registry_*`).
    */
   packageDeliverables: ManifestPackageDeliverable[];
 }
@@ -1565,6 +1595,16 @@ export interface ValidationOptions {
    * its platform setting `identity.reservedDisplayNames`; anything else gets the default, `warn`.
    */
   reservedDisplayNames?: ReservedDisplayNamesMode;
+  /**
+   * PX-W13b: extra reserved terms (`identity.reservedDisplayTerms`), added to the code's floor
+   * (`RESERVED_DISPLAY_TERMS`), which stays. The CLI and editors pass none.
+   */
+  reservedDisplayTerms?: readonly string[];
+  /**
+   * PX-W13b: the operator approved this product's display names (`identity.displayNameApproved`).
+   * Clears `reserved_display_name` for this product only; `invalid_display_text` is never cleared.
+   */
+  displayNameApproved?: boolean;
 }
 
 export function validateManifestDocuments(
@@ -2824,7 +2864,11 @@ function validateDocuments(
       opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
     const verdict = (v: unknown): null | "reserved" | "invalid" =>
       typeof v === "string" && v !== ""
-        ? checkDisplayName(v, { slug: productSlug })
+        ? checkDisplayName(v, {
+            slug: productSlug,
+            extraTerms: opts.reservedDisplayTerms,
+            approved: opts.displayNameApproved,
+          })
         : null;
     const listing = isRecord(manifest.distribution)
       ? asRecord(manifest.distribution.listing)
@@ -3164,17 +3208,22 @@ function distributionContext(relRoot: Record<string, unknown> | null): {
   artifactIds: Set<string>;
   channels: Set<string>;
   deliverables: Map<string, string>;
+  buildPlatforms: Set<string>;
 } {
   const rel = relRoot ?? {};
   const declared = asRecord(rel.deliverables);
   const app = asRecord(declared[APP_DELIVERABLE_ID]);
   const artifactIds = new Set<string>();
+  const buildPlatforms = new Set<string>();
   for (const entry of arrayAt(app, "artifacts") ?? []) {
     if (isRecord(entry) && typeof entry.id === "string")
       artifactIds.add(entry.id);
+    if (isRecord(entry) && typeof entry.platform === "string")
+      buildPlatforms.add(entry.platform);
   }
   return {
     artifactIds,
+    buildPlatforms,
     channels: knownChannelNames(rel, Object.keys(asRecord(app.channels))),
     deliverables: new Map(
       distributionDeliverables(relRoot).map((d) => [d.id, d.kind]),
@@ -5288,7 +5337,9 @@ function normalizeTier(raw: unknown): ManifestTier | null {
     policyFingerprint: isOneOf(raw.policyFingerprint, FINGERPRINT_MODE_VALUES)
       ? raw.policyFingerprint
       : null,
-    channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
+    channels: withIncludedChannels(
+      arrayAt(raw, "channels")?.filter(isString) ?? [],
+    ),
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
     maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
     rank:
@@ -6694,12 +6745,15 @@ function add(
 
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
+export { withIncludedChannels } from "./includedChannels.js";
 export * from "./packages.js";
 // The one product slug rule (P0-14).
 export * from "./productSlug.js";
 export * from "./feedSetup.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
+// A-25.1: the one `outlets` entry a channel adds to `.pkey/distribution`.
+export * from "./outletBlock.js";
 export * from "./assets.js";
 export * from "./releaseKeys.js";
 // Human-readable build and artifact labels: platform and architecture, together.
@@ -6714,3 +6768,5 @@ export * from "./displayName.js";
 export * from "./spellings.js";
 // The licence-key format, shared by the portal and the console (P0-35).
 export * from "./licenseKey.js";
+// A-32.2: the release workflow text, one renderer for the console, the setup PR and the docs.
+export * from "./ciWorkflow.js";

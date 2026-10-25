@@ -74,7 +74,7 @@ def activate(client: PolarisKeyClient, key: str) -> Optional[str]:
         return None
     text = activation_message(r.kind, code=r.code)
     if isinstance(r, ActivationDeviceLimit) and r.manage_url:
-        # Replace a device: Polaris Locker frees a seat. Nothing was wiped.
+        # Replace a device: Polaris Locker makes room for another device. Nothing was wiped.
         return f"{text} {with_manage_return(r.manage_url, 'myapp://activated')}"
     if isinstance(r, ActivationRateLimited) and r.retryAfterSeconds:
         return f"{text} ({r.retryAfterSeconds}s)"
@@ -84,7 +84,7 @@ def activate(client: PolarisKeyClient, key: str) -> Optional[str]:
 | `kind`                                                              | Meaning                                        | Offer                                 |
 | ------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------- |
 | `unauthorized`                                                      | The key was not accepted                       | Retry                                 |
-| `device-limit`                                                      | Every seat is taken                            | `manage_url`, then retry the same key |
+| `device-limit`                                                      | The device limit is reached                    | `manage_url`, then retry the same key |
 | `license-expired`, `license-disabled`                               | The license ended or an operator disabled it   | Renew, or contact the developer       |
 | `hardware-mismatch`, `fingerprint-required`, `attestation-required` | The device check failed                        | Retry; `changed` lists what moved     |
 | `enroll-disabled`, `enroll-claimed`                                 | No free license, or it is on an account        | Key entry, or sign in                 |
@@ -263,7 +263,7 @@ tmp = tempfile.mkdtemp()
 client = PolarisKeyClient.create(
     product_slug="acme",
     version="1.0.0",
-    trust={"acme-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"},
+    pinned_keys={"acme-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"},
     expected_services=["license"],
     store=InMemoryStore(),
     config_dir=tmp,

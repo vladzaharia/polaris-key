@@ -119,3 +119,29 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Console fields from the registry (terms list under Identity & access; operator-only approval on product sign-in settings)
 - Tests: extra term reserved in all three places; approved product passes; THREAT-MODEL spoofed-app-name row amended
 - Rerun gate
+
+## As built (first slice)
+
+- Validator: `checkDisplayName` takes `approved`; `ValidationOptions` takes `reservedDisplayTerms` and
+  `displayNameApproved`. No new code, so no new mutation row; schema unchanged (schema-parity green).
+- Worker: `core/accounts/reservedDisplayNames.ts` reads both settings (`displayNameOptions`,
+  `displayCheckOptions`) for deploy hook, link, resync, listing claims and the card (client record
+  and device approval). Core cannot import Identity's slice, so `mount.ts` hands it the registry
+  (`setDisplayNameRegistry`). A product being created has no approval at its first ingest.
+- Both `pending` markers removed; readers named. THREAT-MODEL amended. Tests:
+  `packages/worker/test/displayNamePolicy.test.ts`, manifest `displayName.test.ts`.
+- **Deferred (follow-up slice):** the platform terms list editor in Platform -> Settings (the
+  platform settings route serves only switch, integer and enum; it needs a list kind, an alias
+  or a route entry, and an admin row with screenshots and the layout e2e). The product approval
+  is served by the generic product-settings API now that it is live; its admin presentation
+  needs the same UX review.
+
+## Fix round (review)
+
+- Link-existing (`services/release/linkExisting.ts`) and create-from-documents
+  (`core/ingest/fromDocuments.ts`) now parse with `displayNameOptions`, so ingest agrees with the
+  sign-in card on every path. A product being created has no approval; it reads `false`.
+  Tests: `displayNamePolicy.test.ts` (link-existing and create-from-documents).
+- The console editors (the Platform -> Settings terms-list editor and the product approval's admin
+  presentation) are deferred to a follow-up; the green-gate box stays unticked until then.
+- The approval is per product (Q4): it covers every name the product uses, not one name.

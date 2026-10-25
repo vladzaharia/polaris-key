@@ -42,7 +42,7 @@ func _persist_and_reload(t: PKeyTestContext) -> void:
 	var cfg: PKeyConfig = sdk.config
 	var r := cfg.set_value("dice.animSpeed", 2.0)
 	t.check("local: set_value succeeds and returns the stored value", r.ok and r.detail == 2.0, str(r))
-	t.check("local: the value is live, sourced local", cfg.get_value("dice.animSpeed") == 2.0 and cfg.get_source("dice.animSpeed") == &"local")
+	t.check("local: the value is live, sourced local", cfg.get_value("dice.animSpeed") == 2.0 and cfg.get_config_source("dice.animSpeed") == &"local")
 	t.check("local: it is written to the settings file", _read(path, "dice", "animSpeed") == 2.0)
 	# An integer key given a whole float (what Godot's JSON hands back) is stored as an int, at
 	# the catalog accessor's location.
@@ -54,7 +54,7 @@ func _persist_and_reload(t: PKeyTestContext) -> void:
 	sdk.queue_free()
 
 	var again: Node = await _sdk(path)
-	t.check("local: the overrides survive a restart", again.config.get_value("dice.animSpeed") == 2.0 and again.config.get_source("dice.animSpeed") == &"local" and again.config.get_value("audio.musicVolume") == 40 and again.config.get_value("ui.theme") == "light")
+	t.check("local: the overrides survive a restart", again.config.get_value("dice.animSpeed") == 2.0 and again.config.get_config_source("dice.animSpeed") == &"local" and again.config.get_value("audio.musicVolume") == 40 and again.config.get_value("ui.theme") == "light")
 	var h: PKeyConfigSetting = again.config.setting("dice.animSpeed")
 	t.check("local: setting(key) reads the persisted value", h.value == 2.0 and h.source == &"local" and h.is_local() and not h.locked)
 	t.check("local: setting(key) is one handle per key", again.config.setting("dice.animSpeed") == h)
@@ -78,8 +78,11 @@ func _clear(t: PKeyTestContext) -> void:
 	var seen: Array = []
 	cfg.config_changed.connect(func(keys): seen.append(keys))
 
+	var events: Array = []
+	sdk.event.connect(func(k, d): events.append([k, d]))
 	var r := cfg.clear("dice.animSpeed")
-	t.check("clear: the override is gone and the remote default answers", r.ok and cfg.get_value("dice.animSpeed") == 1.25 and cfg.get_source("dice.animSpeed") == &"remote-default")
+	t.check("clear: one config event with value, previous and source", events == [[PKeyConstants.EventKind.CONFIG, {"key": "dice.animSpeed", "value": 1.25, "previous": 3.0, "source": "remote-default"}]], str(events))
+	t.check("clear: the override is gone and the remote default answers", r.ok and cfg.get_value("dice.animSpeed") == 1.25 and cfg.get_config_source("dice.animSpeed") == &"remote-default")
 	t.check("clear: removed from the file", not _has(path, "dice", "animSpeed"))
 	t.check("clear: one config_changed", seen == [PackedStringArray(["dice.animSpeed"])], str(seen))
 	r = cfg.clear("dice.animSpeed")
@@ -89,11 +92,11 @@ func _clear(t: PKeyTestContext) -> void:
 	r = cfg.clear_all()
 	t.check("clear_all: every known override is cleared", r.ok and r.detail == PackedStringArray(["audio.musicVolume", "ui.theme"]), str(r.detail))
 	t.check("clear_all: one config_changed for all of them", seen.size() == 2 and seen[1] == PackedStringArray(["audio.musicVolume", "ui.theme"]), str(seen))
-	t.check("clear_all: the values fall back", cfg.get_source("audio.musicVolume") == &"fallback" and cfg.get_value("audio.musicVolume") == 80 and cfg.get_value("ui.theme") == "dark")
+	t.check("clear_all: the values fall back", cfg.get_config_source("audio.musicVolume") == &"fallback" and cfg.get_value("audio.musicVolume") == 80 and cfg.get_value("ui.theme") == "dark")
 	t.check("clear_all: the game's own settings stay in the file", _read(path, "video", "vsync") == true and not _has(path, "audio", "music_volume") and not _has(path, "ui", "theme"))
 	r = cfg.clear_all()
 	t.check("clear_all: nothing to clear is silent", r.ok and r.detail.is_empty() and seen.size() == 2, str(seen))
-	t.check("clear: set_value(key, null) clears", cfg.set_value("ui.theme", "light").ok and cfg.set_value("ui.theme", null).ok and cfg.get_source("ui.theme") == &"fallback")
+	t.check("clear: set_value(key, null) clears", cfg.set_value("ui.theme", "light").ok and cfg.set_value("ui.theme", null).ok and cfg.get_config_source("ui.theme") == &"fallback")
 	sdk.queue_free()
 	PKeyTestFixtures.remove_tree(dir)
 
@@ -123,7 +126,7 @@ func _type_mismatch(t: PKeyTestContext) -> void:
 	for c in cases:
 		var r := cfg.set_value(c[1], c[2])
 		t.check("type: %s is refused invalid-options" % c[0], not r.ok and r.code == PKeyErrors.INVALID_OPTIONS and r.message.contains(c[1]), str(r))
-	t.check("type: nothing was written", not FileAccess.file_exists(path) and cfg.get_source("dice.animSpeed") == &"fallback")
+	t.check("type: nothing was written", not FileAccess.file_exists(path) and cfg.get_config_source("dice.animSpeed") == &"fallback")
 	t.check("type: a refusal emits nothing", seen.is_empty(), str(seen))
 	t.check("type: the boundaries are inclusive", cfg.set_value("dice.animSpeed", 4).ok and cfg.set_value("dice.animSpeed", 0.25).ok and cfg.set_value("audio.musicVolume", 0).ok)
 	t.check("type: an integer is a valid number", cfg.set_value("dice.animSpeed", 2).ok and cfg.get_value("dice.animSpeed") == 2)
@@ -210,7 +213,7 @@ func _memory_when_not_persisted(t: PKeyTestContext) -> void:
 	sdk.config.env = S.env_from({})
 	t.check("memory: no store before the first write", sdk.config.get_override_store() == null)
 	var r: PKeyResult = sdk.config.set_value("dice.animSpeed", 2.0)
-	t.check("memory: the write applies for the session", r.ok and sdk.config.get_value("dice.animSpeed") == 2.0 and sdk.config.get_source("dice.animSpeed") == &"local")
+	t.check("memory: the write applies for the session", r.ok and sdk.config.get_value("dice.animSpeed") == 2.0 and sdk.config.get_config_source("dice.animSpeed") == &"local")
 	t.check("memory: in a memory table, not a file", sdk.config.get_override_store() != null and not (sdk.config.get_override_store() is PKeyConfigFileStore))
 	sdk.queue_free()
 

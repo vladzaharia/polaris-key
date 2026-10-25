@@ -7,7 +7,7 @@ type: "reference"
 lastReviewed: "2026-10-16"
 ---
 
-The license document is the signed statement of what a seat grants. It is the **only** carrier of
+The license document is the signed statement of what a device may do. It is the **only** carrier of
 grant data in the system: the config document carries settings and secrets and no license fields
 at all, which is the wire-level guarantee that a product can take either service without the
 other.
@@ -139,14 +139,14 @@ without it does. Read it with `licenseUserOf(doc)` from `@polaris-key/client-cor
 
 Catalog-declared `flag` entries, plus the policy the server injects as **enforced** entries:
 
-| Key                 | Value                                                                |
-| ------------------- | -------------------------------------------------------------------- |
-| `license.tier`      | The license's tier id. Absent when the license has no tier.          |
-| `license.tierLabel` | The tier's human label, when it has one.                             |
-| `channels`          | The union of the tier's and the license's entitled release channels. |
-| `app.minVersion`    | The tighter (higher) of the tier's and the license's minimum.        |
-| `app.maxVersion`    | The tighter (lower) of the tier's and the license's maximum.         |
-| `deviceLimit`       | The tier's seat count. The same number the seat check enforces.      |
+| Key                 | Value                                                                     |
+| ------------------- | ------------------------------------------------------------------------- |
+| `license.tier`      | The license's tier id. Absent when the license has no tier.               |
+| `license.tierLabel` | The tier's human label, when it has one.                                  |
+| `channels`          | The union of the tier's and the license's entitled release channels.      |
+| `app.minVersion`    | The tighter (higher) of the tier's and the license's minimum.             |
+| `app.maxVersion`    | The tighter (lower) of the tier's and the license's maximum.              |
+| `deviceLimit`       | The tier's device limit. The same number the device-limit check enforces. |
 
 Every injected entry is `state: "enforced"` and carries `updatedAt` from the license row's
 `modified_at`, which is what makes [re-licensing](/docs/features/licensing/relicensing/) detectable
@@ -182,7 +182,7 @@ unchanged license collapses to the same tag on every request and the client's `I
 gets a `304`. A differing tag therefore means the **content** genuinely differs, which is exactly
 the signal an SDK's change callback fires on.
 
-`test/relicense.test.ts` pins both directions: the tag changes when a tier changes, and it stays
+`test/surfaces/console/relicense.test.ts` pins both directions: the tag changes when a tier changes, and it stays
 stable across two fetches when nothing changed.
 
 Tags are **per document** by construction. The license and config documents carry independent

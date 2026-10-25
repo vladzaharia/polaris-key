@@ -44,7 +44,7 @@ The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` reso
 
 1. **Product**: your product slug, and the **Base URL** (default `https://key.plrs.im`).
 2. **Pinned trust keys**: paste the Godot line `pkey trust` prints
-   (`pinned_trust_keys = {...}`) or copy the keys from the console. Pins are compiled in
+   (`pinned_keys = {...}`) or copy the keys from the console. Pins are compiled in
    and never learned: **Fill from discovery** only pre-fills candidates.
 3. **Check** fetches the live trust manifest, verifies it against the pins and lists each key id
    with a SHA-256 fingerprint. Compare them with `pkey trust` or the console, tick the
@@ -112,6 +112,23 @@ richer result class; nothing throws. The autoload's signals are `state_changed(s
 `sync_finished(result)`, `store_error(err)`, `boot_finished(result)` and
 `verify_progress(fraction)`.
 
+`event(kind, data)` is the one stream of what changed, raised beside those signals once
+`configure()` has run. `kind` is a `PKeyConstants.EventKind` value and `data` a Dictionary:
+
+| kind              | `data`                                  | beside                                 |
+| ----------------- | --------------------------------------- | -------------------------------------- |
+| `license`         | `{status, previous}`                    | `state_changed`                        |
+| `config`          | `{key, value, previous, source}`        | `config.config_changed`, one per key   |
+| `updateAvailable` | `{version, action, mandatory, channel}` | `update.update_available` (`decide()`) |
+| `packs`           | `{pack, phase, done, total}`            | `update.packs.pack_progress`           |
+| `store`           | `{reason, detail}`                      | `store_error`                          |
+
+```gdscript
+PolarisKey.event.connect(func(kind, data): print(kind, data))
+```
+
+`entitlement` and `cloudSync` follow with their features.
+
 ## A tour
 
 One `PolarisKey` autoload, one sub-object per service, in the same shape as every other SDK
@@ -127,16 +144,16 @@ var key := ""
 var r := await PolarisKey.license.activate_with_key(key)    # a PKeyActivationResult
 if not r.ok: print(PKeyUiCopy.shared().for_code(r.code)) # words for r.code, never a raw body
 await PolarisKey.license.enroll()                # keyless: the device's free license
-if PolarisKey.license.is_entitled("soundtrack"): print("soundtrack unlocked")
-PolarisKey.license.get_entitlements()            # {name: value}
+if PolarisKey.entitlements.has("soundtrack"): print("soundtrack unlocked")
+PolarisKey.entitlements.all()            # {name: value}
 await PolarisKey.license.deactivate()
 PolarisKey.state_changed.connect(func(s): print(s["status"]))
 ```
 
 `PolarisKey.status()` is the gate's state: `status` is `ok`, `grace`, `expired`, `revoked`,
 `needs-activation` or a block reason, or `not-applicable` for a product without License, where
-`is_licensed()` is true. `is_entitled(name)` is true only while the gate is usable: a revoked
-or expired license unlocks nothing, even though `get_entitlements()` still reads the last verified
+`is_licensed()` is true. `entitlements.has(name)` is true only while the gate is usable: a revoked
+or expired license unlocks nothing, even though `entitlements.all()` still reads the last verified
 values. A 401 during a sync re-acquires the token once. `expired` is the cached license document
 outliving its grace window with no successful sync (a device that stayed offline too long): the
 player sees "Connect to keep playing" with Use another license, and Renew when the game sets the gate's `renew_url` (https) or connects `renew_requested`; never Try again. It is not how a license whose term ended
@@ -195,7 +212,7 @@ is the drop-in screen. Details in [Identity](#identity-polariskeyidentity).
 ```gdscript
 var check := await PolarisKey.update.decide()        # the signed feed and release record
 if check.ok and check.decision["action"] != "none":
-	await PolarisKey.update.apply(check)             # what the outlet allows: a store link, a download, a swap
+	await PolarisKey.update.install(check)             # what the outlet allows: a store link, a download, a swap
 var notes := await PolarisKey.release.changelog()
 ```
 
@@ -240,7 +257,7 @@ commerce listens to `PKeyApple.transaction_updated` and claims each new transact
 arrives, finishes it after the claim, syncs, and emits `app_store_update_claimed(result)`
 (refunds are not claimed; a failed claim stays unfinished for StoreKit to redeliver).
 `restore()` re-claims App Store current entitlements and owned Steam DLC. The lower-level
-`get_binding()`, `claim(store, payload)` and `claim_app_store(tx)` stay available.
+`binding()`, `claim(store, payload)` and `claim_app_store(tx)` stay available.
 
 ### Distribution and crash tags
 
@@ -424,8 +441,8 @@ other kits read (`ui/model/`), each following that model's state for state:
   sets `host_handles`, listens to `rename_requested` / `remove_requested` and answers
   `edit_succeeded()` / `edit_failed()`.
 - **`PKeyLicenseChoice`** (LicenseChoice). Rows carry the tier, the origin and term ("Added with a key
-  · Lifetime"), a seat meter with its count and the "On this device" and "All devices in use" tags;
-  **Use this license and continue** is the one primary (`chosen({kind, id})`). A full license is not a
+  · Lifetime"), a device meter with its count and the "On this device" and "All devices in use" tags;
+  **Use this license** is the one primary (`chosen({kind, id})`). A full license is not a
   choice: its action is **Replace a device** (`replace_requested`). `show_choices(view)` takes the
   sign-in session's LicenseChoiceView; `PKeyGateView.show_license_choice(view)` shows it as the gate's
   own screen and `license_chosen` carries the answer.
@@ -509,12 +526,12 @@ plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
 - **Web** needs the product's origin in the Worker's CORS allowlist. A web build has no
   fingerprint, no keyless enrolment and no `strict` tiers. `user://` is IndexedDB in memory,
   which the browser may clear: that mints a new device id. Keep large packs out of `user://`.
-  **Clearing site data can consume a seat**: the device token goes with it, and with no
+  **Clearing site data can use up a device**: the device token goes with it, and with no
   fingerprint the server cannot tell the browser is the same device, so entering the key again
   activates a new device against the license's device limit. The old one stays listed until it
   is freed in the customer portal (Devices) or in the console. The addon cannot reuse the old
   token on re-entry: `license/token` needs the old bearer and device id, and the clear took
-  both. Avoiding the extra seat needs a server-side rebind by key (not available yet).
+  both. Avoiding the extra device needs a server-side rebind by key (not available yet).
 - **Device-code sign-in sends no fingerprint**, so a `strict` tier refuses that path.
 - **Secrets are not secret in a game.** A `clientScoped` secret is readable by anyone with the
   build (and on web by any same-origin script); use edge-mint (`mint_token`) for third-party API
@@ -610,12 +627,13 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   `PKeyOptions.build_stamp_path = ""` ignores the stamp (the tests do).
 - The setup dock (right dock; `add_dock` on 4.6+, `add_control_to_dock` on 4.4) edits
   `res://polaris_key.tres`: product, base URL, pinned keys pasted from `pkey trust` (its Godot
-  line is `const PINNED_TRUST_KEYS := {...}`), editor channel. "Check" verifies the live trust
+  line is `const PINNED_TRUST_KEYS := {...}`), editor channel (`product_slug` and `pinned_keys` in the file). "Check" verifies the live trust
   manifest against the pasted pins and lists each kid with a SHA-256 fingerprint. "Fill from
   discovery" only pre-fills candidates; "Save" needs the box confirming the pins match
   `pkey trust` or the console. Its tools (`editor/setup_tools.gd`, PKeySetupTools) build the
   `pkey sdk --lang godot --write` and `pkey mirror --lang gdscript` command lines, run them
   through the platform shell and add `pkey_packs/*` to the export presets.
+  A `polaris_key.tres` that still holds the pre-0.9 `product` or `pinned_trust_keys` shows "uses names removed in 0.9. Save rewrites it." and pre-fills the product and the pins from the old lines; the confirmation box stays unticked until you compare the pins, and Save writes only `product_slug` and `pinned_keys`. An export with such a file logs an error and continues.
 
 ## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`)
 
@@ -659,7 +677,7 @@ func _ready() -> void:
   show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
   Floors never stop play; a CI-signed revocation of a REQUIRED pack does: decide is then `required` and the boot stops at a confirmed BLOCKED
   `update-required` with the revoked-content copy ("Content withdrawn": "Some of this game's
-  content was withdrawn by its developer and can't be used. Update the app to keep playing."),
+  content was withdrawn by its developer and can't be used. Update the game to keep playing."),
   with the update button when the answer is an offer and none for `blocked`. A `packs` answer is
   `none`; fetch and mount drive packs (see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
   cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or
@@ -770,7 +788,7 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
 ```
 
 - **Account calls.** `current()` reads the signed-in person off the verified license's profile.
-  `sign_out()` cancels any sign-in, forgets the identity and releases the seat through
+  `sign_out()` cancels any sign-in, forgets the identity and stops counting the device through
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
   `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
   with browser": device code with the verification page opened in the system browser. A native
@@ -811,8 +829,8 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   token came from `devices.register()` in this process; otherwise it asks `POST /license/token`.
   The token's source is held in memory only, so after a restart a licensed product's device asks
   `license/token`. One attempt per sync pass, whichever route.
-- **When every seat is taken.** A device-limit `PKeyActivationResult` carries `manage_url`, the
-  customer-portal link that frees a seat (the wire contract, v4), validated, and only while the
+- **When the device limit is reached.** A device-limit `PKeyActivationResult` carries `manage_url`, the
+  customer-portal link that makes room for another device (the wire contract, v4), validated, and only while the
   product's portal is on. It is never an auth failure. `PKeyManage.with_key(url, key)` adds
   `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
   `PKeyActivationPanel` shows **Replace a device** under the error: a button that calls
@@ -1006,7 +1024,7 @@ host is built client-side): `kind` is `appcast`, `winsparkle`, `velopack`, `appI
 PolarisKey.update.update_available.connect(func(r):
 	if r is PKeyUpdateCheck: ($PKeyUpdatePrompt as PKeyUpdatePrompt).show_result(r))   # PKeyBoot does this itself
 var check := await PolarisKey.update.decide()
-var applied := await PolarisKey.update.apply(check)    # what the prompt's button does
+var applied := await PolarisKey.update.install(check)    # what the prompt's button does
 await PolarisKey.update.restart_to_update()            # code-ready: "Restart now"
 PolarisKey.update.confirm_boot()                       # optional: the game is clearly running
 ```

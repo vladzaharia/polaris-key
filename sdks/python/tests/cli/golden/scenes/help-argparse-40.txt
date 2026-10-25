@@ -7,8 +7,8 @@ positional arguments:
                 (prompted, or piped on
                 stdin)
     deactivate  Stop using your license
-                on this device and free
-                its seat
+                on this device and make
+                room for another
     status      Show your license,
                 devices and offline time
     login       Sign in with your

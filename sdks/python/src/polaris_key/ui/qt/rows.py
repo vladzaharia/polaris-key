@@ -16,12 +16,14 @@ tags, the same order, under UI-KITS §4.1 and §4.3 (inset grouped lists, 64 px 
 
 from __future__ import annotations
 
+import datetime as _dt
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ..core.copy import Copy
 from ..core.format import relative_days
+from ..core.ui_choice import origin_key
 from ..core.ui_view import View, bidi_isolate
 
 __all__ = [
@@ -61,6 +63,12 @@ class RowData:
     device_code: Mapping[str, Any] = field(default_factory=dict)
     #: What the key field holds (``keyField.text``): the key the person typed or pasted.
     key_text: str = ""
+    #: The sign-in grant's roster (LicenseChoice: ``choices``) and the device list a Replace opens
+    #: (``replaceView``), as the ui-matrix inputs carry them; ``pick`` is the host's choice by name
+    #: (``"create"``) when it is not a licence id.
+    choices: Mapping[str, Any] = field(default_factory=dict)
+    replace_view: Mapping[str, Any] = field(default_factory=dict)
+    pick: str = ""
 
 
 def _maps(value: Any) -> Tuple[Mapping[str, Any], ...]:
@@ -101,6 +109,9 @@ def row_data(source: Any) -> RowData:
             form_factor=str(platform.get("formFactor") or "computer"),
             device_code=_map(source.get("deviceCode")),
             key_text=str(_map(source.get("keyField")).get("text") or ""),
+            choices=_map(source.get("choices")),
+            replace_view=_map(source.get("replaceView")),
+            pick=selected if isinstance(selected, str) else "",
         )
     name = type(source).__name__
     if name == "SettingsView":
@@ -729,6 +740,8 @@ _LICENSE_KEYS = frozenset(
 
 
 def _licenses(view: View, copy: Copy, data: RowData, args: Mapping[str, Any], selected_id: Optional[str]) -> Optional[RowsSpec]:
+    if data.choices or data.replace_view:
+        return _roster(view, copy, data, args, selected_id)
     if not data.licenses or view.component != "LicenseChoice" or view.state not in ("many", "one", "all-full", "mixed"):
         return None
     ids = [str(lic.get("id", i)) for i, lic in enumerate(data.licenses)]
@@ -770,6 +783,152 @@ def _licenses(view: View, copy: Copy, data: RowData, args: Mapping[str, Any], se
         groups=(Group("licenses", tuple(rows), radio=True, heading=copy("signin.choice.group", product=args.get("product", ""))),),
         consumed=_LICENSE_KEYS,
         title_key="signin.choice.title",
+    )
+
+
+_MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
+_ROSTER_KEYS = _LICENSE_KEYS | frozenset(
+    (
+        "signin.choice.keep signin.choice.keepMeta signin.choice.create signin.choice.createMeta "
+        "signin.choice.tag.new signin.choice.metaNew signin.replace.meta signin.replace.leastRecent "
+        "signin.replace.activeNow signin.replace.thisBrowser"
+    ).split()
+)
+_ROSTER_STATES = ("many", "one", "current", "mixed", "keep", "create", "new", "all-full", "raced", "replace-open")
+
+
+def _date(copy: Copy, seconds: Any) -> str:
+    """A day as the person reads it: ``Jan 1, 2027`` in English, else the ISO date (no guessing a
+    locale's order)."""
+    value = _int(seconds)
+    if value is None:
+        return ""
+    day = _dt.datetime.fromtimestamp(value, _dt.timezone.utc)
+    if copy.locale.split("-")[0] == "en":
+        return f"{_MONTHS[day.month - 1]} {day.day}, {day.year}"
+    return day.strftime("%Y-%m-%d")
+
+
+def _roster_origin(copy: Copy, choice: Mapping[str, Any], args: Mapping[str, Any]) -> str:
+    key = origin_key(choice)
+    if key == "signin.choice.origin.store" and not choice.get("store"):
+        return ""  # "From {store}" with no store named is not a sentence (DL8)
+    text = copy(key, developer=args.get("developer") or "", store=choice.get("store") or "")
+    return "" if "{" in text else text
+
+
+def _roster(view: View, copy: Copy, data: RowData, args: Mapping[str, Any], selected_id: Optional[str]) -> Optional[RowsSpec]:
+    """LicenseChoice from the grant roster (``choices``): licence rows with the seat meter, the
+    keep and create rows beside them (never merged into one outcome), and the Replace a device list."""
+    if view.state not in _ROSTER_STATES:
+        return None
+    if view.state == "replace-open":
+        return _replace_list(view, copy, data, args, selected_id)
+    roster = data.choices
+    licences = list(_maps(roster.get("choices")))
+    ids = [str(c.get("id", i)) for i, c in enumerate(licences)]
+    usable = [ids[i] for i, c in enumerate(licences) if c.get("state") != "full"]
+    rows: List[Row] = []
+    for i, c in enumerate(licences):
+        full = c.get("state") == "full"
+        seats = _map(c.get("seats"))
+        seat = _seat(copy, seats.get("used"), seats.get("limit"), caption=False)
+        term = copy("signin.term.until", date=_date(copy, c["expiresAt"])) if c.get("expiresAt") is not None else copy("signin.term.lifetime")
+        tier = c.get("name") if isinstance(c.get("name"), str) and c.get("name") else c.get("tierName")
+        origin = _roster_origin(copy, c, args)
+        rows.append(
+            Row(
+                ids[i],
+                "license",
+                title=bidi_isolate(str(tier or origin)),
+                meta=" · ".join(p for p in (origin if tier else "", term) if p),
+                tag=copy("signin.choice.tag.full") if full else copy("signin.choice.tag.current") if c.get("current") is True else "",
+                value=copy("signin.choice.devices", used=seats.get("used"), limit=seats.get("limit")) if seat is not None else "",
+                radio=not full,
+                selected=False,
+                enabled=not full,
+                seat=seat,
+                name=str(tier or origin),
+            )
+        )
+    create = _map(roster.get("create"))
+    if roster.get("state") == "autoIssue" and create:
+        rows = [
+            Row(
+                "new",
+                "license",
+                title=bidi_isolate(str(create.get("tierName") or args.get("product") or "")),
+                meta=copy("signin.choice.metaNew"),
+                tag=copy("signin.choice.tag.new"),
+                radio=True,
+                selected=True,
+                name=str(create.get("tierName") or ""),
+            )
+        ]
+        ids = ["new"]
+    else:
+        if roster.get("keep") is True:
+            rows.insert(0, Row("keep", "license", title=copy("signin.choice.keep"), meta=copy("signin.choice.keepMeta", product=args.get("product", "")), radio=True, name=copy("signin.choice.keep")))
+            ids.insert(0, "keep")
+        if create:
+            rows.append(Row("create", "license", title=copy("signin.choice.create"), meta=copy("signin.choice.createMeta"), radio=True, name=copy("signin.choice.create")))
+            ids.append("create")
+        wanted = {"keep": "keep", "create": "create"}.get(view.state)
+        current = next((ids[i] for i, c in enumerate(licences) if c.get("current") is True and c.get("state") != "full"), None)
+        pre = roster.get("preselected")
+        chosen = next(
+            (x for x in (selected_id, data.pick, wanted, pre, current, usable[0] if usable else None) if x in ids), None
+        )
+        rows = [replace(r, selected=r.id == chosen) for r in rows]
+    heading = copy("signin.choice.group", product=args.get("product", "")) if len(rows) > 1 else ""
+    return RowsSpec(groups=(Group("licenses", tuple(rows), radio=True, heading=heading),), consumed=_ROSTER_KEYS, title_key="signin.choice.title")
+
+
+def _replace_list(view: View, copy: Copy, data: RowData, args: Mapping[str, Any], selected_id: Optional[str]) -> Optional[RowsSpec]:
+    """Replace a device, in place: the license's devices as a radio list, the least recent first."""
+    devices = list(_maps(data.replace_view.get("devices")))
+    if not devices:
+        return None
+    ids = [_device_id(d, i) for i, d in enumerate(devices)]
+    least = next((i for i, d in enumerate(devices) if d.get("leastRecent") is True and d.get("thisBrowser") is not True), None)
+    chosen = selected_id if selected_id in ids and devices[ids.index(selected_id)].get("thisBrowser") is not True else (ids[least] if least is not None else None)
+    seats = _map(data.replace_view.get("seats"))
+    rows: List[Row] = []
+    for i, d in enumerate(devices):
+        here = d.get("thisBrowser") is True
+        label = copy("signin.replace.thisBrowser") if here else (_name({"name": d.get("label")}) or copy("devices.unnamed"))
+        platform = _platform(copy, d.get("platform"))
+        meta = (
+            copy("signin.replace.activeNow")
+            if d.get("activeNow") is True
+            else copy("signin.replace.meta", platform=platform, when=_date(copy, d.get("lastSeen"))) if platform and d.get("lastSeen") is not None else platform
+        )
+        rows.append(
+            Row(
+                ids[i],
+                "device",
+                title=bidi_isolate(label),
+                meta=meta,
+                tag=copy("signin.replace.leastRecent") if i == least else "",
+                glyph=_glyph(d.get("deviceType"), d.get("platform")),
+                glyph_label=copy("a11y.formFactor", formFactor=d.get("deviceType") or "other"),
+                radio=True,
+                selected=ids[i] == chosen,
+                enabled=not here,
+                name=label,
+            )
+        )
+    pick = devices[ids.index(chosen)] if chosen is not None else None
+    extra: Dict[str, Any] = {"thisDevice": copy("part.thisDevice", formFactor=data.form_factor)}
+    if pick is not None:
+        extra["device"] = bidi_isolate(_name({"name": pick.get("label")}) or copy("devices.unnamed"))
+    return RowsSpec(
+        groups=(Group("replace", tuple(rows), radio=True),),
+        seat=_seat(copy, seats.get("used"), seats.get("limit"), caption=False),
+        consumed=_ROSTER_KEYS,
+        before=("signin.replace.open",),
+        after=("signin.replace.consequence",),
+        args=extra,
     )
 
 
@@ -855,6 +1014,18 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
                 seat=seat,
             )
         )
+    # An account page that holds the devices and settings panes links to them: a Review button on a row.
+    review = copy("common.review")
+    if acct.get("devicesPage") is True and "account.devices" in keys:
+        link = RowAction("common.review", review, "open-devices", name=review + " " + copy("account.devices"))
+        existing = next((r for r in main if r.id == "devices"), None)
+        if existing is not None:
+            main[main.index(existing)] = replace(existing, actions=(link,))
+        else:
+            main.append(Row("devices", "account", title=copy("account.devices"), actions=(link,)))
+    if acct.get("settingsPage") is True:
+        link = RowAction("common.review", review, "open-settings", name=review + " " + copy("settings.title"))
+        main.append(Row("settings", "account", title=copy("settings.title"), actions=(link,)))
     updates: List[Row] = []
     auto = acct.get("autoUpdate")
     if isinstance(auto, bool) and "account.autoUpdate" in keys:
@@ -872,7 +1043,27 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
             )
         )
     channel = _text(acct.get("channel"))
-    if channel and "account.channel" in keys:
+    picker = _map(acct.get("channelPicker"))
+    if picker and channel and "account.channel" in keys:
+        # The ChannelPicker (UI-KITS §4.1): a choice, or locked with the reason when the outlet fixes the
+        # channel (decision 6; never locked without saying why).
+        options = tuple((str(o.get("value")), str(o.get("label", o.get("value")))) for o in _maps(picker.get("options")))
+        if picker.get("locked") is True or not options:
+            store = _text(picker.get("store"))
+            updates.append(
+                Row(
+                    "channel", "account", title=copy("channel.title"), control="value", value=bidi_isolate(channel),
+                    meta=copy("channel.locked", store=bidi_isolate(store)) if store else "",
+                    locked=True, lock_label=copy("a11y.locked"), name=copy("channel.title"),
+                )
+            )
+        else:
+            index = next((i for i, (v, _l) in enumerate(options) if v == channel), 0)
+            updates.append(
+                Row("channel", "setting", title=copy("channel.title"), control="choice", options=options, current=index,
+                    key="channel", name=copy("channel.title"))
+            )
+    elif channel and "account.channel" in keys:
         updates.append(Row("channel", "account", title=copy("account.channel"), control="value", value=bidi_isolate(channel)))
     version = _text(acct.get("version"))
     check = (

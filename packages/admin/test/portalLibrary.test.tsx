@@ -338,14 +338,11 @@ describe("Library on today's data (PX-02)", () => {
     const tile = await screen.findByRole("listitem", {
       name: "Have a license key?",
     });
-    // The title and the button only (portal.library): no line between them.
-    expect(within(tile).queryByText(/Activate it to add/)).toBeNull();
-    // Three products: it fills the rest of the last row: one cell at two columns and at four,
-    // the whole row at three, two cells at five.
-    expect(tile.className).toMatch(/(^| )col-span-1/);
-    expect(tile.className).toMatch(/desk:col-span-3/);
-    expect(tile.className).toMatch(/wide:col-span-1/);
-    expect(tile.className).toMatch(/xxl:col-span-2/);
+    // One cell at every width, with one helper line between the title and the button.
+    expect(tile.className).not.toMatch(/col-span/);
+    expect(
+      within(tile).getByText("You'll find it in your purchase email."),
+    ).toBeTruthy();
     expect(tile.firstElementChild!.className).toContain("border-dashed");
     expect(
       within(tile).getByRole("heading", {
@@ -364,9 +361,7 @@ describe("Library on today's data (PX-02)", () => {
     // A Steam purchase comes back through the app, so it is text: Sign-in methods attaches no
     // purchase (B-075).
     expect(
-      within(strip).getByText(
-        "On Steam? Restore in the app.",
-      ),
+      within(strip).getByText("On Steam? Restore in the app."),
     ).toBeTruthy();
     expect(within(strip).queryByRole("link", { name: /Steam/ })).toBeNull();
     expect(
@@ -421,11 +416,7 @@ describe("Library on today's data (PX-02)", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Your library" }),
     ).toBeTruthy();
-    expect(
-      await screen.findByText(
-        "Couldn't load your library. Try again in a moment.",
-      ),
-    ).toBeTruthy();
+    expect(await screen.findByText("Couldn't load your library.")).toBeTruthy();
     expect(screen.queryByText("Something went wrong")).toBeNull();
     expect(screen.queryByText(/Nothing here/)).toBeNull();
     expect(screen.getAllByText(/^try again$/i)).toHaveLength(1);

@@ -23,7 +23,7 @@
  * per scanned release its builds and its artifact records (with their locations) — two queries,
  * one when no build matches. A store outlet's releases with no live report cost nothing. At most
  * `MAX_FEED_SCAN` releases are scanned, so a selection stays a bounded, small number of D1
- * queries whatever the history (`test/storefrontFeeds.test.ts` holds a ceiling), and the routes
+ * queries whatever the history (`test/services/distribution/storefrontFeeds.test.ts` holds a ceiling), and the routes
  * cache what they render (`cache.ts`). Steps 3 and 5 apply the hooks' rules (`availability.ts`'s
  * derived records, stored row winning; `delivery.ts`'s build branch); the test suite checks the
  * two agree.
@@ -100,6 +100,8 @@ export interface FeedSpec {
   limit?: number;
   /** All matching builds of each release (Scoop, Flathub) rather than the first. */
   allBuilds?: boolean;
+  /** More platforms an outlet's builds may target besides `platform` (Homebrew's formula: Linux). */
+  extraPlatforms?: (o: FeedOutlet) => readonly string[];
   /** An outlet predicate beyond its kind (Scoop: a `direct` outlet covering Windows). */
   accepts?: (o: FeedOutlet) => boolean;
   // ── P3-09's app-updater feeds (`Delivery.feedSelection`) ──
@@ -171,13 +173,15 @@ export function buildMatchesOutlet(
   outlet: FeedOutlet,
   build: CatalogBuild,
   platform: string,
+  extra: readonly string[] = [],
 ): boolean {
   if (typeof outlet.identity.artifact === "string")
     return build.buildId === outlet.identity.artifact;
-  if (build.platform !== platform) return false;
+  const mine = [platform, ...extra];
+  if (build.platform === null || !mine.includes(build.platform)) return false;
   const platforms = outlet.identity.platforms;
   if (outlet.kind === "direct" && Array.isArray(platforms))
-    return platforms.includes(platform);
+    return platforms.includes(build.platform);
   return true;
 }
 
@@ -407,7 +411,12 @@ export async function selectFeedWith(
       continue;
     const builds = (await catalog.builds(release.releaseId)).filter(
       (b) =>
-        buildMatchesOutlet(outlet, b, spec.platform) &&
+        buildMatchesOutlet(
+          outlet,
+          b,
+          spec.platform,
+          spec.extraPlatforms?.(outlet),
+        ) &&
         (!spec.arches || spec.arches.includes(b.arch)) &&
         (!spec.buildIds || spec.buildIds.includes(b.buildId)),
     );

@@ -72,7 +72,7 @@ describe("Replace a device", () => {
     );
     const root = el.shadowRoot!;
     const primary = root.querySelector('[data-part="primary"]')!;
-    expect(primary.textContent).toContain("Replace Work laptop and continue");
+    expect(primary.textContent).toContain("Replace Work laptop");
     expect(
       root.querySelector('[data-key="part.seatMeter.caption"]'),
     ).toBeNull();
@@ -99,7 +99,7 @@ describe("Replace a device", () => {
     expect(list.hasAttribute("data-scroll")).toBe(true);
     expect(
       el.shadowRoot!.querySelector('[data-part="primary"]')!.textContent,
-    ).toContain("Replace Device 8 and continue");
+    ).toContain("Replace Device 8");
   });
 });
 

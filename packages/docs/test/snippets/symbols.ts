@@ -25,7 +25,7 @@ const PLANNED = /planned|coming in/i;
 
 /** Names that are the reader's own or a host global, not exports: the generated config, the
  *  placeholders of ambient.d.ts, and `window.polarisKey`. */
-const NOT_EXPORTS = new Set([
+export const NOT_EXPORTS = new Set([
   "YourApp",
   "polarisConfig",
   "polarisKey",
@@ -45,6 +45,9 @@ const NOT_EXPORTS = new Set([
   "createPolarisKey",
   "createNextPolarisKey",
   "createTestKit",
+  // Methods on the handle `exposePolarisBridge` returns (`menuItems` for the app menu, `open` to show a view).
+  "menuItems",
+  "open",
   "PolarisKeyError",
   "PolarisKeyConfigError",
   "GetPolarisAuth",

@@ -25,7 +25,7 @@ extends RefCounted
 ## own message, a web export offers a reload, and a direct build installs through its native
 ## updater (falling back to the build's download link), stages a sidecar pack, or restarts into a
 ## staged one (code-ready: "Restart now"). `behaviour` says which; PKeyUpdatePrompt carries it out
-## through PolarisKey.update.apply(). For the v3 check a direct build opens the answer's `url`
+## through PolarisKey.update.install(). For the v3 check a direct build opens the answer's `url`
 ## (or `release_url`), and a store, Steam or itch build never opens a download page.
 
 ## Only a direct build (or the editor, which has no outlet) may open a download page; every other
@@ -154,3 +154,41 @@ static func update_url(result: Variant, outlet := "", release_url := "") -> Stri
 	if m["behaviour"] == PKeyApplyResult.LINK and m["action_url"] != "":
 		return m["action_url"]
 	return release_url if _is_https(release_url) and not _store_outlet(outlet) else ""
+
+
+## The most plain lines "What's new" shows (UI-KITS.md §4.3).
+const NOTE_LINES := 3
+## A line never runs on: longer ones are cut at a word with an ellipsis.
+const NOTE_LINE_CHARS := 140
+
+
+## The up to three plain lines of a changelog summary (PKeyChangelogEntry.summary): one per line,
+## list bullets and heading marks dropped, blanks skipped. Notes are text, never markup: nothing is
+## interpreted, so a tag or a link in a note is shown as typed. Null or empty gives [].
+static func summary_lines(summary: Variant, max_lines := NOTE_LINES) -> Array:
+	var out: Array = []
+	if not (summary is String):
+		return out
+	for raw in String(summary).replace("\r", "").split("\n"):
+		var line := String(raw).strip_edges()
+		while line != "" and line[0] in ["-", "*", "+", "#", "\u2022", ">"]:
+			line = line.substr(1).strip_edges()
+		if line == "":
+			continue
+		if line.length() > NOTE_LINE_CHARS:
+			var cut := line.substr(0, NOTE_LINE_CHARS)
+			var space := cut.rfind(" ")
+			line = (cut.substr(0, space) if space > NOTE_LINE_CHARS / 2 else cut).strip_edges() + "\u2026"
+		out.append(line)
+		if out.size() >= max_lines:
+			break
+	return out
+
+
+## The changelog entry (PKeyChangelogEntry) for `version`, matched on its version or its `v` tag; null
+## when the list has none.
+static func entry_for(entries: Array, version: String) -> Variant:
+	for e in entries:
+		if e is PKeyChangelogEntry and version != "" and (e.version == version or e.tag == version or e.tag == "v" + version):
+			return e
+	return null

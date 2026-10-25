@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { tierDiff } from "../src/console/sections/license/components/ChangeTierDialog.js";
 import { limitRows } from "../src/console/sections/license/components/LimitsTable.js";
 import { dayProgress } from "../src/console/sections/license/components/LicenseRail.js";
+import { termsOnTier } from "../src/console/sections/license/components/shared.js";
 import { DETAIL, PRO, TIERS, UNUSED } from "./licenseFixture.js";
 
 const PRODUCT = { defaultDeviceLimit: 3, defaultMaxOfflineDays: 7 };
@@ -58,7 +59,14 @@ describe("tierDiff", () => {
 
 describe("limitRows", () => {
   it("marks what the license sets and says what the tier gives instead", () => {
-    const rows = limitRows(DETAIL, TIERS, PRODUCT);
+    const rows = limitRows(
+      {
+        ...DETAIL,
+        terms: termsOnTier(DETAIL, DETAIL.tier, TIERS, PRODUCT),
+      },
+      TIERS,
+      PRODUCT,
+    );
     const offline = rows.find((r) => r.kind === "offline")!;
     expect(offline).toMatchObject({
       value: "14 days",

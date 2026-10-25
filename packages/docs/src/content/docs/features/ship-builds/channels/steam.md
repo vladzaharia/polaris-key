@@ -15,7 +15,7 @@ done in Steamworks. For a product on Steam, Polaris Key does what Steam does all
 - it **sets a build live on a named branch** (`beta`, `staging`, a playtest branch);
 - it shows a **copy card** of the store page's text, pre-filled from the
   [shared listing](/docs/features/ship-builds/channels/polaris-key/), and serves the **asset pack** that
-  [`pkey listing assets`](/docs/features/ship-builds/ci-stores/#listing-assets) made at Steam's sizes;
+  [`pkey listing assets`](/docs/features/ship-builds/channels/polaris-key/#listing-assets) made at Steam's sizes;
 - it keeps a **checklist** of the human steps, with links to the Steamworks pages.
 
 Depots are uploaded from the release workflow's steamcmd step (the VDFs `pkey transport steam`
@@ -32,6 +32,28 @@ The key is the product's own `steam-publisher-key` channel credential, pinned to
 no key of its own, the product uses the platform's Steam group key (`steam.publisher-key`), and only
 for the app assigned to it. A key pinned to another app is never used. Without an app and a key,
 the Steam page says what is missing and makes no Steam call.
+
+## Store identity
+
+Commerce needs to know which Steam app a purchase belongs to (`appId`). You do not have to type
+it: it comes from the app the product is assigned on Steam.
+
+- **Where it comes from.** The pin of the product's own active Steam publisher key, if it has one; otherwise
+  the platform pin a platform admin set under **Platform → Store connections**. A product admin
+  holding `keys` sets the own-key pin, so that person can move the app too.
+- **A typed value wins.** If you type `appId` in the commerce settings, Commerce uses it. When it
+  differs from the assigned app, Commerce → Overview shows an attention item naming both. **Use the
+  assigned app** drops the typed value and follows the assignment.
+- **Type it once to pin it.** While the field is left out, adding a key with a lower id or
+  re-pinning one moves the app whose purchases unlock the flag, with no change in Commerce. Type
+  the value once to fix it.
+- **Two own keys that name different apps** raise an attention item; the lowest key id is used
+  until you retire one on Keys. An own key with no pin hides the platform pin, and the store stays
+  off (`own_credential_unpinned`).
+- **No app assigned, no store.** A store with no app typed or assigned stays off.
+
+A channel in `.pkey/distribution` that names a different app than the assignment raises the same
+kind of attention item on Ship. More in [Commerce](/docs/features/commerce/#store-identity).
 
 ## Builds and branches
 
@@ -51,6 +73,10 @@ release track the channel's `branches` map declares, the build on its branch. Th
 Key does not set it live: it has not yet been verified that a group-scoped key may do so. The Builds read shows when the public branch has the build. Once the key is
 verified, this release needs the app's name typed to confirm, like a release on every other
 store.
+
+## Listing
+
+Steam's fields are copy cards from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)): you paste them in Steamworks, so they are imported and shown, never pushed. The name, developer, accent and icon default to Presentation (Settings → Presentation); a field the listing sets wins. A store-specific value is an override (**Settings → Presentation → Listing**, pick the storefront).
 
 ## The store page
 

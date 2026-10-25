@@ -12,7 +12,7 @@ extends RefCounted
 ## no Android versionCode (`buildNumber` is a free string, not defined as one), so no expected
 ## versionCode is passed; the plugin still refuses a versionCode that is not above the installed one.
 ##
-## Called from PolarisKey.update.apply(), i.e. after the player chose to update, so the session asks
+## Called from PolarisKey.update.install(), i.e. after the player chose to update, so the session asks
 ## Android for no further prompt (`USER_ACTION_NOT_REQUIRED`): Android still shows its own prompt
 ## when the player has not allowed installs from the game or another installer owns its updates.
 ## On success the game is killed and not relaunched; the next launch reads the journaled outcome

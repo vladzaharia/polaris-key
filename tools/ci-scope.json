@@ -1,5 +1,5 @@
 {
-  "$comment": "P0-43: the one scope map. ci.yml's `changes` job and the lead's gate.sh both read it through tools/ci-scope.mjs, so a lane runs for the same changed files in CI and in the local gate. A lane runs when a changed path starts with one of its `paths` (a directory ending in `/`, or one file), or with one of `shared` (the inputs every language verifies: the contract, the shared packages, the tool chain, the repository's own CI). A lane lists everything its job reads, not only its own tree: the Python lane names the samples and the two cross-SDK fixtures its tests open. A rename counts at its old and its new path. On a push to main, and whenever the changed files cannot be read, every lane runs and every matrix takes its full shape. `matrices` hold each matrix's two shapes: a pull request runs the floor and the latest, main runs the full set. Edit this file, never a path filter in a workflow.",
+  "$comment": "P0-43: the one scope map. ci.yml's `changes` job and `pnpm gate` (tools/gate.mjs) both read it through tools/ci-scope.mjs, so a lane runs for the same changed files in CI and in the local gate. A lane runs when a changed path starts with one of its `paths` (a directory ending in `/`, or one file), or with one of `shared` (the inputs every language verifies: the contract, the shared packages, the tool chain, the repository's own CI). A lane lists everything its job reads, not only its own tree: the Python lane names the samples and the two cross-SDK fixtures its tests open. A rename counts at its old and its new path. On a push to main, and whenever the changed files cannot be read, every lane runs and every matrix takes its full shape. `matrices` hold each matrix's two shapes: a pull request runs the floor and the latest, main runs the full set. Edit this file, never a path filter in a workflow.",
   "shared": [
     "conformance/",
     "packages/shared-",
@@ -73,9 +73,18 @@
     "react-kit": {
       "paths": ["packages/sdk-react/", "packages/ui-core/"]
     },
+    "ui-recipes": {
+      "paths": [
+        "examples/ui/recipes/",
+        "packages/elements/",
+        "packages/ui-core/",
+        "packages/ui-qa/"
+      ]
+    },
     "python": {
       "paths": [
         "sdks/python/",
+        "tools/lint/",
         "packages/ui-qa/",
         "examples/python-cli/",
         "examples/python-renpy/",
@@ -93,6 +102,7 @@
         "packages/worker/",
         "packages/zstd-wasm/",
         "sdks/python/",
+        "tools/lint/",
         "examples/server-"
       ]
     },
@@ -107,11 +117,36 @@
     "swift-floor": {
       "paths": ["sdks/swift/"]
     },
+    "swiftui-mac": {
+      "paths": [
+        "sdks/swift/Sources/PolarisKeyUI",
+        "sdks/swift/Sources/PolarisKeyUpdate",
+        "sdks/swift/Package.swift",
+        "sdks/swift/Tests/PolarisKeyUISnapshotTests/",
+        "examples/ui/swiftui/",
+        "packages/brand/kit-copy/"
+      ]
+    },
+    "compose-desktop": {
+      "paths": [
+        "sdks/kotlin/ui/",
+        "sdks/kotlin/ui-core/",
+        "sdks/kotlin/update/",
+        "sdks/kotlin/desktop/",
+        "examples/ui/compose-desktop/",
+        "packages/brand/kit-copy/"
+      ]
+    },
     "kotlin": {
       "paths": ["sdks/kotlin/"]
     },
     "android": {
-      "paths": ["sdks/kotlin/", "sdks/godot/", "packages/ui-qa/"]
+      "paths": [
+        "sdks/kotlin/",
+        "sdks/godot/",
+        "packages/ui-qa/",
+        "examples/ui/compose-android/"
+      ]
     },
     "godot": {
       "paths": ["sdks/godot/", "packages/ui-qa/"]

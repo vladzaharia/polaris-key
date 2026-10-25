@@ -48,7 +48,7 @@ static func rows(config: PKeyConfig) -> Array:
 			continue
 		var key: String = e["key"]
 		seen[key] = true
-		var source := config.get_source(key)
+		var source := config.get_config_source(key)
 		if source == &"hidden":
 			continue
 		if not doc_rows.has(key) and e.get("managementDefault") == "hidden":
@@ -57,7 +57,7 @@ static func rows(config: PKeyConfig) -> Array:
 		position += 1
 	for key in doc_rows:
 		if not seen.has(key):
-			out.append(_row(config, key, {}, config.get_source(key), position))
+			out.append(_row(config, key, {}, config.get_config_source(key), position))
 			position += 1
 	_sort(out)
 	for r in out:

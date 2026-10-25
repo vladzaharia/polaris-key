@@ -479,6 +479,31 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-04-05/ux-review-2.md (BUILT re-review: pass-with-fixes; fixes landed in WEB-parity 0832e0bfb, eabc4ef23, 674e9a90b; live drop-in KX-EL-DRIVE bdef6358d)"
+    },
+    "UK-09": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/UK-09-compose.md (BUILT review PASS, 0 blocking; majors F-1..F-4 → KX-CMP-FIX, V-1 two-pane → UK-09b)"
+    },
+    "P0-45": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/P0-45-cli.md (BUILT terminal review FIX: 4 blocking; all fixed in the one fix round fix/p0-45-review 743cf2f70)"
+    },
+    "ST-51": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/ST-51-activity.md (BUILT review FIX: 4 blocking; fixed in the one fix round fix/st-51-review 75d96b56b)"
+    },
+    "DOC-02b": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/DOC-02b-chrome.md (BUILT review FIX: 2 blocking; fixed in the one fix round fix/doc-02b-review 63fd329e9)"
+    },
+    "UK-07": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "BUILT review UXR-SWIFT (Opus pkey-ux-reviewer, 2026-10-22) + one fix round KX-SW-FIX f0e07cc3b merged to staging: B1–B4 fixed (mandatory update route, labelled text setting, honest Check for updates, 44 pt rename targets); 43 iPhone baselines re-recorded; swift test green. Copy items → COPY PASS; Restart now (iOS), sign-out consequence line, Devices push → KITS-QUEUE Swift second wave."
     }
   }
 }

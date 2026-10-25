@@ -36,18 +36,12 @@ export function inheritedText(
     "tier" | "inheritedDeviceLimit" | "inheritedDeviceLimitSource"
   >,
   tiers: readonly TierSummary[],
-  productLimit: number | undefined,
 ): { limit: number | null; text: string } {
   const tier = license.tier
     ? tiers.find((t) => t.id === license.tier)
     : undefined;
-  let limit: number | undefined = license.inheritedDeviceLimit;
-  let source = license.inheritedDeviceLimitSource;
-  if (limit === undefined || source === undefined) {
-    // An older Worker: the tier's, else the product's.
-    limit = tier?.policyDeviceLimit ?? productLimit;
-    source = tier?.policyDeviceLimit != null ? "tier" : "product";
-  }
+  const limit = license.inheritedDeviceLimit;
+  const source = license.inheritedDeviceLimitSource;
   const n = limit && limit > 0 ? limit : null;
   const from =
     source === "tier"
@@ -71,14 +65,12 @@ export function DeviceLimitSheet({
   slug,
   license,
   tiers,
-  productLimit,
   open,
   onOpenChange,
 }: {
   slug: string;
   license: LicenseDetail;
   tiers: readonly TierSummary[];
-  productLimit: number | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
@@ -94,7 +86,6 @@ export function DeviceLimitSheet({
           slug={slug}
           license={license}
           tiers={tiers}
-          productLimit={productLimit}
           onDone={() => onOpenChange(false)}
         />
       ) : null}
@@ -106,16 +97,14 @@ function DeviceLimitForm({
   slug,
   license,
   tiers,
-  productLimit,
   onDone,
 }: {
   slug: string;
   license: LicenseDetail;
   tiers: readonly TierSummary[];
-  productLimit: number | undefined;
   onDone: () => void;
 }): React.ReactElement {
-  const inherited = inheritedText(license, tiers, productLimit);
+  const inherited = inheritedText(license, tiers);
   const [clearing, setClearing] = React.useState(false);
   const [clearError, setClearError] = React.useState<unknown>(null);
 
@@ -158,12 +147,8 @@ function DeviceLimitForm({
 
   const draft = form.rhf.watch("deviceLimit") as number | null | undefined;
   const target = draft ?? inherited.limit;
-  // The server's seat count (dormant devices excluded, as at activation and in `overLimit`),
-  // else the authorized count from an older Worker.
-  const warning = overLimitText(
-    license.seatDeviceCount ?? license.deviceCount,
-    target,
-  );
+  // The server's seat count (dormant devices excluded, as at activation and in `overLimit`).
+  const warning = overLimitText(license.seatDeviceCount, target);
   const busy = form.isSubmitting || clearing;
 
   const inherit = async (): Promise<void> => {

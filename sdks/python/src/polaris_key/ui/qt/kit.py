@@ -89,10 +89,11 @@ class KitView:
             self._container.setParent(parent)
         return self._container
 
-    def set_view(self, view: View, data: Any = None) -> None:
+    def set_view(self, view: View, data: Any = None, facts: Any = None) -> None:
         """Show ``view``; ``data`` carries the rows of a settings, devices, seat-meter or account screen
-        (see :meth:`KitBridge.set_view`), else the view's own ``rows`` are drawn."""
-        self.bridge.set_view(view, data)
+        (see :meth:`KitBridge.set_view`), else the view's own ``rows`` are drawn; ``facts`` is what an
+        offered update adds to its prompt (see :func:`~.layout.build_spec`)."""
+        self.bridge.set_view(view, data, facts)
 
     def grab(self) -> Any:
         """Render one frame to a ``QImage`` (offscreen-safe)."""

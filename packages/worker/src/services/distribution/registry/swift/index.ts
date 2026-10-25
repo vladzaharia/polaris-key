@@ -96,7 +96,14 @@ export const SWIFT_ADAPTER: FeedAdapter<"swift"> = defineFeedAdapter({
   ],
   harness: {
     // F-22: swift-publish publishes natively (Release's route), then resolves back.
-    clients: ["swift", "swift-compat", "swift-linux", "swift-publish"],
+    // F-33b.6: person-swift is one personal token over two owners (`run.mjs --person`).
+    clients: [
+      "swift",
+      "swift-compat",
+      "swift-linux",
+      "swift-publish",
+      "person-swift",
+    ],
   },
 });
 

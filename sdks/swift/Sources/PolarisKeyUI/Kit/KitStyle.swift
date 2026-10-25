@@ -72,6 +72,10 @@ public struct KitResolvedStyle: Sendable, Equatable {
     public var forcesMaterial = false
     public var radius: PolarisKeyTheme.Radius = .md
     public var serviceCues = false
+    /// macOS: the text's scale from the environment's `dynamicTypeSize`, which the Mac does not
+    /// apply to any font itself (its Text Size setting does not reach SwiftUI). 1 elsewhere. A
+    /// host sets `.dynamicTypeSize(...)` and the kit's text grows with it (UK-08.7, M6).
+    public var typeScale: CGFloat = 1
 
     /// Liquid Glass is available (iOS 26) and transparency is not reduced. Glass needs the iOS 26
     /// SDK (Xcode 26, Swift 6.2): an older toolchain compiles the glass out and draws the fallback.
@@ -89,14 +93,38 @@ public struct KitResolvedStyle: Sendable, Equatable {
 
     /// A control's height: 52 pt, a step down in compact, up in spacious.
     public var controlHeight: CGFloat {
-        switch density {
-        case .compact: return 44
-        case .comfortable: return CGFloat(PolarisKit.IOS.controlHeight)
-        case .spacious: return 60
-        }
+        #if os(macOS)
+            // The Mac column (S1): 28 pt, a step down/up with density.
+            switch density {
+            case .compact: return 24
+            case .comfortable: return CGFloat(PolarisKit.MacOS.controlHeight)
+            case .spacious: return 32
+            }
+        #else
+            switch density {
+            case .compact: return 44
+            case .comfortable: return CGFloat(PolarisKit.IOS.controlHeight)
+            case .spacious: return 60
+            }
+        #endif
     }
 
-    public var cardPad: CGFloat { CGFloat(PolarisKit.IOS.cardPad) }
+    /// The Welcome hero's capsule on macOS (`.extraLarge`, 36 pt); a plain control elsewhere.
+    public var heroControlHeight: CGFloat {
+        #if os(macOS)
+            return CGFloat(PolarisKit.MacOS.controlHeightHero)
+        #else
+            return controlHeight
+        #endif
+    }
+
+    public var cardPad: CGFloat {
+        #if os(macOS)
+            return CGFloat(PolarisKit.MacOS.cardPad)
+        #else
+            return CGFloat(PolarisKit.IOS.cardPad)
+        #endif
+    }
     /// The inset grouped list's radius (`theme.radius`; surfaces scale from the control radius).
     public var groupRadius: CGFloat {
         switch radius {
@@ -108,15 +136,32 @@ public struct KitResolvedStyle: Sendable, Equatable {
     }
     /// A field's radius (filled, no border).
     public var fieldRadius: CGFloat {
+        #if os(macOS)
+            // The Mac form radius token (10) at the default step.
+            let form = CGFloat(PolarisKit.MacOS.radiusForm)
+            switch radius {
+            case .sm: return form - 2
+            case .md: return form
+            case .lg: return form + 4
+            case .points(let n): return CGFloat(n)
+            }
+        #else
         switch radius {
         case .sm: return 10
         case .md: return 14
         case .lg: return 18
         case .points(let n): return CGFloat(n)
         }
+        #endif
     }
     /// The sheet's radius (concentric with the device's corners).
-    public var sheetRadius: CGFloat { CGFloat(PolarisKit.IOS.radiusSheet) }
+    public var sheetRadius: CGFloat {
+        #if os(macOS)
+            return CGFloat(PolarisKit.MacOS.radiusSheet)
+        #else
+            return CGFloat(PolarisKit.IOS.radiusSheet)
+        #endif
+    }
 
     /// The 4 pt spacing scale (BRAND §4.6; DL3).
     public func space(_ step: KitSpace) -> CGFloat {
@@ -151,9 +196,15 @@ public struct KitResolvedStyle: Sendable, Equatable {
     public func font(_ role: KitTextRole) -> Font {
         let spec = role.spec
         let scale = typography.scale
-        let size = CGFloat(spec.size * scale)
+        let size = CGFloat(spec.size * scale) * typeScale
+        let scaled = typeScale != 1
         if isNative || typography.family == .system {
-            if role == .code || role == .key {
+            let mono = role == .code || role == .key
+            if scaled {
+                return Font.system(
+                    size: size, weight: spec.weight.swiftUI, design: mono ? .monospaced : .default)
+            }
+            if mono {
                 return Font.system(spec.textStyle, design: .monospaced).weight(spec.weight.swiftUI)
             }
             return Font.system(spec.textStyle).weight(spec.weight.swiftUI)
@@ -162,33 +213,40 @@ public struct KitResolvedStyle: Sendable, Equatable {
             guard let name = KitFonts.monoName(spec.weight) else {
                 return Font.system(spec.textStyle, design: .monospaced).weight(spec.weight.swiftUI)
             }
-            return Font.custom(name, size: size, relativeTo: spec.textStyle)
+            return custom(name, size: size, relativeTo: spec.textStyle)
         }
         if case .custom(let family) = typography.family {
             let face =
                 (role == .display || role == .title) ? (typography.display ?? family) : family
-            return Font.custom(face, size: size, relativeTo: spec.textStyle).weight(
-                spec.weight.swiftUI)
+            return custom(face, size: size, relativeTo: spec.textStyle).weight(spec.weight.swiftUI)
         }
         // Rubik has no kana, hanzi or hangul: the system's fallback for them is regular weight,
         // beside SemiBold Latin (DL12). The CJK locales take the system face, whose cascade
         // carries every weight.
         guard !usesCJK, let name = KitFonts.rubikName(spec.weight) else {
+            if typeScale != 1 { return Font.system(size: size, weight: spec.weight.swiftUI) }
             return Font.system(spec.textStyle).weight(spec.weight.swiftUI)
         }
-        return Font.custom(name, size: size, relativeTo: spec.textStyle)
+        return custom(name, size: size, relativeTo: spec.textStyle)
+    }
+
+    /// A custom face that follows Dynamic Type; where the environment scaled the size already
+    /// (macOS, `typeScale`), at exactly that size.
+    private func custom(_ name: String, size: CGFloat, relativeTo style: Font.TextStyle) -> Font {
+        typeScale != 1
+            ? Font.custom(name, fixedSize: size) : Font.custom(name, size: size, relativeTo: style)
     }
 
     /// The device code's face (UI-KITS §4.3): the kit mono at `size`, weight 500, scaled with
     /// Dynamic Type from the title style (the iOS token is 28; the hand-off screen sets 40).
     public func codeFont(size: CGFloat) -> Font {
         if isNative || typography.family == .system {
-            return Font.system(size: size, weight: .medium, design: .monospaced)
+            return Font.system(size: size * typeScale, weight: .medium, design: .monospaced)
         }
         guard let name = KitFonts.monoName(.medium) else {
-            return Font.system(size: size, weight: .medium, design: .monospaced)
+            return Font.system(size: size * typeScale, weight: .medium, design: .monospaced)
         }
-        return Font.custom(name, size: size * CGFloat(typography.scale), relativeTo: .title)
+        return custom(name, size: size * CGFloat(typography.scale) * typeScale, relativeTo: .title)
     }
 
     /// Whether the copy's locale is written in a CJK script.
@@ -216,11 +274,15 @@ public enum KitTextRole: Sendable, CaseIterable {
     }
 
     var spec: Spec {
-        let t = PolarisKit.IOS.Typography.self
+        #if os(macOS)
+            let t = PolarisKit.MacOS.Typography.self
+        #else
+            let t = PolarisKit.IOS.Typography.self
+        #endif
         switch self {
         case .display: return Spec(size: t.display.size, weight: .semibold, textStyle: .largeTitle)
         case .title: return Spec(size: t.title.size, weight: .semibold, textStyle: .title)
-        case .headline: return Spec(size: 20, weight: .semibold, textStyle: .title3)
+        case .headline: return Spec(size: headlineSize, weight: .semibold, textStyle: .title3)
         case .body: return Spec(size: t.body.size, weight: .regular, textStyle: .body)
         case .label: return Spec(size: t.label.size, weight: .medium, textStyle: .body)
         case .button: return Spec(size: t.button.size, weight: .medium, textStyle: .body)
@@ -229,6 +291,17 @@ public enum KitTextRole: Sendable, CaseIterable {
         case .code: return Spec(size: t.code.size, weight: .medium, textStyle: .title)
         case .key: return Spec(size: t.body.size, weight: .regular, textStyle: .body)
         }
+    }
+}
+
+extension KitTextRole {
+    /// The headline step has no token: 20 pt on iOS, 15 pt between the Mac title and body.
+    fileprivate var headlineSize: Double {
+        #if os(macOS)
+            return 15
+        #else
+            return 20
+        #endif
     }
 }
 
@@ -324,9 +397,16 @@ enum KitPaletteResolver {
             dark
             ? (PolarisBrand.Dark.success, PolarisBrand.Dark.warning, PolarisBrand.Dark.danger)
             : (PolarisBrand.Light.success, PolarisBrand.Light.warning, PolarisBrand.Light.danger)
-        let page = dark ? BrandColor(hex: 0x000000) : BrandColor(hex: 0xf2f2f7)
+        #if os(macOS)
+            // A Mac window's dark ground is the system's (about #1f1f22), not the phone's black,
+            // so the field's fill stays one step above it.
+            let page = dark ? BrandColor(hex: 0x1f1f22) : BrandColor(hex: 0xf2f2f7)
+            let sunken = dark ? BrandColor(hex: 0x2b2d34) : BrandColor(hex: 0xffffff)
+        #else
+            let page = dark ? BrandColor(hex: 0x000000) : BrandColor(hex: 0xf2f2f7)
+            let sunken = dark ? BrandColor(hex: 0x1f2128) : BrandColor(hex: 0xffffff)
+        #endif
         let raised = dark ? BrandColor(hex: 0x16181d) : BrandColor(hex: 0xffffff)
-        let sunken = dark ? BrandColor(hex: 0x1f2128) : BrandColor(hex: 0xffffff)
 
         var p = KitPalette(
             page: page.color, raised: raised.color, sunken: sunken.color,
@@ -480,6 +560,10 @@ struct PolarisKeyStyleScope: ViewModifier {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.locale) private var locale
     @Environment(\.polarisKeyMaterialFallback) private var forcesMaterial
+    @Environment(\.polarisKeyForcedAccessibility) private var forced
+    #if os(macOS)
+        @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #endif
 
     func body(content: Content) -> some View {
         let style = resolved()
@@ -514,7 +598,7 @@ struct PolarisKeyStyleScope: ViewModifier {
         let derived = identity.accentSource == .icon ? icon.flatMap(KitIconAccent.derive) : nil
         var palette = KitPaletteResolver.palette(
             identity: identity, preset: theme.preset, dark: dark, derivedAccent: derived,
-            increaseContrast: contrast == .increased)
+            increaseContrast: contrast == .increased || forced.increaseContrast)
         KitPaletteResolver.apply(dark ? theme.colors.dark : theme.colors.light, to: &palette)
         let motionReduced: Bool
         switch theme.motion {
@@ -525,10 +609,41 @@ struct PolarisKeyStyleScope: ViewModifier {
             palette: palette, preset: theme.preset, dark: dark, identity: identity,
             locale: theme.locale ?? locale.identifier, typography: theme.typography,
             density: theme.density, reduceMotion: motionReduced,
-            reduceTransparency: reduceTransparency, increaseContrast: contrast == .increased,
+            reduceTransparency: reduceTransparency || forced.reduceTransparency,
+            increaseContrast: contrast == .increased || forced.increaseContrast,
             ambient: theme.ambient ?? (theme.preset != .native), poweredBy: theme.poweredBy,
             platform: inputs.platform, forcesMaterial: forcesMaterial, radius: theme.radius,
-            serviceCues: theme.serviceCues)
+            serviceCues: theme.serviceCues, typeScale: macTypeScale)
+    }
+
+    private var macTypeScale: CGFloat {
+        #if os(macOS)
+            return dynamicTypeSize.macTextScale
+        #else
+            return 1
+        #endif
+    }
+}
+
+extension DynamicTypeSize {
+    /// The Mac's text scale for a size: the small steps from iOS's body ratios, the accessibility
+    /// steps at 150, 175, 200, 240 and 280 % (`accessibility3` is the 200 % row, M6).
+    var macTextScale: CGFloat {
+        switch self {
+        case .xSmall: return 0.82
+        case .small: return 0.88
+        case .medium: return 0.94
+        case .large: return 1
+        case .xLarge: return 1.12
+        case .xxLarge: return 1.24
+        case .xxxLarge: return 1.35
+        case .accessibility1: return 1.5
+        case .accessibility2: return 1.75
+        case .accessibility3: return 2
+        case .accessibility4: return 2.4
+        case .accessibility5: return 2.8
+        @unknown default: return 1
+        }
     }
 }
 
@@ -542,6 +657,31 @@ extension EnvironmentValues {
     public var polarisKeyMaterialFallback: Bool {
         get { self[PolarisKeyMaterialFallbackKey.self] }
         set { self[PolarisKeyMaterialFallbackKey.self] = newValue }
+    }
+}
+
+/// Accessibility settings the system owns and a process cannot set on itself: the sample's
+/// `-pkeyContrast` and `-pkeyReduceTransparency` turn them on for the render matrix (UK-08.7),
+/// where no UI automation can open System Settings. They only add to what the system says.
+public struct PolarisKeyForcedAccessibility: Sendable, Equatable {
+    public var increaseContrast = false
+    public var reduceTransparency = false
+
+    public init(increaseContrast: Bool = false, reduceTransparency: Bool = false) {
+        self.increaseContrast = increaseContrast
+        self.reduceTransparency = reduceTransparency
+    }
+}
+
+private struct PolarisKeyForcedAccessibilityKey: EnvironmentKey {
+    static let defaultValue = PolarisKeyForcedAccessibility()
+}
+
+extension EnvironmentValues {
+    /// Review and render hook: draw as if Increase Contrast and/or Reduce Transparency were on.
+    public var polarisKeyForcedAccessibility: PolarisKeyForcedAccessibility {
+        get { self[PolarisKeyForcedAccessibilityKey.self] }
+        set { self[PolarisKeyForcedAccessibilityKey.self] = newValue }
     }
 }
 

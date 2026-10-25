@@ -99,7 +99,7 @@ export async function handleMigrations(
   if (!job) return notFound();
   if (verb === "dry-run") {
     // A dry run plans every product and writes run, unit and audit rows: a tight budget per
-    // caller (a token's sub is `token:<id>`, so a token has its own).
+    // caller (a `pkeya_` token's sub is `token:<id>`, so it has its own; a `pkeyp_` token acts as its holder, so it shares the person's `mbr_` budget).
     if (
       !(await rateLimitOk(
         env,

@@ -150,6 +150,8 @@ describe("every write declares its invalidation", () => {
 describe("no view writes around mutate()", () => {
   function sources(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
+      // `__*` files are another suite's transient probes (noDirectFetch writes one).
+      if (name.startsWith("__")) return [];
       const path = join(dir, name);
       if (statSync(path).isDirectory()) return sources(path);
       return /\.(ts|tsx)$/.test(name) ? [path] : [];
@@ -231,6 +233,70 @@ describe("no view writes around mutate()", () => {
       .filter((f) => !EXEMPT.includes(f))
       .flatMap(offences);
     expect(offenders, "call mutate(...) instead").toEqual([]);
+  });
+
+  /** The modules `api.ts` composes (P0-32.20): the barrel is the one importer. */
+  const API_DIR = join(src, "console", "api");
+  function importsOfApiModules(file: string): string[] {
+    const sf = ts.createSourceFile(
+      file,
+      readFileSync(file, "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    return sf.statements.flatMap((stmt) => {
+      if (
+        !(ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) ||
+        !stmt.moduleSpecifier
+      )
+        return [];
+      const spec = (stmt.moduleSpecifier as ts.StringLiteral).text;
+      if (!spec.startsWith(".")) return [];
+      const target = join(dirname(file), spec);
+      return target.startsWith(API_DIR + "/")
+        ? [`${relative(src, file)} imports ${spec}`]
+        : [];
+    });
+  }
+
+  it("only api.ts imports a console/api/* module", () => {
+    const offenders = [...sources(src), ...sources(join(src, "..", "test"))]
+      .filter((f) => f !== ADMIN_API && !f.startsWith(API_DIR + "/"))
+      .flatMap(importsOfApiModules);
+    expect(offenders, "import from api.js instead").toEqual([]);
+    // The check sees an import and a re-export.
+    const probe = join(src, "lib", "__probe__.ts");
+    for (const code of [
+      'import { call } from "../console/api/transport.js";',
+      'export * from "../console/api/platform.js";',
+    ]) {
+      writeFileSync(probe, code);
+      try {
+        expect(importsOfApiModules(probe)).toHaveLength(1);
+      } finally {
+        rmSync(probe, { force: true });
+      }
+    }
+  });
+
+  it("no console/api/* module imports the barrel", () => {
+    const offenders = sources(API_DIR).flatMap((file) => {
+      const sf = ts.createSourceFile(
+        file,
+        readFileSync(file, "utf8"),
+        ts.ScriptTarget.Latest,
+        true,
+      );
+      return sf.statements.flatMap((stmt) =>
+        (ts.isImportDeclaration(stmt) || ts.isExportDeclaration(stmt)) &&
+        stmt.moduleSpecifier &&
+        join(dirname(file), (stmt.moduleSpecifier as ts.StringLiteral).text) ===
+          join(src, "api.js")
+          ? [relative(src, file)]
+          : [],
+      );
+    });
+    expect(offenders, "import the sibling module instead").toEqual([]);
   });
 
   it("the check catches the shapes a regex would miss", () => {

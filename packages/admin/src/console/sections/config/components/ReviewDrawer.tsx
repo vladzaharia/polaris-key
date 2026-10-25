@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ApiError,
+  HttpError,
   type ConfigEntry,
   type ProductCatalog,
 } from "../../../../api.js";
@@ -12,6 +12,7 @@ import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
+import { CopyDetails } from "../../../../ui/CopyDetails.js";
 import { Section } from "../../../../ui/Section.js";
 import { DiffViewer } from "../../../../ui/DiffViewer.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
@@ -26,7 +27,11 @@ import {
   draftEntries,
   type CatalogDraft,
 } from "../model/catalogDraft.js";
-import { entryFieldView, typeChangeNotes } from "../model/diffView.js";
+import {
+  entryFieldView,
+  publishCause,
+  typeChangeNotes,
+} from "../model/diffView.js";
 import { mergeDraft } from "../model/mergeDraft.js";
 import { CATALOG_PATH, useCatalogUsage } from "../data.js";
 
@@ -69,7 +74,7 @@ export function ReviewDrawer({
   /** Why Publish waits for something other than an error or a missing acknowledgement. */
   holdReason?: string;
   /** Close the review and open the entry at this position. */
-  onFix: (index: number) => void;
+  onFix: (index: number, field?: string) => void;
   onPublished: (version: number) => void;
   onDiscard: () => void;
 }): React.ReactElement {
@@ -149,7 +154,7 @@ export function ReviewDrawer({
   const breaking =
     Object.keys(referencedBy).length > 0 || Object.keys(typeNotes).length > 0;
   const conflict =
-    error instanceof ApiError &&
+    error instanceof HttpError &&
     error.status === 409 &&
     error.reason === "catalog_version_conflict";
   const stale = server !== null && server.schemaVersion !== draft.baseVersion;
@@ -173,7 +178,7 @@ export function ReviewDrawer({
       onPublished(res.schemaVersion);
     } catch (err) {
       setError(err);
-      if (err instanceof ApiError && err.status === 409)
+      if (err instanceof HttpError && err.status === 409)
         void queryClient.invalidateQueries({ queryKey: qk.catalog(slug) });
     } finally {
       setPublishing(false);
@@ -295,7 +300,7 @@ export function ReviewDrawer({
                           <Button
                             size="xs"
                             variant="outline"
-                            onClick={() => onFix(i.index!)}
+                            onClick={() => onFix(i.index!, i.field)}
                           >
                             Fix it
                           </Button>
@@ -403,11 +408,10 @@ export function ReviewDrawer({
                     />
                   }
                 >
-                  Publishing claims it for the console: resyncs from the
-                  repository stop re-applying{" "}
-                  <code className="font-mono text-xs">{CATALOG_PATH}</code>{" "}
-                  until it is reverted to the manifest. Make the same change in
-                  the repository to keep the two in step.
+                  Publishing takes the catalog over from{" "}
+                  <code className="font-mono text-xs">{CATALOG_PATH}</code>;
+                  resyncs stop until you revert. Make the same change in the
+                  repository.
                 </Callout>
               ) : null}
               {breaking ? (
@@ -423,15 +427,13 @@ export function ReviewDrawer({
                 />
               ) : null}
               {copy ? (
-                <div
-                  role="alert"
-                  className="space-y-1 rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
+                <Callout
+                  tone="danger"
+                  alert
+                  title="Publish didn't finish"
+                  action={<CopyDetails copy={copy} always />}
                 >
-                  <p className="font-semibold text-danger">
-                    Publish didn't finish
-                  </p>
-                  <p className="text-fg-strong">{copy.title}</p>
-                  <p className="text-fg">{copy.description}</p>
+                  <p>{publishCause(error, copy)}</p>
                   {copy.fieldErrors?.length ? (
                     <ul className="mt-1 list-disc ps-5 font-mono text-xs">
                       {copy.fieldErrors.map((f) => (
@@ -439,10 +441,10 @@ export function ReviewDrawer({
                       ))}
                     </ul>
                   ) : null}
-                  <p className="text-fg">
+                  <p className="mt-1">
                     Devices still get v{live}. Your draft is kept.
                   </p>
-                </div>
+                </Callout>
               ) : null}
             </>
           )}

@@ -84,6 +84,84 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(style.groupRadius, 24)
     }
 
+    // MARK: Mac measures (UK-08.1)
+
+    func testTheMacMeasuresAreTheMacColumn() {
+        #if os(macOS)
+            let style = KitResolvedStyle.fallback
+            XCTAssertEqual(style.controlHeight, 28)
+            XCTAssertEqual(style.heroControlHeight, 36)
+            XCTAssertEqual(style.fieldRadius, 10)
+            XCTAssertEqual(style.sheetRadius, 18)
+            XCTAssertEqual(style.cardPad, 24)
+            XCTAssertEqual(KitTextRole.body.spec.size, 13)
+            XCTAssertEqual(KitTextRole.title.spec.size, 22)
+            XCTAssertEqual(KitTextRole.display.spec.size, 26)
+        #else
+            XCTAssertEqual(KitResolvedStyle.fallback.controlHeight, 52)
+            XCTAssertEqual(KitTextRole.body.spec.size, 17)
+        #endif
+    }
+
+    func testAnInactiveFilledButtonsLabelKeepsContrastOnTheNeutralFill() {
+        // The inactive look is the raised fill under the strong text colour (S2): 4.5:1 or more
+        // in both schemes, for any accent (the fill and label do not depend on it).
+        for dark in [true, false] {
+            let id = KitIdentity.resolve(PolarisKeyPreviewState.base())
+            let p = KitPaletteResolver.palette(
+                identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                increaseContrast: false)
+            let fill = dark ? PolarisBrand.Dark.textStrong : PolarisBrand.Light.textStrong
+            let raised = dark ? "#16181d" : "#ffffff"
+            let ratio = PolarisAccent.contrast(String(format: "#%06x", fill.hex), raised)
+            XCTAssertGreaterThanOrEqual(ratio, 4.5, "dark: \(dark)")
+            XCTAssertEqual(p.textStrong, fill.color)
+        }
+    }
+
+    func testTheGlassPrimarysInactiveLookKeepsContrastToo() {
+        // The glass path (`inactiveFollowsSystem && !appearsActive`) draws the same neutral look
+        // as the solid capsule: textStrong on raised, 4.5:1 or more (S2, review round 2).
+        for dark in [true, false] {
+            let id = KitIdentity.resolve(PolarisKeyPreviewState.base())
+            let p = KitPaletteResolver.palette(
+                identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                increaseContrast: false)
+            let look = KitInactiveLook.neutral(p)
+            XCTAssertEqual(look.label, p.textStrong)
+            XCTAssertEqual(look.fill, p.raised)
+            let label = dark ? PolarisBrand.Dark.textStrong : PolarisBrand.Light.textStrong
+            let raised = dark ? "#16181d" : "#ffffff"
+            XCTAssertGreaterThanOrEqual(
+                PolarisAccent.contrast(String(format: "#%06x", label.hex), raised), 4.5)
+        }
+    }
+
+    @MainActor
+    func testAMacStatesCopyNeverSaysIPhone() {
+        let strings = KitStrings()
+        for state in PolarisKeyPreviewState.all {
+            let mac = state.on(PolarisKeyPreviewState.mac)
+            for line in mac.screen.copy {
+                let text = strings.string(line)
+                XCTAssertFalse(
+                    text.localizedCaseInsensitiveContains("this iPhone"),
+                    "\(mac.id): \(line.key) says \(text)")
+            }
+        }
+    }
+
+    func testTheMacButtonRowPutsCancelDirectlyLeftOfTheDefault() {
+        let slots: [KitActionSlot] = [
+            KitActionSlot(kind: .primary),
+            KitActionSlot(kind: .quiet, leading: true),  // Paste
+            KitActionSlot(kind: .quiet),  // key instead
+            KitActionSlot(kind: .quiet),  // Cancel
+        ]
+        XCTAssertEqual(KitActionOrder.order(slots), [1, 2, 3, 0])
+        XCTAssertEqual(KitActionOrder.order([KitActionSlot(kind: .quiet), KitActionSlot(kind: .secondary), KitActionSlot(kind: .primary)]), [0, 1, 2])
+    }
+
     // MARK: Layout
 
     func testTheArrangementComesFromTheShape() {
@@ -95,6 +173,49 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(KitArrangement.of(CGSize(width: 1180, height: 820)), .split)
         XCTAssertEqual(KitArrangement.of(CGSize(width: 1366, height: 1024)), .split)
         XCTAssertEqual(KitArrangement.of(CGSize(width: 900, height: 800)), .tall)
+    }
+
+    // MARK: Mac window (UK-08.3, desktop.html)
+
+    func testTheMacWindowChoosesItsShapeFromItsOwnSize() {
+        func at(_ w: CGFloat, _ h: CGFloat) -> KitMacArrangement {
+            KitMacArrangement.of(CGSize(width: w, height: h))
+        }
+        // The minimum window is the one-line header strip.
+        XCTAssertEqual(KitMacArrangement.minimumWindow, CGSize(width: 480, height: 520))
+        XCTAssertEqual(at(480, 520), .strip)
+        XCTAssertEqual(at(639, 900), .strip)
+        // 760 x 420 is the short landscape: still two columns, no scroll.
+        XCTAssertEqual(at(760, 420), .short)
+        XCTAssertEqual(at(640, 479), .short)
+        XCTAssertEqual(at(900, 640), .split)
+        XCTAssertEqual(at(760, 480), .split)
+        // A large window is the capped card; a wide but short one is not.
+        XCTAssertEqual(at(1440, 900), .card)
+        XCTAssertEqual(at(1920, 1080), .card)
+        XCTAssertEqual(at(1200, 640), .card)
+        XCTAssertEqual(at(1400, 560), .split)
+    }
+
+    func testTheMacPanesAndFormKeepTheirMeasures() {
+        XCTAssertEqual(KitMacArrangement.split.artWidth, 334)
+        XCTAssertEqual(KitMacArrangement.card.artWidth, 340)
+        XCTAssertEqual(KitMacArrangement.short.artWidth, 300)
+        XCTAssertEqual(KitMacArrangement.strip.artWidth, 0)
+        // One top-aligned form of at most 440 pt, hero actions at most 320.
+        XCTAssertEqual(KitMacArrangement.formMaxWidth, 440)
+        XCTAssertEqual(KitMacArrangement.actsMaxWidth, 320)
+        XCTAssertEqual(KitMacArrangement.sheetWidth, 440)
+        XCTAssertEqual(KitMacArrangement.cardSize, CGSize(width: 880, height: 600))
+        XCTAssertEqual(KitMacArrangement.split.endInsets.top, 72)
+        XCTAssertEqual(KitMacArrangement.card.endInsets.top, 80)
+        // The lede and the 36 pt capsules give way in the short window only.
+        XCTAssertFalse(KitMacArrangement.short.showsLede)
+        XCTAssertFalse(KitMacArrangement.short.heroCapsules)
+        for shape in [KitMacArrangement.strip, .split, .card] {
+            XCTAssertTrue(shape.showsLede)
+            XCTAssertTrue(shape.heroCapsules)
+        }
     }
 
     func testTheHeroGivesWayFirst() {
@@ -272,6 +393,101 @@ final class KitRulesTests: XCTestCase {
                 ".fixedSize(horizontal: false, vertical: true)"))
     }
 
+    // MARK: The render matrix's inputs (UK-08.7)
+
+    func testACustomAccentKeepsThreeToOneOnEverySurfaceInBothSchemes() throws {
+        // Increase Contrast adds the full-contrast hairline; the accent fill is 3:1 or more on
+        // every surface with it on or off (the resolver does not depend on the setting).
+        for dark in [true, false] {
+            let r = try XCTUnwrap(PolarisAccent.resolve("#ff6a3d", dark: dark))
+            let surfaces =
+                dark
+                ? PolarisKit.Dark.accentSurfaces : PolarisKit.Light.accentSurfaces
+            for surface in surfaces {
+                XCTAssertGreaterThanOrEqual(
+                    PolarisAccent.contrast(r.solid, String(format: "#%06x", surface.hex)), 3,
+                    "dark: \(dark)")
+            }
+            let id = KitIdentity.resolve(
+                PolarisKeyPreviewState.base { $0.presentation = PolarisKeyPreviewState.driftKart })
+            for increased in [false, true] {
+                let p = KitPaletteResolver.palette(
+                    identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                    increaseContrast: increased)
+                XCTAssertEqual(p.accentSolid, BrandColor(hexString: r.solid)!.color)
+            }
+        }
+    }
+
+    func testIncreaseContrastTakesTheFullContrastHairline() {
+        let id = KitIdentity.resolve(PolarisKeyPreviewState.base())
+        for dark in [true, false] {
+            func border(_ increased: Bool) -> Color {
+                KitPaletteResolver.palette(
+                    identity: id, preset: .polarisKey, dark: dark, derivedAccent: nil,
+                    increaseContrast: increased
+                ).border
+            }
+            XCTAssertNotEqual(border(true), border(false), "dark: \(dark)")
+        }
+    }
+
+    func testForcedAccessibilityOnlyAddsToTheSystem() {
+        let off = PolarisKeyForcedAccessibility()
+        XCTAssertFalse(off.increaseContrast)
+        XCTAssertFalse(off.reduceTransparency)
+        XCTAssertEqual(off, EnvironmentValues().polarisKeyForcedAccessibility)
+    }
+
+    /// Every `components.json` state is reached by a preview state, so the Mac harness (which
+    /// renders `PolarisKeyPreviewState.all`) draws each catalog state.
+    func testEveryCatalogStateIsReachedByAPreviewState() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let url = root.appendingPathComponent("packages/brand/kit-copy/components.json")
+        let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        let components = try XCTUnwrap(json?["components"] as? [String: [String: Any]])
+        let reached = Set(PolarisKeyPreviewState.all.map { "\($0.component.rawValue).\($0.state)" })
+        var missing: [String] = []
+        for (name, component) in components {
+            for state in component["states"] as? [String] ?? []
+            where !reached.contains("\(name).\(state)") {
+                missing.append("\(name).\(state)")
+            }
+        }
+        XCTAssertEqual(missing.sorted(), [])
+    }
+
+    /// UK-08.8: every state the Mac harness lists (its board, extra rows and sheets) is a preview
+    /// state, and the states suite renders every preview state off the board, so the Mac
+    /// renders cover them all. Read from the harness source, which the package
+    /// cannot import.
+    func testEveryMacStateListedInASuiteIsAPreviewState() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent(
+                "examples/ui/swiftui/UITests/KitRenderMacTests.swift"), encoding: .utf8)
+        func list(_ name: String) throws -> [String] {
+            let range = try XCTUnwrap(
+                source.range(
+                    of: "static let \(name) = \\[[^\\]]*\\]", options: .regularExpression),
+                "\(name) not found in the Mac harness")
+            return String(source[range]).split(separator: "\"").map(String.init)
+                .enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
+        }
+        let all = Set(PolarisKeyPreviewState.all.map(\.id))
+        // The Settings pane has its own launch argument, not a preview state.
+        for name in ["board", "extraRows", "sheets"] {
+            let unknown = try list(name).filter { $0 != "SettingsPane.account" && !all.contains($0) }
+            XCTAssertEqual(unknown, [], "\(name) lists states that are not preview states")
+        }
+        let board = try list("board")
+        XCTAssertEqual(board.count, 8, "the eight board screens")
+    }
+
     // MARK: Baselines
 
     static var snapshots: URL {
@@ -313,4 +529,42 @@ final class KitRulesTests: XCTestCase {
         }
         XCTAssertEqual(missing, [])
     }
+
+    // MARK: macOS menu and Settings pane (UK-08.4)
+
+    #if os(macOS)
+        func testTheMenuWordsAreTitleCaseWithAnEllipsis() {
+            let strings = KitStrings()
+            XCTAssertEqual(strings.string("update.checkNow"), "Check for Updates…")
+            XCTAssertEqual(strings.string("menu.manageLicense"), "Manage License…")
+            XCTAssertEqual(strings.string("menu.signOut"), "Sign Out…")
+            XCTAssertEqual(strings.string("menu.account"), "Account")
+            // The confirm is the destructive button's word, with no ellipsis: it acts.
+            XCTAssertEqual(strings.string("signin.signout.confirm"), "Sign Out")
+        }
+
+        func testTheSignOutConfirmationUsesSigninNineCopy() {
+            let strings = KitStrings()
+            XCTAssertEqual(
+                SignOutCopy.title(strings, product: "Tidewater Studio"),
+                "Sign out of Tidewater Studio on this Mac?")
+            XCTAssertEqual(
+                SignOutCopy.message(strings, product: "Tidewater Studio", tier: "Pro"),
+                "This frees your Pro license for another device.")
+        }
+
+        @MainActor func testAStillModelAnswersCheckNowWithUpToDate() async {
+            let model = PolarisKeySettingsModel(preview: PolarisKeyPreviewState.base())
+            await model.checkNow()
+            XCTAssertEqual(model.checkResult, CopyLine("update.upToDate"))
+            XCTAssertFalse(model.checkFailed)
+        }
+
+        @MainActor func testTheUpdateHookIsEmptyUntilAnUpdateWindowSetsIt() {
+            XCTAssertNil(PolarisKeyUpdateHook.present)
+            PolarisKeyUpdateHook.present = {}
+            XCTAssertNotNil(PolarisKeyUpdateHook.present)
+            PolarisKeyUpdateHook.present = nil
+        }
+    #endif
 }

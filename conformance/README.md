@@ -59,8 +59,10 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `constants`      | reads            | `pnpm gen constants`                    |
 | `brand`          | reads            | `pnpm gen brand`                        |
 | `docs-reference` | reads            | `pnpm gen docs-reference`               |
+| `registry-docs`  | reads            | `pnpm gen registry-docs`                |
 | `readme-work`    | reads and writes | `pnpm gen readme-work`                  |
 | `parity`         | reads            | `pnpm gen parity`                       |
+| `api`            | reads            | `pnpm gen api`                          |
 | `sdk-samples`    | writes           | `pnpm gen sdk-samples` (named run only) |
 
 <!-- work-on-it:end -->

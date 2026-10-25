@@ -9,9 +9,7 @@ extends RefCounted
 ##                           supersedes a bundle
 ##   status() / is_licensed() the gate (PKeyGate.license_state, contract order); usable means
 ##                           ok, grace or not-applicable
-##   is_entitled(name)       true only when the entitlement's value is the boolean true AND the
-##                           gate is usable (S-19 G11: false after a revocation or expiry)
-##   get_entitlements()      {name: value} off the verified licence document
+##   (the grants moved to `PolarisKey.entitlements`: has, value, all)
 ##   get_profile()           the signed greeting block {name?, firstName?, email?,
 ##                           activatedAt?}, or null
 ##   get_license_user()      the account signed in on this device, {subject}, or null: the
@@ -114,25 +112,6 @@ func _entitlements() -> Dictionary:
 	return doc["entitlements"] if doc is Dictionary and doc.get("entitlements") is Dictionary else {}
 
 
-## S-19 G11: an entitlement counts only while the gate is usable (ok, grace, not-applicable). A
-## revoked, expired or blocked licence answers false even though its last verified document still
-## lists the grant; get_entitlements() keeps reading the raw values for diagnostics.
-func is_entitled(name: String) -> bool:
-	if not is_licensed():
-		return false
-	var e = _entitlements().get(name)
-	return e is Dictionary and PKeyClaims.is_true(e.get("value"))
-
-
-func get_entitlements() -> Dictionary:
-	var out := {}
-	var ents := _entitlements()
-	for k in ents:
-		if ents[k] is Dictionary:
-			out[k] = ents[k].get("value")
-	return out
-
-
 func get_profile() -> Variant:
 	var doc = _doc()
 	return doc["profile"].duplicate(true) if doc is Dictionary and doc.get("profile") is Dictionary else null
@@ -232,7 +211,7 @@ static func unverified(core: PKeyCore, synced: Variant, what := "the token was m
 	var status := int(e.get("status", 0))
 	var code := String(e.get("code", ""))
 	if status == 200 or code == String(PKeyErrors.INVALID_RESPONSE):
-		push_error("Polaris Key: %s but the license document did not verify. Check that the pinned trust keys (pinned_trust_keys, polaris_key.tres) are the product's signing keys and that this device's clock is right (a document is only valid inside its window)." % what)
+		push_error("Polaris Key: %s but the license document did not verify. Check that the pinned trust keys (pinned_keys, polaris_key.tres) are the product's signing keys and that this device's clock is right (a document is only valid inside its window)." % what)
 		return {"code": PKeyErrors.INVALID_RESPONSE, "message": "The license document did not verify.", "status": 200}
 	return {}
 

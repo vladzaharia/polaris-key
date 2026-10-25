@@ -183,14 +183,14 @@ describe("renderUsage", () => {
       secretKey: "s.key",
       mintRecipe: "r1",
     });
-    expect(b?.code).toContain('getConfig("run.concurrency", 3)');
+    expect(b?.code).toContain('config.get("run.concurrency", 3)');
     expect(b?.code).toContain('getSecret("s.key")');
     expect(b?.code).toContain('mintToken("r1")');
     expect(b?.compiled).toBe(true);
     expect(
       renderUsage("config", "python", "library", null, { configFallback: true })
         ?.code,
-    ).toContain('get_config("audio.musicVolume", True)');
+    ).toContain('get("audio.musicVolume", True)');
   });
 
   it("renders null where an SDK has no such code, never a guess", () => {

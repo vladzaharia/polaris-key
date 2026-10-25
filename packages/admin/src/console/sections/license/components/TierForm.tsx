@@ -23,7 +23,8 @@ import { NumberInput } from "../../../../ui/NumberInput.js";
 import { Select } from "../../../../ui/Select.js";
 import { VersionInput } from "../../../../ui/VersionInput.js";
 import { InlineFailure } from "./InlineFailure.js";
-import { useManualChannels, useProfiles } from "./shared.js";
+import { useProfiles } from "../../config/data.js";
+import { useManualChannels } from "./shared.js";
 
 /**
  * Every license holds `stable` whatever its tier lists ("none means stable only", terms.ts), so
@@ -280,7 +281,11 @@ function TierGroup({
         </h3>
         {hint ? <p className="mt-1 text-xs text-fg-muted">{hint}</p> : null}
       </div>
-      <div className="space-y-5">{children}</div>
+      {/* Fields keep a 40rem measure; on a wide window the column sits flush right, as a
+          settings row does, not short of the row edge. */}
+      <div className="w-full max-w-[40rem] space-y-5 xl:justify-self-end">
+        {children}
+      </div>
     </section>
   );
 }

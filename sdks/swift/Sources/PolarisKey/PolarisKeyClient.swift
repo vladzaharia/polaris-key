@@ -171,6 +171,8 @@ public actor PolarisKeyClient {
     public nonisolated let product: String
     public nonisolated let core: CoreContext
     public nonisolated let license: LicenseClient
+    /// Entitlement reads, gated by the licence (`has`, `value`); `all()` is ungated.
+    public nonisolated let entitlements: EntitlementsClient
     public nonisolated let config: ConfigClient
     public nonisolated let release: ReleaseClient
     /// Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity.
@@ -225,7 +227,7 @@ public actor PolarisKeyClient {
             observe: {
                 await PolarisKeyClient.observe(core: core, license: licenseBox.current, config: config)
             },
-            source: { await config.configSource($0) },
+            source: { await config.getConfigSource($0) },
             deliver: { config.deliver($0) })
         self.publisher = publisher
         // A local `config.set` / `clear` is observed by the same publisher, so `events` and
@@ -294,6 +296,7 @@ public actor PolarisKeyClient {
             },
             // `client.license.deactivate()` reaches the same event as `client.deactivate()`.
             onReleased: { await publisher.publish() })
+        self.entitlements = EntitlementsClient(license: self.license)
         let license = self.license
         licenseBox.set(license)
         let devices = DevicesClient(
@@ -326,7 +329,7 @@ public actor PolarisKeyClient {
         let status = await license?.status().status ?? .notApplicable
         var entitlements: [String: JSONValue] = [:]
         if let license, isUsable(status) {
-            entitlements = await license.entitlements()
+            entitlements = await EntitlementsClient(license: license).all()
         }
         return ChangeObservation(
             status: status, entitlements: entitlements, config: await config.snapshot(),
@@ -362,7 +365,7 @@ public actor PolarisKeyClient {
         if let degraded = await core.storeStatus()?.degraded {
             eventHub.emit(.store(reason: degraded.reason.rawValue, detail: degraded.detail))
         }
-        startRefreshLoop()
+        startRefresh()
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────
@@ -595,7 +598,7 @@ public actor PolarisKeyClient {
     }
 
     /// The React-bridge contract, assembled from the managers that own each piece.
-    public func syncState() async -> SyncState {
+    public func getSyncState() async -> SyncState {
         let cache = await core.cache()
         return SyncState(
             activation: await license.activation(),
@@ -640,25 +643,9 @@ public actor PolarisKeyClient {
         await license.isLicensed(now: now)
     }
 
-    public func config(_ key: String, default fallback: JSONValue) async -> JSONValue {
-        await config.config(key, default: fallback)
-    }
-
-    /// Whether a catalog `flag` is on for this install. Flags are entitlements and ride the
-    /// licence document only, so this is `license.isEntitled(flag)`: false whenever the gate is
-    /// not usable (S-19 G11).
-    public func isEnabled(flag: String) async -> Bool {
-        await license.isEntitled(flag)
-    }
-
     /// The verified licence, summarised (`license.licenseInfo()`).
     public func licenseInfo() async -> LicenseInfo? {
         await license.licenseInfo()
-    }
-
-    @discardableResult
-    public func activate(key: String) async -> ActivationResult {
-        await license.activate(key: key)
     }
 
     @discardableResult
@@ -716,7 +703,7 @@ public actor PolarisKeyClient {
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────
     /// Start polling, invoking `onChange` when a sync actually changes a document.
-    public func startRefreshLoop(onChange: (@Sendable (LicenseState) -> Void)? = nil) {
+    public func startRefresh(onChange: (@Sendable (LicenseState) -> Void)? = nil) {
         if let onChange { self.onChange = onChange }
         // A local-only client's timer could only ever throw at the dial, so it is not started at
         // all (§7.3).
@@ -771,7 +758,7 @@ private struct SnapshotContent: Encodable {
 extension PolarisKeyClient {
     /// A client that never touches the network.
     ///
-    /// Everything offline still works: `config(_:default:)` resolves over a cached or imported
+    /// Everything offline still works: `config.get(_:default:)` resolves over a cached or imported
     /// config document, `status()` gates on a cached or imported licence, and `importBundle`
     /// provisions one. Anything that would dial — activation, enrolment, registration, `sync()`,
     /// discovery, the update check — rejects with `PolarisError` code `local-only`.

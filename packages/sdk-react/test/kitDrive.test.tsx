@@ -56,6 +56,7 @@ function mountGate(submit: () => BridgeActivation) {
   const bridge = makeFakeBridge(emptyBridgeState());
   bridge.submitKey = vi.fn(async () => submit());
   const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+
   const view = render(
     <PolarisKeyProvider config={{ productSlug: "acme", adapter }}>
       <PolarisKeyGate theme={{ product: { name: "Acme Studio" } }}>
@@ -234,7 +235,13 @@ function mountParts(children: React.ReactNode, version = "2.4.1") {
   ];
   const calls: [string, string, unknown][] = [];
   const state: BridgeState = okBridgeState({
-    capabilities: services("license", "config", "identity", "update"),
+    capabilities: services(
+      "license",
+      "config",
+      "identity",
+      "update",
+      "release",
+    ),
     config: makeConfig({
       "audio.dither": entry("default", true),
       "export.format": entry("default", "wav"),
@@ -260,6 +267,17 @@ function mountParts(children: React.ReactNode, version = "2.4.1") {
           url: "https://dl.plrs.im/acme/2.5.0",
           updateAvailable: true,
         };
+      if (service === "release" && method === "changelog")
+        return [
+          {
+            version: "2.5.0",
+            tag: "v2.5.0",
+            date: "2026-10-01T00:00:00Z",
+            summary:
+              "Faster export\n\nFixes the crash on open\nNew themes\nA fourth line",
+            url: "https://dl.plrs.im/acme/2.5.0/notes",
+          },
+        ];
       return null;
     },
   };
@@ -359,6 +377,35 @@ describe("the parts run themselves inside the provider", () => {
     adapter.dispose();
   });
 
+  it("UpdatePrompt shows the changelog's first three lines, the current version and All changes", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { container } = mountParts(<UpdatePrompt />);
+    await waitFor(() =>
+      expect(container.querySelectorAll('[data-part="notes"] li')).toHaveLength(
+        3,
+      ),
+    );
+    const lines = [...container.querySelectorAll('[data-part="notes"] li')].map(
+      (l) => l.textContent,
+    );
+    expect(lines).toEqual([
+      "Faster export",
+      "Fixes the crash on open",
+      "New themes",
+    ]);
+    expect(container.textContent).toContain("2.4.1");
+    fireEvent.click(
+      container.querySelector(
+        'button[data-key="update.allChanges"], a[data-key="update.allChanges"]',
+      )!,
+    );
+    expect(open).toHaveBeenCalledWith(
+      "https://dl.plrs.im/acme/2.5.0/notes",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
   it("UpdatePrompt and About fill every argument and copy the diagnostics", async () => {
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -386,7 +433,8 @@ describe("the parts run themselves inside the provider", () => {
     fireEvent.click(
       container.querySelector('button[data-key="update.install"]')!,
     );
-    expect(open).toHaveBeenCalledTimes(1);
+    // The host here has no install driver (decide answers nothing): the download page opens.
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
     fireEvent.click(
       container.querySelector('button[data-key="about.copyDiagnostics"]')!,
     );

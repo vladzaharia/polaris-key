@@ -11,28 +11,27 @@
  *   - Revert to manifest: a claimed slot whose source the manifest names goes back to it.
  *   - Delete copy: drops Polaris Key's copy at once (the image host stops serving it).
  *
- * The wordmark, the accent and the description are in the mockup but no hosted slot or served
- * field holds them yet, so they have no row here.
+ * Name, Accent and Description sit under the art (A-27.12): the base every channel's listing starts
+ * from, each with its source (`PresentationBaseRows`). The wordmark has no hosted slot yet.
  */
 
+import { assetUsageQuery, hostedAssetsQuery } from "../data.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../../api.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
-import { qk } from "../../../data/queries.js";
 import { useProduct } from "../../../data/hooks.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { HostingRows } from "../components/PresentationHosting.js";
+import { PresentationBaseRows } from "../components/PresentationBaseRows.js";
 import { PresentationPreview } from "../components/PresentationPreview.js";
 import { PresentationSlotRow } from "../components/PresentationSlotRow.js";
-import { fetchHostedAssets, layout } from "../model/presentationSlots.js";
+import { layout } from "../model/presentationSlots.js";
 
 export {
   binaryBytes,
-  fetchHostedAssets,
   reasonWords,
   slotCap,
   slotLabel,
@@ -46,14 +45,8 @@ export function PresentationPage({
 }: {
   slug: string;
 }): React.ReactElement {
-  const assets = useQuery({
-    queryKey: qk.hostedAssets(slug),
-    queryFn: () => fetchHostedAssets(slug),
-  });
-  const usage = useQuery({
-    queryKey: qk.assetUsage(slug),
-    queryFn: () => api.assetUsage(slug),
-  });
+  const assets = useQuery(hostedAssetsQuery(slug));
+  const usage = useQuery(assetUsageQuery(slug));
   const product = useProduct(slug);
   useLoadingAnnouncement("presentation", assets.isPending);
   if (assets.isPending)
@@ -114,7 +107,8 @@ export function PresentationPage({
             {presentation.map(slotRow)}
             {slotRow(heroSlot!)}
           </SettingsSection>
-          <SettingsSection id="presentation-listing" title="Listing">
+          <PresentationBaseRows slug={slug} />
+          <SettingsSection id="presentation-listing" title="Listing images">
             {listingRest.map(slotRow)}
           </SettingsSection>
           {other.length ? (

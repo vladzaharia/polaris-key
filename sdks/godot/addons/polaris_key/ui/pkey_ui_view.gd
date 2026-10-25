@@ -171,6 +171,10 @@ var _layouts_in_frame := 0
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_NONE
+	# A kit screen keeps running while the game pauses the tree (a sign-in opened from a pause menu
+	# must not freeze). The game overrides it by setting `process_mode` on the view or an ancestor
+	# that is not INHERIT. The kit itself never sets `SceneTree.paused`.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group(GROUP)
 	_build()
 	# A view that brings its own panel (an empty one, say) keeps it when nested.
@@ -192,12 +196,20 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_VISIBILITY_CHANGED and _opener != null and not is_visible_in_tree():
 		# The dialog went away (hidden by its host, dismissed): the game's control gets its focus back.
 		restore_opener()
+		_sync_capture()
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and _built:
+		_sync_capture()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN and _built:
+		# The OS theme may have changed while the game was in the background.
+		PKeyUiTheme.recheck_system_scheme()
 	elif what == NOTIFICATION_ENTER_TREE and _built:
 		_watch_viewport()
 	elif what == NOTIFICATION_EXIT_TREE and _built and _opener == null:
 		_unwatch_viewport()
+		_sync_capture(true)
 	elif what == NOTIFICATION_EXIT_TREE and _opener != null:
 		_unwatch_viewport()
+		_sync_capture(true)
 		# A game that frees the view instead of hiding it: the control that opened it gets the focus
 		# back (unless the view was only moved to another parent, which keeps its opener).
 		PKeyUiView._give_back.call_deferred(weakref(_opener), weakref(self))
@@ -208,6 +220,69 @@ func _notification(what: int) -> void:
 
 
 var _watched: Viewport = null
+var _capturing := false
+## True while `refresh_view()` renders: a view hidden or shown halfway through is not reported.
+var _rendering := false
+
+
+## Whether this view, as the outermost one, takes the player's input while it is on screen (the
+## scrim dialogs, and the gate and boot, which override it). PolarisKey.input_captured follows.
+func _captures_input() -> bool:
+	return _scrim_wanted()
+
+
+## A nested dialog put something on the clipboard (a sign-in link, a device code): the outermost
+## view hears of it. The gate and boot answer with a Copied toast.
+func note_copied() -> void:
+	outer_view()._on_child_copied()
+
+
+func _on_child_copied() -> void:
+	pass
+
+
+## Tell the SDK when this view takes or gives back the input. `gone`: the view left the tree.
+func _sync_capture(gone := false) -> void:
+	if _rendering and not gone:
+		return
+	var want := not gone and is_inside_tree() and is_visible_in_tree() and outer_view() == self and _captures_input()
+	_sync_feedback(want)
+	if want == _capturing:
+		return
+	var owner_sdk: Node = sdk
+	if owner_sdk == null or not is_instance_valid(owner_sdk) or not owner_sdk.has_method("capture_input"):
+		return
+	_capturing = want
+	owner_sdk.call("capture_input", self, want)
+
+
+var _fx_open := false
+
+
+## A dialog over the game opening or closing: the host's sound and haptic hook, and the fade in.
+func _sync_feedback(open: bool) -> void:
+	if open == _fx_open:
+		return
+	_fx_open = open
+	PKeyUiFeedback.emit(&"open" if open else &"close")
+	if open:
+		PKeyUiTheme.recheck_system_scheme()
+		PKeyUiMotion.enter(self)
+	else:
+		PKeyUiMotion.cancel(self)
+
+
+var _fx_error_key := ""
+
+
+## A refusal or a failed action is on screen: `error` once when `key` (what is shown) changes to
+## something, nothing while it stays and when it clears (`key` empty).
+func fx_error(key: String) -> void:
+	if key == _fx_error_key:
+		return
+	_fx_error_key = key
+	if key != "":
+		PKeyUiFeedback.emit(&"error")
 
 
 ## Follow the viewport the view is in now (a view moved into another one, a SubViewport, follows that
@@ -254,11 +329,18 @@ static func ensure_pad_bindings() -> void:
 		if not has_pad:
 			var ev := InputEventJoypadButton.new()
 			ev.button_index = pair[1]
+			# Every device: a second pad, a reconnected one or a Steam Input virtual pad is not device 0.
+			ev.device = -1
 			InputMap.action_add_event(action, ev)
 
 
 ## The last kind of input, for `pointer_last`; and a modal's input guard.
 func _input(event: InputEvent) -> void:
+	if _closing and (event is InputEventKey or event is InputEventJoypadButton or event is InputEventMouseButton or event is InputEventScreenTouch):
+		# Fading out: the dialog answers nothing more (a second Esc or B must not close it twice).
+		get_viewport().set_input_as_handled()
+		return
+	PKeyUiFeedback.note_input(event)
 	if event is InputEventKey or event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
 		pointer_last = false
 		_pointer_known = true
@@ -276,6 +358,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var inside := _has_focus_inside()
 	if event.is_action_pressed("ui_cancel") and (inside or (outer_view() == self and not _focus_elsewhere())):
 		if _cancel():
+			PKeyUiFeedback.emit(&"back")
 			get_viewport().set_input_as_handled()
 		return
 	# Nothing has focus (a screen opened after a pointer): the first direction or accept key
@@ -307,6 +390,7 @@ func c() -> PKeyUiCopy:
 func refresh_view() -> void:
 	if not _built:
 		return
+	_note_step()
 	# A deferred refresh (PKeyUiTheme.refresh_views()) can outlive the SDK node it was given.
 	if not is_instance_valid(sdk):
 		sdk = null
@@ -323,7 +407,9 @@ func refresh_view() -> void:
 	var held_at := _last_chain.find(held) if held != null else -1
 	_resolve_theme()
 	_render_brand()
+	_rendering = true
 	_render()
+	_rendering = false
 	if outer:
 		# What the device decides (a phone shows no QR code, say) is rendered by every view inside,
 		# not only the ones whose own state changed.
@@ -334,6 +420,7 @@ func refresh_view() -> void:
 	_name_controls()
 	wire_focus()
 	layout_content()
+	_sync_capture()
 	if outer:
 		if held != null and held_at >= 0 and not held.has_focus() and _lost_index < 0:
 			_lost_index = held_at
@@ -343,6 +430,56 @@ func refresh_view() -> void:
 		# outermost view owns the focus, and asks for it again when the screen it shows differs
 		# (a device limit replaced the key field the focus was on).
 		outer_view()._manage_focus.call_deferred()
+
+
+var _closing := false
+
+
+## Whether the dialog is fading out.
+func is_closing() -> bool:
+	return _closing
+
+
+## The one way a dialog over the game goes away (UI-KITS §4.8): the outermost view fades out over
+## MOTION_SHEET_OUT_MS, then `done` runs (emit `closed`, restore the opener, free or hide). A second
+## request during the fade is ignored, so `closed` is emitted once however often B or Esc is pressed.
+## A nested view, a hidden one and reduced motion run `done` at once.
+func close_then(done: Callable) -> void:
+	if _closing:
+		return
+	if outer_view() != self or not _scrim_wanted() or not is_inside_tree() or not is_visible_in_tree() or PKeyUiTheme.reduce_motion():
+		done.call()
+		return
+	_closing = true
+	PKeyUiMotion.exit(self, func() -> void:
+		_closing = false
+		done.call())
+
+
+var _step_key := ""
+var _step_seen := false
+
+
+## A new screen of this view (its `_screen_key()` changed after one was shown): the card's inner
+## content crossfades. Run by whichever view changed, nested or not; never on the first screen, while
+## the dialog is still entering, or on a view that draws no card of its own.
+func _note_step() -> void:
+	var key := _screen_key()
+	var changed := _step_seen and key != _step_key and key != ""
+	var was_key := _step_key
+	_step_key = key
+	if not changed or was_key == "" or not is_inside_tree() or not is_visible_in_tree() or PKeyUiMotion.entering(outer_view()):
+		_step_seen = true
+		return
+	_step_seen = true
+	PKeyUiMotion.step.call_deferred(step_target())
+
+
+## What a step fades: the child of this view's card (its scroll area or content), or null.
+func step_target() -> Control:
+	if _card_box == null or not is_instance_valid(_card_box) or _card_box.get_child_count() == 0:
+		return null
+	return _card_box.get_child(0) as Control
 
 
 ## Hide every container under `n` marked AUTO_HIDE_META whose children are all hidden, innermost
@@ -1191,6 +1328,8 @@ func _arrange(_m: Dictionary) -> void:
 	_apply_scrim()
 	_nest_panel()
 	_style_card()
+	_apply_glass()
+	_place_hints(_m)
 	_size_controls(self)
 	auto_hide(self)
 	_apply_width(content_width())
@@ -1389,6 +1528,49 @@ func _scrim_wanted() -> bool:
 	return false
 
 
+## A card over the dimmed game is glass (UI-KITS.md §4.3): the raised surface at GLASS_ALPHA with a
+## light edge and a soft shadow, so the game shows through the scrim. A phone's docked sheet, the
+## full-bleed pages, the game's own (neutral) look, reduced transparency, the web and the
+## compatibility renderer keep the opaque card (`PKeyUiTheme.glass_opaque()`).
+## Until the blur ships (UI-KITS.md §4.3), the glass is nearly opaque: hard game detail must not show
+## behind the text.
+const GLASS_ALPHA_DARK := 0.94
+const GLASS_ALPHA_LIGHT := 0.96
+const GLASS_META := &"pkey_glass"
+
+
+func _glass_wanted() -> bool:
+	return outer_view() == self and _scrim_wanted() and _card_shown() and not phone_sheet() and not phone_bleed() and not side_bleed() and PKeyUiTheme.branded() and not PKeyUiTheme.glass_opaque()
+
+
+func _apply_glass() -> void:
+	if _card_box == null:
+		return
+	var had := _card_box.has_meta(GLASS_META) and _card_box.has_theme_stylebox_override("panel")
+	if not _glass_wanted():
+		if _card_box.has_meta(GLASS_META):
+			_card_box.remove_meta(GLASS_META)
+		return
+	# Derived afresh on every layout: the theme's card follows the screen's scale and density.
+	if had:
+		_card_box.remove_theme_stylebox_override("panel")
+	if _card_box.has_theme_stylebox_override("panel"):
+		return
+	var base := _card_box.get_theme_stylebox("panel")
+	if not base is StyleBoxFlat:
+		return
+	var box := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
+	var dark := PKeyUiTheme.is_dark(self)
+	box.bg_color.a = GLASS_ALPHA_DARK if dark else GLASS_ALPHA_LIGHT
+	box.border_color = PKeyKitTokens.HIGHLIGHT_DARK if dark else PKeyKitTokens.HIGHLIGHT_LIGHT
+	box.border_color.a = maxf(box.border_color.a, 0.16)
+	box.shadow_color = PKeyKitTokens.SCRIM_DARK if dark else PKeyKitTokens.SCRIM_LIGHT
+	box.shadow_size = 32
+	box.shadow_offset = Vector2(0, 8)
+	_card_box.add_theme_stylebox_override("panel", box)
+	_card_box.set_meta(GLASS_META, true)
+
+
 func _apply_scrim() -> void:
 	# DL16: under reduced transparency a dialog over the game sits on the opaque page the gate and
 	# the boot use, not on the see-through scrim.
@@ -1419,6 +1601,8 @@ func _size_controls(n: Node) -> void:
 			var ctl := ch as Control
 			if not is_equal_approx(ctl.custom_minimum_size.y, h):
 				ctl.custom_minimum_size.y = h
+		if ch is BaseButton or ch is LineEdit:
+			PKeyUiFeedback.attach(ch as Control)
 		if ch.get_class() == "Button":
 			_fit_label(ch as Button, room_x())
 		if not (ch is SpinBox):
@@ -1429,12 +1613,26 @@ func _size_controls(n: Node) -> void:
 ## exactly its own minimum width the engine drops a bold label's last glyph. A label wider than
 ## `room` (a long German action on a 375 pt phone, a game's large type) wraps at its words inside
 ## a button exactly `room` wide, instead of pushing the screen wider (DL11).
+## The width Godot before 4.5 adds to a Button's minimum for its icon (the leaves-the-app glyph, capped
+## by `icon_max_width`) and the gap before it. That engine's Button keeps the full label and icon on one
+## line, so a label measured without them wraps too late and the card overflows a phone (CI 4.4.1,
+## sign_in / native28). Godot 4.5 and later lay the icon out within the width once a button wraps, but a button that does not wrap (the label measured here) still counts it in its minimum: 4.7.2, sign_in / native28 on the scrim path, 400 px on a 390 px screen.
+static func _icon_extent(b: Button) -> float:
+	if b.icon == null:
+		return 0.0
+	var iw := float(b.icon.get_width())
+	var cap := float(b.get_theme_constant("icon_max_width"))
+	if cap > 0.0:
+		iw = minf(iw, cap)
+	return iw + float(b.get_theme_constant("h_separation"))
+
+
 static func _fit_label(b: Button, room := INF) -> void:
 	var w := 0.0
 	var wrap := false
 	if b.text != "":
 		var box := b.get_theme_stylebox("normal")
-		w = ceilf(text_width(b, b.text) + 0.1 * b.get_theme_font_size("font_size") + (box.get_minimum_size().x if box != null else 0.0))
+		w = ceilf(text_width(b, b.text) + 0.1 * b.get_theme_font_size("font_size") + (box.get_minimum_size().x if box != null else 0.0) + _icon_extent(b))
 		if room > 1.0 and w > room and "autowrap_mode" in b:
 			w = floorf(room)
 			wrap = true
@@ -1526,8 +1724,23 @@ func card_width(wanted: float) -> float:
 	while n != null and n != outer:
 		if n is PanelContainer:
 			room -= side_padding(n as Control)
+		elif n is MarginContainer:
+			# A margin container between (the settings page's inset around its tab) takes its margins too.
+			room -= float(n.get_theme_constant("margin_left") + n.get_theme_constant("margin_right"))
+		elif n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and not _is_view_scroll(n as ScrollContainer):
+			# A page's own scroll area (the settings panel's list) keeps its bar's width free even while
+			# it fits. A view's card scroll is already in `card_padding_x()`.
+			room -= (n as ScrollContainer).get_v_scroll_bar().get_combined_minimum_size().x
 		n = n.get_parent()
 	return maxf(0.0, minf(wanted, room))
+
+
+## Whether `sc` is a card scroll a view made with `scroll_area()`.
+static func _is_view_scroll(sc: ScrollContainer) -> bool:
+	var v := sc.get_parent()
+	while v != null and not (v is PKeyUiView):
+		v = v.get_parent()
+	return v != null and (v as PKeyUiView)._scrolls.has(sc)
 
 
 ## The left plus right content margins of `panel`'s "panel" stylebox.
@@ -1711,6 +1924,100 @@ func button(parent: Node, node_name: String, pressed: Callable, variation := "")
 	return b
 
 
+## An input hint bar (PKeyHintBar) under `parent`: glyph and verb for the last device, `items` as
+## PKeyHintBar documents them.
+func hint_bar(parent: Node, node_name: String, items: Array) -> PKeyHintBar:
+	var b := PKeyHintBar.new()
+	b.name = node_name
+	b.view = self
+	b.home = parent
+	parent.add_child(b)
+	b.items = items
+	_hint_bars.append(b)
+	return b
+
+
+var _hint_bars: Array = []
+
+
+## One place for every hint bar (UI-KITS §1.5 rule 5): a footer at the bottom right of the title-safe
+## area, outside the panel. On a phone, or where the footer would sit on the panel, the bar is the
+## last row of the panel it was built in; with no room for that either (a short screen) it is left
+## out. Called from `_arrange()`.
+func _place_hints(m: Dictionary) -> void:
+	for b in _hint_bars:
+		var bar := b as PKeyHintBar
+		if not is_instance_valid(bar) or not is_instance_valid(bar.home):
+			continue
+		var outer := outer_view()
+		var wanted: bool = bar._wanted and bar.home.is_visible_in_tree()
+		var screen: Vector2 = m["screen"]
+		if not wanted:
+			bar.visible = false
+			continue
+		var footer := not phone_screen() and not outer._no_footer()
+		if footer:
+			_dock_hint(bar, true)
+			var sa: Array = outer._safe_applied
+			var ts := Vector2(roundf(maxf(role("page_margin"), 0.05 * screen.x)), roundf(maxf(role("page_margin"), 0.05 * screen.y)))
+			var room := maxf(0.0, screen.x - 2.0 * ts.x - sa[0] - sa[2])
+			var want := bar.natural_size()
+			bar.custom_minimum_size = Vector2.ZERO
+			bar.size = Vector2(minf(want.x, room), want.y)
+			var origin := outer.get_viewport().get_visible_rect().end
+			bar.global_position = origin - Vector2(ts.x + sa[2], ts.y + sa[3]) - bar.size
+			if _hint_clear(bar):
+				bar.visible = true
+				continue
+			# The footer would sit on a card that fills the screen: nothing to show it beside.
+			bar.visible = false
+			continue
+		# A phone: the panel's own last row.
+		_dock_hint(bar, false)
+		bar.visible = screen.y >= PKeyHintBar.MIN_SCREEN_HEIGHT
+		if bar.home.get_child_count() > 0 and bar.get_index() != bar.home.get_child_count() - 1:
+			bar.home.move_child(bar, -1)
+
+
+## Whether the footer clears the panel: its rect meets no visible card.
+func _hint_clear(bar: PKeyHintBar) -> bool:
+	var r := Rect2(bar.global_position, bar.size)
+	for card in outer_view().find_children("Card", "PanelContainer", true, false):
+		var c := card as Control
+		if c.is_visible_in_tree() and c.get_global_rect().intersects(r):
+			return false
+	return true
+
+
+## A scene with no footer of its own (a strip) turns it off.
+func _no_footer() -> bool:
+	return false
+
+
+func _dock_hint(bar: PKeyHintBar, footer: bool) -> void:
+	var target: Node = outer_view() if footer else bar.home
+	if bar.get_parent() == target and bar.top_level == footer:
+		return
+	if bar.has_meta(&"pkey_docking"):
+		return
+	# Deferred: a layout that runs while a parent is still setting up its children cannot add one.
+	bar.set_meta(&"pkey_docking", true)
+	_finish_dock.call_deferred(bar, target, footer)
+
+
+func _finish_dock(bar: PKeyHintBar, target: Node, footer: bool) -> void:
+	if not is_instance_valid(bar):
+		return
+	bar.remove_meta(&"pkey_docking")
+	if not is_instance_valid(target):
+		return
+	if bar.get_parent() != null:
+		bar.get_parent().remove_child(bar)
+	bar.top_level = footer
+	target.add_child(bar)
+	queue_layout()
+
+
 ## A column whose gap is the theme's: `variation` is PKeyStack (related items, the default),
 ## PKeyTight (a title over its line, a label over its control) or PKeySections (a card's
 ## sections).
@@ -1866,15 +2173,33 @@ func leaves_app(b: Button, leaves := true, px := 16.0) -> void:
 
 
 static var _note_copy = null
+static var _note_locale := ""
 
 
 static func _external_note() -> String:
 	return String(catalog().format("a11y.externalLink"))
 
 
+## Marks a node whose text is a catalog string (formatted from the model's `.po` tables, which carry
+## the real translations), not a PKeyUiCopy default.
+const CATALOG_META := &"pkey_catalog_text"
+
+
+## Show catalog `key` formatted with `args` in `node` (hidden for an empty key). The game's
+## `PKeyUiCopy.overrides` for the key still win, as for every kit string.
+func cat_text(node: Control, key: String, args: Dictionary = {}) -> void:
+	node.set_meta(CATALOG_META, true)
+	if key == "":
+		show_text(node, "")
+		return
+	var o = c().overrides.get(key)
+	show_text(node, o if o is String else String(catalog().format(key, args)))
+
+
 ## The shared copy catalog (the model's `.po` tables) in the running locale.
 static func catalog():
-	if _note_copy == null:
+	if _note_copy == null or _note_locale != TranslationServer.get_locale():
+		_note_locale = TranslationServer.get_locale()
 		_note_copy = preload("res://addons/polaris_key/ui/model/copy_format.gd").new({"locale": TranslationServer.get_locale()})
 	return _note_copy
 
