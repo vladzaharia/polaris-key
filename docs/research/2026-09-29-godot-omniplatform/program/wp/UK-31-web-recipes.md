@@ -127,6 +127,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - **Builds or backs 3 mockup item(s):** `kitboard:web:vue-kit`, `kitboard:web:svelte-kit`, `kitboard:web:angular-kit`.
 - `kit:UK-22`: UK-22 (host design systems) is dropped; UK-31's recipes cover 'your own design system'. Strike the UK-22 row in UI-KITS 10 (DOC-14).
 
+## Close (2026-10-24)
+
+UK-31.8 verdict was FIX (Angular fonts, empty own-UI lanes); UK-31.9 fixed it (merged 2faaf852a). No re-review is recorded, so no pass is entered in ux-reviews.json and the acceptance rows below stay open. UK-22 is struck in UI-KITS 10 already.
+
 ## Acceptance criteria
 
 - [ ] Each example renders the gate in both themes and passes `pnpm ui:lint`.
