@@ -38,3 +38,19 @@ internal fun polarisSystemDark(): Boolean = rememberThemeHostFacts()?.dark ?: an
 /** The system accent as an opaque colour, or null when there is none. */
 @Composable
 internal fun themeHostAccent(): Color? = rememberThemeHostFacts()?.accent?.let { Color(0xFF000000L or (it.toLong() and 0xFFFFFFL)) } // polaris-lint: allow-colour (the OS accent, opaque)
+
+/** Fluent's default accent, the native preset's fallback on Windows. */
+@Suppress("MagicNumber")
+private val FluentDefaultAccent = Color(0xFF0067C0) // polaris-lint: allow-colour (Fluent's default accent)
+
+/** Adwaita's default accent, the native preset's fallback on GNOME. */
+@Suppress("MagicNumber")
+private val AdwaitaDefaultAccent = Color(0xFF3584E4) // polaris-lint: allow-colour (Adwaita's default accent)
+
+/** UK-10.15 #7: the native preset's accent: the host's, else Fluent's or Adwaita's own on Windows and GNOME, never ink. */
+@Composable
+internal fun nativeAccent(): Color? = themeHostAccent() ?: when (autoPlatformVariant()) {
+    PolarisPlatformVariant.Windows -> FluentDefaultAccent
+    PolarisPlatformVariant.Gnome -> AdwaitaDefaultAccent
+    else -> null
+}

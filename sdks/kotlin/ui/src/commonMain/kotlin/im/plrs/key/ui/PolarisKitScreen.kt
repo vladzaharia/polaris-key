@@ -349,7 +349,7 @@ private fun KitScreenBody(
                         val action = KitAction.forCopyKey(line.key)
                         val click: () -> Unit = if (gnomeReplace && line.key == "signin.replace.openSystem") ({ replaceOpen = true }) else ({ onAction(action) })
                         // One primary, then tonal secondaries (a lone action is always the primary, DL4).
-                        val hero = if (polarisWindow.isMac && component == KitComponent.welcome) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
+                        val hero = if (polarisWindow.variant.isDesktop && component == KitComponent.welcome) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
                         if (index == 0) {
                             PolarisPrimaryButton(line.text, onClick = click, modifier = hero, external = KitAction.leavesApp(line.key))
                         } else {

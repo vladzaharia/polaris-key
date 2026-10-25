@@ -231,7 +231,7 @@ public fun PolarisTheme(
     content: @Composable () -> Unit,
 ) {
     // GNOME: the portal's accent-color is the native preset's accent (UK-10.6); null elsewhere and for an integrator's own.
-    val hostAccent = if (branding == PolarisBranding.None && accent == null) themeHostAccent() else null
+    val hostAccent = if (branding == PolarisBranding.None && accent == null) nativeAccent() else null
     val member = rememberPresentation(presentation)
     // The icon is fetched only for what it fills: the logo, or a branded accent nothing else gives.
     val wantsArt = logo == null || (branding == PolarisBranding.PolarisKey && accent == null && member?.accentFor(darkTheme) == null)

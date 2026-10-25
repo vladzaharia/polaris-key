@@ -1730,6 +1730,12 @@ const COPIES: Copy[] = [
     path: `${KOTLIN_UI}/res/font/${res}`,
     pkgPath: `fonts/ttf/${ttf}`,
   })),
+  // The Compose desktop kit's Rubik (UK-10.15): the brand's wght 400-600 subset, on the classpath, so the
+  // desktop draws Rubik instead of the host's sans (Linux's is wider and broke layout assertions).
+  {
+    path: "sdks/kotlin/ui/src/desktopMain/resources/im/plrs/key/ui/fonts/Rubik-Variable-kit.ttf",
+    pkgPath: "fonts/ttf/Rubik-Variable-kit.ttf",
+  },
   // The Delivery web folder's icons are the kit's Update icons, unchanged.
   ...DELIVERY_WEB_COPIES.map((f) => ({
     path: `packages/brand/web/delivery/${f}`,
