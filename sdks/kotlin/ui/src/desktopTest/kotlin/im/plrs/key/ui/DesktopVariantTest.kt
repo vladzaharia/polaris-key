@@ -135,13 +135,19 @@ class DesktopVariantTest {
         for (a in all) assertTrue(a.first() in setOf("/usr/bin/defaults", WIN_REG, "gdbus") && (a.first() != WIN_REG || a.first().endsWith("System32\\reg.exe")) && a.none { it == "sh" || it == "-c" || it == "cmd" }, a.toString())
     }
 
+    private val isWindowsHost: Boolean get() = System.getProperty("os.name").startsWith("Windows")
+
+    /** A command that runs for [seconds]: there is no `sleep` on Windows, so the loopback ping stands in. */
+    private fun sleepArgv(seconds: Int): List<String> =
+        if (isWindowsHost) listOf("cmd", "/c", "ping", "-n", seconds.toString(), "127.0.0.1") else listOf("sleep", seconds.toString())
+
     @Test
     fun aSlowCommandIsDestroyedAtTheTimeout() {
-        val ms = measureTimeMillis { assertNull(SystemHostCommandRunner.run(listOf("sleep", "20"), 300)) }
+        val ms = measureTimeMillis { assertNull(SystemHostCommandRunner.run(sleepArgv(20), 300)) }
         assertTrue(ms < 3_000, "returned after $ms ms")
         assertNull(SystemHostCommandRunner.run(listOf("false"), 500), "non-zero exit")
         assertNull(SystemHostCommandRunner.run(listOf("/nonexistent/pkey-tool"), 500), "no such tool")
-        assertEquals("hi", SystemHostCommandRunner.run(listOf("echo", "hi"), 2_000)?.trim())
+        assertEquals("hi", SystemHostCommandRunner.run(if (isWindowsHost) listOf("cmd", "/c", "echo", "hi") else listOf("echo", "hi"), 2_000)?.trim())
     }
 
     @Test
@@ -152,7 +158,7 @@ class DesktopVariantTest {
         }
         assertTrue(ms < 2_000, "launch took $ms ms")
         val start = System.nanoTime()
-        assertTrue(startAndReap(listOf("sleep", "30"), reapMs = 200))
+        assertTrue(startAndReap(sleepArgv(30), reapMs = 200))
         assertTrue((System.nanoTime() - start) / 1_000_000 < 1_000, "start does not wait for the process")
         assertFalse(startAndReap(listOf("/nonexistent/pkey-tool")), "a failed start is false: the copy-link state")
     }

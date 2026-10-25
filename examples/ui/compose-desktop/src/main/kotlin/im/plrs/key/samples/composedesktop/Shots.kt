@@ -84,6 +84,10 @@ internal class Shots(private val dir: String, private val o: Options) {
         Hooks.windowState?.settings?.open(PolarisSettingsPane.Devices)
         settle(settings, 1_500)
         shot(window("Devices"), "07-settings-devices")
+        // The sign-out question, in the platform's own chrome, over the gate window.
+        Hooks.windowState?.requestSignOut()
+        settle(main, 1_200)
+        shot(main, "08-sign-out")
     }
 
     /** The device-limit refusal: "Use a License Key", a key that is over the limit, Return. */

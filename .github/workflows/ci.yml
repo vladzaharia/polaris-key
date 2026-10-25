@@ -921,26 +921,27 @@ jobs:
         working-directory: sdks/kotlin
         run: |
           if [ -n "$(find ui/src/desktopTest/snapshots -name '*.png' 2>/dev/null | head -n 1)" ]; then
-            xvfb-run -a ./gradlew --no-daemon :ui:verifyRoborazziDesktop
+            xvfb-run -a ./gradlew --no-daemon --continue :ui:verifyRoborazziDesktop
           else
             echo "::notice::no committed desktop references: recording them for the artifact instead of verifying"
-            xvfb-run -a ./gradlew --no-daemon :ui:recordRoborazziDesktop
+            xvfb-run -a ./gradlew --no-daemon --continue :ui:recordRoborazziDesktop
           fi
       - name: Assertions (:ui:desktopTest)
         if: runner.os != 'Linux'
         working-directory: sdks/kotlin
         run: ./gradlew --no-daemon :ui:desktopTest
+      # A failed assertion must not hide the renders: the smoke, the runtime check and --shots always run.
       - name: Sample --smoke (Linux, under xvfb-run)
-        if: runner.os == 'Linux'
+        if: always() && runner.os == 'Linux'
         working-directory: sdks/kotlin
         run: xvfb-run -a ./gradlew --no-daemon :sample-compose-desktop:smoke
       - name: Sample --smoke
-        if: runner.os != 'Linux'
+        if: always() && runner.os != 'Linux'
         working-directory: sdks/kotlin
         run: ./gradlew --no-daemon :sample-compose-desktop:smoke
       # UK-10.13 (K7): the Java Access Bridge must be in the packaged runtime, or Windows screen readers see nothing.
       - name: Packaged runtime has jdk.accessibility (Windows)
-        if: runner.os == 'Windows'
+        if: always() && runner.os == 'Windows'
         working-directory: sdks/kotlin
         run: |
           ./gradlew --no-daemon :sample-compose-desktop:createRuntimeImage
@@ -949,7 +950,7 @@ jobs:
           cat "$release"
           grep -q 'jdk.accessibility' "$release"
       - name: Sample --shots
-        if: runner.os != 'Linux'
+        if: always() && runner.os != 'Linux'
         working-directory: sdks/kotlin
         run: ./gradlew --no-daemon :sample-compose-desktop:shots -Pshots="$SHOTS"
       - if: always()

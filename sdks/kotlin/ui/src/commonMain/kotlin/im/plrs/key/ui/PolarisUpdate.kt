@@ -375,7 +375,7 @@ internal fun PolarisUpdatePromptCard(
  * at full width with the verb on top.
  */
 @Composable
-private fun PolarisSkipRow(content: @Composable () -> Unit) {
+internal fun PolarisSkipRow(content: @Composable () -> Unit) {
     Layout(content = content, modifier = Modifier.fillMaxWidth()) { measurables, constraints ->
         val gap = PolarisSpace.controls.roundToPx()
         val maxWidth = constraints.maxWidth

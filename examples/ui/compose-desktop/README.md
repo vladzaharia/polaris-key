@@ -49,6 +49,18 @@ the image, and it posts its keys to the app's own event queue, never to another 
 Recording for the JVM; without it the run exits 3 and writes nothing. The menu bar is native on macOS, so the
 walk calls the two menu actions on the window state (`requestCheck`, `manageLicense`) instead of clicking.
 
+## Window icon, logo and the macOS title bar
+
+The sample passes the Tidewater mark (`TidewaterMark` in `Main.kt`) as `icon` (the OS window icon: Windows shows the Java
+cup without one) and as `logo` (where the kit draws the product's icon). The window asks the desktop for the foreground
+once it shows, so a launch from a background process does not open inactive.
+
+On macOS each window sets `apple.awt.windowAppearance` from the scheme it draws. Only the JetBrains Runtime reads it:
+Temurin 17 has no appearance code in `java.desktop`, so its windows stay Aqua whatever the scheme. There, under the
+full-size content view, the kit hides the title text on a dark scheme (black text on the dark kit is unreadable) and the
+standard title bars of the update and Settings windows stay light. Run the sample on a JetBrains Runtime for the
+matching title bar.
+
 ## Packaging
 
 `nativeDistributions` in `build.gradle.kts` lists `modules("jdk.accessibility")`, which puts the Java Access
