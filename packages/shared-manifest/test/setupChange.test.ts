@@ -8,37 +8,11 @@ import {
   OutletInsertError,
   type IngestDocuments,
 } from "../src/index.js";
+import { product, release } from "./manifestDocs.js";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
-const release = {
-  release: {
-    provider: { type: "github", owner: "acme", repo: "dice" },
-    deliverables: {
-      app: {
-        kind: "app",
-        artifacts: [
-          {
-            id: "apk",
-            platform: "android",
-            arch: "any",
-            format: "apk",
-            match: "Dice-*.apk",
-          },
-        ],
-      },
-    },
-  },
-};
 const documents: IngestDocuments = {
-  product: {
-    slug: "dice",
-    name: "Dice",
-    modules: {
-      license: { enabled: true },
-      release: { enabled: true },
-      distribution: { enabled: true },
-    },
-  },
+  product,
   schema: { schemaVersion: 1, entries: [] },
   release,
 };
