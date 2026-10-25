@@ -160,7 +160,8 @@ import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
 import { cmdStorefront } from "./storefronts/command.js";
-import { cmdChannel } from "./channel.js";
+import { CI_INIT_USAGE, ciInit } from "./ciInit.js";
+import { cmdChannel, type ChannelArgs, type ChannelIo } from "./channel.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
 import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
@@ -794,6 +795,10 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   dev: (p, rt) => cmdDev(p, rt),
   mirror: (p, rt) => cmdMirror(p, rt.cwd, rt.stdout, rt.ci.fetchImpl),
   auth: (p, rt) => cmdAuth(p, rt.stdout, rt.stderr, rt.ci),
+  ci: (p, rt) =>
+    p.positional[0] === "init"
+      ? ciInit(...channelParts(p, rt))
+      : Promise.reject(new UsageError(CI_INIT_USAGE)),
   release: (p, rt) => cmdRelease(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
   manifest: (p, rt) => cmdManifest(p, rt.cwd, rt.stdout),
   feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt),
@@ -806,18 +811,22 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
       { positional: p.positional, flags: p.flags, rest: p.rest },
       { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci },
     ),
-  channel: (p, rt) =>
-    cmdChannel(
-      { positional: p.positional, flags: p.flags, multi: p.multi },
-      {
-        cwd: rt.cwd,
-        stdout: rt.stdout,
-        stderr: rt.stderr,
-        term: rt.term,
-        ...rt.ci,
-      },
-    ),
+  channel: (p, rt) => cmdChannel(...channelParts(p, rt)),
 };
+
+/** What `channel` and `ci` handlers take: the parsed words and the streams. */
+function channelParts(p: ParsedArgs, rt: Runtime): [ChannelArgs, ChannelIo] {
+  return [
+    { positional: p.positional, flags: p.flags, multi: p.multi },
+    {
+      cwd: rt.cwd,
+      stdout: rt.stdout,
+      stderr: rt.stderr,
+      term: rt.term,
+      ...rt.ci,
+    },
+  ];
+}
 
 /** The OS credential store, opened on first use and only by the account commands. */
 let osStore: Promise<CredentialStore> | undefined;

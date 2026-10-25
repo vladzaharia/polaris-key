@@ -568,6 +568,30 @@ export const COMMANDS: readonly PkeyCommand[] = [
     env: [CI_ENV],
   },
   {
+    name: "ci",
+    group: "ci",
+    json: true,
+    summary: "Set up publishing from GitHub Actions",
+    rows: [["ci init", "Write the release workflow and a release key"]],
+    tree: { init: [] },
+    usage: [
+      "pkey ci init [--channel c] [--dir d] [--action-ref sha] [--force] [--json]",
+    ],
+    about: [
+      {
+        text:
+          "ci init writes .github/workflows/release.yml (a v* tag publishes to --channel, " +
+          "default stable, from --dir, default dist) and refuses an existing file without " +
+          "--force. When .pkey/release declares no release key it makes one: the public half " +
+          "goes into .pkey/release, the private half into a 0600 file under " +
+          "$XDG_CONFIG_HOME/pkey/release-keys (default ~/.config), outside the repo. It " +
+          "prints the gh secret set line and never runs gh. The Action is pinned to " +
+          "--action-ref, a full commit SHA; without it the workflow holds " +
+          "a commit-sha placeholder for you to replace.",
+      },
+    ],
+  },
+  {
     name: "release",
     group: "ci",
     json: false,

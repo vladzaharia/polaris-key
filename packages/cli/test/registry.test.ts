@@ -114,6 +114,7 @@ describe("the command table", () => {
     ).toEqual([
       "bundle",
       "channel",
+      "ci",
       "dev",
       "doctor",
       "feeds",
