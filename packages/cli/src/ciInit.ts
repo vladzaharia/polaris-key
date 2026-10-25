@@ -11,20 +11,17 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { execFile } from "node:child_process";
 import YAML from "yaml";
 import {
   ACTION_REF_PLACEHOLDER,
+  PUBLISH_ACTION,
   renderCiWorkflow,
   type ManifestReleaseKey,
 } from "@polaris-key/manifest";
 import { envelope } from "./account.js";
 import type { ChannelArgs, ChannelIo } from "./channel.js";
-import {
-  errorLine,
-  manifestFailure,
-  termOf,
-  unknownOption,
-} from "./channel.js";
+import { errorLine, manifestError, termOf, unknownOption } from "./channel.js";
 import { UsageError } from "./errors.js";
 import {
   loadManifest,
@@ -88,6 +85,31 @@ function keyDir(io: ChannelIo): string {
   return path.join(base, "pkey", "release-keys");
 }
 
+const RELEASE_DOCS = "https://key.plrs.im/docs/build/manifest/release/";
+
+/** The tag to suggest: the next patch after the highest `vX.Y.Z` here, else v1.0.0. */
+function nextTag(cwd: string): Promise<string> {
+  return new Promise((resolve) => {
+    execFile("git", ["tag", "-l", "v*"], { cwd, timeout: 5000 }, (err, out) => {
+      if (err) return resolve("v1.0.0");
+      let best: [number, number, number] | null = null;
+      for (const t of String(out).split("\n")) {
+        const m = /^v(\d+)\.(\d+)\.(\d+)$/.exec(t.trim());
+        if (!m) continue;
+        const v: [number, number, number] = [+m[1]!, +m[2]!, +m[3]!];
+        if (
+          !best ||
+          v[0] > best[0] ||
+          (v[0] === best[0] &&
+            (v[1] > best[1] || (v[1] === best[1] && v[2] > best[2])))
+        )
+          best = v;
+      }
+      resolve(best ? `v${best[0]}.${best[1]}.${best[2] + 1}` : "v1.0.0");
+    });
+  });
+}
+
 const exists = (p: string): Promise<boolean> =>
   stat(p).then(
     () => true,
@@ -129,27 +151,40 @@ export async function ciInit(a: ChannelArgs, io: ChannelIo): Promise<number> {
       "--action-ref must be a full 40-character commit SHA.",
     );
 
+  const term = termOf(io, io.stderr);
+  // Every failure here is `errors[{code, message}]` in --json and a failure line in text.
+  const refuse = (
+    code: string,
+    message: string,
+    extra = {},
+    link?: string,
+  ): number => {
+    if (json)
+      io.stdout.write(
+        envelope("ci init", 1, {
+          errors: [{ code, message: link ? `${message} ${link}` : message }],
+          ...extra,
+        }),
+      );
+    else {
+      io.stderr.write(failLine(untrustedLines(message, io.env), term));
+      if (link) io.stderr.write(`   ${link}\n`);
+    }
+    return 1;
+  };
+
   let loaded: LoadedManifest;
   try {
     loaded = await loadManifest(io.cwd);
   } catch (e) {
-    return manifestFailure("ci init", e, io, json);
+    if (e instanceof UsageError) throw e;
+    return refuse(manifestError(e).error, manifestError(e).message);
   }
-  const term = termOf(io, io.stderr);
   const slug = (
     isMap(loaded.product.product) ? loaded.product.product : loaded.product
   ).slug;
   if (typeof slug !== "string")
     throw new UsageError(".pkey/product has no slug.");
-
-  const refuse = (code: string, message: string, extra = {}): number => {
-    if (json)
-      io.stdout.write(
-        envelope("ci init", 1, { errors: [{ code, message }], ...extra }),
-      );
-    else io.stderr.write(failLine(untrustedLines(message, io.env), term));
-    return 1;
-  };
 
   const workflow = path.join(io.cwd, WORKFLOW_PATH);
   if (!force && (await exists(workflow)))
@@ -201,7 +236,9 @@ export async function ciInit(a: ChannelArgs, io: ChannelIo): Promise<number> {
     if (!loaded.releasePath)
       return refuse(
         "no-release",
-        "No .pkey/release. Turn the release service on first (pkey init --modules release).",
+        "No .pkey/release. Add one, then rerun pkey ci init:",
+        {},
+        RELEASE_DOCS,
       );
     const file = loaded.releasePath;
     const raw = await readFile(file, "utf8");
@@ -283,8 +320,11 @@ export async function ciInit(a: ChannelArgs, io: ChannelIo): Promise<number> {
   ];
   if (made) {
     out.push(
-      ...prose(`${mark}  `, `Added key ${made.kid} to ${relRelease}`),
-      ...prose(`${mark}  `, "Private key, mode 0600, outside the repo:"),
+      ...prose(`${mark}  `, `Added public key ${made.kid} to ${relRelease}`),
+      ...prose(
+        `${mark}  `,
+        "Saved the private key outside the repo (mode 0600):",
+      ),
       `   ${untrustedLines(made.out, io.env)}`,
     );
   } else {
@@ -298,22 +338,37 @@ export async function ciInit(a: ChannelArgs, io: ChannelIo): Promise<number> {
     out.push(
       ...prose(
         `${n++}. `,
-        `Replace ${ACTION_REF_PLACEHOLDER} in ${WORKFLOW_PATH} with a commit SHA.`,
+        `Replace ${ACTION_REF_PLACEHOLDER} in ${WORKFLOW_PATH} with a ${PUBLISH_ACTION.split("/").slice(0, 2).join("/")} commit SHA.`,
       ),
     );
-  if (made)
+  // Every command is one unwrapped line: a terminal re-joins a soft wrap on copy.
+  out.push(
+    `${n++}. Create the release environment, limited to v* tags:`,
+    "   gh api -X PUT repos/{owner}/{repo}/environments/release -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true' --silent",
+    "   gh api -X POST repos/{owner}/{repo}/environments/release/deployment-branch-policies -f 'name=v*' -f type=tag --silent",
+  );
+  if (made) {
+    const keyPath = untrustedLines(made.out, io.env);
     out.push(
       `${n++}. Store the key:`,
-      `   gh secret set ${RELEASE_KEY_ENV} --env release < ${shellPath(untrustedLines(made.out, io.env))}`,
+      process.platform === "win32"
+        ? `   Get-Content -Raw '${keyPath.replace(/'/g, "''")}' | gh secret set ${RELEASE_KEY_ENV} --env release`
+        : `   gh secret set ${RELEASE_KEY_ENV} --env release < ${shellPath(keyPath)}`,
     );
-  else
+  } else
     out.push(
       ...prose(
         `${n++}. `,
-        `Store its private half as ${RELEASE_KEY_ENV} in the release environment.`,
+        `Store the ${declared[0]!.kid} private key as ${RELEASE_KEY_ENV} in the release environment, unless it is there already.`,
       ),
     );
-  out.push(`${n}. Release:`, "   git tag v1.0.0 && git push origin v1.0.0");
+  const tag = await nextTag(io.cwd);
+  out.push(
+    `${n}. Commit and release:`,
+    `   git add ${WORKFLOW_PATH}${made ? ` ${shellPath(relRelease)}` : ""}`,
+    '   git commit -m "Publish releases from CI"',
+    `   git tag ${tag} && git push origin HEAD ${tag}`,
+  );
   io.stdout.write(`${out.join("\n")}\n`);
   return 0;
 }

@@ -317,16 +317,32 @@ describe("Distribution → Matrix", () => {
     );
   });
 
-  it("says a CDN-served Background Assets route is served from the CDN (P4-33.2)", async () => {
+  it("names the packs served from the CDN until approved in App Store Connect (P4-33.2)", async () => {
     bootWith(`${MATRIX_HASH}?cell=rel_240:app-store`);
     const drawer = await screen.findByRole("dialog", {
       name: "2.4.0 on app-store",
     });
-    expect(
-      within(drawer).getByText(
-        "Served from the Polaris Key CDN until Background Assets are uploaded.",
-      ),
-    ).toBeTruthy();
+    const note = within(drawer).getByText(
+      /are served from the Polaris Key CDN until their Background Assets are approved in App Store Connect\.$/,
+    );
+    expect(note.textContent).toBe(
+      "textures and audio are served from the Polaris Key CDN until their Background Assets are approved in App Store Connect.",
+    );
+    expect(within(note).getByRole("link", { name: "textures" })).toBeTruthy();
+    expect(within(note).getByRole("link", { name: "audio" })).toBeTruthy();
+  });
+
+  it("uses the singular for one CDN-served pack (P4-33.2)", async () => {
+    bootWith(`${MATRIX_HASH}?cell=rel_240:direct`);
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on direct",
+    });
+    const note = within(drawer).getByText(
+      /is served from the Polaris Key CDN until its Background Asset is approved in App Store Connect\.$/,
+    );
+    expect(note.textContent).toBe(
+      "textures is served from the Polaris Key CDN until its Background Asset is approved in App Store Connect.",
+    );
   });
 
   it("overrides a readiness hold only with a reason (MTX-2)", async () => {
