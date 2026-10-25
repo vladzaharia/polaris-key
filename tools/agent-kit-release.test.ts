@@ -58,22 +58,21 @@ describe("agent-kit release builder", () => {
     ).toBeUndefined();
   });
 
-  it("ships README.dist.md as the zip's README.md", async () => {
-    const r = buildKit({ kit, version: "1.2.3", out: tmp() });
+  async function zippedReadme(kitDir: string): Promise<string> {
+    const r = buildKit({ kit: kitDir, version: "1.2.3", out: tmp() });
     const z = await ZipReader.open(r.zipPath);
-    const entry = z.entries.find((e) => e.name === "README.md")!;
-    const readme = (await z.read(entry)).toString("utf8");
+    const readme = await z.read(z.entries.find((e) => e.name === "README.md")!);
     await z.close();
-    expect(readme).toBe(readFileSync(join(kit, "README.dist.md"), "utf8"));
-  });
+    return readme.toString("utf8");
+  }
 
-  it("the real kit's shipped README is the integrator one, long enough for the validator", async () => {
-    const real = join(__dirname, "..", "packages", "agent-kit");
-    const r = buildKit({ kit: real, version: "1.2.3", out: tmp() });
-    const z = await ZipReader.open(r.zipPath);
-    const entry = z.entries.find((e) => e.name === "README.md")!;
-    const readme = (await z.read(entry)).toString("utf8");
-    await z.close();
+  it("ships README.dist.md as the zip's README.md; the real kit's is the integrator one, long enough for the validator", async () => {
+    expect(await zippedReadme(kit)).toBe(
+      readFileSync(join(kit, "README.dist.md"), "utf8"),
+    );
+    const readme = await zippedReadme(
+      join(__dirname, "..", "packages", "agent-kit"),
+    );
     expect(readme.split(/\s+/).filter(Boolean).length).toBeGreaterThanOrEqual(
       40,
     );
