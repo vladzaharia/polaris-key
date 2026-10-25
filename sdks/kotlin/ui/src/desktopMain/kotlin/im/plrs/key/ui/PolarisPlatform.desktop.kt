@@ -114,7 +114,7 @@ internal fun startAndReap(argv: List<String>, reapMs: Long = XDG_OPEN_REAP_MS): 
     val p = ProcessBuilder(argv)
         .redirectErrorStream(true)
         .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-        .redirectInput(ProcessBuilder.Redirect.from(java.io.File("/dev/null")))
+        .redirectInput(ProcessBuilder.Redirect.from(java.io.File(if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) "NUL" else "/dev/null")))
         .start()
     Thread {
         try {

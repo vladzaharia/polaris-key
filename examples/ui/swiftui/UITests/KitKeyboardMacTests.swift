@@ -9,6 +9,7 @@
 
 import XCTest
 
+@MainActor
 final class KitKeyboardMacTests: XCTestCase {
     private func launch(_ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
