@@ -18,7 +18,7 @@ import { secret, type Env } from "../../platform/env.js";
 import { signJwtRs256 } from "../../core/jwt.js";
 import { MANIFEST_FILES } from "./manifestFiles.js";
 
-const GITHUB_API = "https://api.github.com";
+export const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";
 /** Installation tokens live ~60m; cache for 55m to leave headroom. */
 const TOKEN_TTL_SECONDS = 55 * 60;
@@ -143,7 +143,7 @@ export function installationTokenSlot(
   };
 }
 
-const githubHeaders = (auth: string): Record<string, string> => ({
+export const githubHeaders = (auth: string): Record<string, string> => ({
   Accept: "application/vnd.github+json",
   Authorization: auth,
   "User-Agent": USER_AGENT,
@@ -151,7 +151,7 @@ const githubHeaders = (auth: string): Record<string, string> => ({
 });
 
 /** Mint a fresh App JWT from the configured App credentials (throws if unconfigured). */
-async function appJwt(env: Env, now: number): Promise<string> {
+export async function appJwt(env: Env, now: number): Promise<string> {
   const appId = secret(env, "GITHUB_APP_ID");
   const pem = secret(env, "GITHUB_APP_PRIVATE_KEY");
   if (!appId || !pem) throw new Error("github app not configured");
@@ -417,6 +417,15 @@ export async function getAppInfo(
   };
 }
 
+/** The string-valued entries of GitHub's `permissions` object; anything else is dropped. */
+export function grantedPermissions(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (raw && typeof raw === "object")
+    for (const [k, v] of Object.entries(raw))
+      if (typeof v === "string") out[k] = v;
+  return out;
+}
+
 /** One installation of the App: the account it is on and what it may do there. */
 export interface GithubInstallation {
   id: number;
@@ -459,10 +468,7 @@ export async function listInstallations(
         continue;
       // A suspended installation cannot mint a token (GitHub answers 403); it reads nothing.
       if (row.suspended_at != null) continue;
-      const permissions: Record<string, string> = {};
-      if (row.permissions && typeof row.permissions === "object")
-        for (const [k, v] of Object.entries(row.permissions))
-          if (typeof v === "string") permissions[k] = v;
+      const permissions = grantedPermissions(row.permissions);
       out.push({
         id: row.id,
         account: row.account.login,
@@ -506,10 +512,31 @@ async function mintListingToken(
   fetchImpl: FetchImpl,
   repositories?: string[],
 ): Promise<string> {
+  return mintInstallationToken(
+    env,
+    installId,
+    repositories
+      ? { repositories, permissions: BASE_PERMISSIONS }
+      : { permissions: { metadata: "read" } },
+    now,
+    fetchImpl,
+  );
+}
+
+/**
+ * Mint one installation token with exactly `body` (`repositories` + `permissions`), uncached
+ * and with no fallback: GitHub's 4xx is the answer. The write client (`github/write.ts`)
+ * mints through this and never through `getInstallationToken`, so a write token is never
+ * written to the read-token cache. The thrown message carries the status only.
+ */
+export async function mintInstallationToken(
+  env: Env,
+  installId: number,
+  body: { repositories?: string[]; permissions: Record<string, string> },
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<string> {
   const jwt = await appJwt(env, now);
-  const body = repositories
-    ? { repositories, permissions: BASE_PERMISSIONS }
-    : { permissions: { metadata: "read" } };
   const res = await fetchImpl(
     `${GITHUB_API}/app/installations/${installId}/access_tokens`,
     {
