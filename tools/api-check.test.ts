@@ -24,7 +24,9 @@ const concept = (api: any, id: string): any =>
   api.concepts.find((c: any) => c.id === id);
 
 describe("api-check rule 4", () => {
-  it("passes on the committed api.json", () => {
+  // Disabled as flaky (owner 2026-10-23 rule): each real-tree check took 40 s+ on loaded CI runners
+  // (20 s limit). The same check gates CI in `pnpm gen --check` (parity family, tools/parity-check.ts).
+  it.skip("passes on the committed api.json", () => {
     expect(checkApi(root)).toEqual([]);
   });
 
@@ -436,7 +438,9 @@ describe("api-check rule 3 (reserved names)", () => {
     ).toEqual([]);
   });
 
-  it("passes on the committed registry", () => {
+  // Disabled as flaky (owner 2026-10-23 rule): each real-tree check took 40 s+ on loaded CI runners
+  // (20 s limit). The same check gates CI in `pnpm gen --check` (parity family, tools/parity-check.ts).
+  it.skip("passes on the committed registry", () => {
     expect(checkApi(root).filter((l) => l.includes("reserved"))).toEqual([]);
   });
 });
@@ -455,7 +459,9 @@ describe("api-check rule 2 (removed names)", () => {
     package: "SP-35",
   };
 
-  it("passes on the committed registry and tree", () => {
+  // Disabled as flaky (owner 2026-10-23 rule): each real-tree check took 40 s+ on loaded CI runners
+  // (20 s limit). The same check gates CI in `pnpm gen --check` (parity family, tools/parity-check.ts).
+  it.skip("passes on the committed registry and tree", () => {
     expect(checkApi(root)).toEqual([]);
   });
 
