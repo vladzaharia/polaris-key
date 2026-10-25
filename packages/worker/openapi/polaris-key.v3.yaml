@@ -4943,6 +4943,61 @@ paths:
         "404": { $ref: "#/components/responses/CiRefusal" }
         "409": { $ref: "#/components/responses/CiRefusal" }
 
+  /{product}/distribution/pr/github-token:
+    post:
+      operationId: ciPrGithubToken
+      tags: [distribution]
+      summary: A GitHub token for the outlet's own tap or bucket (CI)
+      description: >
+        A-32.7. Exchanges the CI run for a GitHub App installation token with Contents and Pull
+        requests write, narrowed by GitHub to the one repository the outlet itself declares
+        (`direct.homebrewTap` or `direct.scoopBucket`, never the Homebrew or ScoopInstaller
+        organisation), for GitHub's one hour. `store` (`homebrew` or `scoop`) is needed only when
+        the outlet declares both. The repository is never taken from the request. Refused with
+        `reason`: `bad_outlet`, `bad_store`, `unknown_outlet`, `outlet_not_supported` (not a
+        `direct` outlet: winget, Flathub and every store kind), `no_repository`, `store_required`
+        (400); `app_not_installed` (404, the GitHub App is not installed on the repository);
+        `app_permission` (503, the installation was not granted Pull requests or Contents
+        write), `github` (503). The not-found while Release is off. The token is in this one
+        response (`Cache-Control: no-store`); it is not stored or logged, and the audit row
+        (`distribution.pr.github_token`) names the outlet and repository only. Rate-limited per
+        product. Requires a `pkeyci_` token with `distribution:pr` (opt-in). No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outlet]
+              properties:
+                outlet: { type: string, maxLength: 64 }
+                store: { type: string, enum: [homebrew, scoop] }
+      responses:
+        "200":
+          description: The token.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token, expiresAt, repository]
+                properties:
+                  ok: { type: boolean, const: true }
+                  token: { type: string }
+                  expiresAt: { type: integer, description: Epoch seconds. }
+                  repository: { type: string, description: "`<owner>/<repo>`." }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+        "429": { $ref: "#/components/responses/CiRefusal" }
+        "503": { $ref: "#/components/responses/CiRefusal" }
+
   /{product}/distribution/listing/assets:
     post:
       operationId: ciListingAssetsRegister

@@ -829,6 +829,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/listing/{store}",
   // A-18i: the PR-plane inputs read, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/pr/{store}",
+  "/{product}/distribution/pr/github-token",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
   // P6-02: device attestation — only a native iOS or Android build can attest, never a page.

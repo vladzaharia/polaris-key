@@ -353,7 +353,7 @@ publishing:
   GitHub; the checks that the ref is protected, the runner is GitHub-hosted and the event is
   `push`, `release` or `workflow_dispatch` are fixed; the scopes (default `release:publish`,
   `release:promote`, `distribution:report`; `release:yank`, `distribution:rollout`,
-  `distribution:feeds`, `distribution:listing` and `assets:write` are opt-in) are an operator
+  `distribution:feeds`, `distribution:listing`, `distribution:pr` and `assets:write` are opt-in) are an operator
   setting. A repository cannot
   loosen its own policy.
 - The ref the workflow runs on must be covered by a branch or tag ruleset, or GitHub reports

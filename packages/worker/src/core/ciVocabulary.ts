@@ -17,7 +17,9 @@ export const CI_TOKEN_PREFIX = "pkeyci_";
  * files CI signed, and buys an upload ticket for them (P2-02's uploads route accepts it beside
  * `release:publish`); it is opt-in too. `distribution:listing` (A-18d) buys an upload ticket for
  * the listing assets `pkey listing assets` derived and registers them into `dist_listing_assets`;
- * opt-in as well. `assets:write` (HA-06) buys an upload ticket for the files `pkey assets push`
+ * opt-in as well. `distribution:pr` (A-32.7) exchanges the CI run for a GitHub token (contents and
+ * pull requests write, one hour) narrowed to the outlet's own tap or bucket, so a tap or bucket PR
+ * needs no personal token; opt-in too. `assets:write` (HA-06) buys an upload ticket for the files `pkey assets push`
  * and the publish Action's `assets` input send, and hosts them (`POST /<p>/assets`); opt-in too,
  * and it never replaces a slot an operator uploaded or a manifest declares.
  * `packages:read` (F-33b.2) is the service read token: it reads its own product's non-public
@@ -32,6 +34,7 @@ export const CI_SCOPES = [
   "distribution:rollout",
   "distribution:feeds",
   "distribution:listing",
+  "distribution:pr",
   "assets:write",
   "packages:read",
 ] as const;
