@@ -140,11 +140,21 @@ export interface RequiredPack {
   packReleaseId: string;
   version: string;
   transport: string;
+  /** How the route was chosen (`dist_transports.origin`, P4-33.2). */
+  origin: string;
   /** `pin`, `hold` or `set`. */
   via: "pin" | "hold" | "set";
   /** The contentApi levels it is required at: its set rows' levels, or every level the app
    *  release is live at for a pin or hold (`apple-ba` needs one asset pack per level). */
   levels: number[];
+}
+
+/** The one note readiness carries: an `auto` Background Assets route served by the CDN. */
+export const CDN_FALLBACK_NOTE = "cdn-fallback";
+
+export interface ReadinessNote {
+  pack: string;
+  note: typeof CDN_FALLBACK_NOTE;
 }
 
 export interface ReadinessOverride {
@@ -165,6 +175,8 @@ export interface OutletReadiness {
   blockingPackReleaseId: string | null;
   blockers: ReadinessBlocker[];
   required: RequiredPack[];
+  /** Packs the CDN serves in place of their store transport (P4-33.2). */
+  notes: ReadinessNote[];
   /** Why the set could not be computed (`pending`), else null. */
   pendingReason: string | null;
   /** Whether Polaris Key can hold a release on this outlet (`HOLDABLE_OUTLET_KINDS`). */
@@ -270,9 +282,12 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
     (await listOutlets(db, product)).filter((o) => o.removed_at === null),
   );
   const transports = once(async () => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { transport: string; origin: string }>();
     for (const t of await listTransports(db, product))
-      map.set(`${t.deliverable_id}\u0000${t.outlet_id}`, t.transport);
+      map.set(`${t.deliverable_id}\u0000${t.outlet_id}`, {
+        transport: t.transport,
+        origin: t.origin,
+      });
     return map;
   });
   const channels = once(async () => {
@@ -355,7 +370,30 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
 
   async function transportOf(pack: string, outlet: string): Promise<string> {
     return (
-      (await transports()).get(`${pack}\u0000${outlet}`) ?? DEFAULT_TRANSPORT
+      (await transports()).get(`${pack}\u0000${outlet}`)?.transport ??
+      DEFAULT_TRANSPORT
+    );
+  }
+
+  async function originOf(pack: string, outlet: string): Promise<string> {
+    return (
+      (await transports()).get(`${pack}\u0000${outlet}`)?.origin ?? "default"
+    );
+  }
+
+  /**
+   * P4-33.2 (D-P2): an `auto` Background Assets route with no approved or live record of the pack
+   * on this outlet is served by the CDN, which serves every pack object whatever the transport.
+   * Once a record exists the `apple-ba` rule applies; a declared route never falls back.
+   */
+  async function cdnFallback(
+    req: RequiredPack,
+    outlet: DistOutletRow,
+  ): Promise<boolean> {
+    if (req.transport !== "apple-ba" || req.origin !== "auto") return false;
+    return !(await reports(req.packReleaseId)).some(
+      (r) =>
+        r.outlet_id === outlet.outlet_id && APPROVED_STATES.includes(r.state),
     );
   }
 
@@ -497,6 +535,7 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
       const platforms = new Set(outletPlatformsOf(outlet));
       const required: RequiredPack[] = [];
       const blockers: ReadinessBlocker[] = [];
+      const notes: ReadinessNote[] = [];
       const add = async (
         pack: string,
         packReleaseId: string,
@@ -518,6 +557,7 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
           packReleaseId,
           version,
           transport: await transportOf(pack, outlet.outlet_id),
+          origin: await originOf(pack, outlet.outlet_id),
           via,
           levels: [...new Set(levels)].sort((a, b) => a - b),
         });
@@ -569,6 +609,16 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
               });
         }
       for (const r of required) {
+        if (await cdnFallback(r, outlet)) {
+          const b = await evaluate(
+            { ...r, transport: "pkey-cdn" },
+            outlet,
+            null,
+          );
+          if (b) blockers.push(b);
+          else notes.push({ pack: r.pack, note: CDN_FALLBACK_NOTE });
+          continue;
+        }
         // Per level: an `apple-ba` pack needs each level's asset pack approved.
         for (const lv of r.transport === "apple-ba" && r.levels.length > 0
           ? r.levels
@@ -606,6 +656,7 @@ export function readinessReader(ctx: ReadinessContext): ReadinessReader {
         blockingPackReleaseId: blocking,
         blockers,
         required,
+        notes,
         pendingReason,
         holdable,
         holds: holdable && computed !== "ready" && override === null,
@@ -724,6 +775,7 @@ export async function refreshReadiness(
       const detail = JSON.stringify({
         blockers: r.blockers,
         required: r.required,
+        notes: r.notes,
         pendingReason: r.pendingReason,
         warning: r.warning,
         computed: r.computed,
@@ -917,6 +969,11 @@ export function readinessRowView(row: DistReadinessRow) {
     blockingPackReleaseId: row.blocking_pack_release_id,
     blockers: Array.isArray(detail.blockers) ? detail.blockers : [],
     warning: typeof detail.warning === "string" ? detail.warning : null,
+    note: Array.isArray(detail.notes)
+      ? ((detail.notes as { note?: unknown }[]).find(
+          (n) => n.note === CDN_FALLBACK_NOTE,
+        )?.note ?? null)
+      : null,
     source: row.source,
     overrideReason: row.override_reason,
     computedAt: row.computed_at,

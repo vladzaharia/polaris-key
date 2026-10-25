@@ -468,6 +468,11 @@ function ReadinessSection({
       {readiness.pendingReason ? (
         <p className="text-sm text-fg-muted">{readiness.pendingReason}</p>
       ) : null}
+      {readiness.notes?.some((n) => n.note === "cdn-fallback") ? (
+        <p className="text-sm text-fg-muted">
+          Served from the Polaris Key CDN until Background Assets are uploaded.
+        </p>
+      ) : null}
       {readiness.override ? (
         <p className="text-sm text-fg-muted">
           Overridden by {readiness.override.by}

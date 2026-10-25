@@ -29,6 +29,7 @@ import {
   normalizeDistribution,
   outletListing,
   type ManifestDistribution,
+  type ManifestTransportRoute,
   type ManifestListing,
   type ParsedManifest,
 } from "@polaris-key/manifest";
@@ -62,6 +63,8 @@ export interface DistTransportRow {
   outlet_id: string;
   transport: string;
   config_json: string | null;
+  /** How the route was chosen: `declared`, `auto` or `default` (P4-33.2). */
+  origin: string;
 }
 
 /**
@@ -169,7 +172,7 @@ export function manifestIngestStatements(
   // The resolved transport for every (deliverable, live outlet) pair, replaced wholesale. Packs
   // are routed too (P4-05), so a manifest at the bounds — 64 packs and the app across 32 outlets
   // — resolves 2,080 pairs: written TRANSPORT_ROWS_PER_INSERT to a statement (four parameters
-  // each, inside D1's 100), at most 84 statements in the ingest batch (THREAT-MODEL R10).
+  // each, inside D1's 100; the origin is a closed-set literal), at most 84 statements in the ingest batch (THREAT-MODEL R10).
   stmts.push({
     sql: "DELETE FROM dist_transports WHERE product = ?",
     params: [product],
@@ -177,8 +180,8 @@ export function manifestIngestStatements(
   for (let i = 0; i < dist.routes.length; i += TRANSPORT_ROWS_PER_INSERT) {
     const chunk = dist.routes.slice(i, i + TRANSPORT_ROWS_PER_INSERT);
     stmts.push({
-      sql: `INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport, config_json)
-            VALUES ${chunk.map(() => "(?, ?, ?, ?, NULL)").join(", ")}`,
+      sql: `INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport, config_json, origin)
+            VALUES ${chunk.map((r) => `(?, ?, ?, ?, NULL, '${ORIGIN_LITERAL[r.origin]}')`).join(", ")}`,
       params: chunk.flatMap((r) => [
         product,
         r.deliverableId,
@@ -192,6 +195,13 @@ export function manifestIngestStatements(
 
 /** `dist_transports` rows per INSERT: four bound parameters each, 100 per statement (D1). */
 export const TRANSPORT_ROWS_PER_INSERT = 25;
+
+/** The origin written inline: a closed set, never caller text (keeps four parameters a row). */
+const ORIGIN_LITERAL: Record<ManifestTransportRoute["origin"], string> = {
+  declared: "declared",
+  auto: "auto",
+  default: "default",
+};
 
 /**
  * The transports Polaris Key ACTS ON: it either delivers the bytes itself, or tracks a store's

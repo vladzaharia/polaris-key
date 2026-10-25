@@ -185,6 +185,7 @@ export interface PackWorld {
     deliverable: string,
     outlet: string,
     transport: string,
+    origin?: "declared" | "auto" | "default",
   ): Promise<void>;
   admin(method: string, path: string, body?: unknown): Promise<Response>;
   feed(platform: string): Promise<Record<string, any>>;
@@ -475,15 +476,17 @@ export async function packWorld(
     deliverable: string,
     outlet: string,
     transport: string,
+    origin: "declared" | "auto" | "default" = "declared",
   ) {
     await db.run(
-      `INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT DO UPDATE SET transport = excluded.transport`,
+      `INSERT INTO dist_transports (product, deliverable_id, outlet_id, transport, origin)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT DO UPDATE SET transport = excluded.transport, origin = excluded.origin`,
       SLUG,
       deliverable,
       outlet,
       transport,
+      origin,
     );
   }
 

@@ -176,6 +176,8 @@ export interface MatrixReadinessDto {
     detail: string;
   }[];
   pendingReason: string | null;
+  /** Packs the CDN serves in place of Background Assets (P4-33.2); absent from an older worker. */
+  notes?: { pack: string; note: string }[];
   /** The operator's override, when one is in force. */
   override?: { by: string; at: number; reason: string | null } | null;
 }
