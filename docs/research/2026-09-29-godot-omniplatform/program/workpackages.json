@@ -6207,7 +6207,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/config-cloudsync.md"
       ],
       "brief": "wp/U-27-keep-licence-config-layer-delete.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-27b",
@@ -13246,7 +13246,7 @@
         "Split from UK-04 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-04b-elements-cdn-module.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-05",
@@ -13401,7 +13401,7 @@
         "Split from UK-09 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
       ],
       "brief": "wp/UK-09b-compose-android-sample-and-expressive.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-10",
@@ -13945,7 +13945,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-31-web-recipes.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-32",
