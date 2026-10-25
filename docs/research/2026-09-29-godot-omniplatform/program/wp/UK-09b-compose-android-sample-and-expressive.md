@@ -65,12 +65,26 @@ The code is the fact; these replace what the sections above say where they diffe
 
 ## Acceptance criteria
 
-- [ ] `examples/ui/compose-android` builds and runs
-- [ ] Compose tab on each of the 25 component pages
-- [ ] M3 Expressive applied; nav graph, deep links and self-starting gate work (UK-09b.3: `PolarisKeyGate`, `PolarisKeyRoute`, `PolarisKeyLinks`, the sample's navigation-compose 2.9.8 graph and intent filter)
-- [ ] Tablet list-detail layout; ChannelPicker
-- [ ] `pkey-ux-reviewer` passes the built screens (BUILT mode)
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] examples/ui/compose-android builds and runs (UK-09b.8 CI job; LaunchTest on the emulator, UK-09b.9a; renders in /Users/vlad/Repos/pk-wt/\_evidence/UK-09b.9a/ and \_evidence/UK-09b.7/)
+- [x] Compose tab on each component page (23 pages, not 25: C3; UK-09b.6a 12 + UK-09b.6b 11)
+- [ ] M3 Expressive applied: not met. MaterialExpressiveTheme is internal on the pinned material3 1.4.0 (C4), so the theme seam draws plain MaterialTheme; Expressive connected licence rows ship (UK-09b.4). Blocked on a kit version line decoupled from the Godot template pins.
+- [x] Nav graph, deep links and self-starting gate work (UK-09b.3: PolarisKeyGate, PolarisKeyRoute, PolarisKeyLinks, the sample's navigation-compose 2.9.8 graph and intent filter; deep-link renders \_evidence/UK-09b.7/44-46)
+- [x] Tablet list-detail layout; ChannelPicker (UK-09b slice 1 and .5; tablet renders \_evidence/UK-09b.7/24-26)
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode): not met. UK-09b.7 verdict was FIX (UK-09 also FIX); UK-09b.9a and .9b fixed it; no re-review is recorded, so no pass is entered in ux-reviews.json.
+- [ ] The green gate passes (AGENTS.md): not run in this package (release freeze; CI-only lanes android and kotlin).
+
+## Screen acceptance (close, 2026-10-24)
+
+The built-screen evidence is the UK-09b.7 emulator run (/Users/vlad/Repos/pk-wt/\_evidence/UK-09b.7/, 47 renders) and the UK-09b.9a re-run (/Users/vlad/Repos/pk-wt/\_evidence/UK-09b.9a/). The checklist rows live in UK-09's brief; rows with no recorded evidence stay open there.
+
+- Keyboard, screen readers, states, motion, hierarchy: no review pass recorded; open until the re-review.
+- Sizing (font scale 200 %): partly shown, `34`-`38` in UK-09b.7 (font2 gate, sign-in, limit, account, devices). Open until the re-review.
+- Themes: dark and light shown (UK-09b.7 27-29, 32-33); forced-colors, contrast measures: no evidence, open.
+- N/A, route and URL: a native kit has no route or URL for the kit itself; deep links are covered by the `pkey` link parser tests and `44`-`46`.
+- N/A, 400 % zoom: Android has font scale, not page zoom; the 200 % row stands in.
+- N/A, TV: covered by UK-09's TV split.
+- N/A, gamepad: no gamepad input on the phone and tablet screens this package ships.
+- N/A, terminal: no terminal surface in this package.
 
 ## Verify
 
