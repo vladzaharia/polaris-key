@@ -12,8 +12,10 @@
  *                build. `snap metadata` stays a pre-build step, outside sync.
  *
  * `transport` (P4-33.3) is the other kind: with `--deliverable <packId>` the plan is that pack's
- * routes on apple-ba, steam-depot and play-pad, no channel rows (`planTransports`). Running them is
- * P4-33.4. Play's modules patch the Gradle build before the bundle exists, so they are always a
+ * routes on apple-ba, steam-depot and play-pad, no channel rows (`planTransports`). P4-33.4 runs
+ * them from the `--from` cache with the in-process steps (`baPackage`, `baUpload`, `steamVdf`); the
+ * Steam build is the allow-listed `steamcmd +run_app_build` through `runStoreSteps`. A step whose
+ * predecessor failed is skipped. Play's modules patch the Gradle build before the bundle exists, so they are always a
  * pre-build skip (D-P5); Background Assets off macOS or without the ASC key skip too (D-P6).
  *
  * P4-33 adds `transport` as one more kind (D-A4). A channel whose credential env is absent is
@@ -48,6 +50,9 @@ import {
   type MatchedBuild,
 } from "./publish.js";
 import { loadManifest } from "./manifest.js";
+import { baPackage, baUpload, DEFAULT_BA_OUT } from "./transportAppleBa.js";
+import { DEFAULT_STEAM_OUT, steamVdf } from "./transportSteam.js";
+import type { TransportCommon } from "./transport.js";
 import { failLine, type Term, type TermOut } from "./terminal.js";
 import { untrusted } from "./untrusted.js";
 import {
@@ -61,7 +66,13 @@ import {
   runPrStep,
 } from "./storefronts/prRun.js";
 import { itchPushStep } from "./storefronts/itch.js";
-import { runStoreSteps, commandLine } from "./storefronts/run.js";
+import {
+  checkStep,
+  commandLine,
+  runStoreSteps,
+  type StoreStep,
+} from "./storefronts/run.js";
+import { ciStore } from "./storefronts/allowList.js";
 import { snapUploadStep } from "./storefronts/snap.js";
 
 export type StepKind = "pr" | "local-files" | "transport";
@@ -93,7 +104,8 @@ export interface SyncRow {
     | "needs-macos"
     | "no-steamcmd"
     | "no-depot"
-    | "pre-build";
+    | "pre-build"
+    | "earlier-failed";
   /** transport: the transport and the part of it this row is (`package`, `upload`, `vdf`, `build`, `modules`). */
   transport?: string;
   part?: string;
@@ -456,6 +468,125 @@ async function runLocal(
   else row.state = "done";
 }
 
+/** What a transport row needs from the command: the pack release, the cache and the track. */
+interface TransportRun {
+  product: string;
+  version?: string;
+  from?: string;
+  track: string;
+  /** Steam's app build scripts the vdf rows wrote, by outlet. */
+  appBuilds: Map<string, string>;
+}
+
+const ACCOUNT_MARK = "STEAM_ACCOUNT_SHOWN";
+
+/** The allow-listed `steamcmd +run_app_build` of one app build script. */
+function steamBuildStep(
+  outlet: StepOutlet,
+  account: string,
+  script: string,
+): StoreStep {
+  return {
+    store: "steam",
+    op: "uploadBuild",
+    command: "run-app-build",
+    tool: ciStore("steam")!.list.tool,
+    argv: ["+login", account, "+run_app_build", script, "+quit"],
+    outlet,
+  };
+}
+
+/** One transport row: the in-process step, or (dry run) the command it would run. */
+async function runTransport(
+  row: SyncRow,
+  t: TransportRun,
+  a: ChannelArgs,
+  io: ChannelIo,
+  outlets: readonly StepOutlet[],
+  dryRun: boolean,
+  log: TermOut,
+  err: TermOut,
+): Promise<void> {
+  const pack = row.pack!;
+  const version = t.version ?? "<version>";
+  const from = t.from ?? "<dir>";
+  const common: TransportCommon = {
+    cwd: io.cwd,
+    deliverable: pack,
+    version,
+    baseUrl: str(a, "base-url"),
+    env: io.env,
+    stdout: log,
+    stderr: err,
+    fetchImpl: io.fetchImpl,
+    sleep: io.sleep,
+    report: !bool(a, "no-report"),
+  };
+  const base = `pkey transport ${row.transport} ${row.part} --deliverable ${pack} --release ${version}`;
+  const key = row.outlets![0]!;
+  if (row.transport === "apple-ba" && row.part === "package") {
+    if (dryRun) row.command = `${base} --from ${from}`;
+    else
+      await baPackage({
+        ...common,
+        from,
+        archive: true,
+        ...(io.platform ? { platform: io.platform } : {}),
+        ...(io.exec ? { exec: io.exec } : {}),
+      });
+  } else if (row.transport === "apple-ba") {
+    if (dryRun) row.command = `${base} --dir ${DEFAULT_BA_OUT} --from ${from}`;
+    else await baUpload({ ...common, dir: DEFAULT_BA_OUT, from });
+  } else if (row.part === "vdf") {
+    if (dryRun)
+      row.command = `${base} --from ${from} --depot ${row.depot} --channel ${t.track}`;
+    else {
+      const r = await steamVdf({
+        ...common,
+        from,
+        depot: row.depot!,
+        channel: t.track,
+      });
+      t.appBuilds.set(key, r.appBuild);
+    }
+  } else {
+    const outlet = outlets.find((o) => o.id === key)!;
+    let script = t.appBuilds.get(key);
+    if (script) script = shown(io.cwd, script);
+    else {
+      const app = String(outlet.identity.appId ?? "");
+      if (!/^[0-9]{1,10}$/.test(app))
+        throw new Error(
+          `set appId on the ${outlet.id} outlet (a numeric Steam app id).`,
+        );
+      script = `${DEFAULT_STEAM_OUT}/app_build_${app}.vdf`;
+    }
+    const step = steamBuildStep(outlet, io.env.STEAM_USERNAME!.trim(), script);
+    if (dryRun) {
+      checkStep(step);
+      // The account shows as its variable, never its value.
+      row.command = commandLine(step.tool, [
+        "+login",
+        ACCOUNT_MARK,
+        ...step.argv.slice(2),
+      ]).replace(ACCOUNT_MARK, "$STEAM_USERNAME");
+    } else
+      await runStoreSteps([step], {
+        cwd: io.cwd,
+        product: t.product,
+        baseUrl: str(a, "base-url"),
+        env: io.env,
+        stdout: log,
+        stderr: err,
+        fetchImpl: io.fetchImpl,
+        sleep: io.sleep,
+        report: !bool(a, "no-report"),
+        ...(io.spawnTool ? { spawnTool: io.spawnTool } : {}),
+      });
+  }
+  if (!dryRun) row.state = "done";
+}
+
 /** Run the planned steps one after another; a failure does not stop the rest. */
 async function runRows(
   rows: SyncRow[],
@@ -465,15 +596,39 @@ async function runRows(
   outlets: readonly StepOutlet[],
   dryRun: boolean,
 ): Promise<void> {
+  const t: TransportRun = {
+    product,
+    version: versionOf(a, io.env),
+    from: str(a, "from"),
+    track: str(a, "channel") ?? "stable",
+    appBuilds: new Map(),
+  };
+  // A transport's later part waits on its earlier one (package, upload; vdf, build).
+  const broken = new Set<string>();
   for (const row of rows) {
     if (row.state !== "planned") continue;
-    // Transport rows are planned here; P4-33.4 runs them.
-    if (row.step === "transport") continue;
+    const group = `${row.transport}|${row.outlets?.join(",")}`;
+    if (row.step === "transport" && broken.has(group)) {
+      row.state = "skipped";
+      row.reason = "earlier-failed";
+      continue;
+    }
     if (dryRun && row.step === "pr") continue;
     const stdout = sink();
     const stderr = sink();
     try {
-      if (row.step === "local-files") {
+      if (row.step === "transport") {
+        await runTransport(
+          row,
+          t,
+          a,
+          io,
+          outlets,
+          dryRun,
+          stdout.out,
+          stderr.out,
+        );
+      } else if (row.step === "local-files") {
         const outlet = outlets.find((o) => o.id === row.outlet)!;
         await runLocal(
           row,
@@ -517,6 +672,7 @@ async function runRows(
         continue;
       }
       row.state = "failed";
+      if (row.step === "transport") broken.add(group);
       row.error = (err instanceof Error ? err.message : String(err)).split(
         "\n",
       )[0]!;
@@ -525,15 +681,27 @@ async function runRows(
       ...stdout.text().split("\n"),
       ...stderr.text().split("\n"),
     ].filter(Boolean);
-    if (notes.length && !dryRun) row.notes = notes;
+    // A transport's own chatter stays out of the report; its warnings do not.
+    const kept =
+      row.step === "transport"
+        ? stderr.text().split("\n").filter(Boolean)
+        : notes;
+    if (kept.length && !dryRun) row.notes = kept;
   }
 }
+
+const DONE_PART: Readonly<Record<string, string>> = {
+  "apple-ba package": "packaged",
+  "apple-ba upload": "uploaded",
+  "steam-depot vdf": "written",
+  "steam-depot build": "built",
+};
 
 function describe(r: SyncRow, dryRun: boolean): string {
   switch (r.state) {
     case "planned":
       return r.step === "transport"
-        ? `${dryRun ? "would run" : "planned"}: pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}`
+        ? `${dryRun ? "would run" : "planned"} ${r.command ?? `pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}`}`
         : !dryRun
           ? "pending"
           : r.command
@@ -550,19 +718,23 @@ function describe(r: SyncRow, dryRun: boolean): string {
             ? "skipped: steamcmd is not installed"
             : r.reason === "no-depot"
               ? `skipped: set depots.${r.pack} on the steam outlet`
-              : r.reason === "pre-build"
-                ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}`
-                : r.reason === "no-file"
-                  ? "skipped: no fitting file under --dir"
-                  : r.reason === "first-submission"
-                    ? "skipped: the first submission is by hand (pkey storefront flathub init)"
-                    : "skipped: needs --dir";
+              : r.reason === "earlier-failed"
+                ? "skipped: the step before it failed"
+                : r.reason === "pre-build"
+                  ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}`
+                  : r.reason === "no-file"
+                    ? "skipped: no fitting file under --dir"
+                    : r.reason === "first-submission"
+                      ? "skipped: the first submission is by hand (pkey storefront flathub init)"
+                      : "skipped: needs --dir";
     case "done":
-      return r.platform && r.store === "itch"
-        ? `pushed ${r.platform}`
-        : r.store === "snap"
-          ? "uploaded"
-          : "built and registered";
+      return r.step === "transport"
+        ? (DONE_PART[`${r.transport} ${r.part}`] ?? "done")
+        : r.platform && r.store === "itch"
+          ? `pushed ${r.platform}`
+          : r.store === "snap"
+            ? "uploaded"
+            : "built and registered";
     case "opened":
       return `opened ${r.url ?? "a pull request"}`;
     case "existing":
@@ -727,6 +899,7 @@ export async function channelSync(
   const rows = pack
     ? planTransports(product, pack, {
         env: io.env,
+        platform: io.platform,
         hasTool: (n) => toolOnPath(io.env, n),
       })
     : planSync(product.outlets, { dir, builds, env: io.env });
@@ -746,6 +919,16 @@ export async function channelSync(
     else
       io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
     return 1;
+  }
+  if (pack && !dryRun && rows.some((r) => r.state === "planned")) {
+    if (!versionOf(a, io.env))
+      throw new UsageError(
+        "--version is required: the pack release the transports package (or run in a tag build).",
+      );
+    if (!str(a, "from"))
+      throw new UsageError(
+        `--from is required: the --out directory of pkey release publish --deliverable ${pack}.`,
+      );
   }
   await runRows(rows, a, io, product.slug, product.outlets, dryRun);
   const failed = rows.some((r) => r.state === "failed");

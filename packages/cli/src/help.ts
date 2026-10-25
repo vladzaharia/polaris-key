@@ -1119,8 +1119,10 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, " +
           "STEAM_CONFIG_VDF and steamcmd) and Play Asset Delivery, which is always " +
           "skipped: run pkey transport play-pad modules before the build. A transport " +
-          "that skips leaves the pack on the Polaris Key CDN. --from is the pack " +
-          "publish's --out directory.",
+          "that skips leaves the pack on the Polaris Key CDN. It runs the rest from " +
+          "--from, the pack publish's --out directory, for the pack release --version; " +
+          "a step after one that failed is skipped. --dry-run prints each command, the " +
+          "Steam account as $STEAM_USERNAME.",
       },
     ],
   },

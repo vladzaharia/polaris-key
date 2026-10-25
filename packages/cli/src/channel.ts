@@ -40,6 +40,9 @@ export interface ChannelIo {
   sleep?: Sleep;
   /** The test seam for the vendor tool (butler, snapcraft). */
   spawnTool?: SpawnTool;
+  /** Test seams for the transports: the host platform and `xcrun` (Background Assets package). */
+  platform?: NodeJS.Platform;
+  exec?: (cmd: string, args: string[], cwd: string) => void;
   /** The terminal behind a stream (colour, symbols, width), honouring --no-color and --ascii. */
   term?: (out: TermOut) => Term;
 }

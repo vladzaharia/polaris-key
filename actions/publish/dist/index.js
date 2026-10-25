@@ -25375,7 +25375,7 @@ var COMMANDS = [
       },
       {
         subs: ["sync"],
-        text: "channel sync runs what each declared channel needs: a pull request for winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and with --dir an itch.io push per platform, a Snap upload and the F-Droid repository build, from the files .pkey/release maps (no fitting file is a skip). --channel is the release track (default stable); --version is what itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first submission (pkey storefront flathub init). A failed step fails the command after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs nothing and prints each checked command. --deliverable <packId> plans that pack's store transports instead of the channels: Background Assets (package, upload; needs macOS and ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, STEAM_CONFIG_VDF and steamcmd) and Play Asset Delivery, which is always skipped: run pkey transport play-pad modules before the build. A transport that skips leaves the pack on the Polaris Key CDN. --from is the pack publish's --out directory."
+        text: "channel sync runs what each declared channel needs: a pull request for winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and with --dir an itch.io push per platform, a Snap upload and the F-Droid repository build, from the files .pkey/release maps (no fitting file is a skip). --channel is the release track (default stable); --version is what itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first submission (pkey storefront flathub init). A failed step fails the command after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs nothing and prints each checked command. --deliverable <packId> plans that pack's store transports instead of the channels: Background Assets (package, upload; needs macOS and ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, STEAM_CONFIG_VDF and steamcmd) and Play Asset Delivery, which is always skipped: run pkey transport play-pad modules before the build. A transport that skips leaves the pack on the Polaris Key CDN. It runs the rest from --from, the pack publish's --out directory, for the pack release --version; a step after one that failed is skipped. --dry-run prints each command, the Steam account as $STEAM_USERNAME."
       }
     ]
   },
@@ -49659,15 +49659,129 @@ async function runLocal(row2, outlet, a, io, product, dryRun, log, err) {
   if (dryRun) row2.command = commandLine(step.tool, step.argv);
   else row2.state = "done";
 }
+var ACCOUNT_MARK = "STEAM_ACCOUNT_SHOWN";
+function steamBuildStep(outlet, account, script) {
+  return {
+    store: "steam",
+    op: "uploadBuild",
+    command: "run-app-build",
+    tool: ciStore("steam").list.tool,
+    argv: ["+login", account, "+run_app_build", script, "+quit"],
+    outlet
+  };
+}
+async function runTransport(row2, t, a, io, outlets, dryRun, log, err) {
+  const pack = row2.pack;
+  const version = t.version ?? "<version>";
+  const from = t.from ?? "<dir>";
+  const common = {
+    cwd: io.cwd,
+    deliverable: pack,
+    version,
+    baseUrl: str6(a, "base-url"),
+    env: io.env,
+    stdout: log,
+    stderr: err,
+    fetchImpl: io.fetchImpl,
+    sleep: io.sleep,
+    report: !bool2(a, "no-report")
+  };
+  const base = `pkey transport ${row2.transport} ${row2.part} --deliverable ${pack} --release ${version}`;
+  const key = row2.outlets[0];
+  if (row2.transport === "apple-ba" && row2.part === "package") {
+    if (dryRun) row2.command = `${base} --from ${from}`;
+    else
+      await baPackage({
+        ...common,
+        from,
+        archive: true,
+        ...io.platform ? { platform: io.platform } : {},
+        ...io.exec ? { exec: io.exec } : {}
+      });
+  } else if (row2.transport === "apple-ba") {
+    if (dryRun) row2.command = `${base} --dir ${DEFAULT_BA_OUT} --from ${from}`;
+    else await baUpload({ ...common, dir: DEFAULT_BA_OUT, from });
+  } else if (row2.part === "vdf") {
+    if (dryRun)
+      row2.command = `${base} --from ${from} --depot ${row2.depot} --channel ${t.track}`;
+    else {
+      const r = await steamVdf({
+        ...common,
+        from,
+        depot: row2.depot,
+        channel: t.track
+      });
+      t.appBuilds.set(key, r.appBuild);
+    }
+  } else {
+    const outlet = outlets.find((o) => o.id === key);
+    let script = t.appBuilds.get(key);
+    if (script) script = shown3(io.cwd, script);
+    else {
+      const app = String(outlet.identity.appId ?? "");
+      if (!/^[0-9]{1,10}$/.test(app))
+        throw new Error(
+          `set appId on the ${outlet.id} outlet (a numeric Steam app id).`
+        );
+      script = `${DEFAULT_STEAM_OUT}/app_build_${app}.vdf`;
+    }
+    const step = steamBuildStep(outlet, io.env.STEAM_USERNAME.trim(), script);
+    if (dryRun) {
+      checkStep(step);
+      row2.command = commandLine(step.tool, [
+        "+login",
+        ACCOUNT_MARK,
+        ...step.argv.slice(2)
+      ]).replace(ACCOUNT_MARK, "$STEAM_USERNAME");
+    } else
+      await runStoreSteps([step], {
+        cwd: io.cwd,
+        product: t.product,
+        baseUrl: str6(a, "base-url"),
+        env: io.env,
+        stdout: log,
+        stderr: err,
+        fetchImpl: io.fetchImpl,
+        sleep: io.sleep,
+        report: !bool2(a, "no-report"),
+        ...io.spawnTool ? { spawnTool: io.spawnTool } : {}
+      });
+  }
+  if (!dryRun) row2.state = "done";
+}
 async function runRows(rows, a, io, product, outlets, dryRun) {
+  const t = {
+    product,
+    version: versionOf(a, io.env),
+    from: str6(a, "from"),
+    track: str6(a, "channel") ?? "stable",
+    appBuilds: /* @__PURE__ */ new Map()
+  };
+  const broken = /* @__PURE__ */ new Set();
   for (const row2 of rows) {
     if (row2.state !== "planned") continue;
-    if (row2.step === "transport") continue;
+    const group = `${row2.transport}|${row2.outlets?.join(",")}`;
+    if (row2.step === "transport" && broken.has(group)) {
+      row2.state = "skipped";
+      row2.reason = "earlier-failed";
+      continue;
+    }
     if (dryRun && row2.step === "pr") continue;
     const stdout = sink();
     const stderr = sink();
     try {
-      if (row2.step === "local-files") {
+      if (row2.step === "transport") {
+        await runTransport(
+          row2,
+          t,
+          a,
+          io,
+          outlets,
+          dryRun,
+          stdout.out,
+          stderr.out
+        );
+      } else if (row2.step === "local-files") {
         const outlet = outlets.find((o) => o.id === row2.outlet);
         await runLocal(
           row2,
@@ -49705,6 +49819,7 @@ async function runRows(rows, a, io, product, outlets, dryRun) {
         continue;
       }
       row2.state = "failed";
+      if (row2.step === "transport") broken.add(group);
       row2.error = (err instanceof Error ? err.message : String(err)).split(
         "\n"
       )[0];
@@ -49713,17 +49828,24 @@ async function runRows(rows, a, io, product, outlets, dryRun) {
       ...stdout.text().split("\n"),
       ...stderr.text().split("\n")
     ].filter(Boolean);
-    if (notes.length && !dryRun) row2.notes = notes;
+    const kept = row2.step === "transport" ? stderr.text().split("\n").filter(Boolean) : notes;
+    if (kept.length && !dryRun) row2.notes = kept;
   }
 }
+var DONE_PART = {
+  "apple-ba package": "packaged",
+  "apple-ba upload": "uploaded",
+  "steam-depot vdf": "written",
+  "steam-depot build": "built"
+};
 function describe(r, dryRun) {
   switch (r.state) {
     case "planned":
-      return r.step === "transport" ? `${dryRun ? "would run" : "planned"}: pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}` : !dryRun ? "pending" : r.command ? `would run ${r.command}` : r.step === "pr" ? "would open a pull request" : "would run";
+      return r.step === "transport" ? `${dryRun ? "would run" : "planned"} ${r.command ?? `pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}`}` : !dryRun ? "pending" : r.command ? `would run ${r.command}` : r.step === "pr" ? "would open a pull request" : "would run";
     case "skipped":
-      return r.reason === "missing-secret" ? `skipped: ${r.secret} is not set` : r.reason === "needs-macos" ? "skipped: needs macOS" : r.reason === "no-steamcmd" ? "skipped: steamcmd is not installed" : r.reason === "no-depot" ? `skipped: set depots.${r.pack} on the steam outlet` : r.reason === "pre-build" ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
+      return r.reason === "missing-secret" ? `skipped: ${r.secret} is not set` : r.reason === "needs-macos" ? "skipped: needs macOS" : r.reason === "no-steamcmd" ? "skipped: steamcmd is not installed" : r.reason === "no-depot" ? `skipped: set depots.${r.pack} on the steam outlet` : r.reason === "earlier-failed" ? "skipped: the step before it failed" : r.reason === "pre-build" ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
     case "done":
-      return r.platform && r.store === "itch" ? `pushed ${r.platform}` : r.store === "snap" ? "uploaded" : "built and registered";
+      return r.step === "transport" ? DONE_PART[`${r.transport} ${r.part}`] ?? "done" : r.platform && r.store === "itch" ? `pushed ${r.platform}` : r.store === "snap" ? "uploaded" : "built and registered";
     case "opened":
       return `opened ${r.url ?? "a pull request"}`;
     case "existing":
@@ -49847,6 +49969,7 @@ async function channelSync(a, io) {
   const builds = dir && !pack ? await matchBuilds(io.cwd, dir) : [];
   const rows = pack ? planTransports(product, pack, {
     env: io.env,
+    platform: io.platform,
     hasTool: (n) => toolOnPath(io.env, n)
   }) : planSync(product.outlets, { dir, builds, env: io.env });
   if (rows.some((r) => r.state === "planned") && !io.env[CI_TOKEN_ENV]?.trim() && !canRequestGithubOidc(io.env)) {
@@ -49860,6 +49983,16 @@ async function channelSync(a, io) {
     else
       io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
     return 1;
+  }
+  if (pack && !dryRun && rows.some((r) => r.state === "planned")) {
+    if (!versionOf(a, io.env))
+      throw new UsageError(
+        "--version is required: the pack release the transports package (or run in a tag build)."
+      );
+    if (!str6(a, "from"))
+      throw new UsageError(
+        `--from is required: the --out directory of pkey release publish --deliverable ${pack}.`
+      );
   }
   await runRows(rows, a, io, product.slug, product.outlets, dryRun);
   const failed = rows.some((r) => r.state === "failed");
