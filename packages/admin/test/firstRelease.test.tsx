@@ -171,16 +171,19 @@ describe("Releases → guided first release (UX-23)", () => {
     expect(h1.textContent).toBe("Releases");
   });
 
-  it("fills the workflow step with the slug, and copies it", async () => {
+  it("fills the workflow with the slug, and copies it", async () => {
     const user = userEvent.setup();
     mount();
     await user.click(
-      await screen.findByRole("button", { name: "Copy workflow step" }),
+      await screen.findByRole("button", { name: "Copy workflow" }),
     );
     expect(await navigator.clipboard.readText()).toBe(workflowStep("tonebox"));
     expect(workflowStep("tonebox")).toContain("Publishes tonebox");
     expect(workflowStep("tonebox")).toContain("args: --tag ");
     expect(workflowStep("tonebox")).not.toContain("product:");
+    expect(workflowStep("tonebox")).toContain("environment: release");
+    expect(workflowStep("tonebox")).not.toContain("release-key");
+    expect(workflowStep("tonebox", true)).toContain("release-key");
     expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /Release docs/ }).getAttribute("href"),

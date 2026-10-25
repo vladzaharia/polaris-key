@@ -45,34 +45,29 @@ rules the Worker applies, are on [Trusted publishing](/docs/features/ship-builds
 ## The workflow
 
 ```yaml title=".github/workflows/release.yml"
+# Publishes my-app (the slug in .pkey/product) when a v* tag is pushed.
 name: Release
 on:
   push:
     tags: ["v*"]
 
 jobs:
-  build:
-    # … your export and signing jobs, uploading their outputs with actions/upload-artifact …
-
   publish:
-    needs: build
     runs-on: ubuntu-latest
     environment: release
     permissions:
       contents: read
-      id-token: write # lets the step request the job's OIDC token
+      id-token: write
     steps:
-      - uses: actions/checkout@v4 # the step reads .pkey/ from the workspace
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist # one subdirectory per artifact; the step searches recursively
+      - uses: actions/checkout@v4
+      # Build your files into dist here, before the publish step.
       - uses: vladzaharia/polaris-key/actions/publish@<commit-sha>
         with:
           args: --tag ${{ github.ref_name }} --channel beta --dir dist
-          release-key: ${{ secrets.PKEY_RELEASE_KEY }} # when .pkey/release declares releaseKeys
+          release-key: ${{ secrets.PKEY_RELEASE_KEY }}
 ```
 
-Reference the Action by a full commit SHA of this repository, as above. It runs on the current Node runtime GitHub supports and needs no install
+Build in this job, or download a build job's artifacts into `dist` with `actions/download-artifact` before the step. Reference the Action by a full commit SHA of this repository, as above. It runs on the current Node runtime GitHub supports and needs no install
 step.
 
 | Input               | Default               | Meaning                                                                                                                                                                                                        |
