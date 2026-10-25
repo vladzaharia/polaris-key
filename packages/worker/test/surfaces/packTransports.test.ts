@@ -380,24 +380,25 @@ describe("pack transports (P4-05)", () => {
       deliverable_id: string;
       outlet_id: string;
       transport: string;
+      origin: string;
     }>(
-      `SELECT deliverable_id, outlet_id, transport FROM dist_transports
+      `SELECT deliverable_id, outlet_id, transport, origin FROM dist_transports
         WHERE product = ? ORDER BY deliverable_id, outlet_id`,
       SLUG,
     );
     expect(rows.map((r) => Object.values(r).join(" "))).toEqual([
-      "app app-installer pkey-cdn",
-      "app bundled pkey-cdn",
-      "app direct pkey-cdn",
-      "app web pkey-cdn",
-      `${CORE} app-installer msix-optional`,
-      `${CORE} bundled embedded`,
-      `${CORE} direct pkey-cdn`,
-      `${CORE} web pkey-cdn`,
-      `${SKINS} app-installer msix-optional`,
-      `${SKINS} bundled pkey-cdn`,
-      `${SKINS} direct pkey-cdn`,
-      `${SKINS} web pkey-cdn`,
+      "app app-installer pkey-cdn default",
+      "app bundled pkey-cdn default",
+      "app direct pkey-cdn default",
+      "app web pkey-cdn default",
+      `${CORE} app-installer msix-optional declared`,
+      `${CORE} bundled embedded declared`,
+      `${CORE} direct pkey-cdn default`,
+      `${CORE} web pkey-cdn default`,
+      `${SKINS} app-installer msix-optional declared`,
+      `${SKINS} bundled pkey-cdn default`,
+      `${SKINS} direct pkey-cdn default`,
+      `${SKINS} web pkey-cdn default`,
     ]);
 
     const { token, session } = await consoleTestSession(

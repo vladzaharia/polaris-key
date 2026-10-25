@@ -317,6 +317,18 @@ describe("Distribution → Matrix", () => {
     );
   });
 
+  it("says a CDN-served Background Assets route is served from the CDN (P4-33.2)", async () => {
+    bootWith(`${MATRIX_HASH}?cell=rel_240:app-store`);
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on app-store",
+    });
+    expect(
+      within(drawer).getByText(
+        "Served from the Polaris Key CDN until Background Assets are uploaded.",
+      ),
+    ).toBeTruthy();
+  });
+
   it("overrides a readiness hold only with a reason (MTX-2)", async () => {
     const { calls } = bootWith(`${MATRIX_HASH}?cell=rel_240:altstore`, {
       [`POST ${P("/distribution/readiness/rel_240/altstore/override")}`]: {

@@ -166,6 +166,7 @@ export const MATRIX = {
         warning: null,
         blockers: [],
         pendingReason: null,
+        notes: [{ pack: "textures", note: "cdn-fallback" }],
       },
     },
     {

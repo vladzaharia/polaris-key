@@ -27,7 +27,11 @@ import {
   type PackWorld,
   type Published,
 } from "../packWorld.js";
-import { readinessReader } from "../../src/services/distribution/readiness.js";
+import {
+  listReadiness,
+  readinessReader,
+  readinessRowView,
+} from "../../src/services/distribution/readiness.js";
 import { HOLDABLE_OUTLET_KINDS } from "../../src/services/distribution/readiness.js";
 import { DERIVED_OUTLET_KINDS } from "../../src/services/distribution/availability.js";
 import { consoleActor } from "../consoleSessionHelper.js";
@@ -231,6 +235,75 @@ describe("readiness per transport (CONTENT §6.4)", () => {
         `${id}:app-store`,
       ),
     ).toEqual({ actor_sub: "system:ci" });
+  });
+
+  it("an auto apple-ba route is ready from the CDN with a note until an asset pack is approved (P4-33.2)", async () => {
+    const { w, foes } = await world();
+    await w.setTransport(FOES, "app-store", "apple-ba", "auto");
+    const id = await appReleaseId(w);
+    const before = await readiness(w, id, "app-store");
+    expect(before).toMatchObject({
+      state: "ready",
+      blockers: [],
+      notes: [{ pack: FOES, note: "cdn-fallback" }],
+    });
+    expect(before.required[0]).toMatchObject({
+      transport: "apple-ba",
+      origin: "auto",
+    });
+
+    // The CDN rule still applies: unpublished objects block.
+    await unpublishOne(w, foes);
+    expect((await readiness(w, id, "app-store")).blockers[0]).toMatchObject({
+      reason: "objects-missing",
+    });
+  });
+
+  it("an auto apple-ba route with an approved record follows the apple-ba rule, no note", async () => {
+    const { w, foes } = await world();
+    await w.setTransport(FOES, "app-store", "apple-ba", "auto");
+    const id = await appReleaseId(w);
+    // A record for another level exists: the store is in play, so the apple-ba rule applies.
+    await reportDistribution({
+      ...cli(w),
+      type: "availability",
+      outlet: "app-store",
+      releaseId: foes.releaseId,
+      state: "approved",
+      platformRef: '{"assetPackIdentifier":"djdl-foes-c3"}',
+    });
+    const mid = await readiness(w, id, "app-store");
+    expect(mid.state).toBe("blocked");
+    expect(mid.notes).toEqual([]);
+    expect(mid.blockers[0]).toMatchObject({ reason: "awaiting-approval" });
+    await reportDistribution({
+      ...cli(w),
+      type: "availability",
+      outlet: "app-store",
+      releaseId: foes.releaseId,
+      state: "approved",
+      platformRef: '{"assetPackIdentifier":"djdl-foes-c4"}',
+    });
+    expect(await readiness(w, id, "app-store")).toMatchObject({
+      state: "ready",
+      notes: [],
+    });
+  });
+
+  it("the note reaches the stored row view", async () => {
+    const { w } = await world();
+    await w.setTransport(FOES, "app-store", "apple-ba", "auto");
+    const id = await appReleaseId(w);
+    const res = await w.admin("POST", "/distribution/readiness/refresh");
+    expect(res.status).toBeLessThan(300);
+    const rows = await listReadiness(w.db, SLUG);
+    const row = rows.find(
+      (r) => r.app_release_id === id && r.outlet_id === "app-store",
+    )!;
+    expect(readinessRowView(row)).toMatchObject({
+      state: "ready",
+      note: "cdn-fallback",
+    });
   });
 
   it("an entitled pack with no delivery gate blocks pkey-cdn (P4-05 N4)", async () => {
