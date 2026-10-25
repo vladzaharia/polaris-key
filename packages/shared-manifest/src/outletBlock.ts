@@ -48,6 +48,7 @@ export const OUTLET_FIELD_LABELS: Readonly<
   updateSettings: "App Installer update behavior.",
   appId: "App id.",
   branches: "Release track to Steam branch.",
+  depots: "Pack id to Steam depot id (digits).",
   target: "butler target, user/game.",
   gameId: "itch.io game id (digits).",
   name: "Snap name.",

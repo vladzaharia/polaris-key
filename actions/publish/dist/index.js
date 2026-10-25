@@ -636,7 +636,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "outlet_steam": {
-      "description": "The identity fields a steam outlet reads: appId, branches. Other keys are ignored.",
+      "description": "The identity fields a steam outlet reads: appId, branches, depots. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -647,6 +647,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "branches": {
           "$ref": "#/$defs/branches"
+        },
+        "depots": {
+          "$ref": "#/$defs/depots"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -810,6 +813,18 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "additionalProperties": {
         "type": "string",
         "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+      }
+    },
+    "depots": {
+      "description": "Pack deliverable id → the Steam depot id that carries it. Keys must be pack deliverables declared in .pkey/release (validator-checked); transports.packs: auto routes a pack with a depot by steam-depot.",
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)*$",
+        "maxLength": 64
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/numericId"
       }
     },
     "snapChannels": {
@@ -982,7 +997,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "transports": {
-      "description": "Which transport carries each deliverable per outlet: deliverables.<id>.<outlet>, then packs.<outlet> for a pack, then default (pkey-cdn when unset). Outlet keys must be declared outlets whose kind can carry the transport (validator-checked).",
+      "description": "Which transport carries each deliverable per outlet: deliverables.<id>.<outlet>, then packs (auto, or packs.<outlet>) for a pack, then default (pkey-cdn when unset). Outlet keys must be declared outlets whose kind can carry the transport (validator-checked).",
       "type": "object",
       "properties": {
         "default": {
@@ -990,7 +1005,15 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "enum": ["embedded", "pkey-cdn"]
         },
         "packs": {
-          "$ref": "#/$defs/transportMap"
+          "description": "auto: each pack takes Background Assets on the Apple stores, the Steam depot on a steam outlet that declares one for it, else the Polaris Key CDN (never Play Asset Delivery). Or one transport per outlet.",
+          "oneOf": [
+            {
+              "const": "auto"
+            },
+            {
+              "$ref": "#/$defs/transportMap"
+            }
+          ]
         },
         "deliverables": {
           "type": "object",
@@ -17754,6 +17777,12 @@ var TRANSPORTS = [
   "flatpak-ext",
   "web"
 ];
+var TRANSPORTS_PACKS_AUTO = "auto";
+function autoPackTransport(kind, hasDepot) {
+  if (kind === "app-store" || kind === "testflight") return "apple-ba";
+  if (kind === "steam" && hasDepot) return "steam-depot";
+  return "pkey-cdn";
+}
 var DEFAULT_DISTRIBUTION_TRANSPORT = "pkey-cdn";
 var TRANSPORT_OUTLET_KINDS = {
   embedded: null,
@@ -17797,7 +17826,7 @@ var OUTLET_IDENTITY_FIELDS = {
   "fdroid-repo": ["artifact", "packageName"],
   "ms-store": ["productId", "packageFamilyName", "flights"],
   "app-installer": ["packageFamilyName", "publisher", "updateSettings"],
-  steam: ["appId", "branches"],
+  steam: ["appId", "branches", "depots"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
   snap: ["name", "channels"],
@@ -17839,6 +17868,15 @@ var channelMap = (valueRe, what) => (v) => {
   for (const value of Object.values(v)) {
     if (typeof value !== "string" || !valueRe.test(value))
       return `values must each be ${what}`;
+  }
+  return null;
+};
+var depotMap = (v) => {
+  if (!isRecord4(v) || Object.keys(v).length > MAX_CHANNEL_MAP_ENTRIES)
+    return `must be an object of at most ${MAX_CHANNEL_MAP_ENTRIES} pack deliverable → Steam depot id entries`;
+  for (const value of Object.values(v)) {
+    if (numericId(value) !== null)
+      return "values must each be a Steam depot id (a positive integer or a string of decimal digits)";
   }
   return null;
 };
@@ -17893,6 +17931,8 @@ function fieldCheck(kind, field) {
       );
     case "branches":
       return channelMap(STEAM_BRANCH_RE, "Steam branch");
+    case "depots":
+      return depotMap;
     case "target":
       return pattern(ITCH_TARGET_RE, "a butler user/game target");
     case "name":
@@ -18253,6 +18293,19 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
         `outlets.${id}.artifact must name an id in .pkey/release deliverables.app.artifacts.`
       );
     }
+    if (field === "depots") {
+      for (const packId of Object.keys(value)) {
+        if (ctx.deliverables.get(packId) !== "pack") {
+          add3(
+            errors,
+            "distribution",
+            `/outlets/${id}/depots/${packId}`,
+            "unknown_deliverable_ref",
+            `outlets.${id}.depots keys must name a pack deliverable declared in .pkey/release.`
+          );
+        }
+      }
+    }
     if (field === "tracks" || field === "branches" || field === "flights" || field === "channels") {
       for (const channel of Object.keys(value)) {
         if (!ctx.channels.has(channel)) {
@@ -18350,7 +18403,16 @@ function validateTransports(errors, transports, ctx, kinds) {
       }
     }
   };
-  checkMap("/transports/packs", transports.packs);
+  if (typeof transports.packs === "string") {
+    if (transports.packs !== TRANSPORTS_PACKS_AUTO)
+      add3(
+        errors,
+        "distribution",
+        "/transports/packs",
+        "invalid_transport",
+        `transports.packs must be "auto" or an object keyed by outlet id.`
+      );
+  } else checkMap("/transports/packs", transports.packs);
   const deliverables = transports.deliverables;
   if (deliverables === void 0) return;
   if (!isRecord4(deliverables)) {
@@ -18445,7 +18507,7 @@ function normalizeDistribution(doc, deliverables = [
   const def = rawTransports.default;
   const transports = {
     default: isTransport(def) && TRANSPORT_OUTLET_KINDS[def] === null ? def : DEFAULT_DISTRIBUTION_TRANSPORT,
-    packs: transportMap(rawTransports.packs),
+    packs: rawTransports.packs === TRANSPORTS_PACKS_AUTO ? TRANSPORTS_PACKS_AUTO : transportMap(rawTransports.packs),
     deliverables: {}
   };
   const known = new Map(deliverables.map((d) => [d.id, d.kind]));
@@ -18460,10 +18522,34 @@ function normalizeDistribution(doc, deliverables = [
     const [deliverableId, kind] = d;
     if (kind === "package") continue;
     for (const o of outlets) {
+      const declared = transports.deliverables[deliverableId]?.[o.id];
+      if (declared) {
+        routes.push({
+          deliverableId,
+          outletId: o.id,
+          transport: declared,
+          origin: "declared"
+        });
+        continue;
+      }
+      if (kind === "pack" && transports.packs === TRANSPORTS_PACKS_AUTO) {
+        routes.push({
+          deliverableId,
+          outletId: o.id,
+          transport: autoPackTransport(
+            o.kind,
+            o.identity.depots?.[deliverableId] !== void 0
+          ),
+          origin: "auto"
+        });
+        continue;
+      }
+      const fromMap = kind === "pack" && transports.packs !== TRANSPORTS_PACKS_AUTO ? transports.packs[o.id] : void 0;
       routes.push({
         deliverableId,
         outletId: o.id,
-        transport: transports.deliverables[deliverableId]?.[o.id] ?? (kind === "pack" ? transports.packs[o.id] : void 0) ?? transports.default
+        transport: fromMap ?? transports.default,
+        origin: fromMap ? "declared" : "default"
       });
     }
   }
@@ -18482,6 +18568,15 @@ function normalizeIdentity(kind, entry) {
     if (value === void 0 || fieldCheck(kind, field)(value) !== null)
       continue;
     if (typeof value === "number") out[field] = String(value);
+    else if (field === "depots")
+      out[field] = sortedRecord(
+        Object.fromEntries(
+          Object.entries(value).map(([k, v]) => [
+            k,
+            String(v)
+          ])
+        )
+      );
     else if (field === "scoop") out[field] = structuredCloneScoop(value);
     else if (Array.isArray(value)) out[field] = [...value];
     else if (isRecord4(value)) out[field] = sortedRecord(value);
@@ -19715,6 +19810,7 @@ var OUTLET_FIELD_LABELS = {
   updateSettings: "App Installer update behavior.",
   appId: "App id.",
   branches: "Release track to Steam branch.",
+  depots: "Pack id to Steam depot id (digits).",
   target: "butler target, user/game.",
   gameId: "itch.io game id (digits).",
   name: "Snap name.",
