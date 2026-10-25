@@ -2141,6 +2141,9 @@
     "packages/worker/src/console/auth.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/worker/src/console/creatorGrant.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/src/console/handlers/accountOverrides.ts": {
       "jscpd:duplicate": 1
     },
@@ -2148,7 +2151,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/src/console/handlers/bindings.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/src/console/handlers/ciPublishing.ts": {
       "jscpd:duplicate": 1
@@ -3291,7 +3294,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/services/distribution/registryAuth.test.ts": {
-      "jscpd:duplicate": 15
+      "jscpd:duplicate": 17
     },
     "packages/worker/test/services/distribution/registryFeeds.test.ts": {
       "jscpd:duplicate": 6
@@ -3654,7 +3657,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/console/consoleBindingWrites.test.ts": {
-      "jscpd:duplicate": 26
+      "jscpd:duplicate": 27
     },
     "packages/worker/test/surfaces/console/consoleBreakGlass.test.ts": {
       "jscpd:duplicate": 3
@@ -3672,7 +3675,7 @@
       "jscpd:duplicate": 5
     },
     "packages/worker/test/surfaces/console/consoleMembers.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 13
     },
     "packages/worker/test/surfaces/console/consolePasskeys.test.ts": {
       "jscpd:duplicate": 4
@@ -3693,10 +3696,13 @@
       "jscpd:duplicate": 10
     },
     "packages/worker/test/surfaces/console/createDefaults.test.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 15
     },
     "packages/worker/test/surfaces/console/createProbes.test.ts": {
       "jscpd:duplicate": 14
+    },
+    "packages/worker/test/surfaces/console/creatorRule.test.ts": {
+      "jscpd:duplicate": 11
     },
     "packages/worker/test/surfaces/console/credentialCheck.test.ts": {
       "jscpd:duplicate": 6
@@ -3762,7 +3768,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/surfaces/console/linkExisting.test.ts": {
-      "jscpd:duplicate": 22
+      "jscpd:duplicate": 21
     },
     "packages/worker/test/surfaces/console/listingAdmin.test.ts": {
       "jscpd:duplicate": 1
@@ -3852,7 +3858,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/surfaces/console/syncPlan.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 11
     },
     "packages/worker/test/surfaces/console/systemCiGuard.test.ts": {
       "jscpd:duplicate": 8
@@ -4032,7 +4038,7 @@
       "jscpd:duplicate": 6
     },
     "packages/worker/test/surfaces/personalTokens.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 8
     },
     "packages/worker/test/surfaces/platformAdmin.test.ts": {
       "jscpd:duplicate": 4
@@ -4088,11 +4094,14 @@
     "packages/worker/test/surfaces/registryOci.test.ts": {
       "jscpd:duplicate": 7
     },
+    "packages/worker/test/surfaces/registryPersonRoles.test.ts": {
+      "jscpd:duplicate": 5
+    },
     "packages/worker/test/surfaces/registryPublish.test.ts": {
       "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/registryPush.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 11
     },
     "packages/worker/test/surfaces/registrySwift.test.ts": {
       "jscpd:duplicate": 11

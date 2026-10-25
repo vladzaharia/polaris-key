@@ -8068,7 +8068,7 @@ admin of one customer product can read the platform's SDK feeds by design (any c
 role admitting a product the principal's `can()` does not reach; a path from a token or a session
 without `aid` to a creator row; the creator row's scope widening past `product:<slug>`.
 
-**Tests:** `test/registryPersonRoles.test.ts`, `test/creatorRule.test.ts`.
+**Tests:** `test/surfaces/registryPersonRoles.test.ts`, `test/surfaces/console/creatorRule.test.ts`.
 
 ### Identity as a per-product service (PX-W17)
 

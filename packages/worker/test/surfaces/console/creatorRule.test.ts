@@ -1,39 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
-import { bindAdminFlow } from "./flowBinderHelper.js";
-import { makeTestDb } from "./helpers.js";
-import { KvMock } from "./kvMock.js";
-import { makeEnv, NOW, seedProduct } from "./seed.js";
-import type { Env } from "../src/platform/env.js";
-import { handleAdmin } from "../src/console/index.js";
+import { bindAdminFlow } from "../../flowBinderHelper.js";
+import { makeTestDb } from "../../helpers.js";
+import { KvMock } from "../../kvMock.js";
+import { makeEnv, NOW, seedProduct } from "../../seed.js";
+import type { Env } from "../../../src/platform/env.js";
+import { handleAdmin } from "../../../src/console/index.js";
 import {
   handleAdminCallback,
   handleAdminLogin,
   type IdTokenVerifier,
-} from "../src/console/auth.js";
-import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
+} from "../../../src/console/auth.js";
+import { resetConsoleSessionCache } from "../../../src/console/consoleSession.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
-  LIVE_CHECK_SECONDS,
-} from "../src/core/console/session.js";
+} from "../../../src/core/console/session.js";
 import {
   newBindingId,
-  stmtDeleteBinding,
   stmtInsertBinding,
-} from "../src/core/rbac/bindings.js";
-import type { AreaId } from "../src/core/rbac/areas.js";
-import type { GrantScope, Role } from "../src/core/rbac/can.js";
-import { tokenSession } from "../src/console/apiTokens.js";
-import { importHmacKey } from "../src/platform/hash.js";
-import { signHmacToken } from "../src/platform/hmacToken.js";
-import { resolvePrincipal } from "../src/core/rbac/principal.js";
+} from "../../../src/core/rbac/bindings.js";
+import type { AreaId } from "../../../src/core/rbac/areas.js";
+import type { GrantScope, Role } from "../../../src/core/rbac/can.js";
 
 const GROUP = "platform-admins";
-import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
-import { withDefaultHead } from "./githubHead.js";
-import { grantCreator } from "../src/console/creatorGrant.js";
+import { TEST_RSA_PKCS8 } from "../../releaseFixtures.js";
+import { withDefaultHead } from "../../githubHead.js";
+import { grantCreator } from "../../../src/console/creatorGrant.js";
 
 const ISSUER = "https://id.example";
 
@@ -391,7 +384,7 @@ describe("G6: a creator manages what they made", () => {
         ],
       },
     };
-    const ledger = await import("../src/core/accounts/erasureFence.js");
+    const ledger = await import("../../../src/core/accounts/erasureFence.js");
     const spy = vi.spyOn(ledger, "erasureVerdict").mockResolvedValue("erased");
     expect(
       await grantCreator(env, db, session as never, "gamma", null, NOW),

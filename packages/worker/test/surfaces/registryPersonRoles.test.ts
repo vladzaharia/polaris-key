@@ -6,32 +6,38 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
-import "../src/mount.js";
+import "../../src/mount.js";
 import {
   authorizeFeedRead,
   forgetLicenceHolds,
-} from "../src/services/distribution/registry/authorize.js";
-import { forgetRegistrySettings } from "../src/services/distribution/registry/settings.js";
+} from "../../src/services/distribution/registry/authorize.js";
+import { forgetRegistrySettings } from "../../src/services/distribution/registry/settings.js";
 import {
   PACKAGES_READ_SCOPE,
   mintAccountToken,
-} from "../src/core/accounts/personalTokens.js";
-import { forgetRegistryTokens } from "../src/core/registry/registryTokens.js";
-import { newBindingId, stmtInsertBinding } from "../src/core/rbac/bindings.js";
-import type { AreaId } from "../src/core/rbac/areas.js";
-import type { GrantScope, Role } from "../src/core/rbac/can.js";
-import { setServices } from "../src/core/products/store.js";
-import { serializeServices, type ServicesMap } from "../src/core/services.js";
+} from "../../src/core/accounts/personalTokens.js";
+import { forgetRegistryTokens } from "../../src/core/registry/registryTokens.js";
+import {
+  newBindingId,
+  stmtInsertBinding,
+} from "../../src/core/rbac/bindings.js";
+import type { AreaId } from "../../src/core/rbac/areas.js";
+import type { GrantScope, Role } from "../../src/core/rbac/can.js";
+import { setServices } from "../../src/core/products/store.js";
+import {
+  serializeServices,
+  type ServicesMap,
+} from "../../src/core/services.js";
 import {
   getOrCreateAccountByEmail,
   linkLicense,
-} from "../src/services/identity/portal/repo.js";
-import type { Db } from "../src/db/types.js";
-import type { Env } from "../src/platform/env.js";
-import { makeTestDb } from "./helpers.js";
-import { KvMock } from "./kvMock.js";
-import { R2Mock, asR2 } from "./r2Mock.js";
-import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "./seed.js";
+} from "../../src/services/identity/portal/repo.js";
+import type { Db } from "../../src/db/types.js";
+import type { Env } from "../../src/platform/env.js";
+import { makeTestDb } from "../helpers.js";
+import { KvMock } from "../kvMock.js";
+import { R2Mock, asR2 } from "../r2Mock.js";
+import { makeEnv, NOW, seedLicenseWithKey, seedProduct } from "../seed.js";
 
 const ALPHA = "alpha";
 const BETA = "beta";
