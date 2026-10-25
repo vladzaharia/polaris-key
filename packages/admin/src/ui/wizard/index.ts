@@ -18,6 +18,7 @@ export {
   type Prereq,
   type PrereqState,
 } from "./PrereqList.js";
+export { RepoChangeStep } from "./RepoChangeStep.js";
 export { Stepper, type StepperProps } from "./Stepper.js";
 export {
   ChoiceStep,
