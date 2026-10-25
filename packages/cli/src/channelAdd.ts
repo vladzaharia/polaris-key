@@ -14,6 +14,8 @@ import {
   OUTLET_ID_PATTERN,
   channelIdentityFields,
   findChannel,
+  insertOutletBlock,
+  OutletInsertError,
   outletBlockEntry,
   outletFieldLabel,
   renderOutletBlock,
@@ -65,36 +67,6 @@ function parseFields(values: readonly string[]): Record<string, unknown> {
 
 function isMap(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-class Refusal extends Error {}
-
-/** The YAML text with the entry appended under `outlets`, comments kept. */
-function appendYaml(raw: string, b: OutletBlockEntry): string {
-  const doc = YAML.parseDocument(raw) as unknown as YAML.Document;
-  if (doc.errors.length > 0)
-    throw new Refusal(
-      `distribution is not valid YAML: ${doc.errors[0]!.message}`,
-    );
-  if (doc.contents === null) doc.contents = doc.createNode({}) as YAML.YAMLMap;
-  if (!YAML.isMap(doc.contents))
-    throw new Refusal("distribution must be a mapping.");
-  let outlets: unknown = doc.contents.get("outlets", true);
-  if (outlets === undefined || outlets === null) {
-    outlets = doc.createNode({}) as YAML.YAMLMap;
-    doc.contents.set("outlets", outlets);
-  }
-  if (!YAML.isMap(outlets))
-    throw new Refusal("outlets in distribution must be a mapping.");
-  const node = doc.createNode(b.entry) as YAML.YAMLMap;
-  for (const p of node.items as YAML.Pair<YAML.Scalar>[]) {
-    const comment = b.comments[String(p.key.value)];
-    if (comment) p.key.commentBefore = ` ${comment}`;
-  }
-  const key = new YAML.Scalar(b.id);
-  key.commentBefore = ` ${b.label}`;
-  outlets.items.push(new YAML.Pair(key, node));
-  return doc.toString({ lineWidth: 0 });
 }
 
 /** What a direct package manager needs before its entry is more than `kind: direct`. */
@@ -229,14 +201,16 @@ export async function channelAdd(
         format: "yaml",
         outletId,
       });
-    } else if (asJson) {
-      const doc = isMap(loaded.distribution) ? loaded.distribution : {};
-      text = `${JSON.stringify({ ...doc, outlets: { ...(outlets ?? {}), [block.id]: block.entry } }, null, 2)}\n`;
     } else {
-      text = appendYaml(await readFile(file, "utf8"), block);
+      text = insertOutletBlock(
+        await readFile(file, "utf8"),
+        asJson ? "json" : "yaml",
+        block,
+      );
     }
   } catch (e) {
-    if (e instanceof Refusal) return nothing("invalid-file", e.message);
+    if (e instanceof OutletInsertError)
+      return nothing("invalid-file", e.message);
     throw e;
   }
 

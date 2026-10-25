@@ -4246,7 +4246,7 @@ var require_identity = __commonJS({
     var NODE_TYPE = /* @__PURE__ */ Symbol.for("yaml.node.type");
     var isAlias = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === ALIAS;
     var isDocument = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === DOC;
-    var isMap3 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === MAP;
+    var isMap4 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === MAP;
     var isPair = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === PAIR;
     var isScalar = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === SCALAR;
     var isSeq2 = (node) => !!node && typeof node === "object" && node[NODE_TYPE] === SEQ;
@@ -4282,7 +4282,7 @@ var require_identity = __commonJS({
     exports.isAlias = isAlias;
     exports.isCollection = isCollection;
     exports.isDocument = isDocument;
-    exports.isMap = isMap3;
+    exports.isMap = isMap4;
     exports.isNode = isNode;
     exports.isPair = isPair;
     exports.isScalar = isScalar;
@@ -8448,9 +8448,9 @@ var require_resolve_flow_collection = __commonJS({
     var blockMsg = "Block collections are not allowed within flow collections";
     var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
     function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag2) {
-      const isMap3 = fc.start.source === "{";
-      const fcName = isMap3 ? "flow map" : "flow sequence";
-      const NodeClass = tag2?.nodeClass ?? (isMap3 ? YAMLMap2.YAMLMap : YAMLSeq2.YAMLSeq);
+      const isMap4 = fc.start.source === "{";
+      const fcName = isMap4 ? "flow map" : "flow sequence";
+      const NodeClass = tag2?.nodeClass ?? (isMap4 ? YAMLMap2.YAMLMap : YAMLSeq2.YAMLSeq);
       const coll = new NodeClass(ctx.schema);
       coll.flow = true;
       const atRoot = ctx.atRoot;
@@ -8486,7 +8486,7 @@ var require_resolve_flow_collection = __commonJS({
             offset = props.end;
             continue;
           }
-          if (!isMap3 && ctx.options.strict && utilContainsNewline.containsNewline(key))
+          if (!isMap4 && ctx.options.strict && utilContainsNewline.containsNewline(key))
             onError(
               key,
               // checked by containsNewline()
@@ -8526,7 +8526,7 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap3 && !sep && !props.found) {
+        if (!isMap4 && !sep && !props.found) {
           const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
@@ -8549,7 +8549,7 @@ var require_resolve_flow_collection = __commonJS({
             startOnNewline: false
           });
           if (valueProps.found) {
-            if (!isMap3 && !props.found && ctx.options.strict) {
+            if (!isMap4 && !props.found && ctx.options.strict) {
               if (sep)
                 for (const st of sep) {
                   if (st === valueProps.found)
@@ -8581,7 +8581,7 @@ var require_resolve_flow_collection = __commonJS({
           const pair = new Pair.Pair(keyNode, valueNode);
           if (ctx.options.keepSourceTokens)
             pair.srcToken = collItem;
-          if (isMap3) {
+          if (isMap4) {
             const map = coll;
             if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
               onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
@@ -8597,7 +8597,7 @@ var require_resolve_flow_collection = __commonJS({
           offset = valueNode ? valueNode.range[2] : valueProps.end;
         }
       }
-      const expectedEnd = isMap3 ? "}" : "]";
+      const expectedEnd = isMap4 ? "}" : "]";
       const [ce, ...ee] = fc.end;
       let cePos = offset;
       if (ce?.source === expectedEnd)
@@ -15897,6 +15897,7 @@ var DELEGATED_KID_PATTERN = /^pkd1-[0-9a-f]{64}$/;
 
 // ../shared-manifest/dist/index.js
 var import_yaml2 = __toESM(require_dist(), 1);
+var import_yaml3 = __toESM(require_dist(), 1);
 var DEFAULT_RESERVED_DISPLAY_NAMES_MODE = "warn";
 var DISPLAY_NAME_EXEMPT_SLUG = "polaris-key";
 var RESERVED_DISPLAY_TERMS = [
@@ -19895,6 +19896,62 @@ function renderOutletBlock(channelId, identity, opts) {
     const comment = comments[String(p.key.value)];
     if (comment) p.key.commentBefore = ` ${comment}`;
   }
+  return doc.toString({ lineWidth: 0 });
+}
+var OutletInsertError = class extends Error {
+  name = "OutletInsertError";
+};
+function isMap(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function insertOutletBlock(text3, format, block2) {
+  if (format === "json") {
+    let doc2 = {};
+    if (text3.trim() !== "") {
+      try {
+        doc2 = JSON.parse(text3);
+      } catch (e) {
+        throw new OutletInsertError(
+          `distribution is not valid JSON: ${e.message}`
+        );
+      }
+    }
+    if (doc2 === null) doc2 = {};
+    if (!isMap(doc2))
+      throw new OutletInsertError("distribution must be a mapping.");
+    const outlets2 = doc2.outlets;
+    if (outlets2 != null && !isMap(outlets2))
+      throw new OutletInsertError("outlets in distribution must be a mapping.");
+    if (isMap(outlets2) && block2.id in outlets2)
+      throw new OutletInsertError(`distribution already declares ${block2.id}.`);
+    return `${JSON.stringify({ ...doc2, outlets: { ...outlets2 ?? {}, [block2.id]: block2.entry } }, null, 2)}
+`;
+  }
+  const doc = import_yaml2.default.parseDocument(text3);
+  if (doc.errors.length > 0)
+    throw new OutletInsertError(
+      `distribution is not valid YAML: ${doc.errors[0].message}`
+    );
+  if (doc.contents === null) doc.contents = doc.createNode({});
+  if (!import_yaml2.default.isMap(doc.contents))
+    throw new OutletInsertError("distribution must be a mapping.");
+  let outlets = doc.contents.get("outlets", true);
+  if (outlets === void 0 || outlets === null) {
+    outlets = doc.createNode({});
+    doc.contents.set("outlets", outlets);
+  }
+  if (!import_yaml2.default.isMap(outlets))
+    throw new OutletInsertError("outlets in distribution must be a mapping.");
+  if (outlets.has(block2.id))
+    throw new OutletInsertError(`distribution already declares ${block2.id}.`);
+  const node = doc.createNode(block2.entry);
+  for (const p of node.items) {
+    const comment = block2.comments[String(p.key.value)];
+    if (comment) p.key.commentBefore = ` ${comment}`;
+  }
+  const key = new import_yaml2.default.Scalar(block2.id);
+  key.commentBefore = ` ${block2.label}`;
+  outlets.items.push(new import_yaml2.default.Pair(key, node));
   return doc.toString({ lineWidth: 0 });
 }
 var PLATFORM_NAMES = {
@@ -25805,7 +25862,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { mkdir, readFile, stat as stat2, writeFile } from "node:fs/promises";
 import path2 from "node:path";
-var import_yaml3 = __toESM(require_dist(), 1);
+var import_yaml4 = __toESM(require_dist(), 1);
 var SCHEMA_BASE = "../node_modules/@polaris-key/manifest/schemas/v1";
 var PRODUCT_FILES = ["product.json", "product.yaml", "product.yml"];
 var SCHEMA_FILES = ["schema.json", "schema.yaml", "schema.yml"];
@@ -26103,7 +26160,7 @@ var ManifestSyntaxError = class extends Error {
 function parseFile(file, raw) {
   const json = file.endsWith(".json");
   try {
-    return json ? JSON.parse(raw) : (0, import_yaml3.parse)(raw);
+    return json ? JSON.parse(raw) : (0, import_yaml4.parse)(raw);
   } catch (err) {
     const e = err;
     const line = e.linePos?.[0]?.line;
@@ -26364,7 +26421,7 @@ ${DEV_USAGE.join("\n")}`
 
 // src/fix.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml4 = __toESM(require_dist(), 1);
+var import_yaml5 = __toESM(require_dist(), 1);
 import { readFile as readFile3, writeFile as writeFile3 } from "node:fs/promises";
 import path4 from "node:path";
 function fixableSpellings() {
@@ -26462,7 +26519,7 @@ async function fixManifest(manifest, cwd) {
   for (const [name, file] of Object.entries(files)) {
     if (!file) continue;
     const raw = await readFile3(file, "utf8");
-    const edit = file.endsWith(".json") ? jsonEditable(JSON.parse(raw)) : yamlEditable((0, import_yaml4.parseDocument)(raw));
+    const edit = file.endsWith(".json") ? jsonEditable(JSON.parse(raw)) : yamlEditable((0, import_yaml5.parseDocument)(raw));
     const doc = { file, edit, changed: false };
     open2[name] = doc;
     for (const s of fixableSpellings().filter((x) => x.doc === name)) {
@@ -46086,7 +46143,7 @@ import path25 from "node:path";
 
 // src/storefronts/flathub.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml5 = __toESM(require_dist(), 1);
+var import_yaml6 = __toESM(require_dist(), 1);
 
 // src/storefronts/prInputs.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -46445,7 +46502,7 @@ function generateFlathubSkeleton(i, o = {}) {
     { type: "file", path: `${appId}.metainfo.xml` },
     { type: "file", path: `${appId}.desktop` }
   );
-  const manifest = new import_yaml5.Document({
+  const manifest = new import_yaml6.Document({
     id: appId,
     runtime: "org.freedesktop.Platform",
     "runtime-version": runtimeVersion,
@@ -46497,13 +46554,13 @@ function generateFlathubSkeleton(i, o = {}) {
   };
 }
 function extraDataSources(modules, out = []) {
-  if (!(0, import_yaml5.isSeq)(modules)) return out;
+  if (!(0, import_yaml6.isSeq)(modules)) return out;
   for (const m of modules.items) {
-    if (!(0, import_yaml5.isMap)(m)) continue;
+    if (!(0, import_yaml6.isMap)(m)) continue;
     const sources = m.get("sources");
-    if ((0, import_yaml5.isSeq)(sources)) {
+    if ((0, import_yaml6.isSeq)(sources)) {
       for (const s of sources.items)
-        if ((0, import_yaml5.isMap)(s) && s.get("type") === "extra-data") out.push(s);
+        if ((0, import_yaml6.isMap)(s) && s.get("type") === "extra-data") out.push(s);
     }
     extraDataSources(m.get("modules"), out);
   }
@@ -46512,7 +46569,7 @@ function extraDataSources(modules, out = []) {
 function updateFlathubManifest(text3, path36, i) {
   const builds = new Map(linuxBuilds(i));
   const json = path36.endsWith(".json");
-  const doc = (0, import_yaml5.parseDocument)(text3);
+  const doc = (0, import_yaml6.parseDocument)(text3);
   if (doc.errors.length)
     throw new Error(`${path36} does not parse: ${doc.errors[0].message}`);
   const sources = extraDataSources(doc.get("modules"));
@@ -46523,7 +46580,7 @@ function updateFlathubManifest(text3, path36, i) {
   let changed = 0;
   for (const s of sources) {
     const arches = s.get("only-arches");
-    const archList = (0, import_yaml5.isSeq)(arches) ? arches.items.map((a) => String(a.value ?? a)) : null;
+    const archList = (0, import_yaml6.isSeq)(arches) ? arches.items.map((a) => String(a.value ?? a)) : null;
     const b = archList ? archList.map((a) => builds.get(a)).find((x) => x !== void 0) : builds.size === 1 ? [...builds.values()][0] : void 0;
     if (!b) continue;
     s.set("url", b.url);
@@ -47295,7 +47352,7 @@ function withHashAutoupdate(manifest) {
 
 // src/storefronts/winget.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml6 = __toESM(require_dist(), 1);
+var import_yaml7 = __toESM(require_dist(), 1);
 var WINGET_MANIFEST_VERSION = "1.12.0";
 var ARCH = {
   x86_64: "x64",
@@ -47331,7 +47388,7 @@ function yamlFile(kind, body) {
   const clean2 = Object.fromEntries(
     Object.entries(body).filter(([, v]) => v !== void 0 && v !== null)
   );
-  const doc = new import_yaml6.Document(clean2);
+  const doc = new import_yaml7.Document(clean2);
   doc.commentBefore = ` Created with Polaris Key (pkey storefront winget)
  yaml-language-server: $schema=https://aka.ms/winget-manifest.${kind}.${WINGET_MANIFEST_VERSION}.schema.json`;
   return doc.toString({ lineWidth: 0 });
@@ -48659,7 +48716,7 @@ function pickOutlet(p, kinds, outletId, label) {
 
 // src/storefronts/snap.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml7 = __toESM(require_dist(), 1);
+var import_yaml8 = __toESM(require_dist(), 1);
 import { readFile as readFile21, writeFile as writeFile18 } from "node:fs/promises";
 function snapReleaseChannels(outlet, channels2) {
   const declared = outlet.identity.channels;
@@ -48724,7 +48781,7 @@ function snapMetadataFields(p) {
   return { summary, description };
 }
 function applySnapMetadata(yamlText, fields) {
-  const doc = (0, import_yaml7.parseDocument)(yamlText);
+  const doc = (0, import_yaml8.parseDocument)(yamlText);
   if (doc.errors.length)
     throw new Error(`snapcraft.yaml does not parse: ${doc.errors[0].message}`);
   if (!doc.contents || typeof doc.get !== "function" || !doc.has("name"))
@@ -49059,7 +49116,7 @@ import path30 from "node:path";
 
 // src/channelAdd.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var import_yaml8 = __toESM(require_dist(), 1);
+var import_yaml9 = __toESM(require_dist(), 1);
 import { mkdir as mkdir11, readFile as readFile22, writeFile as writeFile19 } from "node:fs/promises";
 import path28 from "node:path";
 var KNOWN_FLAGS = ["field", "outlet-id", "json", "product", "base-url"];
@@ -49082,36 +49139,8 @@ function parseFields(values) {
   }
   return out;
 }
-function isMap2(v) {
+function isMap3(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-var Refusal2 = class extends Error {
-};
-function appendYaml(raw, b) {
-  const doc = import_yaml8.default.parseDocument(raw);
-  if (doc.errors.length > 0)
-    throw new Refusal2(
-      `distribution is not valid YAML: ${doc.errors[0].message}`
-    );
-  if (doc.contents === null) doc.contents = doc.createNode({});
-  if (!import_yaml8.default.isMap(doc.contents))
-    throw new Refusal2("distribution must be a mapping.");
-  let outlets = doc.contents.get("outlets", true);
-  if (outlets === void 0 || outlets === null) {
-    outlets = doc.createNode({});
-    doc.contents.set("outlets", outlets);
-  }
-  if (!import_yaml8.default.isMap(outlets))
-    throw new Refusal2("outlets in distribution must be a mapping.");
-  const node = doc.createNode(b.entry);
-  for (const p of node.items) {
-    const comment = b.comments[String(p.key.value)];
-    if (comment) p.key.commentBefore = ` ${comment}`;
-  }
-  const key = new import_yaml8.default.Scalar(b.id);
-  key.commentBefore = ` ${b.label}`;
-  outlets.items.push(new import_yaml8.default.Pair(key, node));
-  return doc.toString({ lineWidth: 0 });
 }
 var MARKERS = {
   homebrew: "homebrew needs --field homebrewTap=owner/homebrew-name and --field homebrewCask=token (or homebrewFormula=name).",
@@ -49199,12 +49228,12 @@ async function channelAdd(a, io) {
 ${before.errors.map((e) => errorLine(loaded2, e, io.cwd, term)).join("\n")}`,
       before.errors.map((e) => messageEntry(loaded2, e, io.cwd))
     );
-  if (existing && !isMap2(loaded2.distribution) && loaded2.distribution != null)
+  if (existing && !isMap3(loaded2.distribution) && loaded2.distribution != null)
     return nothing("invalid-file", `${rel} must be a mapping.`);
-  const outlets = isMap2(loaded2.distribution) ? loaded2.distribution.outlets : void 0;
-  if (outlets != null && !isMap2(outlets))
+  const outlets = isMap3(loaded2.distribution) ? loaded2.distribution.outlets : void 0;
+  if (outlets != null && !isMap3(outlets))
     return nothing("invalid-file", `outlets in ${rel} must be a mapping.`);
-  if (isMap2(outlets) && block2.id in outlets) {
+  if (isMap3(outlets) && block2.id in outlets) {
     const message = `${rel} already declares ${block2.id}. Name this one with --outlet-id, like --outlet-id ${block2.id}-beta.`;
     return refuse2(message, [simple("duplicate-outlet", message)]);
   }
@@ -49215,18 +49244,19 @@ ${before.errors.map((e) => errorLine(loaded2, e, io.cwd, term)).join("\n")}`,
         format: "yaml",
         outletId
       });
-    } else if (asJson) {
-      const doc = isMap2(loaded2.distribution) ? loaded2.distribution : {};
-      text3 = `${JSON.stringify({ ...doc, outlets: { ...outlets ?? {}, [block2.id]: block2.entry } }, null, 2)}
-`;
     } else {
-      text3 = appendYaml(await readFile22(file, "utf8"), block2);
+      text3 = insertOutletBlock(
+        await readFile22(file, "utf8"),
+        asJson ? "json" : "yaml",
+        block2
+      );
     }
   } catch (e) {
-    if (e instanceof Refusal2) return nothing("invalid-file", e.message);
+    if (e instanceof OutletInsertError)
+      return nothing("invalid-file", e.message);
     throw e;
   }
-  const next = asJson ? JSON.parse(text3) : import_yaml8.default.parse(text3);
+  const next = asJson ? JSON.parse(text3) : import_yaml9.default.parse(text3);
   const after = { ...loaded2, distributionPath: file, distribution: next };
   const result = validateLoadedManifest(after);
   if (!result.ok) {

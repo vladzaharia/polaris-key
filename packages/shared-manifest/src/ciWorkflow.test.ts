@@ -50,7 +50,7 @@ jobs:
     expect(out).not.toContain("content-key");
   });
 
-  it("adds a job per pack", () => {
+  it("adds a job per pack, signed with the release key", () => {
     const out = renderCiWorkflow({
       product: "tonebox",
       channel: "stable",
@@ -63,7 +63,11 @@ jobs:
     };
     expect(Object.keys(doc.jobs)).toEqual(["publish", "publish-pack-voices"]);
     expect(out).toContain("--deliverable voices --dir packs/voices");
-    expect(out).toContain("content-key: ${{ secrets.PKEY_CONTENT_KEY }}");
+    expect(out).toContain(
+      "--tag ${{ github.ref_name }} --channel stable --deliverable voices",
+    );
+    expect(out).not.toContain("content-key");
+    expect(out.match(/release-key:/g)).toHaveLength(2);
   });
 
   it("parses as YAML with the pinned shape", () => {
