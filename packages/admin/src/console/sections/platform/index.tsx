@@ -5,8 +5,8 @@
  */
 
 import * as React from "react";
-import { api, type PlatformDeployment } from "../../../api.js";
 import { PlatformActivityRoute } from "./pages/platformActivity.js";
+import { PlatformMembers } from "./pages/platformMembers.js";
 import { PlatformStatus } from "./pages/platformStatus.js";
 import { PlatformSettingsPage } from "./pages/platformSettings.js";
 import { StoreConnections } from "./pages/platformStores.js";
@@ -15,15 +15,6 @@ import type { GlobalPageId } from "../../nav.js";
 import type { Route } from "../../routes.js";
 import { FeedsArea } from "../feeds/pages/FeedsArea.js";
 import { PLATFORM_SCOPE } from "../feeds/model/model.js";
-import { OverrideMigrationPage } from "./pages/platformOverrideMigration.js";
-
-export function fetchPlatformDeployment(): Promise<PlatformDeployment> {
-  return api.platformDeployment();
-}
-
-export function fetchPlatformActivity() {
-  return api.platformActivity();
-}
 
 /** The section's page for a route. A page that is not built redirects before here. */
 export default function PlatformPages({
@@ -45,11 +36,11 @@ export default function PlatformPages({
   if (page === "platform-status") return <Deployment />;
   if (page === "platform-activity")
     return <PlatformActivityRoute id={route?.id} />;
+  if (page === "platform-members") return <PlatformMembers />;
   if (page === "platform-settings") return <PlatformSettingsPage />;
   if (page === "platform-stores") return <StoreConnections />;
   if (page === "platform-connections")
     return <ConnectionsRoute id={route?.id} />;
-  if (page === "platform-override-migration") return <OverrideMigrationPage />;
   return null;
 }
 

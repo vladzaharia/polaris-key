@@ -27,8 +27,8 @@ def make_client(args: argparse.Namespace) -> Any:
     if args.live:
         from polaris_key.client import PolarisKeyClient
 
-        trust = dict(pair.split("=", 1) for pair in args.trust)
-        return PolarisKeyClient.create(product_slug=args.product, version="1.0.0", trust=trust, base_url=args.base_url)
+        pins = dict(pair.split("=", 1) for pair in args.trust)
+        return PolarisKeyClient.create(product_slug=args.product, version="1.0.0", pinned_keys=pins, base_url=args.base_url)
     import tidewater_fixtures
 
     return tidewater_fixtures.FixtureClient()

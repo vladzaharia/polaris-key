@@ -13,20 +13,18 @@
 import { parseJsonColumn } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import type { RenderListing } from "../feeds/render.js";
+import { productSource } from "./inherit.js";
+import {
+  MODEL_LISTING_COLUMNS,
+  modelListingFields,
+  type ModelListingRow,
+} from "./resolved.js";
 
 /** The feeds that read the model, as override store ids. */
 export const FEED_LISTING_STORES = ["altstore", "obtainium"] as const;
 export type FeedListingStore = (typeof FEED_LISTING_STORES)[number];
 
-interface Row {
-  name: string | null;
-  developer_name: string | null;
-  category: string | null;
-  urls_json: string | null;
-  tint: string | null;
-  locale_name: string | null;
-  subtitle: string | null;
-  description: string | null;
+interface Row extends ModelListingRow {
   overrides: string | null;
 }
 
@@ -43,8 +41,7 @@ export async function modelFeedListing(
   store: FeedListingStore,
 ): Promise<RenderListing | null> {
   const row = await db.first<Row>(
-    `SELECT l.name, l.developer_name, l.category, l.urls_json, l.tint,
-            loc.name AS locale_name, loc.subtitle, loc.description,
+    `SELECT ${MODEL_LISTING_COLUMNS},
             (SELECT json_group_array(json_object('locale', o.locale, 'field', o.field,
                                                  'value', json(o.value_json)))
                FROM dist_listing_overrides o
@@ -67,7 +64,7 @@ export async function modelFeedListing(
       for (const o of entries)
         if ((o.locale === "") === everyLocale) ov.set(o.field, o.value);
   }
-  const urls = parseJsonColumn<Record<string, unknown>>(row.urls_json);
+  const base = modelListingFields(row);
   const pick = (field: string, model: unknown) =>
     str(ov.get(field)) ?? str(model);
   const out: RenderListing = {};
@@ -77,17 +74,21 @@ export async function modelFeedListing(
   ) => {
     if (v !== undefined) out[k] = v;
   };
-  set("name", pick("name", row.locale_name ?? row.name));
-  set("subtitle", pick("subtitle", row.subtitle));
-  set("description", pick("description", row.description));
-  set("category", pick("category", row.category));
-  set("website", pick("website", urls?.website));
-  set("developerName", pick("developerName", row.developer_name));
-  set("tintColor", str(row.tint));
+  set("name", pick("name", base.name));
+  set("subtitle", pick("subtitle", base.subtitle));
+  set("description", pick("description", base.description));
+  set("category", pick("category", base.category));
+  set("website", pick("website", base.website));
+  set("developerName", pick("developerName", base.developerName));
+  set("tintColor", base.tintColor);
   return out;
 }
 
-/** The feed's listing: the model over the manifest, field by field (see the file comment). */
+/**
+ * The feed's listing: the model over the manifest, field by field (see the file comment), then
+ * the product's presentation accent over the tint (A-27.9; HA-12's order: the presentation's
+ * accent outranks the listing's tint). A product with no presentation accent keeps its bytes.
+ */
 export async function feedListing(
   db: Db,
   product: string,
@@ -95,7 +96,11 @@ export async function feedListing(
   manifest: RenderListing | null,
 ): Promise<RenderListing | null> {
   const model = await modelFeedListing(db, product, store);
-  if (!model) return manifest;
-  const merged: RenderListing = { ...(manifest ?? {}), ...model };
+  const merged: RenderListing = model
+    ? { ...(manifest ?? {}), ...model }
+    : { ...(manifest ?? {}) };
+  const accent = (await productSource(db, product))?.presentation?.accent;
+  if (accent) merged.tintColor = accent.toLowerCase();
+  if (!model && !accent) return manifest;
   return Object.keys(merged).length ? merged : null;
 }

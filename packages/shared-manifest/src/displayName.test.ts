@@ -118,3 +118,43 @@ describe("invalid display text (PX-W13 §3)", () => {
     expect(checkDisplayName("Gästezimmer · 客厅")).toBeNull();
   });
 });
+
+describe("display-name policy options (PX-W13b)", () => {
+  const run = (name: string, opts: Record<string, unknown>) => {
+    const r = validateIngestDocuments(manifest(name) as never, {
+      reservedDisplayNames: "error",
+      ...opts,
+    });
+    return r.errors.map((e) => e.code);
+  };
+
+  it("an extra term adds to the floor", () => {
+    expect(run("Acme Launcher", {})).toEqual([]);
+    expect(run("Acme Launcher", { reservedDisplayTerms: ["acme"] })).toEqual([
+      "reserved_display_name",
+    ]);
+    // The floor stays when extra terms are given.
+    expect(run("Steam Link", { reservedDisplayTerms: ["acme"] })).toEqual([
+      "reserved_display_name",
+    ]);
+    expect(checkDisplayName("Acme Launcher", { extraTerms: ["acme"] })).toBe(
+      "reserved",
+    );
+  });
+
+  it("an approval clears reserved for this product, never invalid", () => {
+    expect(run("Steam Deck Companion", { displayNameApproved: true })).toEqual(
+      [],
+    );
+    expect(
+      run("Acme Launcher", {
+        reservedDisplayTerms: ["acme"],
+        displayNameApproved: true,
+      }),
+    ).toEqual([]);
+    expect(run("Steam‮", { displayNameApproved: true })).toEqual([
+      "invalid_display_text",
+    ]);
+    expect(checkDisplayName("Steam‮", { approved: true })).toBe("invalid");
+  });
+});

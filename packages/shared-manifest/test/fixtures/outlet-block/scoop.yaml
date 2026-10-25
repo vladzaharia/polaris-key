@@ -1,0 +1,9 @@
+outlets:
+  # Scoop
+  scoop:
+    kind: direct
+    # Your own Scoop bucket, <owner>/<repo> on GitHub.
+    scoopBucket: acme/scoop-bucket
+    # Scoop manifest details (bin, shortcuts).
+    scoop:
+      bin: dice.exe

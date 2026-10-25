@@ -33,7 +33,7 @@
  * edit (P5-03's discipline: never leave an edit open). It is a `DELETE`, which no gate rule may
  * allow (owner rule: never delete), so it is a fixed method that can address nothing but
  * `edits/<editId>`; it discards an uncommitted draft and removes nothing published. P6-01's
- * purchase client (`commerce/play.ts`) is not gated: it reads purchases and acknowledges them,
+ * purchase client (`services/commerce/stores/play/purchases.ts`) is not gated: it reads purchases and acknowledges them,
  * outside the storefront surface (the gate's `commerceRuntime` deny group).
  */
 

@@ -413,6 +413,31 @@ describe("compileAll structural refusals", () => {
     ...over,
   });
 
+  it("refuses a default its own schema rejects", () => {
+    const bad = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        entry({
+          key: "q.floor",
+          schema: { type: "string", enum: ["flac", "mp3-320"] },
+          default: "any",
+        }),
+      ],
+    });
+    expect(() => bad.compileAll()).toThrow(/default does not satisfy/);
+    const ok = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        entry({
+          key: "q.floor",
+          schema: { type: "string", enum: ["flac", "mp3-320"] },
+          default: "flac",
+        }),
+      ],
+    });
+    expect(() => ok.compileAll()).not.toThrow();
+  });
+
   it("refuses a catalog that declares the same key twice", () => {
     const cat = new Catalog({
       schemaVersion: 1,

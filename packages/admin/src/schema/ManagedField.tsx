@@ -199,7 +199,7 @@ export function ManagedField({
         help={entry.description || undefined}
       />
 
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-t border-border pt-2.5">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-t border-border pt-2">
         {entry.kind === "secret" ? (
           <span className="text-xs text-fg-muted">Code only</span>
         ) : (

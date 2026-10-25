@@ -37,6 +37,15 @@ export async function seed(persistTo) {
     "--persist-to",
     persistTo,
   ]);
+  await seedOwner(persistTo, FIXTURE_OWNER, "Registry smoke");
+  await seedFixtures(persistTo, Math.floor(Date.now() / 1000));
+}
+
+/**
+ * One owner's product row, its placeholder signing key and its services (Distribution and Release
+ * on), written to the local D1. The fixture owner's, and in `--person` mode `acme`, `bolt` and `cove`.
+ */
+export function seedOwner(persistTo, slug, name) {
   const services = {
     license: { enabled: false },
     config: { enabled: false },
@@ -51,18 +60,18 @@ export async function seed(persistTo) {
   // No registry route signs anything, so both carry inert placeholders and nothing is sealed.
   const sql = [
     `INSERT OR IGNORE INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_device_limit, admin_group, branding_json, release_source,
+       default_max_offline_days, default_device_limit, admin_group, release_source,
        created_at, modified_at)
-     VALUES ('${FIXTURE_OWNER}', 'Registry smoke', 'registry-smoke-kid', 'AAAA', '0.0.0', '99.0.0',
-       30, 5, NULL, NULL, NULL, ${now}, ${now});`,
+     VALUES ('${slug}', '${name}', '${slug}-kid', 'AAAA', '0.0.0', '99.0.0',
+       30, 5, NULL, NULL, ${now}, ${now});`,
     `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status,
        created_at)
-     VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
-    `UPDATE products SET services_json = '${JSON.stringify(services)}' WHERE slug = '${FIXTURE_OWNER}';`,
+     VALUES ('${slug}', '${slug}-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
+    `UPDATE products SET services_json = '${JSON.stringify(services)}' WHERE slug = '${slug}';`,
     `INSERT OR IGNORE INTO product_keys (product, kid, alg, public_b64url, enc_private_json, status, created_at)
-     VALUES ('${FIXTURE_OWNER}', 'registry-smoke-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
+     VALUES ('${slug}', '${slug}-kid', 'Ed25519', 'AAAA', '{}', 'active', ${now});`,
   ].join("\n");
-  const file = join(persistTo, "registry-clients-seed.sql");
+  const file = join(persistTo, `registry-clients-seed-${slug}.sql`);
   writeFileSync(file, sql);
   wrangler([
     "d1",
@@ -76,7 +85,6 @@ export async function seed(persistTo) {
     "--file",
     file,
   ]);
-  await seedFixtures(persistTo, now);
 }
 
 /**

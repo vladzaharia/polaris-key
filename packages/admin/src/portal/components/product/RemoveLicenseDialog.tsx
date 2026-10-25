@@ -2,7 +2,7 @@ import * as React from "react";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import type { PortalLicenseDetail, PortalLicenseSummary } from "../../api.js";
 import { useRemoveLicense } from "../../data.js";
-import { PortalApiError } from "../../api.js";
+import { HttpError } from "../../api.js";
 import { portalErrorCopy } from "../../errors.js";
 import { licenseStatus, type LibraryProduct } from "../../model/library.js";
 import { licenseOptionLabel } from "../../model/product.js";
@@ -35,7 +35,6 @@ export function RemoveLicenseDialog({
   license,
   detail,
   cloudSync,
-  store = null,
   onRemoved,
 }: {
   open: boolean;
@@ -47,8 +46,6 @@ export function RemoveLicenseDialog({
   detail?: PortalLicenseDetail;
   /** The product runs Cloud Sync (the product view's `services.sync`). */
   cloudSync: boolean;
-  /** The store of an active purchase on it (PX-W6), for an older Worker's origin. */
-  store?: string | null;
   /** After the Worker removed it; `others` is how many licences of the product remain. */
   onRemoved: (others: number) => void;
 }): React.ReactElement {
@@ -58,7 +55,6 @@ export function RemoveLicenseDialog({
   const named = Boolean((detail ?? license).email?.trim());
   const which = licenseOptionLabel(license, licenseStatus(license, now), {
     keys: detail?.id === license.id ? detail.keys : undefined,
-    store,
     developer: product.presentation.developer,
   });
   const consequences = [
@@ -95,7 +91,7 @@ export function RemoveLicenseDialog({
 
 /** `409 not_removable` in the person's words (copy.en.json's), else the portal's usual copy. */
 function removeErrorCopy(err: unknown): { title: string; description: string } {
-  if (err instanceof PortalApiError && err.code === "not_removable")
+  if (err instanceof HttpError && err.code === "not_removable")
     return {
       title: t("core.codes.not_removable.title"),
       description: t("core.codes.not_removable.message"),

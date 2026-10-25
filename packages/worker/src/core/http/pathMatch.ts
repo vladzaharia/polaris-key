@@ -39,7 +39,11 @@ export function matchPath(
   return segments.length === pat.length ? { params, rest: [] } : null;
 }
 
-/** Segment rank for specificity: literal 0, parameter 1, `**` 2, absent 3. */
+/**
+ * Segment rank for specificity: literal 0, parameter 1, `**` 2, absent 3. Note `**` beats an
+ * absent segment, so `x/**` outranks a plain `x` row for `/x` (both match). A table with both
+ * rows must give `x/**` an `accept` guard (`segments.length > 1`); see `PORTAL_ROUTES`.
+ */
 function rank(seg: string | undefined): number {
   if (seg === undefined) return 3;
   if (seg === "**") return 2;

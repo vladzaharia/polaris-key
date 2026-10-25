@@ -34,7 +34,7 @@ from helpers import (
     sign_manifest,
 )
 
-CFG = {"product_slug": "djdl", "base_url": "https://key.example", "trust": {KID: PUBKEY_RAW}}
+CFG = {"product_slug": "djdl", "base_url": "https://key.example", "pinned_keys": {KID: PUBKEY_RAW}}
 REPO = Path(__file__).resolve().parents[3]
 
 

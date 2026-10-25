@@ -34,14 +34,14 @@ func _live_file(t: PKeyTestContext) -> void:
 	cfg.set_compiled_catalog({"CATALOG_VERSION": 1, "ENTRIES": [{"key": "audio.musicVolume", "kind": "config", "accessor": "audio.music_volume"}], "DEFAULTS": {}})
 	var store := PKeyConfigFileStore.new(path)
 	cfg.set_override_store(store)
-	t.check("store: a missing file means no overrides", cfg.get_source("dice.animSpeed") == &"remote-default" and not FileAccess.file_exists(path))
+	t.check("store: a missing file means no overrides", cfg.get_config_source("dice.animSpeed") == &"remote-default" and not FileAccess.file_exists(path))
 
 	# The game's own settings code writes the file; the next read sees it.
 	var game := ConfigFile.new()
 	game.set_value("dice", "animSpeed", 2.5)
 	game.set_value("audio", "music_volume", 40)
 	game.save(path)
-	t.check("store: a value the game saved is read at call time", cfg.get_value("dice.animSpeed", 0.0) == 2.5 and cfg.get_source("dice.animSpeed") == &"local")
+	t.check("store: a value the game saved is read at call time", cfg.get_value("dice.animSpeed", 0.0) == 2.5 and cfg.get_config_source("dice.animSpeed") == &"local")
 	t.check("store: the catalog accessor locates the value", cfg.get_value("audio.musicVolume", 0) == 40)
 	# Reads never emit; the game announces its own write with reload().
 	store.reload()
@@ -60,7 +60,7 @@ func _live_file(t: PKeyTestContext) -> void:
 	store.reload()
 	t.check("store: reload() picks up an external write and emits", cfg.get_value("dice.animSpeed", 0.0) == 0.5 and seen.size() == 2 and seen[1] == PackedStringArray(["dice.animSpeed"]), str(seen))
 
-	t.check("store: clear_override removes it from the file", store.clear_override("dice.animSpeed") and not _has(path, "dice", "animSpeed") and cfg.get_source("dice.animSpeed") == &"remote-default")
+	t.check("store: clear_override removes it from the file", store.clear_override("dice.animSpeed") and not _has(path, "dice", "animSpeed") and cfg.get_config_source("dice.animSpeed") == &"remote-default")
 	t.check("store: clearing a missing key is fine and silent", store.clear_override("nope") and seen.size() == 3, str(seen.size()))
 	t.check("store: a null override clears", store.set_override("audio.musicVolume", null, "audio.music_volume") and not _has(path, "audio", "music_volume"))
 	sdk.queue_free()
@@ -97,17 +97,17 @@ func _locked_keeps_file(t: PKeyTestContext) -> void:
 	await sdk.start()
 	sdk.config.env = S.env_from({})
 	sdk.config.set_override_store(PKeyConfigFileStore.new(path))
-	t.check("store: before the document arrives, the saved theme applies", sdk.config.get_value("ui.theme") == "light" and sdk.config.get_source("ui.theme") == &"local")
+	t.check("store: before the document arrives, the saved theme applies", sdk.config.get_value("ui.theme") == "light" and sdk.config.get_config_source("ui.theme") == &"local")
 	var r: PKeySyncResult = await sdk.sync()
 	t.check("store: the sync applied the signed config document", r.documents.get("config") == "applied", str(r.documents))
-	t.check("store: enforced ui.theme ignores the saved value", sdk.config.get_value("ui.theme") == "dark" and sdk.config.get_source("ui.theme") == &"enforced")
+	t.check("store: enforced ui.theme ignores the saved value", sdk.config.get_value("ui.theme") == "dark" and sdk.config.get_config_source("ui.theme") == &"enforced")
 	t.check("store: a default key still reads the saved value", sdk.config.get_value("dice.animSpeed", 1.0) == 2.0)
 	t.check("store: settings.cfg is untouched by the sync", FileAccess.get_file_as_bytes(path) == before and _read(path, "ui", "theme") == "light")
 	# The operator relaxes the state: the player's choice is back.
 	var doc: Dictionary = sdk.core.cache.config["doc"].duplicate(true)
 	doc["config"]["ui.theme"]["state"] = "default"
 	sdk.core.cache.config = {"jws": "", "doc": doc}
-	t.check("store: relaxed to default, the saved value returns", sdk.config.get_value("ui.theme") == "light" and sdk.config.get_source("ui.theme") == &"local")
+	t.check("store: relaxed to default, the saved value returns", sdk.config.get_value("ui.theme") == "light" and sdk.config.get_config_source("ui.theme") == &"local")
 	sdk.queue_free()
 	server.queue_free()
 	PKeyTestFixtures.remove_tree(dir)
@@ -131,7 +131,7 @@ func _persisted_default(t: PKeyTestContext) -> void:
 	sdk.queue_free()
 	var again := PKeyTestFixtures.new_sdk()
 	again.configure(o)
-	t.check("persist: the saved setting survives a restart", again.config.get_value("dice.animSpeed") == 3.0 and again.config.get_source("dice.animSpeed") == &"local")
+	t.check("persist: the saved setting survives a restart", again.config.get_value("dice.animSpeed") == 3.0 and again.config.get_config_source("dice.animSpeed") == &"local")
 	var own := PKeyOverrideStore.new({"dice.animSpeed": 9.0})
 	again.config.set_override_store(own)
 	again.configure(o)

@@ -9,9 +9,9 @@
 //     copyright, company, the icon master from the iOS preset and Android's adaptive layers, each
 //     resolved under the project with its digest and PNG size — and NEVER
 //     `application/config/description`, the Project Manager's tooltip;
-//   * the call sequence: `/manage/api/me` for the CSRF token, then the import WITHOUT a
-//     confirmation (the diff; nothing written), and only with `--apply` the same upload again
-//     with the diff's digest; a changed diff is printed and fails;
+//   * the call sequence: the import WITHOUT a confirmation (the diff; nothing written), and only
+//     with `--apply` the same upload again with the diff's digest; a changed diff is printed and
+//     fails. The credential is a bearer token (ST-34.9): no cookie, no CSRF read;
 //   * `--dry-run` makes no call at all.
 
 import { createHash } from "node:crypto";
@@ -19,8 +19,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { memoryStore } from "../src/credentials.js";
 import {
-  ADMIN_COOKIE_ENV,
+  ADMIN_TOKEN_ENV,
   parseGodotConfig,
   readGodotListing,
   resolveResPath,
@@ -30,8 +31,7 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT = path.join(HERE, "fixtures", "godot-listing");
 const ORIGIN = "https://key.example";
-const COOKIE = "__Host-pkey_admin=session-token-value";
-const CSRF = "csrf-token-abc123";
+const TOKEN = `pkeyp_${"P".repeat(43)}`;
 const DIGEST = "a".repeat(64);
 
 const sha256 = async (rel: string) =>
@@ -198,7 +198,7 @@ describe("reading the fixture project", () => {
   });
 });
 
-/** A fake admin API: `/manage/api/me`, then the import (`preview` or `apply` answers). */
+/** A fake admin API: the import route (`preview` or `apply` answers). */
 function fakeAdmin(
   answers: {
     preview: Record<string, unknown>;
@@ -211,8 +211,6 @@ function fakeAdmin(
     const body =
       typeof init.body === "string" ? JSON.parse(init.body) : undefined;
     calls.push({ url: input, init, body });
-    if (input === `${origin}/manage/api/me`)
-      return new Response(JSON.stringify({ csrf: CSRF }), { status: 200 });
     if (
       input === `${origin}/manage/api/products/djdl/distribution/listing/import`
     ) {
@@ -284,7 +282,7 @@ const PREVIEW = {
   written: [],
 };
 
-function io(fetchImpl: typeof fetch, cookie: string | null = COOKIE) {
+function io(fetchImpl: typeof fetch, token: string | null = TOKEN) {
   let out = "";
   let err = "";
   return {
@@ -292,7 +290,8 @@ function io(fetchImpl: typeof fetch, cookie: string | null = COOKIE) {
       cwd: HERE,
       stdout: { write: (s: string) => ((out += s), true) },
       stderr: { write: (s: string) => ((err += s), true) },
-      env: cookie === null ? {} : { [ADMIN_COOKIE_ENV]: cookie },
+      env: token === null ? {} : { [ADMIN_TOKEN_ENV]: token },
+      credentialStore: async () => memoryStore(),
       fetchImpl,
     },
     out: () => out,
@@ -320,12 +319,13 @@ describe("pkey listing import --godot", () => {
     expect(t.err()).toBe("");
     expect(code).toBe(0);
     expect(admin.calls.map((c) => c.url)).toEqual([
-      `${ORIGIN}/manage/api/me`,
       `${ORIGIN}/manage/api/products/djdl/distribution/listing/import`,
     ]);
-    const post = admin.calls[1]!;
-    expect(new Headers(post.init.headers).get("x-pkey-csrf")).toBe(CSRF);
-    expect(new Headers(post.init.headers).get("cookie")).toBe(COOKIE);
+    const post = admin.calls[0]!;
+    const sent = new Headers(post.init.headers);
+    expect(sent.get("authorization")).toBe(`Bearer ${TOKEN}`);
+    expect(sent.get("cookie")).toBeNull();
+    expect(sent.get("x-pkey-csrf")).toBeNull();
     expect(post.body.source).toBe("godot");
     expect(post.body.confirm).toBeUndefined();
     expect(post.body.godot).toMatchObject({
@@ -373,13 +373,13 @@ describe("pkey listing import --godot", () => {
     );
     expect(t.err()).toBe("");
     expect(code).toBe(0);
-    expect(admin.calls).toHaveLength(3);
-    expect(admin.calls[2]!.body).toMatchObject({
+    expect(admin.calls).toHaveLength(2);
+    expect(admin.calls[1]!.body).toMatchObject({
       source: "godot",
       confirm: DIGEST,
       fields: ["developerName"],
     });
-    expect(admin.calls[2]!.body.godot).toEqual(admin.calls[1]!.body.godot);
+    expect(admin.calls[1]!.body.godot).toEqual(admin.calls[0]!.body.godot);
     expect(t.out()).toContain("Applied 1 change: developerName");
   });
 
@@ -417,7 +417,7 @@ describe("pkey listing import --godot", () => {
     expect(t.err()).toContain("No changes");
   });
 
-  it("keeps the session cookie to https, or loopback http: the same --base-url rule as pkey bundle", async () => {
+  it("keeps the token to https, or loopback http: the same --base-url rule as pkey bundle", async () => {
     const remote = fakeAdmin({ preview: PREVIEW });
     const refused = io(remote.fetchImpl);
     expect(
@@ -435,12 +435,10 @@ describe("pkey listing import --godot", () => {
         refused.io as never,
       ),
     ).toBe(2);
-    expect(refused.err()).toContain("--base-url must be https:");
-    expect(refused.err()).toContain("http://key.example");
     expect(refused.err()).toContain(
-      `${ADMIN_COOKIE_ENV} is sent to this origin`,
+      "▲  pkey listing import needs an https address.",
     );
-    // The refusal is the point: not even the CSRF read, which already carries the cookie.
+    // The refusal is the point: the credential never leaves, not even once.
     expect(remote.calls).toEqual([]);
 
     const notAUrl = io(remote.fetchImpl);
@@ -459,7 +457,7 @@ describe("pkey listing import --godot", () => {
         notAUrl.io as never,
       ),
     ).toBe(2);
-    expect(notAUrl.err()).toContain("--base-url is not a valid URL");
+    expect(notAUrl.err()).toContain("needs an https address");
     expect(remote.calls).toEqual([]);
 
     const loopback = fakeAdmin({ preview: PREVIEW }, "http://127.0.0.1:8787");
@@ -481,9 +479,41 @@ describe("pkey listing import --godot", () => {
     ).toBe(0);
     expect(ok.err()).toBe("");
     expect(loopback.calls.map((c) => c.url)).toEqual([
-      "http://127.0.0.1:8787/manage/api/me",
       "http://127.0.0.1:8787/manage/api/products/djdl/distribution/listing/import",
     ]);
+  });
+
+  it("--json success is one envelope line, with the upload and the import inside", async () => {
+    const admin = fakeAdmin({ preview: PREVIEW }, "http://127.0.0.1:8787");
+    const t = io(admin.fetchImpl);
+    expect(
+      await runPkey(
+        [
+          "listing",
+          "import",
+          "--godot",
+          PROJECT,
+          "--product",
+          "djdl",
+          "--base-url",
+          "http://127.0.0.1:8787/",
+          "--json",
+        ],
+        t.io as never,
+      ),
+    ).toBe(0);
+    const lines = t.out().trimEnd().split("\n");
+    expect(lines).toHaveLength(1);
+    const line = JSON.parse(lines[0]!);
+    expect(line).toMatchObject({
+      v: 1,
+      command: "listing import",
+      event: "result",
+      ok: true,
+      exit: 0,
+    });
+    expect(line.upload).toBeTruthy();
+    expect(line.import).toBeTruthy();
   });
 
   it("--dry-run prints the upload and contacts nothing; refusals cost no call", async () => {
@@ -506,17 +536,15 @@ describe("pkey listing import --godot", () => {
       ),
     );
 
-    const noCookie = io(admin.fetchImpl, null);
+    const signedOut = io(admin.fetchImpl, null);
     expect(
       await runPkey(
         ["listing", "import", "--godot", PROJECT, "--product", "djdl"],
-        noCookie.io as never,
+        signedOut.io as never,
       ),
-    ).toBe(1);
-    expect(noCookie.err()).toContain(`${ADMIN_COOKIE_ENV} is not set`);
-    expect(noCookie.err()).toContain(
-      "`pkey listing import` imports through the admin API",
-    );
+    ).toBe(4);
+    expect(signedOut.err()).toContain("Not signed in to key.plrs.im.");
+    expect(signedOut.err()).toContain("Run pkey login.");
 
     const usage = io(admin.fetchImpl);
     expect(await runPkey(["listing", "import"], usage.io as never)).toBe(2);

@@ -13,7 +13,7 @@ import PolarisKey
 
 let client = try await PolarisKeyClient.fromBundle()
 await client.sync()
-if await client.isEnabled(flag: "pro") {
+if await client.entitlements.has("pro") {
     // unlock
 }
 ```

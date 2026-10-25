@@ -25,7 +25,7 @@
  * value has a new marker, so it never serves its predecessor's token.
  *
  * Because a hit hands out a store bearer token without an audited open, this module is itself a
- * custody boundary: `test/outletCredentialReach.test.ts` lets only the Distribution service
+ * custody boundary: `test/core/outletCredentialReach.test.ts` lets only the Distribution service
  * import it.
  *
  * Every function is pure given an injected `fetchImpl` and `now`, so the flow is tested against

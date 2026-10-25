@@ -21,7 +21,7 @@ export const COMMERCE_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "commerce",
       label: "Commerce",
       description:
-        "Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
+        "Which stores sell, and whether sandbox and test purchases count. Each store sells for the app typed here or, when left out, the app the product is assigned on that store. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
       keywords: ["purchases", "iap", "steam", "sandbox"],
       docs: "/docs/features/commerce/",
       value: {
@@ -35,7 +35,10 @@ export const COMMERCE_SETTINGS_SLICE: ServiceSettingsSlice = {
       critical: true,
       confirm: { change: "L1" },
       visibleWhen: VISIBLE,
-      readers: ["services/commerce/settings.ts"],
+      readers: [
+        "services/commerce/settings.ts",
+        "services/commerce/identity.ts",
+      ],
       storage: { kind: "rich", adapter: "dist_connector_settings" },
     }),
   ],

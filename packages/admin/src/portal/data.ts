@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-query";
 import {
   portalApi,
-  PortalApiError,
+  HttpError,
   setPortalCsrf,
   type PortalCapabilities,
   type PortalDiscoverOffer,
@@ -34,6 +34,12 @@ import {
 } from "./api.js";
 import { browser } from "./browser.js";
 import { isSignedOut } from "./errors.js";
+import {
+  removeLibraryEntryOrGone,
+  removeLicenseOrGone,
+  useWrite,
+} from "./mutations.js";
+import { fetchSession, pq, qk } from "./queries.js";
 
 /**
  * The customer site's data layer (PORTAL.md PX-01): TanStack Query over today's portal API.
@@ -44,56 +50,12 @@ import { isSignedOut } from "./errors.js";
  *   login card takes over and says so.
  * - No silent retries; a failed read shows its error and a Retry.
  */
-// Named `qk` like the console's (test/queryKeyShapes.test.ts polices `qk.X(…)` keys); the
-// portal has its own QueryClient, and every family here starts with "portal".
-const qk = {
-  portalMe: () => ["portal", "me"] as const,
-  portalCapabilities: (product?: string | null) =>
-    ["portal", "capabilities", product ?? null] as const,
-  portalLicenses: () => ["portal", "licenses"] as const,
-  portalLicense: (product: string, id: string) =>
-    ["portal", "license", product, id] as const,
-  portalReleases: () => ["portal", "releases"] as const,
-  portalLibrary: () => ["portal", "library"] as const,
-  portalDiscover: () => ["portal", "discover"] as const,
-  portalStorefront: (product: string) =>
-    ["portal", "storefront", product] as const,
-  portalDownloads: (product: string) =>
-    ["portal", "downloads", product] as const,
-  portalProduct: (product: string) => ["portal", "product", product] as const,
-  portalRegistryTokens: (product: string, license: string) =>
-    ["portal", "registryTokens", product, license] as const,
-  portalPersonalTokens: () => ["portal", "personalTokens"] as const,
-  portalProfile: () => ["portal", "profile"] as const,
-  portalMethods: () => ["portal", "methods"] as const,
-  portalSessions: () => ["portal", "sessions"] as const,
-  portalLink: () => ["portal", "link"] as const,
-};
-
-export const portalKeys = {
-  me: qk.portalMe(),
-  capabilities: qk.portalCapabilities,
-  licenses: qk.portalLicenses(),
-  license: qk.portalLicense,
-  releases: qk.portalReleases(),
-  library: qk.portalLibrary(),
-  discover: qk.portalDiscover(),
-  storefront: qk.portalStorefront,
-  downloads: qk.portalDownloads,
-  product: qk.portalProduct,
-  profile: qk.portalProfile(),
-  methods: qk.portalMethods(),
-  sessions: qk.portalSessions(),
-  link: qk.portalLink(),
-};
-
 export function createPortalQueryClient(): QueryClient {
   // A 401 from a read or a write MAY mean the session ended (or, for the claim, that a key is
   // unknown): re-check the session instead of assuming. If it really ended, `["me"]` becomes
   // null and the login card takes over, keeping the URL as the way back.
   const recheck = (err: unknown): void => {
-    if (isSignedOut(err))
-      void client.invalidateQueries({ queryKey: portalKeys.me });
+    if (isSignedOut(err)) void client.invalidateQueries({ queryKey: qk.me() });
   };
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
@@ -118,7 +80,7 @@ export function createPortalQueryClient(): QueryClient {
 let quietSignOut = false;
 export function signOutQuietly(client: QueryClient): void {
   quietSignOut = true;
-  client.setQueryData(portalKeys.me, null);
+  client.setQueryData(qk.me(), null);
 }
 export function consumeQuietSignOut(): boolean {
   const q = quietSignOut;
@@ -126,36 +88,8 @@ export function consumeQuietSignOut(): boolean {
   return q;
 }
 
-/**
- * Session reads started so far: only the newest one's answer sets the CSRF token, so a read sent
- * before a step-up sign-in (with the old cookie) that answers after one sent since can't put the
- * old token back.
- */
-let sessionReads = 0;
-
-async function fetchSession(): Promise<PortalMe | null> {
-  const read = ++sessionReads;
-  try {
-    const me = await portalApi.me();
-    if (read === sessionReads) setPortalCsrf(me.csrf);
-    return me;
-  } catch (err) {
-    if (err instanceof PortalApiError && err.status === 401) {
-      // The link was confirmed on another device: this tab signs in now (I-07).
-      if (await portalApi.finishPendingSignIn()) return fetchSession();
-      return null;
-    }
-    throw err;
-  }
-}
-
 export function useSession(): UseQueryResult<PortalMe | null> {
-  return useQuery({
-    queryKey: qk.portalMe(),
-    queryFn: fetchSession,
-    // The session is re-checked on focus (the magic-link tab, POR-1) but never kept stale.
-    staleTime: 0,
-  });
+  return useQuery(pq.me());
 }
 
 const NO_CAPABILITIES: PortalCapabilities = {
@@ -166,11 +100,7 @@ const NO_CAPABILITIES: PortalCapabilities = {
 export function useCapabilities(
   product?: string | null,
 ): UseQueryResult<PortalCapabilities> {
-  return useQuery({
-    queryKey: qk.portalCapabilities(product),
-    queryFn: () => portalApi.capabilities(product),
-    staleTime: 5 * 60_000,
-  });
+  return useQuery(pq.capabilities(product));
 }
 
 /** Capabilities, or the "nothing enabled" answer while loading or on error. */
@@ -183,31 +113,19 @@ export function capabilitiesOrNone(
 export function useLicenses(
   enabled = true,
 ): UseQueryResult<PortalLicenseSummary[]> {
-  return useQuery({
-    queryKey: qk.portalLicenses(),
-    queryFn: async () => (await portalApi.licenses()).licenses,
-    enabled,
-  });
+  return useQuery(pq.licenses(enabled));
 }
 
 export function useLicense(
   product: string,
   id: string | null,
 ): UseQueryResult<PortalLicenseDetail> {
-  return useQuery({
-    queryKey: qk.portalLicense(product, id ?? ""),
-    queryFn: () => portalApi.license(product, id!),
-    enabled: id != null,
-  });
+  return useQuery(pq.license(product, id));
 }
 
 /** Releases are optional data: when the module is off the query never runs. */
 export function useReleases(enabled: boolean): UseQueryResult<PortalRelease[]> {
-  return useQuery({
-    queryKey: qk.portalReleases(),
-    queryFn: async () => (await portalApi.releases()).releases,
-    enabled,
-  });
+  return useQuery(pq.releases(enabled));
 }
 
 /**
@@ -216,11 +134,7 @@ export function useReleases(enabled: boolean): UseQueryResult<PortalRelease[]> {
  * links (G16), and the Discover count once the Worker lists offers (G24).
  */
 export function useLibraryView(enabled = true): UseQueryResult<PortalLibrary> {
-  return useQuery({
-    queryKey: qk.portalLibrary(),
-    queryFn: () => portalApi.library(),
-    enabled,
-  });
+  return useQuery(pq.library(enabled));
 }
 
 /**
@@ -230,19 +144,7 @@ export function useLibraryView(enabled = true): UseQueryResult<PortalLibrary> {
 export function useDiscover(
   enabled = true,
 ): UseQueryResult<PortalDiscoverOffer[]> {
-  return useQuery({
-    queryKey: qk.portalDiscover(),
-    queryFn: async () => {
-      try {
-        return (await portalApi.discover()).offers;
-      } catch (err) {
-        // A Worker without Discover (404) has nothing to offer: the honest empty state.
-        if (err instanceof PortalApiError && err.status === 404) return [];
-        throw err;
-      }
-    },
-    enabled,
-  });
+  return useQuery(pq.discover(enabled));
 }
 
 /**
@@ -258,18 +160,7 @@ export function useStorefrontProduct(
   product: string,
 ): UseQueryResult<PortalStorefrontProduct> {
   const qc = useQueryClient();
-  return useQuery({
-    queryKey: qk.portalStorefront(product),
-    queryFn: () => portalApi.storefrontProduct(product),
-    placeholderData: () => {
-      const offer = qc
-        .getQueryData<PortalDiscoverOffer[]>(qk.portalDiscover())
-        ?.find((o) => o.product === product);
-      return offer
-        ? { ...offer, description: null, screenshots: [] }
-        : undefined;
-    },
-  });
+  return useQuery(pq.storefront(product, qc));
 }
 
 /**
@@ -279,20 +170,8 @@ export function useStorefrontProduct(
  * the storefront pages refresh after.
  */
 export function useClaimDiscover() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (v: { product: string; path?: string }) =>
-      portalApi.claimDiscover(v.product, v.path),
-    onSuccess: (_res, v) => {
-      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
-      void qc.invalidateQueries({ queryKey: portalKeys.discover });
-      void qc.invalidateQueries({ queryKey: portalKeys.product(v.product) });
-      // The storefront page is left as it is: the page that added it moves on to the library
-      // page, and a held product's storefront page goes there too (StorefrontPage).
-      // Returned, so the Add resolves only once the library holds the product: a page that moves
-      // on to it then never finds it missing ("That product isn't in your library").
-      return qc.invalidateQueries({ queryKey: portalKeys.library });
-    },
+  return useWrite("claimDiscover", {
+    toArgs: (v: { product: string; path?: string }) => [v.product, v.path],
   });
 }
 
@@ -304,23 +183,9 @@ export function useClaimDiscover() {
  * again) and the product's views refresh.
  */
 export function useRemoveLibraryEntry() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (product: string) => {
-      try {
-        return await portalApi.removeLibraryEntry(product);
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404)
-          return { ok: true as const, product, inLibrary: false };
-        throw err;
-      }
-    },
-    onSuccess: (_res, product) => {
-      void qc.invalidateQueries({ queryKey: portalKeys.library });
-      void qc.invalidateQueries({ queryKey: portalKeys.discover });
-      qc.removeQueries({ queryKey: portalKeys.product(product) });
-      qc.removeQueries({ queryKey: portalKeys.storefront(product) });
-    },
+  return useWrite("removeLibraryEntry", {
+    toArgs: (product: string): [string] => [product],
+    call: removeLibraryEntryOrGone,
   });
 }
 
@@ -332,17 +197,7 @@ export function useProductDownloads(
   product: string,
   enabled: boolean,
 ): UseQueryResult<PortalDownloads | null> {
-  return useQuery({
-    queryKey: qk.portalDownloads(product),
-    queryFn: () => fetchDownloads(product),
-    staleTime: DOWNLOADS_STALE_MS,
-    enabled,
-    // Get it mounts this beside the Library's observer of the same query. Retrying a failed read
-    // on mount resets it to pending, which the Library reads as the page pending: the page swaps
-    // to its skeleton, Get it unmounts, the read fails again, and the cycle repeats. Try again
-    // retries on purpose.
-    retryOnMount: false,
-  });
+  return useQuery(pq.downloads(product, enabled));
 }
 
 /**
@@ -353,72 +208,47 @@ export function usePackageAccess(
   product: string,
   licenseId: string,
 ): UseQueryResult<PortalPackageAccess | null> {
-  return useQuery({
-    queryKey: qk.portalRegistryTokens(product, licenseId),
-    queryFn: async () => {
-      try {
-        return await portalApi.packageAccess(product, licenseId);
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404) return null;
-        throw err;
-      }
-    },
-  });
+  return useQuery(pq.registryTokens(product, licenseId));
 }
 
 /** Account → Packages: the person's `pkeyp_` tokens and the private feeds they reach. */
 export function usePersonalTokens(): UseQueryResult<PortalPersonalTokens> {
-  return useQuery({
-    queryKey: qk.portalPersonalTokens(),
-    queryFn: () => portalApi.personalTokens(),
-  });
+  return useQuery(pq.personalTokens());
 }
 
 export function useMintPersonalToken() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { label: string; expiresInDays?: number }) =>
-      portalApi.mintPersonalToken(input),
-    onSuccess: () =>
-      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() }),
+  return useWrite("mintPersonalToken", {
+    gcTime: 0, // the answer carries the minted token
+    toArgs: (input: {
+      label: string;
+      expiresInDays?: number;
+    }): [typeof input] => [input],
   });
 }
 
 export function useRevokePersonalToken() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (tokenId: string) => portalApi.revokePersonalToken(tokenId),
-    onSuccess: () =>
-      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() }),
+  return useWrite("revokePersonalToken", {
+    toArgs: (tokenId: string): [string] => [tokenId],
   });
 }
 
 export function useMintRegistryToken(product: string, licenseId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: PortalMintTokenInput) =>
-      portalApi.mintRegistryToken(product, licenseId, input),
-    onSuccess: () => {
-      void qc.invalidateQueries({
-        queryKey: qk.portalRegistryTokens(product, licenseId),
-      });
-      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() });
-    },
+  return useWrite("mintRegistryToken", {
+    gcTime: 0, // the answer carries the minted token
+    toArgs: (
+      input: PortalMintTokenInput,
+    ): [string, string, PortalMintTokenInput] => [product, licenseId, input],
   });
 }
 
 /** Revoke a licence-bound token, from Account → Packages' per-app group (any licence). */
 export function useRevokeRegistryToken() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (t: { product: string; licenseId: string; tokenId: string }) =>
-      portalApi.revokeRegistryToken(t.product, t.licenseId, t.tokenId),
-    onSuccess: (_res, t) => {
-      void qc.invalidateQueries({
-        queryKey: qk.portalRegistryTokens(t.product, t.licenseId),
-      });
-      void qc.invalidateQueries({ queryKey: qk.portalPersonalTokens() });
-    },
+  return useWrite("revokeRegistryToken", {
+    toArgs: (t: {
+      product: string;
+      licenseId: string;
+      tokenId: string;
+    }): [string, string, string] => [t.product, t.licenseId, t.tokenId],
   });
 }
 
@@ -430,25 +260,7 @@ export function useProduct(
   product: string,
   opts: { enabled?: boolean } = {},
 ): UseQueryResult<PortalProduct> {
-  return useQuery({
-    queryKey: qk.portalProduct(product),
-    queryFn: () => portalApi.product(product),
-    enabled: opts.enabled ?? true,
-  });
-}
-
-/** The downloads query for one product, shared by the Library and the product page. */
-const DOWNLOADS_STALE_MS = 5 * 60_000;
-
-async function fetchDownloads(
-  product: string,
-): Promise<PortalDownloads | null> {
-  try {
-    return await portalApi.downloads(product);
-  } catch (err) {
-    if (err instanceof PortalApiError && err.status === 404) return null;
-    throw err;
-  }
+  return useQuery(pq.product(product, opts.enabled ?? true));
 }
 
 /**
@@ -461,14 +273,7 @@ export function useDownloadsFor(
   enabled: boolean,
 ): { bySlug: ReadonlyMap<string, PortalDownloads | null>; pending: boolean } {
   const results = useQueries({
-    queries: products.map((p) => ({
-      queryKey: qk.portalDownloads(p),
-      queryFn: () => fetchDownloads(p),
-      staleTime: DOWNLOADS_STALE_MS,
-      enabled,
-      // See useProductDownloads: a failed read is never retried just because a view mounted.
-      retryOnMount: false,
-    })),
+    queries: products.map((p) => pq.downloads(p, enabled)),
   });
   const key = results.map((r) => r.dataUpdatedAt).join(",");
   const bySlug = React.useMemo(() => {
@@ -485,46 +290,36 @@ export function useDownloadsFor(
 
 /** G23: email the account's own address this product's download link for `platform`. */
 export function useEmailDownload() {
-  return useMutation({
-    mutationFn: (v: { product: string; platform: string }) =>
-      portalApi.emailDownload(v.product, v.platform),
+  return useWrite("emailDownload", {
+    toArgs: (v: { product: string; platform: string }): [string, string] => [
+      v.product,
+      v.platform,
+    ],
   });
 }
 
 /** The activate preview (PX-W5, G22): what adding a key would do, before it is added. */
 export function usePreviewKey() {
-  return useMutation({
-    mutationFn: (key: string) => portalApi.previewKey(key),
+  return useWrite("previewKey", {
+    gcTime: 0, // the key or minted token must not linger in the cache
+    toArgs: (key: string): [string] => [key],
   });
 }
 
 export function useClaimKey() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (key: string) => portalApi.claimKey(key),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
-      void qc.invalidateQueries({ queryKey: portalKeys.releases });
-      void qc.invalidateQueries({ queryKey: portalKeys.library });
-      // A key for a product Discover offered takes it off the shelf.
-      void qc.invalidateQueries({ queryKey: portalKeys.discover });
-    },
+  return useWrite("claimKey", {
+    gcTime: 0, // the key or minted token must not linger in the cache
+    toArgs: (key: string): [string] => [key],
   });
 }
 
 export function useRemoveDevice(product: string, licenseId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (deviceId: string) =>
-      portalApi.disconnectDevice(product, licenseId, deviceId),
-    onSuccess: () => {
-      void qc.invalidateQueries({
-        queryKey: portalKeys.license(product, licenseId),
-      });
-      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
-      void qc.invalidateQueries({ queryKey: portalKeys.library });
-      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
-    },
+  return useWrite("disconnectDevice", {
+    toArgs: (deviceId: string): [string, string, string] => [
+      product,
+      licenseId,
+      deviceId,
+    ],
   });
 }
 
@@ -533,17 +328,7 @@ export function useRemoveDevice(product: string, licenseId: string) {
  * (404): the card then shows the session's name and initials without an editor (G32's fallback).
  */
 export function useProfile(): UseQueryResult<PortalProfile | null> {
-  return useQuery({
-    queryKey: qk.portalProfile(),
-    queryFn: async () => {
-      try {
-        return (await portalApi.profile()).profile;
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404) return null;
-        throw err;
-      }
-    },
-  });
+  return useQuery(pq.profile());
 }
 
 /**
@@ -553,12 +338,11 @@ export function useProfile(): UseQueryResult<PortalProfile | null> {
  */
 export function useUpdateProfile() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (change: PortalProfileChange) =>
-      portalApi.updateProfile(change),
+  return useWrite("updateProfile", {
+    toArgs: (change: PortalProfileChange): [PortalProfileChange] => [change],
     onSuccess: ({ profile }) => {
-      qc.setQueryData(qk.portalProfile(), profile);
-      qc.setQueryData<PortalMe | null>(qk.portalMe(), (me) =>
+      qc.setQueryData(qk.profile(), profile);
+      qc.setQueryData<PortalMe | null>(qk.me(), (me) =>
         me
           ? {
               ...me,
@@ -575,11 +359,11 @@ export function useUpdateProfile() {
       // The profile changed under the editor (a method removed, an upload collected): re-read it
       // so the chips and tiles offer what is there now.
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         err.reason &&
         STALE_PROFILE_REASONS.has(err.reason)
       )
-        void qc.invalidateQueries({ queryKey: portalKeys.profile });
+        void qc.invalidateQueries({ queryKey: qk.profile() });
     },
   });
 }
@@ -593,8 +377,8 @@ const STALE_PROFILE_REASONS = new Set([
 
 /** Upload a picture: it is kept unused (for a day) until `useUpdateProfile` picks it. */
 export function useUploadPicture() {
-  return useMutation({
-    mutationFn: (file: Blob) => portalApi.uploadPicture(file),
+  return useWrite("uploadPicture", {
+    toArgs: (file: Blob): [Blob] => [file],
   });
 }
 
@@ -606,50 +390,30 @@ export function useUploadPicture() {
  */
 export function useRemoveLicense(product: string) {
   const qc = useQueryClient();
-  const refresh = (licenseId: string): void => {
-    qc.removeQueries({ queryKey: portalKeys.license(product, licenseId) });
-    void qc.invalidateQueries({ queryKey: portalKeys.licenses });
-    void qc.invalidateQueries({ queryKey: portalKeys.library });
-    void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
-    void qc.invalidateQueries({ queryKey: portalKeys.releases });
-    void qc.invalidateQueries({ queryKey: portalKeys.discover });
-  };
-  return useMutation({
-    mutationFn: async (licenseId: string) => {
-      try {
-        return await portalApi.removeLicense(product, licenseId);
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404)
-          return { ok: true as const, product, licenseId };
-        throw err;
-      }
-    },
-    onSuccess: (_res, licenseId) => refresh(licenseId),
+  return useWrite("removeLicense", {
+    toArgs: (licenseId: string): [string, string] => [product, licenseId],
+    call: removeLicenseOrGone,
+    // A refusal (`409 not_removable`) means the licence is not removable: the views re-read, so
+    // the page stops offering Remove.
     onError: (err, licenseId) => {
-      if (err instanceof PortalApiError && err.status === 409)
-        refresh(licenseId);
+      if (err instanceof HttpError && err.status === 409) {
+        qc.removeQueries({ queryKey: qk.license(product, licenseId) });
+        void qc.invalidateQueries({ queryKey: qk.licenses() });
+        void qc.invalidateQueries({ queryKey: qk.library() });
+        void qc.invalidateQueries({ queryKey: qk.product(product) });
+        void qc.invalidateQueries({ queryKey: qk.releases() });
+        void qc.invalidateQueries({ queryKey: qk.discover() });
+      }
     },
   });
 }
 
 export function useDeleteAccount() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => portalApi.deleteMe(),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: portalKeys.me });
-    },
-  });
+  return useWrite("deleteMe", { toArgs: (_v: void): [] => [] });
 }
 
 export function useCancelAccountDeletion() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => portalApi.cancelDeletion(),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: portalKeys.me });
-    },
-  });
+  return useWrite("cancelDeletion", { toArgs: (_v: void): [] => [] });
 }
 
 /**
@@ -677,12 +441,8 @@ export function useExportProductData(product: string) {
  * code once it exists, so a success reads that view again.
  */
 export function useCreateSupportCode(product: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => portalApi.createSupportCode(product),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
-    },
+  return useWrite("createSupportCode", {
+    toArgs: (_v: void): [string] => [product],
   });
 }
 
@@ -702,23 +462,16 @@ export function useRemoveProductData(
   licenseIds: readonly string[],
 ) {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (alsoRemoveLicense: boolean) =>
-      portalApi.removeProductData(product, alsoRemoveLicense),
+  return useWrite("removeProductData", {
+    toArgs: (alsoRemoveLicense: boolean): [string, boolean] => [
+      product,
+      alsoRemoveLicense,
+    ],
+    // A licence that left is dropped; the table refreshes the rest.
     onSuccess: (res) => {
-      for (const id of licenseIds) {
+      for (const id of licenseIds)
         if (res.detachedLicenses.includes(id))
-          qc.removeQueries({ queryKey: portalKeys.license(product, id) });
-        else
-          void qc.invalidateQueries({
-            queryKey: portalKeys.license(product, id),
-          });
-      }
-      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
-      void qc.invalidateQueries({ queryKey: portalKeys.library });
-      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
-      void qc.invalidateQueries({ queryKey: portalKeys.releases });
-      void qc.invalidateQueries({ queryKey: portalKeys.discover });
+          qc.removeQueries({ queryKey: qk.license(product, id) });
     },
   });
 }
@@ -728,10 +481,7 @@ export function useRemoveProductData(
  * such route (404): the section then lists the session's email alone (G27's fallback).
  */
 export function useMethods(): UseQueryResult<PortalMethods | null> {
-  return useQuery({
-    queryKey: qk.portalMethods(),
-    queryFn: fetchMethods,
-  });
+  return useQuery(pq.methods());
 }
 
 /**
@@ -740,29 +490,7 @@ export function useMethods(): UseQueryResult<PortalMethods | null> {
  * on this browser's link flow.
  */
 export function useLinkView(): UseQueryResult<PortalLinkView | null> {
-  return useQuery({
-    queryKey: qk.portalLink(),
-    queryFn: async () => {
-      try {
-        return await portalApi.linkView();
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404) return null;
-        throw err;
-      }
-    },
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: "always",
-  });
-}
-
-async function fetchMethods(): Promise<PortalMethods | null> {
-  try {
-    return await portalApi.methods();
-  } catch (err) {
-    if (err instanceof PortalApiError && err.status === 404) return null;
-    throw err;
-  }
+  return useQuery(pq.link());
 }
 
 /**
@@ -770,47 +498,22 @@ async function fetchMethods(): Promise<PortalMethods | null> {
  * route (404): the section is left out rather than shown empty.
  */
 export function useSessions(): UseQueryResult<PortalSession[] | null> {
-  return useQuery({
-    queryKey: qk.portalSessions(),
-    queryFn: fetchSessions,
-  });
-}
-
-async function fetchSessions(): Promise<PortalSession[] | null> {
-  try {
-    return (await portalApi.sessions()).sessions;
-  } catch (err) {
-    if (err instanceof PortalApiError && err.status === 404) return null;
-    throw err;
-  }
-}
-
-/**
- * After a sign-in method changed: the methods, the session (its email follows the primary), the
- * profile's sources and the library (a verified address brings the licences waiting on it).
- */
-export function refreshAfterMethodChange(client: QueryClient): void {
-  void client.invalidateQueries({ queryKey: portalKeys.methods });
-  void client.invalidateQueries({ queryKey: portalKeys.me });
-  void client.invalidateQueries({ queryKey: portalKeys.profile });
-  void client.invalidateQueries({ queryKey: portalKeys.library });
-  void client.invalidateQueries({ queryKey: portalKeys.licenses });
+  return useQuery(pq.sessions());
 }
 
 /** Disconnect a sign-in method (step-up first; never the last one). */
 export function useRemoveMethod() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => portalApi.removeMethod(id),
-    onSuccess: () => refreshAfterMethodChange(qc),
+  return useWrite("removeMethod", {
+    toArgs: (id: string): [string] => [id],
     onError: (err) => {
       // Refused for the account's state (`last_link`, `only_email`) or gone already: re-read it,
       // so the page stops offering what the Worker refuses.
       if (
-        err instanceof PortalApiError &&
+        err instanceof HttpError &&
         (err.status === 409 || err.status === 403 || err.status === 404)
       )
-        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+        void qc.invalidateQueries({ queryKey: qk.methods() });
     },
   });
 }
@@ -818,15 +521,14 @@ export function useRemoveMethod() {
 /** Make a verified email the primary (step-up first). The answer is the methods list. */
 export function useMakePrimary() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (methodId: string) => portalApi.makePrimary(methodId),
+  return useWrite("makePrimary", {
+    toArgs: (methodId: string): [string] => [methodId],
     onSuccess: (view) => {
-      qc.setQueryData(qk.portalMethods(), view);
-      refreshAfterMethodChange(qc);
+      qc.setQueryData(qk.methods(), view);
     },
     onError: (err) => {
-      if (err instanceof PortalApiError && err.status === 404)
-        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+      if (err instanceof HttpError && err.status === 404)
+        void qc.invalidateQueries({ queryKey: qk.methods() });
     },
   });
 }
@@ -834,14 +536,14 @@ export function useMakePrimary() {
 /** Name a passkey, or clear its name (step-up first). */
 export function useRenamePasskey() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (v: { id: string; name: string | null }) =>
-      portalApi.renamePasskey(v.id, v.name),
-    onSuccess: () =>
-      void qc.invalidateQueries({ queryKey: portalKeys.methods }),
+  return useWrite("renamePasskey", {
+    toArgs: (v: {
+      id: string;
+      name: string | null;
+    }): [string, string | null] => [v.id, v.name],
     onError: (err) => {
-      if (err instanceof PortalApiError && err.status === 404)
-        void qc.invalidateQueries({ queryKey: portalKeys.methods });
+      if (err instanceof HttpError && err.status === 404)
+        void qc.invalidateQueries({ queryKey: qk.methods() });
     },
   });
 }
@@ -856,25 +558,25 @@ export async function refreshSession(
   // Not `fetchQuery`: it would join a `/api/me` already in flight, sent with the old cookie,
   // whose answer would put the old CSRF token back. A request of its own, sent now, and its
   // answer is the session (`fetchSession` sets the token).
-  await client.cancelQueries({ queryKey: qk.portalMe() });
+  await client.cancelQueries({ queryKey: qk.me() });
   const me = await fetchSession();
-  client.setQueryData(qk.portalMe(), me);
+  client.setQueryData(qk.me(), me);
   return me;
 }
 
 /** End one other session (a browser or app signed in to this account). */
 export function useEndSession() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => portalApi.endSession(id),
-    onSettled: () =>
-      void qc.invalidateQueries({ queryKey: portalKeys.sessions }),
+  return useWrite("endSession", {
+    toArgs: (id: string): [string] => [id],
+    // The list is re-read whether or not the session was still there to end.
+    onError: () => void qc.invalidateQueries({ queryKey: qk.sessions() }),
   });
 }
 
 /** Sign out everywhere: every session and app of the account, this browser's included. */
 export function useSignOutEverywhere() {
-  return useMutation({ mutationFn: () => portalApi.signOutEverywhere() });
+  return useWrite("signOutEverywhere", { toArgs: (_v: void): [] => [] });
 }
 
 /**
@@ -882,12 +584,12 @@ export function useSignOutEverywhere() {
  * click") and follow it.
  */
 export function useStartDownload() {
-  return useMutation({
-    mutationFn: (v: {
+  return useWrite("downloadToken", {
+    toArgs: (v: {
       product: string;
       releaseId: string;
       artifactId: string;
-    }) => portalApi.downloadToken(v.product, v.releaseId, v.artifactId),
+    }): [string, string, string] => [v.product, v.releaseId, v.artifactId],
     onSuccess: (res) => browser.go(res.url),
   });
 }

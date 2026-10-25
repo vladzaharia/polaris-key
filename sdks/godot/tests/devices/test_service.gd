@@ -232,7 +232,7 @@ func _manage(t: PKeyTestContext) -> void:
 	t.check("rename: a non-string label is refused locally", not r.ok and r.code == PKeyErrors.INVALID_OPTIONS and _requests("PATCH", "").size() == 2)
 	t.check("manage: no request ever names another device", server.requests.all(func(q): return not String(q["path"]).contains(other)))
 
-	var cur: Dictionary = sdk.devices.get_current_device()
+	var cur: Dictionary = sdk.current_device()
 	t.check("current: this device from local state", cur.get("id") == me and cur.get("current") == true and cur.get("status") is String, str(cur))
 
 	var wiped := [0]

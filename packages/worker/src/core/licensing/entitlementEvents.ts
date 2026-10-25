@@ -5,7 +5,7 @@
  * LX-13 writes it and serves its pull cursor; LX-08 creates the table empty and `subjectHooks.ts` lists it,
  * so from its first row an account merge re-keys it and an account deletion or per-product removal
  * removes it, through Core's subject-store list (`core/accounts/subjectHooks.ts`; the registry guard,
- * `test/subjectStores.test.ts`, refuses a subject-keyed table nobody claims). The feed is history
+ * `test/surfaces/subjectStores.test.ts`, refuses a subject-keyed table nobody claims). The feed is history
  * of the subject's entitlements, so a merge moves the absorbed subject's events to the survivor
  * (no collision is possible: event ids are unique) and a deletion drops them.
  */

@@ -2,6 +2,7 @@ import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ArrowLeft, X } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import { useToastClearsDrawer } from "./toast.js";
 import {
   DialogOverlay,
   DiscardStrip,
@@ -89,6 +90,7 @@ export function Drawer({
   children,
   className,
 }: DrawerProps): React.ReactElement {
+  useToastClearsDrawer(open, size === "lg" ? 40 : 28);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const titleRef = React.useRef<HTMLHeadingElement>(null);
   const focus = useOverlayFocus(open, contentRef, titleRef);

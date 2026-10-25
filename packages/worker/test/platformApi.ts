@@ -6,13 +6,10 @@
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -23,8 +20,9 @@ export async function platformApi(
   body?: unknown,
   groups: string[] = ["platform-admins"],
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );

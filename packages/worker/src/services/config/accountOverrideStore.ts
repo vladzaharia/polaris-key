@@ -7,13 +7,11 @@
  *           copied over; secrets are compared and copied sealed, never decrypted. Every collision
  *           (both sides set the key to different values) is listed for the operator in the
  *           product's activity log (`user.overrides.merge`; non-secret values only), and the
- *           absorbed row is deleted in the same batch as the surviving row's write. The absorbed
- *           subject's migration-report rows follow it to the survivor.
- *   delete  the subject's row and its migration-report rows (per-product removal, account
- *           deletion, the console's data deletion).
- *   export  the subject's layer with every secret by name only (`configured`), and its report
- *           rows. U-12 owns the person-facing export and deletion surfaces; these hooks are what
- *           they call.
+ *           absorbed row is deleted in the same batch as the surviving row's write.
+ *   delete  the subject's row (per-product removal, account deletion, the console's data
+ *           deletion).
+ *   export  the subject's layer with every secret by name only (`configured`). U-12 owns the person-facing export and deletion
+ *           surfaces; these hooks are what they call.
  *   size    the stored row's bytes (the console Users page's data size, I-12).
  *
  * Idempotent, as the registry requires (`merge` runs before, and outside, the merge's own batch,
@@ -31,7 +29,6 @@ import {
   stmtPutAccountOverrides,
   type AccountOverridePayload,
 } from "../../core/accounts/accountOverrides.js";
-import { listOverrideMigrationReport } from "../../core/ops/overrideMigration.js";
 import { type SubjectStore } from "../../core/accounts/subjectHooks.js";
 import { isSealedEnvelope } from "../../core/managedSecrets.js";
 import { randomId } from "../../platform/crypto.js";
@@ -75,6 +72,8 @@ const short = (v: unknown): string => {
 };
 
 export const accountOverrideStore: SubjectStore = {
+  // `override_migration_report` is claimed (a subject-keyed table that exists) but neither read
+  // nor written since U-27.4; U-27b drops it and this claim.
   tables: ["account_overrides", "override_migration_report"],
 
   async merge({ db, now }, { product, from, to }) {
@@ -128,24 +127,14 @@ export const accountOverrideStore: SubjectStore = {
           }),
         );
     }
-    stmts.push({
-      sql: "UPDATE override_migration_report SET subject = ? WHERE product = ? AND subject = ?",
-      params: [to, product, from],
-    });
     await db.batch(stmts);
   },
 
   async delete({ db }, { product, subject }) {
-    await db.batch([
-      stmtDeleteAccountOverrides(product, subject),
-      {
-        sql: "DELETE FROM override_migration_report WHERE product = ? AND subject = ?",
-        params: [product, subject],
-      },
-    ]);
+    await db.batch([stmtDeleteAccountOverrides(product, subject)]);
   },
 
-  async export({ db, now }, { product, subject }) {
+  async export({ db }, { product, subject }) {
     const row = await getAccountOverrides(db, product, subject);
     const p = parseAccountOverridePayload(row?.payload_json ?? null);
     const catalog = await catalogOf(db, product);
@@ -177,19 +166,8 @@ export const accountOverrideStore: SubjectStore = {
         configured: entry.value != null && entry.value !== "",
         updatedAt: entry.updatedAt,
       };
-    const report = (
-      await listOverrideMigrationReport(db, now, { product })
-    ).filter((r) => r.subject === subject);
     return {
       overrides: row ? { config, secrets, updatedAt: row.updated_at } : null,
-      migrationReport: report.map((r) => ({
-        licenseId: r.licenseId,
-        outcome: r.outcome,
-        keys: r.keys,
-        values: r.values,
-        createdAt: r.createdAt,
-        expiresAt: r.expiresAt,
-      })),
     };
   },
 

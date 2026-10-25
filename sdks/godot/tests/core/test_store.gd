@@ -73,7 +73,7 @@ func _device_write_failure(t: PKeyTestContext) -> void:
 		var seen: Array = []
 		sdk.store_error.connect(func(e): seen.append(e))
 		var opts := PKeyOptions.new()
-		opts.product = "djdl"
+		opts.product_slug = "djdl"
 		opts.version = "1.0.0"
 		opts.store_root = root
 		var cr: PKeyResult = sdk.configure(opts)
@@ -127,7 +127,7 @@ func _namespace(t: PKeyTestContext) -> void:
 ## PKeyOptions ships with.
 static func _options(root: String, base_url := "") -> PKeyOptions:
 	var opts := PKeyOptions.new()
-	opts.product = "djdl"
+	opts.product_slug = "djdl"
 	opts.version = "1.0.0"
 	opts.store_root = root
 	opts.build_stamp_path = ""

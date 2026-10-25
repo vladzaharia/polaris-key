@@ -29,7 +29,7 @@
 -- ALTER comes first, so a replay dies there on `duplicate column name` before it reaches the
 -- UPDATE. Rollback: nothing to run; to remove the column anyway,
 --   ALTER TABLE licenses DROP COLUMN email_issuer_class;
--- Exercised by test/licenseEmailIssuerMigration.test.ts.
+-- Exercised by test/core/migrations/licenseEmailIssuerMigration.test.ts.
 ALTER TABLE licenses ADD COLUMN email_issuer_class TEXT;
 
 UPDATE licenses

@@ -1,6 +1,6 @@
 /** npm's ingest rules (F-04): scoped names only, and the scope is the feed's namespace. */
 
-import type { PackageEcosystemRules } from "./rules.js";
+import { sortedUnique, type PackageEcosystemRules } from "./rules.js";
 
 /** The npm scope of a scoped name (`@polaris-key/node` → `@polaris-key`), else null. */
 export function npmScope(name: string): string | null {
@@ -47,6 +47,21 @@ export const NPM_PACKAGE_RULES: PackageEcosystemRules<"npm"> = {
       return npmScope(name.toLowerCase()) === scope
         ? null
         : `${name} is not under the feed's scope ${scope}`;
+    },
+    derive(names) {
+      const scopes = sortedUnique(
+        names.flatMap((n) => {
+          const s = npmScope(n.toLowerCase());
+          return s ? [s] : [];
+        }),
+      );
+      if (scopes.length === 0) return { namespace: {}, ambiguous: null };
+      if (scopes.length > 1)
+        return {
+          namespace: {},
+          ambiguous: `the packages span several npm scopes (${scopes.join(", ")}); a feed takes one`,
+        };
+      return { namespace: { scope: scopes[0]! }, ambiguous: null };
     },
   },
 };

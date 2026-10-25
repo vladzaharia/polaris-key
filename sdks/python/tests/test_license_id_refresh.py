@@ -75,7 +75,7 @@ def test_a_license_id_change_on_a_plain_refresh_is_tolerated() -> None:
     c = make_client(handler, store=store, expected_services=["license"])
     assert c.license.activate_with_key("pkey_djdl_test").kind == "ok"
     assert c.license.get_license_id() == "lic_trial"
-    assert c.license.is_entitled("pro") is False
+    assert c.entitlements.has("pro") is False
 
     # The server re-anchors this device on another licence; the next plain sync receives it.
     server.update(license_id="lic_pro", tier="pro", etag="lic-2", issued=NOW + 60)
@@ -86,8 +86,8 @@ def test_a_license_id_change_on_a_plain_refresh_is_tolerated() -> None:
     # cache
     assert result.documents["license"].kind == "applied"
     assert c.license.get_license_id() == "lic_pro"
-    assert c.license.is_entitled("pro") is True
-    assert c.license.get_entitlements()["license.tier"] == "pro"
+    assert c.entitlements.has("pro") is True
+    assert c.entitlements.all()["license.tier"] == "pro"
     # activation state
     assert f"/{PRODUCT}/license/activate" not in paths
     assert bearers == {f"Bearer {TOKEN}"}
@@ -110,6 +110,6 @@ def test_a_license_id_change_on_a_plain_refresh_is_tolerated() -> None:
 
     o = make_client(offline, store=store, expected_services=["license"])
     assert o.license.get_license_id() == "lic_pro"
-    assert o.license.is_entitled("pro") is True
+    assert o.entitlements.has("pro") is True
     assert o.status(now=NOW + 100).status == "ok"
     o.close()

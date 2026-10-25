@@ -162,26 +162,36 @@ describe("status model (§5.3), first match wins", () => {
       activeKeyCount: 0,
     });
     const keyless = license({ product: "a", keyCount: 0, activeKeyCount: 0 });
+    const steamKey = license({ product: "a", originStore: "steam" });
+    const steamOnly = license({
+      product: "a",
+      keyCount: 0,
+      activeKeyCount: 0,
+      originStore: "steam",
+    });
+    const appStore = license({
+      product: "a",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+      originStore: "app-store",
+    });
     const last = [{ last4: "3WPLDA" }];
     // Granted through OIDC at sign-in (auto-issue or a group grant): owner polish 2026-10-07.
     expect(licenseOrigin(signIn)).toBe("Automatic grant");
     expect(licenseOrigin(key)).toBe("Added with a key");
     expect(licenseOrigin(key, { keys: last })).toBe("Key ending 3WPLDA");
-    expect(licenseOrigin(key, { store: "steam" })).toBe("Steam key");
-    expect(licenseOrigin(key, { store: "steam", keys: last })).toBe(
+    expect(licenseOrigin(steamKey)).toBe("Steam key");
+    expect(licenseOrigin(steamKey, { keys: last })).toBe(
       "Steam key ending 3WPLDA",
     );
-    expect(licenseOrigin(keyless, { store: "steam" })).toBe("From Steam");
-    expect(licenseOrigin(signIn, { store: "app-store" })).toBe(
-      "From the App Store",
-    );
+    expect(licenseOrigin(steamOnly)).toBe("From Steam");
+    expect(licenseOrigin(appStore)).toBe("From the App Store");
     expect(licenseOrigin(keyless)).toBe("From the developer");
     expect(shortOrigin(signIn)).toBe("Sign-in");
     expect(shortOrigin(key, { keys: last })).toBe("Key …3WPLDA");
-    expect(shortOrigin(key, { store: "steam", keys: last })).toBe(
-      "Steam key …3WPLDA",
-    );
-    expect(shortOrigin(keyless, { store: "steam" })).toBe("Steam");
+    expect(shortOrigin(steamKey, { keys: last })).toBe("Steam key …3WPLDA");
+    expect(shortOrigin(steamOnly)).toBe("Steam");
     expect(shortOrigin(keyless)).toBeNull();
     for (const o of [signIn, key, keyless])
       expect(licenseOrigin(o)).not.toMatch(/Account-wide/);
@@ -205,7 +215,7 @@ describe("status model (§5.3), first match wins", () => {
     const added = license({ product: "a", origin: "key" });
     expect(licenseOrigin(added, { keys: last })).toBe("Key ending 3WPLDA");
     expect(licenseOrigin(added)).toBe("Added with a key");
-    // The store comes with the origin; the product view's store is only a fallback.
+    // The store comes with the origin.
     const steamKey = license({
       product: "a",
       origin: "store-key",
@@ -241,9 +251,9 @@ describe("status model (§5.3), first match wins", () => {
         dev,
       ),
     ).toBe("From Little Fern");
-    // An origin this build does not know reads by the older facts.
+    // An origin this build does not know reads as the developer's.
     expect(licenseOrigin(license({ product: "a", origin: "gift" }))).toBe(
-      "Added with a key",
+      "From the developer",
     );
   });
 

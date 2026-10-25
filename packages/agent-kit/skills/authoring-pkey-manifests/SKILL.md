@@ -1,0 +1,376 @@
+---
+name: authoring-pkey-manifests
+description: Use when creating or editing a product's .pkey/ manifest (product, schema, release, distribution) — scaffolding with pkey init, wiring editor schema support, choosing module names, validating until clean, and registering or resyncing the product in the console.
+---
+
+# Authoring a `.pkey/` manifest
+
+A Polaris Key product is **data, not code**: its catalog, metadata and release coordinates live
+in a `.pkey/` directory in the product's own repo. Adding or changing a product must never
+require a worker redeploy. `.pkey/` is the **only** manifest directory — there is no second
+candidate and no fallback between two.
+
+Reference (all now on the docs site, in the repo under `packages/docs/src/content/docs/`):
+`build/manifest/product.md` (the `.pkey/` convention), `start/first-product.md` (the adopter
+guide), `build/manifest/register.md` (getting a product into D1), and `start/concepts.md` (the
+canonical glossary).
+
+Every validator error and warning code, by manifest file: [references/validation-codes.md](references/validation-codes.md).
+
+## Checklist
+
+### 1. Scaffold
+
+- [ ] Run `pkey init` in the product repo root. It creates `.pkey/` and writes YAML:
+      `product.yaml` and `schema.yaml` always (ingest requires both, even with Config off; without
+      `config` the schema is an empty catalog, `schemaVersion: 1` and `entries: []`); `release.yaml`
+      when Release is selected. The scaffolded tier names its profile with `profileId` and is
+      `policyDeviceLimit: 5` with no expiry.
+- [ ] Other flags: `--admin-group`, `--release-owner`, `--release-repo`, `--force` (overwrite).
+      With no `--modules`, the default is `license,config`.
+- [ ] Do **not** hand-create the directory if `pkey init` will do it — the scaffold writes the
+      `# yaml-language-server: $schema=…` header that gives you completion in the editor.
+
+```sh
+pkey init --product <slug> --name "<Name>" --modules license,config
+```
+
+### 2. Get editor validation working
+
+- [ ] Scaffolded files point at a **path**, not a URL:
+      `../node_modules/@polaris-key/manifest/schemas/v1/<role>.schema.json`. The canonical `$id`
+      URLs (`key.plrs.im`, under `schemas/v1/`) are identifiers on the auth-gated docs site,
+      not fetch targets — an editor cannot retrieve them.
+- [ ] In this monorepo, `.vscode/settings.json` already wires `json.schemas` and `yaml.schemas`
+      for `**/.pkey/{product,schema,release,distribution}.{json,yaml,yml}` and the `products/*`
+      fixtures. YAML
+      completion needs the `redhat.vscode-yaml` extension.
+- [ ] The schemas ship inside the `@polaris-key/manifest` npm package (`schemas/v1/`), so a
+      product repo that installs the package gets them locally.
+
+### 3. Know what each of the four files owns
+
+- [ ] **Write the canonical spellings** — the layout `pkey init` writes: `product:` holds
+      identity and compatibility (`slug`, `name`, `adminGroup`, `compatMin`, `compatMax`),
+      `licensing:` holds the licence defaults and `tiers`, `profiles` sits at the root (the
+      old `licensing.profiles` warns, and `pkey validate --fix` moves it), a tier names its profile
+      with `profileId`, the catalog is `entries`, and `.pkey/release` puts its body under
+      `release:` with `provider: { type: github, owner, repo }`. The old spellings (a flat product
+      document, root `tiers`, `catalog`, `ghOwner`/`ghRepo`, legacy `modules:` names, …) still
+      validate with their old precedence, but `pkey validate` warns `deprecated_spelling` (or
+      `conflicting_spelling` when both are set). The full table is
+      `build/manifest/product.md` → "Deprecated spellings"; the source of truth is
+      `DEPRECATED_SPELLINGS` in `packages/shared-manifest/src/spellings.ts`.
+- [ ] Keep **one file per document** (`product.yaml` or `product.json`, not both): only the first
+      of `json`, `yaml`, `yml` is read, and `pkey validate` warns when there are more.
+
+- [ ] **`schema`** (required) — the config catalog: `{ schemaVersion, entries[] }`, plus an
+      optional top-level `cloudSync` block (Cloud Sync's records: `collections` and
+      `migrations`). Maps to the `product_schema` row. For an entry's fields, including the
+      optional `user` block that tunes a synced setting, use the `adding-a-catalog-entry` skill.
+- [ ] With Cloud Sync (`sync`) on, **every Editable `config` key is a synced setting** (no
+      `managementDefault` of `enforced` or `hidden`); a key the catalog does not declare syncs too,
+      as an **open setting** (`lastWrite`, schema-less, at most 8 KiB). Declared and open settings
+      share one budget: 256 keys and 64 KiB per person. An app treats an undeclared key as
+      untrusted input, because any device of the person can write it; a key that matters is
+      declared with a schema, given `user: { sync: "local" }`, or locked.
+- [ ] A **collection** declares a namespace of records: `name`, optional `label`, `template`
+      (`saves`: 16 save slots per person, `revision`, one file of up to 32 MiB with 5 older
+      versions, and `playtime`, `progress`, `chapter`, `formatVersion` and a base64 `thumbnail`;
+      `session`: `lastWrite`, 16 records, an 8 MiB file), `conflict` (`lastWrite`, `max`, `min`,
+      `merge`, `union`, `revision`; `max`/`min` need a number `conflictField`), `schema`,
+      `maxRecords` (≤ 10,000, never on a `saves` collection), `files` (`maxBytes` ≤ 1 GiB and
+      `keepRevisions`) and `requires` (a catalog flag or a system entitlement the anchor licence
+      must grant). `access` is `owner` only. Retired, refused with no warning period:
+      `cloudSync.saves` (use `template: "saves"`), `cloudSync.open`, `onAttach` (the first
+      sign-in is an ordinary sync) and `user.sync: "device"` (use `local`).
+- [ ] **`product`** (required) — product metadata, the `modules` block (enabled services; the
+      device-registration policy is derived from them, never declared), `web.origins`, OIDC, the
+      `identity:` block, profiles, tiers, provisioning hooks, `fingerprint`, `autoIssue` and
+      `secrets.required`. Maps to `products`
+      (incl. `services_json`,
+      `web_origins_json`) plus
+      `oidc_config`, `profiles`, `tiers`, `provisioning_config`. There is no `cloudSync` block
+      here any more (the validator refuses one): a person's Cloud Sync quota is the
+      `pkey.cloudSync.bytes` entitlement (256 MiB when unset) that a tier, a licence override or
+      an add-on sets, and the ceiling and the pause are console settings.
+- [ ] **`release`** (required only when releases are enabled) — release-provider coordinates,
+      channels, install/appcast settings, edge-mint recipes, and the app deliverable with its
+      artifact map. Maps to `release_config`, `release_deliverables` and `edge_mint_config`.
+- [ ] If the repo publishes tags that are not app releases (rolling `channels`, content `packs`,
+      …), say so in `release`: `stableTagPattern` (an anchored regex, ≤ 80 characters, same
+      safety rule as `manualChannels[].regex`) narrows which tags may become stable/latest, and
+      `ignoreTags` lists exact tag names that never resolve on a moving channel. Undeclared, any
+      semver tag with an optional leading `v` is a candidate, and the highest semver wins — not
+      the newest by creation order. The same two fields may instead sit under
+      `deliverables.app.versioning`, which is the canonical place (the body spelling is marked
+      deprecated in the schema); never in both places (`conflicting_versioning`).
+- [ ] If the product ships more than a CLI and a DMG (Windows, Linux, Android, iOS, web, a
+      universal binary…), declare the files instead of relying on name sniffing:
+      `deliverables.app` with `kind: app`, optional `versioning` (`scheme`: `semver` |
+      `semver+build` | `4part`; `buildNumber`: `descriptor` | `none`), `channels`
+      (`beta: { includes: [stable] }`; canonical names only, no `staging`/`latest`, no cycles),
+      and `artifacts[]`, one entry per build: `{ id, platform, arch, format, role?, match }`.
+      `platform` ∈ macos/ios/android/windows/linux/web, `arch` ∈
+      arm64/x86_64/universal/armv7/wasm32/any, `role` defaults to `payload` (installer versus
+      portable is a `format`, never a role), `match` is an anchored case-sensitive glob (`*`,
+      `?`, ≤ 128 chars). `<payload>.sig`/`.sha256` join their build automatically. An entry
+      may list `embeds: [<packId>…]`, the packs that build ships (omitted = every
+      `baseline: embedded` pack; `invalid_build_embeds`). CI may then attach a release
+      descriptor (`pkey-release.json`, `release-descriptor.schema.json`) whose builds must
+      match this map.
+- [ ] Name every build and its files by **platform plus arch**: ids like `macos-arm64`,
+      `win-x64`, `linux-arm64` (never a bare `arm64`/`x86_64`/`x64`, which is the warning
+      `bare_arch_artifact_id`), and globs over files like `djdl-*-macos-arm64.app.zip`, not
+      `djdl-*-arm64.app.zip`. The console, portal, download page and `pkey release publish`
+      label builds through `buildLabel` (`macOS · Apple silicon (arm64)`,
+      `Windows · x64 (x86_64)`, `All platforms`), and a file lacking a platform inherits its
+      build's or its name's — so give the name something to say. See "How builds are
+      labelled" on `/docs/build/manifest/release/`.
+- [ ] If the product ships content packs, declare each as `deliverables.<packId>` with
+      `kind: pack` (at most 64, `too_many_pack_deliverables`): `type`
+      (`godot.pck` | `files.tree`, required), `binding` (`pinned`, the default: each app release
+      pins the pack release; `compatible`: Release resolves the newest release whose
+      `requires.contentApi` range holds each live contentApi level; `standalone`: the newest
+      release for every level), `baseline`
+      (`embedded` | `none`), `required` (then `delivery: essential` and no `entitlement`),
+      `delivery` (`essential` | `prefetch` | `on-demand`), `contentPolicy: { dataOnly: true }`,
+      `handler` (`mountOrder` 0–1000, `prefixes` of `res://…/` directories, `activation`
+      `restart` | `hot`; a `godot.pck` needs `prefixes` and `requires.engine: godot-4.7`, a
+      `files.tree` takes neither `prefixes` nor `mountOrder`), `variants` (`texture` /
+      `locale` / `quality` → values, ≤ 32 combinations),
+      `requires: { engine?, contentApi?, packs? }` (`contentApi: { app: ">=3 <5" }` is
+      required for `compatible`
+      — `missing_content_api_range` — and refused for `standalone` —
+      `standalone_with_content_api`; its only key is `app`, `unknown_content_api_app`;
+      `packs: { <packId>: ">=1.2.0 <2.0.0" }` names other compatible or standalone packs),
+      `conflicts` (other declared packs, `invalid_pack_conflicts`), `channels` (canonical
+      channels beyond `stable` and `beta` the pack's releases go to, `invalid_channel`), `patch`
+      (`strategies` ⊆ `delta`, `file`, `chunk`, default all three; `deltaBases` 0–8), `versioning.scheme`, and
+      `entitlement`, which must name a `flag` of `.pkey/schema` and only ASSERTS the gate an
+      operator sets under Distribution → Access (a publish whose gate differs is refused).
+      `provides: {required?, from?}` is the save-compatibility policy (`invalid_pack_provides`;
+      `from` a repo-relative JSON list of content ids, default `.pkey/provides.json`); `removes`
+      is never declared (`pack_field_not_supported`), it is `pkey release publish --removes`.
+      `deliverables.app.content: { contentApi: <int>, packChannels?, attachable? }` is then required
+      (`invalid_app_content`); `packChannels` maps a pack id or `prefix.*` to a channel the
+      matched packs publish to (`invalid_pack_channels`, `unknown_pack_channels_target`). Holds
+      are never declared: an app release holds a compatible pack at publish. `attachable`
+      (`invalid_app_attachable`) lists the app scripts (`res://…` paths, `res://…/`
+      directories) and canonical `uid://` UIDs a `godot.pck` pack may reference outside itself;
+      absent, the publish lint refuses any such reference (the device too, except app UIDs it
+      resolves to non-script resources). List a script's path and its UID (Godot 4.4+ writes
+      both) and the UID of any app resource packs reach by UID, and mirror the list in the Godot
+      SDK's `PKeyOptions.pack_attachable`.
+      Codes: `invalid_pack_type`, `invalid_pack_binding`, `invalid_pack_policy`,
+      `invalid_pack_handler`, `invalid_pack_variants`, `invalid_pack_requires`,
+      `missing_content_api_range`, `standalone_with_content_api`, `unknown_content_api_app`,
+      `invalid_pack_conflicts`, `invalid_pack_channels`, `unknown_pack_channels_target`,
+      `invalid_app_attachable`,
+      `invalid_pack_patch`, `unknown_entitlement_ref`. Details:
+      `packages/docs/src/content/docs/features/ship-builds/packs/index.md`.
+- [ ] If CI should publish releases (trusted publishing), declare the publisher in
+      `release` under `publishing.trustedPublisher` with a `workflow`
+      (`.github/workflows/<file>.yml`) and an optional `environment` (default `release`). Those
+      two fields are ALL the manifest can say: the repository's numeric ids come from GitHub at
+      link/resync, the protected-ref / GitHub-hosted-runner / allowed-event checks are fixed,
+      and scopes are an operator setting. Tell the owner the publishing ref needs a branch or
+      **tag ruleset** (`ref_protected`), and the environment should require reviewers. Codes:
+      `invalid_trusted_publisher_workflow`, `invalid_trusted_publisher_environment`.
+- [ ] If the product ships signed updates (wire v4), declare `releaseKeys: [{ kid, publicKey }]`
+      in `release` (1–4 entries; `publicKey` is the raw Ed25519 key in 43-character base64url,
+      as the release-key generator prints it). The private key is a CI secret
+      (`PKEY_RELEASE_KEY`), never committed. Never reuse a product signing key (the sync refuses
+      it, `release_key_is_product_key`) or the Sparkle key (`release_key_reused`). Codes:
+      `invalid_release_key`, `weak_release_key`, `duplicate_release_key`, `release_key_reused`;
+      `contentKeys` only warns (`content_keys_not_supported`).
+- [ ] **`distribution`** (optional; P2b-02) — where the product is distributed: `outlets` keyed
+      by outlet id (an id that is itself a kind such as `steam`, `play`, `app-store` needs no
+      `kind`, and any `kind` it does give must repeat the id — `outlet_kind_mismatch`;
+      `altstore-beta` needs `kind: altstore`, and once linked it can change kind only to one
+      that narrows its capability defaults), each with its kind's store identity
+      fields (`bundleId`, `packageName`, `steam.appId`, `itch.gameId`, `packageFamilyName`,
+      `homebrewCask`, `testflight.publicLink`, `direct.scoop {bin, shortcuts}`, …); `transports` (`default` — `pkey-cdn` or `embedded` —, `packs.<outlet>`,
+      `deliverables.<id>.<outlet>`); and `listing`. Maps to `dist_outlets` and `dist_transports`.
+      Absent = one implicit `direct` outlet by `pkey-cdn`. An `artifact` must name an id in the
+      release artifact map; `tracks`/`branches`/`flights` keys must be declared channels
+      (`ms-store.flights` maps a channel to a Microsoft Store package flight by friendly name or
+      flight id; the non-flighted submission is always `stable`).
+- [ ] **Never** put `capabilities` in `.pkey/distribution` — anywhere in it is an error
+      (`capabilities_not_manifest_writable`). Outlet capabilities default per kind and only an
+      operator narrows them, in the console.
+- [ ] For a Godot export, CI turns the build's outlet into the stamp's ids with
+      `pkey distribution outlet-ids --outlet <id>` (every value a string; `{}` with no file).
+      Full reference: `build/manifest/distribution.md`.
+- [ ] The base name selects the role; the extension is a pure format preference, tried
+      `.json` → `.yaml` → `.yml` and resolved **per document**, so `product.yaml` may sit next to
+      `schema.json`.
+- [ ] Everything here is the **manifest baseline**. Secret values, license/device overrides, live
+      service toggles and operator policy overrides live in Polaris Key and survive resync.
+
+### 4. Pick module names (both vocabularies parse)
+
+- [ ] Canonical service slugs: `license`, `config`, `release`, `distribution`, `update`,
+      `identity`, `sync` (Cloud Sync, which needs `config` and `identity` on:
+      `sync_requires_config`, `sync_requires_identity`), `commerce` (store purchases; needs
+      `license` on: `commerce_requires_license`). Every entry
+      is `{ "enabled": <boolean> }`; anything other than literal `true` counts as off.
+- [ ] The pre-suite vocabulary is still accepted and translated at ingest — only slugs are
+      stored, and one block may mix both spellings (table below).
+- [ ] No `modules` block (or every entry off) means `license` + `config` on, the rest off.
+- [ ] The device-registration policy is **derived, never declared**: License on is
+      `requires-license`; else Identity on is `requires-identity`; else `open`. `devices.registration`
+      is removed (0.9): any value is the error `invalid_registration_policy`, so delete the field.
+      The effective policy is read-only (`effectiveRegistration` in the console's services API,
+      `core.registration` in discovery) and follows the services you turn on or off.
+
+| Declared    | Enables                               | Why                                                                                         |
+| ----------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `licensing` | `license`                             | rename                                                                                      |
+| `config`    | `config`                              | unchanged                                                                                   |
+| `releases`  | `release` + `distribution` + `update` | the old module meant "distributes software" — the suite splits truth, delivery and the feed |
+| `oidc`      | `identity`                            | rename                                                                                      |
+| `edgeMint`  | `config`                              | edge-minting is a secret-**delivery** capability of Config, not a unit of its own           |
+
+- [ ] Release, Distribution and Update are a chain — **release ← distribution ← update**. Naming
+      the slugs directly means naming all three you need: `update` needs `distribution`, and
+      `distribution` needs `release`. The legacy `releases` name enables all three at once.
+
+`pkey init --modules` takes either vocabulary (service slugs or the old names above) and always
+scaffolds the `modules` block in service slugs. In a manifest, the old names are deprecated:
+they still enable their services, and `pkey validate` warns `deprecated_spelling`. The slugs and the legacy mapping are the service
+table, `tools/services.json`.
+
+- [ ] `web.origins` is optional: up to 16 exact browser origins that may read this product's
+      device-facing routes with `fetch` (CORS, no credentials). Spell each one the way a browser
+      sends `Origin`: `https://<host>[:port]`, lower-case, no default port, no path, trailing
+      slash, query, credentials or wildcard. Plain `http` only for `http://localhost[:port]` and
+      `http://127.0.0.1[:port]`. Bad entries are refused, never coerced (`invalid_web_origins`,
+      `invalid_web_origin`). Manifest-owned: resync rewrites it and dropping the block clears it.
+      Details: `packages/docs/src/content/docs/build/web-apps.md`.
+- [ ] The `identity:` block is optional and applies only while `identity` is on (declared with
+      it off, `pkey validate` warns `identity_block_without_service`). Identity on no longer
+      needs an `oidc` block. Members (`methods`, `connections` and `claims` come later):
+
+      ```yaml
+      identity:
+        keyEntry: { limit: 10, claimByKey: false } # limit 1–100 (default 10); claimByKey default false
+        terms: { version: "2026-10", url: "https://example.com/terms" } # version [A-Za-z0-9._-]{1,32}; url https
+        redirectPaths: ["/auth/callback"] # ≤ 16 unique, rooted at /, no ? # * // ..
+      ```
+
+      Codes: `invalid_identity` (any other member), `invalid_identity_key_entry_limit`,
+      `invalid_identity_claim_by_key`, `invalid_identity_terms`, `invalid_identity_redirect_paths`,
+      and the warning `identity_redirect_paths_without_origins` (redirect paths need `web.origins`).
+      Each member is a **claimable** setting (`identity.keyEntry.limit`,
+      `identity.keyEntry.claimByKey`, `identity.terms`, `identity.redirectPaths`): a console edit
+      claims it and Revert returns it to the manifest. `claimByKey: true` lets anyone holding a
+      leaked key add an email-bound licence to their own account; leave it off unless the product
+      truly sells keys with no buyer email to check.
+
+### 5. Validate until clean
+
+- [ ] `pkey validate` — parses `.pkey/`, runs the authoritative TypeScript validator, and prints
+      the enabled modules, required secrets, warnings, then errors. Exit code 0 means valid.
+- [ ] Fix every `error`. Common ones: `update_requires_distribution` (Update on with Distribution
+      off — the feed would answer every client with an empty document),
+      `distribution_requires_release` (Distribution on with Release off — nothing to deliver),
+      `sync_requires_config` and `sync_requires_identity` (Cloud Sync on without Config or
+      Identity: the manifest is refused and nothing is turned on for you),
+      `invalid_registration_policy` (a `devices.registration` value, any value: the field is
+      removed, delete it), `reserved_slug`.
+- [ ] Read the `warning` lines too. `config_without_activation` is a warning (Config on with
+      License and Identity off: a config-only product is legitimate, and its devices register
+      `open`). Nothing turns it into an error.
+- [ ] `pkey doctor --base-url <url> --product <slug>` re-runs local validation and then checks the
+      live discovery document. Without both flags the remote half is skipped.
+
+### 6. Avoid reserved slugs
+
+- [ ] `product.slug` must not collide with a platform route the worker matches before
+      `/<product>/…`. The refused list (`RESERVED_PRODUCT_SLUGS`) is: `docs`, `manage`, `api`,
+      `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known`, `media`,
+      `activate`, `avatar`, `device`, `tv`, `signin`, `help`, plus the admin API's route actions (`PRODUCT_ROUTE_ACTIONS`): `kek`,
+      `link-repo`, `slug-check`.
+      A product registered under one would be permanently shadowed; the validator emits
+      `reserved_slug` and the console's manual-create path checks the same lists.
+- [ ] The slug's shape is `^[a-z0-9][a-z0-9-]{0,63}$` (`PRODUCT_SLUG_PATTERN`): no leading hyphen,
+      at most 64 characters. Otherwise the validator emits `invalid_slug`.
+
+### 6a. Name the product as itself (display names, PX-W13)
+
+- [ ] `product.name`, `listing.name` and `listing.developerName` are what the customer's sign-in
+      card shows ("<App> wants you to sign in"). A control, zero-width or bidi character, or a
+      leading or trailing space, is `invalid_display_text` (an error, also in the JSON Schemas).
+- [ ] A platform or store name as whole words (Polaris Key, plrs, Apple, App Store, Google,
+      Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo, itch.io,
+      after folding case, width, accents, look-alikes and separators) is `reserved_display_name`:
+      a warning today, an error once the platform setting `IDENTITY_RESERVED_DISPLAY_NAMES` says
+      `error`. Either way the card shows such a product by its slug. Only the system product
+      `polaris-key` is exempt.
+
+### 7. Register the product
+
+- [ ] **Repo-link (preferred).** In the console, link the product's repo. The worker fetches and
+      parses the three files and registers the product, minting the sealed signing key and
+      returning the public trust key. Re-linking, or a signed GitHub push webhook, re-parses and
+      updates the rows; webhook sync is pinned to the pushed commit SHA, records the changed
+      `.pkey/` paths, and surfaces applied sections or validation errors in the Releases view.
+- [ ] **Manual create.** Product metadata plus a schema document, for early experiments. Release,
+      OIDC, provisioning, profiles, tiers and edge-mint rows are configured later or by linking.
+- [ ] **Seed SQL is a fixture tool only** —
+      `pnpm --filter @polaris-key/products gen-seed <slug>`. It cannot mint sealed `product_keys`
+      or store secret values; never use it for live onboarding.
+
+### 8. Understand resync and ownership before you promise a behavior
+
+- [ ] A resync updates the **manifest baseline**: product metadata, service enablement (the
+      device-registration policy follows from it), `web.origins`, fingerprint and auto-issue
+      policy, catalog shape, OIDC baseline, release baseline, profiles, tiers, provisioning,
+      edge-mint recipes.
+- [ ] Admin-set **values and management states** (per profile/tier/license/device) live in D1 and
+      are **not** overwritten by a resync.
+- [ ] **Edge-mint recipes need operator approval.** A recipe from `.pkey/` is inert (its token
+      route answers `404`) until an operator approves it in the console's Secrets view, and it
+      signs only with a secret the operator marked usage `edge-mint`. The manifest can never set
+      either. Changing a recipe's `alg`, `signingKeySecret`, `kid`, `claimsTemplate`,
+      `ttlSeconds` or `audience` makes it inert again until it is re-approved; an unchanged
+      resync keeps it approved; dropping it deletes its approval. So does a push that makes the
+      mint public — opens registration (License and Identity both off, so the derived policy is `open`),
+      enables anonymous `autoIssue` (`mode: anonymous`/`both`), or enables `oidcDefault` with
+      Identity on — when the approval was given without the open-registration acknowledgement.
+      And, with Identity on, so does any change to `oidc.provider`, `oidc.issuer`,
+      `oidc.clientId` or `oidc.groupRoleMap`, or turning Identity on. Tell the product owner to
+      expect a review step after any such push (docs: `services/config/edge-mint`).
+- [ ] Five blocks are operator-claimable: `services_source`, `fingerprint_policy_source`,
+      `auto_issue_source` (on the product), `compat_source` (the compat window, claimed from
+      Update settings) and `access_source` (both release access modes together, on
+      `release_config`). A live console edit flips the source `manifest` → `admin`, and a
+      resync then **skips** that block — a push cannot silently undo a 3am toggle, nor
+      downgrade an `entitled` product to the manifest's `public`. "Revert to manifest" hands
+      ownership back and changes nothing else; the manifest re-applies on the **next** resync,
+      not immediately.
+- [ ] The trusted-publisher policy (`ci_publishers`) is operator-claimable too: while
+      manifest-owned it follows `publishing.trustedPublisher` (a change is audited, and removing
+      the block removes the policy); once an operator claims it with a `PUT` to
+      `/manage/api/products/<slug>/ci-publisher`, a resync never touches it.
+- [ ] The operator-only artifact policy (`requireSparkleSignature`, `minimumSystemVersion`)
+      has **no manifest spelling at all** — it lives in `release_config.operator_policy_json`,
+      which no manifest path writes. Do not try to declare either key (or the `entitled` access
+      mode) in `.pkey/release`; set them in the console's Update settings.
+
+## Verification
+
+```sh
+pkey validate                                     # exit 0, no error lines
+pkey doctor --base-url https://key.plrs.im --product <slug>
+
+# In this monorepo, after touching the validator, the schemas, or products/<slug>:
+mise exec node@22 -- pnpm --filter @polaris-key/manifest test   # incl. schema-parity
+mise exec node@22 -- pnpm --filter @polaris-key/cli test
+mise exec node@22 -- pnpm typecheck
+mise exec node@22 -- pnpm format
+```
+
+If you added or changed a validator rule, `schema-parity.test.ts` will fail until its mutation
+table carries an entry for the new error code — that is the gate working, not a flake.

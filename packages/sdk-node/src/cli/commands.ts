@@ -239,10 +239,7 @@ export function getConfig(
   fallback?: JSONValue,
 ): CommandResult {
   const sentinel = Symbol("unset");
-  const value = client.config.getConfig<JSONValue | typeof sentinel>(
-    key,
-    sentinel,
-  );
+  const value = client.config.get<JSONValue | typeof sentinel>(key, sentinel);
   if (value === sentinel) {
     if (fallback === undefined) {
       return {

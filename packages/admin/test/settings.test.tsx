@@ -32,13 +32,14 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { SettingsPage } =
   await import("../src/console/sections/core/pages/Settings.js");
 
 function product(over: Partial<ProductDetail> = {}): ProductDetail {
   return {
     slug: "djdl",
+    manifestAuthoritative: { value: false, locked: false },
     name: "DJDL",
     signingKid: "k",
     releaseSource: "github",
@@ -310,13 +311,11 @@ describe("Core → Settings", () => {
   it("words a dry-run refusal for the check it failed", async () => {
     const user = userEvent.setup();
     fns.planResync.mockRejectedValue(
-      new ApiError(
-        422,
-        undefined,
-        "bad_request",
-        ["product.tiers[0].id: required"],
-        "manifest",
-      ),
+      new HttpError(422, {
+        code: "bad_request",
+        errors: ["product.tiers[0].id: required"],
+        reason: "manifest",
+      }),
     );
     mount();
     await user.click(
@@ -723,7 +722,7 @@ describe("Core → Settings", () => {
     it("marks the check that failed and words its fix", async () => {
       const user = userEvent.setup();
       fns.checkRepoLink.mockRejectedValue(
-        new ApiError(422, undefined, "bad_request", undefined, "app"),
+        new HttpError(422, { code: "bad_request", reason: "app" }),
       );
       const drawer = await openDrawer(user);
       await user.type(
@@ -755,7 +754,7 @@ describe("Core → Settings", () => {
 
     it("a manifest for another product names the slug to set", async () => {
       const user = userEvent.setup();
-      const e = new ApiError(422, undefined, "bad_request", undefined, "slug");
+      const e = new HttpError(422, { code: "bad_request", reason: "slug" });
       e.message = "manifest slug ghost does not match product djdl";
       fns.checkRepoLink.mockRejectedValue(e);
       const drawer = await openDrawer(user);
@@ -804,7 +803,7 @@ describe("Core → Settings", () => {
     it("a push between the check and the link asks for a fresh check", async () => {
       const user = userEvent.setup();
       fns.checkRepoLink.mockResolvedValue(CHECKED);
-      fns.linkProductRepo.mockRejectedValue(new ApiError(409));
+      fns.linkProductRepo.mockRejectedValue(new HttpError(409));
       const drawer = await openDrawer(user);
       await user.type(
         within(drawer).getByRole("textbox", { name: /Repository/ }),
@@ -858,7 +857,7 @@ describe("Core → Settings", () => {
 
   it("keeps the delete dialog open with the error when the server refuses", async () => {
     const user = userEvent.setup();
-    fns.deleteProduct.mockRejectedValue(new ApiError(500));
+    fns.deleteProduct.mockRejectedValue(new HttpError(500));
     mount();
     await user.click(
       await screen.findByRole("button", { name: "Delete product…" }),
@@ -877,7 +876,7 @@ describe("Core → Settings", () => {
 
   it("shows an error state with Retry", async () => {
     const user = userEvent.setup();
-    fns.product.mockRejectedValueOnce(new ApiError(500));
+    fns.product.mockRejectedValueOnce(new HttpError(500));
     mount();
     await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByLabelText(/Display name/)).toBeTruthy();

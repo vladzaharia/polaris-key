@@ -5,7 +5,12 @@ import {
   Fingerprint,
   OctagonAlert,
 } from "lucide-react";
-import { startStepUp } from "../lib/stepUp.js";
+import {
+  hasSavedStepUp,
+  readStash,
+  stashStepUp,
+  startStepUp,
+} from "../lib/stepUp.js";
 import { cn } from "../lib/cn.js";
 import { formatRelative } from "../lib/format.js";
 import { Button, type ButtonVariant } from "./Button.js";
@@ -43,7 +48,7 @@ export interface ConfirmDialogProps {
   intent?: ConfirmIntent;
   title: React.ReactNode;
   description?: React.ReactNode;
-  consequences?: string[];
+  consequences?: React.ReactNode[];
   /** Leads the body, before the consequences (what the action reaches). */
   lead?: React.ReactNode;
   /** Repeats the verb: "Yank 2.4.0". */
@@ -58,6 +63,10 @@ export interface ConfirmDialogProps {
    * confirmed until it is typed, so Cancel's "least destructive" focus saves nothing (a Tab).
    */
   focusTyped?: boolean;
+  /** Open with focus on this field (the dialog's one input) instead of Cancel. */
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
+  /** Enter in a single-line field of the dialog confirms, when confirm is enabled. */
+  submitOnEnter?: boolean;
   onConfirm: () => void | Promise<void>;
   /**
    * An error the caller met outside `onConfirm` (a retry after a step-up prompt), shown inline like
@@ -92,10 +101,12 @@ export interface ConfirmDialogProps {
   loading?: boolean;
   /** Legacy: keeps confirm disabled (an input in `children` is not valid yet). */
   confirmDisabled?: boolean;
+  /** Why `confirmDisabled` holds (a soft-disabled button names it: "Loading"). */
+  confirmDisabledReason?: string;
 }
 
 /**
- * The default inline message: the error's own message. Callers with an `ApiError` pass
+ * The default inline message: the error's own message. Callers with an `HttpError` pass
  * `describeError={(e) => errorCopy(e, context)}` (ADMIN.md §5.9).
  */
 function defaultDescribe(error: unknown): {
@@ -112,67 +123,7 @@ export function isStepUpRequired(error: unknown): boolean {
   return !!e && e.status === 403 && e.code === "step_up_required";
 }
 
-const STEP_UP_TTL_MS = 15 * 60 * 1000;
-const stepUpStorageKey = (key: string): string => `pkey:step-up:${key}`;
-
-interface Stash {
-  typed: string;
-  fields: Record<string, string>;
-}
-
-function stashStepUp(
-  key: string | undefined,
-  typed: string,
-  fields: Record<string, string> = {},
-): void {
-  if (!key) return;
-  try {
-    sessionStorage.setItem(
-      stepUpStorageKey(key),
-      JSON.stringify({
-        typed,
-        fields,
-        page: window.location.hash,
-        at: Date.now(),
-      }),
-    );
-  } catch {
-    // No storage: the word is typed again.
-  }
-}
-
-function readStash(key: string | undefined, remove: boolean): Stash | null {
-  if (!key) return null;
-  try {
-    const raw = sessionStorage.getItem(stepUpStorageKey(key));
-    if (raw === null) return null;
-    if (remove) sessionStorage.removeItem(stepUpStorageKey(key));
-    const v = JSON.parse(raw) as {
-      typed?: unknown;
-      fields?: unknown;
-      page?: unknown;
-      at?: unknown;
-    };
-    if (
-      typeof v.at !== "number" ||
-      Date.now() - v.at >= STEP_UP_TTL_MS ||
-      (typeof v.page === "string" && v.page !== window.location.hash)
-    )
-      return null;
-    const fields: Record<string, string> = {};
-    if (v.fields && typeof v.fields === "object")
-      for (const [k, x] of Object.entries(v.fields))
-        if (typeof x === "string") fields[k] = x;
-    return { typed: typeof v.typed === "string" ? v.typed : "", fields };
-  } catch {
-    return null;
-  }
-}
-
-/** Whether a step-up sign-in left a saved dialog for `key` on this page (it reopens). */
-export function hasSavedStepUp(key: string): boolean {
-  return readStash(key, false) !== null;
-}
+export { hasSavedStepUp };
 
 const ICON: Record<ConfirmIntent, React.ReactNode> = {
   neutral: null,
@@ -204,8 +155,11 @@ export function ConfirmDialog({
   signedInAt,
   confirmVariant,
   focusTyped = false,
+  initialFocusRef,
+  submitOnEnter = false,
   loading = false,
   confirmDisabled = false,
+  confirmDisabledReason,
 }: ConfirmDialogProps): React.ReactElement {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);
@@ -283,14 +237,19 @@ export function ConfirmDialog({
             // The intent shows in the button too; a phone at large text needs the width.
             <span className="mt-0.5 max-sm:hidden">{ICON[intent]}</span>
           ) : null}
-          <span className="min-w-0 [overflow-wrap:anywhere]">{title}</span>
+          <span className="max-h-[40vh] min-w-0 overflow-y-auto [overflow-wrap:anywhere]">
+            {title}
+          </span>
         </span>
       }
       description={description}
       className="max-sm:overflow-y-auto"
       dismissible={!busy}
       closeButton={closeButton}
-      initialFocusRef={typedConfirmation && focusTyped ? typedRef : cancelRef}
+      initialFocusRef={
+        initialFocusRef ??
+        (typedConfirmation && focusTyped ? typedRef : cancelRef)
+      }
     >
       {lead ||
       consequences?.length ||
@@ -298,19 +257,34 @@ export function ConfirmDialog({
       err ||
       stepUp ||
       typedConfirmation ? (
-        <DialogBody className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible">
+        <DialogBody
+          className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible"
+          onKeyDown={
+            submitOnEnter
+              ? (e) => {
+                  if (
+                    e.key === "Enter" &&
+                    (e.target as HTMLElement).tagName === "INPUT"
+                  ) {
+                    e.preventDefault();
+                    void confirm();
+                  }
+                }
+              : undefined
+          }
+        >
           {lead}
           {consequences?.length && lead ? (
             // After a lead, the lines are plain text, not a list of one.
             <div className="space-y-1 text-fg-muted">
-              {consequences.map((c) => (
-                <p key={c}>{c}</p>
+              {consequences.map((c, i) => (
+                <p key={i}>{c}</p>
               ))}
             </div>
           ) : consequences?.length ? (
             <ul className="list-disc space-y-1 ps-5 text-fg">
-              {consequences.map((c) => (
-                <li key={c}>{c}</li>
+              {consequences.map((c, i) => (
+                <li key={i}>{c}</li>
               ))}
             </ul>
           ) : null}
@@ -405,7 +379,9 @@ export function ConfirmDialog({
           disabledReason={
             !stepUp && !typedOk && typedConfirmation
               ? `Type ${typedConfirmation.value} to confirm`
-              : undefined
+              : !stepUp && confirmDisabled
+                ? confirmDisabledReason
+                : undefined
           }
           aria-describedby={err || stepUp ? errorId : undefined}
           onClick={() => void confirm()}

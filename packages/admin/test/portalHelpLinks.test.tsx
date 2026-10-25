@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { PortalApiError } from "../src/portal/api.js";
-import { portalErrorCopy } from "../src/portal/errors.js";
+import { HttpError } from "../src/portal/api.js";
+import { portalErrorCopy, portalVoice } from "../src/portal/errors.js";
 import { HELP_LINKS, helpForRefusal } from "../src/portal/helpLinks.js";
-import { ErrorPanel } from "../src/portal/components/States.js";
+import { ErrorState } from "../src/ui/ErrorState.js";
+import { ErrorVoiceProvider } from "../src/ui/errorVoice.js";
 import { HelpCard } from "../src/portal/components/product/HelpCard.js";
 import type { LibraryProduct } from "../src/portal/model/library.js";
 
@@ -31,22 +32,30 @@ describe("helpLinks.ts", () => {
 
 describe("a refusal links its Help page", () => {
   it("carries the page on a download refusal, and none on a generic error", () => {
-    expect(portalErrorCopy(new PortalApiError(409, "not_hosted")).help).toBe(
-      HELP_LINKS.notHosted,
-    );
-    expect(portalErrorCopy(new PortalApiError(403, "not_entitled")).help).toBe(
-      HELP_LINKS.notEntitled,
-    );
     expect(
-      portalErrorCopy(new PortalApiError(404, "not_found")).help,
+      portalErrorCopy(new HttpError(409, { code: "not_hosted" })).help,
+    ).toBe(HELP_LINKS.notHosted);
+    expect(
+      portalErrorCopy(new HttpError(403, { code: "not_entitled" })).help,
+    ).toBe(HELP_LINKS.notEntitled);
+    expect(
+      portalErrorCopy(new HttpError(404, { code: "not_found" })).help,
     ).toBeUndefined();
   });
 
   it("shows What to do under a download refusal only", () => {
-    render(<ErrorPanel error={new PortalApiError(403, "license_inactive")} />);
+    render(
+      <ErrorVoiceProvider voice={portalVoice}>
+        <ErrorState error={new HttpError(403, { code: "license_inactive" })} />
+      </ErrorVoiceProvider>,
+    );
     expect(linkTo(HELP_LINKS.licenseInactive)?.textContent).toBe("What to do");
     cleanup();
-    render(<ErrorPanel error={new PortalApiError(404, "not_found")} />);
+    render(
+      <ErrorVoiceProvider voice={portalVoice}>
+        <ErrorState error={new HttpError(404, { code: "not_found" })} />
+      </ErrorVoiceProvider>,
+    );
     expect(screen.queryByRole("link")).toBeNull();
   });
 });

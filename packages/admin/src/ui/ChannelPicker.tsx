@@ -1,8 +1,9 @@
 import * as React from "react";
+import { withIncludedChannels } from "@polaris-key/manifest";
 import { channelOptions, HINT_DEV, HINT_PR } from "../lib/channels.js";
 import { cn } from "../lib/cn.js";
+import { t } from "../lib/copy.js";
 import { Checkbox } from "./Checkbox.js";
-import { Tooltip } from "./Tooltip.js";
 
 /** What each built-in channel grant means (components.md §3.3). */
 const SEMANTICS: Record<string, string> = {
@@ -54,6 +55,8 @@ export function ChannelPicker({
   ...aria
 }: ChannelPickerProps): React.ReactElement {
   const selected = value ?? [];
+  // `dev` includes `beta`: with dev chosen, beta shows ticked and locked, whatever is stored.
+  const devChosen = selected.includes("dev");
   const options = channelOptions(manual, held ?? selected).filter(
     (o) => !fixed.includes(o.name),
   );
@@ -72,17 +75,15 @@ export function ChannelPicker({
           key={name}
           id={`${base}-${name}`}
           label={
-            <Tooltip content="Always included" side="top">
-              {/* Focusable, so the keyboard reaches the reason a disabled box cannot give. */}
-              <span
-                tabIndex={0}
-                data-locked
-                data-ui-static
-                className="inline-flex min-h-6 min-w-6 cursor-default items-center justify-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
-              >
-                {name}
-              </span>
-            </Tooltip>
+            // Focusable, so the keyboard reaches the locked choice; the description says why, once.
+            <span
+              tabIndex={0}
+              data-locked
+              data-ui-static
+              className="inline-flex min-h-6 min-w-6 cursor-default items-center justify-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
+            >
+              {name}
+            </span>
           }
           description="Always included"
           checked
@@ -94,9 +95,15 @@ export function ChannelPicker({
           key={o.name}
           id={`${base}-${o.name}`}
           label={<span className="font-mono text-xs">{o.name}</span>}
-          description={SEMANTICS[o.name] ?? o.hint}
-          checked={selected.includes(o.name)}
-          disabled={disabled}
+          description={
+            o.name === "beta" && devChosen
+              ? t("license.channelIncludedByDev")
+              : (SEMANTICS[o.name] ?? o.hint)
+          }
+          checked={
+            selected.includes(o.name) || (o.name === "beta" && devChosen)
+          }
+          disabled={disabled || (o.name === "beta" && devChosen)}
           readOnly={readOnly}
           onCheckedChange={(on) => {
             const next = on
@@ -104,7 +111,9 @@ export function ChannelPicker({
               : selected.filter((c) => c !== o.name);
             // Keep the picker's order, not the click order.
             onChange?.(
-              options.map((x) => x.name).filter((n) => next.includes(n)),
+              withIncludedChannels(
+                options.map((x) => x.name).filter((n) => next.includes(n)),
+              ),
             );
           }}
         />

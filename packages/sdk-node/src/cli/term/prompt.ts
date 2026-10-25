@@ -156,6 +156,10 @@ export interface ConfirmPrompt {
   cancelled(): RailRow[];
   /** Enter's answer (default no, D-71). */
   initial?: boolean;
+  /** A muted line under the question: what a yes does. */
+  detail?: Line;
+  /** Key hints on the end row. */
+  hints?: Line;
 }
 
 /** Ask a yes/no question: y or n, Enter for the default, Esc to cancel. */
@@ -165,7 +169,20 @@ export async function promptConfirm(
 ): Promise<boolean | Cancel> {
   const live = region(ctx);
   try {
-    live.draw(frame(ctx, [{ mark: "active", spans: p.title }]));
+    live.draw(
+      frame(ctx, [
+        { mark: "active", spans: p.title },
+        ...(p.detail
+          ? [
+              {
+                mark: "rail" as const,
+                spans: p.detail.map((s) => ({ ...s, style: ["muted"] })),
+              },
+            ]
+          : []),
+        ...(p.hints ? [{ mark: "end" as const, spans: p.hints }] : []),
+      ]),
+    );
     for (;;) {
       const k = await ctx.keys.next(ctx.signal);
       if (k === null || isCancel(k)) {
@@ -255,6 +272,183 @@ export async function promptSelect<T>(
         live.commit(frame(ctx, p.done(v)));
         return v;
       }
+      render();
+    }
+  } finally {
+    live.close();
+  }
+}
+
+export interface MultiSelectPrompt<T> {
+  title: Line;
+  options: readonly SelectOption<T>[];
+  /** The values ticked when the prompt opens. */
+  initial?: readonly T[];
+  hints: Line;
+  /**
+   * Space on an option: the new selection and a note to show, or null. The caller owns the rules
+   * (ticking one option may tick or clear another).
+   */
+  toggle(
+    chosen: readonly T[],
+    value: T,
+  ): { chosen: readonly T[]; note: Line | null };
+  /**
+   * Why an option cannot be ticked now, or null. Drawn as the option's muted line; Space on it
+   * shows `lockedNote` (default: this reason).
+   */
+  locked?(value: T, chosen: readonly T[]): Line | null;
+  /** The note Space shows on a locked option: what to do about it. */
+  lockedNote?(value: T, chosen: readonly T[]): Line | null;
+  /** Enter: a note to show instead of confirming (nothing ticked), or null to confirm. */
+  check?(chosen: readonly T[]): Line | null;
+  done(chosen: readonly T[]): RailRow[];
+  cancelled(): RailRow[];
+}
+
+/** Checkbox glyphs in the symbol set's spelling (Unicode, or ASCII under TERM=dumb and --ascii). */
+function boxes(symbols: Symbols): { on: string; off: string; focus: string } {
+  return symbols.rail === "|"
+    ? { on: "[x]", off: "[ ]", focus: ">" }
+    : { on: "◼", off: "◻", focus: "›" };
+}
+
+/**
+ * A checkbox list: ↑↓ or j/k move, Space toggles, Enter confirms (zero ticked is an answer unless
+ * `check` refuses it), Esc cancels. The focused row carries a marker, locked rows included. A
+ * screen too short for the list keeps the question and the hints and crops the list around the
+ * focus. Resolves with the ticked values in option order.
+ */
+export async function promptMultiSelect<T>(
+  ctx: PromptContext,
+  p: MultiSelectPrompt<T>,
+): Promise<T[] | Cancel> {
+  const live = region(ctx);
+  const box = boxes(ctx.symbols);
+  let at = 0;
+  let chosen: readonly T[] = p.initial ?? [];
+  let note: Line | null = null;
+  const ordered = () =>
+    p.options.map((o) => o.value).filter((v) => chosen.includes(v));
+  const render = () => {
+    const blocks: RailRow[][] = p.options.map((o, i) => {
+      const focus = i === at;
+      const ticked = chosen.includes(o.value);
+      const lock = p.locked?.(o.value, chosen) ?? null;
+      const label = o.label.map((s) =>
+        lock
+          ? { ...s, style: ["muted"] }
+          : focus
+            ? { ...s, style: [...(s.style ?? []), "strong"] }
+            : s,
+      );
+      const rows: RailRow[] = [
+        {
+          mark: "rail",
+          spans: [
+            {
+              text: focus ? `${box.focus} ` : "  ",
+              style: ["accent"],
+            },
+            {
+              text: `${ticked ? box.on : box.off} `,
+              style: lock
+                ? ["muted"]
+                : focus || ticked
+                  ? ["accent"]
+                  : ["muted"],
+            },
+            ...(focus && lock
+              ? label.map((s) => ({
+                  ...s,
+                  style: [...(s.style ?? []), "strong"],
+                }))
+              : label),
+          ],
+        },
+      ];
+      const meta = lock ?? o.meta;
+      if (meta)
+        rows.push({
+          mark: "rail",
+          spans: [
+            { text: "    " },
+            ...meta.map((s) => ({ ...s, style: ["muted"] })),
+          ],
+        });
+      return rows;
+    });
+    const tail: RailRow[] = [];
+    if (note)
+      tail.push({ mark: "rail", spans: [] }, { mark: "rail", spans: note });
+    tail.push({ mark: "end", spans: p.hints });
+    // Keep the question, the note and the hints; crop the list around the focus.
+    const budget = Math.max(3, ctx.caps.rows - 1 - 1 - tail.length);
+    let from = 0;
+    let to = blocks.length;
+    const total = blocks.reduce((n, b) => n + b.length, 0);
+    if (total > budget) {
+      from = at;
+      to = at + 1;
+      let used = blocks[at]!.length;
+      for (;;) {
+        const next =
+          to < blocks.length && used + blocks[to]!.length <= budget ? to : -1;
+        const prev =
+          from > 0 && used + blocks[from - 1]!.length <= budget ? from - 1 : -1;
+        if (next < 0 && prev < 0) break;
+        if (next >= 0) {
+          used += blocks[to]!.length;
+          to += 1;
+        } else {
+          used += blocks[from - 1]!.length;
+          from -= 1;
+        }
+      }
+    }
+    live.draw(
+      frame(ctx, [
+        { mark: "active", spans: p.title },
+        ...blocks.slice(from, to).flat(),
+        ...tail,
+      ]),
+    );
+  };
+  try {
+    render();
+    for (;;) {
+      const k = await ctx.keys.next(ctx.signal);
+      if (k === null || isCancel(k)) {
+        live.commit(frame(ctx, p.cancelled()));
+        return cancelled(k);
+      }
+      if (k.name === "up" || k.name === "k")
+        at = (at - 1 + p.options.length) % p.options.length;
+      else if (k.name === "down" || k.name === "j")
+        at = (at + 1) % p.options.length;
+      else if (k.name === "space" || k.sequence === " ") {
+        const v = p.options[at]!.value;
+        const lock = p.locked?.(v, chosen) ?? null;
+        if (lock) note = p.lockedNote?.(v, chosen) ?? lock;
+        else {
+          const r = p.toggle(chosen, v);
+          chosen = r.chosen;
+          note = r.note;
+        }
+        render();
+        continue;
+      } else if (k.name === "return" || k.name === "enter") {
+        const refused = p.check?.(ordered()) ?? null;
+        if (refused) {
+          note = refused;
+          render();
+          continue;
+        }
+        const out = ordered();
+        live.commit(frame(ctx, p.done(out)));
+        return out;
+      }
+      note = null;
       render();
     }
   } finally {

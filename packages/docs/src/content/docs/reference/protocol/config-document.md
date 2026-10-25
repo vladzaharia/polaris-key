@@ -200,5 +200,5 @@ data that had merely been living under a config path. See
   in this document were resolved before signing.
 - [Edge-mint](/docs/features/managed-config/edge-mint/) — the delivery path for a secret whose value
   should never appear in this document at all.
-- `packages/worker/test/licensing.test.ts` — pins that this document carries settings and no
+- `packages/worker/test/surfaces/licensing.test.ts` — pins that this document carries settings and no
   license fields at all, and that its ETag is independent of the license document's.

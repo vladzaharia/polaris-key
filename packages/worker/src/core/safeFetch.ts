@@ -19,7 +19,7 @@
  * Cloudflare's edge neither dials an IP literal from a Worker nor routes a subrequest to RFC 1918
  * or loopback space. The names above are the ones that only ever resolve privately.
  *
- * The case table in `test/safeFetch.test.ts` is the S-20 reference puller's `--self-test` table
+ * The case table in `test/core/safeFetch.test.ts` is the S-20 reference puller's `--self-test` table
  * (`docs/research/2026-09-29-godot-omniplatform/prototype/hosted-assets/pull.mjs`), case for case:
  * the test reads the prototype's table and fails if the two drift.
  *

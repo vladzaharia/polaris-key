@@ -22,13 +22,15 @@
 import * as React from "react";
 import { Plus } from "lucide-react";
 import {
-  ApiError,
+  HttpError,
   type OutletCredentialInfo,
   type OutletCredentialKind,
   type OutletCredentialsResponse,
   type PutOutletCredentialBody,
 } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
+import { useScopedKinds } from "../model/channelScope.js";
+import { ConnectorGrid } from "../components/ConnectorGrid.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
@@ -66,9 +68,8 @@ import {
   useConnectors,
   useCredentials,
   useOutlets,
-  useReleaseStore,
 } from "../data.js";
-import { ConnectorCard } from "../components/StoreControls.js";
+import { useReleaseStore } from "../../release/data.js";
 
 // ── The kinds ──────────────────────────────────────────────────────────────────────────────────
 
@@ -242,11 +243,11 @@ function pinField(
 
 /** The error copy, with the platform store connection's refusal worded (A-16). */
 function describe(e: unknown): { title: string; description?: string } {
-  if (e instanceof ApiError && e.code === "app_assigned_elsewhere")
+  if (e instanceof HttpError && e.code === "app_assigned_elsewhere")
     return {
       title: "That app belongs to another product",
       description:
-        e.message && e.message !== `api ${e.status}`
+        e.message && e.message !== `http ${e.status}`
           ? e.message
           : "It is assigned to another product through the platform's store connection. Unassign it there first.",
     };
@@ -511,16 +512,11 @@ export function CredentialsPage({
             context={{ area: "distribution" }}
           />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {(connectors.data?.connectors ?? []).map((c) => (
-              <ConnectorCard
-                key={c.kind}
-                slug={slug}
-                connector={c}
-                releases={store.data}
-              />
-            ))}
-          </div>
+          <ConnectorGrid
+            slug={slug}
+            connectors={connectors.data?.connectors ?? []}
+            releases={store.data}
+          />
         )}
       </section>
 
@@ -720,6 +716,7 @@ function SetCredentialDrawer({
   onClose: () => void;
 }): React.ReactElement {
   const outlets = useOutlets(slug);
+  const kinds = useScopedKinds(slug, KINDS, existing);
   const [kind, setKind] = React.useState<OutletCredentialKind | null>(
     (rotate?.kind as OutletCredentialKind | undefined) ?? null,
   );
@@ -783,7 +780,7 @@ function SetCredentialDrawer({
       onClose();
     } catch (err) {
       setFailure(err);
-      if (err instanceof ApiError && err.fields?.length) {
+      if (err instanceof HttpError && err.fields?.length) {
         setErrors(
           Object.fromEntries(
             err.fields.map((f) => [
@@ -841,7 +838,7 @@ function SetCredentialDrawer({
                 {...field}
                 ref={undefined}
                 placeholder="Choose a kind"
-                options={KINDS.map((k) => ({
+                options={kinds.map((k) => ({
                   value: k.value,
                   label: k.label,
                   description: k.description,

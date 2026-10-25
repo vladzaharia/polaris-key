@@ -247,7 +247,9 @@ describe("renderers", () => {
     for (const [path, content] of rendered) {
       if (
         path.startsWith("packages/admin/") ||
-        path.startsWith("packages/docs/")
+        path.startsWith("packages/docs/") ||
+        // `pkey init` asks by feature, so the manifest package carries them (ST-46.3).
+        path === "packages/shared-manifest/src/services.generated.ts"
       )
         continue;
       expect(content, path).not.toContain("ship-builds");

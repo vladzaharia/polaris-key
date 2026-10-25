@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── Feed content composition on workerd (P4-13, plans/P4-13.md §6.3 "Cost") ────────────────
 //
-// The Node lane proves the shedding order (`test/feedContentSize.test.ts`). This proves that the
+// The Node lane proves the shedding order (`test/services/update/feedContentSize.test.ts`). This proves that the
 // largest legal content part — 64 packs with 64-byte ids × 3 live levels × 2 engines × 6
 // platforms, every pack floored at every level, 64 revocations — is fitted under the payload cap,
 // checked with client-core's `feedContent` and the v4 claims inside the isolate, for every

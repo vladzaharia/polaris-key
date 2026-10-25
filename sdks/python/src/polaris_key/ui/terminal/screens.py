@@ -225,7 +225,7 @@ def gate(k: Kit, v: GateView, verb: str = "status", portal: Optional[str] = None
     elif v.component == "StatusScreen":
         # A refusal, never a failure: the triangle, then what resolves it (DL6, UK-51).
         body += k.step("warn", [k.t(f"core.gate.{v.state}.title", "strong")])
-        body += k.body([k.t(f"core.gate.{v.state}.message")])
+        body += k.body([k.t(f"core.gate.{v.state}.message", product=k.inline_product)])
         if v.state in ("version-too-old", "version-too-new") and (v.allowed_min or v.allowed_max):
             if v.allowed_min and v.allowed_max:
                 rng = k.t("status.allowedRange", "muted", min=v.allowed_min, max=v.allowed_max)
@@ -675,7 +675,12 @@ def _progress_line(
         if done and total:
             meta.append(k.t(key, "muted", size=done, total=total, time=eta or ""))
         if eta and key == "update.downloading":
-            meta += [k.sep(), k.t("update.timeLeft", "muted", time=eta)]
+            if eta_seconds is None:
+                meta += [k.sep(), k.t("update.timeLeft", "muted", time=eta)]
+            elif eta_seconds < 60:
+                meta += [k.sep(), k.t("common.updateTimeLessThanMinute", "muted")]
+            else:
+                meta += [k.sep(), k.t("common.updateTimeMinutes", "muted", minutes=int(-(-eta_seconds // 60)))]
         return out + (k.body(meta) if meta else [])
     loc = k.copy.locale
     n, whole = fmt.size_pair(done_bytes, total_bytes, loc)
@@ -863,7 +868,7 @@ def boot(k: Kit, v: BootView, verb: str = "boot") -> Lines:
     elif v.state == "blocked":
         status = v.status if v.status in ("version-too-old", "version-too-new", "channel-not-entitled", "expired", "revoked") else "version-too-old"
         body += k.step("warn", [k.t(f"core.gate.{status}.title", "strong")])  # a refusal, never ✗ (DL6)
-        body += k.body([k.t(f"core.gate.{status}.message")])
+        body += k.body([k.t(f"core.gate.{status}.message", product=k.inline_product)])
         if status == "version-too-old":
             body += _gap(k)
             body += _fixes(k, [("update", "status.update")])

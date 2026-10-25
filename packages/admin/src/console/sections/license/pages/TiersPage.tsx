@@ -47,7 +47,15 @@ export function TiersPage({
   const tiersQ = useTiers(slug);
   const usage = useTierUsage(slug);
   const [createOpen, setCreateOpen] = React.useState(false);
-  const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
+  // The Default tier is first (LX-33.7); the rest keep the Worker's order.
+  const tiers = React.useMemo(() => {
+    const all = tiersQ.data?.tiers ?? [];
+    return [
+      ...all.filter((t) => t.implicit),
+      ...all.filter((t) => !t.implicit),
+    ];
+  }, [tiersQ.data]);
+  const ranked = tiers.filter((t) => !t.implicit).length;
   const open =
     selectedId === undefined
       ? tiers[0]
@@ -112,7 +120,7 @@ export function TiersPage({
           className="hidden overflow-hidden rounded-lg border border-border bg-surface-raised lg:sticky lg:top-4 lg:block"
         >
           <ul className="divide-y divide-border">
-            {tiers.map((t, i) => {
+            {tiers.map((t) => {
               const used = usage?.get(t.id) ?? 0;
               const current = t.id === open?.id;
               return (
@@ -128,7 +136,7 @@ export function TiersPage({
                   <Link
                     to={r.tier(slug, t.id)}
                     aria-current={current ? "page" : undefined}
-                    className="min-w-0 flex-1 px-3 py-2.5 outline-offset-[-2px] hover:bg-hover"
+                    className="min-w-0 flex-1 px-3 py-2 outline-offset-[-2px] hover:bg-hover"
                   >
                     <span
                       className="block truncate text-sm font-medium text-fg-strong"
@@ -137,7 +145,9 @@ export function TiersPage({
                       {t.label || t.id}
                     </span>
                     <span className="block text-xs text-fg-muted">
-                      {`${i + 1} of ${tiers.length}`}
+                      {t.implicit
+                        ? "Default"
+                        : `${tiers.filter((x) => !x.implicit).indexOf(t) + 1} of ${ranked}`}
                       {usage ? ` · ${licenseCountText(used)}` : ""}
                     </span>
                   </Link>

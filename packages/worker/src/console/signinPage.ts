@@ -6,7 +6,8 @@
  * static copy and carry nothing else; `returnTo` is re-sanitised before it is written out.
  */
 import { escapeHtml } from "../platform/html.js";
-import { icon, renderAuthCard } from "../core/brandHtml.js";
+import { callout, icon, renderAuthCard } from "../core/brandHtml.js";
+import { SIGNIN_SCRIPT } from "./signinScript.js";
 
 /**
  * Help and Privacy under the card: public Polaris Key pages that need no session. Operators are
@@ -17,7 +18,12 @@ export const CONSOLE_CARD_LINKS = [
   { label: "Privacy", href: "/docs/reference/what-apps-collect/" },
 ] as const;
 
-export type SigninState = "signin" | "signedOut" | "ended" | "stepUp";
+export type SigninState =
+  | "signin"
+  | "signedOut"
+  | "ended"
+  | "stepUp"
+  | "breakGlass";
 
 const COPY: Record<SigninState, { h1: string; lede: string; cta: string }> = {
   signin: { h1: "Sign in to the console", lede: "", cta: "Continue" },
@@ -32,9 +38,16 @@ const COPY: Record<SigninState, { h1: string; lede: string; cta: string }> = {
     lede: "This change needs a fresh sign-in.",
     cta: "Sign in again",
   },
+  // ST-30c.2: the break-glass start card (ST-28 §2.6). It starts the PKCE flow with `breakGlass=1`.
+  breakGlass: {
+    h1: "Emergency sign-in",
+    lede: "For when your account can’t sign in. Superadmins only.",
+    cta: "Continue",
+  },
 };
 
 export function signinState(url: URL): SigninState {
+  if (url.searchParams.get("breakGlass") === "1") return "breakGlass";
   if (url.searchParams.get("stepUp") === "1") return "stepUp";
   if (url.searchParams.get("ended") === "1") return "ended";
   if (url.searchParams.get("signedOut") === "1") return "signedOut";
@@ -47,6 +60,27 @@ function hidden(name: string, value: string | null | undefined): string {
     : "";
 }
 
+/**
+ * The passkey button, `hidden` until the script finds WebAuthn (so the no-JS card is unchanged).
+ * A step-up has no "or": the button sits beside **Sign in again**. `returnTo` is sanitised.
+ */
+function passkeyBlock(state: SigninState, returnTo: string | null): string {
+  const stepUp = state === "stepUp";
+  const button =
+    `<button class="${stepUp ? "button" : "button secondary"}" type="button" id="pk-go" aria-describedby="pk-err">` +
+    `${icon("fingerprint")}<span id="pk-label">${stepUp ? "Use your passkey" : "Sign in with a passkey"}</span></button>`;
+  const err =
+    `<div class="pk-err" id="pk-err" role="alert"><p class="field-err" id="pk-msg" hidden>` +
+    `${icon("x-circle", true)}<span id="pk-msg-t"></span></p></div>`;
+  const or = `<div class="or" aria-hidden="true">or</div>`;
+  return (
+    `<div class="pk" id="pk" hidden${stepUp ? ` data-step-up="1"` : ""}${returnTo ? ` data-return-to="${escapeHtml(returnTo)}"` : ""}>` +
+    // Sign-in: "or", then the ghost. Step-up: the primary, its message, then "or" before Sign in again.
+    (stepUp ? button + err + or : or + button + err) +
+    `<script>${SIGNIN_SCRIPT}</script></div>`
+  );
+}
+
 /** The card. `returnTo` is already sanitised; `issuerHost` is the IdP's host, shown once. */
 export function renderConsoleSignin(opts: {
   state: SigninState;
@@ -56,29 +90,115 @@ export function renderConsoleSignin(opts: {
   hint?: string | null;
   /** A step-up knows who is signing in again: no field, the address is the IdP's hint. */
   knownEmail?: string | null;
+  /**
+   * ST-30c.2 (D-S5): the last operator's address from the hint cookie, validated by the caller.
+   * It shows as "email · Change" in place of the empty field, carried as the hidden `login_hint`.
+   */
+  chip?: string | null;
+  /**
+   * The passkey button and its script (ST-30c.6). The caller decides: the console RP resolves for
+   * this request and, on a step-up, the signed-in account holds a console passkey. Never on the
+   * emergency card.
+   */
+  passkey?: boolean;
+  /** After Change: the empty field takes focus (the card is script-free, so `autofocus`). */
+  focusEmail?: boolean;
 }): string {
   const c = COPY[opts.state];
+  const bg = opts.state === "breakGlass";
+  const ctxQuery = (extra: Record<string, string>) => {
+    const q = new URLSearchParams(extra);
+    if (opts.returnTo) q.set("returnTo", opts.returnTo);
+    return `/manage/login?${q.toString()}`;
+  };
+  const stateFlag: Record<string, string> =
+    opts.state === "signedOut"
+      ? { signedOut: "1" }
+      : opts.state === "ended"
+        ? { ended: "1" }
+        : {};
+  const offerPasskey = opts.passkey === true && !bg;
+  const chip = !bg && opts.state !== "stepUp" && opts.chip ? opts.chip : null;
+  const identifier = bg
+    ? ""
+    : opts.knownEmail
+      ? hidden("login_hint", opts.knownEmail)
+      : chip
+        ? `${hidden("login_hint", chip)}<div class="field"><span class="field-label" id="email-label">Email</span>` +
+          `<div class="chip" role="group" aria-labelledby="email-label"><span class="ac-mono" aria-hidden="true">${escapeHtml(initialsOf(chip))}</span>` +
+          `<span class="chip-email">${escapeHtml(chip).replace(/[@.]/g, "<wbr>$&")}</span>` +
+          `<a class="chip-change" href="${escapeHtml(ctxQuery({ change: "1", ...stateFlag }))}">Change</a></div></div>`
+        : `<div class="field"><label for="email">Email</label>` +
+          `<input id="email" type="email" name="login_hint"${opts.focusEmail ? " autofocus" : ""} autocomplete="${offerPasskey ? "username webauthn" : "username"}" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`;
   const body = [
     c.lede ? `<p>${escapeHtml(c.lede)}</p>` : "",
+    // The path is elevated, so it reads that way: the one fact an operator must weigh sits in a
+    // callout with a glyph, not in a line of lede.
+    bg
+      ? callout(
+          "shield",
+          "Every use is recorded and every Superadmin is emailed.",
+        )
+      : "",
+    // A step-up names who is confirming, once, above both ways in.
+    opts.state === "stepUp" && opts.knownEmail
+      ? `<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
+      : "",
+    // On a step-up the passkey leads (the primary), so its block sits before the form; elsewhere it follows.
+    offerPasskey && opts.state === "stepUp"
+      ? passkeyBlock(opts.state, opts.returnTo)
+      : "",
     `<form method="post" action="/manage/login" novalidate>`,
     hidden("returnTo", opts.returnTo),
     opts.state === "stepUp" ? hidden("stepUp", "1") : "",
-    opts.knownEmail
-      ? `${hidden("login_hint", opts.knownEmail)}<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
-      : `<div class="field"><label for="email">Email</label>` +
-        `<input id="email" type="email" name="login_hint" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`,
+    bg ? hidden("breakGlass", "1") : "",
+    identifier,
     `<button class="button" type="submit">${escapeHtml(c.cta)}${icon("arrow-right")}</button>`,
     `</form>`,
     `<p class="fine">Next: sign in at ${escapeHtml(opts.issuerHost)}</p>`,
+    offerPasskey && opts.state !== "stepUp"
+      ? passkeyBlock(opts.state, opts.returnTo)
+      : "",
   ].join("");
+  // The emergency link is quiet: one more item under the card, on the states that start a sign-in.
+  const links =
+    opts.state === "stepUp"
+      ? CONSOLE_CARD_LINKS
+      : bg
+        ? [
+            ...CONSOLE_CARD_LINKS,
+            { label: "Back to sign in", href: ctxQuery({}) },
+          ]
+        : [
+            ...CONSOLE_CARD_LINKS,
+            {
+              label: "Emergency sign-in",
+              href: ctxQuery({ breakGlass: "1" }),
+            },
+          ];
   return renderAuthCard({
     brand: "console",
     title: c.h1,
     heading: c.h1,
     body,
-    focusHeading: true,
-    links: CONSOLE_CARD_LINKS,
+    focusHeading: !(opts.focusEmail && !chip && !opts.knownEmail && !bg),
+    links,
+    linksLabel: "Help and links",
   });
+}
+
+/**
+ * The chip's avatar letters, by the console's own rule (the shell's initials): the first code
+ * point of the first two words of the address's local part ("vlad.zaharia" gives "VZ"), else "?".
+ */
+function initialsOf(email: string): string {
+  const words = (email.split("@")[0] ?? "").split(/[._+\-\s]+/).filter(Boolean);
+  const out = words
+    .slice(0, 2)
+    .map((w) => [...w][0] ?? "")
+    .join("")
+    .toUpperCase();
+  return out || "?";
 }
 
 /** A way forward on a notice: a link, or a POST that carries the context as hidden fields. */

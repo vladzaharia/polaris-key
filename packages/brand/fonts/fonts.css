@@ -71,7 +71,20 @@
 /* Metric-matched fallbacks: no layout shift when the web fonts load. */
 @font-face {
   font-family: "Rubik Fallback";
+  font-weight: 300 549;
   src: local("Arial"), local("ArialMT"), local("Liberation Sans");
+  size-adjust: 105.73%;
+  ascent-override: 88.43%;
+  descent-override: 23.64%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Rubik Fallback";
+  font-weight: 550 900;
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold"),
+    local("Helvetica-Bold"), local("Liberation Sans Bold");
   size-adjust: 105.73%;
   ascent-override: 88.43%;
   descent-override: 23.64%;

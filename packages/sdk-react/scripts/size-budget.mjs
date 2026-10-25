@@ -46,6 +46,19 @@ const KB = 1000;
  * settings rows, the account pane, the channel picker: -3.4 KB) load on demand (`kit/lazy.ts`,
  * `kit/rows.tsx`), as a copy pack does. The budget stays at 71.2: the headroom is for the
  * milestones' growth, not a licence to raise it.
+ *
+ * polaris-key-gate 71.2 -> 72.0 KB (v0.9.17): the desktop kit (UK-06) grew the gate to 77.6 KB;
+ * its chrome stylesheet (`kit/desktopCss.js`) and the menu-opened Settings and update drivers
+ * (`kit/openedViews.tsx`) now load on demand (-5.9 KB). What stays is web-path code every gate
+ * runs (platform variant, desktop button order, the desktop-sheet hook): 71.67 KB. To take back
+ * out: the offline, paywall and settings steps still in the entry.
+ *
+ * polaris-key-gate 72.0 -> 71.0 KB (ratchet; staging measured 71.8): the rows of the offline and
+ * settings steps were already on demand; what still sat in the entry was ui-core's whole model
+ * table (`MODELS`, reached through `ViewModel`/`viewOf`: sign-in, settings, devices, update,
+ * paywall, offline). The kit now hands `useKit` the model of the component it draws
+ * (`BareViewModel`), and the gate names only the six screens it draws, so the other models load
+ * with the components that use them. No lazy chunk, so no second copy of shared state: 70.9 KB.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),

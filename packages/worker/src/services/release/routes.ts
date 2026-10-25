@@ -64,6 +64,7 @@ function decodeSegment(segment: string): string | null {
 export const RELEASE_ROUTES = serviceRoutes("release", [
   {
     path: "changelog",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "handler" },
@@ -73,6 +74,7 @@ export const RELEASE_ROUTES = serviceRoutes("release", [
   // A CI-signed release record by its hash (P3-03, `recordRoute.ts`).
   {
     path: "records/:sha256",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "handler" },

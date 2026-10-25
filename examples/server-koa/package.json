@@ -1,0 +1,17 @@
+{
+  "name": "polaris-key-example-server-koa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "@koa/router": "^15.0.0",
+    "@polaris-key/server": "^0.0.0",
+    "koa": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/koa": "^2.15.0",
+    "tsx": "^4.19.0"
+  }
+}

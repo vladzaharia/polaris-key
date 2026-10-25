@@ -47,7 +47,7 @@ flask = ["flask>=2.2"]
 django = ["django>=4.2"]
 drf = ["django>=4.2", "djangorestframework>=3.14"]
 # pyte: the terminal emulator the terminal kit's responsive tests draw into (tests/cli/pyterm.py).
-dev = ["pytest>=7", "click>=8", "typer>=0.9", "rich>=13", "textual>=0.80", "pyte>=0.8", "mypy>=1.10",
+dev = ["pytest>=7", "click>=8", "typer>=0.9", "rich>=13", "textual>=0.80", "pyte>=0.8", "mypy==1.19.1", "ruff==0.16.10",
   "fastapi>=0.100", "flask>=2.2", "django>=4.2", "djangorestframework>=3.14", "requests>=2.28",
   "uvicorn>=0.23"]
 
@@ -63,3 +63,28 @@ packages = ["src/polaris_key"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+# Lint (P0-46.4): ruff and mypy, both pinned exactly in the dev extras (mypy 1.19.1 is the last
+# release that runs on CPython 3.9). Today's findings sit in lint-debt.json (ruff: / mypy: rules);
+# run them through tools/lint.sh, which feeds tools/lint/lint-debt.mjs.
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+extend-exclude = ["src/polaris_key/constants_generated.py", "src/polaris_key/copy_generated.py", ".venv", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+# Formatting is not enforced here; E501 stays on so long lines are counted, not ignored.
+
+[tool.mypy]
+python_version = "3.9"
+platform = "linux"
+files = ["src/polaris_key"]
+exclude = ["src/polaris_key/constants_generated\\.py$", "src/polaris_key/copy_generated\\.py$"]
+ignore_missing_imports = true
+# Third-party code is not followed: some of it (click, anyio) uses syntax newer than 3.9, and what
+# mypy sees there would differ between the CI legs. Its names resolve to Any.
+follow_imports = "skip"
+show_error_codes = true
+show_column_numbers = false
+pretty = false

@@ -67,6 +67,51 @@ The device list: an icon for the form factor, the name, platform and last seen, 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** `<Devices />` from `@polaris-key/react/kit`, inside `<PolarisKeyProvider>`: given no `input`, it reads the bridge itself.
+
+    **Styled part.** The React kit's `<Devices />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Devices", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisDevices(devices)`; the desktop Settings window shows it as its Devices pane.
+
+    **Styled part.** `PolarisDevicesScreen`, over `PolarisDevicesState(client.devicesActions(), scope)`.
+
+    **Headless.** `PolarisDevicesState` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.LaunchedEffect
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisDevices
+    import im.plrs.key.ui.PolarisDevicesState
+    import im.plrs.key.ui.devicesActions
+
+    @Composable
+    fun MyDevices(client: PolarisKeyClient) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) { PolarisDevicesState(client.devicesActions(), scope) }
+        LaunchedEffect(state) { state.load() }
+        PolarisDevices(state)
+    }
+    ```
+
+    On Compose Desktop the Settings window shows it as its Devices pane.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

@@ -3,13 +3,15 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import type { ConfigEntry, ProductCatalog } from "../src/api.js";
-import { resetConsole } from "./consoleHarness.js";
+import { ALL_ON, resetConsole } from "./consoleHarness.js";
 import { apiError, bootConfig } from "./configHarness.js";
 import {
   mergeDraft,
   settle,
 } from "../src/console/sections/config/model/mergeDraft.js";
 import { invalidResync } from "../src/console/sections/config/model/syncProblems.js";
+import { catalogIssues } from "../src/schema/index.js";
+import { entryFieldView } from "../src/console/sections/config/model/diffView.js";
 import { removedValues } from "../src/console/sections/config/model/valueUse.js";
 
 /**
@@ -226,7 +228,7 @@ describe("Catalog editor: the repository moved under a draft", () => {
     expect(within(panel).getByText("Theirs")).toBeTruthy();
     expect(
       screen
-        .getByRole("button", { name: "Review changes" })
+        .getByRole("button", { name: /^Review (\d+ )?changes?$/ })
         .getAttribute("aria-disabled"),
     ).toBe("true");
     expect(screen.getByText("(conflicts with the repository)")).toBeTruthy();
@@ -240,9 +242,15 @@ describe("Catalog editor: the repository moved under a draft", () => {
     );
     expect(
       screen
-        .getByRole("button", { name: "Review changes" })
+        .getByRole("button", { name: /^Review (\d+ )?changes?$/ })
         .getAttribute("aria-disabled"),
     ).toBeNull();
+    // The conflict box is gone with the focus on it: it lands on the field just settled (C5).
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: /^Label/ }),
+      ),
+    );
   });
 
   it("takes the repository's side when asked", async () => {
@@ -304,7 +312,7 @@ describe("Catalog editor: removing a value that is still in use", () => {
     expect(warning.closest("[data-tone]")!.textContent).toContain("mp3-320");
     expect(
       screen
-        .getByRole("button", { name: "Review changes" })
+        .getByRole("button", { name: /^Review (\d+ )?changes?$/ })
         .getAttribute("aria-disabled"),
     ).toBe("true");
     // The removed chip stays, struck, with Undo.
@@ -364,7 +372,7 @@ describe("Catalog review: a failed publish", () => {
     const label = await screen.findByRole("textbox", { name: /^Label/ });
     await userEvent.type(label, "!");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     await userEvent.click(
@@ -375,6 +383,12 @@ describe("Catalog review: a failed publish", () => {
     expect(alert.textContent).toContain(
       "Devices still get v9. Your draft is kept.",
     );
+    // It says why, without a status code, and offers the Copy details it promises (C4).
+    expect(alert.textContent).toContain("Polaris Key didn't answer in time.");
+    expect(alert.textContent).not.toMatch(/504/);
+    expect(
+      within(alert).getByRole("button", { name: "Copy details" }),
+    ).toBeTruthy();
     expect(
       within(drawer).getByRole("button", { name: "Publish version 10 again" }),
     ).toBeTruthy();
@@ -475,7 +489,7 @@ describe("Catalog review: who it reaches", () => {
     const label = await screen.findByRole("textbox", { name: /^Label/ });
     await userEvent.type(label, "!");
     await userEvent.click(
-      screen.getByRole("button", { name: "Review changes" }),
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
     );
     const drawer = await screen.findByRole("dialog");
     const rail = await within(drawer).findByRole("heading", {
@@ -553,7 +567,19 @@ describe("Minted token: a lifetime changed since approval", () => {
       },
     });
     await screen.findByRole("heading", { level: 1, name: "Edit catalog" });
-    expect(await screen.findByText("Changed since approval")).toBeTruthy();
+    const pill = await screen.findByText("Changed since approval");
+    // Minting is stopped here as much as with no key: both are warnings (C9).
+    expect(pill.closest("[data-tone]")?.getAttribute("data-tone")).toBe(
+      "warning",
+    );
+    // The approval callout heads the card, above Label (C8).
+    const callout = screen
+      .getByRole("button", { name: "Review and approve…" })
+      .closest("[data-tone]")!;
+    const label = screen.getByRole("textbox", { name: /^Label/ });
+    expect(
+      callout.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(
       await screen.findByText("Lifetime changed from 15 minutes to 1 hour"),
     ).toBeTruthy();
@@ -565,7 +591,7 @@ describe("Minted token: a lifetime changed since approval", () => {
     expect(screen.getByText("Used only for this token")).toBeTruthy();
     const preview = screen.getByText(/decoded preview/);
     expect(preview.closest("[data-code-frame]")!.textContent).toContain(
-      '"kid":"3HWR8C2N6T"',
+      '"kid": "3HWR8C2N6T"',
     );
     expect(screen.getByText("Ana Lima approved")).toBeTruthy();
     expect(screen.getByText("Who can get one")).toBeTruthy();
@@ -575,5 +601,131 @@ describe("Minted token: a lifetime changed since approval", () => {
     await waitFor(() =>
       expect(screen.queryByText("Was 15 minutes")).toBeNull(),
     );
+  });
+});
+
+describe("A default its own schema rejects (C1)", () => {
+  it("is a catalog error, in the Default's words", () => {
+    const bad = {
+      schemaVersion: 1,
+      entries: [{ ...FLOOR, default: "mp3-256" }],
+    };
+    expect(catalogIssues(bad)).toEqual([
+      {
+        index: 0,
+        key: "quality.floor",
+        field: "default",
+        message: "Pick a default from the allowed values.",
+      },
+    ]);
+    expect(catalogIssues({ schemaVersion: 1, entries: [FLOOR] })).toEqual([]);
+    const noDefault = { ...FLOOR, default: undefined };
+    expect(catalogIssues({ schemaVersion: 1, entries: [noDefault] })).toEqual(
+      [],
+    );
+  });
+
+  it("empties the Default when its own chip is removed, so the catalog still publishes", async () => {
+    await openEditor();
+    const chips = await screen.findByRole("list", { name: "Allowed values" });
+    await userEvent.click(
+      within(chips).getByRole("button", { name: "Remove any" }),
+    );
+    // The chip stays in place, struck; Default has nothing to disagree with the list.
+    await waitFor(() =>
+      expect(within(chips).getByText("(removed)")).toBeTruthy(),
+    );
+    expect(screen.getByText(/No default: clients get nothing/)).toBeTruthy();
+    expect(screen.queryByText(/must be one of/)).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: /^Review (\d+ )?changes?$/ })
+        .getAttribute("aria-disabled"),
+    ).toBeNull();
+    expect(screen.queryByText(/\d+ errors?/)).toBeNull();
+  });
+
+  it("stops the review when a restored draft carries one", async () => {
+    window.sessionStorage.setItem(
+      "pk-catalog-draft:djdl",
+      JSON.stringify({
+        baseVersion: 9,
+        baseEntries: V9.entries,
+        entries: [{ ...FLOOR, default: "mp3-256" }, RUN],
+      }),
+    );
+    await openEditor();
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Review (\d+ )?changes?$/ }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByText("1 error stops the publish")).toBeTruthy();
+    expect(
+      within(drawer)
+        .getByRole("button", { name: "Publish version 10" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+});
+
+describe("Allowed values in the review (C3)", () => {
+  it("reads as Added, Removed and Unchanged rows, not as schema JSON", () => {
+    const before = E("q", {
+      schema: { type: "string", enum: ["flac", "mp3-256", "any"] },
+      default: "any",
+    });
+    const after = {
+      ...before,
+      schema: { type: "string", enum: ["flac", "any", "aiff"] },
+    };
+    const view = entryFieldView({
+      before,
+      after,
+      fields: [{ field: "schema", before: before.schema, after: after.schema }],
+    });
+    expect(view).toEqual([
+      {
+        field: "Allowed values",
+        before: "",
+        after: "",
+        values: {
+          added: ["aiff"],
+          removed: ["mp3-256"],
+          kept: ["flac", "any (default)"],
+        },
+      },
+    ]);
+  });
+
+  it("keeps the JSON pair when another schema keyword changed", () => {
+    const before = E("q", { schema: { type: "string", enum: ["a"] } });
+    const after = {
+      ...before,
+      schema: { type: "string", enum: ["a"], minLength: 2 },
+    };
+    const [row] = entryFieldView({
+      before,
+      after,
+      fields: [{ field: "schema", before: before.schema, after: after.schema }],
+    });
+    expect(row!.values).toBeUndefined();
+    expect(row!.after).toContain("minLength");
+  });
+});
+
+describe("Cloud Sync box on the entry", () => {
+  it("shows the switch for an Editable setting while Cloud Sync is on", async () => {
+    await openEditor();
+    expect(
+      await screen.findByRole("switch", { name: /Syncs with Cloud Sync/ }),
+    ).toBeTruthy();
+  });
+
+  it("draws nothing when Cloud Sync is off for the product", async () => {
+    await openEditor({}, { services: { ...ALL_ON, sync: { enabled: false } } });
+    await screen.findByRole("list", { name: "Allowed values" });
+    expect(
+      screen.queryByRole("switch", { name: /Syncs with Cloud Sync/ }),
+    ).toBeNull();
   });
 });

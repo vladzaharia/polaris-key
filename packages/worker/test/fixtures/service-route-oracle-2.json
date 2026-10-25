@@ -3926,7 +3926,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "33:1ea0ca13adaba228"
@@ -3937,7 +3937,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -3958,7 +3958,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -3970,7 +3970,7 @@
       "cache-control": "public, max-age=60",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "32:e13d010a6007fa28"
@@ -3982,7 +3982,7 @@
       "cache-control": "public, max-age=60",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "32:e13d010a6007fa28"
@@ -4003,7 +4003,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4014,7 +4014,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4025,7 +4025,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4047,7 +4047,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "82:2dea2b202a0486e1"
@@ -4058,7 +4058,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4069,7 +4069,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4091,7 +4091,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "32:97af5772e08c551c"
@@ -4102,7 +4102,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4113,7 +4113,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4135,7 +4135,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "32:97af5772e08c551c"
@@ -4146,7 +4146,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4157,7 +4157,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4179,7 +4179,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "32:97af5772e08c551c"
@@ -4190,7 +4190,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4201,7 +4201,7 @@
       "content-type": "text/plain;charset=UTF-8",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "18:e3933184560739b7"
@@ -4223,7 +4223,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "32:97af5772e08c551c"
@@ -4235,7 +4235,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "21:d2dfdc9511fbeaa0"
@@ -4247,7 +4247,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "21:d2dfdc9511fbeaa0"
@@ -4269,7 +4269,7 @@
       "cache-control": "no-store",
       "vary": "Origin",
       "access-control-allow-origin": "https://play.djdl.example",
-      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest"
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
     "body": "30:61b5f4a46397ebc3"

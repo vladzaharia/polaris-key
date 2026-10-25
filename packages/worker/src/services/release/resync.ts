@@ -39,7 +39,7 @@ import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import type { StoreOutcome } from "./packs/sets.js";
 import type { BreakGlassClaim, ClaimKey } from "../../core/settingsClaims.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
-import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
+import { displayNameOptions } from "../../core/accounts/reservedDisplayNames.js";
 import { type AssetWarning } from "../../core/assets/hostedAssetPulls.js";
 import { repoBlobLookup } from "./assetSource.js";
 import type { Ingest, PlanWarning } from "../../core/ingest/types.js";
@@ -86,6 +86,11 @@ export type ResyncResult =
        * manifest changed the field; the manifest's value applied. Absent when none.
        */
       breakGlassEnded?: { key: ClaimKey; why: "expired" | "changed" }[];
+      /**
+       * F-34.2: the package ecosystems the manifest declares but whose feed was not provisioned,
+       * each with the reason, so an operator sees why no feed appeared. Absent when none.
+       */
+      feedProvisionSkipped?: { ecosystem: string; reason: string }[];
     }
   | { ok: false; error: string; errors?: string[] };
 
@@ -243,7 +248,20 @@ async function applyRepoManifest(
     ...(result.breakGlassEnded
       ? { breakGlassEnded: result.breakGlassEnded }
       : {}),
+    ...feedSkipped(result.facts),
   };
+}
+
+/** The `feedProvisionSkipped` answer field from an ingest's facts (F-34.2), or nothing. */
+export function feedSkipped(facts: Record<string, unknown>): {
+  feedProvisionSkipped?: { ecosystem: string; reason: string }[];
+} {
+  const skipped = (
+    facts.feedProvision as
+      | { skipped?: { ecosystem: string; reason: string }[] }
+      | undefined
+  )?.skipped;
+  return skipped && skipped.length > 0 ? { feedProvisionSkipped: skipped } : {};
 }
 
 /**
@@ -355,7 +373,7 @@ export async function readLinkedManifest(
 
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
-    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
+    ...(await displayNameOptions(env, db, slug)),
   });
   if (!result.ok)
     return {

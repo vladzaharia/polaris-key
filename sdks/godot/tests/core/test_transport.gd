@@ -131,7 +131,7 @@ func run(t: PKeyTestContext) -> void:
 	for url in cases:
 		var sdk := PKeyTestFixtures.new_sdk()
 		var opts := PKeyOptions.new()
-		opts.product = "djdl"
+		opts.product_slug = "djdl"
 		opts.version = "1.0.0"
 		opts.base_url = url
 		opts.store = PKeyMemoryStore.new()

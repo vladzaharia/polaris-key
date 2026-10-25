@@ -28,7 +28,7 @@ EXPECTED_SERVICES: List[str] = ["license", "config", "release", "update"]
 CONFIG: Dict[str, Any] = {
     "product_slug": PRODUCT_SLUG,
     "base_url": BASE_URL,
-    "trust": dict(PINNED_KEYS),
+    "pinned_keys": dict(PINNED_KEYS),
     "expected_services": list(EXPECTED_SERVICES),
     "update": UpdateClientOptions(pinned_release_keys=dict(PINNED_RELEASE_KEYS)),
 }

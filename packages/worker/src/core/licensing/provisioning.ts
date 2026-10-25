@@ -217,11 +217,43 @@ export async function signInProvisioning(
   return { provisioned, declared: provisioningDeclaredKeys(hooks) };
 }
 
+/** Where a sign-in's provisioned SECRETS are written (U-27.2, L-U1): `"account"` is the licence
+ *  owner's account overrides row, `"license"` the licence's own `overrides_json` column. */
+export type ProvisionedSecretTarget = "license" | "account";
+
+/**
+ * Decide the secret target of ONE licence, per licence (U-27.2, L-U1). It is the owner's account
+ * row only when the licence has an owner AND the signing identity (`sub`) is linked to that
+ * owner's account (`account_links`, kind `oidc`, platform scope: no tenant; the sign-in issuer is not on the identity here, so the issuer is not checked). Every other case keeps the column as today: a
+ * floating licence, one waiting on its email, a legacy licence identified only by its `sub`, an
+ * email-only identity (no `sub`), and a licence handed over to another account (the previous
+ * owner's identity is no longer linked to the new owner, so it writes nothing to it). Writing the
+ * account row for an unowned licence would drop its secrets, which is why this is not a global
+ * switch. Read-only.
+ */
+export async function provisionedSecretTarget(
+  db: Db,
+  accountId: string | null | undefined,
+  sub: string | null | undefined,
+): Promise<ProvisionedSecretTarget> {
+  if (!accountId || !sub) return "license";
+  const link = await db.first<{ one: number }>(
+    `SELECT 1 AS one FROM account_links
+      WHERE account_id = ? AND subject = ? AND kind = 'oidc' AND tenant_scope = ''`,
+    accountId,
+    sub,
+  );
+  return link === null ? "license" : "account";
+}
+
 /**
  * The column a sign-in writes on top of the provisioning (LX-08, S-19 §7.14 step 4): provisioned
- * ENTITLEMENT keys never go into `overrides_json` any more, they are the licence's `oidc` grant
- * (`core/licensing/grants.ts`); provisioned secrets go to the column until the U-03 run freezes it (then to
- * the owner's account overrides). Config is never provisioned.
+ * ENTITLEMENT keys never go into `overrides_json`, they are the licence's `oidc` grant
+ * (`core/licensing/grants.ts`). Provisioned secrets go to the column when `target` is
+ * `"license"`; for `"account"` they go to the owner's account overrides
+ * (`applyProvisionedAccountSecrets`) and the column carries none, so `mergeProvisionedOverrides`
+ * removes the declared secret keys from it and nothing stale lingers (operator keys are kept).
+ * Config is never provisioned.
  *
  * The secrets on their way to the column are SEALED under `PLATFORM_KEK`, as the console seals the
  * same catalog keys (`core/console/overrides.ts`) and as `applyProvisionedAccountSecrets` seals
@@ -235,13 +267,14 @@ export async function provisionedColumn(
   db: Db,
   product: string,
   provisioned: ManagedPayload,
-  frozen: boolean,
+  target: ProvisionedSecretTarget,
 ): Promise<ManagedPayload> {
   return {
     config: {},
-    secrets: frozen
-      ? {}
-      : await sealProvisionedSecrets(env, db, product, provisioned.secrets),
+    secrets:
+      target === "account"
+        ? {}
+        : await sealProvisionedSecrets(env, db, product, provisioned.secrets),
     entitlements: {},
   };
 }

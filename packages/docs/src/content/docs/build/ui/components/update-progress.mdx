@@ -64,7 +64,47 @@ Compact download and install progress for app updates and content packs, as a to
 
     **Headless.** `KitStates.updateProgress(_:)`: verifying is still downloading; the copy never says installed before the apply.
 
+    **On a Mac.** `PolarisSparkleUserDriver` draws the download, extraction, install and failed states in the update window; Check for Updates… opens it.
+
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** A host places `<UpdateProgress />` from `@polaris-key/react/kit`, given an `input`. The bar follows the progress the main process pushes to the window that started the install.
+
+    **Styled part.** The React kit's `<UpdateProgress />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("UpdateProgress", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The update window's install button runs the client's install driver, and its bar follows the driver's `InstallProgressSource`: determinate when the size is known. Pack downloads are `PolarisPackProgress(packs)`.
+
+    **Styled part.** `PolarisPackProgressScreen` for packs.
+
+    **Headless.** `PolarisUpdateState`, and `PolarisPackProgressState(client.packProgressSource())` for packs.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisPackProgress
+    import im.plrs.key.ui.PolarisPackProgressState
+    import im.plrs.key.ui.packProgressSource
+
+    @Composable
+    fun MyPackProgress(client: PolarisKeyClient) {
+        PolarisPackProgress(remember(client) { PolarisPackProgressState(client.packProgressSource()) })
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
 
   </TabItem>
   <TabItem label="Godot">

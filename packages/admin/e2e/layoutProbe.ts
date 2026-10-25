@@ -307,6 +307,25 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       cause: "",
     });
 
+  // The console scrolls inside #content, so the document can stay still while the page itself
+  // scrolls sideways (a child wider than its column): measure the scroll container too.
+  if (mainEl && mainEl.scrollWidth > mainEl.clientWidth + 1)
+    out.push({
+      rule: "overflow",
+      kind: "content-x",
+      where: "#content",
+      detail: `#content scrolls ${mainEl.scrollWidth - mainEl.clientWidth}px sideways`,
+      cause: Array.from(mainEl.querySelectorAll<HTMLElement>("*"))
+        .filter(
+          (e) =>
+            e.getBoundingClientRect().right >
+            mainEl.getBoundingClientRect().right + 1,
+        )
+        .slice(0, 3)
+        .map((e) => short(e))
+        .join(" | "),
+    });
+
   const scrollers = new Set<Element>();
   for (const root of roots) {
     if (isScroller(root, "y")) scrollers.add(root);
@@ -782,8 +801,9 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     if (right === null) return;
     const edge = contentRight(row);
     const card =
-      row.closest("section,[data-template] > div,[class*=rounded-lg]") ??
-      row.parentElement!;
+      row.closest(
+        "section,[data-template] > div,[class*=rounded-lg],[class*=rounded-xl]",
+      ) ?? row.parentElement!;
     rowsByCard.set(card, [...(rowsByCard.get(card) ?? []), { row, right }]);
     if (Math.abs(edge - right) > 2)
       out.push({
@@ -1165,7 +1185,75 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       // while a browser zoom keeps the root at 16 px and so keeps the budget as it was.
       const textScale =
         px(cs(document.documentElement).fontSize || "16px") / 16;
-      const limit = (twoLines || W < 640 ? 176 : 140) * textScale;
+      // A no-access page is fixed copy (ST-31.15): its title wraps to every line it needs and its
+      // facts line (address, role, source) to up to four. Each line past the budget's own (two for
+      // the title, one for the facts) adds its height. Nothing else on any page gets this.
+      const fixedCopy =
+        h1 !== null && mainEl.querySelector("[data-no-access]") !== null;
+      const facts = fixedCopy ? mast.querySelector<HTMLElement>("p") : null;
+      const factsLine = facts ? px(cs(facts).lineHeight) : 0;
+      const extra =
+        fixedCopy && lineH > 0
+          ? Math.max(
+              0,
+              Math.round(h1!.getBoundingClientRect().height / lineH) - 2,
+            ) *
+              lineH +
+            (facts && factsLine > 0
+              ? Math.min(
+                  3,
+                  Math.max(
+                    0,
+                    Math.round(
+                      facts.getBoundingClientRect().height / factsLine,
+                    ) - 1,
+                  ),
+                ) * factsLine
+              : 0)
+          : 0;
+      const limit = (twoLines || W < 640 ? 176 : 140) * textScale + extra;
+      // ST-31.15 R1: on a no-access masthead no inline item (address, role tag, area item, the
+      // "Use another account" link) breaks across lines, and no two of their boxes intersect.
+      // Element boxes, not text ranges: a truncated tag's hidden text is not a collision.
+      if (fixedCopy) {
+        const items = Array.from(
+          mast.querySelectorAll<HTMLElement>(
+            "p strong, p [data-role-tag], p [data-area-item], p button",
+          ),
+        ).filter((e) => e.getBoundingClientRect().width > 0);
+        for (const e of items) {
+          const line = px(cs(e).lineHeight) || 16;
+          // An address longer than a phone line at a large text size has to break (break-all);
+          // from 640 px it must not.
+          if (e.tagName === "STRONG" && W < 640) continue;
+          const broken =
+            e.getClientRects().length > 1 ||
+            e.getBoundingClientRect().height > line * 1.6;
+          if (broken)
+            out.push({
+              rule: "masthead",
+              kind: "facts-broken",
+              where: where(e),
+              detail: `"${(e.textContent ?? "").trim().slice(0, 40)}" breaks across lines inside the facts line`,
+              cause: cls(e),
+            });
+        }
+        for (let i = 0; i < items.length; i++)
+          for (let j = i + 1; j < items.length; j++) {
+            const x = items[i]!.getBoundingClientRect();
+            const y = items[j]!.getBoundingClientRect();
+            const w = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+            const h = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+            if (w > 1 && h > 1)
+              out.push({
+                rule: "masthead",
+                kind: "facts-overlap",
+                where: where(items[j]!),
+                detail: `"${(items[i]!.textContent ?? "").trim().slice(0, 30)}" and "${(items[j]!.textContent ?? "").trim().slice(0, 30)}" overlap in the facts line`,
+                cause: cls(items[j]!),
+              });
+          }
+      }
       const height = mast.getBoundingClientRect().height - tabsH;
       if (height > limit + 0.5)
         out.push({
@@ -1181,7 +1269,7 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       if (wide && next) {
         const first = next.getBoundingClientRect().top - canvas.top;
         // A two-line title is the one case the 176 px masthead cap allows: 19 above, 24 below.
-        const allowed = 160 + tabsH + (twoLines ? 59 : 0);
+        const allowed = 160 + tabsH + (twoLines ? 59 : 0) + extra;
         if (first > allowed + 0.5)
           out.push({
             rule: "masthead",

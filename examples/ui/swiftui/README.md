@@ -40,4 +40,22 @@ PKEY_KIT_BASELINES=../../../sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapsho
 With `PKEY_KIT_BASELINES` every render is compared with its committed baseline;
 `PKEY_KIT_RECORD=1` writes them instead (give the reason in the commit).
 
+## macOS (UK-08.2)
+
+`TidewaterKitMac` is the same `App/` sources as a macOS 15+ app; `TidewaterKitMacUITests` is its
+render harness (`UITests/KitRenderMacTests.swift`, XCUITest plus SnapshotTesting).
+
+```sh
+./run.sh --mac --build-only   # build the sample and the harness; needs no UI automation
+PKEY_KIT_QUICK=1 ./run.sh --mac   # Welcome.default in both schemes, audited
+PKEY_KIT_WINDOWS=900x640,480x520 PKEY_KIT_INACTIVE=1 ./run.sh --mac
+```
+
+Extra launch arguments: `-pkeyWindow WxH` (content size in points) and `-pkeyInactive` (Finder
+takes the activation, so the window shows its inactive look). Renders are window screenshots named
+`mac<OS>-<W>x<H>-<state>-<preset>-<scheme>[-inactive].png`, written with `renders-mac.json` to
+`PKEY_KIT_SHOTS` (default `build/shots-mac`); the OS major is in the name, so a local render never
+compares against CI's. `PKEY_KIT_BASELINES` and `PKEY_KIT_RECORD=1` work as on iOS. The test
+runner needs UI automation (Accessibility) allowed; CI images have it.
+
 The kit's docs are the [SwiftUI](/docs/build/ui/frameworks/swiftui/) framework page.

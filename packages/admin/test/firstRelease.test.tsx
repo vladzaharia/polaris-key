@@ -9,6 +9,12 @@ import type {
 import { lastAnnouncement } from "../src/ui/LiveRegion.js";
 import { CHANNELS, STORE } from "./releaseFixture.js";
 import { expectNoAxeViolations, mountAt } from "./releaseHarness.js";
+import type { QueryClient } from "@tanstack/react-query";
+import { createQueryClient } from "../src/console/data/queryClient.js";
+import { qk } from "../src/console/data/queries.js";
+import { BREAK_GLASS_NO_TOKENS } from "../src/console/access/useCan.js";
+import { PublisherDrawer } from "../src/console/sections/core/pages/KeysCi.js";
+import { ME } from "./consoleHarness.js";
 
 /**
  * The guided Releases empty state (EXPERIENCE.md §0.4 S2, AS 2.2; UX-23): the checks that let CI
@@ -152,7 +158,7 @@ describe("Releases → guided first release (UX-23)", () => {
     const list = within(panel).getByRole("list", {
       name: "Before the first release",
     });
-    await within(list).findByText("Polaris Key app installed");
+    await within(list).findByText("Polaris Key GitHub App installed");
     expect(
       within(list)
         .getAllByRole("listitem")
@@ -165,14 +171,19 @@ describe("Releases → guided first release (UX-23)", () => {
     expect(h1.textContent).toBe("Releases");
   });
 
-  it("fills the workflow step with the slug, and copies it", async () => {
+  it("fills the workflow with the slug, and copies it", async () => {
     const user = userEvent.setup();
     mount();
     await user.click(
-      await screen.findByRole("button", { name: "Copy workflow step" }),
+      await screen.findByRole("button", { name: "Copy workflow" }),
     );
     expect(await navigator.clipboard.readText()).toBe(workflowStep("tonebox"));
-    expect(workflowStep("tonebox")).toContain("product: tonebox");
+    expect(workflowStep("tonebox")).toContain("Publishes tonebox");
+    expect(workflowStep("tonebox")).toContain("args: --tag ");
+    expect(workflowStep("tonebox")).not.toContain("product:");
+    expect(workflowStep("tonebox")).toContain("environment: release");
+    expect(workflowStep("tonebox")).not.toContain("release-key");
+    expect(workflowStep("tonebox", true)).toContain("release-key");
     expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /Release docs/ }).getAttribute("href"),
@@ -235,13 +246,15 @@ describe("Releases → guided first release (UX-23)", () => {
       },
     });
     mount();
-    const app = await row("Polaris Key app can't read the repository");
+    const app = await row("Polaris Key GitHub App can't read the repository");
     expect(app.getAttribute("data-step-state")).toBe("failed");
     // Never the raw HTTP error.
     expect(screen.queryByText(/404/)).toBeNull();
     fns.releaseHealth.mockResolvedValue({ health: HEALTH_OK });
     await user.click(within(app).getByRole("button", { name: "Check again" }));
-    expect(await screen.findByText("Polaris Key app installed")).toBeTruthy();
+    expect(
+      await screen.findByText("Polaris Key GitHub App installed"),
+    ).toBeTruthy();
   });
 
   it("offers a manual product a trusted publisher or a CI token, and shows the token once", async () => {
@@ -258,7 +271,7 @@ describe("Releases → guided first release (UX-23)", () => {
     });
     mount();
     const token = await row("Or a CI token");
-    expect(screen.queryByText(/Polaris Key app/)).toBeNull();
+    expect(screen.queryByText(/Polaris Key GitHub App/)).toBeNull();
     expect(await row("Trusted publisher")).toBeTruthy();
     await user.click(
       within(token).getByRole("button", { name: "Issue a CI token…" }),
@@ -365,7 +378,74 @@ describe("Releases → guided first release (UX-23)", () => {
 
   it("passes axe", async () => {
     const { container } = mount();
-    await screen.findByText("Polaris Key app installed");
+    await screen.findByText("Polaris Key GitHub App installed");
     await expectNoAxeViolations(container);
+  });
+});
+
+describe("Releases → guided first release in an emergency sign-in (ST-30c.2, N3)", () => {
+  const seeded = (): QueryClient => {
+    const client = createQueryClient();
+    client.setQueryData(qk.me(), { ...ME, breakGlass: true });
+    return client;
+  };
+  const NO_TOKENS =
+    "Emergency sign-in can't create tokens. Sign out, then sign in with your account to create one.";
+
+  it("soft-disables Allow workflow… and Issue a CI token… with the reason", async () => {
+    fns.product.mockResolvedValue({
+      product: product({ releaseSource: "manual" }),
+    });
+    mountAt(
+      "#/p/tonebox/release/releases",
+      <ReleasesPage slug="tonebox" />,
+      seeded(),
+    );
+    const publisher = await row("Trusted publisher");
+    const allow = await within(publisher).findByRole("button", {
+      name: "Allow workflow…",
+    });
+    expect(allow.getAttribute("aria-disabled")).toBe("true");
+    const token = await row("Or a CI token");
+    const issue = within(token).getByRole("button", {
+      name: "Issue a CI token…",
+    });
+    expect(issue.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(allow);
+    await userEvent.click(issue);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(NO_TOKENS).toBe(BREAK_GLASS_NO_TOKENS);
+  });
+
+  it("soft-disables Edit… once a publisher is set", async () => {
+    fns.ciPublisher.mockResolvedValue({ ok: true, policy: POLICY });
+    mountAt(
+      "#/p/tonebox/release/releases",
+      <ReleasesPage slug="tonebox" />,
+      seeded(),
+    );
+    const done = await screen.findByText(".github/workflows/ship.yml", {
+      selector: "li span",
+    });
+    const edit = within(done.closest("li")!).getByRole("button", {
+      name: "Edit…",
+    });
+    expect(edit.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("Save publisher is soft-disabled in the drawer itself", async () => {
+    mountAt(
+      "#/p/tonebox/release/releases",
+      <PublisherDrawer
+        slug="tonebox"
+        open
+        policy={POLICY}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+      seeded(),
+    );
+    const save = await screen.findByRole("button", { name: "Save publisher" });
+    expect(save.getAttribute("aria-disabled")).toBe("true");
   });
 });

@@ -135,7 +135,7 @@ export function AuthCard({
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-surface-page text-fg">
-      <div className="relative z-10 flex h-14 items-center justify-center border-b border-border sm:h-auto sm:border-0 sm:pb-4 sm:pt-[10vh]">
+      <div className="relative z-10 flex h-14 items-center justify-center border-b border-border sm:h-auto sm:border-0 sm:pb-4 sm:pt-24 short:pt-10">
         {brand}
       </div>
       <main className="@container relative z-10 flex flex-1 flex-col items-center sm:px-4">
@@ -170,7 +170,7 @@ export function AuthCard({
               key={stepKey}
               data-step={stepKey}
               className={cn(
-                "space-y-5 px-5 py-6 sm:px-7 sm:py-8",
+                "space-y-5 px-5 py-6 sm:px-6 sm:py-8",
                 moved &&
                   (direction === "back"
                     ? "animate-pk-step-back"
@@ -184,7 +184,7 @@ export function AuthCard({
           {footer ? (
             <div
               className={cn(
-                "border-t border-border px-5 py-4 text-sm text-fg-muted sm:px-7",
+                "border-t border-border px-5 py-4 text-sm text-fg-muted sm:px-6",
                 // The trust receipt anchors at the pane's foot (the pane never ends in a void).
                 header &&
                   (receipt
@@ -328,7 +328,7 @@ function Icon({
       className={cn(
         "shrink-0 passport:ms-6 passport:w-fit passport:rounded-[14px]",
         art
-          ? "passport:-mt-7 passport:ring-4 passport:ring-surface-sunken"
+          ? "passport:-mt-6 passport:ring-4 passport:ring-surface-sunken"
           : "passport:mt-0",
       )}
     >
@@ -366,7 +366,7 @@ function Where({
 export function HeaderSkeleton(): React.ReactElement {
   return (
     <div aria-hidden data-header="loading" className={OUTER}>
-      <div className="flex items-center gap-4 px-5 py-4 sm:px-7 passport:contents">
+      <div className="flex items-center gap-4 px-5 py-4 sm:px-6 passport:contents">
         <Icon art={false}>
           <div className="size-14 rounded-[14px] bg-hover" />
         </Icon>
@@ -394,7 +394,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
     return (
       <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
         <PaneArt src={art} />
-        <div className="flex items-center gap-4 px-5 py-4 sm:px-7 passport:contents">
+        <div className="flex items-center gap-4 px-5 py-4 sm:px-6 passport:contents">
           <Icon art={hasArt}>{icon}</Icon>
           <div className="min-w-0 passport:contents">
             <p
@@ -421,7 +421,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
   return (
     <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
       <PaneArt src={art} />
-      <div className="px-5 py-4 sm:px-7 passport:contents">
+      <div className="px-5 py-4 sm:px-6 passport:contents">
         <div className="flex items-center gap-4 passport:contents">
           <Icon art={hasArt}>{icon}</Icon>
           <div className="min-w-0 passport:contents">

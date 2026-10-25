@@ -93,11 +93,11 @@ fun kindOf(r: ActivationResult): String = when (r) {
 class Refusal(val message: String, val link: String? = null, val retryAfterSeconds: Long? = null)
 
 suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
-    val r = client.activate(key)
+    val r = client.license.activateWithKey(key)
     if (r is ActivationResult.Ok) return null
     val message = Copy.activationMessage(kindOf(r), code = r.code)
     return when (r) {
-        // Replace a device: Polaris Locker frees a seat. Nothing was wiped.
+        // Replace a device: Polaris Locker makes room for another device. Nothing was wiped.
         is ActivationResult.DeviceLimit -> Refusal(
             message,
             link = r.manageUrl?.let { ManageLink.withReturn(ManageLink.withKey(it, key), "myapp://activated") },
@@ -108,19 +108,19 @@ suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
 }
 ```
 
-| Result                              | Meaning                                                          | Offer                                                                         |
-| ----------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `Unauthorized`                      | The key was not accepted                                         | Retry                                                                         |
-| `DeviceLimit`                       | Every seat is taken                                              | `manageUrl`, then retry the same key                                          |
-| `LicenseExpired`, `LicenseDisabled` | The license ended or an operator disabled it                     | Renew, or contact the developer                                               |
-| `HardwareMismatch`                  | The hardware moved past the tier's tolerance                     | Retry: it binds the new hardware and takes a seat; `changed` lists what moved |
-| `FingerprintRequired`               | The tier needs a hardware fingerprint this device could not give | Show the copy                                                                 |
-| `AttestationRequired`               | The product needs a verified device                              | `client.devices.attest()`, then retry                                         |
-| `EnrollDisabled`, `EnrollClaimed`   | From `client.enroll()`: no free license, or it is on an account  | Key entry, or sign in                                                         |
-| `RateLimited`                       | Too many attempts                                                | Wait `retryAfterSeconds` when it is set                                       |
-| `Refused`, `Error`                  | Any other refusal; a network or server failure                   | Show the copy and `code`                                                      |
+| Result                              | Meaning                                                          | Offer                                                                                    |
+| ----------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `Unauthorized`                      | The key was not accepted                                         | Retry                                                                                    |
+| `DeviceLimit`                       | The device limit is reached                                      | `manageUrl`, then retry the same key                                                     |
+| `LicenseExpired`, `LicenseDisabled` | The license ended or an operator disabled it                     | Renew, or contact the developer                                                          |
+| `HardwareMismatch`                  | The hardware moved past the tier's tolerance                     | Retry: it binds the new hardware and counts toward the limit; `changed` lists what moved |
+| `FingerprintRequired`               | The tier needs a hardware fingerprint this device could not give | Show the copy                                                                            |
+| `AttestationRequired`               | The product needs a verified device                              | `client.devices.attest()`, then retry                                                    |
+| `EnrollDisabled`, `EnrollClaimed`   | From `client.enroll()`: no free license, or it is on an account  | Key entry, or sign in                                                                    |
+| `RateLimited`                       | Too many attempts                                                | Wait `retryAfterSeconds` when it is set                                                  |
+| `Refused`, `Error`                  | Any other refusal; a network or server failure                   | Show the copy and `code`                                                                 |
 
-Leave `withKey` out of any QR code you draw: a TV is on view to anyone in the room. A seat is also
+Leave `withKey` out of any QR code you draw: a TV is on view to anyone in the room. The device limit is also
 freed from a device that still holds a credential, with `client.deauthorizeDevice(id)`. See the
 [device-limit recipe](/docs/build/recipes/device-limit/).
 
@@ -136,7 +136,7 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
     // verificationUriComplete. Never show deviceCode.
     show(prompt.userCode, prompt.verificationUri, prompt.verificationUriComplete)
     return when (val result = client.identity.waitForSignIn(prompt)) {
-        is SignInResult.Ready -> "Signed in as ${client.license.licenseUser()?.subject}"
+        is SignInResult.Ready -> "Signed in as ${client.license.getLicenseUser()?.subject}"
         is SignInResult.Expired -> "The code expired. Start again."
         is SignInResult.Error -> result.message
     }
@@ -144,15 +144,15 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
 ```
 
 `waitForSignIn` paces its polls and stops when its coroutine is canceled; when it answers `Ready`,
-the token is stored and the first sync is done. `licenseUser()` is the pairwise subject only (it
+the token is stored and the first sync is done. `getLicenseUser()` is the pairwise subject only (it
 ships after `0.9.3`); the person's name and email are planned. Anyone holding the code can finish
 the sign-in elsewhere, so say who signed in. Sign-in needs the Identity service; with it off, every
 call throws `service-unavailable` before any request. `client.deactivate()` signs this device out and
-asks the server to free its seat.
+asks the server to stop counting it.
 
 ## Status, offline and refresh
 
-`start()` and `status()` need no network. `licenseChanges` emits the gate after each transition that
+`start()` and `status()` need no network. `events` carries a `PolarisEvent.License` with the gate after each transition that
 goes through the client: an activation, a deactivation, a bundle import, and a sync that moved the
 documents or the gate (a revoke it saw, a block, grace or expiry as the clock moved). An unchanged
 state is not emitted again, and nothing ticks between syncs, so read `status()` for the present.
@@ -166,7 +166,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 fun keepFresh(client: PolarisKeyClient, scope: CoroutineScope) {
-    client.startRefreshLoop() // a no-op unless refreshIntervalSeconds is set; start() already calls it
+    client.startRefresh() // a no-op unless refreshIntervalSeconds is set; start() already calls it
     scope.launch {
         client.events.collect { event ->
             when (event) {
@@ -200,16 +200,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import im.plrs.key.core.Copy
 import im.plrs.key.core.isUsable
+import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun MyGate(client: PolarisKeyClient, content: @Composable () -> Unit) {
     val state by remember(client) {
         flow {
             emit(client.status()) // the gate now
-            emitAll(client.licenseChanges) // then every transition
+            emitAll(client.events.filterIsInstance<PolarisEvent.License>().map { it.state }) // then every transition
         }
     }.collectAsState(null) // null until status() answers
     val current = state
@@ -332,7 +335,9 @@ import im.plrs.key.core.isUsable
 import im.plrs.key.desktop.PolarisKeyDesktop
 import im.plrs.key.identity.SignInResult
 import im.plrs.key.license.ActivationResult
+import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
 import java.awt.Desktop
 import java.net.URI
@@ -352,7 +357,7 @@ fun main() = application {
 fun PolarisGate(client: PolarisKeyClient, content: @Composable () -> Unit) {
     val state by produceState<LicenseState?>(null, client) {
         value = client.status()
-        client.licenseChanges.collect { value = it }
+        client.events.filterIsInstance<PolarisEvent.License>().collect { value = it.state }
     }
     // A desktop app has no foreground event: sync when the window regains focus.
     val focused = LocalWindowInfo.current.isWindowFocused
@@ -379,7 +384,7 @@ fun ActivationForm(client: PolarisKeyClient, headline: String) {
         Row {
             Button(onClick = {
                 scope.launch {
-                    val r = client.activate(key.trim())
+                    val r = client.license.activateWithKey(key.trim())
                     link = (r as? ActivationResult.DeviceLimit)?.manageUrl
                         ?.let { ManageLink.withReturn(ManageLink.withKey(it, key.trim()), "tidewater://activated") }
                     if (r !is ActivationResult.Ok) message = Copy.activationMessage(r.code ?: "ok", code = r.code)
@@ -445,7 +450,7 @@ suspend fun deviceLimit(): ActivationResult {
             license = LicenseClientOptions(fingerprint = false),
         ),
     )
-    return client.activate("pkey_acme_0000").also { client.close() }
+    return client.license.activateWithKey("pkey_acme_0000").also { client.close() }
 }
 ```
 

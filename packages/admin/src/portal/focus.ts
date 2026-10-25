@@ -33,3 +33,38 @@ export function focusSectionHeading(section: string): void {
   if (!h.hasAttribute("tabindex")) h.tabIndex = -1;
   h.focus({ preventScroll: true });
 }
+
+/**
+ * After Try again on a failed load, focus goes to the nearest heading, so a keyboard or screen-reader
+ * user is not thrown to the top of the document and hears where they are: the card's `h2` when the
+ * panel sits in a card (`section[aria-labelledby]`), else the page `h1`. The heading may be inside the
+ * panel itself (it goes when the retry starts); then this waits for the real one, skipping a
+ * placeholder inside an `aria-busy` skeleton, for about ten seconds at most. A panel that survives
+ * the retry (it failed again, same element) keeps focus on its button.
+ */
+export function focusAfterRetry(panel: Element | null): void {
+  const id = panel
+    ?.closest("section[aria-labelledby]")
+    ?.getAttribute("aria-labelledby");
+  const target = (): HTMLElement | null =>
+    id
+      ? document.getElementById(id)
+      : document.querySelector<HTMLElement>("main h1");
+  let frames = 0;
+  const attempt = (): void => {
+    if (frames++ > 600) return;
+    const el = target();
+    const waiting =
+      !el ||
+      !el.isConnected ||
+      el.closest('[aria-busy="true"]') != null ||
+      (panel?.isConnected === true && panel.contains(el));
+    if (waiting) {
+      requestAnimationFrame(attempt);
+      return;
+    }
+    if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
+    el.focus({ preventScroll: true });
+  };
+  requestAnimationFrame(attempt);
+}

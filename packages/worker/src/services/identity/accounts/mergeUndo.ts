@@ -28,7 +28,8 @@
  *     cautious direction. What the survivor had before the join stays, and so does anything added
  *     to it since. A licence the survivor detached since the join stays floating (it is added
  *     again by its key, under the claim rules). A licence that goes back revokes every registry
- *     token the survivor minted on it during the window (F-21, `onLicenseOwnershipEnded`), and its
+ *     token the survivor minted on it during the window (F-21, `onLicenseOwnershipEnded`) and every
+ *     operator-minted token of it (F-33b.1, pre-join ones too: fail closed, re-mint), and its
  *     devices' bindings go.
  *   - Details the survivor took from the absorbed account (a name, a picture, a primary email, the
  *     passkey user handle) are cleared again where they are still the absorbed account's values.
@@ -87,7 +88,10 @@ import { EMAIL_ISSUER, getAccountRow } from "./repo.js";
 /** How long a join can be undone (owner, PORTAL.md §4.11). */
 export const MERGE_UNDO_SECONDS = 72 * 3600;
 
-/** Every `accounts` column, in the order an undo re-inserts them (a test pins it to the table). */
+/**
+ * Every live `accounts` column, in the order an undo re-inserts them. A test pins it, with
+ * `DORMANT_ACCOUNT_COLUMNS`, to the table.
+ */
 export const ACCOUNT_COLUMNS = [
   "id",
   "status",
@@ -97,7 +101,6 @@ export const ACCOUNT_COLUMNS = [
   "avatar_key",
   "locale",
   "details_source_json",
-  "terms_json",
   "created_at",
   "modified_at",
   "last_sign_in_at",
@@ -107,6 +110,12 @@ export const ACCOUNT_COLUMNS = [
   "birthdate",
   "birthdate_source",
 ] as const;
+
+/**
+ * Columns the table keeps that nothing reads or writes. `terms_json` is superseded by
+ * `account_terms_acceptances` (PX-W15); I-28b decides whether to drop it.
+ */
+export const DORMANT_ACCOUNT_COLUMNS = ["terms_json"] as const;
 
 /**
  * The survivor's details a join fills in from the absorbed account when the survivor has none.
@@ -809,7 +818,8 @@ export async function undoMerge(
   }
 
   // F-21: a licence that went back stops every registry token the survivor minted on it during
-  // the window (the absorbed account's own tokens moved back above, untouched), and its devices'
+  // the window (the absorbed account's own tokens moved back above, untouched), F-33b.1: and
+  // every operator-minted token of it, pre-join ones too (fails closed), and its devices'
   // bindings to the survivor go; each binds again at its next sign-in.
   for (const [product, id] of snap.licenses) {
     const owner = await db.first<{ account_id: string | null }>(

@@ -18,7 +18,6 @@ import * as React from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Download, List, Rows3 } from "lucide-react";
 import {
-  api,
   type PlatformActivityFilters,
   type PlatformActivityItem,
   type PlatformActivityPage,
@@ -36,7 +35,9 @@ import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { toast } from "../../../../ui/toast.js";
-import { qk } from "../../../data/queries.js";
+
+import { platformReads } from "../data.js";
+import { reads } from "../../../data/reads.js";
 import { EventDrawer } from "./platformActivityEvent.js";
 import {
   ActivityTable,
@@ -65,7 +66,16 @@ const RANGES: { value: string; label: string; hours: number | null }[] = [
 ];
 const DEFAULT_RANGE = "7d";
 
-const KEYS = ["actor", "action", "kind", "product", "range", "view"] as const;
+// `who` is the actor's display name, for a link that names the person (Members → Show activity).
+const KEYS = [
+  "actor",
+  "who",
+  "action",
+  "kind",
+  "product",
+  "range",
+  "view",
+] as const;
 type Params = Record<(typeof KEYS)[number], string>;
 
 /** What the filters send. `since` is fixed per range choice and refresh. */
@@ -91,14 +101,7 @@ function focusEventLink(id: string | undefined): void {
 }
 
 function useActivityFeed(filters: PlatformActivityFilters) {
-  return useInfiniteQuery({
-    queryKey: qk.platformActivityFeed(JSON.stringify(filters)),
-    queryFn: ({ pageParam }) =>
-      api.platformActivity(pageParam, filters, PAGE_SIZE),
-    initialPageParam: null as PlatformActivityPage["nextCursor"],
-    getNextPageParam: (last: PlatformActivityPage) =>
-      last.nextCursor ?? undefined,
-  });
+  return useInfiniteQuery(platformReads.activityFeed(filters, PAGE_SIZE));
 }
 
 /** The route's record: the list, or the list with one event's drawer open. */
@@ -126,8 +129,7 @@ export function PlatformActivityPage({
   useLoadingAnnouncement("activity", feed.isPending || feed.isRefetching);
   const products = useProducts();
   const platformSettings = useQuery({
-    queryKey: qk.platformSettings(),
-    queryFn: () => api.platformSettings(),
+    ...reads.platformSettings(),
   });
   const settings = React.useMemo(
     () =>
@@ -151,12 +153,12 @@ export function PlatformActivityPage({
     const seen = seenActors.current;
     for (const i of items) if (i.actor.sub) seen.set(i.actor.sub, actorName(i));
     if (params.actor && params.actor !== "system" && !seen.has(params.actor))
-      seen.set(params.actor, params.actor);
+      seen.set(params.actor, params.who || params.actor);
     return [
       { value: "system", label: "Polaris Key" },
       ...[...seen.entries()].map(([value, label]) => ({ value, label })),
     ];
-  }, [items, params.actor]);
+  }, [items, params.actor, params.who]);
 
   const range = params.range || DEFAULT_RANGE;
   const filtered =
@@ -175,6 +177,7 @@ export function PlatformActivityPage({
     setAnchor(Date.now());
     setParams({
       actor: null,
+      who: null,
       action: null,
       kind: null,
       product: null,
@@ -263,7 +266,7 @@ export function PlatformActivityPage({
             value={params.actor || null}
             set={Boolean(params.actor)}
             emptyLabel="Anyone"
-            onChange={(v) => setParams({ actor: v })}
+            onChange={(v) => setParams({ actor: v, who: null })}
           />
           <FacetSelect
             label="Action"

@@ -15,7 +15,6 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, CircleDashed, GitCompareArrows } from "lucide-react";
 import {
-  api,
   type ClaimKey,
   type SettingsDrift,
   type SettingsDriftItem,
@@ -32,7 +31,7 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { toast } from "../../ui/toast.js";
 import { mutate } from "../data/mutations.js";
-import { qk } from "../data/queries.js";
+import { reads } from "../data/reads.js";
 import { intentOf } from "../sections/core/pages/confirmGate.js";
 import { SettingsSection } from "../templates/Settings.js";
 import { CLAIM_LABELS, RevertClaimDialog } from "./RevertClaimDialog.js";
@@ -209,10 +208,7 @@ export function ManifestDriftSection({
 }: {
   slug: string;
 }): React.ReactElement {
-  const q = useQuery({
-    queryKey: qk.settingsDrift(slug),
-    queryFn: () => api.settingsDrift(slug),
-  });
+  const q = useQuery(reads.settingsDrift(slug));
   const [kept, setKept] = React.useState<ReadonlySet<string>>(new Set());
   const [reverting, setReverting] = React.useState<SettingsDriftItem | null>(
     null,

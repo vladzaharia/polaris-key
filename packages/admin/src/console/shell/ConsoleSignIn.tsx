@@ -35,7 +35,10 @@ export function ConsoleBrand(): React.ReactElement {
 /** Offline or a server error: say so, and offer Try again before any sign-in. */
 export function ConsoleOffline({
   onRetry,
+  serverError = false,
 }: {
+  /** The server answered with a 5xx: it is up but failing, so the copy must not say it can't be reached. */
+  serverError?: boolean;
   /** Resolves with whether the session still fails to load. */
   onRetry: () => Promise<{ isError: boolean }>;
 }): React.ReactElement {
@@ -53,9 +56,17 @@ export function ConsoleOffline({
   return (
     // focusKey: the card's h1 takes focus and is announced when the card appears.
     <AuthCard brand={<ConsoleBrand />} stepKey="offline" focusKey={1}>
-      <AuthTitle>Can't reach Polaris Key</AuthTitle>
+      <AuthTitle>
+        {serverError
+          ? "Something went wrong on the server"
+          : "Can't reach Polaris Key"}
+      </AuthTitle>
       <p aria-live="polite" className="text-sm text-fg-muted empty:hidden">
-        {again ? "Still can't reach Polaris Key." : ""}
+        {again
+          ? serverError
+            ? "Still something went wrong on the server."
+            : "Still can't reach Polaris Key."
+          : ""}
       </p>
       <div className="space-y-2">
         <Button

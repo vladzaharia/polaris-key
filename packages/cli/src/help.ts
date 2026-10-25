@@ -9,16 +9,21 @@
  * pkey is a developer tool: its words are English and live here, not in the kit's copy catalog.
  */
 
-import { SERVICE_SLUGS } from "@polaris-key/manifest";
+import { CHANNELS, SERVICE_SLUGS, isOutletKind } from "@polaris-key/manifest";
 import { cellWidth, wrapSpans, type Line } from "@polaris-key/node/terminal";
 import { ADMIN_TOKEN_ENV, DEFAULT_BASE_URL } from "./bundle.js";
-import { ADMIN_COOKIE_ENV, ADMIN_COOKIE_NAME } from "./listing.js";
 import { CI_TOKEN_ENV } from "./oidc.js";
 import { LOGO_COLS, LOGO_STAR_GLYPH, logoLines, logoMode } from "./logo.js";
 import type { Term } from "./terminal.js";
 import { CLI_VERSION } from "./version.js";
 
+/** The channels `pkey channel add` takes: those with an outlet kind. */
+export const ADDABLE_CHANNELS: readonly string[] = CHANNELS.filter((c) =>
+  isOutletKind(c.outlet.kind),
+).map((c) => c.id);
+
 export type GroupId =
+  | "account"
   | "manifest"
   | "sdk"
   | "bundles"
@@ -32,6 +37,7 @@ export type GroupId =
 
 /** The overview's groups, in order, with their headings. */
 export const GROUPS: ReadonlyArray<readonly [GroupId, string]> = [
+  ["account", "Account"],
   ["manifest", "Manifest"],
   ["sdk", "SDK and tools"],
   ["bundles", "Offline bundles"],
@@ -70,9 +76,9 @@ export interface PkeyCommand {
    */
   context?: readonly ContextKey[];
   /**
-   * The publish Action's inputs this command receives, as input name to the flag it becomes.
-   * `action.ts` runs the Action's steps through these commands; a test holds the union to
-   * `ACTION_INPUTS` and each flag to the command's usage.
+   * The publish Action's inputs 0.9 removed that this command used to receive, as input name to the
+   * flag that replaces it. `action.ts` refuses each with that flag (`REMOVED_INPUTS`); a test holds
+   * each flag to the command's usage and keeps the eight current inputs out of the table.
    */
   action?: Readonly<Record<string, string>>;
   /** One line: what the command is for (its help's header, and completion's description). */
@@ -116,22 +122,11 @@ const CI_ENV: EnvVar = {
 const TOKEN_ENV: EnvVar = {
   name: ADMIN_TOKEN_ENV,
   text:
-    "Required by `pkey bundle`. An admin API token (`pkeya_...`), sent as `Authorization: " +
-    "Bearer`. Mint one in the console: /manage -> API tokens -> New token; the value is shown " +
-    "ONCE, at mint. It is scoped to `bundles:mint`, individually revocable, and expires on the " +
-    "date you chose. It can still mint a bundle for any product: do not commit it, and do not " +
-    "export it into a shared shell.",
-};
-
-const COOKIE_ENV: EnvVar = {
-  name: ADMIN_COOKIE_ENV,
-  text:
-    "Required by `pkey listing import`. The console's admin session cookie, " +
-    `as \`${ADMIN_COOKIE_NAME}=<value>\` (the bare value is accepted too). The admin API token ` +
-    "`pkey bundle` uses reaches the bundle mint only, so the import is authenticated by the " +
-    "console's browser session. Copy the cookie from an authenticated console tab: devtools -> " +
-    "Application -> Cookies -> the console origin. It is a SHORT-LIVED session credential " +
-    "carrying full admin authority: do not commit it, and do not export it into a shared shell.",
+    "Used instead of the sign-in pkey login saved: a personal token (pkeyp_...) or an admin " +
+    "API token (pkeya_...) with the bundles:mint scope, sent as Authorization: Bearer. Make an " +
+    "API token in the console under API tokens; its value is shown once, when you make it. It " +
+    "can be revoked on its own and ends on the date you chose. Do not commit it or export it " +
+    "into a shared shell.",
 };
 
 const ciEnvFor = (subs: readonly string[]): EnvVar => ({ ...CI_ENV, subs });
@@ -141,6 +136,110 @@ const STORE_SUBS = ["winget", "homebrew", "scoop", "flathub"] as const;
 /** Every command, in overview order. */
 export const COMMANDS: readonly PkeyCommand[] = [
   {
+    name: "login",
+    group: "account",
+    json: true,
+    valueless: ["json", "no-browser"],
+    context: ["baseUrl"],
+    summary: "Sign in to the console from this terminal",
+    rows: [["login", "Sign in to the console from this terminal"]],
+    usage: ["pkey login [--base-url url] [--no-browser] [--json]"],
+    about: [
+      {
+        text:
+          "Shows a code, opens the console's approval page in your browser (not over SSH, " +
+          "without a display or with --no-browser: it prints the link instead) and waits. Check " +
+          "that the code in your browser matches the one here before you approve: it is how " +
+          "you know the request is yours. On approval a personal token (admin, 7 days) goes " +
+          "to your operating system's credential store, bound to the origin that issued it. " +
+          "The token is never printed. Keys: Enter opens the page again, c copies the code " +
+          "(not over SSH), Esc cancels.",
+      },
+      {
+        text:
+          "A second pkey login ends the token it replaces once the new one is saved; if you " +
+          "cancel, are denied, run out of time or lose the network, the old sign-in keeps " +
+          "working. It refuses (exit 4) in CI, where PKEY_ADMIN_TOKEN is the credential; " +
+          "without a credential store; and when you already have the most personal tokens " +
+          "allowed (revoke one at Personal tokens, then run it again). A code canceled in the " +
+          "browser exits 4; an expired code, an unreachable console or a credential store that " +
+          "won't save exits 1. Esc and Ctrl+D cancel and exit 1; Ctrl+C exits 130. A base " +
+          "URL that is not https is exit 2 (http works only on localhost).",
+      },
+      {
+        text:
+          "--json prints one line when the code is ready, " +
+          '{"v":1, "command":"login", "event":"started", "host", "code", "url", "expiresIn", ' +
+          '"replaces"}, then one result line, {"v":1, "command":"login", "event":"result", ' +
+          '"ok", "exit"} with name, email, roles, token (no secret), storedIn and replaced on ' +
+          "success, or error and message. error is denied, expired, token_limit, cancelled, " +
+          "interrupted, refused, network, server-error, store-failed, usage or internal. " +
+          "It never prompts or opens a browser.",
+      },
+    ],
+  },
+  {
+    name: "whoami",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Show who pkey is signed in as",
+    rows: [["whoami", "Show who pkey is signed in as"]],
+    usage: ["pkey whoami [--base-url url] [--json]"],
+    about: [
+      {
+        text:
+          "Prints the person, their roles and when the sign-in ends. The token is never " +
+          "printed. It reads the sign-in stored for the origin (--base-url), or " +
+          `${ADMIN_TOKEN_ENV} when that is set to a personal token (pkeyp_).`,
+      },
+      {
+        text:
+          "--json prints one line, the result line: " +
+          '{"v":1, "command":"whoami", "event":"result", "ok", "exit", "host", "name", ' +
+          '"email", "roles", "token"}, with role ids. A refusal is {"ok":false, "exit":4, ' +
+          '"error", "message"}: not-signed-in, sign-in-ended, sign-in-refused, ' +
+          "no-credential-store, keychain-refused, admin-api-token, env-token-refused or " +
+          "redirect. A failure is exit 1: network, server-error or not-a-console. A base " +
+          "URL that is not https is exit 2, error usage.",
+      },
+    ],
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        text: "A personal token (pkeyp_), used instead of the stored sign-in.",
+      },
+    ],
+  },
+  {
+    name: "logout",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Revoke the stored sign-in and remove it",
+    rows: [["logout", "Revoke the stored sign-in and remove it"]],
+    usage: ["pkey logout [--base-url url] [--json]"],
+    about: [
+      {
+        text:
+          "Revokes the stored token on the server, then removes it from the credential " +
+          "store. The stored sign-in is per operating-system user and origin (--base-url). " +
+          "If the server can't be reached, or won't revoke the token, the stored copy is " +
+          "still removed, and pkey says the token works until its end date and where to " +
+          "revoke it. That exits 1. It refuses (exit 4) while " +
+          `${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`,
+      },
+      {
+        text:
+          "--json prints one line, the result line: " +
+          '{"v":1, "command":"logout", "event":"result", "ok", "exit", "host", "revoked", ' +
+          '"cleared"}. ' +
+          "When the token still works it adds error (network, redirect, revoke-refused or " +
+          "server-error), message, tokenEndsAt and revokeUrl.",
+      },
+    ],
+  },
+  {
     name: "init",
     group: "manifest",
     json: false,
@@ -148,18 +247,19 @@ export const COMMANDS: readonly PkeyCommand[] = [
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
       "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] " +
-        "[--release-owner owner] [--release-repo repo] [--force]",
+        "[--release-owner owner] [--release-repo repo] [--starter-tier free|none] [--force]",
     ],
     about: [
       {
         text:
           "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file " +
-          "that exists is kept unless you pass --force.",
+          "that exists is kept unless you pass --force. On a terminal it asks what the product " +
+          "is for and whether to start with a Free tier; --modules and --starter-tier answer instead.",
       },
       {
         text:
-          `--modules takes feature slugs (${SERVICE_SLUGS.join(", ")}); the default is ` +
-          "license,config. The old names licensing, releases, oidc and edgeMint still work. " +
+          `--modules takes service slugs (${SERVICE_SLUGS.join(", ")}); the default is ` +
+          "license,config. --starter-tier none leaves out the Free tier (default free, with License). The old names licensing, releases, oidc and edgeMint still work. " +
           "--product (or --slug) defaults to the directory name, --name to that name in title case.",
       },
     ],
@@ -216,24 +316,32 @@ export const COMMANDS: readonly PkeyCommand[] = [
     about: [
       {
         text:
-          "Checks .pkey/ like validate, then asks the live product what it has: whether it " +
-          "answers, its features and its signing keys. It flags features that differ from " +
-          ".pkey/. Exits 1 while anything is to do.",
+          "pkey doctor checks the product in four parts and always runs all of them: Manifest " +
+          "(.pkey/, the services the server enables, who is signed in, polaris-key.json), Keys " +
+          "(the signing and release key ids), Integration (per feature and platform Verified, " +
+          "Waiting or Not seen yet, with CI and Commerce) and Left to do, each with its fix. " +
+          "The product is --product, else the nearest .pkey/product; discovery is its " +
+          ".well-known/polaris.json under the base URL (--base-url, else $PKEY_BASE_URL, " +
+          "else key.plrs.im). Outside a repository it still checks sign-in, the base URL " +
+          "and polaris-key.json.",
       },
       {
         text:
-          "Waits up to 10 s. With no product it skips the live checks and says so. --json " +
-          "prints one line instead; its shape is at /docs/reference/cli/#doctor.",
+          "Signed in is pkey login, or $PKEY_ADMIN_TOKEN. Signed out, or refused access, is a " +
+          "warning, and signed out makes no console request. The summary counts what is to do " +
+          "and what is a warning, then the run time. It exits 1 while anything is to do: a " +
+          "manifest error, a failed discovery or an open console step.",
       },
-    ],
-    reference: [
       {
         text:
-          "--json prints one result line: " +
-          '{"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl",' +
-          '"facts","services","signing"}, each fact as {"id","state","detail","fix"} with id ' +
-          "manifest, discovery, services, signing-keys or in-sync and state ok, warn or todo; " +
-          'signing is a list of {"kid","status"}. It exits 1 while any fact is todo.',
+          "--json prints one result line with the same facts: " +
+          '{"v":1, "command":"doctor", "event":"result", "ok", "exit", "product", "baseUrl", ' +
+          '"facts", "summary", "services", "signing", "keys"}. Each fact is ' +
+          '{"id", "state", "detail"} with id manifest, discovery, services, signing-keys or ' +
+          "config-file and state ok, warn or todo; a network failure also carries " +
+          '"code":"network". "summary" is {"todo", "warnings"}. "signedIn" has state in, ' +
+          'out, ended or unreadable and when it ends; "integration" has state ok, skipped, ' +
+          "denied or unavailable, and ok carries features, platforms, ci, commerce and todo.",
       },
     ],
   },
@@ -365,13 +473,14 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "bundle",
     group: "bundles",
-    json: false,
+    json: true,
+    valueless: ["json"],
     context: ["product", "baseUrl"],
     summary: "Mint an offline activation bundle for one device",
     rows: [["bundle", "Mint an offline activation bundle for one device"]],
     usage: [
       "pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] " +
-        "[--base-url url] [--out file] [--force]",
+        "[--base-url url] [--out file] [--force] [--json]",
     ],
     about: [
       {
@@ -387,6 +496,11 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "is refused before anything is sent. The file is written with mode 0600, is never " +
           "created over an existing one without --force, and is never written through a " +
           "symbolic link.",
+      },
+      {
+        text:
+          "--json prints one line, the result: the bundle id, the file, the device, the grace " +
+          "days and the documents it carries; on a failure, the error and its message.",
       },
     ],
     env: [TOKEN_ENV],
@@ -425,8 +539,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
       {
         name: ADMIN_TOKEN_ENV,
         text:
-          "Required. An admin API token (`pkeya_...`) with the `migrations:report` scope. Mint one " +
-          "in the console: /manage -> API tokens -> New token. It reaches the migration job list, " +
+          "Instead of the sign-in `pkey login` saved: a personal token (`pkeyp_...`), or an admin " +
+          "API token (`pkeya_...`) with the `migrations:report` scope. Mint one in the console: " +
+          "/manage -> API tokens -> New token. An API token reaches the migration job list, " +
           "reports and dry runs, and nothing else.",
       },
     ],
@@ -466,9 +581,6 @@ export const COMMANDS: readonly PkeyCommand[] = [
       dir: "--dir",
       source: "--source",
       meta: "--meta",
-      "base-url": "--base-url",
-      "release-key": "--release-key-file",
-      "content-key": "--content-key-file",
       delegation: "--delegation",
       "min-supported-seq": "--min-supported-seq",
       "content-stamp": "--content-stamp",
@@ -478,7 +590,6 @@ export const COMMANDS: readonly PkeyCommand[] = [
       bases: "--bases",
       "script-extensions": "--script-extensions",
       "script-types": "--script-types",
-      "dry-run": "--dry-run",
     },
     summary: "Publish, sign and move releases from CI",
     rows: [
@@ -716,32 +827,23 @@ export const COMMANDS: readonly PkeyCommand[] = [
     name: "feeds",
     group: "feeds",
     json: true,
+    valueless: ["no-browser"],
     context: ["product", "baseUrl"],
-    summary: "The F-Droid feed, package-feed setup and feed pruning",
+    summary: "Package-feed setup and feed pruning",
     rows: [
-      ["feeds fdroid", "Build, sign and register a channel's F-Droid repo"],
       ["feeds setup", "Print the setup for one package feed"],
+      ["feeds setup --write", "Sign in and set up your package tools"],
       ["feeds prune", "Delete main builds below the newest stable"],
     ],
-    tree: { fdroid: [], setup: [], prune: [] },
+    tree: { setup: [], prune: [] },
     usage: [
-      "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] " +
-        "[--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug " +
         "[--namespace key=value ...] [--package name [--version v]] [--origin url] " +
         "[--token-env NAME] [--json]",
+      "pkey feeds setup --write [--owner slug] [--no-browser] [--base-url url] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]",
     ],
     about: [
-      {
-        subs: ["fdroid"],
-        text:
-          "pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, " +
-          "entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and " +
-          "the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and " +
-          "registers it; the token needs distribution:feeds. Without --keystore it writes the " +
-          "unsigned files and stops.",
-      },
       {
         subs: ["prune"],
         text:
@@ -765,9 +867,20 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "reading the registry token from that environment variable. Offline: nothing is sent " +
           "anywhere.",
       },
-      { subs: ["fdroid", "prune"], text: CI_PARA },
+      {
+        subs: ["setup"],
+        text:
+          "pkey feeds setup --write signs in with a code and a read-only personal token that you " +
+          "approve in Polaris Locker, then sets up the tools it finds on PATH. It changes only " +
+          "the lines it owns, in files under your home directory at 0600, and keeps the first " +
+          "version of a changed file as <file>.pkey-backup. It refuses (exit 4) in CI and " +
+          "without a terminal, where you print the setup instead; --owner limits it to one " +
+          "product's feeds. A Godot feed is skipped: the editor needs its own URL, made in " +
+          "Polaris Locker under Packages.",
+      },
+      { subs: ["prune"], text: CI_PARA },
     ],
-    env: [ciEnvFor(["fdroid", "prune"])],
+    env: [ciEnvFor(["prune"])],
   },
   {
     name: "listing",
@@ -795,9 +908,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
         text:
           "pkey listing import reads the Godot project and imports it into the product's shared " +
           "listing: the diff first, written only with --apply. --base-url must be https:, or " +
-          "http:// on localhost or 127.0.0.1 for local development: the console session cookie " +
-          "is sent to whatever origin you name, so any other origin is refused before anything " +
-          "is sent.",
+          "http:// on localhost or 127.0.0.1 for local development: your token is sent to " +
+          "whatever origin you name, so any other origin is refused before anything is sent. " +
+          "Run pkey login once; the import uses that sign-in.",
       },
       {
         subs: ["assets"],
@@ -818,7 +931,16 @@ export const COMMANDS: readonly PkeyCommand[] = [
       },
       { subs: ["assets"], text: CI_PARA },
     ],
-    env: [{ ...COOKIE_ENV, subs: ["import"] }, ciEnvFor(["assets"])],
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        subs: ["import"],
+        text:
+          "Instead of the sign-in `pkey login` saved: a personal token (`pkeyp_...`). The import " +
+          "refuses an admin API token (`pkeya_...`).",
+      },
+      ciEnvFor(["assets"]),
+    ],
   },
   {
     name: "assets",
@@ -924,6 +1046,54 @@ export const COMMANDS: readonly PkeyCommand[] = [
     env: [CI_ENV],
   },
   {
+    name: "channel",
+    group: "storefront",
+    json: true,
+    context: ["product", "baseUrl"],
+    summary: "Declare a delivery channel and sync it from CI",
+    rows: [
+      ["channel add <id>", "Declare a channel in .pkey/distribution"],
+      [
+        "channel sync",
+        "Open the declared channels' store pull requests and upload their builds",
+      ],
+    ],
+    tree: { add: [], sync: [] },
+    usage: [
+      "pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]",
+      "pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]",
+    ],
+    about: [
+      {
+        subs: ["add"],
+        text:
+          "channel add declares one channel in .pkey/distribution, creating the file when " +
+          "absent and keeping the comments already there, with a comment on every field. " +
+          `Channels: ${ADDABLE_CHANNELS.join(", ")}. --field sets one of the channel's fields (a ` +
+          "value starting [ or { is JSON); the answer names the ones still unset. " +
+          "--outlet-id names the entry when you declare a channel twice. Nothing is " +
+          "written if the id is taken or .pkey/ would stop validating.",
+      },
+      {
+        subs: ["sync"],
+        text:
+          "channel sync runs what each declared channel needs: a pull request for " +
+          "winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and " +
+          "with --dir an itch.io push per platform, a Snap upload and the F-Droid " +
+          "repository build, from the files .pkey/release maps (no fitting file is a " +
+          "skip). --channel is the release track (default stable); --version is what " +
+          "itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose " +
+          "credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, " +
+          "BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, " +
+          "PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first " +
+          "submission (pkey storefront flathub init). A failed step fails the command " +
+          "after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write " +
+          "in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs " +
+          "nothing and prints each checked command.",
+      },
+    ],
+  },
+  {
     name: "storefront",
     group: "storefront",
     json: true,
@@ -945,6 +1115,10 @@ export const COMMANDS: readonly PkeyCommand[] = [
         "storefront snap upload-metadata",
         "Send the snap's summary, description and icon",
       ],
+      [
+        "storefront fdroid",
+        "Build, sign and register a channel's F-Droid repo",
+      ],
       ["storefront exec", "Run another allow-listed store command"],
       ["storefront allow-list", "Print the commands each store's CI admits"],
       [
@@ -957,6 +1131,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     tree: {
       itch: ["push"],
       snap: ["metadata", "upload", "upload-metadata"],
+      fdroid: [],
       exec: [],
       "allow-list": [],
       winget: ["pr", "status"],
@@ -971,6 +1146,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
       "pkey storefront snap upload --snap file.snap --channel c[,c...] [--outlet id] " +
         "[--dry-run] [--no-report]",
       "pkey storefront snap upload-metadata --snap file.snap [--dry-run] [--no-report]",
+      "pkey storefront fdroid --product slug --channel c --out dir [--keystore path --alias a] " +
+        "[--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
       "pkey storefront exec store command --op operation [--outlet id] [--tool-path path] " +
         "-- argv...",
       "pkey storefront allow-list [--store s] [--json]",
@@ -1002,10 +1179,21 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "is skipped. --dry-run checks and prints the command lines.",
       },
       {
+        subs: ["fdroid"],
+        text:
+          "pkey storefront fdroid builds the channel's F-Droid repository (index-v2.json, " +
+          "entry.json, a diff) from Polaris Key's releases, signs entry.jar with apksigner and " +
+          "the CI-held repo key (the password in $PKEY_FDROID_KS_PASS), uploads it and " +
+          "registers it; the token needs distribution:feeds. Without --keystore it writes the " +
+          "unsigned files and stops.",
+      },
+      {
         subs: STORE_SUBS,
         text:
-          "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask in " +
-          "your own Homebrew tap (direct.homebrewTap), the Scoop feed's manifest in your own " +
+          "pkey storefront <store> pr writes winget's manifests (schema 1.12.0), the cask " +
+          "and the formula in your own Homebrew tap (direct.homebrewTap; a formula installs a " +
+          ".tar.gz or .zip build for macOS and Linux, and --command names its executable, " +
+          "default the formula's name), the Scoop feed's manifest in your own " +
           "bucket (direct.scoopBucket) or Flathub's updated manifest and MetaInfo for the " +
           "channel's newest release, and opens one pull request per version with the GitHub " +
           "token in PKEY_PR_TOKEN (a CI secret, never argv); a PR already open or merged for " +
@@ -1073,11 +1261,15 @@ export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
   ["0", "Success."],
   [
     "1",
-    "Failure: an invalid manifest, a refused request, a server or network error. The message says what to do next.",
+    "Failure: an invalid manifest, a request the server rejected, a server or network error. The message says what to do next.",
   ],
   [
     "2",
     "Usage: an unknown command or subcommand, or a missing or misused flag. The message shows the command's usage.",
+  ],
+  [
+    "4",
+    "Refused, by pkey login, whoami and logout: not signed in, no credential store, or a token the server won't accept. The message names the fix.",
   ],
 ];
 

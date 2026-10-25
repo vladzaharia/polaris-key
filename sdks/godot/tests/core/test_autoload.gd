@@ -12,7 +12,7 @@ func run(t: PKeyTestContext) -> void:
 
 func _opts(product := "djdl", version := "1.0.0") -> PKeyOptions:
 	var o := PKeyOptions.new()
-	o.product = product
+	o.product_slug = product
 	o.version = version
 	o.store = PKeyMemoryStore.new()
 	o.build_stamp_path = ""
@@ -28,6 +28,19 @@ func _configure(t: PKeyTestContext) -> void:
 	t.check("autoload: sync before configure is refused", early.code == PKeyErrors.NOT_CONFIGURED)
 	t.check("autoload: configure(null) is refused", sdk.configure(null).code == PKeyErrors.INVALID_OPTIONS)
 	t.check("autoload: a bad product slug is refused", sdk.configure(_opts("Dice Roll")).code == PKeyErrors.INVALID_OPTIONS)
+	# SP-35 D7: the pre-0.9 names are captured and refused, never read, and never echoed.
+	var old := _opts()
+	old.set("product", "sekret-slug")
+	old.set("pinned_trust_keys", {"sekret-kid": "sekret-key"})
+	var refused: PKeyResult = sdk.configure(old)
+	var refusal := str(refused.message)
+	t.check("autoload: the removed option names are refused naming the new ones", refused.code == PKeyErrors.INVALID_OPTIONS and refusal.contains("product_slug") and refusal.contains("pinned_keys"), refusal)
+	t.check("autoload: the refusal never echoes a value", not refusal.contains("sekret"), refusal)
+	t.check("autoload: nothing is copied from the removed names", old.product_slug == "djdl" and old.pinned_keys.is_empty() and old.removed_names() == PackedStringArray(["product", "pinned_trust_keys"]))
+	var only := _opts()
+	only.set("product", "sekret-slug")
+	var only_r: PKeyResult = sdk.configure(only)
+	t.check("autoload: only the fields present are named", only_r.code == PKeyErrors.INVALID_OPTIONS and not str(only_r.message).contains("pinned_keys"), str(only_r.message))
 	for bad in ["1.0", "v1.0.0", "latest"]:
 		t.check("autoload: version %s is refused (semver only)" % bad, sdk.configure(_opts("djdl", bad)).code == PKeyErrors.INVALID_OPTIONS)
 	var unset := _opts("djdl", "")
@@ -37,7 +50,7 @@ func _configure(t: PKeyTestContext) -> void:
 	services.expected_services = PackedStringArray(["config", "nope"])
 	t.check("autoload: an unknown expected service is refused", sdk.configure(services).code == PKeyErrors.INVALID_OPTIONS)
 	var pins := _opts()
-	pins.pinned_trust_keys = {"kid": 5}
+	pins.pinned_keys = {"kid": 5}
 	t.check("autoload: malformed pins are refused", sdk.configure(pins).code == PKeyErrors.INVALID_OPTIONS)
 	var good := _opts("djdl", "0.0.0-dev.4")
 	t.check("autoload: configure accepts valid options", sdk.configure(good).ok)
@@ -79,7 +92,7 @@ func _capabilities(t: PKeyTestContext) -> void:
 	# A product without licensing says so in its build: discovery alone cannot switch the gate off.
 	o.expected_services = PackedStringArray(["config", "update"])
 	o.base_url = server.base_url()
-	o.pinned_trust_keys = {"my-pin": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"}
+	o.pinned_keys = {"my-pin": "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"}
 	sdk.configure(o)
 	await sdk.start()
 	var d: PKeyResult = await sdk.discover()

@@ -1,7 +1,7 @@
 /**
  * The limits inventory (ST-09): the code constants an operator can be asked about, with the
  * wording the Limits section shows. Every value is imported from the module that owns it, so the
- * page cannot disagree with the code; `test/limits.test.ts` fails when a limit-shaped constant
+ * page cannot disagree with the code; `test/core/limits.test.ts` fails when a limit-shaped constant
  * is added to the Core, platform or console layers without a row here (or an entry in its
  * `INTERNAL` table, which says why it is not listed). Read-only: a limit changes by a code
  * change, where review sees it.
@@ -15,10 +15,16 @@ import {
   LIVE_CHECK_SECONDS,
 } from "./core/console/session.js";
 import { MAX_ADMIN_API_TOKENS, MAX_TOKEN_DAYS } from "./console/apiTokens.js";
+import { OPERATOR_NOTICE_PER_RECIPIENT_HOUR } from "./console/handlers/accessShared.js";
+import {
+  INVITE_PURGE_GRACE_SECONDS,
+  INVITE_TTL_SECONDS,
+} from "./core/rbac/bindings.js";
 import { MAX_LIVE_PERSONAL_TOKENS } from "./core/accounts/personalTokens.js";
 import {
   OIDC_CI_TOKEN_TTL_SECONDS,
   STATIC_CI_TOKEN_MAX_TTL_SECONDS,
+  STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS,
   TICKET_MAX_TTL_SECONDS,
   MAX_TICKET_OBJECTS,
   MAX_UPLOAD_OBJECT_BYTES,
@@ -138,6 +144,33 @@ export const LIMITS: readonly Limit[] = [
     MAX_TOKEN_DAYS,
   ),
   row(
+    "INVITE_TTL_SECONDS",
+    "core/rbac/bindings.ts",
+    "Access",
+    "Console invitation lifetime",
+    "An invitation to the console that nobody accepts ends after this.",
+    "seconds",
+    INVITE_TTL_SECONDS,
+  ),
+  row(
+    "INVITE_PURGE_GRACE_SECONDS",
+    "core/rbac/bindings.ts",
+    "Access",
+    "Expired invitations kept",
+    "An expired invitation is deleted this long after it ends.",
+    "seconds",
+    INVITE_PURGE_GRACE_SECONDS,
+  ),
+  row(
+    "OPERATOR_NOTICE_PER_RECIPIENT_HOUR",
+    "console/handlers/accessShared.ts",
+    "Access",
+    "Access emails per person",
+    "Emails about console access one address gets in an hour. A change to Superadmin, Platform admin or All products admin is always sent.",
+    "per hour",
+    OPERATOR_NOTICE_PER_RECIPIENT_HOUR,
+  ),
+  row(
     "MAX_ADMIN_API_TOKENS",
     "console/apiTokens.ts",
     "Access",
@@ -172,6 +205,15 @@ export const LIMITS: readonly Limit[] = [
     "The latest expiry a static CI token can be given.",
     "seconds",
     STATIC_CI_TOKEN_MAX_TTL_SECONDS,
+  ),
+  row(
+    "STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS",
+    "core/publisher.ts",
+    "Access",
+    "Longest read-only service token",
+    "The latest expiry a static CI token can be given when its only scope is packages:read.",
+    "seconds",
+    STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS,
   ),
   row(
     "REGISTRY_TOKEN_MAX_DAYS",
@@ -514,8 +556,8 @@ export const LIMITS: readonly Limit[] = [
     "SEAT_DORMANCY_SECONDS",
     "core/devices/store.ts",
     "Licensing",
-    "Seat dormancy",
-    "A device unseen this long no longer holds a seat.",
+    "Device dormancy",
+    "A device unseen this long stops counting toward the device limit.",
     "seconds",
     SEAT_DORMANCY_SECONDS,
   ),

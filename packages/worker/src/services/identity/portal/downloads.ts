@@ -224,7 +224,7 @@ export async function productDownloads(
   // Entitlement is decided from the version and channel the hook returns (Release's
   // channelReleases), while the mint reads them through `catalog.release`. Both read the
   // same release rows today; if either source moves, the two can drift, which
-  // test/portalDownloads.test.ts ("every file it offers is one the token mint
+  // test/services/identity/portalDownloads.test.ts ("every file it offers is one the token mint
   // answers") guards against.
   const annotateNow = async (release: CustomerRelease): Promise<Annotated> => {
     const covered = await accountMayDownload(

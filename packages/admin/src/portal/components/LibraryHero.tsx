@@ -60,7 +60,7 @@ export function LibraryHero({
         fit="contain"
         className="aspect-video w-full max-h-[min(40svh,28rem)] split:aspect-auto split:max-h-none split:self-stretch short:min-[35rem]:aspect-auto short:min-[35rem]:max-h-none short:min-[35rem]:self-stretch"
       />
-      <div className="flex min-w-0 flex-col gap-5 p-6 wide:p-9 short:gap-3 short:p-5 @max-[17rem]:p-4">
+      <div className="flex min-w-0 flex-col gap-5 p-6 wide:p-8 short:gap-3 short:p-5 @max-[17rem]:p-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <ProductIcon
             slug={product.slug}

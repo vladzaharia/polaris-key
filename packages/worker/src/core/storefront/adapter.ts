@@ -30,9 +30,10 @@
  * (A-18h, `pnpm gen storefront-ci`), a straight serialise of the CI plane and the CI-plane
  * adapters. No new package and nothing in `shared-protocol`, which is wire.
  *
- * Runtime behaviour (`connect`, `listApps`, `readListing`, `plan`, `runStep`, `status`) is
- * `StorefrontRuntime`, implemented per plane beside the existing connector
- * (`services/distribution/connectors/<store>/`); A-18c and A-18j add the first implementations.
+ * Runtime behaviour is the DELIVERY FACET of a store (P0-27): the flow runtime (`FlowRuntime`,
+ * `services/distribution/storefronts/runtime.ts`) and the connector
+ * (`services/distribution/connectors/<store>/`), bound to this declaration by id through the
+ * Core store adapter (`core/stores/adapters.ts`). There is no runtime interface here.
  * A FIRST-PARTY op (`polaris-key`, PS-01) has no connector: it names a handler in
  * `firstParty.ts`, which works on Polaris Key's own tables through ports.
  */
@@ -141,7 +142,7 @@ export interface StorefrontAdapter extends Adapter<StorefrontId, StorefrontOp> {
   /**
    * The A-16 team credential slot (a `PLATFORM_CREDENTIALS` id, which the conformance suite
    * checks); null for a keyless outlet. A plain string so this module never imports the credential
-   * custody module (`test/outletCredentialReach.test.ts`).
+   * custody module (`test/core/outletCredentialReach.test.ts`).
    */
   readonly credential: string | null;
   /** The Worker-plane gate; null when the adapter has no Worker plane. */
@@ -165,17 +166,6 @@ export interface StorefrontAdapter extends Adapter<StorefrontId, StorefrontOp> {
     readonly action: string;
     readonly projection: Readonly<Record<string, readonly string[]>>;
   };
-}
-
-/** The runtime half, implemented per plane (A-18c, A-18j). Declared here so every store has one shape. */
-export interface StorefrontRuntime<Ctx, PinnedCtx> {
-  readonly id: StorefrontId;
-  connect(ctx: Ctx): Promise<unknown>;
-  listApps(ctx: Ctx): Promise<unknown>;
-  readListing(ctx: PinnedCtx, locales?: readonly string[]): Promise<unknown>;
-  plan(ctx: PinnedCtx, listing: unknown): Promise<unknown>;
-  runStep(ctx: PinnedCtx, step: unknown): Promise<unknown>;
-  status(ctx: PinnedCtx): Promise<unknown>;
 }
 
 /** THE REGISTRY: one line per storefront. */

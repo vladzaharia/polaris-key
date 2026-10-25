@@ -34,7 +34,7 @@
  *
  * Every table holding a `license_id` column is accounted for here, in a contributor, or by a
  * blocker;
- * `test/licenseDelete.test.ts` walks `sqlite_master` and fails when a new one appears unclaimed.
+ * `test/surfaces/console/licenseDelete.test.ts` walks `sqlite_master` and fails when a new one appears unclaimed.
  * One is deliberately kept: a `dist_purchase_binding_aliases` row whose `from_license_id` is the
  * deleted licence belongs to the SURVIVOR of an earlier merge (its `license_id`), and keeps that
  * survivor's purchases resolving.

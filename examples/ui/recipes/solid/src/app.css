@@ -1,0 +1,50 @@
+body {
+  color-scheme: light dark;
+  background: Canvas;
+  color: CanvasText;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+main {
+  padding: 2rem;
+}
+h1 {
+  font-weight: 600;
+}
+button {
+  font: inherit;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  min-block-size: 2.75rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+button:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+button:active {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+button:focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.own {
+  border-block-start: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  padding: 2rem;
+}
+button[data-primary] {
+  background: CanvasText;
+  color: Canvas;
+}
+.own h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}

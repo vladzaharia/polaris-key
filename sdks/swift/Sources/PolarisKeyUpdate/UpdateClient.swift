@@ -13,7 +13,7 @@
 //   `channelFeed()`  the verified feed `decide()` would use, without the record. (Named apart
 //                    from `feed()`, the Sparkle helper, which is unchanged.)
 //   `releaseRecord()` one release record by hash, verified against the PINNED release keys.
-//   `buildURL()`     the route an install downloads a build from (`distribution/builds`).
+//   `buildUrl()`     the route an install downloads a build from (`distribution/builds`).
 //
 // No Sparkle import: this file is the network client, and it works on any platform — an iOS app
 // is a "decide only" host (App Store, TestFlight, a marketplace) and calls `decide()` exactly as
@@ -300,6 +300,16 @@ public actor UpdateClient {
         self.content = options.content
         self.configured = configured
         self.configurationError = nil
+        core.updateProbe.set { [weak self] in await self?.probe() ?? .failed }
+    }
+
+    /// One decision, reduced to what a UI says: an offer, nothing newer, or no answer.
+    private func probe() async -> CoreContext.UpdateProbe {
+        guard let check = try? await decide() else { return .failed }
+        if let release = check.decision.offeredRelease, release.version != core.version {
+            return .offered(release.version)
+        }
+        return check.errors.isEmpty ? .upToDate : .failed
     }
 
     /// The outlet `decide()` uses (`resolveUpdateOutlet`'s answer), detecting it first when the
@@ -456,6 +466,11 @@ extension UpdateClient {
         await core.journal.record(
             UpdateEvent.updateOffered, release: release.version, fromRelease: core.version,
             channel: check.channel)
+        if case .store(_, let listingUrl, _, _, _, _) = check.decision {
+            core.offerListingUrl.set(listingUrl)
+        } else {
+            core.offerListingUrl.set(nil)
+        }
         core.emit(
             .updateAvailable(
                 version: release.version, action: check.decision.action,
@@ -486,7 +501,7 @@ extension UpdateClient {
     /// percent-encoded. That route serves the build's payload from every location it has; the
     /// R2-only blob route is never used. Verify the bytes against the record's `size` and
     /// `sha256` before staging. Nil when discovery has not been loaded or names neither template.
-    public func buildURL(version: String, buildId: String) async -> URL? {
+    public func buildUrl(version: String, buildId: String) async -> URL? {
         guard let doc = await core.discoveryDocument,
             let template = doc.services[.distribution]?.endpoints["builds"]
                 ?? doc.services[.release]?.endpoints["builds"]

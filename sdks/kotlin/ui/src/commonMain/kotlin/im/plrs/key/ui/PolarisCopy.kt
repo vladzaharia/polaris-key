@@ -1,0 +1,317 @@
+// Every string the kit renders, chrome included. Two ways to change it:
+//
+// - per app, in code: `PolarisTheme(copy = PolarisCopy(productName = "Diceroll", signIn = "Log in"))`;
+// - per locale, in resources: every field has a string resource named `pkey_ui_<snake_case>` with
+//   the English default (res/values/strings.xml). An app that ships `values-fr/strings.xml` with
+//   the same names translates the kit, and `PolarisCopy.localized()` (the default PolarisTheme
+//   uses) reads them.
+//
+// The English defaults here and in strings.xml are the same text; PolarisCopyTest fails when they
+// drift. Templates use positional `%1$s` placeholders so a translation can reorder them.
+//
+// The state-to-copy mapping (which title a revoked licence shows, how an activation error reads)
+// is in PolarisCopyMapping.kt as pure functions, unit-tested without rendering, as in Swift.
+
+package im.plrs.key.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+
+/** User-facing copy for every screen of the kit. */
+@Immutable
+public data class PolarisCopy(
+    /** The product's name, used in the activation welcome. */
+    val productName: String = "this app",
+
+    // ── PolarisBoot ──────────────────────────────────────────────────────────────────────────
+    val bootStarting: String = "Starting…",
+    val bootSyncing: String = "Checking for updates…",
+    val bootGate: String = "Checking your license…",
+    val bootDeciding: String = "Looking for a newer version…",
+    val bootFetching: String = "Downloading content…",
+    val bootMounting: String = "Loading…",
+    val bootReady: String = "Ready",
+    val bootOfflineTitle: String = "You're offline",
+    val bootOfflineBody: String = "Connect to the internet and try again.",
+    val bootOfflinePlayableBody: String = "Some content couldn't be downloaded. You can keep going with what's installed, or connect and try again.",
+    val bootErrorTitle: String = "Something went wrong",
+    val bootErrorBody: String = "If this keeps happening, restart %1\$s.",
+    val bootBlockedUpdateTitle: String = "Update required",
+    val bootBlockedUpdateBody: String = "This version can no longer be used. Update to continue.",
+    val bootBlockedUnavailableTitle: String = "Not available on your license",
+    val bootBlockedUnavailableBody: String = "This build isn't available on your license.",
+    val bootDeclinedTitle: String = "Content not downloaded",
+    val bootDeclinedBody: String = "%1\$s needs this content to start. Download it when you're ready.",
+    val bootRolledBack: String = "The last update didn't start, so the previous version was restored.",
+    val consentTitle: String = "Download content?",
+    val consentBody: String = "%1\$s needs %2\$s of new content.",
+    val consentBodyMetered: String = "%1\$s needs %2\$s of new content, and you're on a metered connection.",
+    val consentDownload: String = "Download",
+    val consentLater: String = "Not now",
+    val retry: String = "Try again",
+    val playOffline: String = "Continue offline",
+    val cancel: String = "Cancel",
+    val back: String = "Back",
+    val close: String = "Close",
+    val loading: String = "Loading…",
+
+    // ── Gate ─────────────────────────────────────────────────────────────────────────────────
+    val gateLoading: String = "Checking your license…",
+    /** The grace banner's headline when the licence names no deadline (part.status.grace). */
+    val graceTitle: String = "Offline",
+    val graceBodyNoDeadline: String = "We couldn't reach the license server. You can keep working for now.",
+    // Expired and revoked read core.copy's gate entries (Copy.title / Copy.message).
+    /** The expired screen's second action: back to the activation form (a gate-local switch). */
+    val useAnotherLicense: String = "Use another license",
+    val versionTooOldTitle: String = "Update required",
+    val versionTooOldBody: String = "This version is no longer supported. Update %1\$s to continue.",
+    val versionTooNewTitle: String = "Not available on this license",
+    val versionTooNewBody: String = "This build is newer than your license allows.",
+    val channelNotEntitledTitle: String = "Channel not included",
+    val channelNotEntitledBody: String = "Your license doesn't include this channel.",
+    val versionAllowed: String = "Allowed versions: %1\$s",
+    val versionMin: String = "%1\$s or later",
+    val versionMax: String = "up to %1\$s",
+    val versionRange: String = "%1\$s to %2\$s",
+    val reconnect: String = "Reconnect",
+    /** The expired screen's lead action (`status.renew`). */
+    val renew: String = "Renew",
+
+    // ── Activation ───────────────────────────────────────────────────────────────────────────
+    val activationTitle: String = "Welcome to %1\$s",
+    // Read from the kit-copy catalog (welcome.lede / welcome.ledeKeyOnly) so the kit cannot drift from it.
+    val activationSubtitle: String = KitCopy.bundled.message("welcome.lede", "en") ?: "Sign in or use a license key to continue.",
+    val activationSubtitleKeyOnly: String = KitCopy.bundled.message("welcome.ledeKeyOnly", "en") ?: "Enter a license key to continue.",
+    val signIn: String = "Sign in",
+    /** The Welcome's second path, which opens the key field (welcome.useKey). */
+    val useKey: String = "Use a license key",
+    /** The developer line under the Welcome title: %1$s is the developer (common.byDeveloper). */
+    val byDeveloper: String = "by %1\$s",
+    /** No longer shown: the activation screen sets its two paths apart by space (UI-KITS.md §1.5 rule 6). */
+    val orDivider: String = "or",
+    val keyLabel: String = "License key",
+    val keyPlaceholder: String = "Paste your key",
+    val activate: String = "Activate license",
+    val activating: String = "Activating…",
+    val activationKeyEmpty: String = "Enter a license key first.",
+    // A device-limit refusal reads core.copy's activation entry, with the seat caption under it.
+    /** The seat caption under a device-limit refusal (part.seatMeter.caption). */
+    val seatCaption: String = "%1\$s of %2\$s in use",
+    /** A device-limit refusal with no portal link: the fix, since there is no Replace control. */
+    val deviceLimitNoManage: String = "Sign out of %1\$s on another device, then try again.",
+    val activationUnauthorized: String = "That license key wasn't accepted.",
+    val activationFingerprintRequired: String = "This license needs a hardware fingerprint, which couldn't be read on this device.",
+    val activationHardwareMismatch: String = "This device's hardware changed. The previous authorization was released; activate again to re-bind.",
+    val activationEnrollDisabled: String = "This app doesn't offer a free tier.",
+    val activationError: String = "Activation failed. Check your connection and try again.",
+    val activationEnrollClaimed: String = "This device's free license now belongs to an account. Sign in to use it.",
+    val activationLicenseDisabled: String = "This license has been disabled. Contact support if you think this is a mistake.",
+    val activationLicenseExpired: String = "This license has expired.",
+    val activationAttestationRequired: String = "This app needs a verified store install to activate on this device.",
+    val activationRateLimited: String = "Too many attempts. Wait a moment and try again.",
+    val activationRateLimitedFor: String = "Too many attempts. Try again in %1\$s.",
+    val activationNetwork: String = "Couldn't reach the license server. Check your connection and try again.",
+    // PX-W8: the action on a device-limit refusal that carries the portal link.
+    val freeDevice: String = "Replace a device",
+    /** The browser-mode Replace a device action: it leaves the app, so it carries the new-window glyph (deviceLimit.openBrowser). */
+    val openInBrowser: String = "Open in browser",
+    /** The browser-mode lede: %1$s is the product (deviceLimit.browser). */
+    val deviceLimitBrowser: String = "Replace a device in your browser. %1\$s continues when you're done.",
+    val freeDeviceScan: String = "Scan the code to replace a device on your phone.",
+    val freeDeviceQrDescription: String = "QR code that opens your account to free a device",
+
+    // ── Sign-in with a code (RFC 8628) ───────────────────────────────────────────────────────
+    val signInTitle: String = "Sign in with a code",
+    val signInStarting: String = "Getting a sign-in code…",
+    /** On Android TV, beside the QR code; the address follows on its own line. */
+    val signInInstructions: String = "Scan the QR code with your phone, or go to this address and enter the code below.",
+    /** Everywhere else; %1$s is the address, set inline. */
+    val signInCodeBody: String = "On any phone or computer, go to %1\$s and enter this code.",
+    val signInCopyLink: String = "Copy link",
+    val signInLinkCopied: String = "Link copied",
+    /** Shown when no browser could open the sign-in page. */
+    val signInNoBrowser: String = "We couldn't open your browser",
+    /** On Android TV, back to the key field. */
+    val signInUseKey: String = "Use a license key instead",
+    val signInQrDescription: String = "QR code that opens the sign-in page",
+    val signInCodeDescription: String = "Sign-in code %1\$s",
+    val signInOpenBrowser: String = "Open browser",
+    val signInExpiresIn: String = "Code expires in %1\$s",
+    /** PX-W13 (WIRE-CONTRACT-V4 §12.7.1): the device label the sign-in page will show. */
+    val signInDeviceLabel: String = "The sign-in page will show “%1\$s”",
+    val signInWaiting: String = "Waiting for you to finish signing in…",
+    val signInDone: String = "Signed in",
+    // Expired and Failed read core.copy's sign-in-expired and sign-in-failed entries.
+    val signInNewCode: String = "Get a new code",
+
+    // ── Settings ─────────────────────────────────────────────────────────────────────────────
+    val settingsTitle: String = "Settings",
+    val settingsEmpty: String = "There are no settings to show.",
+    /** The settings could not be read: the error state, with Try again. */
+    val settingsLoadFailed: String = "Settings couldn't be loaded.",
+    /** A boolean setting's value. */
+    val settingsOn: String = "On",
+    val settingsOff: String = "Off",
+    val settingsLocked: String = "Set by your organization",
+    val settingsSourceLocal: String = "Changed by you",
+    val settingsSourceEnv: String = "Set by the environment",
+    val settingsSourceDefault: String = "Default",
+    val settingsSourceFallback: String = "Built-in default",
+    val entitlementLicensed: String = "Active",
+    val entitlementGrace: String = "Offline",
+    val entitlementExpired: String = "Expired",
+    val entitlementRevoked: String = "Revoked",
+    val entitlementInactive: String = "Inactive",
+    val entitlementBlocked: String = "Blocked",
+    val entitlementNotApplicable: String = "Not required",
+    val licensedTo: String = "Licensed to %1\$s",
+
+    // ── Devices ──────────────────────────────────────────────────────────────────────────────
+    val devicesTitle: String = "Your devices",
+    val devicesSubtitle: String = "Devices using this license.",
+    val devicesEmpty: String = "No devices are using this license yet.",
+    val devicesError: String = "Couldn't load your devices.",
+    /** A rename or a removal the SDK refused, named for the device it was on. */
+    val devicesRenameFailed: String = "Couldn't rename %1\$s. Try again.",
+    val devicesRemoveFailed: String = "Couldn't remove %1\$s. Try again.",
+    val deviceThis: String = "This device",
+    val deviceUnnamed: String = "Unnamed device",
+    val deviceLastVerified: String = "Last checked %1\$s",
+    val deviceRename: String = "Rename",
+    val deviceRenameLabel: String = "Device name",
+    val deviceSave: String = "Save",
+    val deviceDeauthorize: String = "Remove",
+    /** The removal confirm: %1$s is the device, %2$s the product. */
+    val deviceRemoveConfirm: String = "Remove %1\$s? It signs out of %2\$s.",
+    val deviceRenameDescription: String = "Rename %1\$s",
+    val deviceDeauthorizeDescription: String = "Remove %1\$s",
+
+    // ── Update ───────────────────────────────────────────────────────────────────────────────
+    val updateAvailable: String = "Version %1\$s is available",
+    val updateAvailableGeneric: String = "An update is available",
+    val updateCritical: String = "This update includes an important security fix.",
+    val updateAction: String = "Update",
+    val updateDismiss: String = "Dismiss",
+    /** The offer's title: %1$s the product, %2$s the version (update.title). */
+    val updatePromptTitle: String = "%1\$s %2\$s",
+    /** A mandatory update of a named product: %1$s the product (update.mandatoryTitle, mandatoryBody). */
+    val updateMandatoryTitle: String = "Update to keep using %1\$s",
+    val updateMandatoryBody: String = "This version is no longer supported.",
+    val updateRequiredTitle: String = "Update required",
+    val updateRequiredBody: String = "Version %1\$s is required to keep using this app.",
+    val updateNow: String = "Update now",
+    val updateLater: String = "Later",
+    val updateRestart: String = "Restart to update",
+    val updateRestartBody: String = "Version %1\$s is ready. Restart to finish updating.",
+    /** The update prompt once the update is ready: %1$s the product, %2$s the version. */
+    val updateReadyTitle: String = "%1\$s %2\$s is ready",
+    /** %1$s is the product. */
+    val updateReadyBody: String = "Restart to finish updating.",
+    val updateRestartNow: String = "Restart now",
+    /** While the download runs, the primary queues the restart: it is never disabled (update.restartWhenReady). */
+    val updateRestartWhenReady: String = "Restart when ready",
+    /** The download line: %1$s the bytes so far, %2$s the total (update.downloading). */
+    val updateDownloading: String = "Downloading · %1\$s of %2\$s",
+    val updateFailed: String = "The update couldn't be installed. Try again later.",
+    /** update.current: %1$s the running version, %2$s the size. */
+    val updateCurrent: String = "You have %1\$s · %2\$s download",
+    /** common.updateCurrentNoSize: the same line when the decision carries no size. */
+    val updateCurrentNoSize: String = "You have %1\$s",
+    /** update.whatsNew */
+    val updateWhatsNew: String = "What's new",
+    /** update.allChanges: %1$s the version. */
+    val updateAllChanges: String = "All changes in %1\$s",
+    /** update.skipVersion */
+    val updateSkip: String = "Skip this version",
+    /** update.timeLeft: %1$s a duration. */
+    val updateTimeLeft: String = "About %1\$s left",
+    /** common.updateTimeMinutes: %1$s the whole minutes left, rounded up. */
+    val updateTimeMinutes: String = "About %1\$s min",
+    /** common.updateTimeLessThanMinute */
+    val updateTimeLessThanMinute: String = "Less than a minute",
+    /** update.appStore */
+    val updateAppStore: String = "Update on the App Store",
+    /** update.googlePlay */
+    val updateGooglePlay: String = "Update on Google Play",
+    /** update.steam */
+    val updateSteam: String = "Get it on Steam",
+    /** update.testflight */
+    val updateTestflight: String = "Open TestFlight",
+    /** update.altstore */
+    val updateAltstore: String = "Open AltStore",
+    /** update.reload */
+    val updateReload: String = "Reload",
+
+    // ── Pack progress ────────────────────────────────────────────────────────────────────────
+    val packsTitle: String = "Downloading content",
+    val packsDownloading: String = "Downloading",
+    val packsInstalling: String = "Installing",
+    val packsDone: String = "Done",
+    val packsIssue: String = "Needs repair",
+    val packsBytes: String = "%1\$s of %2\$s",
+    val packsPercent: String = "%1\$s%%",
+    val packsComplete: String = "All content is up to date.",
+
+    // ── Units ────────────────────────────────────────────────────────────────────────────────
+    val durationDays: String = "%1\$s days",
+    val durationDay: String = "1 day",
+    val durationHours: String = "%1\$s hours",
+    val durationHour: String = "1 hour",
+    val durationMinutes: String = "%1\$s minutes",
+    val durationMinute: String = "1 minute",
+    val durationLessThanMinute: String = "less than a minute",
+    /** Time left under a minute. */
+    val durationSeconds: String = "%1\$s seconds",
+    /** Time left under a minute. */
+    val durationSecond: String = "1 second",
+    val timeAgo: String = "%1\$s ago",
+    val timeJustNow: String = "just now",
+    val bytesB: String = "%1\$s B",
+    val bytesKb: String = "%1\$s KB",
+    val bytesMb: String = "%1\$s MB",
+    val bytesGb: String = "%1\$s GB",
+
+    // ── Chrome ───────────────────────────────────────────────────────────────────────────────
+    /** The "Powered by Polaris Locker" phrase: the line's text and the badge's accessible name. */
+    val poweredBy: String = "Powered by Polaris Locker",
+    /** The accessible name of the Pinned K when branding is on. */
+    val polarisKeyMark: String = "Polaris Locker",
+) {
+    public companion object {
+        /** The resource name for a field: `pkey_ui_` + its name in snake case. */
+        public fun resourceName(field: String): String =
+            "pkey_ui_" + field.replace(Regex("([a-z0-9])([A-Z])"), "$1_$2").lowercase()
+
+        /** The copy for the current configuration (locale), read from string resources where the platform has them. */
+        @Composable
+        public fun localized(): PolarisCopy =
+            polarisLocalizedCopy().let { if (polarisCopyVariant() == CopyVariant.macos) it.forMac() else it }
+
+        /** Every field name, in declaration order. */
+        public val FIELDS: List<String> by lazy {
+            PolarisCopy::class.java.declaredFields
+                .filter { it.type == String::class.java && !java.lang.reflect.Modifier.isStatic(it.modifiers) }
+                .map { it.name }
+        }
+    }
+
+    /** This copy with the named fields replaced (unknown names are ignored). */
+    public fun with(values: Map<String, String>): PolarisCopy {
+        if (values.isEmpty()) return this
+        val copy = this.copy()
+        for (field in PolarisCopy::class.java.declaredFields) {
+            val value = values[field.name] ?: continue
+            if (field.type != String::class.java) continue
+            field.isAccessible = true
+            field.set(copy, value)
+        }
+        return copy
+    }
+
+    /** All fields by name. */
+    public fun asMap(): Map<String, String> = FIELDS.associateWith { name ->
+        val field = PolarisCopy::class.java.getDeclaredField(name)
+        field.isAccessible = true
+        field.get(this) as String
+    }
+}

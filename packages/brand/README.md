@@ -100,7 +100,7 @@ state lists. To check a pack while translating:
 
 `gen` writes one native table per platform, kit keys plus `core.*` keys, in all nine locales:
 `src/generated/kit-copy/` (this package's `./kit-copy` export), the Node terminal module
-`packages/sdk-node/src/kitCopy.generated.ts`, the SwiftUI kit's `Localizable.xcstrings`, Compose
+`packages/sdk-node/src/kitCopy.generated.ts`, the Swift presentation core's `kit-copy.json`, Compose
 Resources `strings.xml` under `sdks/kotlin/ui/src/commonMain/composeResources/`, the Godot kit's
 `ui/locale/*.po` and `.pot`, and the Python module `polaris_key/ui/kit_copy_generated.py` with a
 `.pot`. English buttons, menu items and window titles get a generated macOS title-case variant.

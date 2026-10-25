@@ -100,9 +100,9 @@ import type { DownloadModel, ThisPlatform } from "../browser/distribution.js";
 import { isCatalog } from "../browser/catalog.js";
 import { activationError } from "../core/activationError.js";
 import type { ActivationOutcome } from "../core/activation.js";
+import { expectedServicesOf } from "../core/expectedServices.js";
 import {
   copyServices,
-  defaultServices,
   noBusy,
   noErrors,
   withBusy,
@@ -116,6 +116,8 @@ import {
   BRIDGE_VERSION,
   resolveBridge,
   type BridgeActivation,
+  type BridgeHost,
+  type KitView,
   type BridgeOidcBegin,
   type BridgeState,
   type PolarisBridge,
@@ -154,7 +156,7 @@ export interface DesktopAdapterOptions {
   catalog?: ProductCatalog | null;
   /** What the host EXPECTS this product to run, used only while the bridge has not reported
    *  a capability map (D-21). Defaults to license + config; never all-true. */
-  expectServices?: ServicesMap;
+  expectedServices?: readonly ServiceSlug[];
 }
 
 const nowSec = (): number => Math.floor(Date.now() / 1000);
@@ -175,6 +177,8 @@ export class DesktopAdapter implements PolarisAdapter {
   private offBridge: (() => void) | null = null;
   /** The host's presentation member and icon, over the bridge (HA-13). */
   private readonly presentation_: BridgePresentationSource;
+  /** The host's OS facts (UK-06), kept by value so an unchanged push keeps the same object. */
+  private host_: BridgeHost | null = null;
 
   constructor(opts: DesktopAdapterOptions = {}) {
     const bridge = resolveBridge(opts.bridge);
@@ -191,9 +195,7 @@ export class DesktopAdapter implements PolarisAdapter {
     );
     const hostOverrides = opts.localOverrides ?? {};
     this.localOverrides = { ...hostOverrides };
-    this.fallbackServices = copyServices(
-      opts.expectServices ?? defaultServices(),
-    );
+    this.fallbackServices = expectedServicesOf(opts);
     this.capabilities = copyServices(this.fallbackServices);
     this.capabilityCtx = capabilityContext(
       "desktop-bridge",
@@ -247,6 +249,13 @@ export class DesktopAdapter implements PolarisAdapter {
     }
     // core.presentation (HA-13): the host's member rides every state.
     if (s.presentation !== undefined) this.presentation_.adopt(s.presentation);
+    // UK-06: the host's OS facts; an older host sends none and the kit keeps its web chrome.
+    if (
+      s.host &&
+      (this.host_ === null ||
+        JSON.stringify(this.host_) !== JSON.stringify(s.host))
+    )
+      this.host_ = { ...s.host };
     this.store.set(
       projectState(
         "desktop",
@@ -1113,8 +1122,10 @@ export class DesktopAdapter implements PolarisAdapter {
    * crossing the bridge, as Node answers it. A `restartRequired` answer carries no function over
    * IPC: its `restart()` is `invoke("update", "restart")`, which the host answers by applying
    * the install it just staged. An older host answers the typed `version` N/A, as a result.
-   * Progress callbacks and the abort signal do not cross the bridge; an aborted signal stops the
-   * install before it starts.
+   * `opts.onProgress(done, total)` is fed by the host's pushed progress (`bridge.onUpdateProgress`,
+   * UK-06.3) for this install only; `total` is `null` when the driver does not know the size. A
+   * host without the push never calls it. The abort signal does not cross the bridge; an aborted
+   * signal stops the install before it starts.
    */
   async installUpdate(
     decision: UpdateDecision,
@@ -1129,7 +1140,22 @@ export class DesktopAdapter implements PolarisAdapter {
         reason: "version",
         detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) does not expose the host's install driver; bridge protocol v4 adds it.`,
       };
-    const r = await this.invoke<unknown>("update", "install", { decision });
+    const off = opts.onProgress
+      ? this.bridge.onUpdateProgress?.((p) => {
+          if (typeof p?.done !== "number") return;
+          const t = p.total;
+          opts.onProgress!(
+            p.done,
+            typeof t === "number" && Number.isFinite(t) && t > 0 ? t : null,
+          );
+        })
+      : undefined;
+    let r: unknown;
+    try {
+      r = await this.invoke<unknown>("update", "install", { decision });
+    } finally {
+      off?.();
+    }
     if (!isWireInstallOutcome(r))
       throw new PolarisError(
         "unknown",
@@ -1196,6 +1222,24 @@ export class DesktopAdapter implements PolarisAdapter {
         detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) does not expose ${what}; bridge protocol v4 adds it.`,
       },
       "unsupported",
+    );
+  }
+
+  /** The host's OS facts (UK-06), or `null` from a host that sends none. */
+  hostFacts(): BridgeHost | null {
+    return this.host_;
+  }
+
+  /**
+   * The host asks the renderer to open Settings or Update (a native menu item,
+   * `exposePolarisBridge(...).menuItems()`): `bridge.onOpen`, which pushes `polaris-key:open`.
+   * A host without the push never calls it. Only the two views the kit knows are passed on.
+   */
+  onOpen(cb: (view: KitView) => void): () => void {
+    return (
+      this.bridge.onOpen?.((view) => {
+        if (view === "settings" || view === "update") cb(view);
+      }) ?? (() => undefined)
     );
   }
 

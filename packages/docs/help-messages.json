@@ -1040,6 +1040,22 @@
       "entry": "store-failed",
       "why": "The app couldn't read its list of installed content, so it installed nothing new, to avoid losing what it has.",
       "fix": "Restart the app."
+    },
+    "cursor_expired": {
+      "page": "other",
+      "why": "This device went too long without syncing, so Cloud Sync can't continue from where it stopped.",
+      "fix": "Nothing. The device starts over from your saved data. Open the app once while online."
+    },
+    "quota_exceeded": {
+      "page": "other",
+      "why": "Your synced storage in Polaris Locker is full, so a change that adds data was refused.",
+      "fix": "Clear or delete synced data you no longer need, then try again. Nothing is deleted for you.",
+      "cta": "library"
+    },
+    "writes_paused": {
+      "page": "other",
+      "why": "The app's developer paused Cloud Sync. Your changes stay on this device.",
+      "fix": "Nothing. They send once syncing resumes."
     }
   },
   "developerOnly": [
@@ -1064,6 +1080,11 @@
     "asset_unreachable",
     "invalid_request",
     "unsupported_grant_type",
-    "invalid_scope"
+    "invalid_scope",
+    "client_mismatch",
+    "value_invalid",
+    "op_invalid_for_policy",
+    "setting_not_synced",
+    "collection_unknown"
   ]
 }

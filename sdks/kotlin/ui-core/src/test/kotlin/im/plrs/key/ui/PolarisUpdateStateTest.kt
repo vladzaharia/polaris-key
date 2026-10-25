@@ -55,6 +55,27 @@ class PolarisUpdateStateTest {
     }
 
     @Test
+    fun aRequestedCheckOffersADismissedOrSkippedVersionAgain() {
+        val state = PolarisUpdateState()
+        val release = DecisionRelease("2.5.0", 7)
+        val check = UpdateCheck(
+            "stable",
+            UpdateDecision.Platform(release, mandatory = false, critical = false, discardStaged = false),
+            UpdateCheck.FeedSource.network,
+            UpdateCheck.RecordSource.none,
+            emptyList(),
+        )
+        state.show(PolarisUpdateUi("2.5.0"))
+        state.dismiss()
+        state.skippedVersion = "2.5.0"
+        state.show(PolarisUpdateUi("2.5.0"))
+        assertNull(state.offer.value)
+        assertEquals(true, state.showRequested(check))
+        assertEquals("2.5.0", state.offer.value?.version)
+        assertEquals("2.5.0", state.skippedVersion)
+    }
+
+    @Test
     fun followsABackgroundInstallAndFinishesIt() = runTest {
         val stages = MutableStateFlow<InstallStage>(InstallStage.Idle)
         val calls = mutableListOf<String>()
@@ -145,5 +166,52 @@ class PolarisUpdateStateTest {
         t = 10_000
         state.progress(20, 100)
         assertEquals(40, state.offer.value!!.secondsLeft)
+    }
+
+    private fun binaryCheck() = UpdateCheck(
+        "stable",
+        UpdateDecision.Binary("download", DecisionRelease("2.0.0", 20, "a".repeat(64)), "macos-arm64", false, false, emptyList(), false),
+        UpdateCheck.FeedSource.network,
+        UpdateCheck.RecordSource.network,
+        emptyList(),
+    )
+
+    @Test
+    fun aDesktopDriverProgressReachesTheOfferAndFailureAddsNoBytes() = runTest {
+        val source = MutableStateFlow<InstallStage>(InstallStage.Idle)
+        val actions = object : PolarisUpdateActions {
+            override suspend fun install(check: UpdateCheck): InstallResult = InstallResult.Started
+            override val stages = source
+        }
+        val state = PolarisUpdateState()
+        state.show(binaryCheck())
+        state.follow(actions, backgroundScope)
+        runCurrent()
+        source.value = InstallStage.Downloading(10, 0)
+        runCurrent()
+        assertEquals(10L to 0L, state.offer.value?.progress)
+        assertNull("no total, no estimate", state.offer.value?.secondsLeft)
+        source.value = InstallStage.Failed("payload_mismatch")
+        runCurrent()
+        assertNull(state.offer.value?.progress)
+        assertNull(state.offer.value?.secondsLeft)
+        assertEquals(PolarisUpdateFailure("payload_mismatch"), state.offer.value?.error)
+    }
+
+    @Test
+    fun theHostQuitsOnlyOnceTheInstallerIsOpen() = runTest {
+        var quits = 0
+        var installs = 0
+        val results = ArrayDeque(listOf<InstallResult>(InstallResult.Failed("payload_mismatch"), InstallResult.Started))
+        val actions = PolarisUpdateActions { installs++; results.removeFirst() }
+        val state = PolarisUpdateState()
+        state.show(binaryCheck())
+        state.install(actions, backgroundScope) { quits++ }
+        runCurrent()
+        assertEquals(0, quits)
+        state.install(actions, backgroundScope) { quits++ }
+        runCurrent()
+        assertEquals(1, quits)
+        assertEquals(2, installs)
     }
 }

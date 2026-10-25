@@ -23,6 +23,7 @@ import {
   spinnerFrames,
   symbolsFor,
   truncateEnd,
+  wrapSpans,
   type Line,
   type RailRow,
   type Symbols,
@@ -63,13 +64,23 @@ export function termFor(
   out: TermOut,
   env: TermEnv,
   flags: TermFlags = {},
+  stdin?: { isTTY?: boolean },
 ): Term {
-  const caps = detectTerminal({ env, stdout: out, flags });
+  const caps = detectTerminal({ env, stdout: out, stdin, flags });
   return {
     caps,
     painter: new Painter(caps, null, {}, true),
     symbols: symbolsFor(caps),
   };
+}
+
+/**
+ * The lines above a spinner: `head` is a heading a resize may push out of view (it is not drawn
+ * again once it has gone), `body` always stays (a link, a code the person is acting on).
+ */
+export interface Heading {
+  head: readonly string[];
+  body: readonly string[];
 }
 
 /** The width of a progress bar beside a spinner label. */
@@ -84,6 +95,10 @@ export class Spinner implements StageProgress {
   private readonly term: Term;
   private readonly region: LiveRegion | null;
   private label = "";
+  /** Lines held above the spinner in the same live region (a command's heading); already styled. */
+  private header: ((columns: number) => Heading) | null = null;
+  /** Lines held under the spinner in the same live region (key hints); already styled. */
+  private footer: ((columns: number) => readonly string[]) | null = null;
   private done = 0;
   private total = 0;
   private frame = 0;
@@ -110,7 +125,10 @@ export class Spinner implements StageProgress {
             if (err.rows) caps.rows = err.rows;
           },
           render,
-          fit: (rows) => ({ lines: render(rows), head: 0 }),
+          fit: (rows) => ({
+            lines: render(rows),
+            head: rows.filter((r) => r.role === "header").length,
+          }),
         })
       : null;
   }
@@ -141,6 +159,25 @@ export class Spinner implements StageProgress {
     else this.draw();
   }
 
+  /**
+   * Lines drawn above the spinner, inside its live region: laid out again at each redraw, so a
+   * resize reflows them as a fresh launch would. `null` takes them away (the caller prints its
+   * own copy, since the region erases them).
+   */
+  setHeader(lines: ((columns: number) => Heading) | null): void {
+    this.header = lines;
+    if (this.region && this.label) this.draw();
+  }
+
+  /**
+   * Lines drawn under the spinner, inside its live region (laid out again at each redraw, so a
+   * resize reflows them); `null` takes them away.
+   */
+  setFooter(lines: ((columns: number) => readonly string[]) | null): void {
+    this.footer = lines;
+    if (this.region && this.label) this.draw();
+  }
+
   advance(done: number, total: number): void {
     if (!this.region) return;
     this.done = done;
@@ -153,6 +190,8 @@ export class Spinner implements StageProgress {
     this.stopTicking?.();
     this.stopTicking = null;
     this.label = "";
+    this.footer = null;
+    this.header = null;
     this.region?.close();
   }
 
@@ -182,7 +221,20 @@ export class Spinner implements StageProgress {
 
   private draw(): void {
     if (!this.region || !this.label || !this.atLineStart) return;
-    this.region.draw(() => [{ mark: "none", spans: [{ text: this.line() }] }]);
+    this.region.draw(() => {
+      const header = this.header?.(this.term.caps.columns);
+      const row = (text: string, role?: "header") => ({
+        mark: "none" as const,
+        spans: [{ text }],
+        ...(role ? { role } : {}),
+      });
+      return [
+        ...(header?.head ?? []).map((t) => row(t, "header")),
+        ...(header?.body ?? []).map((t) => row(t)),
+        row(this.line()),
+        ...(this.footer?.(this.term.caps.columns) ?? []).map((t) => row(t)),
+      ];
+    });
   }
 
   /** One line, never wider than the terminal (a wrapped line would break the redraw). */
@@ -214,4 +266,27 @@ export class Spinner implements StageProgress {
     }
     return `${glyph}  ${truncateEnd(this.label, max - 3, symbols.ellipsis)}`;
   }
+}
+
+/**
+ * `✗  text` for an error line, wrapped under its own column. `wrap: "tty"` wraps only on a
+ * terminal, so a piped line stays whole for grep.
+ */
+export function failLine(
+  text: string,
+  term: Term,
+  wrap: "always" | "tty" = "always",
+): string {
+  const { painter, symbols, caps } = term;
+  const lines =
+    wrap === "tty" && !caps.tty
+      ? [[{ text }]]
+      : wrapSpans([{ text }], Math.max(1, caps.columns - 3));
+  return `${lines
+    .map((l, i) =>
+      i === 0
+        ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}`
+        : `   ${painter.line(l)}`,
+    )
+    .join("\n")}\n`;
 }

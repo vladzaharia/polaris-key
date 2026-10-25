@@ -99,6 +99,15 @@ class CommerceAttestTest {
     }
 
     @Test
+    fun attestSupportAnswersSupport() = runBlocking {
+        val (ok, _) = client(FakeIntegrity()) { respond(500) }
+        assertTrue(ok.devices.attestSupport().isSupported)
+        val no = Unsupported("devices.attest", UnsupportedReason.outlet, "not a play build")
+        val (bad, _) = client(FakeIntegrity(no)) { respond(500) }
+        assertEquals(im.plrs.key.core.Support.Unavailable(no), bad.devices.attestSupport())
+    }
+
+    @Test
     fun withoutAProviderTheJvmIsTheRuntimeNa() = runBlocking {
         val (client, transport) = client(null) { respond(500) }
         try {

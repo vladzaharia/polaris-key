@@ -33,7 +33,7 @@ func _tables(t: PKeyTestContext, copy: PKeyCopy) -> void:
 		var e: Dictionary = PKeyCoreCopy.COPY_GATE[status]
 		# A gate status that is also an error code (none today) reads the code table first.
 		var want: Dictionary = PKeyCoreCopy.COPY_CODES.get(status, e)
-		if copy.message(status) != want["message"] or copy.title(status) != want["title"]:
+		if copy.message(status) != PKeyCopy.fill(want["message"], status) or copy.title(status) != want["title"]:
 			bad.append(status)
 	t.check("copy: every gate status reads its generated entry", bad.is_empty(), str(bad))
 	bad = []

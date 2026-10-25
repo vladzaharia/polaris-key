@@ -108,7 +108,7 @@ XML
 rm -f tiny.ipa
 (cd "$WORK" && zip -qr -X "$OLDPWD/tiny.ipa" Payload)
 
-# ── signed-entry.jar: an F-Droid entry.jar signed the way `pkey feeds fdroid` signs one (v1) ──
+# ── signed-entry.jar: an F-Droid entry.jar signed the way `pkey storefront fdroid` signs one (v1) ──
 python3 - "$WORK/entry.jar" <<'PY'
 import sys, zipfile
 with zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_STORED) as z:

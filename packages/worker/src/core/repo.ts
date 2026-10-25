@@ -5,7 +5,7 @@
 // predicate on every statement) so a tenant boundary can't be crossed even on a logic bug, and
 // takes the `Db` abstraction, so it unit-tests against in-memory SQLite and runs unchanged on D1.
 
-import type { Db, DbParam, DbStatement } from "../db/types.js";
+import type { Db } from "../db/types.js";
 
 // ── Row types (mirror migrations/0001_init.sql) ──────────────────────────────
 export interface ProductRow {
@@ -18,8 +18,6 @@ export interface ProductRow {
   default_max_offline_days: number;
   default_device_limit: number;
   admin_group: string | null;
-  /** Never written since ST-47; the column stays until a migration drops it. */
-  branding_json?: string | null;
   release_source: string | null;
   status?: string;
   deleted_at?: number | null;
@@ -35,7 +33,7 @@ export interface ProductRow {
   services_json?: string | null;
   services_source?: string | null;
   // Ownership of `compat_min`/`compat_max` (migrations/0022_a), same rules once more: NULL or
-  // 'manifest' lets a resync rewrite the window, 'admin' (set by `update/settings`) makes it skip.
+  // 'manifest' lets a resync rewrite the window, 'admin' (set through the settings API) makes it skip.
   compat_source?: string | null;
   // The per-product CORS allowlist (migrations/0024): a JSON array of exact origins from the
   // manifest's `web.origins`. Manifest-owned with no `_source` column — link writes it, every
@@ -134,6 +132,9 @@ export interface LicenseRow {
   ended_reason?: string | null;
   /** LX-08 (0105_d): the licence that replaced this one (a merge's survivor); NULL otherwise. */
   superseded_by?: string | null;
+  /** LX-27c (0131_a): epoch seconds of the last invitation email that went out; NULL (or absent on
+   *  a row read before the migration) when none did. Written only by the License service. */
+  invited_at?: number | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -232,6 +233,10 @@ export interface TierRow {
   /** LX-08 (0105_h): the tier default for a licence's offline grace (`max_offline_days`); NULL
    *  falls back to the product default. Stored for LX-09's `combined` mode. */
   policy_offline_grace_days?: number | null;
+  /** LX-33.1 (0129): 1 marks the product's implicit Default tier (at most one per product); 0
+   *  otherwise. No reader or writer yet. Optional because `upsertTier` callers build rows without it
+   *  and the upsert must not write it. */
+  implicit?: number;
   modified_by: string | null;
   modified_at: number;
   /** ST-01b (0079): who owns the row. */

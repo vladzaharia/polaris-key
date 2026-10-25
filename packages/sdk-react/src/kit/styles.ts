@@ -4,15 +4,37 @@
 // `@polaris-key/react/styles.css` instead, so the first paint is already styled; adopting the same
 // rules again changes nothing.
 
-import { lightDomCss } from "./contract.js";
+import { lightDomWebCss } from "./contract.js";
 
 let css: string | null = null;
 let sheet: CSSStyleSheet | null = null;
 const done = new WeakSet<Document>();
 
-/** The light-DOM stylesheet's text (what `@polaris-key/react/styles.css` holds). */
+/** The light-DOM stylesheet's text a web page draws with: `@polaris-key/react/styles.css` without
+ *  the desktop chrome (Windows, GNOME and macOS rules), which `adoptDesktopStyles` adds on demand. */
 export function kitStylesCss(): string {
-  return (css ??= lightDomCss());
+  return (css ??= lightDomWebCss());
+}
+
+export const desktopDone = new WeakSet<Document>();
+
+/** Whether `doc` has the desktop chrome's rules (or needs none: no constructable sheets, so the
+ *  host links `styles.css`, which has them). */
+export function hasDesktopStyles(doc: Document | undefined): boolean {
+  return !doc || desktopDone.has(doc);
+}
+
+/** Add the desktop chrome's sheet to `doc` after the web sheet (a later sheet wins at equal
+ *  specificity, as the rules did when they were one sheet). Resolves when it is in. */
+export function adoptDesktopStyles(doc: Document | undefined): Promise<void> {
+  if (!doc || desktopDone.has(doc)) return Promise.resolve();
+  return import("./desktopCss.js").then(
+    (m) => {
+      m.adoptDesktop(doc);
+      desktopDone.add(doc);
+    },
+    () => void desktopDone.add(doc), // never arrives: the kit keeps the web chrome
+  );
 }
 
 /** Put the kit's stylesheet in `doc` once, through `adoptedStyleSheets` only: never a `<style>`

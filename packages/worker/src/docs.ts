@@ -235,7 +235,7 @@ export const SEARCH_BUNDLES: ReadonlyArray<
  * The tier of each resolved docs path (ST-29; docs plan §3.1, D2). A prefix ends in `/`; any other
  * row is one exact file. The longest match wins, and a path no row names is `admin`, so a new
  * top-level directory is gated until someone decides otherwise. The page rows mirror the docs
- * site's `TIER_PREFIXES` (`packages/docs/src/lib/doors.ts`); `test/docsGate.test.ts` pins them.
+ * site's `TIER_PREFIXES` (`packages/docs/src/lib/doors.ts`); `test/surfaces/docsGate.test.ts` pins them.
  */
 export const DOCS_TIERS: ReadonlyArray<
   readonly [path: string, tier: DocsTier]
@@ -268,12 +268,42 @@ export const DOCS_TIERS: ReadonlyArray<
   ...SEARCH_BUNDLES,
 ];
 
+/**
+ * `/docs/_astro/<name>.<hash>.<ext>` -> `/docs/_astro/<name>.<ext>`: the key form of
+ * `DOCS_ASSET_TIERS`, which leaves the build's content hash out so the generated file does not
+ * depend on the machine. Only a direct child of `/docs/_astro/` is rewritten, and the hash is
+ * exactly 8 base64url characters before the last extension; any other path comes back unchanged
+ * (and so is looked up as is). Pinned to the generator's copy by `docsTiersParity.test.ts`.
+ */
+export function stripAstroHash(assetPath: string): string {
+  const prefix = "/docs/_astro/";
+  if (!assetPath.startsWith(prefix)) return assetPath;
+  return (
+    prefix +
+    assetPath
+      .slice(prefix.length)
+      .replace(/^([^/]+)\.[A-Za-z0-9_-]{8}(\.[A-Za-z0-9]+)$/, "$1$2")
+  );
+}
+
 /** The tier of a resolved asset path (`docsAssetPath`'s output); `null` (unsafe) is `admin`. */
 export function docsTierOf(assetPath: string | null): DocsTier {
   if (assetPath === null) return "admin";
+  return docsTierRow(assetPath) ?? "admin";
+}
+
+/**
+ * The tier a table names for a path, or `null` when no row and no per-file entry does (the path the
+ * default `admin` gate catches: a new directory, or a mistyped top-level path such as `/docs/strat/`).
+ */
+export function docsTierRow(assetPath: string): DocsTier | null {
   // Per-file tiers the prefixes cannot say (`docsTiers.generated.ts`): a file only gated pages
   // load, and a moved-page redirect page at its target's tier.
-  const file = DOCS_ASSET_TIERS[assetPath] ?? DOCS_REDIRECT_TIERS[assetPath];
+  // The asset table is keyed without the build hash, so a request is looked up by its stable name.
+  const file =
+    DOCS_ASSET_TIERS[assetPath] ??
+    DOCS_ASSET_TIERS[stripAstroHash(assetPath)] ??
+    DOCS_REDIRECT_TIERS[assetPath];
   if (file !== undefined) return file;
   let best: (typeof DOCS_TIERS)[number] | null = null;
   for (const row of DOCS_TIERS) {
@@ -282,7 +312,7 @@ export function docsTierOf(assetPath: string | null): DocsTier {
       : assetPath === row[0];
     if (hit && (best === null || row[0].length > best[0].length)) best = row;
   }
-  return best?.[1] ?? "admin";
+  return best?.[1] ?? null;
 }
 
 /** The `can()` area a gated tier needs at platform scope. */
@@ -327,6 +357,18 @@ export async function handleDocs(
 
   const assetPath = docsAssetPath(url.pathname);
   const tier = docsTierOf(assetPath);
+  // A path no tier row names is gated by default, so a mistyped top-level path (`/docs/strat/`)
+  // would send a reader to the sign-in page. When the build has no such file the answer is the
+  // 404, the same for everyone: it says nothing about a gated page, which always sits under a
+  // row's prefix (the member and admin rows) and is answered by the gate whether or not it exists.
+  // A path the build does have stays behind the default gate.
+  if (
+    assetPath !== null &&
+    docsTierRow(assetPath) === null &&
+    env.ASSETS &&
+    !(await assetExists(env.ASSETS, url, assetPath))
+  )
+    return docsNotFound(req, env, url);
   if (tier !== "public") {
     const caller = await resolveConsoleCaller(env, db, req, now);
     if (!caller) return accessRedirect(url.pathname);
@@ -384,6 +426,20 @@ export async function handleDocs(
   headers.set("cache-control", docsCacheControl(assetPath, tier, res.status));
   docsSecurityHeaders(headers);
   return new Response(res.body, { status: res.status, headers });
+}
+
+/** Whether the assets root holds this file. */
+async function assetExists(
+  assets: Fetcher,
+  url: URL,
+  assetPath: string,
+): Promise<boolean> {
+  const probe = new URL(url);
+  probe.pathname = assetPath;
+  probe.search = "";
+  const res = await assets.fetch(new Request(probe, { method: "GET" }));
+  await res.body?.cancel();
+  return res.status !== 404;
 }
 
 /** Serve the site's own styled 404 page (falling back to a plain response without assets). */

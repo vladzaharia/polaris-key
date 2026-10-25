@@ -22,7 +22,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
-import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
+import {
+  CORE_ROUTES,
+  CORS_SERVICE_PATHS,
+  isCorsCoveredRoute,
+} from "../src/publicRoutes.js";
 import {
   REGISTRY_OWNERLESS_ROUTES,
   REGISTRY_ROUTES,
@@ -48,7 +52,9 @@ const NARRATIVE_ONLY = new Set([
   "adminSpa",
   "adminApi",
   "adminLogin",
+  "adminDevice",
   "adminCallback",
+  "adminPasskey",
   "portalSpa",
   "portalApi",
   "portalLogin",
@@ -72,21 +78,15 @@ const NARRATIVE_ONLY = new Set([
   "notFound",
 ]);
 
-/** Core route kinds → the spec paths (with methods) that document them. */
+/** Core route kinds → the spec paths (with methods) that document them: derived from the core
+ *  table (`publicRoutes.ts`), so a core route cannot be served and not declared (P0-25b). */
 const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
-  discovery: [["/{product}/.well-known/polaris.json", ["get"]]],
-  jwks: [["/{product}/.well-known/jwks.json", ["get"]]],
-  trustManifest: [["/{product}/.well-known/polaris-trust.jws", ["get"]]],
-  devices: [
-    ["/{product}/devices", ["get"]],
-    ["/{product}/devices/{deviceId}", ["get", "patch", "delete"]],
-  ],
-  report: [["/{product}/devices/report", ["post"]]],
-  register: [["/{product}/devices/register", ["post"]]],
-  attestChallenge: [["/{product}/devices/attest/challenge", ["post"]]],
-  attest: [["/{product}/devices/attest", ["post"]]],
-  // HA-06: CI pushes files into hosted-asset slots (`assets:write`).
-  assetsPush: [["/{product}/assets", ["post"]]],
+  ...Object.fromEntries(
+    CORE_ROUTES.map((r) => [
+      r.kind,
+      r.surface.map((s): [string, string[]] => [s.path, [...s.methods]]),
+    ]),
+  ),
 };
 
 /**
@@ -98,6 +98,11 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   // The platform device-code entry pages: a code typed here finds its product's page.
   signInEntry: [["/signin", ["get"]]],
+  // F-37.1b: the key host's hops into Polaris Locker.
+  lockerLink: [
+    ["/approve", ["get"]],
+    ["/account/packages", ["get"]],
+  ],
   // LK-05: WebAuthn Related Origin Requests, on the console host.
   webauthnOrigins: [["/.well-known/webauthn", ["get", "head"]]],
   helpAlias: [["/help", ["get", "head"]]],
@@ -111,6 +116,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/device", ["get"]],
     ["/tv", ["get"]],
   ],
+  // The approval after sign-in, on the customer host (LXF-DEV; the product is found by the binder).
+  deviceApprove: [["/device/approve", ["get", "post"]]],
   portalMedia: [
     ["/media/{product}/{asset}", ["get"]],
     // I-07, PX-W16: account pictures, re-encoded (`avatar` is a reserved product slug).
@@ -209,6 +216,13 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/search", ["post"]],
     ["/manage/api/support-codes/{code}", ["get"]],
     ["/manage/api/platform/ready", ["get"]],
+    // ST-29, ST-31.5: who can give the caller access to an area.
+    ["/manage/api/access/admins", ["get"]],
+    // ST-30c.3 (SM-3(a), (d)): the signed-in operator's own sign-in methods.
+    ["/manage/api/me/methods", ["get"]],
+    ["/manage/api/me/methods/{id}/strong", ["post"]],
+    ["/manage/api/me/passkeys", ["post"]],
+    ["/manage/api/me/passkeys/options", ["post"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
     // P0-49: the data-migration runner.
     ["/manage/api/platform/migrations", ["get"]],
@@ -216,12 +230,6 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/migrations/dry-run", ["post"]],
     ["/manage/api/platform/migrations/apply", ["post"]],
     ["/manage/api/platform/migrations/down", ["post"]],
-    ["/manage/api/platform/override-migration", ["get"]],
-    ["/manage/api/platform/override-migration/prerequisites", ["put"]],
-    ["/manage/api/platform/override-migration/notice", ["post", "delete"]],
-    ["/manage/api/platform/override-migration/dry-run", ["post"]],
-    ["/manage/api/platform/override-migration/run", ["post"]],
-    ["/manage/api/platform/override-migration/report", ["get"]],
     // The admin API-token roster: the credential a PROGRAM presents (`pkey bundle`, from a
     // terminal and from CI, sends `Authorization: Bearer pkeya_…` to the bundle mint), documented
     // here, machine-readable, and not only in prose. The roster itself stays session-only: no
@@ -234,6 +242,17 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/alerts/{id}/test", ["post"]],
     ["/manage/api/account-tokens", ["get"]],
     ["/manage/api/account-tokens/{tokenId}", ["delete"]],
+    // ST-31.4: the Platform Members roster (platform scope, area `members`).
+    ["/manage/api/members", ["get"]],
+    ["/manage/api/members/{memberId}", ["get"]],
+    // ST-31.6: grant, edit and take back a console role (area `members`; Superadmin-only cases are
+    // the handler's, through the grant rules).
+    ["/manage/api/bindings", ["post"]],
+    ["/manage/api/bindings/{id}", ["patch", "delete"]],
+    // ST-34.4: the caller's own personal tokens, and the one row that ends the presenting token.
+    ["/manage/api/me/personal-tokens", ["get"]],
+    ["/manage/api/me/personal-tokens/{id}", ["delete"]],
+    ["/manage/api/me/personal-tokens/current", ["delete"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
@@ -243,6 +262,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/slug-check", ["get"]],
     // ST-40: the Integration read model (prerequisites, facts, Verified per platform).
     ["/manage/api/products/{product}/integration", ["get"]],
+    // A-20.4: the channel read model (delivery and commerce facets per channel).
+    ["/manage/api/products/{product}/distribution/channels", ["get"]],
+    // ST-34.4: the store-listing import `pkey listing import` calls (session or admin token).
+    ["/manage/api/products/{product}/distribution/listing/import", ["post"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
     // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.
@@ -255,6 +278,10 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/assets/settings/{key}",
       ["patch", "delete"],
     ],
+    // ST-31.5: who holds this product (Members area at product scope).
+    ["/manage/api/products/{product}/members", ["get", "post"]],
+    // ST-31.6 (D-d): the product twins of the grant writes.
+    ["/manage/api/products/{product}/members/{bindingId}", ["patch", "delete"]],
     // ST-27: a product's alert destinations (the override of the platform's).
     ["/manage/api/products/{product}/alerts", ["get", "post"]],
     ["/manage/api/products/{product}/alerts/{id}", ["patch", "delete"]],
@@ -268,6 +295,11 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // LX-27: a new key emailed to the licence's address.
     [
       "/manage/api/products/{product}/license/licenses/{licenseId}/send-key",
+      ["post"],
+    ],
+    // LX-27c: an invitation (no key) emailed to a waiting licence.
+    [
+      "/manage/api/products/{product}/license/licenses/{licenseId}/send-invite",
       ["post"],
     ],
     // LX-28: bulk floating keys, the batch reads and Disable unused keys.
@@ -355,9 +387,9 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  *
  * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
  * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
- * below runs against them unchanged. `test/feedAdapters.test.ts` checks each adapter's rows
+ * below runs against them unchanged. `test/surfaces/feedAdapters.test.ts` checks each adapter's rows
  * against its own routes. F-23's push rows are Release's (`RELEASE_REGISTRY_OPENAPI`), checked
- * the same way by `test/registryPush.test.ts`.
+ * the same way by `test/surfaces/registryPush.test.ts`.
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
 /**
@@ -498,7 +530,7 @@ describe("router → spec", () => {
   it("every mounted service declares a surface", () => {
     // A service with no HTTP route yet declares `[]` (and is listed here, so the day it gains a
     // route its surface must be declared with it).
-    const ROUTELESS = new Set(["sync"]);
+    const ROUTELESS = new Set<string>();
     for (const [slug, descriptor] of SERVICES) {
       expect(
         Array.isArray(descriptor.surface),
@@ -518,7 +550,7 @@ describe("router → spec", () => {
           );
         if (storeHook) continue;
         expect(route.path, `${slug}: ${route.path}`).toMatch(
-          new RegExp(`^/\\{product\\}/${slug}/`),
+          new RegExp(`^/\\{product\\}/${slug}(/|$)`),
         );
         expect(route.methods.length, `${slug}: ${route.path}`).toBeGreaterThan(
           0,
@@ -866,6 +898,8 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    memberId: "mbr_AAAAAAAAAAAAAAAAAAAAAA",
+    bindingId: "crb_AAAAAAAAAAAAAAAAAAAAAA",
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
     code: "K7M-4QX-9TZ",

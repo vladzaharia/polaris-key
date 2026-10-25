@@ -35,7 +35,11 @@ import {
   readEntitled,
   readEntitledChannels,
 } from "../core/adapter.js";
-import { ErrorCode, Feature } from "../constants.generated.js";
+import {
+  ErrorCode,
+  Feature,
+  SettingVisibility,
+} from "../constants.generated.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 
 export function useCtx(): PolarisContextValue {
@@ -112,13 +116,11 @@ export interface UsePolarisKey {
   renameDevice: (deviceId: string, label: string | null) => Promise<void>;
   deauthorizeDevice: (deviceId: string) => Promise<void>;
   checkUpdate: (opts?: { channel?: string }) => Promise<VersionCheck>;
-  getConfig: PolarisAdapter["getConfig"];
   /** Config for a settings UI: every key EXCEPT `hidden`, each `{ key, value, enforced }`. */
   listUserConfig: () => UserConfigEntry[];
   /** The provenance of a key's effective value. */
   getConfigSource: (key: string) => ConfigSource;
   getSecret: PolarisAdapter["getSecret"];
-  isEntitled: (name: string) => boolean;
   /** Whether a parity feature works through this adapter (PARITY §2.2). Pure; it reads the
    *  capability map in `state`, so a component re-renders when discovery changes the answer. */
   supports: PolarisAdapter["supports"];
@@ -153,11 +155,9 @@ export function usePolarisKey(): UsePolarisKey {
       renameDevice: (deviceId, label) => adapter.renameDevice(deviceId, label),
       deauthorizeDevice: (deviceId) => adapter.deauthorizeDevice(deviceId),
       checkUpdate: (opts) => adapter.checkUpdate(opts),
-      getConfig: (key, fallback) => adapter.getConfig(key, fallback),
       listUserConfig: () => adapter.listUserConfig(),
       getConfigSource: (key) => adapter.getConfigSource(key),
       getSecret: (key) => adapter.getSecret(key),
-      isEntitled: (name) => adapter.isEntitled(name),
       supports: (feature) => adapter.supports(feature),
       caps: () => adapter.caps(),
     }),
@@ -303,6 +303,8 @@ export interface UseConfigSetting<T> {
   locked: boolean;
   /** True when a device-local override supplies the value. */
   overridden: boolean;
+  /** How the setting appears: `editable`, `readonly` (enforced) or `hidden`. */
+  visibility: SettingVisibility;
   set: (value: T) => Promise<void>;
   clear: () => Promise<void>;
 }
@@ -328,12 +330,22 @@ export function useConfigSetting<T = JSONValue>(
   );
   const own = Object.prototype.hasOwnProperty.call(state.config, key);
   const source = adapter.getConfigSource(key);
+  const entry = Object.prototype.hasOwnProperty.call(state.configEntries, key)
+    ? state.configEntries[key]
+    : undefined;
+  const visibility =
+    entry?.state === "enforced"
+      ? SettingVisibility.readonly
+      : entry?.state === "hidden"
+        ? SettingVisibility.hidden
+        : SettingVisibility.editable;
   return {
     key,
     value: own ? (state.config[key] as unknown as T) : fallback,
     source,
-    locked: setting.locked(),
+    locked: visibility !== SettingVisibility.editable,
     overridden: source === "local",
+    visibility,
     set: setting.set,
     clear: setting.clear,
   };

@@ -6,6 +6,7 @@ import { stmtRevokeProductRegistryTokens } from "../registry/registryTokens.js";
 import { productGrantErasureStatements } from "../licensing/grants.js";
 import { productDeletionStatements } from "../contributions.js";
 import { stmtDeleteProductAutoAttachBlocks } from "../licensing/licenseHolders.js";
+import { stmtDeleteProductBindings } from "../rbac/bindings.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import type {
   ProductRow,
@@ -47,28 +48,12 @@ export async function listAllProductSlugs(db: Db): Promise<string[]> {
   return rows.map((r) => r.slug);
 }
 
-/**
- * `presentation_json` (migrations/0106, HA-12) is named only when the row carries it: the manifest
- * writers always do (NULL when undeclared), while a product created without a manifest (the
- * console, a test seed) leaves it to the column's NULL default. So an insert still works against
- * a database migrated only up to an older schema.
- */
-function presentationInsert(row: ProductRow): {
-  column: string;
-  values: (string | null)[];
-} {
-  return row.presentation_json === undefined
-    ? { column: "", values: [] }
-    : { column: ", presentation_json", values: [row.presentation_json] };
-}
-
 export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
-  const presentation = presentationInsert(row);
   await db.run(
     `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
-       default_max_offline_days, default_device_limit, admin_group, release_source${presentation.column},
+       default_max_offline_days, default_device_limit, admin_group, release_source, presentation_json,
        created_at, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.slug,
     row.name,
     row.signing_kid,
@@ -79,7 +64,7 @@ export async function insertProduct(db: Db, row: ProductRow): Promise<void> {
     row.default_device_limit,
     row.admin_group,
     row.release_source,
-    ...presentation.values,
+    row.presentation_json ?? null,
     row.created_at,
     row.modified_at,
   );
@@ -276,13 +261,12 @@ export async function activeSchemaVersions(
  * say simply omit them.
  */
 export function stmtInsertProduct(row: ProductRow): DbStatement {
-  const presentation = presentationInsert(row);
   return {
     sql: `INSERT INTO products (slug, name, signing_kid, signing_pub, compat_min, compat_max,
             default_max_offline_days, default_device_limit, admin_group, release_source,
-            services_json, services_source, compat_source, web_origins_json${presentation.column},
+            services_json, services_source, compat_source, web_origins_json, presentation_json,
             created_at, modified_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${presentation.values.map(() => ", ?").join("")}, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params: [
       row.slug,
       row.name,
@@ -298,7 +282,7 @@ export function stmtInsertProduct(row: ProductRow): DbStatement {
       row.services_source ?? null,
       row.compat_source ?? null,
       row.web_origins_json ?? null,
-      ...presentation.values,
+      row.presentation_json ?? null,
       row.created_at,
       row.modified_at,
     ],
@@ -403,18 +387,6 @@ export function stmtSetFingerprintPolicy(
 
 /** Write a product's auto-issue policy under the same manifest-vs-admin ownership rule as
  *  the fingerprint policy: a resync only writes while the row is still manifest-owned. */
-export async function setAutoIssuePolicy(
-  db: Db,
-  product: string,
-  policyJson: string | null,
-  source: "manifest" | "admin",
-  at: number,
-): Promise<void> {
-  const stmt = stmtSetAutoIssuePolicy(product, policyJson, source, at);
-  await db.run(stmt.sql, ...stmt.params);
-}
-
-/** `setAutoIssuePolicy` as a statement, for a batch (ST-01b: the resync applies in one batch). */
 export function stmtSetAutoIssuePolicy(
   product: string,
   policyJson: string | null,
@@ -565,7 +537,7 @@ export async function deleteProduct(
     // P5-01: a deleted product keeps no store keys. Deleted, not flagged: an outlet credential
     // is a live key to someone else's account, and nothing about a deleted product needs it.
     // (This and the KEK sweep are the only places outside `core/outletCredentials.ts` allowed
-    // to name the table — `test/outletCredentialReach.test.ts`.)
+    // to name the table — `test/core/outletCredentialReach.test.ts`.)
     {
       sql: "DELETE FROM outlet_credentials WHERE product = ?",
       params: [slug],
@@ -592,6 +564,9 @@ export async function deleteProduct(
     stmtRevokeProductCiTokens(slug, now),
     // F-21: nor any registry token (the lookup also joins `products.status <> 'deleted'`).
     stmtRevokeProductRegistryTokens(slug, now),
+    // ST-28 G8: the product's `product:<slug>` role bindings go with it (members and invites).
+    // `products:*` and platform bindings stay. Removing the product's SSO rules is ST-32's.
+    stmtDeleteProductBindings(slug),
   ]);
 }
 

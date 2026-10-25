@@ -67,6 +67,52 @@ The account and license settings pane: product and tier, the holder, Manage, dev
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** A host places `<AccountAndLicense />` from `@polaris-key/react/kit`, given an `input`.
+
+    **Styled part.** The React kit's `<AccountAndLicense />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("AccountAndLicense", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisAccount(settings, devices)`: the license, its settings and the devices on one screen.
+
+    **Styled part.** `PolarisAccountScreen`, over the two state holders' `ui` values.
+
+    **Headless.** `PolarisSettingsState` and `PolarisDevicesState` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisAccount
+    import im.plrs.key.ui.PolarisDevicesState
+    import im.plrs.key.ui.PolarisSettingsState
+    import im.plrs.key.ui.devicesActions
+    import im.plrs.key.ui.settingsActions
+
+    @Composable
+    fun Account(client: PolarisKeyClient) {
+        val scope = rememberCoroutineScope()
+        val settings = remember(client) { PolarisSettingsState(client.settingsActions(), scope) }
+        val devices = remember(client) { PolarisDevicesState(client.devicesActions(), scope) }
+        PolarisAccount(settings, devices)
+    }
+    ```
+
+    On Compose Desktop, `PolarisSettingsWindow` shows the Account and Devices panes.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

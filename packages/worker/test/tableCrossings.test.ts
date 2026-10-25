@@ -28,7 +28,7 @@ import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SERVICE_SLUGS } from "../src/core/services.js";
-import { TABLE_OWNERS } from "../src/db/owners.js";
+import { RETIRED_TABLES, TABLE_OWNERS } from "../src/db/owners.js";
 import { SRC, stripComments, walkTs } from "./srcScan.js";
 
 type RemovedBy = "permanent" | `P${number}-${number}` | `ST-${number}`;
@@ -65,10 +65,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
   ["core/licensing/grants.ts", "licenses", "permanent"],
   ["core/licensing/issue.ts", "licenses", "permanent"],
   ["core/licensing/lifecycleWrites.ts", "licenses", "permanent"],
-  ["core/ops/overrideMigration.ts", "account_overrides", "P0-49"],
-  ["core/ops/overrideMigration.ts", "licenses", "P0-49"],
-  ["core/ops/overrideMigration.ts", "override_migration", "P0-49"],
-  ["core/ops/overrideMigration.ts", "override_migration_report", "P0-49"],
   ["core/ops/settingsBackfill.ts", "product_schema", "P0-49"],
   ["core/ops/settingsBackfill.ts", "profiles", "P0-49"],
   ["core/ops/settingsBackfill.ts", "tiers", "P0-49"],
@@ -97,8 +93,6 @@ const WRITE_SEAMS: readonly (readonly [string, string, RemovedBy])[] = [
  */
 const LICENSE_WRITE_SEAMS: readonly (readonly [string, RemovedBy])[] = [
   ["core/accounts/accountSubjects.ts", "P0-20"],
-  ["core/ops/overrideMigration.ts", "P0-49"],
-  ["services/identity/accounts/legacy.ts", "P0-24"],
 ];
 
 const OWNER = new Map<string, string>();
@@ -235,6 +229,20 @@ describe("table ownership", () => {
       expect(removedBy).toMatch(/^(permanent|P\d+-\d+|ST-\d+)$/);
     for (const [, table] of [...SEAMS, ...WRITE_SEAMS])
       expect(OWNER.has(table), `${table} is in TABLE_OWNERS`).toBe(true);
+  });
+
+  it("no src SQL names a retired table (I-28: no portal_* reference remains)", () => {
+    expect(RETIRED_TABLES.length).toBeGreaterThan(0);
+    const named: string[] = [];
+    for (const { file, sql } of ALL) {
+      if (file === "db/owners.ts") continue; // the declarations themselves
+      for (const t of RETIRED_TABLES)
+        if (new RegExp(`\\b${t}\\b`).test(sql)) named.push(`${file}|${t}`);
+    }
+    expect(
+      named,
+      "a retired table is named in src: delete the reference (I-28b drops the tables)",
+    ).toEqual([]);
   });
 
   it("reads SQL in strings, not in comments", () => {

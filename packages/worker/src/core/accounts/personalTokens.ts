@@ -12,9 +12,11 @@
  * the mint and never logged, echoed or stored. `hint` keeps the last four characters so a person
  * can tell two tokens apart in a list, as a registry token's does.
  *
- * ONE SCOPE PER TOKEN. `scope` is a column, not a list: exclusivity is the shape. Today the
- * vocabulary is `packages:read`; ST-34 adds `admin` (30 days at most, step-up at mint, accepted
- * by the admin API alone). A scope is refused at mint and again at use when it is not in
+ * ONE SCOPE PER TOKEN. `scope` is a column, not a list: exclusivity is the shape. The
+ * vocabulary is `packages:read` and `admin`. An `admin` token (ST-34) lives 7 days by default and
+ * 30 at most, is accepted by the admin API alone (ST-34.3), is minted only through a
+ * console-approved `pkey login` (ST-34.5/34.6; the portal refuses the scope), and is REVOKED, not
+ * moved, by an account merge (below). A scope is refused at mint and again at use when it is not in
  * {@link PERSONAL_TOKEN_SCOPES}, so a row an older Worker wrote with a scope this one does not
  * know resolves to nothing rather than to something broader. {@link resolvePersonalToken} takes
  * the scope the CALLER accepts: the registry host asks for `packages:read` and so can never be
@@ -23,8 +25,11 @@
  * LIFECYCLE. Every token expires (default 90 days, at most 365 for `packages:read`). It is
  * revoked by the person, by a Superadmin (`revokeAllAccountTokens`), and by the account's erasure
  * (`stmtRevokeAccountTokens` first, then `stmtDeleteAccountTokens` in the closing batch), and dies with a restored backup's
- * erased account through the erasure fence (below). A merge moves the tokens to the surviving
- * account (`stmtMoveAccountTokens`), and its undo moves the same rows back.
+ * erased account through the erasure fence (below). A merge moves the absorbed account's
+ * `packages:read` tokens to the surviving account (`stmtMoveAccountTokens`), and its undo moves
+ * the same rows back; its `admin` tokens are revoked (`stmtRevokeAccountAdminTokens`, reason
+ * `access_removed`) and stay on the absorbed account, because an admin token resolves to the
+ * roles of the account that holds it and must never silently take on the survivor's.
  *
  * THE ERASURE FENCE (I-11). A D1 restore can bring an erased account's unrevoked tokens back, so
  * {@link resolvePersonalToken} asks the erasure ledger before it resolves one or writes
@@ -33,7 +38,7 @@
  *
  * AUDIT. The mint and the revoke are audited by the caller through the account audit
  * (`portal_audit`, the portal) or the platform audit (`core/audit.ts`, the console); this module
- * writes no audit row. A token USE is not audited per request (a package install is dozens of
+ * writes no audit row (the audit row also records who created the token: the row itself keeps no creator). A token USE is not audited per request (a package install is dozens of
  * requests); `last_used_at` is the signal, written at most once an hour.
  */
 
@@ -53,8 +58,14 @@ import { erasureVerdict } from "./erasureFence.js";
 /** The one scope the registry host reads. */
 export const PACKAGES_READ_SCOPE = "packages:read";
 
-/** Every scope a personal token may hold. ST-34 appends `admin`. */
-export const PERSONAL_TOKEN_SCOPES = [PACKAGES_READ_SCOPE] as const;
+/** The admin API's scope (ST-34): never accepted by the registry host, never minted by the portal. */
+export const ADMIN_SCOPE = "admin";
+
+/** Every scope a personal token may hold. */
+export const PERSONAL_TOKEN_SCOPES = [
+  PACKAGES_READ_SCOPE,
+  ADMIN_SCOPE,
+] as const;
 export type PersonalTokenScope = (typeof PERSONAL_TOKEN_SCOPES)[number];
 
 export function isPersonalTokenScope(v: unknown): v is PersonalTokenScope {
@@ -69,6 +80,7 @@ export const PERSONAL_TOKEN_DAYS: Readonly<
   Record<PersonalTokenScope, { readonly default: number; readonly max: number }>
 > = {
   "packages:read": { default: 90, max: 365 },
+  admin: { default: 7, max: 30 },
 };
 export const PERSONAL_TOKEN_MIN_DAYS = 1;
 
@@ -157,7 +169,8 @@ export interface MintPersonalTokenInput {
   /** Exactly one scope. */
   readonly scope: string;
   readonly expiresInDays?: number;
-  /** `portal:<accountId>` or `admin:<sub>`. */
+  /** `portal:<accountId>`, `admin:<sub>` or `console:<memberId>`. Informational: the token row keeps
+   *  no `created_by` column, so the caller's audit row is the provenance record. */
   readonly createdBy: string;
 }
 
@@ -257,7 +270,7 @@ export async function mintAccountToken(
 
 // ── List and revoke ──────────────────────────────────────────────────────────────────────────
 
-/** The account's tokens, newest first, revoked and expired ones included until purged. */
+/** The account's tokens, live first and then newest, revoked and expired ones included until purged. */
 export async function listAccountTokens(
   db: Db,
   accountId: string,
@@ -265,8 +278,10 @@ export async function listAccountTokens(
 ): Promise<PersonalTokenView[]> {
   const rows = await db.all<PersonalTokenRow>(
     `SELECT * FROM account_tokens WHERE account_id = ?
-      ORDER BY created_at DESC, id DESC LIMIT 1000`,
+      ORDER BY (revoked_at IS NULL AND expires_at > ?) DESC, created_at DESC, id DESC
+      LIMIT 1000`,
     accountId,
+    now,
   );
   return rows.map((r) => viewOf(r, now));
 }
@@ -298,7 +313,23 @@ export async function revokeAccountToken(
   reason: PersonalTokenRevokeReason,
   now: number,
 ): Promise<PersonalTokenView | null> {
-  await db.run(
+  return (await revokeAccountTokenCounted(db, accountId, id, by, reason, now))
+    .view;
+}
+
+/**
+ * {@link revokeAccountToken}, also saying whether THIS call ended the token: of two concurrent
+ * revokes of one token exactly one has `changed` true, so only that one audits.
+ */
+export async function revokeAccountTokenCounted(
+  db: Db,
+  accountId: string,
+  id: string,
+  by: string,
+  reason: PersonalTokenRevokeReason,
+  now: number,
+): Promise<{ view: PersonalTokenView | null; changed: boolean }> {
+  const changes = await db.runChanges(
     `UPDATE account_tokens SET revoked_at = ?, revoked_by = ?, revoke_reason = ?
       WHERE account_id = ? AND id = ? AND revoked_at IS NULL`,
     now,
@@ -307,7 +338,65 @@ export async function revokeAccountToken(
     accountId,
     id,
   );
-  return getAccountToken(db, accountId, id, now);
+  return {
+    view: await getAccountToken(db, accountId, id, now),
+    changed: changes === 1,
+  };
+}
+
+/**
+ * The provenance mark of a token minted for `pkey` by a Locker approval: the tail of the
+ * `portal.personal_token.create` audit row's summary. The token row keeps no created_by column, so
+ * this row is how a CLI-minted token is told from one the person made by hand under the same label.
+ */
+export const CLI_PACKAGES_TOKEN_MARK = "by pkey approved in Polaris Locker";
+
+/**
+ * F-37.1b: a new CLI `packages:read` mint replaces the account's earlier one for the same label
+ * (as `pkey login` replaces its sign-in). Revokes ONLY live tokens that are all of: this
+ * `accountId`'s, scope `packages:read`, exactly this `label`, not `exceptId`, and recorded by a
+ * Locker CLI approval (the audit mark above) for the same account. A token the person made by
+ * hand with the same label, another label, another scope or another account is never touched.
+ * Answers the revoked tokens' hints.
+ */
+export async function revokeReplacedCliPackagesTokens(
+  db: Db,
+  accountId: string,
+  label: string,
+  exceptId: string,
+  now: number,
+): Promise<string[]> {
+  const rows = await db.all<{ id: string; hint: string }>(
+    `SELECT t.id AS id, t.hint AS hint FROM account_tokens t
+      WHERE t.account_id = ? AND t.scope = ? AND t.label = ? AND t.id <> ?
+        AND t.revoked_at IS NULL AND t.expires_at > ?
+        AND EXISTS (
+          SELECT 1 FROM portal_audit a
+           WHERE a.account_id = t.account_id AND a.target_id = t.id
+             AND a.action = 'portal.personal_token.create'
+             AND a.target_kind = 'account_token'
+             AND a.summary LIKE ?
+        )`,
+    accountId,
+    PACKAGES_READ_SCOPE,
+    label,
+    exceptId,
+    now,
+    `%${CLI_PACKAGES_TOKEN_MARK}`,
+  );
+  const hints: string[] = [];
+  for (const r of rows) {
+    const out = await revokeAccountTokenCounted(
+      db,
+      accountId,
+      r.id,
+      `portal:${accountId}`,
+      "manual",
+      now,
+    );
+    if (out.changed) hints.push(r.hint);
+  }
+  return hints;
 }
 
 /** A token as a Superadmin lists it: the view plus the account's email (never its id). Never the plaintext or the hash. */
@@ -417,24 +506,46 @@ export function stmtDeleteAccountTokens(accountId: string): DbStatement {
   };
 }
 
-/** The merge: the absorbed account's tokens become the survivor's. */
+/**
+ * The merge: the absorbed account's non-admin tokens become the survivor's. An `admin` row never
+ * moves ({@link stmtRevokeAccountAdminTokens} runs first in the same batch).
+ */
 export function stmtMoveAccountTokens(
   fromAccountId: string,
   toAccountId: string,
 ): DbStatement {
   return {
-    sql: "UPDATE account_tokens SET account_id = ? WHERE account_id = ?",
+    sql: `UPDATE account_tokens SET account_id = ?
+           WHERE account_id = ? AND scope <> '${ADMIN_SCOPE}'`,
     params: [toAccountId, fromAccountId],
   };
 }
 
-/** The ids of the account's tokens, for a merge snapshot (so its undo moves exactly these back). */
+/**
+ * The merge: the absorbed account's live `admin` tokens stop authenticating (reason
+ * `access_removed`) and stay on that account (ST-34 D-12). A statement, so the merge batch stays
+ * atomic.
+ */
+export function stmtRevokeAccountAdminTokens(
+  accountId: string,
+  now: number,
+  by: string,
+): DbStatement {
+  return {
+    sql: `UPDATE account_tokens
+             SET revoked_at = ?, revoked_by = ?, revoke_reason = 'access_removed'
+           WHERE account_id = ? AND scope = '${ADMIN_SCOPE}' AND revoked_at IS NULL`,
+    params: [now, by.slice(0, 320), accountId],
+  };
+}
+
+/** The ids of the account's tokens that a merge moves (never `admin`), so its undo moves exactly these back. */
 export async function accountTokenIds(
   db: Db,
   accountId: string,
 ): Promise<string[]> {
   const rows = await db.all<{ id: string }>(
-    "SELECT id FROM account_tokens WHERE account_id = ?",
+    `SELECT id FROM account_tokens WHERE account_id = ? AND scope <> '${ADMIN_SCOPE}'`,
     accountId,
   );
   return rows.map((r) => r.id);
@@ -471,6 +582,47 @@ export async function purgeAccountTokens(db: Db, now: number): Promise<number> {
 
 // ── Resolution ───────────────────────────────────────────────────────────────────────────────
 
+/** Options of the resolvers. */
+export interface PersonalResolveOpts {
+  waitUntil?: (p: Promise<unknown>) => void;
+  /**
+   * `false`: do not write `last_used_at`. The admin API passes it and calls
+   * {@link touchPersonalToken} once the request has cleared every gate, so a refused request
+   * (wrong route, no reach) leaves no mark.
+   */
+  touch?: boolean;
+}
+
+function stmtTouch(db: Db, id: string, now: number): Promise<unknown> {
+  return db
+    .run(
+      `UPDATE account_tokens SET last_used_at = ?
+        WHERE id = ? AND (last_used_at IS NULL OR last_used_at < ?)`,
+      now,
+      id,
+      now - LAST_USED_GRANULARITY,
+    )
+    .catch(() => undefined);
+}
+
+/**
+ * Record a use (at most hourly per token). For a caller that resolved with `touch: false`.
+ * `lastUsedAt` is the token view's: when it is already fresh there is no write at all.
+ */
+export async function touchPersonalToken(
+  db: Db,
+  id: string,
+  now: number,
+  lastUsedAt?: number | null,
+): Promise<void> {
+  if (
+    typeof lastUsedAt === "number" &&
+    lastUsedAt >= now - LAST_USED_GRANULARITY
+  )
+    return;
+  await stmtTouch(db, id, now);
+}
+
 /** Who a presented personal token is. */
 export interface ResolvedPersonalToken {
   readonly accountId: string;
@@ -494,7 +646,7 @@ export async function resolvePersonalToken(
   presented: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void } = {},
+  opts: PersonalResolveOpts = {},
 ): Promise<ResolvedPersonalToken | null> {
   if (!isPersonalToken(presented)) return null;
   const hash = await hashPersonalToken(env, presented);
@@ -511,7 +663,7 @@ export function resolvePersonalTokenById(
   id: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void } = {},
+  opts: PersonalResolveOpts = {},
 ): Promise<ResolvedPersonalToken | null> {
   return resolveRow(env, db, "id = ?", id, accepts, now, opts);
 }
@@ -523,7 +675,7 @@ async function resolveRow(
   key: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void },
+  opts: PersonalResolveOpts,
 ): Promise<ResolvedPersonalToken | null> {
   let row: PersonalTokenRow | null;
   try {
@@ -541,16 +693,11 @@ async function resolveRow(
   if (!isPersonalTokenScope(row.scope) || row.scope !== accepts) return null;
   if ((await erasureVerdict(env, now, row.account_id)) !== "clear") return null;
   if (
-    row.last_used_at === null ||
-    row.last_used_at < now - LAST_USED_GRANULARITY
+    opts.touch !== false &&
+    (row.last_used_at === null ||
+      row.last_used_at < now - LAST_USED_GRANULARITY)
   ) {
-    const write = db
-      .run(
-        "UPDATE account_tokens SET last_used_at = ? WHERE id = ?",
-        now,
-        row.id,
-      )
-      .catch(() => undefined);
+    const write = stmtTouch(db, row.id, now);
     if (opts.waitUntil) opts.waitUntil(write);
     else await write;
   }

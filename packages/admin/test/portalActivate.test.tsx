@@ -471,6 +471,43 @@ describe("Activate license modal (PX-06)", () => {
     expect(confirm.textContent).toContain("Updates until Sep 30, 2027");
   });
 
+  it("a double-click on Add to my library sends one claim", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+        license: {
+          tier: "lifetime",
+          tierLabel: "Lifetime",
+          status: "active",
+          usable: true,
+          expiresAt: null,
+          deviceLimit: 5,
+        },
+        platforms: ["macos", "windows"],
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your library?",
+    });
+    const add = within(confirm).getByRole("button", {
+      name: "Add to my library",
+    });
+    // Two presses before React re-renders the busy state: the guard cannot rest on it.
+    fireEvent.click(add);
+    fireEvent.click(add);
+    await screen.findByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    expect(
+      fetchedRequests().filter((r) => r === "POST /api/claim/license-key"),
+    ).toHaveLength(1);
+  });
+
   it("confirms with the preview (G22) before adding: tier, terms, the key and Change key", async () => {
     mockFetch({
       ...routes(),

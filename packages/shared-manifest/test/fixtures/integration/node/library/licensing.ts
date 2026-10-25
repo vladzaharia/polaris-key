@@ -14,5 +14,5 @@ export async function activate(key: string): Promise<string | null> {
 
 await client.sync();
 if (!client.isLicensed()) console.log(copy.message(client.status().status));
-const pro = client.license.isEntitled("pro");
+const pro = client.entitlements.has("pro");
 console.log(pro);

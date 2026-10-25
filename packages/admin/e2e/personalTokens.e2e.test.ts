@@ -1,5 +1,6 @@
 /**
- * The Superadmin's Personal tokens roster (`#/personal-tokens`, F-33) in real Chromium under the
+ * Personal tokens (`#/personal-tokens`): the Superadmin's roster (F-33, the Everyone tab) and a
+ * member's own tokens (ST-34.11, the Yours tab) in real Chromium under the
  * Worker's CSP, with a 66-character label and a 75-character email: the table must fit 1280 and
  * 1440 px (Status, Expires, Last used and Actions on screen, no sideways scroll inside its
  * scroller), with no CSP violation and no page-level scroll. With PK_SHOTS_DIR set it saves each
@@ -60,6 +61,31 @@ const TOKENS = [
   }),
 ];
 
+const OWN = [
+  row({
+    id: "pt_cli",
+    label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+    scope: "admin",
+  }),
+  row({ id: "pt_ci", label: "CI build server", lastUsedAt: null }),
+  row({
+    id: "pt_rev",
+    label: "Old laptop",
+    status: "revoked",
+    revokedAt: NOW - 86400,
+    revokeReason: "manual",
+  }),
+];
+
+const ALL = [
+  ...TOKENS,
+  row({
+    id: "pt_cli",
+    label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+    scope: "admin",
+  }),
+];
+
 let server: PreviewServer;
 let browser: Browser;
 let base: string;
@@ -109,6 +135,7 @@ describe.concurrent("Personal tokens roster", () => {
         "/manage/api/products": { products: [] },
         "/manage/api/attention": { items: [] },
         "/manage/api/account-tokens": { tokens: TOKENS },
+        "/manage/api/me/personal-tokens": { tokens: OWN },
       };
       await ctx.route("**/*", async (route) => {
         const url = new URL(route.request().url());
@@ -126,14 +153,14 @@ describe.concurrent("Personal tokens roster", () => {
       });
       const page = await ctx.newPage();
       try {
-        await page.goto(`${base}/manage.html#/personal-tokens`);
+        await page.goto(`${base}/manage.html#/personal-tokens?who=everyone`);
         await page
           .getByRole("heading", { level: 1, name: "Personal tokens" })
           .waitFor();
         await page.getByText("Ada laptop").first().waitFor();
         if (SHOTS)
           await page.screenshot({
-            path: `${SHOTS}/console.personal-tokens-${s.w}-${s.theme}.png`,
+            path: `${SHOTS}/everyone-${s.w}-${s.theme}.png`,
             fullPage: true,
           });
         expect(
@@ -167,5 +194,245 @@ describe.concurrent("Personal tokens roster", () => {
         await closeContext(ctx);
       }
     });
+  }
+});
+
+/** Yours, its empty state and both revoke confirms, with shots when PK_SHOTS_DIR is set. */
+describe.concurrent("Personal tokens: Yours", () => {
+  for (const s of [
+    { w: 1440, h: 900, theme: "light" },
+    { w: 390, h: 844, theme: "dark" },
+  ] as const) {
+    for (const mode of [
+      "yours",
+      "empty",
+      "confirm-admin",
+      "confirm-packages",
+      "text200",
+      "everyone",
+      "everyone-confirm-admin",
+    ] as const) {
+      it(`${mode} at ${s.w}`, async () => {
+        const ctx = await browser.newContext({
+          viewport: { width: s.w, height: s.h },
+          colorScheme: s.theme,
+          reducedMotion: "reduce",
+        });
+        await ctx.addInitScript((t) => {
+          window.localStorage.setItem("pk-admin-theme", t);
+        }, s.theme);
+        const routes: Record<string, unknown> = {
+          "/manage/api/me": ME,
+          "/manage/api/products": { products: [] },
+          "/manage/api/attention": { items: [] },
+          "/manage/api/account-tokens": { tokens: ALL },
+          "/manage/api/me/personal-tokens": {
+            tokens: mode === "empty" ? [] : OWN,
+          },
+        };
+        await ctx.route("**/*", async (route) => {
+          const url = new URL(route.request().url());
+          if (url.pathname.startsWith("/manage/api/")) {
+            const body = routes[url.pathname];
+            return body
+              ? route.fulfill({ json: body })
+              : route.fulfill({ status: 404, json: { error: "not_found" } });
+          }
+          const res = await route.fetch();
+          const headers = { ...res.headers() };
+          if (url.pathname.endsWith(".html"))
+            headers["content-security-policy"] = CSP;
+          return route.fulfill({ response: res, headers });
+        });
+        const page = await ctx.newPage();
+        try {
+          const everyone = mode.startsWith("everyone");
+          await page.goto(
+            `${base}/manage.html#/personal-tokens${everyone ? "?who=everyone" : ""}`,
+          );
+          await page
+            .getByRole("heading", { level: 1, name: "Personal tokens" })
+            .waitFor();
+          if (mode === "empty")
+            await page.getByText("No personal tokens yet").waitFor();
+          else if (everyone)
+            await page.getByText("Ada laptop").first().waitFor();
+          else await page.getByText("CI build server").first().waitFor();
+          if (mode === "text200") {
+            await page.evaluate(() => {
+              document.documentElement.style.fontSize = "200%";
+            });
+            await page.waitForTimeout(200);
+            // The label never runs under the card's Actions button.
+            const overlap = await page.evaluate(() => {
+              const out: string[] = [];
+              for (const card of document.querySelectorAll("li[data-row-id]")) {
+                const btn = card.querySelector(
+                  "button[aria-label^='Actions for']",
+                );
+                const label = card.querySelector("[dir='auto']");
+                if (!btn || !label) continue;
+                const a = btn.getBoundingClientRect();
+                const b = label.getBoundingClientRect();
+                if (
+                  a.left < b.right &&
+                  a.right > b.left &&
+                  a.top < b.bottom &&
+                  a.bottom > b.top
+                )
+                  out.push(label.textContent ?? "");
+              }
+              return out;
+            });
+            expect(overlap).toEqual([]);
+          }
+          if (s.w < 1024 && mode === "yours") {
+            // Phone cards keep Last used and Expires.
+            const text = await page
+              .locator("li[data-row-id]")
+              .first()
+              .innerText();
+            expect(text).toMatch(/Last used/);
+            expect(text).toMatch(/Expires/);
+          }
+          if (mode.includes("confirm")) {
+            const who = mode.endsWith("confirm-admin")
+              ? "pkey on ada-lovelace-macbook-pro.studio.example.com"
+              : "CI build server";
+            await page
+              .getByRole("button", { name: `Actions for ${who}` })
+              .click();
+            await page.getByRole("menuitem", { name: /Revoke/ }).click();
+            await page.getByRole("alertdialog").waitFor();
+          }
+          if (SHOTS)
+            await page.screenshot({
+              path: `${SHOTS}/own-${mode}-${s.w}-${s.theme}.png`,
+              fullPage: !mode.includes("confirm"),
+            });
+          expect(
+            await page.evaluate(
+              () =>
+                document.documentElement.scrollWidth -
+                document.documentElement.clientWidth,
+            ),
+          ).toBeLessThanOrEqual(0);
+        } finally {
+          await closeContext(ctx);
+        }
+      });
+    }
+  }
+});
+
+/**
+ * Focus after a revoke never falls to `<body>` (ST-34.11 item 15): the refetch is slow and
+ * answers the row revoked; focus then lands on the next row that stays active, else the previous.
+ */
+describe.concurrent("Personal tokens: focus after revoke", () => {
+  for (const w of [1440, 390]) {
+    for (const tab of ["yours", "everyone"] as const) {
+      for (const [victim, expected] of [
+        ["Token B", "Token C"],
+        ["Token C", "Token B"],
+      ] as const) {
+        it(`${tab} at ${w}: revoking ${victim} focuses ${expected}`, async () => {
+          const ctx = await browser.newContext({
+            viewport: { width: w, height: w > 600 ? 900 : 844 },
+            reducedMotion: "reduce",
+          });
+          const rows = ["a", "b", "c"].map((k) =>
+            row({
+              id: `pt_${k}`,
+              label: `Token ${k.toUpperCase()}`,
+              status: "active",
+            }),
+          );
+          // Token A is already revoked: it is never a target.
+          rows[0] = row({
+            id: "pt_a",
+            label: "Token A",
+            status: "revoked",
+            revokedAt: NOW - 60,
+            revokeReason: "manual",
+          });
+          let revokedId: string | null = null;
+          const list = () => ({
+            tokens: rows.map((t) =>
+              t.id === revokedId
+                ? { ...t, status: "revoked", revokedAt: NOW }
+                : t,
+            ),
+          });
+          await ctx.route("**/*", async (route) => {
+            const url = new URL(route.request().url());
+            const p = url.pathname;
+            if (p.startsWith("/manage/api/")) {
+              if (route.request().method() === "DELETE") {
+                revokedId = p.split("/").pop()!;
+                return route.fulfill({ json: { ok: true } });
+              }
+              if (
+                p === "/manage/api/me/personal-tokens" ||
+                p === "/manage/api/account-tokens"
+              ) {
+                // The refetch after a revoke is slow: focus must wait for it.
+                if (revokedId) await new Promise((r) => setTimeout(r, 700));
+                return route.fulfill({ json: list() });
+              }
+              const body: Record<string, unknown> = {
+                "/manage/api/me": ME,
+                "/manage/api/products": { products: [] },
+                "/manage/api/attention": { items: [] },
+              };
+              return body[p]
+                ? route.fulfill({ json: body[p] })
+                : route.fulfill({ status: 404, json: { error: "not_found" } });
+            }
+            const res = await route.fetch();
+            const headers = { ...res.headers() };
+            if (p.endsWith(".html")) headers["content-security-policy"] = CSP;
+            return route.fulfill({ response: res, headers });
+          });
+          const page = await ctx.newPage();
+          try {
+            await page.goto(
+              `${base}/manage.html#/personal-tokens${tab === "everyone" ? "?who=everyone" : ""}`,
+            );
+            await page
+              .getByRole("heading", { level: 1, name: "Personal tokens" })
+              .waitFor();
+            await page
+              .getByRole("button", { name: `Actions for ${victim}` })
+              .click();
+            await page.getByRole("menuitem", { name: /Revoke/ }).click();
+            await page.getByRole("alertdialog").waitFor();
+            await page.getByRole("button", { name: "Revoke token" }).click();
+            await page.getByRole("alertdialog").waitFor({ state: "hidden" });
+            await page.waitForFunction(
+              (label) =>
+                document.activeElement?.getAttribute("aria-label") ===
+                `Actions for ${label}`,
+              expected,
+              { timeout: 5000 },
+            );
+            // The revoked row really is revoked by then.
+            expect(
+              await page
+                .locator(`[data-row-id="pt_${victim.slice(-1).toLowerCase()}"]`)
+                .filter({ visible: true })
+                .first()
+                .innerText(),
+            ).toMatch(/Revoked/);
+            if (SHOTS)
+              await page.screenshot({
+                path: `${SHOTS}/focus-${tab}-${w}-${victim.slice(-1)}.png`,
+              });
+          } finally {
+            await closeContext(ctx);
+          }
+        });
+      }
+    }
   }
 });

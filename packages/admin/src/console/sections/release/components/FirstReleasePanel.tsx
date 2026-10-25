@@ -15,8 +15,13 @@
  * - The store is polled while the panel is up; ReleasesPage announces the release that ends it.
  */
 
+import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
 import { BookOpen, Check, Copy, Pencil, Plus } from "lucide-react";
+import {
+  ACTION_REF_PLACEHOLDER,
+  renderCiWorkflow,
+} from "@polaris-key/manifest";
 import type { ReleaseHealth } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { toSeconds } from "../../../../lib/format.js";
@@ -43,20 +48,16 @@ export const FIRST_RELEASE_POLL_MS = 10_000;
 const DEFAULT_WORKFLOW = ".github/workflows/release.yml";
 
 /**
- * The publish step for a release job, with the product's slug filled in. It follows the CI guide
- * (`/docs/build/ci/`): the Action is referenced by commit until it is listed as `@v1`.
+ * The release workflow, named for the product's slug. It follows the CI guide
+ * (`/docs/build/ci/`): the Action is referenced by commit, `<commit-sha>` where no Worker names it.
  */
-export function workflowStep(slug: string): string {
-  return [
-    "# In the release job, after the steps that build your files.",
-    "# The job needs `permissions: id-token: write` (and `release-key` if .pkey/release declares releaseKeys).",
-    "- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>",
-    "  with:",
-    `    product: ${slug}`,
-    "    tag: ${{ github.ref_name }}",
-    "    channel: stable",
-    "    dir: dist",
-  ].join("\n");
+export function workflowStep(slug: string, releaseKeys = false): string {
+  return renderCiWorkflow({
+    product: slug,
+    channel: "stable",
+    actionRef: ACTION_REF_PLACEHOLDER,
+    releaseKeys,
+  });
 }
 
 const STAR = markPartPath("star", { kind: "key", size: 48, theme: "mono" });
@@ -86,6 +87,7 @@ export function FirstReleasePanel({
   const tokens = useCiTokens(slug);
   const [editingPublisher, setEditingPublisher] = React.useState(false);
   const [issuing, setIssuing] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [linking, setLinking] = React.useState(false);
   const { copy, state: copyState } = useCopy();
   const policy = publisher.data ?? null;
@@ -109,14 +111,14 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="checking"
-          title="Polaris Key app"
+          title="Polaris Key GitHub App"
           detail="Checking access to the repository…"
         />
       ) : health.isError || !github ? (
         <CheckRow
           key="app"
           state="todo"
-          title="Polaris Key app"
+          title="Polaris Key GitHub App"
           detail="Couldn't check access to the repository."
           action={
             <Button
@@ -132,7 +134,7 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="done"
-          title="Polaris Key app installed"
+          title="Polaris Key GitHub App installed"
           detail={
             policy?.repository ? (
               <span className="font-mono">{policy.repository}</span>
@@ -145,7 +147,7 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="failed"
-          title="Polaris Key app can't read the repository"
+          title="Polaris Key GitHub App can't read the repository"
           detail="Install the Polaris Key GitHub App on the repository, then check again."
           action={
             <Button
@@ -218,6 +220,7 @@ export function FirstReleasePanel({
             size="sm"
             iconStart={<Pencil aria-hidden />}
             onClick={() => setEditingPublisher(true)}
+            disabledReason={noMint}
           >
             Edit…
           </Button>
@@ -234,6 +237,7 @@ export function FirstReleasePanel({
             variant="outline"
             size="sm"
             onClick={() => setEditingPublisher(true)}
+            disabledReason={noMint}
           >
             Allow workflow…
           </Button>
@@ -263,6 +267,7 @@ export function FirstReleasePanel({
             size="sm"
             iconStart={active ? <Plus aria-hidden /> : undefined}
             onClick={() => setIssuing(true)}
+            disabledReason={noMint}
           >
             {active ? "Issue another…" : "Issue a CI token…"}
           </Button>
@@ -281,8 +286,8 @@ export function FirstReleasePanel({
   );
 
   const description = linked
-    ? `Releases come from CI, signed with ${productName}'s key. Two checks and one workflow step, then this page fills itself in.`
-    : `Releases come from CI, signed with ${productName}'s key. Link a repository or let CI publish, add one workflow step, then this page fills itself in.`;
+    ? `Releases come from CI, signed with ${productName}'s key. Two checks and one workflow, then this page fills itself in.`
+    : `Releases come from CI, signed with ${productName}'s key. Link a repository or let CI publish, add the workflow, then this page fills itself in.`;
 
   return (
     <section
@@ -324,7 +329,7 @@ export function FirstReleasePanel({
             }
             onClick={() => void copy(step)}
           >
-            {copyState === "copied" ? "Copied" : "Copy workflow step"}
+            {copyState === "copied" ? "Copied" : "Copy workflow"}
           </Button>
           <Button variant="ghost" asChild>
             <a href={docsUrl("ciPublishing")} target="_blank" rel="noreferrer">
@@ -352,6 +357,7 @@ export function FirstReleasePanel({
         open={editingPublisher}
         policy={policy}
         onClose={() => setEditingPublisher(false)}
+        onOpen={() => setEditingPublisher(true)}
       />
       <IssueCiTokenFlow slug={slug} open={issuing} onOpenChange={setIssuing} />
       {!linked ? (

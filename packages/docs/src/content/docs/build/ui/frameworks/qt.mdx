@@ -291,7 +291,7 @@ component), so a row you can describe there is a screen you can draw. Without `d
 draws the rows its view carries.
 
 `data=` also takes the rich models of `polaris_key.ui.core.models`: a `SettingsView`, a
-`DevicesView`, a `GateView` (the account rows) or an `ActivateView` (the seat meter). Settings are
+`DevicesView`, a `GateView` (the account rows) or an `ActivateView` (the device meter). Settings are
 the usual case, because `models.settings_view` takes the catalog entries as the client returns them
 and sorts out which are locked:
 
@@ -320,7 +320,7 @@ What the rows draw, from the data:
 - **Devices:** one row per device with a glyph for its form factor, "This Mac" on the current one,
   the platform and last-used time, a Rename button and, except on the current device, a Remove
   button. The count is said once.
-- **Replace a device:** a radio list of the devices with the least recent preselected, the seat
+- **Replace a device:** a radio list of the devices with the least recent preselected, the device
   meter above it and a confirm that names the chosen device.
 - **Account:** the tier, the devices used of the limit, the version and channel, and the Manage,
   Check for updates and Sign out buttons. The words come from the catalog; a button that has no

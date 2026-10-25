@@ -78,7 +78,7 @@
  * budget is sized so that the adversarial cases measured on Node 22 (64 packs × 200 releases with
  * 63 dependencies each, exhaustive searches over dependency chains, 64-entry conflict lists, three
  * coupled 16-value axes, 500 live app releases × 4,000 rows) spend it, or finish, in 15–60 ms with
- * under 25 MB of heap (`test/packResolve.test.ts` "bounds").
+ * under 25 MB of heap (`test/services/release/packResolve.test.ts` "bounds").
  */
 
 import {
@@ -109,7 +109,7 @@ export const MAX_SELECTORS = 4096;
 /**
  * Work counters, a test hook (like the Godot SDK's `PKeyPck.scan_probes`): the raw operations the
  * resolver performs, counted at the work sites themselves and independently of `spend`, so the
- * "bounds" and "cost" tests in `test/packResolve.test.ts` bound the work done rather than the
+ * "bounds" and "cost" tests in `test/services/release/packResolve.test.ts` bound the work done rather than the
  * wall-clock time (which a loaded machine inflates). Work that escapes the budget (pruning once
  * cost 17.5 s outside it) still shows here. `steps` is every loop iteration at a work site (one
  * per constraint read, release scanned, candidate built or examined, range check, solver try and

@@ -1,0 +1,7 @@
+# ktlint (P0-46.5, tools/lint.sh): the style the sources are written in, not ktlint's stricter
+# ktlint_official default. The line length is the p99 of the hand-written sources.
+root = true
+
+[*.{kt,kts}]
+ktlint_code_style = intellij_idea
+max_line_length = 150

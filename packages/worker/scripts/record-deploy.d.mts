@@ -1,4 +1,4 @@
-/** Types for `record-deploy.mjs` (imported by `test/recordDeploy.test.ts`). */
+/** Types for `record-deploy.mjs` (imported by `test/core/recordDeploy.test.ts`). */
 export interface DeployRowFields {
   id: string;
   at: number;

@@ -2,21 +2,18 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { KeyRound, Lock } from "lucide-react";
 import type { MintBlock } from "@polaris-key/catalog";
-import { api, type ConfigEntry } from "../../../../api.js";
+import { type ConfigEntry } from "../../../../api.js";
 import { formatDate, fromSeconds } from "../../../../lib/format.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
-import { qk } from "../../../data/queries.js";
-import { fetchSecrets } from "../../../data/hooks.js";
+import { reads } from "../../../data/reads.js";
 import { Button } from "../../../../ui/Button.js";
-import { Unlocked } from "../../../../ui/WriteLock.js";
-import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Select } from "../../../../ui/Select.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { Textarea } from "../../../../ui/Textarea.js";
 import { codecs, useSearchParam } from "../../../router.js";
-import { changedLabel, REQUIRES_LABELS } from "../model/edgeMintFields.js";
+import { REQUIRES_LABELS } from "../model/edgeMintFields.js";
 import { useEdgeMint } from "../data.js";
 import {
   blockOf,
@@ -47,9 +44,12 @@ export function MintRecipeFields({
   flagKeys,
   slug,
   error,
+  productName,
   onChange,
 }: {
   entry: ConfigEntry;
+  /** The product's name, for "What DJDL receives". */
+  productName?: string;
   /** The draft's problem with the recipe, if any. */
   error?: string;
   /** The catalog's flag keys, offered for Required entitlement. */
@@ -90,8 +90,7 @@ export function MintRecipeFields({
   const [addingKey, setAddingKey] = React.useState(false);
   const keyless = recipe ? needsKey(recipe) : false;
   const secrets = useQuery({
-    queryKey: qk.secrets(slug),
-    queryFn: () => fetchSecrets(slug),
+    ...reads.secrets(slug),
     enabled: recipe?.secretUsage === "edge-mint",
   });
   const sealed = secrets.data?.find((x) => x.name === recipe?.signingKeySecret);
@@ -105,10 +104,6 @@ export function MintRecipeFields({
   const ttl = block.ttlSeconds ?? 3600;
   const ttlWas =
     approved && approved.ttlSeconds !== ttl ? approved.ttlSeconds : null;
-  const ttlOnly =
-    recipe?.status === "changed" &&
-    recipe.changedFields.length === 1 &&
-    recipe.changedFields[0] === "ttlSeconds";
   const iss =
     typeof block.claimsTemplate?.iss === "string"
       ? block.claimsTemplate.iss
@@ -133,71 +128,6 @@ export function MintRecipeFields({
           onRetry={() => void mint.refetch()}
           context={{ thing: "The stored recipe" }}
         />
-      ) : null}
-      {recipe && recipe.status !== "approved" ? (
-        <Callout
-          tone="warning"
-          title={
-            ttlOnly && approved && !edited
-              ? `Lifetime changed from ${ttlLabel(approved.ttlSeconds)} to ${ttlLabel(recipe.ttlSeconds)}`
-              : "Minting is stopped until you approve"
-          }
-          action={
-            edited ? undefined : (
-              // Reading the recipe is open to a view-only member; the drawer gates Approve.
-              <span className="flex flex-wrap items-center gap-2">
-                {ttlOnly && approved ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => set({ ttlSeconds: approved.ttlSeconds })}
-                  >
-                    Keep {ttlLabel(approved.ttlSeconds)}
-                  </Button>
-                ) : null}
-                <Unlocked>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    data-recipe-opener=""
-                    onClick={() => setRecipeId(entry.key)}
-                  >
-                    Review and approve…
-                  </Button>
-                </Unlocked>
-              </span>
-            )
-          }
-        >
-          {edited
-            ? "Your unpublished edits aren't part of the saved recipe. Publish the catalog, then approve it."
-            : ttlOnly
-              ? "Minting is stopped until you approve."
-              : recipe.status === "changed" && recipe.changedFields.length > 0
-                ? `Changed since approval: ${recipe.changedFields.map(changedLabel).join(", ")}.`
-                : null}
-        </Callout>
-      ) : null}
-      {recipe && keyless ? (
-        <Callout
-          tone="warning"
-          title="Minting hasn't started: no signing key"
-          action={
-            <Button
-              size="sm"
-              variant="outline"
-              iconStart={<KeyRound aria-hidden />}
-              onClick={() => setAddingKey(true)}
-            >
-              Add the key…
-            </Button>
-          }
-        >
-          The recipe is approved, but a repository never holds the key. Until it
-          is added, the app's{" "}
-          <code className="font-mono text-xs">mintToken("{entry.key}")</code>{" "}
-          calls fail.
-        </Callout>
       ) : null}
       {recipe?.status === "approved" || recipe === null ? (
         <p className="text-sm text-fg-muted">
@@ -472,7 +402,7 @@ export function MintRecipeFields({
             </details>
             <div className="space-y-2">
               <p className="text-sm font-medium text-fg-strong">
-                What the app receives
+                What {productName ?? "the app"} receives
               </p>
               <CodeBlock
                 code={previewText(block, nowSec, approved?.ttlSeconds ?? null)}

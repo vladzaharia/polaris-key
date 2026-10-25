@@ -1,0 +1,62 @@
+{
+  "$schema": "https://unpkg.com/knip@6.41.0/schema.json",
+  "ignore": [
+    "**/dist/**",
+    "**/build/**",
+    "**/.venv/**",
+    "**/*.d.mts",
+    "**/*.generated.*",
+    "**/fixtures/**",
+    "sdks/**",
+    "docs/**",
+    "examples/**",
+    "actions/publish/dist/**"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "workspaces": {
+    ".": {
+      "entry": [
+        "tools/*.{ts,mjs}",
+        "tools/**/*.test.ts",
+        "tools/**/*.test.mjs",
+        "tools/corpus/*.ts"
+      ],
+      "project": ["tools/**/*.{ts,mjs}"],
+      "ignoreDependencies": ["jscpd"]
+    },
+    "packages/worker": {
+      "entry": [
+        "src/index.ts",
+        "src/deltasEntry.ts",
+        "scripts/**/*.{ts,mjs}",
+        "test*/**/*.{ts,tsx}",
+        "vitest*.ts"
+      ],
+      "project": ["src/**/*.ts", "scripts/**/*.{ts,mjs}"],
+      "vitest": false,
+      "ignoreDependencies": ["cloudflare", "vite"]
+    },
+    "packages/admin": {
+      "entry": [
+        "src/main.tsx",
+        "scripts/**/*.{ts,mjs}",
+        "test/**/*.{ts,tsx}",
+        "e2e/**/*.ts",
+        "vite.config.ts",
+        "vitest*.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}"],
+      "vitest": false
+    },
+    "packages/*": {
+      "entry": [
+        "src/index.ts",
+        "src/cli/*.ts",
+        "src/bin/*.ts",
+        "scripts/*.{mjs,ts}",
+        "test/**/*.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**"]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+Sources/PolarisKeyCore/Copy.generated.swift:20:12: warning: [AlwaysUseLowerCamelCase] rename the constant 'COPY_VERSION' using lowerCamelCase
+Sources/PolarisKeyCore/Discovery.swift:12:1: warning: [OrderedImports] sort import statements lexicographically
+Sources/PolarisKeyCore/Discovery.swift:40:81: warning: [LineLength] line is too long
+/repo/sdks/swift/Tests/PolarisKeyTests/T.swift:3:1: error: expected declaration

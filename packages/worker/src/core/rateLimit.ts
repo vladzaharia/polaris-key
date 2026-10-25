@@ -97,6 +97,12 @@ const FAIL_MODE: Record<string, FailMode> = {
   identityAttach: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
+  // ST-30c.5: the console's passkey sign-in (challenge and assertion, per client network). The
+  // assertion opens a console session, so an outage refuses.
+  adminPasskey: "closed",
+  // ST-34.5/34.6: approving `pkey login` releases an admin token (console card, portal API).
+  adminDeviceApprove: "closed",
+  portalDeviceApprove: "closed",
   portalLogin: "closed",
   // The platform device-code entry page (`/device`, `/tv`): a product-less guess oracle for live
   // user codes, so an outage must not make it unlimited.
@@ -195,6 +201,17 @@ const FAIL_MODE: Record<string, FailMode> = {
   // as "check again") rather than letting a loop through.
   credentialCheck: "closed",
 
+  // ST-31.6: console grant, edit and revoke, per member. Each one hands out (or takes back) standing
+  // access to the console, so an outage refuses rather than leaving a stolen session unmetered.
+  adminGrantWrite: "closed",
+  // ST-31.7: operator notices (access changes, invitations) per recipient per hour. A send, so an
+  // outage refuses it; a refused notice counts as not sent and never undoes the change. The
+  // `email` prefix shards it like the other mail limits.
+  emailOperatorNoticeHour: "closed",
+  // ST-31.7: console invitations per member, counted per invited address (mail abuse from the
+  // shared sender). An outage refuses the request.
+  adminInviteAddress: "closed",
+
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
   adminAccessDenied: "open",
@@ -251,6 +268,12 @@ const FAIL_MODE: Record<string, FailMode> = {
   // every licensed install from refreshing its document (as for `configDocument` above).
   licenseDoc: "open",
   deauthorize: "open",
+  // U-05.14 (L10): the Cloud Sync push, per device and per product. The caller holds a live
+  // device token and a principal; the 429 only protects cost, the client's journal survives
+  // either way, and the person's object bounds the work per principal. An outage must not stop
+  // every device's settings from saving.
+  syncPushDevice: "open",
+  syncPushProduct: "open",
 };
 
 function failModeFor(bucket: string): FailMode {
@@ -366,7 +389,7 @@ export function clientIp(req: Request): string {
  * budgets. An IPv4-mapped IPv6 address (`::ffff:192.0.2.1`) is unwrapped to its
  * IPv4 form, so it neither collides in one `::/64` bucket nor escapes its IPv4 bucket.
  * Anything that does not parse as IPv6 falls back to `clientIp`. Callers must not key a
- * rate-limit bucket on `clientIp` directly (`test/rateLimitKeys.test.ts` enforces it).
+ * rate-limit bucket on `clientIp` directly (`test/core/rateLimitKeys.test.ts` enforces it).
  */
 export function clientNetwork(req: Request): string {
   const ip = clientIp(req);

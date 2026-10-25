@@ -52,7 +52,7 @@ import {
  * Apple App Attestation Root CA (P-384, valid 2020-03-18 to 2045-03-15), from
  * https://www.apple.com/certificateauthority/Apple_App_Attestation_Root_CA.pem.
  * SHA-256 fingerprint 1C:B9:82:3B:A2:8B:A6:AD:2D:33:A0:06:94:1D:E2:AE:4F:51:3E:F1:D4:E8:31:B9:F7:E0:FA:7B:62:42:C9:32
- * (`test/appAttest.test.ts` pins the fingerprint and checks the self-signature).
+ * (`test/core/appAttest.test.ts` pins the fingerprint and checks the self-signature).
  */
 export const APPLE_APP_ATTEST_ROOT_PEM = `-----BEGIN CERTIFICATE-----
 MIICITCCAaegAwIBAgIQC/O+DvHN0uD7jG5yH2IXmDAKBggqhkjOPQQDAzBSMSYw

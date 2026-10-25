@@ -15,7 +15,7 @@
 //     cache), and without it the renderer's gate is the one gate in the suite a rolled-back
 //     clock can still fool. This is the field this package used to be missing.
 //   * `capabilities` — the product's `services` map (D-21). Absent ⇒ the adapter keeps its
-//     configured `expectServices` belief; it never assumes all-true.
+//     configured `expectedServices` belief; it never assumes all-true.
 //   * `config` — the CONFIG document's entries. v3 split the fused document, so grants arrive
 //     on `doc` (a `LicenseDoc`) and settings arrive here.
 //   * `getSyncState()` and a versioned `invoke(service, method, args)` escape hatch.
@@ -80,6 +80,8 @@ export interface BridgeState {
   /** Discovery's `core.presentation` as the host's Node client holds it
    *  (`client.presentation()`), null for none. Absent ⇒ an older host: no presentation. */
   presentation?: unknown;
+  /** v4 (UK-06): the host's OS facts. Absent ⇒ an older host: the renderer keeps `web` chrome. */
+  host?: BridgeHost;
 }
 
 /** The result of a desktop OIDC begin — a verification URL/code to render while polling. */
@@ -195,6 +197,16 @@ export type BridgeActivation =
  *   * `("update","restart")` → apply the install the host just staged (a `restartRequired` outcome's `restart()`), and `("update","markBootAttempt")` / `("update","confirmBoot")` → `client.update.markBootAttempt()` / `client.update.confirmBoot()`. The host's `boot()` already runs the guard, so a renderer that boots through it never calls the last two. The host adds all four to `DEFAULT_INVOKE_VERBS`.
  *   * `("core","boot",opts)` also takes `autoConfirm` (`false` leaves a `ready` launch for the renderer's `confirmBoot()`) and returns `guard`, the `BootAttempt` the guard stage produced, which the renderer passes on as `BootResult.guard` (`null` when the host sends none).
  *
+ * ── WHAT v4 ADDS (UK-06) ─────────────────────────────────────────────────────────────────────
+ *
+ * Three OPTIONAL members, so an older v4 host never sends them and an adapter that finds them
+ * absent behaves as before. `BRIDGE_VERSION` stays 4. Declared by UK-06.1; the host
+ * (`@polaris-key/node/electron`) and the renderer use them in later UK-06 slices.
+ *
+ *   * `BridgeState.host` (`BridgeHost`): the OS facts the kit picks its desktop chrome from.
+ *   * `onUpdateProgress(cb)`: pushed progress while `("update","install")` runs.
+ *   * `onOpen(cb)`: the host asks the renderer to open a `KitView` (a native menu item).
+ *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or
  * subscribes to them, and the Node host answers none of them.
@@ -204,6 +216,32 @@ export const BRIDGE_VERSION = 4;
 /** The bridge revisions this package accepts: v3 hosts keep working with the v4 verbs refused
  *  typed; v4 hosts get everything. The v4 gate itself is `version >= BRIDGE_VERSION`. */
 export const BRIDGE_VERSIONS_ACCEPTED = [3, 4] as const;
+
+/** v4 (UK-06): the host's OS facts, `BridgeState.host`. `os` picks the desktop chrome. */
+export interface BridgeHost {
+  os: "macos" | "windows" | "linux";
+  /** The system accent colour as `#rrggbb`, when the host knows it. */
+  accentColor?: string;
+  highContrast?: boolean;
+  reducedTransparency?: boolean;
+}
+
+/** v4 (UK-06): one pushed update-install progress event (`onUpdateProgress`). Sent to the window
+ *  that started the install only. `total` is `null` when the driver does not know the size: the
+ *  renderer then draws an indeterminate bar and invents no percentage. */
+export interface BridgeUpdateProgress {
+  /** Bytes received so far. */
+  done: number;
+  /** Total bytes, or `null` when the driver does not know it. */
+  total?: number | null;
+  /** The release being installed. */
+  version?: string;
+  /** What the bytes are for. The host sends `download`. */
+  phase?: "download";
+}
+
+/** v4 (UK-06): a view the host can ask the renderer to open (`onOpen`). */
+export type KitView = "settings" | "update";
 
 /** One pushed pack-progress event. Reserved for a later bridge revision: declared, not yet
  *  subscribed by this package. */
@@ -265,6 +303,12 @@ export interface PolarisBridge {
   importBundle?(jws: string): Promise<BridgeImportBundle>;
   /** Subscribe to pushed state changes; returns an unsubscribe. */
   on(event: "stateChanged", cb: (state: BridgeState) => void): () => void;
+  /** v4 (UK-06): pushed update-install progress; returns an unsubscribe. Absent on a host that
+   *  does not forward it. */
+  onUpdateProgress?(cb: (p: BridgeUpdateProgress) => void): () => void;
+  /** v4 (UK-06): the host asks the renderer to open a view (a native menu item); returns an
+   *  unsubscribe. Absent on a host with no menu items. */
+  onOpen?(cb: (view: KitView) => void): () => void;
   /** Reserved (later revision): pushed pack progress; returns an unsubscribe. This package does
    *  not subscribe to it yet, so a host need not implement it. */
   onPackProgress?(cb: (p: BridgePackProgress) => void): () => void;

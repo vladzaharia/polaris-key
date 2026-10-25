@@ -5,7 +5,7 @@
 // has no discovery fetch and no icon cache of its own (owner decision, HA-13/HA-14).
 
 import type { PresentationSource } from "@polaris-key/client-core/presentation";
-import type { UiInput } from "@polaris-key/ui-core";
+import type { Platform, UiInput } from "@polaris-key/ui-core";
 import {
   accentFor,
   resolveKitColors,
@@ -243,18 +243,32 @@ export function resolveFor(
   options: ElementsTheme,
   identity: ResolvedIdentity,
   iconUrl: string | null,
+  platform?: Platform,
+  /** The desktop host's system accent (`#rrggbb`): under `native` with no accent of its own, the
+   *  host's accent, resolved for contrast on the page's grounds (UK-06). */
+  hostAccent?: string,
 ): Resolved {
   const native = options.preset === "native";
   const scheme = resolveTheme(options, {
     kit: "elements",
+    // `platform: "auto"` takes the platform the host reports (the desktop bridge's `host.os`,
+    // UK-06); left unset, the kit draws the web variant.
+    ...(options.platform === "auto" && platform ? { platform } : {}),
     prefersDark: native && host ? groundPrefersDark(host) : osPrefersDark(),
     reducedMotion: osReducedMotion(),
   });
   const accent = accentFor(identity, scheme.scheme as Scheme);
+  const hostColor =
+    native &&
+    accent === null &&
+    hostAccent &&
+    /^#[0-9a-f]{6}$/i.test(hostAccent)
+      ? hostAccent
+      : null;
   const colors =
-    native && accent === null
+    native && accent === null && hostColor === null
       ? null
-      : resolveKitColors(accent, scheme.scheme as Scheme);
+      : resolveKitColors(hostColor ?? accent, scheme.scheme as Scheme);
   const docLang =
     typeof document !== "undefined" ? document.documentElement.lang : "";
   const nav = typeof navigator !== "undefined" ? navigator.language : undefined;

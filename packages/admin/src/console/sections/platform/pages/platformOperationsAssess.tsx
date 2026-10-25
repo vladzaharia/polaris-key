@@ -3,6 +3,7 @@
  * state per section, an overall state and the attention list. Split out of `platformOperations.tsx`.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import {} from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import {} from "@tanstack/react-query";
@@ -311,7 +312,7 @@ export function assessOperations(op: PlatformOperations): OperationsAssessment {
 
 export const CONNECTOR_LABEL: Record<string, string> = {
   asc: "App Store Connect",
-  play: "Google Play",
-  "ms-store": "Microsoft Store",
+  play: channelLabel("google-play"),
+  "ms-store": channelLabel("microsoft-store"),
 };
 export const connectorLabel = (c: string): string => CONNECTOR_LABEL[c] ?? c;

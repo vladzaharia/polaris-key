@@ -33,13 +33,31 @@ def test_set_persists_across_clients(tmp_path) -> None:
     c = make_client(_ok(), state_dir=str(tmp_path))
     c.license.activate_with_key("k")
     c.config.set("ui.theme", "dark")
-    assert c.config.get_config("ui.theme") == "dark" and c.config.get_config_source("ui.theme") == "local"
+    assert c.config.get("ui.theme") == "dark" and c.config.get_config_source("ui.theme") == "local"
     c.close()
     again = make_client(_ok(), state_dir=str(tmp_path))
-    assert again.config.get_config("ui.theme") == "dark"
+    assert again.config.get("ui.theme") == "dark"
     again.config.clear("ui.theme")
     assert "ui.theme" not in again.config.local_values()
     again.close()
+
+
+def test_clear_all_forgets_every_local_value_and_announces_each(tmp_path) -> None:
+    c = make_client(_ok(), state_dir=str(tmp_path))
+    c.license.activate_with_key("k")
+    c.config.set("ui.theme", "dark")
+    c.config.set("ui.extra", 1)
+    seen = []
+    off = c.config.on_config_change("*", lambda e: seen.append(e.data["key"]))
+    c.config.clear_all()
+    off()
+    assert c.config.local_values() == {}
+    assert c.config.get("ui.theme") != "dark"
+    assert sorted(seen) == ["ui.extra", "ui.theme"]
+    # the removed 0.9 spellings are gone from the client and the namespace
+    assert not hasattr(c, "get_config") and not hasattr(c, "on_config_change")
+    assert not hasattr(c.config, "get_config") and not hasattr(c.config, "on_change")
+    c.close()
 
 
 def test_enforced_keys_refuse_a_local_value() -> None:
@@ -48,6 +66,32 @@ def test_enforced_keys_refuse_a_local_value() -> None:
     with pytest.raises(PolarisError) as e:
         c.config.set("run.concurrency", 9)
     assert e.value.code == "managed_by_admin"
+    c.close()
+
+
+def test_setting_handle_properties_and_visibility() -> None:
+    cfg = {
+        "run.concurrency": {"state": "enforced", "value": 4, "updatedAt": 1699990000},
+        "ui.theme": {"state": "default", "value": "light", "updatedAt": 1699990000},
+        "ui.secretMode": {"state": "hidden", "value": True, "updatedAt": 1699990000},
+    }
+    c = make_client(
+        routes(
+            license_jws=lambda r: sign_license(r.headers["X-PKey-Device"]),
+            config_jws=lambda r: sign_config(r.headers["X-PKey-Device"], config=cfg),
+        )
+    )
+    c.license.activate_with_key("k")
+    theme = c.config.setting("ui.theme")
+    assert (theme.value, theme.source, theme.locked, theme.visibility) == ("light", "remote-default", False, "editable")
+    run = c.config.setting("run.concurrency")
+    assert (run.value, run.source, run.locked, run.visibility) == (4, "enforced", True, "readonly")
+    hidden = c.config.setting("ui.secretMode")
+    assert (hidden.value, hidden.locked, hidden.visibility) == (True, True, "hidden")
+    nothing = c.config.setting("no.such.key")
+    assert (nothing.value, nothing.source, nothing.locked, nothing.visibility) == (None, "fallback", False, "editable")
+    with pytest.raises(TypeError):
+        c.config.setting("no.such.key", 3)  # type: ignore[call-arg]
     c.close()
 
 
@@ -84,7 +128,7 @@ def test_events_for_config_license_and_entitlements() -> None:
     seen = []
     c.subscribe(seen.append)
     theme = []
-    c.config.setting("ui.theme").subscribe(theme.append)
+    c.config.setting("ui.theme").on(theme.append)
     c.license.activate_with_key("k")
     kinds = [e.kind for e in seen]
     assert "license" in kinds and "entitlement" in kinds and "config" in kinds

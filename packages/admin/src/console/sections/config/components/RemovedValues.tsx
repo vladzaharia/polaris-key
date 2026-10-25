@@ -1,9 +1,8 @@
 import * as React from "react";
 import { useQueries } from "@tanstack/react-query";
-import { api } from "../../../../api.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { EntityLink } from "../../../components/EntityLink.js";
-import { qk } from "../../../data/queries.js";
+import { holderQuery } from "../data.js";
 import { draftEntries, type CatalogDraft } from "../model/catalogDraft.js";
 import {
   holdsRemoved,
@@ -72,19 +71,8 @@ export function useHolders(
   }, [refs]);
   const reads = useQueries({
     queries: distinct.map((r) => ({
-      queryKey:
-        r.kind === "profile"
-          ? qk.profile(slug, r.id)
-          : r.kind === "license"
-            ? qk.license(slug, r.id)
-            : qk.userOverrides(slug, r.id),
       // The key's cache holds the whole record (one shape per key); the config is read from it.
-      queryFn: (): Promise<unknown> =>
-        r.kind === "profile"
-          ? api.profile(slug, r.id)
-          : r.kind === "license"
-            ? api.license(slug, r.id)
-            : api.productUserOverrides(slug, r.id),
+      ...holderQuery(slug, r.kind, r.id),
       select: (data: unknown): Record<string, { value?: unknown }> => {
         const d = data as {
           payload?: { config: Record<string, { value?: unknown }> };

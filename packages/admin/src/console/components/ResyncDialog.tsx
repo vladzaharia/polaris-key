@@ -19,7 +19,7 @@
 
 import * as React from "react";
 import {
-  ApiError,
+  HttpError,
   type ClaimKey,
   type ManifestPlanItem,
   type ManifestPlanWarning,
@@ -83,9 +83,9 @@ export function planRefusal(error: unknown): {
   description: string;
   problems: string[];
 } {
-  const api = error instanceof ApiError ? error : null;
+  const api = error instanceof HttpError && error.status !== 0 ? error : null;
   const message =
-    api?.message && api.message !== `api ${api.status}` ? api.message : "";
+    api?.message && api.message !== `http ${api.status}` ? api.message : "";
   const problems = api?.errors ?? [];
   switch (api?.reason) {
     case "product":

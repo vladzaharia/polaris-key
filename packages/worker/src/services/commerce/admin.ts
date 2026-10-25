@@ -6,6 +6,9 @@
  *     GET    …/commerce                         settings, store products, setup per
  *                                                            store, recent purchases and events
  *     PUT    …/commerce/settings                replace the settings (`settings.ts`)
+ *     POST   …/commerce/settings/<store>/use-assigned
+ *                                                            drop that store's typed identity
+ *                                                            fields so the assigned app applies
  *     PUT    …/commerce/products                map one store product to a flag (one
  *                                                            the catalog declares, or the
  *                                                            deliverable's delivery gate) and a
@@ -38,13 +41,29 @@ import {
   STORES,
   type Store,
 } from "../../core/licensing/storeGrants.js";
+import {
+  listOutletCredentials,
+  outletCredentialPin,
+} from "../../core/outletCredentials.js";
+import {
+  PLATFORM_CREDENTIALS,
+  platformCredentialsOf,
+  platformPin,
+  isPlatformStore,
+  storeAppBinding,
+  type PlatformStore,
+} from "../../core/platformCredentials.js";
 import { listEvents } from "../../core/stores/events.js";
 import {
-  readCommerceSettings,
+  readStoredCommerceSettings,
   validateCommerceSettings,
   writeCommerceSettings,
-  type CommerceSettings,
+  type StoredCommerceSettings,
 } from "./settings.js";
+import {
+  effectiveCommerceSettings,
+  type EffectiveCommerce,
+} from "./identity.js";
 import {
   deleteStoreProduct,
   isDeliverableId,
@@ -54,16 +73,40 @@ import {
   recentPurchases,
   upsertStoreProduct,
 } from "./state.js";
-import { appStoreCredential } from "./apple.js";
-import { playCredential } from "./play.js";
-import { steamCredential } from "./steam.js";
+import { commerceFacetFor } from "./stores/index.js";
+import { appStoreCredential } from "./stores/apple/purchases.js";
+import { playCredential } from "./stores/play/purchases.js";
+import { steamCredential } from "./stores/steam/purchases.js";
 import { APP_STORE_EVENTS, PLAY_EVENTS } from "./bridge.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
+/**
+ * An active own credential of the identity slot with no pin, while the product holds a platform
+ * pin for that slot: the own key hides the platform pin (D12), so the store has no app. The
+ * console says so instead of "no app assigned".
+ */
+async function ownUnpinnedBlocksPlatformPin(
+  db: AdminCtx["db"],
+  product: string,
+  store: PlatformStore,
+  field: string,
+): Promise<boolean> {
+  const id = platformCredentialsOf(store).find(
+    (c) => PLATFORM_CREDENTIALS[c].pinField === field,
+  );
+  if (!id) return false;
+  const own = (await listOutletCredentials(db, product)).filter(
+    (c) => c.status === "active" && c.kind === PLATFORM_CREDENTIALS[id].kind,
+  );
+  if (own.length === 0 || own.some((c) => outletCredentialPin(c) !== null))
+    return false;
+  return (await platformPin(db, id, product)) !== null;
+}
+
 export async function setupOf(
   ctx: Pick<AdminCtx, "env" | "db"> & { product: { slug: string } },
-  settings: CommerceSettings,
+  eff: EffectiveCommerce,
 ): Promise<
   Record<
     Store,
@@ -71,8 +114,11 @@ export async function setupOf(
   >
 > {
   const slug = ctx.product.slug;
+  const { settings, stored } = eff;
   const one = async (
+    block: boolean,
     configured: boolean,
+    blocked: () => Promise<boolean>,
     credential: () => Promise<string | null>,
     what: string,
   ) => {
@@ -80,7 +126,12 @@ export async function setupOf(
       return {
         configured: false,
         credential: null,
-        reason: "no settings for this store",
+        // A block whose identity is neither typed nor assigned (A-28.2); no block: off (D13).
+        reason: !block
+          ? "no settings for this store"
+          : (await blocked())
+            ? "own_credential_unpinned"
+            : "no_app_assigned",
       };
     const id = await credential();
     return {
@@ -94,18 +145,30 @@ export async function setupOf(
   };
   return {
     "app-store": await one(
+      stored.appStore !== null,
       settings.appStore !== null,
+      () => ownUnpinnedBlocksPlatformPin(ctx.db, slug, "app-store", "bundleId"),
       () =>
         appStoreCredential(ctx.env, ctx.db, slug, settings.appStore!.bundleId),
       "app-store-server-key",
     ),
     play: await one(
+      stored.play !== null,
       settings.play !== null,
+      () =>
+        ownUnpinnedBlocksPlatformPin(
+          ctx.db,
+          slug,
+          "google-play",
+          "packageName",
+        ),
       () => playCredential(ctx.env, ctx.db, slug, settings.play!.packageName),
       "google-service-account",
     ),
     steam: await one(
+      stored.steam !== null,
       settings.steam !== null,
+      () => ownUnpinnedBlocksPlatformPin(ctx.db, slug, "steam", "appId"),
       () => steamCredential(ctx.env, ctx.db, slug, settings.steam!.appId),
       "steam-publisher-key",
     ),
@@ -114,7 +177,7 @@ export async function setupOf(
 
 async function view(ctx: AdminCtx) {
   const slug = ctx.product.slug;
-  const settings = await readCommerceSettings(ctx.db, slug);
+  const eff = await effectiveCommerceSettings(ctx.db, slug);
   const events = [
     ...(await listEvents(ctx.db, slug, APP_STORE_EVENTS, 25)),
     ...(await listEvents(ctx.db, slug, PLAY_EVENTS, 25)),
@@ -129,8 +192,12 @@ async function view(ctx: AdminCtx) {
     }));
   return {
     licenseEnabled: ctx.product.services.license?.enabled === true,
-    settings,
-    setup: await setupOf(ctx, settings),
+    // As stored: the identity fields are what the operator typed (null: derived or unset).
+    settings: eff.stored,
+    // Which app each store's purchases belong to (A-28.3): the value in force, where it came
+    // from, the assigned app, and whether a typed value disagrees with it.
+    identity: eff.identity,
+    setup: await setupOf(ctx, eff),
     products: (await listStoreProducts(ctx.db, slug)).map((p) => ({
       store: p.store,
       productId: p.store_product_id,
@@ -197,6 +264,99 @@ async function flagRefusal(
     : `the catalog declares no flag ${flag}`;
 }
 
+/** The channel adapter id of a store, from its Commerce facet; a store with none has no binding. */
+function platformOf(store: Store): PlatformStore {
+  const adapter = commerceFacetFor(store)?.adapter;
+  if (adapter === undefined || !isPlatformStore(adapter))
+    throw new Error(`no commerce facet binds the store ${store}`);
+  return adapter;
+}
+
+/**
+ * `POST …/commerce/settings/<store>/use-assigned` (A-28.3, D14): the server works out the assigned
+ * app and the client sends nothing. It deletes that store's typed identity fields (App Store:
+ * `bundleId` and `appAppleId`, which name one app; Play: `packageName`; Steam: `appId`), so the
+ * assigned app applies; every other field stays. `409 no_assigned_app` when the store has no
+ * assigned app to use. A store with no `commerce.stores` block stays off (D13): nothing to clear,
+ * and nothing is written. Idempotent: with no typed field left, nothing is written or audited.
+ */
+async function useAssigned(ctx: AdminCtx, store: Store): Promise<Response> {
+  const { db, product, session, now } = ctx;
+  const slug = product.slug;
+  const binding = await storeAppBinding(db, slug, platformOf(store));
+  const field = (
+    {
+      "app-store": "bundleId",
+      play: "packageName",
+      steam: "appId",
+    } as const
+  )[store];
+  if (!binding.fields[field]?.value)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "no app is assigned to this product on this store",
+      { reason: "no_assigned_app" },
+    );
+  const stored = await readStoredCommerceSettings(db, slug);
+  const before = { ...(storedBlock(stored, store) ?? {}) };
+  const typed = identityTyped(store, before);
+  if (storedBlock(stored, store) && Object.keys(typed).length > 0) {
+    const next: StoredCommerceSettings = {
+      appStore: stored.appStore && { ...stored.appStore },
+      play: stored.play && { ...stored.play },
+      steam: stored.steam && { ...stored.steam },
+    };
+    if (store === "app-store" && next.appStore) {
+      next.appStore.bundleId = null;
+      next.appStore.appAppleId = null;
+    } else if (store === "play" && next.play) next.play.packageName = null;
+    else if (store === "steam" && next.steam) next.steam.appId = null;
+    await writeCommerceSettings(db, slug, next, session.sub, now);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "commerce.binding.derived",
+      { kind: "commerce", id: slug },
+      `Use the assigned ${store} app for ${slug}`,
+      {
+        before: { store, typed },
+        after: { store, typed: {}, assigned: binding.fields[field]!.value },
+      },
+    );
+  }
+  return adminJson(await view(ctx));
+}
+
+/** The typed identity fields a store block holds (only the non-null ones). */
+function identityTyped(
+  store: Store,
+  block: Record<string, unknown>,
+): Record<string, unknown> {
+  const keys =
+    store === "app-store"
+      ? ["bundleId", "appAppleId"]
+      : store === "play"
+        ? ["packageName"]
+        : ["appId"];
+  return Object.fromEntries(
+    keys.filter((k) => block[k] != null).map((k) => [k, block[k]]),
+  );
+}
+
+function storedBlock(
+  stored: StoredCommerceSettings,
+  store: Store,
+): Record<string, unknown> | null {
+  return ({
+    "app-store": stored.appStore,
+    play: stored.play,
+    steam: stored.steam,
+  }[store] ?? null) as Record<string, unknown> | null;
+}
+
 export async function handleCommerceAdmin(
   ctx: AdminCtx,
 ): Promise<Response | null> {
@@ -231,6 +391,19 @@ export async function handleCommerceAdmin(
     );
     return adminJson(await view(ctx));
   }
+
+  if (
+    rest.length === 3 &&
+    rest[0] === "settings" &&
+    rest[2] === "use-assigned" &&
+    isStore(rest[1])
+  ) {
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (!licenseOn) return licenseOff();
+    return useAssigned(ctx, rest[1]);
+  }
+  if (rest[0] === "settings") return null;
 
   if (rest[0] !== "products") return null;
   if (rest.length === 1) {

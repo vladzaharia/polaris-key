@@ -1,4 +1,4 @@
-/** Types for `register-platform.mjs` (imported by `test/registerPlatform.test.ts`). */
+/** Types for `register-platform.mjs` (imported by `test/core/registerPlatform.test.ts`). */
 export declare const HOOK_PATH: string;
 export declare function readManifestFiles(root: string): Record<string, string>;
 export interface RegisterResult {

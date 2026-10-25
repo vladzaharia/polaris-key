@@ -118,6 +118,11 @@ export function formatSettingValue(
     return `${formatCount(n)} ${unit}`;
   }
   if (spec.kind === "enum") return map?.[String(value)] ?? String(value);
+  // A list reads as its size: its items can be many, long, and in any direction of script.
+  if (spec.kind === "list" && Array.isArray(value))
+    return value.length === 0
+      ? "empty"
+      : `${formatCount(value.length)} ${value.length === 1 ? "item" : "items"}`;
   return JSON.stringify(value);
 }
 
@@ -142,8 +147,52 @@ export function fieldUnit(spec: SettingSpec): string | undefined {
   return spec.unit === "count" ? undefined : unitWord(spec.unit);
 }
 
+/** The terms in `after` that `before` lacks, and the other way round (exact text). */
+export function listDelta(
+  before: unknown,
+  after: unknown,
+): { added: string[]; removed: string[] } {
+  const a = Array.isArray(before) ? (before as string[]) : [];
+  const b = Array.isArray(after) ? (after as string[]) : [];
+  return {
+    added: b.filter((t) => !a.includes(t)),
+    removed: a.filter((t) => !b.includes(t)),
+  };
+}
+
+/** "2 added", "1 removed" or "2 added · 1 removed". */
+export function listDeltaWords(before: unknown, after: unknown): string {
+  const { added, removed } = listDelta(before, after);
+  const out = [
+    ...(added.length ? [`${added.length} added`] : []),
+    ...(removed.length ? [`${removed.length} removed`] : []),
+  ];
+  return out.length ? out.join(" · ") : "no change";
+}
+
+const clip = (t: string): string => (t.length > 20 ? `${t.slice(0, 20)}…` : t);
+
+/** What is wrong with a list of text terms, naming the term, or `null`. */
+function listError(
+  spec: Extract<SettingSpec, { kind: "list" }>,
+  draft: unknown,
+): string | null {
+  if (!Array.isArray(draft)) return null;
+  if (draft.length > spec.max)
+    return `${draft.length} terms: remove ${draft.length - spec.max} (limit ${spec.max}).`;
+  if (spec.of.kind !== "string") return null;
+  for (const t of draft as string[]) {
+    if (t.length > spec.of.maxLength)
+      return `"${clip(t)}" is over ${spec.of.maxLength} characters.`;
+    if (!/[\p{L}\p{N}]/u.test(t))
+      return `"${clip(t)}" needs a letter or digit.`;
+  }
+  return null;
+}
+
 /** The message a draft fails with, or `null` when it can be saved. */
 export function draftError(spec: SettingSpec, draft: unknown): string | null {
+  if (spec.kind === "list") return listError(spec, draft);
   if (spec.kind !== "integer") return null;
   if (typeof draft !== "number" || Number.isNaN(draft)) return "Enter a value.";
   const min = toField(spec, spec.min);
@@ -181,6 +230,8 @@ export function saveCopy(
     const verb = on ? "Turn on" : "Turn off";
     return { title: `${verb} ${name}?`, confirmLabel: `${verb} ${name}` };
   }
+  if (spec.kind === "list")
+    return { title: `Save ${name}?`, confirmLabel: "Save changes" };
   if (spec.kind === "enum")
     return {
       title: `Set ${name} to ${next.toLowerCase()}?`,

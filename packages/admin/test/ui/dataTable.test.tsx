@@ -115,6 +115,23 @@ describe("DataTable", () => {
     ).toBe("col");
   });
 
+  it("reports intent on the primary link's pointerenter and focus, not on the rest of the row", () => {
+    const intent = vi.fn();
+    render(
+      <Harness
+        rowHref={(r) => `#/licenses/${r.id}`}
+        onRowIntent={(r) => intent(r.id)}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "Lab 3" });
+    fireEvent.pointerEnter(link);
+    expect(intent).toHaveBeenLastCalledWith("b");
+    act(() => link.focus());
+    expect(intent).toHaveBeenCalledTimes(2);
+    fireEvent.pointerEnter(screen.getByText("expired"));
+    expect(intent).toHaveBeenCalledTimes(2);
+  });
+
   it("follows the row link when the row (not a control) is clicked", () => {
     const clicked = vi.fn();
     render(<Harness rowHref={(r) => `#/licenses/${r.id}`} />);

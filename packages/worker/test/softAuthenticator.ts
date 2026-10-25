@@ -194,6 +194,16 @@ export class SoftAuthenticator {
     );
   }
 
+  /** The private key as PKCS#8, to load into a browser's virtual authenticator (e2e). */
+  async pkcs8(): Promise<Uint8Array> {
+    return new Uint8Array(
+      (await crypto.subtle.exportKey(
+        "pkcs8",
+        this.keys.privateKey,
+      )) as ArrayBuffer,
+    );
+  }
+
   /** `navigator.credentials.create(options).toJSON()`. */
   async register(
     options: {

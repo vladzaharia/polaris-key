@@ -443,3 +443,38 @@ export function watchProductIdentity(
     unsubscribe?.();
   };
 }
+
+/** The platform variants the web kits' stylesheet draws (`data-pk-platform`): brand's
+ *  `KIT_TOKENS.platforms` the web kits know, `linux` named `gnome` (UK-06 K4). */
+export type PlatformVariant =
+  | "web"
+  | "ios"
+  | "android"
+  | "macos"
+  | "windows"
+  | "gnome";
+
+/**
+ * The variant id of a resolved theme: the one name for the platform in CSS, in React and in the
+ * elements. ui-core says `linux`, brand's tokens say `gnome`; this is the only place that maps
+ * them. A theme with no platform, `auto` with nothing to resolve it, or a platform the web kits
+ * have no variant for is `web`.
+ */
+export function platformVariant(
+  theme: { platform: string | null } | string | null | undefined,
+): PlatformVariant {
+  const p =
+    typeof theme === "object" && theme !== null ? theme.platform : theme;
+  switch (p) {
+    case "windows":
+    case "macos":
+    case "ios":
+    case "android":
+    case "gnome":
+      return p;
+    case "linux":
+      return "gnome";
+    default:
+      return "web";
+  }
+}

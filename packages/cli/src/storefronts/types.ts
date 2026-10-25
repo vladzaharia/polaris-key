@@ -64,6 +64,8 @@ export interface CiPlaneAdapter {
 export interface PrPathRule {
   readonly template: string;
   readonly why: string;
+  /** The pull-request command the rule belongs to (default `pull-request`). */
+  readonly command?: string;
 }
 
 /** A PR-plane store (A-18i; the Worker's `core/storefront/prPlane.ts`). */
@@ -79,6 +81,8 @@ export interface PrPlaneStore {
   readonly commandOps: Readonly<Record<string, readonly string[]>>;
   readonly paths: readonly PrPathRule[];
   readonly naturalKey: readonly string[];
+  /** Natural-key parameters of a command that differs from `naturalKey` (Homebrew's formula). */
+  readonly commandKeys?: Readonly<Record<string, readonly string[]>>;
   readonly labels: {
     readonly needsAuthor: readonly string[];
     readonly validationPrefix: string | null;

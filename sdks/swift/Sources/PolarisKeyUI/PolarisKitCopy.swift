@@ -57,7 +57,7 @@ public struct PolarisKitCopy: Sendable, Equatable {
     // Blocking states (expired, revoked): the ways out, and the explanation worded for the ones
     // offered. The default titles and sentences are in `PolarisCopy`/`ErrorCopy`; these are the
     // variants for the controls a given gate really has.
-    /// Opens the host's renewal or account page (`GateOptions.renewURL`).
+    /// Opens the host's renewal or account page (a retired option of the 0.8 gate).
     public var renewButton = KitButtonCase.button("Renew or manage")
     /// Shows the activation form on an expired or revoked gate.
     public var useDifferentKeyButton = KitButtonCase.button("Use a different key")

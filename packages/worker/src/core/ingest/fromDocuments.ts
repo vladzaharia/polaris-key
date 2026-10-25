@@ -8,6 +8,7 @@
  */
 
 import { parseManifest } from "@polaris-key/manifest";
+import { displayNameOptions } from "../accounts/reservedDisplayNames.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { CreateChoices } from "../products/createDefaults.js";
@@ -59,10 +60,14 @@ export async function createFromDocuments(
         : JSON.stringify(input.schema ?? { schemaVersion: 1, entries: [] }),
   };
   // `parseManifest` keys the documents by name; the snapshot keeps them by path.
-  const parsed = parseManifest({
-    product: files[".pkey/product.json"]!,
-    schema: files[".pkey/schema.json"]!,
-  });
+  // The platform's display-name policy; a product not yet created has no approval to read.
+  const parsed = parseManifest(
+    {
+      product: files[".pkey/product.json"]!,
+      schema: files[".pkey/schema.json"]!,
+    },
+    { ...(await displayNameOptions(env, db)) },
+  );
   if (!parsed.ok)
     return {
       ok: false,

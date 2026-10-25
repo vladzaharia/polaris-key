@@ -105,6 +105,33 @@ pinned app again, or until you **check that the new app really is this product's
 The pin is checked on the key the connector chooses (a key bound to an Apple channel before an
 unbound one); another key's pin never stands in for it.
 
+## Store identity
+
+Commerce needs to know which App Store app a purchase belongs to (`bundleId`). You do not have to type
+it: it comes from the app the product is assigned on App Store.
+
+- **Where it comes from.** The pin of the product's own active In-App Purchase key, if it has one; otherwise
+  the platform pin a platform admin set under **Platform → Store connections**. A product admin
+  holding `keys` sets the own-key pin, so that person can move the app too.
+- **A typed value wins.** If you type `bundleId` in the commerce settings, Commerce uses it. When it
+  differs from the assigned app, Commerce → Overview shows an attention item naming both. **Use the
+  assigned app** drops the typed value and follows the assignment.
+- **Type it once to pin it.** While the field is left out, adding a key with a lower id or
+  re-pinning one moves the app whose purchases unlock the flag, with no change in Commerce. Type
+  the value once to fix it.
+- **Two own keys that name different apps** raise an attention item; the lowest key id is used
+  until you retire one on Keys. An own key with no pin hides the platform pin, and the store stays
+  off (`own_credential_unpinned`).
+- **No app assigned, no store.** A store with no app typed or assigned stays off.
+- **The Apple ID is never derived.** `appAppleId` is checked only when you type it.
+
+A channel in `.pkey/distribution` that names a different app than the assignment raises the same
+kind of attention item on Ship. More in [Commerce](/docs/features/commerce/#store-identity).
+
+## Listing
+
+The App Store's listing is projected from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)) and can be imported from App Store Connect into it. The name, developer, accent and icon default to Presentation (Settings → Presentation); a field the listing sets wins. A store-specific value is an override (**Settings → Presentation → Listing**, pick the storefront). **Push listing** sends the text and accepted screenshots to the pinned app, without submitting for review ([Pushing the listing](/docs/features/ship-builds/channels/app-store-distribute/#pushing-the-listing)).
+
 ## What it reads
 
 **Webhooks.** App Store Connect sends a signed notification to

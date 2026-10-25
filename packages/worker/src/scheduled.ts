@@ -45,6 +45,7 @@
 // record written to KV on every nightly tick.
 
 import { purgeAccountTokens } from "./core/accounts/personalTokens.js";
+import { purgeExpiredInvites } from "./core/rbac/bindings.js";
 import { purgeRegistryTokens } from "./core/registry/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
@@ -64,7 +65,6 @@ import { D1Db } from "./db/d1.js";
 import { listAllProductSlugs, listProducts } from "./core/products/store.js";
 import { releaseDormantSeats } from "./core/devices/store.js";
 import { pruneAudit, prunePlatformAudit } from "./core/audit.js";
-import { overrideMigrationNightly } from "./core/ops/overrideMigration.js";
 import { runLicensingCatchUp } from "./core/licensing/licensingCatchUp.js";
 import {
   REFUSAL_RETENTION_SECONDS,
@@ -79,7 +79,6 @@ import { recheckHostedAssets } from "./core/assets/hostedAssetPulls.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
   SUMMARY_NAMES_MAX,
-  listNames,
   pruneHeartbeats,
   pruneJobRuns,
   recordJobRun,
@@ -179,16 +178,14 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_licenses_origin",
   "idx_licenses_sub",
   "idx_licenses_sub_global",
-  "idx_portal_account_emails_account",
-  "idx_portal_account_identities_account",
   "idx_portal_audit_at",
   "idx_portal_audit_product_at",
-  "idx_portal_license_links_license",
   "idx_product_keys_one_active",
   "idx_product_keys_verify",
   "idx_release_download_tokens_expiry",
   "idx_release_download_tokens_hash",
   "idx_release_metadata_seq",
+  "idx_tiers_implicit",
 ];
 
 /** Which of `REQUIRED_INDEXES` are absent from the live schema. */
@@ -546,17 +543,12 @@ export async function runScheduledMaintenance(
   await step(report, "registryTokens", () => purgeRegistryTokens(db, now));
   // F-33: personal tokens, the same retention.
   await step(report, "accountTokens", () => purgeAccountTokens(db, now));
+  // ST-31.7: console invites that expired more than 7 days ago.
+  await step(report, "consoleInvites", () => purgeExpiredInvites(db, now));
 
   // The services' early nightly work (`contributes.maintenance.early`): Identity's erasure
-  // ledger replay BEFORE its legacy catch-up (a restored account is re-erased before the
-  // catch-up looks at it), its due account deletions and its erasure retries.
+  // ledger replay, its due account deletions and its erasure retries.
   await runSlot(report, "early", { db, env, now, nightly: true });
-  // U-03: the licence-override migration's daily inventory (until the run), its report past 90
-  // days and, once the report window has passed, the licences' emptied config and secrets columns
-  // (`core/ops/overrideMigration.ts`). The run itself is never started here: it is the owner's.
-  await step(report, "overrideMigration", () =>
-    overrideMigrationNightly(db, now),
-  );
   // LX-08: the licensing model's rows catch up with what a pre-LX-08 Worker wrote between the
   // migration and the deploy (store grants, purchases, mappings), and the OIDC-provisioned keys
   // of licences that have not signed in since move to their `oidc` grant
@@ -592,7 +584,7 @@ export async function runScheduledMaintenance(
  * The two cron triggers in `wrangler.toml` (`[triggers] crons`). `handleScheduled` dispatches on
  * `event.cron`: the connector cron runs the store-connector poll (P5-02), anything else the
  * nightly maintenance sweep — so an unknown trigger can only ever cause maintenance, which is
- * idempotent, never an unplanned burst of store API calls. `test/scheduled.test.ts` asserts the
+ * idempotent, never an unplanned burst of store API calls. `test/surfaces/scheduled.test.ts` asserts the
  * two constants are exactly `wrangler.toml`'s list.
  */
 export const MAINTENANCE_CRON = "17 3 * * *";

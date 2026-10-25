@@ -6,7 +6,7 @@
 -- several chips in the console's device summary. The Worker now stores the canonical value on
 -- every write (`src/core/clientMetadata.ts`); this converges the rows stored before it, including
 -- devices that never return. Each statement is idempotent, and replaying the file changes nothing
--- (`test/canonicalClientMetadata.test.ts`).
+-- (`test/core/canonicalClientMetadata.test.ts`).
 --
 -- The spellings are `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` of `@polaris-key/protocol/core` as of
 -- this migration. SQLite's `lower()` folds ASCII only, which is §5.2's folding rule. Unknown values

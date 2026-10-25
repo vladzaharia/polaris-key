@@ -25,6 +25,11 @@
 import * as React from "react";
 import { flushSync } from "react-dom";
 import {
+  blockNavigation as coreBlock,
+  createHashRouter,
+  navigate as coreNavigate,
+} from "../lib/router-core.js";
+import {
   viewTransition,
   type ViewTransitionType,
 } from "../ui/motion/viewTransition.js";
@@ -40,71 +45,20 @@ import {
 
 export { codecs };
 
-type Blocker = (nextHash: string) => boolean;
-
-const listeners = new Set<() => void>();
-const blockers = new Set<Blocker>();
-/** The last hash every blocker allowed: what a refused `hashchange` is rolled back to. */
-let committedHash: string | null = null;
-/** The hash the console is at: the last one published to the page. `null` while nothing listens. */
-let shownHash: string | null = null;
 /**
- * While a navigation's View Transition waits for the browser to capture the old page, the page
- * keeps rendering this, the old hash; the transition's update releases it. `null` otherwise.
+ * The console's router: the shared core (`lib/router-core`) with the console's route table
+ * (`redirect`), its transition classifier and the View Transition runner plugged in.
  */
-let heldHash: string | null = null;
-/** What the last `<Link>` click said about the navigation it started. */
-let intent: {
-  hash: string;
-  type?: ViewTransitionType;
-  shared: Element | null;
-} | null = null;
-
-function currentHash(): string {
-  return typeof window === "undefined" ? "" : window.location.hash;
-}
-
-/** What the page renders: the held old hash during a transition's capture, else the location. */
-function snapshot(): string {
-  return heldHash ?? shownHash ?? currentHash();
-}
-
-function emit(): void {
-  for (const l of listeners) l();
-}
-
-function allowed(nextHash: string): boolean {
-  for (const b of blockers) if (!b(nextHash)) return false;
-  return true;
-}
-
-function replaceHash(hash: string): void {
-  const { pathname, search } = window.location;
-  window.history.replaceState(
-    window.history.state,
-    "",
-    `${pathname}${search}${hash}`,
-  );
-}
-
-/**
- * An overlay on screen, open or still running its exit: a modal's scrim (dialogs, sheets, the
- * palette, the phone navigation), a drawer, popper content (menus, popovers, the product
- * switcher), or a visible toast (sonner's toaster sits over the main column, and the main
- * region's snapshot would cover it). Tooltips do not count: one closes on the click that
- * navigates.
- */
-function overlayShown(): boolean {
-  if (
-    document.querySelector(
-      '.animate-pk-overlay-in, .pk-overlay, .pk-drawer, [data-sonner-toast]:not([data-visible="false"])',
-    )
-  )
-    return true;
-  return [
-    ...document.querySelectorAll("[data-radix-popper-content-wrapper] > *"),
-  ].some((el) => !el.querySelector("[role='tooltip']"));
-}
+const router = createHashRouter({
+  redirect: (hash) => parseLocation(hash).redirect ?? null,
+  classify: (from, to) => navigationTransition(from, to),
+  transition: (update, run) =>
+    viewTransition(update, {
+      type: run.type as ViewTransitionType,
+      shared: run.shared,
+    }),
+  flush: (fn) => flushSync(fn),
+});
 
 /** A hash's path segments, without its query: `#/p/djdl/license/licenses?q=x` → 4 of them. */
 function pathOf(hash: string): string[] {
@@ -137,81 +91,6 @@ export function navigationTransition(
   return "route";
 }
 
-/**
- * Show `next`, a hash every blocker has allowed. A change of page runs in a View Transition: the
- * page keeps the old hash until the browser has captured it, then renders the new one inside the
- * transition's update (`flushSync`, so the DOM is final when the new state is captured, and the
- * shell's route focus and scroll reset have run by `updateCallbackDone`). The same hash again is
- * a no-op: one navigation fires both `popstate` and `hashchange`. `animate: false` publishes at
- * once (a redirect to the canonical URL is the same page), as does a navigation under an overlay.
- */
-function publish(next: string, animate = true): void {
-  const from = shownHash;
-  const clicked = intent?.hash === next ? intent : null;
-  intent = null;
-  if (from === null) {
-    emit();
-    return;
-  }
-  if (next === from) return;
-  shownHash = next;
-  const type = animate
-    ? (clicked?.type ?? navigationTransition(from, next))
-    : null;
-  if (type === null || overlayShown()) {
-    emit();
-    return;
-  }
-  const source = type === "forward" ? clicked?.shared : null;
-  const name = source?.getAttribute("data-vt-shared");
-  heldHash ??= from;
-  // viewTransition() runs the update right here when no transition starts (reduced motion, no
-  // API): the state then updates like any other store change. Only an update the browser calls
-  // later, inside a running transition, needs flushSync.
-  let inline = true;
-  viewTransition(
-    () => {
-      heldHash = null;
-      if (inline) emit();
-      else flushSync(emit);
-    },
-    { type, shared: source && name ? [[source, name]] : [] },
-  );
-  inline = false;
-}
-
-function onHashChange(): void {
-  const next = currentHash();
-  if (committedHash !== null && next !== committedHash && !allowed(next)) {
-    // Too late to prevent: put the URL back and keep the page.
-    replaceHash(committedHash);
-    return;
-  }
-  committedHash = next;
-  publish(next);
-}
-
-function subscribe(listener: () => void): () => void {
-  if (listeners.size === 0) {
-    committedHash = currentHash();
-    shownHash = currentHash();
-    window.addEventListener("hashchange", onHashChange);
-    window.addEventListener("popstate", onHashChange);
-  }
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) {
-      window.removeEventListener("hashchange", onHashChange);
-      window.removeEventListener("popstate", onHashChange);
-      committedHash = null;
-      shownHash = null;
-      heldHash = null;
-      intent = null;
-    }
-  };
-}
-
 let memoHash: string | null = null;
 let memoParsed: ParsedLocation = parseLocation("");
 
@@ -229,48 +108,26 @@ function parsed(hash: string): ParsedLocation {
  * instead of pushing one (redirects, query edits). `force` skips the blockers, for a change that
  * stays on the page (a section anchor in the query): nothing there can be lost.
  */
-export function navigate(
-  hash: string,
-  opts: { replace?: boolean; force?: boolean } = {},
-): boolean {
-  if (hash === currentHash()) return true;
-  // `force`: an in-page change (the path is the same) that never leaves unsaved work behind.
-  if (!opts.force && !allowed(hash)) return false;
-  if (opts.replace) {
-    replaceHash(hash);
-    committedHash = hash;
-    publish(hash);
-  } else {
-    committedHash = hash;
-    window.location.hash = hash;
-  }
-  return true;
-}
+export const navigate: typeof coreNavigate = (hash, opts) =>
+  router.navigate(hash, opts);
 
 /** Register a navigation guard; returns the unregister function. */
-export function blockNavigation(fn: Blocker): () => void {
-  blockers.add(fn);
-  return () => {
-    blockers.delete(fn);
-  };
-}
+export const blockNavigation: typeof coreBlock = (fn) =>
+  router.blockNavigation(fn);
 
 export interface Location {
   hash: string;
   route: Route;
 }
 
-/** The current location. Applies a pending redirect (a section root) after commit. */
+/** The current location. The core applies a section root's redirect when it reads the hash. */
 export function useLocation(): Location {
-  const hash = React.useSyncExternalStore(subscribe, snapshot, () => "");
+  const hash = React.useSyncExternalStore(
+    router.subscribe,
+    router.snapshot,
+    () => "",
+  );
   const { route, redirect } = parsed(hash);
-  React.useEffect(() => {
-    if (redirect && redirect !== hash) {
-      replaceHash(redirect);
-      committedHash = redirect;
-      publish(redirect, false);
-    }
-  }, [hash, redirect]);
   return { hash: redirect ?? hash, route };
 }
 
@@ -298,7 +155,7 @@ export function useSearchParam<T>(
       const path = q === -1 ? hash : hash.slice(0, q);
       const query = withParam(route.query, name, codec, next);
       const s = query.toString();
-      navigate(`${path || "#/"}${s ? `?${s}` : ""}`, {
+      router.navigate(`${path || "#/"}${s ? `?${s}` : ""}`, {
         replace: opts?.replace ?? replaceDefault,
         force: opts?.force,
       });
@@ -347,18 +204,17 @@ export function Link({
         if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
           return;
         if (rest.target && rest.target !== "_self") return;
-        if (!allowed(to)) {
+        if (!router.allows(to)) {
           e.preventDefault();
           return;
         }
         // The guards have answered for this navigation; the hashchange it causes must not ask
         // them again (a guard would prompt twice).
-        committedHash = to;
-        intent = {
+        router.commit({
           hash: to,
           type: transition,
           shared: e.currentTarget.querySelector("[data-vt-shared]"),
-        };
+        });
       }}
       {...rest}
     />
@@ -367,10 +223,6 @@ export function Link({
 
 /** Tests: forget the store's state between renders. */
 export function resetRouterForTests(): void {
-  blockers.clear();
   memoHash = null;
-  committedHash = null;
-  shownHash = null;
-  heldHash = null;
-  intent = null;
+  router.resetForTests();
 }

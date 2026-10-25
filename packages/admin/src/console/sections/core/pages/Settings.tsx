@@ -157,8 +157,8 @@ function SettingsBody({
   const licenseOn = product.services?.license?.enabled ?? true;
   const linked = product.releaseSource === "github";
   const system = product.system === true;
-  // ST-20: manifest-authoritative mode (an older Worker omits it: the system product is on).
-  const authoritative = product.manifestAuthoritative?.value ?? system;
+  // ST-20: manifest-authoritative mode.
+  const authoritative = product.manifestAuthoritative.value;
   // A repo-linked product, or the system product (whose manifest the deploy hook applies), has a
   // manifest to claim from.
   const claimable = linked || system;

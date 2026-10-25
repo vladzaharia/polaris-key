@@ -95,10 +95,6 @@ export const identityService: ServiceDescriptor = {
   licenseDelete: {
     statements: ({ product, licenseId }) => [
       {
-        sql: "DELETE FROM portal_license_links WHERE product = ? AND license_id = ?",
-        params: [product, licenseId],
-      },
-      {
         sql: "DELETE FROM license_relinks WHERE product = ? AND license_id = ?",
         params: [product, licenseId],
       },
@@ -189,3 +185,6 @@ export const identityService: ServiceDescriptor = {
 // list of exports here is how the next module starts reaching around them.
 export { handlePortal } from "./portal/index.js";
 export { createBrowserSession } from "./browserSession.js";
+// The customer host's device approval page has no product in its URL: the dispatcher asks which
+// product the binder belongs to, then serves that product's approval handler on the customer host.
+export { customerApproveTarget } from "./productOidc/deviceApproval.js";

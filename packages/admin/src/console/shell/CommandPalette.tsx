@@ -7,6 +7,7 @@ import { cn } from "../../lib/cn.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { useProduct, useProducts } from "../data/hooks.js";
 import { pageOfRoute, slugOfRoute } from "../routes.js";
+import { navFeaturesOf } from "../nav.js";
 import { navigate, useLocation } from "../router.js";
 import { LAND_EVENT } from "../useSettingTarget.js";
 import { Kbd } from "../../ui/Kbd.js";
@@ -49,7 +50,7 @@ function usePaletteContext(me: Me): PaletteContext {
     productName:
       product?.name ?? me.products.find((p) => p.slug === slug)?.name ?? null,
     services: product?.services ?? null,
-    features: product ? { packageFeeds: product.packageFeeds === true } : null,
+    features: navFeaturesOf(product),
     products,
     page: pageOfRoute(route),
     me,
@@ -323,7 +324,7 @@ export function CommandPalette({
                         value={valueOf(g.heading, item)}
                         disabled={item.inert}
                         onSelect={() => run(item)}
-                        className="flex cursor-pointer data-[disabled=true]:cursor-default items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[disabled=true]:bg-transparent! data-[selected=true]:text-fg-strong forced-colors:data-[selected=true]:[outline:2px_solid_Highlight] forced-colors:data-[selected=true]:-outline-offset-2"
+                        className="flex cursor-pointer data-[disabled=true]:cursor-default items-center gap-2 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[disabled=true]:bg-transparent! data-[selected=true]:text-fg-strong forced-colors:data-[selected=true]:[outline:2px_solid_Highlight] forced-colors:data-[selected=true]:-outline-offset-2"
                       >
                         <span className="text-fg-muted">{item.icon}</span>
                         <span

@@ -1,6 +1,6 @@
 /** The Swift registry's ingest rules (F-06): SE-0292 `scope.Name`, the scope is the namespace. */
 
-import type { PackageEcosystemRules } from "./rules.js";
+import { sortedUnique, type PackageEcosystemRules } from "./rules.js";
 
 export const SWIFT_PACKAGE_RULES: PackageEcosystemRules<"swift"> = {
   ecosystem: "swift",
@@ -25,6 +25,20 @@ export const SWIFT_PACKAGE_RULES: PackageEcosystemRules<"swift"> = {
       return name.split(".")[0]!.toLowerCase() === scope
         ? null
         : `${name} is not under the feed's scope ${scope}`;
+    },
+    derive(names) {
+      const scopes = sortedUnique(
+        names
+          .map((n) => n.split(".")[0]!.toLowerCase())
+          .filter((s) => s !== ""),
+      );
+      if (scopes.length === 0) return { namespace: {}, ambiguous: null };
+      if (scopes.length > 1)
+        return {
+          namespace: {},
+          ambiguous: `the packages span several Swift scopes (${scopes.join(", ")}); a feed takes one`,
+        };
+      return { namespace: { scope: scopes[0]! }, ambiguous: null };
     },
   },
 };

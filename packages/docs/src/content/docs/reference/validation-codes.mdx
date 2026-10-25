@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 254 distinct emit sites.
+codes with their JSON-pointer paths. 255 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -228,6 +228,7 @@ the offending value, or the allowed set.
 | `noncanonical_channel_name` | warning | release | `/release/artifactPolicy/channels/${j}` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1). |
 | `noncanonical_channel_name` | warning | release | `${at}/name` | Channel names should match ^[a-z0-9][a-z0-9-]\{0,63\}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V4 §5.1). |
 | `outlet_kind_mismatch` | error | distribution | `/outlets/${id}/kind` | outlet $\{id\} is itself an outlet kind, so its kind may only be $\{id\} (or omitted); declare another id, such as $\{id\}-beta, for an outlet of a different kind. |
+| `outlet_without_build` | warning | distribution | `/outlets/${id}` | outlet $\{id\} ($\{c.label\}) is declared but .pkey/release declares no $\{c.platforms.join(" or ")\} build in deliverables.app.artifacts, so nothing can ship to it. |
 | `pack_field_not_supported` | error | release | `${at}/${field}` | $\{field\} is never declared: it belongs to one release, so pass it to pkey release publish --$\{field\}. |
 | `package_name_collision` | error | release | `/release/deliverables/${id}/name` | $\{id\} and $\{other\} declare the same $\{def.ecosystem as string\} package name (names compare case-insensitively, and PyPI names after PEP 503 normalisation). |
 | `release_key_reused` | error | release | `${at}/publicKey` | A release key must not be release.sparkleEd25519Pub: one key would sign both archive bytes and JWS signing inputs. |

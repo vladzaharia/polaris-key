@@ -11,6 +11,9 @@ Key's package feed, not from this repository. Route the feed first: an npm sampl
 | [`server-express`](./server-express) | A gated Express app: an entitlement, sign-in and a `/whoami` probe                    |
 | [`server-hono`](./server-hono)       | The same on Hono (Workers, Bun, Deno, Node)                                           |
 | [`server-next`](./server-next)       | The same as Next.js App Router route handlers                                         |
+| [`server-fastify`](./server-fastify) | The same on Fastify                                                                   |
+| [`server-koa`](./server-koa)         | The same on Koa                                                                       |
+| [`server-nestjs`](./server-nestjs)   | The same on NestJS, with decorators                                                   |
 | [`node-cli`](./node-cli)             | A commander CLI with the full kit, sign-in and device-limit recovery                  |
 | [`node-electron`](./node-electron)   | Electron main + preload + the React kit over the PolarisBridge                        |
 | [`python-cli`](./python-cli)         | A product CLI that mounts the Polaris Key verbs and gates its own command on `boot()` |

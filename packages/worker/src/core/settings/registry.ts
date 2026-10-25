@@ -12,7 +12,7 @@
  * unique across the registry.
  *
  * Building never throws: `rules.ts`' `checkRegistry` is what refuses a bad entry, run by
- * `test/settings-registry.test.ts` over the real composition root.
+ * `test/services/license/settings-registry.test.ts` over the real composition root.
  */
 
 import type { ServiceSlug } from "../services.js";
@@ -110,7 +110,7 @@ export function buildSettingsRegistry(
   }
 
   // ST-04: Core's adapters first, then each slice's for its own entries only (a slice cannot
-  // adapt a key another slice registered; `test/settings-resolver.test.ts` checks every live
+  // adapt a key another slice registered; `test/core/settings-resolver.test.ts` checks every live
   // column-backed entry has exactly one adapter that names its table and column).
   const adapters = new Map<string, SettingColumnAdapter>(
     Object.entries(CORE_COLUMN_ADAPTERS),

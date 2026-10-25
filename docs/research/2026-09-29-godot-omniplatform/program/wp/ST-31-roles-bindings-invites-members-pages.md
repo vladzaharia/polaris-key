@@ -97,6 +97,12 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+Corrections recorded by slice 31.1 (code is the fact):
+
+- `TABLE_OWNERS` already had a `console_role_bindings` row under `core` (ST-28 added it ahead of the migration); 31.1 only updated its comment.
+- The DDL is ST-28 §5.1 verbatim. Migrations are `0130_a_console_role_bindings.sql` and `0130_b_platform_audit_action_idx.sql` (the `idx_platform_audit_action` index ST-30 never added); the lead renumbers both at merge.
+- `normalizeAreas` throws on any id that is not a product area (the prompt said "only product areas"), so a typo never silently narrows or widens a grant.
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.

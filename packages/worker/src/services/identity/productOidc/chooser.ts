@@ -31,6 +31,7 @@ import {
   type LegacyChoiceView,
 } from "../licenseChoice.js";
 import { freeAccountDevice } from "../portal/freeDevice.js";
+import { noticeOrigin } from "../accounts/libraryNotice.js";
 import { attachClaimedLicenses } from "../accounts/platformMigration.js";
 import {
   artefactRef,
@@ -62,7 +63,9 @@ import {
   type OidcIdentity,
   identityTier,
 } from "../../../core/licensing/issue.js";
-import { sameOriginPost } from "./deviceFlow.js";
+import { sameOriginDecisionPost } from "./deviceFlow.js";
+import { hostOrigin } from "../../../core/hosts.js";
+import { redirectToApprove } from "./deviceApproval.js";
 import { isReplaceGroup } from "../licenseChoice.js";
 import { flowView, listingDeveloper } from "./pages.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
@@ -111,7 +114,7 @@ export function choicePage(
  *  a different binder, an expired or finished flow. Generic, and nothing is minted. */
 export function startAgainPage(): Response {
   return choicePage(403, {
-    title: "Start again",
+    title: "This page has expired",
     heading: "This page has expired",
     body: `<p class="muted">This page is no longer active. If your device still asks, start again there.</p>`,
   });
@@ -177,6 +180,11 @@ export async function beginLicenseChoice(
     },
   });
   if (!opened.ok) return startAgainPage();
+  // A device flow with a customer host: the chooser is the explicit step, so it opens only for
+  // the browser that holds C. The person goes through the customer host first, which checks C
+  // and then sends them here (R2-B1).
+  if (isDeviceCodeFlow(flow) && hostOrigin("customer", env) !== null)
+    return redirectToApprove(req, env, product);
   return redirectToChooser(req, product);
 }
 
@@ -251,7 +259,8 @@ export async function handleAuthChoose(
     windowSec: 60,
   });
   if (limited) return limited;
-  if (req.method === "POST" && !sameOriginPost(req)) return startAgainPage();
+  if (req.method === "POST" && !sameOriginDecisionPost(req))
+    return startAgainPage();
 
   const binder = readBinder(req);
   if (!binder) return startAgainPage();
@@ -274,6 +283,14 @@ export async function handleAuthChoose(
     await deleteArtefact(env, indexKey);
     return startAgainPage();
   }
+  // With a customer host a device flow's chooser opens only after C was shown there. Nothing is
+  // dropped: the person's own path (the customer page) still finds the flow.
+  if (
+    isDeviceCodeFlow(flow) &&
+    hostOrigin("customer", env) !== null &&
+    flow.customerOk !== true
+  )
+    return startAgainPage();
   const c: ChooserContext = {
     stateKey,
     indexKey,
@@ -619,7 +636,13 @@ export async function completeChoice(
     licenseId = result.licenseId;
     // I-17: a licence this choice minted joins the account the callback's claim signed in to.
     if (flow.claimAccount)
-      await attachClaimedLicenses(db, flow.claimAccount, now);
+      await attachClaimedLicenses(
+        env,
+        db,
+        flow.claimAccount,
+        now,
+        noticeOrigin(env, req),
+      );
   } else {
     licenseId = (choice as LegacyChoiceRow).id;
   }

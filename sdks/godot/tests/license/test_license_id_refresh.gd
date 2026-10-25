@@ -70,7 +70,7 @@ func _refresh(t: PKeyTestContext, h: PKeyLicenseTestSupport) -> void:
 	var clock := [h.F["now"]]
 	var sdk = await _sdk(h, h.server.base_url(), store, clock)
 	var first: PKeySyncResult = await sdk.sync()
-	t.check("licenseId refresh: the first licence applies", first.documents.get("license") == "applied" and sdk.license.get_license_id() == "lic_djdl_1" and not sdk.license.is_entitled("pro"), str(first.documents))
+	t.check("licenseId refresh: the first licence applies", first.documents.get("license") == "applied" and sdk.license.get_license_id() == "lic_djdl_1" and not sdk.entitlements.has("pro"), str(first.documents))
 
 	# The server re-anchors this device on another licence; the next plain sync receives it.
 	served[0] = pro_jws
@@ -82,7 +82,7 @@ func _refresh(t: PKeyTestContext, h: PKeyLicenseTestSupport) -> void:
 	# cache
 	t.check("licenseId refresh: the re-anchored document is applied", r.documents.get("license") == "applied", str(r.documents))
 	t.check("licenseId refresh: get_license_id reads the new licence", sdk.license.get_license_id() == PRO_ID, sdk.license.get_license_id())
-	t.check("licenseId refresh: the new licence's grants are read", sdk.license.is_entitled("pro") and sdk.license.get_entitlements() == {"polarisVpn": true, "pro": true}, str(sdk.license.get_entitlements()))
+	t.check("licenseId refresh: the new licence's grants are read", sdk.entitlements.has("pro") and sdk.entitlements.all() == {"polarisVpn": true, "pro": true}, str(sdk.entitlements.all()))
 	t.check("licenseId refresh: the store holds the new artifact", store.cache["docs"]["license"] == pro_jws and store.cache["etags"]["license"] == "\"lic-2\"")
 	# activation state
 	t.check("licenseId refresh: no re-activation", h.requests("POST", "/license/activate").is_empty())
@@ -93,7 +93,7 @@ func _refresh(t: PKeyTestContext, h: PKeyLicenseTestSupport) -> void:
 	var reports := h.requests("POST", "/devices/report")
 	var body = PKeyJson.parse(PKeyLicenseTestSupport.body_text(reports[0]))["value"] if reports.size() == 1 else null
 	t.check("licenseId refresh: one report carrying the new grants", body is Dictionary and body.get("entitlements") == {"polarisVpn": true, "pro": true}, str(body))
-	t.check("licenseId refresh: the current device reports the new licence id", sdk.devices.get_current_device().get("license_id") == PRO_ID, str(sdk.devices.get_current_device()))
+	t.check("licenseId refresh: the current device reports the new licence id", sdk.current_device().get("license_id") == PRO_ID, str(sdk.current_device()))
 
 	# The following refresh revalidates the new licence's document normally.
 	var again: PKeySyncResult = await sdk.sync()
@@ -102,5 +102,5 @@ func _refresh(t: PKeyTestContext, h: PKeyLicenseTestSupport) -> void:
 
 	# A fresh SDK on the same store, with nothing listening, restores the re-anchored document.
 	var offline = await _sdk(h, "http://127.0.0.1:9", store, clock)
-	t.check("licenseId refresh: a fresh SDK restores the new licence offline", offline.license.get_license_id() == PRO_ID and offline.license.is_entitled("pro") and offline.license.status()["status"] == "ok", str(offline.license.status()))
+	t.check("licenseId refresh: a fresh SDK restores the new licence offline", offline.license.get_license_id() == PRO_ID and offline.entitlements.has("pro") and offline.license.status()["status"] == "ok", str(offline.license.status()))
 	offline.queue_free()

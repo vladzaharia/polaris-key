@@ -1,0 +1,8 @@
+{
+  "outlets": {
+    "homebrew": {
+      "kind": "direct",
+      "homebrewFormula": "dice"
+    }
+  }
+}

@@ -58,7 +58,10 @@ describe("core.copy: the generated English catalog", () => {
   it("every gate status reads the gate table", () => {
     for (const [status, entry] of Object.entries(COPY_GATE))
       if (!Object.hasOwn(COPY_CODES, status))
-        expect(copy.message(status)).toBe(entry.message);
+        // A placeholder this call was not given is dropped with the space before it.
+        expect(copy.message(status)).toBe(
+          entry.message.replace(/ ?\{product\}/g, ""),
+        );
   });
 
   it("an activation result reads the activation table, never the error-code table", () => {

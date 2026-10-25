@@ -322,7 +322,21 @@ export type PolarisErrorCode =
    *  product that does not set `identity.keyEntry.claimByKey`. */
   | "license_email_bound"
   /** I-09 (§12.3): the request needs an account signed in on the device (attach). */
-  | "account_required";
+  | "account_required"
+  /** U-05 (WIRE-CONTRACT-V4 §13.4, §13.6): 410, the pull cursor is older than the tombstone horizon. */
+  | "cursor_expired"
+  /** U-05 (§13.3 rule 4): 409, the `clientId` belongs to another device. */
+  | "client_mismatch"
+  /** U-05 (§13.3): a per-mutation result, the value fails validation. */
+  | "value_invalid"
+  /** U-05 (§13.3, §13.7): a per-mutation result, the operation is not valid for the merge policy. */
+  | "op_invalid_for_policy"
+  /** U-05 (§13.1, §13.3): a per-mutation result, the key is not a synced setting or the scope is wrong. */
+  | "setting_not_synced"
+  /** U-05 (§13.1, §13.3): a per-mutation result (403 for files), over quota; `scope` names the limit. */
+  | "quota_exceeded"
+  /** U-05 (§13.9): 503 with `Retry-After`, `cloudSync.writesPaused` is on. */
+  | "writes_paused";
 
 export interface PolarisErrorBody {
   error: {

@@ -11,6 +11,8 @@
  * from a caught exception (THREAT-MODEL "Platform settings and operations").
  */
 
+import { STORE_ADAPTERS } from "../stores/adapters.js";
+import type { ConnectorKind } from "../stores/adapter.js";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { RUN_SUMMARY_STEP, truncateSummary } from "./platformOps.js";
@@ -29,8 +31,10 @@ export const DELTA_CONSUMER_CONFIG = {
   maxRetries: 3,
   maxConcurrency: 1,
 } as const;
-/** The store connectors Distribution ships (P5-02..P5-04). */
-export const CONNECTORS = ["asc", "play", "ms-store"] as const;
+/** The store connectors Distribution ships (P5-02..P5-04), derived from the store adapters (P0-27.6). */
+export const CONNECTORS: readonly ConnectorKind[] = STORE_ADAPTERS.flatMap(
+  (a) => (a.delivery.connector === null ? [] : [a.delivery.connector]),
+);
 
 export interface Probe {
   bound: boolean;

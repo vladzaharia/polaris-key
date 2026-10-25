@@ -65,10 +65,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] No store identity is typed twice
-- [ ] A pin mismatch raises attention instead of failing silently
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] No store identity is typed twice
+- [x] A pin mismatch raises attention instead of failing silently
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -83,3 +83,16 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set A-28 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set A-28 done`.
+
+## Corrections (2026-10-22)
+
+The code and the approved `plans/CM-20.md` (§0 D5, §2.5 D12, §14) override this brief. Recorded by A-28.1.
+
+- **B1.** Precedence (D12): the pin of the product's own active credential, else the product's platform pin. The identity fields of `commerce.stores` become optional. A stored field that differs from the pin still wins and raises attention until the operator confirms "Use the assigned app". No alias work: the binding-alias line is dropped (D5), `dist_purchase_binding_aliases` stays the one alias path. No migration.
+- **B2.** No console form types the commerce identity today. `commerce.stores` has home `api`; only `PUT …/commerce/settings` writes it. "Prefilled console fields" means derived values shown with their source.
+- **B3.** Pins: `app-store.api-key` -> `appleId`, `app-store.in-app-purchase-key` -> `bundleId`, `google-play.service-account` -> `packageName`, `microsoft-store.partner-center` -> `productId`, `steam.publisher-key` -> `appId`. Own pins live in `outlet_credentials.meta_json`.
+- **B4.** A pin mismatch is today only an inert ASC refusal (`connectors/asc/setup.ts`, `pin_mismatch`), with no attention item.
+- **B5.** Commerce settings readers to switch in A-28.2: `bridge.ts` (binding, claim, two hooks), `recheck.ts`, `admin.ts`, `public.ts`.
+- **B6.** `outletCredentialReach.test.ts` lets `services/commerce/` and `services/distribution/` import `core/platformCredentials`; the console reads pins only through a service's `public.ts`.
+- **B7.** `conformance/transcripts/commerce-claim.json` stores an explicit `steam.appId`; it must stay byte-identical.
+- **A-28.1** ships the read: `storeAppBinding` / `storeAppBindings` in `core/platformCredentials.ts` (D12 per field; lowest own id wins; `ambiguous` per D15).

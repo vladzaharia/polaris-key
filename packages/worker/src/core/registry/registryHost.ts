@@ -145,7 +145,7 @@ export const REGISTRY_CSP =
  * widening over `BYTES_HOST_TYPES`: registry JSON, `text/x-swift` (SwiftPM's `Package.swift`),
  * PNG and JPEG (Godot icons) and the archive types. Never add `xml` or `text/html` here: XML
  * goes out as `application/octet-stream`, and the PyPI HTML page is admitted by the
- * `inertDocument` rule alone. `test/registryHost.test.ts` pins that every entry stays inert.
+ * `inertDocument` rule alone. `test/surfaces/registryHost.test.ts` pins that every entry stays inert.
  * Any change to this list is a THREAT-MODEL §9 review trigger.
  */
 export const REGISTRY_HOST_TYPES: ReadonlySet<string> = new Set([
@@ -221,7 +221,7 @@ export interface RegistryRouteContext {
 /**
  * The mark `feedRoute` (`services/distribution/registry/serve.ts`) puts on every route it builds.
  * A route so marked answers a read only through `serveFeedRead`, the access ladder (`authorize`
- * then cache). `test/registryHost.test.ts` requires it on every `REGISTRY_ROUTES` entry, so no
+ * then cache). `test/surfaces/registryHost.test.ts` requires it on every `REGISTRY_ROUTES` entry, so no
  * registry route can skip the ladder.
  */
 export const FEED_READ_ROUTE: unique symbol = Symbol.for(
@@ -295,6 +295,8 @@ export interface RegistryRoute {
   readonly ecosystem: RegistryEcosystem;
   /** F-05's PyPI simple route only: may answer the inert `PYPI_HTML_TYPE` document. */
   readonly inertDocument?: true;
+  /** Set by `feedRoute` for an owner-level list document (see `FeedRouteDef.listDocument`). */
+  readonly listDocument?: true;
   /** The owner and parameters when the route handles `pathname`, else `null`. */
   match(pathname: string): RegistryRouteMatch | null;
   handle(req: Request, ctx: RegistryRouteContext): Promise<Response>;

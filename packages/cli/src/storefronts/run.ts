@@ -224,13 +224,18 @@ async function runFileChecks(step: StoreStep, cwd: string): Promise<void> {
 }
 
 /**
- * The vendor tool's environment: the job's, minus the Polaris Key CI token and the GitHub OIDC
- * request variables, which no vendor tool needs.
+ * The vendor tool's environment: the job's, minus the Polaris Key CI token, the GitHub OIDC
+ * request variables and the Action's inputs (`INPUT_RELEASE-KEY` and `INPUT_CONTENT-KEY` hold
+ * keys), which no vendor tool needs.
  */
 export function toolEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = {};
   for (const [k, v] of Object.entries(env))
-    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_"))
+    if (
+      !k.startsWith("PKEY_") &&
+      !k.startsWith("ACTIONS_ID_TOKEN_") &&
+      !k.startsWith("INPUT_")
+    )
       out[k] = v;
   return out;
 }

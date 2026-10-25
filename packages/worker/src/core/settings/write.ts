@@ -252,6 +252,18 @@ function areaRefusal(
   opts: WriteOptions,
 ): WriteRefusal | null {
   if (!opts.principal && !OPERATOR_ORIGINS.includes(opts.origin)) return null;
+  if (
+    def.platformOnly &&
+    scope.kind === "product" &&
+    !can(opts.principal, PLATFORM, "platform", "edit")
+  )
+    return refuse(
+      403,
+      "no_access",
+      `writing ${def.key} needs the platform area`,
+      def.key,
+      { scope: "platform", area: "platform" },
+    );
   if (can(opts.principal, scope, def.rbacArea, "edit")) return null;
   return refuse(
     403,
@@ -738,6 +750,19 @@ async function writeProduct(
         def.key,
       );
 
+    if (
+      op === "reset" &&
+      def.storage.kind === "rich" &&
+      ctx.registry.adapter(def.key)?.set &&
+      !w.statements
+    )
+      return refuse(
+        409,
+        "no_writer",
+        `${def.key} has no reset writer`,
+        def.key,
+      );
+
     // What the write leaves.
     let after: WrittenSetting["after"];
     const manifestSide = linked ? "manifest" : "default";
@@ -801,9 +826,9 @@ async function writeProduct(
       claimed: op === "set" && linked && def.ownership === "claimable",
       // A rich key with a `set` adapter (`distribution.access`) is not governed here: its claim
       // lives in the adapter's own table (`dist_access.source = 'admin'`), which the manifest
-      // ingest skips until a revert, exactly as the bespoke `…/distribution/access` route
-      // behaved. That route never asked for a break-glass claim, even on a manifest-authoritative
-      // product (the system product always), and the console has no field for one. A
+      // ingest skips until a revert. It never asks for a break-glass claim, even on a
+      // manifest-authoritative product (the system product always), and the console has no field
+      // for one. A
       // break-glass claim could not expire either: expiry lapses a `product_settings` row, and
       // the `dist_access` rows are not one. Revert hands the `app` row back, as before.
       governed:

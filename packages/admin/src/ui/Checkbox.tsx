@@ -83,12 +83,15 @@ export function Checkbox({
   );
   if (!label) return box;
   return (
-    <div className={cn("flex items-start gap-2.5", className)}>
+    <div className={cn("flex items-start gap-2", className)}>
       <span className="mt-1 flex">{box}</span>
       <div className="min-w-0">
         <label
           htmlFor={boxId}
-          className="inline-block min-h-6 min-w-6 py-0.5 text-sm text-fg"
+          className={cn(
+            "inline-block min-h-6 min-w-6 py-0.5 text-sm text-fg",
+            props.disabled && "text-fg-subtle",
+          )}
         >
           {label}
         </label>

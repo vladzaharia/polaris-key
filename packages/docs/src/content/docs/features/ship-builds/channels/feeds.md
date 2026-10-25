@@ -122,7 +122,7 @@ There is one repository per release track, at `/<product>/distribution/fdroid/<c
 repository includes stable. It is a **static repository signed by CI**: Polaris Key never holds
 the repo key.
 
-1. CI runs `pkey feeds fdroid --product <slug> --channel <c> --out <dir> --keystore … --alias …`.
+1. CI runs `pkey storefront fdroid --product <slug> --channel <c> --out <dir> --keystore … --alias …`.
    The CLI reads the generator's inputs from `GET …/distribution/feeds/fdroid/<channel>` (the APKs
    the release track lists, with their metadata, and the files registered now). It writes
    `index-v2.json`, `entry.json` and a diff against the current index, then signs `entry.jar` with
@@ -138,11 +138,17 @@ the repo key.
    registration replaces the release track's previous set in one batch, so a client never reads a new
    `entry.jar` beside an old index.
 
+**In CI.** `channels: auto` runs the build after an app `release publish`, from the APKs in `dir`: the keystore is `$PKEY_FDROID_KEYSTORE`, its alias `$PKEY_FDROID_ALIAS` and its password `$PKEY_FDROID_KS_PASS`. Run it yourself with `pkey storefront fdroid --product <slug> --channel stable --out fdroid --keystore fdroid.keystore --alias repo`.
+
+- `apksigner` comes from `$ANDROID_HOME/build-tools`, or `--apksigner`. The signer is checked against the product's `fdroid-repo` key before anything is uploaded.
+- It needs `distribution:feeds`, which an operator adds deliberately. Without `--keystore` it writes the unsigned files and stops.
+- `--out` must be a directory of its own. The command replaces only the files it writes there, and refuses the working directory, a parent of it, or a directory that holds anything else; keep the keystore and the APKs outside it.
+
 The relay then serves **only registered files**, using the content type the Worker chose for
 each extension, never a type sent by CI. Every answer carries `nosniff` and a sandbox CSP. An APK
 that the registered `index-v2.json` names, and that the release track's feed still selects, is a `302`
 to its immutable delivery URL. The relay finds an APK by its file name, so each listed release's APK needs a distinct name (put the version in it, as in
-`Diceroll-1.2.0-android.apk`); `pkey feeds fdroid` refuses a set where two releases share one.
+`Diceroll-1.2.0-android.apk`); `pkey storefront fdroid` refuses a set where two releases share one.
 Anything else, including a path that fails the safe-path check, is not-found. So is a registered
 file once a non-public deliverable's release carries the same bytes.
 
@@ -197,6 +203,10 @@ The output is a deterministic template over release data, and it is checker JSON
 manifest. Polaris Key never opens, comments on or automates a Flathub pull request: Flathub
 forbids AI-generated or AI-assisted manifest content and any AI tool opening or automating a
 submission pull request. Writing and submitting the manifest is the developer's job.
+
+## Listing
+
+AltStore, SideStore, Obtainium and the F-Droid repository take their name, developer, description, tint and icon from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)); nothing is pushed. A channel's own listing text overrides it for that channel only.
 
 ## Routes
 

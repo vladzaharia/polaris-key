@@ -34,6 +34,7 @@
  *     after the format check and before any vendor call.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import { ErrorCode } from "../../core/errors.js";
 import { b64urlDecode, b64urlEncode } from "../../platform/bytes.js";
 import { parseJsonColumn } from "../../platform/json.js";
@@ -298,7 +299,7 @@ async function checkButlerKey(
   try {
     profile = await vendorGet(ITCH_API_ORIGIN, "/profile", auth);
   } catch (e) {
-    return unavailable("itch.io", e);
+    return unavailable(channelLabel("itch"), e);
   }
   // itch.io answers a bad key with 401/403, or with 200 and `{"errors": [...]}`.
   const user = profile.body?.user as Record<string, unknown> | undefined;
@@ -316,7 +317,7 @@ async function checkButlerKey(
       { status: profile.status },
     );
   if (profile.status !== 200)
-    return storeUnavailable("itch.io", profile.status);
+    return storeUnavailable(channelLabel("itch"), profile.status);
   const username = str(user!.username, 64) ?? "";
   const facts: CheckFact[] = [{ label: "itch.io user", value: username }];
   const target = itchTarget(identity);
@@ -341,9 +342,10 @@ async function checkButlerKey(
   try {
     games = await vendorGet(ITCH_API_ORIGIN, "/profile/games", auth);
   } catch (e) {
-    return unavailable("itch.io", e);
+    return unavailable(channelLabel("itch"), e);
   }
-  if (games.status !== 200) return storeUnavailable("itch.io", games.status);
+  if (games.status !== 200)
+    return storeUnavailable(channelLabel("itch"), games.status);
   const list = Array.isArray(games.body?.games) ? games.body.games : [];
   const gameId = identity?.gameId;
   const found = list.some((g) => {

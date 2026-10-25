@@ -494,6 +494,16 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/ST-51-activity.md (BUILT review FIX: 4 blocking; fixed in the one fix round fix/st-51-review 75d96b56b)"
+    },
+    "DOC-02b": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/DOC-02b-chrome.md (BUILT review FIX: 2 blocking; fixed in the one fix round fix/doc-02b-review 63fd329e9)"
+    },
+    "UK-07": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "BUILT review UXR-SWIFT (Opus pkey-ux-reviewer, 2026-10-22) + one fix round KX-SW-FIX f0e07cc3b merged to staging: B1–B4 fixed (mandatory update route, labelled text setting, honest Check for updates, 44 pt rename targets); 43 iPhone baselines re-recorded; swift test green. Copy items → COPY PASS; Restart now (iOS), sign-out consequence line, Devices push → KITS-QUEUE Swift second wave."
     }
   }
 }

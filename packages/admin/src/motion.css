@@ -689,8 +689,9 @@
  * Started only by viewTransition() (src/ui/motion/viewTransition.ts), which sets html[data-vt] to
  * the transition's type. A region is named ONLY during the kind of transition it belongs to: a
  * permanently named element is lifted into the transition layer on every transition and paints
- * over live overlays such as a dialog's scrim (S-23 §3.4 item 1). The chrome (top bar, sidebar,
- * switchers) is never named, so it stays live and still.
+ * over live overlays such as a dialog's scrim (S-23 §3.4 item 1). Chrome that
+ * overlaps the page (.pk-vt-chrome: top bar, tab bar, section nav) is named in every type but
+ * theme, new picture only, so the page never paints over it; the rest stays live and still.
  *   route    a sibling page: the main region fades through;
  *   forward  a drill-down (list → record); back: Back. The main region slides; shared elements fly;
  *   tab      a tab panel fades through and the tab indicator morphs;
@@ -790,6 +791,12 @@
   animation-duration: var(--pk-duration-slow);
   animation-timing-function: var(--pk-ease-emphasized);
 }
+/* The art is cropped (object-fit: cover) to a box whose aspect ratio changes as it morphs, so the
+   image pair clips to that box and its radius, or the art overflows it (S-23 §6.1). */
+::view-transition-image-pair(pk-hero) {
+  overflow: clip;
+  border-radius: var(--radius-xl, 0.75rem);
+}
 /* morph: a card or dialog changes size between steps (SIGN-IN §3.18's pk-card is the same). */
 ::view-transition-group(pk-dialog),
 ::view-transition-group(pk-card) {
@@ -846,6 +853,15 @@
   view-transition-name: match-element;
   view-transition-class: pk-row;
 }
+/* A row that exists before and after shows only its new picture: the two pictures are the same
+   text at two positions and, cross-faded, read as it twice (S-23 §6.1). */
+::view-transition-old(*.pk-row):not(:only-child) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(*.pk-row):not(:only-child) {
+  animation: none;
+}
 /* Leaving rows fade first (`micro`), then the rest close the gap. */
 ::view-transition-group(*.pk-row) {
   animation-duration: var(--pk-duration-base);
@@ -870,6 +886,19 @@
 ::view-transition-new(*.pk-table-row):only-child {
   animation-duration: var(--pk-duration-fast);
   animation-delay: calc(var(--pk-duration-micro) + var(--pk-duration-base));
+}
+/* MO-06: sticky or fixed chrome (.pk-vt-chrome) is named in every transition but the theme's, so
+   the main region's picture (which holds what lies under it) never paints over it. It shows only
+   its live new picture and does not move (S-23 §6.3). The list case below names it too. */
+:root:is(
+    [data-vt="route"],
+    [data-vt="forward"],
+    [data-vt="back"],
+    [data-vt="tab"]
+  )
+  .pk-vt-chrome {
+  view-transition-name: match-element;
+  view-transition-class: pk-overlay-vt;
 }
 /* MO-09: in a list transition the main region does not fade through. Its two pictures are the
    same page around the rows (which move on their own), so a fade-through only dimmed the whole

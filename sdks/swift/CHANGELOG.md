@@ -4,7 +4,14 @@ All notable changes to the Polaris Key Swift SDK. Versions follow the monorepo's
 tags; before 1.0 a minor version may change the API, and a changed API ships as the only API (no
 deprecated aliases).
 
-## Unreleased (LK-16)
+## Unreleased
+
+- **Breaking: one gate (SP-52b.2).** `.polarisKey(client)` now draws the kit's `PolarisKeyGate`, the same screens as `.polarisKeyGate(client)`, and keeps its model in the environment and its sync when the scene becomes active. The 0.8 gate family is removed, with no aliases: `PolarisGate`, `PolarisLoginView`, `PolarisGateModel`, `PolarisSignIn`, `PolarisSignInModel`, `PolarisOfflineActivation`, `GateOptions`, `PolarisManagePresentation`, `PolarisKitLayout` and `PolarisKitStyle`. `PolarisKeyModel(returnURL:)`, `PolarisKeyModel.returnURL` and `PolarisKeyModel.offeredManageURL` are gone too (the kit builds the Replace a device link itself). Apps link less code: the 0.8 views no longer ship.
+  Migrating: `.polarisKey(client, options: GateOptions(showsKeyEntry:offersOfflineActivation:))` becomes `options: KitGateOptions(keyEntry:offlineActivation:)` (add `import PolarisKeyUICore`); `offersFreeTier` stays a parameter of `.polarisKey`. `PolarisGate(model:...) { }` and `PolarisLoginView` become `PolarisKeyGate(client) { }`. `GateOptions.returnURL`, `renewURL` and `blockedAction` have no counterpart: the kit's Replace and Renew actions come from the product and `KitGateHandlers`. `PolarisTheme` maps `branding` (to the kit preset) and `accent`; its `palette`, `typography`, `copy`, `logo` and `accentOn` are ignored, so set `.polarisKeyTheme(PolarisKeyTheme(colors:typography:copy:product:))` instead. `PolarisKeyModel.offeredManageURL` has no replacement.
+
+- **`PolarisKeyUpdateUI`: the SwiftUI Sparkle user driver and the Mac update window (UK-08.6).** `PolarisSparkleUserDriver(client:options:)` is an `SPUUserDriver` that draws Sparkle's flow in one utility window (permission ask, found, download with real bytes or an indeterminate bar, extracting, ready, up to date, and an error callout with Try Again). Pass it as `PolarisSparkle.start(client:userDriver:)`. It answers a Sparkle reply only from a control the person pressed or the window's close button, each reply once; the feed, the signature check and the install stay Sparkle's. macOS only; `UpdateWindowView(model:)` draws the same screens for a host that places its own window (`Options.presentsWindow: false`). `PolarisSparkle` also gains `PolarisSparkleUpdaterAware`, which a driver adopts to receive its updater. Attaching the driver sets `PolarisKeyUpdateHook.present`, so the Mac Settings pane's and the app menu's "Check for Updates…" (UK-08.4) open this window when the module is linked.
+
+- **`PolarisSparkle.start(client:channel:bundle:userDriver:)` takes your own Sparkle user driver (UK-08.5).** Pass an `SPUUserDriver` and the updater is an `SPUUpdater` on it; without one it is the standard controller as before. Only the UI changes: the feed, headers, channels, journal events, the `SUPublicEDKey` assertion and Sparkle's signature check and install are the same. Source break (the API is unreleased): `PolarisSparkle.controller` is now `SPUStandardUpdaterController?` (`nil` with a `userDriver`) and the new `updater: SPUUpdater` is set on both paths. Migrating: `sparkle.controller.updater` becomes `sparkle.updater`; `sparkle.controller.checkForUpdates(nil)` becomes `sparkle.checkForUpdates()`.
 
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Breaking: Powered by Polaris Locker.** `PolarisPoweredByBadge` draws the Locker `powered-by` badge
@@ -13,10 +20,23 @@ deprecated aliases).
   gate never draws the attribution; the kit theme's `poweredBy` is the opt-in). New: `PolarisPoweredByAttribution`, `PolarisPoweredByStyle`.
   The legacy gate no longer draws the attribution, and the Key "Powered by" PNGs are no longer bundled.
 
-## Unreleased
+- **`events` is the stream; getters take `get` (SP-35b).** `PolarisKeyClient.changes` is removed (`events` is the one stream). Renamed: `syncState()` is `getSyncState()`, `startRefreshLoop(onChange:)` is `startRefresh(onChange:)`, `LicenseClient.profile()` is `getProfile()`, `licenseId()` is `getLicenseId()`, `licenseUser()` is `getLicenseUser()`, `ReleaseClient.installURL()`/`downloadURL(...)` are `installUrl()`/`downloadUrl(...)`, and `UpdateClient.buildURL(...)` is `buildUrl(...)`. Core's top-level `licenseUser(_:)` helpers stay. No aliases.
+  Migrating: `client.changes` becomes `client.events`; rename each call to the new spelling, e.g. `await client.license.profile()` becomes `await client.license.getProfile()`.
+
+- **Activation is `license.activateWithKey` (SP-35b).** `LicenseClient.activate(key:)` is renamed `activateWithKey(_:)`, and the `PolarisKeyClient.activate(key:)` facade is removed. No aliases.
+  Migrating: `client.activate(key: k)` and `client.license.activate(key: k)` become `client.license.activateWithKey(k)`.
+
+- **Entitlements are a namespace (SP-35b).** `client.entitlements` has `has(_:)`, `value(_:)` and `all()`. `has` and `value` answer false and nil whenever the licence gate is not usable (S-19 G11); `all()` reads the held document. `license.isEntitled`, `license.entitlementValue`, `license.entitlements()` and `client.isEnabled(flag:)` are removed. No aliases.
+  Migrating: `client.license.isEntitled(n)` and `client.isEnabled(flag: n)` become `client.entitlements.has(n)`; `license.entitlementValue(n)` becomes `entitlements.value(n)`; `license.entitlements()` becomes `entitlements.all()`.
+
+- **The setting handle is async properties (SP-35b).** `client.config.setting(key)` exposes `value` (nil when no layer has one, source `fallback`), `source`, `locked` and the new `visibility` (`SettingVisibility`: `editable`, `readonly` for `enforced`, `hidden`) as `async` properties, and `on(_:)` subscribes. `value(default:)`, `source()`, `isLocked()` and `onChange(_:)` are removed. No aliases.
+  Migrating: `await setting.value(default: d)` becomes `await setting.value ?? d` (or `config.get(k, default: d)`); `await setting.source()` becomes `await setting.source`; `await setting.isLocked()` becomes `await setting.locked`; `setting.onChange { ... }` becomes `setting.on { ... }`.
+
+- **Config reads are `get`, `getConfigSource` and `getSecret` (SP-35b).** `client.config.get(_:default:)`, `client.config.getConfigSource(_:)` and `client.config.getSecret(_:)` replace `config(_:default:)`, `configSource(_:)` and `secret(_:)`; the `PolarisKeyClient.config(_:default:)` shortcut is removed. No aliases.
+  Migrating: `client.config(k, default: d)` and `client.config.config(k, default: d)` become `client.config.get(k, default: d)`; `configSource(k)` becomes `getConfigSource(k)`; `secret(k)` becomes `getSecret(k)`.
 
 - **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you set `GateOptions.renewURL`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. SwiftUI draws the numbered steps and the request QR.
-  Migrating: pass an https `url` in `KitOffers` to get Buy in your browser on the paywall, and `renewURL` on `GateOptions` to get Renew.
+  Migrating: pass an https `url` in `KitOffers` to get Buy in your browser on the paywall, and `renewURL` on `GateOptions` to get Renew (superseded by the one-gate change above).
 
 - **Client backend (`core.backend`, SP-59).** `client.backend.data(for:)` and `headers()` send
   `X-PKey-License` and `X-PKey-Device` to the app's own backend, only to `backendOrigins` (exact origin, https

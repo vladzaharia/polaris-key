@@ -1,9 +1,9 @@
-# Polaris Key UI for Jetpack Compose
+# Polaris Key UI for Jetpack Compose and Compose Desktop
 
 `polaris-key-ui` (`im.plrs.key:polaris-key-ui`, the Kotlin SDK's `:ui` module) is a set of
 Material 3 screens over the Kotlin SDK: a boot shell, the license gate, activation, sign-in with a
-QR code, settings, devices, an update banner and prompt, and pack progress. It is Android only and
-needs Compose with Material 3. It depends on `polaris-key-sdk` and renders the state the SDK
+QR code, settings, devices, an update banner and prompt, and pack progress. It runs on Android and
+on Compose Desktop (macOS, Windows and Linux) and needs Compose with Material 3. It depends on `polaris-key-sdk` and renders the state the SDK
 resolves. It never calls the network itself, and it never depends on the platform module or the
 Android glue.
 
@@ -120,7 +120,7 @@ after `BOOT_OK_SECONDS` of `ready` where the stage machine asks for that), decid
 `UpdateCheck` to `onCheck` (pass `updateState::show`), and fetch is `client.packs.bootFetch` over
 the content stamp when packs are configured, with the metered-download consent.
 
-### One call: `PolarisKeyApp`
+### One call: `PolarisKeyGate`
 
 ```kotlin android
 import androidx.activity.ComponentActivity
@@ -128,15 +128,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import im.plrs.key.sdk.PolarisKeyClient
-import im.plrs.key.ui.PolarisKeyApp
+import im.plrs.key.ui.PolarisKeyGate
 import im.plrs.key.ui.PolarisTheme
 
 fun ComponentActivity.show(client: PolarisKeyClient) {
-    setContent { MaterialTheme { PolarisTheme { PolarisKeyApp(client) { Text("Licensed") } } } }
+    setContent { MaterialTheme { PolarisTheme { PolarisKeyGate(client) { Text("Licensed") } } } }
 }
 ```
 
-`PolarisKeyApp` composes the pieces above, unchanged: the boot shell over `client.bootHost()`, the
+`PolarisKeyGate` (the old `PolarisKeyApp` name is deprecated) composes the pieces above, unchanged: the boot shell over `client.bootHost()`, the
 gate for its activation stop, pack progress, and the update banner over `client.updateActions()`
 (`client.update.install(check)`; a Play flexible update's progress and "Restart to finish", which
 runs `finish()`). It provides the client through `LocalPolarisKey`, so any screen reads it with
@@ -170,7 +170,7 @@ renders your content under an offline-grace banner. It shows the activation scre
 message, with Reconnect or Try again, for `expired`, `version-too-old`, `version-too-new` and
 `channel-not-entitled`. The server's allowed version window is appended when it sends one.
 
-When an activation is refused because every seat is taken and the Worker sent a portal link
+When an activation is refused because the device limit is reached and the Worker sent a portal link
 (`ActivationResult.DeviceLimit.manageUrl`, PX-W8), the activation screen shows **Replace a device**
 under the error. It is a button that opens the link, or a QR code with a "scan with your phone"
 line on Android TV. The link carries the key fragment on an `/activate` link and the `returnUrl`
@@ -213,9 +213,45 @@ Material 3 filled field.
 
 Hold `PolarisSignInState` in a ViewModel (with `viewModelScope`), so a rotation or a trip through
 navigation keeps the same code: when `PolarisSignIn` comes back it resumes polling that code
-rather than asking for a new one. `PolarisKeyApp(client, signIn = true)` (or `PolarisGate(state,
+rather than asking for a new one. `PolarisKeyGate(client, signIn = true)` (or `PolarisGate(state,
 signIn = ...)`) runs sign-in inside the gate instead, and its "Use a license key instead" comes
 back to the key field.
+
+## Routes and deep links
+
+The kit owns no navigation; the host keeps its own and the kit names the places and parses the link.
+`PolarisKeyRoute` is `Account`, `Devices`, `Settings`, `Update` or `SignIn`. `PolarisKeyLinks("app://host", client)`
+is an allow-list: `route(uri)` is pure and `handle(uri)` also syncs the client when the link opens a route. It
+accepts only the declared return URI (scheme and host exactly, no port or user info, the declared path prefix)
+followed by one route name, as the path (`app://host/account`) or as the one query value `route`. Every other query
+value and the fragment are ignored; everything else (another scheme or host, an unknown route, escapes, dot
+segments, a route in both places) is refused with `null`. `uriFor(route)` builds a link from a route alone: the
+kit never puts a token, code or key in a URL. When a link opens nothing, show `polarisLinkUnavailable()`.
+`examples/ui/compose-android` wires it to navigation-compose and an intent filter.
+
+## On the desktop
+
+A desktop app adds `im.plrs.key:polaris-key-desktop` (the OS keyring and the desktop updater) next
+to `polaris-key-ui`. `PolarisKeyWindow` is `PolarisKeyGate` as an OS window, and opens
+`PolarisUpdateWindow` and `PolarisSettingsWindow` when they are needed. The window's menu bar holds
+**Check for updates** and **Manage license** (`PolarisMenuItems`).
+
+```kotlin desktop
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.ui.window.application
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.desktop.PolarisKeyDesktop
+import im.plrs.key.ui.PolarisKeyWindow
+
+fun main() = application {
+    val client = remember { PolarisKeyDesktop.client(PolarisConfig.clientOptions("1.4.2")) }
+    PolarisKeyWindow(client) { Text("Licensed") }
+}
+```
+
+The kit draws the chrome of the OS it runs on (macOS, Fluent or GNOME), and the sample in
+`examples/ui/compose-desktop/` runs every window. The Compose page of the docs has the rest.
 
 ## Copy and translation
 

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { AdminPersonalToken } from "../src/api.js";
 import { boot, resetConsole } from "./consoleHarness.js";
 
-/** The Superadmin's roster of people's personal tokens (`#/personal-tokens`, F-33). */
+/** The Superadmin's roster of people's personal tokens (`#/personal-tokens`, F-33): the Everyone tab (ST-34.11). */
 
 const base: AdminPersonalToken = {
   id: "pt_a",
@@ -32,6 +32,7 @@ describe("Personal tokens roster", () => {
     const user = userEvent.setup();
     const log = boot("#/personal-tokens", {
       extra: {
+        "/manage/api/me/personal-tokens": () => ({ tokens: [] }),
         "/manage/api/account-tokens": () => ({ tokens: roster }),
         "DELETE /manage/api/account-tokens/pt_a": () => {
           roster = roster.map((t) =>
@@ -49,6 +50,7 @@ describe("Personal tokens roster", () => {
       },
     });
     await screen.findByRole("heading", { level: 1, name: "Personal tokens" });
+    await user.click(await screen.findByRole("radio", { name: "Everyone" }));
     const table = await screen.findByRole("table", {
       name: "Personal tokens",
     });
@@ -76,5 +78,38 @@ describe("Personal tokens roster", () => {
     expect(within(table).getAllByText(/by admin/).length).toBeGreaterThan(0);
     // Focus does not fall to the body.
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+  });
+
+  it("a label and an email wrap in full at every width: no truncation class, the full text in the DOM", async () => {
+    const long = {
+      ...base,
+      label: "Ada's very long laptop label for the studio",
+      email: "ada.lindqvist.with.a.long.address@subsidiary.example.com",
+    };
+    boot("#/personal-tokens", {
+      extra: {
+        "/manage/api/me/personal-tokens": () => ({ tokens: [] }),
+        "/manage/api/account-tokens": () => ({ tokens: [long] }),
+      },
+    });
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("radio", { name: "Everyone" }));
+    const email = (await screen.findAllByText(long.email))[0]!;
+    const label = (await screen.findAllByText(long.label))[0]!;
+    for (const el of [email, label]) {
+      expect(el.className).not.toMatch(/truncate|max-\[1279px\]/);
+      expect(el.className).toContain("[overflow-wrap:anywhere]");
+    }
+  });
+});
+
+describe("Personal tokens breadcrumb", () => {
+  it("names Platform, where the sidebar lists the page, not Home", async () => {
+    boot("#/personal-tokens");
+    await screen.findByRole("heading", { level: 1, name: "Personal tokens" });
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByText("Platform")).toBeTruthy();
+    expect(within(crumbs).queryByText("Home")).toBeNull();
   });
 });

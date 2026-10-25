@@ -2,7 +2,7 @@
  * P2b-03 — `pkey distribution report|rollout|pause|resume|halt|complete` against a fake Worker:
  * the request each command sends (path, bearer, body), the local checks that refuse before any
  * request, and how the Worker's answers become exit codes. The end-to-end run against the real
- * Worker is `packages/worker/test/distributionReportE2e.test.ts`.
+ * Worker is `packages/worker/test/surfaces/distributionReportE2e.test.ts`.
  */
 
 import { describe, expect, it } from "vitest";

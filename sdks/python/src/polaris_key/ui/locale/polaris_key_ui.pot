@@ -131,6 +131,11 @@ msgstr ""
 msgid "common.byDeveloper"
 msgstr ""
 
+#. That link doesn't open anything here.
+#. Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed.
+msgid "common.linkUnavailable"
+msgstr ""
+
 #. {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}
 #. The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
 msgid "part.thisDevice"
@@ -617,8 +622,8 @@ msgstr ""
 msgid "boot.consent.download"
 msgstr ""
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
 msgstr ""
 
@@ -647,8 +652,8 @@ msgstr ""
 msgid "welcome.ledeKeyOnly"
 msgstr ""
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
 msgstr ""
 
@@ -1078,9 +1083,19 @@ msgstr ""
 msgid "update.current"
 msgstr ""
 
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr ""
+
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
+msgstr ""
+
+#. Select
+#. Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.
+msgid "part.hint.select"
 msgstr ""
 
 #. All changes in {version}
@@ -1118,7 +1133,7 @@ msgstr ""
 msgid "update.restartNow"
 msgstr ""
 
-#. macos: Restart Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.restartNow"
 msgstr ""
@@ -1138,9 +1153,14 @@ msgstr ""
 msgid "update.install"
 msgstr ""
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
+msgstr ""
+
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
 msgstr ""
 
 #. Downloading · {size} of {total}
@@ -1153,13 +1173,23 @@ msgstr ""
 msgid "update.timeLeft"
 msgstr ""
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr ""
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr ""
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr ""
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
 msgstr ""
 
@@ -1268,14 +1298,124 @@ msgstr ""
 msgid "update.platform.generic"
 msgstr ""
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
 msgstr ""
 
-#. You're up to date
+#. You’re up to date
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
+msgstr ""
+
+#. Install update
+#. UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded.
+msgid "common.updateInstallUpdate"
+msgstr ""
+
+#. macos: Install Update
+msgctxt "macos"
+msgid "common.updateInstallUpdate"
+msgstr ""
+
+#. Install on quit
+#. UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits.
+msgid "common.updateInstallOnQuit"
+msgstr ""
+
+#. macos: Install on Quit
+msgctxt "macos"
+msgid "common.updateInstallOnQuit"
+msgstr ""
+
+#. Don’t check
+#. UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement.
+msgid "common.updateDeclineChecks"
+msgstr ""
+
+#. macos: Don’t Check
+msgctxt "macos"
+msgid "common.updateDeclineChecks"
+msgstr ""
+
+#. Quit and install
+#. UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish.
+msgid "common.updateQuitAndInstall"
+msgstr ""
+
+#. macos: Quit and Install
+msgctxt "macos"
+msgid "common.updateQuitAndInstall"
+msgstr ""
+
+#. Quit {product} to finish installing.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updateQuitToInstall"
+msgstr ""
+
+#. Downloading · {size}
+#. UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "common.updateDownloadingBytes"
+msgstr ""
+
+#. Download
+#. UpdatePrompt: an app update. The accessibility name of the download's progress bar.
+msgid "common.updateProgressLabel"
+msgstr ""
+
+#. Couldn’t reach the update server. Check your connection and try again.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network.
+msgid "common.updateErrorNetwork"
+msgstr ""
+
+#. This update can’t be installed on this Mac.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help.
+msgid "common.updateErrorCannotInstall"
+msgstr ""
+
+#. The update didn’t pass its security check, so it wasn’t installed.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help.
+msgid "common.updateErrorSecurity"
+msgstr ""
+
+#. Checking for updates…
+#. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
+msgid "common.updateChecking"
+msgstr ""
+
+#. Check for updates automatically?
+#. UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check.
+msgid "common.updatePermissionTitle"
+msgstr ""
+
+#. {product} can look for new versions in the background and tell you when one is ready.
+#. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updatePermissionBody"
+msgstr ""
+
+#. Check automatically
+#. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
+msgid "common.updatePermissionAllow"
+msgstr ""
+
+#. macos: Check Automatically
+msgctxt "macos"
+msgid "common.updatePermissionAllow"
+msgstr ""
+
+#. Couldn’t update
+#. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
+msgid "common.updateFailedTitle"
+msgstr ""
+
+#. Learn more
+#. UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser.
+msgid "common.updateLearnMore"
+msgstr ""
+
+#. macos: Learn More
+msgctxt "macos"
+msgid "common.updateLearnMore"
 msgstr ""
 
 #. Check for updates
@@ -1286,6 +1426,61 @@ msgstr ""
 #. macos: Check for Updates…
 msgctxt "macos"
 msgid "update.checkNow"
+msgstr ""
+
+#. Manage license
+#. App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.
+msgid "menu.manageLicense"
+msgstr ""
+
+#. macos: Manage License…
+msgctxt "macos"
+msgid "menu.manageLicense"
+msgstr ""
+
+#. Sign out
+#. App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).
+msgid "menu.signOut"
+msgstr ""
+
+#. macos: Sign Out…
+msgctxt "macos"
+msgid "menu.signOut"
+msgstr ""
+
+#. Account
+#. The Account tab of the macOS Settings window, and the window's title while it is selected.
+msgid "menu.account"
+msgstr ""
+
+#. Sign out
+#. Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.
+msgid "signin.signout.confirm"
+msgstr ""
+
+#. macos: Sign Out
+msgctxt "macos"
+msgid "signin.signout.confirm"
+msgstr ""
+
+#. Update ready
+#. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.title"
+msgstr ""
+
+#. Restart to finish updating.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.body"
+msgstr ""
+
+#. Signed in
+#. Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.title"
+msgstr ""
+
+#. You're signed in on this device.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.body"
 msgstr ""
 
 #. Downloading content
@@ -1636,8 +1831,8 @@ msgstr ""
 msgid "paywall.purchased"
 msgstr ""
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
 msgstr ""
 
@@ -1791,8 +1986,8 @@ msgstr ""
 msgid "signin.methods.titleApp"
 msgstr ""
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
 msgstr ""
 
@@ -2362,12 +2557,12 @@ msgctxt "macos"
 msgid "signin.choice.freeDevice"
 msgstr ""
 
-#. Use this license and continue
+#. Use this license
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.continue"
 msgstr ""
 
-#. macos: Use This License and Continue
+#. macos: Use This License
 msgctxt "macos"
 msgid "signin.choice.continue"
 msgstr ""
@@ -2477,13 +2672,8 @@ msgctxt "macos"
 msgid "signin.replace.confirm"
 msgstr ""
 
-#. Replace {device} and continue
+#. Replace {device}
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
-msgid "signin.replace.confirmNamed"
-msgstr ""
-
-#. macos: Replace {device} and Continue
-msgctxt "macos"
 msgid "signin.replace.confirmNamed"
 msgstr ""
 
@@ -2998,6 +3188,11 @@ msgstr ""
 msgid "signin.approve.warning"
 msgstr ""
 
+#. Check that your device shows this code.
+#. Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated.
+msgid "signin.approve.checkDevice"
+msgstr ""
+
 #. Approve and sign it in
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.approve"
@@ -3098,9 +3293,19 @@ msgstr ""
 msgid "signin.signout.title"
 msgstr ""
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
+msgstr ""
+
+#. Sign out of {product} on this Mac?
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.signout.titleMac"
+msgstr ""
+
+#. This frees your {tier} license for another device.
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated).
+msgid "signin.signout.releasedMac"
 msgstr ""
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
@@ -3161,7 +3366,7 @@ msgstr ""
 msgid "signin.mail.replaced.subject"
 msgstr ""
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
 msgstr ""
@@ -3271,7 +3476,7 @@ msgstr ""
 msgid "cli.verb.enroll"
 msgstr ""
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
 msgstr ""
@@ -3316,7 +3521,7 @@ msgstr ""
 msgid "cli.verb.devicesRename"
 msgstr ""
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
 msgstr ""
@@ -3531,8 +3736,8 @@ msgstr ""
 msgid "cli.logout.done"
 msgstr ""
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
 msgstr ""
 
@@ -3556,7 +3761,7 @@ msgstr ""
 msgid "cli.devices.nameCleared"
 msgstr ""
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
 msgstr ""
@@ -3944,6 +4149,26 @@ msgstr ""
 #. macos: Find It
 msgctxt "macos"
 msgid "signin.approve.look"
+msgstr ""
+
+#. pkey on {host} asks for a read-only personal token for your packages.
+#. Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is.
+msgid "signin.approve.askPackages"
+msgstr ""
+
+#. Give pkey a personal token?
+#. Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it.
+msgid "signin.approve.askPackagesTitle"
+msgstr ""
+
+#. Approve
+#. Approve dialog, confirm button for the pkey packages token.
+msgid "signin.approve.approvePackages"
+msgstr ""
+
+#. Approved. Go back to your terminal.
+#. Approve dialog outcome after approving the pkey packages token.
+msgid "signin.approve.approvedPackages"
 msgstr ""
 
 #. Code {code} asks to sign in to your account.
@@ -5410,6 +5635,86 @@ msgstr ""
 msgid "core.codes.account_required.message"
 msgstr ""
 
+#. Sync out of date
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.title"
+msgstr ""
+
+#. This device hasn't synced in too long. It will start over from your saved data.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.message"
+msgstr ""
+
+#. Sync mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.title"
+msgstr ""
+
+#. This sync belongs to another device. Restart the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.message"
+msgstr ""
+
+#. Setting not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.title"
+msgstr ""
+
+#. That value isn't valid for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.message"
+msgstr ""
+
+#. Change not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.title"
+msgstr ""
+
+#. That change isn't allowed for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.message"
+msgstr ""
+
+#. Not synced
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.title"
+msgstr ""
+
+#. This setting isn't synced to your account.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.message"
+msgstr ""
+
+#. Unknown collection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.title"
+msgstr ""
+
+#. This collection isn't available.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.message"
+msgstr ""
+
+#. Storage full
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.title"
+msgstr ""
+
+#. Your synced storage is full. Free some space, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.message"
+msgstr ""
+
+#. Sync paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.title"
+msgstr ""
+
+#. Syncing is paused for a moment. Your changes are kept and will sync later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.message"
+msgstr ""
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
@@ -6675,7 +6980,7 @@ msgstr ""
 msgid "core.gate.version-too-old.title"
 msgstr ""
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
 msgstr ""

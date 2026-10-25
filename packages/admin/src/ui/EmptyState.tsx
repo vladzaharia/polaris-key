@@ -35,6 +35,8 @@ export interface EmptyStateProps {
   secondaryAction?: React.ReactNode;
   /** A docs URL: renders a "Docs" link. */
   docs?: string;
+  /** What the sr-only "for …" after Docs names on a service-off state; default: the service's name. */
+  docsFor?: string;
   /** service-off: which service. */
   service?: ServiceSlug;
   /** no-results: the active filters as text ("status: expired"). */
@@ -89,6 +91,7 @@ export function EmptyState({
   primaryAction,
   secondaryAction,
   docs,
+  docsFor,
   service,
   filters,
   onClearFilters,
@@ -238,8 +241,11 @@ export function EmptyState({
               <a href={docs} target="_blank" rel="noreferrer">
                 <BookOpen aria-hidden className="size-4" />
                 Docs
-                {kind === "service-off" && service ? (
-                  <span className="sr-only"> for {serviceLabel(service)}</span>
+                {kind === "service-off" && (docsFor || service) ? (
+                  <span className="sr-only">
+                    {" "}
+                    for {docsFor ?? serviceLabel(service!)}
+                  </span>
                 ) : null}
               </a>
             </Button>

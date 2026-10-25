@@ -128,10 +128,10 @@ static func new_server(handler: Callable) -> PKeyFakeServer:
 ## (`clock[0]` is the current epoch second).
 static func options(base_url: String, store: PKeyStore, clock: Array, product := "djdl", pins: Dictionary = {}, version := "1.0.0") -> PKeyOptions:
 	var o := PKeyOptions.new()
-	o.product = product
+	o.product_slug = product
 	o.base_url = base_url
 	o.version = version
-	o.pinned_trust_keys = pins
+	o.pinned_keys = pins
 	o.store = store
 	o.request_timeout_seconds = 5.0
 	o.now_source = func(): return clock[0]

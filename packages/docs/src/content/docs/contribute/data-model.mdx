@@ -41,9 +41,8 @@ this page or fails the freshness gate.
 | `blob_gc_log` | 0048_a_dist_readiness_blob_gc.sql | `id`, `at`, `action`, `storage_key`, `product`, `ref_kind`, `ref_id`, `size`, `detail` |
 | `hosted_assets` | 0078_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `checked_at`, `modified_at`, `wanted_ref (0089)`, `pulled_ref (0089)`, `source_blob (0089)`, `attempts (0089)`, `next_attempt_at (0089)` |
 | `ci_publishers` | 0035_a_ci_publishing.sql | `product`, `provider`, `repository_id`, `repository_owner_id`, `repository`, `workflow`, `environment`, `scopes_json`, `source`, `created_at`, `modified_at`, `modified_by` |
-| `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by` |
+| `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by`, `last_used_at (0135)`, `hint (0136)` |
 | `ci_upload_tickets` | 0035_a_ci_publishing.sql | `product`, `ticket_hash`, `ticket_id`, `token_hash`, `objects_json`, `issued_at`, `expires_at`, `redeemed_at` |
-| `lazy_delta_settings` | 0051_lazy_deltas.sql | `product`, `enabled`, `hot_devices`, `daily_cap`, `updated_at` |
 | `delta_demand_devices` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `device_id`, `strategy`, `seen_at` |
 | `delta_demand` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `from_sha256`, `to_sha256`, `devices`, `window_start`, `last_seen` |
 | `platform_deploys` | 0054_a_platform_deploys.sql | `id`, `at`, `environment`, `tag`, `git_sha`, `run_url`, `scripts`, `latest_migration`, `cf_version_id`, `deltas_version_id`, `smoke` |
@@ -63,23 +62,25 @@ this page or fails the freshness gate.
 | `platform_heartbeats` | 0057_platform_operations.sql | `script`, `at`, `version_tag`, `cf_version_id`, `outcome`, `backlog_count`, `backlog_bytes`, `oldest_at` |
 | `store_operations` | 0061_store_operations.sql | `op_id`, `store`, `scope`, `product`, `op`, `natural_key`, `state`, `request_hash`, `result_ids_json`, `before_json`, `after_json`, `vendor_status`, `vendor_code`, `actor`, `created_at`, `finished_at`, `plane (0062)` |
 | `email_suppressions` | 0066_email_delivery.sql | `address_hash`, `reason`, `created_at`, `expires_at` |
-| `email_product_caps` | 0066_email_delivery.sql | `product`, `daily_cap`, `modified_at` |
 | `grants` | 0105_a_licensing_core.sql | `product`, `id`, `account_id`, `license_id`, `store_identity_hash`, `source`, `external_ref_hash`, `sku`, `order_ref`, `state`, `granted_at`, `expires_at`, `grace_until`, `shared`, `trial`, `created_by`, `modified_at`, `modified_by` |
 | `grant_entitlements` | 0105_a_licensing_core.sql | `product`, `grant_id`, `key`, `value_json`, `state`, `updated_at` |
 | `device_store_identities` | 0105_a_licensing_core.sql | `product`, `device_id`, `store`, `store_identity_hash`, `verified_at` |
 | `holder_versions` | 0105_a_licensing_core.sql | `product`, `holder_kind`, `holder_id`, `version` |
 | `entitlement_events` | 0105_a_licensing_core.sql | `product`, `id`, `subject`, `license_id`, `keys_json`, `created_at` |
+| `console_role_bindings` | 0130_a_console_role_bindings.sql | `id`, `account_id`, `email_norm`, `role`, `scope`, `areas_json`, `source`, `granted_by`, `granted_at`, `expires_at` |
+| `provisioned_secret_moves` | 0133_provisioned_secret_moves.sql | `product`, `license_id`, `key`, `subject`, `entry_sha256`, `added_to_account`, `shadowed`, `position`, `run_id`, `at` |
 
 ## license
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)`, `batch_id (0095)`, `kind (0105)`, `ended_reason (0105)`, `superseded_by (0105)`, `source (0105)`, `external_ref_hash (0105)`, `email_issuer_class (0118)` |
+| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)`, `batch_id (0095)`, `kind (0105)`, `ended_reason (0105)`, `superseded_by (0105)`, `source (0105)`, `external_ref_hash (0105)`, `email_issuer_class (0118)`, `invited_at (0138)` |
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
-| `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)`, `source (0086)`, `rank (0105)`, `policy_offline_grace_days (0105)` |
+| `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)`, `source (0086)`, `rank (0105)`, `policy_offline_grace_days (0105)`, `implicit (0129)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
 | `license_store_grants` | 0052_commerce.sql | `product`, `license_id`, `flag`, `store`, `purchase_key_hash`, `state`, `granted_at`, `revoked_at` |
 | `license_batches` | 0095_a_license_batches.sql | `product`, `id`, `label`, `count`, `tier_id`, `created_by`, `created_at` |
+| `license_limit_backfill` | 0129_a_default_tier.sql | `product`, `subject_kind`, `subject_id`, `field`, `before_json`, `after_json`, `run_id`, `at` |
 
 ## config
 
@@ -140,13 +141,15 @@ this page or fails the freshness gate.
 | `dist_feed_files` | 0043_storefront_feeds.sql | `product`, `feed`, `channel`, `path`, `sha256`, `size`, `content_type`, `updated_at` |
 | `dist_readiness` | 0048_a_dist_readiness_blob_gc.sql | `product`, `app_release_id`, `outlet_id`, `blocking_pack_release_id`, `state`, `detail_json`, `source`, `override_reason`, `computed_at`, `updated_at`, `updated_by` |
 | `dist_registry_owners` | 0058_d_registry.sql | `product`, `enabled`, `version`, `updated_at`, `updated_by` |
-| `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by` |
+| `dist_registry_feeds` | 0058_d_registry.sql | `product`, `ecosystem`, `enabled`, `access_mode`, `namespace_json`, `max_package_bytes`, `upstream`, `claims_json`, `ext_json`, `version`, `updated_at`, `updated_by`, `namespace_source (0137)` |
+| `dist_registry_access_moves` | 0134_registry_access_moves.sql | `product`, `ecosystem`, `deliverable_id`, `from_feed_mode`, `had_row`, `prior_mode`, `prior_entitlement`, `prior_source`, `moved_at`, `feed_moved_at`, `feed_restored_at` |
 | `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
 | `dist_listings` | 0065_dist_listing_model.sql | `product`, `default_locale`, `name`, `developer_name`, `category`, `content_descriptors_json`, `iarc_certificate_id`, `urls_json`, `contact_email`, `copyright`, `tint`, `tint_dark`, `precedence_json`, `source`, `created_at`, `modified_at`, `modified_by`, `provenance_json (0069)` |
 | `dist_listing_locales` | 0065_dist_listing_model.sql | `product`, `locale`, `name`, `subtitle`, `short_description`, `description`, `keywords_json`, `features_json`, `promotional_text`, `source`, `modified_at`, `modified_by`, `provenance_json (0069)` |
 | `dist_listing_assets` | 0099_dist_listing_assets_manifest.sql (rebuilt 0099) | `product`, `slot`, `locale`, `blob`, `sha256`, `width`, `height`, `alpha`, `derived_from`, `text_allowed`, `source`, `modified_at`, `modified_by`, `accepted_sha256`, `accepted_at`, `accepted_by` |
 | `dist_listing_release_notes` | 0065_dist_listing_model.sql | `product`, `release_id`, `locale`, `text`, `short`, `source`, `modified_at`, `modified_by` |
 | `dist_listing_overrides` | 0065_dist_listing_model.sql | `product`, `store`, `locale`, `field`, `value_json`, `source`, `modified_at`, `modified_by` |
+| `dist_listing_truth_moves` | 0139_listing_truth_moves.sql | `product`, `locale`, `field`, `had_row`, `prior_value_json`, `prior_provenance`, `applied_value_json`, `moved_at` |
 | `store_edit_leases` | 0070_store_edit_leases.sql | `store`, `app`, `holder`, `purpose`, `actor`, `acquired_at`, `expires_at` |
 
 ## commerce
@@ -160,6 +163,14 @@ this page or fails the freshness gate.
 | `dist_store_product_entitlements` | 0105_l_licensing_commerce.sql | `product`, `store`, `store_product_id`, `key`, `value_json` |
 | `dist_holder_bindings` | 0105_l_licensing_commerce.sql | `product`, `holder_kind`, `holder_id`, `binding_id`, `created_at` |
 | `dist_binding_aliases` | 0105_l_licensing_commerce.sql | `product`, `binding_id`, `holder_kind`, `holder_id`, `created_at` |
+
+## sync
+
+| Table | Since | Columns (ALTERs annotated with their migration) |
+| --- | --- | --- |
+| `sync_directory` | 0131_cloud_sync_directory.sql | `product`, `subject`, `bytes`, `settings`, `records`, `files`, `revision_bytes`, `quota_bytes`, `tier_id`, `platform`, `last_active_at`, `updated_at` |
+| `sync_product_usage` | 0131_cloud_sync_directory.sql | `product`, `bytes`, `users`, `settings_bytes`, `record_bytes`, `file_bytes`, `revision_bytes`, `breakdown_json`, `computed_at` |
+| `sync_product_daily` | 0132_cloud_sync_daily.sql | `product`, `day`, `syncs`, `conflicts` |
 
 ## update
 

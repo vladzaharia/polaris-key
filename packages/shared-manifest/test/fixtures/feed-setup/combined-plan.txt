@@ -1,0 +1,258 @@
+{
+  "steps": [
+    {
+      "tool": "npm",
+      "onPath": [
+        "npm",
+        "pnpm"
+      ],
+      "file": ".npmrc",
+      "edit": {
+        "kind": "line",
+        "prefix": "@acme:registry=",
+        "line": "@acme:registry=https://pkg.plrs.im/npm/acme/"
+      },
+      "secret": false,
+      "ecosystem": "npm",
+      "owner": "acme"
+    },
+    {
+      "tool": "npm",
+      "onPath": [
+        "npm",
+        "pnpm"
+      ],
+      "file": ".npmrc",
+      "edit": {
+        "kind": "line",
+        "prefix": "//pkg.plrs.im/npm/acme/:_authToken=",
+        "line": "//pkg.plrs.im/npm/acme/:_authToken=pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "secret": true,
+      "ecosystem": "npm",
+      "owner": "acme"
+    },
+    {
+      "tool": "yarn",
+      "onPath": [
+        "yarn"
+      ],
+      "file": ".yarnrc.yml",
+      "edit": {
+        "kind": "yaml",
+        "path": [
+          "npmScopes",
+          "acme",
+          "npmRegistryServer"
+        ],
+        "value": "https://pkg.plrs.im/npm/acme/"
+      },
+      "secret": false,
+      "ecosystem": "npm",
+      "owner": "acme"
+    },
+    {
+      "tool": "yarn",
+      "onPath": [
+        "yarn"
+      ],
+      "file": ".yarnrc.yml",
+      "edit": {
+        "kind": "yaml",
+        "path": [
+          "npmScopes",
+          "acme",
+          "npmAuthToken"
+        ],
+        "value": "pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "secret": true,
+      "ecosystem": "npm",
+      "owner": "acme"
+    },
+    {
+      "tool": "yarn",
+      "onPath": [
+        "yarn"
+      ],
+      "file": ".yarnrc.yml",
+      "edit": {
+        "kind": "yaml",
+        "path": [
+          "npmScopes",
+          "acme",
+          "npmAlwaysAuth"
+        ],
+        "value": true
+      },
+      "secret": false,
+      "ecosystem": "npm",
+      "owner": "acme"
+    },
+    {
+      "tool": "bun",
+      "onPath": [
+        "bun"
+      ],
+      "file": ".bunfig.toml",
+      "edit": {
+        "kind": "toml",
+        "table": "install.scopes",
+        "key": "\"@acme\"",
+        "value": "{ url = \"https://pkg.plrs.im/npm/acme/\", token = \"pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\" }"
+      },
+      "secret": true,
+      "ecosystem": "npm",
+      "owner": "acme"
+    },
+    {
+      "tool": "netrc",
+      "onPath": [
+        "pip",
+        "pip3",
+        "uv",
+        "poetry",
+        "go"
+      ],
+      "file": ".netrc",
+      "edit": {
+        "kind": "netrc",
+        "machine": "pkg.plrs.im",
+        "login": "__token__",
+        "password": "pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "secret": true,
+      "ecosystem": "pypi",
+      "owner": "acme"
+    },
+    {
+      "tool": "gradle",
+      "onPath": [
+        "gradle"
+      ],
+      "file": ".gradle/gradle.properties",
+      "edit": {
+        "kind": "property",
+        "key": "acmeUsername",
+        "value": "__token__"
+      },
+      "secret": false,
+      "ecosystem": "maven",
+      "owner": "acme"
+    },
+    {
+      "tool": "gradle",
+      "onPath": [
+        "gradle"
+      ],
+      "file": ".gradle/gradle.properties",
+      "edit": {
+        "kind": "property",
+        "key": "acmePassword",
+        "value": "pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "secret": true,
+      "ecosystem": "maven",
+      "owner": "acme"
+    },
+    {
+      "tool": "cargo",
+      "onPath": [
+        "cargo"
+      ],
+      "file": ".cargo/config.toml",
+      "edit": {
+        "kind": "toml",
+        "table": "registries.acme",
+        "key": "index",
+        "value": "\"sparse+https://pkg.plrs.im/cargo/acme/\""
+      },
+      "secret": false,
+      "ecosystem": "cargo",
+      "owner": "acme"
+    },
+    {
+      "tool": "cargo",
+      "onPath": [
+        "cargo"
+      ],
+      "file": ".cargo/config.toml",
+      "edit": {
+        "kind": "toml",
+        "table": "registries.acme",
+        "key": "credential-provider",
+        "value": "\"cargo:token\""
+      },
+      "secret": false,
+      "ecosystem": "cargo",
+      "owner": "acme"
+    },
+    {
+      "tool": "swift",
+      "onPath": [
+        "swift"
+      ],
+      "exec": {
+        "argv": [
+          "swift",
+          "package-registry",
+          "login",
+          "https://pkg.plrs.im/swift/acme",
+          "--no-confirm"
+        ],
+        "tokenFile": {
+          "flag": "--token-file",
+          "content": "pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      },
+      "secret": true,
+      "ecosystem": "swift",
+      "owner": "acme"
+    },
+    {
+      "tool": "docker",
+      "onPath": [
+        "docker"
+      ],
+      "exec": {
+        "argv": [
+          "docker",
+          "login",
+          "pkg.plrs.im",
+          "-u",
+          "__token__",
+          "--password-stdin"
+        ],
+        "stdin": "pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+      },
+      "secret": true,
+      "ecosystem": "oci",
+      "owner": "acme"
+    },
+    {
+      "tool": "cargo",
+      "onPath": [
+        "cargo"
+      ],
+      "exec": {
+        "argv": [
+          "cargo",
+          "login",
+          "--registry",
+          "acme"
+        ],
+        "stdin": "pkeyp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n"
+      },
+      "secret": true,
+      "ecosystem": "cargo",
+      "owner": "acme"
+    }
+  ],
+  "skipped": [
+    {
+      "ecosystem": "godot",
+      "owner": "acme",
+      "reason": "needs an editor URL from Polaris Locker, under Packages"
+    }
+  ]
+}

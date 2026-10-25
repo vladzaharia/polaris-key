@@ -108,6 +108,20 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Corrections (2026-10-23)
+
+Found against the code by the slice plan (`_lead/plans/UK-08-UK-10-slices.md` §0). Where they disagree with text above, these win.
+
+- **C1. `:ui` is KMP in name only.** `commonMain` holds only the generated tokens and `PolarisAccent`. The 24 kit files (9.4k lines) are in `androidMain`, and `:sdk` arrives through `androidMain`. 12 files have Android-only touch points (zxing QR, `ClipData`, `LocalContext`/`Configuration`/`LocalView`, `Settings.Global`, `BitmapFactory`, `Resources`, `BackHandler`/`PredictiveBackHandler`, `viewModelScope`); the other 12 have none. No Material 3 Expressive API is used.
+- **C2. Desktop needs JetBrains coordinates.** `commonMain` now uses the Compose Multiplatform plugin's `compose.runtime/foundation/ui/material3` (1.8.2, Kotlin 2.1.21, AGP 8.6.1). `androidMain` keeps the androidx BOM (2026.06.01), so Android resolves the same versions as before (UK-10.1).
+- **C3. `:ui` needs an Android SDK.** It exists only with an Android SDK and without `-Ppkey.jvmOnly=true`; the `kotlin-desktop` CI matrix is jvmOnly and never builds it. Builders export `ANDROID_HOME=$HOME/Library/Android/sdk`.
+- **C4. The headless layer is done, on the JVM.** `:ui-core` runs every `ui-matrix.json` family.
+- **C5. The desktop tokens exist and nothing reads them.** `PolarisKitTokens.Windows`, `Gnome` and `MacOS` are generated in `commonMain`. The Mac sheet radius token is 18 while UI-KITS §1.4 says "about 24" (K4).
+- **C6. Update progress never reaches the kit on desktop.** `PolarisUpdateState.stages` reads only `ProgressiveInstallDriver.progress`; `DesktopInstallDriver` reports bytes through a constructor callback fed by `DesktopOptions.downloadProgress`.
+- **C7. Mockup and spec disagree.** `windows-update` draws the update as a ContentDialog over the app; §1.4's desktop model and the brand transition make update and settings real windows with OS chrome (K3).
+- **C8. Parity.** Kotlin's ten `ui.*` rows are `implemented` (UK-09) with the note "desktop via UK-10". UK-10 updates notes only.
+- **C9. Docs.** `build/ui/frameworks/compose.mdx` is SP-45b's interim page ("Compose Desktop planned"); UK-10 replaces it in place.
+
 ## Goal
 
 A Compose Desktop app gets the full kit with real desktop behaviour on all three OSes, at full parity with Android (owner, 2026-10-05).

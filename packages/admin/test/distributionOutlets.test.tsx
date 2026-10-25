@@ -74,6 +74,18 @@ describe("Distribution → Channel setup", () => {
     ).toBeTruthy();
   });
 
+  it("A-28.6: the drawer's Identity labels use the console's identifier names", async () => {
+    bootWith(`${HASH}?outlet=app-store`);
+    const drawer = await screen.findByRole("dialog", { name: "app-store" });
+    const terms = within(drawer)
+      .getAllByText(/./, { selector: "dt" })
+      .map((n) => n.textContent);
+    expect(terms).toContain("Apple ID");
+    expect(terms).toContain("Bundle ID");
+    expect(terms).not.toContain("AppleId");
+    expect(terms).not.toContain("BundleId");
+  });
+
   it("names a missing outlet instead of a blank drawer", async () => {
     bootWith(`${HASH}?outlet=nowhere`);
     expect(await screen.findByText("No channel nowhere")).toBeTruthy();

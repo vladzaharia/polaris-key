@@ -42,7 +42,7 @@ export const THEMES = ["dark", "light"] as const satisfies readonly Theme[];
 /**
  * Every section that carries an accent: `core` (the platform; not a service, and has no row in
  * tools/services.json) plus one entry per service slug in tools/services.json, in that table's
- * order. test/services.test.ts fails if the table gains a slug this list lacks.
+ * order. test/core/services.test.ts fails if the table gains a slug this list lacks.
  */
 export const SERVICE_IDS = [
   "core",

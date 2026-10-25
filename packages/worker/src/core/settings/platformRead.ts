@@ -36,9 +36,12 @@ export interface PlatformValues {
   "blobs.gc.graceDays": number;
   "licensing.reservedNames": ReservedNamesMode;
   "identity.reservedDisplayNames": ReservedDisplayNamesMode;
+  "identity.reservedDisplayTerms": readonly string[];
   "identity.keyEntryRefusals": "on" | "off";
   "assets.hosting.enabled": "on" | "off";
   "email.dailyCapDefault": number;
+  "cloudSync.quota.defaultBytes": number;
+  "cloudSync.writesPaused": "on" | "off";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;
@@ -105,6 +108,21 @@ export function productDefaultEntries(): SettingDef[] {
       d.storage.kind === "scalar" &&
       d.productLink !== undefined &&
       ["switch", "integer", "enum"].includes(d.value.kind),
+  );
+}
+
+/**
+ * The live operator-owned lists the page edits as rows (PX-W13c): `identity.reservedDisplayTerms`.
+ * Stored under the registry key itself, so no `[vars]` alias.
+ */
+export function listEntries(): SettingDef[] {
+  return PLATFORM_SLICE.filter(
+    (d) =>
+      !d.pending &&
+      d.ownership === "operator" &&
+      d.storage.kind === "scalar" &&
+      d.storage.storedAs === undefined &&
+      d.value.kind === "list",
   );
 }
 

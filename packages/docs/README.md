@@ -42,7 +42,7 @@ test/snippets/          snippet compile lane: covered.ts, extract.ts, lanes.ts, 
 - Moving a page is a row in `site-map.json`, then `node scripts/site-map.mjs apply`. The console's help-link tables follow in the same change (`../admin/src/console/nav.ts`, `../admin/src/lib/docsLinks.ts`).
 - Lint debt: `pnpm --filter @polaris-key/docs lint:docs` fails on a hit `lint-debt.json` does not hold and on an entry nothing hits. Clear a page's entries in the change that rewrites it. `tsx scripts/lint-docs.ts --update` rewrites the file.
 - Snippets: a `ts`, `tsx`, `js` or `python` fence on a page listed in `test/snippets/covered.ts` compiles in its SDK lane against the built packages; the Python lane needs `sdks/python/.venv`. Other pages are held to `test/snippets/advisory-baseline.json`, which only shrinks. Conventions are in `test/snippets/extract.ts`.
-- Page rules (frontmatter, quoting, MDX braces, link form, page types): follow the writing page and the AGENTS.md docs conventions, not a copy here.
+- Page rules (frontmatter, quoting, MDX braces, link form, page types): follow the writing page and [AGENTS.md](AGENTS.md), not a copy here.
 
 ## Work on it
 
@@ -68,11 +68,13 @@ Generator families that read or write files here (a family regenerates with `pnp
 | ---------------- | ---------------- | -------------------------------------- |
 | `services`       | writes           | `pnpm gen services`                    |
 | `channels`       | writes           | `pnpm gen channels`                    |
+| `roles-matrix`   | writes           | `pnpm gen roles-matrix`                |
+| `skills`         | reads            | `pnpm gen skills`                      |
 | `constants`      | reads            | `pnpm gen constants`                   |
 | `settings`       | writes           | `pnpm gen settings`                    |
 | `cli-reference`  | writes           | `pnpm gen cli-reference`               |
 | `docs-reference` | reads and writes | `pnpm gen docs-reference`              |
-| `registry-docs`  | writes           | `pnpm gen registry-docs`               |
+| `registry-docs`  | reads and writes | `pnpm gen registry-docs`               |
 | `readme-work`    | reads and writes | `pnpm gen readme-work`                 |
 | `parity`         | reads            | `pnpm gen parity`                      |
 | `docs-csp`       | reads            | `pnpm gen docs-csp` (named run only)   |
@@ -83,7 +85,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 ## Rules here
 
 - Terminology comes from the concepts page (`src/content/docs/start/concepts.md`); `lint:docs` enforces the mechanical writing rules. See [AGENTS.md](../../AGENTS.md).
-- The docs site is tiered: `test/doors.test.ts` pins every content directory to a door and a tier; `../worker/test/docsGate.test.ts` pins the Worker's gate to the same table. See [AGENTS.md](../../AGENTS.md).
+- The docs site is tiered: `test/doors.test.ts` pins every content directory to a door and a tier; `../worker/test/surfaces/docsGate.test.ts` pins the Worker's gate to the same table. See [AGENTS.md](../../AGENTS.md).
 - Generated pages are never hand-edited: `test/generated.test.ts` byte-compares each emitter's output with the committed page, and `pnpm gen --check` covers the docs reference family. See [AGENTS.md](../../AGENTS.md).
 - Code blocks are compiled: `test/snippets/snippets.test.ts` holds covered pages to their SDK lane. See [AGENTS.md](../../AGENTS.md).
 - Console help links live in two tables gated against `dist/docs-slugs.json`: `../worker/test/docsLinks.test.ts`. See [AGENTS.md](../../AGENTS.md).

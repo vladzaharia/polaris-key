@@ -51,9 +51,9 @@ if (!client.isLicensed()) {
 }
 
 // Layered config: enforced|hidden > local > env > remote-default > fallback.
-const concurrency = client.config.getConfig<number>("run.concurrency", 3);
+const concurrency = client.config.get<number>("run.concurrency", 3);
 const vpnUrl = client.config.getSecret("proxy.subscriptionUrl");
-const hasVpn = client.license.isEntitled("polarisVpn");
+const hasVpn = client.entitlements.has("polarisVpn");
 
 // One Core pass: trust refresh -> enabled documents in parallel -> verify -> cache -> report.
 await client.sync();
@@ -86,7 +86,7 @@ what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
 | Need                   | Call                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Activation refusals    | `activateWithKey` / `enroll` answer a typed `ActivationResult`; every kind carries the server's `code`, an unknown 4xx is `refused{code}` and never `device-limit`. `copy.message(code)` (`core.copy`) is the sentence to show.                                                                                                                 |
-| Entitlements           | `license.isEntitled(name)` is false whenever the gate is not usable (revoked, expired past grace); `entitlementValue(name)`, `licenseInfo()`.                                                                                                                                                                                                   |
+| Entitlements           | `entitlements.has(name)` is false whenever the gate is not usable (revoked, expired past grace); `entitlements.value(name)`, `entitlements.all()`, `license.licenseInfo()`.                                                                                                                                                                     |
 | Local settings         | `config.set(key, value)` / `config.clear(key)` persist an override in the state directory (refused for operator-locked keys); `config.setting(key)` is one key's handle; `onConfigChange(key \| "*")`.                                                                                                                                          |
 | Sign-in                | `identity.signInWithBrowser()` opens the device-code page in the system browser; `waitForSignIn(prompt, { confirm })` is the retired attach opt-in (`attachable` is always false); a Deny on the approval page ends as `{ status: "error", code: "sign-in-denied" }`; `identity.current()`, `identity.signOut()`; `qr.terminal()` / `qr.svg()`. |
 | Store purchases        | `client.commerce`: `binding()`, `claim(store, payload)`, `claimSteam(ticketHex, dlcAppId)`, `claimAppStore(jws)`, `claimPlay(productId, token)`. The host passes what its store gave it.                                                                                                                                                        |
@@ -142,7 +142,7 @@ const client = await PolarisKeyClient.create({
   store: new SafeStorageStore("djdl", app.getPath("userData"), { safeStorage }),
 });
 // Without `allowSender` the bridge answers the top frame of the app's own origin only
-// (set `appOrigin` when the window loads a remote https page). release.fetch writes only under
+// (set `appOrigin` for a remote https page; a custom scheme is pinned by scheme and host, `file:` is refused). release.fetch writes only under
 // this host-owned directory; renderers pass a relative filename, never an absolute path.
 exposePolarisBridge(client, {
   ipcMain,
@@ -163,25 +163,27 @@ refuses absolute or escaping destinations. `SafeStorageStore` encrypts the token
 secret store or on Linux's `basic_text`, and `keyring-error` when the stored token no longer
 decrypts.
 
+The window gets the kit as well: with `@polaris-key/react`, `<PolarisKeyGate theme={{ platform: "auto" }}>` draws the macOS, Windows or GNOME chrome of the host OS. `exposePolarisBridge` returns a handle: `bridge.menuItems()` gives the "Check for updates" and "Manage license" menu items, and `notifications` turns on OS notifications while the app is unfocused. The menu, notifications, update progress, sender rules and the Forge sample (`examples/ui/electron/`) are on [Electron](https://key.plrs.im/docs/build/ui/frameworks/electron/).
+
 ## Shape
 
-| Surface               | Subpath                          | What it owns                                                                                                                |
-| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `client.core`         | `@polaris-key/node/core`         | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                   |
-| `client.license`      | `@polaris-key/node/license`      | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                        |
-| `client.config`       | `@polaris-key/node/config`       | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint)    |
-| `client.devices`      | `@polaris-key/node/devices`      | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas         |
-| `client.identity`     | `@polaris-key/node/identity`     | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                             |
-| `client.release`      | `@polaris-key/node/release`      | `changelog` / `installUrl` / `downloadUrl`                                                                                  |
-| `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)              |
-| `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe |
-| —                     | `@polaris-key/node/local`        | The transportless profile: every network-requiring call refuses                                                             |
-| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + the commander adapter, `requireLicense`                                                       |
-| —                     | `@polaris-key/node/cli/yargs`    | The yargs adapter (`polarisCommands`)                                                                                       |
-| `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                          |
-| `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                            |
-| —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                        |
-| —                     | `@polaris-key/node/server`       | `crashTagsFor` (`verifyLicenseDocument` moved to `@polaris-key/server`)                                                     |
+| Surface               | Subpath                          | What it owns                                                                                                                    |
+| --------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `client.core`         | `@polaris-key/node/core`         | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                       |
+| `client.license`      | `@polaris-key/node/license`      | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                            |
+| `client.config`       | `@polaris-key/node/config`       | `get` / `clearAll` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint) |
+| `client.devices`      | `@polaris-key/node/devices`      | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas             |
+| `client.identity`     | `@polaris-key/node/identity`     | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                                 |
+| `client.release`      | `@polaris-key/node/release`      | `changelog` / `installUrl` / `downloadUrl`                                                                                      |
+| `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)                  |
+| `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe     |
+| —                     | `@polaris-key/node/local`        | The transportless profile: every network-requiring call refuses                                                                 |
+| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + the commander adapter, `requireLicense`                                                           |
+| —                     | `@polaris-key/node/cli/yargs`    | The yargs adapter (`polarisCommands`)                                                                                           |
+| `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                              |
+| `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                                |
+| —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                            |
+| —                     | `@polaris-key/node/server`       | `crashTagsFor` (`verifyLicenseDocument` moved to `@polaris-key/server`)                                                         |
 
 `client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
 or `["stable"]` when the license carries none — the Worker's own answer, and every SDK's for the
@@ -347,10 +349,10 @@ needs a browser session) and lands on the hard 401.
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation or enrolment returns `{ kind: "device-limit", limit, deviceCount, manageUrl? }`.
-`manageUrl` is the Polaris Locker link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+`manageUrl` is the Polaris Locker link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while
 Polaris Locker is on for the product and already validated. It is never an auth failure: nothing is wiped,
 and the app offers it behind a user action.
 
@@ -363,7 +365,7 @@ if (r.kind === "device-limit" && r.manageUrl) {
     withManageKey(r.manageUrl, userEnteredKey),
     "myapp://activated",
   );
-  console.log(`Every seat is taken. Free one up at ${link}`);
+  console.log(`Device limit reached. Make room at ${link}`);
 }
 ```
 
@@ -440,7 +442,7 @@ enforced | hidden (remote)  >  local override  >  environment  >  remote default
 
 - **`enforced` / `hidden`** are **locked to the server** — `localOverrides` and env vars are
   ignored for those keys. `hidden` additionally withholds the key from `listUserConfig()` (but
-  `getConfig` still applies it).
+  `get` still applies it).
 - A **`default`** (or absent) key can be overridden locally, then by an env var, then falls back
   to the remote value, then to the caller's `fallback`.
 
@@ -776,7 +778,7 @@ kit and sign-in), `node-electron` (main, preload and the React kit over the brid
 `ui/terminal-node` (`tidewater`, the terminal kit's sample, on fixtures or `--live`).
 
 - **Device limit reached.** `activateWithKey` answers `device-limit` with `limit` and
-  `deviceCount`. The new device holds no credential, so a seat is freed from Polaris Locker
+  `deviceCount`. The new device holds no credential, so room is made from Polaris Locker
   or from a device that holds one (`client.deauthorizeDevice(id)`, `devices deauthorize <id>`),
   then the key is entered again.
 - **Attestation-gated products.** A product whose device-trust policy requires platform

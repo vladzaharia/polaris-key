@@ -55,8 +55,9 @@ class DeviceLimitStepTest {
     @Test
     fun theStepNamesTheCountsAndDrawsTheNeutralMeter() {
         show(ActivationResult.DeviceLimit(3, 3, SAMPLE_MANAGE_URL))
-        rule.onNodeWithText("Replace a device").assertIsDisplayed()
+        // Android (the board): the count is the title, so "Replace a device" is not repeated above it.
         rule.onNodeWithText("Your license is on 3 of 3 devices").assertIsDisplayed()
+        rule.onNodeWithText("Replace a device").assertDoesNotExist()
         rule.onNodeWithText(copy.format(copy.deviceLimitBrowser, "Diceroll")).assertIsDisplayed()
         rule.onNodeWithText("3 of 3 in use").assertIsDisplayed()
         // The meter is one labelled image.

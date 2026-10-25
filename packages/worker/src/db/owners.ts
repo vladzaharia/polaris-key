@@ -42,7 +42,6 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "ci_publishers",
     "ci_tokens",
     "ci_upload_tickets",
-    "lazy_delta_settings",
     "delta_demand_devices",
     "delta_demand",
     "platform_deploys",
@@ -63,7 +62,6 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "platform_heartbeats",
     "store_operations",
     "email_suppressions",
-    "email_product_caps",
     // LX-08 (plans/LX-01.md §6.1): the licensing model. Written only through
     // src/core/licensing/grants.ts (grants, grant_entitlements) and Core (the rest).
     "grants",
@@ -71,8 +69,10 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "device_store_identities",
     "holder_versions",
     "entitlement_events",
-    // ST-28 (plans/ST-28.md §10): operator-owned console role bindings; the migration is ST-31's.
+    // ST-28 (plans/ST-28.md §10): operator-owned console role bindings (migration 0129_a, ST-31); store: core/rbac/bindings.ts.
     "console_role_bindings",
+    // U-27's backfill ledger (no values, `entry_sha256` only); dropped in U-27b.
+    "provisioned_secret_moves",
   ],
   license: [
     "licenses",
@@ -81,6 +81,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "license_profiles",
     "license_store_grants",
     "license_batches",
+    // LX-33's P0-49 job ledger; dropped after release N+1.
+    "license_limit_backfill",
   ],
   config: [
     "product_schema",
@@ -134,12 +136,14 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_readiness",
     "dist_registry_owners",
     "dist_registry_feeds",
+    "dist_registry_access_moves",
     "dist_registry_policy",
     "dist_listings",
     "dist_listing_locales",
     "dist_listing_assets",
     "dist_listing_release_notes",
     "dist_listing_overrides",
+    "dist_listing_truth_moves",
     "store_edit_leases",
   ],
   // CM-29: Commerce's store-product map, purchases and holder bindings (names unchanged, no migration).
@@ -153,6 +157,9 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_holder_bindings",
     "dist_binding_aliases",
   ],
+  // U-05.3: the Cloud Sync directory (one row per product x subject), its 15-minute per-product
+  // aggregate and the daily activity counters. The per-person data lives in the Durable Object.
+  sync: ["sync_directory", "sync_product_usage", "sync_product_daily"],
   update: ["update_feed_state", "update_feed_ceiling", "update_feed_docs"],
   identity: [
     "oidc_config",
@@ -200,3 +207,15 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "portal_audit",
   ],
 };
+
+/**
+ * The four pre-I-05 portal contract tables: no reader or writer in `src/` since I-28; I-28b drops
+ * them (and the `TABLE_OWNERS` rows above, with this list). Their owner rows stay while the tables
+ * exist, so the completeness tests treat these as covered.
+ */
+export const RETIRED_TABLES: readonly string[] = [
+  "portal_accounts",
+  "portal_account_emails",
+  "portal_account_identities",
+  "portal_license_links",
+];

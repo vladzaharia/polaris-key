@@ -1,10 +1,11 @@
 import * as React from "react";
-import { AlertCircle, ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronRight, RefreshCw } from "lucide-react";
 import type {
   UserSettingConflict,
   UserSettingPolicy,
 } from "@polaris-key/catalog";
 import { Checkbox } from "../../../../ui/Checkbox.js";
+import { Switch } from "../../../../ui/Switch.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { Select } from "../../../../ui/Select.js";
@@ -90,103 +91,117 @@ export function UserSettingFields({
   const allowed = conflictOptionsFor(type);
   // A policy the type does not allow stays on offer, so the refusal below it can be read and fixed.
   const offered = allowed.includes(conflict) ? allowed : [...allowed, conflict];
-  return (
-    <div className="space-y-4">
-      {locked ? (
-        <p className="text-sm text-fg-muted">
-          Locked keys never sync: people cannot change them.
-        </p>
-      ) : (
-        <>
-          <Checkbox
-            label="Syncs across devices"
-            description="With Cloud Sync on, a person's choice follows them to every device they sign in on. Off: it stays on the device."
-            checked={syncs}
-            onCheckedChange={(on) => {
-              if (on) {
-                const { sync: _local, ...rest } = u;
-                onChange(compact(rest));
-              } else {
-                onChange({
-                  sync: "local",
-                  ...(u.listed === false ? { listed: false } : {}),
-                });
-              }
-            }}
-          />
-          {syncs ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                name="user-sync"
-                label="Syncs"
-                value={u.sync ?? "user"}
-              >
-                {(f) => (
-                  <Select
-                    {...f}
-                    value={u.sync ?? "user"}
-                    options={USER_SCOPE_OPTIONS}
-                    onChange={(v) =>
-                      onChange(
-                        compact(
-                          withField(
-                            u,
-                            "sync",
-                            v === "platform" ? "platform" : undefined,
-                          ),
-                        ),
-                      )
-                    }
-                  />
-                )}
-              </FormField>
-              {offered.length === 1 ? (
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-fg-strong">
-                    When two devices disagree
-                  </p>
-                  <p className="text-sm">{USER_CONFLICT_LABELS.lastWrite}</p>
-                </div>
-              ) : (
-                <FormField
-                  name="user-conflict"
-                  label="When two devices disagree"
-                  value={conflict}
-                >
-                  {(f) => (
-                    <Select
-                      {...f}
-                      value={conflict}
-                      options={offered.map((value) => ({
-                        value,
-                        label: USER_CONFLICT_LABELS[value],
-                      }))}
-                      onChange={(v) =>
-                        onChange(
-                          compact(
-                            withField(
-                              u,
-                              "conflict",
-                              v === "lastWrite" ? undefined : v,
-                            ),
-                          ),
-                        )
-                      }
-                    />
-                  )}
-                </FormField>
-              )}
-            </div>
-          ) : null}
-        </>
-      )}
+  const tail = (
+    <>
       {note ? <p className="text-xs text-fg-muted">{note}</p> : null}
       {error ? (
         <p role="alert" className="text-xs text-danger">
           {error}
         </p>
       ) : null}
-    </div>
+    </>
+  );
+  if (locked)
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-fg-muted">
+          Locked keys never sync: people cannot change them.
+        </p>
+        {tail}
+      </div>
+    );
+  return (
+    <section
+      aria-label="Cloud Sync"
+      data-service="sync"
+      className="space-y-4 rounded-lg border border-border bg-surface-sunken p-4"
+    >
+      <Switch
+        label={
+          <span className="inline-flex items-center gap-2">
+            <RefreshCw aria-hidden className="size-4 text-accent-fg" />
+            Syncs with Cloud Sync
+          </span>
+        }
+        checked={syncs}
+        onCheckedChange={(on) => {
+          if (on) {
+            const { sync: _local, ...rest } = u;
+            onChange(compact(rest));
+          } else {
+            onChange({
+              sync: "local",
+              ...(u.listed === false ? { listed: false } : {}),
+            });
+          }
+        }}
+      />
+      {syncs ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            name="user-sync"
+            label="Where it syncs"
+            value={u.sync ?? "user"}
+          >
+            {(f) => (
+              <Select
+                {...f}
+                value={u.sync ?? "user"}
+                options={USER_SCOPE_OPTIONS}
+                onChange={(v) =>
+                  onChange(
+                    compact(
+                      withField(
+                        u,
+                        "sync",
+                        v === "platform" ? "platform" : undefined,
+                      ),
+                    ),
+                  )
+                }
+              />
+            )}
+          </FormField>
+          {offered.length === 1 ? (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-fg-strong">
+                When two devices disagree
+              </p>
+              <p className="text-sm">{USER_CONFLICT_LABELS.lastWrite}</p>
+            </div>
+          ) : (
+            <FormField
+              name="user-conflict"
+              label="When two devices disagree"
+              value={conflict}
+            >
+              {(f) => (
+                <Select
+                  {...f}
+                  value={conflict}
+                  options={offered.map((value) => ({
+                    value,
+                    label: USER_CONFLICT_LABELS[value],
+                  }))}
+                  onChange={(v) =>
+                    onChange(
+                      compact(
+                        withField(
+                          u,
+                          "conflict",
+                          v === "lastWrite" ? undefined : v,
+                        ),
+                      ),
+                    )
+                  }
+                />
+              )}
+            </FormField>
+          )}
+        </div>
+      ) : null}
+      {tail}
+    </section>
   );
 }
 

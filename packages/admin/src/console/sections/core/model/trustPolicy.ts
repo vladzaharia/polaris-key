@@ -12,19 +12,32 @@ export const TRUST_OPERATIONS = [
   { id: "mint", label: "Device license and config" },
   { id: "gatedDelivery", label: "Gated downloads" },
   { id: "commerceClaim", label: "Store purchase claims" },
+  { id: "cloudSyncWrite", label: "Cloud Sync writes" },
 ] as const;
+
+/** Shown only while Cloud Sync is on (U-05 L11). */
+export const SYNC_OPERATION = "cloudSyncWrite";
 
 export const DEFAULT_POLICY: TrustPolicyDto = {
   mint: "basic",
   gatedDelivery: "basic",
   commerceClaim: "basic",
+  cloudSyncWrite: "basic",
   enforce: false,
   appAttest: null,
   playIntegrity: null,
 };
 
 export function isDefaultPolicy(p: TrustPolicyDto): boolean {
-  return JSON.stringify(p) === JSON.stringify(DEFAULT_POLICY);
+  return samePolicy(p, DEFAULT_POLICY);
+}
+
+/** An operation's level. */
+export function level(
+  p: TrustPolicyDto,
+  id: (typeof TRUST_OPERATIONS)[number]["id"],
+): TrustLevelDto {
+  return p[id];
 }
 
 export function samePolicy(a: TrustPolicyDto, b: TrustPolicyDto): boolean {
@@ -36,6 +49,7 @@ function normalise(p: TrustPolicyDto): TrustPolicyDto {
     mint: p.mint,
     gatedDelivery: p.gatedDelivery,
     commerceClaim: p.commerceClaim,
+    cloudSyncWrite: p.cloudSyncWrite,
     enforce: p.enforce,
     appAttest: p.appAttest
       ? { teamId: p.appAttest.teamId, environment: p.appAttest.environment }
@@ -56,7 +70,10 @@ export function relaxesTrustPolicy(
   after: TrustPolicyDto,
 ): boolean {
   for (const op of TRUST_OPERATIONS)
-    if (before[op.id] === "attested" && after[op.id] !== "attested")
+    if (
+      level(before, op.id) === "attested" &&
+      level(after, op.id) !== "attested"
+    )
       return true;
   if (before.enforce && !after.enforce) return true;
   const a = before.appAttest;
@@ -92,9 +109,9 @@ export function changeLines(
 ): string[] {
   const out: string[] = [];
   for (const op of TRUST_OPERATIONS)
-    if (before[op.id] !== after[op.id])
+    if (level(before, op.id) !== level(after, op.id))
       out.push(
-        `${op.label} now accepts ${LEVEL[after[op.id]]} (was ${LEVEL[before[op.id]]}).`,
+        `${op.label} now accepts ${LEVEL[level(after, op.id)]} (was ${LEVEL[level(before, op.id)]}).`,
       );
   if (before.enforce !== after.enforce)
     out.push(

@@ -2,7 +2,7 @@
  * The Superadmin's roster of people's personal tokens (F-33): `/manage/api/account-tokens[/<id>]`.
  *
  *   GET    /account-tokens        every account's `pkeyp_` tokens: label, last four, scope, times,
- *                                 status and whose they are (the account's email, never its id). Never a token or a hash.
+ *                                 status and whose they are (the account's email to a Superadmin only, else `null`; never its id). Never a token or a hash.
  *   DELETE /account-tokens/<id>   revoke one (reason `admin`).
  *
  * Platform rows (`./routes.ts`, area `platform`), reachable only by a SESSION: the rows name no
@@ -19,12 +19,23 @@ import {
   listAllAccountTokens,
   revokeAccountTokenAsAdmin,
 } from "../../core/accounts/personalTokens.js";
+import { isSuperadmin } from "../../core/rbac/can.js";
 import { forgetRegistryTokens } from "../../core/registry/registryTokens.js";
 import type { AdminCtx } from "../routes.js";
 
+/**
+ * The holder's address goes to a Superadmin only. Most holders are product customers, not console
+ * members, and a Platform admin has no consent to see them (as on the product Users page). The
+ * label, last four characters and times still identify a token, and revoking is by token id.
+ */
+function redact<T extends { email: string | null }>(c: AdminCtx, t: T): T {
+  return isSuperadmin(c.session.principal) ? t : { ...t, email: null };
+}
+
 /** `GET /account-tokens`. */
 export async function handleAccountTokenList(c: AdminCtx): Promise<Response> {
-  return adminJson({ tokens: await listAllAccountTokens(c.db, c.now) });
+  const tokens = await listAllAccountTokens(c.db, c.now);
+  return adminJson({ tokens: tokens.map((t) => redact(c, t)) });
 }
 
 /** `DELETE /account-tokens/<id>`. */
@@ -46,5 +57,5 @@ export async function handleAccountTokenRevoke(c: AdminCtx): Promise<Response> {
       { kind: "account_token", id },
       `Revoked personal token “${view.label}” (…${view.hint})`,
     );
-  return adminJson({ ok: true, token: view });
+  return adminJson({ ok: true, token: redact(c, view) });
 }

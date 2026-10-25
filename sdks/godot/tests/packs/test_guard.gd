@@ -19,7 +19,7 @@ const U := preload("res://tests/updater/support.gd")
 ## with `content` as the build's stamp.
 func _launch(sup: PKeyUpdaterTestSupport, inst: Dictionary, version: String, content: Dictionary, tr: PKeyPackTransport) -> Node:
 	var tweak := func(o: PKeyOptions) -> void:
-		o.pinned_trust_keys = F.product_trust()
+		o.pinned_keys = F.product_trust()
 		o.pinned_release_keys = F.release_keys()
 		o.expected_services = PackedStringArray(["release", "distribution"])
 	var sdk: Node = await sup.launch(inst, version, tweak)

@@ -60,14 +60,21 @@ public data class PolarisSettingsFailure(val code: String, val detail: String? =
 
 /**
  * The release channel choice (UI-KITS ChannelPicker): [current] among [options], or fixed by the
- * outlet [lockedBy] (its id or kind, as `channelChoices()` reports it). Locked always names why.
+ * outlet [lockedBy] (its id or kind, as `channelChoices()` reports it), or fixed by the license
+ * ([lockedByLicense]: the license or tier forbids switching and no store fixes the channel). Locked
+ * always names why. [labels] are the catalog's display names by channel id.
  */
 public data class PolarisChannelUi(
     val current: String,
     val options: List<String>,
     val lockedBy: String? = null,
+    val lockedByLicense: Boolean = false,
+    val labels: Map<String, String> = emptyMap(),
 ) {
-    public val locked: Boolean get() = lockedBy != null
+    /** The outlet that fixes the channel, or null: an unknown outlet names no store, so it locks nothing. */
+    public val lockingOutlet: String? get() = lockedBy?.takeIf { it != im.plrs.key.core.OUTLET_UNKNOWN }
+
+    public val locked: Boolean get() = lockingOutlet != null || lockedByLicense
 
     /** A picker with nothing to pick and nothing fixing it has no reason to draw. */
     public val drawn: Boolean get() = locked || options.distinct().size > 1
@@ -171,8 +178,8 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
 
         override suspend fun license(): PolarisLicenseSummary {
             val state: LicenseState = client.status()
-            val profile = client.license.profile()
-            val granted = client.license.entitlements().filter { (_, v) -> !(v is JsonPrimitive && v.booleanOrNull == false) }.keys.sorted()
+            val profile = client.license.getProfile()
+            val granted = client.entitlements.all().filter { (_, v) -> !(v is JsonPrimitive && v.booleanOrNull == false) }.keys.sorted()
             return PolarisLicenseSummary(state.status, profile?.name?.takeIf { it.isNotBlank() }, granted)
         }
 
@@ -180,7 +187,7 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
             val catalog = if (editable) client.config.catalog ?: client.config.fetchCatalog() else client.config.catalog
             return client.config.listUserConfig().map { entry ->
                 val item = catalog?.entry(entry.key)
-                val source = if (entry.enforced) ConfigSource.enforced else client.config.configSource(entry.key)
+                val source = if (entry.enforced) ConfigSource.enforced else client.config.getConfigSource(entry.key)
                 PolarisSettingEntry(
                     key = entry.key,
                     label = labels[entry.key] ?: item?.label ?: entry.key,

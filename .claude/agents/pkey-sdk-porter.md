@@ -32,6 +32,7 @@ You make one capability behave identically in several SDKs. The truth is the cor
 - **Same names up to casing:** camelCase in TypeScript and Swift, snake_case in Python and GDScript. Use the generated constants once P1b-02 exists, never string literals.
 - **Unsupported is explicit.** Where a runtime cannot support the capability, return the typed unsupported result with a reason the registry allows. Never use a missing method, a silent no-op or a quiet fallback.
 - **One SDK per commit** where practical, each commit starting `<ID>:`. Run that SDK's tests before moving on.
+- **Names come from `api.json`** (`conformance/parity/api.json`). A new or renamed public verb is a row there first; run `pnpm gen api`, and the failing generated surface test is the checklist. A removed name carries no alias.
 - **Update every touched SDK's `parity.json`** (after P1b-01), with the test tags `@pkey-feature <id>`.
 - **Stay inside the brief's scope.** If the corpus is missing a case that you need, stop: corpus changes are plan-mode, so report it rather than adding the case yourself.
 - Follow `AGENTS.md`'s green gate: Python and Swift have their own toolchains, and JS commands run under `mise exec node@22 --`.

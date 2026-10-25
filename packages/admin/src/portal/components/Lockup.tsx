@@ -10,7 +10,7 @@ import { useTheme } from "../../components/theme.js";
  * Decorative here: the link around it carries the name.
  */
 export function Lockup({
-  height = 40,
+  height = 33,
   className,
 }: {
   height?: number;
@@ -45,15 +45,15 @@ export function HeaderBrand({
   container?: boolean;
 } = {}): React.ReactElement {
   const { theme } = useTheme();
-  // Container mode: the 36 px lockup only while the header is under `desk` and wide enough for it.
+  // Container mode: the 33 px lockup only while the header is under `desk` and wide enough for it.
   // The two conditions are one rule, so no later rule can show it beside the desktop lockup.
   const phoneLockup = container
     ? "hidden max-desk:@min-[24rem]:block"
     : "hidden min-[24rem]:block desk:hidden";
   return (
     <>
-      <Lockup height={36} className={phoneLockup} />
-      <Lockup height={40} className="hidden desk:block" />
+      <Lockup height={33} className={phoneLockup} />
+      <Lockup height={33} className="hidden desk:block" />
       <PolarisMark
         kind="locker"
         size={32}
@@ -66,7 +66,7 @@ export function HeaderBrand({
 }
 
 /**
- * The sign-in card's brand row (SIGN-IN.md §3.1): 36 px on a phone, where a 48 px lockup sat 4 px
+ * The sign-in card's brand row (SIGN-IN.md §3.1; a card's lockup, not a header's 33 px): 36 px on a phone, where a 48 px lockup sat 4 px
  * from the card's top edge (B-066; BRAND.md sets 36), 48 px from `sm`. The size never changes
  * between steps.
  */

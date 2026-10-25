@@ -51,6 +51,7 @@ const ME: Me = {
 
 const PRODUCT: ProductDetail = {
   slug: "djdl",
+  manifestAuthoritative: { value: false, locked: false },
   name: "DJDL",
   signingKid: "djdl-a",
   jwksUrl: "/djdl/.well-known/jwks.json",

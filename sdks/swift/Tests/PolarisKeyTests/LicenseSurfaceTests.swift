@@ -83,25 +83,25 @@ final class LicenseSurfaceTests: XCTestCase {
                 pinnedKeys: signer.trust, trustRefresh: false, store: store,
                 transport: ExplodingTransport(), expectedServices: [.license]))
 
-        let entitlements = await c.license.entitlements()
+        let entitlements = await c.entitlements.all()
         XCTAssertEqual(entitlements["pro"], .bool(true))
         XCTAssertEqual(entitlements["seats"], .int(3))
-        let pro = await c.license.isEntitled("pro")
+        let pro = await c.entitlements.has("pro")
         XCTAssertTrue(pro)
-        let absent = await c.license.isEntitled("enterprise")
+        let absent = await c.entitlements.has("enterprise")
         XCTAssertFalse(absent)
-        let profile = await c.license.profile()
+        let profile = await c.license.getProfile()
         XCTAssertEqual(profile?.email, "a@e.com")
-        let licenseId = await c.license.licenseId()
+        let licenseId = await c.license.getLicenseId()
         XCTAssertEqual(licenseId, "lic_surface")
 
         let empty = try await PolarisKeyClient.createLocal(
             options: PolarisKeyClientOptions(
                 productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
                 pinnedKeys: [:], store: InMemoryStore(deviceId: "dev")))
-        let none = await empty.license.entitlements()
+        let none = await empty.entitlements.all()
         XCTAssertTrue(none.isEmpty)
-        let noId = await empty.license.licenseId()
+        let noId = await empty.license.getLicenseId()
         XCTAssertNil(noId)
     }
 

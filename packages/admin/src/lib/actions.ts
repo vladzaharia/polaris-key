@@ -58,6 +58,8 @@ export const ACTION_LEVELS = {
   // PS-06: how Polaris Key lists the product, and which ways to add count (S-18 registry: L1).
   "storefront.listing": 1,
   "storefront.waysToAdd": 1,
+  // A-28: drops a store's typed app so the assigned one applies; typing it again undoes it.
+  "commerce.useAssigned": 1,
   "signing.prepare": 1,
   "signing.activate": 1,
   "license.disable": 1,
@@ -116,13 +118,6 @@ export const ACTION_LEVELS = {
   "storeApp.release": 1,
   // Users (I-12): an undo puts a licence back on the subject it was relinked from.
   "user.undoRelink": 1,
-  // The licence override migration (U-03). Flagging a prerequisite asserts a fact about
-  // production only the owner can; the notice starts the 30-day clock and can be withdrawn
-  // until the run.
-  "overrideMigration.flagPrerequisite": 1,
-  "overrideMigration.unflagPrerequisite": 1,
-  "overrideMigration.startNotice": 1,
-  "overrideMigration.withdrawNotice": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,
@@ -160,6 +155,8 @@ export const ACTION_LEVELS = {
   "signing.breakGlassActivate": 3,
   "kek.reseal": 3,
   "portalAccount.delete": 3,
+  // F-33b.4 (UX review): every token of a product at once, CI installs included; the slug is typed.
+  "registryToken.revokeAll": 3,
   // PS-06 (notes/S-21 owner decision 5): showing a product to everyone signed in is the one
   // deliberate exception to "only what you can obtain", behind a typed confirmation (the slug).
   "storefront.audienceEveryone": 3,
@@ -169,9 +166,6 @@ export const ACTION_LEVELS = {
   // Owner request (2026-10-05): deleting a licence removes it, its keys and its devices for good;
   // typed `delete <id>` (a bulk deletion types `delete <n> licenses`). The Worker compares.
   "license.delete": 3,
-  // U-03: the licence override migration's run, platform-wide and one-way: unowned licences'
-  // config and secret overrides are dropped. Typed `migrate`, after a fresh sign-in.
-  "overrideMigration.run": 3,
   // LX-30 (S-24 D20, R7): Reassign and Make floating are I-12's relink tool on the licence record
   // (step-up, reason, notices, 72-hour undo) and typed with the licence's name, else its id; the
   // Worker compares. Disable unused keys contains a leaked batch, typed with the batch label.
@@ -206,7 +200,7 @@ export const ACTION_LEVELS = {
   "feed.rebuild": 0,
   "feed.disable": 1,
   "feed.bootstrap": 1,
-  "packageFeeds.disable": 1,
+  "packageFeeds.disable": 3,
   "package.unyank": 1,
   "package.deprecate": 1,
   "package.undeprecate": 1,
@@ -215,10 +209,15 @@ export const ACTION_LEVELS = {
   // F-21: leaving `public` refuses every anonymous client within 30 seconds and can be undone
   // (L1); a registry token revocation cannot be undone, and revoking all is broad (both L2).
   "feed.tighten": 1,
+  // F-34: moving Licensed to Public opens the feed to everyone; it can be undone (L1).
+  "feed.widen": 1,
   "registryToken.revoke": 2,
-  "registryToken.revokeAll": 2,
   // The admin API tokens (`pkeya_…`): a revoked token cannot be restored, only replaced.
   "apiToken.revoke": 2,
+  // A member's own personal token: a packages token only stops installs and is replaced in the
+  // portal (L1); an admin token stops the person's CLI and automation (L2).
+  "ownToken.revokePackages": 1,
+  "ownToken.revokeAdmin": 2,
 } as const satisfies Record<string, ActionLevel>;
 
 export type ActionId = keyof typeof ACTION_LEVELS;
@@ -226,14 +225,15 @@ export type ActionId = keyof typeof ACTION_LEVELS;
 /** What an L3 action asks the operator to type. */
 const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "product.delete": "slug",
+  "packageFeeds.disable": "slug",
   "signing.revoke": "kid",
   "signing.breakGlassActivate": "kid",
   "kek.reseal": "reseal",
   "portalAccount.delete": "delete",
+  "registryToken.revokeAll": "slug",
   "storefront.audienceEveryone": "slug",
   "user.deleteData": "delete",
   "license.delete": "deleteId",
-  "overrideMigration.run": "migrate",
   "license.reassign": "licenseName",
   "license.makeFloating": "licenseName",
   "batch.disableUnused": "batchLabel",

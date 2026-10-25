@@ -1,6 +1,7 @@
 import type { Request } from "playwright";
 import { qrSvg } from "../../worker/src/core/qr.js";
 import { artPng, squirclePng, type Rgb } from "./artPng.js";
+import { workerFields } from "./workerFields.js";
 
 /**
  * The portal API for the browser checks (portal.e2e.test.ts): the mockup cast of PORTAL.md
@@ -79,6 +80,18 @@ function lic(
     activeKeyCount: 1,
     deviceCount: 1,
     entitlements: [],
+    // The Worker words how it reached the person (PX-23).
+    origin: over.originStore
+      ? over.keyCount === 0
+        ? "store"
+        : "store-key"
+      : over.keyCount === 0
+        ? over.identityProvider === "oidc"
+          ? "signin"
+          : "developer"
+        : "key",
+    originStore: null,
+    removable: over.keyCount !== 0,
     ...over,
   };
 }
@@ -110,7 +123,11 @@ const MORE = [
     deviceCount: 2,
     activatedAt: NOW - 8 * DAY,
   }),
-  lic("drift-kart", "Drift Kart", { activatedAt: NOW - 9 * DAY }),
+  lic("drift-kart", "Drift Kart", {
+    activatedAt: NOW - 9 * DAY,
+    origin: "store-key",
+    originStore: "steam",
+  }),
   lic("hollow-pines", "Hollow Pines", { activatedAt: NOW - 10 * DAY }),
   lic("glyphsmith", "Glyphsmith", {
     tier: "studio",
@@ -464,7 +481,7 @@ export function portalMedia(pathname: string): Buffer | null {
     return squirclePng(256, art.bands, art.disc, art.icon.squircle);
   return m[2] === "icon"
     ? artPng(256, 256, art.bands, art.disc)
-    : artPng(640, 360, art.bands, art.disc);
+    : artPng(1280, 720, art.bands, art.disc);
 }
 
 type Lic = ReturnType<typeof lic>;

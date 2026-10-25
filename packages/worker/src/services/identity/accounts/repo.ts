@@ -21,8 +21,6 @@ export interface AccountRow {
   avatar_key: string | null;
   locale: string | null;
   details_source_json: string | null;
-  /** Superseded by `account_terms_acceptances` (PX-W15): neither read nor written. */
-  terms_json: string | null;
   /**
    * I-33: the optional birth date (`YYYY-MM-DD`) and where it came from (`user`,
    * `connection:<id>`), `accounts/birthdate.ts`. Private to the person: never answered outside
@@ -197,7 +195,7 @@ export { verifiedAccountEmails };
  * one), then any other account in id order. INTERNAL: for the licence association only (LX-26);
  * nothing about it reaches a developer. The same two sources as `verifiedAccountEmails` (a link
  * whose email is verified, a verified primary email), read the other way; only active accounts
- * answer. Keep the two in step (`test/licenseHolders.test.ts` pins that they agree).
+ * answer. Keep the two in step (`test/surfaces/console/licenseHolders.test.ts` pins that they agree).
  */
 export async function accountsVerifyingEmail(
   db: Db,
@@ -227,6 +225,44 @@ export async function accountsVerifyingEmail(
     accountId: r.account_id,
     emailMethod: r.method === 1,
   }));
+}
+
+/**
+ * The ACTIVE accounts whose VERIFIED PRIMARY email is `email` (ST-31.7 N9): what the console's
+ * invitation matches a member by. A verified secondary link address does not count: it can be
+ * stale, and the conversion of an invite (ST-31.8) reads the primary email too.
+ */
+export async function accountsWithVerifiedPrimaryEmail(
+  db: Db,
+  email: string,
+): Promise<string[]> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return [];
+  const rows = await db.all<{ id: string }>(
+    `SELECT id FROM accounts
+      WHERE primary_email = ? AND primary_email_verified_at IS NOT NULL AND status = 'active'
+      ORDER BY id`,
+    normalized,
+  );
+  return rows.map((r) => r.id);
+}
+
+/**
+ * Every address on one account, verified or not: all link emails and the primary email (ST-31.7
+ * D-g at creation: an address you hold, even one not yet verified, is not yours to invite).
+ */
+export async function accountAddresses(
+  db: Db,
+  accountId: string,
+): Promise<string[]> {
+  const rows = await db.all<{ email: string }>(
+    `SELECT email FROM account_links WHERE account_id = ? AND email IS NOT NULL
+     UNION
+     SELECT primary_email AS email FROM accounts WHERE id = ? AND primary_email IS NOT NULL`,
+    accountId,
+    accountId,
+  );
+  return rows.map((r) => r.email);
 }
 
 /**
@@ -305,20 +341,25 @@ export async function touchLink(
 }
 
 /**
- * Mark a link strong for the console (ST-28 SM-3). Idempotent: the first mark's time stays. Callers
- * are the console sign-in through the console IdP (SM-3(b), (c)); nothing else sets `strong_at`
- * until the step-up paths (SM-3(a), (d)) land.
+ * Mark a link strong for the console (ST-28 SM-3). The link must belong to `accountId`, the account
+ * the caller acted for, so a wrong or raced link id can never mark another account's link. The
+ * first mark's time stays. Returns whether a row matched: false is a refusal, and the caller must
+ * not report success. Callers are the console sign-in through the console IdP (SM-3(b), (c)) and
+ * the console passkey enrolment (SM-3(a)).
  */
 export async function markLinkStrong(
   db: Db,
+  accountId: string,
   linkId: string,
   now: number,
-): Promise<void> {
-  await db.run(
-    "UPDATE account_links SET strong_at = COALESCE(strong_at, ?) WHERE id = ?",
+): Promise<boolean> {
+  const changed = await db.runChanges(
+    "UPDATE account_links SET strong_at = COALESCE(strong_at, ?) WHERE id = ? AND account_id = ?",
     now,
     linkId,
+    accountId,
   );
+  return changed > 0;
 }
 
 /**

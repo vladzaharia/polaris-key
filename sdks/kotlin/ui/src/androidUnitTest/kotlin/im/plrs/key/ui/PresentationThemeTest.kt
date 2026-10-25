@@ -111,6 +111,26 @@ class PresentationThemeTest {
     }
 
     @Test
+    fun thePresentationNamesTheProductWhenTheCopyLeftItOut() {
+        var name = ""
+        rule.setContent { StockHost(false) { PolarisTheme(presentation = FakeSource(Presentation(name = "Drift Kart"), null)) { name = PolarisTheme.copy.productName } } }
+        rule.waitForIdle()
+        assertEquals("Drift Kart", name)
+    }
+
+    @Test
+    fun anIntegratorsOwnProductNameStaysOverThePresentations() {
+        var name = ""
+        rule.setContent {
+            StockHost(false) {
+                PolarisTheme(copy = PolarisCopy(productName = "Diceroll"), presentation = FakeSource(Presentation(name = "Drift Kart"), null)) { name = PolarisTheme.copy.productName }
+            }
+        }
+        rule.waitForIdle()
+        assertEquals("Diceroll", name)
+    }
+
+    @Test
     fun withoutPresentationTheThemeIsTodays() {
         val seen = render(source = null)
         assertEquals(PolarisBrandTokens.Light.textStrong, seen.primary) // ink, never the core violet

@@ -48,6 +48,31 @@ an N/A answers its declared reason. An `except` with a reason other than `runtim
 detector the SDK must implement, and the SDK refuses to construct a client without it.
 `pnpm parity:check` fails when a module's digest is not its manifest's.
 
+**A new or renamed SDK API starts with its `api.json` rows.** A public SDK verb, option or
+hook is a concept in `conformance/parity/api.json`, and its spelling per SDK is a row there, not
+whatever the code happens to say. Before any SDK code:
+
+1. Add the concept (or change its per-SDK `spelling` or `path`) in `api.json`. The canonical
+   name is the one most SDKs already ship; rename an SDK only where the SDKs disagree. A concept
+   that backs a feature names it in `feature`.
+2. Renaming or removing a name adds a `removed` row (`sdk`, `from`, `to`, `package`). There are
+   no aliases in 0.9: the old name goes and the row says what replaces it. A bare common word
+   needs a `scan` so the lint can find it without false hits.
+3. Run `pnpm gen api`. It rewrites the six generated surface tests (Node, React, Python, Swift,
+   Kotlin, Godot); each asserts every canonical symbol and the absence of every removed one.
+   The failing generated surface test is the checklist for the SDK work.
+4. Run `pnpm gen --check`. Its `parity` family runs `tools/api-check.ts`: every public verb in a
+   file listed under `surfaces` must be a concept's spelling, a `sdkOnly` entry or covered by
+   `ignore`; a removed name must not appear in SDK source, examples, docs fences, the CLI
+   emitters or the skills; a reserved concept must not be spelled another way; and every SDK
+   whose `parity.json` implements the concept's feature must be listed on it.
+5. A line that has to keep a removed name (a migration note, a test of the refusal) carries
+   `api-allow: <reason>`, on the line or the one above. An empty reason fails the lint.
+   Then run `pnpm gen api docs-reference` to refresh `reference/api-names`.
+
+`pnpm exec tsx tools/api-check.ts --notes <WP>` prints a work package's `removed` rows as
+Markdown for that release's notes.
+
 **A Worker change that alters a recorded conversation regenerates the transcripts.** The HTTP
 transcripts in `conformance/transcripts/` pin what the Worker answers to the requests a client
 must send (see [HTTP transcripts](/docs/contribute/corpus-cases/#http-transcripts)). Changing a status,

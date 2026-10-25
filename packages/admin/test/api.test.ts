@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  ApiError,
+  HttpError,
   api,
   RELEASE_POLICY_ERROR_MESSAGES,
   releasePolicyMessage,
@@ -16,7 +16,7 @@ import {
 
 // The api module is the same-origin client for /manage/api/*. These exercise the transport:
 // CSRF echo on mutations, Content-Type only with a body, 401 → login redirect, and the typed
-// ApiError surface — all against a stubbed fetch so they're network-free.
+// HttpError surface — all against a stubbed fetch so they're network-free.
 
 interface Call {
   url: string;
@@ -267,7 +267,7 @@ describe("api — step-up refusals", () => {
 });
 
 describe("api — error handling", () => {
-  it("a 401 redirects to login and throws ApiError(401)", async () => {
+  it("a 401 redirects to login and throws HttpError(401)", async () => {
     const redirect = vi.fn();
     setLoginRedirectForTests(redirect);
     stubFetch(() => new Response(null, { status: 401 }));
@@ -286,8 +286,8 @@ describe("api — error handling", () => {
       await api.createLicense("djdl", { name: "x", email: "bad" });
       throw new Error("should have thrown");
     } catch (e) {
-      expect(e).toBeInstanceOf(ApiError);
-      const err = e as ApiError;
+      expect(e).toBeInstanceOf(HttpError);
+      const err = e as HttpError;
       expect(err.status).toBe(422);
       expect(err.code).toBe("validation");
       expect(err.fields).toEqual(["email"]);
@@ -295,7 +295,7 @@ describe("api — error handling", () => {
     }
   });
 
-  it("a non-ok non-JSON error still throws ApiError with the status", async () => {
+  it("a non-ok non-JSON error still throws HttpError with the status", async () => {
     stubFetch(() => new Response("upstream boom", { status: 502 }));
     await expect(api.products()).rejects.toMatchObject({ status: 502 });
   });
@@ -307,9 +307,9 @@ describe("api — error handling", () => {
   });
 });
 
-describe("ApiError", () => {
+describe("HttpError", () => {
   it("formats its message from the status by default", () => {
-    expect(new ApiError(403).message).toBe("api 403");
+    expect(new HttpError(403).message).toBe("http 403");
   });
 });
 
@@ -800,7 +800,7 @@ describe("api — every product-scoped resource is under its owning service", ()
     expect(calls[1]!.init.method).toBe("POST");
   });
 
-  it("surfaces the services endpoint's coherence codes as ApiError.errors", async () => {
+  it("surfaces the services endpoint's coherence codes as HttpError.errors", async () => {
     // `errors` is not `fields`: these name a RELATIONSHIP between inputs that are individually
     // valid, which is why the Services editor renders them beside the toggle that created the
     // contradiction instead of beside a field that failed to parse.
@@ -825,8 +825,8 @@ describe("api — every product-scoped resource is under its owning service", ()
       });
       throw new Error("should have thrown");
     } catch (e) {
-      expect(e).toBeInstanceOf(ApiError);
-      const err = e as ApiError;
+      expect(e).toBeInstanceOf(HttpError);
+      const err = e as HttpError;
       expect(err.status).toBe(422);
       expect(err.errors).toEqual(["update_requires_distribution"]);
       expect(err.fields).toBeUndefined();
@@ -903,21 +903,24 @@ describe("api — release channel policy (P2-07)", () => {
     const err = await api
       .updateReleaseChannel("diceroll", "stable", { pointer: "v0.4.0" })
       .catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).reason).toBe("release_yanked");
-    expect((err as ApiError).fields).toEqual(["releaseId"]);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).reason).toBe("release_yanked");
+    expect((err as HttpError).fields).toEqual(["releaseId"]);
     expect(releasePolicyMessage(err)).toBe(
       RELEASE_POLICY_ERROR_MESSAGES.release_yanked,
     );
   });
 
   it("falls back to the server's message for a reason the table does not know", () => {
-    const err = new ApiError(422, ["version"], "bad_request", undefined);
+    const err = new HttpError(422, {
+      fields: ["version"],
+      code: "bad_request",
+    });
     err.message = "a floor can only be lowered; the sync raises it";
     expect(releasePolicyMessage(err)).toBe(
       "a floor can only be lowered; the sync raises it",
     );
-    expect(releasePolicyMessage(new ApiError(500))).toBe(
+    expect(releasePolicyMessage(new HttpError(500))).toBe(
       "Request failed (500).",
     );
   });

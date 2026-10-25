@@ -1,5 +1,8 @@
 -- I-05 rollback: the `down` path of migrations 0068_a..e (plans/I-04.md §6.1).
 --
+-- I-28.1: after 0141_a_portal_contract_purge the four `portal_*` tables are empty, and this script
+-- rebuilds all of them from the account model (the 0141_a guard proves nothing is lost).
+--
 -- WHEN. Only after rolling the Worker back to a build before I-05. That Worker reads the
 -- untouched `portal_*` tables, so it serves every account that existed at the migration without
 -- this script; what it cannot see is what the I-05 Worker CREATED afterwards. This script copies
@@ -18,7 +21,7 @@
 -- Every statement is idempotent (`INSERT OR IGNORE`, one guarded `UPDATE`), so a second run is a no-op. It leaves the
 -- I-05 tables and columns in place (dropping them is not needed for the old Worker, and keeping
 -- them lets a roll-forward pick up where it stopped). It is exercised by
--- test/accountsMigration.test.ts.
+-- test/core/migrations/accountsMigration.test.ts.
 
 -- Accounts created by the I-05 Worker.
 INSERT OR IGNORE INTO portal_accounts (id, status, display_name, primary_email, created_at, modified_at)

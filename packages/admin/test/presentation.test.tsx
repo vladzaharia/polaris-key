@@ -40,7 +40,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { PresentationPage, slotLabel, statusOf } =
   await import("../src/console/sections/core/pages/Presentation.js");
 const { qk } = await import("../src/console/data/queries.js");
@@ -289,7 +289,7 @@ describe("Core → Presentation", () => {
     expect(await screen.findByText(/this slot takes/)).toBeTruthy();
     expect(fns.uploadHostedAsset).not.toHaveBeenCalled();
     fns.uploadHostedAsset.mockRejectedValue(
-      new ApiError(422, undefined, "asset_refused", undefined, "not-an-image"),
+      new HttpError(422, { code: "asset_refused", reason: "not-an-image" }),
     );
     await userEvent.upload(
       input,

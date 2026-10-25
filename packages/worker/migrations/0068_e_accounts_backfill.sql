@@ -8,7 +8,7 @@
 -- Nothing is deleted or changed in `portal_*`: a Worker rolled back to before I-05 reads them as
 -- they were. scripts/rollback/0068_accounts.down.sql copies back what the new Worker created.
 --
--- Rehearsed on a production-shaped copy by test/accountsMigration.test.ts.
+-- Rehearsed on a production-shaped copy by test/core/migrations/accountsMigration.test.ts.
 
 CREATE INDEX IF NOT EXISTS idx_licenses_account
   ON licenses(account_id, product) WHERE account_id IS NOT NULL;

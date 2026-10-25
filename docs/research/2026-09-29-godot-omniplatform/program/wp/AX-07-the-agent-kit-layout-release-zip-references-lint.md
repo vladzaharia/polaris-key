@@ -57,11 +57,11 @@ Public skills must reach the integrator's and the product maintainer's agents, w
 
 ## Acceptance criteria
 
-- [ ] `claude plugin validate` passes on the built marketplace.
-- [ ] The plugin installs from a local directory marketplace in the harness and both skills load there and, through the links, in this repo.
-- [ ] `npx skills add <local zip>` finds exactly the public skills.
-- [ ] `skills:check` is in the gate and refuses each case listed in scope.
-- [ ] Its eval report (plan §7.4) is attached to the hand-off: the suite and arms it should move, and the measured difference with its interval. It never blocks the merge.
+- [x] `claude plugin validate` passes on the built marketplace. (`--strict` on the `--local` build, Claude Code 2.1.310 locally, throwaway HOME; CI pins 2.1.296.)
+- [x] The plugin installs from a local directory marketplace in the harness and both skills load there and, through the links, in this repo.
+- [x] `npx skills add <local zip>` finds exactly the public skills. `skills@1.7.2` (published 2026-10-09, 15 days before 2026-10-24) refuses the zip ("No skills found"); the unzipped directory lists and installs exactly `adding-a-catalog-entry` and `authoring-pkey-manifests`. The zip-URL form is AX-06's.
+- [x] `skills:check` is in the gate (gate step 23 `skills`, `pnpm skills:all`; 15 fixture tests pass.) and refuses each case listed in scope.
+- [x] Its eval report Not measured: AX-05 has not shipped (D-E1, K11); never blocks. (plan §7.4) is attached to the hand-off: the suite and arms it should move, and the measured difference with its interval. It never blocks the merge.
 - [ ] Any skill or README it writes or changes is reviewed against the plan's principle 9 (terse: each fact once, in the reader's words).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
@@ -76,3 +76,20 @@ AX-06 serves the zip; AX-08, AX-09, AX-12, AX-14 and AX-17 build on the kit.
 
 The role agent sets `--set AX-07 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set AX-07 done`.
+
+## Corrections (2026-10-24)
+
+The code is the fact; these replace the brief where they differ.
+
+- K1. There is no `packages/agent-kit` yet. `.claude/skills/` holds three real directories (`adding-a-catalog-entry`, `authoring-pkey-manifests`, `running-the-omniplatform-program`, which is platform and stays). The repo has no tracked symlinks. `tools/readme-coverage.test.ts` already expects `packages/agent-kit`.
+- K2. `claude plugin validate --strict` fails a `plugin.json` with no `version`, and accepts `{"source": "archive" | "url", "url", "sha256"}`. So `skills:check` validates the stamped build strictly; the committed tree is never validated with `--strict`. The validator does not follow symlinks; a session does.
+- K3. `STAMP_TARGETS` replaces one regex match, so a `plugin.json` without a version line needs a JSON-key target kind. `publicPackageJsons` stamps every non-private package and `publish-sdks.yml` publishes on every push to main, so `@polaris-key/agent-kit` stays private until AX-07.7.
+- K4. `deploy.yml` creates no GitHub release and holds `contents: read` only; attaching the zip needs a new job with `contents: write`.
+- K5. Parts of `skills:check` exist and are reused: DOC-03a's lints in `packages/docs/scripts/lint-docs.ts`, `api-check` rule 2 for removed SDK names, the path and pnpm-script check from `tools/agents-md.test.ts` (extracted to `tools/repo-names.ts` in AX-07.1), and `TIER_PREFIXES` plus `site-map.json` stubs for docs tiers.
+- K6. The generated-references inputs exist for validation codes (`gen-reference.mjs` `manifestValidationCodes`) and `renderUsage` (SP-33a). DOC-12a.1 is in flight in the same file.
+- K7. The knowledge bundle needs AX-06's twins and AX-16's registry, both todo. It moves to AX-17.
+- K8. Root `AGENTS.md` is near its byte cap; a new package, family or gate step each add a row of about 250 bytes.
+- K9. The links keep every `.claude/skills/<name>/...` path valid, so no brief citing moved content is amended.
+- K10. The README is not out of scope: `readme-coverage.test.ts` fails the day the package lands without one, so AX-07.3 writes it.
+- K11. AX-05 is todo, so the eval report cannot be measured.
+- K12. Gate step 23 `skills` runs the root script `skills:all` (`skills:check && skills:validate`; validate skips without `claude`). AX-07.7 (publish) waits on the owner and does not hold the review. The reviewer ticks the principle-9 and review boxes; the full green gate runs in CI.

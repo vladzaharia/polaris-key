@@ -5,17 +5,18 @@
 //                          observing `client.events`, plus the actions every screen needs
 //                          (refresh, activate, enrol, deactivate). One per client.
 //   .polarisKey(client)    puts the model in the environment, syncs when the scene becomes
-//                          active (at most once a minute), and wraps the content in the gate
-//                          (`PolarisGate`), so one modifier gives a gated, refreshing app.
+//                          active (at most once a minute), and wraps the content in the kit gate
+//                          (`PolarisKeyGate`), so one modifier gives a gated, refreshing app.
 //
-// Every kit component reads the model from the environment (`@Environment(PolarisKeyModel.self)`)
-// and also takes one explicitly, so a host can place a component outside the modifier.
+// A host reads the model from the environment (`@Environment(PolarisKeyModel.self)`) anywhere
+// under the modifier.
 
 import Foundation
 import Observation
 import PolarisKey
 import PolarisKeyCore
 import PolarisKeyLicense
+import PolarisKeyUICore
 import SwiftUI
 
 @MainActor
@@ -38,10 +39,6 @@ public final class PolarisKeyModel {
     public var lastError: String?
     /// The last activation or enrolment, typed, so a view can branch on its kind.
     public private(set) var lastActivation: ActivationResult?
-    /// The key of the last activation attempt, kept only while it was refused with `device_limit`
-    /// so the gate can retry once after Replace a device; nil after any other result. Internal: it
-    /// is a secret and never part of the public surface.
-    private(set) var lastKey: String?
     /// Set by `updateAvailable` events.
     public private(set) var availableUpdate: String?
     /// Epoch seconds of the last sync this model ran.
@@ -49,8 +46,6 @@ public final class PolarisKeyModel {
     /// "Continue free" is shown only when the host says the product offers a free tier, and
     /// hidden for good once the server answers `enroll_disabled`.
     public var offersFreeTier: Bool
-    /// Where the portal sends the person back after "Replace a device" (`GateOptions.returnURL`).
-    public var returnURL: String?
     /// False until the first `reload()` has read the client. The gate draws nothing but its ground
     /// until then, so a licensed cold launch never flashes the activation card.
     public private(set) var hasLoaded = false
@@ -71,13 +66,11 @@ public final class PolarisKeyModel {
     private var presentationUnsubscribe: (@Sendable () -> Void)?
 
     public init(
-        client: PolarisKeyClient, copy: PolarisCopy = PolarisCopy(), offersFreeTier: Bool = false,
-        returnURL: String? = nil
+        client: PolarisKeyClient, copy: PolarisCopy = PolarisCopy(), offersFreeTier: Bool = false
     ) {
         self.client = client
         self.copy = copy
         self.offersFreeTier = offersFreeTier
-        self.returnURL = returnURL
     }
 
     /// Begin observing `client.events` and take the first snapshot. Idempotent.
@@ -111,7 +104,7 @@ public final class PolarisKeyModel {
         let client = self.client
         state = await client.status()
         info = await client.licenseInfo()
-        profile = await client.license.profile()
+        profile = await client.license.getProfile()
         activation = await client.license.activation()
         identityEnabled = await client.core.enabled(.identity)
         licenseEnabled = await client.core.licenseGateEnabled()
@@ -172,15 +165,13 @@ public final class PolarisKeyModel {
         await activate(key: key, showsWork: true)
     }
 
-    /// `showsWork: false` runs the activation without raising `isWorking` (the gate's one retry
-    /// after Replace a device must not disable a field the person is typing in).
+    /// `showsWork: false` runs the activation without raising `isWorking`.
     func activate(key: String, showsWork: Bool) async {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         if showsWork { isWorking = true }
         defer { if showsWork { isWorking = false } }
-        let result = await client.activate(key: trimmed)
-        if case .deviceLimit = result { lastKey = trimmed } else { lastKey = nil }
+        let result = await client.license.activateWithKey(trimmed)
         lastActivation = result
         lastError = copy.activationMessage(result)
         resultSerial += 1
@@ -192,7 +183,6 @@ public final class PolarisKeyModel {
         isWorking = true
         defer { isWorking = false }
         let result = await client.enroll()
-        lastKey = nil
         lastActivation = result
         if case .enrollDisabled = result { offersFreeTier = false }
         lastError = copy.activationMessage(result)
@@ -213,20 +203,9 @@ public final class PolarisKeyModel {
         await reload()
     }
 
-    /// Whether `flag` is on (`isEnabled(flag:)`; false whenever the gate is not usable).
+    /// Whether `flag` is on (`entitlements.has`; false whenever the gate is not usable).
     public func isEnabled(flag: String) async -> Bool {
-        await client.isEnabled(flag: flag)
-    }
-
-    /// The portal link that frees a seat after the last activation was refused with `device_limit`
-    /// (with the key as a fragment on an `/activate` link, never on a QR), or nil. The gate offers
-    /// it as Replace a device.
-    public var offeredManageURL: String? {
-        guard case .deviceLimit(_, _, let served)? = lastActivation, let key = lastKey else {
-            return nil
-        }
-        return PolarisGateModel.offeredManageURL(
-            served, key: key, returnURL: returnURL, presentation: PolarisManagePresentation.current)
+        await client.entitlements.has(flag)
     }
 
     /// Shown in place of the key field on store outlets that forbid key entry (App Store 3.1.1).
@@ -237,55 +216,92 @@ public final class PolarisKeyModel {
 
 extension View {
     /// The one-line integration: the model in the environment, a sync whenever the scene becomes
-    /// active (at most once a minute), and the gate around the content.
+    /// active (at most once a minute), and the kit gate (`PolarisKeyGate`) around the content.
     ///
     /// ```swift
     /// let client = try await PolarisKeyClient.fromBundle()
     /// WindowGroup { ContentView().polarisKey(client) }
     /// ```
     ///
-    /// `options` carries what the host decides about the gate (`GateOptions`): key entry, offline
-    /// activation (off on iOS), the free tier, the return URL for "Replace a device", a renewal
-    /// page and a slot for the host's own action on a blocking state. `offersFreeTier` is kept
-    /// for source compatibility and is the same switch as `options.offersFreeTier`.
+    /// `options` carries what the host decides about the gate (`KitGateOptions`): key entry,
+    /// offline activation (off on iOS), sign-in presentation. `offersFreeTier` adds Continue free
+    /// (keyless enrolment). `theme` is the legacy `PolarisTheme`: its branding and accent map onto
+    /// the kit theme; set `.polarisKeyTheme(PolarisKeyTheme(...))` for everything else.
     public func polarisKey(
         _ client: PolarisKeyClient, theme: PolarisTheme = PolarisTheme(), gate: Bool = true,
-        offersFreeTier: Bool = false, options: GateOptions = GateOptions()
+        offersFreeTier: Bool = false, options: KitGateOptions = KitGateOptions(),
+        providers: [KitProvider] = [.apple], handlers: KitGateHandlers = KitGateHandlers()
     ) -> some View {
-        var options = options
-        if offersFreeTier { options.offersFreeTier = true }
-        return modifier(
-            PolarisKeyModifier(client: client, theme: theme, gate: gate, options: options))
+        modifier(
+            PolarisKeyModifier(
+                client: client, theme: theme, gate: gate, offersFreeTier: offersFreeTier,
+                options: options, providers: providers, handlers: handlers))
     }
 
     /// The same, with a model the host already holds.
     public func polarisKey(
         model: PolarisKeyModel, theme: PolarisTheme = PolarisTheme(), gate: Bool = true,
-        options: GateOptions = GateOptions()
+        options: KitGateOptions = KitGateOptions(), providers: [KitProvider] = [.apple],
+        handlers: KitGateHandlers = KitGateHandlers()
     ) -> some View {
-        modifier(PolarisKeyModelModifier(model: model, theme: theme, gate: gate, options: options))
+        modifier(
+            PolarisKeyModelModifier(
+                model: model, theme: theme, gate: gate, options: options, providers: providers,
+                handlers: handlers))
+    }
+}
+
+extension PolarisTheme {
+    /// The kit theme this legacy theme maps to, or nil when it sets nothing the kit reads.
+    /// Mapped: `branding` (to the preset) and `accent`. Dropped: `palette`, `typography`, `copy`,
+    /// `logo` and `accentOn` (the kit theme's `colors`, `typography`, `copy` and `product` are the
+    /// replacements).
+    var kitTheme: PolarisKeyTheme? {
+        guard branding != nil || accentOverride != nil else { return nil }
+        var kit = PolarisKeyTheme()
+        if let branding { kit.preset = branding == .native ? .native : .polarisKey }
+        if let accent = accentOverride, let light = accent.polarisHex(for: .light) {
+            kit.accent = .color(light, dark: accent.polarisHex(for: .dark))
+        }
+        return kit
     }
 }
 
 struct PolarisKeyModifier: ViewModifier {
     let theme: PolarisTheme
     let gate: Bool
-    let options: GateOptions
+    let options: KitGateOptions
+    let providers: [KitProvider]
+    let handlers: KitGateHandlers
     @State private var model: PolarisKeyModel
 
-    init(client: PolarisKeyClient, theme: PolarisTheme, gate: Bool, options: GateOptions) {
+    init(
+        client: PolarisKeyClient, theme: PolarisTheme, gate: Bool, offersFreeTier: Bool,
+        options: KitGateOptions, providers: [KitProvider], handlers: KitGateHandlers
+    ) {
         self.theme = theme
         self.gate = gate
+        var options = options
+        var handlers = handlers
+        if offersFreeTier {
+            options.enroll = true
+            if handlers.continueFree == nil {
+                handlers.continueFree = { Task { _ = await client.enroll() } }
+            }
+        }
         self.options = options
+        self.providers = providers
+        self.handlers = handlers
         _model = State(
             initialValue: PolarisKeyModel(
-                client: client, copy: theme.copy, offersFreeTier: options.offersFreeTier,
-                returnURL: options.returnURL))
+                client: client, copy: theme.copy, offersFreeTier: offersFreeTier))
     }
 
     func body(content: Content) -> some View {
         content.modifier(
-            PolarisKeyModelModifier(model: model, theme: theme, gate: gate, options: options))
+            PolarisKeyModelModifier(
+                model: model, theme: theme, gate: gate, options: options, providers: providers,
+                handlers: handlers))
     }
 }
 
@@ -293,13 +309,18 @@ struct PolarisKeyModelModifier: ViewModifier {
     let model: PolarisKeyModel
     let theme: PolarisTheme
     let gate: Bool
-    var options = GateOptions()
+    var options = KitGateOptions()
+    var providers: [KitProvider] = [.apple]
+    var handlers = KitGateHandlers()
     @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
         Group {
             if gate {
-                PolarisGate(model: model, theme: theme, options: options) { content }
+                PolarisKeyGate(model.client, options: options, providers: providers, handlers: handlers) {
+                    content
+                }
+                .modifier(KitThemeOverride(theme: theme.kitTheme))
             } else {
                 content
             }
@@ -308,15 +329,22 @@ struct PolarisKeyModelModifier: ViewModifier {
         .environment(model)
         .environment(\.polarisTheme, theme)
         .task {
-            // A model the host holds takes the options that belong to it.
-            if let returnURL = options.returnURL { model.returnURL = returnURL }
-            if options.offersFreeTier { model.offersFreeTier = true }
+            if options.enroll { model.offersFreeTier = true }
             model.start()
             await model.refreshIfStale(minimumInterval: 0)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await model.refreshIfStale() } }
         }
+    }
+}
+
+/// Puts a mapped legacy theme in the kit's environment; nothing when the legacy theme set no
+/// field the kit reads, so a host's own `.polarisKeyTheme` above still applies.
+private struct KitThemeOverride: ViewModifier {
+    let theme: PolarisKeyTheme?
+    func body(content: Content) -> some View {
+        if let theme { content.environment(\.polarisKeyTheme, theme) } else { content }
     }
 }
 

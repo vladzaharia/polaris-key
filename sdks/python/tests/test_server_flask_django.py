@@ -34,7 +34,7 @@ IDS = [r["id"] for r in ROWS]
 
 def _cfg(row: Dict[str, Any]) -> Dict[str, Any]:
     slug = row["input"]["options"]["products"][0]
-    return {"product_slug": slug, "base_url": "https://key.plrs.im", "trust": row["input"]["trust"][slug] or _NO_SIGNER}
+    return {"product_slug": slug, "base_url": "https://key.plrs.im", "pinned_keys": row["input"]["trust"][slug] or _NO_SIGNER}
 
 
 def _req(row: Dict[str, Any]) -> Any:

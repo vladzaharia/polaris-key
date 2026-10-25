@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BookOpen, Menu, Search } from "lucide-react";
+import { BookOpen, Menu, Search, TriangleAlert } from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import { cn } from "../../lib/cn.js";
@@ -7,7 +7,7 @@ import type { ServiceAccent } from "../nav.js";
 import { BrandBlock } from "./BrandBlock.js";
 import { EnvironmentBadge } from "./EnvironmentBadge.js";
 import { ThemeMenu } from "./ThemeMenu.js";
-import { UserMenu } from "./UserMenu.js";
+import { formatSessionEnd, UserMenu } from "./UserMenu.js";
 import { Kbd } from "../../ui/Kbd.js";
 
 /**
@@ -69,6 +69,27 @@ export function TopBar({
         className="max-[24rem]:hidden lg:min-w-[calc(var(--sidebar-w)-1.5rem)]"
       />
       <EnvironmentBadge environment={me.environment} />
+      {me.breakGlass ? (
+        // ST-30c.2: stays in view while the session is an emergency sign-in, as "Staging" does.
+        <span
+          data-emergency=""
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning px-2 py-0.5 text-xs font-semibold text-surface-page"
+        >
+          <TriangleAlert aria-hidden className="size-3.5" />
+          <span className="sr-only">
+            Emergency sign-in
+            {me.sessionExpiresAt
+              ? ` until ${formatSessionEnd(me.sessionExpiresAt)}`
+              : ""}
+          </span>
+          <span aria-hidden className="max-sm:hidden">
+            Emergency
+            {me.sessionExpiresAt
+              ? ` · until ${formatSessionEnd(me.sessionExpiresAt)}`
+              : ""}
+          </span>
+        </span>
+      ) : null}
       <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
         <button
           type="button"
@@ -76,7 +97,7 @@ export function TopBar({
           aria-label="Search or jump to"
           aria-keyshortcuts="Meta+K Control+K"
           className={cn(
-            "flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm text-fg-muted sm:px-2.5",
+            "flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm text-fg-muted sm:px-2",
             "hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus",
           )}
         >

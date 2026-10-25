@@ -1,0 +1,8 @@
+outlets:
+  # Homebrew
+  homebrew:
+    kind: direct
+    # Your own tap, <owner>/homebrew-<name>.
+    homebrewTap: acme/homebrew-tap
+    # Homebrew cask token.
+    homebrewCask: dice

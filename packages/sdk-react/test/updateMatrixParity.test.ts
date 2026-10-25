@@ -302,7 +302,7 @@ describe(`update-matrix rows through the desktop bridge (${matrix.rows.length})`
       bridge.invoke = invoke as PolarisBridge["invoke"];
       const adapter = desktopAdapter({
         bridge,
-        expectServices: services("update"),
+        expectedServices: ["update"],
       });
       const args = {
         channel: row.input.feed.channel,

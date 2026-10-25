@@ -27,7 +27,7 @@ export function DataRow({
           <span
             aria-hidden
             className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken [&_svg]:size-5",
+              "flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken [&_svg]:size-5",
               danger ? "text-danger" : "text-fg-muted",
             )}
           >
@@ -39,13 +39,13 @@ export function DataRow({
           </div>
         </div>
         {children ? (
-          <div className={cn("ms-13 bigtext:max-sm:ms-0 sm:ms-0 sm:shrink-0")}>
+          <div className={cn("ms-12 bigtext:max-sm:ms-0 sm:ms-0 sm:shrink-0")}>
             {children}
           </div>
         ) : null}
       </div>
       {/* In the text column (icon 2.5 rem + gap 0.75 rem), on a phone as on a desk (B-088). */}
-      {below ? <div className="ms-13 bigtext:max-sm:ms-0">{below}</div> : null}
+      {below ? <div className="ms-12 bigtext:max-sm:ms-0">{below}</div> : null}
     </div>
   );
 }

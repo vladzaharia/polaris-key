@@ -121,7 +121,7 @@ final class TrustAndCacheTests: XCTestCase {
             trustRefresh: false)
 
         let status = await c.status().status
-        let entitled = await c.license.isEntitled("pro")
+        let entitled = await c.entitlements.has("pro")
         XCTAssertEqual(status, .needsActivation, "a forged cache must not licence the app")
         XCTAssertFalse(entitled)
 
@@ -135,7 +135,7 @@ final class TrustAndCacheTests: XCTestCase {
                             issuedAt: t, entitlements: ["pro": Fixtures.entry(.bool(true))]))
                 ]), trustRefresh: false)
         let goodStatus = await good.status().status
-        let goodEntitled = await good.license.isEntitled("pro")
+        let goodEntitled = await good.entitlements.has("pro")
         XCTAssertEqual(goodStatus, .ok)
         XCTAssertTrue(goodEntitled)
     }

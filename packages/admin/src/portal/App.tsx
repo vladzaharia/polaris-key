@@ -50,7 +50,10 @@ import {
   useRoute,
   type PortalRoute,
 } from "./router.js";
-import { portalApi } from "./api.js";
+import { bindWriteInvalidation, mutate } from "./mutations.js";
+import { portalVoice } from "./errors.js";
+import { ErrorVoiceProvider } from "../ui/errorVoice.js";
+import { qkFamily } from "./queries.js";
 import { t } from "../lib/copy.js";
 
 /**
@@ -66,12 +69,16 @@ export function PortalApp(): React.ReactElement {
     restoreCarriedKey();
     return createPortalQueryClient();
   });
+  // Writes made outside a hook (`mutate`) invalidate in this tree's client.
+  React.useEffect(() => bindWriteInvalidation(client), [client]);
   return (
     <ThemeProvider>
       <QueryClientProvider client={client}>
-        <AppToaster phoneBottom />
-        <Announcer />
-        <Boot />
+        <ErrorVoiceProvider voice={portalVoice}>
+          <AppToaster phoneBottom />
+          <Announcer />
+          <Boot />
+        </ErrorVoiceProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
@@ -118,7 +125,7 @@ function Boot(): React.ReactElement {
       "discover",
       "storefront",
     ])
-      qc.removeQueries({ queryKey: ["portal", key] });
+      qc.removeQueries({ queryKey: qkFamily(key) });
   }, [signedOut, qc]);
   // B-065: this tab was signed out and is signed in now. The code or sign-in control that had focus
   // is gone, so focus would fall to `body`: it goes to the page's h1 instead, as a navigation does.
@@ -178,7 +185,7 @@ function Boot(): React.ReactElement {
           email: secondSignInEmail() ?? undefined,
           onCancel: () => {
             endSecondSignIn();
-            void portalApi.linkCancel().catch(() => undefined);
+            void mutate("linkCancel").catch(() => undefined);
             navigate("#/account");
             // Say which account this browser is still signed in to, once; focus goes to the page.
             toast.info(

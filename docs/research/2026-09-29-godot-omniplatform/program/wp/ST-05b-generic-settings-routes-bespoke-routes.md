@@ -59,6 +59,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
    - Writes are limited to row-backed keys and keys with an adapter. A column key without one (`core.services`, whose coherence rules only its own route checks; `core.name`; the web origins) is readable here and written where the console owns it.
    - The adapters keep what each bespoke route checked: the trust policy's relax gate (step-up, reason, typed key), the license policies' shape checks and the auto-issue tier check, the edge-mint approval sweep, the update settings' semver and OS-version checks and "no release configuration", and the delivery access's deliverable check. Each key keeps its audit action.
    - A key with an adapter takes a reason but does not require one, as its bespoke route did (the console pages for them have no reason field). The registry marks them `critical`; collecting the reason is a console follow-up.
+
 2. Implement the scope; run the green gate; hand off.
 
 ## Acceptance criteria

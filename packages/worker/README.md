@@ -34,8 +34,11 @@ migrations/           D1 migrations, 00XX_<name>.sql
 openapi/              polaris-key.v3.yaml, the HTTP spec
 scripts/              assemble-assets.mjs, generators for the platform inventory, settings and
                       storefront CI, deploy preflight (check-config.mjs), registry-clients/
-test/                 Node lane (vitest, better-sqlite3 as D1); test/transcripts/ records the
-                      HTTP conversations
+test/                 Node lane (vitest, better-sqlite3 as D1); the rule guards and helpers sit flat
+  core/               tests of platform/, db/ and core/ (core/migrations/ for migrations)
+  services/<slug>/    one service's tests: `pnpm --filter @polaris-key/worker test:service <slug>`
+  surfaces/           tests across services: composition, routes, mail; surfaces/console/ for the console
+  transcripts/        records the HTTP conversations
 test-workerd/         workerd lane (vitest-pool-workers); vitest.workers.config.ts
 test-workerd-deltas/  workerd lane for the deltas consumer; vitest.deltas.workers.config.ts
 wrangler.toml         environments, bindings, crons; wrangler.deltas.toml the consumer script
@@ -71,12 +74,14 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 | Family               | Here it          | Run                                    |
 | -------------------- | ---------------- | -------------------------------------- |
+| `roles-matrix`       | reads            | `pnpm gen roles-matrix`                |
 | `transcripts`        | reads            | `pnpm gen transcripts`                 |
 | `constants`          | reads            | `pnpm gen constants`                   |
 | `platform-inventory` | reads and writes | `pnpm gen platform-inventory`          |
 | `storefront-ci`      | reads            | `pnpm gen storefront-ci`               |
 | `settings`           | reads            | `pnpm gen settings`                    |
 | `docs-reference`     | reads            | `pnpm gen docs-reference`              |
+| `registry-docs`      | reads            | `pnpm gen registry-docs`               |
 | `readme-work`        | reads and writes | `pnpm gen readme-work`                 |
 | `parity`             | reads            | `pnpm gen parity`                      |
 | `docs-csp`           | writes           | `pnpm gen docs-csp` (named run only)   |
@@ -90,9 +95,10 @@ Generator families that read or write files here (a family regenerates with `pnp
 - A new route needs a spec entry: `test/routeCoverage.test.ts` checks `openapi/polaris-key.v3.yaml` against the router in three directions. See [AGENTS.md](../../AGENTS.md).
 - Generated files: `test/platformInventory.test.ts`, `test/settings-generated.test.ts` and `test/storefront/ciPlaneGenerated.test.ts` fail on drift; `src/*.generated.ts` is never hand-edited. See [AGENTS.md](../../AGENTS.md).
 - Never hand-edit the recorded transcripts: `test/transcripts.test.ts` records them, `pnpm gen transcripts` rewrites them. See [AGENTS.md](../../AGENTS.md).
+- New admin tests start from `adminWorld()` in `test/adminWorld.ts` (db, env, a signed-in operator, `call` into `/manage`) instead of hand-building the session.
 - A new error code needs an entry in `conformance/parity/errors.json` first: `pnpm gen constants` refuses a Worker code it lacks. See [AGENTS.md](../../AGENTS.md).
-- The docs site is tiered: `DOCS_TIERS` in `src/docs.ts` mirrors `TIER_PREFIXES` in the docs package; `test/docsGate.test.ts` pins it. See [AGENTS.md](../../AGENTS.md).
-- Toolchain constraint (Node 22): see [AGENTS.md](../../AGENTS.md).
+- The docs site is tiered: `DOCS_TIERS` in `src/docs.ts` mirrors `TIER_PREFIXES` in the docs package; `test/surfaces/docsGate.test.ts` pins it. See [AGENTS.md](../../AGENTS.md).
+- Toolchain constraint (Node 22): see [packages/worker/AGENTS.md](./AGENTS.md).
 
 ## Docs
 

@@ -11,8 +11,7 @@
 // Outputs (one lookup table per platform, kit keys plus core.* keys, D2/D3):
 //   web     packages/brand/src/generated/kit-copy/<locale>.json + index.ts
 //   Node    packages/sdk-node/src/kitCopy.generated.ts
-//   Swift   sdks/swift/Sources/PolarisKeyUI/Resources/Localizable.xcstrings
-//           sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json (presentation-core ICU
+//   Swift   sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json (presentation-core ICU
 //           tables, formatted by the core itself; UK-07)
 //   Kotlin  sdks/kotlin/ui-core/src/main/resources/kit-copy.json (the same presentation-core
 //           ICU tables) + sdks/kotlin/ui/src/commonMain/composeResources/values{,-<q>}/strings.xml
@@ -126,6 +125,10 @@ export const KEY_NAMESPACES = [
   "locker",
   // The terminal kits' own strings: help, key hints, status rows (UK-14, UK-13).
   "cli",
+  // The Electron host's app-menu items (UK-06.4): the host places them, no kit component shows them.
+  "menu",
+  // The Electron host's opt-in OS notifications (UK-06.5): static text, no kit component.
+  "notify",
 ] as const;
 
 /**
@@ -148,6 +151,8 @@ const SHARED_NAMESPACES = new Set([
   "a11y",
   "signin",
   "cli",
+  "menu",
+  "notify",
   ...PORTAL_NAMESPACES,
 ]);
 
@@ -1061,9 +1066,24 @@ export {
  * React gate's initial bundle stays under its size budget (SP-47). A key listed in
  * \`LAZY_EN_KEEP\` stays in the lean table because a web renderer draws it.
  */
-export const LAZY_EN_PREFIXES = ["core.codes.", "cli."] as const;
+export const LAZY_EN_PREFIXES = [
+  "core.codes.",
+  "cli.",
+  // The native Mac update window's and Mac sign-out's lines: no web renderer draws them.
+  "common.update",
+  "menu.signOut",
+  "menu.account",
+  "signin.signout.titleMac",
+  "signin.signout.releasedMac",
+  // The approve-a-device dialog is the portal's (admin reads the full table); no kit draws it.
+  "signin.approve.",
+] as const;
 export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   "cli.signin.waitingCode",
+  "common.updateCurrentNoSize",
+  "common.updateDownload",
+  "common.updateTimeMinutes",
+  "common.updateTimeLessThanMinute",
 ]);
 export const isLazyEnKey = (key: string): boolean =>
   LAZY_EN_PREFIXES.some((p) => key.startsWith(p)) && !LAZY_EN_KEEP.has(key);
@@ -1186,124 +1206,16 @@ export const KIT_COPY_VARIANTS: Readonly<Record<string, Readonly<Record<string, 
 `;
 }
 
-// Swift (.xcstrings) -------------------------------------------------------------------------
-
-/** formFactor case → Xcode device variation. phone, tablet and computer never run on Apple. */
-const APPLE_DEVICE: Record<string, string> = {
-  iphone: "iphone",
-  ipad: "ipad",
-  mac: "mac",
-  tv: "appletv",
-  other: "other",
-};
-
-function swiftFormat(e: Entry, value: string, caseName: string | null): string {
-  const p = parseMessage(value);
-  const render = (x: Piece): string => {
-    if ("text" in x) return x.text;
-    if ("hash" in x) return "%arg";
-    return `%${e.args.indexOf(x.arg) + 1}$@`;
-  };
-  if (p.complex?.kind === "plural") {
-    // head + %#@arg@ + tail; the substitution carries the cases
-    return [
-      ...p.head.map(render),
-      `%#@${p.complex.arg}@`,
-      ...p.tail.map(render),
-    ].join("");
-  }
-  return expandCase(p, caseName, render);
-}
-
-function swiftUnit(value: string) {
-  return { stringUnit: { state: "translated", value } };
-}
-
-function swiftLocalization(e: Entry, locale: string): unknown {
-  const value = e.values[locale]!;
-  const p = parseMessage(value);
-  if (p.complex?.kind === "plural") {
-    const arg = p.complex.arg;
-    const caseText = (c: string) =>
-      p.complex!.cases[c]!.map((x) => ("text" in x ? x.text : "%arg")).join("");
-    return {
-      stringUnit: { state: "translated", value: swiftFormat(e, value, null) },
-      substitutions: {
-        [arg]: {
-          argNum: e.args.indexOf(arg) + 1,
-          formatSpecifier: "lld",
-          variations: {
-            plural: Object.fromEntries(
-              Object.keys(p.complex.cases).map((c) => [
-                c,
-                swiftUnit(caseText(c)),
-              ]),
-            ),
-          },
-        },
-      },
-    };
-  }
-  if (p.complex?.kind === "select") {
-    return {
-      variations: {
-        device: Object.fromEntries(
-          Object.entries(APPLE_DEVICE).map(([ff, device]) => [
-            device,
-            swiftUnit(swiftFormat(e, value, ff)),
-          ]),
-        ),
-      },
-    };
-  }
-  const base = swiftFormat(e, value, null);
-  const v = locale === "en" ? e.variants : {};
-  const devices: Record<string, string> = {};
-  if (v.macos) devices.mac = swiftFormat(e, v.macos, null);
-  if (v.ios) devices.iphone = devices.ipad = swiftFormat(e, v.ios, null);
-  if (v.tv) devices.appletv = swiftFormat(e, v.tv, null);
-  if (Object.keys(devices).length === 0) return swiftUnit(base);
-  return {
-    variations: {
-      device: {
-        ...Object.fromEntries(
-          Object.entries(devices).map(([d, s]) => [d, swiftUnit(s)]),
-        ),
-        other: swiftUnit(base),
-      },
-    },
-  };
-}
-
 const argComment = (e: Entry) =>
   e.args.length
     ? ` Arguments: ${e.args.map((a, i) => `${i + 1}=${a}`).join(", ")}.`
     : "";
 
-export function xcstrings(model: KitCopyModel): string {
-  const strings: Record<string, unknown> = {};
-  for (const e of [...model.entries].sort((a, b) =>
-    a.key < b.key ? -1 : a.key > b.key ? 1 : 0,
-  ))
-    strings[e.key] = {
-      comment: `${e.note}${argComment(e)}${e.select ? " Varies by device (formFactor)." : ""}`,
-      extractionState: "manual",
-      localizations: Object.fromEntries(
-        model.locales.map((l) => [l, swiftLocalization(e, l)]),
-      ),
-    };
-  return JSON.stringify(
-    { sourceLanguage: "en", strings, version: "1.0" },
-    null,
-    2,
-  );
-}
-
 /**
  * The Swift presentation core's catalog (UK-07): the same ICU-subset tables as the web and Node
- * targets, one JSON resource for `PolarisKeyUICore`, which formats them itself. The String Catalog
- * above maps `formFactor` onto Apple's device variation, so it cannot say "This phone"; the core
- * runs every `ui-matrix.json` i18n row on every form factor, so it reads the ICU source.
+ * targets, one JSON resource for `PolarisKeyUICore`, which formats them itself. The core runs every
+ * `ui-matrix.json` i18n row on every form factor, so it reads the ICU source (no String Catalog
+ * ships: SP-52b.3).
  */
 export function swiftCoreJson(model: KitCopyModel): string {
   return JSON.stringify({
@@ -1313,6 +1225,26 @@ export function swiftCoreJson(model: KitCopyModel): string {
       model.locales.map((l) => [l, tableFor(model, l)]),
     ),
     variants: variantsFor(model),
+  });
+}
+
+/**
+ * Swift's copy of that catalog (SP-52b.5): the same tables without the terminal's \`cli.*\` keys (no
+ * Swift code reads one), written minified (no \`parser\`, so no prettier pass; \`.prettierignore\`
+ * lists the file). Kotlin keeps \`swiftCoreJson\`.
+ */
+export function swiftBundleJson(model: KitCopyModel): string {
+  const lean = (r: Readonly<Record<string, unknown>>) =>
+    Object.fromEntries(
+      Object.entries(r).filter(([k]) => !k.startsWith("cli.")),
+    );
+  return JSON.stringify({
+    $comment: BANNER_LINES.filter((l) => l !== "").join(" "),
+    locales: model.locales,
+    tables: Object.fromEntries(
+      model.locales.map((l) => [l, lean(tableFor(model, l))]),
+    ),
+    variants: lean(variantsFor(model)),
   });
 }
 
@@ -1686,13 +1618,8 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
     parser: "typescript",
   },
   {
-    path: "sdks/swift/Sources/PolarisKeyUI/Resources/Localizable.xcstrings",
-    render: () => xcstrings(model()),
-  },
-  {
     path: "sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json",
-    render: () => swiftCoreJson(model()),
-    parser: "json",
+    render: () => swiftBundleJson(model()),
   },
   {
     path: "sdks/kotlin/ui-core/src/main/resources/kit-copy.json",

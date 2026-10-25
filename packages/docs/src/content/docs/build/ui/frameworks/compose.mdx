@@ -1,6 +1,6 @@
 ---
 title: "Compose"
-description: "polaris-key-ui: the Kotlin SDK's Jetpack Compose kit for Android, with Compose Desktop planned; its facts, its baselines and its reference."
+description: "polaris-key-ui: the Kotlin SDK's Compose kit for Android and Compose Desktop planned; its facts, its baselines and its reference."
 sidebar:
   order: 6
 type: "reference"
@@ -10,20 +10,155 @@ lanes: ["kit"]
 
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
 import KitFacts from "../../../../../components/ui/KitFacts.astro";
+import StatesToHandle from "../../../../../components/docs/StatesToHandle.astro";
 import { Content as ComposeReadme } from "../../../../../../../../sdks/kotlin/ui/README.md";
 
-The Kotlin SDK's Compose kit. Today it provides the boot shell, the gate, activation, sign-in with
-a QR code, settings, devices, the update banner and prompt, and pack progress for native Android
-apps. It is being rebuilt to the UI-kit specification as a Compose Multiplatform kit for Android
-and desktop; until then, its reference is the kit's README, rendered whole below so there is
-exactly one copy to keep current. The rest of the Kotlin SDK is on the
-[Kotlin](/docs/build/sdks/kotlin/) page.
+The Kotlin SDK's Compose kit, for an Android app and for a Compose Desktop app on macOS, Windows and Linux. It provides the boot shell, the gate, activation, sign-in with a QR code, settings, devices, the update banner and prompt, and pack progress. On Android the screens sit in your activity; on the desktop the kit opens its own OS-framed windows. The kit's README is rendered whole under [Reference](#reference), so there is one copy to keep current. The rest of the Kotlin SDK is on the [Kotlin](/docs/build/sdks/kotlin/) page.
 
 <KitFacts kit="compose" />
 
+## Install
+
+The kit is `im.plrs.key:polaris-key-ui`; Gradle picks its Android or desktop variant from your target. A desktop app adds `im.plrs.key:polaris-key-desktop` for the OS keyring and the desktop updater. Use one version for every artifact ([Installing the SDKs from the feeds](/docs/build/install/)).
+
+```kts title="build.gradle.kts"
+dependencies {
+    implementation("im.plrs.key:polaris-key-ui:<version>")
+    implementation("im.plrs.key:polaris-key-desktop:<version>") // desktop only
+}
+```
+
+## The one-line flow
+
+On Android, `PolarisKeyGate(client) { App() }` gates your content. It starts the client once, shows boot, the gate, pack progress and the update prompt, provides the client to the tree and composes `content` once the license allows it. It adds no look of its own; `PolarisKeyApp` is the deprecated name. On the desktop, `PolarisKeyWindow(client) { }` is the same call as a window: it opens the gate window, shows your content once the license allows it, and opens the update and Settings windows when they are needed.
+
+```kotlin android title="MainActivity.kt"
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisKeyGate
+
+@Composable
+fun Root(client: PolarisKeyClient) {
+    PolarisKeyGate(client) { Text("Licensed") }
+}
+```
+
+```kotlin desktop title="Main.kt"
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.ui.window.application
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.desktop.PolarisKeyDesktop
+import im.plrs.key.ui.PolarisKeyWindow
+
+fun main() = application {
+    val client = remember { PolarisKeyDesktop.client(PolarisConfig.clientOptions("1.4.2")) }
+    PolarisKeyWindow(client) { Text("Licensed") }
+}
+```
+
+`PolarisKeyWindow` takes the window's `title` (the product's slug by default), `windowState` (960 by 640 dp), `branding`, `onCloseRequest` (exit by default), `darkTheme` and `copy`. `darkTheme` is the host's own scheme for every window of the kit and `copy` the host's words, its `productName` above all; null follows the OS and the catalog. `onSignOut` shows Sign out in the menu and in Settings; without it the kit offers none. `fullSizeContent = true` draws the content under the macOS title bar.
+
+## Windows
+
+The kit never draws a title bar or caption buttons. Each window is an OS window, with the frame of the OS it runs on.
+
+| Window                  | Opens                                      | Size                                           |
+| ----------------------- | ------------------------------------------ | ---------------------------------------------- |
+| `PolarisKeyWindow`      | At launch: boot, gate, activation, sign-in | 960 by 640 dp; on a Mac at least 480 by 520 dp |
+| `PolarisUpdateWindow`   | An optional update                         | 440 dp wide, as tall as its content, fixed     |
+| `PolarisSettingsWindow` | **Manage license**                         | 650 dp wide, 600 dp tall, resizable in height  |
+
+A mandatory update is a dialog inside the gate window, with no close. Closing the gate window, whatever it shows, calls `onCloseRequest`. Escape or the OS close button closes the update and Settings windows; Settings has no Done button, and its title names the open pane, Account or Devices. Sign out asks first.
+
+## Menu
+
+`PolarisKeyWindow` puts one menu in the window's native menu bar, named after the window's title: **Check for updates** and **Manage license** (title case and an ellipsis on macOS), and **Sign out** when you pass `onSignOut`. The menu bar is native on macOS, so the items are there without a window click. To add your own entries, or to put the kit's in another menu, pass `menu` and place `PolarisMenuItems` in it; `menu = null` has no menu bar.
+
+```kotlin desktop title="Main.kt"
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
+import androidx.compose.ui.window.application
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.desktop.PolarisKeyDesktop
+import im.plrs.key.ui.PolarisKeyWindow
+import im.plrs.key.ui.PolarisMenuItems
+
+fun main() = application {
+    val client = remember { PolarisKeyDesktop.client(PolarisConfig.clientOptions("1.4.2")) }
+    PolarisKeyWindow(
+        client,
+        menu = { state ->
+            Menu("Account") {
+                PolarisMenuItems(onCheckForUpdates = state::requestCheck, onManageLicense = state::manageLicense)
+            }
+        },
+    ) {
+        Text("Licensed")
+    }
+}
+```
+
+**Check for updates** asks the client for a decision (`client.update.decide()`; pass `decide` to supply your own). A newer build opens the update window; if there is none, the gate window shows "You're up to date" until dismissed, and a failed check says so.
+
+## Updater progress
+
+The update window's install button runs the client's install driver. `PolarisKeyDesktop.client` sets the desktop driver when the options carry `UpdateClientOptions`. The bar follows the driver's `InstallProgressSource`: determinate when the size is known, indeterminate otherwise, and the kit invents no percentage. When a verified installer is open, the kit calls `onQuit` (exit by default), so the installer can replace the app. On macOS the primary action reads **Install and Relaunch**.
+
+## Chrome and sizes
+
+The kit reads the OS (macOS, Windows or a Linux desktop with the GNOME portals) and draws that chrome, in the OS's scheme, accent, high contrast and reduced transparency.
+
+| Chrome  | Look               | Control height |
+| ------- | ------------------ | -------------- |
+| macOS   | The Mac sheet      | 28 dp          |
+| Windows | Fluent             | 32 dp          |
+| GNOME   | libadwaita dialogs | 34 dp          |
+
+Under high contrast the kit draws in the system's colors. Reduced transparency makes the sheets and scrims opaque. `PolarisTheme` renders the Polaris look by default; `branding = PolarisBranding.None` inherits your `MaterialTheme`. The kit's text follows the OS font scale, and the screens adapt from the window's minimum up to a full screen.
+
+### Screen readers and sandboxes
+
+Compose Desktop has no AT-SPI on Linux, so Linux screen readers such as Orca can't read the window. Where people need assistive technology on Linux, use the Qt or Electron kit. On Windows and macOS the packaged runtime includes `jdk.accessibility`. In a Flatpak sandbox, links open through the OpenURI portal, and the scheme, accent and contrast come from the Settings portal.
+
+## Piecemeal on the desktop
+
+Place the windows yourself when the app owns its window or its menu. Hold the same state the drop-in holds (`PolarisUpdateState`, `PolarisSettingsState`, `PolarisDevicesState` and a `PolarisSettingsWindowState`) and call the windows from your `application` block. Each window is open while its state holds something to show.
+
+```kotlin desktop title="Windows.kt"
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.window.ApplicationScope
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisDevicesState
+import im.plrs.key.ui.PolarisSettingsState
+import im.plrs.key.ui.PolarisSettingsWindow
+import im.plrs.key.ui.PolarisSettingsWindowState
+import im.plrs.key.ui.PolarisUpdateState
+import im.plrs.key.ui.PolarisUpdateWindow
+import im.plrs.key.ui.devicesActions
+import im.plrs.key.ui.settingsActions
+import im.plrs.key.ui.updateActions
+
+@Composable
+fun ApplicationScope.MyWindows(client: PolarisKeyClient, settingsWindow: PolarisSettingsWindowState) {
+    val scope = rememberCoroutineScope()
+    val update = remember(client) { PolarisUpdateState() }
+    val actions = remember(client) { client.updateActions() }
+    val settings = remember(client) { PolarisSettingsState(client.settingsActions(editable = true), scope) }
+    val devices = remember(client) { PolarisDevicesState(client.devicesActions(), scope) }
+    PolarisUpdateWindow(client, update, onUpdate = { update.install(actions, scope) })
+    PolarisSettingsWindow(client, settingsWindow, settings, devices)
+}
+```
+
+Feed `update` the decision of a check (`update.show(client.update.decide())`) and call `settingsWindow.open(PolarisSettingsPane.Account)` from your own menu item. The screens inside the windows are the ones in the next section, and the Android `PolarisGate`, `PolarisDevices` and the rest are the same composables on the desktop.
+
 ## Piecemeal
 
-`PolarisKeyApp(client) { }` is the one call. To place the screens yourself, hold a
+`PolarisKeyGate(client) { }` is the one call. To place the screens yourself, hold a
 `PolarisGateState(client.gateActions(), scope)` and call its `start()`; then:
 
 - `PolarisGate(state) { }` gates your content and shows the right screen for the license.
@@ -32,7 +167,7 @@ exactly one copy to keep current. The rest of the Kotlin SDK is on the
 - `PolarisDevices(PolarisDevicesState(client.devicesActions(), scope))` lists, renames and signs out
   devices.
 - `PolarisGraceBanner` is the offline-grace banner, for a screen that shows it over your content.
-- `rememberPolarisLicense()` reads the live license state anywhere under `PolarisKeyApp` or
+- `rememberPolarisLicense()` reads the live license state anywhere under `PolarisKeyGate` or
   `PolarisKeyProvider`.
 
 ```kotlin android
@@ -91,6 +226,25 @@ Every message screen (blocked, offline, device limit, boot) carries the same pro
 a product with no name reads "Welcome". Boot draws a loading shimmer after a short delay, held
 still under the system's reduce-motion setting.
 
+## Routes and deep links
+
+The kit owns no navigation: keep your own (navigation-compose in the sample). `PolarisKeyRoute` names the places a link may open: `Account`, `Devices`, `Settings`, `Update` and `SignIn`. `PolarisKeyLinks(returnUri, client).handle(uri)` answers the route a link opens, or null. It accepts only the declared return URI, exactly (scheme, host and path prefix), followed by one route name as the path or as the one query value `route`. It ignores every other query value and the fragment, refuses everything else, and syncs the client once for an accepted link. The kit never puts a token, code or key in a link; `uriFor(route)` builds one from a route alone.
+
+```kotlin android title="Links.kt"
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisKeyLinks
+import im.plrs.key.ui.PolarisKeyRoute
+
+suspend fun openFromLink(client: PolarisKeyClient, uri: String?): PolarisKeyRoute? =
+    PolarisKeyLinks("tidewater://polaris", client).handle(uri)
+```
+
+The sample declares `tidewater://polaris/<route>`, for example `tidewater://polaris/account`.
+
+## Expressive
+
+The kit draws the license choice and the Replace pair as connected button rows on the Expressive shape rules. The rest of Material 3 Expressive waits on the toolchain: the Expressive theme entry point is internal in the pinned material3 1.4.0, so Material's button groups, loading indicator, shape morphs and wavy progress are not used. Inline waits keep the kit's countdown ring and shimmer. The planned Compose toolchain move unlocks them.
+
 ## Powered by Polaris Locker
 
 `PolarisTheme(showPoweredBy = true)` opts in; `poweredByStyle` is `PolarisPoweredByStyle.Line` (the Locker micro mark, 16 dp and growing with the text, and the phrase) by default. `PolarisSettingsScreen` and the kit's account pane draw it as their last item, after the controls; never the gate or a message screen. Place `PolarisPoweredBy` on your about or credits screen: with `PolarisPoweredByStyle.Badge` it draws the 320 × 104 dp badge where 320 dp are free, else the line.
@@ -100,6 +254,28 @@ still under the system's reduce-motion setting.
 The kit's Roborazzi baselines, matched to the [component catalog](/docs/build/ui/components/):
 
 <KitCoverage kit="compose" />
+
+## States to handle
+
+Whatever the screens, the app has to handle these gate states. If you draw your own UI, read each line from the copy catalog.
+
+<StatesToHandle
+  states={[
+    { state: "Offline grace", copyKey: "gate.grace" },
+    { state: "License expired", copyKey: "gate.expired" },
+    { state: "License revoked", copyKey: "gate.revoked" },
+    { state: "Activate", copyKey: "gate.needs-activation" },
+    { state: "Update required", copyKey: "gate.version-too-old" },
+    { state: "Build not on this license", copyKey: "gate.version-too-new" },
+    { state: "Channel not included", copyKey: "gate.channel-not-entitled" },
+  ]}
+/>
+
+## Sample
+
+`examples/ui/compose-desktop/` is Tidewater Studio on the real desktop windows, in the module `:sample-compose-desktop`. `./gradlew :sample-compose-desktop:run` walks the flow on scripted fixtures with no server; `--state`, `--scheme`, `--preset`, `--platform` and `--size` pin a screen, a scheme, a look, a chrome and a size, and `--live` runs against a real Worker with `PKEY_PRODUCT` and `PKEY_TRUST`. Its README lists every flag, `--smoke` and `--shots`.
+
+`examples/ui/compose-android/` is Tidewater Studio on Android, in the module `:sample-compose-android`: `PolarisKeyGate` around a product screen, the update prompt, and the Account screen with navigation-compose and deep links. `./gradlew :sample-compose-android:installDebug` runs it on scripted fixtures with no server; `-Ppkey.product` and `-Ppkey.trust` with the `pkey.live` extra build the real client instead, and the `pkeyState`, `pkeyScheme`, `pkeyPreset` and `pkeyAccent` extras pin a state, a scheme, a look and an accent. Its README lists every extra.
 
 ## Reference
 

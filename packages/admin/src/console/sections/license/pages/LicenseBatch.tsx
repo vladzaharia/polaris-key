@@ -12,7 +12,7 @@
 
 import * as React from "react";
 import { Power } from "lucide-react";
-import { ApiError, type LicenseBatch } from "../../../../api.js";
+import { HttpError, type LicenseBatch } from "../../../../api.js";
 import { useMe } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { r } from "../../../routes.js";
@@ -196,7 +196,7 @@ export function LicenseBatchPage({
   );
   if (q.isPending) return <PageSkeleton template="record" label="batch" />;
   if (!batch) {
-    const notFound = q.error instanceof ApiError && q.error.status === 404;
+    const notFound = q.error instanceof HttpError && q.error.status === 404;
     return (
       <div className="space-y-6">
         <PageHeader

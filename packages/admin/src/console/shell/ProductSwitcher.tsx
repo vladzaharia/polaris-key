@@ -117,8 +117,11 @@ export function ProductSwitcher({
   const attentionItems = useAttention();
   const counts = React.useMemo(() => {
     const m = new Map<string, number>();
-    for (const a of attentionItems.data ?? [])
+    for (const a of attentionItems.data ?? []) {
+      // A platform item (product null) is no product's badge.
+      if (a.product === null) continue;
       m.set(a.product.slug, (m.get(a.product.slug) ?? 0) + 1);
+    }
     return m;
   }, [attentionItems.data]);
 

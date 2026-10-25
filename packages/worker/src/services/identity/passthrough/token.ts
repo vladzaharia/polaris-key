@@ -7,7 +7,7 @@
  * The app redeems the code Continue handed it, with the PKCE verifier, and gets a device token.
  * The body is form-encoded (a JSON body is `invalid_request`), the answer is `no-store`, CORS
  * answers only the product's `web.origins` and never with credentials (`core/cors.ts`,
- * `identity/token` in `CORS_SERVICE_PATHS`). It needs `X-PKey-Device`; the device metadata
+ * the `cors: true` row of `identity/token`). It needs `X-PKey-Device`; the device metadata
  * headers are read when present, as on `license/activate`.
  *
  * ── THE ORDER ───────────────────────────────────────────────────────────────────────────────
@@ -75,6 +75,7 @@ import {
 import { getDevice } from "../../../core/devices/store.js";
 import type { DeviceRow } from "../../../core/repo.js";
 import { getLicense } from "../../../core/licensing/store.js";
+import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
@@ -421,7 +422,9 @@ export async function tokenBody(
     scope: scope.join(" "),
     schemaVersion: product.schemaVersion,
     device: shapeDevice(bound.device, deviceId),
-    license: license ? shapeLicense(license) : null,
+    license: license
+      ? shapeLicense(license, await customerTierId(db, license))
+      : null,
     subject,
     ...(bound.keyEntries ? { keyEntries: bound.keyEntries } : {}),
   };

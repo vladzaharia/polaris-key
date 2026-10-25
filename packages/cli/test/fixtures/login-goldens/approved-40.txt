@@ -1,0 +1,24 @@
+Polaris Key console · key.example
+
+Opening Polaris Key in your browser…
+Didn't open? Go to
+https://key.example/manage/device
+
+Enter this code in your browser:
+ WDJB-MJHT 
+
+Waiting for approval…
+   Enter open again · c copy the code
+   Esc cancel
+
+✓  Signed in as Ada Lovelace
+   (ada@example.com)
+
+   Roles     DJDL admin
+   Token     “pkey on laptop”
+             (pkeyp_…h7Q2)
+   Ends      2096-10-02
+   Saved in  macOS Keychain
+
+   End it with pkey logout.
+--- stderr ---

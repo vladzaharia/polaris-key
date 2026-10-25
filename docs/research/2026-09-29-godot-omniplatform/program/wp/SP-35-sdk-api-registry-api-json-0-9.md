@@ -45,6 +45,25 @@ The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this p
 
 - Each renamed `api.json` row records `replaces` (feeds DOC-12a's upgrade table, `upgrading-polaris-key` and `check_sdk_names`).
 
+## Corrections (2026-10-23)
+
+The code at `integ/next-stage` @0108e1bbc is the fact; the approved plan's line references are from `e4a527fee`. Slice plan: `_lead/plans/SP-35-slices.md` (SP-35.1 to .22).
+
+- **A1. React's Provider has already moved** (kit cutover): `config.expectedServices`, and a top-level `expectServices` prop is refused with `invalid-options` (`Provider.tsx:54,78,115-118`). Left: the three adapters' `expectServices` option (browser in ui-core `browserAdapter.ts:389`, desktop `desktopAdapter.ts:158`, local `localAdapter.ts:126`; `ui-core/src/browser/driver.ts:134-137` maps it).
+- **A2. React has more removed-name surface:** `usePolarisKey()` (`@deprecated`) still returns `getConfig` and `isEntitled` (`hooks.ts:115,121,156,160`); `useConfigSetting` has no `visibility` (`hooks.ts:298-341`). `PolarisAdapter.getConfig` and `isEntitled` stay (adapter root, `ignore`).
+- **A3. Node line drift:** `ConfigClient.getConfig` :137, `getConfigSource` :143, `setting()` :264-276, `ConfigSetting` :64-74; facade `client.getConfig` `client.ts:672-673`; licence `isEntitled` :134, `entitlementValue` :142, `getEntitlements` :173; event kinds `core/events.ts:16-22` (no `entitlement`). Consumers: `cli/gate.ts:237`, `cli/commands.ts:242` (the `/cli` command function stays), `local/index.ts:46`, `commerce/client.ts:109`.
+- **A4. Python line drift:** `config/client.py` `get_config` :89, `get_config_source` :95, `setting` :180, `on_change` :185, `ConfigSetting` :255-284; `client.py` `trust` :146, `on_config_change` :599-601, `get_config` :763-764; `aio.py` forwarded names :54-55; licence `is_entitled` :135, `entitlement_value` :149, `get_entitlements` :181. Consumers: `ui/terminal/flows.py:710`, `server_client.py:17,110`, `local/__init__.py:46`, `__init__.py:7,9`, `cli/gate.py:161`, `examples/python-cli/mytool.py`, `examples/python-renpy/polaris_key.rpy`, `examples/ui/qt/tidewater_qt.py`. `ServerClient(trust=)` (`server_client.py:100`) is unlisted in the plan (L8).
+- **A5. The snippet generators moved (SP-33a).** SP-35 edits no file in `packages/admin`. The live emitter of old names is `packages/shared-manifest/src/integration/usage.ts` (Node :170, :182, :268, :270; Python :636, :647, :650, :702, :717; :356 `v.isEntitled` stays), and `integration/sdkConfig.ts` (Python `"trust"` :185, Godot `pinned_trust_keys` :288). Goldens: `shared-manifest/test/fixtures/integration/**` (`pnpm gen integration`); `pnpm gen action-bundle` after `pnpm build`.
+- **A6. The parity gate is a `pnpm gen` family.** api-check is rule 8 of `tools/parity-check.ts` (family `parity`), whose `inputs` now include the scanned SDK sources. The AGENTS.md rule-3 table is generated (`pnpm gen registry-docs`).
+- **A7. Other anchors:** `gen-reference.mjs` `EMITTERS` :1029-1038; Godot `runner.gd` `ci` list :32; Kotlin `sdk/src/test/kotlin/polaris/generated/` exists. `enums.json` lacked `settingVisibility` and `eventKind` (added in SP-35.1; the enum value pattern now allows camelCase).
+- **A8. Corpus names the scan must not touch:** `gate-matrix.json` `expect.isEntitled` (`tools/corpus/gate.ts:855`); comments at `tools/corpus/gate.ts:836` and `client-core/src/config.ts:33` (plan-mode files; out of the scan).
+- **A9. The wire and docs use `"trust"`** (`reference/protocol/discovery.md:44`, `bundles.md:35`): the Python `trust` row's `scan.files` is limited to `*.py`, `*.rpy` and `python` fences.
+- **A10. The server layer keeps the old entitlement spellings on purpose** (`@polaris-key/server` `verifyLicenseDocument.ts:41-43,84-85`, `context.ts:62`, `core.ts:516`; `polaris_key/server/_verdict.py:182,335`): `layer: "server"` rows (L4).
+- **A11. The brief widened scope after approval** (framework drop-ins, SDK usability, LLM audit, docs plan): `layer`, `returns`, `unit`, `errors`, `triggers` on rows (L2); `replaces` is the `removed` rows (L3). No upgrade-table generator exists yet (DOC-12a is todo).
+- **A12. Docs and READMEs naming removed names:** `build/sdks/{python,react}/your-own-ui.md`, `features/licensing/server-{node,python}` (:349, :292), `packages/sdk-node/README.md`, `sdks/python/README.md`, `.claude/skills/adding-a-catalog-entry`, `examples/ui/terminal-node`. The Swift, Kotlin and Godot READMEs are SP-35b's.
+
+**Lead decisions (accepted 2026-10-23, all as recommended):** L1 Node, React and Python rows start `planned: "SP-35"` at today's spelling and each rename slice flips its own; L2 optional `layer` on every row, the other widened fields on Appendix A rows only; L3 no new field, `removed` rows are the `replaces` data (DOC-12a builds the upgrade table; `api-check --notes` feeds release notes); L4 server and CLI layers kept (`layer` rows, `ignore` for rule 1); L5 `expectedServices: readonly ServiceSlug[]` on the three adapters; L6 remove `usePolarisKey()`'s `getConfig` and `isEntitled`, keep the hook; L7 `useConfigSetting` keeps `fallback` and gains `visibility`; L8 Python `ServerClient(trust=)` becomes `pinned_keys`; L9 `client.entitlements` is a thin view over the licence gate, no root shortcut; L10 api-check runs as rule 8 of `parity-check.ts`; L11 a row's `sdks` lists every SDK that ships it (`{}` = generated spelling); L12 Swift, Kotlin and Godot inventory stays in SP-35 (.11 to .13).
+
 ## Goal
 
 SDK API registry (api.json) and 0.9 normalisation, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -90,12 +109,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Each SDK's surface test asserts every canonical symbol
-- [ ] No new SDK verb outside api.json (lint)
-- [ ] Every command in `plans/SP-35.md` §13 above the SP-35b line passes
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `reference/api-names`; every quickstart regenerated; snippets included from `examples/` (the SDK docs-snippets targets retire); `build/sdks/*` reference-only.
-- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Each SDK's surface test asserts every canonical symbol
+- [x] No new SDK verb outside api.json (lint)
+- [x] Every command in `plans/SP-35.md` §13 above the SP-35b line passes
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `reference/api-names`; every quickstart regenerated; snippets included from `examples/` (the SDK docs-snippets targets retire); `build/sdks/*` reference-only.
+- [x] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7). _Met per slice-plan L3: no new `replaces` field. The `removed` rows in `conformance/parity/api.json` are the data; `reference/api-names`'s "Removed in 0.9" lists them and `pnpm exec tsx tools/api-check.ts --notes SP-35` renders the release notes (23 rows). The changelog page is still a stub and DOC-12a builds the upgrade table from these rows._
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

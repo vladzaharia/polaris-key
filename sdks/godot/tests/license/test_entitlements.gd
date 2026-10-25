@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature license.entitlements license.channels license.gate
-# The reads off the verified licence document (is_entitled, get_entitlements, get_profile,
+# The reads off the verified licence document (entitlements.has, .value, .all, get_profile,
 # get_license_id, entitled_channels), the activation source (token supersedes bundle), and the
 # gate surface (status, is_licensed, not-applicable when License is off). The first half reads
 # the real signed document recorded in sync-etag-304; the channel shapes no recording carries
@@ -27,18 +27,20 @@ func _verified(t: PKeyTestContext) -> void:
 	h.serve_docs([h.F["token"]])
 	var sdk := PKeyTestFixtures.new_sdk()
 	t.check("entitlements: no license object before configure", sdk.license == null)
+	t.check("entitlements: present before configure, answering false, null and {}", sdk.entitlements != null and not sdk.entitlements.has("polarisVpn") and sdk.entitlements.value("polarisVpn") == null and sdk.entitlements.all().is_empty())
 	var store := PKeyMemoryStore.new(h.F["device_id"], h.F["token"])
 	sdk.queue_free()
 	sdk = await h.sdk(store)
-	t.check("entitlements: nothing is granted before a document verifies", not sdk.license.is_entitled("polarisVpn") and sdk.license.get_entitlements().is_empty() and sdk.license.get_profile() == null and sdk.license.get_license_id() == "")
+	t.check("entitlements: nothing is granted before a document verifies", not sdk.entitlements.has("polarisVpn") and sdk.entitlements.all().is_empty() and sdk.license.get_profile() == null and sdk.license.get_license_id() == "")
 	t.check("entitlements: entitled_channels is [stable] with no document", sdk.license.entitled_channels() == ["stable"])
 	t.check("entitlements: a held token without a document needs activation", sdk.license.activation() == &"token" and sdk.license.status()["status"] == "needs-activation" and not sdk.license.is_licensed())
 	await sdk.sync()
 	t.check("entitlements: the verified document makes the licence ok", sdk.license.status()["status"] == "ok" and sdk.license.is_licensed() and sdk.is_licensed(), str(sdk.license.status()))
 	t.check("entitlements: status() on the root and on license agree", sdk.status() == sdk.license.status())
-	t.check("entitlements: is_entitled reads a true grant", sdk.license.is_entitled("polarisVpn"))
-	t.check("entitlements: is_entitled is false for an absent grant", not sdk.license.is_entitled("nope"))
-	t.check("entitlements: get_entitlements flattens to values", sdk.license.get_entitlements() == {"polarisVpn": true}, str(sdk.license.get_entitlements()))
+	t.check("entitlements: has reads a true grant", sdk.entitlements.has("polarisVpn"))
+	t.check("entitlements: has is false for an absent grant", not sdk.entitlements.has("nope"))
+	t.check("entitlements: value reads the grant and is null when absent", sdk.entitlements.value("polarisVpn") == true and sdk.entitlements.value("nope") == null)
+	t.check("entitlements: all flattens to values", sdk.entitlements.all() == {"polarisVpn": true}, str(sdk.entitlements.all()))
 	t.check("entitlements: get_license_id", sdk.license.get_license_id() == "lic_djdl_1")
 	var profile = sdk.license.get_profile()
 	t.check("entitlements: get_profile is the signed greeting block", profile is Dictionary and profile.get("name") == "Ada Lovelace" and profile.get("firstName") == "Ada" and profile.get("email") == "ada@example.com", str(profile))
@@ -93,21 +95,22 @@ func _shapes(t: PKeyTestContext) -> void:
 	_stage(sdk, grants)
 	var entitled: Array = []
 	for k in grants:
-		if sdk.license.is_entitled(k):
+		if sdk.entitlements.has(k):
 			entitled.append(k)
-	t.check("entitlements: is_entitled is true only for the boolean value true", entitled == ["yes"], str(entitled))
-	var flat: Dictionary = sdk.license.get_entitlements()
-	t.check("entitlements: get_entitlements keeps every value and skips a malformed entry", flat.size() == 7 and flat["str"] == "true" and flat["arr"] == [true] and flat["nul"] == null and not flat.has("bare"), str(flat))
+	t.check("entitlements: has is true only for the boolean value true", entitled == ["yes"], str(entitled))
+	var flat: Dictionary = sdk.entitlements.all()
+	t.check("entitlements: all keeps every value and skips a malformed entry", flat.size() == 7 and flat["str"] == "true" and flat["arr"] == [true] and flat["nul"] == null and not flat.has("bare"), str(flat))
 	# S-19 G11: a grant the last verified document lists is not an entitlement once the gate is
 	# not usable (expired past grace here; revoked reads the same way through is_licensed()).
 	_stage(sdk, {"yes": _ent(true)})
-	t.check("entitlements: G11 a usable gate keeps the grant", sdk.license.is_entitled("yes") and sdk.license.is_licensed())
+	t.check("entitlements: G11 a usable gate keeps the grant", sdk.entitlements.has("yes") and sdk.license.is_licensed())
 	sdk.core.cache.license["doc"]["issuedAt"] = h.F["now"] - 7200
 	sdk.core.cache.license["doc"]["expiresAt"] = h.F["now"] - 3600
 	sdk.core.cache.license["doc"]["graceUntil"] = h.F["now"] - 1800
 	var gone: String = sdk.license.status()["status"]
-	t.check("entitlements: G11 is_entitled is false once the gate is not usable", not sdk.license.is_licensed() and not sdk.license.is_entitled("yes"), gone)
-	t.check("entitlements: G11 get_entitlements still reads the raw grant", sdk.license.get_entitlements() == {"yes": true})
+	t.check("entitlements: G11 has is false once the gate is not usable", not sdk.license.is_licensed() and not sdk.entitlements.has("yes"), gone)
+	t.check("entitlements: G11 value is null once the gate is not usable", sdk.entitlements.value("yes") == null)
+	t.check("entitlements: G11 all still reads the raw grant", sdk.entitlements.all() == {"yes": true})
 	_stage(sdk, {"x": _ent(true)})
 	sdk.core.cache.license["doc"]["profile"] = "not a block"
 	t.check("entitlements: a non-object profile reads as null", sdk.license.get_profile() == null and sdk.license.get_license_id() == "lic_staged")

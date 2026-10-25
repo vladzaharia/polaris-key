@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(175 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(183 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -36,145 +36,152 @@ from it. A new code needs an entry there first.
 
 ## Worker enum (`packages/worker/src/core/errors.ts`)
 
-| Wire code | Enum member |
-| --- | --- |
-| `unauthorized` | `ErrorCode.Unauthorized` |
-| `not_entitled` | `ErrorCode.NotEntitled` |
-| `device_limit` | `ErrorCode.DeviceLimit` |
-| `bad_request` | `ErrorCode.BadRequest` |
-| `not_found` | `ErrorCode.NotFound` |
-| `managed_by_admin` | `ErrorCode.ManagedByAdmin` |
-| `forbidden` | `ErrorCode.Forbidden` |
-| `hardware_mismatch` | `ErrorCode.HardwareMismatch` |
-| `fingerprint_required` | `ErrorCode.FingerprintRequired` |
-| `enroll_disabled` | `ErrorCode.EnrollDisabled` |
-| `enroll_claimed` | `ErrorCode.EnrollClaimed` |
-| `license_disabled` | `ErrorCode.LicenseDisabled` |
-| `license_unusable` | `ErrorCode.LicenseUnusable` |
-| `value_not_representable` | `ErrorCode.ValueNotRepresentable` |
-| `document_not_representable` | `ErrorCode.DocumentNotRepresentable` |
-| `identity_disabled` | `ErrorCode.IdentityDisabled` |
-| `unknown_app` | `ErrorCode.UnknownApp` |
-| `key_entry_limit` | `ErrorCode.KeyEntryLimit` |
-| `license_owned` | `ErrorCode.LicenseOwned` |
-| `license_email_bound` | `ErrorCode.LicenseEmailBound` |
-| `account_required` | `ErrorCode.AccountRequired` |
-| `invalid_request` | `ErrorCode.InvalidRequest` |
-| `invalid_client` | `ErrorCode.InvalidClient` |
-| `invalid_grant` | `ErrorCode.InvalidGrant` |
-| `unsupported_grant_type` | `ErrorCode.UnsupportedGrantType` |
-| `invalid_scope` | `ErrorCode.InvalidScope` |
-| `redirect_uri_mismatch` | `ErrorCode.RedirectUriMismatch` |
-| `license_choice_required` | `ErrorCode.LicenseChoiceRequired` |
+| Wire code | Enum member | Help |
+| --- | --- | --- |
+| `unauthorized` | `ErrorCode.Unauthorized` | [Help](/docs/help/messages/license-status/#unauthorized) |
+| `not_entitled` | `ErrorCode.NotEntitled` | [Help](/docs/help/messages/license-status/#not_entitled) |
+| `device_limit` | `ErrorCode.DeviceLimit` | [Help](/docs/help/messages/devices/#device_limit) |
+| `bad_request` | `ErrorCode.BadRequest` | developer only |
+| `not_found` | `ErrorCode.NotFound` | [Help](/docs/help/messages/other/#not_found) |
+| `managed_by_admin` | `ErrorCode.ManagedByAdmin` | [Help](/docs/help/messages/other/#managed_by_admin) |
+| `forbidden` | `ErrorCode.Forbidden` | [Help](/docs/help/messages/other/#forbidden) |
+| `hardware_mismatch` | `ErrorCode.HardwareMismatch` | [Help](/docs/help/messages/devices/#hardware_mismatch) |
+| `fingerprint_required` | `ErrorCode.FingerprintRequired` | [Help](/docs/help/messages/devices/#fingerprint_required) |
+| `enroll_disabled` | `ErrorCode.EnrollDisabled` | [Help](/docs/help/messages/license-key/#enroll_disabled) |
+| `enroll_claimed` | `ErrorCode.EnrollClaimed` | [Help](/docs/help/messages/signing-in/#enroll_claimed) |
+| `license_disabled` | `ErrorCode.LicenseDisabled` | [Help](/docs/help/messages/license-key/#license_disabled) |
+| `license_unusable` | `ErrorCode.LicenseUnusable` | [Help](/docs/help/messages/license-key/#license_unusable) |
+| `value_not_representable` | `ErrorCode.ValueNotRepresentable` | developer only |
+| `document_not_representable` | `ErrorCode.DocumentNotRepresentable` | [Help](/docs/help/messages/other/#document_not_representable) |
+| `identity_disabled` | `ErrorCode.IdentityDisabled` | [Help](/docs/help/messages/signing-in/#identity_disabled) |
+| `unknown_app` | `ErrorCode.UnknownApp` | [Help](/docs/help/messages/signing-in/#unknown_app) |
+| `key_entry_limit` | `ErrorCode.KeyEntryLimit` | [Help](/docs/help/messages/accounts/#key_entry_limit) |
+| `license_owned` | `ErrorCode.LicenseOwned` | [Help](/docs/help/messages/accounts/#license_owned) |
+| `license_email_bound` | `ErrorCode.LicenseEmailBound` | [Help](/docs/help/messages/accounts/#license_email_bound) |
+| `account_required` | `ErrorCode.AccountRequired` | [Help](/docs/help/messages/signing-in/#account_required) |
+| `cursor_expired` | `ErrorCode.CursorExpired` | [Help](/docs/help/messages/other/#cursor_expired) |
+| `client_mismatch` | `ErrorCode.ClientMismatch` | developer only |
+| `value_invalid` | `ErrorCode.ValueInvalid` | developer only |
+| `op_invalid_for_policy` | `ErrorCode.OpInvalidForPolicy` | developer only |
+| `setting_not_synced` | `ErrorCode.SettingNotSynced` | developer only |
+| `quota_exceeded` | `ErrorCode.QuotaExceeded` | [Help](/docs/help/messages/other/#quota_exceeded) |
+| `writes_paused` | `ErrorCode.WritesPaused` | [Help](/docs/help/messages/other/#writes_paused) |
+| `invalid_request` | `ErrorCode.InvalidRequest` | developer only |
+| `invalid_client` | `ErrorCode.InvalidClient` | [Help](/docs/help/messages/signing-in/#invalid_client) |
+| `invalid_grant` | `ErrorCode.InvalidGrant` | [Help](/docs/help/messages/signing-in/#invalid_grant) |
+| `unsupported_grant_type` | `ErrorCode.UnsupportedGrantType` | developer only |
+| `invalid_scope` | `ErrorCode.InvalidScope` | developer only |
+| `redirect_uri_mismatch` | `ErrorCode.RedirectUriMismatch` | [Help](/docs/help/messages/signing-in/#redirect_uri_mismatch) |
+| `license_choice_required` | `ErrorCode.LicenseChoiceRequired` | [Help](/docs/help/messages/signing-in/#license_choice_required) |
 
 ## Client codes (`conformance/parity/errors.json`)
 
 Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 
-| Code | Service | Meaning |
-| --- | --- | --- |
-| `service-unavailable` | `core` | The product does not run the service this sub-client speaks to. |
-| `service-disabled` | `core` | React: the product's discovery document has this service turned off. |
-| `local-only` | `core` | This client is local-only; the call would have opened a network connection. |
-| `backend-origin-not-allowed` | `core` | A client.backend fetch helper refused a URL whose origin is not in backend.origins; nothing was sent (framework drop-ins §6). |
-| `insecure-base-url` | `core` | The base URL would carry the device bearer token in the clear (plain http to a non-loopback host). |
-| `bundle-jws-rejected` | `core` | Offline bundle import, step 1: the bundle's signature, `typ` or size cap failed. |
-| `bundle-claims-rejected` | `core` | Offline bundle import, step 2: `aud`, `deviceId`, the import window or the carried documents failed. |
-| `bundle-trust-rejected` | `core` | Offline bundle import, step 3: the inner trust manifest failed against the pinned keys. |
-| `inner-doc-rejected` | `core` | Offline bundle import, step 4: a carried document failed against the effective trust set. |
-| `bundle` | `core` | Swift: the offline bundle import failed before a refusal step could be named. |
-| `transport` | `core` | Swift: the transport returned something that is not an HTTP response. |
-| `network` | `core` | React: the request failed, or the server answered with an unexpected status. Node and Python terminal kits: discovery could not be reached, so a service that looks off reads as offline (not "Not available"). |
-| `refresh-failed` | `core` | React: refreshing the session or documents failed. |
-| `sync-failed` | `core` | Boot stage machine: sync returned an unusable answer and boot cannot continue, so it stops in the error stage. |
-| `fetch-failed` | `core` | Boot stage machine: fetching required content failed and required packs are still missing, so boot stops in the error stage. |
-| `bridge-missing` | `core` | React desktop: the host bridge the adapter talks through is not installed. |
-| `unknown` | `core` | React desktop: the host bridge threw something that carries no code. |
-| `release-refused` | `release` | React: the Worker refused a release call (changelog, download URL) because this build or licence is not entitled to that channel or feed; `wireCode` carries the Worker's own code. |
-| `bundle-rejected` | `core` | React: an offline bundle import was refused; `wireCode` carries the refusal step (`bundle-jws-rejected`, `bundle-claims-rejected`, `bundle-trust-rejected` or `inner-doc-rejected`). |
-| `bundle-import-unsupported` | `core` | React: this adapter cannot import offline bundles (a desktop bridge older than protocol v3, or a browser without pinned trust keys or IndexedDB). |
-| `report-unsupported` | `core` | React: device telemetry cannot be reported from here (a browser session has no device token, or the desktop bridge does not expose it). |
-| `device-management-unsupported` | `core` | Remote device management needs a credential or backend this client does not have. |
-| `device_list_failed` | `core` | Python, Swift: listing the fleet's devices failed. |
-| `device_rename_failed` | `core` | Python, Swift: renaming a device failed. |
-| `device_deauthorize_failed` | `core` | Python, Swift: deauthorizing another device failed. |
-| `key-entry-unsupported` | `license` | React: this transport cannot accept a typed licence key. |
-| `sign-in-failed` | `identity` | A device-code sign-in poll answered a bare `error` (no `reason`): the sign-in failed after approval and the service does not say why and the Worker will not retry it. Also, in React, a sign-in or activation that did not complete. Begin again (DENY-01). |
-| `sign-out-failed` | `identity` | React: sign-out did not complete. |
-| `bad_response` | `core` | Node, Python, Swift: the server answered 200 with a body missing a field the call needs (an edge-mint without its token or expiry, a device sign-in start without a complete prompt). Node also: a 2xx body that is not JSON, and a signed document that fails verification during sync. |
-| `network-error` | `core` | The request never got an answer (refused, reset, DNS, the client's deadline). Node: every network call, thrown or in its result, with the failure as `cause`; Python, Swift: edge-mint, device-code sign-in. A device-code sign-in wait treats it as transient and polls again. |
-| `server-error` | `core` | The server answered 5xx. Node: every network call, with `status` and the server's own code as `wireCode`; Node, React, Python, Swift, Kotlin and Godot: a device-code sign-in poll. Transient: a sign-in wait polls again at the same interval. |
-| `cancelled` | `identity` | Python, Godot: a device-code sign-in wait was cancelled by the host. |
-| `sign-in-expired` | `identity` | Godot: a device-code sign-in ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again. |
-| `sign-in-denied` | `identity` | A device-code sign-in poll answered `error` with `reason: access_denied`: a person pressed Deny (or Not you?, or Cancel) on the Polaris Locker approval page. Begin again (I-37, I-37b, DENY-01). Builds before DENY-01 also raise it for a bare `error`. |
-| `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. |
-| `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. Godot's `config.set_value` also answers it for a value its catalog schema refuses and for a secret key, the refusal the other SDKs and `sync-scenarios.json` name with the canonical `bad_request`; Godot's runners map that canonical code to this one. |
-| `invalid-argument` | `core` | The Electron desktop bridge refused a call because an argument was missing, of the wrong type, or out of bounds (an absolute or escaping download path, an unknown store or kind). One spelling for every verb; the renderer adapter surfaces it as a typed error. |
-| `invoke-not-allowed` | `core` | The Electron desktop bridge's generic invoke named a service method the host does not expose to the renderer. |
-| `sender-refused` | `core` | The Electron desktop bridge refused a call from a window or frame the host's sender rule does not allow (an iframe, a navigated-away window, remote content). |
-| `not-configured` | `core` | A call needs configuration it does not have: in Godot, a call that ran before configure(); in every SDK, update.decide() with no pinned release keys. |
-| `unsupported` | `core` | Every SDK: the feature is not supported here, as `supports(feature)` reports it. Carries `feature`, `reason` (`runtime`, `outlet`, `product`, `dependency` or `version`) and `detail` (PARITY §2.2, P1b-10). Godot also returns it from a stub where a native plugin is absent. |
-| `timeout` | `core` | Godot: The request got no complete answer within its wall-clock budget, every redirect hop included. |
-| `response-too-large` | `core` | Godot: The response body exceeded the client's cap (512 KiB for API calls). |
-| `too-many-redirects` | `core` | Godot: The request was redirected more times than the client follows. |
-| `insecure-redirect` | `core` | Godot: A redirect pointed at plain http on a non-loopback host, or at a non-http(s) URL; it was refused. |
-| `http-error` | `core` | Godot: The server answered a non-success status with no recognised error code in its body. |
-| `invalid-response` | `core` | Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field. |
-| `store-failed` | `core` | Godot: The credential or cache store could not be read or written. |
-| `platform-error` | `core` | Godot: a native platform plugin answered an error, or a reply that is not JSON: the Apple plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) or the Android plugin (polaris-key-platform through PolarisKeyAndroid); `detail` carries the plugin's own fields. |
-| `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. |
-| `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. |
-| `feed-rejected` | `update` | A fetched channel feed (pkey-feed+jws) was refused at its signature, claims, channel binding, selector or freshness step; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 3–7). |
-| `feed-rollback` | `update` | A fetched channel feed carried a lower `seq` than the committed feed of its canonical channel: a rollback, refused (WIRE-CONTRACT-V4 §2.5 step 8). |
-| `record-rejected` | `update` | A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14), or, for a pack record signed by a delegated content key (plans/P4-19.md §2.3), `delegation` (the delegation it names was refused) or `scope` (the record is outside the delegation's scope, types, layout or window). |
-| `record-mismatch` | `update` | A verified release record does not match the feed's pin: its kind, deliverable, version or `seq` differs (WIRE-CONTRACT-V4 §2.5 step 15). |
-| `payload-mismatch` | `update` | Godot: downloaded or staged update bytes do not match the verified release record's payload `size` and `sha256`; nothing was staged or swapped (plans/P3-01.md §2.5 step 19). |
-| `swap-refused` | `update` | Godot: this install cannot take a sidecar-PCK swap; `detail.reason` says why (`platform`, `app-bundle`, `msix`, `program-files`, `flatpak`, `snap`, `appimage`, `velopack`, `no-sidecar`, `not-writable`, `inert`). |
-| `swap-failed` | `update` | Godot: a verified sidecar-PCK swap or rollback could not replace the pack beside the executable (a copy or rename failed); the staged update is kept and retried at the next launch. |
-| `files-index-invalid` | `update` | A pack variant's files index (`pkey-files/1`) was refused: its declared size is over the limit, its stored bytes or decoded length differ from the record's ref, it is not strict JSON, or it breaks a member, payload or tree rule (plans/P4-01.md §2.7; WIRE-CONTRACT-V4 §2.6). |
-| `files-unsafe-path` | `update` | A pack file path breaks the path rules (length, characters, segments, Windows device names, or a first segment `.pkey`); `path` names it. Checked before any byte is written (plans/P4-01.md §2.7). |
-| `files-duplicate-path` | `update` | A pack's files index lists one path twice; `path` names the later one (plans/P4-01.md §2.7). |
-| `files-case-collision` | `update` | Two pack file paths differ only in ASCII case; `path` names the later one (plans/P4-01.md §2.7). |
-| `files-path-conflict` | `update` | A pack file path is a directory prefix of another, or has one as its prefix (ASCII case-insensitively); `path` names the later one (plans/P4-01.md §2.7). |
-| `files-layout-mismatch` | `update` | A container pack's files index breaks the layout rule: entries overlap or run past the payload, or the uncovered bytes differ from the gaps object's size (plans/P4-01.md §2.7). |
-| `content-stamp-invalid` | `release` | The build's embedded content stamp (`pkey-content.json`, `pkey-content/1`) is not strict JSON, has another `format`, or breaks the app record's `content` claims (plans/P4-01.md §2.6, §2.8). |
-| `full-corrupt` | `update` | A pack's `full` object was refused: its ref is unusable, its declared size differs from the payload's, its stored bytes or decoded length differ from the ref, or the decoded bytes do not hash to the payload (a tree: a file's SHA-256 differs) (plans/P4-01.md §2.9). |
-| `delta-artifact-mismatch` | `update` | A pack delta's stored object (a `payload` delta's artifact, or a `files` set's descriptor or data) differs from its ref, or the `pkey-patch/1` descriptor breaks its member rules (plans/P4-01.md §2.7, §2.9). |
-| `delta-base-mismatch` | `update` | The installed base of a pack delta does not hash to the delta's `from` (a `files` set: no installed file with the entry's `from`; `path` names it) (plans/P4-01.md §2.9). |
-| `delta-apply-failed` | `update` | A `zstd-patch-from` frame was refused or failed: its header window is unreadable or above 2^windowLogMax (checked before decoding), or the raw-prefix decode, its length or its SHA-256 failed; `path` names the file of a `files` set (plans/P4-01.md §2.7 rule 3, §2.9). |
-| `file-corrupt` | `update` | A pack file's blob (or a set's blob entry) failed its ref, its decode or its SHA-256, or a tree's reused file no longer hashes to its index entry; `path` names it (plans/P4-01.md §2.9). |
-| `file-source-missing` | `update` | A target file of the `file` strategy has no installed file with its hash and no source to fetch it from; `path` names it (plans/P4-01.md §2.9). |
-| `payload-hash-mismatch` | `update` | A container pack rebuilt by the `file` strategy does not hash to the variant's `payload.sha256` (plans/P4-01.md §2.9). |
-| `chunks-ref-mismatch` | `update` | A pack variant's chunk index (`pkey-chunks/1`) was refused before parsing: its declared size is over the limit, its stored bytes differ from the `chunks` ref, it does not decode, or its decoded length is not the ref's `size` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-bad-length` | `update` | A chunk index is shorter than its 64-byte header, or its length is not exactly 64 + 48 × (chunkCount + bundleCount) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-bad-magic` | `update` | A chunk index does not start with `PKEYCHNK` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-unsupported-version` | `update` | A chunk index's `version` is not 1 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-bad-record-size` | `update` | A chunk index's `recordSize` is not 48 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-bad-flags` | `update` | A chunk index sets a flag bit other than bit 0 (`fileAware`) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-reserved-nonzero` | `update` | A chunk index's bundle record has a nonzero `reserved` field; `bundle` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-zero-length` | `update` | A chunk index's chunk record has `len` 0; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-bad-clen` | `update` | A chunk index's chunk record has `clen` 0 or above `len`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-bad-bundle-ref` | `update` | A chunk index's chunk record names a bundle at or past `bundleCount`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-bad-bundle-range` | `update` | A chunk index's chunk record runs past its bundle's declared `size` (`offset + clen`); `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-size-mismatch` | `update` | A chunk index's chunk lengths do not sum to its `payloadSize` (read by the u64 rule) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunks-payload-mismatch` | `update` | A chunk index is bound to another payload: its `payloadSha256` or `payloadSize` is not the variant's `payload` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). |
-| `chunk-bundle-truncated` | `update` | Chunk sync: fewer than `clen` bytes arrived for a fetched chunk (a short body, or a range clipped at the bundle's end); `chunk` names it (plans/P4-10.md §2.5). |
-| `chunk-corrupt` | `update` | Chunk sync: a fetched chunk does not decode, decodes to the wrong length, or does not hash to its id; `chunk` names it (plans/P4-10.md §2.5). |
-| `plan-transport-unsupported` | `update` | The install planner's result: the target is platform-bound and the host lists no transport for it (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
-| `plan-insufficient-disk` | `update` | The install planner's result: no feasible strategy fits the host's free disk (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
-| `plan-no-strategy` | `update` | The install planner's result: no strategy the host allows can reach the target (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. |
-| `pack-no-variant` | `update` | No variant of a pack record is eligible on this host: none is usable, matches the host's engine, or has a value in the host's preference list for every axis it declares (plans/P4-01.md §2.9). |
-| `pack-type-unsupported` | `update` | A pack record's `type` is one this SDK holds no handler for, or its `formatVersion` is one that handler does not list (`files.tree` everywhere and `godot.pck` in Godot since v1; the v3 types per SDK since P4-16, CONTENT §13; `ml.model` and `audio.bank` only once the host registers a configured handler), so the pack is unusable (plans/P4-01.md §2.2). |
-| `pack-type-check-failed` | `update` | A pack payload failed its type's device-side check (CONTENT §4.2, P4-16) after the engine verified it and before it committed, so nothing was activated, the install was abandoned and staging discarded. `detail` names the check: `json` (a data.json file is not strict JSON), `table` (an l10n.table file is not a PO, CSV or JSON table the plain parser reads), `locale` (a table's locale is not a well-formed BCP-47 tag or not the variant's locale), `descriptor` (an ml.model's model.json or an audio.bank's bank.json is missing or malformed), `runtime`, `quantization`, `memory` (the model's RAM or VRAM need is above the host's budget), `load-test` (the host's load test refused the model), `middleware` (the bank's middleware or major.minor version is not the host's), `size` (a file is above the handler's limit), or a game handler's own token; `path` names the file. |
-| `pack-not-pinned` | `update` | `update.packs.ensure` named a pack the running build's content stamp does not pin, so there is no release to install (plans/P4-01.md §2.8: the stamp is the only source of pins in v1). |
-| `pack-not-entitled` | `update` | A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9). |
-| `pack-state-unreadable` | `update` | The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds. |
-| `pck-directory-refused` | `update` | A pack payload failed the Godot SDK's device-side checks before it was committed or mounted. For a `godot.pck`: its PCK header or directory cannot be read (an encrypted directory, a sparse bundle, an encrypted, removal or delta entry), or an entry is outside the admission list over the record's `handler.prefixes` (`project.binary`, the class cache, a script, a native library, an out-of-prefix path, an exported file nothing names, or a resource that embeds code), an entry path the engine would normalise elsewhere, a `.remap`/`.import` or `uid_cache.bin` naming a file outside the pack; for a `files.tree`, a script or a Godot resource that embeds code. The first refused path is named (notes/S-05 §5 (f); P4-03's publish lint applies the same list). |
-| `pck-engine-mismatch` | `update` | A `godot.pck` payload's PCK header names an engine newer than the running one, or a `major.minor` outside the variant's `requires.engine`, so the Godot SDK does not commit or mount it (plans/P4-01.md §2.9; P4-08). |
-| `pack-rolled-back` | `update` | The release the content stamp pins was rolled back by the boot guard after failed boots, so it is not installed again while the stamp still pins it; the restored previous release stays active and counts as present (P3-10's skipVersion for packs; P4-08). |
-| `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5), or a delegated release whose delegation a verified revocation names (detail `delegation`, plans/P4-19.md §2.6). |
-| `pack-not-data-only` | `update` | A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file. |
-| `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). |
+| Code | Service | Meaning | Help |
+| --- | --- | --- | --- |
+| `service-unavailable` | `core` | The product does not run the service this sub-client speaks to. | [Help](/docs/help/messages/other/#service-unavailable) |
+| `service-disabled` | `core` | React: the product's discovery document has this service turned off. | [Help](/docs/help/messages/other/#service-disabled) |
+| `local-only` | `core` | This client is local-only; the call would have opened a network connection. | [Help](/docs/help/messages/license-status/#local-only) |
+| `backend-origin-not-allowed` | `core` | A client.backend fetch helper refused a URL whose origin is not in backend.origins; nothing was sent (framework drop-ins §6). | developer only |
+| `insecure-base-url` | `core` | The base URL would carry the device bearer token in the clear (plain http to a non-loopback host). | developer only |
+| `bundle-jws-rejected` | `core` | Offline bundle import, step 1: the bundle's signature, `typ` or size cap failed. | [Help](/docs/help/messages/devices/#bundle-jws-rejected) |
+| `bundle-claims-rejected` | `core` | Offline bundle import, step 2: `aud`, `deviceId`, the import window or the carried documents failed. | [Help](/docs/help/messages/devices/#bundle-claims-rejected) |
+| `bundle-trust-rejected` | `core` | Offline bundle import, step 3: the inner trust manifest failed against the pinned keys. | [Help](/docs/help/messages/devices/#bundle-trust-rejected) |
+| `inner-doc-rejected` | `core` | Offline bundle import, step 4: a carried document failed against the effective trust set. | [Help](/docs/help/messages/devices/#inner-doc-rejected) |
+| `bundle` | `core` | Swift: the offline bundle import failed before a refusal step could be named. | [Help](/docs/help/messages/devices/#bundle) |
+| `transport` | `core` | Swift: the transport returned something that is not an HTTP response. | [Help](/docs/help/messages/other/#transport) |
+| `network` | `core` | React: the request failed, or the server answered with an unexpected status. Node and Python terminal kits: discovery could not be reached, so a service that looks off reads as offline (not "Not available"). | [Help](/docs/help/messages/other/#network) |
+| `refresh-failed` | `core` | React: refreshing the session or documents failed. | [Help](/docs/help/messages/license-status/#refresh-failed) |
+| `sync-failed` | `core` | Boot stage machine: sync returned an unusable answer and boot cannot continue, so it stops in the error stage. | [Help](/docs/help/messages/license-status/#sync-failed) |
+| `fetch-failed` | `core` | Boot stage machine: fetching required content failed and required packs are still missing, so boot stops in the error stage. | [Help](/docs/help/messages/downloads-and-updates/#fetch-failed) |
+| `bridge-missing` | `core` | React desktop: the host bridge the adapter talks through is not installed. | developer only |
+| `unknown` | `core` | React desktop: the host bridge threw something that carries no code. | [Help](/docs/help/messages/other/#unknown) |
+| `release-refused` | `release` | React: the Worker refused a release call (changelog, download URL) because this build or licence is not entitled to that channel or feed; `wireCode` carries the Worker's own code. | [Help](/docs/help/messages/license-status/#release-refused) |
+| `bundle-rejected` | `core` | React: an offline bundle import was refused; `wireCode` carries the refusal step (`bundle-jws-rejected`, `bundle-claims-rejected`, `bundle-trust-rejected` or `inner-doc-rejected`). | [Help](/docs/help/messages/devices/#bundle-rejected) |
+| `bundle-import-unsupported` | `core` | React: this adapter cannot import offline bundles (a desktop bridge older than protocol v3, or a browser without pinned trust keys or IndexedDB). | [Help](/docs/help/messages/other/#bundle-import-unsupported) |
+| `report-unsupported` | `core` | React: device telemetry cannot be reported from here (a browser session has no device token, or the desktop bridge does not expose it). | [Help](/docs/help/messages/other/#report-unsupported) |
+| `device-management-unsupported` | `core` | Remote device management needs a credential or backend this client does not have. | [Help](/docs/help/messages/other/#device-management-unsupported) |
+| `device_list_failed` | `core` | Python, Swift: listing the fleet's devices failed. | [Help](/docs/help/messages/devices/#device_list_failed) |
+| `device_rename_failed` | `core` | Python, Swift: renaming a device failed. | [Help](/docs/help/messages/devices/#device_rename_failed) |
+| `device_deauthorize_failed` | `core` | Python, Swift: deauthorizing another device failed. | [Help](/docs/help/messages/devices/#device_deauthorize_failed) |
+| `key-entry-unsupported` | `license` | React: this transport cannot accept a typed licence key. | [Help](/docs/help/messages/other/#key-entry-unsupported) |
+| `sign-in-failed` | `identity` | A device-code sign-in poll answered a bare `error` (no `reason`): the sign-in failed after approval and the service does not say why and the Worker will not retry it. Also, in React, a sign-in or activation that did not complete. Begin again (DENY-01). | [Help](/docs/help/messages/signing-in/#sign-in-failed) |
+| `sign-out-failed` | `identity` | React: sign-out did not complete. | [Help](/docs/help/messages/signing-in/#sign-out-failed) |
+| `bad_response` | `core` | Node, Python, Swift: the server answered 200 with a body missing a field the call needs (an edge-mint without its token or expiry, a device sign-in start without a complete prompt). Node also: a 2xx body that is not JSON, and a signed document that fails verification during sync. | [Help](/docs/help/messages/other/#bad_response) |
+| `network-error` | `core` | The request never got an answer (refused, reset, DNS, the client's deadline). Node: every network call, thrown or in its result, with the failure as `cause`; Python, Swift: edge-mint, device-code sign-in. A device-code sign-in wait treats it as transient and polls again. | [Help](/docs/help/messages/other/#network-error) |
+| `server-error` | `core` | The server answered 5xx. Node: every network call, with `status` and the server's own code as `wireCode`; Node, React, Python, Swift, Kotlin and Godot: a device-code sign-in poll. Transient: a sign-in wait polls again at the same interval. | [Help](/docs/help/messages/other/#server-error) |
+| `cancelled` | `identity` | Python, Godot: a device-code sign-in wait was cancelled by the host. | [Help](/docs/help/messages/signing-in/#cancelled) |
+| `sign-in-expired` | `identity` | Godot: a device-code sign-in ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again. | [Help](/docs/help/messages/signing-in/#sign-in-expired) |
+| `sign-in-denied` | `identity` | A device-code sign-in poll answered `error` with `reason: access_denied`: a person pressed Deny (or Not you?, or Cancel) on the Polaris Locker approval page. Begin again (I-37, I-37b, DENY-01). Builds before DENY-01 also raise it for a bare `error`. | [Help](/docs/help/messages/signing-in/#sign-in-denied) |
+| `sign-in-unavailable` | `identity` | Node, Python, Swift: starting a device-code sign-in was refused and the response carried no code of its own. | [Help](/docs/help/messages/signing-in/#sign-in-unavailable) |
+| `invalid-options` | `core` | The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. Godot's `config.set_value` also answers it for a value its catalog schema refuses and for a secret key, the refusal the other SDKs and `sync-scenarios.json` name with the canonical `bad_request`; Godot's runners map that canonical code to this one. | developer only |
+| `invalid-argument` | `core` | The Electron desktop bridge refused a call because an argument was missing, of the wrong type, or out of bounds (an absolute or escaping download path, an unknown store or kind). One spelling for every verb; the renderer adapter surfaces it as a typed error. | developer only |
+| `invoke-not-allowed` | `core` | The Electron desktop bridge's generic invoke named a service method the host does not expose to the renderer. | developer only |
+| `sender-refused` | `core` | The Electron desktop bridge refused a call from a window or frame the host's sender rule does not allow (an iframe, a navigated-away window, remote content). | developer only |
+| `not-configured` | `core` | A call needs configuration it does not have: in Godot, a call that ran before configure(); in every SDK, update.decide() with no pinned release keys. | developer only |
+| `unsupported` | `core` | Every SDK: the feature is not supported here, as `supports(feature)` reports it. Carries `feature`, `reason` (`runtime`, `outlet`, `product`, `dependency` or `version`) and `detail` (PARITY §2.2, P1b-10). Godot also returns it from a stub where a native plugin is absent. | [Help](/docs/help/messages/other/#unsupported) |
+| `timeout` | `core` | Godot: The request got no complete answer within its wall-clock budget, every redirect hop included. | [Help](/docs/help/messages/other/#timeout) |
+| `response-too-large` | `core` | Godot: The response body exceeded the client's cap (512 KiB for API calls). | [Help](/docs/help/messages/other/#response-too-large) |
+| `too-many-redirects` | `core` | Godot: The request was redirected more times than the client follows. | [Help](/docs/help/messages/other/#too-many-redirects) |
+| `insecure-redirect` | `core` | Godot: A redirect pointed at plain http on a non-loopback host, or at a non-http(s) URL; it was refused. | developer only |
+| `http-error` | `core` | Godot: The server answered a non-success status with no recognised error code in its body. | [Help](/docs/help/messages/other/#http-error) |
+| `invalid-response` | `core` | Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field. | [Help](/docs/help/messages/other/#invalid-response) |
+| `store-failed` | `core` | Godot: The credential or cache store could not be read or written. | [Help](/docs/help/messages/other/#store-failed) |
+| `platform-error` | `core` | Godot: a native platform plugin answered an error, or a reply that is not JSON: the Apple plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) or the Android plugin (polaris-key-platform through PolarisKeyAndroid); `detail` carries the plugin's own fields. | [Help](/docs/help/messages/other/#platform-error) |
+| `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. | [Help](/docs/help/messages/license-key/#no-token) |
+| `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. | [Help](/docs/help/messages/other/#mint-unavailable) |
+| `feed-rejected` | `update` | A fetched channel feed (pkey-feed+jws) was refused at its signature, claims, channel binding, selector or freshness step; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 3–7). | [Help](/docs/help/messages/downloads-and-updates/#feed-rejected) |
+| `feed-rollback` | `update` | A fetched channel feed carried a lower `seq` than the committed feed of its canonical channel: a rollback, refused (WIRE-CONTRACT-V4 §2.5 step 8). | [Help](/docs/help/messages/downloads-and-updates/#feed-rollback) |
+| `record-rejected` | `update` | A release record (pkey-release+jws) was refused before use: its hash did not match the feed's pin, or its signature or claims failed; `detail` names the step (WIRE-CONTRACT-V4 §2.5 steps 12–14), or, for a pack record signed by a delegated content key (plans/P4-19.md §2.3), `delegation` (the delegation it names was refused) or `scope` (the record is outside the delegation's scope, types, layout or window). | [Help](/docs/help/messages/downloads-and-updates/#record-rejected) |
+| `record-mismatch` | `update` | A verified release record does not match the feed's pin: its kind, deliverable, version or `seq` differs (WIRE-CONTRACT-V4 §2.5 step 15). | [Help](/docs/help/messages/downloads-and-updates/#record-mismatch) |
+| `payload-mismatch` | `update` | Godot: downloaded or staged update bytes do not match the verified release record's payload `size` and `sha256`; nothing was staged or swapped (plans/P3-01.md §2.5 step 19). | [Help](/docs/help/messages/downloads-and-updates/#payload-mismatch) |
+| `swap-refused` | `update` | Godot: this install cannot take a sidecar-PCK swap; `detail.reason` says why (`platform`, `app-bundle`, `msix`, `program-files`, `flatpak`, `snap`, `appimage`, `velopack`, `no-sidecar`, `not-writable`, `inert`). | [Help](/docs/help/messages/downloads-and-updates/#swap-refused) |
+| `swap-failed` | `update` | Godot: a verified sidecar-PCK swap or rollback could not replace the pack beside the executable (a copy or rename failed); the staged update is kept and retried at the next launch. | [Help](/docs/help/messages/downloads-and-updates/#swap-failed) |
+| `files-index-invalid` | `update` | A pack variant's files index (`pkey-files/1`) was refused: its declared size is over the limit, its stored bytes or decoded length differ from the record's ref, it is not strict JSON, or it breaks a member, payload or tree rule (plans/P4-01.md §2.7; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#files-index-invalid) |
+| `files-unsafe-path` | `update` | A pack file path breaks the path rules (length, characters, segments, Windows device names, or a first segment `.pkey`); `path` names it. Checked before any byte is written (plans/P4-01.md §2.7). | [Help](/docs/help/messages/downloads-and-updates/#files-unsafe-path) |
+| `files-duplicate-path` | `update` | A pack's files index lists one path twice; `path` names the later one (plans/P4-01.md §2.7). | [Help](/docs/help/messages/downloads-and-updates/#files-duplicate-path) |
+| `files-case-collision` | `update` | Two pack file paths differ only in ASCII case; `path` names the later one (plans/P4-01.md §2.7). | [Help](/docs/help/messages/downloads-and-updates/#files-case-collision) |
+| `files-path-conflict` | `update` | A pack file path is a directory prefix of another, or has one as its prefix (ASCII case-insensitively); `path` names the later one (plans/P4-01.md §2.7). | [Help](/docs/help/messages/downloads-and-updates/#files-path-conflict) |
+| `files-layout-mismatch` | `update` | A container pack's files index breaks the layout rule: entries overlap or run past the payload, or the uncovered bytes differ from the gaps object's size (plans/P4-01.md §2.7). | [Help](/docs/help/messages/downloads-and-updates/#files-layout-mismatch) |
+| `content-stamp-invalid` | `release` | The build's embedded content stamp (`pkey-content.json`, `pkey-content/1`) is not strict JSON, has another `format`, or breaks the app record's `content` claims (plans/P4-01.md §2.6, §2.8). | developer only |
+| `full-corrupt` | `update` | A pack's `full` object was refused: its ref is unusable, its declared size differs from the payload's, its stored bytes or decoded length differ from the ref, or the decoded bytes do not hash to the payload (a tree: a file's SHA-256 differs) (plans/P4-01.md §2.9). | [Help](/docs/help/messages/downloads-and-updates/#full-corrupt) |
+| `delta-artifact-mismatch` | `update` | A pack delta's stored object (a `payload` delta's artifact, or a `files` set's descriptor or data) differs from its ref, or the `pkey-patch/1` descriptor breaks its member rules (plans/P4-01.md §2.7, §2.9). | [Help](/docs/help/messages/downloads-and-updates/#delta-artifact-mismatch) |
+| `delta-base-mismatch` | `update` | The installed base of a pack delta does not hash to the delta's `from` (a `files` set: no installed file with the entry's `from`; `path` names it) (plans/P4-01.md §2.9). | [Help](/docs/help/messages/downloads-and-updates/#delta-base-mismatch) |
+| `delta-apply-failed` | `update` | A `zstd-patch-from` frame was refused or failed: its header window is unreadable or above 2^windowLogMax (checked before decoding), or the raw-prefix decode, its length or its SHA-256 failed; `path` names the file of a `files` set (plans/P4-01.md §2.7 rule 3, §2.9). | [Help](/docs/help/messages/downloads-and-updates/#delta-apply-failed) |
+| `file-corrupt` | `update` | A pack file's blob (or a set's blob entry) failed its ref, its decode or its SHA-256, or a tree's reused file no longer hashes to its index entry; `path` names it (plans/P4-01.md §2.9). | [Help](/docs/help/messages/downloads-and-updates/#file-corrupt) |
+| `file-source-missing` | `update` | A target file of the `file` strategy has no installed file with its hash and no source to fetch it from; `path` names it (plans/P4-01.md §2.9). | [Help](/docs/help/messages/downloads-and-updates/#file-source-missing) |
+| `payload-hash-mismatch` | `update` | A container pack rebuilt by the `file` strategy does not hash to the variant's `payload.sha256` (plans/P4-01.md §2.9). | [Help](/docs/help/messages/downloads-and-updates/#payload-hash-mismatch) |
+| `chunks-ref-mismatch` | `update` | A pack variant's chunk index (`pkey-chunks/1`) was refused before parsing: its declared size is over the limit, its stored bytes differ from the `chunks` ref, it does not decode, or its decoded length is not the ref's `size` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-ref-mismatch) |
+| `chunks-bad-length` | `update` | A chunk index is shorter than its 64-byte header, or its length is not exactly 64 + 48 × (chunkCount + bundleCount) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-bad-length) |
+| `chunks-bad-magic` | `update` | A chunk index does not start with `PKEYCHNK` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-bad-magic) |
+| `chunks-unsupported-version` | `update` | A chunk index's `version` is not 1 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-unsupported-version) |
+| `chunks-bad-record-size` | `update` | A chunk index's `recordSize` is not 48 (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-bad-record-size) |
+| `chunks-bad-flags` | `update` | A chunk index sets a flag bit other than bit 0 (`fileAware`) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-bad-flags) |
+| `chunks-reserved-nonzero` | `update` | A chunk index's bundle record has a nonzero `reserved` field; `bundle` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-reserved-nonzero) |
+| `chunks-zero-length` | `update` | A chunk index's chunk record has `len` 0; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-zero-length) |
+| `chunks-bad-clen` | `update` | A chunk index's chunk record has `clen` 0 or above `len`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-bad-clen) |
+| `chunks-bad-bundle-ref` | `update` | A chunk index's chunk record names a bundle at or past `bundleCount`; `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-bad-bundle-ref) |
+| `chunks-bad-bundle-range` | `update` | A chunk index's chunk record runs past its bundle's declared `size` (`offset + clen`); `chunk` names it (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-bad-bundle-range) |
+| `chunks-size-mismatch` | `update` | A chunk index's chunk lengths do not sum to its `payloadSize` (read by the u64 rule) (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-size-mismatch) |
+| `chunks-payload-mismatch` | `update` | A chunk index is bound to another payload: its `payloadSha256` or `payloadSize` is not the variant's `payload` (plans/P4-10.md §2.3; WIRE-CONTRACT-V4 §2.6). | [Help](/docs/help/messages/downloads-and-updates/#chunks-payload-mismatch) |
+| `chunk-bundle-truncated` | `update` | Chunk sync: fewer than `clen` bytes arrived for a fetched chunk (a short body, or a range clipped at the bundle's end); `chunk` names it (plans/P4-10.md §2.5). | [Help](/docs/help/messages/downloads-and-updates/#chunk-bundle-truncated) |
+| `chunk-corrupt` | `update` | Chunk sync: a fetched chunk does not decode, decodes to the wrong length, or does not hash to its id; `chunk` names it (plans/P4-10.md §2.5). | [Help](/docs/help/messages/downloads-and-updates/#chunk-corrupt) |
+| `plan-transport-unsupported` | `update` | The install planner's result: the target is platform-bound and the host lists no transport for it (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. | [Help](/docs/help/messages/downloads-and-updates/#plan-transport-unsupported) |
+| `plan-insufficient-disk` | `update` | The install planner's result: no feasible strategy fits the host's free disk (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. | [Help](/docs/help/messages/downloads-and-updates/#plan-insufficient-disk) |
+| `plan-no-strategy` | `update` | The install planner's result: no strategy the host allows can reach the target (plans/P4-01.md §2.9, A7 §4.2). A verdict, never thrown. | [Help](/docs/help/messages/downloads-and-updates/#plan-no-strategy) |
+| `pack-no-variant` | `update` | No variant of a pack record is eligible on this host: none is usable, matches the host's engine, or has a value in the host's preference list for every axis it declares (plans/P4-01.md §2.9). | [Help](/docs/help/messages/downloads-and-updates/#pack-no-variant) |
+| `pack-type-unsupported` | `update` | A pack record's `type` is one this SDK holds no handler for, or its `formatVersion` is one that handler does not list (`files.tree` everywhere and `godot.pck` in Godot since v1; the v3 types per SDK since P4-16, CONTENT §13; `ml.model` and `audio.bank` only once the host registers a configured handler), so the pack is unusable (plans/P4-01.md §2.2). | [Help](/docs/help/messages/downloads-and-updates/#pack-type-unsupported) |
+| `pack-type-check-failed` | `update` | A pack payload failed its type's device-side check (CONTENT §4.2, P4-16) after the engine verified it and before it committed, so nothing was activated, the install was abandoned and staging discarded. `detail` names the check: `json` (a data.json file is not strict JSON), `table` (an l10n.table file is not a PO, CSV or JSON table the plain parser reads), `locale` (a table's locale is not a well-formed BCP-47 tag or not the variant's locale), `descriptor` (an ml.model's model.json or an audio.bank's bank.json is missing or malformed), `runtime`, `quantization`, `memory` (the model's RAM or VRAM need is above the host's budget), `load-test` (the host's load test refused the model), `middleware` (the bank's middleware or major.minor version is not the host's), `size` (a file is above the handler's limit), or a game handler's own token; `path` names the file. | [Help](/docs/help/messages/downloads-and-updates/#pack-type-check-failed) |
+| `pack-not-pinned` | `update` | `update.packs.ensure` named a pack the running build's content stamp does not pin, so there is no release to install (plans/P4-01.md §2.8: the stamp is the only source of pins in v1). | [Help](/docs/help/messages/downloads-and-updates/#pack-not-pinned) |
+| `pack-not-entitled` | `update` | A pinned pack record carries an `entitlement` the device's licence does not grant, so the pack is left out of the plan (plans/P4-01.md §2.3; CONTENT §6.7 item 9). | [Help](/docs/help/messages/license-status/#pack-not-entitled) |
+| `pack-state-unreadable` | `update` | The pack install state could not be read (an I/O error, not a missing file), so the pack pipeline refuses to write it or install anything this process: an install recorded over an unread state could lose the installs it holds. | [Help](/docs/help/messages/other/#pack-state-unreadable) |
+| `pck-directory-refused` | `update` | A pack payload failed the Godot SDK's device-side checks before it was committed or mounted. For a `godot.pck`: its PCK header or directory cannot be read (an encrypted directory, a sparse bundle, an encrypted, removal or delta entry), or an entry is outside the admission list over the record's `handler.prefixes` (`project.binary`, the class cache, a script, a native library, an out-of-prefix path, an exported file nothing names, or a resource that embeds code), an entry path the engine would normalise elsewhere, a `.remap`/`.import` or `uid_cache.bin` naming a file outside the pack; for a `files.tree`, a script or a Godot resource that embeds code. The first refused path is named (notes/S-05 §5 (f); P4-03's publish lint applies the same list). | [Help](/docs/help/messages/downloads-and-updates/#pck-directory-refused) |
+| `pck-engine-mismatch` | `update` | A `godot.pck` payload's PCK header names an engine newer than the running one, or a `major.minor` outside the variant's `requires.engine`, so the Godot SDK does not commit or mount it (plans/P4-01.md §2.9; P4-08). | [Help](/docs/help/messages/downloads-and-updates/#pck-engine-mismatch) |
+| `pack-rolled-back` | `update` | The release the content stamp pins was rolled back by the boot guard after failed boots, so it is not installed again while the stamp still pins it; the restored previous release stays active and counts as present (P3-10's skipVersion for packs; P4-08). | [Help](/docs/help/messages/downloads-and-updates/#pack-rolled-back) |
+| `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5), or a delegated release whose delegation a verified revocation names (detail `delegation`, plans/P4-19.md §2.6). | [Help](/docs/help/messages/downloads-and-updates/#pack-revoked) |
+| `pack-not-data-only` | `update` | A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file. | [Help](/docs/help/messages/downloads-and-updates/#pack-not-data-only) |
+| `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). | developer only |
 
 ## Backend codes (`conformance/parity/errors.json`)
 
@@ -182,21 +189,21 @@ Answered by an SDK's server core when an app calls its own backend with `X-PKey-
 
 ### `license_required`
 
-401 from a product backend: the request carries no `X-PKey-License` (WIRE-CONTRACT-V4 §14.2 step 1). The client half shows its gate. Service: `license`.
+401 from a product backend: the request carries no `X-PKey-License` (WIRE-CONTRACT-V4 §14.2 step 1). The client half shows its gate. Service: `license`. Help: [Help](/docs/help/messages/license-key/#license_required).
 
 ### `license_invalid`
 
-401 from a product backend: the `X-PKey-License` value is longer than 16 384 bytes, is not three base64url segments, or fails the strict verifier, its issuer, its product, its device or its `issuedAt` (WIRE-CONTRACT-V4 §14.2 steps 2 and 3). The client half syncs and retries once. Service: `license`.
+401 from a product backend: the `X-PKey-License` value is longer than 16 384 bytes, is not three base64url segments, or fails the strict verifier, its issuer, its product, its device or its `issuedAt` (WIRE-CONTRACT-V4 §14.2 steps 2 and 3). The client half syncs and retries once. Service: `license`. Help: [Help](/docs/help/messages/license-status/#license_invalid).
 
 ### `license_stale`
 
-401 from a product backend: the licence document is past its freshness window (`expiresAt`, or the backend's `maxAgeSeconds`, plus 300 s) or the gate finds it unusable (WIRE-CONTRACT-V4 §14.2 steps 4 and 5). The client half syncs and retries once. Service: `license`.
+401 from a product backend: the licence document is past its freshness window (`expiresAt`, or the backend's `maxAgeSeconds`, plus 300 s) or the gate finds it unusable (WIRE-CONTRACT-V4 §14.2 steps 4 and 5). The client half syncs and retries once. Service: `license`. Help: [Help](/docs/help/messages/license-status/#license_stale).
 
 ### `sign_in_required`
 
-403 from a product backend: the route needs a signed-in account and the licence document names none (`profile.user.subject` absent or malformed; WIRE-CONTRACT-V4 §14.2 step 6). Never retried; the client half offers sign-in. Service: `identity`.
+403 from a product backend: the route needs a signed-in account and the licence document names none (`profile.user.subject` absent or malformed; WIRE-CONTRACT-V4 §14.2 step 6). Never retried; the client half offers sign-in. Service: `identity`. Help: [Help](/docs/help/messages/signing-in/#sign_in_required).
 
 ### `not_entitled`
 
-403 from a product backend: the route needs an entitlement the licence document does not grant as `true` (WIRE-CONTRACT-V4 §14.2 step 6). The existing wire code, reused. Never retried; the client half surfaces it with the upgrade link, if any. Service: `license`.
+403 from a product backend: the route needs an entitlement the licence document does not grant as `true` (WIRE-CONTRACT-V4 §14.2 step 6). The existing wire code, reused. Never retried; the client half surfaces it with the upgrade link, if any. Service: `license`. Help: [Help](/docs/help/messages/license-status/#not_entitled).
 

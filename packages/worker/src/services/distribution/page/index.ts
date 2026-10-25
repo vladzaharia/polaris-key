@@ -313,6 +313,7 @@ async function handlePage(
   const html = renderDownloadPage(model, detectPlatform(req.headers), {
     iconUrl,
     coverUrl,
+    helpOrigin: feedOriginOf(env),
   });
   return new Response(req.method === "HEAD" ? null : html, {
     status: 200,

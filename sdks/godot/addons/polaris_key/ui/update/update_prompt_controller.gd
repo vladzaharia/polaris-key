@@ -25,7 +25,7 @@ extends RefCounted
 ## own message, a web export offers a reload, and a direct build installs through its native
 ## updater (falling back to the build's download link), stages a sidecar pack, or restarts into a
 ## staged one (code-ready: "Restart now"). `behaviour` says which; PKeyUpdatePrompt carries it out
-## through PolarisKey.update.apply(). For the v3 check a direct build opens the answer's `url`
+## through PolarisKey.update.install(). For the v3 check a direct build opens the answer's `url`
 ## (or `release_url`), and a store, Steam or itch build never opens a download page.
 
 ## Only a direct build (or the editor, which has no outlet) may open a download page; every other

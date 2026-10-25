@@ -1,0 +1,4389 @@
+{
+  "$comment": "Today's findings of the lane's linters, by file and rule. It only shrinks: a new finding fails the check, and so does an entry the tool no longer reports. Fix findings, then re-record with the lane's `tools/lint.sh record`.",
+  "version": 1,
+  "debt": {
+    "conformance/runners/browser/corpusV2.browser.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "conformance/runners/browser/dcz.setup.ts": {
+      "jscpd:duplicate": 2
+    },
+    "conformance/runners/browser/presentation.browser.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "conformance/runners/node/configMatrix.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "conformance/runners/node/presentation.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "conformance/runners/node/sdkConfig.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "conformance/runners/node/suites.ts": {
+      "jscpd:duplicate": 23
+    },
+    "conformance/runners/node/transcriptReplay.ts": {
+      "jscpd:duplicate": 3
+    },
+    "conformance/runners/node/transcripts.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "examples/node-electron/src/main.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/electron/src/fixtures.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/electron/src/live.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/elements/src/fixtures.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/elements/src/play.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/elements/src/states.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/react-next/app/fixtures.ts": {
+      "jscpd:duplicate": 5
+    },
+    "examples/ui/react-next/app/polaris.config.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/react-vite/src/fixtures.ts": {
+      "jscpd:duplicate": 4
+    },
+    "examples/ui/react-vite/src/polaris.config.ts": {
+      "jscpd:duplicate": 1
+    },
+    "examples/ui/terminal-node/fixtures.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/e2e/access.e2e.test.ts": {
+      "jscpd:duplicate": 47
+    },
+    "packages/admin/e2e/artPng.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/e2e/config.e2e.test.ts": {
+      "jscpd:duplicate": 47
+    },
+    "packages/admin/e2e/consoleBreakGlassBanner.e2e.test.ts": {
+      "jscpd:duplicate": 23
+    },
+    "packages/admin/e2e/consoleSessionEnded.e2e.test.ts": {
+      "jscpd:duplicate": 23
+    },
+    "packages/admin/e2e/consoleSignin.e2e.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/e2e/consoleSigninPasskey.e2e.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/admin/e2e/core.e2e.test.ts": {
+      "jscpd:duplicate": 37
+    },
+    "packages/admin/e2e/coreFixtures.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/e2e/csp.e2e.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/admin/e2e/dataMotion.e2e.test.ts": {
+      "jscpd:duplicate": 33
+    },
+    "packages/admin/e2e/deviceMotion.e2e.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/admin/e2e/distribution.e2e.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/admin/e2e/flowConformance.e2e.test.ts": {
+      "jscpd:duplicate": 18
+    },
+    "packages/admin/e2e/kit.e2e.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/e2e/layout.e2e.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/admin/e2e/layoutData.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/e2e/layoutFixtures.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/e2e/layoutSettings.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/libraryMotion.e2e.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/e2e/license.e2e.test.ts": {
+      "jscpd:duplicate": 20
+    },
+    "packages/admin/e2e/licenseHolders.e2e.test.ts": {
+      "jscpd:duplicate": 19
+    },
+    "packages/admin/e2e/licenseInviteRecord.e2e.test.ts": {
+      "jscpd:duplicate": 18
+    },
+    "packages/admin/e2e/listingSources.e2e.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/e2e/membersRoles.e2e.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/e2e/momentsMotion.e2e.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/e2e/motion.e2e.test.ts": {
+      "jscpd:duplicate": 32
+    },
+    "packages/admin/e2e/newLicenseInvite.e2e.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/admin/e2e/pageMoved.e2e.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/e2e/personalTokens.e2e.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/admin/e2e/pollMotion.e2e.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/e2e/portal.e2e.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/e2e/portalArtHero.e2e.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/e2e/portalAvatar.e2e.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/e2e/portalContrast.e2e.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/portalFixtures.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/portalFocusedFrame.e2e.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/e2e/portalHarness.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/e2e/portalLibraryPresence.e2e.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/portalLibraryTrim.e2e.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/e2e/portalMedia.e2e.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/e2e/portalQuality.e2e.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/e2e/portalReflow.e2e.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/e2e/portalRequestStates.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/e2e/portalResolutions.e2e.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/e2e/portalStates.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/e2e/portalUxBar.e2e.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/productMembers.e2e.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/e2e/rolesTab.e2e.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/serviceTokensOverflow.e2e.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/e2e/shellMotion.e2e.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/admin/e2e/storeCheck.e2e.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/e2e/storefront.e2e.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/uiLint.e2e.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/access/InviteDrawerParts.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/api/activity.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/api/config.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/api/core.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/src/console/api/distribution.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/api/license.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/api/platform.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/api/products.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/api/release.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/api/settings.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/api/sync.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/api/update.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/src/console/components/ResyncDialog.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/config/components/RecipeState.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/config/model/mergeDraft.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/config/model/mintBlock.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/config/pages/profileActions.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/core/components/CustomerPortalControl.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/core/components/PackageFeedsControl.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/core/components/SdkSetupBlocks.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/core/components/listing/ListingPush.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/core/model/trustPolicy.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/core/pages/Activity.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/core/pages/KeysCi.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/src/console/sections/core/pages/KeysSecrets.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/core/pages/LinkRepository.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/core/pages/SettingsMembers.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/core/pages/UserRelink.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/distribution/components/StoreControls.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/distribution/components/ascShared.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/distribution/pages/AccessPage.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/distribution/pages/AppStorePage.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/distribution/pages/CredentialsPage.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/src/console/sections/distribution/pages/HealthPage.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/distribution/pages/OutletsPage.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/distribution/pages/RolloutsPage.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/feeds/pages/FeedPage.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/feeds/pages/FeedsArea.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/feeds/pages/PackageRecord.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/feeds/pages/PackagesEmpty.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/feeds/pages/RegistryTokenMint.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/feeds/pages/registryTokenRows.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/global/components/MintApiTokenFlow.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/global/components/NewProductSteps.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/global/components/ProductShelf.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/global/pages/ApiTokens.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/src/console/sections/global/pages/OwnPersonalTokens.tsx": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/src/console/sections/global/pages/PersonalTokensRoster.tsx": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/src/console/sections/global/pages/personalTokenParts.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/license/components/ChangeTierDialog.tsx": {
+      "jscpd:duplicate": 6
+    },
+    "packages/admin/src/console/sections/license/components/LicenseDialogs.tsx": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/src/console/sections/license/components/LicenseHolderDialogs.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/src/console/sections/license/components/LimitsTable.tsx": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/src/console/sections/license/components/SendInviteDialog.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/license/components/SendKeyDialog.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/license/components/TierForm.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/license/pages/LicenseActivity.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/license/pages/LicenseKeys.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/src/console/sections/license/pages/LicenseTerms.tsx": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/src/console/sections/license/wizard/NewLicenseWizard.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/license/wizard/steps.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/license/wizard/stepsDelivery.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/notify/DestinationDialog.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformActivity.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/sections/platform/pages/platformConnections.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformDeployParts.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformHistory.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformMembers.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformMembersParts.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/release/components/FirstReleasePanel.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/release/pages/ContentKeysPage.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/release/pages/DeliverablesPage.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/release/pages/PackRecord.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/release/pages/ReleaseRecord.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/release/pages/ReleasesPage.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/storefronts/components/FitReport.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/storefronts/components/FlowPanels.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/storefronts/components/StepDialog.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/console/sections/storefronts/components/StoreTiles.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/sync/CloudSyncSetup.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/sync/SetupParts.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/console/sections/update/pages/UpdateChannelsPage.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/console/shell/ThemeMenu.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/kit/stories/data.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/lib/areaNames.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/lib/supportCode.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/lib/version.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/api/library.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/api/product.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/portal/components/JumpPalette.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/components/LinkAccountsDialog.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/portal/components/account/MethodRow.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/portal/components/account/RowTools.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/components/account/SessionsCard.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/components/account/SignInMethods.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/portal/components/account/StepUp.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/portal/components/product/BuildDetails.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/components/product/DevicesCard.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/components/product/FileHash.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/components/signin/FinishStep.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/portal/components/signin/RequestFlow.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/portal/model/library.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/pages/FreeDevicePage.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/portal/pages/SignInPage.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/portal/webauthn.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/Dialog.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/DropdownMenu.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/OneTimeSecretPanel.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/src/ui/Section.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/auth/CodeEntry.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/data-table/FilterBar.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/form.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/src/ui/toast.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/wizard/Stepper.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/src/ui/wizard/Wizard.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/App.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/access.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/accountOverrides.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/api.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/apiTokens.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/apostrophes.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/appStore.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/approveRecipe.test.tsx": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/test/boundaries.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/brandHead.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/calloutLinks.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/catalog.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/catalogStates.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/commerceIdentity.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/compatibility.test.tsx": {
+      "jscpd:duplicate": 6
+    },
+    "packages/admin/test/configHarness.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/consoleHarness.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/consoleMoments.test.tsx": {
+      "jscpd:duplicate": 16
+    },
+    "packages/admin/test/consoleShellBugs.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/copyLint.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/coreTestUtils.tsx": {
+      "jscpd:duplicate": 6
+    },
+    "packages/admin/test/distributionAccess.test.tsx": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/test/distributionData.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/distributionHealth.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/distributionMatrix.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/distributionOutlets.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/distributionRollouts.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/feeds.test.tsx": {
+      "jscpd:duplicate": 37
+    },
+    "packages/admin/test/firstLicenseMoment.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/firstRelease.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/home.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/homeTable.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/identity.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/integrationPage.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/keys.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/kit.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/lib/http.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/licenseFixture.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/licenseHolders.test.tsx": {
+      "jscpd:duplicate": 16
+    },
+    "packages/admin/test/licenseRecord.test.tsx": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/test/licenses.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/listingSources.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/managedPayload.test.tsx": {
+      "jscpd:duplicate": 10
+    },
+    "packages/admin/test/manifestDrift.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/motion/consoleNavigation.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/motion/expand.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/motion/motionCss.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/motionLint.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/motionPreference.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/mutations.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/newLicense.test.tsx": {
+      "jscpd:duplicate": 19
+    },
+    "packages/admin/test/noDirectFetch.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/noLegacyDocsPaths.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/outletCredentials.test.tsx": {
+      "jscpd:duplicate": 12
+    },
+    "packages/admin/test/overview.test.tsx": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/test/packViews.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/palette.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/paletteSearch.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/paletteSources.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/personalTokens.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/platform.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/platformActivity.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/platformMembers.test.tsx": {
+      "jscpd:duplicate": 39
+    },
+    "packages/admin/test/platformRoles.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/platformSettings.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/platformStores.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/polarisKey.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/portal.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/portalAccount.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/portalActivate.test.tsx": {
+      "jscpd:duplicate": 17
+    },
+    "packages/admin/test/portalActivateLink.test.tsx": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/test/portalAfterSignIn.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/portalArt.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/portalDeviceMotion.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/portalDiscoverCount.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/portalDownloadFlow.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/portalFocused.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/portalHarness.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/portalJustAdded.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/portalLibrary.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/portalLibraryMotion.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/portalMutations.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/portalNavigation.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/portalPackages.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/portalProduct.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/portalProductData.test.tsx": {
+      "jscpd:duplicate": 14
+    },
+    "packages/admin/test/portalProfileFixture.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/portalRequestFlow.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/portalRouter.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/portalScale.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/portalSecretMutations.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/portalServices.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/portalSettings.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/portalSignIn.test.tsx": {
+      "jscpd:duplicate": 15
+    },
+    "packages/admin/test/portalSignInMethods.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/portalSignInPasskey.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/portalSignInRequestModel.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/portalStorefront.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/portalTransport.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/presentation.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/productArt.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/productDevices.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/productMembers.test.tsx": {
+      "jscpd:duplicate": 9
+    },
+    "packages/admin/test/productNew.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/productSettingsSection.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/profiles.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/queryFactories.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/releaseChannels.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/releaseHarness.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/releases.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/route.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/routeFocus.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/schema.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/scopeHide.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/services.test.tsx": {
+      "jscpd:duplicate": 6
+    },
+    "packages/admin/test/sessionEnded.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/settings.test.tsx": {
+      "jscpd:duplicate": 11
+    },
+    "packages/admin/test/settingsAll.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/admin/test/settingsLayout.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/settingsSearch.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/shell.test.tsx": {
+      "jscpd:duplicate": 7
+    },
+    "packages/admin/test/storefronts.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/sync.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/syncSetup.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/syncUsage.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/theme.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/tiers.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/admin/test/toaster.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/trustPolicy.test.tsx": {
+      "jscpd:duplicate": 5
+    },
+    "packages/admin/test/ui/dataTable.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/ui/dialog.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/ui/forms.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/ui/grid.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/ui/settingRow.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/admin/test/ui/tableCells.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/updateFeed.test.tsx": {
+      "jscpd:duplicate": 6
+    },
+    "packages/admin/test/wizardKit.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/admin/test/wizardKitBugsW.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/brand/scripts/gen.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/brand/scripts/kit-copy.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/brand/scripts/kit.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/brand/scripts/tune-accents.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/brand/src/accent.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/brand/src/color.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/brand/src/marks/core.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/brand/src/tokens/kit.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/brand/src/tokens/terminal.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/brand/test/accent.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/brand/test/kit-fidelity.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/brand/test/locker-fidelity.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/scripts/bundle-action.mjs": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/scripts/bundle-dev.mjs": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/scripts/gen-reference.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/account.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/assets.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/cli/src/channels.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/src/ci.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/contentStamp.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/cli/src/delegate.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/cli/src/devCommand.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/distribution.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/feedPrune.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/feeds.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/cli/src/listingAssets.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/packArtifacts.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/packChunks.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/cli/src/packManifest.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/packPublish.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/cli/src/package/maven.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/package/oci.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/package/publish.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/cli/src/publish.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/cli/src/revoke.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/cli/src/storefronts/allowList.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/src/storefronts/command.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/storefronts/homebrew.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/storefronts/outlets.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/storefronts/prInputs.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/storefronts/prPlane.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/src/storefronts/prRun.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/cli/src/storefronts/run.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/src/storefronts/snap.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/storefronts/types.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/cli/src/transport.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/src/zip.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/test/account.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/test/adminCredential.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/test/buildMetadata.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/bundle.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/cli/test/channelAdd.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/channelSync.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/cli.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/cli/test/contentStamp.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/test/delegate.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/dev.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/distribution.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/cli/test/distributionCi.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/test/doctor.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/test/feeds.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/feedsWrite.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/cli/test/godotFixtures.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/cli/test/init.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/test/listingAssets.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/login.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/cli/test/packArtifacts.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/cli/test/packChunks.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/cli/test/packFixtures.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/cli/test/packPublish.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/cli/test/package.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/publishFixture.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/cli/test/registry.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/test/releaseRecord.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/test/revoke.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/test/sdkConfig.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/cli/test/storefronts.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/cli/test/storefrontsPr.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/cli/test/terminal.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/untrusted.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/cli/test/ux.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/client-core/src/backend.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/client-core/src/caps.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/cloud-sync.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/decide.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/client-core/src/feed.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/client-core/src/headers.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/client-core/src/outlet.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/client-core/src/packs/apply.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/packs/chunks.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/client-core/src/packs/claims.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/packs/engine.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/client-core/src/packs/files.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/client-core/src/packs/patch.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/client-core/src/packs/plan.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/client-core/src/packs/select.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/client-core/src/packs/set.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/packs/variant.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/client-core/src/packs/window.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/presentation.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/record.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/client-core/src/semver.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/client-core/src/trust.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/backend.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/bundle.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/client-core/test/chunkFixtures.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/client-core/test/chunks.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/content.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/client-core/test/delegation.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/client-core/test/packFixtures.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/client-core/test/packTypes.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/client-core/test/packsChunk.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/client-core/test/packsEngine.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/client-core/test/packsFeedDelta.test.ts": {
+      "jscpd:duplicate": 29
+    },
+    "packages/client-core/test/packsNative.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/client-core/test/packsProvides.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/client-core/test/presentation.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/trust.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/update.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/client-core/test/verify.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/docs/scripts/build-search-bundles.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/docs/scripts/check-links.mjs": {
+      "jscpd:duplicate": 3
+    },
+    "packages/docs/scripts/collect-csp-hashes.mjs": {
+      "jscpd:duplicate": 1
+    },
+    "packages/docs/scripts/collect-docs-tiers.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/docs/scripts/console-parts.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/docs/scripts/emit-slug-manifest.mjs": {
+      "jscpd:duplicate": 2
+    },
+    "packages/docs/scripts/redirect-fragments.mjs": {
+      "jscpd:duplicate": 2
+    },
+    "packages/docs/test/docsClasses.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/docs/test/helpMessages.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/docs/test/snippets/nativeLanes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/docs/test/snippets/symbols.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/elements/test/browser/chrome.browser.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/elements/test/browser/chrome.gnome.browser.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/elements/test/browser/polish.browser.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/elements/test/browser/poweredby.browser.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/elements/test/browser/render.browser.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/elements/test/browser/visual.browser.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/elements/test/browser/visual.presentation.browser.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/elements/test/drive.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/elements/test/fixtures.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/elements/test/h2Fix.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/elements/test/next.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/elements/test/renew.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/elements/test/review.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/elements/test/settingsControls.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/elements/test/signin.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/elements/test/uk04Fix.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/elements/test/uk06Polish.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/elements/test/welcomeNoProduct.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/elements/vitest.browser.config.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/src/backend/client.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/boot.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/src/cli/accent.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/sdk-node/src/cli/commander.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/cli/copy.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cli/flows.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/src/cli/gate.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/cli/kit.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cli/term/prompt.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/cli/yargs.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/config/client.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/core/bundle.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/core/cache.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/core/context.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/core/presentation.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/sdk-node/src/core/store.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/core/sync.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/core/token.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/core/trust.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/devices/client.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/devices/fingerprint.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/discovery.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/distribution/client.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/electron/main.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/identity/client.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/packs/client.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/packs/storage.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/src/qr/encoder.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/qr/index.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/server.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/update/bootguard.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/update/client.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/update/drivers/types.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/update/journal.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/R2-trust-attack.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-node/test/R4-client-attack.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/backend.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/boot.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/bundle.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-node/test/capabilities.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/sdk-node/test/chunkFixtures.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/test/cli.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/cliContract.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/cliMount.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/envelope.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/cli/harness.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/hostile.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/test/cli/kit.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/offline.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/pty-flow.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/cli/pty.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/cli/responsive.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/sdk-node/test/cli/scenarios.ts": {
+      "jscpd:duplicate": 25
+    },
+    "packages/sdk-node/test/cli/uk45.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cliKit.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/client.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/sdk-node/test/commerce.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/config.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/configLocal.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/copy.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/devices.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/sdk-node/test/discovery.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/sdk-node/test/documents.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/test/electronBridge.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/sdk-node/test/electronHardening.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/electronNotifications.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/endpoints.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/test/errorCodes.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/test/errorTaxonomy.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/feedUrlMatrix.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-node/test/feedsDistributionQr.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/hostConveniences.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/identity.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/test/identityParity.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/installDrivers.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/local.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-node/test/localTrust.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/test/mint.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/packFixtures.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-node/test/packTypes.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/test/packs.test.ts": {
+      "jscpd:duplicate": 29
+    },
+    "packages/sdk-node/test/presentation.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/releaseFetch.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/releaseUpdate.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/reregister.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/sdk-node/test/serverClient.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/test/supports.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/sync.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/sdk-node/test/trustCustody.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/sdk-node/test/updateCorpus.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-node/test/updateDecide.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/sdk-node/test/updateFixtures.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/updateMatrixParity.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-react/src/desktop/desktopAdapter.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/sdk-react/src/kit/desktopCss.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/kit/rows.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/kit/styles.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/local/localAdapter.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/src/packs/browserPacks.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/src/packs/opfs.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-react/src/packs/opfsIo.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/src/packs/opfsWorker.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/release/useChangelog.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/src/update/useUpdateDecision.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/backend.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/bearerAdapter.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/sdk-react/test/bearerBackoff.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/boot.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-react/test/bootGuard.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-react/test/bridge.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/browser/chrome.browser.test.tsx": {
+      "jscpd:duplicate": 40
+    },
+    "packages/sdk-react/test/browser/chrome.gnome.browser.test.tsx": {
+      "jscpd:duplicate": 13
+    },
+    "packages/sdk-react/test/browser/chrome.macos.browser.test.tsx": {
+      "jscpd:duplicate": 13
+    },
+    "packages/sdk-react/test/browser/chrome.sizes.browser.test.tsx": {
+      "jscpd:duplicate": 15
+    },
+    "packages/sdk-react/test/browser/chrome.themes.browser.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/sdk-react/test/browser/kit.browser.test.tsx": {
+      "jscpd:duplicate": 6
+    },
+    "packages/sdk-react/test/browser/motion.browser.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/browser/polish.browser.test.tsx": {
+      "jscpd:duplicate": 11
+    },
+    "packages/sdk-react/test/browser/poweredby.browser.test.tsx": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-react/test/browser/presentation.browser.test.tsx": {
+      "jscpd:duplicate": 6
+    },
+    "packages/sdk-react/test/browserAdapter.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/sdk-react/test/bundleImport.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/capabilities.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-react/test/channels.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/chunkFixtures.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/configMatrix.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/copy.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/credentials.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/desktopAdapter.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/sdk-react/test/desktopIdentity.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/download.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-react/test/errorCodes.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/feedUrlMatrix.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/sdk-react/test/gateMatrixParity.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/headers.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/kit.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitCodedCopy.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/kitDrive.test.tsx": {
+      "jscpd:duplicate": 8
+    },
+    "packages/sdk-react/test/kitFinal2.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitGate.test.tsx": {
+      "jscpd:duplicate": 12
+    },
+    "packages/sdk-react/test/kitH2.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitMatrix.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitNext.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/kitOpened.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitRenew.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitSignIn.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/lazyChunkFailure.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/localTrust.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-react/test/nativePayload.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/sdk-react/test/packFixtures.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-react/test/packTypes.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-react/test/packs.test.ts": {
+      "jscpd:duplicate": 18
+    },
+    "packages/sdk-react/test/release.test.tsx": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/storeNamespace.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/transcripts.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/sdk-react/test/trustCustody.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/updateDecision.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-react/test/updateDriver.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/sdk-react/test/updateEventFlush.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/updateMatrixParity.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-react/vitest.browser.config.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/server/src/context.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/server/src/express.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/server/src/fastify.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/server/src/hono.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/server/src/koa.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/server/src/nestjs.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/server/src/next.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/server/src/testing.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/server/src/trust.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/server/test/adapters.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/server/test/dx.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/server/test/frameworks.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/server/test/hardening.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/server/test/trust.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-catalog/src/catalog.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-catalog/src/cloudSync.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-catalog/src/representable.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-jws/src/attack.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/shared-jws/src/index.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/shared-manifest/src/cloudSync.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/shared-manifest/src/descriptor.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/shared-manifest/src/distribution.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-manifest/src/distribution.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-manifest/src/index.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/shared-manifest/src/index.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/shared-manifest/src/spellings.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-manifest/test/descriptorRecord.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-manifest/test/deviceLimit.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/shared-manifest/test/outletBlock.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-manifest/test/schema-parity.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/shared-protocol/src/core.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/shared-protocol/src/distribution.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-protocol/src/identity.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-protocol/src/packs.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/shared-protocol/src/release.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/shared-protocol/test/exports.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/bearer/session.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/ui-core/src/browser/sdk/browser/boot.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/ui-core/src/browser/sdk/browser/discovery.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/distribution.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/offline.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/ui-core/src/browser/sdk/browser/update.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/core/backend.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/core/boot.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/ui-core/src/browser/sdk/core/bootGuard.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/core/caps.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/core/crash.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/core/install.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/core/localConfig.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/ui-core/src/browser/sdk/core/presentation.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/ui-core/src/browser/sdk/core/types.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/core/updateEvents.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/copy.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/ui-core/src/input.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/vocabulary.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/test/imports.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/test/matrix.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/test/signInModel.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/test/theme.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-qa/e2e/rules.e2e.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-qa/src/browser/lint.js": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-qa/src/pixeldiff.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-qa/src/report.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-qa/test/customer-url.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/dev/server.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/scripts/gen-settings.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/scripts/registry-clients/clients/cargo.seed.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/scripts/registry-clients/clients/go.seed.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/scripts/registry-clients/clients/godot.seed.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/scripts/registry-clients/seeds/oci.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/apiTokens.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/auth.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/creatorGrant.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/accountOverrides.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/activity.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/console/handlers/bindings.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/console/handlers/ciPublishing.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/feeds.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/console/handlers/hostedAssets.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/members.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/console/handlers/outletCredentials.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/platform.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/console/handlers/platformReach.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/productMembers.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/console/handlers/productSettings.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/products.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/console/handlers/registryTokens.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/search.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/handlers/settingsBackfill.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/lib/attention.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/lib/operatorNotices.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/console/systemProduct.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/accounts/personalTokens.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/accounts/supportCodes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/assets/blobGc.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/assets/blobs.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/core/assets/bytesHost.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/assets/bytesLanding.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/assets/hostedAssetPulls.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/assets/hostedAssetUploads.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/core/assets/hostedAssets.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/assets/lockerShell.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/brandHtml.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/cappedBody.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/core/channels.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/clientMetadata.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/console/session.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/cors.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/devices.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/core/documents.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/hooks.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/ingest/core.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/ingest/plan.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/integration/readModel.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/jwt.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/licensing/authz.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/licensing/entitledAccess.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/licensing/entitlements.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/core/licensing/issue.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/licensing/payload.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/licensing/store.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/migrate/provisionedSecrets.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/notify/templates.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/src/core/oidc/client.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/ops/settingsBackfill.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/outletCredentials.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/outletTokens.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/core/platformCredentials.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/products/store.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/publisher.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/qr.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/rateLimit.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/readCapped.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/registry/registryHost.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/registry/registryLanding.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/registry/registryTokens.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/rowSettings.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/services.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/settings/core.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/settings/platform.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/settings/rules.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/settings/snapshot.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/settingsClaims.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/settingsDrift.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/storefront/ci.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/core/storefront/listingImport.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/storefront/prPlane.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/core/storefront/stores/appStore.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/storefront/stores/flathub.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/core/storefront/stores/googlePlay.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/storefront/stores/homebrew.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/storefront/stores/itch.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/storefront/stores/microsoftStore.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/storefront/stores/polarisKey.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/storefront/stores/scoop.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/storefront/stores/snap.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/storefront/stores/steam.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/storefront/stores/winget.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/stores/apple/client.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/stores/microsoftStore/client.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/core/stores/microsoftStore/credentials.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/core/stores/play/client.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/core/trust/attestation.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/trust/cbor.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/trust/deviceTrust.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/trust/playIntegrity.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/core/updateHealthDo.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/platform/keyvault.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/rateLimitDo.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/commerce/settings.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/commerce/state.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/commerce/stores/apple/root.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/config/admin/catalog.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/config/document.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/admin.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/distribution/assetPacks.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/autoHalt.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/availability.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/distribution/bytes.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/services/distribution/checksums.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/apply.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/controls.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/src/services/distribution/connectors/asc/distribute.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/distribution/connectors/asc/iapCatalog.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/poll.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/provision.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/connectors/asc/run.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/webhook.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/msstore/platform.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/connectors/msstore/poll.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/src/services/distribution/connectors/msstore/provision.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/msstore/setup.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/connectors/msstore/zip.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/distribution/connectors/play/controls.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/distribution/connectors/play/map.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/play/platform.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/connectors/play/policy.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/play/poll.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/src/services/distribution/connectors/play/setup.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/play/storefront.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/connectors/state.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/feeds/fdroid.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/services/distribution/feeds/index.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/listing/assets.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/distribution/listing/manifestSync.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/listing/sources.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/services/distribution/listingTruthJob.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/matrix.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/page/customer.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/page/model.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/prInputs.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/distribution/readiness.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/registry/cargo/routes.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/registry/go/render.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/registry/go/routes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/registry/godot/documents.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/registry/materialise.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/registry/maven/routes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/registry/npm/render.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/registry/npm/routes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/registry/oci/routes.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/registry/pypi/routes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/registry/pypi/source.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/rollouts.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/sentry.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/storeSteps.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/storefronts/admin.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/storefronts/googlePlay.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/storefronts/microsoftStore.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/distribution/storefronts/plan.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/storefronts/slots.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/storefronts/steam/checklist.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/storefronts/steam/setup.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/distribution/updateHealthAdmin.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/accounts/deletion.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/accounts/links.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/accounts/productUsers.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/src/services/identity/accounts/signIn.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/attach.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/browserSession.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/card/avatars.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/card/emailSignIn.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/identity/card/gate.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/src/services/identity/consoleAccount.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/identity/passkeys/repo.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/passkeys/routes.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/identity/passkeys/webauthn.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/passthrough/grant.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/passthrough/routes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/portal/api.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/src/services/identity/portal/auth.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/portal/dataExport.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/portal/dataRoutes.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/portal/discover.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/portal/downloads.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/portal/library.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/portal/link.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/identity/portal/media.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/portal/methods.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/identity/portal/personalTokens.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/portal/selfService.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/identity/portal/session.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/productOidc/chooser.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/productOidc/deviceApproval.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/providers/apple.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/providers/flow.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/providers/google.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/identity/signInSettings.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/activation.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/license/admin/devices.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/admin/inviteEmail.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/license/admin/keyEmail.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/license/admin/keys.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/admin/licenses.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/license/admin/tiers.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/deletion.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/document.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/enroll.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/ingest.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/license/migrations/limitsPlan.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/release/admin.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/release/assetSource.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/gateway.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/githubApp.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/health.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/linkExisting.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/release/linkRepo.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/release/packages/catalog.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packages/native/maven.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packages/native/swiftArchive.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/release/packages/ociPush.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/release/packs/adminView.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/release/packs/catalog.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packs/delegations.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/release/packs/deltas/consumer.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packs/deltas/sweep.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packs/ingest.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/release/packs/provides.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packs/publish.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packs/resolve.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/packs/revocations.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/release/packs/sets.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/policy.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/src/services/release/publish.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/release/resolve.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/resync.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/surface.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/sync/do/cloudSyncDo.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/sync/engine/memoryStore.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/sync/engine/usage.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/sync/handlers/pull.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/sync/handlers/push.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/src/services/sync/scheduled.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/update/artifactBytes.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/update/packParts.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/update/simulate.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/src/services/update/updaterFeeds.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/singleUseDo.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test-browser/customerDeviceForm.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test-workerd-deltas/consumer.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test-workerd/avatars.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test-workerd/blobs.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test-workerd/cloudSync.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test-workerd/commerceCors.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test-workerd/feedContent.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test-workerd/hostedAssets.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test-workerd/imgHost.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test-workerd/packs.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test-workerd/passkeys.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test-workerd/payload.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test-workerd/pruneNotice.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test-workerd/registry.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test-workerd/registryOci.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test-workerd/releaseMirror.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test-workerd/runtime.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test-workerd/seed.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test-workerd/singleUse.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test-workerd/sparkleStream.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/ascFake.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/ascWorld.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/attack/R1-control-plane.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/attack/R10-dos.test.ts": {
+      "jscpd:duplicate": 31
+    },
+    "packages/worker/test/attack/R11-data.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/attack/R12-outlet-credentials.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/attack/R12-secrets.test.ts": {
+      "jscpd:duplicate": 28
+    },
+    "packages/worker/test/attack/R3-licensing.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/attack/R5-isolation.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/attack/R6-release.test.ts": {
+      "jscpd:duplicate": 55
+    },
+    "packages/worker/test/attack/R8-oidc.test.ts": {
+      "jscpd:duplicate": 44
+    },
+    "packages/worker/test/attack/R9-injection.test.ts": {
+      "jscpd:duplicate": 22
+    },
+    "packages/worker/test/attestFixtures.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/boundaries.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/cloudSyncDoMock.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/cloudSyncSqlTestStore.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/commerceWorld.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/worker/test/consoleSessionHelper.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/blobs.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/core/brandWeights.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/canonicalClientMetadata.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/consoleSessionReader.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/contributions.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/customerEmailHtml.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/discoveryGolden.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/distributionBackfill.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/emailDelivery.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/feedSeqCeiling.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/fingerprint.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/core/headersCorpus.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/licenseMerge.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/licenseTerms.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/lockerMail.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/migrations/accountsMigration.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/core/migrations/ciTokensHintMigration.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/core/migrations/ciTokensLastUsedMigration.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/core/migrations/defaultTierMigration.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/migrations/fingerprintBaselineMigration.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/migrations/identityPlatformMigration.test.ts": {
+      "jscpd:duplicate": 53
+    },
+    "packages/worker/test/core/migrations/licenseEmailIssuerMigration.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/migrations/licenseInvitedAtMigration.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/core/migrations/listingAssetsManifestMigration.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/core/migrations/provisionedSecretMovesMigration.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/migrations/sqlSettingsMigration.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/migrations/syncPlanMigration.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/core/oidcClient.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/outletCredentialReach.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/core/packageMigrations.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/provisionedSecretsPlan.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/publisher.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/rbacBindings.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/registry.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/core/registryTokenLicenceOwner.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/repo.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/services.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/core/settings-resolver.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/settings-write.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/updateHealth.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/docsCspParity.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/docsLinks.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/docsSearchBrowser.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/downloadWorld.ts": {
+      "jscpd:duplicate": 23
+    },
+    "packages/worker/test/feedWorld.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/hostedFixture.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/identityCardHarness.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/imagesFake.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/ingest/documents.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/ingest/golden.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/ingest/world.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/msstoreFake.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/ociFixture.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/packFixture.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/packWorld.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/packageFixture.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/platformApi.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/playFake.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/playWorld.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/portalHarness.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/portalHelpLinks.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/registry/cargo.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/registry/go.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/worker/test/registry/godot.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/worker/test/registry/maven.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/registry/npm.test.ts": {
+      "jscpd:duplicate": 24
+    },
+    "packages/worker/test/registry/pypi.test.ts": {
+      "jscpd:duplicate": 19
+    },
+    "packages/worker/test/releaseRoutesFixture.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/releaseSurface.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/rlMock.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/routeCoverage.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/seed.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/commerce/commerce.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/services/commerce/commerceDerivedIdentity.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/commerce/commerceHooksSecurity.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/commerce/commerceService.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/commerce/commerceUseAssigned.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/services/distribution/ascCatalog.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/distribution/ascControls.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/distribution/ascDistribute.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/services/distribution/ascListingPush.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/distribution/ascPackReadiness.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/distribution/ascPin.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/services/distribution/ascPoll.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/distribution/ascProvision.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/distribution/ascProvisioning.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/distribution/ascWebhook.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/distribution/ascWriteReach.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/distribution/channelFacts.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/distribution/connectorHardening.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/distribution/downloadPageIcon.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/distribution/hostedAssets.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/services/distribution/msstore.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/services/distribution/playControls.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/distribution/playLease.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/distribution/playPin.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/distribution/playPoll.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/distribution/playStorefront.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/distribution/playVitals.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/distribution/productPlatforms.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/distribution/registryAuth.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/worker/test/services/distribution/registryFeeds.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/services/distribution/storefront-settings.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/distribution/storefrontFeeds.test.ts": {
+      "jscpd:duplicate": 25
+    },
+    "packages/worker/test/services/distribution/storefrontFlow.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/distribution/storefrontPlayOldImages.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/distribution/storefrontSlots.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/identity/accountBirthdate.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/identity/browserSession.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/worker/test/services/identity/connectionCallback.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/identity/connectionRouting.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/deviceApproval.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/services/identity/deviceLoginCli.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/identity/erasureLedger.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/identity/identityCardEmail.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/identity/identityCardGate.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/services/identity/identityCardProfile.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/identity/identityCardSessions.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/identity/identityErasureFence.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/services/identity/identityPasskeys.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/identity/identityProductTerms.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/obtainPaths.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/identity/oidcEdge.test.ts": {
+      "jscpd:duplicate": 29
+    },
+    "packages/worker/test/services/identity/platformPrimitives.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/identity/portal.test.ts": {
+      "jscpd:duplicate": 19
+    },
+    "packages/worker/test/services/identity/portalAccountGaps.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/portalApiOracle.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/worker/test/services/identity/portalCallback.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/portalContractPurge.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/portalDataExport.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/portalDeviceLogin.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/services/identity/portalDiscover.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/identity/portalDownloads.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/services/identity/portalEmailCode.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/portalEmailGate.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/services/identity/portalErasureFence.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/identity/portalExpiredLink.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/identity/portalFloatingKeys.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/services/identity/portalHostedArt.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/services/identity/portalLibrary.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/identity/portalLicensedDownloads.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/identity/portalLinkAccounts.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/identity/portalNotices.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/identity/portalProfile.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/portalPurchaseSource.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/identity/portalRegistryTokens.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/portalSelfService.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/identity/portalServices.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/identity/portalSettings.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/portalSettingsMigration.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/portalSignInMethods.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/portalStorefront.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/portalSupportCode.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/identity/singleUse.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/license/deviceOwnership.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/license/dormantSeatReactivation.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/license/fingerprintActivation.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/services/license/isolation.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/license/licensingEdge.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/services/license/limitsMaterialisePlan.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/license/settings-registry.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/release/descriptor.test.ts": {
+      "jscpd:duplicate": 21
+    },
+    "packages/worker/test/services/release/manifestIngestGates.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/services/release/packProvides.test.ts": {
+      "jscpd:duplicate": 43
+    },
+    "packages/worker/test/services/release/packSets.test.ts": {
+      "jscpd:duplicate": 29
+    },
+    "packages/worker/test/services/release/packs.test.ts": {
+      "jscpd:duplicate": 34
+    },
+    "packages/worker/test/services/release/publishE2e.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/services/release/releaseModel.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/release/releasePolicy.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/release/releaseResolverJobs.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/release/releaseSparkleStream.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/release/releaseWebhook.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/release/settings-discovery.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/sync/cloudSyncBudget.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/sync/cloudSyncDeletion.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/sync/cloudSyncDirectory.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/sync/cloudSyncLimits.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/sync/cloudSyncMerge.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/services/sync/cloudSyncPull.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/services/sync/cloudSyncPush.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/services/sync/cloudSyncUsageAdmin.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/update/feedContentSize.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/singleUseMock.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/softAuthenticator.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/srcScan.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/storefront/conformance.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/storefront/prPlane.test.ts": {
+      "jscpd:duplicate": 18
+    },
+    "packages/worker/test/storefront/steam.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/storefront/storeSteps.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/accountErasure.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/surfaces/accountIdBoundary.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/accountOverrides.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/worker/test/surfaces/accounts.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/surfaces/accountsPrivacy.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/admin.test.ts": {
+      "jscpd:duplicate": 40
+    },
+    "packages/worker/test/surfaces/adminSessions.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/apiTokens.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/attest.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/surfaces/autoHalt.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/blobGc.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/blobRoutePackages.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/bytesHost.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/channelFeed.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/compatSimulator.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/connectionDomains.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/accountTokensAdmin.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/adminCoreInventory.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/console/adminDevices.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/adminFeeds.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/console/adminPersonalToken.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/worker/test/surfaces/console/adminPresentation.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/adminSearch.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/alertDestinations.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/console/brandPages.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/bundles.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/worker/test/surfaces/console/cappedBody.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/channelsRead.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/console/ciPackagesRead.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/console/configAdmin.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/console/connectionsAdmin.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/console/consoleAccess.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/console/consoleBindingWrites.test.ts": {
+      "jscpd:duplicate": 27
+    },
+    "packages/worker/test/surfaces/console/consoleBreakGlass.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/consoleCard.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/console/consoleCardPasskey.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/consoleDevicePage.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/console/consoleInviteConversion.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/console/consoleMembers.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/surfaces/console/consolePasskeys.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/console/consoleProductMembers.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/consoleSessionV2.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/console/consoleStrongMethod.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/console/consoleTokenSubject.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/consoleUsers.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/console/createDefaults.test.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/worker/test/surfaces/console/createProbes.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/worker/test/surfaces/console/creatorRule.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/console/credentialCheck.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/distributionAvailability.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/console/distributionMatrix.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/distributionRollouts.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/console/feedPruneRoutes.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/console/fingerprintPolicy.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/hostedAssetPulls.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/worker/test/surfaces/console/implicitTierSeed.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/worker/test/surfaces/console/issueTier.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/keyStateMachine.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/console/keyvault.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/licenseBatches.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/console/licenseCreateDelivery.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/licenseDelete.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/licenseDeviceLimit.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/licenseHolderMoves.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/console/licenseHolders.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/console/licenseLifecycle.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/console/licenseListPaging.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/licenseNullables.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/console/licenseSendInvite.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/linkExisting.test.ts": {
+      "jscpd:duplicate": 21
+    },
+    "packages/worker/test/surfaces/console/listingAdmin.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/listingImport.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/console/manifestAuthoritative.test.ts": {
+      "jscpd:duplicate": 24
+    },
+    "packages/worker/test/surfaces/console/manifestSnapshot.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/console/migrationRunner.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/myPersonalTokens.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/console/outletCredentials.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/outletIdentityCheck.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/packageExclusion.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/packageReleases.test.ts": {
+      "jscpd:duplicate": 21
+    },
+    "packages/worker/test/surfaces/console/platformSettings.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/productContext.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/productSettingsApi.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/productsSlugRule.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/publishRoutes.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/worker/test/surfaces/console/rbacRouteMatrix.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/rbacStoredPrincipal.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/releaseMirror.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/console/releaseOwnership.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/console/releaseResolution.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/console/relicense.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/console/reservedNames.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/resyncProfileSecrets.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/console/sentry.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/serviceAdmin.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/console/serviceTokens.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/console/settingsBackfill.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/surfaces/console/settingsClaims.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/supportCodes.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/console/syncPlan.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/console/systemCiGuard.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/console/systemProduct.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/console/trustPolicy.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/console/trustSigner.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/consoleInvites.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/consolePasskeySignin.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/cors.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/customerDevicePage.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/worker/test/surfaces/customerHelpLinks.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/customerHost.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/delegations.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/surfaces/deltaConsumer.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/deployHook.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/devTrack.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/displayNamePolicy.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/distributionDelivery.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/surfaces/distributionOutlets.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/distributionPayload.test.ts": {
+      "jscpd:duplicate": 25
+    },
+    "packages/worker/test/surfaces/distributionReportE2e.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/docsCache.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/docsGate.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/downloadPage.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/e2e.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/edgeMint.test.ts": {
+      "jscpd:duplicate": 26
+    },
+    "packages/worker/test/surfaces/enroll.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/feedAccessJob.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/feedAdapters.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/feedDeltaMenu.test.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/surfaces/feedProvisioning.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/feedPrune.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/graceClamp.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/hooks.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/hostedAssetUploads.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/hostedSigninPages.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/identityAccount.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/identityAuthorize.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/identityBrowserErasureFence.test.ts": {
+      "jscpd:duplicate": 31
+    },
+    "packages/worker/test/surfaces/identityChoice.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/identityPerProduct.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/imgHost.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/implicitTier.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/keyEntries.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/keysOutOfLogs.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/licenseConfigLayer.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/licenseDocUser.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/licensing.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/licensingExpand.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/licensingSettings.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/limitsMaterialiseJob.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/linkRepo.test.ts": {
+      "jscpd:duplicate": 45
+    },
+    "packages/worker/test/surfaces/listingAssets.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/lockerLink.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/manageUrl.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/oidc.test.ts": {
+      "jscpd:duplicate": 20
+    },
+    "packages/worker/test/surfaces/oidcLicenseChoice.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/worker/test/surfaces/packReadiness.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/packTransports.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/worker/test/surfaces/packageFeedsSwitch.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/passthrough.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/personalTokens.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/platformAdmin.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/platformDeviceEntry.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/platformOperations.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/platformStoreConnections.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/platformStoreMsStore.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/platformStorePlay.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/platformTerms.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/polarisKeyPanel.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/presentation.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/provisionedSecretsJob.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/provisioningTarget.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/publicRouteOracle.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/worker/test/surfaces/rateLimit.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/refusals.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/register.test.ts": {
+      "jscpd:duplicate": 13
+    },
+    "packages/worker/test/surfaces/registryErasureFence.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/registryHost.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/registryOci.test.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/surfaces/registryPersonRoles.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/registryPublish.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/surfaces/registryPush.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/registrySwift.test.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/worker/test/surfaces/release.test.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/worker/test/surfaces/releaseBytes.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/releaseRecords.test.ts": {
+      "jscpd:duplicate": 24
+    },
+    "packages/worker/test/surfaces/releaseStore.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/surfaces/representability.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/resolverCompareJob.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/surfaces/revocations.test.ts": {
+      "jscpd:duplicate": 19
+    },
+    "packages/worker/test/surfaces/scheduled.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/scopeProofs.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/sdkSightings.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/serverOnlyDelivery.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/surfaces/serviceRouteOracle.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/serviceRoutes.test.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/surfaces/signInBind.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/signInCardShell.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/surfaces/storeSteps.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/surfaces.test.ts": {
+      "jscpd:duplicate": 21
+    },
+    "packages/worker/test/surfaces/syncPrincipal.test.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/worker/test/surfaces/updateFeed.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/surfaces/updateResolverGolden.test.ts": {
+      "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/updaterFeeds.test.ts": {
+      "jscpd:duplicate": 17
+    },
+    "packages/worker/test/transcripts/format.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/transcripts/scenarios/account.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/worker/test/transcripts/scenarios/choice.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/transcripts/scenarios/cloudSync.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/transcripts/scenarios/devices.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/transcripts/scenarios/discovery.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/transcripts/scenarios/distribution.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test/transcripts/scenarios/identity.ts": {
+      "jscpd:duplicate": 23
+    },
+    "packages/worker/test/transcripts/scenarios/keyEntry.ts": {
+      "jscpd:duplicate": 16
+    },
+    "packages/worker/test/transcripts/scenarios/license.ts": {
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/transcripts/scenarios/locker.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/worker/test/transcripts/scenarios/packs.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/transcripts/scenarios/redirect.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/transcripts/scenarios/release.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/transcripts/scenarios/sync.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/updateHealthMock.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/x509Fixtures.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/vitest.deltas.workers.config.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/vitest.workers.config.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/zstd-wasm/test/encoder.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/zstd-wasm/test/zstd.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/api-check.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/ci-scope.mjs": {
+      "jscpd:duplicate": 1
+    },
+    "tools/ci-scope.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/bundle.ts": {
+      "jscpd:duplicate": 5
+    },
+    "tools/corpus/claims.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/config.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/content.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/delegation.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/gate.ts": {
+      "jscpd:duplicate": 9
+    },
+    "tools/corpus/packs.ts": {
+      "jscpd:duplicate": 5
+    },
+    "tools/corpus/record.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/reference/backend.ts": {
+      "jscpd:duplicate": 3
+    },
+    "tools/corpus/reference/config.ts": {
+      "jscpd:duplicate": 4
+    },
+    "tools/corpus/reference/ed25519.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/reference/fingerprint.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/reference/headers.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/reference/jws.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/reference/outlet.ts": {
+      "jscpd:duplicate": 6
+    },
+    "tools/corpus/reference/packs.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/reference/record.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/reference/revocation.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/reference/update.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/release-records.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/revocation.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/corpus/stage.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/trust.ts": {
+      "jscpd:duplicate": 4
+    },
+    "tools/corpus/update.ts": {
+      "jscpd:duplicate": 3
+    },
+    "tools/gate.mjs": {
+      "jscpd:duplicate": 1
+    },
+    "tools/gen-api-surface.ts": {
+      "jscpd:duplicate": 6
+    },
+    "tools/gen-channels.ts": {
+      "jscpd:duplicate": 7
+    },
+    "tools/gen-content-chunks.ts": {
+      "jscpd:duplicate": 11
+    },
+    "tools/gen-content-corpus.ts": {
+      "jscpd:duplicate": 24
+    },
+    "tools/gen-generators-doc.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/gen-mirrors.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/gen-readme-work.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/gen-roles-matrix.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/gen-sdk-constants.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/gen-sdk-constants.ts": {
+      "jscpd:duplicate": 7
+    },
+    "tools/gen-services.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/gen-services.ts": {
+      "jscpd:duplicate": 4
+    },
+    "tools/mockups/build-kit.mjs": {
+      "jscpd:duplicate": 2
+    },
+    "tools/mockups/check.mjs": {
+      "jscpd:duplicate": 8
+    },
+    "tools/mockups/shoot.mjs": {
+      "jscpd:duplicate": 3
+    },
+    "tools/package-metadata.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/parity-check.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/portal-matrix.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/presentation-matrix.ts": {
+      "jscpd:duplicate": 4
+    },
+    "tools/root-readme.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/sign-corpus.ts": {
+      "jscpd:duplicate": 1
+    },
+    "tools/sync-scenarios.ts": {
+      "jscpd:duplicate": 16
+    },
+    "tools/ui-matrix.ts": {
+      "jscpd:duplicate": 10
+    }
+  }
+}

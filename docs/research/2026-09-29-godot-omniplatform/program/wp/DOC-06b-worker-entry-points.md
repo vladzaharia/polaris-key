@@ -47,34 +47,75 @@ Done when every row holds for each screen and state this package ships, checked 
 (not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
 apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
 
-- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+- [x] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
       Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
       when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
       changes neither.
-- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      DOC-06b.2: the new links are native anchors in reading order (footer after main; `nav.ac-links` after the card), focus ring from the page CSS; no overlay, no route change. Evidence: `_evidence/DOC-06b/results.json` (tab order per page).
+
+- [x] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
       linked (aria-describedby); one polite announcement per change, none while typing; tables use
       th with scope; status is a word and an icon, never colour alone.
-- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      DOC-06b.2: links are named by their text; the device links sit in the existing labelled `nav` ("Help and privacy"); one h1 per page, unchanged. The footer links are inline in the existing `footer` landmark.
+
+- [x] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
       no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
       targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
-- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      DOC-06b.2: no sideways scroll at 320 px or at 200 % root font on the download page, device entry and approval (`results.json`, `overflow: false`); device links are 44 px tall; the download footer's inline links are 17 px tall like the existing Website link in the same line (inline text links in a sentence).
+
+- [x] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
       sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
-- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      DOC-06b.2: light and dark renders of the download page, device pages and three mails (`_evidence/DOC-06b/*.png`); the links reuse `a` and `.ac-links` tokens, so forced-colors and contrast-more follow the page CSS unchanged. No custom accent: Locker pages carry none.
+
+- [x] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
       expired or stale, network and API error with Try again, partial failure, success; input survives a
       failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
       Reload.
-- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      DOC-06b.2: not applicable: no new state or motion; native kits are untouched.
+
+- [x] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
       without moving content; progress is real (no invented percentage, nothing loops after a failure);
       no celebration on refunds, revocation, removal, deletion or consent.
-- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      DOC-06b.2: not applicable: no new state or motion; native kits are untouched.
+
+- [x] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
       sign-in; the product accent in kits); focus, selected, hover, checked and context
       borders take the accent of the service the element references (data-service; -fg for
       text and edges, base for fills; a non-colour cue stays); status colours (success,
       warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
       taglines; no text drawn over customer art.
-- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      DOC-06b.2: no new action or colour; links use the neutral link ink; copy is the fixed labels Help, Check a download.
+
+- [x] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+      DOC-06b.2: not applicable: no new state or motion; native kits are untouched.
+
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Corrections (2026-10-24)
+
+The code is the fact (slice plan A-25-DOC-12a-DOC-06b-slices §0).
+
+- **W0.** "Worker entry points" means the pages and mails a customer reaches from the Worker, not
+  `index.ts`, `mount.ts`, `router.ts` or `dispatch.ts`. None of those changes.
+- **W1.** There is no `notices.ts`. The templates are `core/notify/templates.ts` (`buildNotice`),
+  rendered by `core/notify/render.ts`. The other Locker mail is the sign-in link in
+  `core/notify/send.ts`. Operator mail (`cliSignInNotice`, `access*`, alerts) is Polaris Key mail
+  and keeps its footer (D-W1).
+- **W2.** The Help targets exist: `help/emails.md` has one `<a id>` per notice,
+  `secure-your-account.mdx`, `check-a-download.md`, `approve-a-sign-in.mdx`. `what-is-polaris-key`
+  is now `what-is-polaris-locker.md`.
+- **W3.** Three Locker notices had no entry on `help/emails.md`: `deviceReplacedNotice`,
+  `packagesTokenNotice`, `licenseFromDeveloperNotice`. Added in DOC-06b.1.
+- **W4.** "Wasn't you? Secure your account" goes to the app (`#/account/methods`), not Help. The
+  callout keeps that link; the footer adds **Secure your account** to the Help article (D-W2).
+- **W5.** Worker HTML pages already link Help and Privacy (`LOCKER_CARD_LINKS`, now reading
+  `core/helpLinks.ts`). The device pages did not link `approve-a-sign-in`; DOC-06b.2 adds
+  `DEVICE_CARD_LINKS` (Help to Approve a sign-in, Privacy) on every device-code page.
+- **W6.** The download page footer had no Help link; DOC-06b.2 adds **Check a download** and
+  **Help** on `feedOriginOf(env)` (the customer site, else the console host), none when neither exists.
+- **W7.** The gates: the snapshot suites `portalNotices`, `customerEmailHtml`, `lockerMail`,
+  `licenseCreateDelivery`; `customerHelpLinks.test.ts` and the slug-manifest checks.
 
 ## Steps
 
@@ -84,7 +125,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 ## Acceptance criteria
 
 - [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Email template tests.
+- [x] Email template tests (DOC-06b.1; the snapshot suites are unchanged by .2).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 

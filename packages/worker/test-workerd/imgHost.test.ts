@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── The image host on workerd (HA-02) ─────────────────────────────────────────────────────
 //
-// The Node lane (`test/imgHost.test.ts`) covers the rules against `test/r2Mock.ts` and no Cache
+// The Node lane (`test/surfaces/imgHost.test.ts`) covers the rules against `test/r2Mock.ts` and no Cache
 // API. This file runs the host through the real Worker entry (`SELF`) on miniflare's R2, D1 and
 // Cache API: the isolation, a hosted PNG served byte for byte with the pinned headers, the
 // cache fill through `waitUntil` (a teed body), and the tenancy check that still runs when the

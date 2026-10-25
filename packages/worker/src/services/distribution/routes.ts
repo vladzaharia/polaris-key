@@ -119,6 +119,7 @@ function byteRow(
 ): ServiceRouteDecl {
   return {
     ...row,
+    cors: true,
     auth: { kind: "handler" },
     other: reads ? BYTES_ONLY_READS : "handler",
     accept: (ctx) => byteTargetOf(ctx.rest)?.kind === kind,
@@ -231,6 +232,7 @@ function feedRow(
   return {
     path,
     doc,
+    cors: true,
     methods: READS,
     alsoHead: true,
     auth: { kind: "none" },
@@ -395,6 +397,7 @@ export const DISTRIBUTION_ROUTES = serviceRoutes("distribution", [
   // served on the console's origin.
   {
     path: "download.json",
+    cors: true,
     methods: ["GET"],
     alsoHead: true,
     auth: { kind: "none" },

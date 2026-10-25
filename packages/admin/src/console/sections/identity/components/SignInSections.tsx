@@ -13,11 +13,7 @@ import {
   Mail,
   type LucideIcon,
 } from "lucide-react";
-import {
-  api,
-  type PlatformConnectionsPage,
-  type ProductDetail,
-} from "../../../../api.js";
+import { type ProductDetail } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -28,7 +24,10 @@ import { Switch } from "../../../../ui/Switch.js";
 import { toast } from "../../../../ui/toast.js";
 import { useCan, useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
+import { reads } from "../../../data/reads.js";
+import { signInSettingsQuery } from "../data.js";
 import { qk } from "../../../data/queries.js";
+import { ProductSettingsSection } from "../../../components/ProductSettingsSection.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
@@ -38,7 +37,6 @@ import {
   patchFor,
   type OffConfirmation,
 } from "../../core/components/serviceFeatures.js";
-import { fetchPlatformConnections } from "../../platform/pages/platformConnections.js";
 
 export const linkClass = "text-accent-fg underline underline-offset-2";
 
@@ -224,13 +222,9 @@ const BUILT_INS = [
 export function MethodsSection({ slug }: { slug: string }): React.ReactElement {
   // Reading the connections is platform access; anyone else sees what the platform sets.
   const canPlatform = useCan("platform", null, "view");
-  const settings = useQuery({
-    queryKey: qk.signInSettings(slug),
-    queryFn: () => api.signInSettings(slug).then((res) => res.settings),
-  });
-  const q = useQuery<PlatformConnectionsPage>({
-    queryKey: qk.platformConnections(),
-    queryFn: fetchPlatformConnections,
+  const settings = useQuery(signInSettingsQuery(slug));
+  const q = useQuery({
+    ...reads.platformConnections(),
     enabled: canPlatform,
     retry: false,
   });
@@ -329,16 +323,13 @@ export function TermsSection({
   name: string;
 }): React.ReactElement {
   const area = "identity.signIn";
-  const q = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const q = useQuery(reads.productSettings(slug, area));
   const value = q.data?.settings.find((s) => s.key === "identity.terms")
     ?.value as { version?: string; url?: string } | null | undefined;
   return (
     <SettingsSection id="terms" title="Terms">
       <SettingsRow
-        label="Polaris Key's Terms and Privacy Policy"
+        label="Polaris Locker's Terms and Privacy Policy"
         help="Once per account"
       >
         <span className="text-sm text-fg-muted">Set by the platform</span>
@@ -395,6 +386,33 @@ export function TermsSection({
 }
 
 /** Presentation is Core's: read-only here. */
+/** The operator's approval of a name that matches a reserved term (PX-W13c). */
+export const APPROVAL_KEY = "identity.displayNameApproved";
+const APPROVAL_COPY = {
+  [APPROVAL_KEY]: {
+    confirm: (to: unknown, who: { name: string }) =>
+      to === true
+        ? {
+            title: `Approve ${who.name}'s display name?`,
+            confirmLabel: "Approve display name",
+          }
+        : {
+            title: `Remove approval of ${who.name}'s display name?`,
+            confirmLabel: "Remove approval",
+          },
+    consequences: (to: unknown, who: { name: string; slug: string }) =>
+      to === true
+        ? [
+            `${who.name}'s names are accepted even if they match a reserved term, and its sign-in card shows the name instead of ${who.slug}. This product only.`,
+          ]
+        : [
+            `A name that matches a reserved term is flagged again, and the sign-in card shows ${who.slug}.`,
+          ],
+    saved: (to: unknown) =>
+      to === true ? "Display name approved" : "Approval removed",
+  },
+};
+
 export function PresentationSection({
   slug,
   product,
@@ -443,6 +461,15 @@ export function PresentationSection({
           </span>
         ) : null}
       </SettingsRow>
+      <ProductSettingsSection
+        bare
+        slug={slug}
+        area="identity.signIn"
+        keys={[APPROVAL_KEY]}
+        id="display-name"
+        title="Display name"
+        copy={APPROVAL_COPY}
+      />
     </SettingsSection>
   );
 }

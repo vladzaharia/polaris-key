@@ -145,7 +145,7 @@ describe("serverClient()", () => {
       PKEY_LICENSE_KEY: "pkey_djdl_server",
     });
     expect(c.core.deviceId).toBe(DEVICE);
-    expect(c.config.getConfig("quality.floor", "none")).toBe("flac");
+    expect(c.config.get("quality.floor", "none")).toBe("flac");
     expect(new Set(p.seen.devices)).toEqual(new Set([DEVICE]));
     expect(p.seen.paths.some((x) => x.endsWith("/license/activate"))).toBe(
       true,

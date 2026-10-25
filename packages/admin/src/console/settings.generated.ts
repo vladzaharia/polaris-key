@@ -167,14 +167,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "identity",
     rbacArea: "platform",
     label: "Extra reserved display terms",
-    description:
-      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    description: "Names to treat like the built-in reserved list.",
     keywords: ["reserved", "display name", "spoofing"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
-    pending: "PX-W13b",
+    pending: null,
     deprecated: null,
   },
   {
@@ -185,9 +184,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "platform",
     area: "identity",
     rbacArea: "platform",
-    label: "Polaris Key terms",
+    label: "Polaris Locker terms",
     description:
-      "The version and URLs of Polaris Key's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
+      "The version and URLs of Polaris Locker's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
     keywords: ["terms", "privacy", "legal", "FinishStep", "_platform"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",
@@ -326,7 +325,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "U-05",
+    pending: null,
     deprecated: null,
   },
   {
@@ -345,7 +344,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "U-05",
+    pending: null,
     deprecated: null,
   },
   {
@@ -684,7 +683,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "core",
     area: "storefront",
     rbacArea: "commerce",
-    label: "Listing",
+    label: "Listed in Polaris Locker",
     description:
       "Whether the Polaris Locker library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
@@ -1085,7 +1084,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Anchor license choice",
     description:
-      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
+      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most room for devices, or the oldest.",
     keywords: ["anchor", "rank", "seats"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",
@@ -1615,6 +1614,25 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     deprecated: null,
   },
   {
+    key: "distribution.packageFeeds",
+    aliases: [],
+    scope: "product",
+    entity: null,
+    service: "distribution",
+    area: "distribution.feeds",
+    rbacArea: "ship",
+    label: "Serve package feeds",
+    description:
+      "Whether the product's package feeds answer at all. Off stops every read and publish of every feed at once; nothing is deleted, and turning it on serves them again.",
+    keywords: ["feeds", "packages", "registry", "off switch", "kill switch"],
+    docs: "/docs/features/ship-builds/channels/",
+    ownership: "operator",
+    critical: false,
+    secret: false,
+    pending: null,
+    deprecated: null,
+  },
+  {
     key: "distribution.feeds",
     aliases: [],
     scope: "product",
@@ -1624,7 +1642,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "ship",
     label: "Package feeds",
     description:
-      "Per ecosystem: whether the product's feed answers, who may read it, its namespace and the largest package it accepts. The platform's feeds policy bounds it.",
+      "Per ecosystem: whether the product's feed answers, who may read it (Public or Licensed), its namespace and the largest package it accepts. A package declared in .pkey/release gets a Licensed feed on the first sync; only the operator makes it Public. The platform's feeds policy bounds it, and Serve package feeds switches all of them off.",
     keywords: ["npm", "pypi", "registry", "packages"],
     docs: "/docs/features/ship-builds/channels/",
     ownership: "operator",
@@ -1852,13 +1870,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "signin",
     label: "Approved display name",
     description:
-      "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
+      "Lets this product use a name that matches a reserved term. Covers every name the product uses.",
     keywords: ["reserved", "display name", "reserved_display_name"],
     docs: "/docs/build/manifest/product/",
     ownership: "operator",
     critical: false,
     secret: false,
-    pending: "PX-W13b",
+    pending: null,
     deprecated: null,
   },
   {
@@ -1896,7 +1914,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: true,
     secret: false,
-    pending: "U-05",
+    pending: null,
     deprecated: null,
   },
   {
@@ -1909,7 +1927,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "commerce",
     label: "Commerce",
     description:
-      "Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
+      "Which stores sell, and whether sandbox and test purchases count. Each store sells for the app typed here or, when left out, the app the product is assigned on that store. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
     keywords: ["purchases", "iap", "steam", "sandbox"],
     docs: "/docs/features/commerce/",
     ownership: "operator",
@@ -1921,6 +1939,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 ];
 
 export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
+  {
+    thing: "Store listing content",
+    reason:
+      "Listing text, locales, overrides, images and release notes are content the operator writes, not configuration: registering their storage columns as settings would invent keys (A-27, D12).",
+    shows: "Settings → Presentation → Listing",
+  },
   {
     thing: "Refund, void and chargeback handling",
     reason:
@@ -2034,10 +2058,10 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Core → Settings; Core → Overview",
   },
   {
-    thing: "Old lazy-delta and sign-in mail cap tables",
+    thing: "Feed access migration records (what the F-34.4 job overwrote)",
     reason:
-      "ST-11 copied both into product settings rows once (deltas.lazy.enabled, deltas.lazy.hotDevices, deltas.lazy.dailyCap, email.dailyCap). Nothing reads the old tables; ST-25 drops them.",
-    shows: "Product → Settings",
+      "A record kept for the job's down step: prior_source says whether the access row it replaced came from the manifest or the console, so a rollback restores it. Nothing configures it.",
+    shows: "Ship builds → Package feeds",
   },
   {
     thing: "Connection records (where a connection row came from)",
@@ -2050,6 +2074,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     reason:
       "Customer data: how a Polaris Locker account came to hold a license, not Polaris behaviour.",
     shows: "License → Licenses",
+  },
+  {
+    thing: "Console role binding provenance (ST-31)",
+    reason:
+      "Records how a binding came to exist (an operator gave it, an invite, or the creator of a product): a fact about who has access, not Polaris behaviour.",
+    shows: "Platform → Access",
   },
   {
     thing: "An account's birth date and where it came from (I-33)",

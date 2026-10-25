@@ -53,12 +53,15 @@ import { skippedIn } from "../../../wizard/setup.js";
 import { useSetup } from "../../../wizard/useSetup.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Link, useLocation, useSearchParam } from "../../../router.js";
+import { channelInScope, navFeaturesOf } from "../../../nav.js";
+import { useProduct } from "../../../data/hooks.js";
 import { codecs, globalPage, r } from "../../../routes.js";
 import { Panel } from "../../../templates/Dashboard.js";
 import { useSlots, useStorefronts } from "../data.js";
 import { StoreTile } from "../components/StoreTiles.js";
 import { FlowSkeleton } from "../components/FlowSkeleton.js";
 import { useCan, useWriteGate } from "../../../access/useCan.js";
+import { EditListingLink } from "../components/EditListingLink.js";
 import { FitReport } from "../components/FitReport.js";
 import { ImportPanel } from "../components/ImportPanel.js";
 import { SlotBoard } from "../components/SlotBoard.js";
@@ -69,6 +72,8 @@ import {
 } from "../components/StepDialog.js";
 import { PolarisKeyPanel } from "../components/PolarisKeyPanel.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
+import { ScopeLine } from "../components/ScopeLine.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 
 /**
  * A storefront's own page, by store id: one line per store that has one. The built-in Polaris Key
@@ -134,7 +139,22 @@ function StorePage({
 
 function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
+  const product = useProduct(slug);
   const gate = useWriteGate("ship", slug);
+  // A-20.7: only the stores the product's builds can reach (a declared one stays, flagged), and
+  // never the built-in store. Everything shows while the facts load or when there are none.
+  const features = navFeaturesOf(product.data);
+  const stores = (q.data?.stores ?? []).filter(
+    (s) => s.builtIn || channelInScope(features, s.id),
+  );
+  const outOfScope = new Set(
+    (product.data?.channels ?? []).filter((c) => !c.inScope).map((c) => c.id),
+  );
+  const platforms = (product.data?.platforms ?? []).map((p) =>
+    platformName(p.platform),
+  );
+  const columns =
+    stores.length >= 3 ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2";
   const [flow] = useSearchParam("flow", flowCodec);
   const root = React.useRef<HTMLDivElement>(null);
   const hadFlow = React.useRef(Boolean(flow));
@@ -157,6 +177,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
     >
       <PageHeader
         title={flow ? "Add to storefronts" : "Storefronts"}
+        toolbar={flow ? undefined : <EditListingLink slug={slug} />}
         primaryAction={
           flow ? undefined : (
             <Button asChild disabledReason={gate.disabledReason}>
@@ -168,7 +189,8 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
           )
         }
       />
-      {q.isPending ? (
+      {flow ? null : <ScopeLine platforms={platforms} />}
+      {q.isPending || product.isPending || product.isPlaceholderData ? (
         flow ? (
           <FlowSkeleton slug={slug} />
         ) : (
@@ -180,7 +202,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
           onRetry={() => void q.refetch()}
           context={{ area: "distribution", thing: "Storefronts" }}
         />
-      ) : q.data.stores.length === 0 ? (
+      ) : stores.length === 0 ? (
         <EmptyState
           kind="first-run"
           headingLevel={2}
@@ -190,18 +212,23 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         />
       ) : flow ? (
         // A built-in store has no flow (SETUP.md D48): it is always on.
-        <AddFlow slug={slug} stores={q.data.stores.filter((s) => !s.builtIn)} />
+        <AddFlow
+          slug={slug}
+          stores={stores.filter((s) => !s.builtIn)}
+          platforms={features !== null ? platforms : []}
+        />
       ) : (
         <div
           data-top-aligned=""
-          className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
+          className={`grid items-start gap-4 ${columns}`}
         >
-          {q.data.stores.map((s) => (
+          {stores.map((s) => (
             <StoreTile
               key={s.id}
               slug={slug}
               store={s}
               hasPanel={Object.hasOwn(STORE_PANELS, s.id)}
+              outOfScope={outOfScope.has(s.id)}
             />
           ))}
         </div>
@@ -210,14 +237,23 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
+/** Windows; Windows and macOS; Windows, macOS and Linux. */
+function listNames(names: readonly string[]): string {
+  if (names.length < 2) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 // ── The flow ──────────────────────────────────────────────────────────────────────────────────
 
 function AddFlow({
   slug,
   stores,
+  platforms,
 }: {
   slug: string;
   stores: StorefrontDto[];
+  /** The product's platform names, once known: an empty list of stores then means none fits, not "all built in". */
+  platforms: string[];
 }): React.ReactElement {
   const { route } = useLocation();
   const [step, setStep] = useSearchParam("step", stepCodec, { replace: false });
@@ -243,7 +279,6 @@ function AddFlow({
   const current: FlowStep = chosen.length === 0 ? "choose" : step;
   const currentIndex = FLOW_STEPS.indexOf(current);
   const go = (s: FlowStep) => setStep(s);
-
   // A link to a later step with nothing chosen lands on Choose, and choosing never moves the step.
   React.useEffect(() => {
     if (chosen.length === 0 && step !== "choose")
@@ -372,6 +407,20 @@ function AddFlow({
     return l.length > 0 && l.every((x) => x.state === "done");
   });
 
+  if (stores.length === 0 && platforms.length > 0)
+    return (
+      <EmptyState
+        kind="no-results"
+        headingLevel={2}
+        title={`No other store fits ${listNames(platforms)}`}
+        primaryAction={
+          <Button asChild>
+            <Link to={r.storefronts(slug)}>Back to storefronts</Link>
+          </Button>
+        }
+        docs={docsUrl("channels")}
+      />
+    );
   if (stores.length === 0)
     return (
       <EmptyState

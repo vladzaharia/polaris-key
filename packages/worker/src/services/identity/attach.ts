@@ -73,6 +73,7 @@ import {
 import { clearDeviceSubjects } from "../../core/accounts/subjectHooks.js";
 import { type LicenseRow } from "../../core/repo.js";
 import { appendAudit } from "../../core/audit.js";
+import { customerTierId } from "../../core/licensing/implicitTier.js";
 import { customerOrigin } from "../../core/hosts.js";
 import { readBodyJson } from "../../core/cappedBody.js";
 import { attachLicense, evaluateAttach } from "./accounts/claim.js";
@@ -214,7 +215,11 @@ export async function handleIdentityAttach(
   if (!confirm) {
     const preview: AttachPreview = {
       status: "confirm",
-      license: { id: license.id, tierId: license.tier_id, name: license.name },
+      license: {
+        id: license.id,
+        tierId: await customerTierId(db, license),
+        name: license.name,
+      },
     };
     return json(preview);
   }
@@ -267,7 +272,7 @@ export async function handleIdentityAttach(
     token,
     schemaVersion: product.schemaVersion,
     device: shapeDevice(valid.device, deviceId),
-    license: shapeLicense(license),
+    license: shapeLicense(license, await customerTierId(db, license)),
     subject: holder.subject,
     ...(attached.attached ? { attached: "claimed" as const } : {}),
   };

@@ -42,10 +42,29 @@
  *     the record holds, and a poll without it is answered exactly like an expired request, so a
  *     poll handle that leaks (a log line, a shoulder) signs nobody in.
  *
+ * ST-34.5: a second PURPOSE, `cli` (`pkey login`), shares the store, the code and the binding
+ * cookie, and nothing else. A CLI record is answered by the portal's `lookup` and `approve` exactly
+ * like an expired request for the `admin` scope (a portal session is never strong, so it can never
+ * mint an admin token; the `packages:read` scope below is the portal's own);
+ * only the console's `cliDeviceLoginLookup` / `cliDeviceLoginDecide` (public.ts) see it. The poll
+ * that takes an approved CLI record mints an `admin` personal token through Core, once, and the
+ * plaintext exists only in that response.
+ *
+ * F-37.1: a CLI record may also ask for `packages:read` (`pkey feeds setup --write`). That one is the
+ * PORTAL's to decide, in Polaris Locker (`/#/account/approve`), with the same lookup, step-up and
+ * notice; the console never sees it (`findCliByCode` takes `admin` only) and the portal never sees
+ * an `admin` record (`findByCode`), so neither side can be talked into the other's grant. The poll
+ * mints `packages:read` (the scope the account's own Packages page mints) and also answers the
+ * registry origin, username and the account's readable feeds.
+ *
  * Every decision is audited (`portal.device_login.approve` / `.deny`); an approval also sends the
  * "A new device signed in" security notice to every verified address on the account.
  */
 
+import {
+  noticeOrigin,
+  syncLicenseLinksAndNotify,
+} from "../accounts/libraryNotice.js";
 import {
   PLATFORM_LABELS,
   detectPlatform,
@@ -78,12 +97,25 @@ import {
   getPortalAccount,
   portalAuthCapabilities,
   portalAudit,
-  syncAccountLicenseLinks,
 } from "./repo.js";
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { startAccountSession } from "./accountSessions.js";
+import { memberIdFor } from "../../../core/console/memberId.js";
+import {
+  ADMIN_SCOPE,
+  PACKAGES_READ_SCOPE,
+  PERSONAL_TOKEN_LABEL_MAX,
+  mintAccountToken,
+  revokeReplacedCliPackagesTokens,
+  CLI_PACKAGES_TOKEN_MARK,
+} from "../../../core/accounts/personalTokens.js";
+import { registryOrigin } from "../../../core/hosts.js";
+import { REGISTRY_TOKEN_USERNAME } from "../../../core/registry/registryVocabulary.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
-import { newDeviceSignInNotice } from "../../../core/notify/templates.js";
+import {
+  newDeviceSignInNotice,
+  packagesTokenNotice,
+} from "../../../core/notify/templates.js";
 import { type DeviceLoginLocation, requestLocation } from "../place.js";
 export { requestLocation, type DeviceLoginLocation };
 
@@ -112,6 +144,67 @@ const CODE_ATTEMPTS = 5;
 
 type DeviceLoginStatus = "pending" | "approved" | "denied";
 
+export type DeviceLoginPurpose = "portal" | "cli";
+
+/** What a CLI start says about itself: shown to the approver, never trusted. */
+export interface DeviceLoginClient {
+  name: string;
+  version: string;
+  host: string;
+}
+
+/** The host is at most 64 characters (the request); the token label `pkey on <host>` must fit
+ *  {@link PERSONAL_TOKEN_LABEL_MAX}, so the label uses the head of it. */
+export const DEVICE_LOGIN_HOST_MAX = 64;
+const CLI_LABEL_PREFIX = "pkey on ";
+
+/** Truncate by code points, so no lone surrogate is stored. */
+function truncate(s: string, max: number): string {
+  return Array.from(s).slice(0, max).join("");
+}
+
+/** Printable text only: control, format and bidi characters dropped, runs of space folded. */
+function cleanText(v: unknown, max: number): string {
+  if (typeof v !== "string") return "";
+  const cleaned = v
+    .normalize("NFKC")
+    .replace(/[\p{C}\p{Zl}\p{Zp}]/gu, " ")
+    // Invisible fillers: Default_Ignorable code points and the Hangul fillers render as nothing.
+    .replace(
+      /[\p{Default_Ignorable_Code_Point}\u115F\u1160\u3164\uFFA0\u2800]/gu,
+      "",
+    )
+    // At most three combining marks in a row (zalgo).
+    .replace(/(\p{M}{3})\p{M}+/gu, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  return truncate(cleaned, max).trim();
+}
+
+function cleanClient(raw: unknown): DeviceLoginClient {
+  const c =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  return {
+    name: cleanText(c.name, 32) || "pkey",
+    version: cleanText(c.version, 32),
+    host: cleanText(c.host, DEVICE_LOGIN_HOST_MAX) || "an unnamed host",
+  };
+}
+
+/** The label of a CLI-minted token. Core's mint caps the label in UTF-16 units, so the cut counts
+ *  units too, and only ever falls between whole code points: an astral host never pushes the
+ *  label over the cap (which would refuse the mint after the approval was spent). */
+export function cliTokenLabel(client: DeviceLoginClient): string {
+  let out = "";
+  for (const ch of `${CLI_LABEL_PREFIX}${client.host}`) {
+    if (out.length + ch.length > PERSONAL_TOKEN_LABEL_MAX) break;
+    out += ch;
+  }
+  return out.trim();
+}
+
 /** The stored request. */
 export interface DeviceLoginRecord {
   status: DeviceLoginStatus;
@@ -124,6 +217,11 @@ export interface DeviceLoginRecord {
   code: string;
   device: { label: string; browser: string | null; os: string | null };
   location: DeviceLoginLocation;
+  /** Absent on a record written before ST-34.5: the portal purpose. */
+  purpose?: DeviceLoginPurpose;
+  /** A CLI record's requested scope (`admin`, or `packages:read` since F-37.1) and the asking client. */
+  scope?: string;
+  client?: DeviceLoginClient;
   /** Set by a decision. */
   accountId?: string;
   decidedAt?: number;
@@ -303,6 +401,7 @@ export async function handleDeviceLoginStart(
   env: Env,
   db: Db,
   now: number,
+  body: Record<string, unknown> = {},
 ): Promise<Response> {
   if (req.method !== "POST") return err(405, "method_not_allowed");
   const ok = await rateLimitOk(
@@ -317,7 +416,28 @@ export async function handleDeviceLoginStart(
     now,
   );
   if (!ok) return err(429, "rate_limited", "too many attempts");
-  if (!(await portalAuthCapabilities(db)).portalEnabled)
+  const purpose = body.purpose;
+  if (purpose !== undefined && purpose !== "portal" && purpose !== "cli")
+    return err(422, ErrorCode.BadRequest, 'purpose must be "portal" or "cli"');
+  const cli = purpose === "cli";
+  // The CLI runs in console context: the portal being off does not stop `pkey login`. It may ask
+  // for `admin` (approved in the console) or `packages:read` (approved in the portal, F-37.1).
+  const cliScope = body.scope;
+  if (cli && cliScope !== ADMIN_SCOPE && cliScope !== PACKAGES_READ_SCOPE)
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      'scope must be "admin" or "packages:read"',
+    );
+  // F-37.1b: a packages token is only useful with a registry to use it on. Refused here, before the
+  // person is sent to a browser, rather than after they approved a token nothing can spend.
+  if (cli && cliScope === PACKAGES_READ_SCOPE && registryOrigin(env) === null)
+    return err(
+      409,
+      "unavailable",
+      "this deployment has no package registry configured",
+    );
+  if (!cli && (await portalAuthCapabilities(db)).portalEnabled !== true)
     return err(404, "auth_method_disabled", "the portal is off");
 
   const pollId = `dl_${randomToken(32)}`;
@@ -349,11 +469,25 @@ export async function handleDeviceLoginStart(
     code: display,
     device: requestingDevice(req.headers),
     location: requestLocation(req),
+    ...(cli
+      ? {
+          purpose: "cli" as const,
+          scope: cliScope as string,
+          client: cleanClient(body.client),
+        }
+      : {}),
   };
   await putArtefact(env, ref, JSON.stringify(record), DEVICE_LOGIN_TTL_SECONDS);
 
-  const approveUrl = `${new URL(req.url).origin}/#/account/approve?code=${display}`;
-  const svg = qrSvg(approveUrl, "QR code to approve this sign-in");
+  const origin = new URL(req.url).origin;
+  const consoleApproves =
+    record.purpose === "cli" && record.scope === ADMIN_SCOPE;
+  const approveUrl = consoleApproves
+    ? `${origin}/manage/device?code=${display}`
+    : `${origin}/approve?code=${display}`;
+  const svg = consoleApproves
+    ? null
+    : qrSvg(approveUrl, "QR code to approve this sign-in");
   return json(
     {
       id: pollId,
@@ -363,6 +497,13 @@ export async function handleDeviceLoginStart(
       approveUrl,
       expiresIn: DEVICE_LOGIN_TTL_SECONDS,
       interval: DEVICE_LOGIN_POLL_INTERVAL_SECONDS,
+      ...(record.purpose === "cli"
+        ? {
+            purpose: "cli",
+            scope: record.scope,
+            client: record.client,
+          }
+        : {}),
     },
     201,
     [bindingCookie(binding)],
@@ -376,6 +517,8 @@ export async function handleDeviceLoginPoll(
   db: Db,
   pollId: string,
   now: number,
+  /** The account's readable private feeds (the answer to a `packages:read` request). */
+  feeds: (accountId: string) => Promise<readonly unknown[]> = async () => [],
 ): Promise<Response> {
   if (req.method !== "GET") return err(405, "method_not_allowed");
   const ok = await rateLimitOk(
@@ -442,7 +585,99 @@ export async function handleDeviceLoginPoll(
     if (survivor === "erased")
       return err(403, "account_disabled", "this account cannot sign in");
   }
-  await syncAccountLicenseLinks(db, account.id, now);
+  if (taken.purpose === "cli") {
+    // ST-34.5: the CLI's answer is a token, not a session. The record was taken above (one poll
+    // ever gets here) and the plaintext is in this response only. For the `admin` scope the approver
+    // was a stepped-up console session (cliDeviceLoginDecide's caller); for `packages:read`, the
+    // portal's approval (F-37.1).
+    const packages = taken.scope === PACKAGES_READ_SCOPE;
+    if ((taken.scope !== ADMIN_SCOPE && !packages) || !taken.client)
+      return err(403, "account_disabled", "this account cannot sign in");
+    // The approver was merged away between approval and poll: no token for the survivor.
+    if (account.id !== taken.accountId) return expired();
+    // The scope minted is the stored one, set by `start` from the two allowed values and read back
+    // only from a record whose decision came through the matching approver (portal / console).
+    const memberId = packages ? null : await memberIdFor(env, account.id);
+    const minted = await mintAccountToken(
+      env,
+      db,
+      {
+        accountId: account.id,
+        label: cliTokenLabel(taken.client),
+        scope: packages ? PACKAGES_READ_SCOPE : ADMIN_SCOPE,
+        createdBy: packages ? `portal:${account.id}` : `console:${memberId}`,
+      },
+      now,
+    );
+    if (!minted.ok)
+      return json(
+        {
+          error: ErrorCode.BadRequest,
+          message: minted.message,
+          reason: minted.reason,
+        },
+        minted.status,
+        [clearBindingCookie()],
+      );
+    // Core writes no audit row for a mint; this row is the provenance record (the token row keeps
+    // no created_by column).
+    await portalAudit(db, {
+      accountId: account.id,
+      action: "portal.personal_token.create",
+      targetKind: "account_token",
+      targetId: minted.view.id,
+      summary: packages
+        ? `Created personal token “${minted.view.label}” (…${minted.view.hint}), ${minted.view.scope}, ${CLI_PACKAGES_TOKEN_MARK}`
+        : `Created personal token “${minted.view.label}” (…${minted.view.hint}), ${minted.view.scope}, by pkey login approved in the console (${memberId})`,
+      now,
+    });
+    // F-37.1b: a rerun replaces the earlier token for this label rather than leaving it live.
+    let replaced: string | null = null;
+    if (packages) {
+      const hints = await revokeReplacedCliPackagesTokens(
+        db,
+        account.id,
+        minted.view.label,
+        minted.view.id,
+        now,
+      );
+      replaced = hints[0] ?? null;
+      for (const hint of hints)
+        await portalAudit(db, {
+          accountId: account.id,
+          action: "portal.personal_token.revoke",
+          targetKind: "account_token",
+          summary: `Revoked personal token “${minted.view.label}” (…${hint}), replaced by a newer one from pkey`,
+          now,
+        });
+    }
+    return json(
+      {
+        status: "approved",
+        token: minted.token,
+        scope: minted.view.scope,
+        expiresAt: minted.view.expiresAt,
+        label: minted.view.label,
+        ...(packages
+          ? {
+              registryOrigin: registryOrigin(env),
+              username: REGISTRY_TOKEN_USERNAME,
+              feeds: await feeds(account.id),
+              replaced,
+            }
+          : {}),
+      },
+      200,
+      [clearBindingCookie()],
+    );
+  }
+  await syncLicenseLinksAndNotify(
+    env,
+    db,
+    account.id,
+    now,
+    noticeOrigin(env, req),
+  );
   // One account session like every other sign-in (I-07), carrying the approver's sign-in time.
   const { cookie: sessionCookie } = await startAccountSession(
     env,
@@ -487,7 +722,19 @@ async function findByCode(
   const record = parseRecord(await getArtefact(env, ref));
   if (!record || record.status !== "pending" || record.expiresAt <= now)
     return expired();
+  // An `admin` CLI record is the console's: to the portal it is an expired request. A
+  // `packages:read` one is the portal's (F-37.1) and nothing else is.
+  if (record.purpose === "cli" && !isPackagesRequest(record)) return expired();
   return { codeRef, ref, record };
+}
+
+/** A CLI request for a packages token: the portal approves it, the console never sees it. */
+function isPackagesRequest(record: DeviceLoginRecord): boolean {
+  return (
+    record.purpose === "cli" &&
+    record.scope === PACKAGES_READ_SCOPE &&
+    !!record.client
+  );
 }
 
 function requestView(
@@ -505,7 +752,14 @@ function requestView(
     expiresIn: Math.max(0, record.expiresAt - now),
     approverCountry: approver.country,
     newLocation,
-    stepUpRequired: approvalNeedsStepUp(session, newLocation, now),
+    stepUpRequired: approvalNeedsStepUp(
+      session,
+      newLocation || isPackagesRequest(record),
+      now,
+    ),
+    ...(isPackagesRequest(record)
+      ? { scope: record.scope, client: record.client }
+      : {}),
   };
 }
 
@@ -544,8 +798,11 @@ export async function handleDeviceLoginApprove(
 
   // Checked BEFORE the code is spent, so a step-up answer leaves it live for the retry.
   if (decision === "approve") {
-    const newLocation = isNewLocation(record.location, requestLocation(req));
-    if (approvalNeedsStepUp(session, newLocation, now)) {
+    // A packages token always needs a fresh sign-in, as minting one on Account → Packages does.
+    const needsFresh =
+      isNewLocation(record.location, requestLocation(req)) ||
+      isPackagesRequest(record);
+    if (approvalNeedsStepUp(session, needsFresh, now)) {
       // Not a decision (the code stays live), but worth a row: during a phishing attempt this is
       // the trace of someone being talked into approving a device elsewhere.
       await portalAudit(db, {
@@ -587,6 +844,8 @@ export async function handleDeviceLoginApprove(
   if (!moved.ok) return expired();
 
   const where = record.location.label ? ` near ${record.location.label}` : "";
+  const packages = isPackagesRequest(record);
+  const verb = decision === "approve" ? "Approved" : "Denied";
   await portalAudit(db, {
     accountId: session.accountId,
     action:
@@ -595,23 +854,120 @@ export async function handleDeviceLoginApprove(
         : "portal.device_login.deny",
     targetKind: "device_login",
     targetId: ref.id.slice(0, 16),
-    summary: `${decision === "approve" ? "Approved" : "Denied"} a sign-in on ${record.device.label}${where}`,
+    summary: packages
+      ? `${verb} personal token “${cliTokenLabel(record.client!)}” for pkey`
+      : `${verb} a sign-in on ${record.device.label}${where}`,
     now,
   });
   if (decision === "approve") {
+    const origin = new URL(req.url).origin;
     await sendSecurityNotice(
       env,
       db,
       session.accountId,
       session.email,
-      newDeviceSignInNotice({
-        deviceLabel: record.device.label,
-        location: record.location.label,
-        at: now,
-        origin: new URL(req.url).origin,
-      }),
+      packages
+        ? packagesTokenNotice({
+            host: record.client!.host,
+            location: record.location.label,
+            at: now,
+            origin,
+          })
+        : newDeviceSignInNotice({
+            deviceLabel: record.device.label,
+            location: record.location.label,
+            at: now,
+            origin,
+          }),
       now,
     );
   }
   return json({ ok: true, status });
+}
+
+// ── The console's half of a CLI request (ST-34.5) ───────────────────────────────────────────
+
+/** What the console's approval card shows about a pending CLI request. */
+export interface CliDeviceLoginView {
+  /** The request's id (opaque; the poll also needs the starter's binding cookie): the audit target. */
+  id: string;
+  code: string;
+  device: DeviceLoginRecord["device"];
+  location: DeviceLoginLocation;
+  client: DeviceLoginClient;
+  scope: string;
+  requestedAt: number;
+  expiresAt: number;
+}
+
+async function findCliByCode(
+  env: Env,
+  code: unknown,
+  now: number,
+): Promise<{
+  codeRef: ArtefactRef;
+  ref: ArtefactRef;
+  record: DeviceLoginRecord;
+} | null> {
+  const normalised = normalizeUserCode(typeof code === "string" ? code : null);
+  if (!normalised) return null;
+  const codeRef = await deviceLoginCodeRef(env, normalised);
+  const id = await getArtefact(env, codeRef);
+  if (!id) return null;
+  const ref = artefactRef("device-login", id);
+  const record = parseRecord(await getArtefact(env, ref));
+  if (
+    !record ||
+    record.purpose !== "cli" ||
+    record.status !== "pending" ||
+    record.expiresAt <= now ||
+    record.scope !== ADMIN_SCOPE ||
+    !record.client
+  )
+    return null;
+  return { codeRef, ref, record };
+}
+
+/** What is asking, for the console's card. Reads only; null for an unknown, expired or non-CLI code. */
+export async function cliDeviceLoginLookup(
+  env: Env,
+  code: string,
+  now: number,
+): Promise<CliDeviceLoginView | null> {
+  const found = await findCliByCode(env, code, now);
+  if (!found) return null;
+  const r = found.record;
+  return {
+    id: found.ref.id,
+    code: r.code,
+    device: r.device,
+    location: r.location,
+    client: r.client!,
+    scope: r.scope!,
+    requestedAt: r.createdAt,
+    expiresAt: r.expiresAt,
+  };
+}
+
+/**
+ * The console's decision on a CLI request. The caller must have checked that the session is a
+ * stepped-up console session (ST-34.6); this module mints nothing here, the poll does. Same
+ * single-use rules as the portal: the code is consumed atomically, then the record moves out of
+ * `pending` with a compare-and-set.
+ */
+export async function cliDeviceLoginDecide(
+  env: Env,
+  input: { code: string; accountId: string; decision: "approve" | "deny" },
+  now: number,
+): Promise<{ ok: true; status: "approved" | "denied" } | { ok: false }> {
+  const found = await findCliByCode(env, input.code, now);
+  if (!found) return { ok: false };
+  const { codeRef, ref } = found;
+  if ((await consumeArtefact(env, codeRef)) !== ref.id) return { ok: false };
+  const status = input.decision === "approve" ? "approved" : "denied";
+  const moved = await updateArtefact(env, ref, {
+    expect: { status: "pending" },
+    set: { status, accountId: input.accountId, decidedAt: now },
+  });
+  return moved.ok ? { ok: true, status } : { ok: false };
 }

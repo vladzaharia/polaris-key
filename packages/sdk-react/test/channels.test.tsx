@@ -20,6 +20,7 @@ import {
 } from "@polaris-key/react";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
+import { localAdapter } from "../src/local/localAdapter.js";
 import type { PolarisAdapter } from "../src/core/index.js";
 import {
   makeDoc,
@@ -46,6 +47,28 @@ describe("PolarisKeyProvider config boundary", () => {
     expect(error).toMatchObject({ code: "invalid-options" });
     expect((error as Error).message).toBe(
       "expectServices was removed; use config.expectedServices",
+    );
+  });
+
+  it.each([
+    ["browser", (o: object) => browserAdapter({ productSlug: "acme", ...o })],
+    [
+      "desktop",
+      (o: object) =>
+        desktopAdapter({ bridge: makeFakeBridge(okBridgeState()), ...o }),
+    ],
+    ["local", (o: object) => localAdapter({ productSlug: "acme", ...o })],
+  ])("the %s adapter refuses expectServices and names no value", (_n, make) => {
+    let error: unknown;
+    try {
+      make({ expectServices: ["config"] });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(PolarisError);
+    expect(error).toMatchObject({ code: "invalid-options" });
+    expect((error as Error).message).toBe(
+      "expectServices was removed in 0.9; use expectedServices",
     );
   });
 });

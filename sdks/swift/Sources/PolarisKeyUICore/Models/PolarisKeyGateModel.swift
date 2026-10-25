@@ -73,11 +73,16 @@ public struct KitGateHandlers {
     public var continueFree: (@MainActor () -> Void)?
     /// The update verb ("Update now", "Update on the App Store", "Restart now").
     public var update: (@MainActor () -> Void)?
+    /// Replace a device in the sign-in form's list: called with the chosen device's id once the
+    /// person confirms. Without it the form hides Replace… and offers the browser path.
+    public var replaceDevice: (@MainActor (String) -> Void)?
 
     public init(
         trial: (@MainActor () -> Void)? = nil, restore: (@MainActor () -> Void)? = nil,
-        continueFree: (@MainActor () -> Void)? = nil, update: (@MainActor () -> Void)? = nil
+        continueFree: (@MainActor () -> Void)? = nil, update: (@MainActor () -> Void)? = nil,
+        replaceDevice: (@MainActor (String) -> Void)? = nil
     ) {
+        self.replaceDevice = replaceDevice
         self.trial = trial
         self.restore = restore
         self.continueFree = continueFree
@@ -87,6 +92,7 @@ public struct KitGateHandlers {
     /// Whether the host passed any handler.
     public var isEmpty: Bool {
         trial == nil && restore == nil && continueFree == nil && update == nil
+            && replaceDevice == nil
     }
 }
 
@@ -344,6 +350,9 @@ public final class PolarisKeyGateModel {
     private func offerUpdate(version: String, action: String, mandatory: Bool) async {
         var offer = KitUpdate(
             action: action, version: version, mandatory: mandatory, currentVersion: currentVersion)
+        // The store listing the decision named, read before anything awaits (a newer offer
+        // overwrites it).
+        if action == "store" { offer.listingUrl = client?.core.offerListingUrl.current }
         if let old = update, old.version == version {
             offer.progress = old.progress
             offer.sizeBytes = old.sizeBytes
@@ -375,6 +384,13 @@ public final class PolarisKeyGateModel {
     public func deferUpdate() {
         deferredVersion = update?.version
         updateDismissed = true
+    }
+
+    /// "Update" on the re-offer toast: the banner comes back.
+    public func reofferUpdate() {
+        deferredVersion = nil
+        updateDismissed = false
+        toast = nil
     }
 
     /// The host's updater reports a download: its progress and, when known, the size.
@@ -474,7 +490,7 @@ public final class PolarisKeyGateModel {
         pending = .activate
         rebuild()
         let key = keyText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let result = await client.activate(key: key)
+        let result = await client.license.activateWithKey(key)
         pending = nil
         activation = Self.kitActivation(result)
         rebuild()

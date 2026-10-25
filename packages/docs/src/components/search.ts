@@ -71,7 +71,7 @@ const doorOfUrl = (url: string): Door =>
 
 class SiteSearch extends HTMLElement {
   private readonly base = this.dataset.base ?? "/docs";
-  private readonly home: Scope = this.dataset.scope === "help" ? "help" : "all";
+  private home: Scope = this.dataset.scope === "help" ? "help" : "all";
   private scope: Scope = this.home;
   private canWiden = false;
   private engine: Promise<{
@@ -107,6 +107,11 @@ class SiteSearch extends HTMLElement {
   constructor() {
     super();
     this.platformKeys();
+    if (
+      this.hasAttribute("data-miss") &&
+      document.documentElement.hasAttribute("data-help-miss")
+    )
+      this.helpify();
 
     this.open_.addEventListener("click", () => this.show());
     this.open_.disabled = false;
@@ -162,13 +167,41 @@ class SiteSearch extends HTMLElement {
     if (q) this.show(q);
   }
 
+  /**
+   * The static page-not-found page, opened on a Help address: Help's bundle (the customer host
+   * redirects the developer one away), words and opening links, as on any Help page.
+   */
+  private helpify(): void {
+    this.home = "help";
+    this.scope = "help";
+    const label = "Search help";
+    this.open_.setAttribute("aria-label", label);
+    this.q(".pk-search-label").textContent = label;
+    this.dialog.setAttribute("aria-label", label);
+    this.input.setAttribute("aria-label", label);
+    this.input.placeholder = label;
+    const help = this.querySelector<HTMLTemplateElement>(
+      "template[data-suggest-help]",
+    );
+    const tpl = this.querySelector<HTMLTemplateElement>(
+      "template[data-suggest]",
+    );
+    if (help && tpl) {
+      tpl.content.replaceChildren(help.content.cloneNode(true));
+      tpl.dataset.suggest = help.dataset.suggestHelp ?? "";
+    }
+  }
+
   /** ⌘ on Apple devices, Ctrl elsewhere; the keys are shown once the script knows which. */
   private platformKeys(): void {
     const mac = /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform);
     const mod = mac ? "⌘" : "Ctrl";
+    // One keycap everywhere (the header's trigger, the landing's and Help's large search).
     const trigger = this.q<HTMLElement>(".pk-search-kbd");
-    trigger.querySelector("kbd")!.textContent = mod;
+    trigger.textContent = mac ? "⌘K" : "Ctrl K";
     trigger.hidden = false;
+    for (const k of document.querySelectorAll(".pk-help-bigsearch kbd"))
+      k.textContent = trigger.textContent;
     this.q(".pk-search-mod").textContent = mod;
     if (mac) this.open_.setAttribute("aria-keyshortcuts", "Meta+K");
   }

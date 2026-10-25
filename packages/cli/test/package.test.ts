@@ -603,9 +603,8 @@ describe("pkey release publish --deliverable <package> (F-03)", () => {
       cwd,
       env: {
         ...actionsEnv(),
-        INPUT_PRODUCT: SLUG,
-        INPUT_DIR: "dist",
-        INPUT_DELIVERABLE: "npm.sdk",
+        INPUT_COMMAND: "release publish",
+        INPUT_ARGS: "--dir dist --deliverable npm.sdk",
         "INPUT_BASE-URL": BASE,
         GITHUB_OUTPUT: outputs,
       },

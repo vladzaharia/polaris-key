@@ -439,13 +439,16 @@ export const r = {
   home: (query?: QueryInit) => globalPage("home", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
   apiTokens: () => globalPage("api-tokens"),
-  personalTokens: () => globalPage("personal-tokens"),
+  /** Personal tokens: Yours, or the Everyone tab (`?who=everyone`). */
+  personalTokens: (who?: "everyone") =>
+    globalPage("personal-tokens", who ? { who } : undefined),
   /** The Platform group's root, which redirects to its first page. */
   platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),
   /** Settings, landing on one setting's row (`?setting=<key>`). */
   platformSettingRow: (key: string) =>
     globalPage("platform-settings", { setting: key }),
+  platformMembers: (query?: QueryInit) => globalPage("platform-members", query),
   platformStatus: () => globalPage("platform-status"),
   platformStores: () => globalPage("platform-stores"),
   platformConnections: (query?: QueryInit) =>
@@ -459,7 +462,6 @@ export const r = {
     globalPage("platform-activity", query),
   platformActivityEvent: (id: string, query?: QueryInit) =>
     globalPage("platform-activity", query, { id }),
-  platformOverrideMigration: () => globalPage("platform-override-migration"),
   platformFeed: (eco: string, tab?: string) =>
     globalPage("platform-feeds", undefined, { id: eco, tab }),
   platformFeedPackage: (
@@ -541,7 +543,7 @@ export const r = {
   storefront: (slug: string, store: string) =>
     productPage(slug, "storefronts", { id: store }),
   listing: (slug: string, query?: QueryInit) =>
-    productPage(slug, "listing", { query }),
+    productPage(slug, "presentation-listing", { query }),
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
   commerce: (slug: string) => productPage(slug, "commerce"),
@@ -561,6 +563,7 @@ export const r = {
   feed: (slug: string) => productPage(slug, "feed"),
   appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncSetup: (slug: string) => productPage(slug, "sync-setup"),
+  syncUsage: (slug: string) => productPage(slug, "sync-usage"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

@@ -62,11 +62,11 @@ final class LicenseIdRefreshTests: XCTestCase {
             server, signer, licenseId: "lic_trial", tier: "free", issuedAt: t, etag: "lic-1")
 
         let c = try await PolarisKeyClient.create(options: options)
-        let activated = await c.activate(key: "pkey_djdl_test")
+        let activated = await c.license.activateWithKey("pkey_djdl_test")
         XCTAssertEqual(activated, .ok(token: "pkeyt_lx17", schemaVersion: 4))
-        let before = await c.license.licenseId()
+        let before = await c.license.getLicenseId()
         XCTAssertEqual(before, "lic_trial")
-        let proBefore = await c.license.isEntitled("pro")
+        let proBefore = await c.entitlements.has("pro")
         XCTAssertFalse(proBefore)
         let activationsBefore = await server.requests(forPath: activatePath).count
         let reportsBefore = await server.requests(forPath: reportPath).count
@@ -78,11 +78,11 @@ final class LicenseIdRefreshTests: XCTestCase {
 
         // cache
         XCTAssertEqual(result.documents[.license], .applied)
-        let after = await c.license.licenseId()
+        let after = await c.license.getLicenseId()
         XCTAssertEqual(after, "lic_pro")
-        let proAfter = await c.license.isEntitled("pro")
+        let proAfter = await c.entitlements.has("pro")
         XCTAssertTrue(proAfter)
-        let tier = await c.license.entitlements()["license.tier"]
+        let tier = await c.entitlements.all()["license.tier"]
         XCTAssertEqual(tier, .string("pro"))
         // activation state
         let activationsAfter = await server.requests(forPath: activatePath).count
@@ -108,7 +108,7 @@ final class LicenseIdRefreshTests: XCTestCase {
         // The following refresh revalidates the new licence's document normally.
         let again = await c.sync()
         XCTAssertEqual(again.documents[.license], .unchanged)
-        let still = await c.license.licenseId()
+        let still = await c.license.getLicenseId()
         XCTAssertEqual(still, "lic_pro")
         await c.close()
 
@@ -119,9 +119,9 @@ final class LicenseIdRefreshTests: XCTestCase {
                 pinnedKeys: [kid: signer.publicKeyB64], trustRefresh: false, store: store,
                 transport: ExplodingTransport(), expectedServices: [.license],
                 fingerprint: false))
-        let restored = await offline.license.licenseId()
+        let restored = await offline.license.getLicenseId()
         XCTAssertEqual(restored, "lic_pro")
-        let restoredPro = await offline.license.isEntitled("pro")
+        let restoredPro = await offline.entitlements.has("pro")
         XCTAssertTrue(restoredPro)
         let restoredStatus = await offline.status().status
         XCTAssertEqual(restoredStatus, .ok)

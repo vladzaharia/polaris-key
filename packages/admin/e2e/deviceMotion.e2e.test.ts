@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { evenOffsets, frameStrip } from "./strips.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Page, Request } from "playwright";
 import {
@@ -280,26 +281,18 @@ const starts = (e: AnimEvent[], where: string, name?: string): AnimEvent[] =>
       (name === undefined || x.name === name),
   );
 
-/** With PK_SHOTS_DIR: slow every animation ×0.1, run `act`, and save `frames` screenshots. */
-async function strip(
+/** With PK_SHOTS_DIR: slow every animation ×0.1, run `act`, and save `frames` screenshots (the shared helper). */
+const strip = (
   page: Page,
   name: string,
   act: () => Promise<void>,
   frames = 6,
   every = 300,
-): Promise<void> {
-  if (!SHOTS) return;
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Animation.enable");
-  await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
-  await act();
-  for (let i = 0; i < frames; i++) {
-    await page.screenshot({ path: `${SHOTS}/mo06-${name}-${i}.png` });
-    await page.waitForTimeout(every);
-  }
-  await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
-  await cdp.detach();
-}
+): Promise<void> =>
+  frameStrip(page, "mo06-" + name, act, {
+    offsets: evenOffsets(frames, every),
+    rest: false,
+  });
 
 // ── Activation fixtures: two keys, each addable once ────────────────────────────────────────────
 
@@ -457,7 +450,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
         .last()
         .click();
       await expect.poll(() => deviceRows(page)).toEqual(["Mara's MacBook Pro"]);
-      await expect.poll(() => focused(page)).toBe("H1:Nightfall");
+      await expect.poll(() => focused(page)).toBe("H2:Devices");
       await atRest(page);
       const m = await state(page);
       expect(m.starts).toHaveLength(1);
@@ -510,24 +503,46 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
       await s.close();
     });
 
-  it("saves the expand and removal frames (PK_SHOTS_DIR)", async () => {
-    if (!SHOTS) return;
-    const s = await open("three", "/#/p/nightfall/devices");
-    const { page } = s;
-    await page.getByText("Studio PC").first().waitFor();
-    await atRest(page);
-    await strip(page, "expand", () =>
-      page.getByRole("button", { name: "Remove Studio PC" }).first().click(),
-    );
-    await atRest(page, 8000);
-    await strip(page, "remove", () =>
-      page
-        .getByRole("button", { name: "Remove Studio PC", exact: true })
-        .last()
-        .click(),
-    );
-    await s.close();
-  });
+  // The inline confirm's expand exists only in the portal (the console has none, MO-13.2): its
+  // strip is taken here in every mode. Reduced motion is one frame: the instant swap.
+  for (const [theme, motion] of [
+    ["dark", "no-preference"],
+    ["light", "no-preference"],
+    ["reduced", "reduce"],
+  ] as const)
+    it(`saves the expand frames (${theme}) (PK_SHOTS_DIR)`, async () => {
+      if (!SHOTS) return;
+      const s = await open("three", "/#/p/nightfall/devices", {
+        theme: theme === "light" ? "light" : "dark",
+        motion,
+      });
+      const { page } = s;
+      await page.getByText("Studio PC").first().waitFor();
+      await atRest(page);
+      await frameStrip(
+        page,
+        "mo06-expand",
+        () =>
+          page
+            .getByRole("button", { name: "Remove Studio PC" })
+            .first()
+            .click(),
+        {
+          theme,
+          offsets: motion === "reduce" ? [300] : evenOffsets(6, 300),
+          rest: false,
+        },
+      );
+      await atRest(page, 8000);
+      if (theme === "dark")
+        await strip(page, "remove", () =>
+          page
+            .getByRole("button", { name: "Remove Studio PC", exact: true })
+            .last()
+            .click(),
+        );
+      await s.close();
+    });
 
   it("the Activate steps morph as dialog transitions; the first add celebrates once, the next shows the check only", async () => {
     const claim = latch();
@@ -699,7 +714,7 @@ describe("reduced motion: every change in scope is an instant swap to the same e
       await devices
         .getByRole("img", { name: "1 of 3 devices in use" })
         .waitFor();
-      await expect.poll(() => focused(page)).toBe("H1:Nightfall");
+      await expect.poll(() => focused(page)).toBe("H2:Devices");
       expect(await page.locator("#pk-announcer").textContent()).toContain(
         "Studio PC was removed. 1 of 3 devices in use.",
       );

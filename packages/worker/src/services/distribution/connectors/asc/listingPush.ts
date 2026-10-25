@@ -67,6 +67,7 @@ import {
   type Flow,
   type StepResult,
 } from "./flow.js";
+import { inheritStored } from "../../listing/inherit.js";
 
 // ── Text ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -206,7 +207,11 @@ function localizationStep(
 const listingText: ConnectorControl = distributeControl(async (f, body) => {
   const versionId = idField(body, "versionId");
   const locale = localeField(body);
-  const stored = await readListing(f.c.db, f.c.product);
+  const stored = await inheritStored(
+    f.c.db,
+    f.c.product,
+    await readListing(f.c.db, f.c.product),
+  );
   if (!stored)
     stop(409, "no_listing", "this product has no listing to push yet");
   const projection = projectLocale(stored.model, locale);

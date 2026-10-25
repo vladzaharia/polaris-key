@@ -182,7 +182,7 @@ EXPECTED_SERVICES: List[str] = [${facts.services.map(q).join(", ")}]
 CONFIG: Dict[str, Any] = {
     "product_slug": PRODUCT_SLUG,
     "base_url": BASE_URL,
-    "trust": dict(PINNED_KEYS),
+    "pinned_keys": dict(PINNED_KEYS),
     "expected_services": list(EXPECTED_SERVICES),
 ${hasRelease ? `    "update": UpdateClientOptions(pinned_release_keys=dict(PINNED_RELEASE_KEYS)),\n` : ""}}
 `;
@@ -202,6 +202,8 @@ import PolarisKey
 /// Polaris Key configuration for ${facts.product}:
 ///
 ///     let client = try PolarisKeyClient(options: PolarisConfig.clientOptions(version: appVersion))
+///
+/// Config reads use the 0.9 names: \`client.config.get(_:default:)\`, \`getConfigSource(_:)\`, \`getSecret(_:)\`.
 public enum PolarisConfig {
     public static let productSlug = ${q(facts.product)}
     public static let baseUrl = ${q(facts.baseUrl)}
@@ -241,6 +243,8 @@ import im.plrs.key.update.UpdateClientOptions
  * Polaris Key configuration for ${facts.product}:
  *
  *     val client = PolarisKeyClient.create(PolarisConfig.clientOptions(version = BuildConfig.VERSION_NAME))
+ *
+ * Config reads use the 0.9 names: \`client.config.get(key, default)\`, \`getConfigSource(key)\`, \`getSecret(key)\`.
  */
 public object PolarisConfig {
     public const val PRODUCT_SLUG: String = ${q(facts.product)}
@@ -273,6 +277,15 @@ public object PolarisConfig {
 const GODOT_SCRIPT_ID = "1";
 const GODOT_OPTIONS_SCRIPT = "res://addons/polaris_key/core/options.gd";
 
+/** The first SDK release that reads the 0.9 names, per SDK (SP-35b M7). */
+export const MIN_SDK_VERSION = { godot: "v0.9.18" } as const;
+
+/** The 0.9 PKeyOptions names renamed from `product` and `pinned_trust_keys` (D7). */
+const GODOT_REMOVED_FIELDS = ["product", "pinned_trust_keys"];
+
+/** The comment a written `.tres` carries after `script = …` (the editor drops it on save). */
+const GODOT_NAMES_NOTE = `; 0.9 names (product_slug, pinned_keys): Polaris Key SDK ${MIN_SDK_VERSION.godot} or later. https://key.plrs.im/docs/reference/api-names/`;
+
 /** A Godot text-resource Dictionary: one entry per line, as the editor writes it. */
 function tresDict(map: Record<string, string>): string {
   const rows = Object.entries(map);
@@ -283,9 +296,9 @@ function tresDict(map: Record<string, string>): string {
 /** The PKeyOptions properties `pkey sdk --lang godot` owns, in file order. */
 export function godotOptionFields(facts: SdkConfigFacts): [string, string][] {
   return [
-    ["product", q(facts.product)],
+    ["product_slug", q(facts.product)],
     ["base_url", q(facts.baseUrl)],
-    ["pinned_trust_keys", tresDict(facts.pinnedKeys)],
+    ["pinned_keys", tresDict(facts.pinnedKeys)],
     ["pinned_release_keys", tresDict(facts.pinnedReleaseKeys)],
     [
       "expected_services",
@@ -303,6 +316,7 @@ function renderGodot(facts: SdkConfigFacts): string {
     ``,
     `[resource]`,
     `script = ExtResource("${GODOT_SCRIPT_ID}")`,
+    GODOT_NAMES_NOTE,
     ...godotOptionFields(facts).map(([k, v]) => `${k} = ${v}`),
     ``,
   ].join("\n");
@@ -328,7 +342,9 @@ function tresValueEnd(src: string, from: number): number {
 /**
  * Write the product facts into an existing `res://polaris_key.tres`: the five properties
  * [godotOptionFields] names are replaced in place (added when absent) and every other line, the
- * channel, theme and update settings the setup dock wrote included, stays byte for byte. Running
+ * channel, theme and update settings the setup dock wrote included, stays byte for byte, except
+ * that the pre-0.9 `product` and `pinned_trust_keys` lines are dropped (a file with both names
+ * is refused by `configure`) and the 0.9 names note follows `script = …`. Running
  * it again with the same facts changes nothing. Throws when `existing` is not a PKeyOptions text
  * resource.
  */
@@ -359,6 +375,16 @@ export function mergeGodotOptions(
     const end = tresValueEnd(existing, prop.lastIndex);
     const key = pm[1] as string;
     const next = owned.get(key);
+    if (GODOT_REMOVED_FIELDS.includes(key)) {
+      // Drop the whole line, its newline included.
+      const lineStart = existing.lastIndexOf("\n", pm.index - 1) + 1;
+      const after = existing[end] === "\n" ? end + 1 : end;
+      edits.push({ from: lineStart, to: after, text: "" });
+      pos = end;
+      continue; // insertAt stays put: an insertion never overlaps a dropped line
+    } else if (key === "script" && !existing.includes(GODOT_NAMES_NOTE)) {
+      edits.push({ from: end, to: end, text: `\n${GODOT_NAMES_NOTE}` });
+    }
     if (next !== undefined) {
       seen.add(key);
       edits.push({ from: prop.lastIndex, to: end, text: next });

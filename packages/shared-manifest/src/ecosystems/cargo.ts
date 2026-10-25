@@ -40,5 +40,7 @@ export const CARGO_PACKAGE_RULES: PackageEcosystemRules<"cargo"> = {
   namespace: {
     fields: {},
     problem: () => null,
+    // No namespace keys: nothing to derive.
+    derive: () => ({ namespace: {}, ambiguous: null }),
   },
 };

@@ -1,4 +1,4 @@
-# ST-25b Drop `products.admin_group` (the release after ST-25)
+# ST-25b Drop `products.admin_group` and `release_config.artifacts_access` (the release after ST-25)
 
 | Field       | Value                                                                                 |
 | ----------- | ------------------------------------------------------------------------------------- |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-`products.admin_group` is dropped, one release after ST-25 stopped every read of it. Done when every acceptance criterion holds and the green gate passes.
+`products.admin_group` and `release_config.artifacts_access` are dropped, one release after ST-25 stopped every read and write of them (lead decision D3, 2026-10-23). Done when every acceptance criterion holds and the green gate passes.
 
 ## Why
 
@@ -29,7 +29,7 @@ ST-28's Q4 drops the column rather than leaving it dormant, as the two-release D
 
 **In:**
 
-- `00XX_drop_products_admin_group.sql`: `ALTER TABLE products DROP COLUMN admin_group;` (no index or view names it; only `0001_init.sql:21` creates it), with a down script in `scripts/rollback/` (`ADD COLUMN admin_group TEXT`).
+- `00XX_drop_retired_columns.sql`: `ALTER TABLE release_config DROP COLUMN artifacts_access;` (added with a default and no CHECK, so no rebuild; its down script is `ADD COLUMN artifacts_access TEXT NOT NULL DEFAULT 'public'`) and `ALTER TABLE products DROP COLUMN admin_group;` (no index or view names it; only `0001_init.sql:21` creates it), with a down script in `scripts/rollback/` (`ADD COLUMN admin_group TEXT`).
 - `TABLE_OWNERS` and the data-model docs, regenerated.
 - The P0-24 ledger row: the production fact that the rollback target is ST-25 or later, recorded before the drop.
 
@@ -44,7 +44,7 @@ ST-28's Q4 drops the column rather than leaving it dormant, as the two-release D
 
 ## Steps
 
-1. Verify ST-25's source scan still finds no `admin_group` outside `migrations/`.
+1. Verify ST-25's `legacySettingsScan` `KNOWN` holds only `PERMANENT` rows (no `admin_group`, and no `release_config.artifacts_access` reference).
 2. Record the rollback-target fact in the P0-24 ledger.
 3. Add the migration and its down script; run the green gate; hand off.
 
@@ -52,7 +52,7 @@ ST-28's Q4 drops the column rather than leaving it dormant, as the two-release D
 
 - [ ] The production rollback target is ST-25 or later, recorded in the P0-24 ledger before the drop.
 - [ ] The migration replays cleanly, and the down script restores the empty column.
-- [ ] No `admin_group` outside `migrations/` and `scripts/rollback/`.
+- [ ] No `admin_group` or `release_config.artifacts_access` outside `migrations/` and `scripts/rollback/` (the truth-store `release_metadata.artifacts_access` stays).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

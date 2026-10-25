@@ -1,0 +1,66 @@
+# UK-10.13 (K7): the Compose desktop sample in a Flatpak sandbox. Proves, on a constrained Linux host, that
+# links leave through the OpenURI portal and the Settings-portal readers answer (against a mock portal that
+# logs every call). Main-only (when the sample, the kit's desktop code or this file change) and on demand:
+#   gh workflow run flatpak.yml --ref <branch>
+# Non-blocking and not part of `ci-ok` until it has run green once. Gradle builds the sample's uber jar on the
+# runner; flatpak-builder wraps it, so no source is downloaded while building the app.
+name: Flatpak (Compose desktop sample)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/flatpak.yml"
+      - "examples/ui/compose-desktop/**"
+      - "sdks/kotlin/ui/src/desktopMain/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    name: Flatpak smoke (ubuntu)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 40
+    env:
+      APP_ID: im.plrs.key.samples.ComposeDesktop
+      SAMPLE: examples/ui/compose-desktop
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Android SDK packages
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # `yes` dies of SIGPIPE when sdkmanager stops reading, which pipefail would report.
+          set +o pipefail
+          yes | "$SDKM" --licenses >/dev/null
+          set -o pipefail
+          "$SDKM" "platforms;android-36" "build-tools;36.1.0" >/dev/null
+      - name: Host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder xdg-dbus-proxy xvfb dbus-daemon python3-gi gir1.2-glib-2.0
+          # Ubuntu 24.04 confines unprivileged user namespaces, which bubblewrap (flatpak) needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Sample uber jar
+        working-directory: sdks/kotlin
+        run: |
+          ./gradlew --no-daemon :sample-compose-desktop:packageUberJarForCurrentOS
+          jar="$(find "$GITHUB_WORKSPACE/$SAMPLE/build/compose/jars" -name '*-linux-x64-*.jar')"
+          test "$(printf '%s\n' "$jar" | wc -l)" -eq 1
+          cp "$jar" "$GITHUB_WORKSPACE/$SAMPLE/flatpak/tidewater.jar"
+      - name: Build the Flatpak (org.freedesktop.Platform 24.08, openjdk17 extension 24.08)
+        working-directory: examples/ui/compose-desktop/flatpak
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --force-clean --install --install-deps-from=flathub \
+            build-dir "$APP_ID.yml"
+      - name: --smoke in the sandbox, links through the OpenURI portal, Settings portal answers
+        working-directory: examples/ui/compose-desktop/flatpak
+        run: xvfb-run -a dbus-run-session -- ./portal-check.sh "$APP_ID"

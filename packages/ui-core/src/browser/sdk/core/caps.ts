@@ -67,7 +67,7 @@ const DETECTORS: CapabilityDetectors = {};
 
 /**
  * The capability context an adapter evaluates against. `services` reads the adapter's current
- * capability map (discovery, or the host's `expectServices` fallback), so `product` follows it.
+ * capability map (discovery, or the host's `expectedServices` fallback), so `product` follows it.
  */
 export function capabilityContext(
   runtime: ReactRuntime,

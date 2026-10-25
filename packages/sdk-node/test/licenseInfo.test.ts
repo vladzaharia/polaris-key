@@ -20,9 +20,9 @@ describe("license conveniences (§3.3)", () => {
       license: await signedLicense(GRANTS),
     });
     expect(client.status().status).toBe("ok");
-    expect(client.license.isEntitled("pro")).toBe(true);
-    expect(client.license.entitlementValue("seats")).toBe(5);
-    expect(client.license.entitlementValue("missing")).toBeNull();
+    expect(client.entitlements.has("pro")).toBe(true);
+    expect(client.entitlements.value("seats")).toBe(5);
+    expect(client.entitlements.value("missing")).toBeNull();
     expect(client.license.licenseInfo()).toEqual({
       licenseId: "lic_parity",
       tier: "pro",
@@ -40,8 +40,8 @@ describe("license conveniences (§3.3)", () => {
       lastSyncUnauthorized: true,
     });
     expect(client.status().status).toBe("revoked");
-    expect(client.license.isEntitled("pro")).toBe(false);
-    expect(client.license.entitlementValue("seats")).toBeNull();
+    expect(client.entitlements.has("pro")).toBe(false);
+    expect(client.entitlements.value("seats")).toBeNull();
     expect(client.license.licenseInfo()?.status).toBe("revoked");
   });
 
@@ -50,7 +50,7 @@ describe("license conveniences (§3.3)", () => {
       license: await signedLicense(GRANTS),
       token: null,
     });
-    expect(client.license.isEntitled("pro")).toBe(false);
+    expect(client.entitlements.has("pro")).toBe(false);
   });
 
   it("licenseInfo is null without a document", async () => {

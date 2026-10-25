@@ -20,6 +20,7 @@ Look things up here. Most pages are generated from the source and byte-compared 
 | [Public route table](/docs/reference/routes/)                  | the OpenAPI spec, which is coverage-tested against the router |
 | [Channels](/docs/reference/channels/)                          | the distribution channel catalogue                            |
 | [SDK parity matrix](/docs/reference/parity/)                   | the feature registry and every SDK's `parity.json`            |
+| [SDK API names](/docs/reference/api-names/)                    | the canonical name of every SDK concept, per SDK, and the 0.9 removals |
 | [Settings reference](/docs/reference/settings/)                | the settings registry                                         |
 | [Generators](/docs/reference/generators/)                      | the generator registry                                        |
 

@@ -59,6 +59,10 @@ var centered := false:
 			_tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if value else Control.SIZE_FILL
 
 var _icon: TextureRect
+## The game's wordmark beside the icon (ProductIdentity.wordmark), on a hero or splash header only;
+## it stands in for the name's text, and a header without one is exactly the icon and the name.
+var _wordmark: TextureRect
+var _wordmark_tex: Texture2D = null
 var _tile: PanelContainer
 var _initial: Label
 var _name: Label
@@ -99,6 +103,14 @@ func _init() -> void:
 	_initial.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_initial.set_meta(PKeyUiView.DATA_META, true)
 	_tile.add_child(_initial)
+	_wordmark = TextureRect.new()
+	_wordmark.name = "Wordmark"
+	_wordmark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_wordmark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_wordmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_wordmark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_wordmark.visible = false
+	add_child(_wordmark)
 	_name = Label.new()
 	_start = _name.horizontal_alignment
 	_name.name = "Name"
@@ -127,6 +139,7 @@ func refresh() -> void:
 	if _presented() and _fetched != null and _fetched_sha == PKeyUiTheme.presentation_icon_sha:
 		icon = _fetched
 	_plain = title
+	_wordmark_tex = id.get("wordmark") as Texture2D
 	_name.text = PKeyUiTheme.isolate(title)
 	_initial.text = initial_of(title)
 	_show(icon)
@@ -142,7 +155,11 @@ func _show(icon: Texture2D) -> void:
 	_icon.texture = icon
 	_icon.visible = icon != null
 	_tile.visible = icon == null and _plain != ""
-	_name.visible = name_visible
+	var mark := _wordmark_tex != null and (hero or splash)
+	_wordmark.texture = _wordmark_tex if mark else null
+	_wordmark.visible = mark
+	# The wordmark is the name drawn: the text steps aside so the product is named once (DL5).
+	_name.visible = name_visible and not mark
 	visible = _plain != "" or icon != null
 
 
@@ -218,7 +235,7 @@ var _stacked := false
 
 
 func _stack_if_cramped() -> void:
-	if centered or _name == null or _plain == "" or size.x <= 0.0:
+	if centered or _name == null or _plain == "" or size.x <= 0.0 or _wordmark.visible:
 		return
 	var font := _name.get_theme_font("font")
 	var body := get_theme_font_size("font_size", "Label") if has_theme_font_size("font_size", "Label") else _name_size
@@ -257,6 +274,9 @@ static func initial_of(title: String) -> String:
 func _size() -> void:
 	if _name == null:
 		return
+	var mark := _wordmark_tex != null and (hero or splash)
+	if mark != _wordmark.visible:
+		_show(_icon.texture)
 	var which := "hero_icon_size" if hero or splash else ("icon_size_card" if card else "icon_size")
 	var side := float(_constant(which)) * (2.0 if splash else 1.0)
 	# Beside a large title (a game's own 28 or 36 px type) the icon and the name keep up with it:
@@ -265,6 +285,13 @@ func _size() -> void:
 	if not splash:
 		side = maxf(side, roundf(title_size * 1.0))
 	_icon.custom_minimum_size = Vector2(side, side)
+	if _wordmark.visible:
+		# Beside the icon, two thirds of its height, never wider than five of its sides; centred
+		# when the header is.
+		var h := roundf(side * 0.66)
+		var aspect := float(_wordmark_tex.get_width()) / maxf(1.0, float(_wordmark_tex.get_height()))
+		_wordmark.custom_minimum_size = Vector2(minf(h * aspect, side * 5.0), h)
+		_wordmark.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if (centered or _stacked) else Control.SIZE_SHRINK_BEGIN
 	_tile.custom_minimum_size = Vector2(side, side)
 	_name.theme_type_variation = "PKeyTitle" if splash or as_title else ("PKeySection" if hero else "PKeyStrong")
 	# The size the label itself resolves (its variation, the host's scale) is the floor: the name is

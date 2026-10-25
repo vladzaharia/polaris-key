@@ -16,7 +16,7 @@ from polaris_key.cli.argparse_cli import GroupedHelpParser, register_argparse
 from polaris_key.cli.mount import check_config
 
 PIN = "A" * 43
-GOOD: Dict[str, Any] = {"product_slug": "tidewater", "base_url": "https://key.plrs.im", "trust": {"k1": PIN}}
+GOOD: Dict[str, Any] = {"product_slug": "tidewater", "base_url": "https://key.plrs.im", "pinned_keys": {"k1": PIN}}
 FIX = "pkey sdk --lang python --write"
 
 
@@ -25,12 +25,12 @@ FIX = "pkey sdk --lang python --write"
     [
         (None, "config is missing"),
         ({**GOOD, "product_slug": ""}, "no product_slug"),
-        ({"product_slug": "tw"}, "has no trust"),
-        ({**GOOD, "trust": {}}, "no license could verify"),
-        ({**GOOD, "trust": {"<your-signing-key-id>": "<x>"}}, "not a raw Ed25519 public key"),
+        ({"product_slug": "tw"}, "has no pinned_keys"),
+        ({**GOOD, "pinned_keys": {}}, "no license could verify"),
+        ({**GOOD, "pinned_keys": {"<your-signing-key-id>": "<x>"}}, "not a raw Ed25519 public key"),
         ({**GOOD, "base_url": "nope"}, "not an http(s) origin"),
     ],
-    ids=["none", "no slug", "no trust", "no pins", "placeholder pin", "bad base url"],
+    ids=["none", "no slug", "no pinned_keys", "no pins", "placeholder pin", "bad base url"],
 )
 def test_a_config_the_cli_cannot_work_from_says_what_to_run(config: Any, says: str) -> None:
     with pytest.raises(ValueError) as caught:

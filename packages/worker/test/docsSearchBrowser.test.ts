@@ -63,10 +63,9 @@ function assets(): Fetcher {
   } as unknown as Fetcher;
 }
 
-/** Open Help search on `origin` through the Worker router and type the query. */
-async function searchOn(
+/** Open a docs page on `origin` through the Worker router, without touching the search. */
+async function pageOn(
   origin: string,
-  query: string,
   mutate?: (headers: Record<string, string>) => void,
   path = "/docs/help/",
   viewport?: { width: number; height: number },
@@ -107,9 +106,24 @@ async function searchOn(
   await setup?.(ctx, requests);
   const page = await ctx.newPage();
   await page.goto(`${origin}${path}`);
+  return { page, requests, close: () => browser.close() };
+}
+
+/** Open Help search on `origin` through the Worker router and type the query. */
+async function searchOn(
+  origin: string,
+  query: string,
+  mutate?: (headers: Record<string, string>) => void,
+  path = "/docs/help/",
+  viewport?: { width: number; height: number },
+  setup?: (ctx: any, requests: string[]) => Promise<void>,
+  tweakEnv?: (env: any) => void,
+): Promise<{ page: any; requests: string[]; close: () => Promise<void> }> {
+  const opened = await pageOn(origin, mutate, path, viewport, setup, tweakEnv);
+  const { page } = opened;
   await page.locator("button[data-open-modal]:not([disabled])").first().click();
   await page.locator("dialog.pk-search input").fill(query);
-  return { page, requests, close: () => browser.close() };
+  return opened;
 }
 
 describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
@@ -498,4 +512,130 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
       }
     }
   }, 90_000);
+
+  it("searches Help, not the developer docs, from Help's page-not-found page", async () => {
+    const { page, requests, close } = await searchOn(
+      "https://polaris.locker",
+      "device limit",
+      undefined,
+      "/docs/help/nope-not-a-page/",
+    );
+    try {
+      // The 404 is one static page for every door: the address makes it Help's, search included.
+      expect(await page.locator("h1#_top").textContent()).toContain("Help");
+      expect(
+        await page
+          .locator("button[data-open-modal]")
+          .first()
+          .getAttribute("aria-label"),
+      ).toBe("Search help");
+      expect(
+        await page
+          .locator("dialog.pk-search input")
+          .getAttribute("placeholder"),
+      ).toBe("Search help");
+      await page.locator(".pk-search-row").first().waitFor({ timeout: 20000 });
+      expect(await page.locator(".pk-search-failed-box").isVisible()).toBe(
+        false,
+      );
+      expect(
+        requests.some((p) => p === "/docs/pagefind-help/pagefind.js"),
+      ).toBe(true);
+      expect(requests.some((p) => p === "/docs/pagefind/pagefind.js")).toBe(
+        false,
+      );
+      // Every row is a Help page.
+      const hrefs: string[] = await page
+        .locator(".pk-search-row")
+        .evaluateAll((a: any[]) => a.map((x) => x.getAttribute("href") ?? ""));
+      expect(hrefs.length).toBeGreaterThan(0);
+      for (const h of hrefs) expect(h, h).toMatch(/^\/docs\/help\//);
+      // Before a query it opens on Help's Top tasks, never the developers' Start here.
+      await page.locator("dialog.pk-search input").fill("");
+      await page
+        .locator(".pk-search-group", { hasText: "Top tasks" })
+        .waitFor();
+      expect(
+        await page
+          .locator(".pk-search-group", { hasText: "Start here" })
+          .count(),
+      ).toBe(0);
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
+  it.each([
+    ["https://key.plrs.im", "/docs/build/quickstart/", 390],
+    ["https://key.plrs.im", "/docs/start/", 320],
+    ["https://polaris.locker", "/docs/help/devices/", 390],
+    ["https://polaris.locker", "/docs/help/devices/", 320],
+  ] as const)(
+    "keeps Tab inside the phone menu while it is open: %s%s at %d px",
+    async (origin, path, width) => {
+      const { page, close } = await pageOn(origin, undefined, path, {
+        width,
+        height: 800,
+      });
+      try {
+        const active = () =>
+          page.evaluate(() => {
+            const g = globalThis as any;
+            const a = g.document.activeElement as any;
+            return {
+              inPane: !!a?.closest("#starlight__sidebar"),
+              body: a === g.document.body,
+              label: (a?.getAttribute("aria-label") ?? a?.textContent ?? "")
+                .trim()
+                .slice(0, 30),
+            };
+          });
+        const menu = page.locator("button.sl-menu-button");
+        await menu.click();
+        // The popover's toggle event (which inerts the page and moves focus) follows the open state.
+        await page.waitForFunction(() =>
+          (globalThis as any).document
+            .querySelector("header.header")
+            ?.hasAttribute("inert"),
+        );
+        // Focus starts on Close, inside the menu.
+        expect(await active()).toMatchObject({
+          inPane: true,
+          label: "Close menu",
+        });
+        // The header, the Menu button and the brand footers cannot take focus behind the menu.
+        const inert = await page.evaluate(() =>
+          ["header.header", ".sl-menu-button", ".pk-section > footer"].map(
+            (s) =>
+              [...(globalThis as any).document.querySelectorAll(s)].every(
+                (e: any) => e.hasAttribute("inert"),
+              ),
+          ),
+        );
+        expect(inert).toEqual([true, true, true]);
+        for (let i = 0; i < 60; i++) {
+          await page.keyboard.press("Tab");
+          const at = await active();
+          // Focus is in the menu, or has left the page for the browser (the body).
+          expect(at.inPane || at.body, JSON.stringify(at)).toBe(true);
+        }
+        for (let i = 0; i < 60; i++) {
+          await page.keyboard.press("Shift+Tab");
+          const at = await active();
+          expect(at.inPane || at.body, JSON.stringify(at)).toBe(true);
+        }
+        // Escape closes it and focus returns to Menu, with everything usable again.
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(
+          () =>
+            (globalThis as any).document.querySelectorAll("[inert]").length ===
+            0,
+        );
+        expect(await active()).toMatchObject({ label: "Menu" });
+      } finally {
+        await close();
+      }
+    },
+    90_000,
+  );
 });

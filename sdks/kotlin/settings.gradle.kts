@@ -91,6 +91,14 @@ if (!jvmOnly && androidSdk) {
     project(":godot").projectDir = file("../godot/native/android")
     include(":boundary")
     include(":ui")
+    // The Compose desktop sample (UK-10.10): a runnable app over :ui and :desktop, kept with the UI kit samples.
+    include(":sample-compose-desktop")
+    project(":sample-compose-desktop").projectDir = file("../../examples/ui/compose-desktop")
+    // The Compose Android sample (UK-09b.2): an installable app over :ui and :android, fixtures by default.
+    include(":sample-compose-android")
+    project(":sample-compose-android").projectDir = file("../../examples/ui/compose-android")
     include(":billing")
     include(":docs-snippets-android")
+    // The Compose Desktop blocks of the docs (tagged desktop): JVM, over :ui's desktop target.
+    include(":docs-snippets-desktop")
 }

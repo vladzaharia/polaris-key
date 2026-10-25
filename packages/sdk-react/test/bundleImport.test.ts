@@ -156,7 +156,7 @@ function browserFor(
     now: () => c.now,
     trust: { pinnedKeys: c.pinned },
     offlineStore: store,
-    expectServices: services("license", "config"),
+    expectedServices: ["license", "config"],
   });
 }
 

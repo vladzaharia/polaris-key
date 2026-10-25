@@ -4,7 +4,6 @@
 // (DL9) and turns every control into a `pk-action` DOM event.
 
 import { LitElement, nothing, type PropertyValues } from "lit";
-import { styleMap } from "lit/directives/style-map.js";
 import { html } from "lit";
 import {
   focusOnMount,
@@ -15,12 +14,15 @@ import {
   type View,
 } from "@polaris-key/ui-core";
 import type { ResolvedIdentity } from "@polaris-key/ui-core/theme";
-import { resolveProductIdentity } from "@polaris-key/ui-core/theme";
+import {
+  platformVariant,
+  resolveProductIdentity,
+} from "@polaris-key/ui-core/theme";
 
 import { copyFor, onCopyLoaded, preloadCopy } from "./copy.js";
 import { installFonts } from "./fonts.js";
 import { actionOf, type RenderCtx } from "./render.js";
-import { sharedSheet, stylesCss } from "./styles.js";
+import { canMorph, morph, sharedSheet, stylesCss } from "./styles.js";
 import {
   decodeIcon,
   findProvider,
@@ -121,6 +123,7 @@ export abstract class PkElement extends LitElement {
   private lastSource: unknown = undefined;
   private lastFocusState: string | null = null;
   private shape: "landscape" | "portrait" | "short" = "portrait";
+  private wide = false;
   private tight = false;
   private resize: ResizeObserver | null = null;
 
@@ -225,6 +228,11 @@ export abstract class PkElement extends LitElement {
     // A short window (landscape phone) docks its one-row bar, unless large text leaves under 18 rem
     // of height: the bar would then take a third of it.
     const tight = h > 0 && h / rem < 34 && (next !== "short" || h / rem < 18);
+    const wide = w / rem > 35;
+    if (wide !== this.wide) {
+      this.wide = wide;
+      this.requestUpdate();
+    }
     if (next !== this.shape || tight !== this.tight)
       // After this frame's layout: a shape change never re-enters the observer's loop.
       requestAnimationFrame(() => {
@@ -318,7 +326,7 @@ export abstract class PkElement extends LitElement {
         preset: o.preset,
       });
     const iconUrl = o.iconSrc ?? this.iconUrl;
-    return resolveFor(this, o, identity, iconUrl);
+    return resolveFor(this, o, identity, iconUrl, this.input?.platform);
   }
 
   /** The view this element draws now. */
@@ -378,6 +386,9 @@ export abstract class PkElement extends LitElement {
       copy,
       resolved,
       fill: this.fill || this.fillsWindow(view.state),
+      dialog: this.isDialog(),
+      shape: this.shape,
+      wide: this.wide,
       input: this.modelInput(),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {
@@ -564,6 +575,11 @@ export abstract class PkElement extends LitElement {
     return renderView(c);
   }
 
+  /** The view is drawn in a modal dialog: the sign-in sheet, or the update prompt's dialog. */
+  protected isDialog(): boolean {
+    return this.isSheet();
+  }
+
   /** True where the element draws in a modal sheet (the sign-in form's `presentation`). */
   protected isSheet(): boolean {
     return false;
@@ -578,6 +594,36 @@ export abstract class PkElement extends LitElement {
    *  own content never inherits the kit's font, colour or line height. */
   protected renderProjected(_view: View): unknown {
     return nothing;
+  }
+
+  /** The step this element is on, when changing it morphs the card (a gate's screens); else null. */
+  protected morphKey(): string | null {
+    return null;
+  }
+
+  private lastMorph: string | null = null;
+
+  /** A step change redraws inside a View Transition on the card; focus moves in `updated`, which
+   *  runs in the same pass, exactly as without it. Without the API: the plain update. */
+  protected override scheduleUpdate(): void | Promise<unknown> {
+    // The model learns the new input in willUpdate, after this: read the step it is moving to.
+    if (this.hasUpdated) this.ensureModel().update(() => this.modelInput());
+    const key = this.morphKey();
+    const was = this.lastMorph;
+    this.lastMorph = key;
+    const root = this.renderRoot?.querySelector?.(".pk-root");
+    if (key === null || was === null || key === was || !root || !canMorph())
+      return super.scheduleUpdate();
+    return new Promise<void>((done) =>
+      morph(
+        root,
+        () => {
+          super.scheduleUpdate();
+          done();
+        },
+        this,
+      ),
+    );
   }
 
   protected override render(): unknown {
@@ -598,19 +644,39 @@ export abstract class PkElement extends LitElement {
         data-shape=${this.shape}
         ?data-tight=${this.tight}
         ?data-fill=${this.fill || this.fillsWindow(view.state)}
-        data-pk-platform=${r.theme.platform ?? "web"}
+        data-pk-platform=${platformVariant(r.theme)}
         ?data-keyboard=${keyboard}
         lang=${c.copy.locale}
-        style=${styleMap(themeVars(r))}
       >
         ${this.renderBody(c)}
       </div>
       ${this.renderProjected(view)}`;
   }
 
+  private appliedVars = new Set<string>();
+
+  /** The resolved theme's custom properties, set through the CSSOM: a `style` attribute binding
+   *  is a `style-src-attr` violation under a strict CSP (UI-KITS §3.2). */
+  private applyThemeVars(): void {
+    const node = (this.renderRoot as ShadowRoot).querySelector<HTMLElement>(
+      ".pk-root",
+    );
+    if (!node) {
+      this.appliedVars.clear();
+      return;
+    }
+    const vars = themeVars(this.resolved);
+    for (const name of this.appliedVars)
+      if (!(name in vars)) node.style.removeProperty(name);
+    for (const [name, value] of Object.entries(vars))
+      node.style.setProperty(name, value);
+    this.appliedVars = new Set(Object.keys(vars));
+  }
+
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
     const view = this.view;
+    this.applyThemeVars();
     // A list that scrolls (past six devices) opens on its checked row, not the top of the list.
     for (const list of (
       this.renderRoot as ShadowRoot

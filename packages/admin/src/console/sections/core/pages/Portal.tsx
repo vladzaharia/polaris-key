@@ -13,7 +13,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type PortalProductSettings } from "../../../../api.js";
+import { api, HttpError, type PortalProductSettings } from "../../../../api.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import {
   Form,
@@ -35,6 +35,7 @@ import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { ClaimByKeyWarning } from "../../identity/components/ClaimByKeyWarning.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
+import { coreBReads } from "../data.js";
 
 /** The branding fields the Locker reads, in editor order (Worker: `portal/branding.ts`). */
 export const BRANDING_FIELDS = [
@@ -138,10 +139,7 @@ const toggleRows = (name: string) =>
 
 export function PortalPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
-  const query = useQuery({
-    queryKey: qk.portal(slug),
-    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-  });
+  const query = useQuery(coreBReads.portal(slug));
   useLoadingAnnouncement("Polaris Locker", query.isPending);
   if (query.isPending)
     return <PageSkeleton template="form" label="Polaris Locker" />;
@@ -185,7 +183,7 @@ function PortalForm({
     },
     // The Worker names `branding.<field>`; the form's field is `<field>`.
     mapServerErrors: (e) =>
-      e instanceof ApiError && e.fields?.length
+      e instanceof HttpError && e.fields?.length
         ? Object.fromEntries(
             e.fields.map((f) => [
               f.replace(/^branding\./, ""),

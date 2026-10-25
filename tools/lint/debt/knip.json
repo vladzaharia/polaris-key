@@ -1,0 +1,819 @@
+{
+  "$comment": "Today's findings of the lane's linters, by file and rule. It only shrinks: a new finding fails the check, and so does an entry the tool no longer reports. Fix findings, then re-record with the lane's `tools/lint.sh record`.",
+  "version": 1,
+  "debt": {
+    ".github/workflows/deploy.yml": {
+      "knip:binaries": 1
+    },
+    "conformance/runners/browser/package.json": {
+      "knip:dependencies": 2
+    },
+    "conformance/runners/node/package.json": {
+      "knip:dependencies": 1
+    },
+    "package.json": {
+      "knip:binaries": 1,
+      "knip:devDependencies": 1
+    },
+    "packages/admin/package.json": {
+      "knip:devDependencies": 1
+    },
+    "packages/admin/src/console/data/hooks.ts": {
+      "knip:exports": 6
+    },
+    "packages/admin/src/console/routes.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/console/sections/config/components/CatalogEntryForm.tsx": {
+      "knip:exports": 1,
+      "knip:types": 1
+    },
+    "packages/admin/src/console/sections/config/components/CatalogFilters.tsx": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/console/sections/core/model/integration.ts": {
+      "knip:exports": 2
+    },
+    "packages/admin/src/console/sections/core/pages/KeysCi.tsx": {
+      "knip:exports": 2
+    },
+    "packages/admin/src/console/sections/core/pages/Presentation.tsx": {
+      "knip:exports": 5
+    },
+    "packages/admin/src/console/sections/core/pages/accountOverrides.tsx": {
+      "knip:duplicates": 1,
+      "knip:exports": 1
+    },
+    "packages/admin/src/console/sections/feeds/pages/FeedList.tsx": {
+      "knip:files": 1
+    },
+    "packages/admin/src/console/sections/global/pages/ProductNew.tsx": {
+      "knip:types": 2
+    },
+    "packages/admin/src/console/sections/license/components/holders.tsx": {
+      "knip:exports": 2
+    },
+    "packages/admin/src/console/sections/license/components/shared.tsx": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/console/sections/platform/data.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformActivity.tsx": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformConnections.tsx": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/console/sections/platform/pages/platformOperationsAssess.tsx": {
+      "knip:exports": 2
+    },
+    "packages/admin/src/console/sections/platform/pages/platformSettings.tsx": {
+      "knip:exports": 2
+    },
+    "packages/admin/src/console/sections/storefronts/pages/StorefrontsPage.tsx": {
+      "knip:types": 1
+    },
+    "packages/admin/src/console/templates/Dashboard.tsx": {
+      "knip:exports": 1,
+      "knip:types": 1
+    },
+    "packages/admin/src/lib/actions.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/lib/format.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/lib/labels.ts": {
+      "knip:duplicates": 1
+    },
+    "packages/admin/src/lib/products.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/lib/version.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/portal/api.ts": {
+      "knip:exports": 2,
+      "knip:types": 17
+    },
+    "packages/admin/src/portal/helpLinks.ts": {
+      "knip:types": 1
+    },
+    "packages/admin/src/portal/model/key.ts": {
+      "knip:types": 1
+    },
+    "packages/admin/src/portal/mutations.ts": {
+      "knip:types": 1
+    },
+    "packages/admin/src/portal/router.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/schema/entry.ts": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/schema/index.ts": {
+      "knip:exports": 1,
+      "knip:types": 2
+    },
+    "packages/admin/src/ui/DropdownMenu.tsx": {
+      "knip:exports": 6
+    },
+    "packages/admin/src/ui/Popover.tsx": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/ui/Select.tsx": {
+      "knip:exports": 3
+    },
+    "packages/admin/src/ui/VersionInput.tsx": {
+      "knip:exports": 1
+    },
+    "packages/admin/src/ui/auth/index.ts": {
+      "knip:exports": 3,
+      "knip:types": 1
+    },
+    "packages/admin/src/ui/data-table/index.ts": {
+      "knip:exports": 6,
+      "knip:types": 7
+    },
+    "packages/admin/src/ui/motion/index.ts": {
+      "knip:exports": 2,
+      "knip:types": 9
+    },
+    "packages/admin/src/ui/settings/SettingRow.tsx": {
+      "knip:types": 1
+    },
+    "packages/admin/src/ui/settings/index.ts": {
+      "knip:files": 1
+    },
+    "packages/admin/src/ui/wizard/index.ts": {
+      "knip:exports": 1,
+      "knip:types": 9
+    },
+    "packages/brand/src/emailCopy.ts": {
+      "knip:duplicates": 1
+    },
+    "packages/brand/src/tokens/lucide.ts": {
+      "knip:exports": 1
+    },
+    "packages/brand/test/react19/package.json": {
+      "knip:dependencies": 2
+    },
+    "packages/cli/src/account.ts": {
+      "knip:exports": 3
+    },
+    "packages/cli/src/adminAuth.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/context.ts": {
+      "knip:types": 1
+    },
+    "packages/cli/src/delegate.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/doctor.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/login.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/manifest.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/packRefs.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/releaseKeys.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/storefronts/command.ts": {
+      "knip:exports": 1
+    },
+    "packages/cli/src/storefronts/itch.ts": {
+      "knip:types": 1
+    },
+    "packages/cli/src/storefronts/prPlane.ts": {
+      "knip:exports": 2
+    },
+    "packages/docs/package.json": {
+      "knip:devDependencies": 13
+    },
+    "packages/docs/src/components/FeatureChip.tsx": {
+      "knip:exports": 1
+    },
+    "packages/docs/src/components/console.ts": {
+      "knip:exports": 5
+    },
+    "packages/docs/src/lib/baselines.ts": {
+      "knip:exports": 2
+    },
+    "packages/docs/src/lib/docs.ts": {
+      "knip:exports": 5,
+      "knip:types": 6
+    },
+    "packages/docs/src/lib/godotKit.ts": {
+      "knip:exports": 1
+    },
+    "packages/docs/src/lib/kitCopy.ts": {
+      "knip:exports": 5
+    },
+    "packages/docs/src/lib/portalShots.ts": {
+      "knip:exports": 1
+    },
+    "packages/docs/src/lib/repo.ts": {
+      "knip:exports": 1
+    },
+    "packages/docs/src/lib/snippet.ts": {
+      "knip:exports": 1
+    },
+    "packages/docs/src/lib/uiKits.ts": {
+      "knip:exports": 2
+    },
+    "packages/docs/src/routeToc.ts": {
+      "knip:files": 1
+    },
+    "packages/docs/test/snippets/nativeLanes.ts": {
+      "knip:binaries": 4
+    },
+    "packages/elements/src/render.ts": {
+      "knip:exports": 3
+    },
+    "packages/elements/src/views.ts": {
+      "knip:exports": 1
+    },
+    "packages/sdk-node/scripts/render-goldens.mjs": {
+      "knip:unlisted": 1
+    },
+    "packages/sdk-node/src/electron/preload.ts": {
+      "knip:unlisted": 1
+    },
+    "packages/sdk-node/src/update/bootguard.ts": {
+      "knip:exports": 1
+    },
+    "packages/sdk-node/test/cli/cliContract.test.ts": {
+      "knip:binaries": 1
+    },
+    "packages/sdk-react/src/browser/bootGuard.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/browser/index.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/config/index.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/core/devNotice.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/desktop/index.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/identity/index.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/kit/errors.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/kit/index.ts": {
+      "knip:exports": 8,
+      "knip:types": 8
+    },
+    "packages/sdk-react/src/license/index.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/local/index.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/packs/index.ts": {
+      "knip:exports": 11,
+      "knip:types": 19
+    },
+    "packages/sdk-react/src/react/hostScheme.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/release/index.ts": {
+      "knip:files": 1
+    },
+    "packages/sdk-react/src/update/index.ts": {
+      "knip:exports": 2,
+      "knip:types": 9
+    },
+    "packages/sdk-react/test/react19/package.json": {
+      "knip:dependencies": 2
+    },
+    "packages/server/package.json": {
+      "knip:devDependencies": 2
+    },
+    "packages/shared-manifest/package.json": {
+      "knip:devDependencies": 1
+    },
+    "packages/shared-manifest/src/integration/index.ts": {
+      "knip:exports": 19,
+      "knip:types": 25
+    },
+    "packages/shared-manifest/src/integration/pins.ts": {
+      "knip:exports": 2
+    },
+    "packages/shared-manifest/src/integration/sdkConfig.ts": {
+      "knip:exports": 2
+    },
+    "packages/shared-manifest/src/integration/setup.ts": {
+      "knip:exports": 1
+    },
+    "packages/shared-manifest/src/integration/usage.ts": {
+      "knip:exports": 2
+    },
+    "packages/ui-qa/package.json": {
+      "knip:devDependencies": 1
+    },
+    "packages/ui-qa/src/kits.ts": {
+      "knip:exports": 2
+    },
+    "packages/ui-qa/src/lint.ts": {
+      "knip:exports": 1
+    },
+    "packages/ui-qa/src/run.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/package.json": {
+      "knip:devDependencies": 1
+    },
+    "packages/worker/src/console/authz.ts": {
+      "knip:exports": 3,
+      "knip:types": 4
+    },
+    "packages/worker/src/core/accounts/accountOverrides.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/core/assets/hostedAssets.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/core/assets/imgHost.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/assets/lockerShell.ts": {
+      "knip:exports": 2
+    },
+    "packages/worker/src/core/ciScope.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/console/respond.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/ingest/shared.ts": {
+      "knip:exports": 2
+    },
+    "packages/worker/src/core/ingest/types.ts": {
+      "knip:types": 2
+    },
+    "packages/worker/src/core/licensing/gate.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/core/licensing/grants.ts": {
+      "knip:exports": 1,
+      "knip:types": 2
+    },
+    "packages/worker/src/core/licensing/issue.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/licensing/store.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/outletCredentials.ts": {
+      "knip:duplicates": 1
+    },
+    "packages/worker/src/core/platformCredentials.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/platformSettings.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/products.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/products/store.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/rbac/matrix.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/registry/registryVocabulary.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/core/rowSettings.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/services.ts": {
+      "knip:exports": 1,
+      "knip:types": 1
+    },
+    "packages/worker/src/core/settings/registry.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/settingsClaims.ts": {
+      "knip:exports": 3,
+      "knip:types": 1
+    },
+    "packages/worker/src/core/storefront/gate.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/core/storefront/listingImport.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/core/storefront/listingModel.ts": {
+      "knip:duplicates": 1
+    },
+    "packages/worker/src/core/storefront/rules/appStore.ts": {
+      "knip:types": 2
+    },
+    "packages/worker/src/core/stores/steam/client.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/core/trust/deviceTrust.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/commerce/index.ts": {
+      "knip:exports": 2
+    },
+    "packages/worker/src/services/commerce/stores/apple/purchases.ts": {
+      "knip:exports": 1,
+      "knip:types": 1
+    },
+    "packages/worker/src/services/config/document.ts": {
+      "knip:exports": 2,
+      "knip:types": 2
+    },
+    "packages/worker/src/services/config/index.ts": {
+      "knip:exports": 10
+    },
+    "packages/worker/src/services/config/mint.ts": {
+      "knip:exports": 2,
+      "knip:types": 3
+    },
+    "packages/worker/src/services/config/public.ts": {
+      "knip:exports": 2,
+      "knip:types": 1
+    },
+    "packages/worker/src/services/distribution/availability.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/distribute.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/distribution/connectors/asc/setup.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/connectors/msstore/provision.ts": {
+      "knip:exports": 5
+    },
+    "packages/worker/src/services/distribution/connectors/play/map.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/connectors/play/storefront.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/dictionary.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/feeds/cache.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/public.ts": {
+      "knip:types": 7
+    },
+    "packages/worker/src/services/distribution/registry/adapter.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/distribution/registry/cargo/index.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/registry/index.ts": {
+      "knip:exports": 16,
+      "knip:types": 15
+    },
+    "packages/worker/src/services/distribution/registry/oci/index.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/registry/pypi/index.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/registryFeeds.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/distribution/storeSteps.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/identity/accounts/birthdate.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/accounts/productUsers.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/card/http.ts": {
+      "knip:exports": 1,
+      "knip:types": 1
+    },
+    "packages/worker/src/services/identity/card/index.ts": {
+      "knip:exports": 9,
+      "knip:types": 1
+    },
+    "packages/worker/src/services/identity/consoleAccount.ts": {
+      "knip:duplicates": 1
+    },
+    "packages/worker/src/services/identity/idToken.ts": {
+      "knip:exports": 3
+    },
+    "packages/worker/src/services/identity/oidc.ts": {
+      "knip:exports": 2,
+      "knip:types": 3
+    },
+    "packages/worker/src/services/identity/passthrough/bind.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/passthrough/choiceRoutes.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/identity/portal/discover.ts": {
+      "knip:exports": 1,
+      "knip:types": 1
+    },
+    "packages/worker/src/services/identity/portal/library.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/portal/media.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/portal/repo.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/productOidc/chooser.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/productOidc/deviceFlow.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/identity/providers/net.ts": {
+      "knip:exports": 3
+    },
+    "packages/worker/src/services/identity/public.ts": {
+      "knip:exports": 5,
+      "knip:types": 6
+    },
+    "packages/worker/src/services/identity/signInSettings.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/license/admin/keyEmail.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/license/document.ts": {
+      "knip:exports": 1,
+      "knip:types": 1
+    },
+    "packages/worker/src/services/license/index.ts": {
+      "knip:exports": 6,
+      "knip:types": 2
+    },
+    "packages/worker/src/services/release/config.ts": {
+      "knip:exports": 3
+    },
+    "packages/worker/src/services/release/github.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/release/index.ts": {
+      "knip:exports": 6,
+      "knip:types": 6
+    },
+    "packages/worker/src/services/release/linkExisting.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/release/mirror.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/release/packs/deltas/policy.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/release/policy.ts": {
+      "knip:duplicates": 1
+    },
+    "packages/worker/src/services/release/public.ts": {
+      "knip:exports": 6
+    },
+    "packages/worker/src/services/release/surfaces.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/release/sync.ts": {
+      "knip:exports": 6,
+      "knip:types": 4
+    },
+    "packages/worker/src/services/sync/do/exportDoc.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/sync/engine/store.ts": {
+      "knip:types": 1
+    },
+    "packages/worker/src/services/update/appcast.ts": {
+      "knip:exports": 1
+    },
+    "packages/worker/src/services/update/index.ts": {
+      "knip:exports": 3,
+      "knip:types": 1
+    },
+    "tools/corpus/backend.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/bundle.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/cases.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/claims.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/clock.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/common.ts": {
+      "knip:duplicates": 1,
+      "knip:exports": 28,
+      "knip:types": 1
+    },
+    "tools/corpus/config.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/content-fixture.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/content.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/delegation.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/device-label.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/ed25519.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/feed-url.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/feed.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/fingerprint.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/gate.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/headers.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/jws.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/license-user.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/nonwire.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/outlet.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/pack-records.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/packs.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/record.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/backend.ts": {
+      "knip:exports": 1
+    },
+    "tools/corpus/reference/claims.ts": {
+      "knip:exports": 2
+    },
+    "tools/corpus/reference/config.ts": {
+      "knip:exports": 1
+    },
+    "tools/corpus/reference/content.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/delegation.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/device-label.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/ed25519.ts": {
+      "knip:exports": 3
+    },
+    "tools/corpus/reference/feed-url.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/feed.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/fingerprint.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/headers.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/outlet.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/pack-claims.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/packs.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/patterns.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/record.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/revocation.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/tokens.ts": {
+      "knip:exports": 2
+    },
+    "tools/corpus/reference/trust.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/update.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/versions.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/release-records.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/revocation.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/self-check.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/stage.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/trust.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/update.ts": {
+      "knip:files": 1
+    },
+    "tools/gen-content-corpus.ts": {
+      "knip:exports": 4
+    },
+    "tools/gen-integration.ts": {
+      "knip:files": 1
+    },
+    "tools/gen-mirrors.ts": {
+      "knip:types": 1
+    },
+    "tools/gen-roles-matrix.ts": {
+      "knip:files": 1
+    },
+    "tools/gen-route-ledger.ts": {
+      "knip:files": 1
+    },
+    "tools/gen-transcripts.mjs": {
+      "knip:files": 1
+    },
+    "tools/lint/adapters/jsonl-test.mjs": {
+      "knip:files": 1
+    },
+    "tools/mockups/build-kit.mjs": {
+      "knip:files": 1
+    },
+    "tools/mockups/build.mjs": {
+      "knip:files": 1
+    },
+    "tools/mockups/check.mjs": {
+      "knip:files": 1
+    },
+    "tools/mockups/shoot.mjs": {
+      "knip:files": 1
+    },
+    "tools/package.json": {
+      "knip:devDependencies": 1
+    },
+    "tools/sign-corpus.ts": {
+      "knip:files": 1
+    },
+    "tools/sync-scenarios.ts": {
+      "knip:files": 1
+    }
+  }
+}

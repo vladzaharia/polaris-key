@@ -44,37 +44,19 @@ mise exec node@22 -- pnpm test
 
 ## 3. The green-gate commands
 
-Run these before opening a PR — they are what CI runs (`.github/workflows/ci.yml`), plus
-`pnpm format`, which CI does not run because `pnpm lint` already covers the source files:
+Run the gate before opening a PR:
 
 ```sh
-pnpm build                       # build all JS packages (turbo)
-pnpm gen --check                 # every generator's drift gate, from the registry (tools/generators.ts)
-pnpm typecheck
-pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
-pnpm lint                        # per-package prettier check
-pnpm --filter @polaris-key/admin build
-pnpm --filter @polaris-key/worker assemble  # admin + docs built into the worker's [assets] root
-pnpm --filter @polaris-key/docs check:links # internal link + anchor integrity on the built site
-
-# The workerd smoke job. Node permits the runtime code generation workerd forbids, so a green
-# `pnpm test` cannot prove the Worker runs in the runtime it ships to.
-pnpm --filter @polaris-key/worker typecheck:workerd
-pnpm --filter @polaris-key/worker test:workerd
-
-( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (ubuntu + macOS in CI)
-( cd sdks/swift && swift build && swift test )        # Swift
-sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
-( cd sdks/kotlin && ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test :update:test :packs:test :sdk:test :ui-core:test :conformance:test )   # Kotlin
-
-pnpm format                      # prettier check over md/json too (format:fix to apply)
+pnpm gate            # scoped to the lanes your diff turns on (what a PR needs)
+pnpm gate --full     # every step, every lane
+pnpm gate --plan     # print the steps without running them
 ```
 
-Or run the whole cross-language suite in one shot:
-
-```sh
-pnpm test:all                    # turbo test + Python pytest + Swift swift test + Godot runner + Kotlin
-```
+`AGENTS.md` in the repository lists the steps. One of them is the drift gate, `pnpm gen --check`. A failed step reruns on
+its own once; resume with `pnpm gate --only <n>` or `--from <n>`. CI runs every lane on `main`,
+plus the browser runners, the UI kits and the Kotlin suites (`pnpm test:browser`,
+`pnpm ui:lint`, `pnpm ui:report`, `./gradlew -Ppkey.jvmOnly=true …test` in `sdks/kotlin`).
+`pnpm test:all` runs the cross-language suites in one shot.
 
 The Godot runner needs an editor binary and exits 2 without one; it never skips. CI runs it on
 the 4.7.2 editor, on an exported pack under the official 4.7.2 Linux release template, and on
@@ -96,6 +78,13 @@ pnpm typecheck
 
 It is intentionally lightweight — the full cross-language matrix runs in CI, not locally. For a
 trivial or docs-only commit you can skip it with `git commit --no-verify`.
+
+## Lint debt
+
+Each language's lint ledger (`lint-debt.json` in its lane) holds the findings that existed when the lane was adopted, and only shrinks.
+A new finding, or a recorded one the tool no longer reports, fails the lane's `tools/lint.sh check`, locally in `pnpm gate` and in CI.
+Fix a finding, then re-record the ledger with `<lane script> record`, for example `sdks/python/tools/lint.sh record`. TypeScript has no `lint.sh`: `pnpm lint:ts` checks it, and `pnpm lint:knip:record`, `node tools/lint/dupes.mjs record` and `pnpm lint:size:record` (the 800-line budget for `packages/worker/src`) re-record.
+Tool versions are pinned (the Swift lane to the 6.3 toolchain), and an upgrade is its own PR.
 
 ## 4. Fixture SQL for a product
 

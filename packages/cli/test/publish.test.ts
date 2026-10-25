@@ -1,7 +1,7 @@
 /**
  * P2-06 — `pkey release publish`, `pkey auth github-oidc` and the channel commands against a fake
  * Polaris Key, a fake Actions OIDC endpoint and a fake R2. The real Worker is driven by
- * `packages/worker/test/publishE2e.test.ts`.
+ * `packages/worker/test/services/release/publishE2e.test.ts`.
  */
 
 import { createHash } from "node:crypto";

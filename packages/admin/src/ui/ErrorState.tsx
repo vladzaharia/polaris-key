@@ -1,10 +1,19 @@
 import * as React from "react";
-import { AlertTriangle, CircleX, RotateCw } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  CircleX,
+  RefreshCw,
+  RotateCw,
+} from "lucide-react";
 import { cn } from "../lib/cn.js";
-import { errorCopy, type ErrorContext } from "../lib/errorCopy.js";
+import type { ErrorContext, errorCopy } from "../lib/errorCopy.js";
 import { Button } from "./Button.js";
 import { Unlocked } from "./WriteLock.js";
 import { CopyButton } from "./CopyButton.js";
+import { CopyDetails } from "./CopyDetails.js";
+import { useErrorVoice, type PortalVoice } from "./errorVoice.js";
 
 /**
  * A failed load, rendered through `errorCopy` (components.md §5.5): what went wrong in words, and
@@ -23,6 +32,18 @@ export interface ErrorStateProps {
    */
   thing?: string;
   className?: string;
+  /**
+   * The customer site's look (the voice's `tone`); the console ignores these. `asPage` makes the
+   * title the screen's `h1`. A page that knows what it was loading passes `page` (its own title
+   * stays as the `h1`, over the panel) and `message` (one sentence naming what failed, used for
+   * the catch-all code only; a specific refusal keeps its own sentence). `backTo` adds the way
+   * out; `account` marks an Account screen.
+   */
+  asPage?: boolean;
+  page?: string;
+  message?: string;
+  backTo?: { href: string; label: string };
+  account?: boolean;
 }
 
 export function ErrorState({
@@ -32,8 +53,28 @@ export function ErrorState({
   compact = false,
   thing,
   className,
+  asPage = false,
+  page,
+  message,
+  backTo,
+  account = false,
 }: ErrorStateProps): React.ReactElement {
-  const base = errorCopy(error, context);
+  const voice = useErrorVoice();
+  if (voice.tone === "portal")
+    return (
+      <PortalErrorState
+        voice={voice}
+        error={error}
+        onRetry={onRetry}
+        asPage={asPage}
+        page={page}
+        message={message}
+        backTo={backTo}
+        account={account}
+        className={className}
+      />
+    );
+  const base = voice.copy(error, context);
   const copy =
     thing && base.action !== "sign-in"
       ? { ...base, title: `${thing} didn't load` }
@@ -114,6 +155,101 @@ export function ErrorState({
         context={context}
         named={Boolean(thing)}
       />
+    </div>
+  );
+}
+
+/** The customer site's look: left-aligned, the title (or one sentence) over a Retry. */
+function PortalErrorState({
+  voice,
+  error,
+  onRetry,
+  asPage,
+  page,
+  message,
+  backTo,
+  account,
+  className,
+}: {
+  voice: PortalVoice;
+  error: unknown;
+  onRetry?: () => void;
+  asPage: boolean;
+  page?: string;
+  message?: string;
+  backTo?: { href: string; label: string };
+  account: boolean;
+  className?: string;
+}): React.ReactElement {
+  const copy = voice.copy(error, { account });
+  const Title = asPage ? "h1" : "h2";
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const retry = onRetry
+    ? () => {
+        voice.afterRetry(panelRef.current);
+        onRetry();
+      }
+    : undefined;
+  const named = message !== undefined || page !== undefined;
+  const panel = (
+    <div
+      ref={panelRef}
+      role="alert"
+      className={cn(
+        "flex w-full max-w-xl flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6",
+        className,
+      )}
+    >
+      <AlertCircle aria-hidden className="size-6 text-danger" />
+      {named ? (
+        <p className="text-fg-strong">
+          {copy.generic && message ? message : copy.line}
+        </p>
+      ) : (
+        <>
+          <Title className="text-lg font-semibold text-fg-strong">
+            {copy.title}
+          </Title>
+          <p className="text-fg-muted">{copy.description}</p>
+        </>
+      )}
+      {copy.help ? (
+        <voice.HelpLink href={copy.help}>{voice.helpLabel}</voice.HelpLink>
+      ) : null}
+      {/* Try again leads; Copy details is the quiet second action. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {retry && copy.retry ? (
+          <Button
+            variant="outline"
+            iconStart={<RefreshCw aria-hidden />}
+            onClick={retry}
+          >
+            {voice.retryLabel}
+          </Button>
+        ) : null}
+        <CopyDetails
+          variant="ghost"
+          copy={{ action: "copy-details", details: voice.details(error) }}
+        />
+      </div>
+      {backTo ? (
+        <a
+          href={backTo.href}
+          className="inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          {backTo.label}
+        </a>
+      ) : null}
+    </div>
+  );
+  if (page === undefined) return panel;
+  return (
+    <div className="space-y-6">
+      <h1 className="text-headline font-semibold leading-tight text-fg-strong [overflow-wrap:anywhere] desk:text-4xl">
+        {page}
+      </h1>
+      {panel}
     </div>
   );
 }

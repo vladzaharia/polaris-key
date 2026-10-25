@@ -163,7 +163,7 @@ def _help_text(e: Any, columns: int) -> str:
         sub = parser.add_subparsers(dest="command")
         sub.add_parser("build", help="Build the project", group="Build")
         sub.add_parser("export", help="Export a mix", group="Commands")
-        register_argparse(sub, config={"product_slug": "tidewater", "trust": {"k1": "A" * 43}}, version="2.4.1")
+        register_argparse(sub, config={"product_slug": "tidewater", "pinned_keys": {"k1": "A" * 43}}, version="2.4.1")
         return parser.format_help()
     finally:
         envmod.detect = original  # type: ignore[assignment]

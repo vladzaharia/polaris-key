@@ -22,7 +22,7 @@ static func env_from(table: Dictionary, args := PackedStringArray(), prefix := "
 
 static func options(services := PackedStringArray()) -> PKeyOptions:
 	var o := PKeyOptions.new()
-	o.product = "djdl"
+	o.product_slug = "djdl"
 	o.version = "1.0.0"
 	o.local_only = true
 	o.store = PKeyMemoryStore.new("", "pkeyt_cached")

@@ -43,18 +43,27 @@ export const DOCS_LINKS = {
   // PS-06: the built-in storefront's page (listing, audience, ways to add, preview, analytics).
   polarisKeyStorefront: "/docs/features/ship-builds/channels/polaris-key/",
   // B-226: the storefronts pages (the tile list and the Add to storefronts flow) and the listing.
+  channels: "/docs/features/ship-builds/channels/",
   storefronts: "/docs/features/ship-builds/channels/storefronts/",
   storefrontListing: "/docs/features/ship-builds/channels/polaris-key/",
   packageFeeds: "/docs/features/ship-builds/packages/",
+  // The Personal tokens page's Learn-more link: the section on the packages page.
+  personalTokens: "/docs/features/ship-builds/packages/#personal-tokens",
+  // ST-34.11: the CLI reference, where `pkey login` is.
+  cliReference: "/docs/reference/cli/",
   packageFeedsHost: "/docs/features/ship-builds/packages/",
+  // F-34.7: the Packages page's empty panel names the task, so it opens that section.
+  declarePackage:
+    "/docs/features/ship-builds/packages/publish/#declare-the-package",
+  publishFromCi: "/docs/features/ship-builds/packages/publish/#publish-from-ci",
   platformSecrets: "/docs/operate/platform/deploy/",
   // Inline explainer callouts
   manifestNote: "/docs/build/manifest/",
   updateAccessNote: "/docs/features/ship-builds/updates/eligibility/",
   identityOidcNote: "/docs/features/sign-in/oidc/",
   // P0-47: where auto-issue is set (the manifest's `autoIssue`), named from Identity → Sign-in,
-  // which links its `#auto-issue` section.
-  autoIssue: "/docs/features/licensing/access/",
+  // which sits under Enroll a device.
+  autoIssue: "/docs/features/licensing/access/#enroll-a-device",
   downloadPage: "/docs/help/download/",
   // Editors + policy surfaces
   managedPayloads: "/docs/features/managed-config/profiles/",
@@ -66,6 +75,8 @@ export const DOCS_LINKS = {
   // screens" opens the kit's page, "Integrate directly with the library" the SDK's own-UI page.
   // A path may end in a #fragment; the docs build's slug manifest checks it names a heading.
   notSeenYet: "/docs/build/troubleshooting/#not-seen-yet",
+  // U-05.20: Cloud Sync → Usage (the nav table carries page paths only, never a fragment).
+  syncUsage: "/docs/features/cloud-sync/#in-the-console",
   // The server card (SP-64): the contract, then the framework-free core.
   serverVerify: "/docs/build/servers/",
   serverCore: "/docs/build/servers/#use-the-core-directly",
@@ -98,6 +109,7 @@ export const DOCS_LINKS = {
   keyringRunbook: "/docs/operate/platform/runbook/",
   storeConnectionsPage: "/docs/operate/platform/connections/",
   consoleDocsHome: "/docs/operate/",
+  storefrontSetup: "/docs/features/commerce/#setting-it-up",
   // Landing
   docsHome: "/docs/",
 } as const;

@@ -40,6 +40,7 @@ packages/
   docs/              @polaris-key/docs         the docs site served at /docs
   brand/             @polaris-key/brand        design tokens, fonts, marks, launch-kit assets
   ui-qa/             @polaris-key/ui-qa        UI-kit visual QA and lints
+  agent-kit/         @polaris-key/agent-kit    skills for coding agents: Claude Code plugin and release zip
   zstd-wasm/         @polaris-key/zstd-wasm    libzstd for wasm32, decoder and delta encoder
 sdks/
   python/            polaris-key (PyPI)

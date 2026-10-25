@@ -94,12 +94,12 @@ applies it in its own dispatcher.
 
 Who may download a deliverable is stored per deliverable in `dist_access`:
 
-| Mode            | Who may download                                                          |
-| --------------- | ------------------------------------------------------------------------- |
-| `public`        | anyone                                                                    |
-| `authenticated` | a device whose license is usable                                          |
-| `licensed`      | a device whose license is usable (identical to `authenticated` today)     |
-| `entitled`      | a device whose own license covers the requested release track and version |
+| Mode (console)                  | Who may download                                                          |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| `public` (Public)               | anyone                                                                    |
+| `authenticated` (Authenticated) | a device with a valid token and a usable license                          |
+| `licensed` (Licensed)           | a device whose license is usable (identical to `authenticated` today)     |
+| `entitled` (Entitled)           | a device whose own license covers the requested release track and version |
 
 A deliverable with no row of its own inherits the `app` row; a product with no `app` row reads
 as `entitled` (fail-closed). The refusals are exactly the ones Release answered with: the flat

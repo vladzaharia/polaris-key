@@ -17,11 +17,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus } from "lucide-react";
-import {
-  api,
-  type PlatformConnection,
-  type PlatformConnectionsPage,
-} from "../../../../api.js";
+import { type PlatformConnection } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { RegisterAddresses } from "./RegisterAddresses.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
@@ -31,15 +27,14 @@ import { Section } from "../../../../ui/Section.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { qk } from "../../../data/queries.js";
+
+import { reads } from "../../../data/reads.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { AddConnectionPage } from "./platformConnectionWizard.js";
 import { ConnectionPage } from "./platformConnectionPage.js";
 
-export function fetchPlatformConnections(): Promise<PlatformConnectionsPage> {
-  return api.platformConnections();
-}
+export { fetchPlatformConnections } from "../../../data/reads.js";
 
 export const hostOf = (issuer: string): string => {
   try {
@@ -121,10 +116,7 @@ function Row({
 }
 
 export function ConnectionsPage(): React.ReactElement {
-  const q = useQuery({
-    queryKey: qk.platformConnections(),
-    queryFn: fetchPlatformConnections,
-  });
+  const q = useQuery(reads.platformConnections());
   const gate = useWriteGate("platform");
   const d = q.data;
   const add = (

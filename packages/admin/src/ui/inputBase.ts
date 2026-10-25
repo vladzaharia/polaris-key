@@ -5,7 +5,8 @@
  */
 export const CONTROL_INPUT = [
   "h-9 w-full min-w-0 rounded-md border border-border-strong bg-surface-sunken px-3 text-sm text-fg",
-  "transition-colors duration-(--pk-duration-fast) ease-standard",
+  // Not `transition-colors`: that also eases outline-color, and focus rings never animate (S-23 §6.5).
+  "transition-[color,background-color,border-color] duration-(--pk-duration-fast) ease-standard",
   "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
   "disabled:cursor-not-allowed disabled:opacity-50",
   "read-only:bg-surface-page read-only:text-fg-muted",

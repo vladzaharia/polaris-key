@@ -157,7 +157,7 @@ function LibraryRow({
         <span className="mt-1 block desk:hidden">
           {p.status.kind === "deviceLimit" && p.seats ? (
             // As the grid says it: the device pill at its limit ("2/2 devices").
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-warning-border bg-warning-subtle px-2.5 py-0.5 text-xs font-medium text-warning">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-warning-border bg-warning-subtle px-2 py-0.5 text-xs font-medium text-warning">
               <AlertCircle aria-hidden className="size-3.5" />
               {deviceCount(p.seats.inUse, p.seats.limit)}
             </span>

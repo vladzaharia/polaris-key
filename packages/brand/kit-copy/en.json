@@ -104,6 +104,11 @@
       "role": "body",
       "note": "Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated)."
     },
+    "common.linkUnavailable": {
+      "value": "That link doesn't open anything here.",
+      "role": "body",
+      "note": "Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed."
+    },
     "part.thisDevice": {
       "value": "{formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}",
       "role": "label",
@@ -463,9 +468,9 @@
       "note": "Boot screen, shown while the product starts."
     },
     "boot.error.body": {
-      "value": "If this keeps happening, restart the app.",
+      "value": "If this keeps happening, restart {product}.",
       "role": "body",
-      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics."
+      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "welcome.title": {
       "value": "Welcome to {product}",
@@ -493,9 +498,9 @@
       "note": "Welcome screen, the gate's first screen. Shown when the product only takes license keys."
     },
     "welcome.ledeSignInOnly": {
-      "value": "Sign in to use {product}.",
+      "value": "Sign in to continue.",
       "role": "body",
-      "note": "Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product."
     },
     "welcome.signIn": {
       "value": "Sign in",
@@ -807,10 +812,20 @@
       "role": "body",
       "note": "UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”)."
     },
+    "common.updateCurrentNoSize": {
+      "value": "You have {version}",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1."
+    },
     "update.whatsNew": {
       "value": "What's new",
       "role": "label",
       "note": "UpdatePrompt: an app update. Label over the release notes."
+    },
+    "part.hint.select": {
+      "value": "Select",
+      "role": "label",
+      "note": "Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control."
     },
     "update.allChanges": {
       "value": "All changes in {version}",
@@ -836,17 +851,31 @@
     "update.restartNow": {
       "value": "Restart now",
       "role": "button",
-      "note": "UpdatePrompt: an app update. The update is downloaded."
+      "note": "UpdatePrompt: an app update. The update is downloaded.",
+      "variants": {
+        "macos": "Install and Relaunch"
+      }
     },
     "update.skipVersion": {
       "value": "Skip this version",
       "role": "button",
-      "note": "UpdatePrompt: an app update."
+      "note": "UpdatePrompt: an app update.",
+      "variants": {
+        "macos": "Skip This Version"
+      }
     },
     "update.install": {
       "value": "Update now",
       "role": "button",
-      "note": "UpdatePrompt: an app update."
+      "note": "UpdatePrompt: an app update.",
+      "variants": {
+        "macos": "Install and Relaunch"
+      }
+    },
+    "common.updateDownload": {
+      "value": "Download {version}",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1."
     },
     "update.downloading": {
       "value": "Downloading · {size} of {total}",
@@ -858,15 +887,25 @@
       "role": "label",
       "note": "UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
     },
+    "common.updateTimeMinutes": {
+      "value": "About {minutes} min",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more."
+    },
+    "common.updateTimeLessThanMinute": {
+      "value": "Less than a minute",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Time left on the download when under a minute remains."
+    },
     "update.readyTitle": {
       "value": "{product} {version} is ready",
       "role": "title",
       "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1."
     },
     "update.readyBody": {
-      "value": "Restart {product} to finish updating.",
+      "value": "Restart to finish updating.",
       "role": "body",
-      "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "UpdatePrompt: an app update. The title already names the product."
     },
     "update.mandatoryTitle": {
       "value": "Update to keep using {product}",
@@ -969,14 +1008,97 @@
       "note": "UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "update.revokedContent": {
-      "value": "Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.",
+      "value": "Some of {product}'s content was withdrawn and can't be used. Update to keep going.",
       "role": "body",
       "note": "UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "update.upToDate": {
-      "value": "You're up to date",
+      "value": "You’re up to date",
       "role": "body",
       "note": "UpdatePrompt: an app update."
+    },
+    "common.updateInstallUpdate": {
+      "value": "Install update",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded."
+    },
+    "common.updateInstallOnQuit": {
+      "value": "Install on quit",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits."
+    },
+    "common.updateDeclineChecks": {
+      "value": "Don’t check",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement."
+    },
+    "common.updateQuitAndInstall": {
+      "value": "Quit and install",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish."
+    },
+    "common.updateQuitToInstall": {
+      "value": "Quit {product} to finish installing.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "common.updateDownloadingBytes": {
+      "value": "Downloading · {size}",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”)."
+    },
+    "common.updateProgressLabel": {
+      "value": "Download",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. The accessibility name of the download's progress bar."
+    },
+    "common.updateErrorNetwork": {
+      "value": "Couldn’t reach the update server. Check your connection and try again.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network."
+    },
+    "common.updateErrorCannotInstall": {
+      "value": "This update can’t be installed on this Mac.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help."
+    },
+    "common.updateErrorSecurity": {
+      "value": "The update didn’t pass its security check, so it wasn’t installed.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help."
+    },
+    "common.updateChecking": {
+      "value": "Checking for updates…",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists."
+    },
+    "common.updatePermissionTitle": {
+      "value": "Check for updates automatically?",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check."
+    },
+    "common.updatePermissionBody": {
+      "value": "{product} can look for new versions in the background and tell you when one is ready.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "common.updatePermissionAllow": {
+      "value": "Check automatically",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.",
+      "variants": {
+        "macos": "Check Automatically"
+      }
+    },
+    "common.updateFailedTitle": {
+      "value": "Couldn’t update",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain."
+    },
+    "common.updateLearnMore": {
+      "value": "Learn more",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser."
     },
     "update.checkNow": {
       "value": "Check for updates",
@@ -985,6 +1107,55 @@
       "variants": {
         "macos": "Check for Updates…"
       }
+    },
+    "menu.manageLicense": {
+      "value": "Manage license",
+      "role": "menu",
+      "note": "App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.",
+      "variants": {
+        "macos": "Manage License…"
+      }
+    },
+    "menu.signOut": {
+      "value": "Sign out",
+      "role": "menu",
+      "note": "App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).",
+      "variants": {
+        "macos": "Sign Out…"
+      }
+    },
+    "menu.account": {
+      "value": "Account",
+      "role": "windowTitle",
+      "note": "The Account tab of the macOS Settings window, and the window's title while it is selected."
+    },
+    "signin.signout.confirm": {
+      "value": "Sign out",
+      "role": "button",
+      "note": "Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.",
+      "variants": {
+        "macos": "Sign Out"
+      }
+    },
+    "notify.updateReady.title": {
+      "value": "Update ready",
+      "role": "title",
+      "note": "Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.updateReady.body": {
+      "value": "Restart to finish updating.",
+      "role": "body",
+      "note": "Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.signedIn.title": {
+      "value": "Signed in",
+      "role": "title",
+      "note": "Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.signedIn.body": {
+      "value": "You're signed in on this device.",
+      "role": "body",
+      "note": "Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
     },
     "updateProgress.contentTitle": {
       "value": "Downloading content",
@@ -1297,9 +1468,9 @@
       "note": "Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated)."
     },
     "paywall.notAvailable": {
-      "value": "Purchases aren't available in this version of {product}.",
+      "value": "Purchases aren't available in this version.",
       "role": "body",
-      "note": "Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product."
     },
     "paywall.portal": {
       "value": "Buy in your browser",
@@ -1427,9 +1598,9 @@
       "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3)."
     },
     "signin.methods.ledeApp": {
-      "value": "Use your {product} purchase email or a work or school email.",
+      "value": "Use your purchase email or a work or school email.",
       "role": "body",
-      "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product."
     },
     "signin.email.label": {
       "value": "Email",
@@ -1892,7 +2063,7 @@
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
     "signin.choice.continue": {
-      "value": "Use this license and continue",
+      "value": "Use this license",
       "role": "button",
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
@@ -1929,7 +2100,10 @@
     "signin.replace.open": {
       "value": "Replace a device",
       "role": "button",
-      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7).",
+      "variants": {
+        "macos": "Replace a Device"
+      }
     },
     "signin.replace.lede": {
       "value": "Choose a device to sign out. {thisDevice} takes its place.",
@@ -1987,7 +2161,7 @@
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
     },
     "signin.replace.confirmNamed": {
-      "value": "Replace {device} and continue",
+      "value": "Replace {device}",
       "role": "button",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },
@@ -2411,6 +2585,11 @@
       "role": "body",
       "note": "Sign in with another device (SIGN-IN.md §3.11)."
     },
+    "signin.approve.checkDevice": {
+      "value": "Check that your device shows this code.",
+      "role": "body",
+      "note": "Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated."
+    },
     "signin.approve.approve": {
       "value": "Approve and sign it in",
       "role": "button",
@@ -2502,9 +2681,19 @@
       "note": "Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "signin.signout.released": {
-      "value": "{product} stops using your {tier} license here and frees its seat.",
+      "value": "{product} stops using your {tier} license on this device and frees room for another device.",
       "role": "body",
       "note": "Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated)."
+    },
+    "signin.signout.titleMac": {
+      "value": "Sign out of {product} on this Mac?",
+      "role": "title",
+      "note": "Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.signout.releasedMac": {
+      "value": "This frees your {tier} license for another device.",
+      "role": "body",
+      "note": "Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated)."
     },
     "signin.signout.unsynced": {
       "value": "{n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}",
@@ -2547,7 +2736,7 @@
       "note": "Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”."
     },
     "signin.mail.replaced.body": {
-      "value": "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.",
+      "value": "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.",
       "role": "body",
       "note": "Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform."
     },
@@ -2657,7 +2846,7 @@
       "note": "Terminal help: what the enroll command does."
     },
     "cli.verb.deactivate": {
-      "value": "Stop using your license on this device and free its seat",
+      "value": "Stop using your license on this device and make room for another",
       "role": "body",
       "note": "Terminal help: what the deactivate command does."
     },
@@ -2702,7 +2891,7 @@
       "note": "Terminal help: what 'devices rename' does."
     },
     "cli.verb.devicesRemove": {
-      "value": "Remove a device and free its seat",
+      "value": "Remove a device and make room for another",
       "role": "body",
       "note": "Terminal help: what 'devices deauthorize' does."
     },
@@ -2917,9 +3106,9 @@
       "note": "Terminal: sign-out finished."
     },
     "cli.deactivate.done": {
-      "value": "{product} no longer uses your license on this device. Its seat is free.",
+      "value": "{product} no longer uses your license on this device. It no longer counts toward your limit.",
       "role": "body",
-      "note": "Terminal: deactivate finished; the license's seat on this device is released."
+      "note": "Terminal: deactivate finished; the device no longer counts toward the license limit."
     },
     "cli.nothingChanged": {
       "value": "Nothing changed.",
@@ -2942,7 +3131,7 @@
       "note": "Terminal: a device's name was cleared; {device} is the device's id."
     },
     "cli.devices.removed": {
-      "value": "{device} was removed. Its seat is free.",
+      "value": "{device} was removed. It no longer counts toward your limit.",
       "role": "body",
       "note": "Terminal: a device was removed from the license."
     },
@@ -3315,6 +3504,26 @@
       "value": "Find it",
       "role": "button",
       "note": "Approve dialog: looks the code up (reads only, never approves)."
+    },
+    "signin.approve.askPackages": {
+      "value": "pkey on {host} asks for a read-only personal token for your packages.",
+      "role": "body",
+      "note": "Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is."
+    },
+    "signin.approve.askPackagesTitle": {
+      "value": "Give pkey a personal token?",
+      "role": "title",
+      "note": "Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it."
+    },
+    "signin.approve.approvePackages": {
+      "value": "Approve",
+      "role": "button",
+      "note": "Approve dialog, confirm button for the pkey packages token."
+    },
+    "signin.approve.approvedPackages": {
+      "value": "Approved. Go back to your terminal.",
+      "role": "body",
+      "note": "Approve dialog outcome after approving the pkey packages token."
     },
     "signin.approve.askBody": {
       "value": "Code {code} asks to sign in to your account.",
@@ -4496,6 +4705,11 @@
       "role": "label",
       "note": "The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, at the start of a sentence."
     },
+    "license.channelIncludedByDev": {
+      "value": "Included with dev.",
+      "role": "body",
+      "note": "The console's ChannelPicker: beta is ticked and locked while dev is chosen, because dev includes beta. Not a kit component."
+    },
     "getIt.device.macos": {
       "value": "Mac",
       "role": "label",
@@ -5057,7 +5271,7 @@
       "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
     },
     "locker.error.loadFailed": {
-      "value": "Couldn't load {name}. Try again in a moment.",
+      "value": "Couldn't load {name}.",
       "role": "body",
       "note": "A page that failed to load (Library, a product) for a server error; a network failure reads core.codes.network instead. The Try again button is separate. Arguments: {name} = the page's own name."
     },
@@ -5072,19 +5286,44 @@
       "note": "The product page's heading when it failed to load and the product's name is not known; never the raw slug."
     },
     "locker.error.loadFailedLibrary": {
-      "value": "Couldn't load your library. Try again in a moment.",
+      "value": "Couldn't load your library.",
       "role": "body",
       "note": "The Library page failed to load for a server error; a network failure reads core.codes.network. The Try again button is separate."
     },
     "locker.error.loadFailedDiscover": {
-      "value": "Couldn't load Discover. Try again in a moment.",
+      "value": "Couldn't load Discover.",
       "role": "body",
       "note": "The Discover page failed to load; the Try again button is separate."
     },
     "locker.error.loadFailedMethods": {
-      "value": "Couldn't load your sign-in methods. Try again in a moment.",
+      "value": "Couldn't load your sign-in methods.",
       "role": "body",
       "note": "Account, Sign-in methods failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedSessions": {
+      "value": "Couldn't load where you're signed in.",
+      "role": "body",
+      "note": "Account, Sessions card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedPackages": {
+      "value": "Couldn't load your packages.",
+      "role": "body",
+      "note": "Account, Packages card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedLicense": {
+      "value": "Couldn't load your license.",
+      "role": "body",
+      "note": "A product page's License card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedDevices": {
+      "value": "Couldn't load your devices.",
+      "role": "body",
+      "note": "A product page's Devices card failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedName": {
+      "value": "Couldn't load {name}.",
+      "role": "body",
+      "note": "A page or card named by {name} failed to load (storefront, download, free device); the Try again button is separate. Arguments: {name} = the product's name, or locker.error.thisProduct when unknown."
     },
     "locker.error.page.title": {
       "value": "Something didn't load",
@@ -6050,6 +6289,16 @@
       "value": "No personal tokens yet. Create one for each computer or build server.",
       "role": "hint",
       "note": "Account → Packages (P0-36)."
+    },
+    "locker.packages.atLimitAdmin": {
+      "value": "At most {count} personal tokens, admin tokens included. Revoke one first; admin tokens are in the console",
+      "role": "hint",
+      "note": "Account → Packages at the limit while an admin token holds a place (ST-34.11)."
+    },
+    "locker.packages.adminPointer": {
+      "value": "Admin tokens are in the console.",
+      "role": "hint",
+      "note": "Account → Packages lists packages tokens only; admin tokens are in the console (ST-34.11, D-9)."
     },
     "locker.packages.reconnectPersonal": {
       "value": "Create a new one and set it again to reconnect.",

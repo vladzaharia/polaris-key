@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── Device attestation on workerd (P6-02) ─────────────────────────────────────────────────
 //
-// The Node lane (test/attest.test.ts, test/appAttest.test.ts) proves the routes and the checks.
+// The Node lane (test/surfaces/attest.test.ts, test/core/appAttest.test.ts) proves the routes and the checks.
 // This proves what only workerd can: the hand-written DER/X.509/CBOR code and WebCrypto ECDSA
 // (P-384 issuers signing P-256 leaves with SHA-256, P-384 with SHA-384) verify in the runtime
 // that ships, with no runtime code generation, and the 0053 migrations apply to real D1.

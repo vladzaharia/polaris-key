@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (DX consolidation E: Licensing model)                                                       |
 | Size        | 0.3–0.5 engineer-weeks                                                                                                                                 |
 | Depends on  | [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-12](LX-12-licence-lifecycle.md), [LX-05b](LX-05b-reserved-names-error.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-16](LX-16-licensing-contract.md)                                                                           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-25](ST-25-legacy-retirement.md), [LX-16](LX-16-licensing-contract.md)                                      |
 | Role        | `pkey-implementer`                                                                                                                                     |
 | Plan mode   | no                                                                                                                                                     |
 | Gates       | `rule-9`                                                                                                                                               |

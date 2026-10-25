@@ -38,9 +38,6 @@
  *   /api/platform/feeds/…         — the Feeds admin API in platform scope (F-11, `feeds.ts`).
  *   /api/platform/migrations/…    — the data-migration runner: dry run, report, apply, down
  *                                   (P0-49, `migrations.ts`; in the OpenAPI spec, rule 10).
- *   /api/platform/override-migration/… — the licence-override migration: prerequisites, notice,
- *                                   inventory, dry run, run and report (U-03,
- *                                   `overrideMigration.ts`; in the OpenAPI spec, rule 10).
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's
  * NARRATIVE_ONLY): no OpenAPI entry. Nothing here is secret (THREAT-MODEL "Platform settings and
@@ -83,7 +80,6 @@ import { platformAudit } from "../../core/audit.js";
 import { operationsSnapshot } from "../../core/ops/operations.js";
 import { adminOidcIsDedicated } from "../../platform/platformOidc.js";
 import { platformMigrationReport } from "../../services/identity/public.js";
-import { handleOverrideMigration } from "./overrideMigration.js";
 import { handleMigrations } from "./migrations.js";
 import { platformReady } from "../lib/platformReady.js";
 import { parseJsonColumn } from "../../platform/json.js";
@@ -286,23 +282,6 @@ export async function handlePlatform(
       throw e;
     }
   }
-  // U-03: the licence-override migration (notes/S-17 §5.12).
-  if (rest[0] === "override-migration") {
-    try {
-      return await handleOverrideMigration(
-        req,
-        env,
-        db,
-        session,
-        rest.slice(1),
-        now,
-      );
-    } catch (e) {
-      if (e instanceof AdminBodyError)
-        return err(e.status, e.code, e.message, e.extra);
-      throw e;
-    }
-  }
   // ST-27: the platform's alert destinations.
   if (rest[0] === "alerts")
     return handleAlertDestinations(
@@ -361,7 +340,8 @@ export async function handlePlatform(
   if (req.method !== "GET")
     return err(405, "method_not_allowed", "method not allowed");
   if (resource === "version") return adminJson(identity(env));
-  if (resource === "ready") return adminJson(await platformReady(env, db, now));
+  if (resource === "ready")
+    return adminJson(await platformReady(env, db, now, session.principal));
   if (resource === "deployment") return deployment(req, env, db);
   if (resource === "operations")
     return adminJson(

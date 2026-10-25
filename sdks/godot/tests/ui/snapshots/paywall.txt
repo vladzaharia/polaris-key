@@ -1,0 +1,49 @@
+== offers, the browser ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Get more with \u2068Polaris Key SDK\u2069 \u2068Pro\u2069"
+Card/Scroll/Body/Right/Actions/Primary: Button "Buy in your browser" [focus 1]
+== offers, the store ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Get more with \u2068Polaris Key SDK\u2069 \u2068Pro\u2069"
+Card/Scroll/Body/Right/Actions/Primary: Button "Upgrade to \u2068Pro\u2069" [focus 1]
+Card/Scroll/Body/Right/Actions/Restore: Button "Restore purchases" [focus 2]
+== offers, with what it includes ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Get more with \u2068Polaris Key SDK\u2069 \u2068Pro\u2069"
+Card/Scroll/Body/Text/Words/IncludesHead: Label "\u2068Pro\u2069 includes"
+Card/Scroll/Body/Text/Words/Includes: Label "Unlimited exports\nCloud saves\nEvery future expansion"
+Card/Scroll/Body/Right/Actions/Primary: Button "Buy in your browser" [focus 1]
+Card/Scroll/Body/Right/Actions/Redeem: Button "Redeem a code" [focus 2]
+== loading ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Loading…"
+Card/Scroll/Body/Text/Loading: ProgressBar
+== purchasing ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Completing purchase…"
+Card/Scroll/Body/Right/Actions/Primary: Button "Upgrade to \u2068Pro\u2069" [disabled]
+== restoring ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Restore purchases"
+== purchased ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "\u2068Pro\u2069 is unlocked"
+Card/Scroll/Body/Right/Actions/Primary: Button "Done" [focus 1]
+== not available ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Get more with \u2068Polaris Key SDK\u2069 \u2068Pro\u2069"
+Card/Scroll/Body/Text/Words/Message: Label "Purchases aren't available in this version."
+== not available, the portal offered ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Words/Title: Label "Get more with \u2068Polaris Key SDK\u2069 \u2068Pro\u2069"
+Card/Scroll/Body/Text/Words/Message: Label "Purchases aren't available in this version."
+Card/Scroll/Body/Right/Actions/Primary: Button "Buy in your browser" [focus 1]

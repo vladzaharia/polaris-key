@@ -18,13 +18,13 @@ A product that keeps its manifest in its own repo is registered by linking that 
 
 ## Steps
 
-1. **CLI** In the repo's root, scaffold the manifest. `--modules` takes the service slugs; without it you get `license,config`.
+1. **CLI** In the repo's root, scaffold the manifest. `--modules` takes the service slugs; without it you get `license,config`. With License on you also get a Free tier; `--starter-tier none` leaves it out.
 
    ```sh title="Terminal"
    pkey init --product tidewater --name "Tidewater Studio" --modules license,config
    ```
 
-   You should see `.pkey/product.yaml` and `.pkey/schema.yaml` created. Existing files are never overwritten without `--force`.
+   You should see `.pkey/product.yaml` and `.pkey/schema.yaml` created. Existing files are never overwritten without `--force`. On a terminal, `pkey init` asks what the product is for and whether to start with a Free tier; `--modules` and `--starter-tier` answer instead.
 
 2. **CLI** Check the manifest with the rules the platform applies.
 

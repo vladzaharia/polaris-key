@@ -104,12 +104,12 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           PEP440: ${{ needs.version.outputs.pep440 }}
         run: node tools/sdk-version.mjs stamp --version "$VERSION" --pep440 "$PEP440"
-      # Rebuild from the stamped tree: @polaris-key/react compiles its version into dist.
+      # Rebuild from the stamped tree: the React SDK's version lives in @polaris-key/ui-core/browser (DL18).
       - run: pnpm build
       - name: The React SDK reports the stamped version
         env:
           VERSION: ${{ needs.version.outputs.version }}
-        run: grep -Fq "export const SDK_VERSION = \"$VERSION\";" packages/sdk-react/dist/version.js
+        run: grep -Fq "export const SDK_VERSION = \"$VERSION\";" packages/ui-core/dist/browser/sdk/version.js
       # `pnpm pack` rewrites each `workspace:*` range to the stamped version, so the packages
       # depend on each other at exactly this version.
       - name: Pack each package into dist-pkg/<name>/
@@ -496,9 +496,9 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           tools/check_publication.sh
-          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor spring-boot-starter ui ui-android ui-core update zstd"
+          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor ui ui-android ui-core ui-desktop update zstd"
           repo=build/repo/im/plrs/key
-          actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
+          actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | grep -vx 'spring-boot-starter' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
           if [ "$actual" != "$expected" ]; then
             echo "::error::build/repo holds [$actual], the release publishes [$expected]: add each new artifact to .pkey/release and this workflow's lists." >&2
             exit 1
@@ -560,9 +560,9 @@ jobs:
           - desktop
           - ui-android
           - ui-core
+          - ui-desktop
           - server
           - server-ktor
-          - spring-boot-starter
     permissions:
       contents: read
       id-token: write

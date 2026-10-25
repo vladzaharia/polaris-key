@@ -1,7 +1,7 @@
 # @pkey-feature license.entitlements
 """S-19 G11 and the licence conveniences (SDK parity pass §3.3, SP-P02).
 
-``is_entitled`` and ``entitlement_value`` answer as if nothing were granted whenever the gate is
+``entitlements.has`` and ``entitlements.value`` answer as if nothing were granted whenever the gate is
 not usable, so a revoked or expired install loses its unlocks at once instead of keeping them
 until the cache is cleared. ``license_info()`` summarises the verified document either way.
 """
@@ -20,8 +20,8 @@ def _client(**kw):
 def test_entitled_while_usable() -> None:
     c = _client()
     c.license.activate_with_key("k")
-    assert c.license.is_entitled("polarisVpn", now=NOW + 10) is True
-    assert c.license.entitlement_value("license.tier", now=NOW + 10) == "pro"
+    assert c.entitlements.has("polarisVpn", now=NOW + 10) is True
+    assert c.entitlements.value("license.tier", now=NOW + 10) == "pro"
     c.close()
 
 
@@ -40,14 +40,14 @@ def test_revoked_gate_denies_every_flag() -> None:
 
     c = make_client(handler)
     c.license.activate_with_key("k")
-    assert c.license.is_entitled("polarisVpn") is True
+    assert c.entitlements.has("polarisVpn") is True
     state["revoked"] = True
     c.sync(force=True)
     assert c.status().status == "revoked"
     # The hard 401 removed the document it answered for, so nothing is left to grant.
     assert c.license.doc is None
-    assert c.license.is_entitled("polarisVpn") is False
-    assert c.license.entitlement_value("license.tier") is None
+    assert c.entitlements.has("polarisVpn") is False
+    assert c.entitlements.value("license.tier") is None
     assert c.license.license_info() is None
     c.close()
 
@@ -55,8 +55,8 @@ def test_revoked_gate_denies_every_flag() -> None:
 def test_not_entitled_once_expired_past_grace() -> None:
     c = _client()
     c.license.activate_with_key("k")
-    assert c.license.is_entitled("polarisVpn", now=NOW + 40 * DAY) is False
-    assert c.license.is_entitled("polarisVpn", now=NOW + 2 * DAY) is True  # grace still usable
+    assert c.entitlements.has("polarisVpn", now=NOW + 40 * DAY) is False
+    assert c.entitlements.has("polarisVpn", now=NOW + 2 * DAY) is True  # grace still usable
     c.close()
 
 

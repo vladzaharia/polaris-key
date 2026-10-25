@@ -107,7 +107,7 @@ export const OPERATOR_ROW_KEYS: readonly string[] = [
   "deltas.lazy.hotDevices",
   "deltas.lazy.dailyCap",
   "email.dailyCap",
-  // ST-05b: the operator-only artifact policy, which the bespoke `update/settings` route wrote.
+  // ST-05b: the operator-only artifact policy.
   "update.operatorPolicy",
 ];
 

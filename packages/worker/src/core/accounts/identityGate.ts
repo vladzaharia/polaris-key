@@ -119,7 +119,7 @@ export function isNavigation(req: Request): boolean {
 export async function identityNavigationRedirect(
   req: Request,
   env: Env,
-  db: Db,
+  _db: Db,
   product: { slug: string; services: ServicesMap },
   rest: readonly string[],
 ): Promise<Response | null> {

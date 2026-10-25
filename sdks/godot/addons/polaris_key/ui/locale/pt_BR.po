@@ -40,7 +40,7 @@ msgstr "Continuar"
 #. Done
 #. Shared verb used across the kit's screens.
 msgid "common.done"
-msgstr "Concluído"
+msgstr "OK"
 
 #. Save
 #. Shared verb used across the kit's screens.
@@ -60,7 +60,7 @@ msgstr "Agora não"
 #. Later
 #. Shared verb used across the kit's screens. Postpones an action.
 msgid "common.later"
-msgstr "Mais tarde"
+msgstr "Depois"
 
 #. Try again
 #. Shared verb used across the kit's screens. Repeats the action that failed.
@@ -131,6 +131,11 @@ msgstr "Dispensar"
 #. Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated).
 msgid "common.byDeveloper"
 msgstr "por {developer}"
+
+#. That link doesn't open anything here.
+#. Shown when a deep link was refused or names a place this app does not have. Nothing was opened and nothing was changed.
+msgid "common.linkUnavailable"
+msgstr "Este link não abre nada aqui."
 
 #. {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}
 #. The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
@@ -523,7 +528,7 @@ msgstr "Verificando sua licença…"
 #. {product} couldn't start
 #. PolarisKeyGate and Boot: title of the error screen; the message comes from the error's core copy. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "gate.error.title"
-msgstr "Não foi possível iniciar {product}"
+msgstr "Falha ao iniciar {product}"
 
 #. Starting…
 #. Boot screen, shown while the product starts.
@@ -620,15 +625,15 @@ msgstr "{product} precisa de {size} de conteúdo novo, e você está em uma cone
 msgid "boot.consent.download"
 msgstr "Baixar"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "Se o problema continuar, reinicie o app."
+msgstr "Se o problema continuar, reinicie {product}."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "welcome.title"
-msgstr "Boas-vindas ao {product}"
+msgstr "Boas-vindas a {product}"
 
 #. Welcome
 #. Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}.
@@ -650,10 +655,10 @@ msgstr "Entre ou use uma chave de licença para continuar."
 msgid "welcome.ledeKeyOnly"
 msgstr "Digite uma chave de licença para continuar."
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "Entre para usar {product}."
+msgstr "Entre para continuar."
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -718,7 +723,7 @@ msgstr "Ativar offline"
 #. Sign in to {product}
 #. SignIn method sheet title in an app. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signIn.title"
-msgstr "Entrar no {product}"
+msgstr "Entrar em {product}"
 
 #. No sign-in method is available for {product}. Use a license key instead.
 #. SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -838,12 +843,12 @@ msgstr "Carregue o arquivo de ativação que você receber ou cole o texto dele.
 #. Load file…
 #. OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker.
 msgid "offlineActivation.loadFile"
-msgstr "Carregar arquivo…"
+msgstr "Abrir arquivo…"
 
 #. macos: Load File…
 msgctxt "macos"
 msgid "offlineActivation.loadFile"
-msgstr "Carregar arquivo…"
+msgstr "Abrir arquivo…"
 
 #. Paste the activation text here
 #. OfflineActivation: activation by exchanging a request code and a response file. Placeholder of the paste box.
@@ -952,7 +957,7 @@ msgstr "Substituir e continuar"
 #. {device} was replaced. {product} is continuing.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated).
 msgid "deviceLimit.removed"
-msgstr "{device} foi substituído. {product} está continuando."
+msgstr "{device} foi substituído. {product} vai continuar."
 
 #. {device} couldn't be replaced. Try again.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -997,7 +1002,7 @@ msgstr "Dispositivos que usam esta licença."
 #. {platform} · last used {when}
 #. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "devices.meta"
-msgstr "{platform} · usado por último {when}"
+msgstr "{platform} · último uso {when}"
 
 #. {count, plural, one {# device} other {# devices}}
 #. Devices: the list of devices using the license. Arguments: {count} = a number of items.
@@ -1081,12 +1086,22 @@ msgstr "Há uma atualização disponível"
 #. You have {version} · {size} download
 #. UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”).
 msgid "update.current"
-msgstr "Você tem a {version} · download de {size}"
+msgstr "Você tem a versão {version} · download de {size}"
+
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "Você tem a versão {version}"
 
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
 msgstr "Novidades"
+
+#. Select
+#. Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.
+msgid "part.hint.select"
+msgstr "Selecionar"
 
 #. All changes in {version}
 #. UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1.
@@ -1101,29 +1116,29 @@ msgstr "Todas as mudanças da {version}"
 #. Later
 #. UpdatePrompt: an app update. Dismisses the prompt.
 msgid "update.later"
-msgstr "Mais tarde"
+msgstr "Depois"
 
 #. macos: Remind Me Later
 msgctxt "macos"
 msgid "update.later"
-msgstr "Mais tarde"
+msgstr "Depois"
 
 #. Restart when ready
 #. UpdatePrompt: an app update. Queues the restart after the download.
 msgid "update.restartWhenReady"
-msgstr "Reiniciar quando estiver pronto"
+msgstr "Reiniciar quando terminar"
 
 #. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.restartWhenReady"
-msgstr "Reiniciar quando estiver pronto"
+msgstr "Reiniciar quando terminar"
 
 #. Restart now
 #. UpdatePrompt: an app update. The update is downloaded.
 msgid "update.restartNow"
 msgstr "Reiniciar agora"
 
-#. macos: Restart Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.restartNow"
 msgstr "Reiniciar agora"
@@ -1143,10 +1158,15 @@ msgstr "Pular esta versão"
 msgid "update.install"
 msgstr "Atualizar agora"
 
-#. macos: Update Now
+#. macos: Install and Relaunch
 msgctxt "macos"
 msgid "update.install"
 msgstr "Atualizar agora"
+
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "Baixar {version}"
 
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
@@ -1158,15 +1178,25 @@ msgstr "Baixando · {size} de {total}"
 msgid "update.timeLeft"
 msgstr "Cerca de {time} restantes"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "Cerca de {minutes} min"
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "Menos de um minuto"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version} está pronto"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "Reinicie {product} para concluir a atualização."
+msgstr "Reinicie para concluir a atualização."
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1176,12 +1206,12 @@ msgstr "Atualize para continuar usando {product}"
 #. This version is no longer supported.
 #. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
-msgstr "Esta versão não é mais compatível."
+msgstr "Esta versão não tem mais suporte."
 
 #. This version is no longer supported
 #. UpdatePrompt: an app update. No update is available yet.
 msgid "update.blockedTitle"
-msgstr "Esta versão não é mais compatível"
+msgstr "Esta versão não tem mais suporte"
 
 #. No update is available here yet. You can keep using {product} for now.
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1273,15 +1303,125 @@ msgstr "Seu gerenciador de pacotes instala a atualização."
 msgid "update.platform.generic"
 msgstr "A atualização é instalada pela loja ou plataforma onde você obteve {product}."
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize {product} para continuar."
+msgstr "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize para continuar."
 
-#. You're up to date
+#. You’re up to date
 #. UpdatePrompt: an app update.
 msgid "update.upToDate"
 msgstr "Você está atualizado"
+
+#. Install update
+#. UpdatePrompt: an app update. The macOS update window's primary while nothing is downloaded yet; the Mac variant is title case. Install and Relaunch (update.install) is for an update that is already downloaded.
+msgid "common.updateInstallUpdate"
+msgstr "Instalar atualização"
+
+#. macos: Install Update
+msgctxt "macos"
+msgid "common.updateInstallUpdate"
+msgstr "Instalar atualização"
+
+#. Install on quit
+#. UpdatePrompt: an app update. The macOS update window's dismissal once the update is downloaded: it installs when the app next quits.
+msgid "common.updateInstallOnQuit"
+msgstr "Instalar ao sair"
+
+#. macos: Install on Quit
+msgctxt "macos"
+msgid "common.updateInstallOnQuit"
+msgstr "Instalar ao sair"
+
+#. Don’t check
+#. UpdatePrompt: an app update. Declines automatic update checks in the macOS permission ask; it is not a postponement.
+msgid "common.updateDeclineChecks"
+msgstr "Não verificar"
+
+#. macos: Don’t Check
+msgctxt "macos"
+msgid "common.updateDeclineChecks"
+msgstr "Não verificar"
+
+#. Quit and install
+#. UpdatePrompt: an app update. The app has not quit by itself; this asks it to quit so the installer can finish.
+msgid "common.updateQuitAndInstall"
+msgstr "Sair e instalar"
+
+#. macos: Quit and Install
+msgctxt "macos"
+msgid "common.updateQuitAndInstall"
+msgstr "Sair e instalar"
+
+#. Quit {product} to finish installing.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updateQuitToInstall"
+msgstr "Saia de {product} para concluir a instalação."
+
+#. Downloading · {size}
+#. UpdatePrompt: an app update. Bytes received while the download's total size is not known. Arguments: {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "common.updateDownloadingBytes"
+msgstr "Baixando · {size}"
+
+#. Download
+#. UpdatePrompt: an app update. The accessibility name of the download's progress bar.
+msgid "common.updateProgressLabel"
+msgstr "Download"
+
+#. Couldn’t reach the update server. Check your connection and try again.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the check or download failed on the network.
+msgid "common.updateErrorNetwork"
+msgstr "Não foi possível conectar ao servidor de atualizações. Verifique sua conexão e tente novamente."
+
+#. This update can’t be installed on this Mac.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update needs a different macOS or hardware; trying again will not help.
+msgid "common.updateErrorCannotInstall"
+msgstr "Esta atualização não pode ser instalada neste Mac."
+
+#. The update didn’t pass its security check, so it wasn’t installed.
+#. UpdatePrompt: an app update. Under common.updateFailedTitle when the update's signature did not verify; trying again will not help.
+msgid "common.updateErrorSecurity"
+msgstr "A atualização não passou na verificação de segurança e não foi instalada."
+
+#. Checking for updates…
+#. UpdatePrompt: an app update. The update window while the app asks the update server whether a new version exists.
+msgid "common.updateChecking"
+msgstr "Verificando atualizações…"
+
+#. Check for updates automatically?
+#. UpdatePrompt: an app update. The one-time ask in the macOS update window, before the first check.
+msgid "common.updatePermissionTitle"
+msgstr "Verificar atualizações automaticamente?"
+
+#. {product} can look for new versions in the background and tell you when one is ready.
+#. UpdatePrompt: an app update. Under common.updatePermissionTitle. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "common.updatePermissionBody"
+msgstr "O {product} pode procurar novas versões em segundo plano e avisar quando uma estiver pronta."
+
+#. Check automatically
+#. UpdatePrompt: an app update. Accepts the automatic update check; the other choice is common.notNow.
+msgid "common.updatePermissionAllow"
+msgstr "Verificar automaticamente"
+
+#. macos: Check Automatically
+msgctxt "macos"
+msgid "common.updatePermissionAllow"
+msgstr "Verificar automaticamente"
+
+#. Couldn’t update
+#. UpdatePrompt: an app update. The error callout of the update window, over the update's own error text; the one action is common.tryAgain.
+msgid "common.updateFailedTitle"
+msgstr "Não foi possível atualizar"
+
+#. Learn more
+#. UpdatePrompt: an app update. For an update that only has a web page (the app cannot install it): opens that page in the browser.
+msgid "common.updateLearnMore"
+msgstr "Saiba mais"
+
+#. macos: Learn More
+msgctxt "macos"
+msgid "common.updateLearnMore"
+msgstr "Saiba mais"
 
 #. Check for updates
 #. UpdatePrompt: an app update. Menu item and settings button.
@@ -1292,6 +1432,61 @@ msgstr "Verificar atualizações"
 msgctxt "macos"
 msgid "update.checkNow"
 msgstr "Verificar atualizações"
+
+#. Manage license
+#. App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.
+msgid "menu.manageLicense"
+msgstr "Gerenciar a licença"
+
+#. macos: Manage License…
+msgctxt "macos"
+msgid "menu.manageLicense"
+msgstr "Gerenciar a licença"
+
+#. Sign out
+#. App menu item that signs this device out of the product, after a confirmation. macOS menu items use title case and an ellipsis because the item asks first (SIGN-IN.md D-71).
+msgid "menu.signOut"
+msgstr "Sair"
+
+#. macos: Sign Out…
+msgctxt "macos"
+msgid "menu.signOut"
+msgstr "Sair"
+
+#. Account
+#. The Account tab of the macOS Settings window, and the window's title while it is selected.
+msgid "menu.account"
+msgstr "Conta"
+
+#. Sign out
+#. Sign-out confirmation (SIGN-IN.md §4.9): the destructive button that signs this device out.
+msgid "signin.signout.confirm"
+msgstr "Sair"
+
+#. macos: Sign Out
+msgctxt "macos"
+msgid "signin.signout.confirm"
+msgstr "Sair"
+
+#. Update ready
+#. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.title"
+msgstr "Atualização pronta"
+
+#. Restart to finish updating.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.body"
+msgstr "Reinicie para concluir a atualização."
+
+#. Signed in
+#. Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.title"
+msgstr "Login concluído"
+
+#. You're signed in on this device.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.body"
+msgstr "Você entrou neste dispositivo."
 
 #. Downloading content
 #. UpdateProgress: compact progress for an app update or a content pack.
@@ -1401,7 +1596,7 @@ msgstr "Versões permitidas: {min} a {max}"
 #. Allowed versions: {min} or later
 #. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version.
 msgid "status.allowedMin"
-msgstr "Versões permitidas: {min} ou posterior"
+msgstr "Versões permitidas: {min} ou posteriores"
 
 #. Allowed versions: up to {max}
 #. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {max} = the highest allowed value or version.
@@ -1642,10 +1837,10 @@ msgstr "Concluindo a compra…"
 msgid "paywall.purchased"
 msgstr "{tier} desbloqueado"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "Compras não estão disponíveis nesta versão de {product}."
+msgstr "Compras não estão disponíveis nesta versão."
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1797,10 +1992,10 @@ msgstr "Entrar no Polaris Locker"
 msgid "signin.methods.titleApp"
 msgstr "Entrar"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "Use o e-mail da sua compra de {product} ou um e-mail de trabalho ou escola."
+msgstr "Use o e-mail com que você comprou ou um e-mail de trabalho ou escola."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -1910,7 +2105,7 @@ msgstr "Código · {code} · Confira se é igual ao da tela"
 #. Polaris Locker signs you in for {app}. {developer} never sees your codes or passkeys.
 #. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
 msgid "signin.footer"
-msgstr "O Polaris Locker faz seu acesso ao {app}. {developer} nunca vê seus códigos nem suas chaves de acesso."
+msgstr "O Polaris Locker cuida do seu acesso a {app}. {developer} nunca vê seus códigos nem suas chaves de acesso."
 
 #. Sign-in is turned off for {product}. Contact {developer}.
 #. Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated).
@@ -2094,7 +2289,7 @@ msgstr "Falta uma etapa para {app}. Enviamos códigos de acesso, recibos e aviso
 #. Steam doesn't share an email. Add one so you can get back in without Steam.
 #. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
 msgid "signin.gate.steam"
-msgstr "O Steam não compartilha e-mail. Adicione um para poder voltar sem o Steam."
+msgstr "O Steam não compartilha e-mail. Adicione um para poder entrar de novo sem o Steam."
 
 #. Verify and continue
 #. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
@@ -2139,17 +2334,17 @@ msgstr "Unir em uma só conta"
 #. Name and picture from {provider}.
 #. Profile import (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam).
 msgid "signin.profile.source"
-msgstr "Nome e foto do {provider}."
+msgstr "Nome e imagem importados de {provider}."
 
 #. Apple doesn't share a picture. Add one
 #. Profile import (SIGN-IN.md §3.5).
 msgid "signin.profile.applePicture"
-msgstr "A Apple não compartilha foto. Adicione uma"
+msgstr "A Apple não compartilha imagem. Adicione uma"
 
 #. macos: Apple Doesn't Share a Picture. Add One
 msgctxt "macos"
 msgid "signin.profile.applePicture"
-msgstr "A Apple não compartilha foto. Adicione uma"
+msgstr "A Apple não compartilha imagem. Adicione uma"
 
 #. Choose a license for this device
 #. Choose a license for this device (SIGN-IN.md §3.6).
@@ -2363,19 +2558,19 @@ msgstr "Usar uma chave de licença"
 #. Free a device
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freeDevice"
-msgstr "Liberar um dispositivo"
+msgstr "Liberar dispositivo"
 
 #. macos: Free a Device
 msgctxt "macos"
 msgid "signin.choice.freeDevice"
-msgstr "Liberar um dispositivo"
+msgstr "Liberar dispositivo"
 
-#. Use this license and continue
+#. Use this license
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.continue"
 msgstr "Usar esta licença e continuar"
 
-#. macos: Use This License and Continue
+#. macos: Use This License
 msgctxt "macos"
 msgid "signin.choice.continue"
 msgstr "Usar esta licença e continuar"
@@ -2443,7 +2638,7 @@ msgstr "Substituir…"
 #. {platform} · last used {when}
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "signin.replace.meta"
-msgstr "{platform} · usado por último {when}"
+msgstr "{platform} · último uso {when}"
 
 #. Least recent
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -2485,15 +2680,10 @@ msgctxt "macos"
 msgid "signin.replace.confirm"
 msgstr "Substituir e continuar"
 
-#. Replace {device} and continue
+#. Replace {device}
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The primary once a device is picked, in place of the generic one. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.confirmNamed"
-msgstr "Substituir {device} e continuar"
-
-#. macos: Replace {device} and Continue
-msgctxt "macos"
-msgid "signin.replace.confirmNamed"
-msgstr "Substituir {device} e continuar"
+msgstr "Substituir {device}"
 
 #. Back
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -2547,7 +2737,7 @@ msgstr "{license} · substitui {device}"
 #. You'll choose a license in {app}.
 #. Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.consent.licenseInApp"
-msgstr "Você vai escolher uma licença no {app}."
+msgstr "Você vai escolher uma licença em {app}."
 
 #. Change
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
@@ -2572,7 +2762,7 @@ msgstr "Seu perfil e e-mail"
 #. It gets its own id for you, and won't see your other products or how you sign in.
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
 msgid "signin.consent.pairwise"
-msgstr "Ele recebe um id próprio para você e não verá seus outros produtos nem como você entra."
+msgstr "Ele recebe um ID próprio para você e não verá seus outros produtos nem como você entra."
 
 #. Not you?
 #. Hosted sign-in card (SIGN-IN.md).
@@ -2631,7 +2821,7 @@ msgstr[2] "{left} usos da chave restantes"
 #. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
 #. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.noEntries"
-msgstr "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela."
+msgstr "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e entre em {product} com sua conta."
 
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
@@ -2676,7 +2866,7 @@ msgstr "{tier} · na sua biblioteca"
 #. You're signed in to {app}
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.signedIn"
-msgstr "Você entrou no {app}"
+msgstr "Você entrou em {app}"
 
 #. Return to {app}
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
@@ -2701,12 +2891,12 @@ msgstr "Ficar aqui"
 #. Start using {product}
 #. Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated).
 msgid "signin.done.start"
-msgstr "Começar a usar o {product}"
+msgstr "Começar a usar {product}"
 
 #. macos: Start Using {product}
 msgctxt "macos"
 msgid "signin.done.start"
-msgstr "Começar a usar o {product}"
+msgstr "Começar a usar {product}"
 
 #. Sign in to finish on {device}
 #. Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2806,7 +2996,7 @@ msgstr "{app} está pronto."
 #. Choose a license · {app} is ready to finish signing in.
 #. Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.desktop.notifyChoose"
-msgstr "Escolha uma licença · O {app} está pronto para concluir o acesso."
+msgstr "Escolha uma licença · {app} está pronto para concluir o acesso."
 
 #. Sign in…
 #. App menu item that opens sign-in (SIGN-IN.md §3.17).
@@ -2906,7 +3096,7 @@ msgstr "Você pode fechar esta aba e voltar para {app}."
 #. Go back to {app} to choose a license. You can close this tab.
 #. Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.chooseInApp"
-msgstr "Volte ao {app} para escolher uma licença. Você pode fechar esta aba."
+msgstr "Volte a {app} para escolher uma licença. Você pode fechar esta aba."
 
 #. You're signed in
 #. Return step, short form (SIGN-IN.md §3.10).
@@ -2916,7 +3106,7 @@ msgstr "Você entrou"
 #. Sign-in was canceled in {app}. Start again from {app}.
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.cancelled"
-msgstr "O acesso foi cancelado em {app}. Comece de novo pelo {app}."
+msgstr "O acesso foi cancelado em {app}. Comece de novo a partir de {app}."
 
 #. Open your library
 #. Return step (SIGN-IN.md §3.10).
@@ -3008,6 +3198,11 @@ msgstr "Aprovar um novo dispositivo?"
 msgid "signin.approve.warning"
 msgstr "Só aprove se foi você que iniciou isto, em um dispositivo à sua frente. Ninguém do Polaris Locker nem nenhum desenvolvedor vai pedir isso a você."
 
+#. Check that your device shows this code.
+#. Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated.
+msgid "signin.approve.checkDevice"
+msgstr "Confira se o seu dispositivo mostra este código."
+
 #. Approve and sign it in
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.approve"
@@ -3021,12 +3216,12 @@ msgstr "Aprovar e conectar"
 #. Deny
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.deny"
-msgstr "Recusar"
+msgstr "Negar"
 
 #. That request was denied. Use another way to sign in.
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.denied"
-msgstr "Essa solicitação foi recusada. Use outra forma de entrar."
+msgstr "Essa solicitação foi negada. Use outra forma de entrar."
 
 #. That code expired. Get a new code.
 #. Sign in with another device (SIGN-IN.md §3.11).
@@ -3086,17 +3281,17 @@ msgstr "Um novo código será enviado para {email}."
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.again"
-msgstr "Entre novamente"
+msgstr "Entrar novamente"
 
 #. macos: Sign In Again
 msgctxt "macos"
 msgid "signin.again"
-msgstr "Entre novamente"
+msgstr "Entrar novamente"
 
 #. {product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.
 #. The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.identityOff.notice"
-msgstr "{product} não usa o acesso do Polaris Locker. Abra {product} e digite sua chave de licença nele."
+msgstr "{product} não usa o acesso do Polaris Locker. Abra {product} e digite sua chave de licença lá."
 
 #. Sign in here to see {product} in your library.
 #. The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -3108,10 +3303,20 @@ msgstr "Entre aqui para ver {product} na sua biblioteca."
 msgid "signin.signout.title"
 msgstr "Sair de {product} neste dispositivo?"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "{product} deixa de usar sua licença {tier} aqui e libera a vaga."
+msgstr "{product} deixa de usar sua licença {tier} aqui e libera espaço para outro dispositivo."
+
+#. Sign out of {product} on this Mac?
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.title with the Mac named. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.signout.titleMac"
+msgstr "Sair de {product} neste Mac?"
+
+#. This frees your {tier} license for another device.
+#. Sign-out confirmation in the macOS Settings pane (SIGN-IN.md §4.9, D-71): signin.signout.released, shorter. Arguments: {tier} = the tier's name (never translated).
+msgid "signin.signout.releasedMac"
+msgstr "Isso libera sua licença {tier} para outro dispositivo."
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3160,22 +3365,22 @@ msgstr "Gerenciar métodos de acesso no Polaris Locker"
 #. Change picture
 #. Profile import (SIGN-IN.md §3.5).
 msgid "signin.profile.changePicture"
-msgstr "Alterar foto"
+msgstr "Alterar imagem"
 
 #. macos: Change Picture
 msgctxt "macos"
 msgid "signin.profile.changePicture"
-msgstr "Alterar foto"
+msgstr "Alterar imagem"
 
 #. {product} signed out on {device}
 #. Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.mail.replaced.subject"
 msgstr "{product} foi desconectado em {device}"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{device} foi substituído por {newDevice} quando você entrou no {product} em {date}. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Locker e verifique seus dispositivos."
+msgstr "{device} foi substituído por {newDevice} em {date}, quando você entrou em {product}. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos."
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
@@ -3185,7 +3390,7 @@ msgstr "Um novo dispositivo entrou na sua conta do Polaris Locker"
 #. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
-msgstr "{device} entrou em {date} de {place}. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado."
+msgstr "{device} entrou em {date}, a partir de {place}. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado."
 
 #. Open Polaris Locker
 #. Security email (SIGN-IN.md §3.15).
@@ -3282,10 +3487,10 @@ msgstr "Adicionar uma chave de licença (digitada ou via stdin)"
 msgid "cli.verb.enroll"
 msgstr "Obter a licença gratuita, se {product} oferecer uma"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "Parar de usar a licença neste dispositivo e liberar a vaga"
+msgstr "Parar de usar a licença neste dispositivo e abrir espaço para outro"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3327,10 +3532,10 @@ msgstr "Listar os dispositivos que usam sua licença"
 msgid "cli.verb.devicesRename"
 msgstr "Renomear um dispositivo (sem nome, o nome é apagado)"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "Remover um dispositivo e liberar a vaga"
+msgstr "Remover um dispositivo e abrir espaço para outro"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3542,8 +3747,8 @@ msgstr "Usar a licença da sua conta"
 msgid "cli.logout.done"
 msgstr "Você saiu de {product} neste dispositivo."
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
 msgstr "{product} não usa mais sua licença neste dispositivo. A vaga está livre."
 
@@ -3567,7 +3772,7 @@ msgstr "Renomeado para {device}."
 msgid "cli.devices.nameCleared"
 msgstr "{device} agora está sem nome."
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
 msgstr "{device} foi removido. A vaga está livre."
@@ -3957,6 +4162,26 @@ msgctxt "macos"
 msgid "signin.approve.look"
 msgstr "Buscar"
 
+#. pkey on {host} asks for a read-only personal token for your packages.
+#. Approve dialog, for a command-line tool asking to read the account's packages. Arguments: {host} = the machine's name, shown as is.
+msgid "signin.approve.askPackages"
+msgstr "O pkey em {host} pede um token pessoal somente leitura para os seus pacotes."
+
+#. Give pkey a personal token?
+#. Approve dialog title for the pkey command-line tool asking for a packages token. 'pkey' is a product name; keep it.
+msgid "signin.approve.askPackagesTitle"
+msgstr "Dar um token pessoal ao pkey?"
+
+#. Approve
+#. Approve dialog, confirm button for the pkey packages token.
+msgid "signin.approve.approvePackages"
+msgstr "Aprovar"
+
+#. Approved. Go back to your terminal.
+#. Approve dialog outcome after approving the pkey packages token.
+msgid "signin.approve.approvedPackages"
+msgstr "Aprovado. Volte ao terminal."
+
 #. Code {code} asks to sign in to your account.
 #. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.
 msgid "signin.approve.askBody"
@@ -4010,17 +4235,17 @@ msgstr "Não foi possível concluir. Tente novamente."
 #. Your passkey wasn't used. Try again, or use another way.
 #. Passkey prompt closed or timed out.
 msgid "signin.passkey.cancelled"
-msgstr "Sua passkey não foi usada. Tente novamente ou use outra forma."
+msgstr "Sua chave de acesso não foi usada. Tente novamente ou use outra forma."
 
 #. This browser can't use your passkey here. Use another way.
 #. Passkey not usable in this browser.
 msgid "signin.passkey.unsupported"
-msgstr "Este navegador não pode usar sua passkey aqui. Use outra forma."
+msgstr "Este navegador não pode usar sua chave de acesso aqui. Use outra forma."
 
 #. Your passkey didn't work. Try again, or use another way.
 #. Passkey refused.
 msgid "signin.passkey.failed"
-msgstr "Sua passkey não funcionou. Tente novamente ou use outra forma."
+msgstr "Sua chave de acesso não funcionou. Tente novamente ou use outra forma."
 
 #. Signed in with {provider}
 #. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
@@ -4060,17 +4285,17 @@ msgstr "Usar minhas iniciais"
 #. Use my {provider} picture
 #. Finish step: back to the provider's picture. Arguments: {provider} = a provider's name.
 msgid "signin.gate.pictureProvider"
-msgstr "Usar minha imagem do {provider}"
+msgstr "Usar minha imagem de {provider}"
 
 #. macos: Use My {provider} Picture
 msgctxt "macos"
 msgid "signin.gate.pictureProvider"
-msgstr "Usar minha imagem do {provider}"
+msgstr "Usar minha imagem de {provider}"
 
 #. Add my birth date from {org}
 #. Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it.
 msgid "signin.gate.birthdate"
-msgstr "Adicionar minha data de nascimento de {org}"
+msgstr "Adicionar minha data de nascimento informada por {org}"
 
 #. Only you can see it. Apps never get it.
 #. Finish step: under the birth date choice.
@@ -4090,7 +4315,7 @@ msgstr "Concordo com {term}"
 #. That sign-in has expired. Sign in again.
 #. Finish step: the 15-minute sign-in ran out.
 msgid "signin.gate.expired"
-msgstr "Esse login expirou. Entre novamente."
+msgstr "Esse acesso expirou. Entre novamente."
 
 #. Join your accounts
 #. Finish step: the join offer (SIGN-IN.md §3.5).
@@ -4100,12 +4325,12 @@ msgstr "Juntar suas contas"
 #. {email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.
 #. Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated.
 msgid "signin.gate.joinLede"
-msgstr "{email} já pertence a uma conta do Polaris Locker. Una este login a ela ou use outro e-mail."
+msgstr "{email} já pertence a uma conta do Polaris Locker. Una este acesso a ela ou use outro e-mail."
 
 #. To join, sign in to that account in this browser first, then add this sign-in from Account.
 #. Finish step: the join offer cannot be taken until the other account is proven.
 msgid "signin.gate.joinProve"
-msgstr "Para juntar, entre primeiro nessa conta neste navegador e depois adicione este login em Conta."
+msgstr "Para unir, entre primeiro nessa conta neste navegador e depois adicione este acesso em Conta."
 
 #. We sent a code to {email}.
 #. Finish step, code stage. Arguments: {email} = an address.
@@ -4115,7 +4340,7 @@ msgstr "Enviamos um código para {email}."
 #. On this browser, last time {when}
 #. HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'.
 msgid "signin.hint.when"
-msgstr "Neste navegador, na última vez {when}"
+msgstr "Neste navegador, último acesso {when}"
 
 #. Welcome back
 #. HintStep title when the browser kept no name.
@@ -4125,7 +4350,7 @@ msgstr "Bem-vindo de volta"
 #. a passkey
 #. HintStep: completes 'You usually sign in with {method}'.
 msgid "signin.hint.method.passkey"
-msgstr "uma passkey"
+msgstr "uma chave de acesso"
 
 #. an email code
 #. HintStep: completes 'You usually sign in with {method}'.
@@ -4135,22 +4360,22 @@ msgstr "um código por e-mail"
 #. Use a passkey
 #. HintStep: passkey button.
 msgid "signin.hint.usePasskey"
-msgstr "Usar uma passkey"
+msgstr "Usar chave de acesso"
 
 #. macos: Use a Passkey
 msgctxt "macos"
 msgid "signin.hint.usePasskey"
-msgstr "Usar uma passkey"
+msgstr "Usar chave de acesso"
 
 #. Email me a code
 #. HintStep: sends a sign-in code.
 msgid "signin.hint.emailCode"
-msgstr "Enviar um código por e-mail"
+msgstr "Enviar código por e-mail"
 
 #. macos: Email Me a Code
 msgctxt "macos"
 msgid "signin.hint.emailCode"
-msgstr "Enviar um código por e-mail"
+msgstr "Enviar código por e-mail"
 
 #. Change
 #. HintStep: back to the email field.
@@ -4185,7 +4410,7 @@ msgstr "Cole a chave do seu e-mail de recibo. Entre em seguida e ela entra na su
 #. That sign-in has expired. Continue to get a new code.
 #. Sign-in card, back at the email step after the sign-in ran out.
 msgid "signin.code.expiredRestart"
-msgstr "Esse login expirou. Continue para receber um novo código."
+msgstr "Esse acesso expirou. Continue para receber um novo código."
 
 #. That took too long. Continue to start again.
 #. Sign-in card, back at the email step when the single sign-on step ran out before any code was sent.
@@ -4195,7 +4420,7 @@ msgstr "Demorou demais. Continue para começar de novo."
 #. No more codes can be sent for this sign-in. The latest code still works.
 #. Code step: the per-sign-in resend cap.
 msgid "signin.code.noMore"
-msgstr "Não é possível enviar mais códigos para este login. O último código ainda funciona."
+msgstr "Não é possível enviar mais códigos para este acesso. O último código ainda funciona."
 
 #. Sign in with {org}
 #. Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name.
@@ -4240,7 +4465,7 @@ msgstr "{email} pertence a uma conta que não pode entrar. Tente outro e-mail ou
 #. Sign-in is turned off
 #. Sign-in card: no way to sign in is enabled.
 msgid "signin.off.title"
-msgstr "O login está desativado"
+msgstr "O acesso está desativado"
 
 #. The security check did not pass. Try again.
 #. Sign-in card: the bot check refused.
@@ -4270,7 +4495,7 @@ msgstr "Esse código expirou. Peça um novo no outro dispositivo."
 #. No sign-in is waiting for that code. Check it on the other device.
 #. Approve dialog: no pending request has this code (404 or 422).
 msgid "signin.approve.notFound"
-msgstr "Nenhum login está aguardando esse código. Confira-o no outro dispositivo."
+msgstr "Nenhum acesso está aguardando esse código. Confira-o no outro dispositivo."
 
 #. you@example.com
 #. Placeholder of the email field on the sign-in card. Not translated.
@@ -4365,7 +4590,7 @@ msgstr "{device} saiu de {app}. {thisDevice} está conectado."
 #. This sign-in has ended
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.request.goneTitle"
-msgstr "Este login foi encerrado"
+msgstr "Este acesso foi encerrado"
 
 #. Go back to the app and start signing in again.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4395,7 +4620,7 @@ msgstr "Não permitir"
 #. Cloud Sync
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "Cloud Sync"
+msgstr "Sincronização na nuvem"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -4410,7 +4635,7 @@ msgstr "Guarde {product} em uma conta"
 #. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "Em uma conta, você a recupera e a move para um novo dispositivo sozinho."
+msgstr "Em uma conta, você pode recuperá-la e passá-la para um novo dispositivo por conta própria."
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4445,17 +4670,17 @@ msgstr "{product} continua funcionando nos dispositivos em que já está. Só di
 #. {used} of {limit} key entries used
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
 msgid "signin.key.meter"
-msgstr "{used} de {limit} entradas da chave usadas"
+msgstr "{used} de {limit} usos da chave"
 
 #. Key works
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.keyWorks"
-msgstr "A chave funciona"
+msgstr "Chave válida"
 
 #. Polaris Locker signs you in for {app}.
 #. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.footerNoDeveloper"
-msgstr "O Polaris Locker conecta você ao {app}."
+msgstr "O Polaris Locker cuida do seu acesso a {app}."
 
 #. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
 #. PX-14a fix round. Arguments: {minutes} = a number of minutes.
@@ -4534,7 +4759,7 @@ msgstr "Escolha um PNG ou JPEG de até 5 MB."
 #. Add a passkey
 #. Finish: the step after the account exists, offering one passkey.
 msgid "signin.gate.passkeyTitle"
-msgstr "Adicionar uma chave de acesso"
+msgstr "Criar chave de acesso"
 
 #. Next time is one tap.
 #. Finish: under the passkey step title.
@@ -4544,12 +4769,12 @@ msgstr "Da próxima vez, basta um toque."
 #. Add a passkey
 #. Finish: the one-tap button that opens the browser passkey prompt.
 msgid "signin.gate.passkeyAdd"
-msgstr "Adicionar uma chave de acesso"
+msgstr "Criar chave de acesso"
 
 #. macos: Add a Passkey
 msgctxt "macos"
 msgid "signin.gate.passkeyAdd"
-msgstr "Adicionar uma chave de acesso"
+msgstr "Criar chave de acesso"
 
 #. Passkey added.
 #. Finish: passkey outcome, success.
@@ -4569,7 +4794,7 @@ msgstr "Pular"
 #. Your upload
 #. Finish: the tile of a picture the person picked from their device.
 msgid "signin.gate.pictureYours"
-msgstr "Seu envio"
+msgstr "Enviada por você"
 
 #. Your picture wasn't saved. Add one in Account.
 #. Finish: shown on arrival when the picked picture could not be saved.
@@ -4702,7 +4927,7 @@ msgstr "União desfeita."
 #. Joined {email}. Undo until {date}.
 #. Link dialog: a join that can still be undone.
 msgid "signin.join.undoable"
-msgstr "{email} unida. Desfazer até {date}."
+msgstr "Conta {email} unida. Desfazer até {date}."
 
 #. Linking took too long. Start again.
 #. Link dialog: the link flow is gone.
@@ -4822,12 +5047,12 @@ msgstr "Esta união não pode mais ser desfeita."
 #. Sign-in methods
 #. Link dialog: a link to Account → Sign-in methods.
 msgid "signin.join.methodsLink"
-msgstr "Métodos de entrada"
+msgstr "Métodos de acesso"
 
 #. macos: Sign-In Methods
 msgctxt "macos"
 msgid "signin.join.methodsLink"
-msgstr "Métodos de entrada"
+msgstr "Métodos de acesso"
 
 #. Couldn't undo the join. Try again.
 #. Link dialog: an undo failed.
@@ -4922,7 +5147,7 @@ msgstr "Você não tem permissão para fazer isso."
 #. Device check needed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_required.title"
-msgstr "Verificação do dispositivo necessária"
+msgstr "Verificação necessária"
 
 #. This needs a verified device. Let the app check this device, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4932,7 +5157,7 @@ msgstr "Isso exige um dispositivo verificado. Permita que o app verifique este d
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_rejected.title"
-msgstr "Falha na verificação do dispositivo"
+msgstr "Dispositivo não verificado"
 
 #. This device couldn't be verified. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4942,7 +5167,7 @@ msgstr "Não foi possível verificar este dispositivo. Tente novamente."
 #. Device check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.attestation_unavailable.title"
-msgstr "Verificação do dispositivo indisponível"
+msgstr "Verificação indisponível"
 
 #. Device verification isn't available for this app right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5112,7 +5337,7 @@ msgstr "O hardware deste dispositivo mudou. Ative novamente para usar sua licen�
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.fingerprint_required.title"
-msgstr "Falha na verificação do dispositivo"
+msgstr "Dispositivo não verificado"
 
 #. This license needs a hardware fingerprint, which couldn't be read on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5242,7 +5467,7 @@ msgstr "O acesso não está disponível para este app."
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"
-msgstr "Solicitação de login inválida"
+msgstr "Solicitação de acesso inválida"
 
 #. The app sent a sign-in request we can't read. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5252,32 +5477,32 @@ msgstr "O app enviou uma solicitação que não conseguimos ler. Tente de novo."
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
-msgstr "Não foi possível concluir o login"
+msgstr "Acesso não concluído"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.message"
-msgstr "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
+msgstr "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
 
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "Login não é mais válido"
+msgstr "Acesso não é mais válido"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.message"
-msgstr "Este login expirou ou já foi usado. Entre de novo."
+msgstr "Este acesso expirou ou já foi usado. Entre de novo."
 
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported_grant_type.title"
-msgstr "Solicitação de login inválida"
+msgstr "Solicitação de acesso inválida"
 
 #. The app asked for a sign-in type we don't support. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported_grant_type.message"
-msgstr "O app pediu um tipo de login que não aceitamos. Fale com o desenvolvedor."
+msgstr "O app pediu um tipo de acesso que não aceitamos. Fale com o desenvolvedor."
 
 #. Access not available
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5287,17 +5512,17 @@ msgstr "Acesso indisponível"
 #. The app asked for access this sign-in doesn't offer. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_scope.message"
-msgstr "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor."
+msgstr "O app pediu um tipo de acesso que esta forma de entrar não oferece. Fale com o desenvolvedor."
 
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.title"
-msgstr "O login não consegue voltar ao app"
+msgstr "Não foi possível voltar ao app"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
-msgstr "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
+msgstr "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5357,7 +5582,7 @@ msgstr "Código incorreto"
 #. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "Esse código não funcionou. Confira o e-mail e digite de novo."
+msgstr "Esse código está incorreto. Confira o e-mail e tente de novo."
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5377,7 +5602,7 @@ msgstr "E-mail já em uso"
 #. Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_in_use.message"
-msgstr "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
+msgstr "Outra conta do Polaris Locker já usa este e-mail. Una este acesso a essa conta ou use outro e-mail."
 
 #. Terms not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5419,6 +5644,86 @@ msgstr "É preciso entrar"
 msgid "core.codes.account_required.message"
 msgstr "Entre na sua conta do Polaris Locker neste dispositivo e tente novamente."
 
+#. Sync out of date
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.title"
+msgstr "Sincronização desatualizada"
+
+#. This device hasn't synced in too long. It will start over from your saved data.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.message"
+msgstr "Este dispositivo ficou tempo demais sem sincronizar. Ele vai recomeçar com seus dados salvos."
+
+#. Sync mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.title"
+msgstr "Sincronização incompatível"
+
+#. This sync belongs to another device. Restart the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.message"
+msgstr "Esta sincronização pertence a outro dispositivo. Reinicie o app e tente de novo."
+
+#. Setting not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.title"
+msgstr "Configuração não salva"
+
+#. That value isn't valid for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.message"
+msgstr "Esse valor não é válido para esta configuração."
+
+#. Change not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.title"
+msgstr "Alteração não permitida"
+
+#. That change isn't allowed for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.message"
+msgstr "Essa alteração não é permitida para esta configuração."
+
+#. Not synced
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.title"
+msgstr "Não sincronizada"
+
+#. This setting isn't synced to your account.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.message"
+msgstr "Esta configuração não é sincronizada com sua conta."
+
+#. Unknown collection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.title"
+msgstr "Coleção desconhecida"
+
+#. This collection isn't available.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.message"
+msgstr "Esta coleção não está disponível."
+
+#. Storage full
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.title"
+msgstr "Armazenamento cheio"
+
+#. Your synced storage is full. Free some space, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.message"
+msgstr "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo."
+
+#. Sync paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.title"
+msgstr "Sincronização pausada"
+
+#. Syncing is paused for a moment. Your changes are kept and will sync later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.message"
+msgstr "A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois."
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
@@ -5442,7 +5747,7 @@ msgstr "Esse método de acesso pertence a outra conta do Polaris Locker. Entre n
 #. Can't remove
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.last_link.title"
-msgstr "Não é possível remover"
+msgstr "Impossível remover"
 
 #. This is your account's only sign-in method. Add another one before removing it.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5472,7 +5777,7 @@ msgstr "Esta oferta não está mais disponível para sua conta. Atualize a pági
 #. Can't remove
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_removable.title"
-msgstr "Não é possível remover"
+msgstr "Impossível remover"
 
 #. This license can't be added back with a key, so it stays in your library.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5502,7 +5807,7 @@ msgstr "Este download ainda não está configurado. Contate o desenvolvedor."
 #. Download busy
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.upstream_rate_limited.title"
-msgstr "Downloads sobrecarregados"
+msgstr "Servidor ocupado"
 
 #. Downloads are busy right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5557,12 +5862,12 @@ msgstr "Imagem não atualizada"
 #. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.asset_unreachable.message"
-msgstr "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
+msgstr "Não foi possível obter uma imagem na origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
 
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"
-msgstr "Verificação de atualizações indisponível"
+msgstr "Atualizações indisponíveis"
 
 #. Updates can't be checked right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5682,7 +5987,7 @@ msgstr "Verifique sua conexão e tente novamente."
 #. Can't connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network.title"
-msgstr "Não é possível conectar"
+msgstr "Sem conexão"
 
 #. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5692,7 +5997,7 @@ msgstr "Não foi possível acessar o Polaris Locker. Verifique sua conexão e te
 #. Couldn't refresh
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.refresh-failed.title"
-msgstr "Não foi possível atualizar"
+msgstr "Falha ao atualizar"
 
 #. Your license and settings couldn't be refreshed. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5747,7 +6052,7 @@ msgstr "Não incluído"
 #. Your license doesn't include this release.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.release-refused.message"
-msgstr "Sua licença não inclui este lançamento."
+msgstr "Sua licença não inclui esta versão."
 
 #. Activation file not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5792,7 +6097,7 @@ msgstr "Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta.
 #. Couldn't load devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_list_failed.title"
-msgstr "Não foi possível carregar os dispositivos"
+msgstr "Falha ao carregar dispositivos"
 
 #. Your devices couldn't be loaded. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5802,7 +6107,7 @@ msgstr "Não foi possível carregar seus dispositivos. Verifique sua conexão e 
 #. Couldn't rename
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_rename_failed.title"
-msgstr "Não foi possível renomear"
+msgstr "Falha ao renomear"
 
 #. The device couldn't be renamed. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5812,7 +6117,7 @@ msgstr "Não foi possível renomear o dispositivo. Tente novamente."
 #. Couldn't remove device
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_deauthorize_failed.title"
-msgstr "Não foi possível remover o dispositivo"
+msgstr "Falha ao remover dispositivo"
 
 #. The device couldn't be removed. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5862,7 +6167,7 @@ msgstr "O serviço enviou uma resposta que o app não pôde usar. Tente novament
 #. Can't connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.network-error.title"
-msgstr "Não é possível conectar"
+msgstr "Sem conexão"
 
 #. Can't reach Polaris Locker. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6042,7 +6347,7 @@ msgstr "O serviço enviou uma resposta que o app não pôde usar. Tente novament
 #. Storage problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.store-failed.title"
-msgstr "Problema de armazenamento"
+msgstr "Erro de armazenamento"
 
 #. The app couldn't read or save its license on this device. Check that the app can write its data folder.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6082,7 +6387,7 @@ msgstr "Isso não está disponível para este app."
 #. Update check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed-rejected.title"
-msgstr "Falha na verificação de atualizações"
+msgstr "Falha ao verificar atualizações"
 
 #. The update information couldn't be verified, so nothing was installed.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6092,7 +6397,7 @@ msgstr "Não foi possível verificar as informações de atualização, então n
 #. Update check failed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed-rollback.title"
-msgstr "Falha na verificação de atualizações"
+msgstr "Falha ao verificar atualizações"
 
 #. The update information was older than what this device already has, so it was refused.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6132,7 +6437,7 @@ msgstr "A atualização não foi baixada corretamente, então não foi instalada
 #. Can't update here
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.swap-refused.title"
-msgstr "Não é possível atualizar aqui"
+msgstr "Impossível atualizar aqui"
 
 #. This installation can't update itself. Update it the way you installed it.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6147,7 +6452,7 @@ msgstr "Atualização não concluída"
 #. The update couldn't be applied. It will be tried again next launch.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.swap-failed.message"
-msgstr "Não foi possível aplicar a atualização. Ela será tentada novamente na próxima inicialização."
+msgstr "Não foi possível aplicar a atualização. Uma nova tentativa será feita na próxima inicialização."
 
 #. Content not valid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6462,7 +6767,7 @@ msgstr "Não há espaço livre suficiente para este conteúdo. Libere espaço e 
 #. Can't install content
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.plan-no-strategy.title"
-msgstr "Não é possível instalar o conteúdo"
+msgstr "Impossível instalar conteúdo"
 
 #. This content can't be installed on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6522,7 +6827,7 @@ msgstr "Sua licença não inclui este conteúdo."
 #. Storage problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.pack-state-unreadable.title"
-msgstr "Problema de armazenamento"
+msgstr "Erro de armazenamento"
 
 #. Installed content couldn't be read, so nothing new was installed. Restart the app.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6684,10 +6989,10 @@ msgstr "Digite uma chave de licença ou entre para continuar."
 msgid "core.gate.version-too-old.title"
 msgstr "Atualização necessária"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "Esta versão não é mais compatível. Atualize o app para continuar."
+msgstr "Esta versão não tem mais suporte. Atualize {product} para continuar."
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6742,7 +7047,7 @@ msgstr "Esta licença já está em todos os dispositivos permitidos. Substitua u
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.fingerprint-required.title"
-msgstr "Falha na verificação do dispositivo"
+msgstr "Dispositivo não verificado"
 
 #. This license needs a hardware fingerprint, which couldn't be read on this device.
 #. Core copy (conformance/parity/copy.en.json, activation).
@@ -6792,7 +7097,7 @@ msgstr "Esta licença expirou. Renove-a para continuar."
 #. Device check needed
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.attestation-required.title"
-msgstr "Verificação do dispositivo necessária"
+msgstr "Verificação necessária"
 
 #. This license needs a verified device. Let the app check this device, then try again.
 #. Core copy (conformance/parity/copy.en.json, activation).

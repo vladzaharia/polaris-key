@@ -44,6 +44,7 @@ import type { CiAllowList } from "../../core/storefront/ci.js";
 import {
   prNaturalKey,
   prPathAllowed,
+  prWritesFiles,
   prPlaneStore,
   prRepo,
   prVerdict,
@@ -203,6 +204,7 @@ function prProjection(
 /** A reported `files` list, or a refusal message. */
 function readPrFiles(
   store: PrPlaneStore,
+  command: string,
   argv: readonly string[],
   v: unknown,
 ): PrStepFile[] | string {
@@ -224,7 +226,7 @@ function readPrFiles(
     path: f.path,
     sha256: f.sha256,
   }));
-  const bad = files.find((f) => !prPathAllowed(store, argv, f.path));
+  const bad = files.find((f) => !prPathAllowed(store, argv, f.path, command));
   if (bad)
     return `${bad.path} is not a path ${store.label}'s PR plane lets this pull request write`;
   if (new Set(files.map((f) => f.path)).size !== files.length)
@@ -348,10 +350,7 @@ export async function reportStoreStep(
   if (adapter) {
     const s = adapter.capabilities.ops[op as StorefrontOp];
     const declared = prStore
-      ? s.mode === "pr" &&
-        (
-          prStore.commandOps[command as keyof PrPlaneStore["commandOps"]] ?? []
-        ).includes(op)
+      ? s.mode === "pr" && (prStore.commandOps[command] ?? []).includes(op)
       : s.mode === "ci" && s.commands.includes(command);
     if (!declared)
       return refuse(
@@ -466,9 +465,9 @@ export async function reportStoreStep(
     repo = prRepo(prStore, command, args) ?? "";
     naturalKey = prNaturalKey(prStore, command, args) ?? naturalKey;
     if (body.files !== undefined) {
-      if (command !== "pull-request")
+      if (!prWritesFiles(command))
         return invalid("files", `${command} writes no files`);
-      const read = readPrFiles(prStore, args, body.files);
+      const read = readPrFiles(prStore, command, args, body.files);
       if (typeof read === "string") return invalid("files", read);
       files = read;
     }
@@ -489,7 +488,7 @@ export async function reportStoreStep(
       );
     if (
       state === "done" &&
-      command === "pull-request" &&
+      prWritesFiles(command) &&
       files === null &&
       existing !== true
     )

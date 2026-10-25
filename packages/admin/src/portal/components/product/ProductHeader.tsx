@@ -54,7 +54,7 @@ export function ProductHeader({
     <div className="@container space-y-0">
       <a
         href={href.library()}
-        className="mb-6 mt-3.5 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg underline decoration-accent-fg decoration-1 underline-offset-4 hover:text-fg-strong pointer-coarse:min-h-11"
+        className="mb-6 mt-3 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg underline decoration-accent-fg decoration-1 underline-offset-4 hover:text-fg-strong pointer-coarse:min-h-11"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("locker.library.title")}
@@ -72,7 +72,7 @@ export function ProductHeader({
           // viewport (LK-polish M3); phones cap at 11 rem. pk-vt-hero:
           // the Library tile's art flies into it and back (motion.css; named only during a
           // forward or back transition, MO-05).
-          className="pk-vt-hero -mx-4 max-desk:h-44 desk:mx-0 desk:w-full desk:aspect-[5/1] desk:max-h-[min(13.75rem,26vh)] desk:rounded-xl short:hidden"
+          className="pk-vt-hero -mx-4 max-desk:h-44 desk:mx-0 desk:w-full desk:aspect-[5/1] desk:max-h-[min(13.75rem,26vh)] desk:lowscreen:max-h-[min(11rem,22vh)] desk:rounded-xl short:hidden"
         />
       ) : null}
       <div
@@ -99,10 +99,15 @@ export function ProductHeader({
             // the tile's icon flies into it with the art and the name (MO-05).
             "pk-vt-hero-icon relative z-10",
             // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
-            hasCover && "-mt-7 desk:self-start short:mt-0 short:self-auto",
+            hasCover && "-mt-3 desk:self-start short:mt-0 short:self-auto",
           )}
         />
-        <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
+        <div
+          className={cn(
+            "min-w-0 flex-1 space-y-2 desk:pb-1",
+            hasCover && "desk:pt-2",
+          )}
+        >
           {/* pk-vt-hero-title: the tile's name flies into it and back (MO-05). As wide as its
               text, like the tile's name, or the shared snapshot stretches (S-23 §3.4 item 4). */}
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
@@ -110,7 +115,7 @@ export function ProductHeader({
               ref={headingRef}
               tabIndex={-1}
               dir="auto"
-              className="pk-vt-hero-title w-fit max-w-full text-headline font-semibold leading-tight text-fg-strong outline-none [overflow-wrap:anywhere] desk:text-4xl"
+              className="pk-vt-hero-title w-fit max-w-full text-headline font-semibold leading-tight text-fg-strong outline-none [overflow-wrap:anywhere] desk:text-3xl"
             >
               {product.name}
             </h1>

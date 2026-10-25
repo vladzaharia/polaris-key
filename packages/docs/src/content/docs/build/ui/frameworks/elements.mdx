@@ -156,8 +156,10 @@ and `primitives` to the SDK's sign-in primitives; without them it draws its `inp
 Theme the whole page with `PolarisKey.theme({ … })`, a subtree with `<pk-provider theme='{…}'>`, or
 one element with its `theme` property; an inner layer wins over an outer one. When the theme leaves
 them unset, the gate takes the product's name, accent and verified icon from the SDK. Colors, radii,
-type and spacing are `--pk-*` variables, and every part is a `::part` (`primary`, `secondary`,
-`card`, …) carrying a `data-key`. The page's own CSS reaches the parts without `!important`:
+type and spacing are `--pk-*` variables; set the shape tokens (`--pk-font-sans`, `--pk-kit-radius-*`,
+`--pk-kit-control-height`, `--pk-kit-focus-*`) once on `pk-provider` as `--pk-provider-<name>`, for
+example `--pk-provider-kit-radius-card`, and every element inside reads them. Every part is a `::part` (`primary`, `secondary`, `card`, …)
+carrying a `data-key`. The page's own CSS reaches the parts without `!important`:
 
 ```css
 pk-gate::part(primary) {

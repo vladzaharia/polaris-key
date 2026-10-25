@@ -1,6 +1,6 @@
 /**
  * P0-43: the one CI scope (tools/ci-scope.mjs over tools/ci-scope.json). The `changes` job of
- * ci.yml and gate.sh read it, so these tests pin what a change runs (a rename at both of its paths,
+ * ci.yml and `pnpm gate` read it, so these tests pin what a change runs (a rename at both of its paths,
  * a sample or a fixture at the lane that reads it, everything when the changed files cannot be
  * read), that every lane and matrix the workflow names exists here, that the workflow wires each
  * one, that the Swift SDK keeps a build on its oldest toolchain, and that a workflow's path filter
@@ -38,10 +38,12 @@ const scope = loadScope();
 interface Step {
   uses?: string;
   run?: string;
+  if?: string;
 }
 interface Job {
   needs?: string | string[];
   if?: string;
+  "continue-on-error"?: boolean;
   "runs-on"?: string;
   outputs?: Record<string, string>;
   strategy?: { matrix?: unknown };
@@ -104,7 +106,7 @@ function repo(files: Record<string, string>) {
   return { dir, git, write, move };
 }
 
-/** `node tools/ci-scope.mjs <args>` run inside `cwd`, the way ci.yml and gate.sh run it. */
+/** `node tools/ci-scope.mjs <args>` run inside `cwd`, the way ci.yml and `pnpm gate` run it. */
 const cli = (cwd: string, ...args: string[]) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: "utf8" });
 
@@ -143,9 +145,27 @@ describe("lane selection", () => {
   it("runs the kit lint lane for a kit's UI sources", () => {
     expect(on(["sdks/kotlin/ui/src/androidMain/kotlin/A.kt"])).toEqual([
       "ui-kits",
+      "compose-desktop",
       "kotlin",
       "android",
     ]);
+  });
+
+  it("runs the android lane for the Compose Android sample", () => {
+    expect(
+      on(["examples/ui/compose-android/src/main/AndroidManifest.xml"]),
+    ).toContain("android");
+  });
+
+  it("runs the recipes lane for a recipe, the elements, the view models and the lint, and no kit lane for a recipe", () => {
+    expect(on(["examples/ui/recipes/vue/src/App.vue"])).toEqual(["ui-recipes"]);
+    for (const file of [
+      "packages/elements/src/index.ts",
+      "packages/ui-core/src/index.ts",
+      "packages/ui-qa/src/lint.ts",
+    ]) {
+      expect(on([file]), file).toContain("ui-recipes");
+    }
   });
 
   it("runs nothing for a change no lane reads", () => {
@@ -409,7 +429,10 @@ describe("ci.yml reads the scope", () => {
   it("aggregates every other job in ci-ok, which runs always", () => {
     const ok = jobs["ci-ok"]!;
     expect(ok.if).toBe("${{ always() }}");
-    const others = Object.keys(jobs).filter((id) => id !== "ci-ok");
+    const others = Object.keys(jobs).filter(
+      (id) =>
+        id !== "ci-ok" && id !== "swiftui-mac" && id !== "compose-desktop",
+    ); // swiftui-mac and compose-desktop are non-blocking until their baselines are committed (UK-08.8, UK-10.12);
     expect(needsOf(ok).sort()).toEqual(others.sort());
   });
 });
@@ -553,4 +576,79 @@ describe("a workflow's path filter covers the local actions its jobs use", () =>
       }
     },
   );
+});
+
+// UK-08.8: the SwiftUI kit's macOS renders (macos-26 and macos-15) run only for the kit's own tree,
+// the sample and the copy it renders, and CI OK does not wait for them until the baselines are committed.
+describe("ci.yml renders the SwiftUI kit on the Mac", () => {
+  const job = ci.jobs["swiftui-mac"]!;
+  const steps = JSON.stringify(job.steps ?? []);
+
+  it("is its own lane, non-blocking for CI OK", () => {
+    expect(job.if).toBe("needs.changes.outputs.swiftui-mac == 'true'");
+    expect(job["continue-on-error"]).toBe(true);
+    // Non-blocking until the first baselines are committed (UK-08.8).
+    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain("swiftui-mac");
+    expect(on(["examples/ui/swiftui/run.sh"])).toContain("swiftui-mac");
+    expect(
+      on(["sdks/swift/Sources/PolarisKeyUpdateUI/Driver.swift"]),
+    ).toContain("swiftui-mac");
+    expect(
+      on(["sdks/swift/Sources/PolarisKeyCore/Client.swift"]),
+    ).not.toContain("swiftui-mac");
+  });
+
+  it("runs both legs, pins XcodeGen by checksum, and always uploads", () => {
+    expect(JSON.stringify(job.strategy)).toContain("macos-26");
+    expect(JSON.stringify(job.strategy)).toContain("macos-15");
+    expect(JSON.stringify(job.strategy)).toContain("select-xcode-26.sh");
+    expect(JSON.stringify(job.strategy)).toContain("select-xcode-16.sh");
+    expect(steps).toContain(
+      "090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef",
+    );
+    expect(
+      (job.steps ?? []).some(
+        (s) => s.if === "always()" && /upload-artifact/.test(s.uses ?? ""),
+      ),
+    ).toBe(true);
+  });
+});
+
+// UK-10.12: the Compose desktop kit's lane runs on the three desktop OSes for the kit's own tree and the
+// sample, and CI OK does not wait for it until the baselines are committed.
+describe("ci.yml runs the Compose desktop kit lane", () => {
+  const job = ci.jobs["compose-desktop"]!;
+  const steps = JSON.stringify(job.steps ?? []);
+
+  it("is its own lane, non-blocking for CI OK", () => {
+    expect(job.if).toBe("needs.changes.outputs.compose-desktop == 'true'");
+    expect(job["continue-on-error"]).toBe(true);
+    expect([ci.jobs["ci-ok"]!.needs ?? []].flat()).not.toContain(
+      "compose-desktop",
+    );
+    expect(on(["examples/ui/compose-desktop/build.gradle.kts"])).toContain(
+      "compose-desktop",
+    );
+    expect(on(["sdks/kotlin/ui/src/desktopMain/X.kt"])).toContain(
+      "compose-desktop",
+    );
+    expect(on(["sdks/kotlin/core/src/X.kt"])).not.toContain("compose-desktop");
+  });
+
+  it("covers three OSes, the Android SDK, xvfb on Linux, and always uploads", () => {
+    const m = JSON.stringify(job.strategy);
+    for (const os of ["ubuntu-latest", "macos-latest", "windows-latest"])
+      expect(m).toContain(os);
+    expect(steps).toContain("platforms;android-36");
+    expect(steps).toContain("verifyRoborazziDesktop");
+    expect(steps).toContain("xvfb-run");
+    expect(steps).toContain(":sample-compose-desktop:smoke");
+    expect(steps).toContain(":sample-compose-desktop:shots");
+    expect(steps).toContain(":ui:desktopTest");
+    expect(steps).not.toContain("--daemon ");
+    const upload = (job.steps ?? []).find((x) =>
+      String(x.uses ?? "").startsWith("actions/upload-artifact@"),
+    );
+    expect(upload?.if).toBe("always()");
+  });
 });

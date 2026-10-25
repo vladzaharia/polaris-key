@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import type { AdminApiToken, Me } from "../src/api.js";
+import { HttpError, type AdminApiToken, type Me } from "../src/api.js";
+import { errorCopy } from "../src/lib/errorCopy.js";
 import { boot, resetConsole, type FetchLog } from "./consoleHarness.js";
 
 /**
@@ -453,5 +454,31 @@ describe("revoking a token", () => {
     expect(
       within(await rowFor("CI bundle minter")).getByText("Active"),
     ).toBeTruthy();
+  });
+});
+
+describe("an emergency sign-in (ST-30c.2, N3)", () => {
+  it("soft-disables New token with the reason, and names the same reason on a refusal", async () => {
+    await open({ ...FRESH, breakGlass: true });
+    const button = await screen.findByRole("button", { name: "New token…" });
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.getAttribute("title") ?? button.textContent).toBeTruthy();
+  });
+
+  it("the 403 break_glass_session refusal reads as its own problem, not 'you need edit access'", () => {
+    const copy = errorCopy(
+      new HttpError(403, { code: "forbidden", reason: "break_glass_session" }),
+    );
+    expect(copy.title).toBe("Emergency sign-in can't do this");
+    expect(copy.description).toBe(
+      "Sign out, then sign in with your account to continue.",
+    );
+    expect(copy.description).not.toMatch(/edit access/);
+  });
+
+  it("Issue token… and Set trusted publisher… are soft-disabled on a product's CI publishing", async () => {
+    boot("#/p/djdl/settings/keys", { me: { breakGlass: true } });
+    const issue = await screen.findByRole("button", { name: "Issue token…" });
+    expect(issue.getAttribute("aria-disabled")).toBe("true");
   });
 });

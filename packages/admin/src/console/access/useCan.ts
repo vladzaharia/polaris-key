@@ -4,18 +4,13 @@
  */
 
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import {
-  api,
-  type AccessAdmin,
-  type AccessAdmins,
-  type Me,
-} from "../../api.js";
-import { fetchMe } from "../data/hooks.js";
-import { qk } from "../data/queries.js";
+import type { AccessAdmin, AccessAdmins, Me } from "../../api.js";
+import { reads } from "../data/reads.js";
 import {
   AREA_NAMES,
   canIn,
   isPlatformArea,
+  scopeSlug,
   listOf,
   type AreaId,
   type Level,
@@ -31,17 +26,31 @@ export function useCan(
   // Outside the shell (a page rendered alone) there is no session to read: show the control.
   // The shell renders nothing before `/me` arrives, and the worker refuses what it must anyway.
   if (!me) return true;
-  return canIn(me, area, isPlatformArea(area) ? null : slug, level);
+  return canIn(me, area, scopeSlug(area, slug), level);
+}
+
+/** Why an emergency sign-in cannot create a durable credential (ST-30c.2, N3). */
+export const BREAK_GLASS_NO_TOKENS =
+  "Emergency sign-in can't create tokens. Sign out, then sign in with your account to create one.";
+
+/**
+ * Set while the session is an emergency sign-in: the reason a mint action (a token, a trusted
+ * publisher) is soft-disabled. The server refuses them anyway (`break_glass_session`).
+ */
+export function useBreakGlassReason(): string | undefined {
+  return useCachedMe()?.breakGlass ? BREAK_GLASS_NO_TOKENS : undefined;
 }
 
 /** The session `/me` the shell already loaded, read from the cache without fetching it. */
-function useCachedMe(): Me | undefined {
-  return useQuery({ queryKey: qk.me(), queryFn: fetchMe, enabled: false }).data;
+export function useCachedMe(): Me | undefined {
+  return useQuery({ ...reads.me(), enabled: false }).data;
 }
 
 /** The `scope` query value for an area in a product (or the platform). */
 export function accessScope(area: AreaId, slug: string | null): string {
-  return slug === null || isPlatformArea(area) ? "platform" : `product:${slug}`;
+  return slug === null || (isPlatformArea(area) && area !== "members")
+    ? "platform"
+    : `product:${slug}`;
 }
 
 /** Up to three people who can give access to `area` there, narrowest first. */
@@ -52,10 +61,15 @@ export function useAccessAdmins(
 ): UseQueryResult<AccessAdmins> {
   const scope = accessScope(area, slug);
   return useQuery({
-    queryKey: qk.accessAdmins(scope, area),
-    queryFn: () => api.accessAdmins(scope, area),
+    ...reads.accessAdmins(scope, area),
+    // Platform access is given by Superadmins, never a product's admin (the server lists no
+    // Platform admins either):
+    // whatever a worker answers, a platform scope names none.
+    select: (d) =>
+      scope === "platform"
+        ? { ...d, admins: d.admins.filter((a) => a.role !== "product_admin") }
+        : d,
     enabled,
-    staleTime: 60_000,
   });
 }
 

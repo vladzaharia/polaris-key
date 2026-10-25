@@ -4,12 +4,18 @@
  */
 
 import * as React from "react";
+import { confirmFor } from "../../../../lib/actions.js";
+import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import {
   type LicenseBatch,
   type LicenseDetail,
   type TierSummary,
 } from "../../../../api.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
+import { Hourglass } from "lucide-react";
+import { fromSeconds, formatRelative } from "../../../../lib/format.js";
+import { IdChip } from "../../../../ui/IdChip.js";
+import { StatusPill } from "../../../../ui/StatusPill.js";
 import { holderOf } from "./holders.js";
 import { LimitsTable } from "./LimitsTable.js";
 import {
@@ -19,7 +25,12 @@ import {
   InvitationCard,
   OriginCard,
 } from "./LicenseRail.js";
-import { type seatLimitOf } from "./shared.js";
+import {
+  LicenseStatus,
+  licenseState,
+  useInvitations,
+  type seatLimitOf,
+} from "./shared.js";
 
 /**
  * ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
@@ -55,6 +66,22 @@ export function useFocusTitleAfterUndo(
   return focusAfterUndo;
 }
 
+/** Closing the invite dialog from a button that has unmounted must not drop focus to <body>. */
+export function useFocusTitleAfterInvite(dialog: RecordDialog): void {
+  const prev = React.useRef<RecordDialog>(null);
+  React.useEffect(() => {
+    const was = prev.current;
+    prev.current = dialog;
+    if (was !== "invite" || dialog !== null) return;
+    const t = window.setTimeout(() => {
+      const a = document.activeElement;
+      if (a && a !== document.body) return;
+      document.querySelector<HTMLElement>("h1[data-page-title]")?.focus();
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [dialog]);
+}
+
 export type RecordDialog =
   | "holder"
   | "assign"
@@ -67,6 +94,7 @@ export type RecordDialog =
   | "expiry"
   | "profiles"
   | "send"
+  | "invite"
   | "disable"
   | "enable"
   | "delete"
@@ -99,12 +127,15 @@ export function StatusTab({
   const holder = holderOf(license);
   const floating = holder.kind === "floating";
   const waiting = holder.kind === "assigned" && !holder.inAccount;
+  const canInvite = useInvitations(slug).invitations;
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
       <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
         {waiting ? (
           <InvitationCard
             email={license.email?.trim() ?? ""}
+            invitedAt={license.invitedAt ?? null}
+            canInvite={canInvite}
             onChangeEmail={() => onDialog("reassign")}
           />
         ) : null}
@@ -130,5 +161,117 @@ export function StatusTab({
         <OriginCard slug={slug} license={license} batch={batch} me={me} />
       </div>
     </div>
+  );
+}
+
+/** "now" reads "just now" after "Changed"; any other age is as formatted. */
+export function relativeWhen(ms: number): string {
+  const text = formatRelative(ms);
+  return text === formatRelative(Date.now()) ? "just now" : text;
+}
+
+/** The header pill. A license still waiting for its holder says so; its other states stand. */
+export function HeaderStatus({
+  license,
+  waiting,
+}: {
+  license: LicenseDetail;
+  waiting: boolean;
+}): React.ReactElement {
+  if (waiting && licenseState(license) === "active")
+    return (
+      <StatusPill tone="info" icon={Hourglass}>
+        Waiting
+      </StatusPill>
+    );
+  return <LicenseStatus license={license} />;
+}
+
+/** The record's facts line: an assigned license's email and state, the id, key entries, the last change. */
+export function RecordFacts({
+  primary,
+  license,
+  waiting,
+  holderEmail,
+  inAccount,
+  keyEntries,
+  changedBy,
+}: {
+  primary: boolean;
+  license: LicenseDetail;
+  waiting: boolean;
+  holderEmail: string | null | undefined;
+  inAccount: boolean;
+  keyEntries: { used: number; limit: number } | null;
+  changedBy: string | null | undefined;
+}): React.ReactElement {
+  return (
+    <span
+      data-testid={primary ? "record-facts" : undefined}
+      className="flex flex-wrap items-center gap-x-3 gap-y-1"
+    >
+      {primary ? null : (
+        <span className="hidden conbig:inline-flex">
+          <HeaderStatus license={license} waiting={waiting} />
+        </span>
+      )}
+      {inAccount ? (
+        <span data-testid={primary ? "record-holder" : undefined}>
+          {[holderEmail, "In an account"].filter(Boolean).join(" · ")}
+        </span>
+      ) : null}
+      <IdChip value={license.id} noun="license id" />
+      {keyEntries ? (
+        <span data-testid={primary ? "record-key-entries" : undefined}>
+          Key entries {keyEntries.used} of {keyEntries.limit}
+        </span>
+      ) : null}
+      {license.modifiedAt ? (
+        <span>
+          Changed {relativeWhen(fromSeconds(license.modifiedAt))}
+          {changedBy ? ` by ${changedBy}` : ""}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** Disable and Enable: the two confirms of the record's status toggle. */
+export function ToggleLicenseDialogs({
+  license,
+  dialog,
+  onClose,
+  onToggle,
+}: {
+  license: LicenseDetail;
+  dialog: RecordDialog;
+  onClose: () => void;
+  onToggle: (enable: boolean) => Promise<void>;
+}): React.ReactElement {
+  const name = license.name || "this license";
+  return (
+    <>
+      <ConfirmDialog
+        open={dialog === "disable"}
+        onOpenChange={(o) => !o && onClose()}
+        intent={confirmFor("license.disable").intent as "caution"}
+        title={`Disable ${name}?`}
+        consequences={[
+          "Its devices stop authenticating right away: their cached tokens are purged.",
+          "Keys, devices and terms are kept. Enabling the license restores access.",
+        ]}
+        confirmLabel="Disable license"
+        onConfirm={() => onToggle(false)}
+      />
+      <ConfirmDialog
+        open={dialog === "enable"}
+        onOpenChange={(o) => !o && onClose()}
+        intent={confirmFor("license.enable").intent as "caution"}
+        title={`Enable ${name}?`}
+        consequences={["Its devices regain access at their next check-in."]}
+        confirmLabel="Enable license"
+        onConfirm={() => onToggle(true)}
+      />
+    </>
   );
 }

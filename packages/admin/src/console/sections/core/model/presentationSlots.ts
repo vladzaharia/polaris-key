@@ -1,6 +1,6 @@
 /** The hosted-asset slots in the operator's words: labels, sources, statuses and refusals. */
 
-import { ApiError, api, type HostedAssetDto } from "../../../../api.js";
+import { HttpError, type HostedAssetDto } from "../../../../api.js";
 import type { Tone } from "../../../../lib/status.js";
 
 export const MiB = 1024 * 1024;
@@ -15,10 +15,6 @@ export const UPLOAD_ACCEPT =
 
 export const MAX_SCREENSHOTS = 16;
 const SCREENSHOT_RE = /^listing\.screenshot:(\d+)$/;
-
-export function fetchHostedAssets(slug: string): Promise<HostedAssetDto[]> {
-  return api.hostedAssets(slug).then((r) => r.assets);
-}
 
 /** Bytes in binary units, as the quotas are set ("512 MiB", "100 GiB"), on every size of the page. */
 export function binaryBytes(bytes: number): string {
@@ -132,7 +128,7 @@ export function uploadError(
   hasCopy = true,
 ): string {
   const keeps = hasCopy ? " The current copy keeps serving." : "";
-  if (e instanceof ApiError) {
+  if (e instanceof HttpError) {
     if (e.code === "too_large")
       return `That file is larger than this slot takes (${binaryBytes(maxBytes)} at most).${keeps}`;
     if (e.code === "asset_refused")
@@ -142,7 +138,8 @@ export function uploadError(
     if (e.status === 415)
       return `That file type is not accepted. Use ${ACCEPTED_FORMATS}.${keeps}`;
   }
-  if (e instanceof ApiError) return `The upload failed. Try again.${keeps}`;
+  if (e instanceof HttpError && e.status !== 0)
+    return `The upload failed. Try again.${keeps}`;
   return `The upload didn't reach Polaris Key. Check your connection and try again.${keeps}`;
 }
 

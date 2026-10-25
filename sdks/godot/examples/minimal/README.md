@@ -19,7 +19,7 @@ the full Diceroll sample (D-02) lands.
 | Step     | Code in `main.gd`                                   | What happens                                                                 |
 | -------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Boot     | `await PolarisKey.boot({allow_offline = true})`     | Sync, gate, update check and packs on the `PKeyBoot` screen; READY continues |
-| Gate     | `PolarisKey.license.is_entitled(...)`               | Reads the verified licence; false once the licence is revoked or expired     |
+| Gate     | `PolarisKey.entitlements.has(...)`                  | Reads the verified licence; false once the licence is revoked or expired     |
 | Config   | `PolarisKey.config.get_value("difficulty")`         | The resolved value from the signed config document                           |
 | Settings | `PKeySettingsPanel.open(self)` over the game        | Every user-adjustable key, saved to `user://pkey_settings.cfg`               |
 | Commerce | `PolarisKey.commerce.purchase(...)` and `restore()` | Buys in this build's store (App Store, Steam), claims and syncs              |

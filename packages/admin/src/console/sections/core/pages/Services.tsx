@@ -10,7 +10,7 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Undo2 } from "lucide-react";
-import { ApiError, api, type ServicesResponse } from "../../../../api.js";
+import { HttpError, api, type ServicesResponse } from "../../../../api.js";
 import { FEATURES } from "../../../../services.generated.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
@@ -35,6 +35,7 @@ import {
   type PendingChange,
   type ServiceChange,
 } from "../components/serviceFeatures.js";
+import { coreBReads } from "../data.js";
 
 /**
  * The Features tab: the feature list, and under it the product's own settings (name, origins,
@@ -74,10 +75,7 @@ function FeatureList({
   detailsOpen: boolean;
   onDetails: (open: boolean) => void;
 }): React.ReactElement {
-  const query = useQuery({
-    queryKey: qk.services(slug),
-    queryFn: () => api.services(slug),
-  });
+  const query = useQuery(coreBReads.services(slug));
   useLoadingAnnouncement("features", query.isPending);
 
   if (query.isPending) {
@@ -138,7 +136,7 @@ function ServicesForm({
       queryClient.setQueryData(qk.services(slug), next);
       toast.success(`${change.label} turned ${change.on ? "on" : "off"}`);
     } catch (error) {
-      const errors = error instanceof ApiError ? error.errors : undefined;
+      const errors = error instanceof HttpError ? error.errors : undefined;
       if (errors?.length) setCodes(errors);
       setFailure({ change, phase: "write", error });
       throw error;
@@ -199,7 +197,7 @@ function ServicesForm({
       >
         <div
           aria-hidden
-          className="hidden items-center gap-x-4 border-b border-border bg-surface-sunken px-5 py-2.5 text-sm font-medium text-fg-strong sm:grid sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)_auto]"
+          className="hidden items-center gap-x-4 border-b border-border bg-surface-sunken px-5 py-2 text-sm font-medium text-fg-strong sm:grid sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)_auto]"
         >
           <span className="w-8" />
           <span>Feature</span>

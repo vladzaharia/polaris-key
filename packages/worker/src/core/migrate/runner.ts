@@ -16,7 +16,7 @@
  * data, so nothing secret reaches the report; a job's `detail` is its own to keep clean.
  *
  * Nothing schedules a run. The only caller is the admin route (`console/handlers/migrations.ts`),
- * and `test/migrationRunner.test.ts` greps `src/` to keep it that way.
+ * and `test/surfaces/console/migrationRunner.test.ts` greps `src/` to keep it that way.
  */
 
 import type { Db, DbStatement } from "../../db/types.js";
@@ -423,6 +423,11 @@ async function drive(
   const pending = (await unitRows(ctx.db, runId)).filter(
     (u) => u.status !== "done",
   );
+  // The unit detail of the run this one reads: the report an apply was pinned to, or the apply
+  // a down undoes.
+  const sourceId = ((await runRow(ctx.db, runId))?.source_id ?? null) as
+    | string
+    | null;
   const budget = opts.limit ?? pending.length;
   let done = 0;
   let changed = 0;
@@ -436,10 +441,21 @@ async function drive(
     );
     if (renewed === 0) return null;
     let n: number;
+    let detail: unknown;
     try {
-      n = await (step === "apply"
-        ? job.apply(ctx, u.unit)
-        : job.down(ctx, u.unit));
+      const source = sourceId
+        ? await ctx.db.first<{ detail_json: string | null }>(
+            "SELECT detail_json FROM data_migration_units WHERE run_id = ? AND unit = ?",
+            sourceId,
+            u.unit,
+          )
+        : null;
+      const carried = parseJsonColumn(source?.detail_json ?? null);
+      const outcome = await (step === "apply"
+        ? job.apply(ctx, u.unit, carried)
+        : job.down(ctx, u.unit, carried));
+      n = typeof outcome === "number" ? outcome : outcome.changes;
+      detail = typeof outcome === "number" ? undefined : outcome.detail;
     } catch (e) {
       const marked = await ctx.db.runChanges(
         `UPDATE data_migration_units SET status = 'failed', error = ?, at = ?
@@ -456,9 +472,17 @@ async function drive(
     }
     const stmts: DbStatement[] = [
       {
-        sql: `UPDATE data_migration_units SET status = 'done', changes = ?, error = NULL, at = ?
+        sql: `UPDATE data_migration_units SET status = 'done', changes = ?, error = NULL, at = ?,
+                     detail_json = ?
                WHERE run_id = ? AND unit = ? AND ${guard.sql}`,
-        params: [n, ctx.now, runId, u.unit, ...guard.params],
+        params: [
+          n,
+          ctx.now,
+          detail === undefined ? null : JSON.stringify(detail),
+          runId,
+          u.unit,
+          ...guard.params,
+        ],
       },
       {
         sql: `UPDATE data_migration_runs SET changes = changes + ? WHERE id = ? AND lease_token = ?`,

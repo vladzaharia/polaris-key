@@ -41,6 +41,44 @@ Where a purchase is not available in the app, the screen says so. **Buy in your 
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** A host places `<Paywall />` from `@polaris-key/react/kit`, given an `input`. Its **Buy in your browser** needs an https `offers.url`.
+
+    **Styled part.** The React kit's `<Paywall />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Paywall", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** Inside `PolarisKitScreen`, which draws the Paywall for a `KitStates.resolve` answer. Without a store the screen offers the browser hand-off and Redeem a code; the kit computes no price.
+
+    **Styled part.** `PolarisPaywall(screen, features, onUpgrade, onPortal, onRedeem, onDone)`: the tier's features under its includes line. Play Billing draws the purchase (`polaris-key-billing`).
+
+    **Headless.** `KitStates.resolve(KitComponent.paywall, inputs)`; the offers input carries the https `offers.url` and the features.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import im.plrs.key.ui.KitComponent
+    import im.plrs.key.ui.KitInputs
+    import im.plrs.key.ui.KitStates
+    import im.plrs.key.ui.PolarisPaywall
+
+    @Composable
+    fun MyPaywall(inputs: KitInputs, features: List<String>, openPortal: () -> Unit) {
+        val screen = KitStates.resolve(KitComponent.paywall, inputs)
+        PolarisPaywall(screen, features, onPortal = openPortal)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

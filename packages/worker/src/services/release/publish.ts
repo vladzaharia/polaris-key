@@ -305,7 +305,7 @@ export async function handleUploads(ctx: ServiceContext): Promise<Response> {
   const parent = r2Parent(env);
   if (!env.BLOBS || !parent) return notFound();
 
-  // A ticket also carries the F-Droid repository files `pkey feeds fdroid` uploads (P2b-05):
+  // A ticket also carries the F-Droid repository files `pkey storefront fdroid` uploads (P2b-05):
   // `distribution:feeds` buys one too. Only the submit (`release:publish`) ingests a release, and
   // only the feed register (`distribution:feeds`) registers feed files, each redeeming its own.
   // So does `distribution:listing` (A-18d), for the listing assets `pkey listing assets` derived;

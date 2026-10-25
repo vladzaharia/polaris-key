@@ -64,7 +64,7 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
   },
   es: {
     license_required: {
-      title: "Se necesita una licencia",
+      title: "Licencia necesaria",
       message: "Activa la app y vuelve a intentarlo.",
     },
     license_invalid: {
@@ -147,9 +147,9 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
         "ライセンスを確認できませんでした。アプリを再接続してから、もう一度お試しください。",
     },
     license_stale: {
-      title: "ライセンスの更新が必要です",
+      title: "ライセンスの再確認が必要です",
       message:
-        "アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。",
+        "アプリがライセンスを最新の状態にできるよう、インターネットに接続してから、もう一度お試しください。",
     },
     not_entitled: {
       title: "含まれていません",
@@ -172,9 +172,9 @@ export const BACKEND_COPY: Readonly<Record<BackendLocale, BackendCopyTable>> = {
         "라이선스를 확인하지 못했어요. 앱을 다시 연결한 후 다시 시도하세요.",
     },
     license_stale: {
-      title: "라이선스 새로 고침 필요",
+      title: "라이선스 새로고침 필요",
       message:
-        "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요.",
+        "앱이 라이선스를 새로고침할 수 있도록 인터넷에 연결한 후 다시 시도하세요.",
     },
     not_entitled: {
       title: "포함되지 않음",

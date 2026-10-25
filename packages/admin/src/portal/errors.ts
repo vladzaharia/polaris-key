@@ -1,27 +1,20 @@
-import { PortalApiError } from "./api.js";
+import { HttpError, readSsoNext } from "./api.js";
+import type { PortalSsoNext } from "./api.js";
 import { t } from "../lib/copy.js";
+import { focusAfterRetry } from "./focus.js";
 import { helpForRefusal } from "./helpLinks.js";
+import { HelpLink } from "./components/HelpLink.js";
+import type { PortalVoice, PortalVoiceCopy } from "../ui/errorVoice.js";
 
 /**
  * Error copy for the customer site (PORTAL.md §6.4): what happened, in the person's terms, and
  * the next step. Never an HTTP status, an internal code or "portal api 404".
  */
-export interface PortalErrorCopy {
-  title: string;
-  description: string;
-  /** Whether trying again can help (a Retry button is offered). */
-  retry: boolean;
-  /** Title and description as one line, for a message with no heading above it. */
-  line: string;
-  /** The catalog's catch-all (`core.codes.unknown`): a page may say what failed instead. */
-  generic?: boolean;
-  /** The Help page that explains this refusal, when there is one (DOC-06a). */
-  help?: string;
-}
+export type PortalErrorCopy = PortalVoiceCopy;
 
 export function isSignedOut(err: unknown): boolean {
   return (
-    err instanceof PortalApiError &&
+    err instanceof HttpError &&
     err.status === 401 &&
     // Still signed in, only not recently enough for an account change (PX-W12).
     err.code !== "step_up_required"
@@ -33,11 +26,25 @@ export function isSignedOut(err: unknown): boolean {
  * person to confirm it's them, then tries again.
  */
 export function isStepUpRequired(err: unknown): boolean {
-  return err instanceof PortalApiError && err.code === "step_up_required";
+  return err instanceof HttpError && err.code === "step_up_required";
+}
+
+/** I-30: the connection an enforced domain's refusal names instead (`body.next`), if any. */
+export function ssoNextOf(err: unknown): PortalSsoNext | undefined {
+  if (!(err instanceof HttpError)) return undefined;
+  const body = err.body as { next?: unknown } | null | undefined;
+  return body && typeof body === "object" ? readSsoNext(body.next) : undefined;
+}
+
+/** I-16: a passkey sign-in refused because no account here holds that credential. */
+export function isUnknownCredential(err: unknown): boolean {
+  if (!(err instanceof HttpError)) return false;
+  const body = err.body as { unknownCredential?: unknown } | null | undefined;
+  return !!body && typeof body === "object" && body.unknownCredential === true;
 }
 
 export function isNotFound(err: unknown): boolean {
-  return err instanceof PortalApiError && err.status === 404;
+  return err instanceof HttpError && err.status === 404;
 }
 
 /**
@@ -118,7 +125,7 @@ export function portalErrorCopy(
   err: unknown,
   _opts: { account?: boolean } = {},
 ): PortalErrorCopy {
-  if (err instanceof PortalApiError) {
+  if (err instanceof HttpError) {
     // Erasing the account, removing a license and minting a package token ask for a
     // sign-in from the last five minutes.
     if (isStepUpRequired(err)) return fromCode("step_up_required", false);
@@ -142,3 +149,23 @@ export function portalErrorCopy(
   }
   return fromCode("unknown", true);
 }
+
+/** What a bug report needs from a failed load: the refusal's code and status, or the error's name and message. */
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (error instanceof HttpError)
+    return { code: error.code, status: error.status, message: error.message };
+  if (error instanceof Error)
+    return { name: error.name, message: error.message };
+  return { message: String(error) };
+}
+
+/** The customer site's voice for `ErrorState` (mounted by `PortalApp`). */
+export const portalVoice: PortalVoice = {
+  tone: "portal",
+  copy: (error, opts) => portalErrorCopy(error, opts),
+  details: errorDetails,
+  retryLabel: t("signin.retry"),
+  afterRetry: focusAfterRetry,
+  helpLabel: t("locker.help.whatToDo"),
+  HelpLink,
+};

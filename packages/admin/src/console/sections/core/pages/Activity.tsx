@@ -10,12 +10,12 @@
  *   the table view drops columns by priority on narrow screens (ACT-6).
  */
 
+import { activityQuery } from "../data.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Download, List, Rows3 } from "lucide-react";
 import {
-  api,
   type ActivityFilters,
   type ActivityItem,
   type ActivityPage,
@@ -40,7 +40,6 @@ import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { toast } from "../../../../ui/toast.js";
 import { EntityLink } from "../../../components/EntityLink.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
@@ -51,7 +50,6 @@ import {
 } from "../model/activityVerbs.js";
 import { useQueryParams } from "../model/urlState.js";
 
-const PAGE_SIZE = 50;
 const RETENTION_DAYS = 180;
 
 const RANGES: { value: string; label: string; hours: number }[] = [
@@ -91,13 +89,7 @@ function serverFilters(
  * the unfiltered feed through this too, so both share one cache entry.
  */
 export function useActivityFeed(slug: string, filters: ActivityFilters) {
-  return useInfiniteQuery({
-    queryKey: [...qk.activity(slug), JSON.stringify(filters)],
-    queryFn: ({ pageParam }) =>
-      api.activity(slug, pageParam, PAGE_SIZE, filters),
-    initialPageParam: null as ActivityPage["nextCursor"],
-    getNextPageParam: (last: ActivityPage) => last.nextCursor ?? undefined,
-  });
+  return useInfiniteQuery(activityQuery(slug, filters));
 }
 
 export function actorName(item: ActivityItem): string {

@@ -288,6 +288,7 @@ export function stubClient(
     status?: () => { status: string; graceUntil?: number };
     licenseInfo?: unknown;
     license?: Stub;
+    entitlements?: Stub;
     identity?: Stub;
     update?: Stub;
     release?: Stub;
@@ -345,6 +346,7 @@ export function stubClient(
       deviceId: "dev_9fK2Lw7QmZ",
       baseUrl: "https://key.plrs.im",
     },
+    entitlements: { ...over.entitlements },
     license: {
       licenseInfo: () => info,
       activateWithKey: async () => ({
@@ -418,7 +420,7 @@ export function stubClient(
     config: {
       listUserConfig: () => [],
       getConfigSource: () => "default",
-      getConfig: (_k: string, fallback: unknown) => fallback,
+      get: (_k: string, fallback: unknown) => fallback,
       getSecret: () => null,
       set: async () => undefined,
       clear: async () => undefined,

@@ -15,6 +15,7 @@ import type {
   PlatformStoreCredential,
 } from "../src/api.js";
 import { sha } from "../test/releaseFixture.js";
+import { workerFields } from "./workerFields.js";
 
 type Setting = Record<string, unknown>;
 
@@ -34,6 +35,208 @@ const IDENTITY = {
   latestMigration: "0054_b_platform_audit.sql",
   environment: "prod",
 };
+
+/** `GET /members`: the roster Platform → Members draws. */
+function productMembersView() {
+  const role = (bindingId: string, over: Record<string, unknown> = {}) => ({
+    role: "product_admin",
+    areas: null,
+    source: "grant",
+    bindingId,
+    grantedBy: { name: "Ada Lindqvist" },
+    grantedAt: 1_789_000_000,
+    ...over,
+  });
+  return {
+    product: "djdl",
+    truncated: false,
+    incomplete: false,
+    members: [
+      {
+        memberId: "mbr_kenji",
+        name: "Kenji Mori",
+        email: "kenji@example.com",
+        you: true,
+        roles: [role("b_kenji")],
+      },
+      {
+        memberId: "mbr_lucia",
+        name: "Lucía Ortega",
+        email: "lucia@example.com",
+        you: false,
+        roles: [role("b_lucia", { areas: ["ship", "commerce"] })],
+      },
+      {
+        memberId: "mbr_bart",
+        name: "Bartholomew Featherstonehaugh-Cholmondeley",
+        email:
+          "bartholomew.featherstonehaugh-cholmondeley@a-very-long-company-name.example.com",
+        you: false,
+        roles: [
+          role("b_bart", {
+            areas: ["license", "config", "ship", "signin"],
+            source: "invite",
+          }),
+        ],
+      },
+    ],
+    invites: [
+      {
+        bindingId: "b_marco",
+        email: "marco@example.com",
+        role: "product_admin",
+        areas: ["commerce"],
+        invitedBy: { name: "Kenji Mori" },
+        sentAt: 1_789_980_000,
+        expiresAt: 1_790_500_000,
+      },
+    ],
+    platformRoles: [
+      {
+        memberId: "mbr_ada",
+        name: "Ada Lindqvist",
+        email: "ada@example.com",
+        role: "superadmin",
+        scope: "platform",
+        areas: null,
+        source: "root",
+      },
+      {
+        memberId: "mbr_sam",
+        name: "Sam Okoye",
+        email: "sam@example.com",
+        role: "product_admin",
+        scope: "products:*",
+        areas: ["ship"],
+        source: "grant",
+      },
+    ],
+  };
+}
+
+function membersView() {
+  const role = (
+    role: string,
+    scope: string,
+    over: Record<string, unknown> = {},
+  ) => ({
+    role,
+    scope,
+    areas: null,
+    source: "grant",
+    bindingId: `b_${role}_${scope.replace(/\W/g, "")}`,
+    grantedBy: { name: "Ada Lovelace" },
+    grantedAt: 1_789_000_000,
+    ...over,
+  });
+  const root = {
+    role: "superadmin",
+    scope: "platform",
+    areas: null,
+    source: "root",
+    bindingId: null,
+    grantedBy: null,
+    grantedAt: null,
+  };
+  const member = (
+    i: number,
+    name: string,
+    email: string,
+    roles: Record<string, unknown>[],
+    over: Record<string, unknown> = {},
+  ) => ({
+    memberId: `mbr_${i}`,
+    name,
+    email,
+    lastSignInAt: 1_789_990_000 - i * 40_000,
+    disabled: false,
+    you: i === 0,
+    roles,
+    ...over,
+  });
+  return {
+    rootRule: { group: "polaris-admins" },
+    truncated: false,
+    incomplete: false,
+    members: [
+      member(0, "Ada Lindqvist", "ada@example.com", [root]),
+      member(1, "Jonas Weber", "jonas@example.com", [root]),
+      member(2, "Priya Raman", "priya@example.com", [
+        role("platform_admin", "platform"),
+        role("product_admin", "product:djdl", { source: "creator" }),
+      ]),
+      member(3, "Kenji Mori", "kenji@example.com", [
+        role("product_admin", "product:acme"),
+      ]),
+      member(4, "Sam Okoye", "sam@example.com", [
+        role("product_admin", "products:*", { areas: ["ship"] }),
+        role("product_admin", "product:djdl"),
+      ]),
+      member(5, "Lucía Ortega", "lucia@example.com", [
+        role("product_admin", "product:acme", { areas: ["ship", "commerce"] }),
+      ]),
+      member(6, "Noor Haddad", "noor@example.com", [
+        role("console_access", "platform"),
+      ]),
+      member(
+        7,
+        "Bartholomew Featherstonehaugh-Cholmondeley",
+        "bartholomew.featherstonehaugh-cholmondeley@a-very-long-company-name.example.com",
+        [
+          // A 38-character product (a slug the console cannot name) with three areas.
+          role(
+            "product_admin",
+            "product:northwind-broadcast-audio-workstations",
+            {
+              areas: ["license", "config", "ship"],
+            },
+          ),
+        ],
+      ),
+      member(
+        8,
+        "",
+        "no-name@example.com",
+        [role("console_access", "platform")],
+        {
+          lastSignInAt: null,
+        },
+      ),
+    ],
+    invites: [
+      {
+        bindingId: "b_inv_1",
+        email: "mira@example.com",
+        role: "product_admin",
+        scope: "product:djdl",
+        areas: null,
+        invitedBy: { name: "Priya Raman" },
+        sentAt: 1_789_900_000,
+        expiresAt: 1_790_500_000,
+      },
+      {
+        bindingId: "b_inv_2",
+        email: "tom@example.com",
+        role: "console_access",
+        scope: "platform",
+        areas: null,
+        invitedBy: { name: "Ada Lindqvist" },
+        sentAt: 1_789_800_000,
+        expiresAt: 1_790_400_000,
+      },
+      {
+        bindingId: "b_inv_3",
+        email: "olu@example.com",
+        role: "platform_admin",
+        scope: "platform",
+        areas: null,
+        invitedBy: { name: "Ada Lindqvist" },
+        sentAt: 1_789_700_000,
+        expiresAt: 1_790_300_000,
+      },
+    ],
+  };
+}
 
 function deploy(i: number, smoke = "success") {
   return {
@@ -542,6 +745,36 @@ function lazyDeltas(over: Setting = {}): Setting {
   };
 }
 
+/** PX-W13c: the extra reserved display terms, a list row in Sign-in. */
+function reservedTerms(over: Setting = {}): Setting {
+  return {
+    key: "identity.reservedDisplayTerms",
+    area: "identity",
+    label: "Extra reserved display terms",
+    description:
+      "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
+    kind: "list",
+    max: 64,
+    maxLength: 64,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: [],
+    deployValue: null,
+    value: ["Zephyr", "Acme Store"],
+    source: "runtime",
+    forcedOff: false,
+    stored: {
+      value: ["Zephyr", "Acme Store"],
+      valid: true,
+      updatedAt: 1_790_000_000,
+      updatedBy: "ops@x.io",
+    },
+    version: 1,
+    confirm: { change: "L1" },
+    ...over,
+  };
+}
+
 /** ST-16: the product defaults the Worker lists under Platform → Settings. */
 function keyEntryCeiling(over: Setting = {}): Setting {
   return {
@@ -672,6 +905,75 @@ function gcMode(over: Setting = {}): Setting {
   };
 }
 
+/** Cloud Sync's two platform controls (U-05.21: Setup draws the default and the pause beside them). */
+function cloudSyncDefault(over: Setting = {}): Setting {
+  return {
+    key: "cloudSync.quota.defaultBytes",
+    area: "cloudSync",
+    label: "Default Cloud Sync quota",
+    description: "What a person may store when their tier sets nothing.",
+    kind: "integer",
+    unit: "bytes",
+    min: 1_048_576,
+    max: 1_073_741_824,
+    scripts: ["main"],
+    precedence: "runtime",
+    default: 268_435_456,
+    deployValue: null,
+    value: 268_435_456,
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { raise: "L2", lower: "L2" },
+    link: "default",
+    ...over,
+  };
+}
+
+function cloudSyncPause(over: Setting = {}): Setting {
+  return {
+    key: "cloudSync.writesPaused",
+    area: "cloudSync",
+    label: "Pause Cloud Sync writes",
+    description: "Stops new settings and saves in every product.",
+    kind: "switch",
+    scripts: ["main"],
+    precedence: "runtime",
+    default: "off",
+    deployValue: null,
+    value: "off",
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { on: "L2", off: "L1" },
+    ...over,
+  };
+}
+
+/** The platform settings with Cloud Sync's writes paused: the Resume dialog opened from Home. */
+export function pausedPlatformSettings(): Record<string, unknown> {
+  const v = view();
+  return {
+    ...v,
+    settings: v.settings.map((x) =>
+      x.key === "cloudSync.writesPaused"
+        ? cloudSyncPause({
+            value: "on",
+            version: 4,
+            stored: {
+              value: "on",
+              valid: true,
+              updatedAt: Math.floor(Date.now() / 1000) - 2 * 3600,
+              updatedBy: "m-ana",
+            },
+          })
+        : x,
+    ),
+  };
+}
+
 function grace(over: Setting = {}): Setting {
   return {
     key: "BLOB_GC_GRACE_DAYS",
@@ -710,6 +1012,9 @@ function view(over: Record<string, unknown> = {}) {
       maxBytes(),
       gcMode(),
       grace(),
+      cloudSyncDefault(),
+      cloudSyncPause(),
+      reservedTerms(),
     ],
     storeAvailable: true,
     propagationSeconds: 30,
@@ -1257,7 +1562,8 @@ export const LICENSES = Array.from({ length: 240 }, (_, i) => ({
     i % 7 === 0 ? null : i % 5 === 1 ? NOW_S + 4 * DAY : NOW_S + (90 + i) * DAY,
   keyCount: 1 + (i % 3),
   activeKeyCount: 1 + (i % 2),
-  deviceCount: i % 6,
+  // lic_1 lists four live devices in its detail; the count agrees.
+  deviceCount: i === 0 ? 4 : i % 6,
   profile: null,
   profiles: i % 4 === 0 ? ["base", "studio"] : [],
   tier: TIER_IDS[i % TIER_IDS.length],
@@ -1290,7 +1596,7 @@ export const LICENSES = Array.from({ length: 240 }, (_, i) => ({
           batchId: null,
           keyEntries: null,
         }),
-}));
+})).map(workerFields);
 
 /** LX-30: two batches, one with a label at the 80-character limit. */
 export const BATCHES = [
@@ -1412,6 +1718,15 @@ export const CATALOG = {
       schema: { type: "string" },
     },
     {
+      key: "applemusic.token",
+      kind: "secret",
+      delivery: "edgeMint",
+      category: "Secrets",
+      label: "Apple Music token",
+      description: "Signed on request.",
+      schema: { type: "string" },
+    },
+    {
       key: "license.hd",
       kind: "flag",
       category: "Content",
@@ -1498,6 +1813,11 @@ export const PROFILE = {
 
 export const LICENSE_DETAIL = {
   ...LICENSES[0],
+  // Waiting for its holder: the Config tab's notice below is the no-account callout, so the
+  // holder has no account either (a licence in an account would not show it).
+  holder: { kind: "assigned", inAccount: false },
+  ownerSubject: null,
+  keyEntries: { used: 0, limit: 10 },
   maxOfflineDays: 14,
   profiles: ["base", "studio"],
   overrides: {
@@ -1511,13 +1831,11 @@ export const LICENSE_DETAIL = {
       "flag.pro": { state: "hidden", value: true, updatedAt: NOW_S },
     },
   },
-  // U-03: the notice's widest callout on the Config tab (no account, with the sign-up link to
-  // offer), over the full editor. Independent of the Platform page's own fixture state.
+  // U-27: the Config tab's widest callout (no account, with the sign-up link to offer), over the
+  // full editor.
   configOverrides: {
-    phase: "notice",
     owned: false,
     ownerSubject: null,
-    runNotBefore: NOW_S + 20 * DAY,
     signUpUrl: "https://keys.example.com/activate?product=djdl",
   },
   keys: Array.from({ length: 4 }, (_, i) => ({
@@ -1557,108 +1875,6 @@ export const LICENSE_DETAIL_WAITING = {
 export const LICENSE_DETAIL_FLOATING = {
   ...LICENSE_DETAIL,
   ...LICENSES[9],
-};
-
-// ── Platform → Override migration (U-03): a run part-way through, so every section draws ─────
-
-const MIGRATION_AT = 1_790_000_000;
-const MIGRATION_STATE = {
-  phase: "running",
-  noticeDays: 30,
-  reportDays: 90,
-  prerequisites: {
-    loginCard: { liveAt: MIGRATION_AT - 50 * 86_400, by: "u1" },
-    library: { liveAt: MIGRATION_AT - 45 * 86_400, by: "u1" },
-  },
-  notice: {
-    startedAt: MIGRATION_AT - 40 * 86_400,
-    by: "u1",
-    runNotBefore: MIGRATION_AT - 10 * 86_400,
-    runAllowed: true,
-  },
-  run: {
-    id: "run_1",
-    startedAt: MIGRATION_AT - 3600,
-    by: "u1",
-    completedAt: null,
-    productsDone: ["djdl"],
-    reportExpiresAt: null,
-    columnsEmptiedAt: null,
-  },
-  inventory: {
-    computedAt: MIGRATION_AT - 7200,
-    products: [
-      {
-        product: "djdl",
-        licences: 4,
-        owned: 3,
-        dropped: 1,
-        collapsingAccounts: 1,
-      },
-      {
-        product: "acme",
-        licences: 2,
-        owned: 0,
-        dropped: 2,
-        collapsingAccounts: 0,
-      },
-    ],
-    totals: { licences: 6, owned: 3, dropped: 3 },
-  },
-};
-const MIGRATION_REPORT = {
-  rows: [
-    {
-      product: "djdl",
-      runId: "run_1",
-      licenseId: "lic_1",
-      outcome: "collapsed",
-      subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
-      buyerEmail: "ada@example.com",
-      keys: {
-        config: ["network.timeout", "ui.theme"],
-        secrets: ["sentry.dsn"],
-      },
-      values: {
-        collapsed: [
-          {
-            bucket: "config",
-            key: "network.timeout",
-            keptFrom: "lic_2",
-            kept: 60,
-            lost: 30,
-          },
-          { bucket: "secrets", key: "sentry.dsn", keptFrom: "lic_2" },
-        ],
-      },
-      createdAt: MIGRATION_AT - 3600,
-      expiresAt: MIGRATION_AT + 89 * 86_400,
-    },
-    {
-      product: "djdl",
-      runId: "run_1",
-      licenseId: "lic_3",
-      outcome: "dropped",
-      subject: null,
-      buyerEmail: "lab-3@university.example.edu",
-      keys: { config: ["network.timeout"], secrets: [] },
-      values: { config: { "network.timeout": 45 } },
-      createdAt: MIGRATION_AT - 3600,
-      expiresAt: MIGRATION_AT + 89 * 86_400,
-    },
-    {
-      product: "djdl",
-      runId: "run_1",
-      licenseId: "lic_4",
-      outcome: "moved",
-      subject: "ps_BBBBBBBBBBBBBBBBBBBBBB",
-      buyerEmail: null,
-      keys: { config: ["ui.theme"], secrets: [] },
-      values: {},
-      createdAt: MIGRATION_AT - 3600,
-      expiresAt: MIGRATION_AT + 89 * 86_400,
-    },
-  ],
 };
 
 // ── The route table this file contributes ────────────────────────────────────────────────────
@@ -1717,6 +1933,11 @@ const PLAY_STORE = {
     lastError: null,
   },
   app: { id: "gg.djdl.app", name: "DJDL" },
+  // A-28.4: one identifier from the manifest, one filled from the assignment.
+  identifiers: {
+    packageName: { value: "gg.djdl.app", source: "assigned" },
+    developerId: { value: "4976543210987654321", source: "manifest" },
+  },
   outlets: ["android"],
   readOnly: null,
   capabilities: [
@@ -1751,6 +1972,40 @@ const PLAY_STORE = {
 };
 
 const POLARIS_KEY_ROUTES: Record<string, unknown> = {
+  // A-27.11: the listing editor's model (Settings -> Presentation -> Listing); an override on Play.
+  [`${PROD}/distribution/listing`]: {
+    listing: {
+      app: { defaultLocale: "en-US", name: "DJDL", developerName: "DJDL Ltd" },
+      source: "admin",
+      provenance: {},
+      modifiedAt: 1,
+      modifiedBy: "u1",
+    },
+    locales: [
+      {
+        locale: "en-US",
+        name: "DJDL",
+        subtitle: "Mix anywhere, live or on air",
+        description: "Two-deck DJ mixer.",
+        source: "admin",
+        provenance: {},
+        modifiedAt: 1,
+        modifiedBy: "u1",
+      },
+    ],
+    overrides: [
+      {
+        store: "play",
+        locale: "en-US",
+        field: "subtitle",
+        value: "Two-deck DJ mixer",
+      },
+    ],
+    limits: { name: 30, subtitle: 30 },
+    stores: [{ store: "play", label: "Google Play Console" }],
+    overrideStores: ["play"],
+    modelFields: ["name", "subtitle", "description"],
+  },
   // The Listing step of the Add to storefronts flow: the fit report, one store with a warning.
   [`${PROD}/distribution/listing/fit`]: {
     exists: true,
@@ -1924,19 +2179,34 @@ export const DATA_ROUTES: Record<string, unknown> = {
   // CM-29: Commerce's overview read.
   [`${PROD}/commerce`]: {
     licenseEnabled: true,
-    setup: {
-      "app-store": { configured: true, credential: "cred_asc", reason: null },
+    // A-28: derived (App Store), typed and differing (Google Play), no app (Steam).
+    identity: {
+      "app-store": {
+        value: "com.djdl.app",
+        source: "assigned",
+        assigned: "com.djdl.app",
+        mismatch: false,
+        ambiguous: false,
+      },
       play: {
-        configured: false,
-        credential: null,
-        reason: "no settings for this store",
+        value: "gg.djdl.typo.with.a.long.package.name",
+        source: "typed",
+        assigned: "gg.djdl.app",
+        mismatch: true,
+        ambiguous: false,
       },
       steam: {
-        configured: false,
-        credential: null,
-        reason:
-          "no active steam-publisher-key credential pinned to the configured app",
+        value: null,
+        source: null,
+        assigned: null,
+        mismatch: false,
+        ambiguous: false,
       },
+    },
+    setup: {
+      "app-store": { configured: true, credential: "cred_asc", reason: null },
+      play: { configured: true, credential: "cred_play", reason: null },
+      steam: { configured: false, credential: null, reason: "no_app_assigned" },
     },
     products: [
       {
@@ -1999,6 +2269,12 @@ export const DATA_ROUTES: Record<string, unknown> = {
     ],
     nextCursor: null,
   },
+  // ST-31.11: Platform → Members. Nine people (a root holder, both admin kinds, a narrowed
+  // Product admin, a long name and address) and three invites, one of them for a platform role.
+  "/manage/api/members": membersView(),
+  // ST-31.14: Product → Settings → Members (DJDL): Kenji (you), Lucía (two areas), a long name
+  // with a long address and four areas, an invite, and two roles that reach DJDL from above.
+  [`${PROD}/members`]: productMembersView(),
   "/manage/api/platform/operations": operations(),
   "/manage/api/platform/settings": view(),
   "/manage/api/platform/settings/identity.keyEntry.limit/reach": {
@@ -2019,8 +2295,6 @@ export const DATA_ROUTES: Record<string, unknown> = {
       },
     ],
   },
-  "/manage/api/platform/override-migration": { state: MIGRATION_STATE },
-  "/manage/api/platform/override-migration/report": MIGRATION_REPORT,
   "/manage/api/products/kek": KEK,
   [BASE]: { ok: true, stores: STORES },
   [`${BASE}/app-store/apps`]: ASC_APPS,
@@ -2050,10 +2324,29 @@ export const DATA_ROUTES: Record<string, unknown> = {
   [`${PROD}/release/deliverables/${CORE}/releases`]: RELEASES,
   [`${PROD}/release/deliverables/${CORE}/releases/${encodeURIComponent(`${CORE}@1.4.0`)}/files`]:
     FILES,
-  [`${PROD}/license/licenses`]: { licenses: LICENSES },
+  [`${PROD}/license/licenses`]: {
+    licenses: LICENSES,
+    // LX-27c.4: the wizard's Delivery step offers an invitation.
+    holders: { invitations: true, invitationsOff: null },
+  },
   [`${PROD}/license/licenses/lic_1`]: LICENSE_DETAIL,
   [`${PROD}/license/licenses/lic_3`]: LICENSE_DETAIL_WAITING,
   [`${PROD}/license/licenses/lic_10`]: LICENSE_DETAIL_FLOATING,
+  // LX-27c.5: a waiting licence the console invited: Resend invitation, the Invitation card.
+  [`${PROD}/license/licenses/lic_wait`]: {
+    ...LICENSE_DETAIL,
+    id: "lic_wait",
+    name: "Sam Reyes",
+    email: "sam.reyes@example.com",
+    holder: {
+      kind: "assigned",
+      inAccount: false,
+      email: "sam.reyes@example.com",
+    },
+    ownerSubject: null,
+    invitedAt: NOW_S - 2 * DAY,
+  },
+  [`${PROD}/users/licenses/lic_wait/relinks`]: { relinks: [] },
   [`${PROD}/license/tiers`]: { tiers: TIERS },
   [`${PROD}/license/batches`]: { batches: BATCHES, nextCursor: null },
   [`${PROD}/license/batches/batch_oct`]: BATCHES[0],

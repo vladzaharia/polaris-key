@@ -18,9 +18,10 @@
  */
 
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import { createWrites, type Target } from "../../lib/writes.js";
 import {
   api,
-  ApiError,
+  HttpError,
   type AdminApi,
   type AlertScope,
   type FeedScope,
@@ -28,11 +29,16 @@ import {
 import { SYSTEM_PRODUCT_SLUG } from "../sections/feeds/model/model.js";
 import { qk } from "./queries.js";
 
-/** One invalidation target: a key prefix, or one exact key. */
-export interface Target {
-  key: QueryKey;
-  exact?: boolean;
-}
+/** What a product-scope Members write makes stale: the product's roster, the platform's, who can give access. */
+const productMemberTargets = (slug: string): Target[] => [
+  prefix(qk.productMembers(slug)),
+  prefix(qk.members()),
+  prefix(qk.platformActivity()),
+  prefix(qk.activity(slug)),
+  prefix(["access-admins"]),
+];
+
+export type { Target };
 
 const prefix = (key: QueryKey): Target => ({ key });
 /** The trail a write in `scope` appends to (ST-27 alert destinations). */
@@ -56,6 +62,14 @@ export type WriteMethod =
   | "deleteAlertDestination"
   | "testAlertDestination"
   | "revokePersonalToken"
+  | "inviteMembers"
+  | "inviteProductMembers"
+  | "editProductMemberAreas"
+  | "revokeProductMember"
+  | "grantRole"
+  | "editBindingAreas"
+  | "revokeBinding"
+  | "revokeMyPersonalToken"
   | "createPlatformConnection"
   | "updatePlatformConnection"
   | "deletePlatformConnection"
@@ -65,11 +79,6 @@ export type WriteMethod =
   | "verifyConnectionDomain"
   | "setConnectionDomainEnforce"
   | "removeConnectionDomain"
-  | "putOverrideMigrationPrerequisites"
-  | "startOverrideMigrationNotice"
-  | "withdrawOverrideMigrationNotice"
-  | "overrideMigrationDryRun"
-  | "runOverrideMigration"
   | "createManualProduct"
   | "linkRepo"
   | "checkRepoCreate"
@@ -131,6 +140,7 @@ export type WriteMethod =
   | "putLicenseOverrides"
   | "mintKey"
   | "sendLicenseKey"
+  | "sendLicenseInvite"
   | "revokeKey"
   | "deauthorizeDevice"
   | "resetDeviceFingerprint"
@@ -167,7 +177,9 @@ export type WriteMethod =
   | "rebuildFeed"
   | "bootstrapPlatformFeeds"
   | "savePackageFeeds"
+  | "commerceUseAssigned"
   | "mintRegistryToken"
+  | "mintServiceToken"
   | "revokeRegistryToken"
   | "revokeAllRegistryTokens"
   | "acceptListingAsset"
@@ -202,6 +214,11 @@ export type MutationTable = {
  * (a secret, a recipe's approval, a resync, a credential) refreshes it.
  */
 const attention = (): Target => exact(qk.attention());
+/** Every product's Cloud Sync usage read: it carries the platform pause (who, when, why). */
+const syncUsageEvery = (): Target => ({
+  key: ["product"],
+  match: (k) => k[2] === "sync" && k[3] === "usage",
+});
 
 const releasePolicy = (slug: string): Target[] => [
   attention(),
@@ -265,17 +282,6 @@ const users = (slug: string): Target[] => [
   prefix(qk.activity(slug)),
 ];
 
-/**
- * U-03: a licence override migration write. The page's own state, the platform trail it appends
- * to, and every product's queries: a notice or a run changes what every licence record's Config
- * tab, Licenses page and catalog key usage show, and a run writes account overrides.
- */
-const overrideMigration = (): Target[] => [
-  prefix(qk.overrideMigration()),
-  prefix(qk.platformActivity()),
-  prefix(qk.allProducts()),
-];
-
 /** §5.4 "key mint / revoke": the record, and the list's key counts. */
 const licenseKey = (slug: string, id: string): Target[] => [
   exact(qk.licenses(slug)),
@@ -333,6 +339,9 @@ export const MUTATIONS: MutationTable = {
       // The reserved-names report carries the severity the settings row sets (LX-05).
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
+      // Home's Needs attention lists the Cloud Sync pause (U-05.21): it must clear on Resume.
+      attention(),
+      syncUsageEvery(),
     ],
   },
   mintApiToken: {
@@ -433,11 +442,49 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.platformActivity()),
     ],
   },
+  // ST-31.11: a role change moves the roster and the platform trail (`rbac.*` rows).
+  inviteMembers: {
+    label: "member invite",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  grantRole: {
+    label: "role grant",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  editBindingAreas: {
+    label: "role areas edit",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  revokeBinding: {
+    label: "role revoke",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  // ST-31.14: the product twins also move the platform roster and the access lists NoAccess reads.
+  inviteProductMembers: {
+    label: "product member invite",
+    invalidates: (slug) => productMemberTargets(slug),
+  },
+  editProductMemberAreas: {
+    label: "product role areas edit",
+    invalidates: (slug) => productMemberTargets(slug),
+  },
+  revokeProductMember: {
+    label: "product role revoke",
+    invalidates: (slug) => productMemberTargets(slug),
+  },
   revokePersonalToken: {
     label: "personal token revoke",
     invalidates: () => [
       prefix(qk.personalTokens()),
       prefix(qk.platformActivity()),
+    ],
+  },
+  revokeMyPersonalToken: {
+    label: "own personal token revoke",
+    // The roster lists the same token: refetch it too.
+    invalidates: () => [
+      prefix(qk.myPersonalTokens()),
+      prefix(qk.personalTokens()),
     ],
   },
   revertPlatformSetting: {
@@ -447,31 +494,10 @@ export const MUTATIONS: MutationTable = {
       // The reserved-names report carries the severity the settings row sets (LX-05).
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
+      // Home's Needs attention lists the Cloud Sync pause (U-05.21): it must clear on Resume.
+      attention(),
+      syncUsageEvery(),
     ],
-  },
-  putOverrideMigrationPrerequisites: {
-    label: "override migration prerequisites (I-07, I-11 live)",
-    invalidates: () => [
-      prefix(qk.overrideMigration()),
-      prefix(qk.platformActivity()),
-    ],
-  },
-  startOverrideMigrationNotice: {
-    label: "override migration notice start",
-    invalidates: () => overrideMigration(),
-  },
-  withdrawOverrideMigrationNotice: {
-    label: "override migration notice withdraw",
-    invalidates: () => overrideMigration(),
-  },
-  overrideMigrationDryRun: {
-    label: "override migration dry run",
-    invalidates: () => [],
-    why: "A dry run: it reads the licences and writes nothing.",
-  },
-  runOverrideMigration: {
-    label: "override migration run (start or continue)",
-    invalidates: () => overrideMigration(),
   },
   createManualProduct: {
     label: "product create (manual)",
@@ -877,6 +903,11 @@ export const MUTATIONS: MutationTable = {
     label: "license key send",
     invalidates: (slug, id) => licenseKey(slug, id),
   },
+  // LX-27c.2: mails the invitation again; it mints nothing, so only the licence's own reads change.
+  sendLicenseInvite: {
+    label: "license invitation send",
+    invalidates: (slug, id) => licenseKey(slug, id),
+  },
   revokeKey: {
     label: "license key revoke",
     invalidates: (slug, id) => licenseKey(slug, id),
@@ -1048,6 +1079,10 @@ export const MUTATIONS: MutationTable = {
     // The scope's token lists (every licence filter) and the feed activity trails.
     invalidates: (scope) => feeds(scope),
   },
+  mintServiceToken: {
+    label: "service token mint",
+    invalidates: (scope) => feeds(scope),
+  },
   revokeRegistryToken: {
     label: "registry token revoke",
     invalidates: (scope) => feeds(scope),
@@ -1122,6 +1157,15 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.activity(slug)),
     ],
   },
+  commerceUseAssigned: {
+    label: "store app",
+    // The typed identity is gone: the view, Home's items and the trail change.
+    invalidates: (slug) => [
+      prefix(qk.commerceView(slug)),
+      prefix(qk.activity(slug)),
+      attention(),
+    ],
+  },
   savePackageFeeds: {
     label: "package feeds switch",
     // The product row carries the switch the sidebar gates Package feeds on.
@@ -1140,14 +1184,22 @@ const listingWrite = (slug: string): Target[] => [
   prefix(qk.storefronts(slug)),
 ];
 
-/** The targets a write invalidates, or `null` when `method` is not a write (a read). */
-export function invalidationFor(
-  method: string,
-  args: unknown[],
-): Target[] | null {
-  const spec = (MUTATIONS as Record<string, MutationSpec<unknown[]>>)[method];
-  return spec ? spec.invalidates(...args) : null;
-}
+const writes = createWrites<AdminApi, WriteMethod>({
+  table: MUTATIONS,
+  api,
+  onError(error, _clients, method, args) {
+    refreshMeOnNoAccess(error);
+    // The page showed a state the server no longer has: refetch it.
+    if (
+      method === "commerceUseAssigned" &&
+      error instanceof HttpError &&
+      error.reason === "no_assigned_app"
+    )
+      void writes.invalidateAfter(method, args);
+  },
+});
+
+export const { invalidationFor, mutate, mutateEach } = writes;
 
 /**
  * The query clients a confirmed write invalidates in: each mounted console tree's own
@@ -1158,8 +1210,10 @@ const boundClients = new Set<QueryClient>();
 /** Bind `client` to the write path; returns the unbind. */
 export function bindWriteInvalidation(client: QueryClient): () => void {
   boundClients.add(client);
+  const unbind = writes.bindWriteInvalidation(client);
   return () => {
     boundClients.delete(client);
+    unbind();
   };
 }
 
@@ -1170,7 +1224,7 @@ export function bindWriteInvalidation(client: QueryClient): () => void {
  */
 export function refreshMeOnNoAccess(error: unknown): void {
   if (
-    !(error instanceof ApiError) ||
+    !(error instanceof HttpError) ||
     error.status !== 403 ||
     error.reason !== "no_access"
   )
@@ -1181,55 +1235,5 @@ export function refreshMeOnNoAccess(error: unknown): void {
 
 /** Invalidate a write's declared queries. Active queries refetch; inactive ones go stale. */
 export function invalidateAfter(method: WriteMethod, args: unknown[]): void {
-  const targets = invalidationFor(method, args) ?? [];
-  for (const client of boundClients) {
-    for (const t of targets) {
-      void client.invalidateQueries({ queryKey: t.key, exact: t.exact });
-    }
-  }
-}
-
-/**
- * Make a write and, once the server confirms it, invalidate what it declared (§5.3: confirmed,
- * never optimistic). A failed write invalidates nothing; the caller gets the error as before.
- */
-export async function mutate<K extends WriteMethod>(
-  method: K,
-  ...args: Parameters<AdminApi[K]>
-): Promise<Awaited<ReturnType<AdminApi[K]>>> {
-  const fn = api[method] as (...a: unknown[]) => ReturnType<AdminApi[K]>;
-  let result: Awaited<ReturnType<AdminApi[K]>>;
-  try {
-    result = await fn(...args);
-  } catch (e) {
-    refreshMeOnNoAccess(e);
-    throw e;
-  }
-  invalidateAfter(method, args);
-  return result;
-}
-
-/**
- * One write per argument list, in order, then a single invalidation (a bulk change refetches the
- * lists once, not once per row). A failed write does not stop the rest; its error is returned in
- * its place, and nothing is invalidated unless one succeeded.
- */
-export async function mutateEach<K extends WriteMethod>(
-  method: K,
-  argLists: Parameters<AdminApi[K]>[],
-): Promise<(Error | null)[]> {
-  const fn = api[method] as (...a: unknown[]) => Promise<unknown>;
-  const outcomes: (Error | null)[] = [];
-  let changed: Parameters<AdminApi[K]> | null = null;
-  for (const args of argLists) {
-    try {
-      await fn(...args);
-      changed = args;
-      outcomes.push(null);
-    } catch (e) {
-      outcomes.push(e instanceof Error ? e : new Error(String(e)));
-    }
-  }
-  if (changed) invalidateAfter(method, changed);
-  return outcomes;
+  void writes.invalidateAfter(method, args);
 }

@@ -23,7 +23,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type ProductSetting } from "../../api.js";
+import { HttpError, type ProductSetting } from "../../api.js";
 import { ErrorState } from "../../ui/ErrorState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge, type Source } from "../../ui/SourceBadge.js";
@@ -37,7 +37,7 @@ import { useWriteGate } from "../access/useCan.js";
 import { useProduct } from "../data/hooks.js";
 import { useSettingTarget } from "../useSettingTarget.js";
 import { mutate } from "../data/mutations.js";
-import { qk } from "../data/queries.js";
+import { reads } from "../data/reads.js";
 import { SettingsSection } from "../templates/Settings.js";
 
 /** Per-setting copy a page supplies: value labels, and what a change to a value means. */
@@ -45,7 +45,20 @@ export interface SettingCopy {
   /** Display labels for enum values (the raw value is shown when absent). */
   values?: ValueLabels;
   /** Extra lines for the confirmation when the setting changes to `to`. */
-  consequences?: (to: unknown) => string[];
+  consequences?: (to: unknown, who: ProductWho) => string[];
+  /** The confirmation's own title and button for a change to `to`. */
+  confirm?: (
+    to: unknown,
+    who: ProductWho,
+  ) => { title: string; confirmLabel: string };
+  /** The toast after a save of `to`. */
+  saved?: (to: unknown) => string;
+}
+
+/** Whose settings these are, for copy that names the product. */
+export interface ProductWho {
+  name: string;
+  slug: string;
 }
 
 /** Keys that only apply while another key's switch is on: `{ dependent: switchKey }` (B-032). */
@@ -62,7 +75,7 @@ const BADGE: Record<ProductSetting["source"], Source> = {
 
 /** A write refused because the setting changed since the row was read. */
 const isConflict = (e: unknown): boolean =>
-  e instanceof ApiError && e.status === 409;
+  e instanceof HttpError && e.status === 409;
 
 /** `product:licensing.anchorPolicy` → `.pkey/product`'s `licensing.anchorPolicy`. */
 function manifestFile(path: string | null): string {
@@ -83,6 +96,7 @@ export function ProductSettingsSection({
   pendingDescription,
   lockedBy = {},
   note,
+  bare = false,
 }: {
   slug: string;
   area: string;
@@ -100,11 +114,10 @@ export function ProductSettingsSection({
   lockedBy?: Record<string, string>;
   /** Above the rows, shown only when the section has rows. */
   note?: React.ReactNode;
+  /** Only the rows, for a card that already exists (no section of its own). */
+  bare?: boolean;
 }): React.ReactElement | null {
-  const q = useQuery({
-    queryKey: qk.productSettings(slug, area),
-    queryFn: () => api.productSettings(slug, area),
-  });
+  const q = useQuery(reads.productSettings(slug, area));
   const product = useProduct(slug).data;
   // `?setting=<key>` (a palette or All settings link) lands on this section's row.
   useSettingTarget(!q.isPending);
@@ -140,6 +153,7 @@ export function ProductSettingsSection({
         slug={slug}
         setting={s}
         linked={linked}
+        who={{ name: product?.name ?? slug, slug }}
         copy={copy[s.key]}
         pendingNote={pending[s.key]}
         waitsFor={waitsFor(s.key, all, { ...DEPENDS_ON, ...lockedBy })}
@@ -172,6 +186,7 @@ export function ProductSettingsSection({
       </>
     );
   }
+  if (bare) return <>{body}</>;
   return (
     <SettingsSection id={id} title={title} description={description}>
       {body}
@@ -191,10 +206,19 @@ function waitsFor(
     : undefined;
 }
 
+/** "Ask Ada (a@x) for Platform edit access." as "Only platform admins change this. Ask Ada." */
+function platformOnlyReason(ask: string | undefined): string {
+  const who = ask?.startsWith("Ask ")
+    ? ` ${ask.replace(/\s*\([^)]*\)/g, "").replace(/ for [^.]*access\.$/, ".")}`
+    : "";
+  return `Only platform admins change this.${who}`;
+}
+
 function ProductSettingRow({
   slug,
   setting: s,
   linked,
+  who,
   copy,
   pendingNote,
   waitsFor,
@@ -203,6 +227,7 @@ function ProductSettingRow({
   slug: string;
   setting: ProductSetting;
   linked: boolean;
+  who: ProductWho;
   copy?: SettingCopy;
   /** Set when the setting's behaviour has not shipped: the row is read-only. */
   pendingNote?: string;
@@ -211,11 +236,16 @@ function ProductSettingRow({
   onConflict: () => void;
 }): React.ReactElement {
   // A member without edit on the setting's area reads it; a 403 after typing a reason is too late.
-  const write = useWriteGate(s.rbacArea ?? "settings", slug);
+  const write = useWriteGate(
+    s.platformOnly ? "platform" : (s.rbacArea ?? "settings"),
+    s.platformOnly ? null : slug,
+  );
   const readOnly =
-    s.rbacArea === undefined || write.allowed
+    (s.rbacArea === undefined && !s.platformOnly) || write.allowed
       ? undefined
-      : (write.disabledReason ?? "You can't edit this.");
+      : s.platformOnly
+        ? platformOnlyReason(write.disabledReason)
+        : (write.disabledReason ?? "You can't edit this.");
   const undo = (written: ProductSetting) => {
     const restore =
       s.source === "console"
@@ -266,6 +296,8 @@ function ProductSettingRow({
       commit="explicit"
       display={pendingRow ? "text" : "control"}
       readOnly={pendingRow ? undefined : readOnly}
+      readOnlyVisible={s.platformOnly === true}
+      confirmCopy={copy?.confirm ? (to) => copy.confirm!(to, who) : undefined}
       locked={waitsFor ? `Applies once ${waitsFor} is on.` : undefined}
       inherited={s.inherited}
       source={
@@ -277,7 +309,10 @@ function ProductSettingRow({
       }
       isConflict={isConflict}
       reload={async () => onConflict()}
-      consequences={(to) => [...(copy?.consequences?.(to) ?? []), ...claim]}
+      consequences={(to) => [
+        ...(copy?.consequences?.(to, who) ?? []),
+        ...claim,
+      ]}
       save={(value, ctx) =>
         mutate("updateProductSetting", slug, s.key, {
           value,
@@ -289,7 +324,7 @@ function ProductSettingRow({
         // The claim is said once, in the confirmation; a toast repeats nothing.
         const written = (res as { setting?: ProductSetting }).setting;
         toast.success(
-          `${s.label} saved`,
+          copy?.saved ? copy.saved(done.value) : `${s.label} saved`,
           done.level === "L0" && written
             ? { action: { label: "Undo", onClick: () => undo(written) } }
             : undefined,

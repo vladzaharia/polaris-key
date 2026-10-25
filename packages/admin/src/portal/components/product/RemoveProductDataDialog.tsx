@@ -5,7 +5,7 @@ import { Checkbox } from "../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { toast } from "../../../ui/toast.js";
 import { t } from "../../../lib/copy.js";
-import { PortalApiError } from "../../api.js";
+import { HttpError } from "../../api.js";
 import {
   YOUR_DATA_COPY,
   alsoRemoveLabel,
@@ -72,9 +72,7 @@ export function RemoveProductDataDialog({
   const services = useProduct(product.slug, { enabled: open }).data?.services;
   const exportData = useExportProductData(product.slug);
   const offered =
-    licenses > 0 &&
-    !refused &&
-    product.licenses.every((l) => l.removable === true);
+    licenses > 0 && !refused && product.licenses.every((l) => l.removable);
   const also = offered && alsoRemove;
   // A fresh dialog keeps the license, the default, every time it opens.
   React.useEffect(() => {
@@ -179,8 +177,8 @@ export function RemoveProductDataDialog({
 }
 
 /** `409 not_removable`: a license the key could not bring back, so the Worker wrote nothing. */
-function isNotRemovable(err: unknown): err is PortalApiError {
-  return err instanceof PortalApiError && err.code === "not_removable";
+function isNotRemovable(err: unknown): err is HttpError {
+  return err instanceof HttpError && err.code === "not_removable";
 }
 
 /**

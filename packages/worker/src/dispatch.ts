@@ -17,9 +17,12 @@ import {
 } from "./core/products.js";
 import type { ServiceHooks } from "./core/hooks.js";
 import { handleElements } from "./core/elements.js";
-import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
-import { handleDiscovery } from "./core/discovery.js";
-import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
+import { corsPreflight, withCors } from "./core/cors.js";
+import {
+  CORE_ROUTES,
+  coreRouteOf,
+  isCorsCoveredRoute,
+} from "./publicRoutes.js";
 import { dispatchService, serviceContext } from "./core/registry.js";
 import {
   identityNavigationRedirect,
@@ -41,7 +44,10 @@ import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
 // account spans every tenant, so there is no product slug to namespace it under and its routes
 // stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
-import { handlePortal } from "./services/identity/index.js";
+import {
+  customerApproveTarget,
+  handlePortal,
+} from "./services/identity/index.js";
 import {
   withoutAccountCookies,
   withoutAccountSetCookies,
@@ -49,16 +55,6 @@ import {
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { handleDeployHook } from "./platformDeploy.js";
 import { ErrorCode, notFound, wireError } from "./core/errors.js";
-import { handleDevices, handleReport } from "./core/devices.js";
-import { handleRegister } from "./core/register.js";
-import {
-  handleAttest,
-  handleAttestChallenge,
-} from "./core/trust/attestation.js";
-import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
-// HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
-// the writer from here rather than importing the service.
-import { listingSlotMirror } from "./services/distribution/api.js";
 import {
   handleSignInBind,
   handleSignInEntry,
@@ -73,7 +69,6 @@ import {
 import { dispatchImgHost, isImgHost } from "./core/assets/imgHost.js";
 import {
   CUSTOMER_ROUTE_KINDS,
-  apiOrigin,
   customerDocsPath,
   customerHostOwnResponse,
   docsElsewhere,
@@ -81,6 +76,7 @@ import {
   isCustomerFeedRoute,
   isCustomerHostOwnPath,
   oldCustomerUrlRedirect,
+  lockerLink,
 } from "./core/customerHost.js";
 import { customerHostname, isCustomerHost } from "./core/hosts.js";
 import { relatedOriginsResponse } from "./core/customerHost.js";
@@ -89,16 +85,9 @@ import {
   watchRenderEnqueues,
 } from "./core/registry/registryQueue.js";
 
-const PRODUCT_ROUTES = new Set<Route["kind"]>([
-  "discovery",
-  "jwks",
-  "trustManifest",
-  "devices",
-  "report",
-  "register",
-  "attestChallenge",
-  "attest",
-  "assetsPush",
+/** Every route kind that is scoped to a product: the core table's kinds and the services'. */
+const PRODUCT_ROUTES: ReadonlySet<Route["kind"]> = new Set<Route["kind"]>([
+  ...CORE_ROUTES.map((r) => r.kind),
   "service",
 ]);
 
@@ -249,12 +238,15 @@ async function routeRequest(
       now: at,
     }).hooks;
 
-  if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
-    const product = await loadProduct(env, db, route.product);
+  const runProduct = async (
+    request: Request,
+    r: Route & { product: string },
+  ): Promise<Response> => {
+    const product = await loadProduct(env, db, r.product);
     if (!product) {
       return (
-        (route.kind === "service" && route.slug === "identity"
-          ? unknownProductNavigationPage(req, route.rest)
+        (r.kind === "service" && r.slug === "identity"
+          ? unknownProductNavigationPage(request, r.rest)
           : null) ?? notFound()
       );
     }
@@ -264,16 +256,29 @@ async function routeRequest(
     // out (`core/accounts/accountCookies.ts`).
     return withoutAccountSetCookies(
       await dispatchProduct(
-        withoutAccountCookies(req),
+        withoutAccountCookies(request),
         env,
         db,
         product,
-        route,
+        r,
         now,
         exec,
       ),
     );
-  }
+  };
+  // The customer host's own device pages run a product's handler on THIS host: the same request
+  // with its path rewritten to the product's route (the handler reads its origin from the URL, so
+  // its forms, Origin checks and cookies are the customer host's). The path is built from a slug
+  // the Worker looked up, never from the request. Customer hosts reach nothing else of a product.
+  const viaProduct = async (path: string, request: Request) => {
+    const rewritten = new Request(`${url.origin}${path}`, request);
+    const r = matchRoute(new URL(rewritten.url).pathname);
+    if (!("product" in r) || !PRODUCT_ROUTES.has(r.kind)) return notFound();
+    return runProduct(rewritten, r);
+  };
+
+  if ("product" in route && PRODUCT_ROUTES.has(route.kind))
+    return runProduct(req, route);
 
   // Admin + platform routes. The credentialed ones never answer CORS: they share this origin
   // with the admin cookie (THREAT-MODEL R1-09). The Elements CDN route below is the exception:
@@ -313,18 +318,35 @@ async function routeRequest(
           settings: SETTINGS,
         });
       return handleSignInEntry(req);
+    case "lockerLink":
+      return lockerLink(req, env, route.to, url);
     case "deviceEntry":
       return handleDeviceEntry(
         req,
         env,
         route.tv,
         now,
-        // On the customer host the product's page lives on the API host: a fixed origin from
-        // configuration, never from the request. The confirmation, the IdP leg and the callback
-        // stay in one browser on one host, so the flow's binder is set by the confirming browser
-        // (R1-07; LK-04 security review).
-        onCustomerHost ? apiOrigin(env) : null,
+        // On the customer host a live code is served right here: the product's device page runs
+        // on this host, so the person never sees the API host (LK-04 A1, superseded). The slug
+        // comes from the code's index, never from the request.
+        onCustomerHost
+          ? (slug, code) =>
+              viaProduct(
+                `/${slug}/identity/auth/device?user_code=${code}${route.tv ? "&tv=1" : ""}`,
+                req,
+              )
+          : null,
       );
+    // The approval after sign-in, on the customer host: the binder cookie names the product.
+    case "deviceApprove": {
+      if (!onCustomerHost) return notFound();
+      const target = await customerApproveTarget(req, env, now);
+      if (target instanceof Response) return target;
+      return viaProduct(
+        `/${target.slug}/identity/auth/device/approve${url.search}`,
+        req,
+      );
+    }
     case "portalSpa":
     case "portalApi":
     case "portalLogin":
@@ -348,7 +370,9 @@ async function routeRequest(
     case "adminSpa":
     case "adminApi":
     case "adminLogin":
+    case "adminDevice":
     case "adminCallback":
+    case "adminPasskey":
     case "products":
       return handleAdmin(
         req,
@@ -477,62 +501,8 @@ async function routeProduct(
     });
   }
 
-  switch (route.kind) {
-    case "discovery":
-      return handleDiscovery(req, env, db, product, SERVICES, now);
-    case "devices":
-      return handleDevices(req, env, db, product, now, route.deviceId);
-    case "report":
-      // P6-03: the hooks bound update telemetry to the product's declared outlets and channels.
-      return handleReport(
-        req,
-        env,
-        db,
-        product,
-        now,
-        serviceContext("host", SERVICES, product.services, {
-          env,
-          db,
-          product,
-          now,
-        }).hooks,
-      );
-    case "register":
-      // The registry is threaded through because `requires-identity` registration is
-      // authorized by the Identity descriptor (`ServiceDescriptor.authorizeRegistration`);
-      // Core asks the registry rather than importing the service.
-      return handleRegister(req, env, db, product, now, SERVICES);
-    case "attestChallenge":
-      return handleAttestChallenge(req, env, db, product, now);
-    case "attest":
-      // The hooks carry Distribution's store identities (`Delivery.attestationTargets`).
-      return handleAttest(
-        req,
-        env,
-        db,
-        product,
-        now,
-        serviceContext("host", SERVICES, product.services, {
-          env,
-          db,
-          product,
-          now,
-        }).hooks,
-      );
-    case "assetsPush":
-      return handleAssetsPush(
-        req,
-        env,
-        db,
-        product.slug,
-        now,
-        listingSlotMirror,
-      );
-    case "jwks":
-      return handleJwks(db, product);
-    case "trustManifest":
-      return handleTrustManifest(req, env, db, product, now);
-    default:
-      return notFound();
-  }
+  // The core routes: one table row each (`publicRoutes.ts`).
+  const core = coreRouteOf(route.kind);
+  if (!core) return notFound();
+  return core.handler({ req, env, db, product, route, now });
 }

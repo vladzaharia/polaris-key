@@ -142,7 +142,7 @@ def _sdk_client(presentation):
     client = PolarisKeyClient(
         product_slug="tidewater",
         version="1.0.0",
-        trust={"pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"},
+        pinned_keys={"pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"},
         base_url="https://key.plrs.im",
         store=InMemoryStore(),
         client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=doc))),

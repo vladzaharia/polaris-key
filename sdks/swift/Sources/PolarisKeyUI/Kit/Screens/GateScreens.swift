@@ -14,28 +14,25 @@ import SwiftUI
 public struct BootView: View {
     let line: CopyLine
     let boot: KitScreen<BootScreenState>?
-    var onDownload: () -> Void
-    var onNotNow: () -> Void
-    var onContinueOffline: () -> Void
-    var onTryAgain: () -> Void
-    var onUpdate: () -> Void
+    var onDownload: (() -> Void)?
+    var onNotNow: (() -> Void)?
+    var onContinueOffline: (() -> Void)?
+    var onTryAgain: (() -> Void)?
+    var onUpdate: (() -> Void)?
 
     public init(screen: KitScreen<GateState>) {
         line = screen.copy.first ?? CopyLine("gate.checking")
         boot = nil
-        onDownload = {}
-        onNotNow = {}
-        onContinueOffline = {}
-        onTryAgain = {}
-        onUpdate = {}
     }
 
-    /// The stage machine's view; the handlers are the host's answers to a stop state.
+    /// The stage machine's view; the handlers are the host's answers to a stop state. A button
+    /// draws only when its handler is set (UI-KITS decision 7): a stop with none says what
+    /// happened and nothing to press.
     public init(
         boot: KitScreen<BootScreenState>,
-        onDownload: @escaping () -> Void = {}, onNotNow: @escaping () -> Void = {},
-        onContinueOffline: @escaping () -> Void = {}, onTryAgain: @escaping () -> Void = {},
-        onUpdate: @escaping () -> Void = {}
+        onDownload: (() -> Void)? = nil, onNotNow: (() -> Void)? = nil,
+        onContinueOffline: (() -> Void)? = nil, onTryAgain: (() -> Void)? = nil,
+        onUpdate: (() -> Void)? = nil
     ) {
         line = boot.copy.first ?? CopyLine("boot.starting")
         self.boot = boot
@@ -89,11 +86,11 @@ public struct BootView: View {
 
 /// What a boot stop can do; the host's closures.
 struct BootStopActions {
-    var download: () -> Void
-    var notNow: () -> Void
-    var continueOffline: () -> Void
-    var tryAgain: () -> Void
-    var update: () -> Void
+    var download: (() -> Void)?
+    var notNow: (() -> Void)?
+    var continueOffline: (() -> Void)?
+    var tryAgain: (() -> Void)?
+    var update: (() -> Void)?
 }
 
 /// The stage machine's stops (UI-KITS §4.1 Boot): consent (metered download), offline, blocked,
@@ -109,7 +106,11 @@ struct BootStop: View {
             $0.key.hasSuffix(".body") || $0.key.hasSuffix(".message")
                 || $0.key == "boot.offline.playable" || $0.key == "boot.consent.bodyMetered"
         }
-        KitScreenScaffold(hero: true, header: false) {
+        // DL5: the product's name once, in the title when the title names it ("Update to keep
+        // using Tidewater"), else under the icon (Offline, Blocked, Declined).
+        KitScreenScaffold(
+            hero: true, header: false, heroName: !StatusScreenView.titleNamesProduct(title)
+        ) {
             if let title {
                 KitText(title, .title, color: .strong, alignment: .center)
                     .accessibilityAddTraits(.isHeader)
@@ -123,7 +124,7 @@ struct BootStop: View {
                     primary("boot.consent.download", actions.download)
                     secondary("common.notNow", actions.notNow)
                 case .offline:
-                    if boot.shows("boot.continueOffline") {
+                    if boot.shows("boot.continueOffline"), actions.continueOffline != nil {
                         primary("boot.continueOffline", actions.continueOffline)
                         secondary("common.tryAgain", actions.tryAgain)
                     } else {
@@ -138,13 +139,17 @@ struct BootStop: View {
         }
     }
 
-    private func primary(_ key: String, _ action: @escaping () -> Void) -> some View {
-        KitButton(line: boot.lineOrKey(key), kind: .primary, action: action)
-            .keyboardShortcut(.defaultAction)
+    @ViewBuilder private func primary(_ key: String, _ action: (() -> Void)?) -> some View {
+        if let action {
+            KitButton(line: boot.lineOrKey(key), kind: .primary, action: action)
+                .keyboardShortcut(.defaultAction)
+        }
     }
 
-    private func secondary(_ key: String, _ action: @escaping () -> Void) -> some View {
-        KitButton(line: boot.lineOrKey(key), kind: .secondary, action: action)
+    @ViewBuilder private func secondary(_ key: String, _ action: (() -> Void)?) -> some View {
+        if let action {
+            KitButton(line: boot.lineOrKey(key), kind: .secondary, action: action)
+        }
     }
 }
 
@@ -162,6 +167,9 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
     @ViewBuilder var inlineActions: () -> InlineActions
 
     @AccessibilityFocusState private var titleFocused: Bool
+    @FocusState private var useKeyFocused: Bool
+    /// Back or Escape from a step: focus returns to "Use a License Key" (macOS).
+    var refocusUseKey = false
 
     /// `inline` and `inlineActions` carry the one path of a one-path product (the key field and
     /// Activate for a key-only product), under the lede and in the act's place.
@@ -169,8 +177,10 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         screen: KitScreen<WelcomeState>, onSignIn: @escaping () -> Void,
         onUseKey: @escaping () -> Void, onExtra: @escaping (String) -> Void = { _ in },
         @ViewBuilder inline: @escaping () -> Inline,
-        @ViewBuilder inlineActions: @escaping () -> InlineActions
+        @ViewBuilder inlineActions: @escaping () -> InlineActions,
+        refocusUseKey: Bool = false
     ) {
+        self.refocusUseKey = refocusUseKey
         self.screen = screen
         self.onSignIn = onSignIn
         self.onUseKey = onUseKey
@@ -183,9 +193,41 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         ["welcome.trial", "welcome.continueFree", "welcome.restore", "welcome.offline"]
     }
 
+    /// The heading block's alignment: a Mac window reads from the leading edge.
+    private static var headingAlignment: HorizontalAlignment {
+        #if os(macOS)
+            return .leading
+        #else
+            return .center
+        #endif
+    }
+
+    /// The Welcome act: the stacked full-width hero capsules on a Mac (at most 320 pt, sign in
+    /// first; the short window uses the 28 pt control), the standard action stack elsewhere.
+    @ViewBuilder private func heroActions<A: View>(
+        @ViewBuilder _ content: @escaping (Bool) -> A
+    ) -> some View {
+        #if os(macOS)
+            KitArrangementReader { arrangement in
+                VStack(spacing: KitMacArrangement.actsSpacing) { content(arrangement.heroCapsules) }
+                    .frame(
+                        maxWidth: arrangement.isStrip
+                            ? .infinity : KitMacArrangement.actsMaxWidth)
+            }
+        #else
+            KitActionStack { content(false) }
+        #endif
+    }
+
     public var body: some View {
+        scaffold
+            .onAppear { if refocusUseKey { useKeyFocused = true } }
+            .onChange(of: refocusUseKey) { _, now in if now { useKeyFocused = true } }
+    }
+
+    private var scaffold: some View {
         KitScreenScaffold(hero: true, header: false) {
-            VStack(spacing: 6) {
+            VStack(alignment: Self.headingAlignment, spacing: 6) {
                 KitText(
                     screen.line("common.welcomeNoProductTitle") ?? screen.lineOrKey("welcome.title"),
                     .display, color: .strong, alignment: .center
@@ -201,7 +243,12 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
                 if let lede = screen.line("welcome.lede") ?? screen.line("welcome.ledeKeyOnly")
                     ?? screen.line("welcome.ledeSignInOnly") ?? screen.line("common.signInToContinue")
                 {
-                    KitText(lede, .body, color: .default, alignment: .center)
+                    KitArrangementReader { arrangement in
+                        // The lede gives way first in a short Mac window (DL3).
+                        if arrangement.showsLede {
+                            KitText(lede, .body, color: .default, alignment: .center)
+                        }
+                    }
                 }
                 if screen.state == .capabilityLimited, screen.shows("welcome.ledeKeyOnly") {
                     inline()
@@ -211,20 +258,28 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
             if screen.state == .busy {
                 KitButton(line: CopyLine("welcome.signIn"), kind: .primary, busy: true) {}
             } else if screen.state == .default {
-                KitActionStack {
+                heroActions { heroSize in
                     KitButton(
-                        line: screen.lineOrKey("welcome.signIn"), kind: .primary, action: onSignIn
+                        line: screen.lineOrKey("welcome.signIn"), kind: .primary, hero: heroSize,
+                        action: onSignIn
                     )
                     .keyboardShortcut(.defaultAction)
                     KitButton(
-                        line: screen.lineOrKey("welcome.useKey"), kind: .secondary, action: onUseKey
+                        line: screen.lineOrKey("welcome.useKey"), kind: .secondary, hero: heroSize,
+                        action: onUseKey
                     )
+                    .focused($useKeyFocused)
                 }
             } else if screen.state == .capabilityLimited,
                 screen.shows("welcome.ledeSignInOnly") || screen.shows("common.signInToContinue")
             {
-                KitButton(line: CopyLine("welcome.signIn"), kind: .primary, action: onSignIn)
+                heroActions { heroSize in
+                    KitButton(
+                        line: CopyLine("welcome.signIn"), kind: .primary, hero: heroSize,
+                        action: onSignIn
+                    )
                     .keyboardShortcut(.defaultAction)
+                }
             } else if screen.state == .capabilityLimited {
                 inlineActions()
             }
@@ -436,6 +491,9 @@ public struct ToastView: View {
     let text: String
     var tone: StatusPill.Tone = .neutral
     var onDismiss: (() -> Void)?
+    /// An action beside the line ("Update now" on the update re-offer); the toast stays until it
+    /// is used or its time is up.
+    var action: (title: String, run: () -> Void)?
 
     /// How long a non-error toast stays.
     public static let lifetime: Double = 6
@@ -447,6 +505,14 @@ public struct ToastView: View {
         self.text = text
         self.tone = tone
         self.onDismiss = onDismiss
+    }
+
+    init(
+        text: String, tone: StatusPill.Tone, onDismiss: (() -> Void)?,
+        action: (title: String, run: () -> Void)?
+    ) {
+        self.init(text: text, tone: tone, onDismiss: onDismiss)
+        self.action = action
     }
 
     /// An error stays until the person dismisses it.
@@ -473,6 +539,18 @@ public struct ToastView: View {
                     .foregroundStyle(style.palette.textStrong)
                     .fixedSize(horizontal: false, vertical: true)
                 if sizeClass == .compact { Spacer(minLength: 0) }
+                if let action {
+                    Button {
+                        action.run()
+                    } label: {
+                        Text(action.title)
+                            .font(style.font(.label))
+                            .foregroundStyle(style.palette.accentFg)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
                 if !Self.persists(tone), onDismiss != nil {
                     Circle()
                         .trim(from: 0, to: draining ? 0 : 1)
@@ -492,6 +570,8 @@ public struct ToastView: View {
             .padding(.horizontal, sizeClass == .compact ? style.space(.md) : 0)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isStaticText)
+            // A toast is on screen for 6 s: say it, so it reaches VoiceOver before it goes (DL7).
+            .onAppear { AccessibilityNotification.Announcement(text).post() }
             .task {
                 guard !Self.persists(tone), let onDismiss else { return }
                 if !style.reduceMotion {
@@ -508,12 +588,16 @@ public struct ToastView: View {
 struct GateToastView: View {
     let toast: KitGateToast
     var onDismiss: () -> Void
+    /// The update re-offer's "Update now": brings the banner back.
+    var onUpdate: (() -> Void)?
     @Environment(\.polarisKeyStrings) private var strings
 
     var body: some View {
         ToastView(
             text: strings.string(toast.line), tone: toast.kind == .update ? .neutral : .success,
-            onDismiss: onDismiss)
+            onDismiss: onDismiss,
+            action: toast.kind == .update
+                ? onUpdate.map { (strings.string("update.install"), $0) } : nil)
     }
 }
 

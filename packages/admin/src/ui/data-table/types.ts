@@ -84,8 +84,11 @@ export interface Facet<T> {
     counts?: Record<string, number | undefined>;
     pending?: boolean;
   };
-  /** Folded into one "More" menu after the other facet menus (see `FilterBarFacet.secondary`). */
-  secondary?: boolean;
+  /**
+   * Folded into one "More" menu after the other facet menus (see `FilterBarFacet.secondary`).
+   * `"narrow"` folds it only below 1280 px in a compact band, so the band keeps one row.
+   */
+  secondary?: boolean | "narrow";
 }
 
 export interface BulkAction<T> {
@@ -155,10 +158,16 @@ export interface DataTableProps<T> {
   state?: TableState;
   onStateChange?: (next: TableState) => void;
   facets?: Facet<T>[];
-  search?: { placeholder: string; columns?: string[] };
+  search?: { placeholder: string; label?: string; columns?: string[] };
   selection?: { mode: "multi"; bulkActions: BulkAction<T>[] };
   /** The record a row opens. The primary cell renders as a real link to it. */
   rowHref?: (row: T) => string;
+  /**
+   * The operator's intent to open a row: the primary link gets the pointer or keyboard focus
+   * (MO-13.1). Fires for that link only, never the rest of the row, so sweeping the pointer down a
+   * table is not one call per row; dedupe the work (a prefetch's `staleTime`). Needs `rowHref`.
+   */
+  onRowIntent?: (row: T) => void;
   /** The row's name for its action menu ("Actions for {name}"). Default: the row id. */
   rowLabel?: (row: T) => string;
   rowActions?: (row: T) => RowActionItem[];
@@ -167,6 +176,8 @@ export interface DataTableProps<T> {
     to: string;
     className?: string;
     children: React.ReactNode;
+    onPointerEnter?: React.PointerEventHandler<HTMLAnchorElement>;
+    onFocus?: React.FocusEventHandler<HTMLAnchorElement>;
   }>;
   pagination?: PaginationConfig;
   density?: Density;
@@ -189,6 +200,20 @@ export interface DataTableProps<T> {
   mobileCard?: (row: T, primary: React.ReactNode) => React.ReactNode;
   /** Below 1024 px: `cards` draws each row as a card; `scroll` keeps the table (it must fit). */
   mobile?: "cards" | "scroll";
+  /**
+   * The media query under which `mobile="cards"` applies. Default `(max-width: 1023px)`; a page
+   * whose rows hold unbreakable text passes an em query so a larger text size gets cards sooner.
+   */
+  cardBreakpoint?: string;
+  /**
+   * With `mobile="cards"`: the width, in root-font rems, below which the rows stack (default:
+   * the 1023 px media query). In rems the stacked rows also take over at 200 % text.
+   */
+  cardsBelowRem?: number;
+  /** With `mobile="cards"`: the rows are not cards: no border or fill, a rule between them (Members). */
+  flatCards?: boolean;
+  /** Below `sm` the filter bar stays on one row that scrolls sideways. */
+  filtersOneRow?: boolean;
   /** Extra controls at the end of the filter bar (Export, a date range). */
   toolbarActions?: React.ReactNode;
   /** The page's own filters, first on the toolbar's row (one band, not a second toolbar). */

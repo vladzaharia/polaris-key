@@ -5,7 +5,7 @@
  * (LDT-13).
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -14,10 +14,14 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "../src/ui/toast.js";
+import { termsOnTier } from "../src/console/sections/license/components/shared.js";
 import { NONE, resetConsole, type Enablement } from "./consoleHarness.js";
 import {
   API,
+  DEFAULT_TIER,
   DETAIL,
+  TIERS,
   NOW_S,
   axe,
   bootLicense,
@@ -48,13 +52,19 @@ describe("license record: header and tabs", () => {
     await header();
     // Beside the title; a second copy in the facts strip shows only at 200 % text (CSS, conbig).
     expect(screen.getAllByText("Active")).toHaveLength(2);
-    expect(screen.getByText("ada@x.io")).toBeTruthy();
+    // Ada is in an account: the line under the title carries her email and the state; her name
+    // is the title and is not repeated.
+    expect(screen.getByTestId("record-holder").textContent).toBe(
+      "ada@x.io · In an account",
+    );
     // The tier is a control that opens Change tier (licenses.detail).
     expect(
       await screen.findByRole("button", { name: "Tier: Pro. Change tier" }),
     ).toBeTruthy();
     // modifiedBy is the signed-in operator: named, not a raw sub (LDT-9).
-    expect(screen.getByText(/Changed .* by Ada Lovelace/)).toBeTruthy();
+    // (the facts line is drawn under the title and, on a phone, under the tabs; CSS picks one)
+    expect(screen.getAllByText(/Changed .* by Ada Lovelace/).length).toBe(2);
+    expect(screen.queryByText(/Changed now/)).toBeNull();
     const tabs = screen.getByRole("navigation", { name: "License sections" });
     expect(
       within(tabs)
@@ -368,6 +378,55 @@ describe("license record: Status (Limits, Duration, Change tier)", () => {
     );
   });
 
+  it("offers Undo after Use the platform default, and Undo puts the license's own value back", async () => {
+    const spy = vi.spyOn(toast, "success");
+    const log = bootLicense(REC);
+    await limits();
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Offline days: use the platform default",
+      }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "PATCH", body: { maxOfflineDays: null } },
+      ]),
+    );
+    const call = spy.mock.calls.find(([t]) => /uses the platform/.test(t));
+    expect(call?.[1]?.action?.label).toBe("Undo");
+    call![1]!.action!.onClick();
+    await waitFor(() =>
+      expect(writes(log).at(-1)).toEqual({
+        path: LIC,
+        method: "PATCH",
+        body: { maxOfflineDays: 14 },
+      }),
+    );
+    spy.mockRestore();
+  });
+
+  it("the Change tier error carries its Copy details button", async () => {
+    bootLicense(REC, { routes: { [`PATCH ${LIC}`]: failing(500) } });
+    await header();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Tier: Pro. Change tier" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change Ada Lovelace's tier",
+    });
+    await userEvent.click(within(dialog).getByLabelText(/^Tier/));
+    await userEvent.click(await screen.findByRole("option", { name: /Edu/ }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^Move to/ }),
+    );
+    const note = await within(dialog).findByText(/Copy the details/);
+    expect(
+      within(note.closest("div")!).getByRole("button", {
+        name: "Copy details",
+      }),
+    ).toBeTruthy();
+  });
+
   it("edits offline days in a dialog and clears them as null (LDT-2)", async () => {
     const log = bootLicense(REC);
     await limits();
@@ -486,7 +545,7 @@ describe("license record: Status (Limits, Duration, Change tier)", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Change Ada Lovelace's tier",
     });
-    await userEvent.click(within(dialog).getByLabelText(/^Move to/));
+    await userEvent.click(within(dialog).getByLabelText(/^Tier/));
     await userEvent.click(await screen.findByRole("option", { name: /Edu/ }));
     const diff = within(dialog).getByRole("region", { name: "What changes" });
     const devices = within(diff).getByText("Devices").closest("div")!;
@@ -505,12 +564,46 @@ describe("license record: Status (Limits, Duration, Change tier)", () => {
     );
   });
 
-  it("a license with no tier shows a muted No tier (D12)", async () => {
+  it("a license with no tier reads as the Default tier (D12, LX-33.7)", async () => {
     bootLicense(REC, { routes: { [LIC]: { ...DETAIL, tier: null } } });
     await header();
     expect(
-      screen.getByRole("button", { name: "Tier: No tier. Change tier" }),
+      screen.getByRole("button", { name: "Tier: Default. Change tier" }),
     ).toBeTruthy();
+  });
+
+  it("Change tier has no No tier choice; a tierless license starts on Default", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: { ...DETAIL, tier: null },
+        [`${API}/license/tiers`]: { tiers: [DEFAULT_TIER, ...TIERS] },
+      },
+    });
+    await header();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Tier: Default. Change tier" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change Ada Lovelace's tier",
+    });
+    const box = within(dialog).getByLabelText(/^Tier/);
+    expect(box.textContent).toContain("Default");
+    // Nothing to move to yet.
+    expect(
+      within(dialog).getByRole("button", { name: "Move to Default" }),
+    ).toHaveProperty("disabled", true);
+    expect(within(dialog).queryByRole("button", { name: /clear/i })).toBeNull();
+    await userEvent.click(box);
+    expect(screen.queryByRole("option", { name: /No tier/ })).toBeNull();
+    await userEvent.click(await screen.findByRole("option", { name: /Edu/ }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to Edu" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "PATCH", body: { tier: "edu" } },
+      ]),
+    );
   });
 
   it("the Activity tab asks the server for this license's entries", async () => {
@@ -613,7 +706,7 @@ describe("license record: Devices", () => {
   it("uses the shared device table with only valid row actions (LDT-10, DEV-8)", async () => {
     bootLicense(`${REC}/devices`);
     const t = await screen.findByRole("table", { name: "Devices" });
-    expect(screen.getByRole("meter", { name: "Seats" })).toBeTruthy();
+    expect(screen.getByRole("meter", { name: "Devices" })).toBeTruthy();
     // No License column on a license's own devices.
     expect(
       within(t).queryByRole("columnheader", { name: /License/ }),
@@ -648,7 +741,9 @@ describe("license record: Devices", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText(/stays authorized and keeps its seat/),
+      within(dialog).getByText(
+        /stays authorized and keeps counting toward the device limit/,
+      ),
     ).toBeTruthy();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Reset binding" }),
@@ -940,6 +1035,10 @@ describe("license record: device limit (LX-14a)", () => {
     deviceLimitSource: "license" as const,
     inheritedDeviceLimit: 5,
     inheritedDeviceLimitSource: "tier" as const,
+    terms: termsOnTier({ ...DETAIL, deviceLimit: 3 }, DETAIL.tier, TIERS, {
+      defaultDeviceLimit: 3,
+      defaultMaxOfflineDays: 14,
+    }),
   };
 
   it("shows the effective limit and its source in Limits and on the Devices tab", async () => {

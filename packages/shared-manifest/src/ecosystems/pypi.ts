@@ -1,6 +1,10 @@
 /** PyPI's ingest rules (F-05): PEP 508 names, PEP 503 normalisation, names or prefixes. */
 
-import { namespaceStrings, type PackageEcosystemRules } from "./rules.js";
+import {
+  namespaceStrings,
+  sortedUnique,
+  type PackageEcosystemRules,
+} from "./rules.js";
 
 /** PEP 503: lower case, runs of `-_.` become `-`. */
 function pep503(name: string): string {
@@ -34,6 +38,14 @@ export const PYPI_PACKAGE_RULES: PackageEcosystemRules<"pypi"> = {
       return names.includes(norm) || prefixes.some((p) => norm.startsWith(p))
         ? null
         : `${name} is not one of the feed's names or prefixes`;
+    },
+    // Exact `names`, never `prefixes` (a prefix would also take a sibling like `<name>-evil`).
+    derive(names) {
+      const exact = sortedUnique(names.map(pep503));
+      return {
+        namespace: exact.length === 0 ? {} : { names: exact },
+        ambiguous: null,
+      };
     },
   },
 };

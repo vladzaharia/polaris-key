@@ -110,13 +110,13 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
       "Two numbered steps: send the request code (this device's id, with Copy and a QR code where it fits), then load the reply from a file or pasted text; a refused file names the step that failed. On web only paste is offered",
   },
   DeviceLimit: {
-    view: "activation/pkey_activation_panel",
-    controller: "activation/activation_controller",
+    view: "device_limit/pkey_device_limit",
+    controller: "device_limit/device_limit_controller",
     answers:
-      "Replace a device, after a device-limit result that carries a manage URL: a button that opens the portal, or a QR code where the player has no browser at hand",
+      "the model input from the license's seats, the roster and the manage page, and the device Replace preselects (the least recently used one that is not this one)",
     model: "DeviceLimit",
     shows:
-      "A full license as a state of its own: one column with the seat meter and the way to free a seat",
+      'A full license as a card of its own: "Your license is on 3 of 3 devices", the roster with the least recently used other device preselected, and Replace and continue. Where devices are managed in the browser it offers Open in browser, or a QR code on a TV',
   },
   Devices: {
     view: "devices/pkey_device_list",
@@ -134,7 +134,7 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
       "the rows the license step offers, which one is selected and what each says about itself (tier, origin and term, seats)",
     model: "LicenseChoice",
     shows:
-      'Step 3 of sign-in, when an account holds several licenses: each is a row with its tier, origin, a seat meter and a tag ("On this device", "All devices in use"). One row is selected and Use this license and continue is the one primary; a full license offers Replace a device instead',
+      'Step 3 of sign-in, when an account holds several licenses: each is a row with its tier, origin, a seat meter and a tag ("On this device", "All devices in use"). One row is selected and Use this license is the one primary; a full license offers Replace a device instead',
   },
   UpdatePrompt: {
     view: "update/pkey_update_prompt",
@@ -155,7 +155,12 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       'A compact strip with a counted bar and one line ("Downloading · 38 of 91 MB · 1 minute left") for an app update or content packs. Paused offers Download now and failed offers Try again; it never takes the focus from play and hides while there is no progress',
   },
-  ReleaseNotes: { model: "ReleaseNotes" },
+  ReleaseNotes: {
+    view: "release_notes/pkey_release_notes",
+    model: "ReleaseNotes",
+    shows:
+      'What\'s new in the product: the changelog newest first, each entry with its version, date and notes as text. A failed load is "Release notes couldn\'t be loaded." with Try again, and an empty one says "No release notes yet."',
+  },
   StatusScreen: {
     view: "gate/pkey_gate",
     controller: "gate/gate_controller",
@@ -202,10 +207,28 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       'The product\'s settings from the config catalog\'s UI hints: one list per category, a lock and "Set by <the developer>" on a managed value, "Reset to default" while the player\'s own value is in use',
   },
-  Paywall: { model: "Paywall" },
+  Paywall: {
+    view: "paywall/pkey_paywall",
+    controller: "paywall/paywall_controller",
+    answers:
+      "the model input from the tier sold and the store or portal, and what the primary button does: purchase, open the portal or finish",
+    model: "Paywall",
+    shows:
+      "An upsell for a tier the player has not unlocked: what it includes, Upgrade to the tier (the platform's store) or Buy in your browser, Redeem a code and Restore purchases where the game wires them. Where nothing is sold it says so",
+  },
   EntitlementGate: { model: "EntitlementGate" },
-  CloudSyncStatus: { model: "CloudSyncStatus" },
-  About: { model: "About" },
+  CloudSyncStatus: {
+    view: "cloud_sync/pkey_cloud_sync_status",
+    model: "CloudSyncStatus",
+    shows:
+      'A small status strip: "Synced 2 minutes ago", Syncing, Offline, a conflict with Review, or a failure; signed out it offers Sign in to sync. It hides while Cloud Sync is off and never takes the focus',
+  },
+  About: {
+    view: "about/pkey_about",
+    model: "About",
+    shows:
+      "The product, its version, Privacy and Get help pages, Open-source licenses and Copy diagnostics, over the game or as a page of its own menu",
+  },
   ChannelPicker: {
     view: "dev_menu/pkey_dev_menu_section",
     controller: "dev_menu/dev_menu_controller",

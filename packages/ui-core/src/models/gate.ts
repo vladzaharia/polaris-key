@@ -168,6 +168,7 @@ export function bootView(ctx: Context): View<"Boot", BootState> {
           "core.gate.version-too-old.message",
           "status.update",
         ],
+        args: { product },
         primary: "status.update",
         tone: "neutral",
       });

@@ -12,8 +12,8 @@
  * The opaque `acct_…` surrogate and a timestamp, nothing else: no email, name, product, token or
  * any other personal data, so keeping it indefinitely holds nothing the D1 tombstone did not.
  * No code path deletes a ledger object, and no other key builder can produce the prefix: the blob
- * store refuses the layout (`test/erasureLedger.test.ts`) and the collector sweeps only what D1
- * tracks (`test/scheduled.test.ts`).
+ * store refuses the layout (`test/services/identity/erasureLedger.test.ts`) and the collector sweeps only what D1
+ * tracks (`test/surfaces/scheduled.test.ts`).
  *
  * WRITE-AHEAD AND CREATE-ONLY. `deleteAccount` records the id here BEFORE its first irreversible
  * step (the status flip that closes the account), and the sweeper does the same for an erasure an
@@ -27,9 +27,8 @@
  * REPLAY. After a D1 restore the ledger is ahead of D1. {@link replayErasureLedger} walks it
  * (paged, bounded per pass) and, in this order:
  *
- *   1. ensures the id-only D1 tombstone of every listed id, so the legacy catch-up
- *      (`legacy.ts`: copies only portal accounts absent from `accounts` AND `account_tombstones`)
- *      cannot copy the account back;
+ *   1. ensures the id-only D1 tombstone of every listed id, so no sign-in or link can
+ *      recreate the account under that id;
  *   2. hands every account that is live again (`status <> 'deleted'`) to the erasure state
  *      machine, which closes it (no sign-in, no session, no registry token) and erases its data.
  *      An account already erasing is left to the retry sweeper and its back-off;
@@ -37,7 +36,7 @@
  *      before the ledger shipped), over the same key range, so one pass reconciles both ways.
  *
  * Every step is idempotent: a pass over a consistent state changes nothing. The pass runs on the
- * 15-minute connector tick and in the nightly maintenance, before the legacy catch-up.
+ * 15-minute connector tick and in the nightly maintenance.
  *
  * REQUEST TIME. The replay is cleanup, not the fence. A restore brings an erased account back with
  * its sessions, sign-in methods and package tokens, so each gate that decides on them asks the

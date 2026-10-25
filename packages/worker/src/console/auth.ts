@@ -51,9 +51,15 @@ import {
   signinState,
   type NoticeAction,
 } from "./signinPage.js";
+import { SIGNIN_SCRIPT_HASH } from "./signinScript.js";
 import { resolveConsoleCaller } from "./api.js";
 import {
+  consoleAssertedEmail,
+  accountHasConsolePasskey,
+  consoleLinkedAccount,
+  consolePasskeyAvailable,
   consoleSignIn,
+  endConsoleSession,
   type ConsoleRefusal,
   type ConsoleSignInResult,
 } from "../services/identity/public.js";
@@ -62,13 +68,22 @@ import {
   isSameOriginRequest,
   readTextCapped,
 } from "../core/accounts/browserRequestGuard.js";
-import { escapeHtml } from "../platform/html.js";
 import { randomToken } from "../platform/random.js";
 import { can, PLATFORM, resolvePrincipal } from "./authz.js";
 import { holdsRoot } from "../core/rbac/principal.js";
 import {
+  hasAccountBinding,
+  listPendingInvites,
+} from "../core/rbac/bindings.js";
+import { memberIdFor } from "../core/console/memberId.js";
+import { convertInvites } from "./inviteConversion.js";
+import { notifySuperadmins } from "./lib/operatorNotices.js";
+import { breakGlassUsedNotice } from "../core/notify/templates.js";
+import {
   STEP_UP_MAX_AGE_SECONDS,
+  buildBreakGlassCookie,
   buildSessionCookie,
+  issueBreakGlassSession,
   issueSessionV2,
   type SessionIdentity,
 } from "../core/console/session.js";
@@ -99,12 +114,45 @@ interface FlowRecord {
   returnTo?: string;
   /** I-12: a step-up re-authentication (`prompt=login`, `max_age=0`) for the relink tool. */
   stepUp?: boolean;
+  /** ST-30c.1: the explicit break-glass sign-in (`/manage/login?breakGlass=1`). */
+  breakGlass?: boolean;
   /** Hash of the `ADMIN_FLOW_COOKIE` value of the browser that started the flow. */
   bindingHash: string;
 }
 
 /** Binds an admin sign-in to the browser that started it (as the portal's I-17). */
 export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
+
+/**
+ * ST-30c.2 (D-S5): the last account signed in to the console, so the card can greet the operator
+ * with "email · Change". It is a convenience and never authorises: the value is only ever
+ * validated (`loginHint`), escaped and offered to the IdP as `login_hint`. Set on an account
+ * sign-in (never break-glass), kept after sign-out, cleared by Change.
+ */
+export const CONSOLE_HINT_COOKIE = "__Host-pkey_console_hint";
+const CONSOLE_HINT_TTL_SECONDS = 30 * 86400;
+
+export function consoleHintCookie(email: string | null): string {
+  return [
+    `${CONSOLE_HINT_COOKIE}=${email ? encodeURIComponent(email) : ""}`,
+    "Path=/",
+    "HttpOnly",
+    "Secure",
+    "SameSite=Strict",
+    `Max-Age=${email ? CONSOLE_HINT_TTL_SECONDS : 0}`,
+  ].join("; ");
+}
+
+/** The remembered address, or null when absent, malformed or tampered with. */
+function readConsoleHint(req: Request): string | null {
+  const raw = readCookie(req.headers.get("cookie"), CONSOLE_HINT_COOKIE);
+  if (!raw) return null;
+  try {
+    return loginHint(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Where a sign-in may land after the callback. Default (and the fallback for anything
@@ -133,8 +181,15 @@ const RETURN_TO_RE = /^\/(?:docs|manage)(?:\/[A-Za-z0-9\-._~/]*)?$/;
  */
 const RETURN_TO_HASH_RE = /^\/manage\/#\/[A-Za-z0-9\-._~/]*$/;
 
+/**
+ * ST-34.6: the `pkey login` approval card, with its code: the one place a `returnTo` may carry a
+ * query, so a step-up lands back on the request. Exactly `?code=` and a short code, nothing else.
+ */
+const RETURN_TO_DEVICE_RE = /^\/manage\/device\?code=[A-Za-z0-9-]{4,20}$/;
+
 export function sanitizeReturnTo(raw: string | null): string | null {
   if (!raw || raw.length > RETURN_TO_MAX_LENGTH) return null;
+  if (RETURN_TO_DEVICE_RE.test(raw)) return raw;
   if (!RETURN_TO_RE.test(raw) && !RETURN_TO_HASH_RE.test(raw)) return null;
   if (raw.includes("//")) return null;
   if (raw.split(/[/#]/).some((seg) => seg === "." || seg === "..")) return null;
@@ -214,6 +269,8 @@ const clientIdTokenVerifier: IdTokenVerifier = {
 interface Ctx {
   returnTo?: string | null;
   stepUp?: boolean;
+  /** ST-30c.1: the break-glass link; it forces a fresh login at the IdP. */
+  breakGlass?: boolean;
   hint?: string | null;
   /** "Use another account": the IdP's chooser, or a fresh login. */
   other?: boolean;
@@ -223,6 +280,7 @@ function ctxOf(url: URL): Ctx {
   return {
     returnTo: sanitizeReturnTo(url.searchParams.get("returnTo")),
     stepUp: url.searchParams.get("stepUp") === "1",
+    breakGlass: url.searchParams.get("breakGlass") === "1",
     hint: loginHint(url.searchParams.get("login_hint")),
     other: url.searchParams.get("other") === "1",
   };
@@ -233,6 +291,7 @@ function ctxOfForm(form: URLSearchParams): Ctx {
   return {
     returnTo: sanitizeReturnTo(form.get("returnTo")),
     stepUp: form.get("stepUp") === "1",
+    breakGlass: form.get("breakGlass") === "1",
     hint: loginHint(form.get("login_hint")),
     other: form.get("other") === "1",
   };
@@ -243,6 +302,7 @@ function loginHref(ctx: Ctx, extra: Record<string, string> = {}): string {
   const q = new URLSearchParams(extra);
   if (ctx.returnTo) q.set("returnTo", ctx.returnTo);
   if (ctx.stepUp) q.set("stepUp", "1");
+  if (ctx.breakGlass) q.set("breakGlass", "1");
   if (ctx.hint) q.set("login_hint", ctx.hint);
   const qs = q.toString();
   return qs ? `/manage/login?${qs}` : "/manage/login";
@@ -258,6 +318,7 @@ function startAgain(label: string, ctx: Ctx, viaPost: boolean): NoticeAction {
   const fields: Record<string, string> = {};
   if (ctx.returnTo) fields.returnTo = ctx.returnTo;
   if (ctx.stepUp) fields.stepUp = "1";
+  if (ctx.breakGlass) fields.breakGlass = "1";
   if (ctx.hint) fields.login_hint = ctx.hint;
   if (ctx.other) fields.other = "1";
   return { label, post: { action: "/manage/login", fields } };
@@ -375,39 +436,54 @@ async function signinCard(
     // an unparsable issuer is shown as configured
   }
   const origins = await idpFormOrigins(rp);
-  const known =
+  // D-S5: "Change" clears the remembered address and shows the empty field.
+  const change = url.searchParams.get("change") === "1";
+  const remembered = change ? null : readConsoleHint(req);
+  const caller =
     state === "stepUp"
-      ? ((
-          await resolveConsoleCaller(
-            env,
-            db,
-            req,
-            Math.floor(Date.now() / 1000),
-          )
-        )?.session.email ?? null)
+      ? await resolveConsoleCaller(env, db, req, Math.floor(Date.now() / 1000))
       : null;
+  const known = caller?.session.email ?? null;
+  // The passkey button and its script (hash in the CSP) only where a ceremony can run: the console
+  // RP resolves for this request, and on a step-up the signed-in account holds a console passkey.
+  let passkey = state !== "breakGlass" && consolePasskeyAvailable(env, req);
+  if (passkey && state === "stepUp") {
+    const aid =
+      caller && !caller.session.breakGlass ? caller.session.aid : null;
+    passkey = Boolean(
+      aid && db && (await accountHasConsolePasskey(env, db, aid)),
+    );
+  }
   const headers = brandedHtmlSecurityHeaders(
     new Headers({
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
     }),
-    { brand: "console" },
+    {
+      brand: "console",
+      ...(passkey ? { scriptHash: SIGNIN_SCRIPT_HASH } : {}),
+    },
   );
   allowFormAction(headers, origins);
+  if (change) headers.append("set-cookie", consoleHintCookie(null));
   return new Response(
     renderConsoleSignin({
       state,
       returnTo: ctx.returnTo ?? null,
       issuerHost: host,
       hint: ctx.hint ?? null,
+      // A typed address in the URL wins over the remembered one (it is the retry's field).
+      chip: ctx.hint ? null : remembered,
       knownEmail: known,
+      focusEmail: change,
+      passkey,
     }),
     { status: 200, headers },
   );
 }
 
 /** A usable `login_hint`: one plausible address, never longer than an email may be. */
-function loginHint(raw: string | null): string | null {
+export function loginHint(raw: string | null): string | null {
   const v = raw?.trim() ?? "";
   return v.length > 0 && v.length <= 254 && /^[^\s@]+@[^\s@]+$/.test(v)
     ? v
@@ -490,6 +566,7 @@ async function startSignIn(
   const redirectUri = `${adminOrigin(env, url)}/manage/callback`;
   const returnTo = ctx.returnTo ?? null;
   const stepUp = ctx.stepUp === true;
+  const breakGlass = ctx.breakGlass === true;
   const hint = ctx.hint ?? null;
   const binding = randomToken(32);
   const flow: FlowRecord = {
@@ -499,6 +576,7 @@ async function startSignIn(
     bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
     ...(returnTo ? { returnTo } : {}),
     ...(stepUp ? { stepUp: true } : {}),
+    ...(breakGlass ? { breakGlass: true } : {}),
   };
   await putArtefact(
     env,
@@ -516,9 +594,10 @@ async function startSignIn(
     // I-12: a step-up re-authenticates now, not a silent SSO. The callback checks `auth_time`
     // when the IdP sends one, so an IdP that ignores these still cannot pass off an old sign-in.
     extra: {
-      ...(stepUp ? { prompt: "login", max_age: "0" } : {}),
+      // Break-glass is a fresh authentication too (ST-30c.1).
+      ...(stepUp || breakGlass ? { prompt: "login", max_age: "0" } : {}),
       // "Use another account": the IdP's chooser when it has one, else a fresh login.
-      ...(!stepUp && ctx.other
+      ...(!stepUp && !breakGlass && ctx.other
         ? {
             prompt: discovered.promptValuesSupported?.includes("select_account")
               ? "select_account"
@@ -609,6 +688,7 @@ export async function handleAdminCallback(
   const flowCtx: Ctx = {
     returnTo: sanitizeReturnTo(peekedFlow?.returnTo ?? null),
     stepUp: peekedFlow?.stepUp === true,
+    breakGlass: peekedFlow?.breakGlass === true,
   };
   const tookTooLong = () =>
     htmlError(400, "This sign-in took too long", {
@@ -647,20 +727,34 @@ export async function handleAdminCallback(
     });
   }
 
-  // The sign-in gate is the console's membership check (ST-29): the principal this identity
-  // resolves to must hold at least one grant. Today the only grant is the root rule (the
-  // platform admin group), so this admits exactly who it always did.
+  if (flow.breakGlass === true)
+    return breakGlassCallback(req, env, db, now, identity, flowCtx, flow);
+
+  // The sign-in gate is the console's membership check (ST-29, ST-31.8): membership is "holds a
+  // grant". This PRE-gate runs before anything is written and admits exactly three people: the
+  // root rule (the platform admin group), a known link whose account has a stored binding, and an
+  // identity the IdP vouched an address for at this sign-in that has an unexpired invite. The
+  // last is admitted to the sign-in only: nothing is granted until `convertInvites` has checked
+  // the invite (below), and the post-gate refuses a session that ends with no grant.
   const principal = await resolvePrincipal(
     env,
     db,
     { sub: identity.sub, groups: identity.groups },
     now,
   );
-  if (!can(principal, PLATFORM, "console", "view")) {
+  const assertedEmail = consoleAssertedEmail(identity);
+  let admitted = can(principal, PLATFORM, "console", "view");
+  if (!admitted) {
+    const linked = await consoleLinkedAccount(env, db, identity.sub);
+    admitted = linked !== null && (await hasAccountBinding(db, linked));
+  }
+  if (!admitted && assertedEmail)
+    admitted = (await listPendingInvites(db, assertedEmail, now)).length > 0;
+  const notMember = async (summary: string) => {
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin sign-in refused: no administrator grant",
+      summary,
       now,
     });
     return htmlError(
@@ -676,7 +770,9 @@ export async function handleAdminCallback(
         },
       },
     );
-  }
+  };
+  if (!admitted)
+    return notMember("Admin sign-in refused: no administrator grant");
 
   // A step-up must be a fresh authentication. An IdP that answered `prompt=login` with an old
   // sign-in (its `auth_time` says so) is refused here rather than minting a session that would
@@ -725,6 +821,31 @@ export async function handleAdminCallback(
     });
   }
 
+  // Invites addressed to this account's verified address become its bindings now, then the
+  // POST-gate: a session whose principal holds no grant (an invite that did not convert, a
+  // binding the reader cannot understand) is ended before a cookie exists, and refused with the
+  // same card as the pre-gate. A repeat sign-in has no invite left and converts nothing.
+  await convertInvites(env, db, now, {
+    accountId: signedIn.accountId,
+    assertedEmail,
+    via: "operator",
+  });
+  const member = await resolvePrincipal(
+    env,
+    db,
+    {
+      sub: await memberIdFor(env, signedIn.accountId),
+      groups: identity.groups,
+      root: holdsRoot(env, identity.groups),
+      accountId: signedIn.accountId,
+    },
+    now,
+  );
+  if (!can(member, PLATFORM, "console", "view")) {
+    await endConsoleSession(env, db, signedIn.sid, now);
+    return notMember("Admin sign-in refused: no administrator grant");
+  }
+
   // Only a step-up flow whose ID token carries `auth_time` records a step-up.
   const { token } = await issueSessionV2(
     env,
@@ -750,11 +871,105 @@ export async function handleAdminCallback(
   // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
   // property of this function rather than a cross-file invariant.
   const location = sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/";
+  const hintEmail = loginHint(signedIn.email || identity.email || null);
   return new Response(null, {
     status: 302,
     headers: new Headers([
       ["location", location],
       ["set-cookie", buildSessionCookie(token)],
+      ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
+      ...(hintEmail
+        ? [["set-cookie", consoleHintCookie(hintEmail)] as [string, string]]
+        : []),
+      ["cache-control", "no-store"],
+    ]),
+  });
+}
+
+/** The most Superadmin addresses one break-glass sign-in mails. */
+const BREAK_GLASS_NOTICE_CAP = 25;
+
+/**
+ * ST-30c.1: the callback of an explicit break-glass flow (`/manage/login?breakGlass=1`). The
+ * identity must hold the root group NOW (the IdP's groups at this sign-in, no stored binding,
+ * no invite) and must have authenticated within the step-up window. It skips `consoleSignIn` and
+ * every ST-31.8 gate and conversion: no account, link or session row is written, and no invite
+ * converts. The cookie is the one-hour break-glass realm; the audit row and the Superadmin notice
+ * make the use loud.
+ */
+async function breakGlassCallback(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+  identity: SessionIdentity,
+  flowCtx: Ctx,
+  flow: FlowRecord,
+): Promise<Response> {
+  const retry = {
+    label: "Use another account",
+    href: loginHref({ returnTo: flowCtx.returnTo }, { go: "1", other: "1" }),
+  };
+  if (!holdsRoot(env, identity.groups)) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.refused",
+      sub: identity.sub,
+      summary: "Emergency sign-in refused: not in the platform admin group",
+      now,
+    });
+    return htmlError(
+      403,
+      identity.email
+        ? `${identity.email} can’t use emergency sign-in`
+        : "This account can’t use emergency sign-in",
+      { lede: "Emergency sign-in is for Superadmins only.", action: retry },
+    );
+  }
+  // A fresh authentication is the point: an IdP that ignored `prompt=login` and `max_age=0`, or
+  // sent no `auth_time` at all, never opens the emergency path.
+  if (
+    typeof identity.authTime !== "number" ||
+    now - identity.authTime > STEP_UP_MAX_AGE_SECONDS
+  ) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.refused",
+      sub: identity.sub,
+      summary: "Emergency sign-in refused: sign-in was not recent",
+      now,
+    });
+    return htmlError(401, "Your provider didn’t ask you to sign in again", {
+      lede: "Sign out of it, then try again.",
+      action: {
+        label: "Sign in again",
+        href: loginHref({}, { breakGlass: "1", go: "1" }),
+      },
+    });
+  }
+  const { token } = await issueBreakGlassSession(env, identity, now);
+  await recordPlatformSecurityEvent(db, {
+    action: "rbac.breakglass",
+    sub: identity.sub,
+    summary: "Emergency sign-in used",
+    now,
+  });
+  await notifySuperadmins(
+    env,
+    db,
+    now,
+    breakGlassUsedNotice({
+      who: identity.email || identity.name || identity.sub,
+      at: now,
+      network: clientNetwork(req),
+      origin: env.CONSOLE_ORIGIN,
+    }),
+    { left: BREAK_GLASS_NOTICE_CAP },
+    true,
+  );
+  return new Response(null, {
+    status: 302,
+    headers: new Headers([
+      ["location", sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/"],
+      ["set-cookie", buildBreakGlassCookie(token)],
       ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
       ["cache-control", "no-store"],
     ]),

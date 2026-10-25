@@ -1,7 +1,7 @@
 /**
  * The Steam publisher-key custody and the platform apps listing (A-16, UX-69): the store-client
  * half of the Steam commerce bridge, shared by Commerce (ticket and ownership checks,
- * `services/commerce/steam.ts`) and Distribution's Steam storefront (P0-27a, CM-29). It imports
+ * `services/commerce/stores/steam/purchases.ts`) and Distribution's Steam storefront (P0-27a, CM-29). It imports
  * no service, so both reach it without reaching each other.
  *
  * The platform group key (`steam.publisher-key`: console credential, else
@@ -11,6 +11,7 @@
  * `steam.appIds`.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import {
@@ -258,7 +259,7 @@ export async function checkSteamPublisherKey(o: {
     );
   } catch (e) {
     return storeUnavailable(
-      "Steam",
+      channelLabel("steam"),
       e instanceof StoreUnavailable ? e.status : 0,
     );
   }

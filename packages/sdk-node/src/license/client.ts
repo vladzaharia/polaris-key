@@ -126,26 +126,6 @@ export class LicenseClient {
   }
 
   /**
-   * Whether the license grants the boolean entitlement `name`. FALSE whenever the gate is not
-   * usable (S-19 G11): a revoked, expired or blocked device holds a signed document that still
-   * lists its grants, and reading them past the gate would keep paid features on after a
-   * revocation. A behaviour change from earlier releases, which read the cached document alone.
-   */
-  isEntitled(name: string, now = nowSec()): boolean {
-    if (!isUsable(this.status(now))) return false;
-    const e = this.doc?.entitlements[name];
-    return Boolean(e && e.value === true);
-  }
-
-  /** The raw value of entitlement `name` (a number, string, list or object), or null when the
-   *  license does not carry it or the gate is not usable (G11). */
-  entitlementValue(name: string, now = nowSec()): JSONValue | null {
-    if (!isUsable(this.status(now))) return null;
-    const e = this.doc?.entitlements[name];
-    return e === undefined ? null : e.value;
-  }
-
-  /**
    * A summary of the license for an account screen (SDK parity pass §3.3), read from the
    * enforced entitlement names (`license.tier`, `license.tierLabel`, `deviceLimit`, `channels`)
    * and the signed profile. Null when no license document is held. The document carries no
@@ -170,7 +150,11 @@ export class LicenseClient {
     };
   }
 
-  getEntitlements(): Record<string, JSONValue> {
+  /**
+   * Every entitlement's raw value, read off the held document without the gate. The
+   * `entitlements` view (`client.entitlements`) builds its gated reads on this and `isLicensed`.
+   */
+  documentEntitlements(): Record<string, JSONValue> {
     const out: Record<string, JSONValue> = {};
     for (const [k, v] of Object.entries(this.doc?.entitlements ?? {}))
       out[k] = v.value;

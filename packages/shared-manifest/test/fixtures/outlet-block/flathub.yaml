@@ -1,0 +1,6 @@
+outlets:
+  # Flathub
+  flathub:
+    kind: flathub
+    # Flatpak application id, like com.example.App.
+    appId: com.acme.Dice

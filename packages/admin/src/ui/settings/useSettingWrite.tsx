@@ -42,7 +42,7 @@ export interface ConfirmPlan {
   /** Leads the dialog, before the lines. */
   summary?: React.ReactNode;
   /** Replaces the default lines. */
-  consequences?: string[];
+  consequences?: React.ReactNode[];
   /** Replaces the button's label. */
   confirmLabel?: string;
   /** Confirm stays off. */
@@ -72,7 +72,7 @@ export interface SettingWriteOptions {
   /** The confirmation's own words for a change to `to`, when the default wording does not read. */
   confirmCopy?: (to: unknown) => { title: string; confirmLabel: string };
   /** Extra lines for the confirmation of a change to `to`. */
-  consequences?: (to: unknown) => string[];
+  consequences?: (to: unknown) => React.ReactNode[];
   /**
    * A HOOK (called on every render of the row, so it must be the same on each): what a page
    * knows about the change being confirmed, such as how many products it reaches. `null` while no

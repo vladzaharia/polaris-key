@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { signJws } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
+import { SettingVisibility } from "../src/constants.generated.js";
 import {
   DEVICE,
   json,
@@ -67,19 +68,38 @@ describe("config.local (§3.11)", () => {
     client.config.onConfigChange("*", (c) => all.push(c.key));
     client.events.on("config", (c) => events.push(c.key));
     await theme.set("dark");
-    expect(theme.get("light")).toBe("dark");
-    expect(theme.source()).toBe("local");
+    expect(theme.value).toBe("dark");
+    expect(theme.source).toBe("local");
     expect(keyed).toEqual(["dark"]);
     expect(all).toEqual(["ui.theme"]);
     expect(events).toEqual(["ui.theme"]);
 
     // A second client over the same state directory sees the persisted value.
     const again = await seededClient({ routes, extra: { stateDir: dir } });
-    expect(again.client.config.getConfig("ui.theme", "light")).toBe("dark");
+    expect(again.client.config.get("ui.theme", "light")).toBe("dark");
 
     await theme.clear();
-    expect(theme.get("light")).toBe("light");
+    expect(theme.value).toBeNull();
+    expect(theme.source).toBe("fallback");
     expect(keyed).toEqual(["dark", undefined]);
+  });
+
+  it("clearAll drops every local override in one write, persists, and emits per key", async () => {
+    const routes = { "GET /djdl/config/schema": () => json(CATALOG) };
+    const { client, dir } = await seededClient({ routes });
+    await client.config.set("ui.theme", "dark");
+    await client.config.set("ui.other", 3);
+    const all: string[] = [];
+    client.config.onConfigChange("*", (c) => all.push(c.key));
+    await client.config.clearAll();
+    expect(client.config.get("ui.theme", "light")).toBe("light");
+    expect(client.config.get("ui.other", 0)).toBe(0);
+    expect(client.config.localValues()).toEqual({});
+    expect(all.sort()).toEqual(["ui.other", "ui.theme"]);
+    const again = await seededClient({ routes, extra: { stateDir: dir } });
+    expect(again.client.config.get("ui.theme", "light")).toBe("light");
+    await client.config.clearAll(); // already empty: no change, no throw
+    expect(all).toHaveLength(2);
   });
 
   it("validates against the catalog and refuses a locked key", async () => {
@@ -92,7 +112,14 @@ describe("config.local (§3.11)", () => {
           new Response(await signedLicense({}, at + 1)),
         "GET /djdl/config/document": async () =>
           new Response(
-            await configJws({ "ui.locked": ["enforced", 1] }, at + 1),
+            await configJws(
+              {
+                "ui.locked": ["enforced", 1],
+                "ui.secret": ["hidden", 2],
+                "ui.open": ["default", 3],
+              },
+              at + 1,
+            ),
           ),
         "POST /djdl/devices/report": () => json({}),
       },
@@ -102,6 +129,21 @@ describe("config.local (§3.11)", () => {
     );
     await client.sync({ force: true });
     expect(client.config.isLocked("ui.locked")).toBe(true);
+    // The handle's reads are properties, and visibility follows the key's state.
+    const locked = client.config.setting<number>("ui.locked");
+    expect(locked.visibility).toBe(SettingVisibility.readonly);
+    expect(locked.locked).toBe(true);
+    expect(locked.value).toBe(1);
+    expect(client.config.setting("ui.secret").visibility).toBe(
+      SettingVisibility.hidden,
+    );
+    expect(client.config.setting("ui.open").visibility).toBe(
+      SettingVisibility.editable,
+    );
+    expect(client.config.setting("ui.open").locked).toBe(false);
+    expect(client.config.setting("ui.unknown").visibility).toBe(
+      SettingVisibility.editable,
+    );
     await expect(client.config.set("ui.locked", 2)).rejects.toMatchObject({
       code: "managed_by_admin",
     });

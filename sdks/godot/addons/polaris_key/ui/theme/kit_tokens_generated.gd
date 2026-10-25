@@ -29,7 +29,7 @@ const FOCUS_GLOW := 8.0
 const HAS_SCRIM := true
 const SCRIM_DARK_OPACITY := 0.42
 const SCRIM_DARK_BLUR := 0.0
-const SCRIM_LIGHT_OPACITY := 0.2
+const SCRIM_LIGHT_OPACITY := 0.35
 const SCRIM_LIGHT_BLUR := 0.0
 
 ## Type scale (px at 720p). Weights are 400, 500 and 600 only.
@@ -82,7 +82,7 @@ const SCRIM_DARK := Color(0.007843, 0.015686, 0.031373, 0.42)
 const HIGHLIGHT_LIGHT := Color(1.0, 1.0, 1.0, 0.9)
 const DANGER_SOLID_LIGHT := Color(0.745098, 0.137255, 0.137255, 1.0) # #be2323
 const DANGER_ON_LIGHT := Color(1.0, 1.0, 1.0, 1.0)
-const SCRIM_LIGHT := Color(0.023529, 0.035294, 0.070588, 0.2)
+const SCRIM_LIGHT := Color(0.023529, 0.035294, 0.070588, 0.35)
 
 
 ## The inner radius of a surface of radius `outer` inset by `inset`.

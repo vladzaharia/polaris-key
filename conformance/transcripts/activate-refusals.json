@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "activate-refusals",
-  "description": "Every refusal the activation and enrolment routes answer today, each surfaced by its body code and never collapsed into another kind: enrolment for a machine whose free licence an account has claimed (403 enroll_claimed), then whose free licence an operator disabled (403 license_disabled); activation with an expired licence's key (today a 401 unauthorized: the Worker refuses every unusable licence alike); activation on hardware that drifted past the threshold from the seat's binding (409 hardware_mismatch); and activation once the per-client budget is spent (429 rate_limited, no Retry-After). No refusal mints a token. attestation_required is not recorded: activation and enrolment are not trust operations.",
+  "description": "Every refusal the activation and enrolment routes answer today, each surfaced by its body code and never collapsed into another kind: enrolment for a machine whose free licence an account has claimed (403 enroll_claimed), then whose free licence an operator disabled (403 license_disabled); activation with an expired licence's key (today a 401 unauthorized: the Worker refuses every unusable licence alike); activation on hardware that drifted past the threshold from the device's binding (409 hardware_mismatch); and activation once the per-client budget is spent (429 rate_limited, no Retry-After). No refusal mints a token. attestation_required is not recorded: activation and enrolment are not trust operations.",
   "features": ["license.refusals"],
   "requires": ["core.store", "license.activate"],
   "product": "djdl",

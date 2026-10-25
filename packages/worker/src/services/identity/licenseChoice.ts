@@ -36,6 +36,7 @@
  * callback's hand-off) live in `oidc.ts`, beside the flow record they change.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import { type DeviceRow, type LicenseRow } from "../../core/repo.js";
 import {
   countActiveDevices,
@@ -44,6 +45,7 @@ import {
 import { getLicenseBySub, getTier } from "../../core/licensing/store.js";
 import { licenseUsable } from "../../core/devices.js";
 import { compareCandidates } from "../../core/licensing/anchor.js";
+import { customerTierOf } from "../../core/licensing/implicitTier.js";
 import {
   licenseDeviceLimit,
   tierFingerprintMode,
@@ -135,6 +137,16 @@ export async function choiceAccountStillLinked(
   return link !== null;
 }
 
+/** The tier name a legacy choice row shows: the tier's label, its id when it has no row, "License"
+ *  for no tier and for the implicit Default tier (LX-33.2). */
+function tierNameOf(
+  l: Pick<LicenseRow, "tier_id">,
+  tier: Parameters<typeof customerTierOf>[1],
+): string {
+  const shown = customerTierOf(l, tier);
+  return shown ? (shown.label ?? shown.id) : "License";
+}
+
 async function accountProductLicenses(
   db: Db,
   accountId: string,
@@ -196,9 +208,9 @@ export interface LegacyChoiceView {
 export const ACTIVE_NOW_SECONDS = 600;
 
 const STORE_NAMES: Record<string, string> = {
-  "app-store": "App Store",
-  play: "Google Play",
-  steam: "Steam",
+  "app-store": channelLabel("app-store"),
+  play: channelLabel("google-play"),
+  steam: channelLabel("steam"),
 };
 
 /**
@@ -332,7 +344,7 @@ export async function legacyLicenseChoices(
     }
     rows.push({
       id: l.id,
-      tierName: tier?.label ?? (l.tier_id ? l.tier_id : "License"),
+      tierName: tierNameOf(l, tier),
       origin: originLabel(kind, source?.store ?? null, hasKey),
       fromSignIn: kind === "sign_in",
       seats: { used, limit },
@@ -392,7 +404,12 @@ export async function legacyLicenseChoices(
       } satisfies LicenseRow,
       now,
     );
-    create = { tierName: tier?.label ?? null, limit };
+    create = {
+      tierName:
+        customerTierOf({ tier_id: input.grantTierId ?? null }, tier)?.label ??
+        null,
+      limit,
+    };
   }
   const firstFree = rows.find((r) => r.state === "free");
   return {
@@ -446,7 +463,7 @@ function noticeHtml(notice: ChoiceNotice | null | undefined): string {
     }
     case "unavailable":
       // signin.choice.raced
-      return callout("info", "That seat was just taken. Choose again.");
+      return callout("info", "That license just filled up. Choose again.");
     case "pick_device":
       return "";
   }
@@ -530,7 +547,7 @@ function rowHtml(
       .join("");
     replace =
       `<details class="replace"><summary>Replace a device</summary>` + // signin.replace.open
-      `<p class="muted small">Choose a device to sign out. ${escapeHtml(ctx.thisDevice)} takes its seat.</p>` + // signin.replace.lede
+      `<p class="muted small">Choose a device to sign out. ${escapeHtml(ctx.thisDevice)} takes its place.</p>` + // signin.replace.lede
       devices +
       `<button class="button secondary" type="submit" name="action" value="replace:${escapeHtml(row.id)}">Replace…</button>` + // signin.replace.openSystem
       `</details>`;
@@ -618,7 +635,7 @@ export function chooserBody(input: {
     empty +
     `<div class="actions stack">` +
     (canContinue
-      ? `<button class="button" type="submit" name="action" value="use">${escapeHtml(input.primaryLabel ?? "Use this license and continue")}</button>` // signin.choice.continue
+      ? `<button class="button" type="submit" name="action" value="use">${escapeHtml(input.primaryLabel ?? "Use this license")}</button>` // signin.choice.continue
       : "") +
     keyLink(input.keyHref) +
     `<button class="button secondary" type="submit" name="action" value="cancel" formnovalidate>Cancel</button>` +
@@ -683,14 +700,14 @@ function replaceGroupBody(
     callout(
       "devices",
       "Your licenses are on all their devices.",
-      `Choose one to sign out. ${iso(thisDevice)} takes its seat.`,
+      `Choose one to sign out. ${iso(thisDevice)} takes its place.`,
     ) +
     other +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
     `<div class="field"><fieldset class="choices"><legend class="sr-only">Devices to replace</legend><ul class="choices">${items}</ul></fieldset>${err}</div>` +
     // signin.replace.consequence, said once for the group (§3.7).
-    `<p class="note">${icon("info", true)}<span>The device you choose signs out of ${escapeHtml(input.productName)}. It can sign in again later if a seat is free. We'll email you about it.</span></p>` +
+    `<p class="note">${icon("info", true)}<span>The device you choose signs out of ${escapeHtml(input.productName)}. It can sign in again later if there's room for another device. We'll email you about it.</span></p>` +
     `<div class="actions stack">` +
     `<button class="button" type="submit" name="action" value="replace-pick">Replace and sign in</button>` +
     keyLink(input.keyHref) +
@@ -726,7 +743,7 @@ export function replaceConfirmBody(input: {
   const d = escapeHtml(input.device);
   return (
     // signin.replace.consequence
-    `<p>${d} signs out of ${escapeHtml(input.productName)} and ${escapeHtml(input.thisDevice)} takes its seat. ${d} can sign in again later if a seat is free. We'll email you about it.</p>` +
+    `<p>${d} signs out of ${escapeHtml(input.productName)} and ${escapeHtml(input.thisDevice)} takes its place. ${d} can sign in again later if there's room for another device. We'll email you about it.</p>` +
     (input.activeNow
       ? `<p class="notice">${d} is in use right now.</p>` // signin.replace.inUse
       : "") +

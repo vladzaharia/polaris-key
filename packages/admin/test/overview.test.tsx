@@ -38,7 +38,7 @@ vi.mock("../src/api.js", async () => {
   };
 });
 
-const { ApiError } = await import("../src/api.js");
+const { HttpError } = await import("../src/api.js");
 const { OverviewPage } =
   await import("../src/console/sections/core/pages/Overview.js");
 
@@ -79,6 +79,7 @@ function enablement(on: ServiceSlug[]) {
 function product(over: Partial<ProductDetail> = {}): ProductDetail {
   return {
     slug: "djdl",
+    manifestAuthoritative: { value: false, locked: false },
     name: "DJDL",
     signingKid: "djdl-a",
     signing: { kid: "djdl-a", publicKey: "PUBKEY-A" },
@@ -444,6 +445,34 @@ describe("Core → Overview", () => {
     ).toBeNull();
   });
 
+  it("the platform's pause (product null) is not the hero's, nor in its +N more (ST-44b.2)", async () => {
+    fns.attention.mockResolvedValue({
+      items: [
+        {
+          id: "@platform:sync.paused",
+          product: null,
+          kind: "sync.paused",
+          tone: "warning",
+          service: "sync",
+          short: "Writes paused",
+          lines: ["Cloud Sync writes are paused for every product."],
+          action: {
+            label: "Resume writes",
+            page: "platform-settings",
+            query: { setting: "cloudSync.writesPaused" },
+          },
+          area: "platform",
+        },
+        SECRET_ITEM,
+      ],
+    });
+    mount();
+    const hero = (await screen.findByTestId("overview-hero")) as HTMLElement;
+    await within(hero).findByText(/has no value in the Default profile/);
+    expect(within(hero).queryByText(/paused/i)).toBeNull();
+    expect(within(hero).queryByRole("link", { name: /more/ })).toBeNull();
+  });
+
   it("with nothing to fix, the computed next step is the hero's one action", async () => {
     fns.attention.mockResolvedValue({ items: [] });
     mount();
@@ -595,7 +624,7 @@ describe("Core → Overview", () => {
 
   it("shows an error state with Retry when the product cannot load", async () => {
     const user = userEvent.setup();
-    fns.product.mockRejectedValueOnce(new ApiError(500));
+    fns.product.mockRejectedValueOnce(new HttpError(500));
     mount();
     await user.click(await screen.findByRole("button", { name: "Try again" }));
     expect(

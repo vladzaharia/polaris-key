@@ -10,6 +10,7 @@
  * document is pinned by a golden file under `godot/golden/` (`vitest -u` rewrites them).
  */
 
+import { mintCompat } from "../helpers/legacyOwnerToken.js";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -29,10 +30,7 @@ import {
 import { ingestPackageDescriptor } from "../../src/services/release/packages/ingest.js";
 import { packageStateStatements } from "../../src/services/release/packages/state.js";
 import { forgetRegistrySettings } from "../../src/services/distribution/registry/settings.js";
-import {
-  forgetRegistryTokens,
-  mintRegistryToken,
-} from "../../src/core/registry/registryTokens.js";
+import { forgetRegistryTokens } from "../../src/core/registry/registryTokens.js";
 import {
   RENDER_STAMP_META,
   registryCounters,
@@ -51,6 +49,7 @@ import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { R2Mock, asR2 } from "../r2Mock.js";
 import { NOW } from "../seed.js";
+import { issueStaticCiToken } from "../../src/core/publisher.js";
 import {
   BYTES,
   SLUG,
@@ -779,7 +778,7 @@ describe("documents (pure)", () => {
 
 describe("Godot URL tokens (F-21, plans/F-20.md §6.3)", () => {
   async function urlToken(presentation: "url" | "header" = "url") {
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       env,
       db,
       {
@@ -820,6 +819,29 @@ describe("Godot URL tokens (F-21, plans/F-20.md §6.3)", () => {
         await ((await r2.get(key)) as R2ObjectBody).text(),
         key,
       ).not.toContain(token);
+  });
+
+  it("a CI token, packages:read included, is never a path credential (F-33b.2)", async () => {
+    await setFeed({ access: "authenticated" });
+    const ci = (
+      await issueStaticCiToken(env, db, {
+        product: SLUG,
+        label: "svc",
+        scopes: ["packages:read"],
+        expiresAt: NOW + 86_400,
+        createdBy: "admin:a",
+        now: NOW,
+      })
+    ).token;
+    expect((await get(`${base}/t/${ci}/index.json`)).status).toBe(401);
+    // As a header it reads, which is what a service token is for.
+    expect(
+      (
+        await get(`${base}/index.json`, {
+          headers: { authorization: `Bearer ${ci}` },
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it("only a URL token satisfies the segment, and a URL token is no header credential", async () => {

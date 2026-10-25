@@ -68,6 +68,8 @@ export interface InitOptions {
   adminGroup?: string;
   releaseOwner?: string;
   releaseRepo?: string;
+  /** `free` (the default) writes the console wizard's Free tier when License is on. */
+  starterTier?: "free" | "none";
   force?: boolean;
 }
 
@@ -309,6 +311,11 @@ function productYaml(opts: InitOptions, services: ServiceSlug[]): string {
   const oidc = services.includes("identity")
     ? `\noidc:\n  provider: platform\n  groupRoleMap: {}\n`
     : "";
+  // The wizard's rows: a Free tier only when License is on and the starter tier is `free`.
+  const tiers =
+    services.includes("license") && opts.starterTier !== "none"
+      ? `\n  tiers:\n    - id: free\n      label: Free\n      profileId: default\n      policyDeviceLimit: 5\n      channels: ["stable"]`
+      : "";
   return `# yaml-language-server: $schema=${SCHEMA_BASE}/product.schema.json
 apiVersion: pkey.dev/v1
 product:
@@ -318,8 +325,8 @@ ${opts.adminGroup ? `  adminGroup: ${quoteYaml(opts.adminGroup)}\n` : ""}modules
 ${moduleLines.join("\n")}
 
 profiles:
-  - id: standard-defaults
-    name: Standard defaults
+  - id: default
+    name: Default
     payload:
       config: {}
       secrets: {}
@@ -327,13 +334,7 @@ profiles:
 
 licensing:
   defaultDeviceLimit: 5
-  defaultMaxOfflineDays: 14
-  tiers:
-    - id: standard
-      label: Standard
-      profileId: standard-defaults
-      policyDeviceLimit: 5
-      channels: ["stable"]${oidc}
+  defaultMaxOfflineDays: 14${tiers}${oidc}
 
 secrets:
   required: []

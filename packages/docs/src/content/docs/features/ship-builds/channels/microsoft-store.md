@@ -113,6 +113,17 @@ If the manifest's `productId` changes, the connector stops (`pin_mismatch`) unti
 names the pinned app again, or until you **check that the new Store ID really is this product's
 app** and re-pin.
 
+## Store identity
+
+A channel in `.pkey/distribution` whose `productId` differs from the app assigned to the product
+raises an attention item on Ship, naming both. The connector itself still follows the pin
+(`pin_mismatch` above); the item tells you before the next sync stops it. The Microsoft Store is
+not sold through Commerce, so this is the only identity check here.
+
+## Listing
+
+The Microsoft Store's listing is projected from the shared listing ([Storefront listing](/docs/features/ship-builds/channels/polaris-key/#storefront-listing)) and can be imported from Partner Center into it. The name is the one you reserved in Partner Center, so it is neither checked nor sent. The name, developer, accent and icon default to Presentation (Settings → Presentation); a field the listing sets wins. A store-specific value is an override (**Settings → Presentation → Listing**, pick the storefront). **Push listing** updates the pending submission and leaves it uncommitted.
+
 ## What it reads
 
 Every tick sends only these GETs, to `https://manage.devcenter.microsoft.com`, plus the

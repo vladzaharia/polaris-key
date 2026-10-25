@@ -10,7 +10,7 @@
  * Every reader takes the path from here: the router, the URL builder
  * (`services/distribution/connectors/asc/provision.ts`), the ASC write gate
  * (`core/storefront/rules/appStore.ts`) and CM-21's Play `pushAudience` default.
- * `test/commerce.test.ts` pins them.
+ * `test/services/commerce/commerce.test.ts` pins them.
  */
 
 /** The last path segment of each store's hook. */

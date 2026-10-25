@@ -38,7 +38,7 @@ func run(t: PKeyTestContext) -> void:
 		t.check("template: the stamp's bytes are the canonical encoding", PKeyBuildStamp.read() is Dictionary and raw.to_utf8_buffer() == PKeyBuildStamp.encode(PKeyBuildStamp.read()))
 		# A configured core sends the stamped channel even over default_channel.
 		var o := PKeyOptions.new()
-		o.product = "pkey-harness"
+		o.product_slug = "pkey-harness"
 		o.local_only = true
 		o.store = PKeyMemoryStore.new()
 		o.default_channel = "dev"

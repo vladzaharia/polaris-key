@@ -1,6 +1,5 @@
-// SP-S02 (notes/SDK-PARITY-PASS.md §3.3): `isEntitled` follows the gate (S-19 G11),
-// `licenseInfo()` and `entitlementValue()` read the verified licence, `isEnabled(flag:)` reads a
-// catalog flag, and the typed config getters read the effective config value.
+// SP-S02 (notes/SDK-PARITY-PASS.md §3.3): `entitlements.has` follows the gate (S-19 G11),
+// `licenseInfo()` and `entitlements.value` read the verified licence, and the typed config getters read the effective config value.
 
 import Foundation
 import PolarisKey
@@ -52,25 +51,25 @@ final class LicenseInfoTests: XCTestCase {
     // @pkey-feature license.entitlements
     func testIsEntitledIsFalseOnceTheGateIsNotUsable() async throws {
         let ok = try await client()
-        let pro = await ok.license.isEntitled("pro")
+        let pro = await ok.entitlements.has("pro")
         XCTAssertTrue(pro)
-        let flag = await ok.isEnabled(flag: "pro")
+        let flag = await ok.entitlements.has("pro")
         XCTAssertTrue(flag)
 
         // G11: the cached document still lists `pro`, but the last sync was a hard 401.
         let revoked = try await client(revoked: true)
         let status = await revoked.status().status
         XCTAssertEqual(status, .revoked)
-        let after = await revoked.license.isEntitled("pro")
+        let after = await revoked.entitlements.has("pro")
         XCTAssertFalse(after)
-        let flagAfter = await revoked.isEnabled(flag: "pro")
+        let flagAfter = await revoked.entitlements.has("pro")
         XCTAssertFalse(flagAfter)
-        let value = await revoked.license.entitlementValue("deviceLimit")
+        let value = await revoked.entitlements.value("deviceLimit")
         XCTAssertNil(value)
 
         // Never activated: no token, so the gate is needs-activation.
         let fresh = try await client(token: false)
-        let freshPro = await fresh.license.isEntitled("pro")
+        let freshPro = await fresh.entitlements.has("pro")
         XCTAssertFalse(freshPro)
     }
 
@@ -85,9 +84,9 @@ final class LicenseInfoTests: XCTestCase {
         XCTAssertEqual(info.deviceLimit, 3)
         XCTAssertEqual(info.entitledChannels, ["stable", "beta"])
         XCTAssertEqual(info.profile?.email, "a@e.com")
-        let seats = await c.license.entitlementValue("deviceLimit")
+        let seats = await c.entitlements.value("deviceLimit")
         XCTAssertEqual(seats, .int(3))
-        let missing = await c.license.entitlementValue("nope")
+        let missing = await c.entitlements.value("nope")
         XCTAssertNil(missing)
     }
 

@@ -26,6 +26,7 @@ import {
   type ManifestDocumentName,
 } from "@polaris-key/manifest";
 import { type Env } from "../../platform/env.js";
+import { feedSkipped } from "./resync.js";
 import { sha256Hex } from "../../platform/hash.js";
 import type { Db } from "../../db/types.js";
 import { getProduct } from "../../core/products/store.js";
@@ -50,7 +51,7 @@ import type { Ingest } from "../../core/ingest/types.js";
 import { repoBlobLookup } from "./assetSource.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import type { LinkCheck } from "./linkExisting.js";
-import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
+import { displayNameOptions } from "../../core/accounts/reservedDisplayNames.js";
 
 export type LinkRepoResult =
   | {
@@ -66,6 +67,8 @@ export type LinkRepoResult =
       remainingSecrets: string[];
       /** ST-42: what the create wrote beyond the manifest's own rows. */
       defaults: CreatedDefaults;
+      /** F-34.2: ecosystems whose feed the manifest could not provision, with why. */
+      feedProvisionSkipped?: { ecosystem: string; reason: string }[];
     }
   | {
       ok: false;
@@ -543,7 +546,7 @@ export async function prepareCreate(
   // reserved display names, as the create always did).
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
-    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
+    ...(await displayNameOptions(env, db)),
   });
   if (!result.ok) {
     return {
@@ -664,7 +667,7 @@ export async function linkRepo(
 
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
-    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
+    ...(await displayNameOptions(env, db)),
   });
   if (!result.ok)
     return {
@@ -776,6 +779,7 @@ export async function registerFromManifest(
     install,
     remainingSecrets,
     defaults: created.defaults,
+    ...feedSkipped(result.facts),
   };
 }
 

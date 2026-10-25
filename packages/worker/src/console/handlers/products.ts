@@ -35,6 +35,7 @@ import {
   stmtRetireOrRevokeKey,
   stmtsActivateKey,
 } from "../../keyTransitions.js";
+import { channelsRead } from "./channels.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
   MAX_WEB_ORIGINS,
@@ -56,9 +57,11 @@ import {
 } from "../../core/products/store.js";
 import {} from "../../core/licensing/store.js";
 import { mintKid } from "../../core/keys.js";
+import { grantCreator } from "../creatorGrant.js";
 import { parseCreateChoices } from "../../core/products/createDefaults.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
 import { deleteProduct } from "../../core/products/store.js";
+import { purgeProductData } from "../../core/contributions.js";
 import { listDevicesByProduct } from "../../core/devices/store.js";
 import {
   claimsApply,
@@ -267,6 +270,15 @@ export async function handleProducts(
       { kind: "product", id: result.slug },
       `Linked repo for product ${result.slug}`,
     );
+    // G6 (ST-31.9): the creator can manage what they just made.
+    await grantCreator(
+      env,
+      db,
+      session,
+      result.slug,
+      (await getProduct(db, result.slug))?.name ?? null,
+      now,
+    );
     return adminJson(
       {
         ok: true,
@@ -282,6 +294,9 @@ export async function handleProducts(
         install: result.install,
         remainingSecrets: result.remainingSecrets,
         defaults: result.defaults,
+        ...(result.feedProvisionSkipped
+          ? { feedProvisionSkipped: result.feedProvisionSkipped }
+          : {}),
         // C-2: the created product (its name), which the console's `LinkRepoResult` already
         // promises, so "<Name> is ready" never has to fall back to the slug.
         product: await (async () => {
@@ -319,8 +334,27 @@ export async function handleProducts(
   const slug = segments[0]!;
   const row = await getProduct(db, slug);
   if (!row) return notFound();
-  if (req.method === "GET")
-    return adminJson({ product: await productView(env, db, row, now) });
+  if (req.method === "GET") {
+    // A-20.4: the channels ride the record, but the shell must never fail on them: a throw leaves
+    // the two fields out (the channels route itself still answers the error). No console logging
+    // in src (R12).
+    let channels: Awaited<ReturnType<typeof channelsRead>> = null;
+    try {
+      channels = await channelsRead(env, db, slug, now);
+    } catch {
+      channels = null;
+    }
+    return adminJson({
+      product: await productView(
+        env,
+        db,
+        row,
+        now,
+        undefined,
+        channels ?? undefined,
+      ),
+    });
+  }
   if (req.method === "PATCH") {
     const body = await readBody(req);
     // F-03: the system product keeps its name (it is the platform's, and the feeds and the
@@ -558,6 +592,14 @@ export async function handleProducts(
         fields: ["confirmSlug"],
       });
     }
+    // Data a service keeps outside D1 (Cloud Sync's per-person objects) goes first, before the
+    // per-device token deletes: the batch below removes the rows that say what exists, and a big
+    // product is asked again, so the bounded purge must not spend each retry's subrequests on tokens
+    // already deleted (SR-1 N6). Bounded.
+    if (!(await purgeProductData(db, env, slug, now)))
+      return err(409, ErrorCode.BadRequest, "erasure is not finished; retry", {
+        reason: "purge_incomplete",
+      });
     const devices = await listDevicesByProduct(db, slug);
     for (const device of devices) {
       if (device.token_hash)
@@ -718,6 +760,8 @@ async function manualCreate(
     `Created product ${slug}`,
   );
   const created = await getProduct(db, slug);
+  // G6 (ST-31.9): the creator can manage what they just made.
+  await grantCreator(env, db, session, slug, created?.name ?? null, now);
   return adminJson(
     {
       ok: true,
@@ -794,7 +838,7 @@ const SEALED_TABLES = [
   },
   // P5-01: store credentials. The sweep re-seals the blob byte-for-byte under the same AAD and
   // never parses it; this is the one operator path outside `core/outletCredentials.ts` that
-  // opens one, and it is the KEK rotation itself (`test/outletCredentialReach.test.ts`).
+  // opens one, and it is the KEK rotation itself (`test/core/outletCredentialReach.test.ts`).
   {
     table: "outlet_credentials",
     idColumn: "credential_id",

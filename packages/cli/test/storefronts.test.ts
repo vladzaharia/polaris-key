@@ -346,7 +346,7 @@ describe("the itch.io and Snap command plans", () => {
     );
   });
 
-  it("keeps the CI token and OIDC request variables from the vendor tool", () => {
+  it("keeps the CI token, OIDC request variables and the Action's inputs from the vendor tool", () => {
     expect(
       toolEnv({
         PATH: "/usr/bin",
@@ -354,6 +354,9 @@ describe("the itch.io and Snap command plans", () => {
         PKEY_TOKEN: "t",
         ACTIONS_ID_TOKEN_REQUEST_URL: "u",
         ACTIONS_ID_TOKEN_REQUEST_TOKEN: "r",
+        "INPUT_RELEASE-KEY": "-----BEGIN PRIVATE KEY-----",
+        "INPUT_CONTENT-KEY": "c",
+        INPUT_ARGS: "--dir dist",
       }),
     ).toEqual({ PATH: "/usr/bin", BUTLER_API_KEY: "k" });
   });
@@ -691,7 +694,7 @@ describe("pkey storefront and the Action's storefront input", () => {
     expect(yaml).toContain("All of it.");
   });
 
-  it("the Action's itch-push step dry-runs through the allow-list", async () => {
+  it("the Action runs an itch push through the allow-list with command and args", async () => {
     const cwd = await repo(DISTRIBUTION);
     const io = capture();
     const code = await runAction({
@@ -700,14 +703,10 @@ describe("pkey storefront and the Action's storefront input", () => {
       env: {
         ...ENV,
         GITHUB_ACTIONS: "true",
-        INPUT_PRODUCT: "dice",
-        INPUT_DIR: "build/windows",
-        INPUT_VERSION: "1.2.0",
-        INPUT_STOREFRONT: "itch-push",
-        "INPUT_ITCH-PLATFORM": "windows",
+        INPUT_COMMAND: "storefront itch push",
+        INPUT_ARGS:
+          "--dir build/windows --version 1.2.0 --platform windows --product dice",
         "INPUT_DRY-RUN": "true",
-        INPUT_DELIVERABLE: "app",
-        "INPUT_TRANSPORT-REPORT": "true",
         "INPUT_BASE-URL": BASE,
       },
     });
@@ -718,17 +717,16 @@ describe("pkey storefront and the Action's storefront input", () => {
     );
   });
 
-  it("the Action refuses publish inputs on a storefront step and an unknown step", async () => {
+  it("the Action refuses the storefront inputs it removed", async () => {
     const cwd = await repo(DISTRIBUTION);
     for (const [extra, message] of [
       [
         { INPUT_STOREFRONT: "itch-push", INPUT_PINS: "a@1" },
-        /pins does not apply to a storefront step/,
+        /Input pins was removed in 0\.9\. Put --pin <value> in args\.[^]*Input storefront was removed in 0\.9\. Use channels: auto/,
       ],
-      [{ INPUT_STOREFRONT: "steam-push" }, /storefront must be one of/],
       [
         { "INPUT_ITCH-PLATFORM": "linux" },
-        /itch-platform applies only with the storefront input/,
+        /Input itch-platform was removed in 0\.9\. Put --platform <value> in args\./,
       ],
     ] as const) {
       const io = capture();
@@ -738,8 +736,7 @@ describe("pkey storefront and the Action's storefront input", () => {
         env: {
           ...ENV,
           GITHUB_ACTIONS: "true",
-          INPUT_PRODUCT: "dice",
-          INPUT_DIR: "build",
+          INPUT_COMMAND: "release publish",
           ...extra,
         },
       });

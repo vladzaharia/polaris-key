@@ -64,7 +64,9 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 | Family           | Here it          | Run                                        |
 | ---------------- | ---------------- | ------------------------------------------ |
+| `registry-docs`  | reads            | `pnpm gen registry-docs`                   |
 | `readme-work`    | writes           | `pnpm gen readme-work`                     |
+| `parity`         | reads            | `pnpm gen parity`                          |
 | `ux-rows`        | reads            | `pnpm gen ux-rows`                         |
 | `graph-index`    | reads and writes | `pnpm gen graph-index`                     |
 | `route-ledger`   | writes           | `pnpm gen route-ledger`                    |
@@ -79,7 +81,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 - Terminology comes from the concepts page, not from these files; when a file and the glossary disagree, the glossary wins. `pnpm --filter @polaris-key/docs lint:docs` checks the published pages. See [AGENTS.md](../AGENTS.md).
 - The naming is Polaris Key; the `@plrs`, `polaris-suite` and `.polaris/` states in `superpowers/` are dead. See [AGENTS.md](../AGENTS.md).
 - Raw hardware values are hashed on-device and never transmitted; `PRIVACY.md` is where that is written. See [AGENTS.md](../AGENTS.md).
-- The docs site is tiered and the repo is the agent-readable source: Platform pages, which include the runbook, need `can(platform, docs)`. `packages/worker/test/docsGate.test.ts` holds the tiers. See [AGENTS.md](../AGENTS.md).
+- The docs site is tiered and the repo is the agent-readable source: Platform pages, which include the runbook, need `can(platform, docs)`. `packages/worker/test/surfaces/docsGate.test.ts` holds the tiers. See [AGENTS.md](../AGENTS.md).
 - Generated files carry a GENERATED banner. `pnpm gen registry-docs` writes the generator table in AGENTS.md and `pnpm gen graph-index` writes the program `INDEX.md`; `pnpm gen --check` fails on a hand edit. See [AGENTS.md](../AGENTS.md).
 
 ## Docs

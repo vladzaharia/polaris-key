@@ -1,0 +1,31 @@
+[
+  {
+    "file": "core/src/main/kotlin/im/plrs/key/core/A.kt",
+    "errors": [
+      {
+        "line": 22,
+        "column": 1,
+        "message": "Imports must be ordered",
+        "rule": "standard:import-ordering"
+      },
+      {
+        "line": 30,
+        "column": 5,
+        "message": "Unexpected blank line",
+        "rule": "standard:no-blank-line-before-rbrace"
+      },
+      {
+        "line": 31,
+        "column": 5,
+        "message": "Imports must be ordered",
+        "rule": "standard:import-ordering"
+      }
+    ]
+  },
+  {
+    "file": "ui/src/commonMain/kotlin/B.kt",
+    "errors": [
+      { "line": 1, "column": 1, "message": "Unexpected token", "rule": "" }
+    ]
+  }
+]

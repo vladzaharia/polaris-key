@@ -65,7 +65,55 @@ The one sign-in form. Its body morphs in place through the sign-in methods, the 
 
     **Headless.** `KitStates.signIn(_:)`; `PolarisKeyGateModel.beginSignIn()`, `reopenBrowser()`, `useCode()` (the same request's code) and `cancelSignIn()`. Until the SDK's grant API lands, a sign-in ends on Done or the toast; the in-app choice renders when the inputs carry it.
 
+    **On a Mac.** The form is one 440 pt sheet, or an `NSHostingController` window you present with `beginSheet` ([Hosting in AppKit](/docs/build/ui/frameworks/swiftui/#hosting-in-appkit)).
+
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` when the license state calls for it, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<SignIn />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("SignIn", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** `PolarisKeyGate(client, signIn = true) { }` runs the device-code sign-in inside the gate.
+
+    **Styled part.** `PolarisSignInScreen(ui)` over `PolarisSignInState(client.signInActions(), scope)`, or `KitSignIn(inputs, presentation)` for the form ([Sign-in on its own](/docs/build/ui/frameworks/compose/#sign-in-on-its-own)).
+
+    **Headless.** `PolarisSignInState` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.LaunchedEffect
+    import androidx.compose.runtime.collectAsState
+    import androidx.compose.runtime.getValue
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisSignInScreen
+    import im.plrs.key.ui.PolarisSignInState
+    import im.plrs.key.ui.signInActions
+
+    @Composable
+    fun MySignIn(client: PolarisKeyClient, onCancel: () -> Unit) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) { PolarisSignInState(client.signInActions(), scope) }
+        val ui by state.ui.collectAsState()
+    LaunchedEffect(state) { state.start() }
+    PolarisSignInScreen(ui, onCancel = onCancel, onRestart = state::restart)
+    }
+    ```
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the one-liner, the sample and the routes; Compose Desktop opens the same screens in OS windows.
 
   </TabItem>
   <TabItem label="Godot">

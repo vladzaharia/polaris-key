@@ -51,6 +51,18 @@ export interface RouteDecl<H> {
    * decides which scope it belongs to. Never set on a row that needs a step-up: a token has none.
    */
   tokenScope?: AdminApiScope;
+  /**
+   * ST-34.3: an admin-scope personal token (`Bearer pkeyp_`, `pkey login`) reaches this row. Default
+   * deny, like `tokenScope`: a row without it refuses every personal token, and a row that needs a
+   * step-up never carries it (the token has none). The holder's own principal still has to pass
+   * `can()` for the row's area, read from the stored roles on every request.
+   */
+  personalToken?: true;
+  /**
+   * ST-34.4: only a personal token may call this row (`DELETE /me/personal-tokens/current`). A
+   * session is refused. Always together with `personalToken: true`.
+   */
+  personalOnly?: true;
   handler: H;
 }
 

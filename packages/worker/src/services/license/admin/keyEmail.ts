@@ -2,13 +2,19 @@
  * LX-27 (S-24 §8.4, D11/D12): emailing a licence key to the licence's holder. Used by the create
  * route (`delivery.email`) and by `POST …/licenses/<id>/send-key`.
  *
- * The key leaves only in the email body (sent as "<App> via Polaris Key", I-18's passthrough
+ * The key leaves only in the email body (sent as "<App> via Polaris Locker", I-18's passthrough
  * sender, through Core's one send choke point) and in the response of the request that minted it.
  * It is never in a log, an audit summary or the subject. A send that does not go out never rolls
  * anything back: the answer says `failed` and the operator tries again through send-key.
  */
 
-import { actorColumns, actorOf, appendAudit } from "../../../core/audit.js";
+import {
+  actorColumns,
+  actorOf,
+  appendAudit,
+  auditStatement,
+  type AuditInsert,
+} from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import {
   firstHostedImage,
@@ -76,9 +82,14 @@ export const SEND_KEY_WINDOW_SECONDS = 600;
 /** The audit actions: the attempt, and its failure (a row whose `parent_id` is the attempt's). */
 export const SEND_KEY_ACTION = "license.key.send";
 export const SEND_KEY_FAILED_ACTION = "license.key.send.failed";
+/** A child of the attempt: how many other keys the send revoked. Not a window input. */
+export const SEND_KEY_REVOKED_ACTION = "license.key.send.revoked";
+/** LX-27c.2: send-invite's attempt and failure rows. They share send-key's window (L4). */
+export const SEND_INVITE_ACTION = "license.invite.send";
+export const SEND_INVITE_FAILED_ACTION = "license.invite.send.failed";
 
 /** The product's hosted icon for the email's hero, or null. */
-async function productIconUrl(
+export async function productIconUrl(
   ctx: LicenseAdminContext,
 ): Promise<string | null> {
   try {
@@ -98,6 +109,12 @@ async function productIconUrl(
   }
 }
 
+/** No mail binding, or no usable sender for this product: nothing can be emailed. */
+export function mailUnavailable(ctx: LicenseAdminContext): boolean {
+  const { env, product } = ctx;
+  return !env.EMAIL || !passthroughSender(env, product.name, product.slug);
+}
+
 /**
  * Refuse BEFORE minting what no retry can fix: no mail binding or sender, an unusable address,
  * a suppressed recipient, the product's spent daily cap. Answers the reason, or null when a send
@@ -108,8 +125,7 @@ export async function keyEmailBlocked(
   to: string,
 ): Promise<EmailFailure | null> {
   const { env, db, product, now } = ctx;
-  if (!env.EMAIL || !passthroughSender(env, product.name, product.slug))
-    return "no_mail_binding";
+  if (mailUnavailable(ctx)) return "no_mail_binding";
   if (
     strictEmail(to) === null ||
     (isApplePrivateRelay(to) && !applePrivateRelayRegistered(env))
@@ -126,6 +142,30 @@ export async function keyEmailBlocked(
 }
 
 /**
+ * The links a licence email carries: the portal origin, the plain sign-in page (no token, no
+ * address) and the product's download page when Release and the portal are both on. Shared by the
+ * key email and the invitation.
+ */
+export async function emailLinks(ctx: LicenseAdminContext): Promise<{
+  origin: string;
+  signInUrl: string;
+  downloadUrl: string | null;
+}> {
+  const { env, db, product, req } = ctx;
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
+  const downloadUrl =
+    ctx.hooks.releaseCatalog() !== null &&
+    (await portalEnabled(db, product.slug))
+      ? appLink(origin, `p/${encodeURIComponent(product.slug)}/download`)
+      : null;
+  return {
+    origin,
+    signInUrl: `${origin}/signin?product=${encodeURIComponent(product.slug)}`,
+    downloadUrl,
+  };
+}
+
+/**
  * Email `key` to the licence's address. Never throws; `failed` carries a `reason`.
  */
 export async function emailLicenseKey(
@@ -138,20 +178,15 @@ export async function emailLicenseKey(
   if (!to) return { email: "failed", reason: "address_unusable" };
   const blocked = await keyEmailBlocked(ctx, to);
   if (blocked) return { email: "failed", reason: blocked };
-  const { env, db, product, req, now } = ctx;
+  const { env, db, product, now } = ctx;
   try {
-    const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
-    const download =
-      ctx.hooks.releaseCatalog() !== null &&
-      (await portalEnabled(db, product.slug))
-        ? appLink(origin, `p/${encodeURIComponent(product.slug)}/download`)
-        : null;
+    const { origin, signInUrl, downloadUrl } = await emailLinks(ctx);
     const message = licenseKeyEmail({
       productName: product.name,
       holderName: license.name,
       key,
-      signInUrl: `${origin}/signin?product=${encodeURIComponent(product.slug)}`,
-      downloadUrl: download,
+      signInUrl,
+      downloadUrl,
       iconUrl: await productIconUrl(ctx),
       context,
       origin,
@@ -182,26 +217,78 @@ export async function emailLicenseKey(
 }
 
 /**
- * Seconds until send-key may run again for this licence, or 0 now. Counts attempts that did not fail
+ * Seconds until send-key or send-invite may run again for this licence, or 0 now. Counts attempts that did not fail
  * (a `license.key.send.failed` row with the attempt as its parent frees it), read from the audit trail so it holds across isolates.
  */
 export async function sendKeyRetryAfter(
   ctx: LicenseAdminContext,
   licenseId: string,
 ): Promise<number> {
+  // L4 (LX-27c.2): one window per licence, shared by send-key and send-invite, so a licence cannot
+  // be mailed more than once in 10 minutes by either route. Either action's `.failed` child frees it.
   const row = await ctx.db.first<{ at: number }>(
-    `SELECT a.at FROM audit a WHERE a.product = ? AND a.action = ? AND a.target_id = ?
+    `SELECT a.at FROM audit a WHERE a.product = ? AND a.action IN (?, ?) AND a.target_id = ?
        AND a.at > ?
-       AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action = ?)
+       AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action IN (?, ?))
      ORDER BY a.at DESC LIMIT 1`,
     ctx.product.slug,
     SEND_KEY_ACTION,
+    SEND_INVITE_ACTION,
     licenseId,
     ctx.now - SEND_KEY_WINDOW_SECONDS,
     SEND_KEY_FAILED_ACTION,
+    SEND_INVITE_FAILED_ACTION,
   );
   if (!row) return 0;
   return Math.max(0, row.at + SEND_KEY_WINDOW_SECONDS - ctx.now);
+}
+
+/**
+ * Claim the licence's send window atomically: write the attempt's audit row only while no live
+ * attempt (one without a `.failed` child) sits inside the window, in ONE conditional INSERT, and
+ * answer whether this request won (`changes === 1`). The read in `sendKeyRetryAfter` is the
+ * friendly early refusal; this is the gate, so N concurrent requests cannot all pass a check and
+ * all send. Callers claim BEFORE minting or sending anything.
+ */
+export async function claimSendWindow(
+  ctx: LicenseAdminContext,
+  licenseId: string,
+  row: Omit<AuditInsert, "product" | "at" | "target_kind" | "target_id">,
+): Promise<boolean> {
+  const stmt = auditStatement(
+    {
+      ...row,
+      product: ctx.product.slug,
+      at: ctx.now,
+      target_kind: "license",
+      target_id: licenseId,
+    },
+    {
+      sql: `WHERE NOT EXISTS (SELECT 1 FROM audit a WHERE a.product = ? AND a.action IN (?, ?) AND a.target_id = ?
+         AND a.at > ?
+         AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action IN (?, ?)))`,
+      params: [
+        ctx.product.slug,
+        SEND_KEY_ACTION,
+        SEND_INVITE_ACTION,
+        licenseId,
+        ctx.now - SEND_KEY_WINDOW_SECONDS,
+        SEND_KEY_FAILED_ACTION,
+        SEND_INVITE_FAILED_ACTION,
+      ],
+    },
+  );
+  return (await ctx.db.runChanges(stmt.sql, ...stmt.params)) === 1;
+}
+
+/** The 429 both routes answer when the window is taken. */
+export function sendWindowRefusal(
+  retryAfter: number,
+  message: string,
+): Response {
+  const res = err(429, "rate_limited", message, { retryAfter });
+  res.headers.set("retry-after", String(retryAfter));
+  return res;
 }
 
 /**
@@ -254,56 +341,81 @@ export async function handleSendKey(
       { reason: "license_expired", expiresAt: license.expires_at },
     );
   const retryAfter = await sendKeyRetryAfter(ctx, license.id);
-  if (retryAfter > 0) {
-    const res = err(
-      429,
-      "rate_limited",
+  if (retryAfter > 0)
+    return sendWindowRefusal(
+      retryAfter,
       "a key was sent for this license in the last 10 minutes",
-      { retryAfter },
     );
-    res.headers.set("retry-after", String(retryAfter));
-    return res;
-  }
   // What no retry can fix is refused before a key exists, so failures never pile up valid keys.
   const blocked = await keyEmailBlocked(ctx, license.email.trim());
   if (blocked)
     return err(409, ErrorCode.BadRequest, "the key email cannot be sent", {
       reason: blocked,
     });
-  const key = mintLicenseKey(product.slug);
-  const hash = await hashKey(key, env.KEY_HASH_PEPPER);
-  const row = {
-    product: product.slug,
-    key_hash: hash,
-    license_id: license.id,
-    status: "active",
-    label: SENT_KEY_LABEL,
-    created_at: now,
-    created_by: session.sub,
-    last_used_at: null,
-  };
-  let revoked = 0;
-  if (revokeOthers) revoked = await replaceLicenseKeys(db, row);
-  else await insertKey(db, row);
-  // The attempt is recorded BEFORE the send, so the limit holds even if the send never returns.
-  // The label and the revoked count; never the key, its hash or the address.
+  // The attempt is recorded BEFORE the mint and the send, by an atomic claim of the window, so
+  // the limit holds under concurrency and even if the send never returns. The label only; never
+  // the key, its hash or the address.
   const attemptId = randomId("aud");
   const actor = actorColumns(actorOf(session));
-  await appendAudit(db, {
-    product: product.slug,
+  const claimed = await claimSendWindow(ctx, license.id, {
     id: attemptId,
-    at: now,
     ...actor,
     action: SEND_KEY_ACTION,
-    target_kind: "license",
-    target_id: license.id,
     summary:
       `Sent key "${SENT_KEY_LABEL}" for ${license.id}` +
-      (revokeOthers
-        ? `, revoked ${revoked} other key${revoked === 1 ? "" : "s"}`
-        : ""),
-    after_json: JSON.stringify({ label: SENT_KEY_LABEL, revoked }),
+      (revokeOthers ? ", revoking other keys" : ""),
+    after_json: JSON.stringify({ label: SENT_KEY_LABEL }),
   });
+  if (!claimed)
+    return sendWindowRefusal(
+      Math.max(1, await sendKeyRetryAfter(ctx, license.id)),
+      "a key was sent for this license in the last 10 minutes",
+    );
+  let key = "";
+  let hash = "";
+  let revoked = 0;
+  try {
+    key = mintLicenseKey(product.slug);
+    hash = await hashKey(key, env.KEY_HASH_PEPPER);
+    const row = {
+      product: product.slug,
+      key_hash: hash,
+      license_id: license.id,
+      status: "active",
+      label: SENT_KEY_LABEL,
+      created_at: now,
+      created_by: session.sub,
+      last_used_at: null,
+    };
+    if (revokeOthers) revoked = await replaceLicenseKeys(db, row);
+    else await insertKey(db, row);
+  } catch (e) {
+    // Nothing was minted: free the window, then surface the failure.
+    await appendAudit(db, {
+      product: product.slug,
+      at: now,
+      ...actor,
+      action: SEND_KEY_FAILED_ACTION,
+      target_kind: "license",
+      target_id: license.id,
+      parent_id: attemptId,
+      summary: `Key for ${license.id} was not minted`,
+    });
+    throw e;
+  }
+  // The claim row was written before the mint, so the exact count lives on a child of it.
+  if (revokeOthers)
+    await appendAudit(db, {
+      product: product.slug,
+      at: now,
+      ...actor,
+      action: SEND_KEY_REVOKED_ACTION,
+      target_kind: "license",
+      target_id: license.id,
+      parent_id: attemptId,
+      summary: `Revoked ${revoked} other key${revoked === 1 ? "" : "s"} of ${license.id}`,
+      after_json: JSON.stringify({ revoked }),
+    });
   const result = await emailLicenseKey(ctx, license, key, context);
   if (result.email === "failed")
     await appendAudit(db, {

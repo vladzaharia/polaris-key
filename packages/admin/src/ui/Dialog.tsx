@@ -158,6 +158,9 @@ export function useOverlayFocus(
         firstField(contentRef.current) ??
         titleRef.current;
       target?.focus({ preventScroll: true });
+      // Where the dialog body scrolls (a short window, large text), a field below its edge is
+      // brought into view; only the dialog's own scroller moves.
+      target?.scrollIntoView?.({ block: "nearest" });
     },
     onCloseAutoFocus: (e) => {
       const target = returnTarget(opener.current);
@@ -505,7 +508,7 @@ export function Dialog({
             />
             <div
               data-pk-overlay-header=""
-              className="relative flex shrink-0 items-start gap-4 px-6 @max-[18rem]:px-4 pb-2 pt-4 sm:pt-6 console:border-b console:border-border console:bg-(--pk-admin-band-overlay) console:pb-4 console:sm:pt-5"
+              className="relative flex shrink-0 items-start gap-4 px-6 @max-[18rem]:px-4 pb-2 pt-4 max-sm:@max-[14rem]:pt-11 sm:pt-6 console:border-b console:border-border console:bg-(--pk-admin-band-overlay) console:pb-4 console:sm:pt-5"
             >
               {glyph ? (
                 <span aria-hidden data-overlay-glyph="" className="mt-0.5 flex">
@@ -516,7 +519,7 @@ export function Dialog({
                 <DialogPrimitive.Title
                   ref={setTitle}
                   tabIndex={-1}
-                  className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none max-sm:pe-10 @max-[18rem]:pe-[52px] @max-[18rem]:text-base console:text-xl console:leading-7"
+                  className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none max-sm:pe-10 @max-[18rem]:pe-12 @max-[18rem]:text-base max-sm:@max-[14rem]:pe-0 console:text-xl console:leading-7"
                 >
                   {title}
                 </DialogPrimitive.Title>

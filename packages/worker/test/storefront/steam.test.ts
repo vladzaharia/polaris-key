@@ -55,11 +55,7 @@ import {
 import { stmtUpsertAsset } from "../../src/services/distribution/listing/store.js";
 import { steamCopyCard } from "../../src/services/distribution/storefronts/steam/copyCard.js";
 import { handleAdmin } from "../../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../../src/core/console/session.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
 import { makeTestDb } from "../helpers.js";
@@ -67,6 +63,7 @@ import { KvMock } from "../kvMock.js";
 import { makeEnv, NOW, seedProduct } from "../seed.js";
 import { CONSOLE, enableServices, envFor } from "../releaseRoutesFixture.js";
 import { R2Mock, asR2, installDigestStream } from "../r2Mock.js";
+import { consoleTestSession, consoleActor } from "../consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER_ROOT = join(HERE, "..", "..");
@@ -503,8 +500,9 @@ async function admin(
   body?: unknown,
   headers: Record<string, string> = {},
 ): Promise<LooseResponse> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );
@@ -785,7 +783,7 @@ describe("the Steam storefront admin surface", () => {
     expect(fee).toMatchObject({
       done: true,
       doneAt: NOW,
-      doneBy: "u1",
+      doneBy: await consoleActor(env, db, "u1"),
       verified: false,
     });
     expect(list.find((c) => c.item === "release_wait").notBefore).toBe(

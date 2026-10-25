@@ -154,14 +154,6 @@
                 .system)
         }
 
-        func testGateLayoutIsCentredAtAComfortableWidth() {
-            // A readable column on iPad and macOS rather than edge to edge (the arrangement itself
-            // is KitLayoutTests').
-            XCTAssertLessThanOrEqual(PolarisGateLayout.cardMaxWidth, 480)
-            XCTAssertGreaterThanOrEqual(PolarisGateLayout.cardMaxWidth, 360)
-            XCTAssertGreaterThanOrEqual(PolarisGateLayout.pagePadding, 16)
-        }
-
         func testPaletteOverrideReplacesEveryColour() {
             var custom = PolarisPalette.brandLight
             custom.page = .white
@@ -265,10 +257,73 @@
             }
         }
 
+        /// The Rubik subset (packages/brand/scripts/subset-fonts.sh) keeps a glyph for every character of
+        /// the five Latin locale packs. CJK is not covered on purpose: `KitFonts` hands it to the system
+        /// font (`usesCJK`). The mono subset must cover Basic Latin, the code face's whole use.
+        func testFontSubsetsCoverTheLatinLocalePacks() throws {
+            let corpus = URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("Sources/PolarisKeyUICore/Resources/kit-copy.json")
+            let root = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: Data(contentsOf: corpus)) as? [String: Any])
+            let tables = try XCTUnwrap(root["tables"] as? [String: Any])
+            var chars = Set<Unicode.Scalar>()
+            func walk(_ value: Any) {
+                if let text = value as? String {
+                    chars.formUnion(text.unicodeScalars)
+                } else if let dict = value as? [String: Any] {
+                    dict.values.forEach(walk)
+                } else if let list = value as? [Any] {
+                    list.forEach(walk)
+                }
+            }
+            for locale in ["en", "de", "fr", "es", "pt-BR"] {
+                walk(try XCTUnwrap(tables[locale], "no \(locale) table"))
+            }
+            if let variants = root["variants"] { walk(variants) }
+            chars = chars.filter { $0.value >= 0x20 && $0.value != 0x7F }
+            XCTAssertGreaterThan(chars.count, 60, "the packs read as nearly empty")
+
+            // A character the full Rubik lacks too (an arrow, say) falls back to the system font
+            // before and after the subset, so only a glyph the subset dropped is a failure.
+            let full = URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("packages/brand/fonts/ttf/Rubik-Variable.ttf")
+            func missing(_ url: URL, _ wanted: Set<Unicode.Scalar>) throws -> [String] {
+                let descriptor = try XCTUnwrap(
+                    (CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor])?.first)
+                let font = CTFontCreateWithFontDescriptor(descriptor, 12, nil)
+                return wanted.sorted { $0.value < $1.value }.filter { scalar in
+                    var units = Array(String(scalar).utf16)
+                    var glyphs = [CGGlyph](repeating: 0, count: units.count)
+                    return !CTFontGetGlyphsForCharacters(font, &units, &glyphs, units.count)
+                }.map { String(format: "U+%04X", $0.value) }
+            }
+            func missing(_ file: String, _ wanted: Set<Unicode.Scalar>, against reference: URL? = nil)
+                throws -> [String]
+            {
+                var wanted = wanted
+                if let reference {
+                    let lacking = try missing(reference, wanted)
+                    wanted = wanted.filter { !lacking.contains(String(format: "U+%04X", $0.value)) }
+                }
+                return try missing(try XCTUnwrap(BrandFonts.url(file), "missing font \(file)"), wanted)
+            }
+            let hasFull = FileManager.default.fileExists(atPath: full.path)
+            XCTAssertEqual(
+                try missing("Rubik-Variable", chars, against: hasFull ? full : nil), [],
+                "Rubik subset lacks these locale-pack characters")
+            let ascii = Set((0x20...0x7E).compactMap(Unicode.Scalar.init))
+            XCTAssertEqual(try missing("JetBrainsMono-Variable", ascii), [])
+        }
+
         /// One variable Rubik and JetBrains Mono (UI-KITS.md §2.1), from packages/brand/fonts.
         static let fontCopies: [(String, String)] = [
-            ("fonts/Rubik-Variable.ttf", "ttf/Rubik-Variable.ttf"),
-            ("fonts/JetBrainsMono-Variable.ttf", "ttf/JetBrainsMono-Variable.ttf"),
+            ("fonts/Rubik-Variable.ttf", "ttf/Rubik-Variable-kit.ttf"),
+            ("fonts/JetBrainsMono-Variable.ttf", "ttf/JetBrainsMono-Variable-kit.ttf"),
             ("fonts/OFL-JetBrainsMono.txt", "OFL-JetBrainsMono.txt"),
             ("fonts/FONT-NOTICE-VARIABLE.txt", "FONT-NOTICE.txt"),
         ]

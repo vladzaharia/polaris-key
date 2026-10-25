@@ -62,7 +62,6 @@ import {
 import { parseManualChannels } from "./channels.js";
 import {
   artifactPolicy,
-  artifactsAccessSnapshot,
   getReleaseConfig,
   isResolved,
   type ReleaseConfigRow,
@@ -98,6 +97,7 @@ import { enqueueReleaseMirrors } from "./mirror.js";
 import {
   artifactContentType,
   artifactKind,
+  artifactsSnapshotAccess,
   releasesInPublicationOrder,
   storeAccess,
   type ReleaseArtifactRow,
@@ -389,6 +389,8 @@ interface PlanInput {
   seqFloor?: number;
   /** See `IngestOptions.packCache`. */
   packCache?: CheckCache;
+  /** The truth-store `access` value for this deliverable (`artifactsSnapshotAccess`). */
+  artifactsAccess: string;
 }
 
 export type Plan =
@@ -654,9 +656,7 @@ export async function planDescriptorIngest(
   // 6. The rows.
   const policy = cfg ? artifactPolicy(cfg) : null;
   const metadataAccess = storeAccess(policy?.access.metadata ?? "public");
-  const artifactsAccess = storeAccess(
-    cfg ? artifactsAccessSnapshot(cfg) : "public",
-  );
+  const artifactsAccess = input.artifactsAccess;
   const planned: PlannedRows = {
     release: {
       releaseId,
@@ -1014,6 +1014,13 @@ export async function ingestReleaseDescriptor(
     descriptor,
     source: opts.source,
     now: opts.now,
+    artifactsAccess: await artifactsSnapshotAccess(
+      env,
+      db,
+      product,
+      typeof d?.deliverable === "string" ? d.deliverable : APP_DELIVERABLE_ID,
+      opts.now,
+    ),
     cfg,
     app,
     github,
@@ -1136,6 +1143,7 @@ export async function ingestGithubDescriptors(
   app: ManifestAppDeliverable | null,
   now: number,
   fetchImpl: FetchImpl,
+  artifactsAccess: string,
 ): Promise<GithubDescriptorOutcome> {
   const product = cfg.product;
   const markers = await readDescriptorMarkers(db, product);
@@ -1231,6 +1239,7 @@ export async function ingestGithubDescriptors(
               github: r,
               promoted: new Set(),
               seqFloor: running,
+              artifactsAccess,
             });
       if (plan.ok) {
         explicit = plan.seq;

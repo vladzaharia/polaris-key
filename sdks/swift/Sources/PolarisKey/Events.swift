@@ -177,10 +177,6 @@ extension PolarisKeyClient {
     /// A new subscription to every change event. Each access returns its own stream.
     public nonisolated var events: AsyncStream<PolarisKeyEvent> { eventHub.stream() }
 
-    /// The earlier name of `events`.
-    @available(*, deprecated, renamed: "events")
-    public nonisolated var changes: AsyncStream<PolarisKeyEvent> { events }
-
     /// Publish an event to every `events` subscriber. A host rarely needs to; the SDK's own
     /// modules raise theirs through Core.
     public nonisolated func emit(_ event: PolarisKeyEvent) { eventHub.emit(event) }

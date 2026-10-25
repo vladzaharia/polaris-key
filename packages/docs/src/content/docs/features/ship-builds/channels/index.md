@@ -9,21 +9,51 @@ sidebar:
 
 Pick where your customers install from. Declare each channel in `.pkey/distribution`; a build reaches customers through the channels you declare.
 
-| You want to…                                                                                  | Declare                                                | Who installs updates |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------- |
-| [Serve downloads from Polaris Key](/docs/features/ship-builds/channels/delivery/)             | `direct` (the default when you declare none)           | the app itself       |
-| [Ship on the Apple App Store](/docs/features/ship-builds/channels/app-store/)                 | `app-store`, `testflight`                              | the store            |
-| [Ship on Google Play](/docs/features/ship-builds/channels/google-play/)                       | `play`, `play-testing`                                 | the store            |
-| [Ship on the Microsoft Store](/docs/features/ship-builds/channels/microsoft-store/)           | `ms-store`                                             | the store            |
-| [Ship on Steam](/docs/features/ship-builds/channels/steam/)                                   | `steam`                                                | Steam                |
-| [Offer an install source](/docs/features/ship-builds/channels/feeds/)                         | `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo` | the install source   |
-| [Push to a storefront from CI](/docs/features/ship-builds/channels/storefronts/)              | `itch`, `snap`, `flathub`, `winget`                    | the storefront       |
-| [Serve Windows App Installer](/docs/features/ship-builds/updates/updater-feeds/)              | `app-installer`                                        | Windows              |
-| [Serve a web build](/docs/features/ship-builds/channels/delivery/#web-deltas-the-payload-url) | `web`                                                  | the app itself       |
+| You want to…                                                                                  | Declare                                                  | Who installs updates         |
+| --------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------- |
+| [Serve downloads from Polaris Key](/docs/features/ship-builds/channels/delivery/)             | `direct` (the default when you declare none)             | the app itself               |
+| [Ship on the Apple App Store](/docs/features/ship-builds/channels/app-store/)                 | `app-store`, `testflight`                                | the store                    |
+| [Ship on Google Play](/docs/features/ship-builds/channels/google-play/)                       | `play`, `play-testing`                                   | the store                    |
+| [Ship on the Microsoft Store](/docs/features/ship-builds/channels/microsoft-store/)           | `ms-store`                                               | the store                    |
+| [Ship on Steam](/docs/features/ship-builds/channels/steam/)                                   | `steam`                                                  | Steam                        |
+| [Offer an install source](/docs/features/ship-builds/channels/feeds/)                         | `altstore`, `altstore-pal`, `obtainium`, `fdroid-repo`   | the install source           |
+| [Publish from CI](#channels-that-run-in-ci)                                                   | `itch`, `snap`, `homebrew`, `scoop`, `winget`, `flathub` | the store or package manager |
+| [Serve Windows App Installer](/docs/features/ship-builds/updates/updater-feeds/)              | `app-installer`                                          | Windows                      |
+| [Serve a web build](/docs/features/ship-builds/channels/delivery/#web-deltas-the-payload-url) | `web`                                                    | the app itself               |
 
 The channel a build came from also sets what an install may do. See [Channel capabilities](#channel-capabilities). The [distribution matrix](/docs/features/ship-builds/channels/distribution-matrix/) shows every release on every channel.
 
 [Release](/docs/features/ship-builds/releases/) says what exists; [Update](/docs/features/ship-builds/updates/) tells an installed copy what to do next; Distribution sits between them and owns delivery.
+
+## Which channels a product sees
+
+The console shows a product only the channels it can use. A channel is in scope when its platforms and deliverable kinds meet the product's. The full catalogue is on [Channels](/docs/reference/channels/).
+
+A product's platforms come from, firmest first:
+
+1. its **builds**: the newest non-yanked app release on each release channel;
+2. the artifacts `.pkey/release` **declares** in `deliverables.app.artifacts`, published or not;
+3. a `direct` channel that names its platforms;
+4. the platforms planned in `distribution.intendedPlatforms`, before any build exists.
+
+Each platform carries the CPU architectures and file formats it ships. Architecture is a fact beside the OS: an arm64-only Windows build offers no x64 download and no x64 winget installer, and the Mac App Store takes only a `universal` or `arm64` macOS build.
+
+A Windows-only product sees no Apple channel in the console, the portal or `pkey validate`. A product with no platform facts yet hides nothing.
+
+A channel the product declared stays listed even when out of scope, with an **Out of scope** pill. A direct link to a hidden channel opens a page that says so.
+
+Each channel in scope has one of four states:
+
+| State        | Means                                                                                |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `not_set_up` | Nothing declared yet. It offers **one click** when the credentials are already held. |
+| `ready`      | Set up, with a fitting build, not yet live.                                          |
+| `live`       | Customers can get a build through it.                                                |
+| `attention`  | A build exists but none fits, or a credential is expiring.                           |
+
+**Not using** is a choice you record in Core's setup: that channel stops asking for setup. **Setting up** is not a state; it is progress shown while a run is under way.
+
+The read model is `GET /manage/api/products/<slug>/distribution/channels`, the same data the product summary carries as `platforms` and `channels`. A credential appears in it only as a yes or no, never as a key or an id.
 
 ## The chain: release ← distribution ← update
 
@@ -142,6 +172,41 @@ Distribution is on) writes:
   manifest drops gets `removed_at` and is kept, because availability history refers to it.
 - **`dist_transports`** — the resolved transport for every declared deliverable on every live
   channel.
+
+## Channels that run in CI
+
+These channels are written by a tool or a pull request, not by Polaris Key's own calls. Declare each with `pkey channel add <id> [--field name=value]` (it writes `.pkey/distribution` and validates it first), put its secret in the publish step's environment, and the Action's `channels: auto` runs `pkey channel sync` after an app `release publish`. A channel whose secret is unset is skipped, naming the variable. `--dry-run` (or the Action's `dry-run`) prints the plan and runs nothing.
+
+| Channel                                                   | Declare                                            | Secret                        | What sync runs                             |
+| --------------------------------------------------------- | -------------------------------------------------- | ----------------------------- | ------------------------------------------ |
+| [itch.io](/docs/features/ship-builds/channels/itch/)      | `target`                                           | `BUTLER_API_KEY`              | `butler push` per platform build in `dir`  |
+| [Snap Store](/docs/features/ship-builds/channels/snap/)   | `name`, `channels`                                 | `SNAPCRAFT_STORE_CREDENTIALS` | `snapcraft upload` of the `.snap` in `dir` |
+| [Homebrew](/docs/features/ship-builds/channels/homebrew/) | `homebrewTap`, `homebrewCask` or `homebrewFormula` | `PKEY_PR_TOKEN`               | a pull request to your tap                 |
+| [Scoop](/docs/features/ship-builds/channels/scoop/)       | `scoopBucket`                                      | `PKEY_PR_TOKEN`               | a pull request to your bucket              |
+| [winget](/docs/features/ship-builds/channels/winget/)     | `packageIdentifier`                                | `PKEY_PR_TOKEN`               | a pull request to `microsoft/winget-pkgs`  |
+| [Flathub](/docs/features/ship-builds/channels/flathub/)   | `appId`                                            | `PKEY_PR_TOKEN`               | a pull request to `flathub/<appId>`        |
+
+The F-Droid repository is also built in CI, from the APKs in `dir`: see [Install sources](/docs/features/ship-builds/channels/feeds/#the-f-droid-repository). Which channels run in CI is the `ci` and `pr` plane on [Channels](/docs/reference/channels/).
+
+```yaml title=".github/workflows/release.yml"
+- uses: vladzaharia/polaris-key/actions/publish@<sha>
+  with:
+    args: --tag ${{ github.ref_name }} --channel beta --dir dist
+  env:
+    BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    PKEY_PR_TOKEN: ${{ secrets.PKEY_PR_TOKEN }}
+```
+
+Keep each store's secret in its own GitHub environment, with required reviewers for the jobs that release to production. The steps only run commands the store's CI allow-list admits (`pkey storefront allow-list` prints them), and each is reported into the store's ledger beside the console's. See [Publishing from CI](/docs/features/ship-builds/ci/) for the token exchange.
+
+### Pull-request channels
+
+Homebrew, Scoop, winget and Flathub share these rules. `PKEY_PR_TOKEN` is a CI secret and never reaches Polaris Key; the step never merges, closes or deletes anything and never force-pushes.
+
+- **One pull request per version.** If one for the package and version is already open or merged, the step records it and opens nothing, so re-running a job never opens a second one.
+- **Dry run.** `pkey storefront <store> pr --dry-run` prints the plan; with `--out <dir>` it also writes the generated files. It needs no token.
+- **Status.** `pkey storefront <store> status` reads the pull request back; the console's ledger shows its state and review labels.
+- **Options sync does not take** (`--portable`, `--command`, `--app`, `--license`) go on the store's own command: the Action's `command: storefront <store> pr`.
 
 ## Channel capabilities
 

@@ -1,3 +1,4 @@
+import { ErrorState } from "../../../ui/ErrorState.js";
 import { devicesText } from "../../../lib/vocab/license.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
@@ -24,7 +25,6 @@ import {
   isSignInLicense,
 } from "../../model/library.js";
 import { focusPageHeading, scrollBehavior } from "../../router.js";
-import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
 import { t } from "../../../lib/copy.js";
@@ -85,9 +85,10 @@ export function DevicesCard({
       {loading ? (
         <Skeleton className="h-28 w-full" />
       ) : error || !view ? (
-        <ErrorPanel
+        <ErrorState
           error={error}
           onRetry={onRetry}
+          message={t("locker.error.loadFailedDevices")}
           className="border-0 p-0 shadow-none"
         />
       ) : (

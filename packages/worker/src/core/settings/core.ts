@@ -270,6 +270,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "core/presentation.ts",
       "core/discovery.ts",
       "services/identity/portal/library.ts",
+      "services/distribution/listing/inherit.ts",
     ],
     since: "ST-06",
   }),
@@ -307,7 +308,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     scope: "product",
     service: "core",
     area: "storefront",
-    label: "Listing",
+    label: "Listed in Polaris Locker",
     description:
       "Whether the Polaris Locker library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in Polaris Locker while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
@@ -416,7 +417,10 @@ export const CORE_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     ownership: "operator",
     confirm: { change: "L0" },
-    readers: ["core/settings/setupShape.ts"],
+    readers: [
+      "core/settings/setupShape.ts",
+      "services/distribution/channels.ts",
+    ],
     storage: { kind: "scalar" },
     since: "ST-39",
   }),
@@ -508,8 +512,8 @@ export const CORE_SLICE: readonly SettingDef[] = [
     since: "HA-10",
   }),
   // ── Platform-owned product policies (ST-11, notes/S-18 §4.14.4) ─────────────────────────
-  // Lazy-delta opt-in and sign-in mail cap: SQL-only until ST-11 (`lazy_delta_settings`,
-  // `email_product_caps`, copied once into `product_settings` rows; ST-25 drops the tables).
+  // Lazy-delta opt-in and sign-in mail cap: SQL-only until ST-11 (the old
+  // lazy-delta and mail-cap tables, copied once into `product_settings` rows and since dropped).
   // Operator-owned, never in the manifest. Rows are written through `writeSetting()`.
   setting({
     key: "deltas.lazy.enabled",

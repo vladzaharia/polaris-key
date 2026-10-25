@@ -506,11 +506,11 @@ describe("the nav model (nav.ts)", () => {
       "personal-tokens",
       "platform-connections",
       "platform-settings",
+      "platform-members",
       "platform-status",
       "platform-stores",
       "platform-feeds",
       "platform-activity",
-      "platform-override-migration",
       "package-feeds",
       "overview",
       "integration",
@@ -543,7 +543,7 @@ describe("the nav model (nav.ts)", () => {
       "rollouts",
       "outlets",
       "storefronts",
-      "listing",
+      "presentation-listing",
       "app-store",
       "commerce",
       "commerce-overview",
@@ -553,6 +553,7 @@ describe("the nav model (nav.ts)", () => {
       "feed",
       "app-sign-in",
       "sync-setup",
+      "sync-usage",
       "sync-data",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
@@ -593,7 +594,12 @@ describe("the nav model (nav.ts)", () => {
     expect(accentOf("rollouts")).toBe("release");
     expect(accentOf("feed")).toBe("release");
     // The sales surfaces keep Distribution green, a page in a mixed section.
-    for (const sales of ["storefronts", "listing", "app-store", "credentials"])
+    for (const sales of [
+      "storefronts",
+      "presentation-listing",
+      "app-store",
+      "credentials",
+    ])
       expect(accentOf(sales as never), sales).toBe("distribution");
   });
 
@@ -728,12 +734,12 @@ describe("global pages", () => {
   it("the Platform section's pages are one sidebar group; Home is a link", () => {
     expect(PLATFORM_GROUP.items.map((p) => p.page)).toEqual([
       "platform-settings",
+      "platform-members",
       "platform-status",
       "platform-connections",
       "platform-stores",
       "platform-feeds",
       "platform-activity",
-      "platform-override-migration",
     ]);
     for (const p of PLATFORM_GROUP.items) {
       expect(isPlatformPage(p.page)).toBe(true);
@@ -742,24 +748,23 @@ describe("global pages", () => {
     }
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
-    expect(platformLinks().map((p) => p.page)).toEqual([
-      "home",
-      "api-tokens",
-      "personal-tokens",
-    ]);
+    expect(platformLinks().map((p) => p.page)).toEqual(["home", "api-tokens"]);
+    // ST-34.11: Personal tokens is in the account menu, not the sidebar.
     // P0-47: Override migration (U-03, cancelled) is out of the sidebar and the palette; its
     // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
+      "platform-members",
       "platform-status",
       "platform-connections",
       "platform-stores",
       "platform-feeds",
       "platform-activity",
     ]);
-    expect(
-      parseLocation("#/platform/override-migration").redirect,
-    ).toBeUndefined();
+    // U-27 deleted Override migration: its URL no longer addresses a page.
+    expect(parseLocation("#/platform/override-migration").route.kind).toBe(
+      "not-found",
+    );
   });
 
   it("#/platform redirects to Settings; every Platform page renders in place", () => {
@@ -770,9 +775,6 @@ describe("global pages", () => {
       parseLocation("#/platform/store-connections").redirect,
     ).toBeUndefined();
     expect(parseLocation("#/platform/feeds").redirect).toBeUndefined();
-    expect(
-      parseLocation("#/platform/override-migration").redirect,
-    ).toBeUndefined();
     expect(r.platform()).toBe("#/platform");
     expect(r.platformStatus()).toBe("#/platform/status");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");
@@ -849,14 +851,13 @@ describe("package feeds (F-11): a feed under a page, a package under a feed, in 
     expect(viewKey(a)).not.toBe(viewKey(d));
   });
 
-  it("lists Package feeds in Distribution only while the product has them on", () => {
+  it("lists Packages in Distribution whatever the package-feeds switch says (F-34.7)", () => {
     const distribution = SECTIONS.find((s) => s.key === "distribution")!;
-    const labels = (f: { packageFeeds: boolean } | null) =>
+    const labels = (f: Parameters<typeof navItems>[1]) =>
       navItems(distribution, f).map((p) => p.label);
-    expect(labels({ packageFeeds: false })).not.toContain("Package feeds");
-    expect(labels({ packageFeeds: true })).toContain("Package feeds");
-    // While the product loads, the item shows (the nav does not jump).
-    expect(labels(null)).toContain("Package feeds");
+    // Nothing about the switch or a declaration reaches the nav: off, on and loading all list it.
+    expect(labels({})).toContain("Packages");
+    expect(labels(null)).toContain("Packages");
     expect(docsFor("package-feeds")).toBe(
       "/docs/features/ship-builds/packages/",
     );

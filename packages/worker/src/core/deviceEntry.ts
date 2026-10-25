@@ -14,7 +14,6 @@
 // client network. The code rides in the query string, so the page is never cached and never sent
 // onward as a Referer, and no code is logged here.
 
-import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import type { Env } from "../platform/env.js";
 import { escapeHtml } from "../platform/html.js";
 import {
@@ -24,14 +23,28 @@ import {
 } from "./deviceCodeIndex.js";
 import { methodNotAllowed } from "./errors.js";
 import { clientNetwork, clientWideNetwork, rateLimitOk } from "./rateLimit.js";
-import { callout, icon, note, renderAuthCard } from "./brandHtml.js";
+import {
+  callout,
+  icon,
+  note,
+  renderAuthCard,
+  DEVICE_CARD_LINKS,
+} from "./brandHtml.js";
 import { brandedHtmlSecurityHeaders } from "./securityHeaders.js";
 
 const MISS =
   "No device is waiting for that code. Check your device's screen: codes last 10 minutes.";
-/** The catalog's line (`signin.rateLimitedFew`), so the Worker's card and the kits say the same (B-103). */
-const LIMITED_TITLE = KIT_COPY_EN["signin.rateLimitedFew"];
 const LIMITED = "The code on your device still works until it expires.";
+
+/** How long the 429 tells the person to wait: the `retry-after` the page sends. */
+const ENTRY_RETRY_SECONDS = 60;
+
+/** "1 minute", "2 minutes", or seconds under a minute. */
+function waitText(seconds: number): string {
+  if (seconds < 60) return seconds === 1 ? "1 second" : `${seconds} seconds`;
+  const m = Math.ceil(seconds / 60);
+  return m === 1 ? "1 minute" : `${m} minutes`;
+}
 
 /** Read for malformed input, so it costs the same store read as a real lookup. */
 const DUMMY_CODE = "BBBBBBBB";
@@ -81,12 +94,14 @@ export function codeEntryBody(opts: {
   );
 }
 
-/** Too many tries: a neutral callout instead of the form (nothing to press that cannot work
- *  yet), and a way back. */
-export function tooManyBody(retryHref: string): string {
-  return (
-    callout("clock", LIMITED_TITLE, LIMITED) +
-    `<a class="button secondary" href="${escapeHtml(retryHref)}">Try again</a>`
+/** Too many tries: a neutral callout that gives the time to try again, and nothing to press (a
+ *  button could only reload into the same 429). */
+export function tooManyBody(seconds: number = ENTRY_RETRY_SECONDS): string {
+  // The catalog's `signin.rateLimited` with the time the page's `retry-after` states, said once.
+  return callout(
+    "clock",
+    `Too many codes. Try again in ${waitText(seconds)}.`,
+    LIMITED,
   );
 }
 
@@ -94,16 +109,16 @@ function page(
   tv: boolean,
   status: 200 | 404 | 429,
   typed: string | null = null,
-  productOrigin: string | null = null,
 ): Response {
   const path = tv ? "/tv" : "/device";
   const html = renderAuthCard({
+    links: DEVICE_CARD_LINKS,
     title: "Enter your code",
     heading: "Enter the code from your device",
     ...(tv ? { variant: "tv" as const } : {}),
     body:
       status === 429
-        ? tooManyBody(path)
+        ? tooManyBody()
         : codeEntryBody({
             action: path,
             method: "get",
@@ -119,21 +134,7 @@ function page(
       "referrer-policy": "no-referrer",
     }),
   );
-  // On the customer host a found code redirects to the API host's product page; browsers apply
-  // `form-action` to every redirect a submission follows, so name that one origin (configuration,
-  // never the request), as the product device page does for its IdP.
-  if (productOrigin) {
-    const csp = headers.get("content-security-policy");
-    if (csp)
-      headers.set(
-        "content-security-policy",
-        csp.replace(
-          "form-action 'self'",
-          `form-action 'self' ${productOrigin}`,
-        ),
-      );
-  }
-  if (status === 429) headers.set("retry-after", "60");
+  if (status === 429) headers.set("retry-after", String(ENTRY_RETRY_SECONDS));
   return new Response(html, { status, headers });
 }
 
@@ -145,16 +146,44 @@ function page(
 export const DEVICE_ENTRY_WIDE_LIMIT = 300;
 export const DEVICE_ENTRY_WIDE_WINDOW_SEC = 60;
 
+/** A live code, found on the customer host: serve the rest of the sign-in there. `code` is the
+ *  formatted user code. */
+export type DeviceEntryHit = (slug: string, code: string) => Promise<Response>;
+
+/**
+ * Only a person's own navigation starts a sign-in: Fetch Metadata that says so (`same-origin`: the
+ * code form; `none`: the device's link, a typed address, a bookmark), a `navigate` of a `document`,
+ * and no speculative purpose. Anything else (no metadata at all, a link scanner or unfurler, a
+ * cross-site or same-site link, a prefetch) gets the form with the code filled in, unspent.
+ * Residual: a sandbox that drives a real browser sends `none` like a person does.
+ */
+function startsSignIn(req: Request): boolean {
+  const h = req.headers;
+  const site = h.get("sec-fetch-site");
+  if (site !== "same-origin" && site !== "none") return false;
+  if (h.get("sec-fetch-mode") !== "navigate") return false;
+  if (h.get("sec-fetch-dest") !== "document") return false;
+  if (h.has("sec-purpose") || h.has("purpose")) return false;
+  if (/preview/i.test(h.get("x-purpose") ?? "")) return false;
+  if (h.has("x-moz")) return false;
+  return true;
+}
+
 export async function handleDeviceEntry(
   req: Request,
   env: Env,
   tv: boolean,
   now: number = Math.floor(Date.now() / 1000),
-  productOrigin: string | null = null,
+  onHit: DeviceEntryHit | null = null,
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return methodNotAllowed();
   const raw = new URL(req.url).searchParams.get("user_code");
-  if (!raw?.trim()) return page(tv, 200, null, productOrigin);
+  if (!raw?.trim()) return page(tv, 200);
+  // Where a hit starts the sign-in itself (the customer host), a request that did not come from
+  // this page or the device's own link gets the form instead: a state change never rides a
+  // cross-site navigation or a prefetch.
+  if (onHit && (req.method === "HEAD" || !startsSignIn(req)))
+    return page(tv, 200, typedCode(raw));
 
   const ok = await rateLimitOk(
     env,
@@ -168,7 +197,7 @@ export async function handleDeviceEntry(
     },
     now,
   );
-  if (!ok) return page(tv, 429, null, productOrigin);
+  if (!ok) return page(tv, 429);
   const wideOk = await rateLimitOk(
     env,
     "_portal",
@@ -180,20 +209,21 @@ export async function handleDeviceEntry(
     },
     now,
   );
-  if (!wideOk) return page(tv, 429, null, productOrigin);
+  if (!wideOk) return page(tv, 429);
 
   const code = normalizeUserCode(raw);
   const slug = await lookupDeviceCode(env, code ?? DUMMY_CODE);
-  if (!code || !slug || !SLUG.test(slug))
-    return page(tv, 404, typedCode(raw), productOrigin);
+  if (!code || !slug || !SLUG.test(slug)) return page(tv, 404, typedCode(raw));
+
+  // The customer host carries on here: the product's page runs on this host, so the person never
+  // leaves it (the dispatcher builds that request from the slug, never from the query).
+  if (onHit) return onHit(slug, formatUserCode(code));
 
   return new Response(null, {
     status: 302,
     headers: {
-      // Relative: the same host the visitor is on, whatever it is called. On the customer host
-      // the product's page is on the API host, so `productOrigin` (configuration, never the
-      // request) names it (LK-03).
-      location: `${productOrigin ?? ""}/${slug}/identity/auth/device?user_code=${formatUserCode(code)}${tv ? "&tv=1" : ""}`,
+      // Relative: the same host the visitor is on, whatever it is called.
+      location: `/${slug}/identity/auth/device?user_code=${formatUserCode(code)}${tv ? "&tv=1" : ""}`,
       "cache-control": "no-store",
       "referrer-policy": "no-referrer",
     },

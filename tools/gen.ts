@@ -3,6 +3,7 @@
 //   pnpm gen                         # regenerate every family, in registry order
 //   pnpm gen --check                 # fail (exit 1) when any family is stale; write nothing
 //   pnpm gen --changed [--check]     # only the families whose inputs or outputs changed on this branch
+//   pnpm gen --changed --base <rev>  # ...since the merge base with <rev> (default main)
 //   pnpm gen --fast --check          # only the cheap families (the pre-commit hook)
 //   pnpm gen corpus brand            # named families, in registry order
 //   pnpm gen --list                  # the registry, one line per family
@@ -27,6 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OWN_FLAGS = new Set([
   "--check",
   "--changed",
+  "--base",
   "--fast",
   "--list",
   "--help",
@@ -36,6 +38,8 @@ export interface Options {
   check: boolean;
   changed: boolean;
   fast: boolean;
+  /** The revision `--changed` diffs from (default `main`). */
+  base?: string;
   list: boolean;
   names: string[];
   forward: string[];
@@ -56,7 +60,12 @@ export function parseArgs(argv: string[]): Options {
     if (a === "--check") o.check = true;
     else if (a === "--changed") o.changed = true;
     else if (a === "--fast") o.fast = true;
-    else if (a === "--list" || a === "--help") o.list = true;
+    else if (a === "--base") {
+      const next = args[++i];
+      if (next === undefined || next.startsWith("--"))
+        throw new Error("--base needs a revision");
+      o.base = next;
+    } else if (a === "--list" || a === "--help") o.list = true;
     else if (a.startsWith("--")) {
       o.forward.push(a);
       const next = args[i + 1];
@@ -69,13 +78,13 @@ export function parseArgs(argv: string[]): Options {
   return o;
 }
 
-/** Files changed on this branch since it left `main`, plus the working tree and untracked files. */
-export function changedFiles(): string[] {
+/** Files changed on this branch since it left `base` (`main`), plus the working tree and untracked files. */
+export function changedFiles(rev = "main"): string[] {
   const git = (...a: string[]): string[] => {
     const r = spawnSync("git", a, { cwd: ROOT, encoding: "utf8" });
     return r.status === 0 ? r.stdout.split("\n").filter(Boolean) : [];
   };
-  const mb = spawnSync("git", ["merge-base", "HEAD", "main"], {
+  const mb = spawnSync("git", ["merge-base", "HEAD", rev], {
     cwd: ROOT,
     encoding: "utf8",
   });
@@ -91,7 +100,7 @@ export function changedFiles(): string[] {
 
 export function select(
   o: Options,
-  changed: () => string[] = changedFiles,
+  changed: () => string[] = () => changedFiles(o.base),
 ): Generator[] {
   if (o.names.length > 0) {
     const out: Generator[] = [];

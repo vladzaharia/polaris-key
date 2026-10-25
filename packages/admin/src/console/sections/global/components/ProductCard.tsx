@@ -1,6 +1,6 @@
 import * as React from "react";
 import { resolveAccent } from "@polaris-key/brand/accent";
-import type { AttentionItemDto, ProductDetail } from "../../../../api.js";
+import type { ProductDetail } from "../../../../api.js";
 import { useTheme } from "../../../../components/theme.js";
 import { cn } from "../../../../lib/cn.js";
 import { fallbackTint } from "../../../../lib/productArt.js";
@@ -12,6 +12,7 @@ import { Link } from "../../../router.js";
 import { productPage, r } from "../../../routes.js";
 import {
   cardFeatures,
+  type ProductAttentionItem,
   featuresSentence,
   pillLabel,
   worstTone,
@@ -112,7 +113,7 @@ export function ProductCard({
   cover = true,
 }: {
   product: ProductDetail;
-  attention: AttentionItemDto[];
+  attention: ProductAttentionItem[];
   cover?: boolean;
 }): React.ReactElement {
   const features = cardFeatures(p, attention);
@@ -261,7 +262,13 @@ export function ProductCard({
                         {inner}
                       </Link>
                     ) : (
-                      <span role="img" {...common}>
+                      // Not a control: no tab stop, so nothing for the interactive-states lint to ask of.
+                      <span
+                        role="img"
+                        {...common}
+                        tabIndex={undefined}
+                        onFocus={undefined}
+                      >
                         {inner}
                       </span>
                     )}

@@ -1,0 +1,25 @@
+== list ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Title: Label "What's new in \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Entries/Entry1/Version: Label "Version 2.5.0"
+Card/Scroll/Body/Text/Entries/Entry1/Released: Label "Released September 30, 2026"
+Card/Scroll/Body/Text/Entries/Entry1/Notes: Label "Faster sync. Fixes a crash on launch."
+Card/Scroll/Body/Text/Entries/Entry2/Version: Label "Version 2.4.1"
+Card/Scroll/Body/Text/Entries/Entry2/Released: Label "Released August 12, 2026"
+Card/Scroll/Body/Text/Entries/Entry2/Notes: Label "Fixes the mixer on Windows. <b>Not markup.</b>"
+== loading ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Title: Label "What's new in \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Loading: ProgressBar
+== empty ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Title: Label "What's new in \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Message: Label "No release notes yet."
+== error ==
+Card/Scroll/Body/Text/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Text/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Text/Message: Label "Release notes couldn't be loaded."
+Card/Scroll/Body/Actions/Retry: Button "Try again" [focus 1]

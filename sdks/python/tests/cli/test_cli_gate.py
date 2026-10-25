@@ -35,10 +35,8 @@ def _client(status: str, entitled: bool, *, product: str = "tidewater", throws: 
         return ActivationOk(token="pkeyt_secret")
 
     class Client:
-        license = SimpleNamespace(
-            is_entitled=lambda name: entitled and state["status"] in USABLE,
-            activate_with_key=activate,
-        )
+        license = SimpleNamespace(activate_with_key=activate)
+        entitlements = SimpleNamespace(has=lambda name: entitled and state["status"] in USABLE)
 
         def status(self) -> Any:
             if throws:
@@ -175,7 +173,7 @@ def test_a_json_refusal_is_read_from_the_argparse_namespace(capsys: pytest.Captu
 def test_a_gate_that_cannot_decide_refuses_with_4_and_never_runs_the_command(capsys: pytest.CaptureFixture[str]) -> None:
     class Broken:
         product = "tidewater"
-        license = SimpleNamespace(is_entitled=lambda n: True)
+        entitlements = SimpleNamespace(has=lambda n: True)
 
         def status(self) -> Any:
             raise RuntimeError("store unreadable")

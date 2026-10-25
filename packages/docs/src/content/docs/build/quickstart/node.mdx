@@ -130,7 +130,9 @@ void app.whenReady().then(async () => {
 import "@polaris-key/node/electron/preload";
 ```
 
-The renderer wraps the app in `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate>`, as in [the React quickstart](/docs/build/quickstart/react/#3-gate-the-app).
+The renderer wraps the app in `<PolarisKeyProvider config={polarisKey}>` and `<PolarisKeyGate theme={{ platform: "auto" }}>`, as in [the React quickstart](/docs/build/quickstart/react/#3-gate-the-app). `platform: "auto"` draws the macOS, Windows or GNOME chrome of the OS the bridge reports.
+
+`exposePolarisBridge` returns a handle. Put `bridge.menuItems()` in the app menu for **Check for updates** and **Manage license**, and pass `notifications` for OS notifications while the app is unfocused. The menu, notifications, update progress and the sender rules are on [Electron](/docs/build/ui/frameworks/electron/).
 
   </Fragment>
   <Fragment slot="library">

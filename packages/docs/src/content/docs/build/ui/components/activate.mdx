@@ -69,6 +69,54 @@ License key entry with a live verdict: the field names the product and tier once
     [SwiftUI](/docs/build/ui/frameworks/swiftui/) has the theme, the restyle hooks and the sample.
 
   </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` when the license state calls for it, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<Activate />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("Activate", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitStatus kit="compose" />
+
+    **Drop-in.** The gate shows it when the license needs activation.
+
+    **Styled part.** `PolarisActivationScreen`, given the gate state's `activation` value, with `onKeyChange` and `onActivate` wired to the state.
+
+    **Headless.** `PolarisGateState.activation` in `polaris-key-ui-core`.
+
+    ```kotlin android
+    import androidx.compose.runtime.Composable
+    import androidx.compose.runtime.LaunchedEffect
+    import androidx.compose.runtime.collectAsState
+    import androidx.compose.runtime.getValue
+    import androidx.compose.runtime.remember
+    import androidx.compose.runtime.rememberCoroutineScope
+    import im.plrs.key.sdk.PolarisKeyClient
+    import im.plrs.key.ui.PolarisActivationScreen
+    import im.plrs.key.ui.PolarisGateState
+    import im.plrs.key.ui.gateActions
+
+    @Composable
+    fun Activate(client: PolarisKeyClient) {
+        val scope = rememberCoroutineScope()
+        val state = remember(client) { PolarisGateState(client.gateActions(), scope) }
+        LaunchedEffect(state) { state.start() }
+        val activation by state.activation.collectAsState()
+        PolarisActivationScreen(activation, onKeyChange = state::onKeyChange, onActivate = state::activate)
+    }
+    ```
+
+    On Compose Desktop, `PolarisKeyWindow` draws activation in its gate window.
+
+    [Compose](/docs/build/ui/frameworks/compose/) has the Android sample, the theme and the desktop windows.
+
+  </TabItem>
   <TabItem label="Godot">
     <KitStatus kit="godot" />
 

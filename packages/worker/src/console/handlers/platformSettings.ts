@@ -20,7 +20,7 @@
  *                                         code default.
  *
  * Every write appends one `platform_audit` row with the stored and effective value before and
- * after. Safe because the registry holds no secret (`test/platformSettings.test.ts`). A secret is
+ * after. Safe because the registry holds no secret (`test/surfaces/console/platformSettings.test.ts`). A secret is
  * reported as `{ name, set }` and nothing else: never a value, a length, a prefix or a hash.
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` in routeCoverage's
@@ -42,8 +42,10 @@ import { describeKeyring } from "../../platform/keyvault.js";
 import { SETTINGS } from "../../mount.js";
 import { SETTINGS_CACHE_MS } from "../../core/platformSettings.js";
 import { LIMITS } from "../../limits.js";
+import { displayNameSkeleton, invalidDisplayText } from "@polaris-key/manifest";
 import {
   aliasedPlatformEntries,
+  listEntries,
   platformSettingResolved,
   productDefaultEntries,
   unrecognisedCeilingVars,
@@ -252,6 +254,12 @@ function settingView(def: SettingDef, r: ResolvedSetting, env: Env) {
     label: def.label,
     description: def.description,
     kind: v.kind === "enum" ? "choice" : v.kind,
+    ...(v.kind === "list"
+      ? {
+          max: v.max,
+          maxLength: v.of.kind === "string" ? v.of.maxLength : 64,
+        }
+      : {}),
     ...(v.kind === "integer" ? { unit: v.unit, min: v.min, max: v.max } : {}),
     ...(v.kind === "enum"
       ? {
@@ -308,7 +316,11 @@ async function viewOf(
 }
 
 async function list(env: Env, db: Db, now: number): Promise<Response> {
-  const defs = [...aliasedPlatformEntries(), ...productDefaultEntries()];
+  const defs = [
+    ...aliasedPlatformEntries(),
+    ...productDefaultEntries(),
+    ...listEntries(),
+  ];
   const resolved = await Promise.all(
     defs.map((d) => platformSettingResolved(env, db, d.key, { fresh: true })),
   );
@@ -336,7 +348,7 @@ function expectedVersionOf(raw: unknown): number | undefined {
 
 /**
  * The registry entries this route serves, by key or alias: a live platform setting an operator
- * edits, whose value is a switch, an integer or one of a short list. Anything else is a 404.
+ * edits, whose value is a switch, an integer, one of a short list or a list of terms. Anything else is a 404.
  */
 function servedDef(key: string): SettingDef | undefined {
   const def = SETTINGS.get(key, "platform");
@@ -345,10 +357,48 @@ function servedDef(key: string): SettingDef | undefined {
     def.pending ||
     def.ownership !== "operator" ||
     def.storage.kind !== "scalar" ||
-    !["switch", "integer", "enum"].includes(def.value.kind)
+    !["switch", "integer", "enum", "list"].includes(def.value.kind)
   )
     return undefined;
   return def;
+}
+
+/**
+ * The extra reserved display terms are judged by the same skeleton as the floor
+ * (`displayNameSkeleton`: confusables folded), so a term needs a letter or digit and no control
+ * or invisible code point. Trimmed and de-duplicated by skeleton; the order is the operator's.
+ * `null`: the value is not a list of text, and `writeSetting()` refuses it as invalid.
+ */
+function normalisedTerms(
+  value: unknown,
+  max: number,
+  maxLength: number,
+): { terms: string[] } | { message: string } | null {
+  if (!Array.isArray(value) || !value.every((v) => typeof v === "string"))
+    return null;
+  const clip = (t: string) => (t.length > 20 ? `${t.slice(0, 20)}…` : t);
+  // Judged as sent, before de-duplication: the operator's list is what is too long.
+  if (value.length > max)
+    return {
+      message: `${value.length} terms: remove ${value.length - max} (limit ${max}).`,
+    };
+  const seen = new Set<string>();
+  const terms: string[] = [];
+  for (const raw of value as string[]) {
+    const term = raw.trim();
+    if (term === "") continue;
+    if (term.length > maxLength)
+      return {
+        message: `"${clip(term)}" is over ${maxLength} characters.`,
+      };
+    const skeleton = displayNameSkeleton(term).join(" ");
+    if (skeleton === "" || invalidDisplayText(term))
+      return { message: `"${clip(term)}" needs a letter or digit.` };
+    if (seen.has(skeleton)) continue;
+    seen.add(skeleton);
+    terms.push(term);
+  }
+  return { terms };
 }
 
 function refused(r: {
@@ -374,6 +424,21 @@ async function write(
   op: "set" | "reset",
 ): Promise<Response> {
   const body = await readBody(req);
+  if (op === "set" && def.value.kind === "list") {
+    const spec = def.value;
+    const n = normalisedTerms(
+      body.value,
+      spec.max,
+      spec.of.kind === "string" ? spec.of.maxLength : 64,
+    );
+    if (n && "message" in n)
+      return refused({
+        status: 422,
+        reason: "invalid_term",
+        message: n.message,
+      });
+    if (n) body.value = n.terms;
+  }
   const res = await writeSetting(
     { env, db, registry: SETTINGS },
     {
