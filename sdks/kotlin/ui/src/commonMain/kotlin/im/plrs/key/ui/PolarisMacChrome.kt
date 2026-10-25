@@ -407,7 +407,6 @@ private val macCopyFieldKeys: Map<String, String> = mapOf(
     "updateNow" to "update.install",
     "updateLater" to "update.later",
     "updateRestartNow" to "update.restartNow",
-    "updateRestartWhenReady" to "update.restartWhenReady",
     "updateAllChanges" to "update.allChanges",
     "updateSkip" to "update.skipVersion",
     "updateSteam" to "update.steam",
@@ -441,7 +440,12 @@ internal fun PolarisCopy.forMac(): PolarisCopy {
     val swaps = macCopyFieldKeys.mapNotNull { (field, key) ->
         if (current[field] != defaults[field]) null else macVariantTemplate(key)?.let { field to it }
     }.toMap()
-    return with(swaps)
+    // UK-10.15 #12: the catalog's macos variant of update.restartWhenReady reads "Install and Relaunch", the verb the
+    // primary had before the download: while downloading it must say what the button does. Title case, in code,
+    // until the catalog's variant is fixed.
+    val untouched = current["updateRestartWhenReady"] == defaults["updateRestartWhenReady"]
+    val restart = if (untouched) mapOf("updateRestartWhenReady" to "Restart When Ready") else emptyMap()
+    return with(swaps + restart)
 }
 
 /** The copy variant of this host's chrome: `macos` on macOS, none elsewhere. */

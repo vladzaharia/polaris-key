@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import im.plrs.key.sdk.DeviceInfo
 
@@ -316,11 +317,17 @@ internal fun PolarisDeviceRow(
     val stackActions = polarisFontScale() >= 1.5f
     val rowActions: @Composable () -> Unit = {
         val tint = MaterialTheme.colorScheme.onSurfaceVariant
-        PolarisIconButton(onClick = onRename, enabled = !busy, modifier = Modifier.focusRequester(renameButton)) {
-            Icon(PolarisSymbols.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
+        PolarisTooltip(copy.deviceRename) {
+            PolarisIconButton(onClick = onRename, enabled = !busy, modifier = Modifier.focusRequester(renameButton)) {
+                Icon(PolarisSymbols.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
+            }
         }
-        PolarisIconButton(onClick = onDeauthorize, enabled = !busy) {
-            Icon(PolarisSymbols.Logout, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
+        // UK-10.15 #11: the desktop's icon-only pair keeps 8 dp between its 32 dp targets.
+        if (polarisWindow.variant.isDesktop) Spacer(Modifier.width(PolarisSpace.tight))
+        PolarisTooltip(copy.deviceDeauthorize) {
+            PolarisIconButton(onClick = onDeauthorize, enabled = !busy) {
+                Icon(PolarisSymbols.Logout, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
+            }
         }
     }
     Column(Modifier.fillMaxWidth()) {
@@ -370,6 +377,16 @@ internal fun PolarisDeviceRow(
     }
 }
 
+/** UK-10.15 #11: the desktop pointer's icon buttons are 32 dp targets; touch and Android keep the window's minimum. */
+@Composable
+private fun iconButtonTarget(): Dp {
+    val window = polarisWindow
+    if (!window.variant.isDesktop || window.touch) return window.minTarget
+    return DesktopIconTarget
+}
+
+private val DesktopIconTarget: Dp = 32.dp
+
 /** An icon button with a full 48 dp target and the kit's focus ring. */
 @Composable
 internal fun PolarisIconButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable () -> Unit) {
@@ -378,7 +395,7 @@ internal fun PolarisIconButton(onClick: () -> Unit, modifier: Modifier = Modifie
         onClick = onClick,
         enabled = enabled,
         interactionSource = interaction,
-        modifier = modifier.polarisFocusIndication(interaction, CircleShape).size(polarisWindow.minTarget),
+        modifier = modifier.polarisFocusIndication(interaction, CircleShape).size(iconButtonTarget()),
         content = content,
     )
 }

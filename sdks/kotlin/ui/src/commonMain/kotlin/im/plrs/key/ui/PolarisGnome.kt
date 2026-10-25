@@ -248,7 +248,7 @@ internal fun PolarisAlertCard(
 }
 
 /**
- * The responses row: equal widths side by side while every label fits at least 96 dp wide, else
+ * The responses row: equal widths side by side while each response keeps at least 140 dp (labels wrap), else
  * one column at full width in reverse order (the last, suggested, response on top).
  */
 @Composable
@@ -259,8 +259,9 @@ private fun PolarisAlertResponses(content: @Composable () -> Unit) {
             val maxWidth = constraints.maxWidth
             val n = measurables.size.coerceAtLeast(1)
             val equal = (maxWidth - gap * (n - 1)) / n
-            val need = measurables.maxOfOrNull { it.maxIntrinsicWidth(Constraints.Infinity) }?.coerceAtLeast(96.dp.roundToPx()) ?: 0
-            if (need <= equal) {
+            // UK-10.15 #9: side by side whenever each response keeps 140 dp; a longer label wraps to a second
+            // line (the row takes the tallest) rather than tipping the row into a stack, which wider fonts did.
+            if (equal >= 140.dp.roundToPx()) {
                 val height = measurables.maxOfOrNull { it.minIntrinsicHeight(equal) } ?: 0
                 val placeables = measurables.map { it.measure(Constraints.fixed(equal, height)) }
                 layout(maxWidth, height) {

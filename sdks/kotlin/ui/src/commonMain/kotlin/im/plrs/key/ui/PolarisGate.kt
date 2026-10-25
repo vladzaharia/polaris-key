@@ -487,7 +487,7 @@ public fun PolarisActivationScreen(
                     // The Welcome: Sign in is the one primary, the key path is the secondary.
                     // macOS (S5): the hero buttons are 36 pt tall and at most 320 wide.
                     val hero = polarisWindow.isMac
-                    val heroModifier = if (hero) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
+                    val heroModifier = if (polarisWindow.variant.isDesktop) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
                     CompositionLocalProvider(LocalPolarisMacHero provides hero) {
                         PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn!!, modifier = heroModifier, enabled = !ui.busy, initialFocus = true)
                         Spacer(Modifier.height(PolarisSpace.controls))

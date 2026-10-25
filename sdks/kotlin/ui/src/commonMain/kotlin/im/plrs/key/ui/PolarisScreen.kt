@@ -127,6 +127,9 @@ public val PolarisMinTouchTarget: Dp = 48.dp
 /** The widest the two panes grow together. */
 internal val PolarisTwoPaneMaxWidth: Dp = 1040.dp
 
+/** The end pane's column cap in the two-pane layout. */
+internal val PolarisEndColumnMaxWidth: Dp = 360.dp
+
 /** The widest a message block grows outside a phone column. */
 internal val PolarisMessageBlockWidth: Dp = 560.dp
 
@@ -275,7 +278,7 @@ internal fun PolarisScaffold(
             }
             return@PolarisSurface
         }
-        val hasArt = theme.logo != null || (artName ?: productName(theme.copy)) != null
+        val hasArt = theme.logo != null
         if (actions != null && window.twoPane && !window.tv && !window.compactHeight) {
             PolarisTwoPane(window, hasArt, artName, navigationIcon, detail, actions, content)
             return@PolarisSurface
@@ -421,7 +424,11 @@ private fun PolarisTwoPane(
     actions: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start, LocalPolarisArtInPane provides hasArt) {
+    CompositionLocalProvider(
+        LocalPolarisTextAlign provides TextAlign.Start,
+        // A short window (under 600 dp) leaves no room for the product header above the title: the controls stay on screen.
+        LocalPolarisArtInPane provides (hasArt || window.height < 600.dp),
+    ) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -448,20 +455,27 @@ private fun PolarisTwoPane(
                 }
                 Column(
                     Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.controls),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = if (hasArt) Arrangement.Top else Arrangement.Center,
+                    horizontalAlignment = if (hasArt) Alignment.Start else Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    navigationIcon?.let {
-                        it()
-                        Spacer(Modifier.height(PolarisSpace.tight))
-                    }
-                    content()
-                    if (detail != null) {
+                    // The copy keeps a ~360 dp measure (UK-10.15 #5); the actions use the pane's width (a step's trailing
+                    // row can need more, the hero buttons cap themselves at 320).
+                    val paneModifier = if (hasArt) Modifier.fillMaxWidth() else Modifier.widthIn(max = 520.dp).fillMaxWidth()
+                    Column(paneModifier, horizontalAlignment = Alignment.Start) {
+                        Column(Modifier.widthIn(max = PolarisEndColumnMaxWidth).fillMaxWidth()) {
+                            navigationIcon?.let {
+                                it()
+                                Spacer(Modifier.height(PolarisSpace.tight))
+                            }
+                            content()
+                            if (detail != null) {
+                                Spacer(Modifier.height(window.section))
+                                detail()
+                            }
+                        }
                         Spacer(Modifier.height(window.section))
-                        detail()
+                        actions()
                     }
-                    Spacer(Modifier.height(window.section))
-                    actions()
                 }
             }
         }

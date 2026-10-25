@@ -161,6 +161,17 @@ class MacChromeTest {
     }
 
     @Test
+    fun theDownloadingPrimaryNoLongerReadsInstallAndRelaunch() = runDesktopComposeUiTest(width = 900, height = 640) {
+        val downloading = PolarisUpdateUi("2.5.0", currentVersion = "2.4.1", progress = 38_000_000L to 61_000_000L, secondsLeft = 20)
+        setContent {
+            Behind { PolarisUpdatePromptHosted(downloading, onUpdate = {}, onLater = {}, onSkip = null) }
+        }
+        waitForIdle()
+        onNodeWithText("Restart When Ready").assertExists()
+        onNodeWithText("Install and Relaunch").assertDoesNotExist()
+    }
+
+    @Test
     fun cancelSitsDirectlyLeftOfTheDefault() = runDesktopComposeUiTest(width = 900, height = 640) {
         var verb = ""
         setContent {
