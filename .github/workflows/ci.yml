@@ -702,11 +702,9 @@ jobs:
         run: |
           pnpm install --frozen-lockfile --filter=@polaris-key/worker...
           pnpm exec turbo run build --filter=@polaris-key/worker^...
-      # P0-46.6: swift-format lint on the lint-debt ledger. The ledger is empty until the lead records
-      # it from this step's artifact (swift-format-lint), so the step cannot gate yet:
-      # continue-on-error until then, then drop it.
+      # P0-46.6: swift-format lint on the lint-debt ledger (sdks/swift/lint-debt.json, recorded from
+      # this step's swift-format-lint artifact of run 40144484635): a new finding fails the step.
       - name: Swift lint (swift-format, lint-debt ledger)
-        continue-on-error: true
         env:
           PKEY_SWIFT_LINT_RAW: ${{ runner.temp }}/swift-format-lint.txt
         run: sdks/swift/tools/lint.sh check
