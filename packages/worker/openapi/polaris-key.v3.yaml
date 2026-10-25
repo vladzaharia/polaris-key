@@ -16131,6 +16131,65 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/release/ci-readiness/fix:
+    post:
+      operationId: fixAdminProductCiReadiness
+      tags: [admin]
+      summary: Create the `release` environment and the `v*` tag ruleset
+      description: >
+        A-32.6 (FLOWS.md W9). For each requested check that `ci-readiness` reports `missing`,
+        writes it through the GitHub App: `environment` creates `release` limited to `v*` tags,
+        `ruleset` creates (or, when Polaris Key's own ruleset exists, updates) a tag ruleset on
+        `refs/tags/v*` that blocks deletion, update and non-fast-forward, active, with repository
+        admins able to bypass. A check that is `ok` is left alone (`ok`); one readiness could not
+        read is `skipped`. Nothing is written unless the installation has Administration: write.
+        Refused with 409 `reason: app_permission` and `permission: "administration: write"`, or
+        409 `app_not_installed`; 502 `github` when GitHub fails. `results` holds what was written
+        before a refusal. Each write is audited (`release.ci.environment`, `release.ci.ruleset`).
+        Area `ship`; admin session cookie, write access to the product.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [checks]
+              properties:
+                checks:
+                  type: array
+                  minItems: 1
+                  uniqueItems: true
+                  items: { type: string, enum: [environment, ruleset] }
+      responses:
+        "200":
+          description: Each requested check and what happened to it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCiFixResult" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: The App is not installed on the repository, or lacks Administration write.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCiFixRefusal" }
+        "422":
+          description: "`checks` is not a non-empty list of `environment` and `ruleset`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "502":
+          description: GitHub failed the write.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCiFixRefusal" }
   # ── Admin create probes (UX-72, rule 10) ──
   /manage/api/github/repositories:
     get:
@@ -23065,6 +23124,36 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminCiFixOutcome:
+      type: object
+      required: [id, state]
+      properties:
+        id: { type: string, enum: [environment, ruleset] }
+        state: { type: string, enum: [created, updated, ok, skipped] }
+        detail: { type: string }
+    AdminCiFixResult:
+      type: object
+      required: [ok, repository, results]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        repository: { type: string }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/AdminCiFixOutcome" }
+    AdminCiFixRefusal:
+      type: object
+      required: [code, reason, results]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        reason:
+          { type: string, enum: [app_not_installed, app_permission, github] }
+        permission:
+          type: string
+          description: "`<name>: <level>`, with `app_permission` only."
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/AdminCiFixOutcome" }
     AdminCiReadiness:
       type: object
       required: [repository, capabilities, checks, workflowPreview]

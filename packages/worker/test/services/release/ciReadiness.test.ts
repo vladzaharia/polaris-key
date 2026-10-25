@@ -14,9 +14,16 @@ import { consoleTestSession } from "../../consoleSessionHelper.js";
 import type { Env } from "../../../src/platform/env.js";
 import type { FetchImpl } from "../../../src/services/release/githubApp.js";
 import { handleAdmin } from "../../../src/console/index.js";
-import { ADMIN_COOKIE } from "../../../src/core/console/session.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+} from "../../../src/core/console/session.js";
 import { linkRepo } from "../../../src/services/release/linkRepo.js";
 import { ciReadiness } from "../../../src/services/release/ciReadiness.js";
+import {
+  fixCiReadiness,
+  releaseRuleset,
+} from "../../../src/services/release/ciFix.js";
 import { ingestFor } from "../../../src/core/ingest/pipeline.js";
 import { SERVICES } from "../../../src/mount.js";
 
@@ -70,6 +77,10 @@ interface World {
   rulesets: Array<Record<string, unknown>>;
   rulesetList: number;
   calls: string[];
+  /** Write requests GitHub received: method, path, parsed body. */
+  writes: Array<{ method: string; path: string; body: unknown }>;
+  /** A status to answer the deployment-branch-policy POST with. */
+  policyStatus: number;
 }
 
 const world = (over: Partial<World> = {}): World => ({
@@ -99,6 +110,8 @@ const world = (over: Partial<World> = {}): World => ({
   ],
   rulesetList: 200,
   calls: [],
+  writes: [],
+  policyStatus: 201,
   ...over,
 });
 
@@ -136,13 +149,36 @@ function github(w: World): FetchImpl {
             encoding: "base64",
           });
     }
+    const method = init?.method ?? "GET";
+    if (method !== "GET" && !url.includes("/access_tokens")) {
+      w.writes.push({
+        method,
+        path: url.replace("https://api.github.com", ""),
+        body: init?.body ? JSON.parse(String(init.body)) : null,
+      });
+      if (url.endsWith("/environments/release")) {
+        w.environment = 200;
+        return json(200, { name: "release" });
+      }
+      if (url.endsWith("/deployment-branch-policies"))
+        return json(w.policyStatus, {});
+      if (url.endsWith("/rulesets")) {
+        w.rulesets.push({ id: 77, target: "tag", enforcement: "active" });
+        return json(201, { id: 77 });
+      }
+      return json(200, {});
+    }
     if (url.endsWith("/environments/release"))
       return json(w.environment, { name: "release" });
     if (url.endsWith("/rulesets"))
       return w.rulesetList === 200
         ? json(
             200,
-            w.rulesets.map((r) => ({ id: r.id, target: r.target })),
+            w.rulesets.map((r) => ({
+              id: r.id,
+              target: r.target,
+              name: r.name,
+            })),
           )
         : json(w.rulesetList, {});
     const one = /\/rulesets\/(\d+)$/.exec(url);
@@ -399,5 +435,243 @@ describe("GET …/release/ci-readiness", () => {
   it("refuses a session with no access to the product", async () => {
     const { status } = await call([]);
     expect(status).toBe(403);
+  });
+});
+
+describe("fixCiReadiness (A-32.6)", () => {
+  const bare = () => world({ environment: 404, rulesets: [] });
+  const fixOnly = async (w: World, check: "environment" | "ruleset") => {
+    const { db, env } = await linked(w);
+    return fixCiReadiness(env, db, SLUG, [check], NOW, github(w));
+  };
+  const fixBoth = async (w: World) => {
+    const { db, env } = await linked(w);
+    return fixCiReadiness(
+      env,
+      db,
+      SLUG,
+      ["environment", "ruleset"],
+      NOW,
+      github(w),
+    );
+  };
+
+  it("creates both, with the exact request bodies", async () => {
+    const w = bare();
+    const r = await fixBoth(w);
+    expect(r).toEqual({
+      ok: true,
+      repository: "acme-org/acme-app",
+      results: [
+        { id: "environment", state: "created" },
+        { id: "ruleset", state: "created" },
+      ],
+    });
+    expect(w.writes).toEqual([
+      {
+        method: "PUT",
+        path: "/repos/acme-org/acme-app/environments/release",
+        body: {
+          deployment_branch_policy: {
+            protected_branches: false,
+            custom_branch_policies: true,
+          },
+        },
+      },
+      {
+        method: "POST",
+        path: "/repos/acme-org/acme-app/environments/release/deployment-branch-policies",
+        body: { name: "v*", type: "tag" },
+      },
+      {
+        method: "POST",
+        path: "/repos/acme-org/acme-app/rulesets",
+        body: {
+          bypass_actors: [
+            {
+              bypass_mode: "always",
+              actor_type: "RepositoryRole",
+              actor_id: 5,
+            },
+          ],
+          rules: ["non_fast_forward", "update", "deletion"]
+            .reverse()
+            .map((type) => ({ type })),
+          conditions: { ref_name: { exclude: [], include: ["refs/tags/v*"] } },
+          enforcement: "active",
+          target: "tag",
+          name: "Polaris Key release tags",
+        },
+      },
+    ]);
+  });
+
+  it("is idempotent: what exists is left alone and reported ok", async () => {
+    const w = world();
+    const r = await fixBoth(w);
+    expect(r).toMatchObject({
+      ok: true,
+      results: [
+        { id: "environment", state: "ok" },
+        { id: "ruleset", state: "ok" },
+      ],
+    });
+    expect(w.writes).toEqual([]);
+  });
+
+  it("fixes only what was asked: one missing, one existing", async () => {
+    const w = world({ rulesets: [] });
+    const { db, env } = await linked(w);
+    const r = await fixCiReadiness(env, db, SLUG, ["ruleset"], NOW, github(w));
+    expect(r).toMatchObject({ ok: true, results: [{ id: "ruleset" }] });
+    expect(w.writes.map((x) => x.path)).toEqual([
+      "/repos/acme-org/acme-app/rulesets",
+    ]);
+  });
+
+  it("updates Polaris Key's own inactive ruleset in place", async () => {
+    const w = world({
+      rulesets: [
+        {
+          id: 9,
+          name: "Polaris Key release tags",
+          target: "tag",
+          enforcement: "disabled",
+          conditions: { ref_name: { include: ["refs/tags/v*"], exclude: [] } },
+        },
+      ],
+    });
+    const { db, env } = await linked(w);
+    const r = await fixCiReadiness(env, db, SLUG, ["ruleset"], NOW, github(w));
+    expect(r).toMatchObject({ ok: true, results: [{ state: "updated" }] });
+    expect(w.writes).toEqual([
+      {
+        method: "PUT",
+        path: "/repos/acme-org/acme-app/rulesets/9",
+        body: releaseRuleset(),
+      },
+    ]);
+  });
+
+  it("an existing deployment policy is not a failure", async () => {
+    const w = world({ environment: 404, policyStatus: 422 });
+    const r = await fixOnly(w, "environment");
+    expect(r).toMatchObject({ ok: true, results: [{ state: "created" }] });
+  });
+
+  it("without Administration write: 409 naming it, nothing written", async () => {
+    const w = world({
+      environment: 404,
+      rulesets: [],
+      permissions: {
+        contents: "write",
+        actions: "read",
+        metadata: "read",
+        administration: "read",
+      },
+    });
+    const r = await fixBoth(w);
+    expect(r).toEqual({
+      ok: false,
+      status: 409,
+      reason: "app_permission",
+      permission: "administration: write",
+      results: [],
+    });
+    expect(w.writes).toEqual([]);
+  });
+
+  it("a permission that is present for what is ok does not block: only missing checks need it", async () => {
+    const w = world({
+      permissions: { contents: "write", actions: "read", metadata: "read" },
+    });
+    const r = await fixOnly(w, "environment");
+    expect(r).toMatchObject({ ok: true, results: [{ state: "ok" }] });
+  });
+
+  it("an unreadable check is skipped, not written", async () => {
+    const w = world({ environment: 403 });
+    const r = await fixOnly(w, "environment");
+    expect(r).toMatchObject({ ok: true, results: [{ state: "skipped" }] });
+    expect(w.writes).toEqual([]);
+  });
+
+  it("no installation: 409 app_not_installed", async () => {
+    const w = world();
+    const { db, env } = await linked(w);
+    w.installation = "gone";
+    expect(
+      await fixCiReadiness(env, db, SLUG, ["ruleset"], NOW, github(w)),
+    ).toMatchObject({ ok: false, status: 409, reason: "app_not_installed" });
+  });
+});
+
+describe("POST …/release/ci-readiness/fix", () => {
+  async function call(groups: string[], body: unknown) {
+    const w = world({ environment: 404, rulesets: [] });
+    const { db, env } = await linked(w);
+    const { token, csrf } = await consoleTestSession(
+      env,
+      db,
+      { sub: "u1", name: "Ada", email: "ada@x.io", groups },
+      NOW,
+    );
+    vi.stubGlobal("fetch", github(w));
+    try {
+      const path = `/api/products/${SLUG}/release/ci-readiness/fix`;
+      const res = await handleAdmin(
+        new Request(`https://key.plrs.im/manage${path}`, {
+          method: "POST",
+          headers: {
+            cookie: `${ADMIN_COOKIE}=${token}`,
+            "content-type": "application/json",
+            [CSRF_HEADER]: csrf,
+          },
+          body: JSON.stringify(body),
+        }),
+        env,
+        db,
+        path,
+        { now: NOW },
+      );
+      const audits = await db.all<{ action: string; summary: string }>(
+        "SELECT action, summary FROM audit WHERE action LIKE 'release.ci.%' ORDER BY action",
+      );
+      return {
+        status: res.status,
+        body: (await res.json()) as Record<string, unknown>,
+        audits,
+        w,
+      };
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  }
+
+  it("creates, audits each write, and returns the outcomes", async () => {
+    const r = await call([PLATFORM_GROUP], {
+      checks: ["environment", "ruleset"],
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.results).toEqual([
+      { id: "environment", state: "created" },
+      { id: "ruleset", state: "created" },
+    ]);
+    expect(r.audits.map((a) => a.action)).toEqual([
+      "release.ci.environment",
+      "release.ci.ruleset",
+    ]);
+    expect(JSON.stringify(r.audits)).not.toContain("ghs_");
+  });
+
+  it("422 for an unknown or empty checks list", async () => {
+    for (const checks of [[], ["workflow"], ["ruleset", "ruleset"], "ruleset"])
+      expect((await call([PLATFORM_GROUP], { checks })).status).toBe(422);
+  });
+
+  it("refuses a session with no access to the product", async () => {
+    const r = await call([], { checks: ["ruleset"] });
+    expect(r.status).toBe(403);
+    expect(r.w.writes).toEqual([]);
   });
 });
