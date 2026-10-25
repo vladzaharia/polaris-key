@@ -16,6 +16,7 @@ import {
   type ProductPublic,
 } from "./core/products.js";
 import type { ServiceHooks } from "./core/hooks.js";
+import { handleElements } from "./core/elements.js";
 import { corsPreflight, withCors } from "./core/cors.js";
 import {
   CORE_ROUTES,
@@ -279,8 +280,9 @@ async function routeRequest(
   if ("product" in route && PRODUCT_ROUTES.has(route.kind))
     return runProduct(req, route);
 
-  // Admin + platform routes. These never answer CORS: they share this origin with the admin
-  // cookie (THREAT-MODEL R1-09).
+  // Admin + platform routes. The credentialed ones never answer CORS: they share this origin
+  // with the admin cookie (THREAT-MODEL R1-09). The Elements CDN route below is the exception:
+  // public bytes, `*` and no cookie.
   switch (route.kind) {
     case "githubWebhook":
       return handleGithubWebhook(req, env, db, now);
@@ -291,6 +293,9 @@ async function routeRequest(
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
       return handleDocs(req, env, now, db);
+    // The Elements CDN module: public bytes from the assets root, no session, no database.
+    case "elements":
+      return handleElements(req, env, url);
     // `/help[/*]` → the public Help; no session, no database.
     case "helpAlias":
       return helpAliasResponse(req, env, url, onCustomerHost);

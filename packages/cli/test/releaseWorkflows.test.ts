@@ -394,6 +394,49 @@ describe("deploy.yml registers the platform packages on every deploy", () => {
   });
 });
 
+describe("deploy.yml stamps the Elements CDN bundle (UK-04b)", () => {
+  const deploy = workflow("deploy.yml");
+  const steps = (deploy.jobs["deploy-worker"]!.steps ?? []) as (Step & {
+    name?: string;
+    id?: string;
+  })[];
+  const named = (n: string) => steps.find((s) => s.name === n)!;
+
+  it("assembles with the tag's version, and floats the major only for a stable tag", () => {
+    const select = named("Select target");
+    expect(select.run).toContain("elements_version=${TAG#v}");
+    expect(select.run).toContain('[[ "$TAG" == *-* ]]');
+    expect(select.run).toContain("elements_float=0");
+    expect(select.run).toContain("elements_float=1");
+    const assemble = named("Assemble static assets (admin SPA + docs site)");
+    expect(assemble.env).toEqual({
+      PKEY_ELEMENTS_VERSION: "${{ steps.target.outputs.elements_version }}",
+      PKEY_ELEMENTS_FLOAT: "${{ steps.target.outputs.elements_float }}",
+    });
+    expect(steps.indexOf(assemble)).toBeGreaterThan(steps.indexOf(select));
+  });
+
+  it("fails the deploy, before the migrations, when a product already uses the slug elements", () => {
+    const guard = named("Elements slug preflight");
+    expect(guard.run).toContain("slug = 'elements'");
+    expect(guard.run).toContain("process.exit(1)");
+    expect(steps.indexOf(guard)).toBeLessThan(
+      steps.indexOf(named("Apply D1 migrations")),
+    );
+  });
+
+  it("ci.yml's assemble steps opt in to the unstamped build; deploy never does", () => {
+    expect(
+      JSON.stringify(named("Assemble static assets (admin SPA + docs site)")),
+    ).not.toContain("UNSTAMPED");
+    const ci = readFileSync(
+      path.join(ROOT, ".github/workflows/ci.yml"),
+      "utf8",
+    );
+    expect(ci.match(/PKEY_ELEMENTS_UNSTAMPED_OK: "1"/g)?.length).toBe(2);
+  });
+});
+
 describe("publish-sdks.yml kotlin-build (maven early failure)", () => {
   it("checks every maven.* deliverable finds its POM before uploading the maven-repo artifact", () => {
     const steps = workflow(PUBLISH_SDKS).jobs["kotlin-build"]!.steps ?? [];

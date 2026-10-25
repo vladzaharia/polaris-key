@@ -150,6 +150,8 @@ jobs:
       # The docs site is built by `pnpm build` (turbo); assembling proves the worker's
       # single [assets] root composes from both frontends before any deploy does it.
       - run: pnpm --filter @polaris-key/worker assemble
+        env:
+          PKEY_ELEMENTS_UNSTAMPED_OK: "1" # never published: the deploy job stamps the tag's version
       # Internal-link integrity across the built docs site (paths + anchors); when a change can
       # reach the site (tools/ci-scope.json lane docs).
       - if: needs.changes.outputs.docs == 'true'
@@ -185,6 +187,8 @@ jobs:
       # failed first and test:workerd never ran.
       - run: pnpm --filter @polaris-key/admin build
       - run: pnpm --filter @polaris-key/worker assemble
+        env:
+          PKEY_ELEMENTS_UNSTAMPED_OK: "1" # never published: the deploy job stamps the tag's version
       - run: pnpm --filter @polaris-key/worker typecheck:workerd
       - run: pnpm --filter @polaris-key/worker test:workerd
 

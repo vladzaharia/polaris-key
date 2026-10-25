@@ -57,6 +57,12 @@ release:
       name: "@polaris-key/client-core"
       artifacts:
         tarball: { match: "polaris-key-client-core-*.tgz" }
+    npm.elements:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/elements"
+      artifacts:
+        tarball: { match: "polaris-key-elements-*.tgz" }
     npm.jws:
       kind: package
       ecosystem: npm

@@ -12,6 +12,7 @@
 // serves its placeholder shell at /docs — but a missing ADMIN dist is an error, because a
 // worker with no SPA is never what anyone means to deploy.
 
+import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const workerRoot = join(here, "..");
 const adminDist = join(workerRoot, "..", "admin", "dist");
 const docsDist = join(workerRoot, "..", "docs", "dist");
+const elementsRoot = join(workerRoot, "..", "elements");
 const out = join(workerRoot, "assets");
 
 if (!existsSync(adminDist)) {
@@ -41,5 +43,25 @@ if (existsSync(docsDist)) {
 } else {
   console.warn(
     `assemble-assets: no docs dist at ${docsDist} — assembled admin only (the worker will serve its /docs placeholder). Run \`pnpm --filter @polaris-key/docs build\` to include the docs site.`,
+  );
+}
+
+// The Elements CDN module (UK-04b): `/elements/<version>/pk.js` and its chunks, fonts and
+// integrity.json, bundled by the package's own `bundle:cdn` straight into the assets root. The
+// Worker route (src/core/elements.ts) serves it. Needs the package's `dist/` (`pnpm build`);
+// absent, the route answers 404 and this says so rather than failing a `wrangler dev`.
+if (existsSync(join(elementsRoot, "dist", "index.js"))) {
+  const run = spawnSync(
+    process.execPath,
+    [join(elementsRoot, "scripts", "bundle-cdn.mjs"), join(out, "elements")],
+    { stdio: "inherit" },
+  );
+  if (run.status !== 0) {
+    console.error("assemble-assets: the Elements CDN bundle failed.");
+    process.exit(1);
+  }
+} else {
+  console.warn(
+    `assemble-assets: no ${join(elementsRoot, "dist")} — /elements/* will answer 404. Run \`pnpm --filter @polaris-key/elements build\` first.`,
   );
 }

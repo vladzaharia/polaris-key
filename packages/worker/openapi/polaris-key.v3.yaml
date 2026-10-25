@@ -21679,6 +21679,189 @@ paths:
       description: DOC-03b. As `GET /help`.
       responses:
         "302": { description: Redirect to /docs/help/. }
+  /elements/{version}/{file}:
+    get:
+      operationId: getElementsFile
+      tags: [portal]
+      summary: Elements CDN module
+      description: >
+        UK-04b. The built `@polaris-key/elements` module, for `<script type="module"
+        src="https://key.plrs.im/elements/1/pk.js">`. `{version}` is a bare major (`1`, the floating
+        URL: `cache-control: public, max-age=300`, and `pk.js` there is a one-line shim that
+        re-exports the exact version's module) or an exact version (`1.4.2`, `1.4.2-beta.3`:
+        `public, max-age=31536000, immutable`; the bytes of a release never change, so an `integrity`
+        attribute pinned there stays valid). `integrity.json` beside `pk.js` lists the sha384 of every
+        file. `content-type` follows the extension; `x-content-type-options: nosniff`;
+        `access-control-allow-origin: *` (never credentials) and `cross-origin-resource-policy:
+        cross-origin`, as a module script is fetched in CORS mode. No session, no cookie, no
+        database. Only files the build produced are served; anything else, or a version this
+        deployment was not built with, is `404` with `no-store`. `GET` and `HEAD`; `OPTIONS` answers `204` with the CORS headers for any path.
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema:
+            {
+              type: string,
+              pattern: '^[0-9]{1,4}(\.[0-9]{1,4}\.[0-9]{1,4}(-[0-9A-Za-z.-]{1,40})?)?$',
+            }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The file.
+          headers:
+            Cache-Control: { schema: { type: string } }
+            Access-Control-Allow-Origin:
+              { schema: { type: string, enum: ["*"] } }
+          content:
+            text/javascript: { schema: { type: string } }
+            text/css: { schema: { type: string } }
+            application/json: { schema: { type: object } }
+            font/woff2: { schema: { type: string, format: binary } }
+        "404": { description: Not a file of this build. }
+        "405": { description: "Any method but GET, HEAD and OPTIONS." }
+    head:
+      operationId: getElementsFileHead
+      tags: [portal]
+      summary: Elements CDN module, headers only
+      description: UK-04b. As the `GET`.
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: The file's headers. }
+        "404": { description: Not a file of this build. }
+  /elements/{version}/chunks/{file}:
+    get:
+      operationId: getElementsChunk
+      tags: [portal]
+      summary: Elements CDN module chunk
+      description: >
+        UK-04b. The built `@polaris-key/elements` module, for `<script type="module"
+        src="https://key.plrs.im/elements/1/pk.js">`. `{version}` is a bare major (`1`, the floating
+        URL: `cache-control: public, max-age=300`, and `pk.js` there is a one-line shim that
+        re-exports the exact version's module) or an exact version (`1.4.2`, `1.4.2-beta.3`:
+        `public, max-age=31536000, immutable`; the bytes of a release never change, so an `integrity`
+        attribute pinned there stays valid). `integrity.json` beside `pk.js` lists the sha384 of every
+        file. `content-type` follows the extension; `x-content-type-options: nosniff`;
+        `access-control-allow-origin: *` (never credentials) and `cross-origin-resource-policy:
+        cross-origin`, as a module script is fetched in CORS mode. No session, no cookie, no
+        database. Only files the build produced are served; anything else, or a version this
+        deployment was not built with, is `404` with `no-store`. `GET` and `HEAD`; `OPTIONS` answers `204` with the CORS headers for any path.
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema:
+            {
+              type: string,
+              pattern: '^[0-9]{1,4}(\.[0-9]{1,4}\.[0-9]{1,4}(-[0-9A-Za-z.-]{1,40})?)?$',
+            }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The file.
+          headers:
+            Cache-Control: { schema: { type: string } }
+            Access-Control-Allow-Origin:
+              { schema: { type: string, enum: ["*"] } }
+          content:
+            text/javascript: { schema: { type: string } }
+            text/css: { schema: { type: string } }
+            application/json: { schema: { type: object } }
+            font/woff2: { schema: { type: string, format: binary } }
+        "404": { description: Not a file of this build. }
+        "405": { description: "Any method but GET, HEAD and OPTIONS." }
+    head:
+      operationId: getElementsChunkHead
+      tags: [portal]
+      summary: Elements CDN module chunk, headers only
+      description: UK-04b. As the `GET`.
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: The file's headers. }
+        "404": { description: Not a file of this build. }
+  /elements/{version}/fonts/{file}:
+    get:
+      operationId: getElementsFont
+      tags: [portal]
+      summary: Elements CDN module font
+      description: >
+        UK-04b. The built `@polaris-key/elements` module, for `<script type="module"
+        src="https://key.plrs.im/elements/1/pk.js">`. `{version}` is a bare major (`1`, the floating
+        URL: `cache-control: public, max-age=300`, and `pk.js` there is a one-line shim that
+        re-exports the exact version's module) or an exact version (`1.4.2`, `1.4.2-beta.3`:
+        `public, max-age=31536000, immutable`; the bytes of a release never change, so an `integrity`
+        attribute pinned there stays valid). `integrity.json` beside `pk.js` lists the sha384 of every
+        file. `content-type` follows the extension; `x-content-type-options: nosniff`;
+        `access-control-allow-origin: *` (never credentials) and `cross-origin-resource-policy:
+        cross-origin`, as a module script is fetched in CORS mode. No session, no cookie, no
+        database. Only files the build produced are served; anything else, or a version this
+        deployment was not built with, is `404` with `no-store`. `GET` and `HEAD`; `OPTIONS` answers `204` with the CORS headers for any path.
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema:
+            {
+              type: string,
+              pattern: '^[0-9]{1,4}(\.[0-9]{1,4}\.[0-9]{1,4}(-[0-9A-Za-z.-]{1,40})?)?$',
+            }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The file.
+          headers:
+            Cache-Control: { schema: { type: string } }
+            Access-Control-Allow-Origin:
+              { schema: { type: string, enum: ["*"] } }
+          content:
+            text/javascript: { schema: { type: string } }
+            text/css: { schema: { type: string } }
+            application/json: { schema: { type: object } }
+            font/woff2: { schema: { type: string, format: binary } }
+        "404": { description: Not a file of this build. }
+        "405": { description: "Any method but GET, HEAD and OPTIONS." }
+    head:
+      operationId: getElementsFontHead
+      tags: [portal]
+      summary: Elements CDN module font, headers only
+      description: UK-04b. As the `GET`.
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: The file's headers. }
+        "404": { description: Not a file of this build. }
 components:
   securitySchemes:
     ciToken:

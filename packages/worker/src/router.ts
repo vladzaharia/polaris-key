@@ -82,6 +82,8 @@ export type Route =
   | { kind: "docs" }
   /** `/help[/*]` — a short alias that redirects to the public Help at `/docs/help/[*]` (DOC-03b). */
   | { kind: "helpAlias" }
+  /** `/elements/<major|version>/<file>` — the Elements CDN module (UK-04b); public, no session. */
+  | { kind: "elements" }
   /** `GET /.well-known/webauthn` — the WebAuthn Related Origin Requests list (LK-05). */
   | { kind: "webauthnOrigins" }
   | { kind: "githubWebhook" }
@@ -191,6 +193,10 @@ export function matchRoute(pathname: string): Route {
     return { kind: "adminSpa" };
   // The gated docs site — reserved before product slugs, same as /manage.
   if (path === "/docs" || path.startsWith("/docs/")) return { kind: "docs" };
+
+  // The Elements CDN module (`elements` is a reserved slug): built files from the assets root.
+  if (path === "/elements" || path.startsWith("/elements/"))
+    return { kind: "elements" };
 
   // `/help` is reserved as a product slug (RESERVED_PRODUCT_SLUGS) and answers a redirect.
   if (path === "/help" || path.startsWith("/help/"))

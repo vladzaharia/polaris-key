@@ -1731,6 +1731,7 @@ describe("reserved product slugs", () => {
       "tv",
       "signin",
       "help",
+      "elements",
     ]) {
       expect(
         validateManifestDocuments({

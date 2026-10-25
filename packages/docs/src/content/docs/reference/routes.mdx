@@ -264,6 +264,12 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/device/approve` | portal | Device sign-in approval, on the customer host (HTML) |
 | POST | `/device/approve` | portal | Approve or deny the device sign-in (customer host) |
 | GET | `/device` | portal | Device-code entry page (HTML) |
+| GET | `/elements/{version}/{file}` | portal | Elements CDN module |
+| HEAD | `/elements/{version}/{file}` | portal | Elements CDN module, headers only |
+| GET | `/elements/{version}/chunks/{file}` | portal | Elements CDN module chunk |
+| HEAD | `/elements/{version}/chunks/{file}` | portal | Elements CDN module chunk, headers only |
+| GET | `/elements/{version}/fonts/{file}` | portal | Elements CDN module font |
+| HEAD | `/elements/{version}/fonts/{file}` | portal | Elements CDN module font, headers only |
 | GET | `/help` | portal | Help (alias) |
 | HEAD | `/help` | portal | Help (alias), headers only |
 | GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
