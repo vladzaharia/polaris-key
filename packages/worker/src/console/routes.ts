@@ -24,11 +24,11 @@
  * `GET /products`, `POST /products/:slug/bundles`, `GET /products/:slug/integration`, the three
  * read-side migration rows, `POST /products/:slug/distribution/listing/import` and (personal token
  * only, ST-34.4) `DELETE /me/personal-tokens/current`. The holder's own principal still passes `can()` per row, and a row
- * that needs a step-up never carries the flag (`test/adminPersonalToken.test.ts` pins it).
+ * that needs a step-up never carries the flag (`test/surfaces/console/adminPersonalToken.test.ts` pins it).
  *
  * Drift. `test/fixtures/rbac-route-areas.json` pins every row's `METHOD path → area`; a new or
  * removed row updates it in the same change, and a changed area needs an `AREA_MOVES` entry
- * (`core/rbac/areas.ts`). The sidebar is never an input. `test/rbacRouteMatrix.test.ts` drives
+ * (`core/rbac/areas.ts`). The sidebar is never an input. `test/surfaces/console/rbacRouteMatrix.test.ts` drives
  * every row with eight principals against a hand-written oracle.
  */
 

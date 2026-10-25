@@ -7,7 +7,7 @@
  *
  *   - the canonical value of any listed spelling (`PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` from
  *     `@polaris-key/protocol/core`, after ASCII case folding, own keys only — `headers.json` pins
- *     both tables, and `test/headersCorpus.test.ts` runs every row through here);
+ *     both tables, and `test/core/headersCorpus.test.ts` runs every row through here);
  *   - the short SDK id for each pre-§5.2 SDK name, matched exactly;
  *   - any other value as sent (a 16 KiB unknown value included: capping is R10-11's);
  *   - nothing for an empty value, so `?? existing` keeps the stored value instead of blanking it.

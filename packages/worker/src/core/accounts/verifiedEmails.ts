@@ -6,7 +6,7 @@ import type { Db } from "../../db/types.js";
  * rule (an email-carrying licence attaches only to an account that verified that email) and the
  * security-notice fan-out both read this one list. {@link accountsVerifyingEmail} is its inverse
  * and must stay in step: change what "verified" means here and change it there too
- * (`test/licenseHolders.test.ts` pins the two agree).
+ * (`test/surfaces/console/licenseHolders.test.ts` pins the two agree).
  */
 export async function verifiedAccountEmails(
   db: Db,

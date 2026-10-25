@@ -1,0 +1,757 @@
+/**
+ * The tiered docs site (`/docs`) + the `returnTo` leg of the admin sign-in.
+ *
+ * What is pinned here, and why it matters:
+ *  - The site is tiered (ST-29; docs plan §3.1, D2): the landing page, Help, the developer sections
+ *    and the shared site assets are public; Operate → Console needs a console member;
+ *    Operate → Platform, Contribute, the full search bundle and every unlisted path need
+ *    `can(platform, docs)`. The worker's tier table must agree with the docs site's own
+ *    `TIER_PREFIXES`, or a page's sidebar door and its gate would disagree.
+ *  - A sessionless request for a gated page is a redirect to the public access page, carrying the
+ *    page as `returnTo`; the access page and the sign-in callback honour it ONLY through
+ *    `sanitizeReturnTo`'s allowlist. The validator matrix below is the open-redirect defense
+ *    (R9 discipline).
+ *  - Cache policy is part of the gate: HTML is `no-store`, immutable assets are `private` —
+ *    a shared cache must never hold gated bytes.
+ */
+
+import { bindAdminFlow } from "../flowBinderHelper.js";
+import { describe, expect, it } from "vitest";
+import type { Env } from "../../src/platform/env.js";
+import { KvMock } from "../kvMock.js";
+import { makeEnv, NOW } from "../seed.js";
+import { makeTestDb } from "../helpers.js";
+import {
+  DOCS_TIERS,
+  SEARCH_BUNDLES,
+  docsAllows,
+  docsAssetPath,
+  docsSecurityHeaders,
+  docsTierOf,
+  handleDocs,
+} from "../../src/docs.js";
+import {
+  SEARCH_BUNDLES as DOCS_SEARCH_BUNDLES,
+  TIER_PREFIXES,
+} from "../../../docs/src/lib/doors.js";
+import { PRINCIPALS, type PrincipalName } from "../rbacFixtures.js";
+import { matchRoute } from "../../src/router.js";
+import { DOCS_ASSET_TIERS } from "../../src/docsTiers.generated.js";
+import {
+  handleAdminCallback,
+  handleAdminLogin,
+  sanitizeReturnTo,
+  type IdTokenVerifier,
+} from "../../src/console/auth.js";
+import {
+  ADMIN_COOKIE,
+  type SessionIdentity,
+} from "../../src/core/console/session.js";
+import { consoleTestSession } from "../consoleSessionHelper.js";
+import type { Db } from "../../src/db/types.js";
+
+// One database for the file: the console sessions the gate resolves live in it.
+const db = makeTestDb();
+
+const ADMIN_SECRET = "docs-test-admin-secret";
+const PLATFORM_GROUP = "admins";
+const OPERATOR: SessionIdentity = {
+  sub: "op-1",
+  name: "Operator",
+  email: "op@example.com",
+  groups: [PLATFORM_GROUP],
+};
+
+/** A tiny static-assets fixture standing in for the assembled `assets/` root. */
+const ASSET_FILES: Record<string, { body: string; type: string }> = {
+  "/docs/index.html": { body: "<html>docs home</html>", type: "text/html" },
+  "/docs/404.html": { body: "<html>docs 404</html>", type: "text/html" },
+  "/docs/services/license/index.html": {
+    body: "<html>license service</html>",
+    type: "text/html",
+  },
+  "/docs/operate/platform/runbook/index.html": {
+    body: "<html>runbook</html>",
+    type: "text/html",
+  },
+  "/docs/start/index.html": { body: "<html>start</html>", type: "text/html" },
+  "/docs/access/index.html": {
+    body: '<html>access <a href="/manage/login">Sign in</a></html>',
+    type: "text/html",
+  },
+  "/docs/access/admin/index.html": {
+    body: "<html>platform admins only</html>",
+    type: "text/html",
+  },
+  "/docs/sitemap-index.xml": { body: "<sitemapindex/>", type: "text/xml" },
+  "/docs/sitemap-0.xml": { body: "<urlset/>", type: "text/xml" },
+  "/docs/users/activation/index.html": {
+    body: "<html>redirect to help</html>",
+    type: "text/html",
+  },
+  "/docs/_astro/app.abc123.css": { body: "body{}", type: "text/css" },
+  "/docs/help/activate/index.html": {
+    body: "<html>help activate</html>",
+    type: "text/html",
+  },
+  "/docs/operate/console/members/index.html": {
+    body: "<html>members</html>",
+    type: "text/html",
+  },
+  "/docs/pagefind-member/pagefind.js": {
+    body: "export{}",
+    type: "text/javascript",
+  },
+  "/docs/pagefind-member/index/en_m1.pf_index": {
+    body: "shard",
+    type: "application/octet-stream",
+  },
+  "/docs/pagefind-admin/pagefind.js": {
+    body: "export{}",
+    type: "text/javascript",
+  },
+  "/docs/pagefind/pagefind.js": { body: "export{}", type: "text/javascript" },
+  "/docs/pagefind/index/en_abc123.pf_index": {
+    body: "shard",
+    type: "application/octet-stream",
+  },
+  "/docs/schemas/v1/product.schema.json": {
+    body: "{}",
+    type: "application/json",
+  },
+  // A directory the build has but no tier row names: gated by default.
+  "/docs/a-new-directory/index.html": {
+    body: "<h1>unlisted</h1>",
+    type: "text/html",
+  },
+};
+
+function assetsMock(): Fetcher {
+  return {
+    fetch: async (input: RequestInfo | URL): Promise<Response> => {
+      const url = new URL(
+        typeof input === "string" || input instanceof URL
+          ? String(input)
+          : input.url,
+      );
+      const hit = ASSET_FILES[url.pathname];
+      if (!hit) return new Response("not found", { status: 404 });
+      return new Response(hit.body, {
+        status: 200,
+        headers: { "content-type": hit.type },
+      });
+    },
+  } as unknown as Fetcher;
+}
+
+function docsEnv(opts: { assets?: boolean } = {}): Env {
+  const env = makeEnv(new KvMock(), []);
+  env.ADMIN_SESSION_SECRET = ADMIN_SECRET;
+  env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
+  env.PLATFORM_OIDC_ISSUER = "https://id.example.com";
+  env.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
+  if (opts.assets !== false) env.ASSETS = assetsMock();
+  return env;
+}
+
+async function adminCookie(env: Env, db: Db): Promise<string> {
+  const { token } = await consoleTestSession(env, db, OPERATOR, NOW);
+  return `${ADMIN_COOKIE}=${token}`;
+}
+
+function get(path: string, cookie?: string): Request {
+  return new Request(`https://key.plrs.im${path}`, {
+    method: "GET",
+    headers: cookie ? { cookie } : {},
+  });
+}
+
+// ── routing ──────────────────────────────────────────────────────────────────
+
+describe("router: /docs is a reserved platform route", () => {
+  it("matches /docs, /docs/, and deep paths ahead of product slugs", () => {
+    expect(matchRoute("/docs")).toEqual({ kind: "docs" });
+    expect(matchRoute("/docs/")).toEqual({ kind: "docs" });
+    expect(matchRoute("/docs/services/license/")).toEqual({ kind: "docs" });
+  });
+
+  it("does not swallow near-miss product slugs", () => {
+    // `/docsy/...` is a product-scoped path for the (hypothetical) product `docsy`.
+    expect(matchRoute("/docsy/license/activate")).toMatchObject({
+      kind: "service",
+      product: "docsy",
+    });
+  });
+});
+
+// ── the gate ─────────────────────────────────────────────────────────────────
+
+describe("handleDocs: the platform-admin gate", () => {
+  it("sends a sessionless reader of a gated page to the public access page", async () => {
+    const res = await handleDocs(
+      get("/docs/operate/console/members/"),
+      docsEnv(),
+      NOW,
+      db,
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(
+      `/docs/access/?returnTo=${encodeURIComponent("/docs/operate/console/members/")}`,
+    );
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("puts the page the reader wanted on the access page's Sign in link, and only a valid one", async () => {
+    const env = docsEnv();
+    const ok = await handleDocs(
+      get("/docs/access/?returnTo=%2Fdocs%2Foperate%2Fconsole%2Fmembers%2F"),
+      env,
+      NOW,
+      db,
+    );
+    expect(await ok.text()).toContain(
+      'href="/manage/login?returnTo=%2Fdocs%2Foperate%2Fconsole%2Fmembers%2F"',
+    );
+    for (const bad of [
+      "https%3A%2F%2Fevil.example%2F",
+      "%2F%2Fevil.example",
+      "%2Fdocs%2F..%2Fmanage",
+      "x%22%3E%3Cscript%3E",
+    ]) {
+      const res = await handleDocs(
+        get(`/docs/access/?returnTo=${bad}`),
+        env,
+        NOW,
+        db,
+      );
+      expect(await res.text(), bad).toContain('href="/manage/login"');
+    }
+    expect(
+      await (await handleDocs(get("/docs/access/"), env, NOW, db)).text(),
+    ).toContain('href="/manage/login"');
+  });
+
+  it("serves the sitemap with no session, and the old Help redirect pages at their target's tier", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/sitemap-index.xml",
+      "/docs/sitemap-0.xml",
+      "/docs/users/activation/",
+    ])
+      expect((await handleDocs(get(path), env, NOW, db)).status, path).toBe(
+        200,
+      );
+  });
+
+  it("gives a signed-in reader without the admin area the access page's admin wording, under 403", async () => {
+    const env = docsEnv();
+    const cookie = await adminCookie(env, db);
+    env.PLATFORM_ADMIN_GROUP = "someone-else";
+    const res = await handleDocs(
+      get("/docs/operate/platform/runbook/", cookie),
+      env,
+      NOW,
+      db,
+    );
+    expect(res.status).toBe(403);
+    expect(await res.text()).toContain("platform admins only");
+    // A file stays a bare refusal.
+    expect(
+      (
+        await handleDocs(
+          get("/docs/pagefind-admin/pagefind.js", cookie),
+          env,
+          NOW,
+          db,
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  it("serves Help and the public search bundle with no session", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/help/activate/",
+      "/docs/pagefind/pagefind.js",
+      "/docs/pagefind/index/en_abc123.pf_index",
+      "/docs/access/",
+    ]) {
+      const res = await handleDocs(get(path, undefined), env, NOW, db);
+      expect(res.status, path).not.toBe(302);
+      expect(res.status, path).not.toBe(403);
+    }
+    expect(
+      (await handleDocs(get("/docs/help/activate/"), env, NOW, db)).status,
+    ).toBe(200);
+  });
+
+  it("serves the public tier with no session: the landing, the developer door, the site assets", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/",
+      "/docs/start/",
+      "/docs/_astro/app.abc123.css",
+      "/docs/schemas/v1/product.schema.json",
+    ]) {
+      const res = await handleDocs(get(path), env, NOW, db);
+      expect(res.status, path).toBe(200);
+    }
+  });
+
+  it("answers a mistyped top-level path with the 404, not the sign-in page, and never says whether a gated page exists", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/strat/",
+      "/docs/strat",
+      "/docs/operat/",
+      "/docs/pagefind-memberr/x.js",
+    ]) {
+      const res = await handleDocs(get(path), env, NOW);
+      expect(res.status, path).toBe(404);
+      expect(await res.text(), path).toContain("docs 404");
+    }
+    // A gated page and a gated path that does not exist answer alike: the prefix is gated, whatever follows.
+    const real = await handleDocs(
+      get("/docs/operate/console/members/"),
+      env,
+      NOW,
+    );
+    const gone = await handleDocs(
+      get("/docs/operate/console/nope-nope/"),
+      env,
+      NOW,
+    );
+    expect([real.status, gone.status]).toEqual([302, 302]);
+    // An unlisted path the build does hold is still gated, and the path comes back after sign-in.
+    const held = await handleDocs(get("/docs/a-new-directory/"), env, NOW);
+    expect(held.status).toBe(302);
+    expect(held.headers.get("location")).toContain("/docs/access/");
+  });
+
+  it("gates the member and admin search bundles and every unlisted path", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/pagefind-member/pagefind.js",
+      "/docs/pagefind-member/index/en_m1.pf_index",
+      "/docs/pagefind-admin/pagefind.js",
+      "/docs/operate/platform/runbook/",
+      "/docs/contribute/",
+      "/docs/operate/console/members/",
+      "/docs/a-new-directory/",
+    ]) {
+      const res = await handleDocs(get(path), env, NOW, db);
+      expect(res.status, path).toBe(302);
+    }
+  });
+
+  it("rejects a tampered session cookie", async () => {
+    const env = docsEnv();
+    const cookie = (await adminCookie(env, db)).slice(0, -4) + "AAAA";
+    const res = await handleDocs(
+      get("/docs/operate/platform/runbook/", cookie),
+      env,
+      NOW,
+      db,
+    );
+    expect(res.status).toBe(302);
+  });
+
+  it("rejects an expired session", async () => {
+    const env = docsEnv();
+    const cookie = await adminCookie(env, db);
+    const later = NOW + 9 * 60 * 60; // past the 8h session TTL
+    const res = await handleDocs(
+      get("/docs/operate/platform/runbook/", cookie),
+      env,
+      later,
+      db,
+    );
+    expect(res.status).toBe(302);
+  });
+
+  it("refuses (403) a session whose principal lacks the tier's area", async () => {
+    const env = docsEnv();
+    const cookie = await adminCookie(env, db);
+    // The platform group moves away: the same cookie now resolves to no grant.
+    env.PLATFORM_ADMIN_GROUP = "someone-else";
+    for (const path of [
+      "/docs/operate/",
+      "/docs/operate/platform/runbook/",
+      "/docs/pagefind-member/pagefind.js",
+    ]) {
+      const res = await handleDocs(get(path, cookie), env, NOW, db);
+      expect(res.status, path).toBe(403);
+    }
+    // The public tier does not ask.
+    expect(
+      (await handleDocs(get("/docs/start/", cookie), env, NOW, db)).status,
+    ).toBe(200);
+  });
+
+  it("serves a signed-in operator the hash-carrying CSP, public HTML revalidating and gated HTML no-store", async () => {
+    const env = docsEnv();
+    const res = await handleDocs(
+      get("/docs/", await adminCookie(env, db)),
+      env,
+      NOW,
+      db,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("docs home");
+    expect(res.headers.get("cache-control")).toBe(
+      "public, max-age=300, must-revalidate",
+    );
+    const gated = await handleDocs(
+      get("/docs/operate/platform/runbook/", await adminCookie(env, db)),
+      env,
+      NOW,
+      db,
+    );
+    expect(gated.headers.get("cache-control")).toBe("no-store");
+    const csp = res.headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).not.toContain("unsafe-inline");
+    expect(res.headers.get("strict-transport-security")).toBeTruthy();
+  });
+
+  it("refuses non-GET/HEAD methods", async () => {
+    const env = docsEnv();
+    const res = await handleDocs(
+      new Request("https://key.plrs.im/docs/", {
+        method: "POST",
+        headers: { cookie: await adminCookie(env, db) },
+      }),
+      env,
+      NOW,
+      db,
+    );
+    expect(res.status).toBe(405);
+    expect(res.headers.get("allow")).toBe("GET, HEAD");
+  });
+});
+
+// ── asset resolution + caching ───────────────────────────────────────────────
+
+describe("handleDocs: asset resolution", () => {
+  it("resolves extension-less deep links to the directory index", async () => {
+    const env = docsEnv();
+    const cookie = await adminCookie(env, db);
+    for (const path of ["/docs/services/license", "/docs/services/license/"]) {
+      const res = await handleDocs(get(path, cookie), env, NOW, db);
+      expect(res.status, path).toBe(200);
+      expect(await res.text()).toContain("license service");
+    }
+  });
+
+  it("marks public content-hashed assets public+immutable and gated ones private", async () => {
+    const env = docsEnv();
+    const cookie = await adminCookie(env, db);
+    const res = await handleDocs(
+      get("/docs/_astro/app.abc123.css", cookie),
+      env,
+      NOW,
+      db,
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    // Pagefind's LOADER files have stable names — the rotating entry/loader set must
+    // revalidate, or a deploy strands cached browsers on deleted shards (search breaks).
+    const loader = await handleDocs(
+      get("/docs/pagefind/pagefind.js", cookie),
+      env,
+      NOW,
+      db,
+    );
+    expect(loader.headers.get("cache-control")).toBe("public, no-cache");
+    const shard = await handleDocs(
+      get("/docs/pagefind/index/en_abc123.pf_index", cookie),
+      env,
+      NOW,
+      db,
+    );
+    expect(shard.headers.get("cache-control")).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    // A tier above public is never shared-cacheable.
+    const member = await handleDocs(
+      get("/docs/pagefind-member/index/en_m1.pf_index", cookie),
+      env,
+      NOW,
+      db,
+    );
+    expect(member.headers.get("cache-control")).toBe(
+      "private, max-age=31536000, immutable",
+    );
+    const memberLoader = await handleDocs(
+      get("/docs/pagefind-admin/pagefind.js", cookie),
+      env,
+      NOW,
+      db,
+    );
+    expect(memberLoader.headers.get("cache-control")).toBe("private, no-cache");
+  });
+
+  it("serves the site's styled 404 for a miss", async () => {
+    const env = docsEnv();
+    const res = await handleDocs(
+      get("/docs/no/such/page/", await adminCookie(env, db)),
+      env,
+      NOW,
+      db,
+    );
+    expect(res.status).toBe(404);
+    expect(await res.text()).toContain("docs 404");
+  });
+
+  it("still gates (with a placeholder) when no assets binding exists", async () => {
+    const env = docsEnv({ assets: false });
+    const anon = await handleDocs(get("/docs/operate/"), env, NOW, db);
+    expect(anon.status).toBe(302);
+    const authed = await handleDocs(
+      get("/docs/operate/", await adminCookie(env, db)),
+      env,
+      NOW,
+      db,
+    );
+    expect(authed.status).toBe(200);
+    expect(await authed.text()).toContain("has not been built");
+  });
+
+  it("docsAssetPath refuses unsafe shapes and resolves safe ones", () => {
+    expect(docsAssetPath("/docs")).toBe("/docs/index.html");
+    expect(docsAssetPath("/docs/")).toBe("/docs/index.html");
+    expect(docsAssetPath("/docs/a/b/")).toBe("/docs/a/b/index.html");
+    expect(docsAssetPath("/docs/a/b")).toBe("/docs/a/b/index.html");
+    expect(docsAssetPath("/docs/x.css")).toBe("/docs/x.css");
+    expect(docsAssetPath("/docs//x")).toBeNull(); // empty segment
+    expect(docsAssetPath("/docs/%2e%2e/x")).toBeNull(); // percent-encoding
+    expect(docsAssetPath("/docs/a b")).toBeNull(); // whitespace
+  });
+
+  it("docsSecurityHeaders carries the full hardening set", () => {
+    const headers = docsSecurityHeaders();
+    expect(headers.get("x-content-type-options")).toBe("nosniff");
+    expect(headers.get("x-frame-options")).toBe("DENY");
+    expect(headers.get("content-security-policy")).toContain(
+      "frame-ancestors 'none'",
+    );
+  });
+});
+
+// ── sanitizeReturnTo: the open-redirect defense ──────────────────────────────
+
+describe("sanitizeReturnTo", () => {
+  it("accepts allowlisted same-origin paths", () => {
+    for (const good of [
+      "/docs",
+      "/docs/",
+      "/docs/services/license/",
+      "/manage",
+      "/manage/",
+    ]) {
+      expect(sanitizeReturnTo(good), good).toBe(good);
+    }
+  });
+
+  it("rejects everything else", () => {
+    const bad = [
+      null,
+      "",
+      "https://evil.example/docs",
+      "//evil.example/docs",
+      "/docsevil",
+      "/api/me",
+      "/",
+      "/docs/../manage/api",
+      "/docs//x",
+      "/docs/a?b=c",
+      "/docs/a#frag",
+      "/docs/a\\b",
+      "/docs/%2e%2e",
+      "/docs/a\r\nSet-Cookie:x=y",
+      "/docs/" + "a".repeat(600),
+    ];
+    for (const value of bad) {
+      expect(
+        sanitizeReturnTo(value as string | null),
+        String(value),
+      ).toBeNull();
+    }
+  });
+});
+
+// ── the full sign-in round trip ──────────────────────────────────────────────
+
+const stubVerifier: IdTokenVerifier = {
+  verify: async () => OPERATOR,
+};
+
+/** Drive /manage/login and pull the `state` the flow was stored under. */
+async function startLogin(env: Env, returnTo?: string): Promise<string> {
+  const query = `?go=1${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
+  const res = await handleAdminLogin(get(`/manage/login${query}`), env);
+  expect(res.status).toBe(302);
+  const authorize = new URL(res.headers.get("location")!);
+  const state = authorize.searchParams.get("state");
+  expect(state).toBeTruthy();
+  return state!;
+}
+
+describe("admin sign-in returnTo round trip", () => {
+  it("lands back on the requested docs page after the callback", async () => {
+    const env = docsEnv();
+    const db = makeTestDb();
+    const state = await startLogin(env, "/docs/services/license/");
+    const res = await handleAdminCallback(
+      get(
+        `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+        await bindAdminFlow(env, state),
+      ),
+      env,
+      db,
+      NOW,
+      stubVerifier,
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/docs/services/license/");
+    expect(res.headers.get("set-cookie")).toContain(ADMIN_COOKIE);
+  });
+
+  it("falls back to /manage/ when the returnTo was hostile", async () => {
+    const env = docsEnv();
+    const db = makeTestDb();
+    for (const evil of ["https://evil.example/", "//evil.example", "/api/x"]) {
+      const state = await startLogin(env, evil);
+      const res = await handleAdminCallback(
+        get(
+          `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+          await bindAdminFlow(env, state),
+        ),
+        env,
+        db,
+        NOW,
+        stubVerifier,
+      );
+      expect(res.status, evil).toBe(302);
+      expect(res.headers.get("location"), evil).toBe("/manage/");
+    }
+  });
+
+  it("falls back to /manage/ when no returnTo was given", async () => {
+    const env = docsEnv();
+    const db = makeTestDb();
+    const state = await startLogin(env);
+    const res = await handleAdminCallback(
+      get(
+        `/manage/callback?code=abc&state=${encodeURIComponent(state)}`,
+        await bindAdminFlow(env, state),
+      ),
+      env,
+      db,
+      NOW,
+      stubVerifier,
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/manage/");
+  });
+});
+
+// ── the tier table (ST-29) ──────────────────────────────────────────────────────
+
+describe("the docs tiers", () => {
+  /** The worker's tier for a docs-site content id, through the path it is served at. */
+  const tierOfId = (id: string) =>
+    docsTierOf(docsAssetPath(id === "index" ? "/docs/" : `/docs/${id}/`));
+
+  it("agree with the docs site's TIER_PREFIXES for every door", () => {
+    for (const [prefix, , tier] of TIER_PREFIXES) {
+      const sample = prefix.endsWith("/") ? `${prefix}some-page` : prefix;
+      expect(tierOfId(sample), prefix).toBe(tier);
+    }
+    expect(tierOfId("help/activate")).toBe("public");
+  });
+
+  it("gives each search bundle its tier, with the public one open", () => {
+    expect(SEARCH_BUNDLES.map(([, t]) => t)).toEqual([
+      "public",
+      "member",
+      "admin",
+      "public",
+    ]);
+    for (const [dir, tier] of SEARCH_BUNDLES)
+      expect(docsTierOf(`${dir}pagefind.js`), dir).toBe(tier);
+    // The docs build writes the same directories (packages/docs/src/lib/doors.ts).
+    expect(SEARCH_BUNDLES.map(([dir, tier]) => [dir, tier])).toEqual(
+      DOCS_SEARCH_BUNDLES.map(([dir, tier]) => [`/docs/${dir}/`, tier]),
+    );
+  });
+
+  it("name every page row the docs site does, and nothing public beyond the site assets", () => {
+    const pageRows = DOCS_TIERS.filter(
+      ([path]) =>
+        !/^\/docs\/(_astro|branding|schemas|openapi|pagefind(-member|-admin|-help)?)\//.test(
+          path,
+        ) &&
+        path !== "/docs/404.html" &&
+        !/^\/docs\/sitemap-/.test(path),
+    );
+    const sitePrefixes = TIER_PREFIXES.map(([prefix]) =>
+      prefix.endsWith("/")
+        ? `/docs/${prefix}`
+        : prefix === "index"
+          ? "/docs/index.html"
+          : `/docs/${prefix}/`,
+    ).sort();
+    expect(pageRows.map(([path]) => path).sort()).toEqual(sitePrefixes);
+    expect(docsTierOf(null)).toBe("admin");
+    expect(docsTierOf("/docs/a-new-directory/index.html")).toBe("admin");
+  });
+
+  it("admit each principal by tier: public anyone, member any member, admin Superadmin and Platform admin", () => {
+    // A hand-written oracle, never `can()`'s own matrix.
+    const oracle: Record<
+      PrincipalName,
+      [anyone: boolean, member: boolean, admin: boolean]
+    > = {
+      none: [true, false, false],
+      stranger: [true, false, false],
+      consoleOnly: [true, true, false],
+      alphaAdmin: [true, true, false],
+      alphaShip: [true, true, false],
+      allProducts: [true, true, false],
+      platformAdmin: [true, true, true],
+      root: [true, true, true],
+    };
+    for (const [name, [anyone, member, admin]] of Object.entries(oracle)) {
+      const p = PRINCIPALS[name as PrincipalName];
+      expect(docsAllows(p, "public"), name).toBe(anyone);
+      expect(docsAllows(p, "member"), name).toBe(member);
+      expect(docsAllows(p, "admin"), name).toBe(admin);
+    }
+  });
+});
+
+describe("the per-file tiers (docsTiers.generated.ts)", () => {
+  it("serve a file only gated pages load at that tier, and everything else under _astro in public", () => {
+    const gated = Object.entries(DOCS_ASSET_TIERS);
+    for (const [path, tier] of gated) expect(docsTierOf(path), path).toBe(tier);
+    expect(docsTierOf("/docs/_astro/never-listed.abc.css")).toBe("public");
+  });
+
+  it("refuse a gated-only asset to a sessionless reader", async () => {
+    const [path] = Object.keys(DOCS_ASSET_TIERS);
+    if (path === undefined) return;
+    const res = await handleDocs(get(path), docsEnv(), NOW, db);
+    expect(res.status).toBe(302);
+  });
+});
+
+describe("the /help alias", () => {
+  it("matches /help and everything under it", () => {
+    for (const p of ["/help", "/help/", "/help/activate/", "/help/a/b"])
+      expect(matchRoute(p), p).toEqual({ kind: "helpAlias" });
+    expect(matchRoute("/helpful/x")).not.toEqual({ kind: "helpAlias" });
+  });
+});

@@ -355,7 +355,7 @@ export async function computeAppcast(
   // (P2-03, wave-1 sync). One extra tag lookup, only for a stable item with a bare tag. An
   // operator resolves it by adding the BARE tag to `release.ignoreTags` or deleting one of the two
   // releases; ignoring the `v`-tag does not help, because the pinned lookup never consults
-  // ignoreTags (test/releaseResolution.test.ts pins both).
+  // ignoreTags (test/surfaces/console/releaseResolution.test.ts pins both).
   if (sel.kind === "stable" && release.tag_name !== `v${segment}`) {
     const shadow = await source.byTag(tok, `v${segment}`);
     if (shadow && shadow.tag_name !== release.tag_name) return notFound();

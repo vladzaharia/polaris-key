@@ -89,7 +89,7 @@ export const CORS_MAX_AGE = "600";
  *
  * Both are INCLUSION flags (deny by default): a new route is not browser-readable until someone
  * decides it should be. `test/routeCoverage.test.ts` holds the flags, the spec's `options`
- * operations and the router to one another, and `test/publicRouteOracle.test.ts` pins each
+ * operations and the router to one another, and `test/surfaces/publicRouteOracle.test.ts` pins each
  * route's CORS answer against the answers recorded before the flag existed.
  *
  * Deliberately NOT flagged (cookie-bearing or navigation-only; they stay first-party):

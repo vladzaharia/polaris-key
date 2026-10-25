@@ -826,7 +826,7 @@ const SEALED_TABLES = [
   },
   // P5-01: store credentials. The sweep re-seals the blob byte-for-byte under the same AAD and
   // never parses it; this is the one operator path outside `core/outletCredentials.ts` that
-  // opens one, and it is the KEK rotation itself (`test/outletCredentialReach.test.ts`).
+  // opens one, and it is the KEK rotation itself (`test/core/outletCredentialReach.test.ts`).
   {
     table: "outlet_credentials",
     idColumn: "credential_id",

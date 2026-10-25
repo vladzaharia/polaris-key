@@ -185,7 +185,7 @@ export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
 /**
  * The requirement rule's codes and messages, one per `requires` edge of the service table
  * (ST-38). Keys are LITERAL on purpose: rule 9's parity sweep reads codes from source, and
- * `test/serviceTable.test.ts` fails when an edge has no literal code here.
+ * `test/core/serviceTable.test.ts` fails when an edge has no literal code here.
  */
 const REQUIREMENT_MESSAGES: ReadonlyMap<string, string> = new Map([
   [

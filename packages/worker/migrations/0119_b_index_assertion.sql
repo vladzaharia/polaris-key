@@ -10,7 +10,7 @@
 -- Mechanics are exactly 0018's (read its header): DELETE then INSERT, so a replay reaches the same
 -- end state, and a short count aborts the INSERT on `required_indexes_are_missing`, taking the
 -- migration, and the deploy, down with it. The runtime counterpart is `REQUIRED_INDEXES` in
--- `src/scheduled.ts`; test/scheduled.test.ts asserts it names the same set as the NEWEST
+-- `src/scheduled.ts`; test/surfaces/scheduled.test.ts asserts it names the same set as the NEWEST
 -- `*_index_assertion.sql`, which is this file until a later package adds another. It is a new file
 -- rather than an edit to 0035_b for the reason 0035_b gives for not editing 0027_i: D1 records the
 -- older migration as applied and will never re-run it, so an edit there would assert the new index

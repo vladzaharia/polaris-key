@@ -303,7 +303,7 @@ export interface ColumnWriteArgs {
  * How one COLUMN-backed setting is read and written (ST-04, notes/S-18 §4.3: "column-backed is
  * permanent, not an interim adapter"). The hot paths keep reading the typed column directly;
  * the resolver reads it through `decode`, and `writeSetting()` is the only caller of `set` and
- * `reset` (`test/settings-writes.test.ts` refuses a handler that writes the column itself).
+ * `reset` (`test/core/settings-writes.test.ts` refuses a handler that writes the column itself).
  *
  * The adapter lives with the TABLE's owner: Core's (`core/settings/columns.ts`) for `products` and
  * the storefront columns Core owns, a service's (its `settingsColumns.ts`, contributed through its

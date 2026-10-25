@@ -95,9 +95,9 @@ importing each other, so a store's code is split by layer:
 | `services/commerce/stores/<store>/`     | The `CommerceFacet` of each store: claim parsing and verification, notifications and the recheck, registered by store id (`COMMERCE_FACETS`, `commerceFacetFor`). |
 
 Adding a store is one `StoreAdapter` entry, one facet in each service that has the face, and the
-store's client under `core/stores/<store>/`. `test/storeAdapters.test.ts` binds each declaration
+store's client under `core/stores/<store>/`. `test/surfaces/storeAdapters.test.ts` binds each declaration
 to its registrations by id. Which files may open a credential is the allowlists of
-`test/outletCredentialReach.test.ts`; a facet reaches a credential only through a token helper.
+`test/core/outletCredentialReach.test.ts`; a facet reaches a credential only through a token helper.
 
 ### Enforcement: `boundaries.test.ts`
 

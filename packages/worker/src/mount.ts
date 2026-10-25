@@ -10,7 +10,7 @@
  * exist (see `core/registry.ts`); knowing the names is the composition root's job, and this file
  * is the composition root's list. The slugs themselves are declared once, in
  * `tools/services.json` (Core, `router.ts`'s `SERVICE_NAMESPACES` and discovery all iterate the
- * generated `SERVICE_SLUGS`); `test/serviceTable.test.ts` fails until every table row has an
+ * generated `SERVICE_SLUGS`); `test/core/serviceTable.test.ts` fails until every table row has an
  * entry here. Adding a service is a checklist, not a one-liner:
  * /docs/contribute/layout/#adding-a-service.
  *
@@ -67,7 +67,7 @@ bindServiceRegistry(SERVICES);
 /**
  * The settings registry (ST-03, `core/settings/`): the platform slice, Core's product slice and
  * every mounted service's `settings` slice, assembled once from `SERVICES` so Core never names a
- * service. `test/settings-registry.test.ts` runs the registry rules over exactly this value.
+ * service. `test/services/license/settings-registry.test.ts` runs the registry rules over exactly this value.
  * It is the same object Core's dispatchers hand service handlers (`settingsRegistryFor`, ST-04).
  */
 export const SETTINGS: SettingsRegistry = settingsRegistryFor(SERVICES);

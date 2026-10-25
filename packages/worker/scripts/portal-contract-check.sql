@@ -5,7 +5,7 @@
 -- One row, four counts of `portal_*` rows the account model does not yet hold. All four at 0 means
 -- the purge deletes the four tables' rows and loses nothing; any other value means the purge
 -- deletes NOTHING (its DELETEs are guarded by the sum of these same counts), and the leftovers are
--- the lead's to review. The migration repeats these four subqueries; test/portalContractPurge.test.ts
+-- the lead's to review. The migration repeats these four subqueries; test/services/identity/portalContractPurge.test.ts
 -- runs both against the same fixtures.
 --
 --   unmigrated_accounts      `portal_accounts` ids in neither `accounts` nor `account_tombstones`.

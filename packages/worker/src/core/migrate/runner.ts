@@ -16,7 +16,7 @@
  * data, so nothing secret reaches the report; a job's `detail` is its own to keep clean.
  *
  * Nothing schedules a run. The only caller is the admin route (`console/handlers/migrations.ts`),
- * and `test/migrationRunner.test.ts` greps `src/` to keep it that way.
+ * and `test/surfaces/console/migrationRunner.test.ts` greps `src/` to keep it that way.
  */
 
 import type { Db, DbStatement } from "../../db/types.js";

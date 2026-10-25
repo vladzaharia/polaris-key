@@ -154,7 +154,7 @@ uploads. Its write paths, and nothing else:
    `putVerified`/`promote`. The operator's account token can also write, and is out of the
    Worker's control (as it is for D1).
 
-**Invariants** (code: `packages/worker/src/core/assets/blobs.ts`; tests: `test/blobs.test.ts`,
+**Invariants** (code: `packages/worker/src/core/assets/blobs.ts`; tests: `test/core/blobs.test.ts`,
 `test-workerd/blobs.test.ts`):
 
 - **Verify before lock.** A wrong object stored under a hash name would be locked in place, so
@@ -217,7 +217,7 @@ named by `BLOB_ORIGIN`. A request on that host reaches only the byte-route allow
 registered by Release in P2-05 and by Distribution since P2b-04, each matching its canonical
 `/<p>/distribution/…` path and its `/<p>/release/…` alias);
 `/manage`, `/docs`, the portal, discovery and every product route answer not-found there
-(`test/bytesHost.test.ts`). The host does not go through `dispatchService`, so it makes that
+(`test/surfaces/bytesHost.test.ts`). The host does not go through `dispatchService`, so it makes that
 function's enablement check itself: every byte route names its service, and one whose service
 is disabled for the product never runs and answers the same not-found as an unknown product. The host
 match is case-insensitive and ignores trailing dots: the edge routes the fully-qualified
@@ -317,7 +317,7 @@ and could try to toss `Domain=plrs.im` cookies at it. The compensations, each te
   no font file and no external request, and the host's `nosniff`, `no-referrer` and cookie
   stripping apply to it as to every answer. Any other method on `/` and every other path
   (`/favicon.ico`, `/index.html` included) keeps the plain not-found, and the byte routes' type
-  rule is unchanged, so no blob path can answer `text/html` (`test/bytesHost.test.ts`, and the
+  rule is unchanged, so no blob path can answer `text/html` (`test/surfaces/bytesHost.test.ts`, and the
   workerd lane for `/`);
 - no cookie is read or set on the host: `Cookie` is stripped before a byte route sees the
   request and `Set-Cookie` from every response;
@@ -358,8 +358,8 @@ GitHub Actions OIDC token (exchanged once, at `POST /<p>/release/publish/token`,
 GitHub). Bytes never cross the Worker: with `release:publish` the job gets an upload ticket and R2
 temporary credentials, PUTs to `staging/<product>/<ticketId>/`, and submits a descriptor; the
 Worker verifies and promotes (`core/assets/blobs.ts`) and ingests (`descriptor.ts`). Code:
-`core/publisher.ts`, `services/release/publish.ts`; tests: `test/publisher.test.ts`,
-`test/publishRoutes.test.ts`.
+`core/publisher.ts`, `services/release/publish.ts`; tests: `test/core/publisher.test.ts`,
+`test/surfaces/console/publishRoutes.test.ts`.
 
 **The OIDC token is verified, then judged.** RS256 only; the issuer is the constant
 `https://token.actions.githubusercontent.com` (no setting can change it — a configurable issuer
@@ -377,7 +377,7 @@ passed, just before the token is minted (`exchangeOidcToken`'s `admit` hook). Ju
 another product's audience, or a validly signed GitHub token from someone else's repository
 costs the sender only its own per-IP budget, so a flood from any number of addresses cannot
 exhaust the product's budget. This keeps the rule the RFC 8628 paragraph below states: no
-product-wide bucket an outsider can spend. `test/publishRoutes.test.ts` floods from ten
+product-wide bucket an outsider can spend. `test/surfaces/console/publishRoutes.test.ts` floods from ten
 addresses and then exchanges successfully. Residual: besides the product's own declared
 workflow, a replay of one of its still-valid OIDC tokens also spends the product budget, because
 the single-use insert comes after the charge. That needs a token leaked from the product's own
@@ -408,7 +408,7 @@ other prefix, the only way to get bytes under the prefix is to PUT them. The mul
 keeps the stored checksum meaningful: a multipart object's checksum is a hash of part hashes, not
 the object's SHA-256, so valid multipart uploads would fail closed (`digest_mismatch`); CI uploads
 each object as one PUT with `x-amz-checksum-sha256`. The rules are R2's documented authorisation
-model; `test/publisher.test.ts` asserts the minted claims and models those rules, and the
+model; `test/core/publisher.test.ts` asserts the minted claims and models those rules, and the
 real-R2 confirmation is an operator check (`docs/DEPLOYMENT.md`).
 
 **Earning a ref.** `promote` takes the product it promotes for and refuses, with `bad_key`, a
@@ -526,7 +526,7 @@ handler (below); it still has no device-facing route.
 **Descriptor hooks are a read-only, fail-closed boundary.** A service may import only Core and
 itself (`boundaries.test.ts`; the one exception is still `update → release`). Cross-service reads
 go through `core/hooks.ts`: `releaseCatalog` (Release), `delivery` and `outletCapabilities`
-(Distribution). Invariants (tests: `test/hooks.test.ts`, `test/boundaries.test.ts`):
+(Distribution). Invariants (tests: `test/surfaces/hooks.test.ts`, `test/boundaries.test.ts`):
 
 - **Enablement first.** Core builds the accessors per request from the registry and the map the
   request was dispatched on, and each checks the **providing** service's flag before calling it:
@@ -576,7 +576,7 @@ outlets, and the console can narrow an outlet's capabilities
 **Outlet capabilities are operator-owned and can only narrow.** `codeUpdates`,
 `downloadedScripts` and `commerce` decide whether an installed copy may hot-load code or sell
 things itself; a repo widening them by pushing YAML is the R6-03 (`requireSparkleSignature`)
-class. So (tests: `shared-manifest` parity mutations, `test/distributionOutlets.test.ts`):
+class. So (tests: `shared-manifest` parity mutations, `test/surfaces/distributionOutlets.test.ts`):
 
 - **Not expressible in the manifest.** A `capabilities` key anywhere in `.pkey/distribution` fails
   validation (`capabilities_not_manifest_writable`) — the push is refused, not partly applied.
@@ -623,7 +623,7 @@ pack is validated). P4-05 routes every deliverable, so a link or resync resolves
 `{kind: pack}` entries could have multiplied into ~90,000 statements. They are written as
 multi-row inserts of 25 rows (four parameters each, inside D1's 100), so the worst case is 32
 outlet upserts, one removal sweep, one transport delete and 84 transport inserts
-(`test/distributionOutlets.test.ts`, "the ingest's cost is bounded"). Manifest sync writes one
+(`test/surfaces/distributionOutlets.test.ts`, "the ingest's cost is bounded"). Manifest sync writes one
 `release_deliverables` row per pack, at most 64.
 
 **Residual risk.** Identity and listing fields are manifest-owned and written verbatim (validated
@@ -641,7 +641,7 @@ the installer, the direct download and P2-05's build, file and blob routes, at c
 `/<p>/distribution/…` paths. The `/<p>/release/{install.sh,dl,builds,files,blobs}/…` spellings
 and `/<p>/install.sh` are router aliases that rewrite to the same `{kind:"service"}` route
 (`router.ts`, ahead of the namespace check), so an alias cannot answer differently from its
-canonical route (`test/distributionDelivery.test.ts` compares status, headers and bytes on both
+canonical route (`test/surfaces/distributionDelivery.test.ts` compares status, headers and bytes on both
 hosts). Every P2-05 guarantee is preserved in the moved code (`services/distribution/bytes.ts`):
 the `fixedVersion` rule (a file's release is checked by its stored version as one fixed, pinned
 version, now `core/licensing/entitledAccess.ts` `fixedReleaseSelector`, shared with Release), the
@@ -695,7 +695,7 @@ the old column.
   ingest hook Core runs WHATEVER the service's enablement: every link and resync of a
   Release-only product keeps the row equal to its manifest's release block, so a `licensed` manifest is
   `licensed` the instant Distribution answers, and a mode tightened while Distribution was off
-  is the one in force when it comes back (`test/distributionDelivery.test.ts`, "turning
+  is the one in force when it comes back (`test/surfaces/distributionDelivery.test.ts`, "turning
   Distribution on…"). The hook may write only records that do nothing on their own; no request
   reaches a disabled service.
 - **Inheritance fails toward the app, then closed.** A deliverable with no row inherits the `app`
@@ -724,7 +724,7 @@ the old column.
   (versions and filenames, marked `not_entitled`); `GET /api/releases` already shows comparable
   data, so this is no new exposure. Its `portalDownloads` rate-limit bucket fails **open**, like
   `portalDownloadToken`: it is charged only after ownership is proven and guards no credential.
-  Tests: `test/portalDownloads.test.ts`.
+  Tests: `test/services/identity/portalDownloads.test.ts`.
 - **R6-12, extended deliberately.** The portal's redirect may now also target this deployment's
   bytes host (`isAllowedDownloadRedirectHost`, separate from the fetch-side
   `isAllowedStorageHost`, which still allows only GitHub's storage hosts): only for a PUBLIC
@@ -869,8 +869,8 @@ to everyone and a rollout leaks nothing about which devices are in it.
 when) and `dist_submissions` (where R stands in O's review) — written by CI through
 `POST /<p>/distribution/report` until the store connectors exist (P5-02 to P5-04) — and
 `dist_keys`, the per-product signing-key inventory, written only by an operator in the console
-(`services/distribution/availability.ts`; tests: `test/distributionAvailability.test.ts`,
-`test/distributionReportE2e.test.ts`).
+(`services/distribution/availability.ts`; tests: `test/surfaces/console/distributionAvailability.test.ts`,
+`test/surfaces/distributionReportE2e.test.ts`).
 
 - **The principal.** A `pkeyci_` token with `distribution:report`, which is in the DEFAULT grant
   (P2-02): any job that can publish can report. A report is validated whole before anything is
@@ -937,7 +937,7 @@ own key could also publish that key as the expected one.
 **What arrived.** Public per-channel feeds under `/<p>/distribution/` — AltStore/SideStore and
 AltStore PAL sources, Obtainium configs, Scoop manifests, Flathub checker JSON — rendered from
 Release's truth and Distribution's state, and an F-Droid repository relay serving files CI signed
-and registered (`services/distribution/feeds/`; tests: `test/storefrontFeeds.test.ts`). A new
+and registered (`services/distribution/feeds/`; tests: `test/services/distribution/storefrontFeeds.test.ts`). A new
 opt-in CI scope, `distribution:feeds`, reads the generator's inputs, registers a repository's
 files, and buys an upload ticket for them. A new column, `release_builds.metadata_json`, holds
 the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK signer).
@@ -1013,7 +1013,7 @@ the descriptor's `builds[].metadata` (IPA entitlements and privacy strings, APK 
 
 **What arrived.** `pkey listing assets` makes every store's icons, composed art, fitted
 screenshots and per-store packs in CI, and `POST /<p>/distribution/listing/assets`
-(`services/distribution/listing/assets.ts`; tests: `test/listingAssets.test.ts`) registers them
+(`services/distribution/listing/assets.ts`; tests: `test/surfaces/listingAssets.test.ts`) registers them
 into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys an upload ticket
 (P2-02's uploads route accepts it) and registers the rows. It is not in `DEFAULT_CI_SCOPES`.
 
@@ -1059,7 +1059,7 @@ into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys 
 **What arrived.** A repo push (link or resync, Distribution on) now also writes the root
 `.pkey/distribution` listing into the shared listing model (`dist_listings`,
 `dist_listing_locales`), not only the `dist_listing` blob. The writer is
-`manifestModelStatements` (`listing/manifestSync.ts`); tests: `test/listingIngest.test.ts`.
+`manifestModelStatements` (`listing/manifestSync.ts`); tests: `test/services/distribution/listingIngest.test.ts`.
 
 - **Which fields.** Only the mapped ones: `name`, `developerName`, `category`, `tint`,
   `contactEmail`, `urls.website`, `urls.support`, and the default locale's `subtitle` and
@@ -1085,7 +1085,7 @@ into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys 
 ### The listing-truth backfill job (A-27.6, A-27.7)
 
 **What arrived.** The migration job `distribution.listing-truth` (`services/distribution/
-listingTruthJob.ts`; tests: `test/listingTruthJob.test.ts`) copies each product's root listing
+listingTruthJob.ts`; tests: `test/services/distribution/listingTruthJob.test.ts`) copies each product's root listing
 from the manifest blob (`dist_listing`) into the listing model, so the model is the one source
 (phase 1 of A-27; the blob stays as the fallback). An operator runs it through the migration
 runner: dry run, apply pinned to the report read, down. Nothing else starts it.
@@ -1127,7 +1127,7 @@ runner: dry run, apply pinned to the report read, down. Nothing else starts it.
 ### The public download page (P2b-06)
 
 **What arrived.** A public, cookie-free download page per product (`services/distribution/
-page/`; tests: `test/downloadPage.test.ts`): `GET /<p>/distribution/download` and its alias
+page/`; tests: `test/surfaces/downloadPage.test.ts`): `GET /<p>/distribution/download` and its alias
 `GET /<p>`, HTML, served ONLY on the bytes host; and its model, `GET /<p>/distribution/
 download.json`, JSON, served only on the console host. It is the first HTML a stranger can load
 that shows repo-authored text: the `.pkey/distribution` listings and identities, which any repo
@@ -1199,8 +1199,8 @@ package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI, Go
 (plans/F-01.md §6). `PKG_ORIGIN` names it, and `core/registry/registryHost.ts` confines it to `mount.ts`
 `REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
 and the framework, F-03 the tables and ingest, F-04 to F-09 one feed each (npm, PyPI, Swift,
-Maven, OCI, Godot), F-11 the console's Feeds pages, F-30 the Cargo feed and F-31 the Go module proxy (tier 3); each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
-`test/feedAdapters.test.ts` (the adapter conformance suite), `test/registryDrain.test.ts`,
+Maven, OCI, Godot), F-11 the console's Feeds pages, F-30 the Cargo feed and F-31 the Go module proxy (tier 3); each part is below. Tests: `test/surfaces/registryHost.test.ts`, `test/services/distribution/registryFeeds.test.ts`,
+`test/surfaces/feedAdapters.test.ts` (the adapter conformance suite), `test/surfaces/registryDrain.test.ts`,
 `test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
 
 **Feeds a manifest provisions (F-34.2).** Distribution's ingest contribution is the one place a
@@ -1256,7 +1256,7 @@ detail says so; `down` restores from the ledger only where a row still reads wha
 it never overwrites an operator's later edit, and no principal is admitted after `down` that was
 not admitted before it. Two accepted effects, both listed in the dry run: a package declared AFTER the move in a
 formerly entitled feed lands at Customers (decision F4), not fail-closed; and a product whose PS-03
-open access was true turns false once its package rows are written. `test/feedAccessJob.test.ts`
+open access was true turns false once its package rows are written. `test/surfaces/feedAccessJob.test.ts`
 pins `authorizeFeedRead` identical before and after, for every principal, list and per-deliverable
 read, feed mode, own-row state and app-row state.
 
@@ -1289,7 +1289,7 @@ separate them, exactly as for the bytes host. Its compensations, against `dl.plr
 | The one HTML answer                           | `/` and the download page, under `inertDocumentPolicy` | `/`, and the PyPI simple page on its one flagged route, under `inertDocumentPolicy` |
 
 The console's session cookies are host-only (`__Host-`, no `Domain`), so a browser never sends
-them to `pkg.plrs.im`; `test/registryHost.test.ts` re-asserts that for this host.
+them to `pkg.plrs.im`; `test/surfaces/registryHost.test.ts` re-asserts that for this host.
 
 **The one deliberate widening: the type allowlist.** `REGISTRY_HOST_TYPES` admits registry JSON
 (`application/json`, the npm, PyPI, Swift and OCI/Docker manifest types), `text/x-swift`, PNG,
@@ -1372,7 +1372,7 @@ listing or a superseded tag.
 **One adapter contract per feed.** Every feed is a `FeedAdapter`
 (`registry/adapter.ts`): its routes (`feedRoute` only), renderer, ingest rules (its one
 declaration in `@polaris-key/manifest`), settings, capabilities, OpenAPI rows and harness clients.
-`test/feedAdapters.test.ts` runs the same checks against every adapter: each route carries the
+`test/surfaces/feedAdapters.test.ts` runs the same checks against every adapter: each route carries the
 `feedRoute` mark and answers under its own prefix; an unknown owner and a feed that is off answer
 the host's one not-found byte for byte on every route; a non-public feed answers every route with
 the challenge the adapter declares (and that `challengeFor` sends); a renderer stamped `package`
@@ -1385,7 +1385,7 @@ re-checking the shared gate.
 build a registry read route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
 name to its deliverable), then `serveFeedRead` (the access ladder, then the Cache API, then the
 route's work), then an optional `finish` that sees every answer after the ladder (OCI's API
-version header, Swift's `Content-Version` and `Accept` checks). `test/registryHost.test.ts`
+version header, Swift's `Content-Version` and `Accept` checks). `test/surfaces/registryHost.test.ts`
 requires one of three marks on every `REGISTRY_ROUTES` entry: `FEED_READ_ROUTE` (set by
 `feedRoute`) on every read route, `FEED_AUTH_ROUTE` on F-21's one credential route (`swift.login`,
 `POST`), and `FEED_PUBLISH_ROUTE` on F-22's four publish routes (`service: "release"`, one write
@@ -1572,7 +1572,7 @@ version resolves to it) but its files stay downloadable by exact coordinates, as
 yank does. Removing compromised bytes is an operator action outside tier 1's feed (residual).
 
 **OCI pull (F-08).** `/v2/<owner>/<repository…>/{manifests,blobs,tags/list}`
-(`services/distribution/registry/oci/`; tests: `test/registryOci.test.ts`,
+(`services/distribution/registry/oci/`; tests: `test/surfaces/registryOci.test.ts`,
 `test-workerd/registryOci.test.ts`, the OCI rows of `registry-clients.yml`). Read-only: every
 other method is 405 `UNSUPPORTED`, and `/v2/token` is the not-found until F-21.
 
@@ -1672,7 +1672,7 @@ fiction; the verbs that apply run Release's own yank, unyank and deprecation (th
 render enqueue and pack-set invalidation as Release's routes). There is no per-version delete;
 the only deletion is feed retention's (below), and only of builds of main. A write drops
 its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
-`test/adminFeeds.test.ts`.
+`test/surfaces/console/adminFeeds.test.ts`.
 
 ### Feed retention: pruning builds of main and dev (owner request 2026-10-06; F-36)
 
@@ -1772,7 +1772,7 @@ whose Cache API already holds them, until that copy is evicted. The Worker canno
 data centres, and the bytes stay in R2 until the collector takes them. A pinned lockfile of a
 build of main stops installing once it is pruned. That is the intended effect, and the
 install-from-feeds page tells adopters to pin stable or beta releases. Tests:
-`test/feedPrune.test.ts`, `test/feedPruneRoutes.test.ts`.
+`test/surfaces/feedPrune.test.ts`, `test/surfaces/console/feedPruneRoutes.test.ts`.
 
 ### Registry credentials (F-20, F-21)
 
@@ -1783,8 +1783,8 @@ in the portal (licence-bound, read-only, Q3), and judged by the feed access ladd
 (`services/distribution/registry/authorize.ts`). OCI clients exchange one for a 300-second pull
 token at `GET /v2/token`; SwiftPM checks one at `POST /swift/<owner>/login`; the Godot editor,
 which sends no credentials, carries a narrow URL token in its configured URL. Tests:
-`test/registryAuth.test.ts`, `test/registry/godot.test.ts` (URL tokens), `test/adminFeeds.test.ts`,
-`test/portalRegistryTokens.test.ts`, and the authenticated rows of `registry-clients.yml`.
+`test/services/distribution/registryAuth.test.ts`, `test/registry/godot.test.ts` (URL tokens), `test/surfaces/console/adminFeeds.test.ts`,
+`test/services/identity/portalRegistryTokens.test.ts`, and the authenticated rows of `registry-clients.yml`.
 
 **A new bearer asset.** A token is 256 random bits, stored only as an HMAC under
 `KEY_HASH_PEPPER` (a global unique index), shown once, never logged or echoed; the list shows the
@@ -1886,7 +1886,7 @@ Platform feeds stay public, so they never take the slot.
 **What it is.** A `pkeyp_` token (`core/accounts/personalTokens.ts`, table `account_tokens`, migration 0120) is the credential a PERSON holds, not a product: one token installs every package the account
 may read, across products (plans/I-27.md §2.5). The portal mints it at Account → Packages
 (`/api/me/tokens`); the registry host takes it as a Bearer or Basic (`__token__`) credential on
-every ecosystem except Godot's URL form. Tests: `test/personalTokens.test.ts`.
+every ecosystem except Godot's URL form. Tests: `test/surfaces/personalTokens.test.ts`.
 
 **A new bearer asset, held like `pkeya_`.** 256 random bits, stored only as an HMAC under
 `KEY_HASH_PEPPER` (a global unique index; the column is a plain hash, so SEC-pepper stamps it later
@@ -1924,7 +1924,7 @@ primary email (never its id), never the token or its hash, so a Superadmin sees 
 authenticates. There is no admin mint: a person's credential is made by that person. A revoke is
 audited in `platform_audit` as `account_token.revoke` (label and last four characters) and stores
 `revoked_by = admin`, with no operator subject, because the portal shows `revokedBy` to the
-account's owner. Tests: `test/accountTokensAdmin.test.ts`.
+account's owner. Tests: `test/surfaces/console/accountTokensAdmin.test.ts`.
 
 **The portal mints one licence-bound token only: the Godot editor URL.** The editor sends no
 credentials, so its feed is reached through a URL holding a token, and a `pkeyp_` token (a year,
@@ -1969,8 +1969,8 @@ registry host's `principalOf` admits a `ci` resolution holding `packages:read` o
 (`CI_FEED_READ_SCOPES`). The console mints it: Feeds → Tokens (`console/handlers/registryTokens.ts`),
 `POST …/feeds/tokens` with `binding: "service"` calls `issueStaticCiToken` with `["packages:read"]`,
 a label and 1 to 365 days (default 90). The value is in the mint answer only; the row keeps its hash.
-Tests: `test/ciFeedRead.test.ts`, `test/serviceTokens.test.ts`, `test/adminFeeds.test.ts`,
-`test/registryAuth.test.ts`, `test/publisher.test.ts`, `test/registry/godot.test.ts`.
+Tests: `test/core/ciFeedRead.test.ts`, `test/surfaces/console/serviceTokens.test.ts`, `test/surfaces/console/adminFeeds.test.ts`,
+`test/services/distribution/registryAuth.test.ts`, `test/core/publisher.test.ts`, `test/registry/godot.test.ts`.
 
 **What it can do.** Read the private, licensed and entitled feeds of its own product on every
 ecosystem that takes a header credential, and mint an OCI pull token (`pull` only, for its own
@@ -2005,8 +2005,8 @@ area on the product (`can(keys, edit)`, 403 `no_access`). The order is: sign-in,
 An admin API token (`pkeya_`) has no step-up and the route names no token scope, so it is refused
 before the handler. The console answers a 403 `step_up_required` by turning the dialog into "Sign in again" and keeping
 its entries across the sign-in (`ui/useStepUpDraft.tsx`: the entries go to `sessionStorage` under
-the page's hash for 15 minutes, never the token). Tests: `test/serviceTokens.test.ts`,
-`test/publishRoutes.test.ts`, `test/rbacRouteMatrix.test.ts`. ST-30c.1's break-glass realm is not in
+the page's hash for 15 minutes, never the token). Tests: `test/surfaces/console/serviceTokens.test.ts`,
+`test/surfaces/console/publishRoutes.test.ts`, `test/surfaces/console/rbacRouteMatrix.test.ts`. ST-30c.1's break-glass realm is not in
 this tree; when it lands, its refusal comes before the step-up, with its own reason, and needs a test
 on these writes then.
 
@@ -2047,7 +2047,7 @@ team members read with a personal token; its legacy tokens are listed and revoca
 (one that runs the ladder with `deliverableId: () => null`) is marked `listDocument: true` and
 filters what it names to the packages the presenting principal may read: PyPI's simple index,
 Godot's lists, Swift's identifiers. A public answer, shared by every reader, names only what its own
-cache class may show (Swift identifiers stay in theirs). `test/feedAdapters.test.ts` runs every
+cache class may show (Swift identifiers stay in theirs). `test/surfaces/feedAdapters.test.ts` runs every
 marked route over the principal matrix and fails a null-deliverable route that is neither marked nor
 named there as carrying no package names.
 
@@ -2099,7 +2099,7 @@ legacy upload), `PUT /swift/<owner>/<scope>/<name>/<version>` (`swift package-re
 and `PUT /maven/<owner>/…` (Maven and Gradle deploys). Each request is translated into the release
 descriptor `pkey release publish` sends and ingested through F-03's path, so every ingest rule
 (declared deliverable, namespace, ceiling, unique forever, Swift signing, no snapshots) applies
-unchanged. Tests: `test/registryPublish.test.ts` (with golden releases under
+unchanged. Tests: `test/surfaces/registryPublish.test.ts` (with golden releases under
 `test/fixtures/registry/native/`), the publish rows of `registry-clients.yml`.
 
 **A publish secret where CI used to need none.** Trusted publishing exists so a repository holds
@@ -2179,7 +2179,7 @@ distribution spec's blob upload state machine over R2 multipart
 and the manifest `PUT` (`ociPush.ts`). The routes are RELEASE's (`FEED_PUSH_ROUTE`, `service:
 "release"`): a manifest pushed under a version tag becomes a package release through Release's
 own package ingest, the same rows, refusals and audit as a ticket publish. Tests:
-`test/registryPush.test.ts`, the workerd lane's push (`test-workerd/registryOci.test.ts`), and the
+`test/surfaces/registryPush.test.ts`, the workerd lane's push (`test-workerd/registryOci.test.ts`), and the
 `oci-push-*` rows of `registry-clients.yml` (docker, crane, the conformance suite's push
 workflow).
 
@@ -2231,7 +2231,7 @@ to 4 MiB and a tag push's walk to 256 manifests. Abandoned uploads expire with t
 
 **What arrived.** Update renders the native updaters' feeds from the CI-signed release records and
 Distribution's per-outlet state (`services/update/updaterFeeds.ts`, `updaterRender.ts`,
-`artifactBytes.ts`; tests: `test/updaterFeeds.test.ts`): an extended Sparkle appcast (for a
+`artifactBytes.ts`; tests: `test/surfaces/updaterFeeds.test.ts`): an extended Sparkle appcast (for a
 product with records), a WinSparkle appcast, a Velopack feed, an MSIX `.appinstaller` and an
 AppImage `.zsync` per channel, and an extended `/update/version`. They are new public routes that
 tell an updater which bytes to install, so they sit next to AT-3. Distribution's `delivery` hook
@@ -2345,7 +2345,7 @@ accessor.
   `deleteProduct` name the table; only the vault, the owner, the token helpers and the sweep spell
   the AAD kind; and only the owner and the Core admin handler name the writers
   `putOutletCredential` / `pinOutletCredential` / `deleteOutletCredential`
-  (`test/outletCredentialReach.test.ts`). In
+  (`test/core/outletCredentialReach.test.ts`). In
   particular Config (edge-mint) and `core/products.ts` (`openProductSecret`) cannot reach it, and
   no manifest ingest, resync, service hook — nor a Distribution connector, webhook handler or
   route, even though Distribution may import the module to open — can write or delete a row.
@@ -2416,7 +2416,7 @@ assigning an app to a product from that list, and a product's connector or comme
 falling back to the team credential when the product has no credential of the kind of its own.
 
 **The boundary**, each line enforced by a test (`test/platformStore*.test.ts`,
-`test/outletCredentialReach.test.ts`):
+`test/core/outletCredentialReach.test.ts`):
 
 - **Two sources, console first.** (a) `platform_credentials`, sealed under PLATFORM_KEK with the
   AAD `pkey:v2:_platform:platform-credential:<id>` — `_platform` cannot be a product slug and the
@@ -2444,7 +2444,7 @@ falling back to the team credential when the product has no credential of the ki
 - **Readiness reads metadata only (P0-27.3, P0-27.6).** `core/stores/requirements.ts` answers "is
   this store ready for this product" from a store adapter's declared requirements. It is a
   file on the `resolvePlatformCredential` and `listOutletCredentials` reader allowlists
-  (`test/outletCredentialReach.test.ts`, the lines added with P0-27.3) and on no other: it counts a credential through `listOutletCredentials`
+  (`test/core/outletCredentialReach.test.ts`, the lines added with P0-27.3) and on no other: it counts a credential through `listOutletCredentials`
   (never selects the ciphertext) and `resolvePlatformCredential` (opens nothing), and a second test
   refuses it every function that opens, versions, pin-lists or records (`openOutletCredential`,
   `openPlatformCredential`, `outletCredentialVersion`, `listOutletCredentialPins`,
@@ -2558,7 +2558,7 @@ allow-list** type (`ci.ts`). The App Store is the first adapter; its A-17a rule 
 line.
 
 **Controls** (S-15 §9), each enforced by a test (`test/storefront/conformance.test.ts`,
-`test/storefront/substrate.test.ts`, `test/boundaries.test.ts`, `test/ascWriteGate.test.ts`):
+`test/storefront/substrate.test.ts`, `test/boundaries.test.ts`, `test/services/distribution/ascWriteGate.test.ts`):
 
 - **(a) One deny-by-default gate engine** with a per-adapter rule table classified against a pinned
   vendor spec in CI. The engine refuses at compile time a table with a `DELETE` or `GET` rule, a
@@ -2611,7 +2611,7 @@ Store-specific code lives where its layer allows: gated clients, custody and tok
 (`storeRequirements`, `core/stores/requirements.ts`) that answers a descriptor list of what is
 missing and nothing else. It fails closed (an unknown facet, or `commerce` on a store with none,
 answers `null`, never ready). Which files may reach credentials is a test, not a convention: the
-opener, writer and table allowlists of `test/outletCredentialReach.test.ts` name every file that
+opener, writer and table allowlists of `test/core/outletCredentialReach.test.ts` name every file that
 opens or writes a credential, and `requirements.ts` is on only the two read-metadata lists (see
 A-16, "Readiness reads metadata only"). A facet declaring a requirement grants no access to the
 credential: opening stays with the token helpers, behind the pin.
@@ -2678,7 +2678,7 @@ edit, commit or Console change invalidates every other open one.
   `lease.ts`, never a caller's `now`: the cron's `now` is computed once per run and reused for
   every product, so a late Play tick would otherwise write an already-expired lease and lose it to
   provisioning mid-edit. TTLs are minutes, so a crashed holder blocks nobody for long. Tests:
-  `test/playLease.test.ts` (including a tick that starts five minutes after its cron fired),
+  `test/services/distribution/playLease.test.ts` (including a tick that starts five minutes after its cron fired),
   conformance item 10.
 - **The write gate**, deny-by-default and consulted by every gated `GoogleApiClient` before its
   token thunk: P5-03's poll and controls, A-16's lister and the adapter all build gated clients
@@ -2841,7 +2841,7 @@ connections' Set up (`services/distribution/storefronts/`, `packages/admin/src/c
 storefronts/`). Admin routes under `…/distribution/storefronts`, platform admins only, behind the
 session, CSRF and rate-limit gates of `console/api.ts`.
 
-**Controls**, each pinned by `test/storefrontFlow.test.ts` and `test/storefrontSlots.test.ts`:
+**Controls**, each pinned by `test/services/distribution/storefrontFlow.test.ts` and `test/services/distribution/storefrontSlots.test.ts`:
 
 - **No new write path to a store.** A step either names an existing reviewed route (A-17b, A-17c,
   A-16), checked to be under `/manage/api/` when the plan is built and again in the console client,
@@ -3001,9 +3001,9 @@ fixed host, P5-02's SSRF rules: `redirect: "manual"`, bounded bodies, `links.nex
 the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
 `api.storekit(-sandbox).apple.com` (P6-01's hosts).
 
-**Controls**, each enforced by a test (`test/ascWriteGate.test.ts`, `test/ascLedger.test.ts`,
-`test/ascControls.test.ts`, `test/ascWriteReach.test.ts`, `test/ascDistribute.test.ts`,
-`test/ascCatalog.test.ts`):
+**Controls**, each enforced by a test (`test/services/distribution/ascWriteGate.test.ts`, `test/services/distribution/ascLedger.test.ts`,
+`test/services/distribution/ascControls.test.ts`, `test/services/distribution/ascWriteReach.test.ts`, `test/services/distribution/ascDistribute.test.ts`,
+`test/services/distribution/ascCatalog.test.ts`):
 
 - **(a) Deny by default, before the token.** `AscClient` calls `checkAscRequest` before its token
   thunk: a write passes only when an `ASC_WRITE_ALLOW` rule matches its method and path template
@@ -3017,7 +3017,7 @@ the same origin and `/v1/` or `/v2/`), and A-17c adds test-notification calls to
   devices or profiles; reads of `/v1/users*` and `/v1/userInvitations*` are refused too (personal
   data, matched case-insensitively). The approved surface is S-14 §7.5 with the owner's
   corrections (no relationship `DELETE`s).
-- **(a″) No way around the client.** A source scan (`test/ascWriteReach.test.ts`) keeps the ASC
+- **(a″) No way around the client.** A source scan (`test/services/distribution/ascWriteReach.test.ts`) keeps the ASC
   token minters (`ascToken`, `platformAscToken`) and `new AscClient(` to the two files that build
   the gated client (`connectors/asc/run.ts`, `platform.ts`), and the API host
   `api.appstoreconnect.apple.com` to `core/stores/apple/client.ts`, so no raw `fetch` with a bearer token
@@ -3091,7 +3091,7 @@ profile's content are never requested, stored or answered. The wizard's 10-secon
 (`apps/lookup?poll=1`) is `background` spending and pauses below 20 % of the team budget.
 
 **Product app setup (A-17c, `connectors/asc/provision.ts`).** The setup controls run under the
-same gate, ledger and audit, with these choices of their own (`test/ascProvision.test.ts`):
+same gate, ledger and audit, with these choices of their own (`test/services/distribution/ascProvision.test.ts`):
 
 - **The app is the pin's.** A control targets the app `resolveAscSetup` names. With no Apple outlet
   declared yet (the New-app wizard) and no key of the product's own, the platform team key's pin
@@ -3157,7 +3157,7 @@ forwards an `Authorization`, `Cookie`, `Host` or `Proxy-` header Apple's answer 
 `Content-Type` only when it names the file's own type, does not follow redirects, and never puts the
 presigned URL in an error message or a ledger row.
 
-**Controls** (`test/ascWriteGate.test.ts`, `test/ascListingPush.test.ts`,
+**Controls** (`test/services/distribution/ascWriteGate.test.ts`, `test/services/distribution/ascListingPush.test.ts`,
 `test/storefront/conformance.test.ts`):
 
 - **(a) Only the listing, only from the model.** The text pushed is the shared listing model's App
@@ -3261,7 +3261,7 @@ instead of aiming it; it stays stopped until the manifest names the pinned app a
 platform admin re-pins, which is audited. The pin is checked on the credential the setup picks (a
 bound key before an unbound one), so a second key's matching pin never stands in for it. The
 ownership checks above then hold against an app the operator chose, not one the repo chose
-(`test/ascPin.test.ts`).
+(`test/services/distribution/ascPin.test.ts`).
 
 **Replay.** Deliveries are deduplicated on `data.id`: a KV marker (7 days, like the GitHub
 webhook) and the `dist_connector_events` primary key. A redelivery answers 200 `{duplicate: true}`
@@ -3360,7 +3360,7 @@ payloads are stored for 30 days, capped at 16 KiB each; beta-feedback events can
 days are enforced by the nightly maintenance sweep (`scheduled.ts`, step
 `connectorEvents:<product>`), which walks every product slug, soft-deleted and Distribution-off
 products included, so a product that stops being polled does not keep its payloads forever
-(`test/scheduled.test.ts`).
+(`test/surfaces/scheduled.test.ts`).
 
 **Closed: a manifest-chosen app (P5-02f).** P5-02 shipped with the repo writer choosing the app
 the operator's team key reads and acts on. The operator's pin now chooses it, and the manifest can
@@ -3435,7 +3435,7 @@ credential opened or a request sent, so nothing is mirrored and no vitals read h
 that changes its `packageName` after linking makes the connector inert until a platform admin
 re-pins (`PUT …/outlet-credentials/<id>` with `{kind, pin}`, audited `outlet_credential.pin`);
 the console's credential form requires the package name with the key
-(`test/playPin.test.ts`). The residuals are the P5-02f ones below (a re-pin is only as good as the
+(`test/services/distribution/playPin.test.ts`). The residuals are the P5-02f ones below (a re-pin is only as good as the
 admin's check; a repo writer can stop the connector by changing the package). Least privilege
 (one app per account, above) still bounds a stolen key.
 
@@ -3516,7 +3516,7 @@ gradual rollouts for **every app of the seller account**, until the key is remov
 Center. They cannot touch other stores or Polaris Key. The connector itself never exercises any
 of that: its client (`msstore/client.ts`) can send only GET — there is no method parameter — and
 the suite asserts that no request other than GET ever reaches the fake Store API
-(`test/msstore.test.ts`). Mitigations are P5-01 custody (sealed, platform-admin writes only,
+(`test/services/distribution/msstore.test.ts`). Mitigations are P5-01 custody (sealed, platform-admin writes only,
 every open audited, rotation drops the cached token), the operator docs' "dedicated application,
 Manager role and nothing wider" (`services/distribution/microsoft-store.md`), and Partner
 Center's own activity history as the second record.
@@ -3576,7 +3576,7 @@ Connect client (8 MiB) and the Google Play clients and Google token exchange (4 
 follow it too (fix/connector-hardening; their sections above), with the shared `isRedirect` test
 in `core/readCapped.ts`. A refused redirect or an oversized body is always that connector's own
 failure or unreadable-answer path, carrying a status line, never a body or a token
-(`test/connectorHardening.test.ts` drives the redirect cases through the real runtime `fetch`
+(`test/services/distribution/connectorHardening.test.ts` drives the redirect cases through the real runtime `fetch`
 against a loopback server and asserts the `Location` is never requested).
 
 ### Update health: telemetry, the auto-halt and the Sentry hook (P6-03)
@@ -3633,7 +3633,7 @@ can do more than the paths below allow.
 `dist_connector_settings` (connector `auto-halt`, P5-03's table), written by one function,
 `writeAutoHaltSettings`, whose only caller is the console's control (platform-admin session,
 CSRF, rate limit, a `distribution.auto_halt.settings` audit row with the session's subject);
-`test/autoHalt.test.ts` pins that no other file names the writer or writes that row, and no
+`test/surfaces/autoHalt.test.ts` pins that no other file names the writer or writes that row, and no
 ingest, resync or manifest field reaches it — a repo push cannot turn on an automatic halt. The
 tick (the connector cron) halts through P2b-04's `applyRollout` with a third actor kind,
 `system`, which `applyRollout` itself refuses for every verb but `halt` (`system_halt_only`), so
@@ -4038,7 +4038,7 @@ an IPv4 address, or an IPv6 **/64** (`clientNetwork` in `core/rateLimit.ts`). Th
 because one ordinary IPv6 host is routed a whole /64 — 2⁶⁴ source addresses at no cost
 (R10-04b) — so a per-address key would give a single host an unlimited supply of fresh budgets.
 Every unauthenticated per-client bucket outside the email limits keys this way, with an
-IPv4-mapped IPv6 address unwrapped to its IPv4 address; `test/rateLimitKeys.test.ts` fails on a
+IPv4-mapped IPv6 address unwrapped to its IPv4 address; `test/core/rateLimitKeys.test.ts` fails on a
 raw address in a bucket id outside the limiter's own modules. One network therefore gets at most 300 guesses
 in a code's 600-second life: with N codes live at once it hits one with probability about
 300·N / 2.56 × 10¹⁰ — 1.2 × 10⁻⁵ even with 1,000 live flows.
@@ -4232,7 +4232,7 @@ and signs in. The starter still has the device code and (before I-37) could then
 label is only a speed bump because `deviceName` is client-supplied. I-37 retired the attach and
 put the explicit “Sign in on <device>?” approval before any account-bound step, for the chooser
 and for flows outside the chooser trigger alike; the chooser's choice is itself that approval. Pinned by
-`test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
+`test/surfaces/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
 
 A Deny answers `error` + `access_denied` (DENY-01), so the starter learns that the victim refused,
 never why or as whom.
@@ -4764,7 +4764,7 @@ and a per-product `deltas.lazy.enabled` setting (ST-11: a registry entry, audite
   hostile frame's memory before it is decoded.
 - **No byte work on the request path.** The report handler only upserts D1 counters for an
   opted-in product; it reads no payload, decodes nothing and enqueues nothing (asserted by
-  `test/register.test.ts` with a blob store that throws on use, and by a source check that only
+  `test/surfaces/register.test.ts` with a blob store that throws on use, and by a source check that only
   `src/deltasEntry.ts` imports the encoder). Every encode runs in the consumer, one message at a
   time (batch 1, concurrency 1), so an encode never shares an isolate with a request or with a
   second encode.
@@ -4922,7 +4922,7 @@ is no new privilege level and no outbound call.
   Deploy-time settings need the repository and the deploy token, a separate boundary. So
   origins, the privilege root, the admin IdP, security gates, key material and kid selection,
   session lengths, rate limits, retention periods and bucket names stay deploy-time, and
-  `test/platformSettings.test.ts` refuses any of those names (or a `*_SECRET`, `*_KEY*`,
+  `test/surfaces/console/platformSettings.test.ts` refuses any of those names (or a `*_SECRET`, `*_KEY*`,
   `*_TTL*`, `*_ORIGIN` or `*_PEPPER` name) in the registry.
 - **A deploy-time off survives a compromised session.** Kill switches use `ceiling` precedence:
   `[vars]` = `off`, or any string that is neither a recognised value nor `runtime` (`false`, `0`,
@@ -4971,7 +4971,7 @@ confirmation are its checks) and one definition list, so every control above app
 The registry widens what the console will eventually be able to change (the resolver and generic
 API are ST-04 and ST-05), so AT-2 is amended here: one stolen admin session must not be able to
 widen access across the platform, or make itself permanent, through a setting.
-`test/settings-registry.test.ts` runs `checkRegistry` (`settings/rules.ts`) over the real
+`test/services/license/settings-registry.test.ts` runs `checkRegistry` (`settings/rules.ts`) over the real
 composition root and refuses:
 
 - **at platform scope**, anything that names an origin, the privilege root, the admin IdP, a
@@ -5102,7 +5102,7 @@ credential and no outbound host.**
 - **`DELTA_DLQ` is a send-capable binding used only to read.** The request Worker binds the
   dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
   `metrics()`; Cloudflare offers no read-only queue binding. A source check
-  (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
+  (`test/surfaces/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
   that only `env.ts`, `core/ops/operations.ts` (which hands it straight to `queueStatus`), the
   binding-presence list and the generated platform inventory (ST-02, one data row) name it. The residual risk, accepted: code running in the request Worker
   could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
@@ -6022,7 +6022,7 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   could re-register it and inherit `attested`. A token rotation, which presents the old token,
   keeps the level.
 - **Custody.** `core/trust/attestation.ts` is the one Core file on the token-helper allowlist
-  (`test/outletCredentialReach.test.ts`, `TOKENS_IMPORT_ALLOW_FILES`): it calls `googleAccessToken`
+  (`test/core/outletCredentialReach.test.ts`, `TOKENS_IMPORT_ALLOW_FILES`): it calls `googleAccessToken`
   at the Play Integrity scope for the pinned credential, never `openOutletCredential`, and only after
   the device token and the per-device limit (`attest`, 4/hour, fail-closed) have passed, so an
   unauthenticated caller cannot make it open (and audit) a credential. Raw attestation objects and
@@ -6268,7 +6268,7 @@ wrote (docs/design/PORTAL.md G1, G5, G16).
   never by a visitor's query.
 - **The page CSP did not widen.** `img-src 'self' data:` stays; the library hands out only
   same-origin `/media/…` URLs, and only for sources the proxy would serve, so no developer host
-  learns a customer's IP or `Referer` from a library view. `test/portalLibrary.test.ts` pins the
+  learns a customer's IP or `Referer` from a library view. `test/services/identity/portalLibrary.test.ts` pins the
   proxy rules and the admin package's browser test proves the images load under the portal's
   real policy with no violation.
 - **Since HA-07** the library names Polaris Key's hosted copies on the image host and the portal's
@@ -6384,7 +6384,7 @@ no longer accepted.
   any proxy's, and no answer can take it back. A `302` to `/activate#key=…` would echo the key in
   a `Location` header (one more place to capture it) for a round trip's cost, and one that drops
   the key would break the link. The SPA's in-place rewrite gives the address bar and the history
-  entry what a redirect would. `packages/worker/test/keysOutOfLogs.test.ts` pins this.
+  entry what a redirect would. `packages/worker/test/surfaces/keysOutOfLogs.test.ts` pins this.
 - **Nothing in the Worker writes a URL down.** `src/` has no `console.*` (R12's static guard;
   `keysOutOfLogs.test.ts` also proves no console call on the deep link and on an accepted and a
   refused activation), no error reporter, and no `audit`, `portal_audit` or `license_refusals`
@@ -6518,7 +6518,7 @@ of its holder), and the platform switch (AT-2).
 - **Exactly-once, never under.** The device entry is written in the seat claim's own batch with a
   guard that reads the device row as it was before the claim (`claimDeviceSeat`'s `withClaim`):
   a lost ordinal race rolls the entry back with the seat, and of concurrent calls from one device
-  only one writes (`test/keyEntries.test.ts` races both). The accepted overshoot (I-04 Q5): calls
+  only one writes (`test/surfaces/keyEntries.test.ts` races both). The accepted overshoot (I-04 Q5): calls
   racing at the last free entry can all pass the pre-check, so `used` may end a little above
   `limit`; the next new device is refused.
 - **No new oracle on activation.** The key and the licence are resolved first, so an unknown key
@@ -6575,7 +6575,7 @@ paid for), the account (A6), and the device token (a bearer credential).
   floating licence (no email) has no buyer to protect; whoever holds its key holds it, as before.
 - **The race.** Two accounts attaching the same licence at once reach one compare-and-set
   statement: one wins, the other is answered `license_owned` and nothing else changes
-  (`test/identityAccount.test.ts` races two devices). Account deletion detaches its licences
+  (`test/surfaces/identityAccount.test.ts` races two devices). Account deletion detaches its licences
   through the existing hook.
 - **The holder is the device's sign-in, never the request.** The attach's account is the one a
   completed sign-in bound to THIS device (`devices.subject`, read from the D1 row the token
@@ -6608,7 +6608,7 @@ paid for), the account (A6), and the device token (a bearer credential).
   device only when the id holds an authorized row for that licence, which the key holder could
   have created anyway.
 - **Documents.** Attach, a sign-in binding, a sign-out and a counted entry leave every licence
-  document unchanged (`test/identityAccount.test.ts` compares them), so no install's offline
+  document unchanged (`test/surfaces/identityAccount.test.ts` compares them), so no install's offline
   grace or entitlements move.
 
 ### Portal emails: security notices and "Email me the download" (PX-W7)
@@ -6704,7 +6704,7 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
 - **The signed-in subject in a document (SP-54).** The Worker writes `profile.user` only from the
   requesting device's binding and only when it wholly matches the pattern; a malformed stored
   value writes nothing and never fails the route. The member is the subject alone: no name, email
-  or account id (`test/licenseDocUser.test.ts`). A leaked document names that subject, a
+  or account id (`test/surfaces/licenseDocUser.test.ts`). A leaked document names that subject, a
   per-product pseudonym the developer already sees on its own surfaces, beside the holder's name
   and email it already carried. A signed document cannot be recalled, so sign-out takes effect at
   the next refresh: a document issued before it keeps naming the subject until it expires, about
@@ -7105,7 +7105,7 @@ and 12 (cross-tenant correlation) are the deltas.
     only, and that customer's subject, which the Users page already shows that operator.
   - _Cross-tenant._ The route resolves a code to `{product, subject}` and then checks
     `can(product, core, view)`. A code of another product, an unknown code, a malformed one and
-    an operator without the area all answer the same `404` (`test/supportCodes.test.ts`), so it
+    an operator without the area all answer the same `404` (`test/surfaces/console/supportCodes.test.ts`), so it
     is no oracle for another tenant's customers. The Users search is an exact lookup within the
     product in the URL; the relink target accepts a code of THIS product only.
   - _Code versus subject._ The portal never shows the subject, and a lookup never returns the
@@ -7197,8 +7197,8 @@ about sessions, and an address typed into a URL.
   `/docs/help/your-data/`) written by the page, never taken from a request, on docs pages that
   need no session (`DOCS_TIERS` `public`). There is no Terms link: no Terms page exists yet.
 
-Tests: `test/brandPages.test.ts` (the card, its `form-action`, the error cards, no limit on
-views), `test/identityBinders.test.ts` (`login_hint`), `test/admin.test.ts` (the 401 marker),
+Tests: `test/surfaces/console/brandPages.test.ts` (the card, its `form-action`, the error cards, no limit on
+views), `test/surfaces/console/identityBinders.test.ts` (`login_hint`), `test/surfaces/admin.test.ts` (the 401 marker),
 `packages/admin/e2e/consoleSignin.e2e.test.ts` (Continue reaches the IdP in Chromium under the real
 policy).
 
@@ -7215,7 +7215,7 @@ operator in" was implicit in one environment variable.
 name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and `sid` only point;
   nothing in the cookie grants. A v1 body signed under the v1 tag cannot verify as v2 and the
   reverse (different signed message), so neither can be replayed as the other, and a cookie with
-  edited fields fails its MAC. `test/consoleSessionV2.test.ts` pins both.
+  edited fields fails its MAC. `test/surfaces/console/consoleSessionV2.test.ts` pins both.
 - **The live check** (`console/consoleSession.ts`, `consoleSubject` in Identity): each request
   resolves `aid` + `sid` to a live `account_sessions` row (present, unrevoked, unexpired, held by
   `aid`), an active account that is still that account (a merge or deletion removed the row the
@@ -7250,7 +7250,7 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   never carried in the cookie. Slice 2b computes the root rule on top of them (below), so a stale
   assertion no longer roots anyone.
 - **The account id stays off console bodies**: `/me` answers the member id (below), never the
-  account id (`test/consoleSessionV2.test.ts` asserts `/me` omits it).
+  account id (`test/surfaces/console/consoleSessionV2.test.ts` asserts `/me` omits it).
 - **"Open console" and "My library"** are pointers. The Locker account menu shows "Open console"
   only when `GET /api/me` answers a `console` address, which it does for an account whose console
   link's last-asserted groups carry the platform-admin group through an allowed issuer; the console
@@ -7328,10 +7328,10 @@ HMAC-SHA-256(KEY_HASH_PEPPER, "pkey/console-member-key/v1")` (`core/console/memb
   strength in ONE batch (re-enabling does not bring a cookie back, and a crash cannot leave
   strength on a disabled account); starting an erasure clears them too (the commit deletes the links).
   The 30 s status check already ended the session; this makes the link side agree.
-- **Tests:** `test/consoleStrongMethod.test.ts` (each SM row allowed and refused, nothing written
+- **Tests:** `test/surfaces/console/consoleStrongMethod.test.ts` (each SM row allowed and refused, nothing written
   on a refusal, the root rule at each condition and at the 8 h edge, `asserted_at` moving only with
   the groups, the member id, the actor alias mapping over old and new rows, merge / disable /
-  delete), `test/consoleSessionV2.test.ts`.
+  delete), `test/surfaces/console/consoleSessionV2.test.ts`.
 
 **Residual.** The 30 s window is a deliberate cost: a revoked session can serve requests for up to
 30 s in an isolate that cached it as live. The cache is per isolate, so a different isolate asks
@@ -7342,11 +7342,11 @@ button, membership as bindings (ST-31). Residual of the migration: it holds thre
 statements and an index in one file (the lead may split it into `_a`/`_b` per R11-04); a replay fails at the
 first statement and strands nothing.
 
-Slice 2a tests: `test/consoleSessionV2.test.ts` (sign-in lands on one account, cookie shape, the 30 s
+Slice 2a tests: `test/surfaces/console/consoleSessionV2.test.ts` (sign-in lands on one account, cookie shape, the 30 s
 check with a fake clock, disabled / deleted / merged / foreign-row / expired-row refusals, sign-out,
 v1 compatibility, forged and cross-tagged tokens, `consoleSubject`, `operatorIssuerAllowed`'s unset /
-empty / listed / unlisted / http cases, the Locker pointer), `test/adminSessions.test.ts`,
-`test/brandPages.test.ts` (the POST, its refusals, the retry form), `packages/admin/test/sessionEnded.test.tsx`
+empty / listed / unlisted / http cases, the Locker pointer), `test/surfaces/adminSessions.test.ts`,
+`test/surfaces/console/brandPages.test.ts` (the POST, its refusals, the retry form), `packages/admin/test/sessionEnded.test.tsx`
 (the overlay, axe), `packages/admin/e2e/consoleSignin.e2e.test.ts` and `consoleSessionEnded.e2e.test.ts`
 (Chromium under the Worker's CSP).
 
@@ -7389,7 +7389,7 @@ root rule alone.
   as Superadmin on any product. Fix: `handleApiTokenMint` answers 403 `forbidden` with reason
   `superadmin_only` unless `isSuperadmin(principal)`. Listing and revoking tokens stay `platform`
   rows (a token row carries no owner, labels and times only, and revoking only narrows). Pinned by
-  `test/rbacStoredPrincipal.test.ts` (refused with a binding, 201 for root, the bundle write
+  `test/surfaces/console/rbacStoredPrincipal.test.ts` (refused with a binding, 201 for root, the bundle write
   through the minted token unreachable). While `tokenSession` carries the root group, this check is
   the only thing between a Platform admin and root.
 - **`products:*` never covers the system product** (`can()` rule 4 is unchanged: a system product is
@@ -7398,7 +7398,7 @@ root rule alone.
   `can(platform, "platform")`, true only for Superadmin and Platform admin.
 - **Email rows never grant.** An invite row names an address, not an account, so a row whose
   `email_norm` equals the account's email grants nothing; claiming it is ST-31.8's conversion.
-- **Tests:** `test/rbacStoredPrincipal.test.ts` (narrowed areas with the refusal naming the area,
+- **Tests:** `test/surfaces/console/rbacStoredPrincipal.test.ts` (narrowed areas with the refusal naming the area,
   `products:*` and the system product, Platform admin, Console access, a stranger, root plus a
   binding, deletion on the next request and at 30 s, a disabled account, email rows, another
   account's binding, a malformed row, a v1 cookie and a token, a forged signed v1 body naming `aid` / `sid` / `root`, the
@@ -7517,7 +7517,7 @@ answers "may this member act" and not "may this member give that away".
 - **Edits.** `mayChange(granter, before, after)` is `mayRevoke(before)` and, when `isWidening`,
   `mayGrant(after)`. Checking the grant alone lets `alpha [members, ship]` rewrite
   `alpha [core, keys]` to `alpha [ship]`, dropping areas it does not hold; `mayChange` refuses it.
-- **Tests:** `test/rbacGrantRules.test.ts` (a hand-written oracle, 8 granters by every target, a
+- **Tests:** `test/core/rbacGrantRules.test.ts` (a hand-written oracle, 8 granters by every target, a
   soundness cross-check against `can()`, the named cases above); reviewer probes over 1.4M granter
   and target combinations found no widening beyond `can()`.
 
@@ -7594,7 +7594,7 @@ when it is a Superadmin, which is the point against a stolen session.
 **Revocation.** A deleted binding stops granting on the next request (the principal reads bindings
 on every request, ST-31.2); a disabled account and a cookie's 30 s live check are unchanged.
 
-**Tests:** `test/consoleBindingWrites.test.ts`; `rbacRouteMatrix` (the two new step-up rows and the
+**Tests:** `test/surfaces/console/consoleBindingWrites.test.ts`; `rbacRouteMatrix` (the two new step-up rows and the
 six rows against the eight principals), `rbacRouteAreas`, `routeCoverage`, `accountIdBoundary`.
 
 **Residual.**
@@ -7703,7 +7703,7 @@ binding anyway.
 - **Erasure** deletes invites only for the erased account's verified addresses; an address the
   account merely claimed leaves the invitee's invite alone.
 
-**Tests:** `test/consoleInvites.test.ts`; `test/consoleBindingWrites.test.ts` (the per-recipient
+**Tests:** `test/surfaces/consoleInvites.test.ts`; `test/surfaces/console/consoleBindingWrites.test.ts` (the per-recipient
 budget on G5 notices, fail-closed guarded writes); `routeCoverage`, `accountIdBoundary`, `scheduled`.
 
 ### Sign-in gate and invite conversion (ST-31.8)
@@ -7724,7 +7724,7 @@ timing difference of a few queries; and a slug the caller once held a binding fo
 product) still answers 404, which reveals only the caller's own history. The asserted address
 must be plain ASCII before it is lower-cased, as I-30 requires of platform connections.
 
-**Conversion rules** (REV-ST31-7, one test each in `test/consoleInviteConversion.test.ts`). An invite
+**Conversion rules** (REV-ST31-7, one test each in `test/surfaces/console/consoleInviteConversion.test.ts`). An invite
 converts only when all hold; a failed check leaves the invite and says nothing:
 
 1. D-g again: `granted_by` is not the converting account's member id.
@@ -7751,7 +7751,7 @@ converts only when all hold; a failed check leaves the invite and says nothing:
 verified address converts the invite (intended). At most 20 invites convert per sign-in. Conversion
 failures are silent to the caller, by design (no oracle on why).
 
-**Tests:** `test/consoleInviteConversion.test.ts`; `identityErasureFence`.
+**Tests:** `test/surfaces/console/consoleInviteConversion.test.ts`; `identityErasureFence`.
 
 ### Break-glass (ST-30c.1)
 
@@ -7772,7 +7772,7 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
   `ADMIN_FLOW_COOKIE` of the browser that started it, checked before the single-use consume, so
   another browser cannot finish it or burn it. A missing or foreign cookie is refused.
 - **No account.** It writes no `accounts`, `account_links` or `account_sessions` row and converts
-  no invite (`test/consoleBreakGlass.test.ts` pins all three at zero). The session names no `aid`
+  no invite (`test/surfaces/console/consoleBreakGlass.test.ts` pins all three at zero). The session names no `aid`
   or `sid`, so `resolvePrincipal` reads no stored binding: its only grant is the root rule,
   computed per request from the cookie's IdP groups, so removing the group from the environment
   ends the authority at the next request. Account self-service (`requireAccountSession`,
@@ -7807,7 +7807,7 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
   SameSite=Strict, host-bound, 30 days, set only by an account sign-in and never by break-glass.
   It is validated (`loginHint`) and escaped on read, a duplicate or malformed value is ignored, and
   it is only ever offered to the IdP as `login_hint`: no route reads it to admit anyone. The card
-  stays script-free and its CSP is unchanged (`test/consoleCard.test.ts`).
+  stays script-free and its CSP is unchanged (`test/surfaces/console/consoleCard.test.ts`).
 - **Residual.** Whoever holds the IdP login of a group member can open an hour of Superadmin
   authority with a fresh login. The group is deploy-time and the realm, the audit row and the
   notice are what bound and expose it.
@@ -7818,7 +7818,7 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
   or code path that sends someone to `breakGlass=1`, or that mints `issueBreakGlassSession`
   outside `breakGlassCallback`.
 
-**Tests:** `test/consoleBreakGlass.test.ts`, `test/consoleCard.test.ts`; `consoleSessionV2`, `adminSessions`,
+**Tests:** `test/surfaces/console/consoleBreakGlass.test.ts`, `test/surfaces/console/consoleCard.test.ts`; `consoleSessionV2`, `adminSessions`,
 `consoleSessionReader`, `rbacStoredPrincipal`, `rbacInvites`, `consoleInviteConversion`.
 
 ### Console passkeys: SM-3(a)/(d) and SM-4 (ST-30c.3)
@@ -7859,7 +7859,7 @@ a passkey already in the account. A passkey added in the Locker account is never
   themselves: the step-up, the audit row and the Superadmin mail are what bound and expose it. A
   Superadmin who does it receives both the account copy and the Superadmin copy.
 
-**Tests:** `test/consolePasskeys.test.ts`; `routeCoverage`, `rbacRouteAreas`, `rbacRouteMatrix`,
+**Tests:** `test/surfaces/console/consolePasskeys.test.ts`; `routeCoverage`, `rbacRouteAreas`, `rbacRouteMatrix`,
 `accountIdBoundary`, `consoleBreakGlass`, `identityPasskeys`.
 
 ### Console passkey sign-in and step-up: SM-1, SM-5 and login CSRF (ST-30c.5)
@@ -7923,7 +7923,7 @@ session from a credential that is not the console IdP.
   passkey-only member is exactly as strong as its authenticator: an admin who wants IdP-grade assurance
   keeps the console IdP as their only strong method.
 
-**Tests:** `test/consolePasskeySignin.test.ts`; `consoleSessionV2`, `consoleStrongMethod`,
+**Tests:** `test/surfaces/consolePasskeySignin.test.ts`; `consoleSessionV2`, `consoleStrongMethod`,
 `consoleTokenSubject`, `identityErasureFence`, `routeCoverage`, `boundaries`, `rateLimit`.
 
 ### Admin-scope personal tokens: the principal (ST-34.3)
@@ -7950,7 +7950,7 @@ reads no feed.
   `can()` under the holder's principal (the token adds no authority), so a holder narrowed to `ship`
   gets 403 `{area: "license"}` on the bundle mint on the next request, and a deleted binding ends the
   token's reach at once. The token routes (`/tokens`, `/account-tokens`) carry no flag, so a token
-  cannot mint or list tokens. `test/adminPersonalToken.test.ts` pins the flagged rows and that none needs
+  cannot mint or list tokens. `test/surfaces/console/adminPersonalToken.test.ts` pins the flagged rows and that none needs
   a step-up.
 - **Step-up is refused.** The session has no `stepUpAt`, so a row with `stepUp` answers 403
   `step_up_required` (and no flagged row has one; the table test fails if one gains the flag).
@@ -8021,7 +8021,7 @@ A token whose holder holds no grant cannot end itself (`current` is not a no-gra
 One account per person; a product's `identity` toggle gates only sign-in through that product
 (plans/PX-W17.md, WIRE-CONTRACT-V4 §12.8).
 
-- **Cross-product correlation (item 12), the control.** `test/accountIdBoundary.test.ts` proves
+- **Cross-product correlation (item 12), the control.** `test/surfaces/accountIdBoundary.test.ts` proves
   the I-05 rule for every developer surface PX-W17 adds or touches: no non-portal OpenAPI schema
   declares an `accountId`/`account_id` property, and with one account owning a licence in two
   products, every product-scoped console GET that shows the product, licences, devices or
@@ -8122,7 +8122,7 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   survivor, and the merged device's binding follows. Other accounts' devices on the licence are
   unaffected. Tests: `syncPrincipal.test.ts` (detach, re-add, another account, merge and the inert
   block) and `portalFloatingKeys.test.ts` (through the portal route).
-- **The registry guard** (`test/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
+- **The registry guard** (`test/surfaces/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
   `subject` column is claimed by a contributed store (`contributes.subjectStores` with `tables`) or is
   listed as Identity's own with its reason; every Durable Object class is claimed
   (`durableObjects`) or listed as not named by subject; every store has `merge`, `delete` and
@@ -8181,7 +8181,7 @@ yet. SR-1 (isolation) follows U-05.8.
   deletion beats an older value; member cells union under the later clear), and nothing is refused
   for budget or quota: a survivor left over its limits keeps everything and only later growth is
   refused (L8). Only Identity's account merge reaches it: `absorbCloudSync` is called by the store's
-  `merge` alone (`test/cloudSyncMerge.test.ts` pins the call sites), and the merge itself needs a
+  `merge` alone (`test/services/sync/cloudSyncMerge.test.ts` pins the call sites), and the merge itself needs a
   fresh proof of both accounts.
 - **Crash-safe by construction.** Export the absorbed object, absorb (one transaction; the join
   is idempotent, so a repeat or a fresher export converges and writes nothing), delete the absorbed
@@ -8243,7 +8243,7 @@ cached document or the audit log. Rows are S-17 §5.14's; the route is `services
   nothing else (`validateDeviceToken`, which refuses a licence key on shape). The principal is
   `syncAccess().subject`, from the device's sign-in binding; a key-activated device on an
   account-owned licence has none and gets `403 account_required`, with no object call and no
-  change to the licence, device or key rows (`test/cloudSyncPull.test.ts`).
+  change to the licence, device or key rows (`test/services/sync/cloudSyncPull.test.ts`).
 - **T3, a stolen token after sign-out.** The subject is read from the device row on every request,
   and again after the object answers (from a fresh row, never the one the request started with). A
   sign-out, a "sign out everywhere" or a merge that lands in between changes the answer: no
@@ -8276,7 +8276,7 @@ cached document or the audit log. Rows are S-17 §5.14's; the route is `services
 ### The Cloud Sync push: `POST /<p>/sync/ops` (U-05.13)
 
 The one Cloud Sync route that writes settings. Handler `services/sync/handlers/push.ts`, classifier
-`handlers/classify.ts`, tests `test/cloudSyncPush.test.ts`. Rows are S-17 §5.14's; S-17's table ends
+`handlers/classify.ts`, tests `test/services/sync/cloudSyncPush.test.ts`. Rows are S-17 §5.14's; S-17's table ends
 at T16, so T17 here is the plan's: a push that outlives the data it must not recreate.
 
 - **The order is the defence.** Token and principal (`401`, `400`, `403 account_required`), then
@@ -8318,7 +8318,7 @@ attestation_required` for the whole request, in the nested `wireError` shape eve
   document; a declared value is validated by the catalog's interpreter (no code generation, so it
   runs in workerd); a merge member is checked against the entry's `properties` for that member, or
   its `additionalProperties`. Keys are looked up in `Map`s, so `__proto__` is an ordinary undeclared
-  key (`test/cloudSyncPush.test.ts`). A catalog that cannot be read refuses the push with a
+  key (`test/services/sync/cloudSyncPush.test.ts`). A catalog that cannot be read refuses the push with a
   retryable `503`: a declared key is never stored as an open one.
 - **Classification is the Worker's, scope is the engine's.** `local`, `locked`, `refused` and
   non-`config` keys are `setting_not_synced`, as are a synced key under another scope and an open
@@ -8393,7 +8393,7 @@ licence values was deleted in U-27.
   non-secret overrides, and nothing of the account itself (no Cloud Sync data, no personal
   details). Account-layer secrets, and config keys the catalog flags `secret`, reach only a
   device signed in as that account. Cloud Sync code may still not call any
-  owner accessor (`test/subjectStores.test.ts`). A floating licence gets no layer, even with a
+  owner accessor (`test/surfaces/subjectStores.test.ts`). A floating licence gets no layer, even with a
   binding on the device. The owner line reads the subject without creating one, so a document GET
   writes nothing.
 - **No account id leaves.** Rows, the console route, the job's reports, the audit
@@ -8634,7 +8634,7 @@ Distribution → Storefronts → Polaris Key (`packages/admin/src/console/areas/
 PolarisKeyPanel.tsx`) over three admin routes, `GET|POST /manage/api/products/<p>/storefronts/
 polaris-key[/preview|/analytics]` (`console/handlers/polarisKeyStorefront.ts`), platform admins only,
 behind the session, CSRF and rate-limit gates of `console/api.ts` (notes/S-21 §6.6). Pinned by
-`test/polarisKeyPanel.test.ts` and the console's `test/polarisKey.test.tsx`.
+`test/surfaces/polarisKeyPanel.test.ts` and the console's `test/polarisKey.test.tsx`.
 
 - **The preview never identifies a person** (S-21 owner decision 11, the S-21 §10.2 Q12
   alternative "check an email address" rejected). Its body is closed to five fields
@@ -8706,7 +8706,7 @@ can serve the file, and a private repository's address is never handed out at al
   short.
 - **Revocation between mint and download.** Re-checked at token redemption: a licence disabled,
   expired or detached before redemption gets the redemption's `404`
-  (`test/portalLicensedDownloads.test.ts`). **Residual (accepted, Q5):** a licence revoked within
+  (`test/services/identity/portalLicensedDownloads.test.ts`). **Residual (accepted, Q5):** a licence revoked within
   the 120 s after redemption can still fetch that one file with the ticket already issued. A
   re-check on the bytes route would need an account reference in the ticket and a new Core hook;
   revisit once LX-09's holder cache makes it cheap.
@@ -8999,7 +8999,7 @@ proxy now fetches through the same guard.
   itself, and the edge dials neither IP literals nor RFC 1918 or loopback space from a Worker, so
   the remaining surface is "public hosts the operator named". **Who can name one:** manifest
   authors and product operators of that product, never an end user's request. Every pull,
-  refused or not, writes an `assets.ingest` audit row. `test/safeFetch.test.ts` runs the S-20
+  refused or not, writes an `assets.ingest` audit row. `test/core/safeFetch.test.ts` runs the S-20
   reference puller's guard table case for case and the redirect-to-a-denied-host refusal.
 - **Custom-issuer token requests.** The token POST to a product's own OIDC issuer carries its
   `client_secret`, so it goes through `core/outboundGuard.ts`: `https` only, no userinfo, no
@@ -9055,7 +9055,7 @@ Core's own: `/<p>/a/<sha256>` (an original), `/<p>/a/<sha256>/<w>.webp` (a width
 stable aliases `/<p>/icon`, `/<p>/header` and `/<p>/screenshots/<n>`, which 302 to the current
 content-addressed URL. Everything else, the console, the portal, `/docs`, discovery, every byte
 route and every registry route, is the plain not-found. No new bucket and no new secret: it reads
-the same `BLOBS` bucket under `blobs/`. Tests: `test/imgHost.test.ts`,
+the same `BLOBS` bucket under `blobs/`. Tests: `test/surfaces/imgHost.test.ts`,
 `test-workerd/imgHost.test.ts`, and `test/routeCoverage.test.ts`'s `IMG_PATHS`.
 
 **Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
@@ -9127,7 +9127,7 @@ setting, no `CUSTOMER_HOST` and no console value, so no console session can move
 source of every customer link: refusal `manageUrl` and `signInUrl`, discovery's `accountPortal` and
 `core.portal.activate`, the
 device code's `verificationUri`, the choice view's links, the identity-off card redirect, the
-licence-key and account mail links. `test/customerOrigin.test.ts` fails on a customer path literal
+licence-key and account mail links. `test/core/customerOrigin.test.ts` fails on a customer path literal
 built on any other origin.
 
 **Old-URL redirects.** On the console host, `oldCustomerUrlRedirect` (`core/customerHost.ts`)
@@ -9187,11 +9187,11 @@ and the card's `frame-ancestors 'none'` already blocks cross-origin ceremonies. 
 support ROR: a browser without it cannot use a passkey on the customer host, and
 the card offers email and the providers instead (LK-06 detects it). Accounts whose only sign-in
 method is a passkey are an O10 preflight count before the cutover. Tests:
-`test/webauthnRelatedOrigins.test.ts`, `test-workerd/passkeys.test.ts` (customer origin).
+`test/services/identity/webauthnRelatedOrigins.test.ts`, `test-workerd/passkeys.test.ts` (customer origin).
 
 Still to come, each in its own package with its own entry here: the old-URL redirects and cookie
 expiry (LK-11). The request bind hop is below.
-Tests: `test/customerHost.test.ts`, `test/customerOrigin.test.ts`, `test/routeCoverage.test.ts`
+Tests: `test/surfaces/customerHost.test.ts`, `test/core/customerOrigin.test.ts`, `test/routeCoverage.test.ts`
 (`CUSTOMER_PATHS`).
 
 ### The cross-host bind hop (LK-04)
@@ -9262,7 +9262,7 @@ Residual risk: a token read from a log or history within its 120 seconds and use
 owner does binds the attacker's browser instead of the owner's. The attacker still needs the
 owner's session to finish a sign-in, and the owner's second visit shows the `404`.
 
-Tests: `test/signInBind.test.ts`, `test/customerDevicePage.test.ts`, `test-browser/customerDeviceForm.test.ts`,
+Tests: `test/surfaces/signInBind.test.ts`, `test/surfaces/customerDevicePage.test.ts`, `test-browser/customerDeviceForm.test.ts`,
 the `locker-*` transcripts.
 
 ### The console loads product logos from the image host (console product card)
@@ -9292,7 +9292,7 @@ sandbox` (the image-host entry above).
 - A product's logo is the operator's own content; an abusive image is the residual risk the
   image-host entry already names, and HA-06's delete-a-copy removes it.
 
-Tests: `test/adminPresentation.test.ts` (the field, the one-statement list read, the shell's
+Tests: `test/surfaces/console/adminPresentation.test.ts` (the field, the one-statement list read, the shell's
 `img-src` with and without `IMG_ORIGIN`, and the origins `cspImageOrigin` refuses) and
 `test/adminCspParity.test.ts`.
 
@@ -9351,13 +9351,13 @@ own tenancy check (an image slot's stored copy, the product's `hosted-asset` ref
   three HA-07 tests switch the real setting, as the console does.
 
 Residual risk: the image host's (an operator can host an abusive image; HA-06's delete-a-copy
-removes it at the next request). Tests: `test/portalHostedArt.test.ts`,
-`test/storefrontFeeds.test.ts` ("hosted copies", golden `altstore-stable-hosted.json`),
-`test/downloadPageIcon.test.ts`, `test/listingManifestAssets.test.ts`,
-`test/listingAssetsManifestMigration.test.ts`, `test/distributionDelivery.test.ts` ("never served
+removes it at the next request). Tests: `test/services/identity/portalHostedArt.test.ts`,
+`test/services/distribution/storefrontFeeds.test.ts` ("hosted copies", golden `altstore-stable-hosted.json`),
+`test/services/distribution/downloadPageIcon.test.ts`, `test/services/distribution/listingManifestAssets.test.ts`,
+`test/core/migrations/listingAssetsManifestMigration.test.ts`, `test/surfaces/distributionDelivery.test.ts` ("never served
 by the blob route"), `test/storefront/prPlane.test.ts`, and the admin package's
 `e2e/portalMedia.e2e.test.ts` (hosted icons load under the portal's real policy; a raw GitHub
-image is still blocked). `test/portalHostedArt.test.ts` also pins the per-slot fallback: no copies
+image is still blocked). `test/services/identity/portalHostedArt.test.ts` also pins the per-slot fallback: no copies
 gives exactly the pre-HA-07 presentation and proxy, an icon copy without a header copy gives the
 hosted icon and the proxied header, and the fallback still refuses an off-allowlist source.
 
@@ -9397,7 +9397,7 @@ verifies it against its hash and caches it, so a UI kit shows the product with n
   `IMG_ORIGIN` drops the icon and keeps the rest of the member, exactly as HA-07's surfaces fall
   back.
 
-Tests: `packages/worker/test/presentation.test.ts` (emission from a listing alone, omission with
+Tests: `packages/worker/test/surfaces/presentation.test.ts` (emission from a listing alone, omission with
 nothing to show, the kill switch, an unset `IMG_ORIGIN`, an empty ladder, the fixed point
 `parsePresentation(emitted)` = emitted, and no manifest ref in the member),
 `packages/client-core/test/presentation.test.ts` (every row of `presentation-matrix.json`),
@@ -9411,7 +9411,7 @@ A link or resync now plans pulls for the manifest's asset refs (`presentation.ic
 listing's `icon`, `header` and `screenshots[]`) and sends them to the queue `pkey-assets-<env>`,
 which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/assets/hostedAssetPulls.ts`,
 `src/assetQueue.ts`, `services/release/assetSource.ts`, `console/handlers/hostedAssets.ts`; tests:
-`test/hostedAssetPulls.test.ts`.
+`test/surfaces/console/hostedAssetPulls.test.ts`.
 
 - **Who names a source, unchanged.** Only a manifest author (a push to `.pkey/` on the default
   branch, read at the pinned commit) names what is pulled. A pull runs at link, resync or the
@@ -9477,7 +9477,7 @@ which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/assets/hos
 Two more ways in to the HA-01 ingest, for files that are not on the web (notes/S-20 §6.3, owner
 decision 11), plus the console's Revert and delete-a-copy. Code: `core/assets/hostedAssetUploads.ts`,
 `console/handlers/hostedAssets.ts`, `services/distribution/listing/hostedMirror.ts`, the CLI's
-`assets.ts`; tests: `test/hostedAssetUploads.test.ts`.
+`assets.ts`; tests: `test/surfaces/hostedAssetUploads.test.ts`.
 
 - **Who can write a slot.** The console (`POST|DELETE /manage/api/products/<slug>/assets/<slot>`):
   the platform-admin session with CSRF, like every console write, audited with the session's
@@ -9550,7 +9550,7 @@ to its `locations_json`, so `serveArtifact` serves our bytes first and GitHub st
 (notes/S-20 §4.3, §6.3, §6.8, owner decision 6). Code: `services/release/mirror.ts`,
 `services/release/mirrorSwitch.ts`, the legacy download in `services/release/source.ts`,
 `src/assetQueue.ts`, `console/handlers/hostedAssets.ts`, migration `release_mirrors`; tests:
-`test/releaseMirror.test.ts`, `test-workerd/releaseMirror.test.ts`.
+`test/surfaces/console/releaseMirror.test.ts`, `test-workerd/releaseMirror.test.ts`.
 
 - **No wire change.** The signed release record carries names, roles, hashes and sizes, never
   locations (`shared-protocol/src/release.ts`), and the feed pins records by hash. Byte URLs on
@@ -9619,7 +9619,7 @@ into a repository-linked one: from then on whoever can push `.pkey/` to the repo
 branch writes everything a resync writes (catalog, tiers, profiles, sign-in provider, edge-mint
 recipes, release settings, the manifest-owned trusted publisher). That is the same authority a
 product created from its repository has, granted to an existing product. Code:
-`services/release/linkExisting.ts`; tests: `test/linkExisting.test.ts`.
+`services/release/linkExisting.ts`; tests: `test/surfaces/console/linkExisting.test.ts`.
 
 **Who can do it.** The console session with CSRF, behind the platform-admin gate, like resync. The
 repository is not trusted for its own identity: the App installation must exist on it, and its
@@ -9711,7 +9711,7 @@ profiles held, kept as long as the product's other rows (products are never hard
 run `POST /manage/api/products/link-repo?dryRun=1`, and `GET /manage/api/products/slug-check`.
 None of them writes to D1 or KV. Code: `console/handlers/github.ts`, `services/release/githubApp.ts`
 (the listing and probe half), `services/release/linkRepo.ts` (`prepareCreate`, `checkSlug`);
-tests: `test/createProbes.test.ts`.
+tests: `test/surfaces/console/createProbes.test.ts`.
 
 **Two new installation-token uses, both outside the release read path.** Neither is the R5-03
 release token, and neither goes through its sealed KV cache (R12-03):
@@ -10123,7 +10123,7 @@ closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed de
 - **Display-parameter spoofing.** The card's reads (`GET /api/signin/requests/:handle` and
   `/consent`) and `GET /api/capabilities` read no display query parameter: `appName`, `name`,
   `icon`, `developer`, `origin` and `device` are ignored, and a test pins it
-  (`packages/worker/test/passthrough.test.ts`). The origin shown is the product's registered one.
+  (`packages/worker/test/surfaces/passthrough.test.ts`). The origin shown is the product's registered one.
 - **App consent.** `GET …/consent` needs the account session and the binder. It writes nothing:
   the licence line is a dry run, and `scope_hash` (migration 0079) is written by I-08's Continue.
   `person` (the account's name and email) is shown only to that account's own browser.
@@ -10241,7 +10241,7 @@ attachments in place, with no record and no retry, while the person had been tol
   the console reads as a row Polaris Key wrote), name, address and summary. The statement is one
   `UPDATE` that searches `idx_audit_time` by product and runs ahead of the deletes that remove
   the links it reads, so it commits with the erasure or not at all. Tests:
-  `test/accountErasure.test.ts`, `test/portalDiscover.test.ts`.
+  `test/surfaces/accountErasure.test.ts`, `test/services/identity/portalDiscover.test.ts`.
 - **A join cannot cancel or broaden a request.** `mergeAccounts` refuses (`deletion_pending`,
   shown to the person as `forbidden` with `reason: unavailable`) while either account has a row in
   `account_deletions`, claimed or not. Absorbing the scheduled account used to cascade its
@@ -10251,8 +10251,8 @@ attachments in place, with no record and no retry, while the person had been tol
   NOT NULL column aborts it), so a request scheduled in between aborts the join and survives. The
   person cancels the request, then joins. An undo never moves a request: one the survivor
   schedules inside the 72 hours stays on the survivor, and the restored account starts with none.
-  Tests: `test/accounts.test.ts`, `test/portalLinkAccounts.test.ts`,
-  `test/identityCardGate.test.ts`.
+  Tests: `test/surfaces/accounts.test.ts`, `test/services/identity/portalLinkAccounts.test.ts`,
+  `test/services/identity/identityCardGate.test.ts`.
 - **Resume and detection.** Both cron ticks run `sweepErasures`, which also adopts any
   `status = 'deleted'` account without a progress row (left by a Worker before this change). The
   nightly tick fails the `erasures` step, shown on the Operations page, while an erasure has
@@ -10325,7 +10325,7 @@ Account → Profile and the pictures behind it (PORTAL.md §4.30, G32, G33):
 `services/identity/card/avatars.ts`, `card/profile.ts`, `portal/profile.ts`; routes
 `GET /media/avatar/<asset>`, `GET|PATCH /api/me/profile`, `POST /api/me/profile/picture` and the
 gate's `GET /api/signin/confirm-email/picture`; table `account_avatars`; tests
-`test/identityCardProfile.test.ts`, `test/portalProfile.test.ts`, `test-workerd/avatars.test.ts`
+`test/services/identity/identityCardProfile.test.ts`, `test/services/identity/portalProfile.test.ts`, `test-workerd/avatars.test.ts`
 and the console's `e2e/portalAvatar.e2e.test.ts`.
 
 - **SSRF on the provider fetch.** There is one outbound fetcher, `core/safeFetch.ts` (HA-01's
@@ -10663,7 +10663,7 @@ privacyUrl}` with https URLs reads as unset, and an unreadable store fails the s
 plans/I-08.md §6, WIRE-CONTRACT-V4 §12.4 and §12.5. An app sends a person's browser to
 `GET /<p>/identity/authorize`, the card asks them (Continue, Cancel), and the app redeems the code
 at `POST /<p>/identity/token` for a device token. One row per threat; tests are in
-`test/identityAuthorize.test.ts` and the transcripts `redirect-web-*.json`.
+`test/surfaces/identityAuthorize.test.ts` and the transcripts `redirect-web-*.json`.
 
 - **Code interception and replay (PKCE, RFC 7636 / 9700).** The code is useless without the
   verifier: `S256` is the only method (`plain` and an absent method are `invalid_request`), the
@@ -10729,7 +10729,7 @@ at `POST /<p>/identity/token` for a device token. One row per threat; tests are 
 plans/I-08.md D2, D5, plans/I-04.md §B, §F.3, §G, plans/I-27.md §2.2, WIRE-CONTRACT-V4 §12.4.1 and
 §12.5.1. The account's licences for the product are listed on the card, or in the app through a
 pending sign-in grant; the person replaces a device, enters a key, or gets the first automatic
-licence. Tests are in `test/identityChoice.test.ts` and the transcripts `redirect-web-choose*.json`
+licence. Tests are in `test/surfaces/identityChoice.test.ts` and the transcripts `redirect-web-choose*.json`
 and `choice-*.json`.
 
 - **The grant (a capability to read and finish a sign-in).** `sg_` and 32 random bytes; only a
@@ -10802,7 +10802,7 @@ operator session, a stolen session, and a hostile issuer an operator is talked i
 - **Secrets.** A client secret goes in once, is sealed under PLATFORM_KEK with
   `connectionSecretContext(id)`, and is never read back: views carry `hasSecret`, the audit rows
   carry the same boolean, and a test's draft secret is sealed to its flow and lives only in the
-  single-use store for ten minutes. `test/connectionsAdmin.test.ts` greps responses, rows and
+  single-use store for ten minutes. `test/surfaces/console/connectionsAdmin.test.ts` greps responses, rows and
   audit text for the plaintext.
 - **Issuers (SSRF).** `isSafeIssuerUrl` plus no port; discovery runs through the one gated fetch
   (https, the issuer's host and a `jwks_uri` host only, no redirect, capped, timed out), and a
@@ -11688,7 +11688,7 @@ the commerce bridge (P6-01) gains a store, a writer of `license_store_grants` ot
 record naming the caller's binding, or a sandbox path open by default;
 a new product-secret usage or sealed kind is introduced (it must say which paths may open it,
 and that no manifest can grant it); an outlet-credential kind is added, or a file is added to an
-allowlist in `test/outletCredentialReach.test.ts` (it must say why that file needs a store
+allowlist in `test/core/outletCredentialReach.test.ts` (it must say why that file needs a store
 credential, and the open must stay audited); a Play caller opens an edit without the package's edit lease, a request is sent outside
 the Play gate other than `discardEdit`, or a caller asserts `PLAY_EDIT_SCOPE.rolloutControl` outside
 P5-03's controls (A-18e); a change is made to any
@@ -11718,7 +11718,7 @@ package feeds (F-03), a package version becomes deletable or republishable, a fe
 outside its namespace or proxies an upstream, a package release gains a signed record or reaches a
 device-facing route, the Worker starts unpacking a package, or anything but the platform bootstrap
 creates the system product; a feed adapter is added to `FEED_ADAPTERS`, declares
-`capabilities.delete` or a non-`feedRoute` route, or a check of `test/feedAdapters.test.ts` is
+`capabilities.delete` or a non-`feedRoute` route, or a check of `test/surfaces/feedAdapters.test.ts` is
 relaxed; the render drain starts answering a request, reading Release outside the
 `releaseCatalog` hook or writing outside `registry/`; or, for
 content-key delegation (P4-19), `DELEGABLE_PACK_TYPES` or `DATA_ONLY_EXTENSIONS` grows, a delegation
@@ -11792,10 +11792,10 @@ tier (`SEARCH_BUNDLES`, built by `packages/docs/scripts/build-search-bundles.ts`
 tier's pages and those below it, so no bundle carries text its reader may not open, and a test
 reads every fragment of every bundle and fails on a page above the bundle's tier. Gated pages are
 `noindex` and out of the sitemap. The gate runs before anything is fetched. Tests:
-`test/docsGateBypass.test.ts` walks every file in the assembled tree through encoded, cased,
+`test/surfaces/docsGateBypass.test.ts` walks every file in the assembled tree through encoded, cased,
 doubled-slash, traversal, HEAD and Range variants: a gated file is denied anonymously by every
 route, a public one is served at `/docs` only, and with an admin session every file is served at
-`/docs` only; `test/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES` and
+`/docs` only; `test/surfaces/docsGate.test.ts` pins the tier table to the docs site's `TIER_PREFIXES` and
 the bundle directories to the build's. The docs `check:links` adds the tier rule: a public page's
 content links only to public pages (existing exceptions are held in `link-tier-debt.json`, which
 only shrinks).
@@ -11810,7 +11810,7 @@ module is a same-origin file the build produced. It is on the docs pages' policy
 pages load it: `collect-docs-tiers.ts` writes those into `docsTiers.generated.ts`
 (`DOCS_ASSET_TIERS`, the lowest tier among the pages and files that name it), and `docsTierOf`
 serves them at that tier. A moved-page redirect page is served at its target's tier
-(`DOCS_REDIRECT_TIERS`), so an old Help link reaches Help. `test/docsTiersParity.test.ts` pins both
+(`DOCS_REDIRECT_TIERS`), so an old Help link reaches Help. `test/surfaces/docsTiersParity.test.ts` pins both
 tables to the built site. The access page carries the wanted page as `returnTo`, which the Worker
 puts on the Sign in link only after `sanitizeReturnTo` (a hand-made value falls back to the plain
 link); a signed-in reader without the admin area gets the access page's admin wording under a 403.

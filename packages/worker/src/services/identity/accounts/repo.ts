@@ -195,7 +195,7 @@ export { verifiedAccountEmails };
  * one), then any other account in id order. INTERNAL: for the licence association only (LX-26);
  * nothing about it reaches a developer. The same two sources as `verifiedAccountEmails` (a link
  * whose email is verified, a verified primary email), read the other way; only active accounts
- * answer. Keep the two in step (`test/licenseHolders.test.ts` pins that they agree).
+ * answer. Keep the two in step (`test/surfaces/console/licenseHolders.test.ts` pins that they agree).
  */
 export async function accountsVerifyingEmail(
   db: Db,

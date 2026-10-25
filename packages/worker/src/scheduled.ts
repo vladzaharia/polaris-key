@@ -584,7 +584,7 @@ export async function runScheduledMaintenance(
  * The two cron triggers in `wrangler.toml` (`[triggers] crons`). `handleScheduled` dispatches on
  * `event.cron`: the connector cron runs the store-connector poll (P5-02), anything else the
  * nightly maintenance sweep — so an unknown trigger can only ever cause maintenance, which is
- * idempotent, never an unplanned burst of store API calls. `test/scheduled.test.ts` asserts the
+ * idempotent, never an unplanned burst of store API calls. `test/surfaces/scheduled.test.ts` asserts the
  * two constants are exactly `wrangler.toml`'s list.
  */
 export const MAINTENANCE_CRON = "17 3 * * *";

@@ -8,7 +8,7 @@
  * may still show it as "Default".
  *
  * This file is the one place that knows. Every reader that hands a tier to the old limits chain, or
- * puts a tier in front of a device or a customer, goes through it (`test/implicitTier.test.ts`
+ * puts a tier in front of a device or a customer, goes through it (`test/surfaces/implicitTier.test.ts`
  * scans for strays).
  */
 import type { Db } from "../../db/types.js";
@@ -68,7 +68,7 @@ export async function customerTierId(
  * product's implicit Default tier, else `null`: release N only, for a product the
  * `license.limits-materialise` job has not seeded yet (the old chain treats NULL and the implicit
  * tier alike, so nothing changes either way). Every `INSERT INTO licenses` goes through it
- * (`test/issueTier.test.ts` scans for strays).
+ * (`test/surfaces/console/issueTier.test.ts` scans for strays).
  */
 export async function issueTierFor(
   db: Db,

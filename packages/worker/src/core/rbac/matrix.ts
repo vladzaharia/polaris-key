@@ -1,7 +1,7 @@
 /**
  * The role x area matrix (ST-31.10): the rows behind the console's Roles tab and the docs page
  * `reference/roles`. Data only; `tools/gen-roles-matrix.ts` renders both from it, and
- * `test/rolesMatrix.test.ts` proves every cell against `can()` over one synthetic principal per
+ * `test/surfaces/rolesMatrix.test.ts` proves every cell against `can()` over one synthetic principal per
  * role, so a rule that changes in `can.ts` fails here until the matrix follows.
  *
  * A cell is one of three things:

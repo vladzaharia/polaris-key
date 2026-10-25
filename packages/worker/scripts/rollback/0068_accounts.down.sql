@@ -21,7 +21,7 @@
 -- Every statement is idempotent (`INSERT OR IGNORE`, one guarded `UPDATE`), so a second run is a no-op. It leaves the
 -- I-05 tables and columns in place (dropping them is not needed for the old Worker, and keeping
 -- them lets a roll-forward pick up where it stopped). It is exercised by
--- test/accountsMigration.test.ts.
+-- test/core/migrations/accountsMigration.test.ts.
 
 -- Accounts created by the I-05 Worker.
 INSERT OR IGNORE INTO portal_accounts (id, status, display_name, primary_email, created_at, modified_at)

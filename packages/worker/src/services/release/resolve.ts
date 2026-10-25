@@ -31,7 +31,7 @@
  * device-facing enforces them until the signed feed (P3-03).
  *
  * The core (`resolveCandidates`) is PURE — rows in, a decision out — and is table-tested on
- * fixtures (`test/resolve.test.ts`). `resolveBuild` is the D1 shell around it.
+ * fixtures (`test/services/release/resolve.test.ts`). `resolveBuild` is the D1 shell around it.
  */
 
 import type { LinearPattern } from "@polaris-key/catalog";

@@ -10,7 +10,7 @@
 --
 -- Mechanics are exactly 0018's (read its header): DELETE then INSERT, so a replay reaches the same
 -- end state, and a short count aborts the INSERT on `required_indexes_are_missing`. The runtime
--- counterpart is `REQUIRED_INDEXES` in `src/scheduled.ts`; test/scheduled.test.ts asserts it names
+-- counterpart is `REQUIRED_INDEXES` in `src/scheduled.ts`; test/surfaces/scheduled.test.ts asserts it names
 -- the same set as the NEWEST `*_index_assertion.sql`, which is this file until a later package adds
 -- another. It is a new file rather than an edit to 0129_b for the reason 0129_b gives. The "_b"
 -- sorts it after `0141_a_portal_contract_purge.sql`.

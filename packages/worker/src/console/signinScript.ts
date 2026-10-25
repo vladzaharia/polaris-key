@@ -10,7 +10,7 @@
  * plain form it was.
  *
  * The CSP names this source by hash (`SIGNIN_SCRIPT_HASH`), never `'unsafe-inline'`. The hash is a
- * literal so a change to the source cannot silently re-allow itself: `test/consoleCard.test.ts`
+ * literal so a change to the source cannot silently re-allow itself: `test/surfaces/console/consoleCard.test.ts`
  * recomputes it from `SIGNIN_SCRIPT` and from the served page, and fails on any difference. To
  * update after an edit, run the sha256 of `SIGNIN_SCRIPT` (base64) and paste it below.
  *
@@ -97,6 +97,6 @@ box.hidden=false;
 if(email&&!stepUp&&typeof pk.isConditionalMediationAvailable==="function")pk.isConditionalMediationAvailable().then(function(ok){condOK=ok===true;arm()},function(){})
 })();`;
 
-/** `'sha256-…'` of `SIGNIN_SCRIPT` as the CSP names it; pinned by `test/consoleCard.test.ts`. */
+/** `'sha256-…'` of `SIGNIN_SCRIPT` as the CSP names it; pinned by `test/surfaces/console/consoleCard.test.ts`. */
 export const SIGNIN_SCRIPT_HASH =
   "'sha256-4szpK1kVqxpZ38+0S242KDV0DBmNMt6TcruG4RXRww4='";

@@ -94,7 +94,7 @@ The manifest validator does not yet bound `licensing.defaultMaxOfflineDays`, so 
 lands, run the check again after a resync that changes the default.
 
 `--local [--persist-to DIR]` runs the same check against a local D1 (miniflare), which is how
-`packages/worker/test/checkRepresentable.test.ts` exercises it.
+`packages/worker/test/core/checkRepresentable.test.ts` exercises it.
 
 CI deploy:
 

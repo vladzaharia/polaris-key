@@ -179,7 +179,7 @@ paths:
               schema: { $ref: "#/components/schemas/DiscoveryDocument" }
               examples:
                 allFiveEnabled:
-                  summary: A product running every service (test/surfaces.test.ts)
+                  summary: A product running every service (test/surfaces/surfaces.test.ts)
                   value:
                     version: 2
                     protocolVersion: 4
@@ -469,7 +469,7 @@ paths:
               schema: { $ref: "#/components/schemas/DeviceRoster" }
               examples:
                 singleSeat:
-                  summary: One activated device (test/licensing.test.ts)
+                  summary: One activated device (test/surfaces/licensing.test.ts)
                   value:
                     currentDeviceId: dev-1
                     devices:
@@ -585,7 +585,7 @@ paths:
             schema: { $ref: "#/components/schemas/DeviceRenameRequest" }
             examples:
               rename:
-                summary: Set a label (test/licensing.test.ts)
+                summary: Set a label (test/surfaces/licensing.test.ts)
                 value: { label: Studio Mac }
               clear:
                 summary: Clear the label
@@ -598,7 +598,7 @@ paths:
               schema: { $ref: "#/components/schemas/DeviceUpdateResult" }
               examples:
                 renamed:
-                  summary: test/licensing.test.ts
+                  summary: test/surfaces/licensing.test.ts
                   value:
                     ok: true
                     device:
@@ -730,7 +730,7 @@ paths:
             schema: { $ref: "#/components/schemas/FactsReport" }
             examples:
               snapshot:
-                summary: A full snapshot with one declared probe (test/fingerprintActivation.test.ts)
+                summary: A full snapshot with one declared probe (test/services/license/fingerprintActivation.test.ts)
                 value:
                   os:
                     {
@@ -746,7 +746,7 @@ paths:
                   probes:
                     rekordbox: { present: true, version: 7.0.1 }
               passthrough:
-                summary: Pass-through keys kept verbatim (test/licensingEdge.test.ts)
+                summary: Pass-through keys kept verbatim (test/services/license/licensingEdge.test.ts)
                 value:
                   appVersion: 1.2.3
                   platform: darwin
@@ -754,7 +754,7 @@ paths:
                   entitlements: { beta: true }
                   gate: { licensed: true }
               engine:
-                summary: A Godot game's engine facts and outlet (test/licensingEdge.test.ts)
+                summary: A Godot game's engine facts and outlet (test/services/license/licensingEdge.test.ts)
                 value:
                   os: { name: darwin, version: "15.1", kernel: macOS }
                   runtime: { name: godot, version: 4.7.2.stable.official }
@@ -777,7 +777,7 @@ paths:
                   config: {}
                   entitlements: {}
               updates:
-                summary: Update outcome events (test/updateHealth.test.ts)
+                summary: Update outcome events (test/core/updateHealth.test.ts)
                 value:
                   appVersion: 1.4.0
                   outlet: direct
@@ -872,7 +872,7 @@ paths:
             schema: { $ref: "#/components/schemas/FingerprintEnvelope" }
             examples:
               anchorOnly:
-                summary: A single anchor component (test/register.test.ts)
+                summary: A single anchor component (test/surfaces/register.test.ts)
                 value:
                   fingerprint:
                     components: { machineUuid: uuidxxxxxxxxxxxxxxxxxx }
@@ -884,7 +884,7 @@ paths:
               schema: { $ref: "#/components/schemas/RegistrationResult" }
               examples:
                 minted:
-                  summary: test/register.test.ts
+                  summary: test/surfaces/register.test.ts
                   value:
                     token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
                     deviceId: 6Yl0uQ2xZk8LqR8nT0sYp2vcEgHj6Bf3
@@ -907,7 +907,7 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
                 closed:
-                  summary: The single body for all four causes (test/register.test.ts)
+                  summary: The single body for all four causes (test/surfaces/register.test.ts)
                   value: { error: { code: registration_closed } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
@@ -958,7 +958,7 @@ paths:
               schema: { $ref: "#/components/schemas/AttestChallenge" }
               examples:
                 issued:
-                  summary: test/attest.test.ts
+                  summary: test/surfaces/attest.test.ts
                   value:
                     challenge: q1Wm2dS7oP0b9xYzA4cVfGhJkLnR3tU6wE8iQ5rT2yU
                     requestHash: Hs3n0bM2cV5xZ8aQ1wE4rT7yU0iO3pL6kJ9hG2fD5sA
@@ -1001,7 +1001,7 @@ paths:
             schema: { $ref: "#/components/schemas/AttestRequest" }
             examples:
               playIntegrity:
-                summary: test/attest.test.ts
+                summary: test/surfaces/attest.test.ts
                 value:
                   kind: play-integrity
                   token: eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.example
@@ -1014,7 +1014,7 @@ paths:
               schema: { $ref: "#/components/schemas/AttestResult" }
               examples:
                 attested:
-                  summary: test/attest.test.ts
+                  summary: test/surfaces/attest.test.ts
                   value:
                     {
                       trustLevel: attested,
@@ -1221,7 +1221,7 @@ paths:
             schema: { $ref: "#/components/schemas/FingerprintEnvelope" }
             examples:
               fullFingerprint:
-                summary: All seven components (test/fingerprintActivation.test.ts)
+                summary: All seven components (test/services/license/fingerprintActivation.test.ts)
                 value:
                   fingerprint:
                     components:
@@ -1246,7 +1246,7 @@ paths:
               schema: { $ref: "#/components/schemas/ActivationResult" }
               examples:
                 activated:
-                  summary: test/licensing.test.ts
+                  summary: test/surfaces/licensing.test.ts
                   value:
                     token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
                     schemaVersion: 7
@@ -1303,7 +1303,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 keyEntryLimit:
-                  summary: test/keyEntries.test.ts
+                  summary: test/surfaces/keyEntries.test.ts
                   value:
                     {
                       error: key_entry_limit,
@@ -1312,7 +1312,7 @@ paths:
                       keyEntries: { used: 2, limit: 2 },
                     }
                 licenseOwned:
-                  summary: test/identityAccount.test.ts
+                  summary: test/surfaces/identityAccount.test.ts
                   value:
                     {
                       error: license_owned,
@@ -1320,7 +1320,7 @@ paths:
                       signInUrl: "https://key.plrs.im/signin?product=djdl",
                     }
                 deviceLimit:
-                  summary: test/manageUrl.test.ts
+                  summary: test/surfaces/manageUrl.test.ts
                   value:
                     {
                       error: device_limit,
@@ -1330,7 +1330,7 @@ paths:
                       manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64",
                     }
                 fingerprintRequired:
-                  summary: test/fingerprintActivation.test.ts
+                  summary: test/services/license/fingerprintActivation.test.ts
                   value:
                     {
                       error: fingerprint_required,
@@ -1346,7 +1346,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 hardwareMismatch:
-                  summary: test/fingerprintActivation.test.ts
+                  summary: test/services/license/fingerprintActivation.test.ts
                   value:
                     error: hardware_mismatch
                     message: hardware changed; re-activation required
@@ -1422,7 +1422,7 @@ paths:
             schema: { $ref: "#/components/schemas/FingerprintEnvelope" }
             examples:
               machineA:
-                summary: The anchor plus two more (test/enroll.test.ts)
+                summary: The anchor plus two more (test/surfaces/enroll.test.ts)
                 value:
                   fingerprint:
                     components:
@@ -1437,7 +1437,7 @@ paths:
               schema: { $ref: "#/components/schemas/ActivationResult" }
               examples:
                 enrolled:
-                  summary: test/enroll.test.ts
+                  summary: test/surfaces/enroll.test.ts
                   value:
                     token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
                     schemaVersion: 1
@@ -1486,7 +1486,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 noFingerprint:
-                  summary: test/enroll.test.ts
+                  summary: test/surfaces/enroll.test.ts
                   value:
                     {
                       error: fingerprint_required,
@@ -1513,7 +1513,7 @@ paths:
                       message: "this machine's free license has been disabled",
                     }
                 deviceLimit:
-                  summary: test/enroll.test.ts
+                  summary: test/surfaces/enroll.test.ts
                   value:
                     {
                       error: device_limit,
@@ -1532,7 +1532,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 disabled:
-                  summary: test/enroll.test.ts
+                  summary: test/surfaces/enroll.test.ts
                   value:
                     { error: enroll_disabled, message: enrollment is disabled }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
@@ -1616,7 +1616,7 @@ paths:
               schema: { $ref: "#/components/schemas/TokenResult" }
               examples:
                 rotated:
-                  summary: test/licensingEdge.test.ts — the value differs from the old token
+                  summary: test/services/license/licensingEdge.test.ts — the value differs from the old token
                   value:
                     token: pkeyt_QdNwXr7uKmA1sVe9tYoZk8LqR8nT0sYp2vcEgHj6Bf3
                     schemaVersion: 7
@@ -1673,7 +1673,7 @@ paths:
               schema: { $ref: "#/components/schemas/OkResult" }
               examples:
                 done:
-                  summary: test/licensingEdge.test.ts
+                  summary: test/services/license/licensingEdge.test.ts
                   value: { ok: true }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
@@ -1747,12 +1747,12 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
                 versionTooOld:
-                  summary: test/licensing.test.ts — the exact-equality assertion
+                  summary: test/surfaces/licensing.test.ts — the exact-equality assertion
                   value:
                     error: { code: version_blocked, reason: version-too-old }
                     allowedRange: { min: "2.0.0", max: "99.0.0" }
                 versionTooNew:
-                  summary: test/licensing.test.ts
+                  summary: test/surfaces/licensing.test.ts
                   value:
                     error: { code: version_blocked, reason: version-too-new }
                     allowedRange: { max: "2.0.0" }
@@ -1852,7 +1852,7 @@ paths:
               examples:
                 unauthorized: { value: { error: { code: unauthorized } } }
                 licenseUnusable:
-                  summary: test/serviceRoutes.test.ts — the exact-equality assertion
+                  summary: test/surfaces/serviceRoutes.test.ts — the exact-equality assertion
                   value:
                     error: { code: license_unusable }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
@@ -1911,7 +1911,7 @@ paths:
               schema: { $ref: "#/components/schemas/ProductCatalog" }
               examples:
                 oneEntry:
-                  summary: test/serviceRoutes.test.ts
+                  summary: test/surfaces/serviceRoutes.test.ts
                   value:
                     schemaVersion: 3
                     entries:
@@ -2009,7 +2009,7 @@ paths:
               schema: { $ref: "#/components/schemas/MintedToken" }
               examples:
                 musicKit:
-                  summary: test/edgeMint.test.ts — an ES256 developer token
+                  summary: test/surfaces/edgeMint.test.ts — an ES256 developer token
                   value:
                     token: eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IktJRDEyMyJ9.eyJpc3MiOiJURUFNSUQxMjMiLCJpYXQiOjE3NTYyNTI4MDAsImV4cCI6MTc1NjI1NjQwMH0.c2ln
                     expiresAt: 1756256400
@@ -2083,7 +2083,7 @@ paths:
               schema: { $ref: "#/components/schemas/MintedToken" }
               examples:
                 minted:
-                  summary: test/surfaces.test.ts — the recipe's `aud` wins over the template's
+                  summary: test/surfaces/surfaces.test.ts — the recipe's `aud` wins over the template's
                   value:
                     token: eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IktJRDEyMyJ9.eyJhdWQiOiJtdXNpYy5hcHBsZS5jb20ifQ.c2ln
                     expiresAt: 1756256400
@@ -2154,7 +2154,7 @@ paths:
               schema: { type: string }
               examples:
                 page:
-                  summary: test/edgeMint.test.ts
+                  summary: test/surfaces/edgeMint.test.ts
                   value: "<!doctype html><meta charset=utf-8><title>Sign in</title><p>Authorize this app.</p>"
         "404":
           description: No recipe, or the recipe declares no auth page — LEGACY FLAT.
@@ -2191,7 +2191,7 @@ paths:
               schema: { $ref: "#/components/schemas/Changelog" }
               examples:
                 twoReleases:
-                  summary: test/release.test.ts
+                  summary: test/surfaces/release.test.ts
                   value:
                     entries:
                       - version: 1.1.0
@@ -2247,7 +2247,7 @@ paths:
               schema: { type: string }
               examples:
                 script:
-                  summary: The two lines test/release.test.ts pins
+                  summary: The two lines test/surfaces/release.test.ts pins
                   value: |
                     CLI_BASE='/djdl/release/dl'
                     URL="$ORIGIN$CLI_BASE/$VERSION/djdl-$ARCH"
@@ -2373,12 +2373,12 @@ paths:
                   - { $ref: "#/components/schemas/WireError" }
               examples:
                 licensedModeFlat:
-                  summary: "`authenticated` / `licensed` — test/release.test.ts"
+                  summary: "`authenticated` / `licensed` — test/surfaces/release.test.ts"
                   value:
                     error: download_auth_required
                     message: a valid license is required to download this release artifact
                 entitledModeNested:
-                  summary: "`entitled` — test/updateFeed.test.ts"
+                  summary: "`entitled` — test/surfaces/updateFeed.test.ts"
                   value: { error: { code: unauthorized } }
         "403": { $ref: "#/components/responses/ReleaseForbidden" }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
@@ -2487,7 +2487,7 @@ paths:
               schema: { type: string, pattern: "^[0-9a-f]{64}\\n$" }
               examples:
                 checksum:
-                  summary: "?checksum=sha256 (test/releaseBytes.test.ts)"
+                  summary: "?checksum=sha256 (test/surfaces/releaseBytes.test.ts)"
                   value: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08\n"
         "206":
           description: Partial content for a `Range` request.
@@ -2512,7 +2512,7 @@ paths:
                   - { $ref: "#/components/schemas/WireError" }
               examples:
                 licensedModeFlat:
-                  summary: "`authenticated` / `licensed` — test/releaseBytes.test.ts"
+                  summary: "`authenticated` / `licensed` — test/surfaces/releaseBytes.test.ts"
                   value:
                     error: download_auth_required
                     message: a valid license is required to download this release artifact
@@ -2713,10 +2713,10 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
                 notEntitled:
-                  summary: test/packTransports.test.ts
+                  summary: test/surfaces/packTransports.test.ts
                   value: { error: { code: not_entitled } }
                 deliveryGateMissing:
-                  summary: test/packTransports.test.ts
+                  summary: test/surfaces/packTransports.test.ts
                   value:
                     error: { code: delivery_gate_missing }
                     message: "djdl.core3d's delivery access is entitled, but it has no gate; an operator sets one (or a looser mode) under Distribution → Access."
@@ -3002,7 +3002,7 @@ paths:
                       updatedBy: { type: string }
               examples:
                 started:
-                  summary: test/distributionRollouts.test.ts
+                  summary: test/surfaces/console/distributionRollouts.test.ts
                   value:
                     ok: true
                     rollout:
@@ -3096,7 +3096,7 @@ paths:
                       updatedBy: { type: string }
               examples:
                 started:
-                  summary: test/distributionRollouts.test.ts
+                  summary: test/surfaces/console/distributionRollouts.test.ts
                   value:
                     ok: true
                     rollout:
@@ -3190,7 +3190,7 @@ paths:
                       updatedBy: { type: string }
               examples:
                 started:
-                  summary: test/distributionRollouts.test.ts
+                  summary: test/surfaces/console/distributionRollouts.test.ts
                   value:
                     ok: true
                     rollout:
@@ -3284,7 +3284,7 @@ paths:
                       updatedBy: { type: string }
               examples:
                 started:
-                  summary: test/distributionRollouts.test.ts
+                  summary: test/surfaces/console/distributionRollouts.test.ts
                   value:
                     ok: true
                     rollout:
@@ -3378,7 +3378,7 @@ paths:
                       updatedBy: { type: string }
               examples:
                 started:
-                  summary: test/distributionRollouts.test.ts
+                  summary: test/surfaces/console/distributionRollouts.test.ts
                   value:
                     ok: true
                     rollout:
@@ -3704,7 +3704,7 @@ paths:
                       flagged: { type: boolean }
               examples:
                 availability:
-                  summary: test/distributionAvailability.test.ts
+                  summary: test/surfaces/console/distributionAvailability.test.ts
                   value:
                     ok: true
                     type: availability
@@ -3722,7 +3722,7 @@ paths:
                       derived: false
                       updatedAt: 1700000000
                 keyMismatch:
-                  summary: test/distributionAvailability.test.ts
+                  summary: test/surfaces/console/distributionAvailability.test.ts
                   value:
                     ok: true
                     type: key
@@ -4052,7 +4052,7 @@ paths:
                           items: {}
             examples:
               eventAlert:
-                summary: test/sentry.test.ts
+                summary: test/surfaces/console/sentry.test.ts
                 value:
                   action: triggered
                   data:
@@ -4149,7 +4149,7 @@ paths:
                         deliverable: { type: string }
               examples:
                 binding:
-                  summary: test/commerce.test.ts
+                  summary: test/services/commerce/commerce.test.ts
                   value:
                     bindingId: 6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b
                     products:
@@ -4241,7 +4241,7 @@ paths:
                     dlcAppId: { type: string, pattern: "^[1-9][0-9]{0,9}$" }
             examples:
               steam:
-                summary: test/commerce.test.ts
+                summary: test/services/commerce/commerce.test.ts
                 value:
                   {
                     store: steam,
@@ -4277,7 +4277,7 @@ paths:
                   changed: { type: boolean }
               examples:
                 granted:
-                  summary: test/commerce.test.ts
+                  summary: test/services/commerce/commerce.test.ts
                   value:
                     {
                       ok: true,
@@ -5177,7 +5177,7 @@ paths:
                   packSets: { $ref: "#/components/schemas/PackSetsOutcome" }
               examples:
                 yanked:
-                  summary: test/releasePolicy.test.ts
+                  summary: test/services/release/releasePolicy.test.ts
                   value:
                     ok: true
                     yank:
@@ -5350,7 +5350,7 @@ paths:
                       does).
               examples:
                 dryRun:
-                  summary: test/feedPrune.test.ts
+                  summary: test/surfaces/feedPrune.test.ts
                   value:
                     ok: true
                     product: acme
@@ -5441,7 +5441,7 @@ paths:
                   scopes: { type: array, items: { type: string } }
               examples:
                 issued:
-                  summary: test/publishRoutes.test.ts
+                  summary: test/surfaces/console/publishRoutes.test.ts
                   value:
                     token: pkeyci_Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG8
                     expiresAt: 1700001800
@@ -6123,7 +6123,7 @@ paths:
                                 after: { type: [string, "null"] }
               examples:
                 created:
-                  summary: test/publishRoutes.test.ts
+                  summary: test/surfaces/console/publishRoutes.test.ts
                   value:
                     {
                       ok: true,
@@ -6244,7 +6244,7 @@ paths:
               schema: { type: string }
               examples:
                 stable:
-                  summary: test/updateFeed.test.ts (inline snapshot, trimmed)
+                  summary: test/surfaces/updateFeed.test.ts (inline snapshot, trimmed)
                   value: |
                     <?xml version="1.0" encoding="utf-8"?>
                     <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -6305,7 +6305,7 @@ paths:
               schema: { type: string }
               examples:
                 beta:
-                  summary: x86_64 enclosure, channel-titled (test/updateFeed.test.ts)
+                  summary: x86_64 enclosure, channel-titled (test/surfaces/updateFeed.test.ts)
                   value: |
                     <?xml version="1.0" encoding="utf-8"?>
                     <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -6763,7 +6763,7 @@ paths:
               schema: { $ref: "#/components/schemas/VersionCheck" }
               examples:
                 latest:
-                  summary: test/release.test.ts
+                  summary: test/surfaces/release.test.ts
                   value:
                     version: 1.9.0
                     tag: v1.9.0
@@ -6822,7 +6822,7 @@ paths:
               schema: { $ref: "#/components/schemas/BrowserSessionResponse" }
               examples:
                 anonymous:
-                  summary: No cookie, unknown session, or a dead device (test/browserSession.test.ts)
+                  summary: No cookie, unknown session, or a dead device (test/services/identity/browserSession.test.ts)
                   value: { authenticated: false, doc: null }
                 signedIn:
                   summary: The fused document
@@ -6879,7 +6879,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 catalogUnavailable:
-                  summary: test/browserSession.test.ts
+                  summary: test/services/identity/browserSession.test.ts
                   value:
                     {
                       error: catalog_unavailable,
@@ -6909,7 +6909,7 @@ paths:
             schema: { $ref: "#/components/schemas/SessionFromLicenseRequest" }
             examples:
               key:
-                summary: test/browserSession.test.ts
+                summary: test/services/identity/browserSession.test.ts
                 value: { key: pkey_djdl_4Sc9ItiFEQMbGXeAbXVdIw }
       responses:
         "201":
@@ -6923,7 +6923,7 @@ paths:
               schema: { $ref: "#/components/schemas/SessionFromLicenseResult" }
               examples:
                 established:
-                  summary: test/keyEntries.test.ts
+                  summary: test/surfaces/keyEntries.test.ts
                   value: { ok: true, keyEntries: { used: 1, limit: 10 } }
         "400":
           description: Unparseable body — LEGACY FLAT.
@@ -6945,7 +6945,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 licenseOwned:
-                  summary: test/identityAccount.test.ts
+                  summary: test/surfaces/identityAccount.test.ts
                   value:
                     {
                       error: license_owned,
@@ -6953,7 +6953,7 @@ paths:
                       signInUrl: "https://key.plrs.im/signin?product=djdl",
                     }
                 keyEntryLimit:
-                  summary: test/keyEntries.test.ts
+                  summary: test/surfaces/keyEntries.test.ts
                   value:
                     {
                       error: key_entry_limit,
@@ -7202,7 +7202,7 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 notEntitled:
-                  summary: test/oidcEdge.test.ts
+                  summary: test/services/identity/oidcEdge.test.ts
                   value: { error: forbidden, message: not entitled }
                 deviceLimit:
                   {
@@ -7271,7 +7271,7 @@ paths:
               schema: { $ref: "#/components/schemas/OkResult" }
               examples:
                 loggedOut:
-                  summary: test/browserSession.test.ts
+                  summary: test/services/identity/browserSession.test.ts
                   value: { ok: true }
         "403":
           description: >
@@ -7330,7 +7330,7 @@ paths:
             schema: { $ref: "#/components/schemas/DeviceAuthStartRequest" }
             examples:
               named:
-                summary: test/oidcEdge.test.ts
+                summary: test/services/identity/oidcEdge.test.ts
                 value: { deviceId: dev-1, deviceName: Studio Mac }
               headerOnly:
                 summary: Device id supplied by `X-PKey-Device` instead
@@ -7343,7 +7343,7 @@ paths:
               schema: { $ref: "#/components/schemas/DeviceAuthStartResult" }
               examples:
                 started:
-                  summary: test/oidcEdge.test.ts
+                  summary: test/services/identity/oidcEdge.test.ts
                   value:
                     status: pending
                     deviceCode: Zk8LqR8nT0sYp2vcEgHj6A
@@ -7455,14 +7455,14 @@ paths:
               schema: { type: string }
               examples:
                 entry:
-                  summary: No `user_code` (test/oidcEdge.test.ts)
+                  summary: No `user_code` (test/services/identity/oidcEdge.test.ts)
                   value: |
                     <form method="post" action="https://key.plrs.im/djdl/identity/auth/device">
                       <input id="user_code" name="user_code" type="text" required placeholder="XXXX-XXXX">
                       <button type="submit">Continue</button>
                     </form>
                 confirmation:
-                  summary: "`?user_code=wdjb mjht` (test/oidcEdge.test.ts reads `csrf` out of it)"
+                  summary: "`?user_code=wdjb mjht` (test/services/identity/oidcEdge.test.ts reads `csrf` out of it)"
                   value: |
                     <dl><dt>Code<dd>WDJB-MJHT<dt>Device<dd>Steam Deck<dt>Product<dd>djdl</dl>
                     <form method="post" action="https://key.plrs.im/djdl/identity/auth/device">
@@ -7518,7 +7518,7 @@ paths:
                 summary: The entry form
                 value: { user_code: wdjb-mjht }
               confirm:
-                summary: The confirmation form (test/oidcEdge.test.ts)
+                summary: The confirmation form (test/services/identity/oidcEdge.test.ts)
                 value: { user_code: WDJB-MJHT, csrf: 7hK2mQ0xZk8LqR8nT0sYp2 }
           application/json:
             schema: { $ref: "#/components/schemas/DeviceAuthEntryRequest" }
@@ -7635,7 +7635,7 @@ paths:
               schema: { type: string }
               examples:
                 page:
-                  summary: What the POST needs (test/deviceApproval.test.ts reads `token` out of it)
+                  summary: What the POST needs (test/services/identity/deviceApproval.test.ts reads `token` out of it)
                   value: |
                     <form method="post" action="https://key.plrs.im/djdl/identity/auth/device/approve">
                       <input type="hidden" name="token" value="Qm9sZC1hcHByb3ZlLXRva2Vu">
@@ -7763,7 +7763,7 @@ paths:
               schema: { type: string }
               examples:
                 chooser:
-                  summary: Two licenses, one full (test/oidcLicenseChoice.test.ts)
+                  summary: Two licenses, one full (test/surfaces/oidcLicenseChoice.test.ts)
                   value: |
                     <form method="post" action="https://key.plrs.im/djdl/identity/auth/choose">
                       <input type="hidden" name="choice" value="Qm9sZC1jaG9pY2UtdG9rZW4">
@@ -7939,7 +7939,7 @@ paths:
             schema: { $ref: "#/components/schemas/DeviceAuthPollRequest" }
             examples:
               poll:
-                summary: test/oidcEdge.test.ts
+                summary: test/services/identity/oidcEdge.test.ts
                 value: { deviceCode: Zk8LqR8nT0sYp2vcEgHj6A, deviceId: dev-1 }
               confirmIdentity:
                 summary: test/attack/R8-oidc.test.ts — hold at the identity
@@ -7972,7 +7972,7 @@ paths:
                     identity: { name: Player, email: player@example.com }
                     attachable: false
                 ready:
-                  summary: test/oidcEdge.test.ts — the flow record is deleted by this call
+                  summary: test/services/identity/oidcEdge.test.ts — the flow record is deleted by this call
                   value:
                     status: ready
                     token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
@@ -8097,13 +8097,13 @@ paths:
                   - { $ref: "#/components/schemas/AttachResult" }
               examples:
                 preview:
-                  summary: test/identityAccount.test.ts
+                  summary: test/surfaces/identityAccount.test.ts
                   value:
                     status: confirm
                     license:
                       { id: lic_djdl_1, tierId: null, name: Ada Lovelace }
                 attached:
-                  summary: test/identityAccount.test.ts
+                  summary: test/surfaces/identityAccount.test.ts
                   value:
                     token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
                     schemaVersion: 1
@@ -8365,7 +8365,7 @@ paths:
                   - { $ref: "#/components/schemas/PendingSignIn" }
               examples:
                 licenceLess:
-                  summary: test/identityAuthorize.test.ts
+                  summary: test/surfaces/identityAuthorize.test.ts
                   value:
                     access_token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
                     token_type: Bearer
@@ -8702,7 +8702,7 @@ paths:
               schema: { $ref: "#/components/schemas/SubjectResponse" }
               examples:
                 signedIn:
-                  summary: test/identityAccount.test.ts
+                  summary: test/surfaces/identityAccount.test.ts
                   value: { subject: ps_AAAAAAAAAAAAAAAAAAAAAA }
                 signedOut: { value: { subject: null } }
         "400":
@@ -8758,10 +8758,10 @@ paths:
               schema: { $ref: "#/components/schemas/SignOutResponse" }
               examples:
                 kept:
-                  summary: test/identityAccount.test.ts
+                  summary: test/surfaces/identityAccount.test.ts
                   value: { released: false }
                 released:
-                  summary: test/identityAccount.test.ts
+                  summary: test/surfaces/identityAccount.test.ts
                   value: { released: true }
         "400":
           description: No `X-PKey-Device` — NESTED.
@@ -8850,7 +8850,7 @@ paths:
               schema: { $ref: "#/components/schemas/SyncPullResponse" }
               examples:
                 snapshot:
-                  summary: test/cloudSyncPull.test.ts
+                  summary: test/services/sync/cloudSyncPull.test.ts
                   value:
                     subject: ps_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                     serverNow: 1700000000000
@@ -8888,7 +8888,7 @@ paths:
               schema: { $ref: "#/components/schemas/AccountRequiredBody" }
               examples:
                 accountRequired:
-                  summary: test/cloudSyncPull.test.ts
+                  summary: test/services/sync/cloudSyncPull.test.ts
                   value:
                     error:
                       code: account_required
@@ -8967,7 +8967,7 @@ paths:
             schema: { $ref: "#/components/schemas/PushRequest" }
             examples:
               volume:
-                summary: test/cloudSyncPush.test.ts
+                summary: test/services/sync/cloudSyncPush.test.ts
                 value:
                   clientId: c_AAAAAAAAAAAAAAAAAAAAAA
                   cursor: 0
@@ -8986,7 +8986,7 @@ paths:
               schema: { $ref: "#/components/schemas/PushResponse" }
               examples:
                 accepted:
-                  summary: test/cloudSyncPush.test.ts
+                  summary: test/services/sync/cloudSyncPush.test.ts
                   value:
                     subject: ps_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                     serverNow: 1700000000000
@@ -9107,7 +9107,7 @@ paths:
               schema: { type: string }
               examples:
                 stable:
-                  summary: test/updateFeed.test.ts pins the alias and canonical parses as equal
+                  summary: test/surfaces/updateFeed.test.ts pins the alias and canonical parses as equal
                   value: |
                     <?xml version="1.0" encoding="utf-8"?>
                     <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -13310,7 +13310,7 @@ paths:
               schema: { $ref: "#/components/schemas/PortalKeyPreview" }
               examples:
                 atTheLimit:
-                  summary: test/keyEntries.test.ts
+                  summary: test/surfaces/keyEntries.test.ts
                   value:
                     product:
                       slug: djdl
@@ -22146,7 +22146,7 @@ components:
               packSets: { $ref: "#/components/schemas/PackSetsOutcome" }
           examples:
             promoted:
-              summary: test/releasePolicy.test.ts
+              summary: test/services/release/releasePolicy.test.ts
               value:
                 ok: true
                 policy:
@@ -22389,10 +22389,10 @@ components:
           schema: { $ref: "#/components/schemas/WireError" }
           examples:
             channelNotAllowed:
-              summary: test/updateFeed.test.ts
+              summary: test/surfaces/updateFeed.test.ts
               value: { error: { code: channel_not_allowed } }
             versionBlocked:
-              summary: test/updateFeed.test.ts
+              summary: test/surfaces/updateFeed.test.ts
               value:
                 error: { code: version_blocked }
                 allowedRange: { min: "2.0.0", max: "99.0.0" }
@@ -24637,7 +24637,7 @@ components:
             subject or the account id.
     # ── The person's own data (I-11): `GET /api/me/export`, `GET /api/products/{product}/export`.
     # Every object declares `additionalProperties: false`: the schema is the allow-list, and
-    # `test/portalDataExport.test.ts` validates real documents against it, so a column nobody chose
+    # `test/services/identity/portalDataExport.test.ts` validates real documents against it, so a column nobody chose
     # to export cannot appear in one.
     PortalExportKey:
       type: object
@@ -26036,7 +26036,7 @@ components:
           type: object
           description: >
             Every service slug, always, in canonical service-table order (the `required` list
-            below; test/serviceTable.test.ts pins it to tools/services.json). Core knows the
+            below; test/core/serviceTable.test.ts pins it to tools/services.json). Core knows the
             shape of no service: an enabled one contributes its own fragment verbatim, a
             disabled one is exactly `{"enabled": false}` and nothing else.
           required:

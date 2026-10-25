@@ -48,7 +48,7 @@ export type BrandingFieldReason = "type" | "too_long" | "format";
 
 /**
  * The same rules as a JSON Schema (draft-07 subset), published for the editor's docs and pinned
- * against {@link parsePortalBranding} by `test/portalSettings.test.ts`.
+ * against {@link parsePortalBranding} by `test/services/identity/portalSettings.test.ts`.
  */
 export const PORTAL_BRANDING_SCHEMA = {
   type: "object",

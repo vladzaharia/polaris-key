@@ -292,7 +292,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
   // PX-W9 (plans/PX-W9.md §3) made the refusal switch an A-13 store entry. Its row and `[vars]`
   // name is `KEYENTRY_REFUSALS`, "key entry" as one word and no `IDENTITY_` prefix: a `KEY` token
   // or a `_KEY` would read as key material to the AT-2 deny-list (`rules.ts`,
-  // `test/platformSettings.test.ts`). Counting runs whatever it says; it decides
+  // `test/surfaces/console/platformSettings.test.ts`). Counting runs whatever it says; it decides
   // only whether a license past its limit is refused (WIRE-CONTRACT-V4 §12.2 step 4). I-09 adds
   // its own reader (`license_owned`).
   setting({

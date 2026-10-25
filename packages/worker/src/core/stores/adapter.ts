@@ -9,8 +9,8 @@
  * register their facets by id (P0-27.2 and .4) and a two-way test binds the two.
  *
  * Slots and kinds are plain strings (a `PLATFORM_CREDENTIALS` id and an outlet-credential kind)
- * so this layer never imports the credential custody modules (`test/outletCredentialReach.test.ts`);
- * `test/storeAdapters.test.ts` checks them against those modules instead.
+ * so this layer never imports the credential custody modules (`test/core/outletCredentialReach.test.ts`);
+ * `test/surfaces/storeAdapters.test.ts` checks them against those modules instead.
  *
  * Nothing calls the declarations yet. Wire ids are untouched: `commerce.store` is the claim body's
  * `store` (`app-store`, `play`, `steam`), which differs from the storefront id for Google Play.

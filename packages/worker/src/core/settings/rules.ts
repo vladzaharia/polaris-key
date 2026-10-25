@@ -2,7 +2,7 @@
  * The registry rules (ST-03, notes/S-18 §4.2 "Registry rules", §4.15 item 1).
  *
  * `checkRegistry` answers every way the registry breaks a rule, as readable strings. It never
- * throws: `test/settings-registry.test.ts` runs it over the real composition root
+ * throws: `test/services/license/settings-registry.test.ts` runs it over the real composition root
  * (`mount.ts` `SETTINGS`) and expects nothing back, and runs it over deliberately broken
  * registries to prove each rule bites.
  *

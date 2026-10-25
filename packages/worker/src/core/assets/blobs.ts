@@ -1123,7 +1123,7 @@ export const BLOB_CSP = "sandbox; default-src 'none'; frame-ancestors 'none'";
 /**
  * The types a byte route may serve with their real `Content-Type` — on the BYTES host only.
  * Every one is inert: nothing here is HTML, XML, SVG, script, or a type a browser executes.
- * `test/blobs.test.ts` asserts that stays true. Anything not listed is served as
+ * `test/core/blobs.test.ts` asserts that stays true. Anything not listed is served as
  * `application/octet-stream`.
  */
 export const BYTES_HOST_TYPES: ReadonlySet<string> = new Set([

@@ -2,7 +2,7 @@
 // The Node conformance runner for `conformance/corpus/v2/headers.json` (WIRE-CONTRACT-V3 §5.2).
 // It covers React too, since both JS SDKs map through the same `client-core` functions. The
 // Python (`tests/test_headers.py`), Swift (`HeadersTests.swift`) and Godot
-// (`tests/suite_conformance.gd`) runners and the Worker (`test/headersCorpus.test.ts`) run the
+// (`tests/suite_conformance.gd`) runners and the Worker (`test/core/headersCorpus.test.ts`) run the
 // same rows.
 //
 // Every row goes through `canonicalPlatform` / `canonicalArch`; the tables in

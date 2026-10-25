@@ -182,7 +182,7 @@ unchanged license collapses to the same tag on every request and the client's `I
 gets a `304`. A differing tag therefore means the **content** genuinely differs, which is exactly
 the signal an SDK's change callback fires on.
 
-`test/relicense.test.ts` pins both directions: the tag changes when a tier changes, and it stays
+`test/surfaces/console/relicense.test.ts` pins both directions: the tag changes when a tier changes, and it stays
 stable across two fetches when nothing changed.
 
 Tags are **per document** by construction. The license and config documents carry independent

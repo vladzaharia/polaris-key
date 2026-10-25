@@ -5,7 +5,7 @@
  * The DER of Apple's published certificate (https://www.apple.com/certificateauthority/
  * AppleRootCA-G3.cer), SHA-256 fingerprint
  * 63:34:3A:BF:B8:9A:6A:03:EB:B5:7E:9B:3F:5F:A7:BE:7C:4F:5C:75:6F:30:17:B3:A8:C4:88:C3:65:3E:91:79,
- * valid 2014-04-30 to 2039-04-30. `test/x509.test.ts` pins the fingerprint, so an edit here fails
+ * valid 2014-04-30 to 2039-04-30. `test/services/commerce/x509.test.ts` pins the fingerprint, so an edit here fails
  * the suite. Pinned by bytes in code — never configuration — so no operator, manifest or request
  * can widen the trust; the only override is the test-only hook in `purchases.ts`.
  */

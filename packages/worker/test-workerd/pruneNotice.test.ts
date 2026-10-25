@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── The feed-cleanup dry-run notice on D1 (F-36) ─────────────────────────────────────────────
 //
-// The Node lane (`test/feedPrune.test.ts`) proves the rules against better-sqlite3. This runs the
+// The Node lane (`test/surfaces/feedPrune.test.ts`) proves the rules against better-sqlite3. This runs the
 // one batch `noticePruneRetention` writes against the real D1, which is what proves the part
 // better-sqlite3 could get wrong: that inside a D1 batch the audit row's `changes()` guard reads
 // the notice insert just before it, and that an insert that conflicts reports 0 changed rows. Of

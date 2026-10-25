@@ -153,7 +153,7 @@ export interface Env {
    * The lazy-delta dead-letter queue (A-14; `pkey-deltas-dlq-<env>`), bound to the request Worker
    * as a producer ONLY so `GET /manage/api/platform/operations` can read its backlog through
    * `metrics()`. Nothing sends to it (the consumer Worker's `dead_letter_queue` setting is what
-   * fills it); `test/platformOperations.test.ts` asserts no source file calls `.send` or
+   * fills it); `test/surfaces/platformOperations.test.ts` asserts no source file calls `.send` or
    * `.sendBatch` on it. OPTIONAL: unbound, the Operations page reports the DLQ as not bound.
    * @inventory binding jobs
    */

@@ -22,7 +22,7 @@
  * table (the rule P3-01's client applies too).
  *
  * The table is wire contract v4's (`OUTLET_CAPABILITY_DEFAULTS`, below); `outlet-matrix.json` is
- * its corpus form, and `test/distributionOutlets.test.ts` proves the three equal.
+ * its corpus form, and `test/surfaces/distributionOutlets.test.ts` proves the three equal.
  */
 
 import type { OutletCapabilities } from "../../core/hooks.js";

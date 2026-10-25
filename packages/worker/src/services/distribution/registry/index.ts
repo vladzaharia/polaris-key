@@ -6,7 +6,7 @@
  * `RENDERERS` (the materialiser's), `DISTRIBUTION_REGISTRY_ROUTES` (which `mount.ts` spreads into
  * `REGISTRY_ROUTES`), the console's capabilities and settings validation (`console/lib/feedModel.ts`)
  * and `routeCoverage`'s registry table. Adding a feed is adding its directory and one line here;
- * `test/feedAdapters.test.ts` is the conformance suite it must pass, and
+ * `test/surfaces/feedAdapters.test.ts` is the conformance suite it must pass, and
  * `/docs/contribute/package-feeds/` the checklist.
  */
 

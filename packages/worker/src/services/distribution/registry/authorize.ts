@@ -127,7 +127,7 @@ export interface FeedReadContext {
 /**
  * The challenge a non-public mode answers an anonymous client with, by ecosystem. Each feed
  * adapter declares the same value as `capabilities.authChallenge`, and the conformance suite
- * (`test/feedAdapters.test.ts`) pins the two together, so the console never claims a challenge
+ * (`test/surfaces/feedAdapters.test.ts`) pins the two together, so the console never claims a challenge
  * the ladder does not send.
  */
 export function challengeFor(ecosystem: RegistryEcosystem): ChallengeKind {

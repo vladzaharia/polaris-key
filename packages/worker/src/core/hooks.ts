@@ -37,7 +37,7 @@
  *    pack" (README §11 guardrails): the app and every pack go through the same three services
  *    the same way.
  * 4. **One provider per hook.** Exactly one mounted descriptor may implement each hook. Zero or
- *    more than one makes the accessor answer `null` (fail closed), and `test/hooks.test.ts`
+ *    more than one makes the accessor answer `null` (fail closed), and `test/surfaces/hooks.test.ts`
  *    asserts the composition root has exactly one of each.
  *
  * ── WHO EXTENDS WHAT ────────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 // ── Account pictures on miniflare's R2 and D1 (PX-W16) ───────────────────────────────────────
 //
-// The Node lane (`test/identityCardProfile.test.ts`, `test/portalProfile.test.ts`) covers the
+// The Node lane (`test/services/identity/identityCardProfile.test.ts`, `test/services/identity/portalProfile.test.ts`) covers the
 // rules against `test/r2Mock.ts` and better-sqlite3. This file runs the store, the media route,
 // the sweep and the deletion against the real bindings, which is what proves the parts the fakes
 // could get wrong: that D1 accepts the migration and the owner-scoped "still in use?" reads

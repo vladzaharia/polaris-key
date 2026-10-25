@@ -5,7 +5,7 @@
  * private base64url encoders and decoders and some forty inline hex loops, because the one in
  * `crypto.ts` was private and a service may import only `core/`. They all agreed on the encoder;
  * the decoders did not, so the decoders below are named for the inputs they accept rather than
- * merged into one: a caller picks the semantics it had, and `test/platformPrimitives.test.ts`
+ * merged into one: a caller picks the semantics it had, and `test/services/identity/platformPrimitives.test.ts`
  * refuses a new local copy.
  *
  * A leaf module: it imports nothing else in `src/` (the `platform/` layer rule).
