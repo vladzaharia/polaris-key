@@ -8,11 +8,7 @@
 
 import * as React from "react";
 import { ExternalLink } from "lucide-react";
-import {
-  HttpError,
-  type CiFixCheck,
-  type PublisherPolicyDto,
-} from "../../../../../api.js";
+import { HttpError, type CiFixCheck } from "../../../../../api.js";
 import { Button } from "../../../../../ui/Button.js";
 import { Drawer, DrawerBody } from "../../../../../ui/Drawer.js";
 import { ErrorState } from "../../../../../ui/ErrorState.js";
@@ -27,7 +23,7 @@ import { useCiReadiness } from "../../data.js";
 import { REVIEW_PERMISSIONS_URL, ciRows, type CiRow } from "./rows.js";
 
 /** The permission a refusal named, if it was the permission refusal. */
-export function refusedPermission(err: unknown): string | null | undefined {
+function refusedPermission(err: unknown): string | null | undefined {
   if (!(err instanceof HttpError) || err.status !== 409) return undefined;
   if (err.reason === "app_not_installed") return null;
   if (err.reason !== "app_permission") return undefined;
@@ -124,7 +120,6 @@ export function PublishFromCiDrawer({
     state: row.state,
     status: row.status,
     result: row.result,
-    source: row.id === "publisher" ? undefined : "GitHub",
     action: action(row),
   }));
   // A done publisher row keeps "Change" (its action shows on done rows only through the list's
@@ -210,5 +205,3 @@ function without<T>(s: ReadonlySet<T>, v: T): ReadonlySet<T> {
   n.delete(v);
   return n;
 }
-
-export type { PublisherPolicyDto };

@@ -69,7 +69,7 @@ export function AutoList({
                 <CircleDashed className="size-4 text-fg-muted" />
               )}
             </span>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[12rem] flex-1">
               <p className="text-sm text-fg-strong">{a.label}</p>
               {a.result || a.source ? (
                 <p className="text-xs text-fg-muted">

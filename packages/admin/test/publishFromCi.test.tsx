@@ -16,23 +16,12 @@ const fns = vi.hoisted(() => ({
   putCiPublisher: vi.fn(),
 }));
 
-vi.mock("../src/api.js", async () => {
-  const actual =
-    await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
-  return {
-    ...actual,
-    api: Object.fromEntries(
-      Object.keys(fns).map((k) => [
-        k,
-        (...a: unknown[]) =>
-          (fns as Record<string, (...x: unknown[]) => unknown>)[k]!(...a),
-      ]),
-    ),
-  };
-});
+vi.mock("../src/api.js", async () =>
+  (await import("./apiFnsMock.js")).apiFnsMock(fns),
+);
 
 const { PublishFromCiDrawer } =
-  await import("../src/console/sections/release/components/PublishFromCi/index.js");
+  await import("../src/console/sections/release/components/PublishFromCi/PublishFromCiDrawer.js");
 
 const ALL = {
   pullRequest: true,
