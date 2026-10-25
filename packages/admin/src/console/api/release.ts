@@ -471,7 +471,41 @@ export function releasePolicyMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Request failed.";
 }
 
+/** `GET …/release/ci-readiness` (A-32.3): what stands between the repository and a publishing tag. */
+export type CiReadinessState = "ok" | "missing" | "unknown";
+
+export interface CiReadinessCheck {
+  id:
+    | "app"
+    | "release-manifest"
+    | "workflow"
+    | "environment"
+    | "ruleset"
+    | "publisher"
+    | "distribution-pr";
+  state: CiReadinessState;
+  /** The App permission to grant, on an `unknown` read the installation cannot make. */
+  permission?: string;
+  /** A name or a reason, never content. */
+  detail?: string;
+}
+
+export interface CiReadiness {
+  repository: string | null;
+  capabilities: {
+    pullRequest: boolean;
+    workflow: boolean;
+    environment: boolean;
+    ruleset: boolean;
+  };
+  checks: CiReadinessCheck[];
+  workflowPreview: string | null;
+}
+
 export const releaseApi = {
+  /** A-32.3: the CI readiness checks, the App's write capabilities and the workflow preview. */
+  ciReadiness: (slug: string) =>
+    call<CiReadiness>(`${p(slug)}/release/ci-readiness`),
   releaseHealth: (slug: string) =>
     call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
   /** The release TRUTH STORE (`release_metadata`/`_artifacts`/`_channels`, P2.T2) — what

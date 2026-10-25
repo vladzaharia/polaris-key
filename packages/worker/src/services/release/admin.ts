@@ -13,6 +13,10 @@
  *     POST   …/release/releases/<releaseId>/deprecate   { "message": "…" } (F-03, a package version)
  *     DELETE …/release/releases/<releaseId>/deprecate
  *
+ * and the CI readiness read (A-32.3, `ciReadiness.ts`):
+ *
+ *     GET    …/release/ci-readiness                     the checks a `v*` tag needs, and the workflow
+ *
  * and the pack read model (P4-09, `packs/adminView.ts`):
  *
  *     GET    …/release/deliverables                     the app and every pack, with latest release
@@ -32,7 +36,8 @@
  *     GET    …/release/compat[?limit=N&offset=M]        app releases × pack releases, a cell
  *                                                        state per pair, the live levels
  *
- * All of them are narrative-only (the console's API is not in the wire spec), audited with the
+ * All of them are narrative-only (the console's API is not in the wire spec; `ci-readiness` is
+ * the exception, documented in the OpenAPI spec), audited with the
  * session's subject, and invalidate the product's cached resolutions.
  *
  * `health` and `resync` were already service-shaped under the old admin handler; they move here
@@ -72,6 +77,7 @@ import {
   parseManualChannels,
 } from "./channels.js";
 import { getReleaseConfig } from "./config.js";
+import { ciReadiness } from "./ciReadiness.js";
 import { checkReleaseHealth } from "./health.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import {
@@ -291,6 +297,12 @@ export async function handleReleaseAdmin(
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     return adminJson({ health: await checkReleaseHealth(env, db, slug, now) });
+  }
+
+  if (rest[0] === "ci-readiness") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    return adminJson(await ciReadiness(env, db, slug, now));
   }
 
   if (rest[0] === "releases") {

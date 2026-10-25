@@ -16041,6 +16041,41 @@ paths:
         "304":
           description: Not modified (`If-None-Match` named the current `ETag` and the picture still exists).
         "404": { $ref: "#/components/responses/NotFound" }
+  /manage/api/products/{product}/release/ci-readiness:
+    get:
+      operationId: getAdminProductCiReadiness
+      tags: [admin]
+      summary: What stands between the linked repository and a publishing `v*` tag
+      description: >
+        A-32.3 (FLOWS.md W9). Reads the product's GitHub repository and answers one check per
+        requirement: `app` (the GitHub App is installed on it), `release-manifest` (`.pkey/` reads
+        and validates at the default branch head), `workflow` (the trusted publisher's workflow
+        file, `.github/workflows/release.yml` by default, exists), `environment` (the publisher's
+        environment, `release` by default, exists), `ruleset` (an active tag ruleset covers
+        `refs/tags/v*`), `publisher` (the trusted publisher policy exists; `detail` names its
+        workflow and environment) and, only when a Homebrew or Scoop outlet is declared,
+        `distribution-pr` (the policy holds `distribution:pr`). A check is `ok`, `missing`, or
+        `unknown`: a read GitHub would not answer, or that the installation's permissions do not
+        cover, is `unknown`, and `permission` names the App permission to grant. `capabilities`
+        is what the installation lets Polaris Key write (a pull request, the workflow file, the
+        environment, the ruleset). `workflowPreview` is the release workflow Polaris Key would
+        write, pinned to the commit this Worker runs. Read-only: no write, no secret, no file
+        content is returned. Area `ship`; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The checks.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCiReadiness" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Admin create probes (UX-72, rule 10) ──
   /manage/api/github/repositories:
     get:
@@ -22792,6 +22827,48 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminCiReadiness:
+      type: object
+      required: [repository, capabilities, checks, workflowPreview]
+      properties:
+        repository:
+          type: [string, "null"]
+          description: "`owner/repo`; null while the product has no linked repository."
+        capabilities:
+          type: object
+          required: [pullRequest, workflow, environment, ruleset]
+          properties:
+            pullRequest: { type: boolean }
+            workflow: { type: boolean }
+            environment: { type: boolean }
+            ruleset: { type: boolean }
+        checks:
+          type: array
+          items:
+            type: object
+            required: [id, state]
+            properties:
+              id:
+                type: string
+                enum:
+                  [
+                    app,
+                    release-manifest,
+                    workflow,
+                    environment,
+                    ruleset,
+                    publisher,
+                    distribution-pr,
+                  ]
+              state: { type: string, enum: [ok, missing, unknown] }
+              permission:
+                type: string
+                description: "The App permission the read needed (`unknown` only), for example `actions: read`."
+              detail:
+                type: string
+                description: A name or a reason, never content.
+        workflowPreview:
+          type: [string, "null"]
     AdminProductChannels:
       type: object
       required: [product, now, platforms, kinds, channels]
