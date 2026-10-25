@@ -140,6 +140,7 @@ export const MATRIX = {
         blockers: [],
         pendingReason: null,
         override: null,
+        notes: [{ pack: "textures", note: "cdn-fallback" }],
       },
     },
     {
@@ -166,7 +167,11 @@ export const MATRIX = {
         warning: null,
         blockers: [],
         pendingReason: null,
-        notes: [{ pack: "textures", note: "cdn-fallback" }],
+        notes: [
+          { pack: "textures", note: "cdn-fallback" },
+          { pack: "audio", note: "cdn-fallback" },
+          { pack: "textures", note: "cdn-fallback" },
+        ],
       },
     },
     {

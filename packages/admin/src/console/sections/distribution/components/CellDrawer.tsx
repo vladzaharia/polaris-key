@@ -416,6 +416,13 @@ function ReadinessSection({
   const [clearing, setClearing] = React.useState(false);
   const [reason, setReason] = React.useState("");
   const overridden = readiness.state === "overridden";
+  const cdnPacks = [
+    ...new Set(
+      (readiness.notes ?? [])
+        .filter((n) => n.note === "cdn-fallback")
+        .map((n) => n.pack),
+    ),
+  ];
   const canOverride =
     !overridden && readiness.holdable && readiness.state !== "ready";
   return (
@@ -468,9 +475,22 @@ function ReadinessSection({
       {readiness.pendingReason ? (
         <p className="text-sm text-fg-muted">{readiness.pendingReason}</p>
       ) : null}
-      {readiness.notes?.some((n) => n.note === "cdn-fallback") ? (
+      {cdnPacks.length > 0 ? (
         <p className="text-sm text-fg-muted">
-          Served from the Polaris Key CDN until Background Assets are uploaded.
+          {cdnPacks.map((pack, i) => (
+            <React.Fragment key={pack}>
+              {i === 0 ? "" : i === cdnPacks.length - 1 ? " and " : ", "}
+              <EntityLink
+                slug={slug}
+                kind="deliverable"
+                id={pack}
+                label={pack}
+              />
+            </React.Fragment>
+          ))}{" "}
+          {cdnPacks.length === 1
+            ? "is served from the Polaris Key CDN until its Background Asset is approved in App Store Connect."
+            : "are served from the Polaris Key CDN until their Background Assets are approved in App Store Connect."}
         </p>
       ) : null}
       {readiness.override ? (

@@ -69,7 +69,14 @@ describe("pkey ci init", () => {
     expect(res.out).toContain(
       `gh secret set PKEY_RELEASE_KEY --env release < ${keyFile(r.cfg)}`,
     );
-    expect(res.out).toContain("git tag v1.0.0");
+    expect(res.out).toContain("environments/release -F");
+    expect(res.out).toContain(
+      "deployment-branch-policies -f 'name=v*' -f type=tag",
+    );
+    expect(res.out).toContain(
+      "git add .github/workflows/release.yml .pkey/release.yaml",
+    );
+    expect(res.out).toContain("git tag v1.0.0 && git push origin HEAD v1.0.0");
     expect(res.out).toContain("<commit-sha>");
   });
 
@@ -146,7 +153,13 @@ describe("pkey ci init", () => {
     });
     const res = await pkey({ cwd, cfg });
     expect(res.code).toBe(1);
-    expect(res.err).toContain("No .pkey/release");
+    expect(res.err).toContain(
+      "No .pkey/release. Add one, then rerun pkey ci init:",
+    );
+    expect(res.err).toContain(
+      "\n   https://key.plrs.im/docs/build/manifest/release/\n",
+    );
+    expect(res.err).not.toContain("--modules");
     await expect(stat(wf(cwd))).rejects.toThrow();
   });
 
@@ -159,7 +172,11 @@ describe("pkey ci init", () => {
       string,
       unknown
     >;
-    expect(j).toMatchObject({ ok: false, error: "no-manifest" });
+    expect(j).toMatchObject({
+      ok: false,
+      errors: [{ code: "no-manifest" }],
+    });
+    expect(none.err).toMatch(/^\S+ {2}No \.pkey\/product manifest/);
     const r2 = await repo();
     expect((await pkey(r2, "--channel", "Bad Channel")).code).toBe(2);
     expect((await pkey(r2, "--action-ref", "main")).code).toBe(2);

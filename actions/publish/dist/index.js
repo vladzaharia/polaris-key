@@ -24795,7 +24795,7 @@ var COMMANDS = [
     ],
     about: [
       {
-        text: "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file that exists is kept unless you pass --force. On a terminal it asks what the product is for and whether to start with a Free tier; --modules and --starter-tier answer instead."
+        text: "Writes product.yaml and schema.yaml, and release.yaml when Release is on. It stops when product.yaml or schema.yaml exists, unless you pass --force, which overwrites them. On a terminal it asks what the product is for and whether to start with a Free tier; --modules and --starter-tier answer instead."
       },
       {
         text: `--modules takes service slugs (${SERVICE_SLUGS.join(", ")}); the default is license,config. --starter-tier none leaves out the Free tier (default free, with License). The old names licensing, releases, oidc and edgeMint still work. --product (or --slug) defaults to the directory name, --name to that name in title case.`
@@ -49199,6 +49199,7 @@ var import_yaml10 = __toESM(require_dist(), 1);
 import { mkdir as mkdir12, readFile as readFile23, stat as stat8, writeFile as writeFile20 } from "node:fs/promises";
 import os2 from "node:os";
 import path31 from "node:path";
+import { execFile as execFile2 } from "node:child_process";
 
 // src/channel.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -50116,6 +50117,23 @@ function keyDir(io) {
   const base = xdg && path31.isAbsolute(xdg) ? xdg : path31.join(os2.homedir(), ".config");
   return path31.join(base, "pkey", "release-keys");
 }
+var RELEASE_DOCS = "https://key.plrs.im/docs/build/manifest/release/";
+function nextTag(cwd) {
+  return new Promise((resolve2) => {
+    execFile2("git", ["tag", "-l", "v*"], { cwd, timeout: 5e3 }, (err, out) => {
+      if (err) return resolve2("v1.0.0");
+      let best = null;
+      for (const t of String(out).split("\n")) {
+        const m = /^v(\d+)\.(\d+)\.(\d+)$/.exec(t.trim());
+        if (!m) continue;
+        const v = [+m[1], +m[2], +m[3]];
+        if (!best || v[0] > best[0] || v[0] === best[0] && (v[1] > best[1] || v[1] === best[1] && v[2] > best[2]))
+          best = v;
+      }
+      resolve2(best ? `v${best[0]}.${best[1]}.${best[2] + 1}` : "v1.0.0");
+    });
+  });
+}
 var exists = (p) => stat8(p).then(
   () => true,
   () => false
@@ -50150,24 +50168,32 @@ async function ciInit(a, io) {
     throw new UsageError(
       "--action-ref must be a full 40-character commit SHA."
     );
+  const term = termOf(io, io.stderr);
+  const refuse2 = (code, message, extra = {}, link) => {
+    if (json)
+      io.stdout.write(
+        envelope("ci init", 1, {
+          errors: [{ code, message: link ? `${message} ${link}` : message }],
+          ...extra
+        })
+      );
+    else {
+      io.stderr.write(failLine(untrustedLines(message, io.env), term));
+      if (link) io.stderr.write(`   ${link}
+`);
+    }
+    return 1;
+  };
   let loaded2;
   try {
     loaded2 = await loadManifest(io.cwd);
   } catch (e) {
-    return manifestFailure("ci init", e, io, json);
+    if (e instanceof UsageError) throw e;
+    return refuse2(manifestError(e).error, manifestError(e).message);
   }
-  const term = termOf(io, io.stderr);
   const slug = (isMap4(loaded2.product.product) ? loaded2.product.product : loaded2.product).slug;
   if (typeof slug !== "string")
     throw new UsageError(".pkey/product has no slug.");
-  const refuse2 = (code, message, extra = {}) => {
-    if (json)
-      io.stdout.write(
-        envelope("ci init", 1, { errors: [{ code, message }], ...extra })
-      );
-    else io.stderr.write(failLine(untrustedLines(message, io.env), term));
-    return 1;
-  };
   const workflow = path31.join(io.cwd, WORKFLOW_PATH);
   if (!force && await exists(workflow))
     return refuse2(
@@ -50216,7 +50242,9 @@ async function ciInit(a, io) {
     if (!loaded2.releasePath)
       return refuse2(
         "no-release",
-        "No .pkey/release. Turn the release service on first (pkey init --modules release)."
+        "No .pkey/release. Add one, then rerun pkey ci init:",
+        {},
+        RELEASE_DOCS
       );
     const file = loaded2.releasePath;
     const raw = await readFile23(file, "utf8");
@@ -50290,8 +50318,11 @@ async function ciInit(a, io) {
   ];
   if (made) {
     out.push(
-      ...prose(`${mark}  `, `Added key ${made.kid} to ${relRelease}`),
-      ...prose(`${mark}  `, "Private key, mode 0600, outside the repo:"),
+      ...prose(`${mark}  `, `Added public key ${made.kid} to ${relRelease}`),
+      ...prose(
+        `${mark}  `,
+        "Saved the private key outside the repo (mode 0600):"
+      ),
       `   ${untrustedLines(made.out, io.env)}`
     );
   } else {
@@ -50305,22 +50336,34 @@ async function ciInit(a, io) {
     out.push(
       ...prose(
         `${n++}. `,
-        `Replace ${ACTION_REF_PLACEHOLDER} in ${WORKFLOW_PATH} with a commit SHA.`
+        `Replace ${ACTION_REF_PLACEHOLDER} in ${WORKFLOW_PATH} with a ${PUBLISH_ACTION.split("/").slice(0, 2).join("/")} commit SHA.`
       )
     );
-  if (made)
+  out.push(
+    `${n++}. Create the release environment, limited to v* tags:`,
+    "   gh api -X PUT repos/{owner}/{repo}/environments/release -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true' --silent",
+    "   gh api -X POST repos/{owner}/{repo}/environments/release/deployment-branch-policies -f 'name=v*' -f type=tag --silent"
+  );
+  if (made) {
+    const keyPath = untrustedLines(made.out, io.env);
     out.push(
       `${n++}. Store the key:`,
-      `   gh secret set ${RELEASE_KEY_ENV} --env release < ${shellPath(untrustedLines(made.out, io.env))}`
+      process.platform === "win32" ? `   Get-Content -Raw '${keyPath.replace(/'/g, "''")}' | gh secret set ${RELEASE_KEY_ENV} --env release` : `   gh secret set ${RELEASE_KEY_ENV} --env release < ${shellPath(keyPath)}`
     );
-  else
+  } else
     out.push(
       ...prose(
         `${n++}. `,
-        `Store its private half as ${RELEASE_KEY_ENV} in the release environment.`
+        `Store the ${declared[0].kid} private key as ${RELEASE_KEY_ENV} in the release environment, unless it is there already.`
       )
     );
-  out.push(`${n}. Release:`, "   git tag v1.0.0 && git push origin v1.0.0");
+  const tag2 = await nextTag(io.cwd);
+  out.push(
+    `${n}. Commit and release:`,
+    `   git add ${WORKFLOW_PATH}${made ? ` ${shellPath(relRelease)}` : ""}`,
+    '   git commit -m "Publish releases from CI"',
+    `   git tag ${tag2} && git push origin HEAD ${tag2}`
+  );
   io.stdout.write(`${out.join("\n")}
 `);
   return 0;
