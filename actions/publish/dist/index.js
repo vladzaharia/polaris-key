@@ -25228,7 +25228,7 @@ var COMMANDS = [
     tree: { add: [], sync: [] },
     usage: [
       "pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]",
-      "pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]"
+      "pkey channel sync [--channel c] [--version v] [--dir d] [--deliverable packId [--from dir]] [--product slug] [--base-url url] [--dry-run] [--json]"
     ],
     about: [
       {
@@ -25237,7 +25237,7 @@ var COMMANDS = [
       },
       {
         subs: ["sync"],
-        text: "channel sync runs what each declared channel needs: a pull request for winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and with --dir an itch.io push per platform, a Snap upload and the F-Droid repository build, from the files .pkey/release maps (no fitting file is a skip). --channel is the release track (default stable); --version is what itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first submission (pkey storefront flathub init). A failed step fails the command after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs nothing and prints each checked command."
+        text: "channel sync runs what each declared channel needs: a pull request for winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and with --dir an itch.io push per platform, a Snap upload and the F-Droid repository build, from the files .pkey/release maps (no fitting file is a skip). --channel is the release track (default stable); --version is what itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first submission (pkey storefront flathub init). A failed step fails the command after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs nothing and prints each checked command. --deliverable <packId> plans that pack's store transports instead of the channels: Background Assets (package, upload; needs macOS and ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, STEAM_CONFIG_VDF and steamcmd) and Play Asset Delivery, which is always skipped: run pkey transport play-pad modules before the build. A transport that skips leaves the pack on the Polaris Key CDN. --from is the pack publish's --out directory."
       }
     ]
   },
@@ -48616,6 +48616,8 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
   return {
     slug: m.product.slug,
+    packs: (m.release?.packDeliverables ?? []).map((p) => p.id),
+    routes: m.distribution?.routes ?? [],
     outlets: (m.distribution?.outlets ?? []).map((o) => ({
       id: o.id,
       kind: o.kind,
@@ -49278,6 +49280,7 @@ ${lines4.map((l) => `  ${l}`).join("\n")}`}`,
 
 // src/channelSync.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
+import { accessSync, constants as constants2 } from "node:fs";
 import path29 from "node:path";
 var FDROID_KEYSTORE_ENV = "PKEY_FDROID_KEYSTORE";
 var FDROID_ALIAS_ENV = "PKEY_FDROID_ALIAS";
@@ -49372,6 +49375,91 @@ function planSync(outlets, o) {
     }
   return rows;
 }
+function ascMissing(env) {
+  if (!env.ASC_KEY_ID?.trim()) return "ASC_KEY_ID";
+  if (!env.ASC_ISSUER_ID?.trim()) return "ASC_ISSUER_ID";
+  if (!env.ASC_PRIVATE_KEY?.trim() && !env.ASC_KEY_PATH?.trim())
+    return "ASC_PRIVATE_KEY";
+  return void 0;
+}
+var STEAM_SECRETS = ["STEAM_USERNAME", "STEAM_CONFIG_VDF"];
+function toolOnPath(env, name) {
+  const names = name === "steamcmd" ? ["steamcmd", "steamcmd.sh"] : [name];
+  for (const dir of (env.PATH ?? "").split(path29.delimiter))
+    for (const n of names)
+      try {
+        if (dir) accessSync(path29.join(dir, n), constants2.X_OK);
+        else continue;
+        return true;
+      } catch {
+      }
+  return false;
+}
+var cdnNote = (outlets, until) => `${outlets.join(", ")}: served from the Polaris Key CDN until ${until}.`;
+function planTransports(p, packId, o) {
+  const routes = p.routes.filter((r) => r.deliverableId === packId);
+  const on = (t) => routes.filter((r) => r.transport === t);
+  const outletOf = (id) => p.outlets.find((x) => x.id === id);
+  const base = (transport, part, ids) => ({
+    outlet: ids.join(","),
+    channel: transport,
+    step: "transport",
+    store: transport,
+    state: "planned",
+    transport,
+    part,
+    pack: packId,
+    outlets: ids
+  });
+  const skip = (rows2, reason, group, until, secret) => {
+    for (const r of rows2) {
+      r.state = "skipped";
+      r.reason = reason;
+      if (secret) r.secret = secret;
+    }
+    const auto = group.filter((r) => r.origin === "auto").map((r) => r.outletId);
+    if (auto.length && until) rows2[0].note = cdnNote(auto, until);
+  };
+  const rows = [];
+  const ba = on("apple-ba");
+  if (ba.length) {
+    const ids = ba.map((r) => r.outletId);
+    const group = [
+      base("apple-ba", "package", ids),
+      base("apple-ba", "upload", ids)
+    ];
+    const missing2 = ascMissing(o.env);
+    if ((o.platform ?? process.platform) !== "darwin")
+      skip(group, "needs-macos", ba, "run on macOS");
+    else if (missing2)
+      skip(group, "missing-secret", ba, `${missing2} is set`, missing2);
+    rows.push(...group);
+  }
+  for (const r of on("steam-depot")) {
+    const depot = outletOf(r.outletId)?.identity.depots;
+    const id = depot?.[packId];
+    const group = [
+      { ...base("steam-depot", "vdf", [r.outletId]), depot: id },
+      { ...base("steam-depot", "build", [r.outletId]), depot: id }
+    ];
+    const missing2 = STEAM_SECRETS.find((e) => !o.env[e]?.trim());
+    const has3 = o.hasTool ?? (() => true);
+    if (id === void 0) skip(group, "no-depot", [r], null);
+    else if (missing2)
+      skip(group, "missing-secret", [r], `${missing2} is set`, missing2);
+    else if (!has3("steamcmd"))
+      skip(group, "no-steamcmd", [r], "steamcmd is installed");
+    rows.push(...group);
+  }
+  const pad2 = on("play-pad");
+  if (pad2.length) {
+    const ids = pad2.map((r) => r.outletId);
+    const row2 = base("play-pad", "modules", ids);
+    skip([row2], "pre-build", pad2, null);
+    rows.push(row2);
+  }
+  return rows;
+}
 function sink() {
   let text3 = "";
   return {
@@ -49456,6 +49544,7 @@ async function runLocal(row2, outlet, a, io, product, dryRun, log, err) {
 async function runRows(rows, a, io, product, outlets, dryRun) {
   for (const row2 of rows) {
     if (row2.state !== "planned") continue;
+    if (row2.step === "transport") continue;
     if (dryRun && row2.step === "pr") continue;
     const stdout = sink();
     const stderr = sink();
@@ -49512,9 +49601,9 @@ async function runRows(rows, a, io, product, outlets, dryRun) {
 function describe(r, dryRun) {
   switch (r.state) {
     case "planned":
-      return !dryRun ? "pending" : r.command ? `would run ${r.command}` : r.step === "pr" ? "would open a pull request" : "would run";
+      return r.step === "transport" ? `${dryRun ? "would run" : "planned"}: pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}` : !dryRun ? "pending" : r.command ? `would run ${r.command}` : r.step === "pr" ? "would open a pull request" : "would run";
     case "skipped":
-      return r.reason === "missing-secret" ? `skipped: ${r.secret} is not set` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
+      return r.reason === "missing-secret" ? `skipped: ${r.secret} is not set` : r.reason === "needs-macos" ? "skipped: needs macOS" : r.reason === "no-steamcmd" ? "skipped: steamcmd is not installed" : r.reason === "no-depot" ? `skipped: set depots.${r.pack} on the steam outlet` : r.reason === "pre-build" ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
     case "done":
       return r.platform && r.store === "itch" ? `pushed ${r.platform}` : r.store === "snap" ? "uploaded" : "built and registered";
     case "opened":
@@ -49527,11 +49616,18 @@ function describe(r, dryRun) {
       return `failed: ${r.error ?? "see above"}`;
   }
 }
-var labelOf2 = (r) => r.outlet === r.channel ? r.channel : `${r.channel} (${r.outlet})`;
-function writeText(rows, product, track, dryRun, io, term) {
+var labelOf2 = (r) => r.step === "transport" ? `${r.transport} ${r.part} (${r.outlets.join(", ")})` : r.outlet === r.channel ? r.channel : `${r.channel} (${r.outlet})`;
+function writeText(rows, product, track, dryRun, io, term, pack) {
   const { painter, symbols, caps } = term;
   const u = (v) => untrusted(v, io.env);
   const out = io.stdout;
+  if (!rows.length && pack) {
+    out.write(
+      `Nothing to sync. ${pack} goes through the Polaris Key CDN on every outlet.
+`
+    );
+    return;
+  }
   if (!rows.length) {
     out.write(
       "Nothing to sync. Sync covers winget, Homebrew, Scoop, Flathub, itch.io, Snap and F-Droid; add one with pkey channel add <id>.\n"
@@ -49542,7 +49638,8 @@ function writeText(rows, product, track, dryRun, io, term) {
   const failed = count(["failed"]);
   const parts = [
     failed && `${failed} failed`,
-    dryRun ? count(["planned"]) && `${count(["planned"])} planned` : count(["opened", "existing", "unchanged", "done"]) && `${count(["opened", "existing", "unchanged", "done"])} done`,
+    count(["planned"]) && `${count(["planned"])} planned`,
+    count(["opened", "existing", "unchanged", "done"]) && `${count(["opened", "existing", "unchanged", "done"])} done`,
     count(["skipped"]) && `${count(["skipped"])} skipped`
   ].filter(Boolean);
   const glyph = failed ? painter.style(symbols.fail, ["danger"]) : dryRun ? painter.style(symbols.stepActive, ["muted"]) : parts.length === 1 && count(["skipped"]) ? painter.style(symbols.warn, ["warning"]) : painter.style(symbols.ok, ["success"]);
@@ -49572,7 +49669,7 @@ function writeText(rows, product, track, dryRun, io, term) {
 `
       )
     );
-    for (const n of r.notes ?? [])
+    for (const n of [...r.note ? [r.note] : [], ...r.notes ?? []])
       out.write(
         `${" ".repeat(cellWidth(symbols.ok))}  ${painter.style(u(n), ["muted"])}
 `
@@ -49600,7 +49697,9 @@ var KNOWN_FLAGS2 = [
   "json",
   "product",
   "base-url",
-  "no-report"
+  "no-report",
+  "deliverable",
+  "from"
 ];
 async function channelSync(a, io) {
   const bad = unknownOption(a, io, KNOWN_FLAGS2);
@@ -49620,8 +49719,18 @@ async function channelSync(a, io) {
     return manifestFailure("channel sync", e, io, json);
   }
   const dir = str6(a, "dir");
-  const builds = dir ? await matchBuilds(io.cwd, dir) : [];
-  const rows = planSync(product.outlets, { dir, builds, env: io.env });
+  const pack = str6(a, "deliverable");
+  if (pack && !product.packs.includes(pack))
+    throw new UsageError(
+      `--deliverable ${pack} is not a pack in .pkey/release${product.packs.length ? ` (packs: ${product.packs.join(", ")})` : ""}.`
+    );
+  if (str6(a, "from") && !pack)
+    throw new UsageError("--from needs --deliverable.");
+  const builds = dir && !pack ? await matchBuilds(io.cwd, dir) : [];
+  const rows = pack ? planTransports(product, pack, {
+    env: io.env,
+    hasTool: (n) => toolOnPath(io.env, n)
+  }) : planSync(product.outlets, { dir, builds, env: io.env });
   if (rows.some((r) => r.state === "planned") && !io.env[CI_TOKEN_ENV]?.trim() && !canRequestGithubOidc(io.env)) {
     if (json)
       io.stdout.write(
@@ -49646,14 +49755,22 @@ async function channelSync(a, io) {
       })
     );
   } else {
-    writeText(rows, product.slug, track, dryRun, io, termOf(io, io.stdout));
+    writeText(
+      rows,
+      product.slug,
+      track,
+      dryRun,
+      io,
+      termOf(io, io.stdout),
+      pack
+    );
   }
   return failed ? 1 : 0;
 }
 
 // src/channel.ts
 var ADD_USAGE = "Usage: pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]";
-var SYNC_USAGE = "Usage: pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]";
+var SYNC_USAGE = "Usage: pkey channel sync [--channel c] [--version v] [--dir d] [--deliverable packId [--from dir]] [--product slug] [--base-url url] [--dry-run] [--json]";
 var CHANNEL_USAGE2 = `${ADD_USAGE}
        ${SYNC_USAGE.replace("Usage: ", "")}`;
 async function cmdChannel(a, io) {

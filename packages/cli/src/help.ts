@@ -1061,7 +1061,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     tree: { add: [], sync: [] },
     usage: [
       "pkey channel add <id> [--field name=value ...] [--outlet-id id] [--json]",
-      "pkey channel sync [--channel c] [--version v] [--dir d] [--product slug] [--base-url url] [--dry-run] [--json]",
+      "pkey channel sync [--channel c] [--version v] [--dir d] [--deliverable packId [--from dir]] [--product slug] [--base-url url] [--dry-run] [--json]",
     ],
     about: [
       {
@@ -1089,7 +1089,14 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "submission (pkey storefront flathub init). A failed step fails the command " +
           "after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write " +
           "in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs " +
-          "nothing and prints each checked command.",
+          "nothing and prints each checked command. --deliverable <packId> plans that " +
+          "pack's store transports instead of the channels: Background Assets (package, " +
+          "upload; needs macOS and ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or " +
+          "ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, " +
+          "STEAM_CONFIG_VDF and steamcmd) and Play Asset Delivery, which is always " +
+          "skipped: run pkey transport play-pad modules before the build. A transport " +
+          "that skips leaves the pack on the Polaris Key CDN. --from is the pack " +
+          "publish's --out directory.",
       },
     ],
   },
