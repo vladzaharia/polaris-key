@@ -18,6 +18,10 @@
 import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
 import { BookOpen, Check, Copy, Pencil, Plus } from "lucide-react";
+import {
+  ACTION_REF_PLACEHOLDER,
+  renderCiWorkflow,
+} from "@polaris-key/manifest";
 import type { ReleaseHealth } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { toSeconds } from "../../../../lib/format.js";
@@ -44,17 +48,16 @@ export const FIRST_RELEASE_POLL_MS = 10_000;
 const DEFAULT_WORKFLOW = ".github/workflows/release.yml";
 
 /**
- * The publish step for a release job, named for the product's slug. It follows the CI guide
- * (`/docs/build/ci/`): the Action is referenced by commit until it is listed as `@v1`.
+ * The release workflow, named for the product's slug. It follows the CI guide
+ * (`/docs/build/ci/`): the Action is referenced by commit, `<commit-sha>` where no Worker names it.
  */
-export function workflowStep(slug: string): string {
-  return [
-    `# Publishes ${slug} (the slug in .pkey/product). Put it in the release job, after the steps that build your files.`,
-    "# The job needs `permissions: id-token: write` (and `release-key` if .pkey/release declares releaseKeys).",
-    "- uses: vladzaharia/polaris-key/actions/publish@<commit-sha>",
-    "  with:",
-    "    args: --tag ${{ github.ref_name }} --channel stable --dir dist",
-  ].join("\n");
+export function workflowStep(slug: string, releaseKeys = false): string {
+  return renderCiWorkflow({
+    product: slug,
+    channel: "stable",
+    actionRef: ACTION_REF_PLACEHOLDER,
+    releaseKeys,
+  });
 }
 
 const STAR = markPartPath("star", { kind: "key", size: 48, theme: "mono" });
@@ -283,8 +286,8 @@ export function FirstReleasePanel({
   );
 
   const description = linked
-    ? `Releases come from CI, signed with ${productName}'s key. Two checks and one workflow step, then this page fills itself in.`
-    : `Releases come from CI, signed with ${productName}'s key. Link a repository or let CI publish, add one workflow step, then this page fills itself in.`;
+    ? `Releases come from CI, signed with ${productName}'s key. Two checks and one workflow, then this page fills itself in.`
+    : `Releases come from CI, signed with ${productName}'s key. Link a repository or let CI publish, add the workflow, then this page fills itself in.`;
 
   return (
     <section
@@ -326,7 +329,7 @@ export function FirstReleasePanel({
             }
             onClick={() => void copy(step)}
           >
-            {copyState === "copied" ? "Copied" : "Copy workflow step"}
+            {copyState === "copied" ? "Copied" : "Copy workflow"}
           </Button>
           <Button variant="ghost" asChild>
             <a href={docsUrl("ciPublishing")} target="_blank" rel="noreferrer">

@@ -6768,3 +6768,5 @@ export * from "./displayName.js";
 export * from "./spellings.js";
 // The licence-key format, shared by the portal and the console (P0-35).
 export * from "./licenseKey.js";
+// A-32.2: the release workflow text, one renderer for the console, the setup PR and the docs.
+export * from "./ciWorkflow.js";
