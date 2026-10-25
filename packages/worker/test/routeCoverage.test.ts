@@ -264,6 +264,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/{product}/integration", ["get"]],
     // A-20.4: the channel read model (delivery and commerce facets per channel).
     ["/manage/api/products/{product}/distribution/channels", ["get"]],
+    // A-32.3: the CI readiness read (the checks a `v*` tag needs).
+    ["/manage/api/products/{product}/release/ci-readiness", ["get"]],
     // ST-34.4: the store-listing import `pkey listing import` calls (session or admin token).
     ["/manage/api/products/{product}/distribution/listing/import", ["post"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
