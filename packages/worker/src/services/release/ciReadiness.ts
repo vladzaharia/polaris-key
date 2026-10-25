@@ -24,15 +24,17 @@ import { getReleaseConfig } from "./config.js";
 import { fetchRepoFile } from "./github.js";
 import {
   GITHUB_API,
-  appJwt,
   discoverInstallation,
   getInstallationToken,
   githubHeaders,
-  grantedPermissions,
   mintInstallationToken,
   type FetchImpl,
 } from "./githubApp.js";
-import { capabilitiesFrom, type WriteCapabilities } from "./github/write.js";
+import {
+  capabilitiesFrom,
+  installationPermissions,
+  type WriteCapabilities,
+} from "./github/write.js";
 import { readLinkedManifest } from "./resync.js";
 
 export type ReadinessState = "ok" | "missing" | "unknown";
@@ -81,25 +83,6 @@ const ALL_CHECKS = [
 
 const unknowns = (ids: readonly string[]): ReadinessCheck[] =>
   ids.map((id) => ({ id, state: "unknown" }));
-
-/** The installation's granted permissions; `null` when it is gone or suspended. */
-async function installationPermissions(
-  env: Env,
-  installId: number,
-  now: number,
-  fetchImpl: FetchImpl,
-): Promise<Record<string, string> | null> {
-  const res = await fetchImpl(`${GITHUB_API}/app/installations/${installId}`, {
-    headers: githubHeaders(`Bearer ${await appJwt(env, now)}`),
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`installation lookup failed: ${res.status}`);
-  const row = (await res.json()) as {
-    permissions?: unknown;
-    suspended_at?: unknown;
-  };
-  return row.suspended_at != null ? null : grantedPermissions(row.permissions);
-}
 
 /** A GET with a read token; the parsed JSON on 2xx, else the status. */
 async function getJson(

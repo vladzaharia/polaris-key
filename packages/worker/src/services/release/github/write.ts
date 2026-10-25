@@ -137,9 +137,31 @@ const NONE: WriteCapabilities = {
 };
 
 /**
- * `GET /app/installations/{id}` as the App: the permissions the installation accepted. A
- * suspended or missing installation, and any unreadable answer, has no capabilities (the
- * One-command fallback applies); only a network or auth failure of our own throws.
+ * `GET /app/installations/{id}` as the App: the permissions the installation accepted, or `null`
+ * when it is gone (404) or suspended. Only a network or auth failure of our own throws.
+ */
+export async function installationPermissions(
+  env: Env,
+  installId: number,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<Record<string, string> | null> {
+  const jwt = await appJwt(env, now);
+  const res = await fetchImpl(`${GITHUB_API}/app/installations/${installId}`, {
+    headers: githubHeaders(`Bearer ${jwt}`),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`installation lookup failed: ${res.status}`);
+  const row = (await res.json()) as {
+    permissions?: unknown;
+    suspended_at?: unknown;
+  };
+  return row.suspended_at != null ? null : grantedPermissions(row.permissions);
+}
+
+/**
+ * What the installation lets Polaris Key do. A suspended or missing installation, and any
+ * unreadable answer, has no capabilities (the One-command fallback applies).
  */
 export async function installationCapabilities(
   env: Env,
@@ -147,17 +169,11 @@ export async function installationCapabilities(
   now: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<WriteCapabilities> {
-  const jwt = await appJwt(env, now);
-  const res = await fetchImpl(`${GITHUB_API}/app/installations/${installId}`, {
-    headers: githubHeaders(`Bearer ${jwt}`),
-  });
-  if (res.status === 404) return NONE;
-  if (!res.ok) throw new Error(`installation lookup failed: ${res.status}`);
-  const row = (await res.json()) as {
-    permissions?: unknown;
-    suspended_at?: unknown;
-  };
-  if (row.suspended_at != null) return NONE;
-  const permissions = grantedPermissions(row.permissions);
-  return capabilitiesFrom(permissions);
+  const permissions = await installationPermissions(
+    env,
+    installId,
+    now,
+    fetchImpl,
+  );
+  return permissions ? capabilitiesFrom(permissions) : NONE;
 }

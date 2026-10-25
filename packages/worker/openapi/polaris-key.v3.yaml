@@ -16190,6 +16190,115 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminCiFixRefusal" }
+  /manage/api/products/{product}/release/setup/pull-request:
+    get:
+      operationId: getAdminProductSetupPullRequest
+      tags: [admin]
+      summary: The open setup pull request, if any
+      description: >
+        A-32.5. Reads the product's repository for the one open pull request whose head is
+        `pkey/setup`. `state` is `open`, `none`, or `unknown` (GitHub would not say). `capabilities`
+        is what the installation lets Polaris Key write. Read-only. Area `ship`; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The state.
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/AdminSetupPullRequestState" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    post:
+      operationId: createAdminProductSetupPullRequest
+      tags: [admin]
+      summary: Write the setup change to `pkey/setup` and open or update the pull request
+      description: >
+        A-32.5 (FLOWS W17). Reads `.pkey/` at the default branch head, composes the change (the
+        outlets to add to `.pkey/distribution`, and with `workflow` the release workflow, pinned
+        to the commit this Worker runs; left out when the default branch has it), validates the
+        result as a whole, and writes it as commits on the one branch `pkey/setup` (created from
+        the default branch head, or new commits on top of the existing branch; never forced). It
+        then opens the one pull request, or updates the open one in place. It reads the pull
+        request first and touches only one whose head is `pkey/setup` of this repository and whose
+        base is the default branch. It never merges, closes, or writes another branch. Audited as
+        `release.setup.pull_request` with the paths and the pull request number, never content.
+        `400` when the composed change is invalid or empty (`reason` is the composer's code; nothing
+        is written). `409` with `reason: app_permission` when the GitHub App lacks a write
+        permission: `permission` names it (`contents: write`) and `oneCommand` is the terminal
+        command that does the same (`pkey channel add itch`, `pkey ci init`). Other `409` reasons:
+        `app`, `manifest`, `slug`, `product` (the repository cannot be read as linked), `action_ref`
+        (this Worker has no commit id to pin), `pull_request_base` (the open setup pull request
+        targets another branch). `502` when GitHub refused a write. Area `ship`, write level;
+        admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                outlets:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [channel]
+                    properties:
+                      channel: { type: string }
+                      identity: { type: object, additionalProperties: true }
+                      outletId: { type: string }
+                workflow: { type: boolean }
+      responses:
+        "200":
+          description: The open pull request was updated in place.
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/AdminSetupPullRequestResult" }
+        "201":
+          description: The pull request was opened.
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/AdminSetupPullRequestResult" }
+        "400":
+          description: The change is invalid or empty; nothing was written.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: >
+            The repository cannot take the change now. `app_permission` carries `permission` and
+            `oneCommand`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: The request body is malformed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "502":
+          description: GitHub refused a write.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Admin create probes (UX-72, rule 10) ──
   /manage/api/github/repositories:
     get:
@@ -23196,6 +23305,55 @@ components:
                 description: A name or a reason, never content.
         workflowPreview:
           type: [string, "null"]
+    AdminSetupPullRequestState:
+      type: object
+      required: [repository, capabilities, state, pullRequest]
+      properties:
+        repository: { type: [string, "null"] }
+        capabilities:
+          type: object
+          required: [pullRequest, workflow, environment, ruleset]
+          properties:
+            pullRequest: { type: boolean }
+            workflow: { type: boolean }
+            environment: { type: boolean }
+            ruleset: { type: boolean }
+        state: { type: string, enum: [none, open, unknown] }
+        pullRequest:
+          type: [object, "null"]
+          required: [number, url]
+          properties:
+            number: { type: integer }
+            url: { type: string }
+    AdminSetupPullRequestResult:
+      type: object
+      required: [ok, repository, branch, pullRequest, files, summary]
+      properties:
+        ok: { type: boolean }
+        repository: { type: string }
+        branch: { type: string, enum: [pkey/setup] }
+        pullRequest:
+          type: object
+          required: [number, url, created]
+          properties:
+            number: { type: integer }
+            url: { type: string }
+            created: { type: boolean }
+        files:
+          type: array
+          description: Every file the change covers; `written` is false when the branch held the text already.
+          items:
+            type: object
+            required: [path, written]
+            properties:
+              path: { type: string }
+              written: { type: boolean }
+        summary:
+          type: object
+          required: [outlets, workflow]
+          properties:
+            outlets: { type: array, items: { type: string } }
+            workflow: { type: boolean }
     AdminProductChannels:
       type: object
       required: [product, now, platforms, kinds, channels]
