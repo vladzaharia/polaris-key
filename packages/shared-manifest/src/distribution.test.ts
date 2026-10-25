@@ -59,7 +59,12 @@ describe("normalizeDistribution", () => {
       { id: "direct", kind: "direct", identity: {}, listing: null },
     ]);
     expect(d.routes).toEqual([
-      { deliverableId: "app", outletId: "direct", transport: "pkey-cdn" },
+      {
+        deliverableId: "app",
+        outletId: "direct",
+        transport: "pkey-cdn",
+        origin: "default",
+      },
     ]);
   });
 
@@ -109,6 +114,79 @@ describe("normalizeDistribution", () => {
     expect(t("dice.levels", "play")).toBe("embedded");
     expect(t("dice.levels", "web")).toBe("embedded");
     expect(d.routes).toHaveLength(6);
+  });
+
+  it("transports.packs: auto derives each pack's transport per outlet kind (P4-33)", () => {
+    const d = normalizeDistribution(
+      {
+        outlets: {
+          "app-store": {},
+          testflight: {},
+          steam: { appId: 480, depots: { "dice.levels": 481 } },
+          "steam-beta": { kind: "steam", appId: 481 },
+          play: {},
+          itch: {},
+          web: {},
+        },
+        transports: {
+          default: "embedded",
+          packs: "auto",
+          deliverables: { "dice.levels": { itch: "embedded" } },
+        },
+      },
+      [
+        { id: "app", kind: "app" },
+        { id: "dice.levels", kind: "pack" },
+        { id: "dice.mods", kind: "pack" },
+      ],
+    );
+    expect(d.transports.packs).toBe("auto");
+    expect(d.outlets.find((o) => o.id === "steam")!.identity.depots).toEqual({
+      "dice.levels": "481",
+    });
+    const r = (deliverable: string, outlet: string) => {
+      const { transport, origin } = d.routes.find(
+        (x) => x.deliverableId === deliverable && x.outletId === outlet,
+      )!;
+      return [transport, origin];
+    };
+    expect(r("dice.levels", "app-store")).toEqual(["apple-ba", "auto"]);
+    expect(r("dice.levels", "testflight")).toEqual(["apple-ba", "auto"]);
+    expect(r("dice.levels", "steam")).toEqual(["steam-depot", "auto"]);
+    // A pack the outlet has no depot for goes by the CDN, as does another steam outlet.
+    expect(r("dice.mods", "steam")).toEqual(["pkey-cdn", "auto"]);
+    expect(r("dice.levels", "steam-beta")).toEqual(["pkey-cdn", "auto"]);
+    // Never play-pad.
+    expect(r("dice.levels", "play")).toEqual(["pkey-cdn", "auto"]);
+    expect(r("dice.levels", "web")).toEqual(["pkey-cdn", "auto"]);
+    // A deliverable override wins and is declared.
+    expect(r("dice.levels", "itch")).toEqual(["embedded", "declared"]);
+    // The app is untouched by packs: the default applies.
+    expect(r("app", "app-store")).toEqual(["embedded", "default"]);
+  });
+
+  it("marks a route's origin: declared (override or packs map) or default (P4-33)", () => {
+    const d = normalizeDistribution(
+      {
+        outlets: { "app-store": {}, web: {} },
+        transports: { packs: { "app-store": "apple-ba" } },
+      },
+      [
+        { id: "app", kind: "app" },
+        { id: "dice.levels", kind: "pack" },
+      ],
+    );
+    const origins = d.routes.map((x) => [
+      x.deliverableId,
+      x.outletId,
+      x.origin,
+    ]);
+    expect(origins).toEqual([
+      ["app", "app-store", "default"],
+      ["app", "web", "default"],
+      ["dice.levels", "app-store", "declared"],
+      ["dice.levels", "web", "default"],
+    ]);
   });
 
   it("never re-kinds an id that is itself a kind (outlet_kind_mismatch)", () => {
@@ -364,6 +442,51 @@ describe("parseManifest and .pkey/distribution", () => {
         ["/outlets/direct/scoopBucket", "invalid_outlet_identity"],
       ]);
     }
+  });
+
+  it("validates transports.packs: auto and a steam outlet's depots (P4-33)", () => {
+    const withPacks = {
+      ...release,
+      release: {
+        ...release.release,
+        deliverables: {
+          ...release.release.deliverables,
+          "dice.levels": { kind: "pack", type: "godot.pck" },
+        },
+      },
+    };
+    const run = (distribution: unknown) =>
+      validateIngestDocuments({
+        product,
+        schema,
+        release: withPacks,
+        distribution,
+      })
+        .errors.filter((e) => /^\/(outlets|transports)\//.test(e.path))
+        .map((e) => [e.path, e.code]);
+    expect(
+      run({
+        outlets: { steam: { appId: 480, depots: { "dice.levels": "481" } } },
+        transports: { packs: "auto" },
+      }),
+    ).toEqual([]);
+    expect(run({ transports: { packs: "always" } })).toEqual([
+      ["/transports/packs", "invalid_transport"],
+    ]);
+    expect(
+      run({
+        outlets: { steam: { appId: 480, depots: { "dice.levels": "x" } } },
+      }),
+    ).toEqual([["/outlets/steam/depots", "invalid_outlet_identity"]]);
+    // The app is not a pack; an undeclared id is no deliverable at all.
+    expect(
+      run({
+        outlets: { steam: { appId: 480, depots: { app: 1, "dice.nope": 2 } } },
+      }),
+    ).toEqual([
+      ["/outlets/steam/depots/app", "unknown_deliverable_ref"],
+      ["/outlets/steam/depots/dice.nope", "unknown_deliverable_ref"],
+    ]);
   });
 
   it("reads a snap outlet's channels: declared channels onto snap channels (A-18h)", () => {

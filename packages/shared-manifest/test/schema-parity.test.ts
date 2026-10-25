@@ -523,7 +523,12 @@ function base(): Docs {
             automaticBackgroundTask: true,
           },
         },
-        steam: { appId: 480, branches: { beta: "beta", nightly: "nightly" } },
+        steam: {
+          appId: 480,
+          branches: { beta: "beta", nightly: "nightly" },
+          // P4-33: the depot that carries a pack, for `transports.packs: auto`.
+          depots: { "acme.core3d": 481 },
+        },
         itch: { target: "acme/desktop", gameId: "1001" },
         flathub: { appId: "com.acme.Desktop" },
         snap: { name: "acme-desktop" },
@@ -3179,6 +3184,26 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (dist(d).transports.packs["epic-store"] = "pkey-cdn"),
   },
   {
+    // P4-33: `packs` is the word auto or a per-outlet map; any other word is neither.
+    code: "invalid_transport",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (dist(d).transports.packs = "sometimes"),
+  },
+  {
+    code: "invalid_outlet_identity",
+    file: "distribution",
+    schema: "rejects",
+    mutate: (d) => (outlet(d, "steam").depots["acme.core3d"] = "depot-1"),
+  },
+  {
+    // P4-33: a depot key must name a pack deliverable (a cross-reference the schema cannot hold).
+    code: "unknown_deliverable_ref",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (outlet(d, "steam").depots["acme.nope"] = "482"),
+  },
+  {
     code: "invalid_listing",
     file: "distribution",
     schema: "rejects",
@@ -3601,6 +3626,8 @@ describe("valid manifests pass both validators", () => {
     const docs = base();
     delete rel(docs).stableTagPattern;
     delete rel(docs).ignoreTags;
+    // This release declares no packs, so the base document's steam depot has nothing to name.
+    delete dist(docs).outlets.steam.depots;
     rel(docs).deliverables = {
       app: {
         kind: "app",

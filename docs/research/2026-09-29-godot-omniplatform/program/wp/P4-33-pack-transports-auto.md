@@ -51,6 +51,23 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Corrections (2026-10-24)
+
+Verified against the code; the code is the fact. Slices: `P4-33.1` manifest, `.2` Worker readiness, `.3` CLI sync, `.4` Action, `.5` docs (plan: `_lead/plans/P4-33-A-32-slices.md`).
+
+- **T1.** The command is `pkey channel sync`, not `pkey storefronts sync` (A-25 D-A1; `channelSync.ts` reserves the `transport` step kind for this package).
+- **T2.** `transports.packs` is a per-outlet map today (`checkMap`, the schema's `transportMap`); order is deliverable map, packs map, default. `auto` is a new accepted value, so rule 9 applies. Decision D-P1: `transports.packs: auto` is the whole map as one word; `transports.deliverables` still overrides.
+- **T3.** Sync never sees Steam or the App Store: its plan takes `pr`/`ci` plane channels plus F-Droid, and `steam`, `app-store`, `testflight`, `google-play` are `worker` plane. Transport rows come from the pack routes (`normalizeDistribution(...).routes`), not from planes.
+- **T4.** Sync runs only after an app publish; transports need the pack publish's cache (`release publish --deliverable <packId> --out <dir>`).
+- **T5.** Each transport needs an input the manifest lacked or a runner it may not have: Steam's depot was a flag only (now `depots`, D-P3); Apple's archive needs macOS and the ASC key; Play's modules patch the Gradle build before the AAB exists, so they never run after publish (D-P5: `auto` never picks `play-pad`).
+- **T6.** "Fallback to the CDN" is a readiness rule, not a delivery change: the CDN serves pack objects whatever the transport. `apple-ba` readiness fails closed without an `approved`/`live` availability record, so an `auto` route to Background Assets with no ASC key must not hold the release (D-P2: route `origin`, P4-33.2).
+- **T7.** No wire change. Only `play-pad` narrows a pack to `pinned` in the signed feed, and `auto` never picks it; the corpus reads no `.pkey/distribution`.
+- **T8.** The ASC part is done (A-17e): `distribute/submission-items` lists every COMPLETE asset-pack version in a submittable state and the console's submit step checks each by default. Nothing to build.
+- **T9.** Two docs targets do not exist: `releases/release-tracks` and `help/beta`. This package's part is `packs/*` (`features/ship-builds/packs/transports.mdx`, `ship-a-pack.mdx`) and `ci.md`'s pack job.
+- **T10.** Verify runs more than the CLI suite: shared-manifest, the Worker and the docs build are touched too.
+
+Settled in P4-33.1 (route shape, for .2 and .3): `ManifestTransportRoute` is `{ deliverableId, outletId, transport, origin }` with `origin: "declared" | "auto" | "default"` (`declared` = a `deliverables` override or an entry of the `packs` map; `auto` = derived by `packs: auto`, including its CDN results; `default` = fell through to `transports.default`). `ManifestTransports.packs` is `Record<string, Transport> | "auto"`. The rule is the exported `autoPackTransport(kind, hasDepot)`. A steam outlet's `depots` is `{ <packId>: "<digits>" }`, keys refused unless they name a declared pack (`unknown_deliverable_ref`).
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.

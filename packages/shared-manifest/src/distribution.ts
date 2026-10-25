@@ -94,6 +94,24 @@ export const TRANSPORT_FLOATS: Readonly<Record<Transport, boolean>> = {
   web: true,
 };
 
+/** The word `transports.packs` takes in place of the per-outlet map. */
+export const TRANSPORTS_PACKS_AUTO = "auto";
+
+/**
+ * `transports.packs: auto` (P4-33): the transport a pack takes on an outlet of `kind`.
+ * Background Assets on the Apple stores; the Steam depot on a steam outlet that declares one for
+ * the pack (`hasDepot`), else the CDN; the CDN everywhere else. Never `play-pad` (its modules
+ * patch the Gradle build before the bundle exists, so it is always a declared choice).
+ */
+export function autoPackTransport(
+  kind: OutletKind,
+  hasDepot: boolean,
+): Transport {
+  if (kind === "app-store" || kind === "testflight") return "apple-ba";
+  if (kind === "steam" && hasDepot) return "steam-depot";
+  return "pkey-cdn";
+}
+
 /** The transport a deliverable uses when nothing says otherwise: our own CDN. */
 export const DEFAULT_DISTRIBUTION_TRANSPORT: Transport = "pkey-cdn";
 
@@ -194,6 +212,11 @@ export interface ManifestOutletIdentity {
   appId?: string;
   /** `steam`: declared channel → Steam branch. */
   branches?: Record<string, string>;
+  /**
+   * `steam`: pack deliverable id → the Steam depot id (decimal digits) that carries the pack. A
+   * pack with a depot is one `transports.packs: auto` routes by `steam-depot` (P4-33).
+   */
+  depots?: Record<string, string>;
   /** `itch`: the butler `user/game` target. */
   target?: string;
   /** `itch`: the numeric itch.io game id (the receipt's `game.id`), as decimal digits. */
@@ -279,7 +302,7 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
   "fdroid-repo": ["artifact", "packageName"],
   "ms-store": ["productId", "packageFamilyName", "flights"],
   "app-installer": ["packageFamilyName", "publisher", "updateSettings"],
-  steam: ["appId", "branches"],
+  steam: ["appId", "branches", "depots"],
   itch: ["target", "gameId"],
   flathub: ["appId"],
   snap: ["name", "channels"],
@@ -371,6 +394,17 @@ const channelMap =
     return null;
   };
 
+/** Pack deliverable id → Steam depot id; the keys are checked against the release document. */
+const depotMap: FieldCheck = (v) => {
+  if (!isRecord(v) || Object.keys(v).length > MAX_CHANNEL_MAP_ENTRIES)
+    return `must be an object of at most ${MAX_CHANNEL_MAP_ENTRIES} pack deliverable → Steam depot id entries`;
+  for (const value of Object.values(v)) {
+    if (numericId(value) !== null)
+      return "values must each be a Steam depot id (a positive integer or a string of decimal digits)";
+  }
+  return null;
+};
+
 const platformList: FieldCheck = (v) => {
   const allowed: readonly string[] = RELEASE_PLATFORMS;
   if (
@@ -434,6 +468,8 @@ function fieldCheck(kind: OutletKind, field: OutletIdentityField): FieldCheck {
       );
     case "branches":
       return channelMap(STEAM_BRANCH_RE, "Steam branch");
+    case "depots":
+      return depotMap;
     case "target":
       return pattern(ITCH_TARGET_RE, "a butler user/game target");
     case "name":
@@ -1004,6 +1040,19 @@ function validateOutlet(
         `outlets.${id}.artifact must name an id in .pkey/release deliverables.app.artifacts.`,
       );
     }
+    if (field === "depots") {
+      for (const packId of Object.keys(value as Record<string, unknown>)) {
+        if (ctx.deliverables.get(packId) !== "pack") {
+          add(
+            errors,
+            "distribution",
+            `/outlets/${id}/depots/${packId}`,
+            "unknown_deliverable_ref",
+            `outlets.${id}.depots keys must name a pack deliverable declared in .pkey/release.`,
+          );
+        }
+      }
+    }
     if (
       field === "tracks" ||
       field === "branches" ||
@@ -1121,7 +1170,16 @@ function validateTransports(
     }
   };
 
-  checkMap("/transports/packs", transports.packs);
+  if (typeof transports.packs === "string") {
+    if (transports.packs !== TRANSPORTS_PACKS_AUTO)
+      add(
+        errors,
+        "distribution",
+        "/transports/packs",
+        "invalid_transport",
+        `transports.packs must be "auto" or an object keyed by outlet id.`,
+      );
+  } else checkMap("/transports/packs", transports.packs);
   const deliverables = transports.deliverables;
   if (deliverables === undefined) return;
   if (!isRecord(deliverables)) {
@@ -1197,17 +1255,25 @@ export interface ManifestOutlet {
 /** `transports`, normalised. */
 export interface ManifestTransports {
   default: Transport;
-  /** Outlet id → the transport every pack deliverable uses there. */
-  packs: Record<string, Transport>;
+  /**
+   * Outlet id → the transport every pack deliverable uses there, or `"auto"`: each pack's
+   * transport is derived per outlet (`autoPackTransport`).
+   */
+  packs: Record<string, Transport> | typeof TRANSPORTS_PACKS_AUTO;
   /** Deliverable id → outlet id → transport. */
   deliverables: Record<string, Record<string, Transport>>;
 }
+
+/** Where a route's transport came from: written in the manifest, derived by `packs: auto`, or
+ *  the document's `default`. */
+export type ManifestTransportOrigin = "declared" | "auto" | "default";
 
 /** One resolved (deliverable, outlet) pair: the row `dist_transports` stores. */
 export interface ManifestTransportRoute {
   deliverableId: string;
   outletId: string;
   transport: Transport;
+  origin: ManifestTransportOrigin;
 }
 
 /** `.pkey/distribution`, normalised (or the implicit document). */
@@ -1282,7 +1348,10 @@ export function normalizeDistribution(
       isTransport(def) && TRANSPORT_OUTLET_KINDS[def] === null
         ? def
         : DEFAULT_DISTRIBUTION_TRANSPORT,
-    packs: transportMap(rawTransports.packs),
+    packs:
+      rawTransports.packs === TRANSPORTS_PACKS_AUTO
+        ? TRANSPORTS_PACKS_AUTO
+        : transportMap(rawTransports.packs),
     deliverables: {},
   };
   const known = new Map(deliverables.map((d) => [d.id, d.kind]));
@@ -1299,13 +1368,37 @@ export function normalizeDistribution(
     // A package never has a transport (F-03): feeds serve it, not outlets.
     if (kind === "package") continue;
     for (const o of outlets) {
+      const declared = transports.deliverables[deliverableId]?.[o.id];
+      if (declared) {
+        routes.push({
+          deliverableId,
+          outletId: o.id,
+          transport: declared,
+          origin: "declared",
+        });
+        continue;
+      }
+      if (kind === "pack" && transports.packs === TRANSPORTS_PACKS_AUTO) {
+        routes.push({
+          deliverableId,
+          outletId: o.id,
+          transport: autoPackTransport(
+            o.kind,
+            o.identity.depots?.[deliverableId] !== undefined,
+          ),
+          origin: "auto",
+        });
+        continue;
+      }
+      const fromMap =
+        kind === "pack" && transports.packs !== TRANSPORTS_PACKS_AUTO
+          ? transports.packs[o.id]
+          : undefined;
       routes.push({
         deliverableId,
         outletId: o.id,
-        transport:
-          transports.deliverables[deliverableId]?.[o.id] ??
-          (kind === "pack" ? transports.packs[o.id] : undefined) ??
-          transports.default,
+        transport: fromMap ?? transports.default,
+        origin: fromMap ? "declared" : "default",
       });
     }
   }
@@ -1331,6 +1424,15 @@ function normalizeIdentity(
     // Numeric ids are stored as their decimal digits whichever way they were written, so every
     // consumer (`dist_outlets.identity_json`, `pkey distribution outlet-ids`) sees one spelling.
     if (typeof value === "number") out[field] = String(value);
+    else if (field === "depots")
+      out[field] = sortedRecord(
+        Object.fromEntries(
+          Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+            k,
+            String(v),
+          ]),
+        ),
+      );
     else if (field === "scoop") out[field] = structuredCloneScoop(value);
     else if (Array.isArray(value)) out[field] = [...value];
     else if (isRecord(value)) out[field] = sortedRecord(value);

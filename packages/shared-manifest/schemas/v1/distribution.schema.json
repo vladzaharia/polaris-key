@@ -581,7 +581,7 @@
       }
     },
     "outlet_steam": {
-      "description": "The identity fields a steam outlet reads: appId, branches. Other keys are ignored.",
+      "description": "The identity fields a steam outlet reads: appId, branches, depots. Other keys are ignored.",
       "type": "object",
       "properties": {
         "kind": {
@@ -592,6 +592,9 @@
         },
         "branches": {
           "$ref": "#/$defs/branches"
+        },
+        "depots": {
+          "$ref": "#/$defs/depots"
         },
         "listing": {
           "$ref": "#/$defs/listing"
@@ -755,6 +758,18 @@
       "additionalProperties": {
         "type": "string",
         "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+      }
+    },
+    "depots": {
+      "description": "Pack deliverable id → the Steam depot id that carries it. Keys must be pack deliverables declared in .pkey/release (validator-checked); transports.packs: auto routes a pack with a depot by steam-depot.",
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)*$",
+        "maxLength": 64
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/numericId"
       }
     },
     "snapChannels": {
@@ -927,7 +942,7 @@
       }
     },
     "transports": {
-      "description": "Which transport carries each deliverable per outlet: deliverables.<id>.<outlet>, then packs.<outlet> for a pack, then default (pkey-cdn when unset). Outlet keys must be declared outlets whose kind can carry the transport (validator-checked).",
+      "description": "Which transport carries each deliverable per outlet: deliverables.<id>.<outlet>, then packs (auto, or packs.<outlet>) for a pack, then default (pkey-cdn when unset). Outlet keys must be declared outlets whose kind can carry the transport (validator-checked).",
       "type": "object",
       "properties": {
         "default": {
@@ -935,7 +950,15 @@
           "enum": ["embedded", "pkey-cdn"]
         },
         "packs": {
-          "$ref": "#/$defs/transportMap"
+          "description": "auto: each pack takes Background Assets on the Apple stores, the Steam depot on a steam outlet that declares one for it, else the Polaris Key CDN (never Play Asset Delivery). Or one transport per outlet.",
+          "oneOf": [
+            {
+              "const": "auto"
+            },
+            {
+              "$ref": "#/$defs/transportMap"
+            }
+          ]
         },
         "deliverables": {
           "type": "object",

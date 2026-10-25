@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 255 distinct emit sites.
+codes with their JSON-pointer paths. 257 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -202,6 +202,7 @@ the offending value, or the allowed set.
 | `invalid_transport_deliverable` | error | distribution | `/transports/deliverables/${deliverableId}` | $\{deliverableId\} is a package deliverable; packages are served only by package feeds, never through an outlet's transport. |
 | `invalid_transport` | error | distribution | `/transports/default` | transports.default must be one of $\{TRANSPORTS.join(", ")\}. |
 | `invalid_transport` | error | distribution | `/transports/deliverables` | transports.deliverables must be an object keyed by deliverable id. |
+| `invalid_transport` | error | distribution | `/transports/packs` | transports.packs must be "auto" or an object keyed by outlet id. |
 | `invalid_transport` | error | distribution | `/transports` | transports must be an object \{ default, packs, deliverables \}. |
 | `invalid_transport` | error | distribution | `${path}/${outletId}` | transports must be one of $\{TRANSPORTS.join(", ")\}. |
 | `invalid_trusted_publisher_environment` | error | release | `/release/publishing/trustedPublisher/environment` | publishing.trustedPublisher.environment must be a GitHub environment name of at most 100 characters (letters, digits, space, . _ -). |
@@ -256,6 +257,7 @@ the offending value, or the allowed set.
 | `unknown_auto_issue_tier_ref` | error | product | `/autoIssue/tierId` | autoIssue.tierId references unknown tier $\{autoIssue.tierId\}. |
 | `unknown_channel_ref` | error | distribution | `/outlets/${id}/${field}/${channel}` | outlets.$\{id\}.$\{field\} keys must be declared channels (stable, beta, dev, a manual channel or one of deliverables.app.channels). |
 | `unknown_content_api_app` | error | release | `${at}/requires/contentApi/${key}` | requires.contentApi is keyed by app deliverable; $\{key\} is not one (the product's app deliverable is $\{APP_DELIVERABLE_ID\}). |
+| `unknown_deliverable_ref` | error | distribution | `/outlets/${id}/depots/${packId}` | outlets.$\{id\}.depots keys must name a pack deliverable declared in .pkey/release. |
 | `unknown_deliverable_ref` | error | distribution | `/transports/deliverables/${deliverableId}` | transports.deliverables keys must name a deliverable declared in .pkey/release (app is always declared). |
 | `unknown_entitlement_ref` | error | release | `${at}/entitlement` | entitlement must be a licence flag key matching $\{ENTITLEMENT_PATTERN.source\}. |
 | `unknown_entitlement_ref` | error | release | `${at}/entitlement` | entitlement $\{entitlement\} is not a flag entry of the product's .pkey/schema. It only asserts the pack's delivery gate, which an operator sets under Ship builds → Access. |
