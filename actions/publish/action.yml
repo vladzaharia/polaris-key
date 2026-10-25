@@ -14,8 +14,9 @@
 # The job needs `permissions: id-token: write` (and `contents: read`): the Action exchanges the
 # job's OIDC token for a short-lived pkeyci_ token, so the repository stores no secret. It never
 # builds, signs binaries or uploads to stores itself; run your export and vendor tools first, then
-# this. `channels: auto` runs `pkey channel sync` after a successful app release publish (a pack
-# or package publish never syncs); channels whose secret is not in the step's env are skipped.
+# this. `channels: auto` runs `pkey channel sync` after a successful app release publish, and
+# after a pack publish (`channel sync --deliverable <pack> --from <out>`; the Action adds
+# `--out $RUNNER_TEMP/pkey-packs` when args has none). A package publish never syncs. Channels whose secret is not in the step's env are skipped.
 #
 # Until the Action is listed as polaris-key/publish@v1, reference it by commit:
 #   uses: vladzaharia/polaris-key/actions/publish@<sha>

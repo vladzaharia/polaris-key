@@ -7,7 +7,9 @@
  * `pkey` argv, run in-process with no shell; `release-key` and `content-key` become
  * `PKEY_RELEASE_KEY` / `PKEY_CONTENT_KEY` in that process's environment, never argv; `base-url`
  * becomes `PKEY_BASE_URL`; `working-directory` is the cwd; `dry-run` appends `--dry-run`.
- * `channels: auto` then runs `pkey channel sync` once after a successful app `release publish`.
+ * `channels: auto` then runs `pkey channel sync` once after a successful app `release publish`,
+ * and `pkey channel sync --deliverable <pack> --from <out>` after a successful pack publish (the
+ * Action adds `--out $RUNNER_TEMP/pkey-packs` when the args carry none). A package publish never syncs.
  *
  * Inputs arrive as `INPUT_<NAME>` environment variables (GitHub upper-cases the name and keeps
  * hyphens: `INPUT_BASE-URL`). GitHub forwards undeclared `with:` keys too, so any `INPUT_*` that is
@@ -18,6 +20,7 @@
  * (`actionOutputs.ts`). Server text never becomes a workflow command (`untrusted.ts`).
  */
 
+import os from "node:os";
 import path from "node:path";
 import { stat } from "node:fs/promises";
 import type { Out } from "./ci.js";
@@ -28,6 +31,7 @@ import { CONTENT_KEY_ENV } from "./delegate.js";
 import { RELEASE_KEY_ENV } from "./releaseKeys.js";
 import { BASE_URL_ENV } from "./context.js";
 import type { TermOut } from "./terminal.js";
+import { loadStepProduct } from "./storefronts/outlets.js";
 import { escapeData, untrusted, untrustedLines } from "./untrusted.js";
 
 /** The Action's inputs, in `action.yml` order. */
@@ -175,6 +179,39 @@ function syncArgv(argv: readonly string[], dryRun: boolean): string[] {
   return out;
 }
 
+/** The pack a successful `release publish --deliverable <pack>` published, or undefined. */
+async function publishedPack(
+  argv: readonly string[],
+  cwd: string,
+): Promise<string | undefined> {
+  if (argv[0] !== "release" || argv[1] !== "publish") return undefined;
+  const pack = flagValue(argv, "deliverable");
+  if (pack === undefined || pack === "app") return undefined;
+  try {
+    const product = await loadStepProduct(cwd, flagValue(argv, "product"));
+    return product.packs.includes(pack) ? pack : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The sync a successful pack publish earns: that pack's transport rows, from the publish's `--out`. */
+function packSyncArgv(
+  argv: readonly string[],
+  pack: string,
+  out: string,
+  dryRun: boolean,
+): string[] {
+  const forward: [string, string | undefined][] = [
+    ["product", flagValue(argv, "product")],
+    ["base-url", flagValue(argv, "base-url")],
+  ];
+  const sync = ["channel", "sync", "--deliverable", pack, "--from", out];
+  for (const [k, v] of forward) if (v !== undefined) sync.push(`--${k}`, v);
+  if (dryRun) sync.push("--dry-run");
+  return sync;
+}
+
 export async function runAction(io: ActionIo): Promise<number> {
   // The message may carry the server's words: cleaned per line first, so no control character
   // reaches the annotation and no line of it reads as a command, then escaped into one line.
@@ -222,6 +259,19 @@ export async function runAction(io: ActionIo): Promise<number> {
     return fail((e as Error).message);
   }
   if (dryRun && !argv.includes("--dry-run")) argv.push("--dry-run");
+  // A pack publish syncs from the directory it wrote; without `--out` the Action picks one.
+  const pack = channelsAuto ? await publishedPack(argv, cwd) : undefined;
+  let packOut: string | undefined;
+  if (pack !== undefined) {
+    packOut = flagValue(argv, "out");
+    if (packOut === undefined) {
+      packOut = path.join(
+        io.env["RUNNER_TEMP"]?.trim() || os.tmpdir(),
+        "pkey-packs",
+      );
+      argv.push("--out", packOut);
+    }
+  }
 
   // Secrets and the origin travel in the in-process environment, never on argv.
   const env: CiEnv = { ...io.env };
@@ -263,6 +313,10 @@ export async function runAction(io: ActionIo): Promise<number> {
     errText = "";
     title = "pkey channel sync";
     code = await runPkey(syncArgv(argv, dryRun), cli);
+  } else if (code === 0 && pack !== undefined && packOut !== undefined) {
+    errText = "";
+    title = "pkey channel sync";
+    code = await runPkey(packSyncArgv(argv, pack, packOut, dryRun), cli);
   }
   if (code === 0) return 0;
   annotate(
