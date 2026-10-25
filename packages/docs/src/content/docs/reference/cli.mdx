@@ -260,6 +260,18 @@ A CI command runs in GitHub Actions with permissions: id-token: write, or with P
 
 No `--json`: the answer is text.
 
+### `pkey ci`
+
+Set up publishing from GitHub Actions.
+
+```text
+pkey ci init [--channel c] [--dir d] [--action-ref sha] [--force] [--json]
+```
+
+ci init writes .github/workflows/release.yml (a v* tag publishes to --channel, default stable, from --dir, default dist) and refuses an existing file without --force. When .pkey/release declares no release key it makes one: the public half goes into .pkey/release, the private half into a 0600 file under $XDG_CONFIG_HOME/pkey/release-keys (default ~/.config), outside the repo. It prints the gh secret set line and never runs gh. The Action is pinned to --action-ref, a full commit SHA; without it the workflow holds a commit-sha placeholder for you to replace.
+
+`--json`: one JSON line on stdout.
+
 ### `pkey release`
 
 Publish, sign and move releases from CI.
