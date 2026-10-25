@@ -54,9 +54,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Worker test wall time measurably lower
-- [ ] Budget and unused-export tests blocking
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Worker test wall time measurably lower (full worker suite through heavy.sh: 132.97 s at the P0-30.1 base, 68.81 s after the template DB, 55.41 s after the P0-30.6 move)
+- [x] Budget and unused-export tests blocking (the 800-line size ledger, P0-30.3; unused exports are P0-46.2's knip ledger, T3; both in `pnpm lint:ts`)
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches. (Scoped per slice; CI runs the matrix.)
 
 ## Verify
 

@@ -10,3 +10,4 @@ Local traps for the Worker. The root `AGENTS.md` rules still apply; what the pac
 - **A new route** needs an OpenAPI entry and, for a service, its descriptor's `surface` (root rule 10).
 - **The workerd smoke**: Node allows runtime code generation that workerd forbids, so a green `pnpm test` does not prove the runtime. Run `pnpm --filter @polaris-key/worker typecheck:workerd` and `pnpm --filter @polaris-key/worker test:workerd` when you touch runtime code.
 - `pnpm build` does not typecheck the Worker; run `pnpm typecheck`.
+- **Tests** live in `test/core/`, `test/services/<slug>/` and `test/surfaces/`; the guards stay at `test/` (`test/layout.test.ts`). Run one service with `pnpm --filter @polaris-key/worker test:service <slug>`. New admin tests use `adminWorld()` (`test/adminWorld.ts`).
