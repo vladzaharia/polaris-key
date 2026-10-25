@@ -83,11 +83,11 @@ Cancel the U-03 run. Answered 2026-10-07 under delegated authority, open to the 
 
 ## Acceptance criteria
 
-- [ ] Licence overrides apply to floating and in-account licences (test)
-- [ ] No code reads override_migration (grep) and the old Worker keeps serving during the deploy
-- [ ] Owner decision 1 recorded
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Licence overrides apply to floating and in-account licences (test): `packages/worker/test/surfaces/licenseConfigLayer.test.ts` cases (a) floating and (b) owned licence (U-27.1 0da5533da)
+- [x] No code reads override_migration (grep) and the old Worker keeps serving during the deploy: under `packages/worker/src` only `db/owners.ts` and the `accountOverrideStore` subject-store claim name the tables; the tables stay until U-27b (U-27.4 56621383c)
+- [x] Owner decision 1 recorded (§ Owner decision 1 above)
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`. U-27.7 851c352c1 and 08e4f88cd: `catalog`, `profiles`, `management-states`, `upgrade-to-0-9`; `visibility` and `minted-tokens` belong to U-30 and U-31 (Corrections item 6); `reference/config-entry` needed no change.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches: shipped in v0.9.17 (c87a8e7ba, CI attempt 2 green, 90 checks).
 
 ## Verify
 
