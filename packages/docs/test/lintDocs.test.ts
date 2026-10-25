@@ -57,6 +57,15 @@ describe("removed-name", () => {
     ]);
   });
 
+  it("respects a removed name's SDK: Swift fence hits, Kotlin fence does not", () => {
+    expect(rules(lint("```swift\nPolarisSignIn(model: m)\n```\n"))).toEqual([
+      "removed-name",
+    ]);
+    expect(
+      rules(lint("```kotlin android\nPolarisSignIn(client)\n```\n")),
+    ).toEqual([]);
+  });
+
   it("exempts the upgrade page and the changelog", () => {
     for (const id of ["build/upgrade-to-0-9", "reference/changelog/index"])
       expect(rules(lint("Run `pkey feeds fdroid`.\n", {}, id))).toEqual([]);

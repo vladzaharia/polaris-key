@@ -8,11 +8,8 @@
     "operate/console/products": {
       "removed-name": 1
     },
-    "reference/protocol/bundles": {
-      "removed-name": 1
-    },
     "reference/protocol/discovery": {
-      "removed-name": 3
+      "removed-name": 2
     }
   }
 }
