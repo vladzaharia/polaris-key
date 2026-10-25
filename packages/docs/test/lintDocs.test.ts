@@ -4,8 +4,13 @@
  * entry nothing hits any more.
  */
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  PUBLISHED_FILES,
+  README_FILES,
   RULES,
   compare,
   lintOperatorFile,
@@ -18,6 +23,8 @@ import {
   type Hit,
   type Rule,
 } from "../scripts/lint-docs";
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 const facts = loadFacts();
 
@@ -146,11 +153,21 @@ describe("rules", () => {
   });
 
   it("holds every README the site renders, and PRIVACY.md, free of programme ids", () => {
-    const ids = lintSite().filter(
-      (h) =>
-        h.rule === "programme-id" &&
-        (h.id.endsWith("README.md") || h.id === "docs/PRIVACY.md"),
-    );
+    // Lints only those files (the whole-site run below covers the pages), so it stays fast on CI.
+    const files = [
+      ...README_FILES.map((f) => ({ id: f, path: join(REPO, f) })),
+      ...PUBLISHED_FILES.map((f) => ({
+        id: `docs/${f}`,
+        path: join(REPO, "docs", f),
+      })),
+    ];
+    const ids = files
+      .flatMap((f) =>
+        lintOperatorFile(f.id, readFileSync(f.path, "utf8"), {
+          spelling: false,
+        }),
+      )
+      .filter((h) => h.rule === "programme-id");
     expect(ids).toEqual([]);
   });
 
