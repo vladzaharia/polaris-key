@@ -345,6 +345,9 @@ const SWIFT_ACTOR_SYNC = new Set([
   "client.startRefresh",
   "client.close",
   "client.syncOnForeground",
+  "client.stopForegroundSync",
+  "commerce.startTransactionUpdates",
+  "commerce.stopTransactionUpdates",
 ]);
 const SWIFT_OPTION_HOLDER: Record<string, string> = {
   core: "CoreOptions",
@@ -369,7 +372,7 @@ function renderSwift(api: Api): string {
       lines.push(`_ = \\${holder}.${r.name}  // ${r.id}`);
     } else if (SWIFT_ACTOR_SYNC.has(r.id)) {
       lines.push(
-        `_ = { (c: PolarisKeyClient) async in await c.${r.name}() }  // ${r.id}`,
+        `_ = { (c: ${SWIFT_TYPE[r.ns] ?? "PolarisKeyClient"}) async in await c.${r.name}() }  // ${r.id}`,
       );
     } else if (r.handle && SWIFT_ASYNC_HANDLE.has(r.id)) {
       lines.push(
