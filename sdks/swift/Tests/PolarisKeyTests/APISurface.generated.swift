@@ -117,7 +117,7 @@ func apiSurface() async {
     _ = PolarisKeyClient.options  // client.options
     _ = PolarisKeyClient.bundleVersion  // client.bundleVersion
     _ = { (c: PolarisKeyClient) async in await c.syncOnForeground() }  // client.syncOnForeground
-    _ = PolarisKeyClient.stopForegroundSync  // client.stopForegroundSync
+    _ = { (c: PolarisKeyClient) async in await c.stopForegroundSync() }  // client.stopForegroundSync
     _ = PolarisKeyClient.syncIfStale  // client.syncIfStale
     _ = PolarisKeyClient.installUpdateBootHooks  // client.installUpdateBootHooks
     _ = PolarisKeyClient.configureUpdate  // client.configureUpdate
@@ -134,8 +134,8 @@ func apiSurface() async {
     _ = CommerceClient.purchase  // commerce.purchase
     _ = CommerceClient.restore  // commerce.restore
     _ = CommerceClient.storeProducts  // commerce.storeProducts
-    _ = CommerceClient.startTransactionUpdates  // commerce.startTransactionUpdates
-    _ = CommerceClient.stopTransactionUpdates  // commerce.stopTransactionUpdates
+    _ = { (c: CommerceClient) async in await c.startTransactionUpdates() }  // commerce.startTransactionUpdates
+    _ = { (c: CommerceClient) async in await c.stopTransactionUpdates() }  // commerce.stopTransactionUpdates
     _ = PacksClient.progress  // packs.progress
     _ = \ConfigSetting.changes  // config.setting.changes
     _ = ConfigSetting.current  // config.setting.current
