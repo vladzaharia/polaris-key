@@ -502,7 +502,26 @@ export interface CiReadiness {
   workflowPreview: string | null;
 }
 
+/** `POST …/release/ci-readiness/fix` (A-32.6): what one fix did. */
+export type CiFixCheck = "environment" | "ruleset";
+
+export interface CiFixResult {
+  ok: true;
+  repository: string;
+  results: {
+    id: CiFixCheck;
+    state: "created" | "updated" | "ok" | "skipped";
+    detail?: string;
+  }[];
+}
+
 export const releaseApi = {
+  /** A-32.6: create the release environment and/or the `v*` tag ruleset. A 409 names the permission. */
+  fixCiReadiness: (slug: string, checks: CiFixCheck[]) =>
+    call<CiFixResult>(`${p(slug)}/release/ci-readiness/fix`, {
+      method: "POST",
+      body: JSON.stringify({ checks }),
+    }),
   /** A-32.3: the CI readiness checks, the App's write capabilities and the workflow preview. */
   ciReadiness: (slug: string) =>
     call<CiReadiness>(`${p(slug)}/release/ci-readiness`),

@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-query";
 import {
   api,
+  type CiReadiness,
   type CompatResponse,
   type DelegationsResponse,
   type DeliverablesResponse,
@@ -70,6 +71,17 @@ export const releaseHealthQuery = (slug: string) =>
 
 export function useReleaseHealth(slug: string): UseQueryResult<ReleaseHealth> {
   return useQuery(releaseHealthQuery(slug));
+}
+
+/** What stands between the repository and a publishing tag (A-32.3). */
+export const ciReadinessQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.ciReadiness(slug),
+    queryFn: () => api.ciReadiness(slug),
+  });
+
+export function useCiReadiness(slug: string): UseQueryResult<CiReadiness> {
+  return useQuery(ciReadinessQuery(slug));
 }
 
 /** The app and every pack, with declaration, gate and latest release. */

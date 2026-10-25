@@ -13,6 +13,8 @@ export interface AutoItem {
   result?: React.ReactNode;
   /** Where the row comes from ("GitHub App"). */
   source?: string;
+  /** Replaces the state's word ("Missing"). */
+  status?: string;
   /** Retry, or the permission to grant: shown on a `needs` or `failed` row. */
   action?: React.ReactNode;
 }
@@ -88,7 +90,7 @@ export function AutoList({
                     : "text-fg-muted",
               )}
             >
-              {WORDS[a.state]}
+              {a.status ?? WORDS[a.state]}
             </span>
             {(a.state === "failed" || a.state === "needs") && a.action ? (
               <span className="shrink-0">{a.action}</span>

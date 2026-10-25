@@ -92,6 +92,7 @@ export type WriteMethod =
   | "updateReleaseChannel"
   | "revertReleaseChannel"
   | "setChannelFloor"
+  | "fixCiReadiness"
   | "yankRelease"
   | "unyankRelease"
   | "updatePortalSettings"
@@ -578,6 +579,10 @@ export const MUTATIONS: MutationTable = {
   setChannelFloor: {
     label: "channel rollback floor",
     invalidates: (slug) => releasePolicy(slug),
+  },
+  fixCiReadiness: {
+    label: "CI readiness fix (release environment, tag ruleset)",
+    invalidates: (slug) => [prefix(qk.ciReadiness(slug))],
   },
   yankRelease: {
     label: "yank release",

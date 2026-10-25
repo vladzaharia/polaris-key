@@ -238,6 +238,7 @@ export const qk = {
   // release
   releases: (slug: string) => product(slug, "release", "releases"),
   releaseHealth: (slug: string) => product(slug, "release", "health"),
+  ciReadiness: (slug: string) => product(slug, "release", "ci-readiness"),
   channels: (slug: string) => product(slug, "release", "channels"),
   deliverables: (slug: string) => product(slug, "release", "deliverables"),
   packReleases: (slug: string, deliverable?: string) =>
