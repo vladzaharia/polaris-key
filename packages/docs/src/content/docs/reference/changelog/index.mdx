@@ -28,6 +28,12 @@ Breaking · 2026-10-24 · swift
 
 `.polarisKey(client)` now draws the same gate as `.polarisKeyGate(client)` and still puts the model in the environment and syncs when the scene becomes active. `PolarisTheme` maps `branding` and `accent` onto the kit theme; its other fields are ignored, so set `.polarisKeyTheme(PolarisKeyTheme(...))`.
 
+### transports.packs: auto
+
+Added · 2026-10-24 · distribution · release
+
+`transports.packs: auto` in `.pkey/distribution` sends each pack through Apple Background Assets on `app-store` and `testflight`, a Steam depot on a `steam` channel whose new `depots` map names the pack, and the CDN elsewhere. It never picks Play Asset Delivery. After a pack publish, the Action's `channels: auto` runs `pkey channel sync --deliverable <pack>`, which packages and uploads the pack and skips a step that lacks a runner or secret. SteamCMD needs its login installed first. See [Ship a pack through an app store](/docs/features/ship-builds/packs/transports/).
+
 ### pkey feeds fdroid moved
 
 Removed · 2026-10-24 · distribution
