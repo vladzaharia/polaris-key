@@ -65,7 +65,7 @@ artifact rules in `.pkey/release`.
 
 ## Inputs
 
-Eight, and no others: `command` (default `release publish`), `args` (the command's flags, split on whitespace and newlines, quotes group, no shell), `release-key`, `content-key`, `base-url`, `working-directory`, `dry-run` and `channels` (`auto`, the default, or `none`). The product comes from `.pkey/product`. `channels: auto` runs `pkey channel sync` once after a successful app `release publish`; a pack or package publish never syncs, and a channel whose secret is not set is skipped with a warning.
+Eight, and no others: `command` (default `release publish`), `args` (the command's flags, split on whitespace and newlines, quotes group, no shell), `release-key`, `content-key`, `base-url`, `working-directory`, `dry-run` and `channels` (`auto`, the default, or `none`). The product comes from `.pkey/product`. `channels: auto` runs `pkey channel sync` once after a successful app `release publish`, and `pkey channel sync --deliverable <pack> --from <out>` after a pack publish (the Action adds `--out $RUNNER_TEMP/pkey-packs` when `args` has none); a package publish never syncs, and a channel whose secret is not set is skipped with a warning.
 
 Any other `with:` key fails the step before it does anything, with the flag to put in `args` instead (`Input dir was removed in 0.9. Put --dir <value> in args.`). Run another command with `command` (`command: assets push`, `command: channel sync`).
 

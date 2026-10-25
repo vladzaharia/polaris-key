@@ -54474,6 +54474,7 @@ async function cmdListingImport(parsed, cwd, stdout, ci, token) {
 
 // src/action.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
+import os3 from "node:os";
 import path36 from "node:path";
 import { stat as stat13 } from "node:fs/promises";
 var ACTION_INPUTS = [
@@ -54576,6 +54577,27 @@ function syncArgv(argv2, dryRun) {
   if (dryRun) out.push("--dry-run");
   return out;
 }
+async function publishedPack(argv2, cwd) {
+  if (argv2[0] !== "release" || argv2[1] !== "publish") return void 0;
+  const pack = flagValue(argv2, "deliverable");
+  if (pack === void 0 || pack === "app") return void 0;
+  try {
+    const product = await loadStepProduct(cwd, flagValue(argv2, "product"));
+    return product.packs.includes(pack) ? pack : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function packSyncArgv(argv2, pack, out, dryRun) {
+  const forward = [
+    ["product", flagValue(argv2, "product")],
+    ["base-url", flagValue(argv2, "base-url")]
+  ];
+  const sync = ["channel", "sync", "--deliverable", pack, "--from", out];
+  for (const [k, v] of forward) if (v !== void 0) sync.push(`--${k}`, v);
+  if (dryRun) sync.push("--dry-run");
+  return sync;
+}
 async function runAction(io) {
   const annotate = (title2, message) => io.stdout.write(
     `::error title=${escapeData(untrusted(title2, io.env))}::${escapeData(untrustedLines(message, io.env))}
@@ -54621,6 +54643,18 @@ async function runAction(io) {
     return fail4(e.message);
   }
   if (dryRun && !argv2.includes("--dry-run")) argv2.push("--dry-run");
+  const pack = channelsAuto ? await publishedPack(argv2, cwd) : void 0;
+  let packOut;
+  if (pack !== void 0) {
+    packOut = flagValue(argv2, "out");
+    if (packOut === void 0) {
+      packOut = path36.join(
+        io.env["RUNNER_TEMP"]?.trim() || os3.tmpdir(),
+        "pkey-packs"
+      );
+      argv2.push("--out", packOut);
+    }
+  }
   const env = { ...io.env };
   const releaseKey = input2("release-key");
   const contentKey = input2("content-key");
@@ -54655,6 +54689,10 @@ async function runAction(io) {
     errText = "";
     title = "pkey channel sync";
     code = await runPkey(syncArgv(argv2, dryRun), cli);
+  } else if (code === 0 && pack !== void 0 && packOut !== void 0) {
+    errText = "";
+    title = "pkey channel sync";
+    code = await runPkey(packSyncArgv(argv2, pack, packOut, dryRun), cli);
   }
   if (code === 0) return 0;
   annotate(

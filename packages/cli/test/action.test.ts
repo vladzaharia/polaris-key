@@ -391,7 +391,7 @@ describe("the Action's channels input (D-A3)", () => {
     expect(syncs(other.io.out())).toBe(0);
   });
 
-  it("a pack publish never syncs", async () => {
+  it("a publish of a deliverable the manifest does not declare as a pack never syncs", async () => {
     const cwd = await withChannels();
     const { io } = await act(cwd, {
       args: `--deliverable some.pack --version 1.0.0 --dir dist`,
