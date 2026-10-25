@@ -1910,8 +1910,8 @@ read there: a product admits the token only through a usable licence in the acco
 `licensed`: usable; `entitled`: the deliverable's entitlement flag held by one of the licences; no
 flag fails closed). No licence in that product is a 403. The platform's own product
 (`SYSTEM_PRODUCT_SLUG`) admits no licence-based access at all: its SDK feeds are for console
-members, whose role-granted access (ST-30/ST-31) is the single seam in `personMayRead` and
-answers no until a binding exists. An OCI pull token for a personal token carries `own: "*"` and
+members, whose role-granted access is the single seam in `personMayRead` (ST-31.9, "Console roles
+read feeds" below). An OCI pull token for a personal token carries `own: "*"` and
 subject `p:<tokenId>`, so each repository's owner is judged on its own request; the other owners'
 pull tokens still need `own` to equal the owner, so a personal pull token cannot push or be
 replayed against a publisher check.
@@ -1953,7 +1953,7 @@ most hourly, so "last used" lags by up to an hour. A `packages:read` use is not 
 
 **Review triggers.** A second scope on `packages:read`'s path; the registry host accepting any
 scope but `packages:read`; a personal token accepted by a publish path; a licence-free grant in
-`personMayRead`; `personMayRead` admitting `SYSTEM_PRODUCT_SLUG` without a console role; the mint
+`personMayRead`; `personMayRead` admitting `SYSTEM_PRODUCT_SLUG` without a stored console grant; the mint
 losing its step-up or its budget; a token or its hash reaching an audit row, a log or the export.
 
 ### Service tokens (F-33b)
@@ -8015,6 +8015,60 @@ revoking the token recalls no bundle.
 
 **Residual.** A holder without a grant can still make requests that write at most the budgeted rows.
 A token whose holder holds no grant cannot end itself (`current` is not a no-grant row, so 403): the holder revokes it in the console instead, where `GET /me/personal-tokens` and `DELETE /me/personal-tokens/:id` are no-grant rows (session only, own tokens only, a revoke only narrows, no product data read), so a holder with no grants can still find and end their own tokens. Two concurrent revokes of one token write one `account_token.revoke` row (the UPDATE's change count decides).
+
+### Console roles read feeds, and creators manage what they make (ST-31.9)
+
+**What arrived.** Two changes, one each way. (1) **G6, the creator rule.** After a successful
+`POST /products` or `POST /products/link-repo`, a v2 console session's account gets `product_admin`
+on `product:<slug>`, every area, source `creator` (`console/creatorGrant.ts`). (2) **`personMayRead`**
+(`services/distribution/registry/authorize.ts`) now reads the personal token's account's stored
+bindings (`storedPrincipalOf`, `core/rbac/bindings.ts`). Its signature is unchanged and is what
+F-33b.5 relies on: `(ctx, accountId, owner, mode, deliverableId, nowMs) => Promise<boolean>`.
+
+**The feed widening, exactly.** Judged only where the mode is not `public`, only for a resolved
+`pkeyp_` personal token, then:
+
+- the system product admits an account holding **any** stored console grant
+  (`can(p, PLATFORM, "console", "view")`), including `console_access` and a Product admin on one
+  customer product;
+- any other owner admits `can(p, product:<owner>, "ship", "view")`, whatever the mode and with no
+  licence: the owner's Product admin whose areas include `ship` (or are null), or `products:*`
+  (never the system product, which `can()` evaluates as the platform);
+- otherwise the licence path, unchanged. A role never narrows the licence path.
+
+A Platform admin or `console_access` holder gets no customer product through this (those roles hold
+no product area); a Product admin narrowed away from `ship` gets nothing from it; one product's
+admin reads no other product. A root-only Superadmin (the root rule is Identity-computed, and
+distribution may not import Identity) is not seen; they read the system feeds through a binding
+(D-f2). Email rows (unclaimed invites) never read.
+
+**Account state.** `storedPrincipalOf` returns no principal unless `accounts.status = 'active'` and
+`deleted_at IS NULL`, so a disabled or erased account reads nothing through roles whatever rows
+survive; an erased account's token already resolves to nothing (the erasure ledger, I-11). Bindings
+are read per request, with no cache, so a revoked binding stops reading on the next request (feeds
+of this kind are `private, no-store`, so no edge copy outlives it). The licence path of a disabled
+account is F-33's and is unchanged.
+
+**Creator rule: why it cannot be a self-grant.** It runs only after the create succeeded, so only
+the route's own gate (Platform scope, `new_products`) decides who creates. It names the session's
+own account and the slug just created, never `products:*`, never the system product, and never
+areas narrower or wider than the product's own. A session with no `aid` (a `pkeya_` token, a v1
+cookie, break-glass) gets no binding, so a token never becomes a person. A grant that already covers
+every area of the product (Superadmin, `products:*`, an unnarrowed product grant) writes nothing; an
+existing narrowed row for the slug is not widened. An erased or unreadable-ledger account gets
+nothing. The binding and its `rbac.grant` rows (platform trail and the product's, naming the member
+id and never the account id) are one batch; every Superadmin other than the creator is mailed after
+the commit, the creator never is (D-f).
+
+**Residual.** The binding follows the create as a second write: a failure between them leaves a
+product its creator cannot see until a Superadmin grants it, never a binding to nothing. A Product
+admin of one customer product can read the platform's SDK feeds by design (any console member).
+
+**Review triggers.** `personMayRead` reading anything but stored bindings of an active account; a
+role admitting a product the principal's `can()` does not reach; a path from a token or a session
+without `aid` to a creator row; the creator row's scope widening past `product:<slug>`.
+
+**Tests:** `test/registryPersonRoles.test.ts`, `test/creatorRule.test.ts`.
 
 ### Identity as a per-product service (PX-W17)
 
