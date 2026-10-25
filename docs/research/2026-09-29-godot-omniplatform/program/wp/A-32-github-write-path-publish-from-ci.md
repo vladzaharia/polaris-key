@@ -56,6 +56,8 @@ Permissions checked on GitHub's REST reference, "Fine-grained access tokens for 
 | `ruleset.tags` | `GET /repos/{o}/{r}/rulesets`                                                | Metadata: read                     |
 |                | `POST /repos/{o}/{r}/rulesets`, `PUT .../rulesets/{id}` (tag `refs/tags/v*`) | Administration: write              |
 
+A-32.6 (2026-10-24): `POST …/release/ci-readiness/fix` (`services/release/ciFix.ts`). Bypass actor `{actor_id: 5, actor_type: "RepositoryRole", bypass_mode: "always"}` (repository admin) is **still unverified**: the REST reference (`repository-ruleset-bypass-actor`) and docs.github.com/en/rest/repos/rules do not list the role ids. Check on a live repository before relying on it. The environment fix writes only the environment named `release`; a publisher naming another is skipped.
+
 Never: merge, close, retarget, delete a ref or file, force update, any branch but `pkey/setup`, any path outside `.pkey/{distribution,release}.{yaml,yml,json}` and `.github/workflows/release.yml`, collaborators, settings, hooks, secrets, another repository.
 
 ## Goal

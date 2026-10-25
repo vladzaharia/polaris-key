@@ -266,6 +266,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/{product}/distribution/channels", ["get"]],
     // A-32.3: the CI readiness read (the checks a `v*` tag needs).
     ["/manage/api/products/{product}/release/ci-readiness", ["get"]],
+    // A-32.6: create the `release` environment and the `v*` tag ruleset.
+    ["/manage/api/products/{product}/release/ci-readiness/fix", ["post"]],
     // ST-34.4: the store-listing import `pkey listing import` calls (session or admin token).
     ["/manage/api/products/{product}/distribution/listing/import", ["post"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.

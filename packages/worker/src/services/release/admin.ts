@@ -16,6 +16,7 @@
  * and the CI readiness read (A-32.3, `ciReadiness.ts`):
  *
  *     GET    …/release/ci-readiness                     the checks a `v*` tag needs, and the workflow
+ *     POST   …/release/ci-readiness/fix                 { "checks": ["environment"|"ruleset"] } (A-32.6)
  *
  * and the pack read model (P4-09, `packs/adminView.ts`):
  *
@@ -78,6 +79,7 @@ import {
 } from "./channels.js";
 import { getReleaseConfig } from "./config.js";
 import { ciReadiness } from "./ciReadiness.js";
+import { FIX_CHECKS, fixCiReadiness, type FixCheck } from "./ciFix.js";
 import { checkReleaseHealth } from "./health.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import {
@@ -280,6 +282,56 @@ function floorView(f: ReleaseChannelFloorRow) {
   };
 }
 
+/** A-32.6: create the `release` environment and the `v*` tag ruleset when readiness says missing. */
+async function handleCiFix(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response> {
+  const { now, session, db, env, req, product } = ctx;
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const body = await readBody(req);
+  const asked = body.checks;
+  if (
+    !Array.isArray(asked) ||
+    asked.length === 0 ||
+    new Set(asked).size !== asked.length ||
+    !asked.every((c) => (FIX_CHECKS as readonly unknown[]).includes(c))
+  )
+    return err(
+      422,
+      ErrorCode.BadRequest,
+      `checks must be a non-empty list of ${FIX_CHECKS.join(", ")}`,
+      { fields: ["checks"] },
+    );
+  const slug = product.slug;
+  const result = await fixCiReadiness(env, db, slug, asked as FixCheck[], now);
+  // One audit row per write: the repository and the check, never a body or a token.
+  const written = result.results.filter(
+    (r) => r.state === "created" || r.state === "updated",
+  );
+  for (const r of written)
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      `release.ci.${r.id}`,
+      { kind: "product", id: slug },
+      `${r.state === "created" ? "Created" : "Updated"} the ${r.id === "environment" ? "release environment" : "v* tag ruleset"} on the linked repository`,
+    );
+  if (!result.ok)
+    return err(result.status, ErrorCode.BadRequest, result.reason, {
+      reason: result.reason,
+      ...(result.permission ? { permission: result.permission } : {}),
+      results: result.results,
+    });
+  return adminJson({
+    ok: true,
+    repository: result.repository,
+    results: result.results,
+  });
+}
+
 export async function handleReleaseAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
@@ -290,6 +342,8 @@ export async function handleReleaseAdmin(
   if (policyRoute) return policyRoute;
   const packRoute = await handlePackViews(ctx);
   if (packRoute) return packRoute;
+  if (rest.length === 2 && rest[0] === "ci-readiness" && rest[1] === "fix")
+    return handleCiFix(ctx);
   if (rest.length !== 1) return null;
   const slug = product.slug;
 
