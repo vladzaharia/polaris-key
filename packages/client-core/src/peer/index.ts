@@ -17,3 +17,22 @@ export {
   type VerifyRingOptions,
   type VerifyRingResult,
 } from "./cert.js";
+export {
+  CipherState,
+  NOISE_MAX_MESSAGE,
+  NoiseError,
+  NoiseHandshake,
+  peerNoiseProtocol,
+  peerPrologue,
+  peerPsk,
+  webCryptoAead,
+  webCryptoNoisePorts,
+  webCryptoX25519,
+  type Aead,
+  type NoiseErrorCode,
+  type NoiseHandshakeOptions,
+  type NoisePorts,
+  type NoiseTransport,
+  type PeerMode,
+  type X25519Port,
+} from "./noise.js";
