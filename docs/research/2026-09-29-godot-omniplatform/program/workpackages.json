@@ -4436,13 +4436,13 @@
     },
     {
       "id": "I-15",
-      "title": "Native redirect sign-in: loopback, claimed-HTTPS and registered-scheme redirects on I-08's token route, retire `/auth/poll`, `signIn({redirect})` in all six SDKs (system browser only)",
+      "title": "Native redirect sign-in, Worker and contract: pushed request, loopback, claimed-HTTPS and registered-scheme redirects, signin-fresh",
       "phase": "I",
       "stage": "layer-1, phase-1b",
-      "lane": "sdk",
-      "role": "pkey-sdk-porter",
-      "estimateWeeks": [0.8, 1.1],
-      "deps": ["I-08", "I-10a", "I-10b"],
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.5],
+      "deps": ["I-08", "CC-04", "CC-01"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -4465,7 +4465,42 @@
         "plans/CC-01.md §4, §6"
       ],
       "brief": "wp/I-15-native-redirect.md",
-      "status": "todo"
+      "status": "todo",
+      "planRef": "CC-01"
+    },
+    {
+      "id": "I-15b",
+      "title": "Native redirect sign-in in the SDKs: client-core, Node/Electron, Python, Swift, Kotlin JVM, Android Auth Tab, Godot desktop, React desktop",
+      "phase": "I",
+      "stage": "layer-1, phase-1b",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.6, 0.8],
+      "deps": ["I-15", "I-10a", "I-10b", "CC-01"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "rule-10",
+        "all-sdks",
+        "threat-model"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-16 §2 J9",
+        "notes/S-16 §5.2 (SDK API)",
+        "notes/S-16 §5.3",
+        "notes/S-16 §5.4 item 13",
+        "notes/S-16 §8 I-15",
+        "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)",
+        "plans/I-15.md to be written first (R-18); ends on the link offer",
+        "plans/CC-01.md §4, §6"
+      ],
+      "brief": "wp/I-15b-native-redirect-sdks.md",
+      "status": "todo",
+      "planRef": "CC-01"
     },
     {
       "id": "I-16",
