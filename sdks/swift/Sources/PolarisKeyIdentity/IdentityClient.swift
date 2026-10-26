@@ -177,8 +177,13 @@ public final class IdentityClient: Sendable {
 
     let core: CoreContext
     private let onAcquired: SignInAcquiredListener?
-    /// The facade's sign-out (`installSignOut`).
+    /// The facade's local wipe after a released sign-out (`installSignOut`): the credential goes
+    /// and the `license` event follows.
     let signOutHook = LockedValue<(@Sendable () async throws -> Void)?>(nil)
+    /// The subject held from the last `subject()` or `attach`.
+    let subjectValue = LockedValue<String?>(nil)
+    /// `onBeforeSignOut` hooks, in registration order.
+    let beforeSignOut = LockedValue<[SignOutHook]>([])
     private let sleep: @Sendable (Double) async throws -> Void
 
     /// - Parameter sleep: how `waitForSignIn` waits between polls. Defaults to `Task.sleep`, which

@@ -362,6 +362,29 @@ actor ReplayServer {
         else { return nil }
         discoveryLoaded = true
         let base = "\(transcript.baseUrl)/\(transcript.product)"
+        // The account transcripts (identity.account, identity.attach) ride a product that runs
+        // Licence, Config and Identity; the identity fragment names the account endpoints (§12.6).
+        if transcript.steps.contains(where: { ["subject", "signOut", "attach"].contains($0.action) }) {
+            let identity: JSONValue = .object([
+                "enabled": .bool(true), "configured": .bool(true), "account": .bool(true),
+                "issuer": .string("\(base)/identity"),
+                "endpoints": .object([
+                    "subject": .string("\(base)/identity/subject"),
+                    "signout": .string("\(base)/identity/signout"),
+                    "attach": .string("\(base)/identity/attach"),
+                    "accountPortal": .string("\(transcript.baseUrl)/#/p/\(transcript.product)"),
+                ]),
+            ])
+            return try? JSONEncoder().encode(
+                JSONValue.object([
+                    "product": .string(transcript.product),
+                    "services": .object([
+                        "license": .object(["enabled": .bool(true)]),
+                        "config": .object(["enabled": .bool(true)]),
+                        "identity": identity,
+                    ]),
+                ]))
+        }
         let doc: JSONValue = .object([
             "product": .string(transcript.product),
             "services": .object([

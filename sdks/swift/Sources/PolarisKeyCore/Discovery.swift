@@ -138,12 +138,58 @@ public struct ProductDiscoveryDocument: Sendable, Equatable {
         self.presentation = presentation
     }
 
+    /// The Identity fragment (WIRE-CONTRACT-V4 §12.6), or nil while Identity is off or unpublished.
+    public var identity: IdentityDiscovery? {
+        guard let fragment = services[.identity], fragment.enabled else { return nil }
+        return IdentityDiscovery(fragment)
+    }
+
     /// The capability map Core gates sub-clients on.
     public var servicesMap: ServicesMap {
         var out = NO_SERVICES
         for (slug, fragment) in services { out[slug] = fragment.enabled }
         return out
     }
+}
+
+/// The Identity fragment of the discovery document (§12.6): the account members and the
+/// endpoints the product serves. A client uses an endpoint only when it is present and never
+/// builds one.
+public struct IdentityDiscovery: Sendable, Equatable {
+    /// The authorization server's issuer, `<origin>/<p>/identity`.
+    public let issuer: String?
+    /// The account features (attach, subject, sign-out, the account portal) are served.
+    public let account: Bool
+    /// The product's effective key-entry limit, when published.
+    public let keyEntryLimit: Int?
+    public let endpoints: [String: String]
+
+    public init(
+        issuer: String? = nil, account: Bool = false, keyEntryLimit: Int? = nil,
+        endpoints: [String: String] = [:]
+    ) {
+        self.issuer = issuer
+        self.account = account
+        self.keyEntryLimit = keyEntryLimit
+        self.endpoints = endpoints
+    }
+
+    init(_ fragment: ServiceFragment) {
+        self.init(
+            issuer: fragment.extras["issuer"]?.stringValue,
+            account: fragment.extras["account"]?.boolValue == true,
+            keyEntryLimit: fragment.extras["keyEntryLimit"]?.intValue,
+            endpoints: fragment.endpoints)
+    }
+
+    /// `GET`: the pairwise subject of the account signed in on the device.
+    public var subject: String? { endpoints["subject"] }
+    /// `POST`: sign out of the account.
+    public var signout: String? { endpoints["signout"] }
+    /// `POST`: preview or attach the device's licence to the signed-in account.
+    public var attach: String? { endpoints["attach"] }
+    /// The product's page in the customer portal.
+    public var accountPortal: String? { endpoints["accountPortal"] }
 }
 
 public enum DiscoveryResult: Sendable {

@@ -5,7 +5,7 @@
 // each setting (the kinds and fields Python's `client.events` uses); the device-code poll
 // carries P1-07's opt-in (`confirmIdentity`, then `attachLicense` with the device bearer) and a
 // ready poll carries the identity and what was attached; `identity.signInWithBrowser()` opens
-// the pre-filled page and waits; `identity.signOut()` wipes the credential; `identity.current()`
+// the pre-filled page and waits; `identity.signOut()` wipes the credential once the Worker released the device; `identity.current()`
 // reads the signed profile.
 
 import Foundation
@@ -102,7 +102,16 @@ final class EventsAndSignInTests: XCTestCase {
     func testDeactivationEmitsLicenseThenEveryEntitlement() async throws {
         let c = try await licensedClient(token: true)
         var it = c.events.makeAsyncIterator()
-        try await c.identity.signOut()
+        await server.reply(
+            "/djdl/.well-known/polaris.json",
+            body: """
+                {"product":"djdl","services":{"license":{"enabled":true},"config":{"enabled":true},\
+                "identity":{"enabled":true,"account":true,"endpoints":\
+                {"signout":"https://key.example/djdl/identity/signout"}}}}
+                """)
+        await server.reply("/djdl/identity/signout", body: #"{"released":true}"#)
+        let out = try await c.identity.signOut()
+        XCTAssertTrue(out.released)
         let seen = await collect(&it) { if case .entitlement(let n, _, _) = $0 { return n == "pro" }; return false }
         XCTAssertEqual(
             seen,
@@ -212,7 +221,7 @@ final class EventsAndSignInTests: XCTestCase {
         XCTAssertEqual(me, CurrentIdentity(name: nil, email: "b@e.com", activatedAt: nil))
     }
 
-    func testAStandaloneIdentityClientRefusesSignOut() async throws {
+    func testSignOutRefusesWithoutIdentity() async throws {
         let core = try CoreContext(
             options: CoreOptions(
                 productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
@@ -220,9 +229,9 @@ final class EventsAndSignInTests: XCTestCase {
         let identity = IdentityClient(core: core)
         do {
             try await identity.signOut()
-            XCTFail("expected invalid-options")
+            XCTFail("expected service-unavailable")
         } catch let e as PolarisError {
-            XCTAssertEqual(e.code, ErrorCode.invalidOptions)
+            XCTAssertEqual(e.code, PolarisError.serviceUnavailable)
         }
     }
 
@@ -293,6 +302,14 @@ final class EventsAndSignInTests: XCTestCase {
         let token = await c.core.token
         XCTAssertEqual(token, "pkeyt_signed")
 
+        await server.reply(
+            "/djdl/.well-known/polaris.json",
+            body: """
+                {"product":"djdl","services":{"license":{"enabled":true},"identity":\
+                {"enabled":true,"account":true,"endpoints":\
+                {"signout":"https://key.example/djdl/identity/signout"}}}}
+                """)
+        await server.reply("/djdl/identity/signout", body: #"{"released":true}"#)
         try await c.identity.signOut()
         let after = await c.core.token
         XCTAssertNil(after)

@@ -6,11 +6,7 @@
 //                        until the native redirect route (I-15) lands. It polls
 //                        `/identity/auth/device/poll` like any device-code sign-in (the old
 //                        `/identity/auth/poll` is retired; the Worker no longer serves it).
-//   signOut()            the facade's `deactivate()` (release the seat, wipe the credential) —
-//                        after a device-code sign-in the identity IS the credential — then the
-//                        `license` event. The facade installs it (`installSignOut`), because the
-//                        seat release belongs to the license module; a standalone IdentityClient
-//                        refuses with `invalid-options` rather than pretending.
+//   signOut()            IdentityAccount.swift: the account's sign-out (`POST identity/signout`).
 //   current()            the signed profile's name, e-mail and activation time, or nil.
 //
 // The same names as every SDK: `identity.signInWithBrowser()`, `identity.signOut()`,
@@ -70,18 +66,6 @@ extension IdentityClient {
         return try await waitForSignIn(prompt)
     }
 
-    /// Sign out: release this device's seat and wipe its credential (the facade's
-    /// `deactivate()`), emitting `license`. After a device-code sign-in the identity's licence IS
-    /// the credential. Throws `invalid-options` on an IdentityClient built without the facade.
-    public func signOut() async throws {
-        guard let hook = signOutHook.current else {
-            throw PolarisError(
-                code: ErrorCode.invalidOptions,
-                message: "signOut() needs the PolarisKeyClient facade, which releases the seat.")
-        }
-        try await hook()
-    }
-
     /// The signed-in identity from the verified licence document, or nil when the device holds no
     /// licence or its profile names no one. The server signs a profile on every licence; an
     /// anonymous (keyless) enrolment's carries empty strings, which read as nil here.
@@ -94,7 +78,8 @@ extension IdentityClient {
             name: name, email: email, activatedAt: p.activatedAt > 0 ? p.activatedAt : nil)
     }
 
-    /// The facade installs its `deactivate()` here so `signOut()` releases the seat and emits.
+    /// The facade installs its local wipe here: after a released `signOut()` (IdentityAccount.swift)
+    /// the credential goes and the `license` event follows.
     public func installSignOut(_ hook: @escaping @Sendable () async throws -> Void) {
         signOutHook.set(hook)
     }

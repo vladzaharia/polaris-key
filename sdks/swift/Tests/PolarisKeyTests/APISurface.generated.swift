@@ -32,7 +32,10 @@ func apiSurface() async {
     _ = EntitlementsClient.has  // entitlements.has
     _ = EntitlementsClient.value  // entitlements.value
     _ = EntitlementsClient.all  // entitlements.all
+    _ = IdentityClient.subject  // identity.subject
     _ = IdentityClient.signOut  // identity.signOut
+    _ = IdentityClient.attach  // identity.attachLicense
+    _ = IdentityClient.openAccount  // identity.openAccount
     _ = \PolarisKeyClient.events  // events
     _ = PolarisKeyClient.discover  // client.discover
     _ = \PolarisKeyClient.presentation  // client.presentation

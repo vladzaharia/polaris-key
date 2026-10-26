@@ -2887,10 +2887,7 @@
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
-        "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {
           "planned": "I-10b",
@@ -3288,8 +3285,7 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "attach"
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3317,10 +3313,7 @@
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
-        "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "swift": {},
         "kotlin": {},
         "godot": {
           "planned": "I-10b",
