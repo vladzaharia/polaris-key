@@ -15,6 +15,8 @@
  *   licenseHolders    Identity's two licence-to-account association directions.
  *   onAuthorization   listeners told that a device first holds a seat on a licence; gated by the
  *                     product's enablement of the contributing service.
+ *   onDeviceChange    listeners told that a device was bound, unbound, removed or changed its keys
+ *                     (R-7, `core/devices/lifecycle.ts`); run for every mounted service.
  *   maintenance       the service's retention and reconciliation steps; `scheduled.ts` iterates
  *                     descriptors instead of importing them.
  *   integration       the service's console prerequisites and domain facts for one product
@@ -36,6 +38,7 @@ import type { Env } from "../platform/env.js";
 import type { MigrationJob } from "./migrate/job.js";
 import { CORE_MIGRATIONS } from "./migrate/coreJobs.js";
 import type { AuthorizationListener } from "./authorizationListeners.js";
+import type { DeviceChangeListener } from "./devices/lifecycle.js";
 import type { SubjectStore } from "./accounts/subjectHooks.js";
 import type { LicenseHolderHooks } from "./licensing/licenseHolders.js";
 import type { ProductPublic } from "./products.js";
@@ -196,6 +199,8 @@ export interface ServiceContributions {
   licenseHolders?: LicenseHolderHooks;
   /** New-authorization listeners, by their stable name. */
   onAuthorization?: Readonly<Record<string, AuthorizationListener>>;
+  /** Device lifecycle listeners (CC-03.3), by their stable name. */
+  onDeviceChange?: Readonly<Record<string, DeviceChangeListener>>;
 }
 
 // ── the bound registry ──────────────────────────────────────────────────────────────────────
@@ -257,6 +262,13 @@ export function contributedAuthorizationListeners(
       out.push(listener);
   }
   return out;
+}
+
+/** Every mounted service's device lifecycle listeners, in canonical slug order. */
+export function contributedDeviceChangeListeners(): DeviceChangeListener[] {
+  return contributionsOf().flatMap(([, c]) =>
+    Object.values(c.onDeviceChange ?? {}),
+  );
 }
 
 /**

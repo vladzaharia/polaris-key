@@ -51,6 +51,10 @@ import {
 } from "./clientMetadata.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import type { Env } from "../platform/env.js";
+import {
+  hasDeviceChangeListeners,
+  notifyDeviceChange,
+} from "./devices/lifecycle.js";
 import type { Db } from "../db/types.js";
 import { parseJsonStringList } from "../platform/json.js";
 import type { Product, ProductPublic } from "./products.js";
@@ -272,7 +276,7 @@ export async function retireDeviceBinding(
   deviceId: string,
   tokenHash: string | null,
 ): Promise<void> {
-  await setDeviceStatus(db, product, deviceId, "deauthorized");
+  await setDeviceStatus(db, product, deviceId, "deauthorized", { env });
   if (tokenHash) {
     await deleteTokenRecord(env, product, tokenHash);
   }
@@ -779,12 +783,29 @@ export async function writeDeviceSubject(
   product: string,
   deviceId: string,
   subject: string | null,
+  opts: { env?: Env; now?: number } = {},
 ): Promise<void> {
+  // CC-03.3: only when someone listens, and only a real change, so a repeated write is silent.
+  const listening = hasDeviceChangeListeners();
+  const before = listening
+    ? await db.first<{ subject: string | null }>(
+        "SELECT subject FROM devices WHERE product = ? AND device_id = ?",
+        product,
+        deviceId,
+      )
+    : null;
   await db.run(
     "UPDATE devices SET subject = ? WHERE product = ? AND device_id = ?",
     subject,
     product,
     deviceId,
+  );
+  if (!before || before.subject === subject) return;
+  await notifyDeviceChange(
+    { db, env: opts.env, now: opts.now ?? Math.floor(Date.now() / 1000) },
+    subject
+      ? { product, deviceId, kind: "bound", subject }
+      : { product, deviceId, kind: "unbound", subject: before.subject },
   );
 }
 

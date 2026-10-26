@@ -52,6 +52,7 @@ import {
   readBody,
 } from "../../../core/console/respond.js";
 import { auditStatementFor } from "../../../core/audit.js";
+import { notifyDeviceChange } from "../../../core/devices/lifecycle.js";
 import type { LicenseAdminContext } from "./index.js";
 
 /** Origins a licence may be deleted from while still active: minted by a flow, not by a person. */
@@ -170,6 +171,16 @@ async function deleteOne(
   for (const d of devices)
     if (d.token_hash) await deleteTokenRecord(env, slug, d.token_hash);
   forgetRegistryTokens();
+  for (const d of devices)
+    await notifyDeviceChange(
+      { db, env, now },
+      {
+        product: slug,
+        deviceId: d.device_id,
+        kind: "removed",
+        subject: d.subject,
+      },
+    );
   return { id: row.id, devices: devices.length };
 }
 
