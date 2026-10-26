@@ -15,6 +15,7 @@ import {
   ENTITLEMENT_EVENT_STORE,
   entitlementEventStore,
 } from "../licensing/entitlementEvents.js";
+import { KEYRING_STORE, keyringStore } from "../keyring/store.js";
 import {
   PROVISIONED_SECRET_MOVES_STORE,
   provisionedSecretMovesStore,
@@ -39,7 +40,7 @@ export interface SubjectStoreContext {
 /**
  * A store keyed by pairwise subject (managed config overrides, Cloud Sync data, later the layer 2
  * app profile). Every such store is contributed once by its service's descriptor, under a stable
- * name; Core's own (`core.entitlementEvents`) is added here.
+ * name; Core's own (`core.entitlementEvents`, `core.keyring`) are added here.
  */
 export interface SubjectStore {
   /** Re-key `from`'s data to `to` for one product (an account merge, D21). A collision (both
@@ -85,6 +86,7 @@ function allStores(): Map<string, SubjectStore> {
   const all = new Map<string, SubjectStore>([
     [ENTITLEMENT_EVENT_STORE, entitlementEventStore],
     [PROVISIONED_SECRET_MOVES_STORE, provisionedSecretMovesStore],
+    [KEYRING_STORE, keyringStore],
   ]);
   for (const [name, store] of contributedSubjectStores()) all.set(name, store);
   for (const [name, store] of TEST_STORES) all.set(name, store);
