@@ -13,4 +13,5 @@ export const AREA_NAMES = {
   commerce: "Commerce",
   keys: "Keys and secrets",
   settings: "Settings",
+  connect: "Cloud Connect",
 } as const;

@@ -95,6 +95,7 @@ const ALPHA_ORACLE: Partial<Record<AreaId, PrincipalName[]>> = {
   config: ALPHA_FULL,
   signin: ALPHA_FULL,
   sync: ALPHA_FULL,
+  connect: ALPHA_FULL,
   keys: ALPHA_FULL,
   settings: ALPHA_FULL,
   members: ALPHA_FULL,

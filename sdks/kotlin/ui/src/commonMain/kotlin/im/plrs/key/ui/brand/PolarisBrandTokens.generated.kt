@@ -174,6 +174,13 @@ public object PolarisBrandTokens {
         public val stateSyncCheckedOn: Color = Color(0xFF060912)
         public val stateSyncCheckedEdge: Color = Color(0xFF14F8E1)
         public val stateSyncContextEdge: Color = Color(0xFF14F8E1)
+        public val stateConnectRing: Color = Color(0xFFDEC8FF)
+        public val stateConnectSelectedFill: Color = Color(0xFF20202E)
+        public val stateConnectHoverTint: Color = Color(0xFF151623)
+        public val stateConnectCheckedFill: Color = Color(0xFFDEC8FF)
+        public val stateConnectCheckedOn: Color = Color(0xFF060912)
+        public val stateConnectCheckedEdge: Color = Color(0xFFDEC8FF)
+        public val stateConnectContextEdge: Color = Color(0xFFDEC8FF)
         public val success: Color = Color(0xFF56D57B)
         public val successOn: Color = Color(0xFF060912)
         public val successBorder: Color = Color(0xFF3B9555)
@@ -276,6 +283,13 @@ public object PolarisBrandTokens {
         public val stateSyncCheckedOn: Color = Color(0xFFFFFFFF)
         public val stateSyncCheckedEdge: Color = Color(0xFF086260)
         public val stateSyncContextEdge: Color = Color(0xFF086260)
+        public val stateConnectRing: Color = Color(0xFF746295)
+        public val stateConnectSelectedFill: Color = Color(0xFFECEBF7)
+        public val stateConnectHoverTint: Color = Color(0xFFF0F1FA)
+        public val stateConnectCheckedFill: Color = Color(0xFF8D7BB0)
+        public val stateConnectCheckedOn: Color = Color(0xFF060912)
+        public val stateConnectCheckedEdge: Color = Color(0xFF746295)
+        public val stateConnectContextEdge: Color = Color(0xFF746295)
         public val success: Color = Color(0xFF167337)
         public val successOn: Color = Color(0xFFFFFFFF)
         public val successBorder: Color = Color(0xFF348F4F)
@@ -312,7 +326,7 @@ public object PolarisBrandTokens {
         "identity" to BrandAccent(solid = Color(0xFFD77DF2), fg = Color(0xFFD77DF2), on = Color(0xFF060912), subtle = Color(0xFF1F172D), bit = Color(0xFFD77DF2)),
         "sync" to BrandAccent(solid = Color(0xFF14F8E1), fg = Color(0xFF14F8E1), on = Color(0xFF060912), subtle = Color(0xFF08262B), bit = Color(0xFF14F8E1)),
         "commerce" to BrandAccent(solid = Color(0xFF39D075), fg = Color(0xFF39D075), on = Color(0xFF060912), subtle = Color(0xFF0C211E), bit = Color(0xFF39D075)),
-        "connect" to BrandAccent(solid = Color(0xFF14F8E1), fg = Color(0xFF14F8E1), on = Color(0xFF060912), subtle = Color(0xFF08262B), bit = Color(0xFF14F8E1)),
+        "connect" to BrandAccent(solid = Color(0xFFDEC8FF), fg = Color(0xFFDEC8FF), on = Color(0xFF060912), subtle = Color(0xFF20202E), bit = Color(0xFFDEC8FF)),
     )
 
     private val accentsLight: Map<String, BrandAccent> = mapOf(
@@ -325,7 +339,7 @@ public object PolarisBrandTokens {
         "identity" to BrandAccent(solid = Color(0xFF9E34AE), fg = Color(0xFF9E34AE), on = Color(0xFFFFFFFF), subtle = Color(0xFFEDE4F7), bit = Color(0xFF9E34AE)),
         "sync" to BrandAccent(solid = Color(0xFF086260), fg = Color(0xFF086260), on = Color(0xFFFFFFFF), subtle = Color(0xFFDEE9EF), bit = Color(0xFF086260)),
         "commerce" to BrandAccent(solid = Color(0xFF05773B), fg = Color(0xFF05773B), on = Color(0xFFFFFFFF), subtle = Color(0xFFDEEBEB), bit = Color(0xFF05773B)),
-        "connect" to BrandAccent(solid = Color(0xFF086260), fg = Color(0xFF086260), on = Color(0xFFFFFFFF), subtle = Color(0xFFDEE9EF), bit = Color(0xFF086260)),
+        "connect" to BrandAccent(solid = Color(0xFF8D7BB0), fg = Color(0xFF746295), on = Color(0xFF060912), subtle = Color(0xFFECEBF7), bit = Color(0xFF8D7BB0)),
     )
 
     /** A section's accent. Unknown ids answer the core (platform) violet. */

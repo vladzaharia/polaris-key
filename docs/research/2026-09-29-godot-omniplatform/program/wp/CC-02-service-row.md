@@ -37,3 +37,16 @@ Cloud Connect service row, descriptor, coherence, manifest block, settings and c
   `SERVICE_AREA` entry (`connect` shares `sync` until the `connect` RBAC area lands with the admin
   routes), and a null admin section module. The admin `nav.ts` `SECTIONS` entry is not added, so
   admin `test/serviceTable.test.ts` fails until CC-02.3.
+
+- CC-02.3 done on `wp/CC-02.3-console-docs` (2026-10-26): the three placeholders are replaced.
+  - Accent: Cloud Connect is its own ninth family, **lilac** (dark `#dec8ff`, light `#8d7bb0`, text
+    `#746295`), found by `tune-accents`' `search` because no vivid gap was left (BRAND.md §5.2; 18.6
+    and 19.6 ΔE00 from Identity's orchid, over the 17.5 floor). `SERVICE_ALIAS` is back to Commerce only.
+  - Radar: lucide 0.469.0's `radar` was checked against the vendored paths and is identical, so no re-vendor.
+  - RBAC: `connect` appended to `AREAS` (fourteen; eleven product areas), `SERVICE_AREA.connect`,
+    `rbac-areas.json`, and the five `/products/:slug/connect/**` rows in `rbac-route-areas.json`.
+  - Console: `SECTIONS` entry, `connect-setup` page id and stub page, route ledger row.
+  - Docs: `features/cloud-connect/index.md`, the `doors.ts` group, the sidebar marker; `features.json`
+    family `connect` with eight features, planned in every SDK manifest (N/A for `connect.lan` and
+    `connect.links` on `react`'s two runtimes, both of them, not `web` alone as the plan says).
+  - `layout.md` (C12 and the brand and RBAC steps), the worker README and the OpenAPI "all seven slugs" prose.

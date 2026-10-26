@@ -1628,7 +1628,7 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         const page = desk.page;
         const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
         const icons = card.locator("[data-feature-link]");
-        expect(await icons.count()).toBe(6);
+        expect(await icons.count()).toBe(7);
         for (const label of ["Licensing", "Ship builds", "Cloud Sync"]) {
           // A feature with a problem names it too ("Managed config: 1 needs attention").
           const link = card.getByRole("link", { name: label, exact: true });
@@ -1698,6 +1698,7 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
           "identity",
           "sync",
           "commerce",
+          "connect",
         ]);
         for (const c of colours) expect(c.got, c.service!).toBe(c.want);
         expect(new Set(colours.map((c) => c.got)).size).toBe(colours.length);

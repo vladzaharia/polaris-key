@@ -83,6 +83,10 @@
   --color-service-sync-fg: var(--pk-service-sync-fg);
   --color-service-sync-on: var(--pk-service-sync-on);
   --color-service-sync-subtle: var(--pk-service-sync-subtle);
+  --color-service-connect: var(--pk-service-connect);
+  --color-service-connect-fg: var(--pk-service-connect-fg);
+  --color-service-connect-on: var(--pk-service-connect-on);
+  --color-service-connect-subtle: var(--pk-service-connect-subtle);
   --color-success: var(--pk-success);
   --color-success-on: var(--pk-success-on);
   --color-success-border: var(--pk-success-border);

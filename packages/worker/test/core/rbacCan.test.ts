@@ -91,10 +91,10 @@ describe("can(): the rules", () => {
     expect(can(pa, PLATFORM, "license", "view")).toBe(false);
   });
 
-  it("6. allows a Product admin the bound areas of the bound product, else all ten", () => {
+  it("6. allows a Product admin the bound areas of the bound product, else all eleven", () => {
     const all = PRINCIPALS.alphaAdmin;
     const narrow = PRINCIPALS.alphaShip;
-    expect(PRODUCT_AREAS).toHaveLength(10);
+    expect(PRODUCT_AREAS).toHaveLength(11);
     for (const area of PRODUCT_AREAS) {
       expect(can(all, alpha, area, "edit"), area).toBe(true);
       expect(can(all, beta, area, "view"), area).toBe(false);

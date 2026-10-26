@@ -181,6 +181,7 @@ describe("Home", () => {
       "sign-in",
       "cloud-sync",
       "commerce",
+      "cloud-connect",
     ]);
     expect(glyphs(card("Acme"))).toEqual([
       "licensing",
@@ -1093,6 +1094,7 @@ describe("ProductCard", () => {
       "identity",
       "sync",
       "commerce",
+      "connect",
     ]);
     const label = document
       .querySelector("[data-feature-pips]")!

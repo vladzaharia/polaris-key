@@ -57,6 +57,7 @@ import {
   Plug,
   PlugZap,
   Plus,
+  Radar,
   Rocket,
   Rss,
   Send,
@@ -169,6 +170,8 @@ export type ProductPageId =
   | "sync-setup"
   | "sync-usage"
   | "sync-data"
+  // connect
+  | "connect-setup"
   // commerce
   | "commerce-overview";
 
@@ -866,6 +869,26 @@ export const SECTIONS: NavSection[] = [
         inNav: true,
         // The mappings are App Store products: a product the App Store is out of scope for has none.
         requires: "channel:app-store",
+      },
+    ],
+  },
+  {
+    key: "connect",
+    label: "Cloud Connect",
+    service: "connect",
+    accent: "connect",
+    glyph: Radar,
+    docs: "/docs/features/cloud-connect/",
+    items: [
+      {
+        // The section's one page until CC-16 adds Usage and Linked devices.
+        page: "connect-setup",
+        tile: "service",
+        label: "Cloud Connect",
+        path: "connect/setup",
+        icon: Radar,
+        docs: "/docs/features/cloud-connect/",
+        inNav: true,
       },
     ],
   },

@@ -87,15 +87,13 @@ describe("pairwise distinctness", () => {
   );
 
   it("every section has its own family (Distribution and Update no longer share green)", () => {
-    // B1 (2026-10-09): Commerce shares Distribution. CC-02.1: Connect shares Sync until CC-02.3.
+    // B1 (2026-10-09): Commerce shares Distribution. CC-02.3: Connect has its own lilac.
     const owners = SERVICE_IDS.filter((id) => !(id in SERVICE_ALIAS));
     const families = owners.map((id) => SERVICE_FAMILY[id]);
     expect(new Set(families).size).toBe(owners.length);
     expect([...families].sort()).toEqual([...ACCENT_FAMILIES].sort());
-    expect(SERVICE_ALIAS).toEqual({
-      commerce: "distribution",
-      connect: "sync",
-    });
+    expect(SERVICE_ALIAS).toEqual({ commerce: "distribution" });
+    expect(SERVICE_FAMILY.connect).toBe("lilac");
     expect(SERVICE_FAMILY.commerce).toBe(SERVICE_FAMILY.distribution);
     expect(SERVICE_FAMILY.update).toBe("tangerine");
     expect(SERVICE_FAMILY.config).toBe("yellow");

@@ -167,8 +167,8 @@ paths:
         `version` is the DISCOVERY document's own version (still `2`) and `protocolVersion`
         is the wire version (`4`) — they are deliberately different numbers. `schemaVersion`
         is the product's catalog version, a third orthogonal counter. `services` always
-        carries all seven slugs in the canonical order license, config, release, distribution,
-        update, identity, sync, so a client can iterate it rather than probe. `core.endpoints.register`
+        carries every service slug in the canonical order license, config, release, distribution,
+        update, identity, sync, commerce, connect, so a client can iterate it rather than probe. `core.endpoints.register`
         is OMITTED when the product's registration policy is `requires-license`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:

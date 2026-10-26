@@ -503,6 +503,42 @@
       "status": "planned",
       "wp": "U-22"
     },
+    "connect.identity": {
+      "status": "planned",
+      "wp": "CC-09"
+    },
+    "connect.noise": {
+      "status": "planned",
+      "wp": "CC-09"
+    },
+    "connect.protocol": {
+      "status": "planned",
+      "wp": "CC-09"
+    },
+    "connect.lan": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser or renderer has no sockets; the relay is its only path, and the host's Node SDK does the rest."
+    },
+    "connect.relay": {
+      "status": "planned",
+      "wp": "CC-09"
+    },
+    "connect.links": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser or renderer has no sockets; the relay is its only path, and the host's Node SDK does the rest."
+    },
+    "connect.transfer": {
+      "status": "planned",
+      "wp": "CC-20"
+    },
+    "connect.app": {
+      "status": "planned",
+      "wp": "CC-09"
+    },
     "server.license": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],

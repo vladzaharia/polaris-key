@@ -565,6 +565,7 @@ export const r = {
   appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
   syncSetup: (slug: string) => productPage(slug, "sync-setup"),
   syncUsage: (slug: string) => productPage(slug, "sync-usage"),
+  connectSetup: (slug: string) => productPage(slug, "connect-setup"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

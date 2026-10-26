@@ -108,7 +108,7 @@ export const EMPTY_DRAFT: RoleDraft = {
   areas: [],
 };
 
-/** The ten areas a Product admin can hold on a product, in the Worker's order. */
+/** The eleven areas a Product admin can hold on a product, in the Worker's order. */
 export const PRODUCT_AREAS: readonly AreaId[] = [
   "core",
   "license",
@@ -119,6 +119,7 @@ export const PRODUCT_AREAS: readonly AreaId[] = [
   "commerce",
   "keys",
   "settings",
+  "connect",
   "members",
 ];
 

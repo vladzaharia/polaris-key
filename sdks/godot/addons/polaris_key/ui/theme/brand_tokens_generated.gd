@@ -117,6 +117,13 @@ class Dark:
 	const STATE_SYNC_CHECKED_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const STATE_SYNC_CHECKED_EDGE := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
 	const STATE_SYNC_CONTEXT_EDGE := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
+	const STATE_CONNECT_RING := Color(0.870588, 0.784314, 1.0, 1.0) # #dec8ff
+	const STATE_CONNECT_SELECTED_FILL := Color(0.12549, 0.12549, 0.180392, 1.0) # #20202e
+	const STATE_CONNECT_HOVER_TINT := Color(0.082353, 0.086275, 0.137255, 1.0) # #151623
+	const STATE_CONNECT_CHECKED_FILL := Color(0.870588, 0.784314, 1.0, 1.0) # #dec8ff
+	const STATE_CONNECT_CHECKED_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
+	const STATE_CONNECT_CHECKED_EDGE := Color(0.870588, 0.784314, 1.0, 1.0) # #dec8ff
+	const STATE_CONNECT_CONTEXT_EDGE := Color(0.870588, 0.784314, 1.0, 1.0) # #dec8ff
 	const SUCCESS := Color(0.337255, 0.835294, 0.482353, 1.0) # #56d57b
 	const SUCCESS_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SUCCESS_BORDER := Color(0.231373, 0.584314, 0.333333, 1.0) # #3b9555
@@ -185,11 +192,11 @@ class Dark:
 	const SERVICE_COMMERCE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SERVICE_COMMERCE_SUBTLE := Color(0.047059, 0.129412, 0.117647, 1.0) # #0c211e
 	const SERVICE_COMMERCE_BIT := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
-	const SERVICE_CONNECT := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
-	const SERVICE_CONNECT_FG := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
+	const SERVICE_CONNECT := Color(0.870588, 0.784314, 1.0, 1.0) # #dec8ff
+	const SERVICE_CONNECT_FG := Color(0.870588, 0.784314, 1.0, 1.0) # #dec8ff
 	const SERVICE_CONNECT_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
-	const SERVICE_CONNECT_SUBTLE := Color(0.031373, 0.14902, 0.168627, 1.0) # #08262b
-	const SERVICE_CONNECT_BIT := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
+	const SERVICE_CONNECT_SUBTLE := Color(0.12549, 0.12549, 0.180392, 1.0) # #20202e
+	const SERVICE_CONNECT_BIT := Color(0.870588, 0.784314, 1.0, 1.0) # #dec8ff
 
 
 ## The light theme.
@@ -268,6 +275,13 @@ class Light:
 	const STATE_SYNC_CHECKED_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const STATE_SYNC_CHECKED_EDGE := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
 	const STATE_SYNC_CONTEXT_EDGE := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
+	const STATE_CONNECT_RING := Color(0.454902, 0.384314, 0.584314, 1.0) # #746295
+	const STATE_CONNECT_SELECTED_FILL := Color(0.92549, 0.921569, 0.968627, 1.0) # #ecebf7
+	const STATE_CONNECT_HOVER_TINT := Color(0.941176, 0.945098, 0.980392, 1.0) # #f0f1fa
+	const STATE_CONNECT_CHECKED_FILL := Color(0.552941, 0.482353, 0.690196, 1.0) # #8d7bb0
+	const STATE_CONNECT_CHECKED_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
+	const STATE_CONNECT_CHECKED_EDGE := Color(0.454902, 0.384314, 0.584314, 1.0) # #746295
+	const STATE_CONNECT_CONTEXT_EDGE := Color(0.454902, 0.384314, 0.584314, 1.0) # #746295
 	const SUCCESS := Color(0.086275, 0.45098, 0.215686, 1.0) # #167337
 	const SUCCESS_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const SUCCESS_BORDER := Color(0.203922, 0.560784, 0.309804, 1.0) # #348f4f
@@ -336,11 +350,11 @@ class Light:
 	const SERVICE_COMMERCE_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const SERVICE_COMMERCE_SUBTLE := Color(0.870588, 0.921569, 0.921569, 1.0) # #deebeb
 	const SERVICE_COMMERCE_BIT := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
-	const SERVICE_CONNECT := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
-	const SERVICE_CONNECT_FG := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
-	const SERVICE_CONNECT_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
-	const SERVICE_CONNECT_SUBTLE := Color(0.870588, 0.913725, 0.937255, 1.0) # #dee9ef
-	const SERVICE_CONNECT_BIT := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
+	const SERVICE_CONNECT := Color(0.552941, 0.482353, 0.690196, 1.0) # #8d7bb0
+	const SERVICE_CONNECT_FG := Color(0.454902, 0.384314, 0.584314, 1.0) # #746295
+	const SERVICE_CONNECT_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
+	const SERVICE_CONNECT_SUBTLE := Color(0.92549, 0.921569, 0.968627, 1.0) # #ecebf7
+	const SERVICE_CONNECT_BIT := Color(0.552941, 0.482353, 0.690196, 1.0) # #8d7bb0
 
 
 const _SERVICE_DARK := {
@@ -353,7 +367,7 @@ const _SERVICE_DARK := {
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 	"sync": Color(0.078431, 0.972549, 0.882353, 1.0),
 	"commerce": Color(0.223529, 0.815686, 0.458824, 1.0),
-	"connect": Color(0.078431, 0.972549, 0.882353, 1.0),
+	"connect": Color(0.870588, 0.784314, 1.0, 1.0),
 }
 const _SERVICE_LIGHT := {
 	"core": Color(0.478431, 0.184314, 1.0, 1.0),
@@ -365,7 +379,7 @@ const _SERVICE_LIGHT := {
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 	"sync": Color(0.031373, 0.384314, 0.376471, 1.0),
 	"commerce": Color(0.019608, 0.466667, 0.231373, 1.0),
-	"connect": Color(0.031373, 0.384314, 0.376471, 1.0),
+	"connect": Color(0.552941, 0.482353, 0.690196, 1.0),
 }
 const _SERVICE_FG_DARK := {
 	"core": Color(0.603922, 0.360784, 1.0, 1.0),
@@ -377,7 +391,7 @@ const _SERVICE_FG_DARK := {
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 	"sync": Color(0.078431, 0.972549, 0.882353, 1.0),
 	"commerce": Color(0.223529, 0.815686, 0.458824, 1.0),
-	"connect": Color(0.078431, 0.972549, 0.882353, 1.0),
+	"connect": Color(0.870588, 0.784314, 1.0, 1.0),
 }
 const _SERVICE_FG_LIGHT := {
 	"core": Color(0.478431, 0.184314, 1.0, 1.0),
@@ -389,7 +403,7 @@ const _SERVICE_FG_LIGHT := {
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 	"sync": Color(0.031373, 0.384314, 0.376471, 1.0),
 	"commerce": Color(0.019608, 0.466667, 0.231373, 1.0),
-	"connect": Color(0.031373, 0.384314, 0.376471, 1.0),
+	"connect": Color(0.454902, 0.384314, 0.584314, 1.0),
 }
 const _BIT_DARK := {
 	"license": Color(0.776471, 0.913725, 0.25098, 1.0),
@@ -400,7 +414,7 @@ const _BIT_DARK := {
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 	"sync": Color(0.078431, 0.972549, 0.882353, 1.0),
 	"commerce": Color(0.223529, 0.815686, 0.458824, 1.0),
-	"connect": Color(0.078431, 0.972549, 0.882353, 1.0),
+	"connect": Color(0.870588, 0.784314, 1.0, 1.0),
 }
 const _BIT_LIGHT := {
 	"license": Color(0.427451, 0.52549, 0.0, 1.0),
@@ -411,7 +425,7 @@ const _BIT_LIGHT := {
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 	"sync": Color(0.031373, 0.384314, 0.376471, 1.0),
 	"commerce": Color(0.019608, 0.466667, 0.231373, 1.0),
-	"connect": Color(0.031373, 0.384314, 0.376471, 1.0),
+	"connect": Color(0.552941, 0.482353, 0.690196, 1.0),
 }
 
 

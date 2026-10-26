@@ -75,7 +75,7 @@ export const SERVICE_ICONS: Record<ServiceIconId, ServiceIconSpec> = {
   connect: {
     glyph: "Radar",
     label: "Cloud Connect",
-    accent: "sync",
+    accent: "connect",
     dataService: true,
   },
   update: {

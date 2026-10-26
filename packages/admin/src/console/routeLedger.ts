@@ -184,6 +184,12 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     by: "I-29",
   },
   { id: "sync-data", scope: "product", from: "sync/data", fate: "live" },
+  {
+    id: "connect-setup",
+    scope: "product",
+    from: "connect/setup",
+    fate: "live",
+  },
   { id: "commerce-overview", scope: "product", from: "commerce", fate: "live" },
   {
     id: "commerce",

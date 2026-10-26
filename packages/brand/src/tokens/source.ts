@@ -73,6 +73,7 @@ export const ACCENT_FAMILIES = [
   "tangerine",
   "orchid",
   "teal",
+  "lilac",
 ] as const;
 
 export type AccentFamily = (typeof ACCENT_FAMILIES)[number];
@@ -88,9 +89,8 @@ export const SERVICE_FAMILY: Record<ServiceId, AccentFamily> = {
   sync: "teal",
   // B1 (2026-10-09, CM-29b): Commerce shares the Distribution green family; no ninth family.
   commerce: "green",
-  // CC-02.1 placeholder: Cloud Connect draws in the Cloud Sync teal until its own accent lands
-  // with the console section (CC-02.3, which replaces this alias).
-  connect: "teal",
+  // CC-02.3: Cloud Connect's own family, the ninth.
+  connect: "lilac",
 };
 
 /**
@@ -101,7 +101,6 @@ export const SERVICE_FAMILY: Record<ServiceId, AccentFamily> = {
  */
 export const SERVICE_ALIAS: Partial<Record<ServiceId, ServiceId>> = {
   commerce: "distribution",
-  connect: "sync",
 };
 
 /** The mark each section uses: the Pinned K for the platform, the Star Cut for delivery. */
@@ -308,6 +307,22 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
       solid: oklch(0.45, 0.075, 192),
       fg: oklch(0.45, 0.075, 192),
       on: BRAND.mono.white,
+    },
+  },
+  // Cloud Connect (CC-02.3). The palette has no vivid gap left, so this is a soft lilac, the
+  // pale end of the violet-orchid arc, found by scripts/tune-accents.ts's `search` (hue 292-310°,
+  // chroma >= 0.08): 18.6 dark / 19.6 light CIEDE2000 from the nearest accent (Identity orchid),
+  // over the 17.5 floor. Light text steps down to L 0.534 to clear 4.5:1.
+  lilac: {
+    dark: {
+      solid: oklch(0.87, 0.08, 303),
+      fg: oklch(0.87, 0.08, 303),
+      on: BRAND.mono.black,
+    },
+    light: {
+      solid: oklch(0.62, 0.08, 300),
+      fg: oklch(0.534, 0.08, 300),
+      on: BRAND.mono.black,
     },
   },
 };

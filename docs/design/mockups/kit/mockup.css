@@ -204,6 +204,13 @@
   --pk-state-sync-checked-on: #060912;
   --pk-state-sync-checked-edge: #14f8e1;
   --pk-state-sync-context-edge: #14f8e1;
+  --pk-state-connect-ring: #dec8ff;
+  --pk-state-connect-selected-fill: #20202e;
+  --pk-state-connect-hover-tint: #151623;
+  --pk-state-connect-checked-fill: #dec8ff;
+  --pk-state-connect-checked-on: #060912;
+  --pk-state-connect-checked-edge: #dec8ff;
+  --pk-state-connect-context-edge: #dec8ff;
   --pk-brand-violet: #9a5cff;
   --pk-brand-gold: #ffc24d;
   --pk-brand-star: #ffffff;
@@ -255,6 +262,11 @@
   --pk-service-sync-on: #060912;
   --pk-service-sync-subtle: #08262b;
   --pk-service-sync-bit: #14f8e1;
+  --pk-service-connect: #dec8ff;
+  --pk-service-connect-fg: #dec8ff;
+  --pk-service-connect-on: #060912;
+  --pk-service-connect-subtle: #20202e;
+  --pk-service-connect-bit: #dec8ff;
   --pk-success: #56d57b;
   --pk-success-on: #060912;
   --pk-success-border: #3b9555;
@@ -358,6 +370,13 @@
   --pk-state-sync-checked-on: #ffffff;
   --pk-state-sync-checked-edge: #086260;
   --pk-state-sync-context-edge: #086260;
+  --pk-state-connect-ring: #746295;
+  --pk-state-connect-selected-fill: #ecebf7;
+  --pk-state-connect-hover-tint: #f0f1fa;
+  --pk-state-connect-checked-fill: #8d7bb0;
+  --pk-state-connect-checked-on: #060912;
+  --pk-state-connect-checked-edge: #746295;
+  --pk-state-connect-context-edge: #746295;
   --pk-brand-violet: #7a2fff;
   --pk-brand-gold: #d07a00;
   --pk-brand-star: #7a2fff;
@@ -409,6 +428,11 @@
   --pk-service-sync-on: #ffffff;
   --pk-service-sync-subtle: #dee9ef;
   --pk-service-sync-bit: #086260;
+  --pk-service-connect: #8d7bb0;
+  --pk-service-connect-fg: #746295;
+  --pk-service-connect-on: #060912;
+  --pk-service-connect-subtle: #ecebf7;
+  --pk-service-connect-bit: #8d7bb0;
   --pk-success: #167337;
   --pk-success-on: #ffffff;
   --pk-success-border: #348f4f;
@@ -605,18 +629,18 @@
 }
 
 [data-service="connect"] {
-  --pk-accent: var(--pk-service-sync);
-  --pk-accent-fg: var(--pk-service-sync-fg);
-  --pk-accent-on: var(--pk-service-sync-on);
-  --pk-accent-subtle: var(--pk-service-sync-subtle);
-  --pk-state-ring: var(--pk-state-sync-ring);
-  --pk-state-selected-fill: var(--pk-state-sync-selected-fill);
-  --pk-state-hover-tint: var(--pk-state-sync-hover-tint);
-  --pk-state-checked-fill: var(--pk-state-sync-checked-fill);
-  --pk-state-checked-on: var(--pk-state-sync-checked-on);
-  --pk-state-checked-edge: var(--pk-state-sync-checked-edge);
-  --pk-state-context-edge: var(--pk-state-sync-context-edge);
-  --pk-section-bit: var(--pk-service-sync-bit);
+  --pk-accent: var(--pk-service-connect);
+  --pk-accent-fg: var(--pk-service-connect-fg);
+  --pk-accent-on: var(--pk-service-connect-on);
+  --pk-accent-subtle: var(--pk-service-connect-subtle);
+  --pk-state-ring: var(--pk-state-connect-ring);
+  --pk-state-selected-fill: var(--pk-state-connect-selected-fill);
+  --pk-state-hover-tint: var(--pk-state-connect-hover-tint);
+  --pk-state-checked-fill: var(--pk-state-connect-checked-fill);
+  --pk-state-checked-on: var(--pk-state-connect-checked-on);
+  --pk-state-checked-edge: var(--pk-state-connect-checked-edge);
+  --pk-state-context-edge: var(--pk-state-connect-context-edge);
+  --pk-section-bit: var(--pk-service-connect-bit);
   --pk-section-bit-display: inline;
 }
 

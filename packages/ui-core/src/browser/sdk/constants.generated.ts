@@ -610,6 +610,14 @@ export const Feature = {
   syncSettings: "sync.settings",
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
+  connectIdentity: "connect.identity",
+  connectNoise: "connect.noise",
+  connectProtocol: "connect.protocol",
+  connectLan: "connect.lan",
+  connectRelay: "connect.relay",
+  connectLinks: "connect.links",
+  connectTransfer: "connect.transfer",
+  connectApp: "connect.app",
   devicesFingerprint: "devices.fingerprint",
   devicesFacts: "devices.facts",
   devicesRegister: "devices.register",
@@ -730,6 +738,14 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.settings",
   "sync.conflict",
   "sync.saves",
+  "connect.identity",
+  "connect.noise",
+  "connect.protocol",
+  "connect.lan",
+  "connect.relay",
+  "connect.links",
+  "connect.transfer",
+  "connect.app",
   "devices.fingerprint",
   "devices.facts",
   "devices.register",
@@ -1850,6 +1866,28 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.settings": { status: "planned", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
+  "connect.identity": { status: "planned", service: "connect", na: [] },
+  "connect.noise": { status: "planned", service: "connect", na: [] },
+  "connect.protocol": { status: "planned", service: "connect", na: [] },
+  "connect.lan": {
+    status: "na",
+    service: "connect",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "connect.relay": { status: "planned", service: "connect", na: [] },
+  "connect.links": {
+    status: "na",
+    service: "connect",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "connect.transfer": { status: "planned", service: "connect", na: [] },
+  "connect.app": { status: "planned", service: "connect", na: [] },
   "devices.fingerprint": {
     status: "na",
     service: "core",
@@ -2080,4 +2118,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "4e591b7f08d636753a33cccff641c97e466794c341db8a8456e06864c75c2e71";
+  "b2bab102a6f8fff04e80cef65d629889be5e9584e9721456db4ee36a33b397a2";

@@ -70,7 +70,8 @@ export type AreaId =
   | "sync"
   | "commerce"
   | "keys"
-  | "settings";
+  | "settings"
+  | "connect";
 
 /** The areas allowed at each level in one scope. */
 export interface AreaLevels {

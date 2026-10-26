@@ -612,6 +612,14 @@ public object Feature {
     public const val syncSettings: String = "sync.settings"
     public const val syncConflict: String = "sync.conflict"
     public const val syncSaves: String = "sync.saves"
+    public const val connectIdentity: String = "connect.identity"
+    public const val connectNoise: String = "connect.noise"
+    public const val connectProtocol: String = "connect.protocol"
+    public const val connectLan: String = "connect.lan"
+    public const val connectRelay: String = "connect.relay"
+    public const val connectLinks: String = "connect.links"
+    public const val connectTransfer: String = "connect.transfer"
+    public const val connectApp: String = "connect.app"
     public const val devicesFingerprint: String = "devices.fingerprint"
     public const val devicesFacts: String = "devices.facts"
     public const val devicesRegister: String = "devices.register"
@@ -731,6 +739,14 @@ public val FEATURE_VALUES: List<String> = listOf(
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "connect.identity",
+    "connect.noise",
+    "connect.protocol",
+    "connect.lan",
+    "connect.relay",
+    "connect.links",
+    "connect.transfer",
+    "connect.app",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
@@ -1762,6 +1778,14 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.settings" to CapabilityRow("planned", "sync", listOf()),
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
     "sync.saves" to CapabilityRow("planned", "sync", listOf()),
+    "connect.identity" to CapabilityRow("planned", "connect", listOf()),
+    "connect.noise" to CapabilityRow("planned", "connect", listOf()),
+    "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
+    "connect.lan" to CapabilityRow("planned", "connect", listOf()),
+    "connect.relay" to CapabilityRow("planned", "connect", listOf()),
+    "connect.links" to CapabilityRow("planned", "connect", listOf()),
+    "connect.transfer" to CapabilityRow("planned", "connect", listOf()),
+    "connect.app" to CapabilityRow("planned", "connect", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
     "devices.register" to CapabilityRow("implemented", "core", listOf()),
@@ -1845,4 +1869,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "91d6522e990e0521770bec0f7bc7366c2b85c333c918b0d5f589cd0979bee8c9"
+public const val CAPABILITY_DIGEST: String = "18eb2ebca03edd4c2fca5f981a7e32769ffe36f66178dc0138318d5893f58f5d"

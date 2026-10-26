@@ -1,9 +1,10 @@
 import type * as React from "react";
 import type { SectionPageProps } from "../../pages/types.js";
+import { ConnectSetupPage } from "./ConnectSetup.js";
 
-/** Cloud Connect's section. CC-02.1 lands the service row; its pages come with CC-02.3 and CC-16. */
-export default function ConnectPages(
-  _props: SectionPageProps,
-): React.ReactElement | null {
-  return null;
+/** Cloud Connect's section: the stub page now; Setup, Usage and Linked devices come with CC-16. */
+export default function ConnectPages({
+  route,
+}: SectionPageProps): React.ReactElement | null {
+  return route.page === "connect-setup" ? <ConnectSetupPage /> : null;
 }

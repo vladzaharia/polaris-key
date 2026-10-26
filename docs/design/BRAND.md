@@ -406,21 +406,22 @@ and strong text all clear 4.5:1 on it).
 
 ### 5.2 The table
 
-| Section          | Mark     | Family                 | Dark solid = fg (min contrast) | Light solid (min) | Light fg (min)  | Was (console) |
-| ---------------- | -------- | ---------------------- | ------------------------------ | ----------------- | --------------- | ------------- |
-| **Core**         | Pinned K | violet                 | `#9a5cff` (4.6)                | `#7a2fff` (4.9)   | `#7a2fff` (4.9) | indigo        |
-| **License**      | Pinned K | chartreuse             | `#c6e940` (12.9)               | `#6d8600` (3.6)   | `#556e00` (5.0) | amber         |
-| **Config**       | Pinned K | yellow                 | `#fac700` (11.3)               | `#8b6902` (4.4)   | `#866500` (4.7) | cyan          |
-| **Release**      | Pinned K | cyan                   | `#00dbfd` (10.7)               | `#008ca3` (3.4)   | `#007487` (4.7) | violet        |
-| **Distribution** | Star Cut | green                  | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | orange        |
-| **Update**       | Star Cut | tangerine              | `#fe8001` (7.1)                | `#b95800` (4.1)   | `#aa5000` (4.7) | green         |
-| **Identity**     | Pinned K | orchid                 | `#d77df2` (6.9)                | `#9e34ae` (5.1)   | `#9e34ae` (5.1) | rose          |
-| **Cloud Sync**   | Pinned K | teal                   | `#14f8e1` (13.3)               | `#086260` (6.2)   | `#086260` (6.2) | (new, U-04)   |
-| **Commerce**     | Pinned K | green (Distribution's) | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | (new, CM-29)  |
+| Section           | Mark     | Family                 | Dark solid = fg (min contrast) | Light solid (min) | Light fg (min)  | Was (console)  |
+| ----------------- | -------- | ---------------------- | ------------------------------ | ----------------- | --------------- | -------------- |
+| **Core**          | Pinned K | violet                 | `#9a5cff` (4.6)                | `#7a2fff` (4.9)   | `#7a2fff` (4.9) | indigo         |
+| **License**       | Pinned K | chartreuse             | `#c6e940` (12.9)               | `#6d8600` (3.6)   | `#556e00` (5.0) | amber          |
+| **Config**        | Pinned K | yellow                 | `#fac700` (11.3)               | `#8b6902` (4.4)   | `#866500` (4.7) | cyan           |
+| **Release**       | Pinned K | cyan                   | `#00dbfd` (10.7)               | `#008ca3` (3.4)   | `#007487` (4.7) | violet         |
+| **Distribution**  | Star Cut | green                  | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | orange         |
+| **Update**        | Star Cut | tangerine              | `#fe8001` (7.1)                | `#b95800` (4.1)   | `#aa5000` (4.7) | green          |
+| **Identity**      | Pinned K | orchid                 | `#d77df2` (6.9)                | `#9e34ae` (5.1)   | `#9e34ae` (5.1) | rose           |
+| **Cloud Sync**    | Pinned K | teal                   | `#14f8e1` (13.3)               | `#086260` (6.2)   | `#086260` (6.2) | (new, U-04)    |
+| **Cloud Connect** | Pinned K | lilac                  | `#dec8ff` (11.8)               | `#8d7bb0` (3.2)   | `#746295` (4.6) | (new, CC-02.3) |
+| **Commerce**      | Pinned K | green (Distribution's) | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | (new, CM-29)   |
 
 **Commerce shares the Distribution green family** (lead decision B1, 2026-10-09; reverses the
 2026-10-08 vermilion choice, because the guide, the site and our mockups all draw green and
-vermilion reads as an error). There is no ninth family and the accent-distance floor stays 17.5.
+vermilion reads as an error). Commerce adds no family; Cloud Connect's lilac (CC-02.3) is the ninth, found by `tune-accents`' `search` over the pale violet-orchid arc because no vivid gap was left, and the accent-distance floor stays 17.5 (18.6 dark / 19.6 light from Identity's orchid).
 The `commerce` service slug and its routes (CM-29) stay: only the colour is shared. Commerce uses
 the shopping-bag icon and the Pinned K (it requires License), never the Star Cut. CM-29b is
 re-scoped to exactly that. Distribution and Commerce never sit side by side as one identity: the
