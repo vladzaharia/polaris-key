@@ -752,6 +752,9 @@
     "tools/corpus/reference/revocation.ts": {
       "knip:files": 1
     },
+    "tools/corpus/reference/syncVectors.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/reference/tokens.ts": {
       "knip:exports": 2
     },
@@ -774,6 +777,9 @@
       "knip:files": 1
     },
     "tools/corpus/stage.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/syncVectors.ts": {
       "knip:files": 1
     },
     "tools/corpus/trust.ts": {
