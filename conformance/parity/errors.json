@@ -94,6 +94,12 @@
       "description": "A signed license or config document cannot be served because the active sealed signing key could not be opened. This is a retryable operator-side custody failure; no document was served."
     },
     {
+      "code": "device_keys_invalid",
+      "kind": "wire",
+      "service": "core",
+      "description": "400: the key registration was refused: a key that is not canonical or is of small order, a proof of possession that fails or is outside the 300 s window, or an `agreeKey` another device of the product holds. One code, whichever check failed."
+    },
+    {
       "code": "device_limit",
       "kind": "wire",
       "service": "license",

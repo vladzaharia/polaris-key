@@ -891,6 +891,8 @@
   "core.codes.signing_unavailable.message": "Der Dienst kann derzeit kein Dokument signieren. Versuchen Sie es in einigen Minuten erneut.",
   "core.codes.device_limit.title": "Gerätelimit erreicht",
   "core.codes.device_limit.message": "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
+  "core.codes.device_keys_invalid.title": "Gerät nicht eingerichtet",
+  "core.codes.device_keys_invalid.message": "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.",
   "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
   "core.codes.key_entry_limit.message": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
   "core.codes.license_disabled.title": "Lizenz deaktiviert",

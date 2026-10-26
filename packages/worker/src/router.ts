@@ -101,6 +101,9 @@ export type Route =
    *  attestation raising the trust level. CORE routes, beside `register`. */
   | { kind: "attestChallenge"; product: string }
   | { kind: "attest"; product: string }
+  /** `PUT /<p>/devices/keys` (CC-03.2): register or rotate the device's `signKey` and `agreeKey`.
+   *  A CORE route, matched ahead of `/devices/<id>`. */
+  | { kind: "deviceKeys"; product: string }
   /** HA-06: CI pushes a file into a hosted-asset slot (`POST /<p>/assets`, `assets:write`). */
   | { kind: "assetsPush"; product: string }
   /** A product-scoped request for a service the core router has cut over. `rest` is the path
@@ -274,6 +277,8 @@ export function matchRoute(pathname: string): Route {
       return { kind: "report", product };
     case "/devices/register":
       return { kind: "register", product };
+    case "/devices/keys":
+      return { kind: "deviceKeys", product };
     case "/devices/attest":
       return { kind: "attest", product };
     case "/devices/attest/challenge":

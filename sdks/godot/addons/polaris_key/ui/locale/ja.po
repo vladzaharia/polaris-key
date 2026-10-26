@@ -5238,6 +5238,16 @@ msgstr "デバイスの上限に達しました"
 msgid "core.codes.device_limit.message"
 msgstr "このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。"
 
+#. Device not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.title"
+msgstr "デバイスを設定できません"
+
+#. This device could not be set up for sync. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.message"
+msgstr "このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。"
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

@@ -72,6 +72,10 @@
       "title": "Device limit reached",
       "message": "This license is already on all its devices. Replace a device to use it here."
     },
+    "device_keys_invalid": {
+      "title": "Device not set up",
+      "message": "This device could not be set up for sync. Update the app and try again."
+    },
     "key_entry_limit": {
       "title": "No key entries left",
       "message": "This key has no entries left. Add it to your account and sign in instead."

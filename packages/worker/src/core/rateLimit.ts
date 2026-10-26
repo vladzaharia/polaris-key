@@ -163,6 +163,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // the limiter gone, one device could spend the whole product's daily quota.
   attestChallenge: "closed",
   attest: "closed",
+  // CC-03.2: a device's key registrations and rotations, 4 a day. Closed: each change moves the
+  // keys Cloud Sync wraps the root key to.
+  deviceKeys: "closed",
   // I-02: the email send limits (`core/notify/emailLimits.ts`). A refused send is answered exactly
   // like a sent one by the caller (enumeration safety, I-08), so failing closed costs a real
   // user one resend and an outage can never become an unlimited mail cannon at a victim's

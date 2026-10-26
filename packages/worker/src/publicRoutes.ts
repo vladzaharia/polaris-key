@@ -32,6 +32,7 @@ import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
 import { serviceContext } from "./core/registry.js";
 import { handleDevices, handleReport } from "./core/devices.js";
+import { handleDeviceKeys } from "./core/devices/keysRoute.js";
 import { handleRegister } from "./core/register.js";
 import {
   handleAttest,
@@ -165,6 +166,15 @@ export const CORE_ROUTES: readonly CoreRouteDecl[] = [
     auth: { kind: "device" },
     handler: (c) =>
       handleAttest(c.req, c.env, c.db, c.product, c.now, hooksOf(c)),
+  },
+  // CC-03.2: a device registers or rotates its keys. Ahead of `/devices/<id>` in the router, so
+  // `keys` is never read as a device id. First-party: no CORS flag.
+  {
+    kind: "deviceKeys",
+    surface: [{ path: "/{product}/devices/keys", methods: ["put"] }],
+    cors: false,
+    auth: { kind: "device" },
+    handler: (c) => handleDeviceKeys(c.req, c.env, c.db, c.product, c.now),
   },
   // HA-06: CI pushes files into hosted-asset slots (`assets:write`, checked by the handler).
   {

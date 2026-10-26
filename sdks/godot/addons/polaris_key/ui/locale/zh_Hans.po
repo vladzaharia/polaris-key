@@ -5238,6 +5238,16 @@ msgstr "已达到设备上限"
 msgid "core.codes.device_limit.message"
 msgstr "此许可证已用满所有设备。请替换一台设备以在此使用。"
 
+#. Device not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.title"
+msgstr "设备未设置"
+
+#. This device could not be set up for sync. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.message"
+msgstr "无法为同步设置此设备。请更新应用后重试。"
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

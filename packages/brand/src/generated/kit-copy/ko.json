@@ -891,6 +891,8 @@
   "core.codes.signing_unavailable.message": "지금은 서비스에서 문서에 서명할 수 없어요. 몇 분 후에 다시 시도하세요.",
   "core.codes.device_limit.title": "기기 한도 도달",
   "core.codes.device_limit.message": "이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요.",
+  "core.codes.device_keys_invalid.title": "기기를 설정하지 못했어요",
+  "core.codes.device_keys_invalid.message": "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.",
   "core.codes.key_entry_limit.title": "남은 키 등록 횟수 없음",
   "core.codes.key_entry_limit.message": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
   "core.codes.license_disabled.title": "라이선스 비활성화됨",

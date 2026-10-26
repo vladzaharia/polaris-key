@@ -5264,6 +5264,16 @@ msgstr "Limite de dispositivos atingido"
 msgid "core.codes.device_limit.message"
 msgstr "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui."
 
+#. Device not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.title"
+msgstr "Dispositivo não configurado"
+
+#. This device could not be set up for sync. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.message"
+msgstr "Não foi possível configurar este dispositivo para a sincronização. Atualize o app e tente de novo."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"
