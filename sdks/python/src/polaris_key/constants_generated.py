@@ -125,27 +125,63 @@ __all__ = [
     "DEVICE_LABEL_MAX_CODEPOINTS",
     "REQUEST_HANDLE_PATTERN",
     "REQUEST_HANDLE_TTL_SECONDS",
+    "SYNC_BLINDED_NAME_PATTERN",
+    "SYNC_BLINDED_PREFIX",
+    "SYNC_CDC_AVG_BYTES",
+    "SYNC_CDC_FORMAT",
+    "SYNC_CDC_GEAR_SEED",
+    "SYNC_CDC_MAX_BYTES",
+    "SYNC_CDC_MIN_BYTES",
+    "SYNC_CHUNK_FORMAT",
+    "SYNC_CHUNK_ID_PATTERN",
+    "SYNC_CHUNK_PLAN_MAX_IDS",
+    "SYNC_CHUNK_REQUESTS_PER_MINUTE",
     "SYNC_CLIENT_ID_PATTERN",
     "SYNC_DEBOUNCE_MS",
+    "SYNC_DELTA_MIN_FILE_BYTES",
+    "SYNC_E2E_OVERHEAD_BYTES",
+    "SYNC_ENVELOPE_FIXED_BYTES",
+    "SYNC_ENVELOPE_PAD_BLOCK",
+    "SYNC_FILE_FORMAT",
+    "SYNC_FILE_MAX_BYTES",
+    "SYNC_FILE_SEGMENT_BYTES",
+    "SYNC_FILE_TRANSFERS_PER_HOUR",
     "SYNC_HLC_PATTERN",
     "SYNC_IMPORT_HLC",
+    "SYNC_KEYCHAIN_SERVICE_PREFIX",
     "SYNC_KEY_PATTERN",
+    "SYNC_KID_PATTERN",
+    "SYNC_MANIFEST_FORMAT",
+    "SYNC_MAX_CHUNKS_PER_FILE",
     "SYNC_MAX_CLOCK_SKEW_MS",
     "SYNC_MAX_MERGE_MEMBERS",
     "SYNC_MAX_MUTATIONS",
+    "SYNC_MAX_OPEN_UPLOADS",
+    "SYNC_MAX_PARTS",
     "SYNC_MAX_PUSH_BYTES",
     "SYNC_MAX_RECORD_BYTES",
     "SYNC_MAX_SETTINGS",
     "SYNC_MAX_SETTINGS_BYTES",
     "SYNC_MAX_UNION_ELEMENT_BYTES",
     "SYNC_MAX_VALUE_BYTES",
+    "SYNC_PART_MAX_BYTES",
+    "SYNC_PART_MIN_BYTES",
+    "SYNC_PART_ROUND_BYTES",
     "SYNC_PENDING_DAYS",
     "SYNC_PULL_PAGE_CHANGES",
     "SYNC_QUOTA_BYTES",
+    "SYNC_RECOVERY_READS_PER_DAY",
+    "SYNC_RESET_KEEP_DAYS",
+    "SYNC_RING_ID_PATTERN",
     "SYNC_SAVE_SLOTS",
     "SYNC_SIGNOUT_FLUSH_MS",
+    "SYNC_SINGLE_PUT_MAX_BYTES",
     "SYNC_TOMBSTONE_DAYS",
     "SYNC_UNLICENSED_QUOTA_BYTES",
+    "SYNC_UPLOAD_PARALLELISM",
+    "SYNC_UPLOAD_TTL_SECONDS",
+    "SYNC_VALUE_FORMAT",
+    "SYNC_WRAP_FORMAT",
     "SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS",
     "PAIRWISE_SUBJECT_PATTERN",
     "CUSTOMER_ORIGIN_DEFAULT",
@@ -247,6 +283,11 @@ class ErrorCode:
     COLLECTION_UNKNOWN: Final = "collection_unknown"
     QUOTA_EXCEEDED: Final = "quota_exceeded"
     WRITES_PAUSED: Final = "writes_paused"
+    ENCRYPTION_MISMATCH: Final = "encryption_mismatch"
+    UPLOAD_EXPIRED: Final = "upload_expired"
+    UPLOAD_INCOMPLETE: Final = "upload_incomplete"
+    FILE_TOO_LARGE: Final = "file_too_large"
+    KEYRING_CONFLICT: Final = "keyring_conflict"
     EMAIL_MISMATCH: Final = "email_mismatch"
     LINK_CONFLICT: Final = "link_conflict"
     LAST_LINK: Final = "last_link"
@@ -298,6 +339,9 @@ class ErrorCode:
     SIGN_IN_DENIED: Final = "sign-in-denied"
     SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
     PLATFORM_IDENTITY_UNAVAILABLE: Final = "platform-identity-unavailable"
+    SYNC_LOCKED: Final = "sync-locked"
+    RECOVERY_CODE_INVALID: Final = "recovery-code-invalid"
+    SYNC_ENCRYPTION_PINNED: Final = "sync-encryption-pinned"
     INVALID_OPTIONS: Final = "invalid-options"
     INVALID_ARGUMENT: Final = "invalid-argument"
     INVOKE_NOT_ALLOWED: Final = "invoke-not-allowed"
@@ -438,6 +482,11 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "collection_unknown",
     "quota_exceeded",
     "writes_paused",
+    "encryption_mismatch",
+    "upload_expired",
+    "upload_incomplete",
+    "file_too_large",
+    "keyring_conflict",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -489,6 +538,9 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
+    "sync-locked",
+    "recovery-code-invalid",
+    "sync-encryption-pinned",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -631,6 +683,11 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "collection_unknown": "wire",
         "quota_exceeded": "wire",
         "writes_paused": "wire",
+        "encryption_mismatch": "wire",
+        "upload_expired": "wire",
+        "upload_incomplete": "wire",
+        "file_too_large": "wire",
+        "keyring_conflict": "wire",
         "email_mismatch": "wire",
         "link_conflict": "wire",
         "last_link": "wire",
@@ -682,6 +739,9 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "sign-in-denied": "client",
         "sign-in-unavailable": "client",
         "platform-identity-unavailable": "client",
+        "sync-locked": "client",
+        "recovery-code-invalid": "client",
+        "sync-encryption-pinned": "client",
         "invalid-options": "client",
         "invalid-argument": "client",
         "invoke-not-allowed": "client",
@@ -1878,12 +1938,88 @@ REQUEST_HANDLE_PATTERN: Final[str] = "^rq_[A-Za-z0-9_-]{22}$"
 REQUEST_HANDLE_TTL_SECONDS: Final[int] = 600
 
 
+#: Cloud Sync: `SYNC_BLINDED_NAME_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`).
+SYNC_BLINDED_NAME_PATTERN: Final[str] = "^x:[A-Za-z0-9_-]{43}$"
+
+
+#: Cloud Sync: `SYNC_BLINDED_PREFIX` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`).
+SYNC_BLINDED_PREFIX: Final[str] = "x:"
+
+
+#: Cloud Sync: `SYNC_CDC_AVG_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_CDC_AVG_BYTES: Final[int] = 262144
+
+
+#: Cloud Sync: `SYNC_CDC_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_CDC_FORMAT: Final[str] = "pkey-sync-cdc/1"
+
+
+#: Cloud Sync: `SYNC_CDC_GEAR_SEED` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_CDC_GEAR_SEED: Final[int] = 2654435769
+
+
+#: Cloud Sync: `SYNC_CDC_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_CDC_MAX_BYTES: Final[int] = 1048576
+
+
+#: Cloud Sync: `SYNC_CDC_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_CDC_MIN_BYTES: Final[int] = 65536
+
+
+#: Cloud Sync: `SYNC_CHUNK_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_CHUNK_FORMAT: Final[str] = "pkey-sync-chunk/1"
+
+
+#: Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_CHUNK_ID_PATTERN: Final[str] = "^[0-9a-f]{64}$"
+
+
+#: Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+SYNC_CHUNK_PLAN_MAX_IDS: Final[int] = 1024
+
+
+#: Cloud Sync: `SYNC_CHUNK_REQUESTS_PER_MINUTE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+SYNC_CHUNK_REQUESTS_PER_MINUTE: Final[int] = 600
+
+
 #: Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`).
 SYNC_CLIENT_ID_PATTERN: Final[str] = "^c_[A-Za-z0-9_-]{22}$"
 
 
 #: Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
 SYNC_DEBOUNCE_MS: Final[int] = 2000
+
+
+#: Cloud Sync: `SYNC_DELTA_MIN_FILE_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+SYNC_DELTA_MIN_FILE_BYTES: Final[int] = 1048576
+
+
+#: Cloud Sync: `SYNC_E2E_OVERHEAD_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+SYNC_E2E_OVERHEAD_BYTES: Final[int] = 113
+
+
+#: Cloud Sync: `SYNC_ENVELOPE_FIXED_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+SYNC_ENVELOPE_FIXED_BYTES: Final[int] = 49
+
+
+#: Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+SYNC_ENVELOPE_PAD_BLOCK: Final[int] = 64
+
+
+#: Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+SYNC_FILE_FORMAT: Final[str] = "pkey-sync-file/1"
+
+
+#: Cloud Sync: `SYNC_FILE_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+SYNC_FILE_MAX_BYTES: Final[int] = 1073741824
+
+
+#: Cloud Sync: `SYNC_FILE_SEGMENT_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+SYNC_FILE_SEGMENT_BYTES: Final[int] = 1048576
+
+
+#: Cloud Sync: `SYNC_FILE_TRANSFERS_PER_HOUR` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+SYNC_FILE_TRANSFERS_PER_HOUR: Final[int] = 30
 
 
 #: Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`).
@@ -1894,8 +2030,24 @@ SYNC_HLC_PATTERN: Final[str] = "^[0-9a-f]{12}:[0-9a-f]{4}$"
 SYNC_IMPORT_HLC: Final[str] = "000000000000:0000"
 
 
+#: Cloud Sync: `SYNC_KEYCHAIN_SERVICE_PREFIX` (WIRE-CONTRACT-V4 §8, §13.11.5, `@polaris-key/protocol/sync`).
+SYNC_KEYCHAIN_SERVICE_PREFIX: Final[str] = "pkey-sync:"
+
+
 #: Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`).
 SYNC_KEY_PATTERN: Final[str] = "^[A-Za-z0-9._:-]{1,128}$"
+
+
+#: Cloud Sync: `SYNC_KID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.2, `@polaris-key/protocol/sync`).
+SYNC_KID_PATTERN: Final[str] = "^[0-9a-f]{32}$"
+
+
+#: Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+SYNC_MANIFEST_FORMAT: Final[str] = "pkey-sync-chunks/1"
+
+
+#: Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+SYNC_MAX_CHUNKS_PER_FILE: Final[int] = 16384
 
 
 #: Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
@@ -1908,6 +2060,14 @@ SYNC_MAX_MERGE_MEMBERS: Final[int] = 256
 
 #: Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
 SYNC_MAX_MUTATIONS: Final[int] = 100
+
+
+#: Cloud Sync: `SYNC_MAX_OPEN_UPLOADS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+SYNC_MAX_OPEN_UPLOADS: Final[int] = 4
+
+
+#: Cloud Sync: `SYNC_MAX_PARTS` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+SYNC_MAX_PARTS: Final[int] = 9999
 
 
 #: Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
@@ -1934,6 +2094,18 @@ SYNC_MAX_UNION_ELEMENT_BYTES: Final[int] = 1024
 SYNC_MAX_VALUE_BYTES: Final[int] = 8192
 
 
+#: Cloud Sync: `SYNC_PART_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+SYNC_PART_MAX_BYTES: Final[int] = 67108864
+
+
+#: Cloud Sync: `SYNC_PART_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+SYNC_PART_MIN_BYTES: Final[int] = 8388608
+
+
+#: Cloud Sync: `SYNC_PART_ROUND_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+SYNC_PART_ROUND_BYTES: Final[int] = 1048576
+
+
 #: Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
 SYNC_PENDING_DAYS: Final[int] = 30
 
@@ -1946,6 +2118,18 @@ SYNC_PULL_PAGE_CHANGES: Final[int] = 500
 SYNC_QUOTA_BYTES: Final[int] = 268435456
 
 
+#: Cloud Sync: `SYNC_RECOVERY_READS_PER_DAY` (WIRE-CONTRACT-V4 §13.11.2, `@polaris-key/protocol/sync`).
+SYNC_RECOVERY_READS_PER_DAY: Final[int] = 5
+
+
+#: Cloud Sync: `SYNC_RESET_KEEP_DAYS` (WIRE-CONTRACT-V4 §13.11.4, `@polaris-key/protocol/sync`).
+SYNC_RESET_KEEP_DAYS: Final[int] = 30
+
+
+#: Cloud Sync: `SYNC_RING_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.11, `@polaris-key/protocol/sync`).
+SYNC_RING_ID_PATTERN: Final[str] = "^rg_[A-Za-z0-9_-]{22}$"
+
+
 #: Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
 SYNC_SAVE_SLOTS: Final[int] = 16
 
@@ -1954,12 +2138,32 @@ SYNC_SAVE_SLOTS: Final[int] = 16
 SYNC_SIGNOUT_FLUSH_MS: Final[int] = 5000
 
 
+#: Cloud Sync: `SYNC_SINGLE_PUT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+SYNC_SINGLE_PUT_MAX_BYTES: Final[int] = 16777216
+
+
 #: Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`).
 SYNC_TOMBSTONE_DAYS: Final[int] = 90
 
 
 #: Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
 SYNC_UNLICENSED_QUOTA_BYTES: Final[int] = 1048576
+
+
+#: Cloud Sync: `SYNC_UPLOAD_PARALLELISM` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+SYNC_UPLOAD_PARALLELISM: Final[int] = 4
+
+
+#: Cloud Sync: `SYNC_UPLOAD_TTL_SECONDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+SYNC_UPLOAD_TTL_SECONDS: Final[int] = 86400
+
+
+#: Cloud Sync: `SYNC_VALUE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+SYNC_VALUE_FORMAT: Final[str] = "pkey-sync-value/1"
+
+
+#: Cloud Sync: `SYNC_WRAP_FORMAT` (WIRE-CONTRACT-V4 §13.11.1, `@polaris-key/protocol/sync`).
+SYNC_WRAP_FORMAT: Final[str] = "pkey-sync-wrap/1"
 
 
 #: Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`).

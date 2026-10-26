@@ -1204,6 +1204,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "Sync paused",
     "core.codes.writes_paused.message":
       "Syncing is paused for a moment. Your changes are kept and will sync later.",
+    "core.codes.encryption_mismatch.title": "Encryption mismatch",
+    "core.codes.encryption_mismatch.message":
+      "This app and the sync service don't agree on encryption. Update the app and try again.",
+    "core.codes.upload_expired.title": "Upload expired",
+    "core.codes.upload_expired.message":
+      "This upload took too long and was cancelled. Try again.",
+    "core.codes.upload_incomplete.title": "Upload incomplete",
+    "core.codes.upload_incomplete.message":
+      "Part of the file didn't arrive. Try again.",
+    "core.codes.file_too_large.title": "File too large",
+    "core.codes.file_too_large.message":
+      "This file is over the size limit for synced files.",
+    "core.codes.keyring_conflict.title": "Already set up",
+    "core.codes.keyring_conflict.message":
+      "Encryption is already set up for this account. Unlock with another device or your recovery code.",
     "core.codes.email_mismatch.title": "Email not verified",
     "core.codes.email_mismatch.message":
       "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.",
@@ -1349,6 +1364,15 @@ export const KIT_COPY: Readonly<
     "core.codes.platform-identity-unavailable.title": "Sign-in unavailable",
     "core.codes.platform-identity-unavailable.message":
       "This device can't sign you in automatically. Use another way to sign in.",
+    "core.codes.sync-locked.title": "Sync locked",
+    "core.codes.sync-locked.message":
+      "Unlock sync on this device with your recovery code or another signed-in device.",
+    "core.codes.recovery-code-invalid.title": "Recovery code not valid",
+    "core.codes.recovery-code-invalid.message":
+      "That recovery code isn't right. Check it and try again.",
+    "core.codes.sync-encryption-pinned.title": "Encryption required",
+    "core.codes.sync-encryption-pinned.message":
+      "This app needs encrypted sync, which isn't available right now. Sync stays off.",
     "core.codes.invalid-options.title": "App not set up",
     "core.codes.invalid-options.message":
       "The app's licensing isn't set up correctly. Contact the developer.",
@@ -2905,6 +2929,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "Synchronisierung pausiert",
     "core.codes.writes_paused.message":
       "Die Synchronisierung ist kurz pausiert. Ihre Änderungen bleiben erhalten und werden später synchronisiert.",
+    "core.codes.encryption_mismatch.title": "Verschlüsselung passt nicht",
+    "core.codes.encryption_mismatch.message":
+      "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.",
+    "core.codes.upload_expired.title": "Upload abgelaufen",
+    "core.codes.upload_expired.message":
+      "Der Upload hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut.",
+    "core.codes.upload_incomplete.title": "Upload unvollständig",
+    "core.codes.upload_incomplete.message":
+      "Ein Teil der Datei ist nicht angekommen. Versuchen Sie es erneut.",
+    "core.codes.file_too_large.title": "Datei zu groß",
+    "core.codes.file_too_large.message":
+      "Diese Datei überschreitet die Größengrenze für synchronisierte Dateien.",
+    "core.codes.keyring_conflict.title": "Bereits eingerichtet",
+    "core.codes.keyring_conflict.message":
+      "Die Verschlüsselung ist für dieses Konto bereits eingerichtet. Entsperren Sie mit einem anderen Gerät oder Ihrem Wiederherstellungscode.",
     "core.codes.email_mismatch.title": "E-Mail-Adresse nicht bestätigt",
     "core.codes.email_mismatch.message":
       "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut.",
@@ -3061,6 +3100,15 @@ export const KIT_COPY: Readonly<
       "Anmeldung nicht verfügbar",
     "core.codes.platform-identity-unavailable.message":
       "Dieses Gerät kann Sie nicht automatisch anmelden. Verwenden Sie eine andere Anmeldeart.",
+    "core.codes.sync-locked.title": "Sync gesperrt",
+    "core.codes.sync-locked.message":
+      "Entsperren Sie den Sync auf diesem Gerät mit Ihrem Wiederherstellungscode oder einem anderen angemeldeten Gerät.",
+    "core.codes.recovery-code-invalid.title": "Wiederherstellungscode ungültig",
+    "core.codes.recovery-code-invalid.message":
+      "Dieser Wiederherstellungscode stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut.",
+    "core.codes.sync-encryption-pinned.title": "Verschlüsselung erforderlich",
+    "core.codes.sync-encryption-pinned.message":
+      "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus.",
     "core.codes.invalid-options.title": "App nicht eingerichtet",
     "core.codes.invalid-options.message":
       "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.",
@@ -4606,6 +4654,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "Synchronisation en pause",
     "core.codes.writes_paused.message":
       "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard.",
+    "core.codes.encryption_mismatch.title": "Chiffrement incompatible",
+    "core.codes.encryption_mismatch.message":
+      "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
+    "core.codes.upload_expired.title": "Envoi expiré",
+    "core.codes.upload_expired.message":
+      "L’envoi a pris trop de temps et a été annulé. Réessayez.",
+    "core.codes.upload_incomplete.title": "Envoi incomplet",
+    "core.codes.upload_incomplete.message":
+      "Une partie du fichier n’est pas arrivée. Réessayez.",
+    "core.codes.file_too_large.title": "Fichier trop volumineux",
+    "core.codes.file_too_large.message":
+      "Ce fichier dépasse la taille maximale des fichiers synchronisés.",
+    "core.codes.keyring_conflict.title": "Déjà configuré",
+    "core.codes.keyring_conflict.message":
+      "Le chiffrement est déjà configuré pour ce compte. Déverrouillez avec un autre appareil ou votre code de récupération.",
     "core.codes.email_mismatch.title": "E-mail non vérifié",
     "core.codes.email_mismatch.message":
       "Cette licence est liée à une adresse e-mail que votre compte n’a pas vérifiée. Ajoutez et vérifiez cette adresse, puis réessayez.",
@@ -4760,6 +4823,15 @@ export const KIT_COPY: Readonly<
     "core.codes.platform-identity-unavailable.title": "Connexion indisponible",
     "core.codes.platform-identity-unavailable.message":
       "Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion.",
+    "core.codes.sync-locked.title": "Synchronisation verrouillée",
+    "core.codes.sync-locked.message":
+      "Déverrouillez la synchronisation sur cet appareil avec votre code de récupération ou un autre appareil connecté.",
+    "core.codes.recovery-code-invalid.title": "Code de récupération invalide",
+    "core.codes.recovery-code-invalid.message":
+      "Ce code de récupération n’est pas correct. Vérifiez-le et réessayez.",
+    "core.codes.sync-encryption-pinned.title": "Chiffrement requis",
+    "core.codes.sync-encryption-pinned.message":
+      "Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée.",
     "core.codes.invalid-options.title": "App non configurée",
     "core.codes.invalid-options.message":
       "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.",
@@ -6295,6 +6367,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "Sincronización en pausa",
     "core.codes.writes_paused.message":
       "La sincronización está en pausa un momento. Tus cambios se conservan y se sincronizarán más tarde.",
+    "core.codes.encryption_mismatch.title": "Cifrado incompatible",
+    "core.codes.encryption_mismatch.message":
+      "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.",
+    "core.codes.upload_expired.title": "Subida caducada",
+    "core.codes.upload_expired.message":
+      "La subida tardó demasiado y se canceló. Inténtalo de nuevo.",
+    "core.codes.upload_incomplete.title": "Subida incompleta",
+    "core.codes.upload_incomplete.message":
+      "Una parte del archivo no llegó. Inténtalo de nuevo.",
+    "core.codes.file_too_large.title": "Archivo demasiado grande",
+    "core.codes.file_too_large.message":
+      "Este archivo supera el límite de tamaño de los archivos sincronizados.",
+    "core.codes.keyring_conflict.title": "Ya configurado",
+    "core.codes.keyring_conflict.message":
+      "El cifrado ya está configurado para esta cuenta. Desbloquea con otro dispositivo o con tu código de recuperación.",
     "core.codes.email_mismatch.title": "Correo no verificado",
     "core.codes.email_mismatch.message":
       "Esta licencia pertenece a una dirección de correo que tu cuenta no ha verificado. Añade y verifica ese correo, y vuelve a intentarlo.",
@@ -6449,6 +6536,16 @@ export const KIT_COPY: Readonly<
       "Inicio de sesión no disponible",
     "core.codes.platform-identity-unavailable.message":
       "Este dispositivo no puede iniciar sesión automáticamente. Usa otra forma de iniciar sesión.",
+    "core.codes.sync-locked.title": "Sincronización bloqueada",
+    "core.codes.sync-locked.message":
+      "Desbloquea la sincronización en este dispositivo con tu código de recuperación o con otro dispositivo con sesión iniciada.",
+    "core.codes.recovery-code-invalid.title":
+      "Código de recuperación no válido",
+    "core.codes.recovery-code-invalid.message":
+      "Ese código de recuperación no es correcto. Compruébalo e inténtalo de nuevo.",
+    "core.codes.sync-encryption-pinned.title": "Cifrado obligatorio",
+    "core.codes.sync-encryption-pinned.message":
+      "Esta app necesita sincronización cifrada, que ahora no está disponible. La sincronización sigue desactivada.",
     "core.codes.invalid-options.title": "App no configurada",
     "core.codes.invalid-options.message":
       "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.",
@@ -7959,6 +8056,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "Sincronização pausada",
     "core.codes.writes_paused.message":
       "A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois.",
+    "core.codes.encryption_mismatch.title": "Criptografia incompatível",
+    "core.codes.encryption_mismatch.message":
+      "O app e o serviço de sincronização não concordam sobre a criptografia. Atualize o app e tente de novo.",
+    "core.codes.upload_expired.title": "Envio expirado",
+    "core.codes.upload_expired.message":
+      "O envio demorou demais e foi cancelado. Tente de novo.",
+    "core.codes.upload_incomplete.title": "Envio incompleto",
+    "core.codes.upload_incomplete.message":
+      "Parte do arquivo não chegou. Tente de novo.",
+    "core.codes.file_too_large.title": "Arquivo grande demais",
+    "core.codes.file_too_large.message":
+      "Este arquivo passa do limite de tamanho dos arquivos sincronizados.",
+    "core.codes.keyring_conflict.title": "Já configurado",
+    "core.codes.keyring_conflict.message":
+      "A criptografia já está configurada para esta conta. Desbloqueie com outro dispositivo ou com seu código de recuperação.",
     "core.codes.email_mismatch.title": "E-mail não verificado",
     "core.codes.email_mismatch.message":
       "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente.",
@@ -8107,6 +8219,15 @@ export const KIT_COPY: Readonly<
     "core.codes.platform-identity-unavailable.title": "Login indisponível",
     "core.codes.platform-identity-unavailable.message":
       "Este dispositivo não consegue fazer login automaticamente. Use outra forma de entrar.",
+    "core.codes.sync-locked.title": "Sincronização bloqueada",
+    "core.codes.sync-locked.message":
+      "Desbloqueie a sincronização neste dispositivo com seu código de recuperação ou com outro dispositivo conectado.",
+    "core.codes.recovery-code-invalid.title": "Código de recuperação inválido",
+    "core.codes.recovery-code-invalid.message":
+      "Esse código de recuperação não está correto. Confira e tente de novo.",
+    "core.codes.sync-encryption-pinned.title": "Criptografia obrigatória",
+    "core.codes.sync-encryption-pinned.message":
+      "Este app exige sincronização criptografada, que não está disponível agora. A sincronização continua desativada.",
     "core.codes.invalid-options.title": "App não configurado",
     "core.codes.invalid-options.message":
       "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor.",
@@ -9625,6 +9746,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "Sincronizzazione in pausa",
     "core.codes.writes_paused.message":
       "La sincronizzazione è in pausa per un momento. Le tue modifiche restano salvate e verranno sincronizzate più tardi.",
+    "core.codes.encryption_mismatch.title": "Crittografia non compatibile",
+    "core.codes.encryption_mismatch.message":
+      "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova.",
+    "core.codes.upload_expired.title": "Caricamento scaduto",
+    "core.codes.upload_expired.message":
+      "Il caricamento ha richiesto troppo tempo ed è stato annullato. Riprova.",
+    "core.codes.upload_incomplete.title": "Caricamento incompleto",
+    "core.codes.upload_incomplete.message":
+      "Una parte del file non è arrivata. Riprova.",
+    "core.codes.file_too_large.title": "File troppo grande",
+    "core.codes.file_too_large.message":
+      "Questo file supera il limite di dimensione dei file sincronizzati.",
+    "core.codes.keyring_conflict.title": "Già configurato",
+    "core.codes.keyring_conflict.message":
+      "La crittografia è già configurata per questo account. Sblocca con un altro dispositivo o con il codice di recupero.",
     "core.codes.email_mismatch.title": "Email non verificata",
     "core.codes.email_mismatch.message":
       "Questa licenza appartiene a un indirizzo email che il tuo account non ha verificato. Aggiungi e verifica quell'email, poi riprova.",
@@ -9777,6 +9913,15 @@ export const KIT_COPY: Readonly<
     "core.codes.platform-identity-unavailable.title": "Accesso non disponibile",
     "core.codes.platform-identity-unavailable.message":
       "Questo dispositivo non può eseguire l'accesso automatico. Usa un altro metodo di accesso.",
+    "core.codes.sync-locked.title": "Sincronizzazione bloccata",
+    "core.codes.sync-locked.message":
+      "Sblocca la sincronizzazione su questo dispositivo con il codice di recupero o con un altro dispositivo connesso.",
+    "core.codes.recovery-code-invalid.title": "Codice di recupero non valido",
+    "core.codes.recovery-code-invalid.message":
+      "Il codice di recupero non è corretto. Controllalo e riprova.",
+    "core.codes.sync-encryption-pinned.title": "Crittografia obbligatoria",
+    "core.codes.sync-encryption-pinned.message":
+      "Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata.",
     "core.codes.invalid-options.title": "App non configurata",
     "core.codes.invalid-options.message":
       "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.",
@@ -11309,6 +11454,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "同期を一時停止中",
     "core.codes.writes_paused.message":
       "同期は少しの間一時停止されています。変更は保持され、後で同期されます。",
+    "core.codes.encryption_mismatch.title": "暗号化が一致しません",
+    "core.codes.encryption_mismatch.message":
+      "アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。",
+    "core.codes.upload_expired.title": "アップロードの期限切れ",
+    "core.codes.upload_expired.message":
+      "アップロードに時間がかかりすぎたため、キャンセルされました。もう一度お試しください。",
+    "core.codes.upload_incomplete.title": "アップロードが未完了",
+    "core.codes.upload_incomplete.message":
+      "ファイルの一部が届きませんでした。もう一度お試しください。",
+    "core.codes.file_too_large.title": "ファイルが大きすぎます",
+    "core.codes.file_too_large.message":
+      "このファイルは同期できるファイルのサイズ上限を超えています。",
+    "core.codes.keyring_conflict.title": "設定済み",
+    "core.codes.keyring_conflict.message":
+      "このアカウントの暗号化はすでに設定されています。別のデバイスまたは復旧コードでロックを解除してください。",
     "core.codes.email_mismatch.title": "メールアドレスが確認されていません",
     "core.codes.email_mismatch.message":
       "このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。",
@@ -11468,6 +11628,15 @@ export const KIT_COPY: Readonly<
       "サインインを利用できません",
     "core.codes.platform-identity-unavailable.message":
       "このデバイスでは自動サインインができません。別の方法でサインインしてください。",
+    "core.codes.sync-locked.title": "同期がロック中",
+    "core.codes.sync-locked.message":
+      "復旧コード、またはサインイン済みの別のデバイスで、このデバイスの同期のロックを解除してください。",
+    "core.codes.recovery-code-invalid.title": "復旧コードが無効です",
+    "core.codes.recovery-code-invalid.message":
+      "復旧コードが正しくありません。確認してもう一度お試しください。",
+    "core.codes.sync-encryption-pinned.title": "暗号化が必要です",
+    "core.codes.sync-encryption-pinned.message":
+      "このアプリには暗号化された同期が必要ですが、現在は利用できません。同期はオフのままです。",
     "core.codes.invalid-options.title": "アプリが設定されていません",
     "core.codes.invalid-options.message":
       "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。",
@@ -12939,6 +13108,21 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "동기화 일시 중지",
     "core.codes.writes_paused.message":
       "동기화가 잠시 일시 중지되었습니다. 변경 사항은 보관되며 나중에 동기화됩니다.",
+    "core.codes.encryption_mismatch.title": "암호화 불일치",
+    "core.codes.encryption_mismatch.message":
+      "앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.",
+    "core.codes.upload_expired.title": "업로드 만료",
+    "core.codes.upload_expired.message":
+      "업로드가 너무 오래 걸려 취소되었습니다. 다시 시도하세요.",
+    "core.codes.upload_incomplete.title": "업로드 미완료",
+    "core.codes.upload_incomplete.message":
+      "파일의 일부가 도착하지 않았습니다. 다시 시도하세요.",
+    "core.codes.file_too_large.title": "파일이 너무 큼",
+    "core.codes.file_too_large.message":
+      "이 파일은 동기화 파일 크기 제한을 넘습니다.",
+    "core.codes.keyring_conflict.title": "이미 설정됨",
+    "core.codes.keyring_conflict.message":
+      "이 계정의 암호화는 이미 설정되어 있습니다. 다른 기기나 복구 코드로 잠금을 해제하세요.",
     "core.codes.email_mismatch.title": "인증되지 않은 이메일",
     "core.codes.email_mismatch.message":
       "이 라이선스는 회원님 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 해당 이메일을 추가하고 인증한 후 다시 시도하세요.",
@@ -13087,6 +13271,15 @@ export const KIT_COPY: Readonly<
     "core.codes.platform-identity-unavailable.title": "로그인을 사용할 수 없음",
     "core.codes.platform-identity-unavailable.message":
       "이 기기에서는 자동 로그인을 할 수 없습니다. 다른 방법으로 로그인하세요.",
+    "core.codes.sync-locked.title": "동기화 잠김",
+    "core.codes.sync-locked.message":
+      "복구 코드나 로그인된 다른 기기로 이 기기의 동기화 잠금을 해제하세요.",
+    "core.codes.recovery-code-invalid.title": "복구 코드가 올바르지 않음",
+    "core.codes.recovery-code-invalid.message":
+      "복구 코드가 올바르지 않습니다. 확인한 뒤 다시 시도하세요.",
+    "core.codes.sync-encryption-pinned.title": "암호화 필요",
+    "core.codes.sync-encryption-pinned.message":
+      "이 앱은 암호화된 동기화가 필요하지만 지금은 사용할 수 없습니다. 동기화는 꺼진 상태로 유지됩니다.",
     "core.codes.invalid-options.title": "앱이 설정되지 않음",
     "core.codes.invalid-options.message":
       "앱의 라이선스 설정이 올바르지 않아요. 개발자에게 문의하세요.",
@@ -14468,6 +14661,18 @@ export const KIT_COPY: Readonly<
     "core.codes.writes_paused.title": "同步已暂停",
     "core.codes.writes_paused.message":
       "同步暂时暂停。你的更改会保留，稍后同步。",
+    "core.codes.encryption_mismatch.title": "加密不一致",
+    "core.codes.encryption_mismatch.message":
+      "应用与同步服务的加密设置不一致。请更新应用后重试。",
+    "core.codes.upload_expired.title": "上传已过期",
+    "core.codes.upload_expired.message": "上传耗时过长，已取消。请重试。",
+    "core.codes.upload_incomplete.title": "上传不完整",
+    "core.codes.upload_incomplete.message": "文件的一部分没有送达。请重试。",
+    "core.codes.file_too_large.title": "文件过大",
+    "core.codes.file_too_large.message": "此文件超过了同步文件的大小上限。",
+    "core.codes.keyring_conflict.title": "已设置",
+    "core.codes.keyring_conflict.message":
+      "此账户已设置加密。请用另一台设备或恢复码解锁。",
     "core.codes.email_mismatch.title": "电子邮件未验证",
     "core.codes.email_mismatch.message":
       "此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。",
@@ -14599,6 +14804,14 @@ export const KIT_COPY: Readonly<
     "core.codes.platform-identity-unavailable.title": "无法登录",
     "core.codes.platform-identity-unavailable.message":
       "此设备无法自动登录。请使用其他登录方式。",
+    "core.codes.sync-locked.title": "同步已锁定",
+    "core.codes.sync-locked.message":
+      "请用恢复码或另一台已登录的设备，为这台设备解锁同步。",
+    "core.codes.recovery-code-invalid.title": "恢复码无效",
+    "core.codes.recovery-code-invalid.message": "恢复码不正确。请检查后重试。",
+    "core.codes.sync-encryption-pinned.title": "需要加密",
+    "core.codes.sync-encryption-pinned.message":
+      "此应用需要加密同步，但目前不可用。同步将保持关闭。",
     "core.codes.invalid-options.title": "应用未设置",
     "core.codes.invalid-options.message":
       "应用的许可功能未正确设置。请联系开发者。",

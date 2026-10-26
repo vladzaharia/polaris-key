@@ -5744,6 +5744,56 @@ msgstr "Synchronisation en pause"
 msgid "core.codes.writes_paused.message"
 msgstr "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard."
 
+#. Encryption mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.encryption_mismatch.title"
+msgstr "Chiffrement incompatible"
+
+#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.encryption_mismatch.message"
+msgstr "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
+
+#. Upload expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_expired.title"
+msgstr "Envoi expiré"
+
+#. This upload took too long and was cancelled. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_expired.message"
+msgstr "L’envoi a pris trop de temps et a été annulé. Réessayez."
+
+#. Upload incomplete
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_incomplete.title"
+msgstr "Envoi incomplet"
+
+#. Part of the file didn't arrive. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_incomplete.message"
+msgstr "Une partie du fichier n’est pas arrivée. Réessayez."
+
+#. File too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file_too_large.title"
+msgstr "Fichier trop volumineux"
+
+#. This file is over the size limit for synced files.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file_too_large.message"
+msgstr "Ce fichier dépasse la taille maximale des fichiers synchronisés."
+
+#. Already set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.keyring_conflict.title"
+msgstr "Déjà configuré"
+
+#. Encryption is already set up for this account. Unlock with another device or your recovery code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.keyring_conflict.message"
+msgstr "Le chiffrement est déjà configuré pour ce compte. Déverrouillez avec un autre appareil ou votre code de récupération."
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
@@ -6253,6 +6303,36 @@ msgstr "Connexion indisponible"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-identity-unavailable.message"
 msgstr "Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion."
+
+#. Sync locked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-locked.title"
+msgstr "Synchronisation verrouillée"
+
+#. Unlock sync on this device with your recovery code or another signed-in device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-locked.message"
+msgstr "Déverrouillez la synchronisation sur cet appareil avec votre code de récupération ou un autre appareil connecté."
+
+#. Recovery code not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.recovery-code-invalid.title"
+msgstr "Code de récupération invalide"
+
+#. That recovery code isn't right. Check it and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.recovery-code-invalid.message"
+msgstr "Ce code de récupération n’est pas correct. Vérifiez-le et réessayez."
+
+#. Encryption required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-encryption-pinned.title"
+msgstr "Chiffrement requis"
+
+#. This app needs encrypted sync, which isn't available right now. Sync stays off.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-encryption-pinned.message"
+msgstr "Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

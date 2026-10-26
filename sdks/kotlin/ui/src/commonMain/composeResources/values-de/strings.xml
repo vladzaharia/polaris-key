@@ -2175,6 +2175,26 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_writes_paused_message">Die Synchronisierung ist kurz pausiert. Ihre Änderungen bleiben erhalten und werden später synchronisiert.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_title">Verschlüsselung passt nicht</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_message">App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_title">Upload abgelaufen</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_message">Der Upload hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_title">Upload unvollständig</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_message">Ein Teil der Datei ist nicht angekommen. Versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_title">Datei zu groß</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_message">Diese Datei überschreitet die Größengrenze für synchronisierte Dateien.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_title">Bereits eingerichtet</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_message">Die Verschlüsselung ist für dieses Konto bereits eingerichtet. Entsperren Sie mit einem anderen Gerät oder Ihrem Wiederherstellungscode.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">E-Mail-Adresse nicht bestätigt</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut.</string>
@@ -2378,6 +2398,18 @@
     <string name="core_codes_platform_identity_unavailable_title">Anmeldung nicht verfügbar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_identity_unavailable_message">Dieses Gerät kann Sie nicht automatisch anmelden. Verwenden Sie eine andere Anmeldeart.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_title">Sync gesperrt</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_message">Entsperren Sie den Sync auf diesem Gerät mit Ihrem Wiederherstellungscode oder einem anderen angemeldeten Gerät.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_title">Wiederherstellungscode ungültig</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_message">Dieser Wiederherstellungscode stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_title">Verschlüsselung erforderlich</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_message">Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App nicht eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

@@ -498,6 +498,40 @@ describe("@polaris-key/protocol layout", () => {
     expect(sync.SYNC_IMPORT_HLC).toBe("000000000000:0000");
     expect(sync.SYNC_PULL_PAGE_CHANGES).toBe(500);
     expect(sync.SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS).toBe(300);
+    // U-33.2: files, E2E and the key ring (WIRE-CONTRACT-V5 §13.8-§13.11).
+    expect(sync.SYNC_SINGLE_PUT_MAX_BYTES).toBe(16 * 1024 * 1024);
+    expect(sync.SYNC_FILE_MAX_BYTES).toBe(1024 ** 3);
+    expect(sync.SYNC_PART_MIN_BYTES).toBe(8 * 1024 * 1024);
+    expect(sync.SYNC_PART_MAX_BYTES).toBe(64 * 1024 * 1024);
+    expect(sync.SYNC_UPLOAD_TTL_SECONDS).toBe(86_400);
+    expect(sync.SYNC_MAX_OPEN_UPLOADS).toBe(4);
+    expect(sync.SYNC_MAX_CHUNKS_PER_FILE).toBe(16_384);
+    expect(sync.SYNC_CHUNK_PLAN_MAX_IDS).toBe(1024);
+    expect(sync.SYNC_CDC_MIN_BYTES).toBe(64 * 1024);
+    expect(sync.SYNC_CDC_AVG_BYTES).toBe(256 * 1024);
+    expect(sync.SYNC_CDC_MAX_BYTES).toBe(1024 * 1024);
+    expect(sync.SYNC_CDC_GEAR_SEED).toBe(0x9e3779b9);
+    expect(sync.SYNC_E2E_OVERHEAD_BYTES).toBe(
+      sync.SYNC_ENVELOPE_FIXED_BYTES + sync.SYNC_ENVELOPE_PAD_BLOCK,
+    );
+    expect(sync.SYNC_FILE_SEGMENT_BYTES).toBe(1024 * 1024);
+    expect(sync.SYNC_VALUE_FORMAT).toBe("pkey-sync-value/1");
+    expect(sync.SYNC_WRAP_FORMAT).toBe("pkey-sync-wrap/1");
+    expect(
+      new RegExp(sync.SYNC_KID_PATTERN).test("0123456789abcdef".repeat(2)),
+    ).toBe(true);
+    expect(
+      new RegExp(sync.SYNC_KID_PATTERN).test("0123456789ABCDEF".repeat(2)),
+    ).toBe(false);
+    expect(
+      new RegExp(sync.SYNC_RING_ID_PATTERN).test(`rg_${"A".repeat(22)}`),
+    ).toBe(true);
+    expect(
+      new RegExp(sync.SYNC_BLINDED_NAME_PATTERN).test(`x:${"A".repeat(43)}`),
+    ).toBe(true);
+    expect(new RegExp(sync.SYNC_CHUNK_ID_PATTERN).test("a".repeat(64))).toBe(
+      true,
+    );
     expect(new RegExp(sync.SYNC_HLC_PATTERN).test(sync.SYNC_IMPORT_HLC)).toBe(
       true,
     );

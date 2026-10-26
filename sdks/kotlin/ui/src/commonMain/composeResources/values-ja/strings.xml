@@ -2162,6 +2162,26 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_writes_paused_message">同期は少しの間一時停止されています。変更は保持され、後で同期されます。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_title">暗号化が一致しません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_message">アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_title">アップロードの期限切れ</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_message">アップロードに時間がかかりすぎたため、キャンセルされました。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_title">アップロードが未完了</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_message">ファイルの一部が届きませんでした。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_title">ファイルが大きすぎます</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_message">このファイルは同期できるファイルのサイズ上限を超えています。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_title">設定済み</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_message">このアカウントの暗号化はすでに設定されています。別のデバイスまたは復旧コードでロックを解除してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">メールアドレスが確認されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。</string>
@@ -2365,6 +2385,18 @@
     <string name="core_codes_platform_identity_unavailable_title">サインインを利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_identity_unavailable_message">このデバイスでは自動サインインができません。別の方法でサインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_title">同期がロック中</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_message">復旧コード、またはサインイン済みの別のデバイスで、このデバイスの同期のロックを解除してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_title">復旧コードが無効です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_message">復旧コードが正しくありません。確認してもう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_title">暗号化が必要です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_message">このアプリには暗号化された同期が必要ですが、現在は利用できません。同期はオフのままです。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">アプリが設定されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

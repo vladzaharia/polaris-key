@@ -76,7 +76,7 @@ describe("the Cloud Sync constants (U-05.2)", () => {
     );
     const found = syncExports(SOURCES.protocol, SOURCES.protocolSyncSource!);
     expect(found.map((f) => f.name).sort()).toEqual(names.sort());
-    expect(found.length).toBe(22);
+    expect(found.length).toBe(58);
     expect(
       found.find((f) => f.name === "SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS")
         ?.section,

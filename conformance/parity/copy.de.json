@@ -265,6 +265,26 @@
       "title": "Synchronisierung pausiert",
       "message": "Die Synchronisierung ist kurz pausiert. Ihre Änderungen bleiben erhalten und werden später synchronisiert."
     },
+    "encryption_mismatch": {
+      "title": "Verschlüsselung passt nicht",
+      "message": "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
+    },
+    "upload_expired": {
+      "title": "Upload abgelaufen",
+      "message": "Der Upload hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut."
+    },
+    "upload_incomplete": {
+      "title": "Upload unvollständig",
+      "message": "Ein Teil der Datei ist nicht angekommen. Versuchen Sie es erneut."
+    },
+    "file_too_large": {
+      "title": "Datei zu groß",
+      "message": "Diese Datei überschreitet die Größengrenze für synchronisierte Dateien."
+    },
+    "keyring_conflict": {
+      "title": "Bereits eingerichtet",
+      "message": "Die Verschlüsselung ist für dieses Konto bereits eingerichtet. Entsperren Sie mit einem anderen Gerät oder Ihrem Wiederherstellungscode."
+    },
     "email_mismatch": {
       "title": "E-Mail-Adresse nicht bestätigt",
       "message": "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut."
@@ -468,6 +488,18 @@
     "platform-identity-unavailable": {
       "title": "Anmeldung nicht verfügbar",
       "message": "Dieses Gerät kann Sie nicht automatisch anmelden. Verwenden Sie eine andere Anmeldeart."
+    },
+    "sync-locked": {
+      "title": "Sync gesperrt",
+      "message": "Entsperren Sie den Sync auf diesem Gerät mit Ihrem Wiederherstellungscode oder einem anderen angemeldeten Gerät."
+    },
+    "recovery-code-invalid": {
+      "title": "Wiederherstellungscode ungültig",
+      "message": "Dieser Wiederherstellungscode stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut."
+    },
+    "sync-encryption-pinned": {
+      "title": "Verschlüsselung erforderlich",
+      "message": "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus."
     },
     "invalid-options": {
       "title": "App nicht eingerichtet",
