@@ -640,10 +640,7 @@ describe("GET /media/<product>/<asset> (the SSRF-safe proxy)", () => {
     ]) {
       const db = makeTestDb();
       await productWithListing(db, "tidewater", { iconUrl: src });
-      const up = upstream({});
-      const res = await media(db, "/media/tidewater/icon", up.fetchImpl);
-      expect(res.status, src).toBe(404);
-      expect(up.calls, src).toEqual([]);
+      await expectIconRefused(db, src);
       expect(mediaSourceUrl(src), src).toBeNull();
     }
   });
@@ -842,6 +839,23 @@ describe("GET /media/<product>/<asset> (the SSRF-safe proxy)", () => {
   });
 });
 
+/** The proxy answers the icon with 200, having fetched exactly `url`. */
+async function expectIconFetched(db: Db, url: string): Promise<void> {
+  const up = upstream({ [url]: image(PNG) });
+  expect((await media(db, "/media/tidewater/icon", up.fetchImpl)).status).toBe(
+    200,
+  );
+  expect(up.calls.map((c) => c.url)).toEqual([url]);
+}
+
+/** The proxy answers the icon with 404 without fetching anything. */
+async function expectIconRefused(db: Db, why: string): Promise<void> {
+  const up = upstream({});
+  const res = await media(db, "/media/tidewater/icon", up.fetchImpl);
+  expect(res.status, why).toBe(404);
+  expect(up.calls, why).toEqual([]);
+}
+
 /** A hosted-asset row as the manifest pull leaves it (A-27.2: only `source_kind`/`source_ref` matter here). */
 async function hostedSource(
   db: Db,
@@ -876,14 +890,8 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
     await hostedSource(db, "tidewater", "listing.icon", "url", ICON);
     const listing = { icon: { kind: "url", src: ICON } };
     expect(await mediaUrlFor(db, "tidewater", "icon", listing)).toBe(before);
-    expect(before).toBe(
-      `/media/tidewater/icon?v=${await mediaVersion(ICON)}`,
-    );
-    const up = upstream({ [ICON]: image(PNG) });
-    expect(
-      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
-    ).toBe(200);
-    expect(up.calls.map((c) => c.url)).toEqual([ICON]);
+    expect(before).toBe(`/media/tidewater/icon?v=${await mediaVersion(ICON)}`);
+    await expectIconFetched(db, ICON);
   });
 
   it("the row wins over the blob when both name a URL", async () => {
@@ -892,11 +900,7 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
       icon: { kind: "url", src: ICON },
     });
     await hostedSource(db, "tidewater", "listing.icon", "url", OTHER);
-    const up = upstream({ [OTHER]: image(PNG) });
-    expect(
-      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
-    ).toBe(200);
-    expect(up.calls.map((c) => c.url)).toEqual([OTHER]);
+    await expectIconFetched(db, OTHER);
   });
 
   it("a slot with no row falls back to the listing art", async () => {
@@ -905,17 +909,19 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
       icon: { kind: "url", src: ICON },
     });
     await hostedSource(db, "tidewater", "listing.header", "url", OTHER);
-    const up = upstream({ [ICON]: image(PNG) });
-    expect(
-      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
-    ).toBe(200);
-    expect(up.calls.map((c) => c.url)).toEqual([ICON]);
+    await expectIconFetched(db, ICON);
   });
 
   it("a repo row is never fetched, and an upload row is never a source", async () => {
     const db = makeTestDb();
     await productWithListing(db, "tidewater", null);
-    await hostedSource(db, "tidewater", "listing.icon", "repo", "art/i.png@abc");
+    await hostedSource(
+      db,
+      "tidewater",
+      "listing.icon",
+      "repo",
+      "art/i.png@abc",
+    );
     await hostedSource(db, "tidewater", "listing.header", "upload", OTHER);
     const up = upstream({ [OTHER]: image(PNG) });
     for (const asset of ["icon", "header"]) {
@@ -926,7 +932,10 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
     expect(await mediaUrlFor(db, "tidewater", "icon", null)).toBeNull();
     expect(await mediaUrlFor(db, "tidewater", "header", null)).toBeNull();
     expect(
-      await hostedAssetSource(db, "tidewater", ["listing.icon", "listing.header"]),
+      await hostedAssetSource(db, "tidewater", [
+        "listing.icon",
+        "listing.header",
+      ]),
     ).toEqual(new Map());
   });
 
@@ -936,11 +945,7 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
       icon: { kind: "url", src: ICON },
     });
     await hostedSource(db, "tidewater", "listing.icon", "upload", null);
-    const up = upstream({ [ICON]: image(PNG) });
-    expect(
-      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
-    ).toBe(200);
-    expect(up.calls.map((c) => c.url)).toEqual([ICON]);
+    await expectIconFetched(db, ICON);
   });
 
   it("rule 2 still applies to a row: nothing off the allowlist is fetched or handed out", async () => {
@@ -960,10 +965,7 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
         icon: { kind: "url", src: ICON },
       });
       await hostedSource(db, "tidewater", "listing.icon", "url", src);
-      const up = upstream({});
-      const res = await media(db, "/media/tidewater/icon", up.fetchImpl);
-      expect(res.status, src).toBe(404);
-      expect(up.calls, src).toEqual([]);
+      await expectIconRefused(db, src);
       expect(await mediaUrlFor(db, "tidewater", "icon", null), src).toBeNull();
     }
   });
@@ -989,8 +991,10 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
 
   it("screenshot-n counts https screenshots by position, rows and blob alike", async () => {
     const db = makeTestDb();
-    const S2 = "https://raw.githubusercontent.com/fennick/tidewater/main/s2.png";
-    const S3 = "https://raw.githubusercontent.com/fennick/tidewater/main/s3.png";
+    const S2 =
+      "https://raw.githubusercontent.com/fennick/tidewater/main/s2.png";
+    const S3 =
+      "https://raw.githubusercontent.com/fennick/tidewater/main/s3.png";
     const listing = {
       screenshots: [
         { kind: "repo", src: "art/s1.png" },
@@ -999,7 +1003,13 @@ describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", (
       ],
     };
     await productWithListing(db, "tidewater", listing);
-    await hostedSource(db, "tidewater", "listing.screenshot:1", "repo", "art/s1.png@abc");
+    await hostedSource(
+      db,
+      "tidewater",
+      "listing.screenshot:1",
+      "repo",
+      "art/s1.png@abc",
+    );
     await hostedSource(db, "tidewater", "listing.screenshot:2", "url", S2);
     const urls = await screenshotUrlsFor(db, "tidewater", listing);
     expect(urls).toEqual([
