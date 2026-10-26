@@ -1,16 +1,16 @@
 # U-08 One conflict vocabulary and MergeRequest in six SDKs
 
-| Field       | Value                                                                                                                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                                                                                                                        |
-| Size        | 0.4–0.55 engineer-weeks                                                                                                                                                                                                                                          |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-06](U-06-sdk-settings-node-python.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-20](U-20-sdk-settings-react.md), [U-21](U-21-sdk-settings-godot.md), [I-05](I-05-accounts-core.md), [U-09](U-09-collections-backend.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md)                                                                                                                    |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                             |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`); UI kit screenshots; transcripts and scenarios for empty and non-empty clouds and for a merged account with parked units                         |
-| Human input | none                                                                                                                                                                                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                        |
+| Field       | Value                                                                                                                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                                                                                                                                                    |
+| Size        | 0.5–0.7 engineer-weeks                                                                                                                                                                                                                                                                       |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-06](U-06-sdk-settings-node-python.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-20](U-20-sdk-settings-react.md), [U-21](U-21-sdk-settings-godot.md), [I-05](I-05-accounts-core.md), [U-09](U-09-collections-backend.md), [U-35](U-35-machine-v3.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md)                                                                                                                                                |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                         |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                                            |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`); UI kit screenshots; transcripts and scenarios for empty and non-empty clouds and for a merged account with parked units                                                     |
+| Human input | none                                                                                                                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                    |
 
 ## Consolidation 2026-10-07
 
@@ -114,3 +114,9 @@ mise exec node@22 -- pnpm parity:check
 The role agent sets `--set U-08 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-08 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.

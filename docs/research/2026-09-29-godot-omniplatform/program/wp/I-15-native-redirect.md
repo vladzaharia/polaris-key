@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1b)                                                                             |
 | Size        | 0.8–1.1 engineer-weeks                                                                                                                                             |
 | Depends on  | [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md)                               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14b](PX-14b-native-return-consent-toggles.md)                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-14b](PX-14b-native-return-consent-toggles.md), [I-47](I-47-node-python-auto-signin.md)                                 |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                               |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/I-15.md` first; it needs human approval before code                                                                         |
 | Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); all six SDKs (`parity:check`); THREAT-MODEL |
@@ -130,3 +130,9 @@ mise exec node@22 -- pnpm parity:check
 The role agent sets `--set I-15 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set I-15 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- The regular sign-in writes `signin-fresh` and ends on the link offer (SI §2.3). `plans/I-15.md` is written first (pkey-wire-planner); it gates rungs 6-7 of I-44, I-45, I-48 (R-18).

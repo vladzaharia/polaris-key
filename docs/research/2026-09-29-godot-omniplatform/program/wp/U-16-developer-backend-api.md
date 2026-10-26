@@ -68,3 +68,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- sync backend
 The role agent sets `--set U-16 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-16 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Serves `server`-mode products only (E2E values are opaque to the server).

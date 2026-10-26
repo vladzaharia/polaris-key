@@ -1,16 +1,16 @@
 # U-32 Catalog templates, Cloud Sync page, minted-token wizard and the Integration config card
 
-| Field       | Value                                                                                                                                                                                                                             |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (DX consolidation G: Managed config and Cloud Sync)                                                                                                                                                          |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                                                            |
-| Depends on  | [U-30](U-30-config-types-in-app-visibility-in-one.md), [U-31](U-31-minted-tokens-carry-their-recipe.md), [U-06](U-06-sdk-settings-node-python.md), [ST-39](ST-39-wizard-kit.md), [ST-41](ST-41-integration-page-overview-card.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                            |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                |
-| Plan mode   | no                                                                                                                                                                                                                                |
-| Gates       | `console-csp-parity`                                                                                                                                                                                                              |
-| Human input | none                                                                                                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (DX consolidation G: Managed config and Cloud Sync)                                                                                                                                                                                              |
+| Size        | 0.9–1.2 engineer-weeks                                                                                                                                                                                                                                                |
+| Depends on  | [U-30](U-30-config-types-in-app-visibility-in-one.md), [U-31](U-31-minted-tokens-carry-their-recipe.md), [U-06](U-06-sdk-settings-node-python.md), [ST-39](ST-39-wizard-kit.md), [ST-41](ST-41-integration-page-overview-card.md), [U-33](U-33-e2e-files-contract.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                                |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                    |
+| Plan mode   | no                                                                                                                                                                                                                                                                    |
+| Gates       | `console-csp-parity`                                                                                                                                                                                                                                                  |
+| Human input | none                                                                                                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                             |
 
 ## Consolidation 2026-10-07
 
@@ -116,3 +116,9 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set U-32 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-32 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.

@@ -1,16 +1,16 @@
 # U-10 Files on records (absorbs U-24a)
 
-| Field       | Value                                                                                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                                                        |
-| Size        | 1.4–1.95 engineer-weeks                                                                                                                                                                          |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-19](U-19-security-review.md), [U-09](U-09-collections-backend.md), [U-01b](U-01b-cloud-sync-plan-amendment-two-stores-one.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-11a](U-11a-console-data-settings.md)                                                                                                                  |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                            |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `wrangler.toml`                                             |
-| Human input | the R2 buckets `polaris-key-sync-files-{prod,staging,dev}`, binding `SYNC_FILES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                        |
+| Field       | Value                                                                                                                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                                                                                                                                                                  |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                                       |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-19](U-19-security-review.md), [U-09](U-09-collections-backend.md), [U-01b](U-01b-cloud-sync-plan-amendment-two-stores-one.md), [U-33](U-33-e2e-files-contract.md)                                                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-12](U-12-privacy-settings-portal.md), [U-11a](U-11a-console-data-settings.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md), [U-37](U-37-delta-files-worker.md), [U-44](U-44-security-review-files.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                      |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                                                          |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `wrangler.toml`                                                                                                                                                       |
+| Human input | the R2 buckets `polaris-key-sync-files-{prod,staging,dev}`, binding `SYNC_FILES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                  |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -91,3 +91,9 @@ mise exec node@22 -- pnpm gen transcripts --check
 The role agent sets `--set U-10 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-10 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.

@@ -115,3 +115,9 @@ mise exec node@22 -- pnpm parity:check
 The role agent sets `--set I-14 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set I-14 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Adopt the device proof (`pkey-proof/1`, CC-03.4) and the nonce where the platform allows; Game Center window; Steam and Play Games links made through an app follow D-A3's scoping. Plan: [`plans/CC-01-auto-sign-in.md`](../plans/CC-01-auto-sign-in.md) §5.

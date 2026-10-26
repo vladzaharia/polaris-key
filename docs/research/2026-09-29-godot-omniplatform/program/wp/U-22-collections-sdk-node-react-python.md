@@ -1,16 +1,16 @@
 # U-22 Saves SDK on the records store: Node, React, Python (absorbs U-13)
 
-| Field       | Value                                                                                                           |
-| ----------- | --------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                           |
-| Size        | 1–1.4 engineer-weeks                                                                                            |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-09](U-09-collections-backend.md), [U-08](U-08-merge-prompt.md)              |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                          |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                            |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                               |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`) |
-| Human input | none                                                                                                            |
-| Repo        | `vladzaharia/polaris-key`                                                                                       |
+| Field       | Value                                                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                                                                                                                               |
+| Size        | 1.4–1.9 engineer-weeks                                                                                                                                                                                              |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-09](U-09-collections-backend.md), [U-08](U-08-merge-prompt.md), [U-10](U-10-saves-backend.md), [U-37](U-37-delta-files-worker.md), [U-38](U-38-e2e-client-node-react-python.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md)                                                                                                                                             |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                   |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`)                                                                                                     |
+| Human input | none                                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                           |
 
 ## Consolidation 2026-10-07
 
@@ -74,3 +74,9 @@ mise exec node@22 -- pnpm parity:check
 The role agent sets `--set U-22 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-22 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.

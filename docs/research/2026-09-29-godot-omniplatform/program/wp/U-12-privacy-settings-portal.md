@@ -1,16 +1,16 @@
 # U-12 Cloud Sync privacy cascade (Worker)
 
-| Field       | Value                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                              |
-| Size        | 0.8–1.1 engineer-weeks                                                                                                                     |
-| Depends on  | [U-03](U-03-account-overrides.md), [U-05](U-05-cloud-sync-do.md), [I-11](I-11-portal-library.md), [I-12](I-12-console-users.md)            |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-18](PX-18-cloud-sync-section.md)                                                               |
-| Role        | `pkey-implementer`                                                                                                                         |
-| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                                   |
-| Gates       | privacy docs; THREAT-MODEL; console CSP parity; rule 10 (OpenAPI + `routeCoverage`); deletion test after a simulated restore; portal suite |
-| Human input | none                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                                                      |
+| Size        | 1–1.3 engineer-weeks                                                                                                                                                                                                               |
+| Depends on  | [U-03](U-03-account-overrides.md), [U-05](U-05-cloud-sync-do.md), [I-11](I-11-portal-library.md), [I-12](I-12-console-users.md), [U-09](U-09-collections-backend.md), [U-10](U-10-saves-backend.md), [U-36](U-36-core-key-ring.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-18](PX-18-cloud-sync-section.md)                                                                                                                                                       |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                 |
+| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                                                                                                                           |
+| Gates       | privacy docs; THREAT-MODEL; console CSP parity; rule 10 (OpenAPI + `routeCoverage`); deletion test after a simulated restore; portal suite                                                                                         |
+| Human input | none                                                                                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                          |
 
 ## Consolidation 2026-10-07
 
@@ -114,3 +114,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal sync priva
 The role agent sets `--set U-12 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-12 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.
