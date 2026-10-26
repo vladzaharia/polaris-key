@@ -41,6 +41,7 @@ import { redactOnPrint } from "../core/redact.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
 import {
   Account,
+  type AttachResult,
   BeforeSignOutHooks,
   subjectFile,
   type OpenAccountResult,
@@ -291,6 +292,16 @@ export class IdentityClient {
   /** The pairwise subject of the account signed in on this device, or null (persisted). */
   subject(): Promise<string | null> {
     return this.account.subject();
+  }
+
+  /**
+   * Add this device's licence to the signed-in account (§12.3). `confirm: false` previews it and
+   * writes nothing; `confirm: true` attaches, rotates the token and stores the subject. A refusal
+   * (`account_required`, `license_owned`, ...) is a result that keeps the token. The device-code
+   * `confirm` poll carries `attachable`; the caller who confirms calls this.
+   */
+  attach(opts: { confirm: boolean }): Promise<AttachResult> {
+    return this.account.attach(opts.confirm);
   }
 
   /** Open the product's account page in the browser. */

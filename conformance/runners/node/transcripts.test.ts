@@ -9,6 +9,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature identity.redirect.web identity.signin.hints identity.account
+// @pkey-feature identity.attach
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -172,7 +173,10 @@ function usesRedirect(t: Transcript): boolean {
 
 /** Does this transcript call the account verbs (so discovery must name their endpoints)? */
 function usesAccount(t: Transcript): boolean {
-  return t.steps.some((s) => s.action === "subject" || s.action === "signOut");
+  return t.steps.some(
+    (s) =>
+      s.action === "subject" || s.action === "signOut" || s.action === "attach",
+  );
 }
 
 /** The Worker's standard discovery document, for a transcript that loads none itself. */
@@ -198,6 +202,7 @@ function standardDiscovery(t: Transcript): string {
               endpoints: {
                 subject: `${base}/identity/subject`,
                 signout: `${base}/identity/signout`,
+                attach: `${base}/identity/attach`,
                 accountPortal: `${t.baseUrl}/#/p/${t.product}`,
                 authorize: `${base}/identity/authorize`,
                 token: `${base}/identity/token`,
@@ -507,6 +512,19 @@ async function act(
     case "subject":
       out.subject = await client.identity.subject();
       break;
+    case "attach": {
+      const r = await client.identity.attach({
+        confirm: step.args.confirm === true,
+      });
+      out.result = r.status;
+      if (r.status === "confirm") out.license = { ...r.license };
+      else if (r.status === "ok") {
+        out.attached = r.attached ?? null;
+        out.subject = r.subject;
+      } else out.code = r.code;
+      out.tokenHeld = store.token !== null;
+      break;
+    }
     case "signOut": {
       const r = await client.identity.signOut();
       out.released = r.released;

@@ -3273,8 +3273,7 @@
       ],
       "sdks": {
         "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "attach"
         },
         "react": {
           "planned": "I-10a",
