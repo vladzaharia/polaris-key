@@ -186,8 +186,8 @@
       "wp": "I-10b"
     },
     "identity.attach": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.16: IdentityClient.attach(confirm) (and PolarisKeyFutures.attach) over discovery's identity fragment: AttachResult.Confirm (preview, nothing written), Ok (token rotated and stored, subject, attached), Refused (the Worker's code and status; the token stays) and Unavailable; identity-attach and identity-attach-errors replayed."
     },
     "identity.account": {
       "status": "implemented",

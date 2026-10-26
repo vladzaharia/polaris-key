@@ -6,7 +6,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
-// @pkey-feature core.presentation identity.account
+// @pkey-feature core.presentation identity.account identity.attach
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -73,6 +73,7 @@ import im.plrs.key.core.jsonEquals
 import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
+import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.SignInPoll
 import im.plrs.key.identity.SignOutResult
 import im.plrs.key.identity.SubjectResult
@@ -344,6 +345,29 @@ object KotlinReplay {
             "signOut" -> when (val r = client.identity.signOut()) {
                 is SignOutResult.SignedOut -> out["released"] = JsonPrimitive(r.released)
                 SignOutResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
+            }
+            // identity.attach: the preview, the confirm, and the typed refusals.
+            "attach" -> when (val r = client.identity.attach(args["confirm"].boolValue == true)) {
+                is AttachResult.Confirm -> {
+                    out["result"] = JsonPrimitive("confirm")
+                    out["license"] = JsonObject(
+                        mapOf(
+                            "id" to JsonPrimitive(r.license.id),
+                            "tierId" to (r.license.tierId?.let { JsonPrimitive(it) } ?: JsonNull),
+                            "name" to (r.license.name?.let { JsonPrimitive(it) } ?: JsonNull),
+                        ),
+                    )
+                }
+                is AttachResult.Ok -> {
+                    out["result"] = JsonPrimitive("ok")
+                    out["attached"] = r.attached?.let { JsonPrimitive(it) } ?: JsonNull
+                    out["subject"] = r.subject?.let { JsonPrimitive(it) } ?: JsonNull
+                }
+                is AttachResult.Refused -> {
+                    out["result"] = JsonPrimitive("refused")
+                    out["code"] = JsonPrimitive(r.code)
+                }
+                AttachResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
             }
             "waitForSignIn" -> {
                 val prompt = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
@@ -734,6 +758,8 @@ class TranscriptTest : ConformanceSuite() {
             "boot-cold-register",
             // I-10b.15: the account on the device.
             "discovery-identity", "locker-discovery-identity", "identity-subject-signout",
+            // I-10b.16: attach.
+            "identity-attach", "identity-attach-errors",
         )
     }
 }
