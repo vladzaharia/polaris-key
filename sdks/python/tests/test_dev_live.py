@@ -10,7 +10,7 @@ that server, and checks what the quickstart promises:
 * every outcome the seven seeded keys reach, as the SDK reports it (``ActivationResult`` kind
   and code, never a production URL or a counter the Worker could change);
 * a config change made on the server arriving as a ``config`` event on the next sync;
-* device-code sign-in: ``begin_sign_in``, an approval on the fake IdP's page, ``wait_for_sign_in``;
+* device-code sign-in: ``sign_in.start``, an approval on the fake IdP's page, ``wait``;
 * an update decision before and after a release is published.
 
 Config changes and releases are posted to the server's ``/__dev/*`` control surface, as
@@ -67,7 +67,7 @@ from polaris_key import (
     InMemoryStore,
     PolarisKeyClient,
     SignedInIdentity,
-    SignInPrompt,
+    SignInSession,
 )
 from polaris_key.core.b64url import b64url_decode
 
@@ -461,12 +461,12 @@ def test_a_config_change_arrives_as_an_event(dev: Dev, lifecycle: Lifecycle) -> 
 # ── Device-code sign-in ────────────────────────────────────────────────────────────────
 
 
-def _approve(dev: Dev, prompt: SignInPrompt) -> None:
+def _approve(dev: Dev, prompt: SignInSession) -> None:
     """What the person does in a browser: open the verification page and approve."""
     node = shutil.which("node")
     assert node is not None, "node is not on PATH; the approver needs Node 22.13 or newer"
     done = subprocess.run(
-        [node, dev.approver, prompt.verificationUriComplete, prompt.userCode],
+        [node, dev.approver, prompt.verification_uri_complete, prompt.user_code],
         capture_output=True,
         text=True,
         timeout=60,
@@ -480,26 +480,26 @@ def _approve(dev: Dev, prompt: SignInPrompt) -> None:
 def test_device_code_sign_in(dev: Dev, harness: Harness) -> None:
     live = harness.client()
     client = live.client
-    prompt = client.identity.begin_sign_in(device_name="pytest")
+    prompt = client.identity.sign_in.start(device_name="pytest")
     # The prompt points at this server, and the complete link carries the code the person types.
-    origin, page = urlsplit(dev.base_url), urlsplit(prompt.verificationUri)
-    complete = urlsplit(prompt.verificationUriComplete)
+    origin, page = urlsplit(dev.base_url), urlsplit(prompt.verification_uri)
+    complete = urlsplit(prompt.verification_uri_complete)
     assert (page.scheme, page.netloc) == (origin.scheme, origin.netloc)
     assert (complete.scheme, complete.netloc, complete.path) == (
         page.scheme,
         page.netloc,
         page.path,
     )
-    assert parse_qs(complete.query)["user_code"] == [prompt.userCode]
+    assert parse_qs(complete.query)["user_code"] == [prompt.user_code]
 
     # Nobody has approved yet.
-    assert client.identity.poll_sign_in(prompt).status == "pending"
+    assert prompt.wait(once=True).kind == "pending"
     assert not client.is_licensed()
 
     _approve(dev, prompt)
 
-    result = client.identity.wait_for_sign_in(prompt, timeout=30)
-    assert result.status == "ready", result
+    result = prompt.wait(30)
+    assert result.kind == "signed_in", result
     # Who the Worker says signed in: the fake IdP's person, name and verified e-mail.
     assert result.identity == dev.person
     # The token is stored and the post-sign-in sync has run: the gate is open.

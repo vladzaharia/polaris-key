@@ -120,7 +120,7 @@ def test_a_service_that_is_off_refuses_with_the_product_fields_and_code_service_
     # The same fields supports() answers.
     assert c.supports(Feature.RELEASE_CHANGELOG) == e.unsupported
     with pytest.raises(UnsupportedError) as sign_in:
-        c.identity.begin_sign_in()
+        c.identity.sign_in.start()
     assert sign_in.value.code == ErrorCode.SERVICE_UNAVAILABLE
     assert sign_in.value.feature == Feature.IDENTITY_DEVICECODE
 

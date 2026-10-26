@@ -73,8 +73,8 @@ def _results() -> List[Any]:
         c.current_device(),
         c.sync(),
     ]
-    prompt = c.identity.begin_sign_in()
-    out += [prompt, c.identity.poll_sign_in(prompt)]
+    session = c.identity.sign_in.start()
+    out += [session, session.wait(once=True)]
     c.close()
     out.append(Reacquired(TOKEN, "reacquire"))
     return out

@@ -22,7 +22,7 @@ Every subpackage is importable on its own, so a config-only daemon can
     ``polaris_key.license``      activation (typed outcomes) + the gate + entitlements
     ``polaris_key.config``       the signed config document, layered resolution, ``config.set``
     ``polaris_key.devices``      registration, the roster, fingerprint/facts/device-id, the stores
-    ``polaris_key.identity``     device-code sign-in (RFC 8628), ``sign_in_with_browser()``
+    ``polaris_key.identity``     device-code sign-in (RFC 8628), ``sign_in.start()``
     ``polaris_key.release``      changelog, install script, verified ``fetch()``
     ``polaris_key.distribution`` the ``download.json`` model
     ``polaris_key.update``       version check, updater feed URLs, wire v4's signed decision,
@@ -79,10 +79,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from .identity.client import (
         IdentityClient,
         SignedInIdentity,
-        SignInPoll,
-        SignInPrompt,
-        SignInResult,
     )
+    from .identity.sign_in import SignInActivation, SignInOutcome, SignInSession
     from . import copy, qr
     from .core.bundle import (
         BUNDLE_CLAIMS_REJECTED,
@@ -357,9 +355,11 @@ _EXPORTS: Dict[str, Tuple[str, ...]] = {
     ".identity.client": (
         "IdentityClient",
         "SignedInIdentity",
-        "SignInPoll",
-        "SignInPrompt",
-        "SignInResult",
+    ),
+    ".identity.sign_in": (
+        "SignInActivation",
+        "SignInOutcome",
+        "SignInSession",
     ),
     ".": (
         "copy",
@@ -727,9 +727,9 @@ __all__ = [
     "EVENT_KINDS",
     "DevicesClient",
     "IdentityClient",
-    "SignInPrompt",
-    "SignInPoll",
-    "SignInResult",
+    "SignInActivation",
+    "SignInOutcome",
+    "SignInSession",
     "SignedInIdentity",
     "qr",
     "copy",

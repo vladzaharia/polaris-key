@@ -4,8 +4,8 @@
 
     client = await polaris_key.AsyncClient.create(**polaris_config.CONFIG)
     outcome = await client.boot()
-    prompt = await client.identity.begin_sign_in()
-    result = await client.identity.wait_for_sign_in(prompt)   # cancellable
+    session = await client.identity.sign_in.start()
+    outcome = await session.wait()   # cancellable
     async for p in client.update.packs.progress():            # pack download progress
         ...
     async for event in client.events.stream():                # license / config / … changes
@@ -15,9 +15,8 @@ It SHARES the core with :class:`~polaris_key.PolarisKeyClient` instead of duplic
 verification path, one cache, one gate, one wire implementation, and the same corpus and
 transcripts prove both. Every call that can touch the disk or the network runs the shared
 synchronous core on a worker thread (``asyncio.to_thread``), so the event loop never blocks;
-the WAITS are native asyncio — ``wait_for_sign_in`` sleeps with ``asyncio.sleep`` and polls one
-request at a time, so cancelling the task stops it at once, and the progress and event streams
-are ``asyncio.Queue``-fed async iterators. A cancelled task never interrupts a request already
+the sign-in session's ``wait`` runs on a worker thread and cancelling its task cancels the
+session, and the progress and event streams are ``asyncio.Queue``-fed async iterators. A cancelled task never interrupts a request already
 on the wire (it completes on its thread and its result is dropped), which keeps the token store
 and cache consistent.
 
@@ -41,8 +40,6 @@ import inspect
 from typing import Any, AsyncIterator, Callable, Generator, Iterable, Optional
 
 from .client import PolarisKeyClient
-from .core.errors import PolarisError
-from .identity.client import SignInPrompt, SignInResult, _poll_delay
 
 __all__ = ["AsyncPolarisKeyClient", "AsyncClient", "GuardedCoroutine"]
 
@@ -146,82 +143,52 @@ class _AsyncFacet:
         return call
 
 
-class _AsyncIdentity(_AsyncFacet):
-    async def wait_for_sign_in(
+class _AsyncSignInSession:
+    """An async view of a :class:`~polaris_key.identity.sign_in.SignInSession`: ``wait`` is a
+    coroutine, and cancelling its task cancels the session."""
+
+    def __init__(self, session: Any) -> None:
+        object.__setattr__(self, "_session", session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._session, name)
+
+    def __repr__(self) -> str:
+        return repr(self._session)
+
+    async def wait(
         self,
-        prompt: SignInPrompt,
         timeout: Optional[float] = None,
         *,
-        on_confirm: Optional[Callable[[Any, bool], Optional[bool]]] = None,
-    ) -> SignInResult:
-        """The paced poll loop of :meth:`IdentityClient.wait_for_sign_in`, with the same rules
-        (at least ``interval`` between polls, ``slow-down`` lengthens it, transient failures
-        retried at the same interval, ``expired`` once the code's lifetime passes), sleeping
-        with ``asyncio.sleep``: cancel the task to stop. ``timeout`` raises
-        :class:`asyncio.TimeoutError`."""
-        coro = self._wait(prompt, on_confirm)
-        if timeout is None:
-            return await coro
-        return await asyncio.wait_for(coro, timeout)
-
-    async def _wait(self, prompt: SignInPrompt, on_confirm: Any) -> SignInResult:
-        identity = self._target
-        interval = prompt.interval
-        decision: Optional[bool] = None
-        while True:
-            if identity._ctx.now() >= prompt.expiresAt:
-                return SignInResult(status="expired")
-            await asyncio.sleep(_poll_delay(interval, prompt.expiresIn))
-            if identity._ctx.now() >= prompt.expiresAt:
-                return SignInResult(status="expired")
-            try:
-                poll = await _to_thread(identity._poll, prompt, interval, decision)
-            except PolarisError as e:
-                if e.code in ("network-error", "server-error"):
-                    continue
-                raise
-            if poll.status == "pending":
-                continue
-            if poll.status == "slow-down":
-                interval = max(interval, poll.interval or interval)
-                continue
-            if poll.status == "confirm":
-                if decision is not None and not (decision and not poll.attachable):
-                    continue
-                answer = on_confirm(poll.identity, bool(poll.attachable)) if on_confirm else False
-                if answer is None:
-                    raise PolarisError("cancelled", "the player declined the signed-in identity.")
-                decision = bool(answer) and bool(poll.attachable)
-                continue
-            return SignInResult(
-                status=poll.status,
-                message=poll.message,
-                identity=poll.identity,
-                attached=poll.attached,
-                code=poll.code,
-            )
-
-    async def sign_in_with_browser(self, **kw: Any) -> SignInResult:
-        """Begin, open ``verificationUriComplete`` in the system browser, and wait (async)."""
-        on_prompt = kw.pop("on_prompt", None)
-        open_url = kw.pop("open_url", None)
-        timeout = kw.pop("timeout", None)
-        on_confirm = kw.pop("on_confirm", None)
-        prompt = await _to_thread(
-            self._target.begin_sign_in, kw.pop("device_name", None),
-            confirm_identity=kw.pop("confirm_identity", False),
-        )
-        if on_prompt is not None:
-            on_prompt(prompt)
-        if open_url is None:
-            import webbrowser
-
-            open_url = webbrowser.open
+        once: bool = False,
+        confirm: Optional[Callable[[Any, bool], bool]] = None,
+    ) -> Any:
+        """:meth:`SignInSession.wait` on a worker thread. Cancel the task to stop polling:
+        the session is cancelled, and the thread ends within a moment."""
         try:
-            open_url(prompt.verificationUriComplete)
-        except Exception:
-            pass
-        return await self.wait_for_sign_in(prompt, timeout, on_confirm=on_confirm)
+            return await _to_thread(self._session.wait, timeout, once=once, confirm=confirm)
+        except asyncio.CancelledError:
+            self._session.cancel()
+            raise
+
+
+class _AsyncSignInNamespace:
+    def __init__(self, target: Any) -> None:
+        self._target = target
+
+    def start(self, **opts: Any) -> GuardedCoroutine:
+        """``identity.sign_in.start(**opts)``, awaited; answers an async session."""
+
+        async def run() -> _AsyncSignInSession:
+            return _AsyncSignInSession(await _to_thread(self._target.start, **opts))
+
+        return GuardedCoroutine(run(), "identity.sign_in.start")
+
+
+class _AsyncIdentity(_AsyncFacet):
+    @property
+    def sign_in(self) -> _AsyncSignInNamespace:
+        return _AsyncSignInNamespace(self._target.sign_in)
 
 
 async def _queue_stream(subscribe: Callable[[Callable[[Any], None]], Callable[[], None]],

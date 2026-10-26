@@ -139,18 +139,17 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls /identity/auth/device/poll (identity.devicecode); the old /identity/auth/poll is retired and the Worker no longer serves it."
+      "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in.start() answers a device-code session whose reopen() opens verification_uri_complete in the system browser and whose wait() polls /identity/auth/device/poll (identity.devicecode); the old /identity/auth/poll is retired and the Worker no longer serves it."
     },
     "identity.devicecode": {
       "status": "implemented"
     },
     "identity.devicelabel": {
       "status": "implemented",
-      "note": "PX-W13: normalize_device_label (polaris_key.core.device_label), the device_name option and platform.node() without .local/.lan/.home by default, on begin_sign_in, activate_with_key and register; SignInPrompt.deviceName is the Worker's echo."
+      "note": "PX-W13: normalize_device_label (polaris_key.core.device_label), the device_name option and platform.node() without .local/.lan/.home by default, on sign_in.start, activate_with_key and register; SignInSession.device_name is the Worker's echo."
     },
     "identity.toggle": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented"
     },
     "identity.attach": {
       "status": "implemented"

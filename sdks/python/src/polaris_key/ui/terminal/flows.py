@@ -473,28 +473,28 @@ def sign_in(
     model = SignInModel(headless=headless, device_code_url=k.identity.device_code_url)
     opener = open_url or t.device.open_url
 
-    def on_confirm(identity: Any, attachable: bool) -> Optional[bool]:
+    def on_confirm(identity: Any, attachable: bool) -> bool:
         return bool(attach) and attachable
 
     try:
-        prompt = _busy(t, lambda: client.identity.begin_sign_in(device_name, confirm_identity=bool(attach)), lambda f: screens.sign_in(k, model.view, verb, frame=f))
+        prompt = _busy(t, lambda: client.identity.sign_in.start(device_name=device_name), lambda f: screens.sign_in(k, model.view, verb, frame=f))
     except PolarisError as e:
         model.failed(_code_of(client, e))
         return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": _code_of(client, e)})
     view = model.prompted(prompt, _now())
     t.emit(
         "pending",
-        verificationUri=prompt.verificationUri,
-        verificationUriComplete=prompt.verificationUriComplete,
-        userCode=prompt.userCode,
-        expiresAt=prompt.expiresAt,
+        verificationUri=prompt.verification_uri,
+        verificationUriComplete=prompt.verification_uri_complete,
+        userCode=prompt.user_code,
+        expiresAt=prompt.expires_at,
     )
     if not headless:
-        if not opener(prompt.verificationUriComplete):
+        if not opener(prompt.verification_uri_complete):
             view = model.browser_failed()
 
     cancel = threading.Event()
-    worker = run_in_thread(lambda: client.identity.wait_for_sign_in(prompt, cancel=cancel, on_confirm=on_confirm))
+    worker = run_in_thread(lambda: prompt.wait(cancel_token=cancel, confirm=on_confirm if attach else None))
     cancelled = False
     if t.env.interactive:
         frame = 0
@@ -502,7 +502,7 @@ def sign_in(
         try:
             with t.device.keys() as keys, t.device.live() as live:
                 while worker.is_alive():
-                    model.tick(prompt.expiresAt - _now())
+                    model.tick(prompt.expires_at - _now())
                     if model.view.copied and time.monotonic() - copied_at > 2:
                         model.uncopy()  # "Copied" is on the hints row for about two seconds
                     live.update(lambda v=model.view, f=frame: screens.sign_in(k, v, verb, frame=f))
@@ -515,15 +515,15 @@ def sign_in(
                     code_view = model.view.state in ("code", "no-browser")
                     if key == "c":
                         if code_view:
-                            if t.device.copy(prompt.userCode):
+                            if t.device.copy(prompt.user_code):
                                 model.copied()
                                 copied_at = time.monotonic()
                         else:
                             model.use_code()
                     elif key == "enter" and model.view.state == "handoff":
-                        opener(prompt.verificationUriComplete)
+                        opener(prompt.verification_uri_complete)
                     elif key == "o" and code_view and not model.view.headless and not model.view.no_browser:
-                        opener(prompt.verificationUriComplete)
+                        opener(prompt.verification_uri_complete)
         except KeyboardInterrupt:
             cancel.set()
             cancelled = True
@@ -535,18 +535,18 @@ def sign_in(
             # Piped output prints its header once: the result that follows is only the result.
             t.device.header_gone = True
         worker.join()
-    if cancelled or (isinstance(worker.error, PolarisError) and worker.error.code == "cancelled"):
+    if cancelled or getattr(worker.result, "kind", None) == "cancelled":
         model.cancelled()
         return _cancelled(t, screens.sign_in(k, model.view, verb), {"state": "cancelled"})
     if worker.error is not None:
         code = getattr(worker.error, "code", "sign-in-failed")
-        model.failed(code if isinstance(code, str) else "sign-in-failed")
+        model.errored(code if isinstance(code, str) else "sign-in-failed")
         return Outcome(EXIT.failed, screens.sign_in(k, model.view, verb), {"state": "error", "error": model.view.code})
     result = worker.result
     final = model.finished(result)
     data: Dict[str, Any] = {"state": "signedIn" if final.state == "done" else final.state}
     if final.state == "done":
-        data.update(name=final.name, email=final.email, attached=getattr(result, "attached", None))
+        data.update(name=final.name, email=final.email, attached=getattr(getattr(result, "activation", None), "attached", None))
         try:
             data["status"] = client.status().status
         except Exception:

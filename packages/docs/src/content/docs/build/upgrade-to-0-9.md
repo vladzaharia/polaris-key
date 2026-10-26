@@ -186,6 +186,11 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | swift | `PolarisSignIn` | `undefined` | 0.9 |
 | swift | `PolarisOfflineActivation` | `undefined` | 0.9 |
 | swift | `GateOptions` | `undefined` | 0.9 |
+| python | `identity.sign_in_with_browser` | `identity.signIn.start` | 0.9 |
+| python | `identity.begin_sign_in` | `identity.signIn.start` | 0.9 |
+| python | `identity.poll_sign_in` | `identity.signIn.session.wait` | 0.9 |
+| python | `identity.wait_for_sign_in` | `identity.signIn.session.wait` | 0.9 |
+| python | `identity.accept_sign_in` | `identity.signIn.session.wait` | 0.9 |
 
 <!-- /GENERATED:upgrade-sdk -->
 <!-- prettier-ignore-end -->

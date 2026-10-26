@@ -232,6 +232,7 @@ class PolarisKeyClient:
             # A deactivation changes the gate with no sync after it: publish from here, so
             # `client.license.deactivate()` raises the same one event `client.deactivate()` does.
             on_changed=lambda: self._license_changed(),
+            on_deactivated=lambda: self.identity.forget(),
         )
         #: ``client.entitlements`` (SP-35.20): a thin view over the licence gate above.
         self.entitlements = EntitlementsClient(self.license)
@@ -262,6 +263,9 @@ class PolarisKeyClient:
             profile=lambda: self.license.get_profile(),
             discover=self._discovery_or_load,
             wipe_local=lambda: self.license.wipe_local(),
+            loaded_discovery=lambda: self._discovery_doc,
+            license_id=lambda: self.license.get_license_id(),
+            emit=self.events.emit,
         )
         self.release = ReleaseClient(self.core, self._tokens, lambda: self._discovery_doc)
         #: The public download model (``distribution/download.json``, SDK parity pass §3.8).

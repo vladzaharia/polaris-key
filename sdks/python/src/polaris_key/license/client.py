@@ -86,6 +86,7 @@ class LicenseClient:
         *,
         fingerprint: bool = True,
         on_changed: Optional[Callable[[], None]] = None,
+        on_deactivated: Optional[Callable[[], None]] = None,
     ) -> None:
         self._ctx = ctx
         self._cache = cache
@@ -95,6 +96,9 @@ class LicenseClient:
         #: Raised after a change that no sync follows (a deactivation), so the facade emits the
         #: ``license`` event whichever entry point the host called.
         self._on_changed = on_changed
+        #: Raised by :meth:`deactivate` before the change event: the facade forgets the stored
+        #: identity and subject (a deactivated device is signed out of nothing it still holds).
+        self._on_deactivated = on_deactivated
         self._fingerprint_enabled = fingerprint
 
     # ── Gate ────────────────────────────────────────────────────────────────────────
@@ -222,6 +226,8 @@ class LicenseClient:
         if token:
             # `deauthorize` swallows transport failures, including local-only's refusal.
             deauthorize(self._ctx, token)
+        if self._on_deactivated is not None:
+            self._on_deactivated()
         self.wipe_local()
 
     def wipe_local(self) -> None:

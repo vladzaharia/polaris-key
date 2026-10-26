@@ -8,7 +8,7 @@ cannot show, because a recorded conversation has no clock between its requests.
   neither spins nor outlives the code;
 * a failed poll is retried at the SAME interval, never faster;
 * a printed prompt or minted token never shows the device code or the token;
-* the prompt's expiry, ``timeout`` and ``cancel`` all stop polling;
+* the code's expiry, ``timeout``, ``cancel()`` and a cancel token all stop polling;
 * a second ``mint_token`` inside the lifetime makes no request, and nothing minted is stored;
 * a cached token is bound to the device token it was minted with: after ``deactivate()`` the
   next mint is ``unauthorized`` without a request, and a different device token re-mints;
@@ -31,7 +31,7 @@ import httpx
 import pytest
 
 from polaris_key import PolarisError, PolarisKeyClient
-from polaris_key.identity import SignInPrompt
+from polaris_key.identity import SignInSession
 from polaris_key.core.store import CacheRecord
 
 PRODUCT = "djdl"
@@ -166,31 +166,31 @@ def slow_down(interval: Optional[int] = None) -> httpx.Response:
 # ── Device-code sign-in ───────────────────────────────────────────────────────────
 
 
-def test_begin_refuses_before_any_request_when_identity_is_off(clock) -> None:
+def test_start_refuses_before_any_request_when_identity_is_off(clock) -> None:
     plane = Plane(clock, {START: [started()]})
     c = make(plane, ["license", "config"])
     with pytest.raises(PolarisError) as e:
-        c.identity.begin_sign_in()
+        c.identity.sign_in.start()
     assert e.value.code == "service-unavailable"
     assert plane.calls == []
 
 
-def test_begin_posts_device_id_and_name_without_a_bearer(clock) -> None:
+def test_start_posts_device_id_and_name_without_a_bearer(clock) -> None:
     plane = Plane(clock, {START: [started()]})
     c = make(plane, ["identity"], token="pkeyt_anonymous")
-    prompt = c.identity.begin_sign_in(device_name=" Deck ")
+    prompt = c.identity.sign_in.start(device_name=" Deck ")
     assert plane.calls[0]["body"] == {"deviceId": DEVICE, "deviceName": "Deck"}
     assert plane.calls[0]["authorization"] is None
-    assert prompt.userCode == "WDJB-MJHT"
-    assert prompt.expiresAt == T0 + 600
+    assert prompt.user_code == "WDJB-MJHT"
+    assert prompt.expires_at == T0 + 600
     assert prompt.interval == 2
 
 
 def test_never_polls_earlier_than_the_interval_and_stores_the_token(clock) -> None:
     plane = Plane(clock, {START: [started()], POLL: [PENDING, PENDING, READY]})
     c = make(plane, ["identity"])
-    result = c.identity.wait_for_sign_in(c.identity.begin_sign_in())
-    assert result.status == "ready"
+    result = c.identity.sign_in.start().wait()
+    assert result.kind == "signed_in"
     times = plane.at(POLL)
     assert len(times) == 3
     assert all(g >= 2 for g in gaps(times, T0))
@@ -205,7 +205,7 @@ def test_slow_down_lengthens_the_interval_for_every_later_poll(clock) -> None:
         clock, {START: [started()], POLL: [slow_down(7), PENDING, PENDING, READY]}
     )
     c = make(plane, ["identity"])
-    c.identity.wait_for_sign_in(c.identity.begin_sign_in())
+    c.identity.sign_in.start().wait()
     assert gaps(plane.at(POLL), T0) == [2, 7, 7, 7]
 
 
@@ -218,7 +218,7 @@ def test_slow_down_without_interval_adds_five_and_never_shortens(clock) -> None:
         },
     )
     c = make(plane, ["identity"])
-    c.identity.wait_for_sign_in(c.identity.begin_sign_in())
+    c.identity.sign_in.start().wait()
     assert gaps(plane.at(POLL), T0) == [2, 7, 7]
 
 
@@ -226,39 +226,41 @@ def test_repeated_slow_downs_without_interval_step_from_the_current_interval(clo
     limited = httpx.Response(429, json={"error": "rate_limited"})
     plane = Plane(clock, {START: [started()], POLL: [limited, limited, limited, READY]})
     c = make(plane, ["identity"])
-    c.identity.wait_for_sign_in(c.identity.begin_sign_in())
+    c.identity.sign_in.start().wait()
     assert gaps(plane.at(POLL), T0) == [2, 7, 12, 17]
 
 
 def test_a_negative_interval_is_clamped_to_one_second(clock) -> None:
     plane = Plane(clock, {POLL: [PENDING, READY]})
     c = make(plane, ["identity"])
-    prompt = SignInPrompt(
-        deviceCode="device-code-1",
-        userCode="WDJB-MJHT",
-        verificationUri="u",
-        verificationUriComplete="u?user_code=WDJB-MJHT",
-        expiresIn=600,
+    prompt = SignInSession(
+        device_code="device-code-1",
+        user_code="WDJB-MJHT",
+        verification_uri="u",
+        verification_uri_complete="u?user_code=WDJB-MJHT",
+        expires_in=600,
         interval=-3,
-        expiresAt=T0 + 600,
+        expires_at=T0 + 600,
+        device_name=None,
+        deps=c.identity._deps,
     )
-    assert c.identity.wait_for_sign_in(prompt).status == "ready"
+    assert prompt.wait().kind == "signed_in"
     assert gaps(plane.at(POLL), T0) == [1, 1]
 
 
 def test_a_half_second_interval_rounds_up_to_one(clock) -> None:
     plane = Plane(clock, {START: [started(interval=0.5)], POLL: [PENDING, READY]})
     c = make(plane, ["identity"])
-    prompt = c.identity.begin_sign_in()
+    prompt = c.identity.sign_in.start()
     assert prompt.interval == 1
-    assert c.identity.wait_for_sign_in(prompt).status == "ready"
+    assert prompt.wait().kind == "signed_in"
     assert gaps(plane.at(POLL), T0) == [1, 1]
 
 
 def test_a_huge_interval_is_clamped_to_the_codes_lifetime(clock) -> None:
     plane = Plane(clock, {START: [started(interval=10**12, expiresIn=60)], POLL: [PENDING]})
     c = make(plane, ["identity"])
-    assert c.identity.wait_for_sign_in(c.identity.begin_sign_in()).status == "expired"
+    assert c.identity.sign_in.start().wait().kind == "expired"
     # One 60 s sleep, then expiry: no poll, and no 10**12-second sleep.
     assert plane.at(POLL) == []
     assert clock["now"] - T0 == 60
@@ -267,8 +269,8 @@ def test_a_huge_interval_is_clamped_to_the_codes_lifetime(clock) -> None:
 def test_a_printed_prompt_hides_the_device_code(clock) -> None:
     plane = Plane(clock, {START: [started()]})
     c = make(plane, ["identity"])
-    prompt = c.identity.begin_sign_in()
-    assert prompt.deviceCode == "device-code-1"
+    prompt = c.identity.sign_in.start()
+    assert not hasattr(prompt, "device_code")
     for printed in (repr(prompt), str(prompt), f"{prompt}"):
         assert "device-code-1" not in printed
         assert "WDJB-MJHT" in printed
@@ -283,14 +285,14 @@ def test_a_failed_poll_is_retried_at_the_same_interval(clock) -> None:
         },
     )
     c = make(plane, ["identity"])
-    assert c.identity.wait_for_sign_in(c.identity.begin_sign_in()).status == "ready"
+    assert c.identity.sign_in.start().wait().kind == "signed_in"
     assert gaps(plane.at(POLL), T0) == [2, 2, 2]
 
 
 def test_expiry_stops_polling_without_asking_again(clock) -> None:
     plane = Plane(clock, {START: [started(expiresIn=5)], POLL: [PENDING]})
     c = make(plane, ["identity"])
-    assert c.identity.wait_for_sign_in(c.identity.begin_sign_in()).status == "expired"
+    assert c.identity.sign_in.start().wait().kind == "expired"
     assert [t - T0 for t in plane.at(POLL)] == [2, 4]
 
 
@@ -300,14 +302,14 @@ def test_the_servers_timeout_is_expired(clock) -> None:
         {START: [started()], POLL: [PENDING, httpx.Response(200, json={"status": "timeout"})]},
     )
     c = make(plane, ["identity"])
-    assert c.identity.wait_for_sign_in(c.identity.begin_sign_in()).status == "expired"
+    assert c.identity.sign_in.start().wait().kind == "expired"
 
 
 def test_timeout_stops_polling(clock) -> None:
     plane = Plane(clock, {START: [started()], POLL: [PENDING]})
     c = make(plane, ["identity"])
     with pytest.raises(TimeoutError):
-        c.identity.wait_for_sign_in(c.identity.begin_sign_in(), timeout=5)
+        c.identity.sign_in.start().wait(5)
     assert [t - T0 for t in plane.at(POLL)] == [2, 4]
 
 
@@ -322,11 +324,9 @@ def test_cancel_stops_polling(clock) -> None:
 
     plane = Plane(clock, {START: [started()]})
     c = make(plane, ["identity"])
-    prompt = c.identity.begin_sign_in()
+    prompt = c.identity.sign_in.start()
     c.core._client = httpx.Client(transport=httpx.MockTransport(after_first_poll))
-    with pytest.raises(PolarisError) as e:
-        c.identity.wait_for_sign_in(prompt, cancel=cancel)
-    assert e.value.code == "cancelled"
+    assert prompt.wait(cancel_token=cancel).kind == "cancelled"
     assert len(calls) == 1
 
 
@@ -335,16 +335,18 @@ def test_a_device_mismatch_ends_the_wait_without_a_token(clock) -> None:
         clock, {START: [started()], POLL: [httpx.Response(401, json={"error": "unauthorized"})]}
     )
     c = make(plane, ["identity"])
-    assert c.identity.wait_for_sign_in(c.identity.begin_sign_in()).status == "error"
+    with pytest.raises(PolarisError) as e:
+        c.identity.sign_in.start().wait()
+    assert e.value.code == "sign-in-failed"
     assert c._tokens.current is None
 
 
 def test_poll_raises_network_error_rather_than_inventing_a_status(clock) -> None:
     plane = Plane(clock, {START: [started()], POLL: [httpx.ConnectError("offline")]})
     c = make(plane, ["identity"])
-    prompt = c.identity.begin_sign_in()
+    prompt = c.identity.sign_in.start()
     with pytest.raises(PolarisError) as e:
-        c.identity.poll_sign_in(prompt)
+        prompt.wait(once=True)
     assert e.value.code == "network-error"
 
 

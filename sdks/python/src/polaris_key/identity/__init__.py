@@ -14,10 +14,10 @@ from .account import (
 from .client import (
     SLOW_DOWN_STEP_SECONDS,
     IdentityClient,
-    SignInPoll,
-    SignInPrompt,
-    SignInResult,
+    SignedInIdentity,
+    SignInNamespace,
 )
+from .sign_in import SignInActivation, SignInOutcome, SignInSession
 
 __all__ = [
     "AttachConfirm",
@@ -27,8 +27,10 @@ __all__ = [
     "OpenAccountResult",
     "SignOutResult",
     "IdentityClient",
-    "SignInPoll",
-    "SignInPrompt",
-    "SignInResult",
+    "SignedInIdentity",
+    "SignInActivation",
+    "SignInNamespace",
+    "SignInOutcome",
+    "SignInSession",
     "SLOW_DOWN_STEP_SECONDS",
 ]

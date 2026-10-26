@@ -38,7 +38,7 @@ def listener_failed(what: str) -> None:
     ``except`` block. A host bug is never swallowed silently, and never breaks the SDK."""
     log.exception("polaris_key: the %s callback raised; continuing", what)
 
-EVENT_KINDS = ("license", "entitlement", "config", "updateAvailable", "packs", "store")
+EVENT_KINDS = ("license", "entitlement", "config", "updateAvailable", "packs", "store", "identity")
 
 
 @dataclass(frozen=True)
