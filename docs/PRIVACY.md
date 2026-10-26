@@ -256,8 +256,8 @@ registration after a removal continues the count and an old proof cannot be repl
 holds a hardware value, a name or a subject: the keys are random and are not derived from the
 hardware fingerprint.
 
-The keys are deleted when the device is deauthorized, when its licence is deleted and when its
-product is deleted. The counter row is deleted with its licence and its product. Services told that
+The keys are deleted when the device is deauthorized, when its license is deleted and when its
+product is deleted. The counter row is deleted with its license and its product. Services told that
 a device was bound, unbound, removed or changed its keys (the device lifecycle event) receive the
 product, the device id and, for a binding, the pairwise subject; they receive no key material.
 
