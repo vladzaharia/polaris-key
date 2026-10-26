@@ -8,6 +8,7 @@
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
+// @pkey-feature identity.redirect.web identity.signin.hints
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -84,10 +85,49 @@ enum SwiftReplay {
     static func act(
         _ client: PolarisKeyClient, store: InMemoryStore, step: Transcript.Step,
         session: ReplaySession, update: UpdateClient? = nil,
-        objects: (any PackObjectTransport)? = nil
+        objects: (any PackObjectTransport)? = nil, server: ReplayServer? = nil
     ) async throws -> [String: JSONValue] {
         var out: [String: JSONValue] = [:]
         switch step.action {
+        case "browser":
+            // The browser's half is the recording's; the SDK's half is the authorize URL it
+            // builds for the request the Worker answered with a 303 to the card.
+            guard let server else { throw ReplayError("browser without a replay server") }
+            let transcript = await server.transcript
+            if let authorize = step.exchanges.items.first(where: {
+                $0.request.method == "GET" && $0.response.status == 303
+                    && $0.request.path.contains("/identity/authorize?")
+            }) {
+                let started = try await redirectSession(client, step: step)
+                let want = transcript.baseUrl + authorize.request.path
+                if started.authorizeUrl != want {
+                    await server.recordFailure(
+                        "authorize URL differs from the recording:\n    want \(want)\n    got  \(started.authorizeUrl ?? "nil")"
+                    )
+                }
+            }
+            await server.serveBrowserExchanges()
+            // Facts the recorder read off the browser's pages; nothing of the SDK's.
+            for (key, value) in step.expect { out[key] = value }
+        case "redirectComplete":
+            let s = try await redirectSession(client, step: step)
+            do {
+                switch try await s.complete(callbackUrl: step.args["callbackUrl"]?.stringValue ?? "") {
+                case .signedIn(let ready):
+                    out["result"] = .string("ok")
+                    out["scope"] = ready.scope.map(JSONValue.string) ?? .null
+                    out["subject"] = ready.subject.map(JSONValue.string) ?? .null
+                    out["licenseId"] = ready.licenseId.map(JSONValue.string) ?? .null
+                case .cancelled: out["result"] = .string("cancelled")
+                default: out["result"] = .string("error")
+                }
+            } catch let e as SignInError {
+                out["result"] = .string(redirectResult(e.code))
+                out["code"] = .string(e.code)
+            } catch let e as PolarisError {
+                out["result"] = .string("error")
+                out["code"] = .string(e.code)
+            }
         case "chunkRange":
             guard let objects else { throw ReplayError("chunkRange without a pack object transport") }
             let core = client.core
@@ -334,6 +374,39 @@ enum SwiftReplay {
         return out
     }
 
+    /// The recorder's constants for a redirect conversation (`packages/worker/test/transcripts`).
+    private static let recordedState = "tidewater-state-0123456789"
+    private static let recordedVerifier = "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+    private static let recordedRedirect = "https://app.example/auth/callback"
+
+    /// A redirect session the way the step's `args` ask for one: the recorded `state` and verifier
+    /// (a step may name its own), the hints it carries, the recorded redirect URI.
+    private static func redirectSession(_ client: PolarisKeyClient, step: Transcript.Step)
+        async throws -> SignInSession
+    {
+        client.identity.redirectEntropy.set(
+            (
+                state: step.args["state"]?.stringValue ?? recordedState,
+                codeVerifier: step.args["codeVerifier"]?.stringValue ?? recordedVerifier
+            ))
+        return try await client.identity.signIn.start(
+            SignInOptions(
+                channel: .redirect, redirectUri: step.args["redirectUri"]?.stringValue ?? recordedRedirect,
+                loginHint: step.args["loginHint"]?.stringValue,
+                nameHint: step.args["nameHint"]?.stringValue,
+                purpose: step.args["purpose"]?.stringValue.flatMap(SignInPurpose.init(rawValue:))))
+    }
+
+    /// `redirectComplete`'s `result` for a refusal's code (`format.ts`).
+    private static func redirectResult(_ code: String) -> String {
+        switch code {
+        case "invalid_grant", "invalid_request", "invalid_client", "license_choice_required",
+            "rate_limited":
+            return code.replacingOccurrences(of: "_", with: "-")
+        default: return "error"
+        }
+    }
+
     /// `releaseFetch` (SP-19) is `client.update.fetch(version:buildId:size:sha256:to:)` into a
     /// fresh directory; `partial` seeds `<to>.part` with the first that many bytes of the
     /// transcript's whole-payload answer. A refusal is `refused` with the server's code (the
@@ -474,7 +547,12 @@ enum SwiftReplay {
             await store.writeCache(
                 CacheRecord(feeds: cache.feeds ?? [:], releaseRecords: cache.releaseRecords ?? [:]))
         }
-        let services = t.initial.services ?? (u != nil ? ["release", "distribution", "update"] : nil)
+        // The redirect conversations ride a product that runs Identity (their discovery names it).
+        let redirects = t.steps.contains { ["browser", "redirectComplete"].contains($0.action) }
+        let services =
+            t.initial.services
+            ?? (u != nil
+                ? ["release", "distribution", "update"] : (redirects ? ["license", "config", "identity"] : nil))
         let core = CoreOptions(
             productSlug: t.product, baseUrl: t.baseUrl,
             version: u?.installed.version ?? t.initial.version,
@@ -500,6 +578,8 @@ enum SwiftReplay {
                     binaryVersion: u.installed.binaryVersion, engine: u.installed.engine,
                     platform: u.platform, arch: u.arch))
         }
+        // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
+        if redirects { client.identity.redirectAcquisitionSync.set(false) }
         let session = ReplaySession()
         session.platform = t.initial.platform
         session.steps = t.steps
@@ -508,7 +588,7 @@ enum SwiftReplay {
             clock.now = step.now ?? t.now
             let observed = try await act(
                 client, store: store, step: step, session: session, update: update,
-                objects: ReplayPackObjectTransport(server: server))
+                objects: ReplayPackObjectTransport(server: server), server: server)
             try await server.endStep()
             for (key, want) in step.expect.sorted(by: { $0.key < $1.key }) {
                 guard let got = observed[key], got == want else {

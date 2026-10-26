@@ -182,6 +182,11 @@ public struct IdentityDiscovery: Sendable, Equatable {
             endpoints: fragment.endpoints)
     }
 
+    /// The authorize endpoint a redirect sign-in sends the browser to.
+    public var authorize: String? { endpoints["authorize"] }
+    /// `POST`: the token endpoint a redirect sign-in redeems its code at.
+    public var token: String? { endpoints["token"] }
+
     /// `GET`: the pairwise subject of the account signed in on the device.
     public var subject: String? { endpoints["subject"] }
     /// `POST`: sign out of the account.

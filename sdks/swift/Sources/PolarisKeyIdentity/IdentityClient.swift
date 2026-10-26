@@ -109,13 +109,20 @@ public struct SignInReady: Sendable, Equatable {
     public let attached: String?
     /// The account's subject, when the Worker said (held for `identity.account`).
     public let subject: String?
+    /// Redirect channel: the granted scope, space-delimited.
+    public let scope: String?
+    /// Redirect channel: the licence the device runs on; nil on a device with none.
+    public let licenseId: String?
 
     public init(
-        identity: SignInIdentity? = nil, attached: String? = nil, subject: String? = nil
+        identity: SignInIdentity? = nil, attached: String? = nil, subject: String? = nil,
+        scope: String? = nil, licenseId: String? = nil
     ) {
         self.identity = identity
         self.attached = attached
         self.subject = subject
+        self.scope = scope
+        self.licenseId = licenseId
     }
 }
 
@@ -200,7 +207,12 @@ public final class IdentityClient: Sendable {
     public static let serverError = "server-error"
 
     let core: CoreContext
-    private let onAcquired: SignInAcquiredListener?
+    let onAcquired: SignInAcquiredListener?
+    /// Conformance replay only: the exact `state` and verifier of a recorded redirect conversation.
+    /// Conformance replay only: false skips the sync after a redirect token (the recordings of
+    /// `redirect-web-*` hold the token exchange, not the sync that follows it).
+    let redirectAcquisitionSync = LockedValue<Bool>(true)
+    let redirectEntropy = LockedValue<(state: String?, codeVerifier: String?)?>(nil)
     /// The facade's local wipe after a released sign-out (`installSignOut`): the credential goes
     /// and the `license` event follows.
     let signOutHook = LockedValue<(@Sendable () async throws -> Void)?>(nil)

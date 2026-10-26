@@ -39,6 +39,7 @@ func apiSurface() async {
     _ = SignInSession.reopen  // identity.signIn.session.reopen
     _ = SignInSession.cancel  // identity.signIn.session.cancel
     _ = SignInSession.wait  // identity.signIn.session.wait
+    _ = SignInSession.complete  // identity.signIn.session.complete
     _ = IdentityClient.attach  // identity.attachLicense
     _ = IdentityClient.openAccount  // identity.openAccount
     _ = \PolarisKeyClient.events  // events
