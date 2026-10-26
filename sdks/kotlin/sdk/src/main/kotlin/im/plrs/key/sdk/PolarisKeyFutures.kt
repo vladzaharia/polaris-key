@@ -79,6 +79,10 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     public fun signInWait(session: SignInSession, once: Boolean = false): CompletableFuture<SignInOutcome> =
         call { session.wait(once) }
 
+    /** Redirect channel: `session.complete(callbackUrl)`; a refusal completes it exceptionally with `SignInError`. */
+    public fun signInComplete(session: SignInSession, callbackUrl: String): CompletableFuture<SignInOutcome> =
+        call { session.complete(callbackUrl) }
+
     /** `identity.attach(confirm)`: preview (false) or add the device's licence to the signed-in account (true). */
     public fun attach(confirm: Boolean): CompletableFuture<AttachResult> = call { client.identity.attach(confirm) }
 

@@ -14,6 +14,7 @@
 package im.plrs.key.identity
 
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.PolarisException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -21,8 +22,15 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlin.coroutines.coroutineContext
 
-/** How the player signs in. Only the device code today; the redirect channel is I-10b.18. */
-public enum class SignInChannel { DeviceCode }
+/**
+ * How the player signs in: the device code (a code typed on another screen), or the OAuth
+ * authorization-code redirect (the host opens `session.authorizeUrl` and hands the callback URL back to
+ * `session.complete(callbackUrl)`).
+ */
+public enum class SignInChannel { DeviceCode, Redirect }
+
+/** The authorize request's `purpose` extension (§12.4): the card's copy. */
+public enum class SignInPurpose(public val wire: String) { SignIn("signin"), Attach("attach") }
 
 /** What `signIn.start` takes. */
 public data class SignInOptions @JvmOverloads constructor(
@@ -31,6 +39,14 @@ public data class SignInOptions @JvmOverloads constructor(
     val deviceName: String? = null,
     /** Show the verification page through this as soon as the session starts; null shows nothing (the host draws the code, or calls `reopen()`). */
     val opener: AccountOpener? = null,
+    /** Redirect channel: the `https:` URI the product registered; the browser lands there with the code. Required for [SignInChannel.Redirect]. */
+    val redirectUri: String? = null,
+    /** Redirect channel: the scopes asked for; null asks `profile email`. */
+    val scope: List<String>? = null,
+    /** Redirect channel: prefills the card (§12.4). Verifies nothing. */
+    val loginHint: String? = null,
+    val nameHint: String? = null,
+    val purpose: SignInPurpose? = null,
 )
 
 /** Where a session stands. `wait()` returns the settled ones; `session.outcome` reads `Pending` until then. */
@@ -43,8 +59,15 @@ public sealed interface SignInOutcome {
         override val kind: String get() = "pending"
     }
 
-    /** Signed in: the device token is stored and the post-acquisition sync has run. [subject] is the pairwise subject the Worker reported, if it did. */
-    public data class SignedIn(val subject: String? = null) : SignInOutcome {
+    /**
+     * Signed in: the device token is stored and the post-acquisition sync has run. [subject] is the pairwise subject
+     * the Worker reported, if it did. Redirect channel: [scope] is the granted scope, [licenseId] the licence the device runs on (null on a device with none).
+     */
+    public data class SignedIn @JvmOverloads constructor(
+        val subject: String? = null,
+        val scope: String? = null,
+        val licenseId: String? = null,
+    ) : SignInOutcome {
         override val kind: String get() = "signedIn"
     }
 
@@ -61,18 +84,30 @@ public sealed interface SignInOutcome {
  * A sign-in the Worker refused or that failed: [code] is `sign-in-denied` (the player pressed Deny),
  * `sign-in-failed` (it failed after approval) or the Worker's own code.
  */
-public class SignInError(public val code: String, message: String) : Exception(message) {
+public class SignInError @JvmOverloads constructor(
+    public val code: String,
+    message: String,
+    /** Seconds to wait before retrying, when the Worker named them (`rate_limited`). */
+    public val retryAfterSeconds: Int? = null,
+) : Exception(message) {
     override fun toString(): String = "SignInError($code): $message"
 }
 
 /** `client.identity.signIn`. */
 public class SignInNamespace internal constructor(private val client: IdentityClient) {
     /**
-     * Ask for a device code and return its session. Throws `PolarisException` (`service-unavailable`
-     * when the product runs no Identity, `sign-in-unavailable`, `network-error`, ...). With
-     * [SignInOptions.opener] the page is shown before this returns.
+     * Ask for a device code (or, on the redirect channel, build the authorize URL) and return the session.
+     * Throws `PolarisException` (`service-unavailable` when the product runs no Identity,
+     * `sign-in-unavailable`, `invalid-argument`, `network-error`, ...). With [SignInOptions.opener] the page
+     * is shown before this returns.
      */
     public suspend fun start(options: SignInOptions = SignInOptions()): SignInSession {
+        if (options.channel == SignInChannel.Redirect) {
+            val pending = client.startRedirect(options)
+            val session = SignInSession(client, redirectPrompt(options.deviceName), options.opener, pending, options.deviceName)
+            if (options.opener != null) session.reopen()
+            return session
+        }
         val prompt = client.startDeviceCode(options.deviceName)
         val session = SignInSession(client, prompt, options.opener)
         if (options.opener != null) session.reopen()
@@ -80,13 +115,27 @@ public class SignInNamespace internal constructor(private val client: IdentityCl
     }
 }
 
-/** One device-code sign-in: the code to show, and the wait that settles it. */
+private fun redirectPrompt(deviceName: String?): SignInPrompt =
+    SignInPrompt(deviceCode = "", userCode = "", verificationUri = "", verificationUriComplete = "", expiresIn = 0, interval = 0, expiresAt = 0, deviceName = deviceName)
+
+/** One sign-in: on the device-code channel the code to show and the wait that settles it; on the redirect channel the URL to open and the callback that settles it. */
 public class SignInSession internal constructor(
     private val client: IdentityClient,
-    /** The code, the URIs and the clock the host shows. */
+    /** The code, the URIs and the clock the host shows. Empty on the redirect channel. */
     public val prompt: SignInPrompt,
     private val opener: AccountOpener?,
+    redirect: RedirectPending? = null,
+    private val redirectDeviceName: String? = null,
 ) {
+    /** The channel this session runs on. */
+    public val channel: SignInChannel = if (redirect != null) SignInChannel.Redirect else SignInChannel.DeviceCode
+
+    /** Redirect channel: the URL to open in the browser. It carries the challenge and `state`, never the verifier. Null on the device-code channel. */
+    public val authorizeUrl: String? = redirect?.authorizeUrl
+
+    /** The redirect request, until `complete` or `cancel` takes it (single use). */
+    private var pending: RedirectPending? = redirect
+
     private val lock = Any()
     private var cancelled = false
     private var running: Deferred<SignInPoll>? = null
@@ -124,7 +173,7 @@ public class SignInSession internal constructor(
     public suspend fun reopen(): Boolean {
         val open = opener ?: client.opener ?: return false
         return try {
-            open.open(prompt.verificationUriComplete)
+            open.open(authorizeUrl ?: prompt.verificationUriComplete)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -137,6 +186,7 @@ public class SignInSession internal constructor(
         val job = synchronized(lock) {
             if (settled != null || cancelled) return
             cancelled = true
+            pending = null
             running
         }
         job?.cancel()
@@ -149,6 +199,13 @@ public class SignInSession internal constructor(
      * call [cancel] to end it). A settled session answers the same outcome again.
      */
     public suspend fun wait(once: Boolean = false): SignInOutcome {
+        if (channel == SignInChannel.Redirect) {
+            synchronized(lock) {
+                settled?.let { return it.getOrThrow() }
+                if (cancelled) return SignInOutcome.Cancelled
+            }
+            throw PolarisException(ErrorCode.invalidArgument, "a redirect sign-in settles through complete(callbackUrl), not wait().")
+        }
         synchronized(lock) {
             // `once` is a probe: it asks the Worker again even after a refusal.
             if (!once) settled?.let { return it.getOrThrow() }
@@ -183,6 +240,40 @@ public class SignInSession internal constructor(
                 val error = SignInError(ended.code ?: ErrorCode.signInFailed, ended.message)
                 if (once) throw error
                 settle(Result.failure(error))
+            }
+        }
+    }
+
+    /**
+     * Redirect channel: redeem the callback the browser was sent to. Checks the redirect URI, `state` and
+     * `iss` first (a mismatch is `sign-in-failed`, nothing sent), then POSTs the form body to discovery's
+     * `token` endpoint. `error=access_denied` settles [SignInOutcome.Cancelled]; any other callback error is
+     * `sign-in-failed`. The Worker's refusal is thrown as a [SignInError] under its own code (`invalid_grant`,
+     * `invalid_client`, `rate_limited` with [SignInError.retryAfterSeconds]).
+     *
+     * The session is single use: the PKCE verifier is dropped before the first request, so a second call (a
+     * replayed callback) is refused locally without one. A refusal never wipes the device token or the cache;
+     * only [SignInOutcome.SignedIn] changes state.
+     */
+    public suspend fun complete(callbackUrl: String): SignInOutcome {
+        if (channel != SignInChannel.Redirect) {
+            throw PolarisException(ErrorCode.invalidArgument, "complete(callbackUrl) belongs to a redirect sign-in; use wait().")
+        }
+        val taken = synchronized(lock) {
+            val p = pending
+            pending = null
+            p
+        } ?: throw SignInError(ErrorCode.signInFailed, "this sign-in is already finished or was cancelled; start a new one.")
+        return when (val checked = IdentityRedirect.checkCallback(taken, callbackUrl)) {
+            CallbackResult.Cancelled -> settle(Result.success(SignInOutcome.Cancelled))
+            is CallbackResult.Failed -> settle(
+                Result.failure(SignInError(ErrorCode.signInFailed, "the sign-in redirect was refused (${checked.reason.wire}).")),
+            )
+            is CallbackResult.Code -> try {
+                val ready = client.redeemRedirect(taken, checked.code, redirectDeviceName)
+                settle(Result.success(SignInOutcome.SignedIn(ready.subject, ready.scope, ready.licenseId)))
+            } catch (e: SignInError) {
+                settle(Result.failure(e))
             }
         }
     }
