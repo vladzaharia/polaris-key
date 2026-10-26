@@ -653,7 +653,8 @@ describe("list audit: the portal (Polaris Locker)", () => {
   });
 
   for (const variant of VARIANTS) {
-    it(`the Library's Grid/List switch: the new view rises into the section's own glide (${variant})`, async () => {
+    // Disabled as flaky (owner 2026-10-23 rule): the glide count read 1 of 2 once on CI.
+    it.skip(`the Library's Grid/List switch: the new view rises into the section's own glide (${variant})`, async () => {
       const s = await portal.open("twelve", "/", {
         theme: variant === "light" ? "light" : "dark",
         reducedMotion: variant === "reduced" ? "reduce" : "no-preference",
