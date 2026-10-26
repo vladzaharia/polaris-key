@@ -73,6 +73,18 @@ it("identity.signIn.session.wait", () =>
   expect("wait" in DeviceCodeSession.prototype).toBe(true));
 it("identity.signIn.session.complete", () =>
   expect("complete" in RedirectSession.prototype).toBe(true));
+it("identity.choice", () =>
+  expect("choice" in IdentityClient.prototype).toBe(true));
+it("identity.choice.licenses", () =>
+  expect("licenses" in IdentityClient.prototype).toBe(true));
+it("identity.choice.devices", () =>
+  expect("devices" in IdentityClient.prototype).toBe(true));
+it("identity.choice.complete", () =>
+  expect("complete" in IdentityClient.prototype).toBe(true));
+it("identity.choice.cancel", () =>
+  expect("cancel" in IdentityClient.prototype).toBe(true));
+it("identity.useLicenseChoice", () =>
+  expect("choice" in IdentityClient.prototype).toBe(true));
 it("identity.attachLicense", () =>
   expect("attach" in IdentityClient.prototype).toBe(true));
 it("identity.openAccount", () =>
