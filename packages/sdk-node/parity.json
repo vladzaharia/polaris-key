@@ -184,8 +184,7 @@
       "wp": "I-10a"
     },
     "identity.keyentry": {
-      "status": "planned",
-      "wp": "PX-W9b"
+      "status": "implemented"
     },
     "release.changelog": {
       "status": "implemented"
