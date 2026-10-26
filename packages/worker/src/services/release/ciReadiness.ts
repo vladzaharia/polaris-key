@@ -24,6 +24,7 @@ import { getReleaseConfig } from "./config.js";
 import { fetchRepoFile } from "./github.js";
 import {
   GITHUB_API,
+  appJwt,
   discoverInstallation,
   getInstallationToken,
   githubHeaders,
@@ -57,7 +58,20 @@ export interface CiReadiness {
   checks: ReadinessCheck[];
   /** `.github/workflows/release.yml` as Polaris Key would write it, pinned to this Worker's commit. */
   workflowPreview: string | null;
+  /** `.pkey/release` already declares `releaseKeys`: the setup pull request can then stand alone. */
+  releaseKeys: boolean;
+  /** Where the owner installs the App, and the page of the installation on this repository. */
+  links: CiLinks;
 }
+
+export interface CiLinks {
+  /** `https://github.com/apps/<slug>/installations/new`; null when the App does not answer. */
+  install: string | null;
+  /** The installation's own settings page (user or organisation); null while not installed. */
+  installation: string | null;
+}
+
+type CoreReadiness = Omit<CiReadiness, "links"> & { installId?: number };
 
 /** The CI scope a tap or bucket pull request needs (A-32.7 adds it to the scope vocabulary). */
 const PR_SCOPE = "distribution:pr";
@@ -145,6 +159,44 @@ async function tagRuleset(
   return false;
 }
 
+const GITHUB_PAGE = /^https:\/\/github\.com\/[A-Za-z0-9._~\-/]+$/;
+const APP_SLUG = /^[A-Za-z0-9][A-Za-z0-9-]{0,98}$/;
+
+/** The two GitHub pages the drawer links to. Best effort: a lookup that fails is a null link. */
+async function appLinks(
+  env: Env,
+  installId: number | undefined,
+  needInstall: boolean,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<CiLinks> {
+  const links: CiLinks = { install: null, installation: null };
+  try {
+    const headers = githubHeaders(`Bearer ${await appJwt(env, now)}`);
+    const get = async (
+      path: string,
+    ): Promise<Record<string, unknown> | null> => {
+      const res = await fetchImpl(`${GITHUB_API}${path}`, { headers });
+      if (!res.ok) return null;
+      const body: unknown = await res.json();
+      return isObject(body) ? body : null;
+    };
+    if (needInstall) {
+      const app = await get("/app");
+      if (typeof app?.slug === "string" && APP_SLUG.test(app.slug))
+        links.install = `https://github.com/apps/${app.slug}/installations/new`;
+    }
+    if (installId !== undefined) {
+      const inst = await get(`/app/installations/${installId}`);
+      if (typeof inst?.html_url === "string" && GITHUB_PAGE.test(inst.html_url))
+        links.installation = inst.html_url;
+    }
+  } catch {
+    // Unconfigured or unreachable: the drawer falls back to GitHub's own installations page.
+  }
+  return links;
+}
+
 export async function ciReadiness(
   env: Env,
   db: Db,
@@ -152,6 +204,37 @@ export async function ciReadiness(
   now: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<CiReadiness> {
+  const { installId, ...core } = await readCiReadiness(
+    env,
+    db,
+    slug,
+    now,
+    fetchImpl,
+  );
+  const app = core.checks.find((c) => c.id === "app");
+  const needsPage =
+    core.checks.some((c) => c.state === "unknown") ||
+    Object.values(core.capabilities).some((v) => !v);
+  const links =
+    app?.state === "ok" && !needsPage
+      ? { install: null, installation: null }
+      : await appLinks(
+          env,
+          needsPage ? installId : undefined,
+          app?.state !== "ok",
+          now,
+          fetchImpl,
+        );
+  return { ...core, links };
+}
+
+async function readCiReadiness(
+  env: Env,
+  db: Db,
+  slug: string,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<CoreReadiness> {
   const cfg = await getReleaseConfig(db, slug);
   const owner = cfg?.gh_owner ?? null;
   const repo = cfg?.gh_repo ?? null;
@@ -176,22 +259,24 @@ export async function ciReadiness(
       return null;
     }
   };
-  const notInstalled = (repository: string | null): CiReadiness => ({
+  const notInstalled = (repository: string | null): CoreReadiness => ({
     repository,
     capabilities: NO_CAPABILITIES,
     environmentName: "release",
     checks: [{ id: "app", state: "missing" }, ...unknowns(ALL_CHECKS.slice(1))],
     workflowPreview: preview(),
+    releaseKeys: releaseKeysDeclared,
   });
   if (!owner || !repo) return notInstalled(null);
   const repository = `${owner}/${repo}`;
   const root = `/repos/${owner}/${repo}`;
-  const unseen = (app: ReadinessState): CiReadiness => ({
+  const unseen = (app: ReadinessState): CoreReadiness => ({
     repository,
     capabilities: NO_CAPABILITIES,
     environmentName: "release",
     checks: [{ id: "app", state: app }, ...unknowns(ALL_CHECKS.slice(1))],
     workflowPreview: preview(),
+    releaseKeys: releaseKeysDeclared,
   });
 
   // The App: installed on this repository, and what it was granted.
@@ -221,7 +306,7 @@ export async function ciReadiness(
       fetchImpl,
     );
   } catch {
-    return { ...unseen("ok"), capabilities };
+    return { ...unseen("ok"), capabilities, installId };
   }
 
   const checks: ReadinessCheck[] = [{ id: "app", state: "ok" }];
@@ -363,10 +448,14 @@ export async function ciReadiness(
     });
 
   return {
+    installId,
     repository,
     capabilities,
     environmentName: envName,
     checks,
+    releaseKeys: manifest
+      ? (manifest.release?.releaseKeys.length ?? 0) > 0
+      : releaseKeysDeclared,
     workflowPreview: preview(
       manifest
         ? {

@@ -500,6 +500,10 @@ export interface CiReadiness {
   };
   checks: CiReadinessCheck[];
   workflowPreview: string | null;
+  /** `.pkey/release` already declares `releaseKeys`: the setup pull request can then stand alone. */
+  releaseKeys: boolean;
+  /** Where the owner acts on GitHub; each null when GitHub did not answer. */
+  links: { install: string | null; installation: string | null };
 }
 
 /** `POST …/release/ci-readiness/fix` (A-32.6): what one fix did. */

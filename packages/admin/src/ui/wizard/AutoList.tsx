@@ -15,7 +15,7 @@ export interface AutoItem {
   source?: string;
   /** Replaces the state's word ("Missing"). */
   status?: string;
-  /** Retry, or the permission to grant: shown on a `needs` or `failed` row. */
+  /** The row's button: retry, the permission to grant, or the one click that does it (any row but a done one). */
   action?: React.ReactNode;
 }
 
@@ -36,11 +36,14 @@ export function AutoList({
   items,
   title = "Polaris Key does this",
   hideIdle = false,
+  quietDone = false,
 }: {
   items: readonly AutoItem[];
   title?: string;
   /** Before the work, a row says nothing: the heading already says "will". */
   hideIdle?: boolean;
+  /** A done row says it with the tick alone (the word stays for a screen reader). */
+  quietDone?: boolean;
 }): React.ReactElement {
   const id = React.useId();
   return (
@@ -82,7 +85,10 @@ export function AutoList({
             <span
               className={cn(
                 "text-xs",
-                hideIdle && a.state === "will" && "sr-only",
+                (hideIdle && a.state === "will") ||
+                  (quietDone && a.state === "done")
+                  ? "sr-only"
+                  : null,
                 a.state === "failed"
                   ? "text-danger"
                   : a.state === "needs"
@@ -92,7 +98,7 @@ export function AutoList({
             >
               {a.status ?? WORDS[a.state]}
             </span>
-            {(a.state === "failed" || a.state === "needs") && a.action ? (
+            {a.state !== "done" && a.action ? (
               <span className="shrink-0">{a.action}</span>
             ) : null}
           </li>

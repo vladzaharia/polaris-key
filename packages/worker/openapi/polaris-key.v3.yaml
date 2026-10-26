@@ -23280,7 +23280,14 @@ components:
     AdminCiReadiness:
       type: object
       required:
-        [repository, capabilities, environmentName, checks, workflowPreview]
+        [
+          repository,
+          capabilities,
+          environmentName,
+          checks,
+          workflowPreview,
+          links,
+        ]
       properties:
         environmentName:
           type: string
@@ -23323,6 +23330,21 @@ components:
                 description: A name or a reason, never content.
         workflowPreview:
           type: [string, "null"]
+        releaseKeys:
+          type: boolean
+          description: "`.pkey/release` already declares `releaseKeys`; the setup pull request can then stand alone."
+        links:
+          type: object
+          description: >
+            Where the owner acts on GitHub. `install` is the App's own install page
+            (`https://github.com/apps/<slug>/installations/new`), set while the App is missing
+            or an installation exists; `installation` is that installation's settings page (a
+            user or an organisation), set while a read or a write needs a permission. Each is
+            null when GitHub did not answer.
+          required: [install, installation]
+          properties:
+            install: { type: [string, "null"] }
+            installation: { type: [string, "null"] }
     AdminSetupPullRequestState:
       type: object
       required: [repository, capabilities, state, pullRequest]

@@ -27,6 +27,7 @@ import {
   useReleaseStore,
 } from "../data.js";
 import { PublishFromCiDrawer } from "../components/PublishFromCi/PublishFromCiDrawer.js";
+import { usePublishFromCiRoute } from "../components/PublishFromCi/useCiRoute.js";
 import { FirstReleasePanel } from "../components/FirstReleasePanel.js";
 import { PolicyDialog, type PolicyAction } from "../components/PolicyDialog.js";
 import {
@@ -97,7 +98,7 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
     [channelsQuery.data],
   );
   const linked = isRepoLinked(product.data);
-  const [publishing, setPublishing] = React.useState(false);
+  const [publishing, setPublishing] = usePublishFromCiRoute();
   const firstRun = !!store.data && !store.error && releases.length === 0;
 
   // The wait completes out loud: once the panel has been up, the first release is announced.
