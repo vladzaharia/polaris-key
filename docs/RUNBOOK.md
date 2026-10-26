@@ -2188,9 +2188,10 @@ tables empty it rebuilds all four exactly from the account model.
 
 ### Entries
 
-| Date       | Row                | Fact                                                                                                                                                      | Recorded by |
-| ---------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 2026-10-17 | Commerce pre-check | 0 rows in `dist_connector_settings` (`commerce`), `dist_store_products`, `dist_purchases` and `dist_purchase_bindings`. The old device paths are retired. | The lead    |
+| Date       | Row                 | Fact                                                                                                                                                                                                                                                                                                                                                                           | Recorded by |
+| ---------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 2026-10-17 | Commerce pre-check  | 0 rows in `dist_connector_settings` (`commerce`), `dist_store_products`, `dist_purchases` and `dist_purchase_bindings`. The old device paths are retired.                                                                                                                                                                                                                      | The lead    |
+| 2026-10-26 | Portal tables purge | Before v0.9.18 deployed: `portal-contract-check.sql` on `polaris_key_prod` read 0, 0, 0, 0 (`unmigrated_accounts`, `identities_without_link`, `emails_without_link`, `unsettled_license_links`; no rows written). D1 Time Travel bookmark before the deploy: `00000e1a-00000000-00005110-2f8e912e2d1af247d03e2762822a2780`. The 14 days start at the post-deploy zero reading. | The lead    |
 
 ### Not yet removed
 
