@@ -492,7 +492,7 @@ public actor PolarisKeyClient {
                 else { return nil }
                 return Reacquired(token: token, source: .register)
             case .licenseToken:
-                guard case .ok(let token, _) = await LicenseEndpoints.reacquireToken(
+                guard case .ok(let token, _, _) = await LicenseEndpoints.reacquireToken(
                     core, token: current)
                 else { return nil }
                 return Reacquired(token: token, source: .reacquire)

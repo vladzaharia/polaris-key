@@ -24,16 +24,25 @@ import PolarisKeyCore
 /// The outcome of an activation-like call (`/license/{activate,enroll,token}`), sorted by the
 /// body's error CODE, never by status alone (notes/SDK-PARITY-PASS.md §3.1). Every kind carries a
 /// `code`; a refusal this build has no kind for is `.refused` with the server's own code, so a
-/// code the Worker adds later (I-09's `license_owned`, `key_entry_limit`) is never mislabelled as
-/// a device limit.
+/// code the Worker adds later is never mislabelled as a device limit. I-09's `key_entry_limit` and
+/// `license_owned` (WIRE-CONTRACT-V4 §12.2) have kinds of their own; like a device limit they are
+/// never an auth failure: the stored token, cache and identity are untouched and nothing retries.
 public enum ActivationResult: Sendable, Equatable {
-    case ok(token: String, schemaVersion: Int)
+    /// `keyEntries` is the licence's key-entry count, present only with Identity on (§12.2).
+    case ok(token: String, schemaVersion: Int, keyEntries: KeyEntries? = nil)
     /// 403 `device_limit`: every seat is taken. `manageURL` (PX-W8, WIRE-CONTRACT-V4 §5.3) is
     /// the customer-portal link that frees one, present while the product's portal is on and
     /// already validated by `ManageLink.read`. Add the app's return with `ManageLink.withReturn`
     /// and, on an `/activate` link, the key with `ManageLink.withKey`. It is never an auth
     /// failure: open it only behind a user action.
     case deviceLimit(limit: Int?, deviceCount: Int?, manageURL: String? = nil)
+    /// 403 `key_entry_limit`: the licence has no key entries left. `manageUrl` is the §5.3 refusal
+    /// link (already validated; nil while the portal is off), where the key can join an account.
+    /// Open it only behind a user action.
+    case keyEntryLimit(manageUrl: String?, keyEntries: KeyEntries?)
+    /// 403 `license_owned`: the licence is in an account and this device is not enrolled on it.
+    /// `signInUrl` is the product's sign-in card (validated; carries no key and names no account).
+    case licenseOwned(signInUrl: String?)
     /// 401: the key is unknown, revoked or no longer usable.
     case unauthorized
     /// 403 `fingerprint_required`: the tier requires a hardware fingerprint this host could not
@@ -73,6 +82,8 @@ public enum ActivationResult: Sendable, Equatable {
         switch self {
         case .ok: return ""
         case .deviceLimit: return ErrorCode.deviceLimit
+        case .keyEntryLimit: return ErrorCode.keyEntryLimit
+        case .licenseOwned: return ErrorCode.licenseOwned
         case .unauthorized: return ErrorCode.unauthorized
         case .fingerprintRequired: return ErrorCode.fingerprintRequired
         case .hardwareMismatch: return ErrorCode.hardwareMismatch
@@ -97,6 +108,8 @@ public enum ActivationResult: Sendable, Equatable {
         switch self {
         case .ok: return "ok"
         case .deviceLimit: return "device-limit"
+        case .keyEntryLimit: return "key-entry-limit"
+        case .licenseOwned: return "license-owned"
         case .unauthorized: return "unauthorized"
         case .fingerprintRequired: return "fingerprint-required"
         case .hardwareMismatch: return "hardware-mismatch"
@@ -123,6 +136,7 @@ public enum ActivationResult: Sendable, Equatable {
             return ErrorCopy.has(code)
                 ? ErrorCopy.message(code)
                 : ErrorCopy.activationMessage(kind, code: code)
+        case .keyEntryLimit, .licenseOwned: return ErrorCopy.message(code)
         case .hardwareMismatch(_, let changed):
             let base = ErrorCopy.activationMessage(kind, code: code)
             guard let changed, !changed.isEmpty else { return base }
@@ -140,6 +154,7 @@ public enum ActivationResult: Sendable, Equatable {
         case .ok: return nil
         case .refused(let code, _, _):
             return ErrorCopy.has(code) ? ErrorCopy.title(code) : ErrorCopy.activationTitle(kind)
+        case .keyEntryLimit, .licenseOwned: return ErrorCopy.title(code)
         default: return ErrorCopy.activationTitle(kind)
         }
     }
@@ -164,10 +179,16 @@ extension ActivationResult: CustomStringConvertible, CustomDebugStringConvertibl
 {
     public var description: String {
         switch self {
-        case .ok(_, let schemaVersion):
-            return "ActivationResult.ok(token: \(Self.redacted), schemaVersion: \(schemaVersion))"
+        case .ok(_, let schemaVersion, let keyEntries):
+            return
+                "ActivationResult.ok(token: \(Self.redacted), schemaVersion: \(schemaVersion), keyEntries: \(Self.show(keyEntries)))"
         case .deviceLimit(let limit, let count, let url):
             return "ActivationResult.deviceLimit(limit: \(Self.show(limit)), deviceCount: \(Self.show(count)), manageURL: \(Self.show(url)))"
+        case .keyEntryLimit(let url, let entries):
+            return
+                "ActivationResult.keyEntryLimit(manageUrl: \(Self.show(url)), keyEntries: \(Self.show(entries)))"
+        case .licenseOwned(let url):
+            return "ActivationResult.licenseOwned(signInUrl: \(Self.show(url)))"
         case .unauthorized: return "ActivationResult.unauthorized"
         case .fingerprintRequired: return "ActivationResult.fingerprintRequired"
         case .hardwareMismatch(let drift, let changed):
@@ -191,13 +212,13 @@ extension ActivationResult: CustomStringConvertible, CustomDebugStringConvertibl
     /// What `dump` and `Mirror` show: the same case with the token drawn as `<redacted>`.
     public var customMirror: Mirror {
         switch self {
-        case .ok(_, let schemaVersion):
+        case .ok(_, let schemaVersion, let keyEntries):
             return Mirror(
                 self,
                 children: [
                     (
                         label: "ok",
-                        value: (token: Self.redacted, schemaVersion: schemaVersion) as Any
+                        value: (token: Self.redacted, schemaVersion: schemaVersion, keyEntries: keyEntries) as Any
                     )
                 ], displayStyle: .enum)
         default:
@@ -296,7 +317,9 @@ public enum LicenseEndpoints {
                     code: ErrorCode.badResponse, message: "malformed activation response",
                     status: 200)
             }
-            return .ok(token: ok.token, schemaVersion: ok.schemaVersion)
+            return .ok(
+                token: ok.token, schemaVersion: ok.schemaVersion,
+                keyEntries: KeyEntries.read(ok.keyEntries))
         }
         let body = try? JSONDecoder().decode(ErrorBody.self, from: response.body)
         let code = body?.code
@@ -315,6 +338,11 @@ public enum LicenseEndpoints {
             case ErrorCode.deviceLimit?:
                 return .deviceLimit(
                     limit: body?.limit, deviceCount: body?.deviceCount, manageURL: body?.manageURL)
+            case ErrorCode.keyEntryLimit?:
+                return .keyEntryLimit(
+                    manageUrl: body?.manageURL, keyEntries: KeyEntries.read(body?.keyEntries))
+            case ErrorCode.licenseOwned?:
+                return .licenseOwned(signInUrl: body?.signInURL)
             case ErrorCode.fingerprintRequired?: return .fingerprintRequired
             case ErrorCode.enrollClaimed?: return .enrollClaimed
             case ErrorCode.licenseDisabled?: return .licenseDisabled
@@ -358,6 +386,17 @@ public enum LicenseEndpoints {
 private struct ActivationOkBody: Decodable {
     let token: String
     let schemaVersion: Int
+    let keyEntries: KeyEntries.Wire?
+
+    private enum CodingKeys: String, CodingKey { case token, schemaVersion, keyEntries }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        token = try c.decode(String.self, forKey: .token)
+        schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
+        // Lenient: a malformed count never costs the caller the token.
+        keyEntries = try? c.decodeIfPresent(KeyEntries.Wire.self, forKey: .keyEntries)
+    }
 }
 
 /// An error body in BOTH spellings the Worker uses: flat `{"error":"device_limit","limit":3}`
@@ -374,9 +413,11 @@ struct ErrorBody: Decodable {
         let changed: [String]?
         /// PX-W8: read leniently, so a malformed link never costs the caller the other fields.
         let manageUrl: String?
+        let signInUrl: String?
+        let keyEntries: KeyEntries.Wire?
 
         private enum CodingKeys: String, CodingKey {
-            case code, message, limit, deviceCount, drift, changed, manageUrl
+            case code, message, limit, deviceCount, drift, changed, manageUrl, signInUrl, keyEntries
         }
 
         init(from decoder: Decoder) throws {
@@ -388,6 +429,8 @@ struct ErrorBody: Decodable {
             drift = try c.decodeIfPresent(Int.self, forKey: .drift)
             changed = try c.decodeIfPresent([String].self, forKey: .changed)
             manageUrl = try? c.decode(String.self, forKey: .manageUrl)
+            signInUrl = try? c.decode(String.self, forKey: .signInUrl)
+            keyEntries = try? c.decodeIfPresent(KeyEntries.Wire.self, forKey: .keyEntries)
         }
     }
     let flatCode: String?
@@ -398,6 +441,8 @@ struct ErrorBody: Decodable {
     let topDrift: Int?
     let topChanged: [String]?
     let topManageUrl: String?
+    let topSignInUrl: String?
+    let topKeyEntries: KeyEntries.Wire?
 
     var code: String? { flatCode ?? nested?.code }
     var message: String? { topMessage ?? nested?.message }
@@ -407,14 +452,19 @@ struct ErrorBody: Decodable {
     var changed: [String]? { topChanged ?? nested?.changed }
     /// The validated refusal link (PX-W8): the top-level member, else the nested one.
     var manageURL: String? { ManageLink.read(topManageUrl, nested?.manageUrl) }
+    /// The sign-in card link of a `license_owned` refusal: validated like a manage link.
+    var signInURL: String? { ManageLink.read(topSignInUrl, nested?.signInUrl) }
+    var keyEntries: KeyEntries.Wire? { topKeyEntries ?? nested?.keyEntries }
 
     private enum CodingKeys: String, CodingKey {
-        case error, message, limit, deviceCount, drift, changed, manageUrl
+        case error, message, limit, deviceCount, drift, changed, manageUrl, signInUrl, keyEntries
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         topManageUrl = try? c.decode(String.self, forKey: .manageUrl)
+        topSignInUrl = try? c.decode(String.self, forKey: .signInUrl)
+        topKeyEntries = try? c.decodeIfPresent(KeyEntries.Wire.self, forKey: .keyEntries)
         topMessage = try? c.decodeIfPresent(String.self, forKey: .message)
         topLimit = try? c.decodeIfPresent(Int.self, forKey: .limit)
         topDeviceCount = try? c.decodeIfPresent(Int.self, forKey: .deviceCount)

@@ -7,7 +7,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
-// @pkey-feature release.fetch
+// @pkey-feature release.fetch identity.keyentry
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -386,11 +386,27 @@ enum SwiftReplay {
     /// wire code the body carried.
     static func activation(_ r: ActivationResult, into out: inout [String: JSONValue]) {
         out["result"] = .string(r.kind)
-        if case .ok = r { return }
+        func entries(_ e: KeyEntries?) -> JSONValue {
+            e.map { .object(["used": .int($0.used), "limit": .int($0.limit)]) } ?? .null
+        }
+        if case .ok(_, _, let keyEntries) = r {
+            // `null` with Identity off: the response has no member and the client reports none.
+            out["keyEntries"] = entries(keyEntries)
+            return
+        }
         out["code"] = .string(r.code)
         // PX-W8: the refusal link, exactly as served; null when the result carries none.
         if case .deviceLimit(_, _, let manageURL) = r {
             out["manageUrl"] = manageURL.map(JSONValue.string) ?? .null
+        }
+        if case .keyEntryLimit(let manageUrl, let keyEntries) = r {
+            out["manageUrl"] = manageUrl.map(JSONValue.string) ?? .null
+            out["keyEntries"] = entries(keyEntries)
+        }
+        if case .licenseOwned(let signInUrl) = r {
+            // keyentry-owned (recorded before the kind) names this refusal `refused`.
+            out["result"] = .string("refused")
+            out["signInUrl"] = signInUrl.map(JSONValue.string) ?? .null
         }
     }
 

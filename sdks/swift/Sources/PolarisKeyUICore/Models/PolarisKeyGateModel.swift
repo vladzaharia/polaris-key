@@ -557,6 +557,9 @@ public final class PolarisKeyGateModel {
                 result: result.kind, limit: limit, deviceCount: count, manageUrl: manageURL)
         case .refused(let code, _, _):
             return KitActivation(result: "refused", code: code)
+        case .keyEntryLimit, .licenseOwned:
+            // The kit shows them as the refusals they were until I-10b.13 gives them states.
+            return KitActivation(result: "refused", code: result.code)
         case .error(let code, _, _):
             return KitActivation(result: "error", code: code)
         default:
