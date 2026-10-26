@@ -27,6 +27,10 @@ public data class PolarisLicenseSummary(
     val holder: String? = null,
     /** Entitlements granted (true flags, or any non-false value), by name. */
     val entitlements: List<String> = emptyList(),
+    /** The tier's display name (`LicenseInfo.tierLabel`), when the licence document carries one. */
+    val tierLabel: String? = null,
+    /** The licence's device limit, when the document carries one. */
+    val deviceLimit: Int? = null,
 )
 
 /** How an editable row takes a new value, typed from the catalog entry's schema. */
@@ -180,7 +184,14 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
             val state: LicenseState = client.status()
             val profile = client.license.getProfile()
             val granted = client.entitlements.all().filter { (_, v) -> !(v is JsonPrimitive && v.booleanOrNull == false) }.keys.sorted()
-            return PolarisLicenseSummary(state.status, profile?.name?.takeIf { it.isNotBlank() }, granted)
+            val info = runCatching { client.license.licenseInfo() }.getOrNull()
+            return PolarisLicenseSummary(
+                state.status,
+                profile?.name?.takeIf { it.isNotBlank() },
+                granted,
+                tierLabel = info?.tierLabel?.takeIf { it.isNotBlank() },
+                deviceLimit = info?.deviceLimit?.toInt()?.takeIf { it > 0 },
+            )
         }
 
         override suspend fun entries(): List<PolarisSettingEntry> {

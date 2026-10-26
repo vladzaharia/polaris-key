@@ -102,4 +102,22 @@ class PolarisKeyGateStartTest {
         waitUntil(timeoutMillis = WAIT_MS) { onAllNodesWithText("Old name product").fetchSemanticsNodes().isNotEmpty() }
         assertEquals(1, loads.get())
     }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun theGateHandsTheThemeAboveItTheProductPresentation() = runDesktopComposeUiTest(width = WIDTH, height = HEIGHT) {
+        val client = client(AtomicInteger())
+        var sink: Any? = null
+        setContent {
+            PolarisTheme(branding = PolarisBranding.None, darkTheme = false) {
+                PolarisKeyGate(client) {
+                    Text("Seen")
+                    sink = LocalPolarisPresentationSink.current?.value
+                }
+            }
+        }
+        waitUntil(timeoutMillis = WAIT_MS) { onAllNodesWithText("Seen").fetchSemanticsNodes().isNotEmpty() }
+        waitForIdle()
+        assertEquals(client.presentationSource, sink, "the one-liner needs no presentation argument")
+    }
 }

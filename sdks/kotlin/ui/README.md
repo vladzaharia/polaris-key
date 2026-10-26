@@ -136,6 +136,8 @@ fun ComponentActivity.show(client: PolarisKeyClient) {
 }
 ```
 
+With `PolarisTheme` around the gate, the gate hands the theme the product's name and icon (`client.presentationSource`), so the one-liner needs no `presentation` argument.
+
 `PolarisKeyGate` (the old `PolarisKeyApp` name is deprecated) composes the pieces above, unchanged: the boot shell over `client.bootHost()`, the
 gate for its activation stop, pack progress, and the update banner over `client.updateActions()`
 (`client.update.install(check)`; a Play flexible update's progress and "Restart to finish", which

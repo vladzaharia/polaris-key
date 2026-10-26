@@ -73,7 +73,6 @@ class MainActivity : ComponentActivity() {
                     darkTheme = dark,
                     accent = options.accent,
                     copy = PolarisCopy.localized().copy(productName = PRODUCT_NAME),
-                    presentation = client?.presentationSource,
                 ) {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         if (client == null) {
