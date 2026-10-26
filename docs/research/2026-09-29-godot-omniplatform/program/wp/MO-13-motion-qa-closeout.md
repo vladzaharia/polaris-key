@@ -263,3 +263,26 @@ List audit, from the `::view-transition-*` animations of one transition (enterin
 - CI: the `console` job has one step, "Motion smoke (Firefox)", `continue-on-error: true` until it has passed once on main; then remove `continue-on-error`.
 - Local: Chromium 52 passed, 9 skipped (unchanged); `PK_MOTION_BROWSER=firefox` reaches `firefox.launch()` and fails there with "Could not find profile folder" (B8), so the switch is wired.
 - **CI result: pending** (first run: the v0.9.18 push). S-23 §11 reads "measured in CI on <first run>; pending" until the lead fills it.
+
+### MO-13.4 the 4x CPU frame check
+
+- Case file: `packages/admin/e2e/motionPerf.e2e.test.ts`, under `describe.skipIf(!process.env.PK_MOTION_PERF)` (skipped without the switch). It runs the nine moments in the built apps under the Worker's CSP at 1280 x 800, dark, motion on. CDP `Emulation.setCPUThrottlingRate { rate: 4 }`; rAF timestamps from the document's start; the action moments take the frames from just before the action for 700 ms, the loads (portal Library, console Overview) the first 1.5 s of the new document. p50, p95 (nearest rank) and max are printed as a table; `$PK_SHOTS_DIR/perf.json` is written when that is set. Assertion: p95 <= 33.4 ms (M2). The budget was not raised.
+- Run: `PK_MOTION_PERF=1 PK_SHOTS_DIR=<dir> heavy.sh ... vitest run -c vitest.e2e.config.ts e2e/motionPerf.e2e.test.ts` after `pnpm --filter @polaris-key/admin build`.
+- Machine: Apple M5 Pro, 18 cores, macOS 27, shared with many agents. **The load average was far above 4 for the whole session**: `uptime` read 21 / 21 / 29 before the first run, 82 / 39 / 36 during it, 200 / 155 / 98 for the second and 893 / 358 / 189 for the third. The harness works, but rAF was starved by other processes (4 to 19 frames in a 700 ms window instead of about 42), so **the numbers below are not a frame-time measurement of the app; they are pessimistic by an unknown amount and no moment can be called over budget from them.**
+- Run 1 (load 21 to 82; the least starved: 19 to 82 frames per moment, p50 16.0 to 17.0 ms):
+
+| Moment                  | frames | p50 ms | p95 ms | max ms |
+| ----------------------- | ------ | ------ | ------ | ------ |
+| portal: tile to product | 43     | 16.0   | 89.0   | 191.0  |
+| portal: free a device   | 33     | 17.0   | 61.0   | 79.0   |
+| portal: library load    | 82     | 16.0   | 31.0   | 76.0   |
+| console: overview       | 78     | 16.7   | 16.8   | 83.3   |
+| console: filter, 8 rows | 42     | 16.7   | 33.3   | 183.3  |
+| console: filter, 60     | 19     | 16.7   | 550.0  | 550.0  |
+| console: filter, 200    | 4      | 16.6   | 33.4   | 33.4   |
+| console: row to record  | 35     | 16.7   | 50.0   | 133.3  |
+| console: drawer open    | 46     | 16.7   | 33.4   | 249.9  |
+
+(Run 1 used a looser window, `ms + 400`, and a 5-frame minimum; both were then tightened to the exact window and 2 frames. Runs 2 and 3 on the tightened file, at load 160 to 890, gave 4 to 14 frames for the action moments and p95 from 16.7 to 580 ms: noise.)
+
+- **To do: rerun at a load average below 4** (a quiet machine or CI-like runner) and replace this table; until then S-23 §3.5 (measured on an idle machine) stays the reference, and nothing here shows a regression. Raw JSON of the runs: `/Users/vlad/Repos/pk-wt/_scratch/MO-13.4/perf.json` (last run).

@@ -69,7 +69,7 @@ The ones that fail a review:
   with reduced motion.
 - Add a case beside your surface's e2e file. Set `PK_SHOTS_DIR=<dir>` to also write a frame strip
   of each pattern, in both themes and reduced, for the pull request.
-- `PK_MOTION_PERF=1` is planned (MO-13.4): frame times at 4× CPU. It is opt-in and never asserted in CI.
+- `PK_MOTION_PERF=1` runs `packages/admin/e2e/motionPerf.e2e.test.ts`: nine moments under a 4× CPU throttle, rAF intervals for 700 ms (1.5 s for a load), p95 at most 33.4 ms. It prints a table and, with `PK_SHOTS_DIR` set, writes `perf.json`. It is opt-in and never run in CI.
 - `PK_MOTION_BROWSER=firefox` or `webkit` runs the smoke suite in that engine. CI runs Firefox in
   the `console` job.
 
