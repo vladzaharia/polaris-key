@@ -8,7 +8,7 @@
 // @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
-// @pkey-feature identity.redirect.web identity.signin.hints
+// @pkey-feature identity.redirect.web identity.signin.hints identity.account
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -170,6 +170,11 @@ function usesRedirect(t: Transcript): boolean {
   );
 }
 
+/** Does this transcript call the account verbs (so discovery must name their endpoints)? */
+function usesAccount(t: Transcript): boolean {
+  return t.steps.some((s) => s.action === "subject" || s.action === "signOut");
+}
+
 /** The Worker's standard discovery document, for a transcript that loads none itself. */
 function standardDiscovery(t: Transcript): string {
   const base = `${t.baseUrl}/${t.product}`;
@@ -179,13 +184,21 @@ function standardDiscovery(t: Transcript): string {
   return JSON.stringify({
     product: t.product,
     services: {
-      ...(usesRedirect(t)
+      // A slug discovery omits reads as off, so a transcript that syncs names its services.
+      ...(usesAccount(t)
+        ? { license: { enabled: true }, config: { enabled: true } }
+        : {}),
+      ...(usesRedirect(t) || usesAccount(t)
         ? {
             identity: {
               enabled: true,
               configured: true,
               issuer: redirectIssuer(t),
+              account: true,
               endpoints: {
+                subject: `${base}/identity/subject`,
+                signout: `${base}/identity/signout`,
+                accountPortal: `${t.baseUrl}/#/p/${t.product}`,
                 authorize: `${base}/identity/authorize`,
                 token: `${base}/identity/token`,
                 ...(choice
@@ -491,6 +504,14 @@ async function act(
       }
       break;
     }
+    case "subject":
+      out.subject = await client.identity.subject();
+      break;
+    case "signOut": {
+      const r = await client.identity.signOut();
+      out.released = r.released;
+      break;
+    }
     case "mintToken":
       try {
         const minted = await client.config.mintToken(
@@ -770,7 +791,9 @@ async function replay(t: Transcript): Promise<void> {
       ? ["release", "distribution", "update"]
       : usesRedirect(t)
         ? ["identity"]
-        : undefined);
+        : usesAccount(t)
+          ? ["license", "config", "identity"]
+          : undefined);
   const client = new PolarisKeyClient({
     productSlug: t.product,
     baseUrl: t.baseUrl,

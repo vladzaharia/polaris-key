@@ -1295,6 +1295,16 @@
       "reason": "error-code constants, not verbs"
     },
     {
+      "sdk": "node",
+      "path": "license.wipeLocal",
+      "reason": "wiring the client installs (the local half of a released sign-out); not an app verb"
+    },
+    {
+      "sdk": "node",
+      "path": "identity.onBeforeSignOut",
+      "reason": "the seam Cloud Sync's SDK package registers its flush on (D-4); not an app verb"
+    },
+    {
       "sdk": "swift",
       "path": "identity.installSignOut",
       "reason": "wiring the client installs; not an app verb"
@@ -2868,10 +2878,7 @@
       "kind": "method",
       "feature": "identity.account",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3301,10 +3308,7 @@
       "kind": "method",
       "feature": "identity.account",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"

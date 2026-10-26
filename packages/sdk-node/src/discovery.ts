@@ -26,6 +26,7 @@ import {
   SERVICE_SLUGS,
   type ServiceSlug,
 } from "./services.generated.js";
+import type { IdentityDiscovery } from "@polaris-key/protocol/identity";
 import { ErrorCode } from "./constants.generated.js";
 import { classifyResponse, transportError } from "./core/http.js";
 
@@ -354,4 +355,37 @@ export function appcastUrlFrom(
     );
   }
   return url.toString();
+}
+
+/** The Identity fragment as the SDK reads it (`IdentityDiscovery`, WIRE-CONTRACT-V4 §12.6). */
+export type IdentityFragment = IdentityDiscovery;
+
+/**
+ * The Identity fragment of a discovery document, or null while Identity is off or absent.
+ * Endpoints are kept only when they are non-empty strings: a client uses an endpoint the
+ * document names and never builds one. `account`, `keyEntryLimit` and `issuer` are read the
+ * same way (anything malformed is dropped, never repaired).
+ */
+export function identityFragmentFrom(
+  doc: ProductDiscoveryDocument | null,
+): IdentityFragment | null {
+  const raw: unknown = doc?.services?.identity;
+  if (!isRecord(raw) || raw.enabled !== true) return null;
+  const endpoints: Record<string, string> = {};
+  if (isRecord(raw.endpoints))
+    for (const [k, v] of Object.entries(raw.endpoints))
+      if (typeof v === "string" && v !== "") endpoints[k] = v;
+  const limit = raw.keyEntryLimit;
+  return {
+    enabled: true,
+    configured: raw.configured !== false,
+    ...(optionalString(raw.issuer)
+      ? { issuer: optionalString(raw.issuer) }
+      : {}),
+    ...(raw.account === true ? { account: true as const } : {}),
+    ...(Number.isSafeInteger(limit) && (limit as number) >= 1
+      ? { keyEntryLimit: limit as number }
+      : {}),
+    endpoints: endpoints as unknown as IdentityFragment["endpoints"],
+  };
 }

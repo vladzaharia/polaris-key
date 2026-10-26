@@ -5,7 +5,8 @@
 import { describe, expect, it } from "vitest";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
-import { activationRefusal, readKeyEntries } from "../src/license/endpoints.js";
+import { readKeyEntries } from "@polaris-key/client-core";
+import { activationRefusal } from "../src/license/endpoints.js";
 
 const LIMIT_URL = "https://key.plrs.im/activate?product=djdl";
 const SIGN_IN = "https://key.plrs.im/signin?product=djdl";

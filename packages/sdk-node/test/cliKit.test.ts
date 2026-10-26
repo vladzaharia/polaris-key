@@ -94,7 +94,20 @@ describe("identity verbs", () => {
   });
 
   it("sign-out wipes the credential", async () => {
-    const { client: c } = await client();
+    const { client: c } = await client({
+      "GET /djdl/.well-known/polaris.json": () =>
+        json({
+          product: "djdl",
+          services: {
+            identity: {
+              enabled: true,
+              configured: true,
+              endpoints: { signout: "https://k.test/djdl/identity/signout" },
+            },
+          },
+        }),
+      "POST /djdl/identity/signout": () => json({ released: true }),
+    });
     expect((await signOut(c)).ok).toBe(true);
     expect(c.license.activation()).toBeNull();
   });

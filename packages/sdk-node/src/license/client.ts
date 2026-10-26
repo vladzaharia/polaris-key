@@ -224,6 +224,14 @@ export class LicenseClient {
       // `deauthorize` swallows transport failures, including local-only mode's refusal.
       await deauthorize(this.ctx, token).catch(() => undefined);
     }
+    await this.wipeLocal();
+  }
+
+  /**
+   * The local half of `deactivate()`: no request. For a sign-out the server has already released
+   * (`released: true`), which stops the token working.
+   */
+  async wipeLocal(): Promise<void> {
     await this.tokens.clear();
     await this.cache.clear();
     await Promise.resolve(this.onDeactivated()).catch(() => undefined);

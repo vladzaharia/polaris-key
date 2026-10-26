@@ -69,6 +69,18 @@ async function setup(
       expectedServices: ["license", "config", "identity", "release"] as never,
     },
     routes: {
+      "GET /djdl/.well-known/polaris.json": () =>
+        json({
+          product: "djdl",
+          services: {
+            identity: {
+              enabled: true,
+              configured: true,
+              endpoints: { signout: "https://k.test/djdl/identity/signout" },
+            },
+          },
+        }),
+      "POST /djdl/identity/signout": () => json({ released: true }),
       "POST /djdl/identity/auth/device/start": () => json(START),
       "POST /djdl/identity/auth/device/poll": () =>
         json({
