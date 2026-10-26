@@ -8,6 +8,8 @@ extends RefCounted
 # ── Wire codes (PolarisErrorCode) ──────────────────────────────────────────────────────────
 const UNAUTHORIZED := &"unauthorized"
 const DEVICE_LIMIT := &"device_limit"
+const KEY_ENTRY_LIMIT := &"key_entry_limit"
+const LICENSE_OWNED := &"license_owned"
 const LICENSE_DISABLED := &"license_disabled"
 const LICENSE_EXPIRED := &"license_expired"
 const VERSION_BLOCKED := &"version_blocked"
