@@ -101,13 +101,14 @@ class KitPresentationRulesTest {
 
     @Test
     fun servicesAreClosedUnderTheirRequirements() {
-        assertEquals(8, inputs("{}").closedServices.size)
+        assertEquals(9, inputs("{}").closedServices.size)
         assertEquals(emptySet<String>(), inputs("""{"services":["update"]}""").closedServices)
         assertEquals(
             setOf("release", "distribution", "update"),
             inputs("""{"services":["release","distribution","update"]}""").closedServices,
         )
         assertEquals(setOf("config"), inputs("""{"services":["config","sync"]}""").closedServices)
+        assertEquals(emptySet<String>(), inputs("""{"services":["connect"]}""").closedServices)
         assertEquals(
             "a toast about an update needs the whole chain",
             "hidden",

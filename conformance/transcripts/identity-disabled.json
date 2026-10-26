@@ -165,7 +165,10 @@
           "release": false,
           "distribution": false,
           "update": false,
-          "identity": false
+          "identity": false,
+          "sync": false,
+          "commerce": false,
+          "connect": false
         }
       }
     },

@@ -851,6 +851,9 @@ export const identityDisabled: Scenario = {
             distribution: false,
             update: false,
             identity: false,
+            sync: false,
+            commerce: false,
+            connect: false,
           },
         },
       );

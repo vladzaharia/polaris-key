@@ -477,9 +477,10 @@ private val SERVICE_REQUIRES: Map<String, List<String>> = mapOf(
     "update" to listOf("distribution"),
     "sync" to listOf("config", "identity"),
     "commerce" to listOf("license"),
+    "connect" to listOf("identity"),
 )
 
-private val ALL_SERVICES: List<String> = listOf("license", "config", "release", "distribution", "update", "identity", "sync", "commerce")
+private val ALL_SERVICES: List<String> = listOf("license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "connect")
 
 /** `services` closed under `requires` (tools/services.json): a service whose requirement is off is off too. */
 internal val KitInputs.closedServices: Set<String>
