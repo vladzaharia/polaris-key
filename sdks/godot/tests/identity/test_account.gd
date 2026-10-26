@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature identity.devicecode license.deactivate
+# @pkey-feature identity.devicecode license.deactivate identity.account
 # SDK parity §3.12: identity.current() reads the signed-in person off the verified licence's
 # profile (null when none), and identity.sign_out() cancels a sign-in, forgets the identity and
 # releases the seat through license.deactivate() (the best-effort server call, then the wipe).
@@ -34,4 +34,67 @@ func run(t: PKeyTestContext) -> void:
 	var r2: PKeyResult = await cold.identity.sign_out()
 	t.check("account: sign_out() before configure() is refused", not r2.ok and r2.code == PKeyErrors.NOT_CONFIGURED)
 	cold.queue_free()
+	await _discovered(t)
 	h.free_server()
+
+
+## identity.account (I-10b.2): subject(), sign_out() and open_account() over a discovered fragment.
+func _discovered(t: PKeyTestContext) -> void:
+	h.plan.clear()
+	h.server.requests.clear()
+	h.serve_docs([h.F["token"]])
+	var root := "%s/%s/identity" % [h.server.base_url(), h.F["product"]]
+	var fragment := {"enabled": true, "account": true, "endpoints": {"subject": root + "/subject", "signout": root + "/signout", "accountPortal": h.server.base_url() + "/#/p/djdl"}}
+	var doc := {"product": h.F["product"], "services": {"license": {"enabled": true}, "config": {"enabled": true}, "identity": fragment}}
+	h.plan["polaris.json"] = [S.json(200, doc)]
+	h.plan["/identity/subject"] = [S.json(200, {"subject": "ps_abc"}), S.json(200, {"subject": null})]
+	h.plan["/identity/signout"] = [S.json(200, {"released": false}), S.json(200, {"released": true})]
+	var store := PKeyMemoryStore.new(h.F["device_id"], h.F["token"])
+	var sdk = await h.sdk(store)
+	await sdk.sync()
+	var r: PKeyResult = await sdk.identity.subject()
+	t.check("account: subject() reads the discovered endpoint", r.ok and r.detail["subject"] == "ps_abc" and S.bearer(h.requests("GET", "/identity/subject")[0]) == h.F["token"], str(r))
+	t.check("account: the subject is kept in the cache record", sdk.core.cache.subject == "ps_abc" and store.cache.get("subject") == "ps_abc")
+	var order: Array = []
+	sdk.identity.add_before_sign_out(func() -> void: order.append("hook"))
+	r = await sdk.identity.sign_out()
+	t.check("account: released: false keeps the token and the licence", r.ok and r.detail["released"] == false and store.token == h.F["token"] and sdk.license.is_licensed(), str(r))
+	t.check("account: the hook ran before the server was asked, the subject is forgotten", order == ["hook"] and sdk.core.cache.subject == "" and not store.cache.has("subject"))
+	r = await sdk.identity.subject()
+	t.check("account: subject() is null once forgotten", r.ok and r.detail["subject"] == null, str(r))
+	r = await sdk.identity.sign_out()
+	t.check("account: released: true drops the token and the cache", r.ok and r.detail["released"] == true and store.token == "" and not sdk.license.is_licensed(), str(r))
+	t.check("account: no deauthorize call on the released path", h.requests("POST", "/license/deauthorize").is_empty(), str(h.requests("POST", "/license/deauthorize").size()))
+	r = await sdk.identity.subject()
+	t.check("account: subject() without a credential is null", r.ok and r.detail["subject"] == null, str(r))
+	var opened: Array = []
+	sdk.identity.account_opener = func(url: String) -> bool:
+		opened.append(url)
+		return true
+	r = await sdk.identity.open_account()
+	t.check("account: open_account() hands the published page to the opener", r.ok and r.detail["opened"] and opened.size() == 1 and r.detail["url"] == fragment["endpoints"]["accountPortal"], str(r))
+	sdk.queue_free()
+
+	# An endpoint on another origin is never used.
+	h.server.requests.clear()
+	store = PKeyMemoryStore.new(h.F["device_id"], h.F["token"])
+	sdk = await h.sdk(store)
+	await sdk.sync()
+	fragment["endpoints"]["signout"] = "https://evil.example/identity/signout"
+	h.plan["polaris.json"] = [S.json(200, doc)]
+	h.plan["/license/deauthorize"] = [S.json(200, {"ok": true})]
+	r = await sdk.identity.sign_out()
+	t.check("account: an endpoint on another origin is unavailable and the legacy release runs", r.ok and r.detail.has("remote_attempted") and h.requests("POST", "/identity/signout").is_empty(), str(r))
+	sdk.queue_free()
+
+	# No identity fragment: unavailable, and nothing is sent.
+	h.plan["polaris.json"] = [S.json(200, {"product": h.F["product"], "services": {"license": {"enabled": true}, "identity": {"enabled": false}}})]
+	h.server.requests.clear()
+	store = PKeyMemoryStore.new(h.F["device_id"], h.F["token"])
+	sdk = await h.sdk(store)
+	r = await sdk.identity.subject()
+	t.check("account: no fragment: subject() is unavailable", not r.ok and r.code == PKeyErrors.SERVICE_UNAVAILABLE and r.detail["kind"] == "unavailable", str(r))
+	r = await sdk.identity.open_account()
+	t.check("account: no fragment: open_account() is unavailable", not r.ok and r.detail["kind"] == "unavailable", str(r))
+	t.check("account: no fragment: only discovery was requested", h.requests("GET", "/identity/subject").is_empty())
+	sdk.queue_free()

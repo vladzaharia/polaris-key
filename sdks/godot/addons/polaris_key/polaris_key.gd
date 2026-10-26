@@ -186,7 +186,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
-	identity.attach(core, self)
+	identity.bind(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	presentation_source.attach(core, self)
 	PKeyUiTheme.use_presentation(presentation_source)

@@ -1846,8 +1846,13 @@
     },
     {
       "sdk": "godot",
-      "path": "identity.attach",
-      "reason": "wiring the boot and update flows call; not an app verb"
+      "path": "identity.bind",
+      "reason": "wiring PolarisKey.configure calls; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.add_before_sign_out",
+      "reason": "the seam Cloud Sync's SDK package registers its flush on (D-4); not an app verb"
     },
     {
       "sdk": "godot",
@@ -2911,10 +2916,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3308,8 +3310,7 @@
         },
         "godot": {
           "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
-          "spelling": "attach"
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         }
       },
       "layer": "client"
@@ -3327,10 +3328,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
