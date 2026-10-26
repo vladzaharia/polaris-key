@@ -110,6 +110,28 @@ jobs:
             sleep 30
           done
 
+          # Advisory lanes (owner decision 2026-10-26): a CI job declared `continue-on-error: true`
+          # at job level is allowed to fail in CI, so its failure does not block a deploy either.
+          # The list is read from this tag's own ci.yml (job display names, cut before a matrix
+          # expression suffix), never typed here, so a lane is advisory exactly while CI says so.
+          # Every other check still fails closed.
+          mapfile -t ADVISORY < <(python3 - .github/workflows/ci.yml <<'PY'
+          import re, sys
+          job = name = None; advisory = False; out = []
+          def flush():
+              if job and advisory and name: out.append(name)
+          for line in open(sys.argv[1], encoding="utf-8"):
+              m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+              if m:
+                  flush(); job, name, advisory = m.group(1), None, False; continue
+              m = re.match(r"^    name:\s*(.+?)\s*$", line)
+              if m and job: name = m.group(1).strip("'\"").split("$" + "{{")[0].rstrip(" (")
+              if re.match(r"^    continue-on-error:\s*true\s*$", line): advisory = True
+          flush()
+          print("\n".join(out))
+          PY
+          )
+
           BAD=0
           for ROW in "${ROWS[@]}"; do
             NAME="${ROW%%$'\t'*}"
@@ -121,8 +143,16 @@ jobs:
                 echo "  ok    $NAME ($CONCLUSION)"
                 ;;
               *)
-                echo "  FAIL  $NAME (status=$STATUS conclusion=$CONCLUSION)" >&2
-                BAD=1
+                LANE=""
+                for A in "${ADVISORY[@]}"; do
+                  [ -n "$A" ] && [ "${NAME#"$A"}" != "$NAME" ] && LANE="$A"
+                done
+                if [ -n "$LANE" ] && [ "$STATUS" = "completed" ]; then
+                  echo "  advisory  $NAME ($CONCLUSION): allowed to fail (continue-on-error in ci.yml)"
+                else
+                  echo "  FAIL  $NAME (status=$STATUS conclusion=$CONCLUSION)" >&2
+                  BAD=1
+                fi
                 ;;
             esac
           done
