@@ -8,7 +8,7 @@
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
-// @pkey-feature identity.redirect.web identity.signin.hints
+// @pkey-feature identity.redirect.web identity.signin.hints identity.choice
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -74,6 +74,8 @@ private let registerFingerprint = HardwareFingerprint(
 /// The replay's memory between steps: the session the last `beginSignIn` step started.
 final class ReplaySession: @unchecked Sendable {
     var signIn: SignInSession?
+    /// What the last `browser` step's authorize request asked for (`license_choice=app`).
+    var licenseChoice: LicenseChoiceMode?
     /// `initial.platform`: the device's canonical platform.
     var platform: String?
     /// The transcript's steps (`releaseFetch`'s `partial` seeds from the whole-payload answer).
@@ -98,7 +100,10 @@ enum SwiftReplay {
                 $0.request.method == "GET" && $0.response.status == 303
                     && $0.request.path.contains("/identity/authorize?")
             }) {
-                let started = try await redirectSession(client, step: step)
+                session.licenseChoice =
+                    authorize.request.path.contains("license_choice=app") ? .app : nil
+                let started = try await redirectSession(
+                    client, step: step, licenseChoice: session.licenseChoice)
                 let want = transcript.baseUrl + authorize.request.path
                 if started.authorizeUrl != want {
                     await server.recordFailure(
@@ -109,8 +114,13 @@ enum SwiftReplay {
             await server.serveBrowserExchanges()
             // Facts the recorder read off the browser's pages; nothing of the SDK's.
             for (key, value) in step.expect { out[key] = value }
+        case "choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel":
+            await choice(client, step: step, into: &out)
         case "redirectComplete":
-            let s = try await redirectSession(client, step: step)
+            // What the recorded browser asked for decides whether the session may settle
+            // `.chooseLicense`.
+            let s = try await redirectSession(
+                client, step: step, licenseChoice: session.licenseChoice)
             do {
                 switch try await s.complete(callbackUrl: step.args["callbackUrl"]?.stringValue ?? "") {
                 case .signedIn(let ready):
@@ -118,6 +128,7 @@ enum SwiftReplay {
                     out["scope"] = ready.scope.map(JSONValue.string) ?? .null
                     out["subject"] = ready.subject.map(JSONValue.string) ?? .null
                     out["licenseId"] = ready.licenseId.map(JSONValue.string) ?? .null
+                case .chooseLicense: out["result"] = .string("choose")
                 case .cancelled: out["result"] = .string("cancelled")
                 default: out["result"] = .string("error")
                 }
@@ -213,6 +224,7 @@ enum SwiftReplay {
                 switch try await sign.wait() {
                 case .signedIn: out["result"] = .string("ready")
                 case .choose: out["result"] = .string("confirm")
+                case .chooseLicense: out["result"] = .string("choose")
                 case .expired: out["result"] = .string("expired")
                 case .cancelled: out["result"] = .string("cancelled")
                 case .pending: out["result"] = .string("pending")
@@ -381,8 +393,9 @@ enum SwiftReplay {
 
     /// A redirect session the way the step's `args` ask for one: the recorded `state` and verifier
     /// (a step may name its own), the hints it carries, the recorded redirect URI.
-    private static func redirectSession(_ client: PolarisKeyClient, step: Transcript.Step)
-        async throws -> SignInSession
+    private static func redirectSession(
+        _ client: PolarisKeyClient, step: Transcript.Step, licenseChoice: LicenseChoiceMode? = nil
+    ) async throws -> SignInSession
     {
         client.identity.redirectEntropy.set(
             (
@@ -394,7 +407,70 @@ enum SwiftReplay {
                 channel: .redirect, redirectUri: step.args["redirectUri"]?.stringValue ?? recordedRedirect,
                 loginHint: step.args["loginHint"]?.stringValue,
                 nameHint: step.args["nameHint"]?.stringValue,
-                purpose: step.args["purpose"]?.stringValue.flatMap(SignInPurpose.init(rawValue:))))
+                purpose: step.args["purpose"]?.stringValue.flatMap(SignInPurpose.init(rawValue:)),
+                licenseChoice: licenseChoice))
+    }
+
+    /// `choiceLicenses` / `choiceDevices` / `choiceComplete` / `choiceCancel`: `identity.choice`.
+    /// The recorded `complete` has no `choice` argument; the choice is in the request the
+    /// recording asserts, so the replayer reads it from there.
+    private static func choice(
+        _ client: PolarisKeyClient, step: Transcript.Step, into out: inout [String: JSONValue]
+    ) async {
+        let grant = step.args["grant"]?.stringValue ?? ""
+        do {
+            switch step.action {
+            case "choiceLicenses":
+                let view = try await client.identity.choice.licenses(grant: grant)
+                out["result"] = .string("ok")
+                out["state"] = .string(view.state)
+                out["licenses"] = .array(view.choices.map { .string($0.id) })
+            case "choiceDevices":
+                let view = try await client.identity.choice.devices(
+                    grant: grant, licenseId: step.args["licenseId"]?.stringValue ?? "")
+                out["result"] = .string("ok")
+                out["devices"] = .array(view.devices.map { .string($0.id) })
+            case "choiceComplete":
+                let done = try await client.identity.choice.complete(
+                    grant: grant, choice: recordedChoice(step))
+                out["result"] = .string("ok")
+                out["licenseId"] = done.ready.licenseId.map(JSONValue.string) ?? .null
+                out["subject"] = done.ready.subject.map(JSONValue.string) ?? .null
+                if let k = done.keyEntries {
+                    out["keyEntries"] = .object(["used": .int(k.used), "limit": .int(k.limit)])
+                }
+            default:
+                try await client.identity.choice.cancel(grant: grant)
+                out["result"] = .string("ok")
+            }
+        } catch let e as ChoiceError {
+            out["result"] = .string("refused")
+            out["code"] = .string(e.code)
+        } catch let e as PolarisError {
+            out["result"] = .string("error")
+            out["code"] = .string(e.code)
+        } catch {
+            out["result"] = .string("error")
+        }
+    }
+
+    /// The `LicenseChoiceInput` the recording's `choice/complete` request carries (absent: none,
+    /// which the Worker refuses with `license_choice_required`).
+    private static func recordedChoice(_ step: Transcript.Step) -> LicenseChoiceInput? {
+        guard
+            let wire = step.exchanges.items.first?.request.body?.json.objectValue?["choice"]?
+                .objectValue
+        else { return nil }
+        switch wire["kind"]?.stringValue {
+        case "license":
+            return .license(
+                id: wire["licenseId"]?.stringValue ?? "",
+                replaceDeviceId: wire["replaceDeviceId"]?.stringValue)
+        case "keep": return .keep
+        case "create": return .create
+        case "key": return .key(wire["key"]?.stringValue ?? "")
+        default: return nil
+        }
     }
 
     /// `redirectComplete`'s `result` for a refusal's code (`format.ts`).

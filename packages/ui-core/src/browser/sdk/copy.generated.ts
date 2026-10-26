@@ -105,6 +105,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This device has not been set up to link with your others. Update the app and try again.",
   },
+  ring_too_large: {
+    title: "Too many devices",
+    message:
+      "This account has more linked devices than can be connected. Remove one and try again.",
+  },
   device_limit: {
     title: "Device limit reached",
     message:

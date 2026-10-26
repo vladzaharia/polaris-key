@@ -86,6 +86,8 @@ import { buildFingerprintCorpus } from "./corpus/fingerprint.js";
 import { buildGateMatrixV2 } from "./corpus/gate.js";
 import { buildHeadersCorpus } from "./corpus/headers.js";
 import { buildNoiseVectors } from "./corpus/noise.js";
+import { buildPeerMatrix } from "./corpus/peerMatrix.js";
+import { buildSyncVectors } from "./corpus/syncVectors.js";
 import { buildOutletMatrixV1 } from "./corpus/outlet.js";
 import { buildStageMatrix } from "./corpus/stage.js";
 import { buildUpdateMatrixV1 } from "./corpus/update.js";
@@ -120,6 +122,8 @@ const V2_PORTAL_MATRIX_OUT = join(V2_DIR, "portal-matrix.json");
 const V2_UI_MATRIX_OUT = join(V2_DIR, "ui-matrix.json");
 const V2_BACKEND_MATRIX_OUT = join(V2_DIR, "backend-matrix.json");
 const V2_NOISE_VECTORS_OUT = join(V2_DIR, "noise-vectors.json");
+const V2_SYNC_VECTORS_OUT = join(V2_DIR, "sync-vectors.json");
+const V2_PEER_MATRIX_OUT = join(V2_DIR, "peer-matrix.json");
 
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, GODOT_V2_RESOURCES];
@@ -274,6 +278,19 @@ async function main(): Promise<void> {
     parser: "json",
   });
 
+  // plans/CC-01-cloud-sync.md §2.4 (U-34.1): the Cloud Sync end-to-end known answers, recomputed
+  // by tools/corpus/reference/syncVectors.ts over node:crypto. Unsigned; ASCII only.
+  const v2SyncVectors = await format(asciiJson(buildSyncVectors()), {
+    parser: "json",
+  });
+
+  // plans/CC-01-cloud-connect.md §2.9 (CC-05.3): adverts, prologue and PSK, the short code with its
+  // commit and reveal, framing, records, relay envelopes and handshake payloads, recomputed by
+  // tools/corpus/reference/peerMatrix.ts over node:crypto. Unsigned; ASCII only.
+  const v2PeerMatrix = await format(asciiJson(buildPeerMatrix()), {
+    parser: "json",
+  });
+
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
   const files = new Map<string, string>([
@@ -294,6 +311,8 @@ async function main(): Promise<void> {
     [basename(V2_UI_MATRIX_OUT), v2UiMatrix],
     [basename(V2_BACKEND_MATRIX_OUT), v2BackendMatrix],
     [basename(V2_NOISE_VECTORS_OUT), v2NoiseVectors],
+    [basename(V2_SYNC_VECTORS_OUT), v2SyncVectors],
+    [basename(V2_PEER_MATRIX_OUT), v2PeerMatrix],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its

@@ -25,6 +25,7 @@
 
 import { ISSUER } from "@polaris-key/protocol/core";
 import {
+  MAX_RING_DEVICES,
   PEER_CERT_SECONDS,
   PEER_CERT_TYP,
   RING_SECONDS,
@@ -44,6 +45,7 @@ export interface RingRow {
   subject: string;
   epoch: number;
   members_hash: string;
+  member_ids: string;
   disc_key: string;
   prev_disc_key: string | null;
   prev_epoch: number | null;
@@ -84,46 +86,79 @@ export async function getRing(
   );
 }
 
+/** The set holds more devices than a roster may (`MAX_RING_DEVICES`); checked before any bump. */
+export class RingTooLargeError extends Error {
+  constructor() {
+    super("connect: more devices than a roster holds");
+    this.name = "RingTooLargeError";
+  }
+}
+
+const idsOf = (members: readonly AccountDeviceKeys[]): string =>
+  sortMembers(members)
+    .map((m) => m.deviceId)
+    .join("\n");
+
+/** True when a device in the stored epoch is not among the current members. */
+function someoneLeft(stored: string, members: readonly AccountDeviceKeys[]) {
+  if (stored === "") return false;
+  const now = new Set(members.map((m) => m.deviceId));
+  return stored.split("\n").some((id) => !now.has(id));
+}
+
 /**
- * The subject's current ring row for these members, created on the first read and bumped when the
- * members changed. Never lowers an epoch.
+ * The subject's current ring row and the members it was computed for, created on the first read
+ * and bumped when the members changed. `load` reads the members; it is called again after every
+ * lost race, so a roster is never signed from a member list the row has moved past. The bump is
+ * conditional on the epoch AND the hash it read. When a device left, the previous key is not kept:
+ * the leaver no longer gets the 24-hour window. Never lowers an epoch.
  */
 export async function currentRing(
   db: Db,
   product: string,
   subject: string,
-  members: readonly AccountDeviceKeys[],
+  load: () => Promise<AccountDeviceKeys[]>,
   now: number,
-): Promise<RingRow> {
-  const hash = await membersHash(members);
-  for (let attempt = 0; attempt < 4; attempt++) {
+): Promise<{ row: RingRow; members: AccountDeviceKeys[] }> {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const members = await load();
+    if (members.length > MAX_RING_DEVICES) throw new RingTooLargeError();
+    const hash = await membersHash(members);
     const row = await getRing(db, product, subject);
     if (!row) {
       await db.run(
         `INSERT INTO connect_rings
-           (product, subject, epoch, members_hash, disc_key, prev_disc_key, prev_epoch, bumped_at)
-         VALUES (?, ?, 1, ?, ?, NULL, NULL, ?)
+           (product, subject, epoch, members_hash, member_ids, disc_key, prev_disc_key, prev_epoch, bumped_at)
+         VALUES (?, ?, 1, ?, ?, ?, NULL, NULL, ?)
          ON CONFLICT (product, subject) DO NOTHING`,
         product,
         subject,
         hash,
+        idsOf(members),
         randomToken(32),
         now,
       );
       continue;
     }
-    if (row.members_hash === hash) return row;
+    if (row.members_hash === hash) return { row, members };
+    const left = someoneLeft(row.member_ids, members) ? 1 : 0;
     await db.runChanges(
       `UPDATE connect_rings
-          SET epoch = epoch + 1, members_hash = ?, prev_disc_key = disc_key, prev_epoch = epoch,
+          SET epoch = epoch + 1, members_hash = ?, member_ids = ?,
+              prev_disc_key = CASE WHEN ? = 1 THEN NULL ELSE disc_key END,
+              prev_epoch = CASE WHEN ? = 1 THEN NULL ELSE epoch END,
               disc_key = ?, bumped_at = ?
-        WHERE product = ? AND subject = ? AND epoch = ?`,
+        WHERE product = ? AND subject = ? AND epoch = ? AND members_hash = ?`,
       hash,
+      idsOf(members),
+      left,
+      left,
       randomToken(32),
       now,
       product,
       subject,
       row.epoch,
+      row.members_hash,
     );
   }
   throw new Error("connect: the ring kept changing under the read");

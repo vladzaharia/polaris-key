@@ -895,6 +895,8 @@
   "core.codes.device_keys_invalid.message": "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova.",
   "core.codes.device_keys_required.title": "Dispositivo non collegato",
   "core.codes.device_keys_required.message": "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova.",
+  "core.codes.ring_too_large.title": "Troppi dispositivi",
+  "core.codes.ring_too_large.message": "Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova.",
   "core.codes.key_entry_limit.title": "Nessun inserimento rimasto",
   "core.codes.key_entry_limit.message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
   "core.codes.license_disabled.title": "Licenza disattivata",

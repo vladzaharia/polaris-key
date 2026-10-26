@@ -39,6 +39,7 @@ import {
   getPortalProductSettings,
   portalAudit,
 } from "./repo.js";
+import { notifyDeviceChange } from "../../../core/devices/lifecycle.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
 import {
   deviceRemovedNotice,
@@ -156,6 +157,10 @@ export async function planFreeAccountDevice(
     async finish() {
       if (device.token_hash)
         await deleteTokenRecord(env, product, device.token_hash);
+      await notifyDeviceChange(
+        { db, env, now },
+        { product, deviceId, kind: "removed", subject: device.subject },
+      );
       const forLabel = opts.forLabel?.trim();
       await portalAudit(db, {
         accountId: actor.accountId,

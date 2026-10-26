@@ -30,6 +30,7 @@ public object ErrorCode {
     public const val signingUnavailable: String = "signing_unavailable"
     public const val deviceKeysInvalid: String = "device_keys_invalid"
     public const val deviceKeysRequired: String = "device_keys_required"
+    public const val ringTooLarge: String = "ring_too_large"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
     public const val licenseDisabled: String = "license_disabled"
@@ -231,6 +232,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "signing_unavailable",
     "device_keys_invalid",
     "device_keys_required",
+    "ring_too_large",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -432,6 +434,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "signing_unavailable" to "wire",
     "device_keys_invalid" to "wire",
     "device_keys_required" to "wire",
+    "ring_too_large" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",
     "license_disabled" to "wire",
@@ -1947,9 +1950,9 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.keyentry" to CapabilityRow("implemented", "identity", listOf()),
     "identity.attach" to CapabilityRow("implemented", "identity", listOf()),
     "identity.account" to CapabilityRow("implemented", "identity", listOf()),
-    "identity.redirect.web" to CapabilityRow("planned", "identity", listOf()),
+    "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
     "identity.choice" to CapabilityRow("planned", "identity", listOf()),
-    "identity.signin.hints" to CapabilityRow("planned", "identity", listOf()),
+    "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -2016,4 +2019,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "65c7fe699d26fcf585ceef7ce0e74cf4926c110fc9be1b08e58409a560935864"
+public const val CAPABILITY_DIGEST: String = "e23657a09d9a624e5e6728adb941ae3c2cba67a90840b1ac9108b59e1d281545"

@@ -1978,6 +1978,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_required_message">このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_ring_too_large_title">デバイスが多すぎます</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_ring_too_large_message">このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">キーの入力回数が残っていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。</string>

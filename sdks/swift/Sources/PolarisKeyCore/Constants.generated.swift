@@ -28,6 +28,7 @@ public enum ErrorCode {
     public static let signingUnavailable = "signing_unavailable"
     public static let deviceKeysInvalid = "device_keys_invalid"
     public static let deviceKeysRequired = "device_keys_required"
+    public static let ringTooLarge = "ring_too_large"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
     public static let licenseDisabled = "license_disabled"
@@ -229,6 +230,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "signing_unavailable",
     "device_keys_invalid",
     "device_keys_required",
+    "ring_too_large",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -430,6 +432,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "signing_unavailable": "wire",
     "device_keys_invalid": "wire",
     "device_keys_required": "wire",
+    "ring_too_large": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",
     "license_disabled": "wire",
@@ -1926,7 +1929,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.attach": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.choice": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1994,4 +1997,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "ec7c9d8f3cdebec7d2004091e096aa90d3b2e1b463b3d17b03598a2f14656a41"
+public let CAPABILITY_DIGEST = "aa534fbc778140417cda15b2b0f5a80c202222738560d5e1bafdcf7e99fce959"

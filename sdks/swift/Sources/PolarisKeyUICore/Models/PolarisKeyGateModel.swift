@@ -722,8 +722,9 @@ public final class PolarisKeyGateModel {
                 announce(signInScreen.copy.first)
             case .cancelled:
                 return
-            case .pending, .choose:
-                // No licence choice is requested yet (I-10b.12); treat it as unfinished.
+            case .pending, .choose, .chooseLicense:
+                // The gate's sign-in runs the device code, which never issues a licence-choice
+                // grant (D4); the in-app choice (`LicenseChoiceModel`) is wired by I-10b.13.
                 signInError = KitError(code: "sign-in-failed")
                 rebuild()
             }

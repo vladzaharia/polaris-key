@@ -43,6 +43,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "signing_unavailable": CopyEntry(title: "Signing unavailable", message: "The service can't sign a document right now. Try again in a few minutes."),
     "device_keys_invalid": CopyEntry(title: "Device not set up", message: "This device could not be set up for sync. Update the app and try again."),
     "device_keys_required": CopyEntry(title: "Device not linked", message: "This device has not been set up to link with your others. Update the app and try again."),
+    "ring_too_large": CopyEntry(title: "Too many devices", message: "This account has more linked devices than can be connected. Remove one and try again."),
     "device_limit": CopyEntry(title: "Device limit reached", message: "This license is already on all its devices. Replace a device to use it here."),
     "key_entry_limit": CopyEntry(title: "No key entries left", message: "This key has no entries left. Add it to your account and sign in instead."),
     "license_disabled": CopyEntry(title: "License disabled", message: "This license has been disabled. Contact the developer."),

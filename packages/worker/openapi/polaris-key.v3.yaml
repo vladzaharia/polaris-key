@@ -8991,7 +8991,7 @@ paths:
         days, carrying the ring's epoch. `discKeys` are the discovery keys, newest first: the
         current key, and the one before it for 24 hours after the epoch moved. A device advertises
         under the first only. The epoch rises when a device joins, leaves or rotates its keys,
-        noticed on the next read. More than 128 devices answers `500 document_not_representable`.
+        noticed on the next read. The previous key is omitted when a device left in that bump. More than 128 devices answers `409 ring_too_large`, before the epoch moves.
         `503 signing_unavailable` when the product has no signing key.
       security: [{ deviceToken: [] }]
       parameters:
@@ -9038,17 +9038,14 @@ paths:
         "409":
           description: >
             `device_keys_required`: the device has registered no keys, or its keys are not in its
-            roster. Register them with `PUT /{product}/devices/keys`, then retry.
+            roster. Register them with `PUT /{product}/devices/keys`, then retry. `ring_too_large`:
+            the person has more than 128 devices; nothing is issued.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
                 required: { value: { error: { code: device_keys_required } } }
-        "500":
-          description: "`document_not_representable`: the roster would hold more than 128 devices."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/WireError" }
+                tooLarge: { value: { error: { code: ring_too_large } } }
         "503":
           description: "`signing_unavailable`: the product has no signing key."
           content:
@@ -9124,12 +9121,14 @@ paths:
         "409":
           description: >
             `device_keys_required`: the device has registered no keys, or its keys are not in its
-            roster. Register them with `PUT /{product}/devices/keys`, then retry.
+            roster. Register them with `PUT /{product}/devices/keys`, then retry. `ring_too_large`:
+            the person has more than 128 devices; nothing is issued.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
                 required: { value: { error: { code: device_keys_required } } }
+                tooLarge: { value: { error: { code: ring_too_large } } }
     options:
       operationId: preflightConnectDevices
       tags: [connect]

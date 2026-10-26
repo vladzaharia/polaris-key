@@ -106,6 +106,12 @@
       "description": "409: a Cloud Connect route was called by a device that has registered no keys, or whose keys are not in its roster. Register them with `PUT /<p>/devices/keys`, then retry."
     },
     {
+      "code": "ring_too_large",
+      "kind": "wire",
+      "service": "connect",
+      "description": "409: the person has more devices than a roster holds (128). Nothing is issued and the roster epoch does not move. Remove a device, then retry."
+    },
+    {
       "code": "device_limit",
       "kind": "wire",
       "service": "license",

@@ -5258,6 +5258,16 @@ msgstr "デバイスがリンクされていません"
 msgid "core.codes.device_keys_required.message"
 msgstr "このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。"
 
+#. Too many devices
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.title"
+msgstr "デバイスが多すぎます"
+
+#. This account has more linked devices than can be connected. Remove one and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.message"
+msgstr "このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。"
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

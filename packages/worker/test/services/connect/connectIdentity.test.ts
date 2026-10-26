@@ -30,6 +30,7 @@ import { handleActivate } from "../../../src/services/license/activation.js";
 import { upsertDeviceKeys } from "../../../src/core/devices/keys.js";
 import { assertConnectDoc } from "../../../src/core/signing.js";
 import {
+  currentRing,
   getRing,
   membersHash,
   PREV_DISC_KEY_SECONDS,
@@ -425,5 +426,158 @@ describe("the connect.rings subject store", () => {
       await membersHash([m("y"), m("x")]),
     );
     expect(await membersHash([m("x")])).not.toBe(await membersHash([m("y")]));
+  });
+});
+
+describe("members obey the principal rule", () => {
+  /** Device C: a second person-licence of Ada's, bound to her account, with keys. */
+  async function withThird(w: World): Promise<string> {
+    const { key } = await seedLicenseWithKey(w.db, SLUG, { id: "lic_c" });
+    w.tokens[C] = await activate(w, key, C);
+    await bindTo(w, C, "ada@example.com");
+    await upsertDeviceKeys(w.db, SLUG, C, await newKeys(), NOW);
+    return "lic_c";
+  }
+  const roster = async (w: World): Promise<string[]> => {
+    const id = await identity(w, A, NOW + 5);
+    const r = await verifyJws<{ devices: { deviceId: string }[] }>(
+      id.ring,
+      trust,
+      { typ: "pkey-ring+jws" },
+    );
+    return r!.payload.devices.map((d) => d.deviceId);
+  };
+
+  it("includes a third device while its licence is in good standing", async () => {
+    const w = await world();
+    await withThird(w);
+    expect(await roster(w)).toEqual([A, B, C]);
+  });
+
+  it("leaves out a device whose licence was removed from the library", async () => {
+    const w = await world();
+    const lic = await withThird(w);
+    const acc = await w.db.first<{ account_id: string }>(
+      "SELECT account_id FROM account_product_subjects WHERE product = ? AND subject = ?",
+      SLUG,
+      w.subject,
+    );
+    await w.db.run(
+      "INSERT INTO license_auto_attach_blocks (product, license_id, account_id, created_at) VALUES (?, ?, ?, ?)",
+      SLUG,
+      lic,
+      acc!.account_id,
+      NOW,
+    );
+    expect(await roster(w)).toEqual([A, B]);
+  });
+
+  it("leaves out a device whose licence is floating", async () => {
+    const w = await world();
+    const lic = await withThird(w);
+    await w.db.run(
+      "UPDATE licenses SET email = NULL, account_id = NULL WHERE product = ? AND id = ?",
+      SLUG,
+      lic,
+    );
+    expect(await roster(w)).toEqual([A, B]);
+  });
+
+  it("leaves out a device whose licence is disabled", async () => {
+    const w = await world();
+    const lic = await withThird(w);
+    await w.db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+      SLUG,
+      lic,
+    );
+    expect(await roster(w)).toEqual([A, B]);
+  });
+
+  it("the linked-devices list follows the same rule", async () => {
+    const w = await world();
+    const lic = await withThird(w);
+    await w.db.run(
+      "UPDATE licenses SET status = 'disabled' WHERE product = ? AND id = ?",
+      SLUG,
+      lic,
+    );
+    const res = await get(w, "devices", A, w.tokens[A]!);
+    const body = (await res.json()) as { devices: { deviceId: string }[] };
+    expect(body.devices.map((d) => d.deviceId)).toEqual([A, B]);
+  });
+});
+
+describe("the previous discovery key", () => {
+  it("is kept when a bump only adds a device, and dropped when a device left", async () => {
+    const w = await world();
+    const first = await identity(w);
+    const { key } = await seedLicenseWithKey(w.db, SLUG, { id: "lic_n" });
+    w.tokens[C] = await activate(w, key, C);
+    await bindTo(w, C, "ada@example.com");
+    await upsertDeviceKeys(w.db, SLUG, C, await newKeys(), NOW);
+    const added = await identity(w, A, NOW + 5);
+    expect(added.discKeys).toHaveLength(2);
+    expect(added.discKeys[1]).toBe(first.discKeys[0]);
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized' WHERE product = ? AND device_id = ?",
+      SLUG,
+      C,
+    );
+    const left = await identity(w, A, NOW + 10);
+    expect(left.discKeys).toHaveLength(1);
+    expect(left.discKeys[0]).not.toBe(added.discKeys[0]);
+    const row = await getRing(w.db, SLUG, w.subject);
+    expect([row?.epoch, row?.prev_disc_key]).toEqual([3, null]);
+  });
+});
+
+describe("currentRing under a race and past the cap", () => {
+  const m = (id: string, k = "k") => ({
+    deviceId: id,
+    signKey: "s" + k,
+    agreeKey: "a" + k,
+    keySeq: 1,
+  });
+
+  it("re-reads the members after a lost race and returns what it computed for", async () => {
+    const w = await world();
+    const sub = "ps_" + "Z".repeat(22);
+    await currentRing(w.db, SLUG, sub, async () => [m("x")], NOW);
+    let calls = 0;
+    const out = await currentRing(
+      w.db,
+      SLUG,
+      sub,
+      async () => {
+        calls++;
+        if (calls === 1) {
+          // another request bumps to a different set while this one is mid-read
+          await w.db.run(
+            "UPDATE connect_rings SET epoch = 2, members_hash = 'other' WHERE product = ? AND subject = ?",
+            SLUG,
+            sub,
+          );
+          return [m("x"), m("y")];
+        }
+        return [m("x"), m("y")];
+      },
+      NOW + 1,
+    );
+    expect(calls).toBeGreaterThan(1);
+    expect(out.row.members_hash).toBe(await membersHash(out.members));
+    expect(out.row.epoch).toBe(3);
+  });
+
+  it("refuses more than 128 members before any bump or key draw", async () => {
+    const w = await world();
+    const sub = "ps_" + "Y".repeat(22);
+    const many = Array.from({ length: 129 }, (_, i) =>
+      m(String(i).padStart(32, "0"), String(i)),
+    );
+    await expect(
+      currentRing(w.db, SLUG, sub, async () => many, NOW),
+    ).rejects.toThrow(/more devices/);
+    expect(await getRing(w.db, SLUG, sub)).toBeNull();
   });
 });

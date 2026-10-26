@@ -2,7 +2,13 @@
 // of `core/repo.ts`.
 
 import type { Db, DbStatement } from "../../db/types.js";
+import type { Env } from "../../platform/env.js";
 import { stmtDeleteDeviceKeys } from "./keys.js";
+import {
+  deviceSubjectOf,
+  hasDeviceChangeListeners,
+  notifyDeviceChange,
+} from "./lifecycle.js";
 import type { DeviceRow, DeviceFactsRow, FingerprintRow } from "../repo.js";
 
 // ── Devices ──────────────────────────────────────────────────────────────────
@@ -449,7 +455,12 @@ export async function setDeviceStatus(
   product: string,
   deviceId: string,
   status: string,
+  opts: { env?: Env; now?: number } = {},
 ): Promise<void> {
+  const subject =
+    status === "deauthorized" && hasDeviceChangeListeners()
+      ? await deviceSubjectOf(db, product, deviceId)
+      : null;
   await db.run(
     "UPDATE devices SET status = ? WHERE product = ? AND device_id = ?",
     status,
@@ -467,6 +478,10 @@ export async function setDeviceStatus(
   if (status === "deauthorized") {
     await releaseDeviceSeat(db, product, deviceId);
     await purgeDeviceData(db, product, deviceId);
+    await notifyDeviceChange(
+      { db, env: opts.env, now: opts.now ?? Math.floor(Date.now() / 1000) },
+      { product, deviceId, kind: "removed", subject },
+    );
   }
 }
 

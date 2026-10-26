@@ -422,6 +422,8 @@ const EXPECTED: Record<string, Partial<Record<number, string>>> = {
   sync: { 429: "device-cap" },
   // RFC 8628 §3.5: a 429 on a poll is `slow_down`; any other refusal is a poll status.
   "identity.signIn wait": { 404: "sign-in-failed", 429: "pending" },
+  // I-10a.6: a 404 on the device start is Identity off for the product (the identity-disabled transcript).
+  "identity.signIn.start": { 404: "service-unavailable" },
   // The registration ladder: 404 is "registration is not set up", 429 its own kind.
   "devices.register": { 404: "not-configured", 429: "rate-limited" },
   // Discovery's own kind for an unregistered product.

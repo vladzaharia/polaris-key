@@ -692,6 +692,9 @@
     "tools/corpus/peer.ts": {
       "knip:files": 1
     },
+    "tools/corpus/peerMatrix.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/record.ts": {
       "knip:files": 1
     },
@@ -746,10 +749,16 @@
     "tools/corpus/reference/peer.ts": {
       "knip:files": 1
     },
+    "tools/corpus/reference/peerMatrix.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/reference/record.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/revocation.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/syncVectors.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/tokens.ts": {
@@ -774,6 +783,9 @@
       "knip:files": 1
     },
     "tools/corpus/stage.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/syncVectors.ts": {
       "knip:files": 1
     },
     "tools/corpus/trust.ts": {

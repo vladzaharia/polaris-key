@@ -5284,6 +5284,16 @@ msgstr "Dispositivo não vinculado"
 msgid "core.codes.device_keys_required.message"
 msgstr "Este dispositivo não foi configurado para se vincular aos seus outros. Atualize o app e tente novamente."
 
+#. Too many devices
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.title"
+msgstr "Dispositivos demais"
+
+#. This account has more linked devices than can be connected. Remove one and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.ring_too_large.message"
+msgstr "Esta conta tem mais dispositivos vinculados do que é possível conectar. Remova um e tente novamente."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

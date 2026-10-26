@@ -33,6 +33,7 @@ import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
 import { writeStoredSubject } from "./account.js";
+import type { ChooseOutcome } from "./choice.js";
 import type { IdentityEvent } from "./signIn.js";
 
 export interface RedirectSignInOptions {
@@ -68,12 +69,7 @@ export type RedirectOutcome =
     }
   /** `license_choice=app` and a choice is due: show it, then `identity.choice.*` with `grant`
    *  (I-10a.8). No token was stored. */
-  | {
-      kind: "choose";
-      grant: string;
-      expiresIn: number;
-      choices: Record<string, unknown>;
-    }
+  | ChooseOutcome
   | { kind: "cancelled" };
 
 /** What the session needs from the identity client. */

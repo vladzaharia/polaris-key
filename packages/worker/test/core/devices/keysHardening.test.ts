@@ -142,6 +142,12 @@ describe("device keys hardening", () => {
   it("a device whose seat and token were released leaves accountDeviceKeys when seats are held", async () => {
     const w = await world();
     await register(w, DEV_A);
+    await w.db.run(
+      "INSERT INTO accounts (id, created_at, modified_at) VALUES ('acc_h', 1, 1)",
+    );
+    await w.db.run(
+      "INSERT INTO account_product_subjects (account_id, product, subject, created_at) VALUES ('acc_h', 'djdl', 'ps_AAAAAAAAAAAAAAAAAAAAAA', 1)",
+    );
     await writeDeviceSubject(w.db, "djdl", DEV_A, "ps_AAAAAAAAAAAAAAAAAAAAAA");
     await upsertDeviceKeys(w.db, "djdl", DEV_A, await newKeys(), NOW);
     const sub = "ps_AAAAAAAAAAAAAAAAAAAAAA";

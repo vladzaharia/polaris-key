@@ -20,6 +20,8 @@ export const ErrorCode = {
   DeviceKeysInvalid: "device_keys_invalid",
   /** CC-06.1: a Cloud Connect route was called by a device that has registered no keys (409). */
   DeviceKeysRequired: "device_keys_required",
+  /** CC-06.1: the person has more devices than a roster holds (409). */
+  RingTooLarge: "ring_too_large",
   BadRequest: "bad_request",
   NotFound: "not_found",
   ManagedByAdmin: "managed_by_admin",

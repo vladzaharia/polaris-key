@@ -57,6 +57,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "signing_unavailable": CopyEntry("Signing unavailable", "The service can't sign a document right now. Try again in a few minutes."),
         "device_keys_invalid": CopyEntry("Device not set up", "This device could not be set up for sync. Update the app and try again."),
         "device_keys_required": CopyEntry("Device not linked", "This device has not been set up to link with your others. Update the app and try again."),
+        "ring_too_large": CopyEntry("Too many devices", "This account has more linked devices than can be connected. Remove one and try again."),
         "device_limit": CopyEntry("Device limit reached", "This license is already on all its devices. Replace a device to use it here."),
         "key_entry_limit": CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),
         "license_disabled": CopyEntry("License disabled", "This license has been disabled. Contact the developer."),

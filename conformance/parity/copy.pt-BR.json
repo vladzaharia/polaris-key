@@ -81,6 +81,10 @@
       "title": "Dispositivo não vinculado",
       "message": "Este dispositivo não foi configurado para se vincular aos seus outros. Atualize o app e tente novamente."
     },
+    "ring_too_large": {
+      "title": "Dispositivos demais",
+      "message": "Esta conta tem mais dispositivos vinculados do que é possível conectar. Remova um e tente novamente."
+    },
     "key_entry_limit": {
       "title": "Nenhum uso restante da chave",
       "message": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."

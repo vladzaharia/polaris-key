@@ -2004,6 +2004,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_required_message">Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_ring_too_large_title">Troppi dispositivi</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_ring_too_large_message">Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Nessun inserimento rimasto</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.</string>

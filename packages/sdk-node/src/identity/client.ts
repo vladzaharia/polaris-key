@@ -34,6 +34,7 @@ import {
   type IdentityEvent,
   type ShownIdentity,
 } from "./signIn.js";
+import { ChoiceClient } from "./choice.js";
 import {
   startRedirectSignIn,
   type RedirectSession,
@@ -135,6 +136,24 @@ export class IdentityClient {
   }
 
   private readonly account: Account;
+  private choiceClient: ChoiceClient | undefined;
+
+  /**
+   * The licence choice an app shows itself after a redirect sign-in answered `{kind: "choose",
+   * grant}`: `licenses(grant)`, `devices(grant, licenseId)`, `complete(grant, choice)`,
+   * `cancel(grant)` (choice.ts). Each answers the typed `service-unavailable` N/A when the
+   * product's discovery names no choice endpoint.
+   */
+  get choice(): ChoiceClient {
+    return (this.choiceClient ??= new ChoiceClient({
+      ctx: this.ctx,
+      tokens: this.tokens,
+      discovery: this.loadDiscovery,
+      onAcquired: this.onAcquired,
+      forget: () => this.forget(),
+      emit: this.emit,
+    }));
+  }
   private readonly beforeSignOut = new BeforeSignOutHooks();
 
   /** Register a function `signOut()` awaits first (Cloud Sync's flush, D-4); returns its remover. */

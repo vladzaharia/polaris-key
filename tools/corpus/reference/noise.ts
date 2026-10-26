@@ -32,7 +32,7 @@ export const sha256 = (...parts: Uint8Array[]): Uint8Array =>
       .digest(),
   );
 
-const hmac = (key: Uint8Array, data: Uint8Array): Uint8Array =>
+export const hmac = (key: Uint8Array, data: Uint8Array): Uint8Array =>
   Uint8Array.from(createHmac("sha256", key).update(data).digest());
 
 /** HKDF-SHA256 (RFC 5869): extract with `salt`, expand `info` to `length` bytes. */

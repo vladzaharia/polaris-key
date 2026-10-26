@@ -133,12 +133,12 @@ internal fun wholeSeconds(value: JsonElement?): Long? {
  *   throws CancellationException when the coroutine is cancelled; tests inject a clock-driven one.
  */
 public class IdentityClient(
-    private val core: CoreContext,
-    private val onAcquired: SignInAcquiredListener? = null,
+    internal val core: CoreContext,
+    internal val onAcquired: SignInAcquiredListener? = null,
     /** How `openAccount()` opens the portal: the system browser. Null: it answers the URL for the host to show. */
     internal val opener: AccountOpener? = null,
     /** Raised when the stored subject changes (a `subject()` read, a sign-out); the facade emits `PolarisEvent.Identity`. */
-    private val onSubject: suspend (String?) -> Unit = {},
+    internal val onSubject: suspend (String?) -> Unit = {},
     /** Raised after a sign-out released the seat and dropped the token; the facade republishes the licence. */
     onSignedOut: suspend () -> Unit = {},
     sleep: (suspend (Long) -> Unit)? = null,
@@ -147,7 +147,10 @@ public class IdentityClient(
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut)
 
-    /** `signIn.start(options)`: the device-code session (see SignInSession.kt). */
+    internal var redirectEntropyValue: RedirectEntropy? = null
+    internal var redirectAcquisitionSyncValue: Boolean = true
+
+    /** `signIn.start(options)`: the device-code or redirect session (see SignInSession.kt). */
     public val signIn: SignInNamespace get() = SignInNamespace(this)
 
     /** The pairwise subject signed in on this device (reads `GET subject`, stores it). */

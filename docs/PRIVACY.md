@@ -246,6 +246,26 @@ operator sees totals and the per-product breakdown, not values; an operator dele
 Quota never deletes. The person can clear it, export it with their
 account data, or delete it with the account; deleting a product erases its objects, and an object that finds its product gone erases itself.
 
+### Device keys — kept for a device's own keys
+
+A device may register two public keys with the product: a signing key and a key-agreement key,
+each 32 bytes. They are generated on the device, and the private halves never leave it. The Worker
+keeps, per device, the two public keys, a key counter and the times they were created and last
+changed. A separate row keeps only the counter and the time of the last accepted proof, so a
+registration after a removal continues the count and an old proof cannot be replayed. Neither row
+holds a hardware value, a name or a subject: the keys are random and are not derived from the
+hardware fingerprint.
+
+The keys are deleted when the device is deauthorized, when its licence is deleted and when its
+product is deleted. The counter row is deleted with its licence and its product. Services told that
+a device was bound, unbound, removed or changed its keys (the device lifecycle event) receive the
+product, the device id and, for a binding, the pairwise subject; they receive no key material.
+
+Within one product no two devices may hold the same key-agreement key. A registration that
+repeats another device's key is refused, so a device that can register can tell whether a given
+public key is already in use in that product. This is accepted: the keys are public, and a change
+is limited to four a day per device.
+
 ### Not collected
 
 OS username, browsing or file activity, a list of installed applications, and any raw

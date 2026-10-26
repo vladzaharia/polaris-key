@@ -81,6 +81,10 @@
       "title": "Dispositivo non collegato",
       "message": "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova."
     },
+    "ring_too_large": {
+      "title": "Troppi dispositivi",
+      "message": "Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova."
+    },
     "key_entry_limit": {
       "title": "Nessun inserimento rimasto",
       "message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."

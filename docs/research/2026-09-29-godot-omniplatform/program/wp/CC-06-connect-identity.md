@@ -29,7 +29,7 @@ Connect identity on the Worker: certificates, rings, discovery keys, linked-devi
 
 **CC-06.1 done on `wp/CC-06.1-connect-identity` (slice, not the package).**
 
-- [x] `connect_rings` (migration `0145_connect_rings.sql`, the lead renumbers), `TABLE_OWNERS` row `connect`, the subject store `connect.rings` and product deletion.
+- [x] `connect_rings` (migration `0146_connect_rings.sql`, the lead renumbers), `TABLE_OWNERS` row `connect`, the subject store `connect.rings` and product deletion.
 - [x] `services/connect/ring.ts`: members through the principal rule (`accountDeviceKeys`, `seatsHeld` when License is on), `members_hash`, epoch bump with a new K_disc (previous key delivered 24 h), `pkey-ring+jws` and `pkey-peer+jws` signing.
 - [x] `GET /<p>/connect/identity` (`{ring, certificate, discKeys}`) and `GET /<p>/connect/devices`, both device bearer and `cors: true`; OpenAPI, descriptor `surface`, `connect` off `ROUTELESS`; discovery fragment endpoints (`ticket` stays `null` for CC-07.3).
 - [x] `device_keys_required` (errors.json, copy in 9 locales, constants regenerated).

@@ -9,7 +9,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints identity.account
-// @pkey-feature identity.attach
+// @pkey-feature identity.attach identity.choice
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -67,6 +67,7 @@ import {
   type CacheRecordV3,
   type RedirectSession,
   type DeviceCodeSession,
+  type LicenseChoice,
   type Store,
 } from "@polaris-key/node";
 import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
@@ -256,6 +257,19 @@ const REDIRECT_DEFAULTS = {
 function stringArg(step: Step, name: string): string | undefined {
   const v = step.args[name];
   return typeof v === "string" ? v : undefined;
+}
+
+/** The `choice` a `choiceComplete` step sends: the step's own `choice` arg, else the one the
+ *  recording's request carries (a key is not a transcript arg). A recording with none is the
+ *  Worker's 409 `license_choice_required` for a completion that names no choice: an SDK's typed
+ *  call cannot be made to omit it, so the replay sends the body as recorded (no `choice`). */
+function recordedChoice(step: Step): LicenseChoice {
+  const arg = step.args.choice;
+  if (arg !== undefined) return arg as unknown as LicenseChoice;
+  const body = step.exchanges.items[0]?.request.body?.json as
+    | { choice?: unknown }
+    | undefined;
+  return body?.choice as LicenseChoice;
 }
 
 /** A fresh redirect sign-in with the recorded entropy, as the host would start it. */
@@ -518,6 +532,39 @@ async function act(
         out.result = e.code.replace(/_/g, "-");
         out.code = e.code;
       }
+      break;
+    }
+    case "choiceLicenses":
+    case "choiceDevices":
+    case "choiceComplete":
+    case "choiceCancel": {
+      // The grant routes (I-10a.8): `client.identity.choice.*`, a refusal being a result.
+      const grant = String(step.args.grant);
+      const choice = client.identity.choice;
+      let refused: { code: string } | null = null;
+      if (step.action === "choiceLicenses") {
+        const r = await choice.licenses(grant);
+        if (r.kind === "ok") {
+          out.state = r.view.state;
+          out.licenses = r.view.choices.map((c) => c.id);
+        } else refused = r;
+      } else if (step.action === "choiceDevices") {
+        const r = await choice.devices(grant, String(step.args.licenseId));
+        if (r.kind === "ok") out.devices = r.view.devices.map((d) => d.id);
+        else refused = r;
+      } else if (step.action === "choiceComplete") {
+        const r = await choice.complete(grant, recordedChoice(step));
+        if (r.kind === "ok") {
+          out.licenseId = r.licenseId;
+          out.subject = r.subject;
+          if (r.keyEntries) out.keyEntries = r.keyEntries;
+        } else refused = r;
+      } else {
+        const r = await choice.cancel(grant);
+        if (r.kind !== "ok") refused = r;
+      }
+      out.result = refused ? "refused" : "ok";
+      if (refused) out.code = refused.code;
       break;
     }
     case "subject":

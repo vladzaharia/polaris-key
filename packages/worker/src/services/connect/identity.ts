@@ -13,10 +13,12 @@
  * `401` for a bad token or a header naming another device, `400` for a missing or malformed
  * header, `403 account_required` for a device with no principal, `409 device_keys_required` for a
  * device that has registered no keys (it is not in its own roster until it does), `503
- * signing_unavailable` when the product has no signing key.
+ * signing_unavailable` when the product has no signing key, `409 ring_too_large` for more than 128
+ * devices (checked before the epoch moves).
  *
  * `identity` signs a `pkey-ring+jws` at the ring's epoch and a `pkey-peer+jws` for the caller, and
- * delivers K_disc: the current key, and the one before it for 24 hours after a bump. Both answers
+ * delivers K_disc: the current key, and the one before it for 24 hours after a bump,
+ * unless a device left in that bump. Both answers
  * are `no-store`, because they hold the discovery key and a certificate. `devices` is display
  * data for a person's own devices and carries no key.
  */
@@ -31,7 +33,6 @@ import {
   accountDeviceKeys,
   accountDeviceListing,
   getDeviceKeys,
-  type AccountDeviceKeys,
 } from "../../core/devices/keys.js";
 import { knownPlatform } from "../../core/devices/platformFamily.js";
 import { resolveSyncPrincipal } from "../../core/accounts/accountSubjects.js";
@@ -40,13 +41,18 @@ import { buildSignInUrl } from "../../core/licensing/manageUrl.js";
 import type { ServiceContext } from "../../core/registry.js";
 import { isStrictJsonError } from "../../core/signing.js";
 import { bearer } from "../../platform/http.js";
-import { currentRing, discKeys, signPeerCert, signRoster } from "./ring.js";
+import {
+  currentRing,
+  discKeys,
+  RingTooLargeError,
+  signPeerCert,
+  signRoster,
+} from "./ring.js";
+import { MAX_RING_DEVICES } from "@polaris-key/protocol/connect";
 
 interface Caller {
   deviceId: string;
   subject: string;
-  /** The roster's members, sorted by device id. */
-  members: AccountDeviceKeys[];
   seatsHeld: boolean;
 }
 
@@ -75,13 +81,12 @@ async function authenticate(ctx: ServiceContext): Promise<Caller | Response> {
     return signInRequired(ctx);
   if (!(await getDeviceKeys(db, product.slug, header)))
     return wireError(409, ErrorCode.DeviceKeysRequired);
-  const members = await accountDeviceKeys(db, product.slug, principal.subject, {
-    seatsHeld,
-  });
-  return { deviceId: header, subject: principal.subject, members, seatsHeld };
+  return { deviceId: header, subject: principal.subject, seatsHeld };
 }
 
 const NO_STORE = { "cache-control": "no-store" } as const;
+
+const tooLarge = (): Response => wireError(409, ErrorCode.RingTooLarge);
 
 export async function handleIdentity(
   ctx: ServiceContext,
@@ -90,29 +95,33 @@ export async function handleIdentity(
   const { db, product, now } = ctx;
   const caller = await authenticate(ctx);
   if (caller instanceof Response) return caller;
-  const self = caller.members.find((m) => m.deviceId === caller.deviceId);
-  // Keys exist but the device is not a member (its seat was released): nothing to certify.
-  if (!self) return wireError(409, ErrorCode.DeviceKeysRequired);
   const signingKey = await product.signingKey();
   if (!signingKey) return wireError(503, "signing_unavailable");
   const signer = { key: signingKey, kid: product.signingKid };
-  const row = await currentRing(
-    db,
-    product.slug,
-    caller.subject,
-    caller.members,
-    now,
-  );
+  let current;
+  try {
+    current = await currentRing(
+      db,
+      product.slug,
+      caller.subject,
+      () =>
+        accountDeviceKeys(db, product.slug, caller.subject, {
+          seatsHeld: caller.seatsHeld,
+          now,
+        }),
+      now,
+    );
+  } catch (e) {
+    if (e instanceof RingTooLargeError) return tooLarge();
+    throw e;
+  }
+  const { row, members } = current;
+  const self = members.find((m) => m.deviceId === caller.deviceId);
+  // Keys exist but the device is not a member (its seat was released): nothing to certify.
+  if (!self) return wireError(409, ErrorCode.DeviceKeysRequired);
   try {
     const [ring, certificate] = await Promise.all([
-      signRoster(
-        signer,
-        product.slug,
-        caller.subject,
-        row,
-        caller.members,
-        now,
-      ),
+      signRoster(signer, product.slug, caller.subject, row, members, now),
       signPeerCert(signer, product.slug, caller.subject, self, row.epoch, now),
     ]);
     return json(
@@ -120,7 +129,6 @@ export async function handleIdentity(
       { headers: NO_STORE },
     );
   } catch (e) {
-    // A roster no verifier would accept (more than 128 devices): refuse, never send it.
     if (!isStrictJsonError(e)) throw e;
     return wireError(500, ErrorCode.DocumentNotRepresentable);
   }
@@ -135,7 +143,9 @@ export async function handleDevices(
   if (caller instanceof Response) return caller;
   const rows = await accountDeviceListing(db, product.slug, caller.subject, {
     seatsHeld: caller.seatsHeld,
+    now: ctx.now,
   });
+  if (rows.length > MAX_RING_DEVICES) return tooLarge();
   return json(
     {
       devices: rows.map((r) => ({

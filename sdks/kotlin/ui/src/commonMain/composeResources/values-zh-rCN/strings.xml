@@ -1978,6 +1978,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_required_message">此设备尚未设置为与你的其他设备关联。请更新应用后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_ring_too_large_title">设备过多</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_ring_too_large_message">此账户关联的设备超出了可连接的数量。请移除一台后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">密钥已无剩余输入次数</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。</string>

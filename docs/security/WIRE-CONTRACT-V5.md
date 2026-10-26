@@ -2263,7 +2263,7 @@ Every symmetric key seals one plaintext, so the nonce is a constant (12 zero byt
 
 **`pkey-sync-file/1`** seals a file as a stream of segments:
 
-- a 64-byte header: `PKSYNCF1`, `version` u16 1, `flags` u16, `segmentBytes` u32 (1 MiB), `kid` 16 bytes, `salt` 32 bytes;
+- a 64-byte little-endian header, like `pkey-sync-chunks/1`: `PKSYNCF1`, `version` u16 1, `flags` u16, `segmentBytes` u32 (1 MiB), `kid` 16 bytes, `salt` 32 bytes. Only the nonce counter below is big-endian;
 - segment `i` is `AES-256-GCM(K_file, nonce = u8(last) ‖ 0³ ‖ u64be(i), aad = header, segment)`;
 - an empty file is one empty last segment. A truncated stream, a reordered segment or a missing last flag is refused.
 
@@ -2538,8 +2538,10 @@ devices expire on the same horizon.
 - **K_disc.** It is 32 random bytes per `(product, subject)` per ring epoch, stored in
   `connect_rings`. `GET /connect/identity` delivers the current key and the previous one (for 24 h
   after a bump). A device advertises only under the newest key.
+  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump that only adds devices keeps it.
 - **Why server-delivered.** This keeps L-13's server-delivered key over a root-key derivation.
   Connect then works without Cloud Sync E2E, and rotation is trivial.
+- **Byte-level choices (`peer-matrix.json` `adverts`).** `deviceId` in the HMAC is the 24 bytes the 32 base64url characters decode to. The instance suffix is the first 16 characters of the RFC 4648 base32 alphabet in lower case (`a-z2-7`), unpadded, of the 32-byte MAC. A browser matches an instance against the current epoch and the one before, newest key first, and against no other. A TXT entry splits at its first `=`; an entry without `=` and a key this section does not define are ignored; keys are case-sensitive; a repeated key refuses the whole advert. `v` must be `1`; `m` must be `a`, `v` or `p`; `h` is read for `v` and `p` only and must be 16 lower-case hex characters.
 
 ### 15.5 Handshake
 
@@ -2554,8 +2556,12 @@ devices expire on the same horizon.
 
 - The prologue is `"pkey-peer/1"‖0x00‖slug‖0x00‖mode‖0x00`. A version, product or mode mismatch
   fails by construction.
+- The mode-a PSK is `HKDF-SHA256(salt = empty, ikm = K_disc, info = "pkey-peer/1 psk"‖0x00‖slug)`
+  at 32 bytes. The argument order is pinned by `noise-vectors.json`: an empty salt (HashLen zero
+  bytes, RFC 5869), the 32-byte discovery key as the input keying material and the label as info.
 - Message 1's payload is `{"v":1}`.
 - Payloads are strict JSON of at most 8 KiB.
+  - **Payload rules (`peer-matrix.json` `handshakePayloads`).** A payload is one JSON object under §1.2 (no byte order mark). Message 1 needs `v` = 1 and no `cert`. Messages 2 and 3 need `v` = 1 and `caps`; in mode `a` also a non-empty string `cert` and an integer `ring` of at least 1 that is a safe integer; in modes `v` and `p` a `cert` refuses. Unknown members are ignored. The session's capabilities are the entries both sides list, once each, in byte order.
 - `caps` holds at most 32 entries matching `^[a-z0-9]+/[0-9]+$`. v1 defines `ring/1`, `trust/1`,
   `cand/1`, `vouch/1` and `app/1`. The session uses the intersection.
 
@@ -2579,6 +2585,8 @@ An approver accepts at most 5 handshakes a minute per advert, so a man in the mi
 probability about 10^-6 per attempt. The vectors go in `peer-matrix.json` `sas`, with commit and
 reveal rows.
 
+**Encodings (`peer-matrix.json` `sas`).** `h` is the 32-byte Noise handshake hash. The code is shown as six digits, zero-padded, with a space between the triples (`058 429`). `nD`, `nM` and `c` are 32 bytes written as 43 canonical base64url characters, in a compact JSON object with the one member `c`, `nM` or `nD`; anything else (another length, padding, a hex spelling) refuses and closes the session with `peer_bad_frame`. The reveal is valid when SHA-256 of the decoded `nD` equals the decoded `c`.
+
 **No identity before consent.** Modes `v` and `p` carry no certificate in the handshake.
 
 ### 15.6 Records and framing
@@ -2591,6 +2599,7 @@ reveal rows.
   - A type with bit `0x8000` set is critical. An unknown critical type closes the session with
     `peer_unknown_critical`; an unknown non-critical type is ignored.
   - A type not allowed in the session's mode closes it with `peer_not_allowed`.
+  - **Order of checks (`peer-matrix.json` `records`).** Per record: the flag bits, then a record of another type while a `MORE` chain is open (`peer_bad_frame`), then the type (unknown critical, then the mode), then the running size over 1 MiB (`peer_bad_frame`), and on a chain's last record a fixed body length (`PING` and `PONG` 8 bytes, `REKEY` empty; `peer_bad_frame`). An unknown non-critical type is dropped with its whole chain. A frame whose length is zero closes with `peer_bad_frame`.
 
 | Type                         | Name                                    | Modes | Body                                                                                                                                                               |
 | ---------------------------- | --------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -2639,6 +2648,8 @@ from the client.
 | DO to client | 0x85 | GONE: `device(24)`                                   |
 | DO to client | 0x86 | LIMIT: `u8` 1 rate · 2 person · 3 product · 4 paused |
 
+**Byte-level choices (`peer-matrix.json` `relayEnvelopes`).** A device is its 24 decoded device-id bytes. `MEMBERS` carries its count `n` as one byte. `PONG` echoes the 8 bytes of the `PING` it answers. The limit of 65,564 bytes is the whole message: the op, 24, 4 and a Noise frame of at most 65,535 bytes. A message that does not match its layout exactly, an op in the wrong direction and a `LIMIT` outside 1 to 4 are refused.
+
 **Close codes:** 4001 bad ticket · 4003 not a member · 4008 limit · 4009 replaced.
 
 **Limits:**
@@ -2680,7 +2691,7 @@ device-bound nonce (§12.11). They are not generated at launch.
 
 **Corpus.** `cases.json` gains the sections `peerCertCases`, `ringCases` and `peerAdmissionCases` (§15.2, §15.3). Two new files sit beside it: `noise-vectors.json` (X25519 and AES-256-GCM known answers, the low-order points, the three handshake modes with fixed ephemerals, rekey, and external `Noise_XX_25519_AESGCM_SHA256` anchors) and `peer-matrix.json` (adverts, prologue, PSK, SAS with commit and reveal rows, TCP frames, records, relay envelopes and handshake payloads). `noiseVectorsVersion` and `peerMatrixVersion` are 1. The device proof (§15.8) is `device-proof.json`. These are generated by CC-04.3 and CC-05; `corpusVersion` stays 2, and a runner that does not name a section ignores it.
 
-**Errors.** One new error kind, `peer`, sent between SDKs in a `CLOSE` record and never emitted by the Worker: `peer_revoked`, `peer_expired`, `peer_bad_frame`, `peer_unknown_critical`, `peer_not_allowed`, `peer_busy`, `peer_bye`. Worker (`wire`) codes: `device_keys_invalid` (400), `device_keys_required` (409), `relay_disabled` (403), `relay_paused` (503 with `Retry-After`), `relay_quota_exceeded` (429, `scope` person or product) and `relay_ticket_invalid` (401; WebSocket close 4001). Client-only codes: `connect-unavailable`, `nearby-permission-denied`, `nearby-unsupported`, `peer-handshake-failed`, `peer-cert-invalid`, `peer-closed`. The registry is `conformance/parity/errors.json`, which lists a code before any implementation uses it.
+**Errors.** One new error kind, `peer`, sent between SDKs in a `CLOSE` record and never emitted by the Worker: `peer_revoked`, `peer_expired`, `peer_bad_frame`, `peer_unknown_critical`, `peer_not_allowed`, `peer_busy`, `peer_bye`. Worker (`wire`) codes: `device_keys_invalid` (400), `device_keys_required` (409), `ring_too_large` (409, more than 128 devices), `relay_disabled` (403), `relay_paused` (503 with `Retry-After`), `relay_quota_exceeded` (429, `scope` person or product) and `relay_ticket_invalid` (401; WebSocket close 4001). Client-only codes: `connect-unavailable`, `nearby-permission-denied`, `nearby-unsupported`, `peer-handshake-failed`, `peer-cert-invalid`, `peer-closed`. The registry is `conformance/parity/errors.json`, which lists a code before any implementation uses it.
 
 **Discovery.** `services.connect` is `{"enabled":false}` when the service is off. When on, it is `{"enabled":true,"lan":bool,"relay":bool,"interAccount":bool,"endpoints":{"identity","devices","ticket"}}`, and an endpoint is `null` until the release that serves it. The member is unsigned and additive; `DISCOVERY_VERSION` stays 2.
 

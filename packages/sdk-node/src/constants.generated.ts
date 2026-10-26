@@ -24,6 +24,7 @@ export const ErrorCode = {
   signingUnavailable: "signing_unavailable",
   deviceKeysInvalid: "device_keys_invalid",
   deviceKeysRequired: "device_keys_required",
+  ringTooLarge: "ring_too_large",
   deviceLimit: "device_limit",
   keyEntryLimit: "key_entry_limit",
   licenseDisabled: "license_disabled",
@@ -226,6 +227,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "signing_unavailable",
   "device_keys_invalid",
   "device_keys_required",
+  "ring_too_large",
   "device_limit",
   "key_entry_limit",
   "license_disabled",
@@ -430,6 +432,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   signing_unavailable: "wire",
   device_keys_invalid: "wire",
   device_keys_required: "wire",
+  ring_too_large: "wire",
   device_limit: "wire",
   key_entry_limit: "wire",
   license_disabled: "wire",
@@ -1999,7 +2002,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
-  "connect.noise": { status: "planned", service: "connect", na: [] },
+  "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "planned", service: "connect", na: [] },
   "connect.lan": { status: "planned", service: "connect", na: [] },
   "connect.relay": { status: "planned", service: "connect", na: [] },
@@ -2033,7 +2036,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [],
   },
-  "identity.choice": { status: "planned", service: "identity", na: [] },
+  "identity.choice": { status: "implemented", service: "identity", na: [] },
   "identity.signin.hints": {
     status: "implemented",
     service: "identity",
@@ -2158,4 +2161,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "9852d53951542f6cb6e76c249a5c94eb3fb5c42506f0313e6bee18b99985aeb5";
+  "43e99c7e4ed2eef6ad4225f64e16d705f29a49a7068265ee3913be8494c5388e";

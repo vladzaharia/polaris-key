@@ -460,7 +460,7 @@ func _slice2(t: PKeyTestContext) -> void:
 	# The step crossfade: a new screen of the same dialog crossfades its content in.
 	PKeyUiTheme.reduce_motion_mode = "off"
 	await _tree().create_timer(0.4, true, false, true).timeout
-	d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	d.show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
 	await _tree().process_frame
 	var content: Control = d.step_target()
 	t.check("step: a new screen of a dialog crossfades the card's inner content, never the card", content != null and content != d._card_box and content.has_meta(PKeyUiMotion.STEP_META) and content.modulate.a < 1.0 and is_equal_approx(d._card_box.modulate.a, 1.0), str(content.modulate.a) if content != null else "")
@@ -616,7 +616,7 @@ func _fix1(t: PKeyTestContext) -> void:
 	var min_card := 1.0
 	var dipped := false
 	PKeyUiTheme.reduce_motion_mode = "off"
-	dialog.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	dialog.show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
 	for i in 30:
 		await _tree().process_frame
 		for c in cards:
@@ -1445,7 +1445,7 @@ func _focus_follows_screen(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	var f := _tree().root.gui_get_focus_owner()
 	t.check("focus follows the screen: the code arriving moves focus from Cancel to Open browser", f != null and f.name == "OpenBrowser", str(f))
-	d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	d.show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
 	await _tree().process_frame
 	await _tree().process_frame
 	f = _tree().root.gui_get_focus_owner()
@@ -1552,7 +1552,7 @@ func _play(t: PKeyTestContext) -> void:
 	g.auto_sdk = false
 	g.sdk = sdk
 	_tree().root.add_child(g)
-	g._on_signed_in(PKeySignInResult.signed_in({"name": "Mara"}, "", true, null))
+	g._on_signed_in(PKeySignInOutcome.signed_in({"name": "Mara"}, "", true, null))
 	t.check("play: the gate toasts the sign-in", host.current.get("kind") == "success" and String(host.current.get("title")).contains("Mara") and String(host.current.get("title")).begins_with("Signed in as"), str(host.current))
 	g.note_copied()
 	t.check("play: the gate toasts a copied link", host.current.get("kind") == "copied")
@@ -1715,7 +1715,7 @@ func _activation_copy(t: PKeyTestContext) -> void:
 
 
 func _sign_in_copy(t: PKeyTestContext) -> void:
-	for k in [PKeySignInResult.KIND_OK, PKeySignInResult.KIND_EXPIRED, PKeySignInResult.KIND_CANCELLED, PKeySignInResult.KIND_DENIED, PKeySignInResult.KIND_DEVICE_MISMATCH, PKeySignInResult.KIND_RATE_LIMITED, PKeySignInResult.KIND_SERVICE_UNAVAILABLE, PKeySignInResult.KIND_TIMEOUT, PKeySignInResult.KIND_ERROR]:
+	for k in [PKeySignInOutcome.KIND_SIGNED_IN, PKeySignInOutcome.KIND_EXPIRED, PKeySignInOutcome.KIND_CANCELLED, PKeySignInOutcome.KIND_DENIED, PKeySignInOutcome.KIND_DEVICE_MISMATCH, PKeySignInOutcome.KIND_RATE_LIMITED, PKeySignInOutcome.KIND_SERVICE_UNAVAILABLE, PKeySignInOutcome.KIND_ERROR]:
 		t.check("sign-in: %s has copy" % k, PKeyUiCopy.DEFAULTS.has(PKeySignInController.message_for(k)))
 
 

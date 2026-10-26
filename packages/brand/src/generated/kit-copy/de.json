@@ -895,6 +895,8 @@
   "core.codes.device_keys_invalid.message": "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.",
   "core.codes.device_keys_required.title": "Gerät nicht verknüpft",
   "core.codes.device_keys_required.message": "Dieses Gerät wurde nicht zum Verknüpfen mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.",
+  "core.codes.ring_too_large.title": "Zu viele Geräte",
+  "core.codes.ring_too_large.message": "Dieses Konto hat mehr verknüpfte Geräte, als verbunden werden können. Entferne eines und versuche es erneut.",
   "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
   "core.codes.key_entry_limit.message": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
   "core.codes.license_disabled.title": "Lizenz deaktiviert",

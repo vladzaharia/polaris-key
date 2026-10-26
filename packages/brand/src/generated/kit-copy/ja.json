@@ -895,6 +895,8 @@
   "core.codes.device_keys_invalid.message": "このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。",
   "core.codes.device_keys_required.title": "デバイスがリンクされていません",
   "core.codes.device_keys_required.message": "このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。",
+  "core.codes.ring_too_large.title": "デバイスが多すぎます",
+  "core.codes.ring_too_large.message": "このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。",
   "core.codes.key_entry_limit.title": "キーの入力回数が残っていません",
   "core.codes.key_entry_limit.message": "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
   "core.codes.license_disabled.title": "ライセンスが無効です",

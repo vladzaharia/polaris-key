@@ -1,0 +1,1178 @@
+// `peer-matrix.json`: the `pkey-peer/1` byte-level rules outside the Noise engine
+// (WIRE-CONTRACT-V5 §15.4 to §15.7, §15.9; plans/CC-01-cloud-connect.md §2.4, §2.6, §2.7, §2.9).
+// `peerMatrixVersion` 1.
+//
+// `adverts`, `prologue`, `psk`, `sas`, `frames`, `records`, `relayEnvelopes` and
+// `handshakePayloads`. The device proof is not here: it lives in `device-proof.json`. Every row is
+// recomputed through `reference/peerMatrix.ts` (`node:crypto` only; nothing from client-core);
+// the generator throws when a hand-written known answer disagrees, and the HKDF and base32 steps
+// are also checked against `crypto.hkdfSync` and the RFC 4648 test vectors.
+
+import { createHash, hkdfSync } from "node:crypto";
+import {
+  type BrowseHit,
+  type PeerClose,
+  type PeerMode,
+  type RelayMessage,
+  REF_MAX_FRAME,
+  REF_MAX_PAYLOAD,
+  REF_MAX_PEER_MESSAGE,
+  REF_RELAY_MAX_MESSAGE,
+  REF_TYPES,
+  bytesHex,
+  cat,
+  hexBytes,
+  refAccountInstance,
+  refAdvertEpoch,
+  refBase32Lower,
+  refBrowse,
+  refCapsIntersection,
+  refFrameDecode,
+  refFrameEncode,
+  refHandshakePayload,
+  refInstanceShape,
+  refParseTxt,
+  refPeerPsk,
+  refPrologue,
+  refProductTag,
+  refRecordEncode,
+  refRecordParse,
+  refRecordSession,
+  refRelayDecode,
+  refRelayEncode,
+  refSasCommit,
+  refSasDisplay,
+  refSasNonce,
+  refSasRevealOk,
+  refSasValue,
+  utf8,
+} from "./reference/peerMatrix.js";
+import { sha256 } from "./reference/noise.js";
+
+const hex = bytesHex;
+const b64u = (b: Uint8Array): string => Buffer.from(b).toString("base64url");
+/** Fixed test material: SHA-256 of a label. Never used outside this file. */
+const mat = (label: string): Uint8Array =>
+  sha256(utf8(`pkey-peer/1 matrix vector ${label}`));
+/** A 32-character device id from a label (24 bytes of material). */
+const devId = (label: string): string => b64u(mat(label).slice(0, 24));
+const SLUG = "djdl";
+
+function check(label: string, got: unknown, want: unknown): void {
+  if (JSON.stringify(got) !== JSON.stringify(want))
+    throw new Error(
+      `peerMatrix ${label}: reference gives ${JSON.stringify(got)}, row says ${JSON.stringify(want)}`,
+    );
+}
+
+/** Row bytes: lower-case hex, or `{fill, count}` (one hex byte repeated) for the large rows. */
+type Bytes = string | { fill: string; count: number };
+const bytesOf = (b: Bytes): Uint8Array =>
+  typeof b === "string"
+    ? hexBytes(b)
+    : new Uint8Array(b.count).fill(parseInt(b.fill, 16));
+const fill = (f: string, count: number): Bytes => ({ fill: f, count });
+const x4 = (n: number): string => n.toString(16).padStart(4, "0");
+
+// ── adverts ──────────────────────────────────────────────────────────────────
+
+function buildAdverts(): unknown {
+  // Anchors outside the reference: RFC 4648 section 10 (lower-cased), and the HMAC step.
+  for (const [plain, want] of [
+    ["", ""],
+    ["f", "my"],
+    ["fo", "mzxq"],
+    ["foo", "mzxw6"],
+    ["foob", "mzxw6yq"],
+    ["fooba", "mzxw6ytb"],
+    ["foobar", "mzxw6ytboi"],
+  ] as const)
+    check(`base32 ${plain}`, refBase32Lower(utf8(plain)), want);
+
+  const epochs = [0, 1, 899, 900, 901, 1761300000, 1761300899, 4102444800].map(
+    (now) => ({ now, epoch: refAdvertEpoch(now) }),
+  );
+  const names = [0, 1, 2, 3].flatMap((k) =>
+    [0, 7, 1956999].map((epoch, e) => {
+      const kDisc = mat(`kdisc ${k}`);
+      const deviceId = devId(`device ${k}.${e}`);
+      return {
+        id: `k${k}-e${epoch}`,
+        kDisc: hex(kDisc),
+        epoch,
+        deviceId,
+        instance: refAccountInstance(kDisc, epoch, deviceId),
+      };
+    }),
+  );
+  const tags = [
+    [SLUG, 1956999],
+    [SLUG, 0],
+    ["acme-notes", 1956999],
+    ["a", 1956999],
+    ["acme-notes", 1956998],
+  ].map(([slug, epoch]) => ({
+    slug: slug as string,
+    epoch: epoch as number,
+    h: refProductTag(slug as string, epoch as number),
+  }));
+
+  const txtIn: [string, string[]][] = [
+    ["account", ["v=1", "m=a"]],
+    ["account-reordered", ["m=a", "v=1"]],
+    ["account-unknown-key-ignored", ["v=1", "m=a", "x=anything"]],
+    ["account-tag-ignored", ["v=1", "m=a", "h=0123456789abcdef"]],
+    ["approver", ["v=1", "m=v", "h=0123456789abcdef"]],
+    ["pair", ["m=p", "v=1", "h=fedcba9876543210"]],
+    ["entry-without-equals-ignored", ["v=1", "m=a", "flag"]],
+    ["value-with-equals", ["v=1", "m=a", "note=a=b"]],
+    ["version-2", ["v=2", "m=a"]],
+    ["version-missing", ["m=a"]],
+    ["version-empty", ["v=", "m=a"]],
+    ["version-padded", ["v=01", "m=a"]],
+    ["mode-missing", ["v=1"]],
+    ["mode-unknown", ["v=1", "m=c"]],
+    ["mode-upper", ["v=1", "m=A"]],
+    ["key-case-sensitive", ["V=1", "M=a"]],
+    ["duplicate-version", ["v=1", "v=1", "m=a"]],
+    ["duplicate-unknown", ["v=1", "m=a", "x=1", "x=2"]],
+    ["approver-tag-missing", ["v=1", "m=v"]],
+    ["pair-tag-short", ["v=1", "m=p", "h=0123456789abcde"]],
+    ["pair-tag-long", ["v=1", "m=p", "h=0123456789abcdef0"]],
+    ["approver-tag-upper", ["v=1", "m=v", "h=0123456789ABCDEF"]],
+    ["approver-tag-not-hex", ["v=1", "m=v", "h=0123456789abcdeg"]],
+    ["empty", []],
+  ];
+  const txt = txtIn.map(([id, entries]) => ({
+    id,
+    entries,
+    want: refParseTxt(entries),
+  }));
+
+  const instanceIn = [
+    "p1-abcdefghijklmnop",
+    "p1-abcdefghijklmn23",
+    "p1-abcdefghijklmn2",
+    "p1-abcdefghijklmn234",
+    "p1-abcdefghijklmn18",
+    "p1-ABCDEFGHIJKLMNOP",
+    "p2-abcdefghijklmnop",
+    "abcdefghijklmnop",
+    "",
+  ];
+  const instances = instanceIn.map((name) => ({
+    name,
+    want: refInstanceShape(name),
+  }));
+  for (const n of names) check(n.id, refInstanceShape(n.instance), true);
+
+  // Browsing: the current and the previous epoch, under both delivered keys.
+  const now = 1761300450; // epoch 1956999, 450 s in
+  const epoch = refAdvertEpoch(now);
+  const kNew = mat("browse new");
+  const kOld = mat("browse old");
+  const roster = Array.from({ length: 4 }, (_, i) => devId(`roster ${i}`));
+  const big = Array.from({ length: 128 }, (_, i) => devId(`big roster ${i}`));
+  const stranger = devId("stranger");
+  const browseRow = (
+    id: string,
+    instance: string,
+    ks: Uint8Array[],
+    r: string[],
+    at = now,
+  ) => {
+    const want: BrowseHit | null = refBrowse(instance, ks, at, r);
+    return {
+      id,
+      kDiscs: ks.map(hex),
+      now: at,
+      roster: r,
+      instance,
+      want,
+    };
+  };
+  const browse = [
+    browseRow(
+      "current-epoch-newest-key",
+      refAccountInstance(kNew, epoch, roster[2]!),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "previous-epoch-newest-key",
+      refAccountInstance(kNew, epoch - 1, roster[0]!),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "current-epoch-previous-key",
+      refAccountInstance(kOld, epoch, roster[3]!),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "previous-epoch-previous-key",
+      refAccountInstance(kOld, epoch - 1, roster[1]!),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "two-epochs-old",
+      refAccountInstance(kNew, epoch - 2, roster[0]!),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "next-epoch",
+      refAccountInstance(kNew, epoch + 1, roster[0]!),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "device-not-in-roster",
+      refAccountInstance(kNew, epoch, stranger),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "unknown-key",
+      refAccountInstance(mat("browse other"), epoch, roster[0]!),
+      [kNew, kOld],
+      roster,
+    ),
+    browseRow(
+      "only-one-key-delivered",
+      refAccountInstance(kOld, epoch, roster[0]!),
+      [kNew],
+      roster,
+    ),
+    browseRow(
+      "epoch-boundary-first-second",
+      refAccountInstance(kNew, 1956998, roster[0]!),
+      [kNew],
+      roster,
+      1956999 * 900,
+    ),
+    browseRow(
+      "128-device-roster-last-device",
+      refAccountInstance(kOld, epoch - 1, big[127]!),
+      [kNew, kOld],
+      big,
+    ),
+    browseRow(
+      "approver-instance-never-matches",
+      "p1-abcdefghijklmnop",
+      [kNew, kOld],
+      roster,
+    ),
+  ];
+  for (const b of browse) {
+    const w = b.want;
+    if (b.id.endsWith("last-device") && w?.deviceId !== big[127])
+      throw new Error("peerMatrix browse: the 128th device was not found");
+  }
+  return { epochSeconds: 900, epochs, names, tags, txt, instances, browse };
+}
+
+// ── prologue and psk ─────────────────────────────────────────────────────────
+
+function buildPrologue(): unknown[] {
+  return (
+    [
+      [SLUG, "a"],
+      [SLUG, "v"],
+      [SLUG, "p"],
+      ["acme-notes", "a"],
+      ["a", "p"],
+      ["", "a"],
+    ] as const
+  ).map(([slug, mode]) => ({
+    slug,
+    mode,
+    prologue: hex(refPrologue(slug, mode)),
+  }));
+}
+
+function buildPsk(): unknown[] {
+  return [
+    ["psk-1", SLUG],
+    ["psk-2", SLUG],
+    ["psk-1", "acme-notes"],
+    ["psk-3", "a"],
+  ].map(([label, slug]) => {
+    const kDisc = mat(label!);
+    const psk = refPeerPsk(kDisc, slug!);
+    // hkdfSync takes the salt, ikm and info in its own order; this is the cross-check.
+    const cross = new Uint8Array(
+      hkdfSync(
+        "sha256",
+        kDisc,
+        new Uint8Array(0),
+        cat(utf8("pkey-peer/1 psk"), Uint8Array.of(0), utf8(slug!)),
+        32,
+      ),
+    );
+    check(`psk ${label}`, hex(psk), hex(cross));
+    return { slug, kDisc: hex(kDisc), psk: hex(psk) };
+  });
+}
+
+// ── sas ──────────────────────────────────────────────────────────────────────
+
+function buildSas(): unknown {
+  const commits = [0, 1, 2].map((i) => {
+    const nD = mat(`nD ${i}`);
+    const c = refSasCommit(nD);
+    check(`commit ${i}`, hex(c), createHash("sha256").update(nD).digest("hex"));
+    return {
+      nD: hex(nD),
+      c: hex(c),
+      commitBody: JSON.stringify({ c: b64u(c) }),
+      revealBody: JSON.stringify({ nD: b64u(nD) }),
+    };
+  });
+  const rows: unknown[] = [];
+  const add = (
+    id: string,
+    h: Uint8Array,
+    nD: Uint8Array,
+    nM: Uint8Array,
+    mode: string,
+  ) => {
+    const code = refSasValue(h, nD, nM, mode);
+    rows.push({
+      id,
+      mode,
+      h: hex(h),
+      nD: hex(nD),
+      nM: hex(nM),
+      code,
+      display: refSasDisplay(code),
+    });
+    return code;
+  };
+  for (const mode of ["v", "p"])
+    for (let i = 0; i < 3; i++)
+      add(`${mode}-${i}`, mat(`h ${i}`), mat(`nD ${i}`), mat(`nM ${i}`), mode);
+  // The same inputs under the other mode differ; so does one flipped bit of any input.
+  const h = mat("h 0");
+  const nD = mat("nD 0");
+  const nM = mat("nM 0");
+  const flip = (b: Uint8Array): Uint8Array => {
+    const c = b.slice();
+    c[0]! ^= 1;
+    return c;
+  };
+  add("v-flip-h", flip(h), nD, nM, "v");
+  add("v-flip-nD", h, flip(nD), nM, "v");
+  add("v-flip-nM", h, nD, flip(nM), "v");
+  add("v-swapped-nonces", h, nM, nD, "v");
+  // The first inputs found by counting that need leading zeros in the display, and one that
+  // lands at the top of the range.
+  let leading1 = 0;
+  let leading5 = 0;
+  for (let i = 0; i < 2_000_000 && (!leading1 || !leading5); i++) {
+    const nm = sha256(utf8(`pkey-peer/1 sas search ${i}`));
+    const code = refSasValue(h, nD, nm, "p");
+    if (!leading1 && code < 100000 && code >= 10000) {
+      leading1 = 1;
+      add("p-one-leading-zero", h, nD, nm, "p");
+    }
+    if (!leading5 && code < 10) {
+      leading5 = 1;
+      add("p-five-leading-zeros", h, nD, nm, "p");
+    }
+  }
+  if (!leading1 || !leading5)
+    throw new Error("peerMatrix sas: no leading-zero input found");
+
+  const nonceText = (b: Uint8Array): string => b64u(b);
+  const goodC = nonceText(refSasCommit(nD));
+  const goodN = nonceText(nD);
+  const reveal = (id: string, c: string, n: string) => ({
+    id,
+    c,
+    nD: n,
+    want: refSasRevealOk(c, n),
+  });
+  const reveals = [
+    reveal("matches", goodC, goodN),
+    reveal("wrong-nonce", goodC, nonceText(mat("nD 1"))),
+    reveal("wrong-commit", nonceText(refSasCommit(mat("nD 1"))), goodN),
+    reveal("nonce-31-bytes", goodC, nonceText(nD.slice(0, 31))),
+    reveal("nonce-33-bytes", goodC, nonceText(cat(nD, Uint8Array.of(0)))),
+    reveal("nonce-padded", goodC, `${goodN}=`),
+    reveal(
+      "nonce-standard-alphabet",
+      goodC,
+      goodN.replace(/-/g, "+").replace(/_/g, "/") + "A",
+    ),
+    reveal(
+      "nonce-non-canonical-tail",
+      goodC,
+      `${goodN.slice(0, 42)}${goodN[42] === "A" ? "B" : "A"}`,
+    ),
+    reveal("nonce-empty", goodC, ""),
+    reveal("commit-short", goodC.slice(0, 42), goodN),
+  ];
+  const nonces = [
+    ["valid-32-bytes", nonceText(nD)],
+    ["31-bytes", nonceText(nD.slice(0, 31))],
+    ["33-bytes", nonceText(cat(nD, Uint8Array.of(1)))],
+    ["padded", `${nonceText(nD)}=`],
+    ["empty", ""],
+    ["hex-spelling", hex(nD)],
+  ].map(([id, text]) => ({
+    id,
+    text,
+    want: refSasNonce(text!) === null ? null : hex(refSasNonce(text!)!),
+  }));
+  return {
+    note: "h is the 32-byte Noise handshake hash. code = u32be(HKDF-SHA256(salt = h, ikm = nD || nM, info = 'pkey-peer/1 sas' || 0x00 || mode)[0..4]) mod 10^6, shown as six digits with leading zeros and a space between the triples. A nonce and a commitment travel as 43 base64url characters; the body of SAS_COMMIT is the compact JSON object with the member c, SAS_NONCE nM and SAS_REVEAL nD. c = SHA-256(nD).",
+    commits,
+    codes: rows,
+    reveals,
+    nonces,
+  };
+}
+
+// ── frames ───────────────────────────────────────────────────────────────────
+
+function buildFrames(): unknown {
+  const encode = [1, 2, 16, 48].map((n) => {
+    const body = cat(
+      ...Array.from({ length: Math.ceil(n / 16) }, (_, i) =>
+        mat(`frame ${n}.${i}`),
+      ),
+    ).slice(0, n);
+    return { noise: hex(body), frame: hex(refFrameEncode(body)!) };
+  });
+  const limits = [0, 1, 255, 256, 65534, 65535, 65536, 65537].map((len) => {
+    const body = new Uint8Array(len).fill(0x5a);
+    const f = refFrameEncode(body);
+    return {
+      len,
+      want:
+        f === null
+          ? { refused: true }
+          : { header: hex(f.slice(0, 2)), frameSha256: hex(sha256(f)) },
+    };
+  });
+  if (REF_MAX_FRAME !== 65535) throw new Error("frame limit");
+  const f = (n: number, fillByte = 0xab): string =>
+    hex(refFrameEncode(new Uint8Array(n).fill(fillByte))!);
+  const streams: [string, string][] = [
+    ["one-frame", f(5)],
+    ["two-frames", f(3, 1) + f(4, 2)],
+    ["three-frames-one-byte-each", f(1, 1) + f(1, 2) + f(1, 3)],
+    ["empty-stream", ""],
+    ["one-byte-header-only", "00"],
+    ["header-without-body", "0005"],
+    ["partial-body", f(5).slice(0, -2)],
+    ["frame-then-partial", f(3) + f(5).slice(0, 8)],
+    ["frame-then-header", f(3) + "0007"],
+    ["zero-length", "0000"],
+    ["zero-length-after-frame", f(2) + "0000" + f(2)],
+    ["frame-before-zero-length", f(2, 7) + "0000"],
+  ];
+  const decode = streams.map(([id, stream]) => {
+    const r = refFrameDecode(hexBytes(stream));
+    return {
+      id,
+      stream,
+      want:
+        "error" in r
+          ? { error: r.error }
+          : { frames: r.frames.map(hex), rest: hex(r.rest) },
+    };
+  });
+  return {
+    note: "A frame is u16be len || Noise message, len 1..65535. `decode` reads a byte stream: it returns the complete frames and the unread rest; a zero length closes the session with peer_bad_frame, wherever it occurs.",
+    encode,
+    limits,
+    decode,
+  };
+}
+
+// ── records ──────────────────────────────────────────────────────────────────
+
+interface RecIn {
+  type: number;
+  flags?: number;
+  body?: Bytes;
+}
+
+function buildRecords(): unknown {
+  const parse = [
+    "800100",
+    "0004010000000000000001",
+    "000200",
+    "0100ff",
+    "00",
+    "0001",
+    "",
+    "80ff00",
+    "000000",
+    "000102",
+    "000180",
+    "0001fe",
+    "0001ff",
+    "000103aa",
+  ].map((plain) => {
+    const r = refRecordParse(hexBytes(plain));
+    return {
+      plaintext: plain,
+      want:
+        r === null || (r.flags & 0xfe) !== 0
+          ? { error: "peer_bad_frame" }
+          : {
+              type: x4(r.type),
+              more: (r.flags & 1) === 1,
+              body: hex(r.body),
+            },
+    };
+  });
+  // Encode round trip.
+  for (const p of parse) {
+    if ("error" in (p.want as object)) continue;
+    const r = refRecordParse(hexBytes(p.plaintext))!;
+    check("record round trip", hex(refRecordEncode(r)), p.plaintext);
+  }
+
+  const typesTable = REF_TYPES.map((t) => ({
+    from: x4(t.from),
+    to: x4(t.to),
+    name: t.name,
+    modes: t.modes.join(""),
+    ...(t.bodyLen !== undefined ? { bodyLen: t.bodyLen } : {}),
+  }));
+
+  const sessions: unknown[] = [];
+  const run = (id: string, mode: PeerMode, records: RecIn[]) => {
+    const out = refRecordSession(
+      mode,
+      records.map((r) => ({
+        type: r.type,
+        flags: r.flags ?? 0,
+        body: bytesOf(r.body ?? ""),
+      })),
+    );
+    sessions.push({
+      id,
+      mode,
+      records: records.map((r) => ({
+        type: x4(r.type),
+        ...(r.flags ? { flags: r.flags } : {}),
+        body: r.body ?? "",
+      })),
+      want:
+        "close" in out
+          ? { close: out.close, at: out.after }
+          : {
+              delivered: out.delivered.map((d) => ({
+                type: x4(d.type),
+                length: d.body.length,
+                sha256: hex(sha256(d.body)),
+              })),
+            },
+    });
+  };
+  const ping = "0102030405060708";
+  // Every defined type in each mode it is allowed in, then in each it is not.
+  const sample = (t: number, len?: number): RecIn => ({
+    type: t,
+    body: t === 0x80fe ? "" : fill("5a", len ?? 8),
+  });
+  for (const mode of ["a", "v", "p", "c"] as const) {
+    run(`${mode}-hello`, mode, [sample(0x8001, 12)]);
+    run(`${mode}-ping-pong`, mode, [
+      { type: 4, body: ping },
+      { type: 5, body: ping },
+    ]);
+    run(`${mode}-rekey-close`, mode, [
+      { type: 0x80fe },
+      { type: 0x80ff, body: hex(utf8('{"code":"peer_bye"}')) },
+    ]);
+  }
+  run("a-ring-trust-candidates", "a", [
+    sample(2, 20),
+    sample(3, 20),
+    sample(6, 20),
+  ]);
+  run(
+    "a-transfer-range",
+    "a",
+    [0x20, 0x21, 0x22, 0x23, 0x24, 0x25].map((t) => sample(t, 9)),
+  );
+  run("c-transfer", "c", [sample(0x20, 9)]);
+  run("a-app-low", "a", [sample(0x0100, 5), sample(0x7fff, 5)]);
+  run("a-app-critical", "a", [sample(0x8100, 5), sample(0xfffd, 5)]);
+  run("c-app", "c", [sample(0x0100, 5), sample(0x8100, 5)]);
+  run("v-vouch", "v", [sample(0x8010, 30), sample(0x8011, 20)]);
+  run("v-sas", "v", [
+    sample(0x8014, 50),
+    sample(0x8015, 50),
+    sample(0x8016, 50),
+  ]);
+  run("p-sas-confirm-contact", "p", [
+    sample(0x8014, 50),
+    sample(0x8015, 50),
+    sample(0x8016, 50),
+    sample(0x8012, 2),
+    sample(0x13, 40),
+  ]);
+  run("v-sync-range", "v", [
+    sample(0x30, 90),
+    sample(0x31, 90),
+    sample(0x3f, 90),
+  ]);
+  // Mode rules.
+  const notAllowed: [string, PeerMode, number][] = [
+    ["v-ring", "v", 2],
+    ["p-ring", "p", 2],
+    ["v-trust", "v", 3],
+    ["p-candidates", "p", 6],
+    ["a-vouch-req", "a", 0x8010],
+    ["p-vouch-result", "p", 0x8011],
+    ["a-sas-commit", "a", 0x8014],
+    ["c-sas-nonce", "c", 0x8015],
+    ["a-confirm", "a", 0x8012],
+    ["v-confirm", "v", 0x8012],
+    ["a-contact", "a", 0x13],
+    ["v-transfer", "v", 0x20],
+    ["p-transfer-cancel", "p", 0x25],
+    ["a-keyring-wrap", "a", 0x30],
+    ["p-sync-range", "p", 0x31],
+    ["c-sync-range-top", "c", 0x3f],
+    ["v-app", "v", 0x0100],
+    ["p-app-critical", "p", 0x8100],
+    ["v-app-top", "v", 0x7fff],
+  ];
+  for (const [id, mode, t] of notAllowed)
+    run(`not-allowed-${id}`, mode, [sample(t, 8)]);
+  // Unknown types: critical closes, non-critical is ignored.
+  for (const t of [
+    0x8000, 0x8002, 0x800f, 0x8013, 0x8017, 0x8021, 0x80fd, 0x8030, 0xfffe,
+    0xffff,
+  ])
+    run(`unknown-critical-${x4(t)}`, "a", [
+      sample(0x8001, 12),
+      { type: t, body: "00" },
+    ]);
+  for (const t of [0x0000, 0x0001, 0x0007, 0x0012, 0x0026, 0x0040, 0x00ff])
+    run(`unknown-non-critical-${x4(t)}-ignored`, "a", [
+      { type: t, body: "0011" },
+      sample(0x8001, 12),
+    ]);
+  run("unknown-non-critical-more-chain-ignored", "v", [
+    { type: 0x0007, flags: 1, body: "01" },
+    { type: 0x0007, flags: 0, body: "02" },
+    sample(0x8001, 5),
+  ]);
+  // Flags.
+  for (const flags of [2, 4, 0x80, 0xfe, 0xff, 3])
+    run(`flags-${flags.toString(16)}`, "a", [
+      { type: 0x8001, flags, body: "00" },
+    ]);
+  run("flags-before-type-check", "a", [{ type: 0x8002, flags: 2, body: "00" }]);
+  // MORE continuation.
+  run("more-two-parts", "a", [
+    { type: 0x0100, flags: 1, body: "0102" },
+    { type: 0x0100, flags: 0, body: "03" },
+  ]);
+  run("more-three-parts-then-record", "a", [
+    { type: 0x0100, flags: 1, body: "01" },
+    { type: 0x0100, flags: 1, body: "02" },
+    { type: 0x0100, flags: 0, body: "03" },
+    { type: 0x0101, body: "04" },
+  ]);
+  run("more-open-at-end-delivers-nothing", "a", [
+    { type: 0x0100, flags: 1, body: "01" },
+  ]);
+  run("more-then-other-type", "a", [
+    { type: 0x0100, flags: 1, body: "01" },
+    { type: 0x0101, flags: 0, body: "02" },
+  ]);
+  run("more-then-hello", "a", [
+    { type: 0x0100, flags: 1, body: "01" },
+    { type: 0x8001, flags: 0, body: "7b7d" },
+  ]);
+  run("more-empty-parts", "a", [
+    { type: 0x0100, flags: 1, body: "" },
+    { type: 0x0100, flags: 0, body: "" },
+  ]);
+  run("more-on-not-allowed-type", "v", [
+    { type: 0x0100, flags: 1, body: "01" },
+  ]);
+  // Size: at the limit and over it.
+  const half = REF_MAX_PEER_MESSAGE / 2;
+  run("size-exactly-1-mib-in-two", "a", [
+    { type: 0x0100, flags: 1, body: fill("11", half) },
+    { type: 0x0100, flags: 0, body: fill("22", half) },
+  ]);
+  run("size-1-mib-plus-one-in-two", "a", [
+    { type: 0x0100, flags: 1, body: fill("11", half) },
+    { type: 0x0100, flags: 0, body: fill("22", half + 1) },
+  ]);
+  run("size-over-while-still-more", "a", [
+    { type: 0x0100, flags: 1, body: fill("11", half) },
+    { type: 0x0100, flags: 1, body: fill("22", half + 1) },
+    { type: 0x0100, flags: 0, body: "00" },
+  ]);
+  run("size-single-record-65535", "a", [
+    { type: 0x0100, body: fill("33", 65532) },
+  ]);
+  // Fixed-size bodies.
+  for (const [id, t, body] of [
+    ["ping-7", 4, fill("00", 7)],
+    ["ping-9", 4, fill("00", 9)],
+    ["ping-empty", 4, ""],
+    ["pong-7", 5, fill("00", 7)],
+    ["rekey-with-body", 0x80fe, "00"],
+  ] as const)
+    run(`body-${id}`, "a", [{ type: t, body }]);
+  run("body-ping-split-across-more", "a", [
+    { type: 4, flags: 1, body: "01020304" },
+    { type: 4, flags: 0, body: "05060708" },
+  ]);
+  return {
+    note: "A Noise transport plaintext is u16be type || u8 flags || body. Flag bit 0 is MORE; any other bit closes with peer_bad_frame. A body is {fill, count} (one hex byte repeated) where it is large. `types` is the type table; a type outside it is unknown, critical when bit 0x8000 is set. In `sessions` each record is read in order and `at` is the 0-based index of the record that closed the session. Checks run per record: flags, then a continuation of another type (peer_bad_frame), then the type (unknown critical, mode), then the running size over 1 MiB (peer_bad_frame), then, on the last record of a chain, a fixed body length (peer_bad_frame). An unknown non-critical type is dropped, MORE chain and all. delivered lists the reassembled messages as type, length and SHA-256.",
+    maxMessage: REF_MAX_PEER_MESSAGE,
+    types: typesTable,
+    parse,
+    sessions,
+  };
+}
+
+// ── relay envelopes ──────────────────────────────────────────────────────────
+
+function buildRelay(): unknown {
+  const a = mat("relay a").slice(0, 24);
+  const b = mat("relay b").slice(0, 24);
+  const c = mat("relay c").slice(0, 24);
+  const noise = mat("relay noise").slice(0, 20);
+  const pingData = mat("relay ping").slice(0, 8);
+  const msgs: [string, "toRoom" | "toClient", RelayMessage][] = [
+    ["send", "toRoom", { op: "send", to: a, session: 1, noise }],
+    [
+      "send-session-max",
+      "toRoom",
+      { op: "send", to: b, session: 0xffffffff, noise: noise.slice(0, 1) },
+    ],
+    ["send-session-zero", "toRoom", { op: "send", to: c, session: 0, noise }],
+    [
+      "send-session-endian",
+      "toRoom",
+      { op: "send", to: a, session: 0x01020304, noise },
+    ],
+    ["list", "toRoom", { op: "list" }],
+    ["ping", "toRoom", { op: "ping", data: pingData }],
+    ["recv", "toClient", { op: "recv", from: a, session: 0x0a0b0c0d, noise }],
+    ["members-0", "toClient", { op: "members", devices: [] }],
+    ["members-1", "toClient", { op: "members", devices: [a] }],
+    ["members-3", "toClient", { op: "members", devices: [a, b, c] }],
+    ["ring", "toClient", { op: "ring", epoch: 7 }],
+    ["ring-big", "toClient", { op: "ring", epoch: 9007199254740991 }],
+    ["pong", "toClient", { op: "pong", data: pingData }],
+    ["gone", "toClient", { op: "gone", device: b }],
+    ["limit-rate", "toClient", { op: "limit", reason: 1 }],
+    ["limit-person", "toClient", { op: "limit", reason: 2 }],
+    ["limit-product", "toClient", { op: "limit", reason: 3 }],
+    ["limit-paused", "toClient", { op: "limit", reason: 4 }],
+  ];
+  const view = (m: RelayMessage): Record<string, unknown> => {
+    const o: Record<string, unknown> = { op: m.op };
+    if ("to" in m) o.to = hex(m.to);
+    if ("from" in m) o.from = hex(m.from);
+    if ("session" in m) o.session = m.session;
+    if ("noise" in m) o.noise = hex(m.noise);
+    if ("data" in m) o.data = hex(m.data);
+    if ("devices" in m) o.devices = m.devices.map(hex);
+    if ("epoch" in m) o.epoch = m.epoch;
+    if ("device" in m) o.device = hex(m.device);
+    if ("reason" in m) o.reason = m.reason;
+    return o;
+  };
+  const messages = msgs.map(([id, dir, m]) => {
+    const bytes = refRelayEncode(m);
+    const back = refRelayDecode(dir, bytes);
+    if (back === null)
+      throw new Error(`peerMatrix relay ${id}: round trip refused`);
+    check(`relay ${id}`, view(back), view(m));
+    return { id, dir, bytes: hex(bytes), message: view(m) };
+  });
+
+  const refusedIn: [string, "toRoom" | "toClient", Bytes][] = [
+    ["empty", "toRoom", ""],
+    ["unknown-op-00", "toRoom", "00"],
+    ["unknown-op-04", "toRoom", "0400"],
+    ["unknown-op-ff", "toClient", "ff"],
+    ["send-no-body", "toRoom", "01"],
+    ["send-to-only", "toRoom", "01" + "aa".repeat(24)],
+    ["send-no-noise", "toRoom", "01" + "aa".repeat(24) + "00000001"],
+    ["send-short-to", "toRoom", "01" + "aa".repeat(23) + "00000001ff"],
+    ["list-with-body", "toRoom", "0200"],
+    ["ping-7", "toRoom", "03" + "00".repeat(7)],
+    ["ping-9", "toRoom", "03" + "00".repeat(9)],
+    ["ping-empty", "toRoom", "03"],
+    ["client-sends-recv", "toRoom", "81" + "aa".repeat(24) + "00000001ff"],
+    ["client-sends-pong", "toRoom", "84" + "00".repeat(8)],
+    ["client-sends-limit", "toRoom", "8601"],
+    ["room-sends-send", "toClient", "01" + "aa".repeat(24) + "00000001ff"],
+    ["room-sends-list", "toClient", "02"],
+    ["room-sends-ping", "toClient", "03" + "00".repeat(8)],
+    ["recv-no-noise", "toClient", "81" + "aa".repeat(24) + "00000001"],
+    ["members-no-count", "toClient", "82"],
+    ["members-count-1-no-device", "toClient", "8201"],
+    ["members-count-2-one-device", "toClient", "8202" + "aa".repeat(24)],
+    ["members-count-1-two-devices", "toClient", "8201" + "aa".repeat(48)],
+    ["members-trailing-byte", "toClient", "8201" + "aa".repeat(24) + "00"],
+    ["ring-7-bytes", "toClient", "83" + "00".repeat(7)],
+    ["ring-9-bytes", "toClient", "83" + "00".repeat(9)],
+    ["pong-7", "toClient", "84" + "00".repeat(7)],
+    ["gone-23", "toClient", "85" + "aa".repeat(23)],
+    ["gone-25", "toClient", "85" + "aa".repeat(25)],
+    ["limit-0", "toClient", "8600"],
+    ["limit-5", "toClient", "8605"],
+    ["limit-empty", "toClient", "86"],
+    ["limit-two-bytes", "toClient", "860101"],
+  ];
+  const refused = refusedIn.map(([id, dir, bytes]) => {
+    if (refRelayDecode(dir, bytesOf(bytes)) !== null)
+      throw new Error(`peerMatrix relay ${id}: reference accepts it`);
+    return { id, dir, bytes };
+  });
+  // The size limit: a message is at most 65,564 bytes (op, 24, 4 and a 65,535-byte frame).
+  const sizeRow = (id: string, total: number) => {
+    const body = new Uint8Array(total).fill(0x44);
+    body[0] = 0x01;
+    body.set(a, 1);
+    body.set([0, 0, 0, 9], 25);
+    const m = refRelayDecode("toRoom", body);
+    return {
+      id,
+      dir: "toRoom",
+      total,
+      bytes: { prefix: hex(body.slice(0, 29)), fill: "44" },
+      want: m === null ? { refused: true } : { ok: true },
+    };
+  };
+  const sizes = [
+    30,
+    65563,
+    REF_RELAY_MAX_MESSAGE,
+    REF_RELAY_MAX_MESSAGE + 1,
+    70000,
+  ].map((t) => sizeRow(`send-${t}`, t));
+  check(
+    "relay max",
+    sizes.map((s) => JSON.stringify(s.want)),
+    [
+      '{"ok":true}',
+      '{"ok":true}',
+      '{"ok":true}',
+      '{"refused":true}',
+      '{"refused":true}',
+    ],
+  );
+  return {
+    note: "One binary WebSocket message is an envelope: op byte, then the layout of 15.7. A device is its 24 decoded device-id bytes. MEMBERS carries the count n as one byte; PONG echoes the 8 bytes of the PING it answers. `dir` is the sender: toRoom (a client to the room) or toClient. `messages` encode and decode both ways; `refused` rows decode to nothing; `sizes` rows are an op, a 24-byte device, a session and a run of `fill` bytes up to `total` bytes, whole. A message over 65,564 bytes is refused.",
+    maxMessage: REF_RELAY_MAX_MESSAGE,
+    messages,
+    refused,
+    sizes,
+  };
+}
+
+// ── handshake payloads ───────────────────────────────────────────────────────
+
+interface PayloadIn {
+  id: string;
+  mode: "a" | "v" | "p";
+  message: 1 | 2 | 3;
+  text?: string;
+  hex?: string;
+  pad?: { prefix: string; fill: string; count: number; suffix: string };
+}
+
+function buildPayloads(): unknown {
+  const cert = "e30.e30.c2ln";
+  const A = (message: 2 | 3, text: string, id: string): PayloadIn => ({
+    id,
+    mode: "a",
+    message,
+    text,
+  });
+  const rows: PayloadIn[] = [
+    { id: "msg1-v1", mode: "a", message: 1, text: '{"v":1}' },
+    { id: "msg1-v-mode", mode: "v", message: 1, text: '{"v":1}' },
+    {
+      id: "msg1-unknown-member-ignored",
+      mode: "p",
+      message: 1,
+      text: '{"v":1,"x":[1,2]}',
+    },
+    {
+      id: "msg1-with-whitespace",
+      mode: "a",
+      message: 1,
+      text: ' {\n"v" : 1\n} ',
+    },
+    { id: "msg1-version-2", mode: "a", message: 1, text: '{"v":2}' },
+    { id: "msg1-version-string", mode: "a", message: 1, text: '{"v":"1"}' },
+    { id: "msg1-version-missing", mode: "a", message: 1, text: "{}" },
+    {
+      id: "msg1-cert-present",
+      mode: "a",
+      message: 1,
+      text: `{"v":1,"cert":"${cert}"}`,
+    },
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":["ring/1","trust/1","cand/1","vouch/1","app/1"]}`,
+      "a-msg2-full",
+    ),
+    A(3, `{"v":1,"cert":"${cert}","ring":1,"caps":[]}`, "a-msg3-empty-caps"),
+    A(
+      2,
+      `{"caps":["app/1"],"ring":9007199254740991,"cert":"${cert}","v":1}`,
+      "a-member-order-free",
+    ),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":["app/1"],"extra":{"k":null}}`,
+      "a-unknown-member-ignored",
+    ),
+    A(2, `{"v":1,"ring":7,"caps":["app/1"]}`, "a-cert-missing"),
+    A(2, `{"v":1,"cert":"","ring":7,"caps":["app/1"]}`, "a-cert-empty"),
+    A(2, `{"v":1,"cert":7,"ring":7,"caps":["app/1"]}`, "a-cert-not-string"),
+    A(2, `{"v":1,"cert":"${cert}","caps":["app/1"]}`, "a-ring-missing"),
+    A(2, `{"v":1,"cert":"${cert}","ring":0,"caps":["app/1"]}`, "a-ring-zero"),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":-1,"caps":["app/1"]}`,
+      "a-ring-negative",
+    ),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7.5,"caps":["app/1"]}`,
+      "a-ring-fraction",
+    ),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":"7","caps":["app/1"]}`,
+      "a-ring-string",
+    ),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":9007199254740992,"caps":["app/1"]}`,
+      "a-ring-over-safe-integer",
+    ),
+    A(2, `{"v":1,"cert":"${cert}","ring":7}`, "a-caps-missing"),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":"app/1"}`,
+      "a-caps-not-array",
+    ),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":[1]}`,
+      "a-caps-entry-not-string",
+    ),
+    A(
+      3,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":["app/1"],"v":1}`,
+      "a-duplicate-member",
+    ),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":["app/1"],}`,
+      "a-trailing-comma",
+    ),
+    A(2, `[1]`, "a-not-an-object"),
+    A(2, `"x"`, "a-string-top-level"),
+    A(2, ``, "a-empty"),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":["app/1"]} x`,
+      "a-trailing-garbage",
+    ),
+    A(
+      2,
+      `{"v":1,"cert":"${cert}","ring":7,"caps":["app/1"],"n":1e400}`,
+      "a-number-out-of-range",
+    ),
+    { id: "v-msg2", mode: "v", message: 2, text: '{"v":1,"caps":["vouch/1"]}' },
+    {
+      id: "p-msg3",
+      mode: "p",
+      message: 3,
+      text: '{"v":1,"caps":["app/1","cand/1"]}',
+    },
+    {
+      id: "v-cert-refused",
+      mode: "v",
+      message: 2,
+      text: `{"v":1,"caps":["vouch/1"],"cert":"${cert}"}`,
+    },
+    {
+      id: "p-cert-refused",
+      mode: "p",
+      message: 3,
+      text: `{"v":1,"caps":[],"cert":"${cert}"}`,
+    },
+    { id: "v-caps-missing", mode: "v", message: 2, text: '{"v":1}' },
+    {
+      id: "p-ring-ignored",
+      mode: "p",
+      message: 2,
+      text: '{"v":1,"caps":[],"ring":7}',
+    },
+  ];
+  const capsRow = (id: string, caps: unknown): PayloadIn => ({
+    id,
+    mode: "v",
+    message: 2,
+    text: JSON.stringify({ v: 1, caps }),
+  });
+  const caps32 = Array.from({ length: 32 }, (_, i) => `c${i}/1`);
+  rows.push(
+    capsRow("caps-32-entries", caps32),
+    capsRow("caps-33-entries", [...caps32, "c32/1"]),
+    capsRow("caps-no-slash", ["app"]),
+    capsRow("caps-upper-case", ["App/1"]),
+    capsRow("caps-no-version", ["app/"]),
+    capsRow("caps-version-letters", ["app/x"]),
+    capsRow("caps-empty-name", ["/1"]),
+    capsRow("caps-two-slashes", ["a/b/1"]),
+    capsRow("caps-space", ["app/1 "]),
+    capsRow("caps-digits-in-name", ["xfer2/10"]),
+    capsRow("caps-hyphen-in-name", ["a-b/1"]),
+    capsRow("caps-duplicate-entries-kept", ["app/1", "app/1"]),
+    {
+      id: "bom",
+      mode: "v",
+      message: 2,
+      hex: "efbbbf" + hex(utf8('{"v":1,"caps":[]}')),
+    },
+    {
+      id: "invalid-utf8",
+      mode: "v",
+      message: 2,
+      hex: hex(utf8('{"v":1,"caps":[],"x":"')) + "ff" + hex(utf8('"}')),
+    },
+    {
+      id: "overlong-utf8",
+      mode: "v",
+      message: 2,
+      hex: hex(utf8('{"v":1,"caps":[],"x":"')) + "c0af" + hex(utf8('"}')),
+    },
+    {
+      id: "lone-surrogate-escape",
+      mode: "v",
+      message: 2,
+      text: '{"v":1,"caps":[],"x":"\\ud800"}',
+    },
+    {
+      id: "raw-control-character",
+      mode: "v",
+      message: 2,
+      text: '{"v":1,"caps":[],"x":"a\tb"}',
+    },
+    {
+      id: "valid-non-ascii",
+      mode: "v",
+      message: 2,
+      text: '{"v":1,"caps":[],"x":"é中"}',
+    },
+  );
+  const padRow = (id: string, count: number): PayloadIn => ({
+    id,
+    mode: "v",
+    message: 2,
+    pad: { prefix: '{"v":1,"caps":[],"x":"', fill: "a", count, suffix: '"}' },
+  });
+  const overhead = '{"v":1,"caps":[],"x":""}'.length;
+  rows.push(
+    padRow("size-8192", REF_MAX_PAYLOAD - overhead),
+    padRow("size-8193", REF_MAX_PAYLOAD - overhead + 1),
+    padRow("size-65536", 65536),
+  );
+  const payloads = rows.map((r) => {
+    const bytes =
+      r.hex !== undefined
+        ? hexBytes(r.hex)
+        : utf8(
+            r.pad !== undefined
+              ? r.pad.prefix + r.pad.fill.repeat(r.pad.count) + r.pad.suffix
+              : r.text!,
+          );
+    const v = refHandshakePayload(r.mode, r.message, bytes);
+    return {
+      id: r.id,
+      mode: r.mode,
+      message: r.message,
+      ...(r.hex !== undefined ? { payloadHex: r.hex } : {}),
+      ...(r.text !== undefined ? { payload: r.text } : {}),
+      ...(r.pad !== undefined ? { payloadPad: r.pad } : {}),
+      length: bytes.length,
+      want: v.ok
+        ? {
+            ok: true,
+            ...(r.message === 1 ? {} : { caps: v.caps }),
+            ...(v.ring !== undefined ? { ring: v.ring } : {}),
+            ...(v.cert !== undefined ? { cert: v.cert } : {}),
+          }
+        : { ok: false },
+    };
+  });
+  const interIn: [string, string[], string[]][] = [
+    [
+      "all-v1-caps",
+      ["ring/1", "trust/1", "cand/1", "vouch/1", "app/1"],
+      ["app/1", "ring/1", "vouch/1"],
+    ],
+    ["disjoint", ["ring/1"], ["trust/1"]],
+    ["empty-local", [], ["app/1"]],
+    ["empty-remote", ["app/1"], []],
+    ["version-must-match", ["app/1", "ring/2"], ["app/2", "ring/2"]],
+    [
+      "duplicates-once",
+      ["app/1", "app/1", "ring/1"],
+      ["ring/1", "app/1", "app/1"],
+    ],
+    [
+      "byte-order",
+      ["b/1", "a/10", "a/2", "a/1"],
+      ["a/1", "a/10", "a/2", "b/1"],
+    ],
+  ];
+  const intersection = interIn.map(([id, local, remote]) => ({
+    id,
+    local,
+    remote,
+    want: refCapsIntersection(local!, remote!),
+  }));
+  return {
+    note: "Handshake payloads (15.5): strict JSON of 15.1/1.2, an object, at most 8 KiB of UTF-8. Message 1 needs v = 1 and no cert; messages 2 and 3 need v = 1 and caps (at most 32 entries matching ^[a-z0-9]+/[0-9]+$). Mode a adds cert (a non-empty string; its verification is cases.json peerCertCases) and ring (an integer from 1 to 2^53 - 1); modes v and p refuse a cert. Unknown members are ignored. `payload` is the text, `payloadHex` the raw bytes where the text is not valid UTF-8, `payloadPad` the text prefix + count x fill + suffix. `want.caps` is the list as sent; the session uses `intersection`: the entries both lists hold, once each, in byte order.",
+    maxPayload: REF_MAX_PAYLOAD,
+    payloads,
+    intersection,
+  };
+}
+
+export function buildPeerMatrix(): unknown {
+  return {
+    peerMatrixVersion: 1,
+    description:
+      "pkey-peer/1 byte-level rules (WIRE-CONTRACT-V5 sections 15.4 to 15.7 and 15.9; plans/CC-01-cloud-connect.md 2.4, 2.6, 2.7, 2.9). Hex fields are lower-case. `adverts`: `names` (the mode-a instance: p1- and the first 16 characters of the lower-case RFC 4648 base32, no padding, of HMAC-SHA256(K_disc, 'pkey-peer/1 disc' || 0x00 || u64be(epoch) || the 24 device-id bytes)), `epochs` (now / 900), `tags` (the h value), `txt` (TXT parsing), `instances` (the name shape) and `browse` (which roster device an instance belongs to); `prologue`; `psk`; `sas` (the code with its commit and reveal rows); `frames` (TCP framing); `records` (flags, MORE, the critical and mode rules, the 1 MiB limit); `relayEnvelopes`; `handshakePayloads`. A device id is 32 base64url characters and is hashed and sent as its 24 decoded bytes. The device proof is device-proof.json. Append-only: a new row keeps peerMatrixVersion; a changed row or rule bumps it.",
+    adverts: buildAdverts(),
+    prologue: buildPrologue(),
+    psk: buildPsk(),
+    sas: buildSas(),
+    frames: buildFrames(),
+    records: buildRecords(),
+    relayEnvelopes: buildRelay(),
+    handshakePayloads: buildPayloads(),
+  };
+}

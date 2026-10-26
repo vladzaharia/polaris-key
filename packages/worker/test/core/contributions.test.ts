@@ -83,6 +83,7 @@ describe("what the descriptors contribute", () => {
       "config.accountOverrides",
       "connect.rings",
       "core.entitlementEvents",
+      "core.keyring",
       "core.provisionedSecretMoves",
       "sync.cloudSync",
     ]);

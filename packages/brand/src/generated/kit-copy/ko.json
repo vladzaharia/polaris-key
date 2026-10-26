@@ -895,6 +895,8 @@
   "core.codes.device_keys_invalid.message": "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.",
   "core.codes.device_keys_required.title": "기기가 연결되지 않음",
   "core.codes.device_keys_required.message": "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요.",
+  "core.codes.ring_too_large.title": "기기가 너무 많음",
+  "core.codes.ring_too_large.message": "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요.",
   "core.codes.key_entry_limit.title": "남은 키 등록 횟수 없음",
   "core.codes.key_entry_limit.message": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
   "core.codes.license_disabled.title": "라이선스 비활성화됨",

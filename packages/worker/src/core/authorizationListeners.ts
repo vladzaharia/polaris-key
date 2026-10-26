@@ -65,13 +65,26 @@ export async function notifyNewAuthorization(
   waitUntil?: WaitUntil,
 ): Promise<void> {
   const listeners = contributedAuthorizationListeners(services);
+  await runListeners(listeners, (l) => l(ctx, event), waitUntil);
+}
+
+/**
+ * Run bookkeeping listeners one after another, ignoring any that throws; with `waitUntil` the work
+ * is handed to the runtime and this returns at once. Shared with the device lifecycle
+ * (`core/devices/lifecycle.ts`).
+ */
+export async function runListeners<L>(
+  listeners: readonly L[],
+  call: (listener: L) => Promise<void>,
+  waitUntil?: WaitUntil,
+): Promise<void> {
   if (listeners.length === 0) return;
   const work = (async () => {
     for (const listener of listeners) {
       try {
-        await listener(ctx, event);
+        await call(listener);
       } catch {
-        // Bookkeeping only (see the file comment): one listener's failure is not the device's.
+        // Bookkeeping only: one listener's failure is not the caller's.
       }
     }
   })();

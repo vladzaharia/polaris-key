@@ -119,6 +119,17 @@ export {
   type SignOutResult,
 } from "./identity/account.js";
 export {
+  ChoiceClient,
+  type ChoiceCancelResult,
+  type ChoiceCompleteResult,
+  type ChoiceRefusal,
+  type ChoiceViewResult,
+  type ChooseOutcome,
+  type LicenseChoice,
+  type LicenseChoiceView,
+  type ReplaceView,
+} from "./identity/choice.js";
+export {
   RedirectSession,
   type RedirectOutcome,
   type RedirectSignInOptions,
