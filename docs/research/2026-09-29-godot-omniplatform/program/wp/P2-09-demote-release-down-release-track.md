@@ -74,6 +74,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - **Builds or backs 5 mockup item(s):** `packages.demote`, `packages.promote`, `packages.release-tracks-stale`, `packages.release-tracks`, `packages.updates-godot`.
 
+## Motion strip (MO-13 follow-up, 2026-10-26)
+
+MO-13 shipped without this surface. When it lands, add the promote or demote lane and the channel cell update: a frame strip (both themes and reduced), with `frameStrip` from `packages/admin/e2e/strips.ts` and an always-on assertion in the matching `*Motion.e2e.test.ts`; reduced motion is an instant swap. Plan: `_lead/plans/I-28-MO-13-slices.md` §8 M6.
+
 ## Acceptance criteria
 
 - [ ] A demoted release leaves the stable feed and stays on beta

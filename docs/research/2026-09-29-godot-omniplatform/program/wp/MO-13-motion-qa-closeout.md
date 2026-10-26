@@ -93,33 +93,41 @@ Done when every row holds for each screen and state this package ships, checked 
 (not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
 apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
 
-- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+- [x] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
       Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
       when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
       changes neither.
-- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      Evidence: N/A: MO-13 ships no screen. Its changes are motion tests, a docs page and a CSS fix (focus rings no longer ease, `inputBase.ts`).
+- [x] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
       linked (aria-describedby); one polite announcement per change, none while typing; tables use
       th with scope; status is a word and an icon, never colour alone.
-- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      Evidence: N/A: no screen shipped.
+- [x] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
       no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
       targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
-- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      Evidence: N/A: no screen shipped. The tile-to-hero strips cover 1440x900 and 390x844 (`_evidence/MO-13/strips/`); the 390 hero overflow is fixed in the fix round.
+- [x] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
       sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
-- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      Evidence: Strips in dark, light and reduced for every pattern: `/Users/vlad/Repos/pk-wt/_evidence/MO-13/strips/`; review frames `/Users/vlad/Repos/pk-wt/_mockups/review/MO-13/`. Forced-colors and contrast: N/A, no colour token changed.
+- [x] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
       expired or stale, network and API error with Try again, partial failure, success; input survives a
       failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
       Reload.
-- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      Evidence: N/A: no screen shipped.
+- [x] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
       without moving content; progress is real (no invented percentage, nothing loops after a failure);
       no celebration on refunds, revocation, removal, deletion or consent.
-- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      Evidence: Evidence: the strips above and the always-on assertions in `motion.e2e`, `pollMotion.e2e` and `libraryMotion.e2e` (QA record). The 4x CPU frame numbers are deferred (MO-13.4).
+- [x] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
       sign-in; the product accent in kits); focus, selected, hover, checked and context
       borders take the accent of the service the element references (data-service; -fg for
       text and edges, base for fills; a non-colour cue stays); status colours (success,
       warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
       taglines; no text drawn over customer art.
-- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      Evidence: N/A: no copy shipped.
+- [x] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+      Evidence: N/A: admin and portal only.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
 ## Files it touches
@@ -144,9 +152,9 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 ## Acceptance criteria
 
-- [ ] A strip exists for every pattern of notes/S-23 §6.1 in both themes and reduced, and the PR links them.
-- [ ] Every moment meets p95 ≤ 33 ms at 4× CPU on the measuring machine (numbers in the PR).
-- [ ] The docs page builds and `check:links` passes.
+- [x] A strip exists for every pattern of notes/S-23 §6.1 in both themes and reduced, and the PR links them.
+- [ ] Every moment meets p95 ≤ 33 ms at 4× CPU on the measuring machine (numbers in the PR). **Deferred to a quiet machine** (owner rule 2026-10-26): the check is built (MO-13.4), disabled under load.
+- [x] The docs page builds and `check:links` passes (MO-13.7).
 - [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
@@ -288,3 +296,11 @@ List audit, from the `::view-transition-*` animations of one transition (enterin
 - **To do: rerun at a load average below 4** (a quiet machine or CI-like runner) and replace this table; until then S-23 §3.5 (measured on an idle machine) stays the reference, and nothing here shows a regression. Raw JSON of the runs: `/Users/vlad/Repos/pk-wt/_scratch/MO-13.4/perf.json` (last run).
 
 **MO-13.4 status (2026-10-26):** the check is built (`packages/admin/e2e/motionPerf.e2e.test.ts`) but disabled under load per the owner's rule: it could not measure on the shared machine. Re-enable it and replace the table above on a quiet machine. MO-13.8 does not wait for it.
+
+### MO-13.8 UX fix round and close (2026-10-26)
+
+- **BUILT UX review (Opus), 2026-10-24: FIX, four must-fix** (frames: `/Users/vlad/Repos/pk-wt/_mockups/review/MO-13/`; the verdict is in `_lead/lead-followups.md`, 2026-10-24 14:01). The fix round is 755081523, merged to staging (2bb07447a): `.pk-vt-chrome` named in every route transition (phone width), the hero image pair clipped, list survivors show only their new picture (Members, no double text), the missing-licence strip is chrome, and focus rings never ease (the lead kept S-23 "focus rings never animate" and fixed the code). S-23 §6.1/§6.3 updated.
+- **No re-review was run**, so no pass is recorded in `ux-reviews.json` (it only holds done packages) and MO-13 goes to in-review, not done. The lead decides: re-review the four frames' fixes, or `--ux-review MO-13 pass` citing the fix commit.
+- Not re-run here: the touched e2e (`motion.e2e` masthead and the new chrome cases) and `adminCspParity`, because the machine load average was 31 (owner load rule 2026-10-26). The fix round's builder ran them when it merged; the CSS changed no inline script or host. Re-run both on a quiet machine.
+- **MO-13.4 deferred**: the 4x CPU frame check is disabled under load; the table above stays pessimistic noise until it is re-run below load 4.
+- **Follow-ups filed (M6):** strip lines added to the A-24 (publish result rows), P2-09 (promote or demote lane, channel cell), P2-11 (updater failure persistence) and LX-43 (duration marker) briefs; the workspace entrance and the new-product shared element have no owner (`_lead/lead-followups.md`); TabPanel stays with P0-39:114; the status-pill remount (P0-39 owners) and the product-page layout reservation (a portal layout package) are in MO-13.5's record above.
