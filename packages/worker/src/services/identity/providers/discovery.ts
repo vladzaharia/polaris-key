@@ -103,7 +103,9 @@ export function checkAuthorizationIss(
 
 export interface IdTokenExpectations {
   /** The ONE client this token must have been minted for. Required; never defaulted. */
-  audience: string;
+  audience: string | readonly string[];
+  /** Native sign-in: the clients allowed as `azp` (see the core client's `authorizedParties`). */
+  authorizedParties?: readonly string[];
   /** The flow's nonce, when the flow sent one. */
   nonce?: string;
   /**
@@ -133,6 +135,7 @@ export async function verifyProviderIdToken(
     token,
     {
       audience: expect.audience,
+      authorizedParties: expect.authorizedParties,
       nonce: expect.nonce,
       subjectless: notification,
       maxTokenAge: notification ? NOTIFICATION_MAX_AGE : undefined,

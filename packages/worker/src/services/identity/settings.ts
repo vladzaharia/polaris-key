@@ -287,7 +287,7 @@ const REDIRECT_PATHS: SettingDef = setting({
 const PLATFORM_SIGN_IN_DOCS = "/docs/features/sign-in/";
 const PS_AREA = "identity.platformSignIn";
 /** The platform's own login-card clients: never a product's audience (both ways). */
-const PLATFORM_CLIENT_VARS = [
+export const PLATFORM_CLIENT_VARS = [
   "SIGNIN_GOOGLE_CLIENT_ID",
   "SIGNIN_APPLE_SERVICES_ID",
 ] as const;
