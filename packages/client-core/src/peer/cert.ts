@@ -344,6 +344,11 @@ export async function admitPeer(
   if (!c.ok) return { admit: false, reason: "cert-invalid" };
   const ring = await liveRing(heldRingJws, opts);
   if (ring === null) return { admit: true, cert: c.cert, ringSync: "none" };
+  // A certificate of another account is judged by the session's own checks, never by this ring's
+  // epoch: its numbers belong to a different roster.
+  if (c.cert.sub !== ring.sub) {
+    return { admit: false, reason: "cert-invalid" };
+  }
   if (ring.epoch > c.cert.ringEpoch) {
     const listed = ring.devices.some(
       (e) =>

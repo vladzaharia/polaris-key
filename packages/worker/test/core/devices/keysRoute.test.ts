@@ -4,128 +4,20 @@
 // unchanged re-send that spends no budget, the 4-a-day limit, the unique `agreeKey`, and that a
 // refusal never says which check failed.
 
-import { describe, expect, it } from "vitest";
-import { base64UrlEncodeBytes } from "@polaris-key/jws";
-import { makeTestDb } from "../../helpers.js";
-import { KvMock } from "../../kvMock.js";
-import { makeEnv, mkReq, NOW, seedProduct } from "../../seed.js";
-import { loadProduct, type Product } from "../../../src/core/products.js";
-import { setServices } from "../../../src/core/products/store.js";
-import { serializeServices } from "../../../src/core/services.js";
-import { CONFIG_ONLY } from "../../transcripts/world.js";
-import { handleDeviceKeys } from "../../../src/core/devices/keysRoute.js";
+import { NOW } from "../../seed.js";
 import {
-  getDeviceKeys,
-  keyPopMessage,
-} from "../../../src/core/devices/keys.js";
+  b64,
+  body,
+  DEVICE,
+  DEVICE_2,
+  newKeys,
+  put,
+  register,
+  world,
+} from "./keysFixture.js";
+import { describe, expect, it } from "vitest";
+import { getDeviceKeys } from "../../../src/core/devices/keys.js";
 import { dispatchWith } from "../../../src/dispatch.js";
-import type { Db } from "../../../src/db/types.js";
-import type { Env } from "../../../src/platform/env.js";
-
-const b64 = (b: Uint8Array): string => base64UrlEncodeBytes(b);
-const DEVICE = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH";
-const DEVICE_2 = "IIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPP";
-
-interface World {
-  db: Db;
-  env: Env;
-  product: Product;
-}
-
-async function world(): Promise<World> {
-  const db = makeTestDb();
-  const env = makeEnv(new KvMock(), ["djdl"]);
-  await seedProduct(db, "djdl");
-  await setServices(
-    db,
-    "djdl",
-    serializeServices({ services: CONFIG_ONLY }),
-    "manifest",
-    NOW,
-  );
-  return { db, env, product: (await loadProduct(env, db, "djdl"))! };
-}
-
-async function register(w: World, deviceId = DEVICE): Promise<string> {
-  const res = await dispatchWith(
-    new Request("https://key.plrs.im/djdl/devices/register", {
-      method: "POST",
-      headers: { "x-pkey-device": deviceId },
-    }),
-    w.env,
-    w.db,
-    NOW,
-  );
-  expect(res.status).toBe(200);
-  return ((await res.json()) as { token: string }).token;
-}
-
-async function newKeys(): Promise<{
-  signKey: string;
-  agreeKey: string;
-  priv: CryptoKey;
-}> {
-  const kp = (await crypto.subtle.generateKey("Ed25519", true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const signKey = b64(
-    new Uint8Array(
-      (await crypto.subtle.exportKey("raw", kp.publicKey)) as ArrayBuffer,
-    ),
-  );
-  const raw = crypto.getRandomValues(new Uint8Array(32));
-  raw[31]! &= 0x7f;
-  return { signKey, agreeKey: b64(raw), priv: kp.privateKey };
-}
-
-async function body(
-  k: { signKey: string; agreeKey: string; priv: CryptoKey },
-  deviceId = DEVICE,
-  issuedAt = NOW,
-): Promise<Record<string, unknown>> {
-  const msg = keyPopMessage({
-    product: "djdl",
-    deviceId,
-    signKey: k.signKey,
-    agreeKey: k.agreeKey,
-    issuedAt,
-  })!;
-  const sig = new Uint8Array(
-    await crypto.subtle.sign({ name: "Ed25519" }, k.priv, msg),
-  );
-  return {
-    signKey: k.signKey,
-    agreeKey: k.agreeKey,
-    issuedAt,
-    sig: b64(sig),
-  };
-}
-
-async function put(
-  w: World,
-  token: string | null,
-  payload: unknown,
-  now = NOW,
-  method = "PUT",
-): Promise<{ status: number; body: Record<string, unknown> }> {
-  const res = await handleDeviceKeys(
-    mkReq(
-      method,
-      token ? { authorization: `Bearer ${token}` } : {},
-      method === "GET" ? undefined : payload,
-    ),
-    w.env,
-    w.db,
-    w.product,
-    now,
-  );
-  const text = await res.text();
-  return {
-    status: res.status,
-    body: text.startsWith("{") ? (JSON.parse(text) as never) : {},
-  };
-}
 
 const INVALID = { error: { code: "device_keys_invalid" } };
 
@@ -166,17 +58,29 @@ describe("PUT /<p>/devices/keys", () => {
     for (let i = 0; i < 6; i++)
       expect((await put(w, token, await body(k))).body).toEqual({ keySeq: 1 });
     const k2 = await newKeys();
-    expect((await put(w, token, await body(k2))).body).toEqual({ keySeq: 2 });
+    expect((await put(w, token, await body(k2, DEVICE, NOW + 1))).body).toEqual(
+      {
+        keySeq: 2,
+      },
+    );
   });
 
   it("allows 4 changes a day and refuses the fifth with 429", async () => {
     const w = await world();
     const token = await register(w);
     for (let i = 1; i <= 4; i++) {
-      const r = await put(w, token, await body(await newKeys()));
+      const r = await put(
+        w,
+        token,
+        await body(await newKeys(), DEVICE, NOW + i),
+      );
       expect(r.body).toEqual({ keySeq: i });
     }
-    const fifth = await put(w, token, await body(await newKeys()));
+    const fifth = await put(
+      w,
+      token,
+      await body(await newKeys(), DEVICE, NOW + 5),
+    );
     expect(fifth.status).toBe(429);
     expect(fifth.body).toEqual({ error: { code: "rate_limited" } });
     expect((await getDeviceKeys(w.db, "djdl", DEVICE))?.key_seq).toBe(4);

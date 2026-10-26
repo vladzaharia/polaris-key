@@ -1923,7 +1923,7 @@ Every route here that binds a device takes `proof`: an Ed25519 signature (64 byt
 5. the purpose's value
 6. the base64url SHA-256 of the presented provider token, or `-` when none
 
-A field holding a newline makes the proof invalid. Purposes are `keys`, `nonce`, `exchange`, `link`, `nearby-start`, `nearby-poll`, `nearby-approve`, `vouch` and `restore`. Keys are raw 32-byte public keys in base64url. A proof is one purpose only: one signed for another purpose, product or device does not verify. Its vectors are `device-proof.json` (§15.8). A bad proof is `400 invalid_grant` on `token`; no refusal names the field that failed.
+A field holding a newline makes the proof invalid. Purposes are `keys`, `nonce`, `exchange`, `link`, `nearby-start`, `nearby-poll`, `nearby-approve`, `vouch` and `restore`. Keys are raw 32-byte public keys in base64url. A proof is one purpose only: one signed for another purpose, product or device does not verify. Its vectors are `device-proof.json` (§15.8). A bad proof is `400 invalid_grant` on `token`; no refusal names the field that failed. The `keys` purpose (§15.8) also needs `issuedAt` strictly newer than the last one accepted for the device.
 
 #### 12.11.2 The nonce
 
@@ -2471,6 +2471,7 @@ against the effective product set (§1).
 4. `signKey` and `agreeKey` are canonical base64url of exactly 32 bytes.
    - `signKey` passes §1.1 checks 2–3.
    - `agreeKey` is not one of the X25519 low-order points (the list is in `noise-vectors.json`).
+   - The issuer (the Worker, at registration and at signing) also refuses a non-canonical `agreeKey`: bit 255 set, or `u ≥ 2^255 − 19`. X25519 masks and reduces those spellings, so they name a key under a second string. A verifier stays lenient and accepts them, so no certificate the issuer signs carries one.
 5. `1 ≤ expiresAt − issuedAt ≤ MAX_PEER_CERT_SECONDS` (604800).
 6. Against the effective clock (§4.2): `issuedAt ≤ now + 300` and `now ≤ expiresAt + 300`.
 7. In a session, `agreeKey` equals the Noise remote static key. In mode `a`, `sub` equals the
@@ -2659,9 +2660,12 @@ from the client.
 
 - §15.2 step 4 applies to both keys.
 - `agreeKey` is unique per product.
+- A registration whose `agreeKey` is not the canonical X25519 spelling is refused (§15.2 step 4).
+- A proof that changes the keys must carry an `issuedAt` strictly newer than the last one accepted for the device, so a captured proof cannot be replayed inside its window. The Worker keeps that floor, and the highest `keySeq`, in a row that outlives the device's keys.
+- `keySeq` only increases: after the device is deauthorized and registers again it continues from its last value.
 - A device may rotate at most 4 times a day (a rate limit).
 - A rotation bumps the device's `keySeq` and raises a device-change event of kind `keys` inside the Worker.
-- When a device is removed or purged, its row goes too.
+- When a device is removed or purged, its row goes too; the floors above stay until the device row or the product is erased.
 
 **Registration.** A device's keys are registered by one Core operation with three entry points: this route, the platform sign-in exchange (§12.11) and nearby approval (§12.11). Every registration carries both keys. The route is matched before `/devices/{deviceId}`.
 

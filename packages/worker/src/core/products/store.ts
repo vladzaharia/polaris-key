@@ -530,6 +530,9 @@ export async function deleteProduct(
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],
     },
+    // CC-03: a deleted product keeps no device keys and no key floors.
+    { sql: "DELETE FROM device_keys WHERE product = ?", params: [slug] },
+    { sql: "DELETE FROM device_key_floor WHERE product = ?", params: [slug] },
     {
       sql: "UPDATE product_keys SET status = 'revoked', rotated_at = ?, revoked_at = ? WHERE product = ?",
       params: [now, now, slug],
