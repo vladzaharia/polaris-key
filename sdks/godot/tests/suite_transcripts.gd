@@ -351,12 +351,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["unsupported"] = step["action"]
 	var services := {}
 	var caps: Dictionary = sdk.capabilities()
-	# The recorded map names the services the Worker had when it recorded; a service the SDK has
-	# since gained (connect) is not in it.
-	var recorded = step["expect"].get("services")
 	for slug in caps:
-		if recorded is Dictionary and not recorded.has(slug):
-			continue
 		services[slug] = PKeyClaims.is_true(caps[slug]["enabled"])
 	out["services"] = services
 	out["licenseStatus"] = sdk.status()["status"]
