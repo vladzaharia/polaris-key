@@ -514,6 +514,11 @@
       "verdict": "pass",
       "date": "2026-10-26",
       "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/UXR-UK09b-re.md (BUILT re-review: UK-09 kit PASS/good; UK-09b sample B-1 + S-1 fixed by lead fix list wp/UK-09b-sample-fix c1207eed3, merged 354e00398; kit majors K-1..K-4 queued)"
+    },
+    "MO-13": {
+      "verdict": "pass",
+      "date": "2026-10-26",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/MO-13/ (BUILT review FIX 2026-10-24: 4 must-fix; all fixed in the one fix round 755081523, merged 2bb07447a; the 4x CPU frame check is deferred to a quiet machine under the owner's load rule)"
     }
   }
 }
