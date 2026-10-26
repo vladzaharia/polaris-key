@@ -383,6 +383,9 @@ export interface UsePolarisAuth {
   /** The account calls (identity.account, identity.attach); bearer and desktop modes, a typed
    *  `UnsupportedError` otherwise. */
   signOut: () => Promise<SignOutResult>;
+  /** `signIn.start(opts)` (device code, or the web redirect in bearer mode) and
+   *  `signIn.complete(callbackUrl)` after the navigation back (identity.signIn). */
+  signIn: PolarisAdapter["signIn"];
   subject: PolarisAdapter["subject"];
   attach: PolarisAdapter["attach"];
   openAccount: PolarisAdapter["openAccount"];
@@ -412,6 +415,7 @@ export function usePolarisAuth(): UsePolarisAuth {
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
+      signIn: adapter.signIn,
       subject: () => adapter.subject(),
       attach: (opts) => adapter.attach(opts),
       openAccount: () => adapter.openAccount(),

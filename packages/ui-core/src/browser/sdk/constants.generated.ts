@@ -2071,13 +2071,21 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "web", reason: "runtime" }],
   },
-  "identity.toggle": { status: "planned", service: "identity", na: [] },
+  "identity.toggle": { status: "implemented", service: "identity", na: [] },
   "identity.keyentry": { status: "implemented", service: "identity", na: [] },
   "identity.attach": { status: "implemented", service: "identity", na: [] },
   "identity.account": { status: "implemented", service: "identity", na: [] },
-  "identity.redirect.web": { status: "planned", service: "identity", na: [] },
+  "identity.redirect.web": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "identity.choice": { status: "planned", service: "identity", na: [] },
-  "identity.signin.hints": { status: "planned", service: "identity", na: [] },
+  "identity.signin.hints": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -2262,4 +2270,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "b2bab102a6f8fff04e80cef65d629889be5e9584e9721456db4ee36a33b397a2";
+  "e69694f218ae27652619ede953f0f9fe79609d26f933b4fdbc720e30238407ce";

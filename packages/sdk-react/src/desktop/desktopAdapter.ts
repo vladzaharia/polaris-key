@@ -39,6 +39,13 @@ import type { CapabilityContext } from "@polaris-key/client-core";
 import { isManageUrl } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
 import { BeforeSignOutHooks } from "../core/account.js";
+import { BridgeDeviceCodeSession } from "./bridgeSignIn.js";
+import type {
+  DeviceCodeSignInSession,
+  RedirectSignInSession,
+  SignInNamespace,
+  SignInOptions,
+} from "../core/signIn.js";
 import {
   BridgePresentationSource,
   type ReactPresentationSource,
@@ -76,8 +83,6 @@ import type {
   CommerceClaimResult,
   CommercePayload,
   CommerceStore,
-  DeviceSignIn,
-  DeviceSignInResult,
   MintedToken,
 } from "../core/types.js";
 import type { BootState, StoreStatus } from "@polaris-key/client-core";
@@ -879,13 +884,79 @@ export class DesktopAdapter implements PolarisAdapter {
     });
   }
 
-  async beginSignIn(opts: { deviceName?: string } = {}): Promise<DeviceSignIn> {
+  /** `signIn.start` (identity.signIn): a device-code session over the bridge's `beginSignIn` /
+   *  `pollSignIn`. The redirect and the hints the verbs do not carry are refused, typed. */
+  readonly signIn: SignInNamespace = {
+    start: ((opts: SignInOptions) =>
+      this.startSignIn(opts)) as SignInNamespace["start"],
+    complete: () =>
+      Promise.reject(
+        this.fail("identity", this.noRedirect(Feature.identityRedirectWeb)),
+      ),
+  };
+
+  private noRedirect(feature: string): PolarisError {
+    return new UnsupportedError(
+      {
+        supported: false,
+        feature,
+        reason: "runtime",
+        detail:
+          "The desktop renderer signs in by device code over the bridge; the web redirect would need the host process to redeem the code and hold the token, and the bridge has no verb for it.",
+      },
+      "unsupported",
+    );
+  }
+
+  private async startSignIn(
+    opts: SignInOptions,
+  ): Promise<DeviceCodeSignInSession | RedirectSignInSession> {
     if (!this.capabilities.identity.enabled)
       throw this.fail(
         "identity",
+        new UnsupportedError(
+          {
+            supported: false,
+            feature:
+              opts.channel === "redirect"
+                ? Feature.identityRedirectWeb
+                : Feature.identityDevicecode,
+            reason: "product",
+            detail: "the product does not run the identity service",
+          },
+          ErrorCode.serviceUnavailable,
+        ),
+      );
+    if (opts.channel === "redirect")
+      throw this.fail("identity", this.noRedirect(Feature.identityRedirectWeb));
+    if (opts.channel !== "device-code")
+      throw this.fail(
+        "identity",
         new PolarisError(
-          "service-disabled",
-          "OIDC login is not enabled for this product.",
+          ErrorCode.signInUnavailable,
+          `unknown sign-in channel: ${String((opts as { channel?: unknown }).channel)}`,
+        ),
+      );
+    // `beginSignIn` carries only the device name: a hint the host never sees would be a quiet
+    // no-op, so it is refused.
+    if (
+      opts.loginHint !== undefined ||
+      opts.nameHint !== undefined ||
+      opts.purpose !== undefined ||
+      opts.scope !== undefined ||
+      opts.licenseChoice !== undefined
+    )
+      throw this.fail(
+        "identity",
+        new UnsupportedError(
+          {
+            supported: false,
+            feature: Feature.identitySigninHints,
+            reason: "runtime",
+            detail:
+              "The bridge's beginSignIn carries only deviceName; the host starts a sign-in that needs hints, a scope or a licence choice.",
+          },
+          "unsupported",
         ),
       );
     this.setBusy("identity", true);
@@ -900,50 +971,31 @@ export class DesktopAdapter implements PolarisAdapter {
         new PolarisError("sign-in-unavailable", (e as Error).message),
       );
     }
-    const interval = begin.interval ?? 2;
-    return {
-      userCode: begin.userCode ?? "",
-      verificationUri: begin.verificationUri ?? begin.verificationUrl ?? "",
-      verificationUriComplete:
-        begin.verificationUrl ?? begin.verificationUri ?? "",
-      expiresAt: begin.expiresAt ?? this.clock() + 600,
-      interval,
-      wait: async (w = {}) => {
-        for (;;) {
-          w.signal?.throwIfAborted();
-          const r = await this.bridge.pollSignIn(begin.flowId);
-          if (r.kind === "pending") {
-            await delay(Math.max(1, interval) * 1000);
-            continue;
-          }
-          if (r.kind === "ok") {
-            this.apply(await this.bridge.getSyncState(), {
-              busy: noBusy(),
-              error: noErrors(),
-            });
-            return r.identity
-              ? { status: "ready", identity: r.identity }
-              : { status: "ready" };
-          }
-          const out: DeviceSignInResult =
-            r.kind === "error"
-              ? { status: "error", message: r.message }
-              : { status: r.kind };
-          this.fail(
-            "identity",
-            new PolarisError(
-              r.kind === "expired"
-                ? "sign-in-expired"
-                : r.kind === "denied"
-                  ? "sign-in-denied"
-                  : "sign-in-failed",
-              r.kind === "error" ? r.message : r.kind,
-            ),
-          );
-          return out;
-        }
+    return new BridgeDeviceCodeSession(
+      this.bridge,
+      begin,
+      opts.deviceName ?? null,
+      this.clock(),
+      {
+        onSignedIn: async (identity) => {
+          this.apply(await this.bridge.getSyncState(), {
+            busy: noBusy(),
+            error: noErrors(),
+          });
+          const subject = await this.subject().catch(() => null);
+          return {
+            kind: "signedIn",
+            subject,
+            activation: { licenseId: null },
+            ...(identity ? { identity } : {}),
+          };
+        },
+        onFailed: (error) => {
+          this.fail("identity", error);
+        },
+        onStopped: () => this.setBusy("identity", false),
       },
-    };
+    );
   }
 
   /** `invoke("config", "mint", {recipeId})`: the host's `client.config.mintToken()`. */

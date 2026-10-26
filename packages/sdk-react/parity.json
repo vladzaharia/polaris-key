@@ -203,8 +203,8 @@
       "note": "PX-W13: a browser has no platform device name, so by default it reports none (the card shows the registered origin); in bearer mode a host may name one (browserAdapter deviceName, or per call on beginSignIn), sent on registration, activation and sign-in. Through the desktop bridge the main process's Node SDK sends it; the corpus runs through client-core's normalizeDeviceLabel."
     },
     "identity.toggle": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.10: signIn.start on a product that does not run Identity (the adapter's capability map, or the Worker's 404 on the device start) is the typed UnsupportedError service-unavailable, before any other request; licences keep working."
     },
     "identity.attach": {
       "status": "implemented",
@@ -215,16 +215,16 @@
       "note": "I-10a.9: bearer mode over the identity fragment discovery names (subject, signout, attach); the desktop bridge through invoke(\"identity\", …) on a v4 host (typed version N/A otherwise). A cookie page refuses with the runtime reason."
     },
     "identity.redirect.web": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.10: bearer mode. signIn.start({channel: \"redirect\", redirectUri}) builds the PKCE authorize URL with client-core and keeps the verifier and state in sessionStorage keyed by state; signIn.complete(callbackUrl) (or the session's) checks state and iss and redeems the code at the token endpoint. The desktop renderer signs in by device code only: its redirect is a typed unsupported (runtime) since the bridge has no verb to redeem a code in the host. Cookie mode is SP-40."
     },
     "identity.choice": {
       "status": "planned",
       "wp": "I-10a"
     },
     "identity.signin.hints": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). The desktop bridge's beginSignIn carries only deviceName, so a hint there is a typed unsupported (runtime) rather than a silent drop."
     },
     "identity.keyentry": {
       "status": "implemented",

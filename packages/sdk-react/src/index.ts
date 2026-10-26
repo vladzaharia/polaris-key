@@ -168,6 +168,18 @@ export {
 } from "./desktop/bridge.js";
 
 // ── Core (mode-agnostic types + helpers) ─────────────────────────────────────
+// identity.signIn (I-10a.10): `usePolarisAuth().signIn.start(opts)` and `.complete(callbackUrl)`.
+export type {
+  DeviceCodeSignInOptions,
+  DeviceCodeSignInSession,
+  RedirectSignInOptions,
+  RedirectSignInSession,
+  SignInHints,
+  SignInNamespace,
+  SignInOptions,
+  SignInOutcome,
+  SignInSession,
+} from "./core/signIn.js";
 export {
   licenseState,
   isUsable,
