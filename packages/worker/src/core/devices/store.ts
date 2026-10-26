@@ -2,6 +2,7 @@
 // of `core/repo.ts`.
 
 import type { Db, DbStatement } from "../../db/types.js";
+import { stmtDeleteDeviceKeys } from "./keys.js";
 import type { DeviceRow, DeviceFactsRow, FingerprintRow } from "../repo.js";
 
 // ── Devices ──────────────────────────────────────────────────────────────────
@@ -497,10 +498,14 @@ export function stmtsDeauthorizeDevice(
       sql: `DELETE FROM device_facts WHERE product = ? AND device_id = ? AND ${removed}`,
       params: [product, deviceId, product, deviceId, licenseId],
     },
+    {
+      sql: `DELETE FROM device_keys WHERE product = ? AND device_id = ? AND ${removed}`,
+      params: [product, deviceId, product, deviceId, licenseId],
+    },
   ];
 }
 
-/** Drop a device's fingerprint and software snapshot. Safe to call when neither exists. */
+/** Drop a device's fingerprint, software snapshot and keys. Safe to call when neither exists. */
 export async function purgeDeviceData(
   db: Db,
   product: string,
@@ -515,6 +520,7 @@ export async function purgeDeviceData(
       sql: "DELETE FROM device_facts WHERE product = ? AND device_id = ?",
       params: [product, deviceId],
     },
+    stmtDeleteDeviceKeys(product, deviceId),
   ]);
 }
 
