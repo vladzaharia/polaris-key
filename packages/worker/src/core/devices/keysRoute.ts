@@ -120,6 +120,7 @@ export async function handleDeviceKeys(
       deviceId,
       { signKey, agreeKey },
       now,
+      issuedAt,
     );
     return json({ keySeq: r.keySeq });
   } catch (e) {

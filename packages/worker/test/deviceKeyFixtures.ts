@@ -15,7 +15,7 @@ import type { Env } from "../src/platform/env.js";
 
 const b64 = (b: Uint8Array): string => base64UrlEncodeBytes(b);
 
-export async function newKeys(): Promise<{
+export async function newKeys(agreeRaw?: Uint8Array): Promise<{
   signKey: string;
   agreeKey: string;
   priv: CryptoKey;
@@ -29,8 +29,8 @@ export async function newKeys(): Promise<{
       (await crypto.subtle.exportKey("raw", kp.publicKey)) as ArrayBuffer,
     ),
   );
-  const raw = crypto.getRandomValues(new Uint8Array(32));
-  raw[31]! &= 0x7f;
+  const raw = agreeRaw ?? crypto.getRandomValues(new Uint8Array(32));
+  if (!agreeRaw) raw[31]! &= 0x7f;
   return { signKey, agreeKey: b64(raw), priv: kp.privateKey };
 }
 
