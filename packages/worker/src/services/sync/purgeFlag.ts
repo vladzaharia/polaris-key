@@ -9,10 +9,12 @@
  * this flag; the push route refuses while it is set, before it calls the object.
  *
  * It lives in KV (`pk()`-scoped, no new table), with a TTL that every purge run renews: an
- * abandoned delete lets writes resume after an hour. KV is eventually consistent, so a push in
- * another location can still land for up to about a minute after the first run starts (stated in
- * the threat model); the directory row such an object writes is guarded on the product being live
- * (U-05.9), and an object that finds its product erased at its next alarm erases itself. A KV read that fails refuses the push
+ * abandoned delete lets writes resume after an hour. A finished purge does not clear it: the
+ * product's status flips after the last run, and a push in between must still be refused. KV is
+ * eventually consistent, so a push in another location can still land for up to about a minute
+ * after the first run starts (stated in the threat model); the directory row such an object
+ * writes is guarded on the product being live (U-05.9), and an object that finds its product
+ * erased at its next alarm erases itself. A KV read that fails refuses the push
  * (retryable): the flag's absence is never assumed.
  */
 
@@ -32,22 +34,6 @@ export async function markProductPurging(
   await env.HOT.put(keyOf(product), "1", {
     expirationTtl: PURGE_FLAG_TTL_SECONDS,
   });
-}
-
-/**
- * Drop the flag once the purge has finished, so a slug re-created within the hour is not refused.
- * Best effort: a failed delete leaves the TTL to lapse. A push that lands after this on a stale
- * view of the product is erased by the object's own alarm (it finds the product not live).
- */
-export async function clearProductPurging(
-  env: Pick<Env, "HOT">,
-  product: string,
-): Promise<void> {
-  try {
-    await env.HOT.delete(keyOf(product));
-  } catch {
-    // The TTL ends it (no logging in src, R12).
-  }
 }
 
 /** `true` while a purge is running; throws when KV cannot answer (the caller refuses). */

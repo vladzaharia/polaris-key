@@ -35,11 +35,17 @@ export class MemoryStore implements SyncStore {
   private settings = new Map<string, StoredSetting>();
   private usage: StoreUsage = { settings: 0, settingsBytes: 0, bytes: 0 };
   private watermark = 0;
+  private held = false;
+  private seen = new Map<string, number>();
+
+  constructor(private readonly clock: () => number = () => Date.now() / 1000) {}
 
   transaction<T>(fn: () => T): T {
     const seq = this.seq;
     const usage = { ...this.usage };
     const watermark = this.watermark;
+    const held = this.held;
+    const seen = new Map(this.seen);
     const clients = new Map(
       [...this.clients].map(([k, v]) => [k, { ...v }] as const),
     );
@@ -52,6 +58,8 @@ export class MemoryStore implements SyncStore {
       this.seq = seq;
       this.usage = usage;
       this.watermark = watermark;
+      this.held = held;
+      this.seen = seen;
       this.clients = clients;
       this.settings = settings;
       throw e;
@@ -73,6 +81,23 @@ export class MemoryStore implements SyncStore {
 
   putClient(record: ClientRecord): void {
     this.clients.set(record.clientId, { ...record });
+    this.seen.set(record.clientId, this.clock());
+  }
+
+  clientCount(): number {
+    return this.clients.size;
+  }
+
+  dropIdleClient(cutoffSeconds: number): boolean {
+    let oldest: [string, number] | undefined;
+    for (const id of this.clients) {
+      const at = this.seen.get(id[0]) ?? 0;
+      if (!oldest || at < oldest[1]) oldest = [id[0], at];
+    }
+    if (!oldest || oldest[1] > cutoffSeconds) return false;
+    this.clients.delete(oldest[0]);
+    this.seen.delete(oldest[0]);
+    return true;
   }
 
   getSetting(
@@ -85,6 +110,7 @@ export class MemoryStore implements SyncStore {
   }
 
   putSetting(row: StoredSetting): void {
+    if (!row.deleted) this.held = true;
     this.settings.set(settingId(row.key, row.scope, row.family), cloneRow(row));
   }
 
@@ -121,6 +147,10 @@ export class MemoryStore implements SyncStore {
 
   isEmpty(): boolean {
     return this.settings.size === 0;
+  }
+
+  heldData(): boolean {
+    return this.held;
   }
 
   getUsage(): StoreUsage {

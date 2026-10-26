@@ -30,6 +30,8 @@ export const SYNC_LIMITER_SHARDS = 8;
 export const SYNC_PUSH_DEVICE_LIMIT = 60;
 export const SYNC_PUSH_DEVICE_WINDOW_SEC = 60;
 export const SYNC_PUSH_PRODUCT_WINDOW_SEC = 1;
+export const SYNC_PULL_DEVICE_LIMIT = 120;
+export const SYNC_PULL_DEVICE_WINDOW_SEC = 60;
 
 /** The limiter object name for a caller: `sync:product:<p>:<0-7>`, by subject hash. */
 export function syncLimiterShard(product: string, subject: string): string {
@@ -86,4 +88,26 @@ export async function pushLimited(
   )
     return limited(SYNC_PUSH_PRODUCT_WINDOW_SEC, now);
   return null;
+}
+
+/** A `429 rate_limited` Response when the device pulls too often (120 a minute), else null. */
+export async function pullLimited(
+  env: Env,
+  product: string,
+  subject: string,
+  deviceId: string,
+  now: number,
+): Promise<Response | null> {
+  const ok = await rateLimitOk(
+    env,
+    syncLimiterShard(product, subject),
+    {
+      bucket: "syncPull",
+      id: deviceId,
+      limit: SYNC_PULL_DEVICE_LIMIT,
+      windowSec: SYNC_PULL_DEVICE_WINDOW_SEC,
+    },
+    now,
+  );
+  return ok ? null : limited(SYNC_PULL_DEVICE_WINDOW_SEC, now);
 }

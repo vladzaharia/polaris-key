@@ -18,6 +18,8 @@ import {
   CloudSyncNamespaceMock,
   DoStorageMock,
   asCloudSyncNamespace,
+  ERASED_LEFTOVERS,
+  erasureLeftovers,
 } from "../../cloudSyncDoMock.js";
 import { CloudSyncDO } from "../../../src/services/sync/do/cloudSyncDo.js";
 import type { Env } from "../../../src/platform/env.js";
@@ -666,8 +668,8 @@ describe("CloudSyncDO: exportAll and deleteAll", () => {
       op: "deleteAll",
       deleted: true,
     });
-    expect(tables(ns, nameOf(P, ALICE))).toEqual([]);
-    expect(await inst.storage.getAlarm()).toBeNull();
+    expect(erasureLeftovers(ns, nameOf(P, ALICE))).toEqual(ERASED_LEFTOVERS);
+    expect(await inst.storage.getAlarm()).not.toBeNull();
     const raw = Buffer.from(inst.storage.sql.db.serialize()).toString("latin1");
     // (the in-memory pages may keep free-list bytes; the tables and rows are what the API exposes)
     expect((await pull(ns, ALICE)).body.outcome).toMatchObject({
@@ -678,7 +680,7 @@ describe("CloudSyncDO: exportAll and deleteAll", () => {
       (await call(ns, P, ALICE, { op: "exportAll" })).body.document,
     ).toBeNull();
     expect(raw.length).toBeGreaterThan(0);
-    // The object can be written again from scratch (and is re-pinned).
+    // A push that was already on its way refuses instead of rebuilding the object.
     ids = 1;
     const again = await push(
       ns,
@@ -686,8 +688,8 @@ describe("CloudSyncDO: exportAll and deleteAll", () => {
       [mut("k2", "set", { value: 1 })],
       [LAST_WRITE],
     );
-    expect(again.body.outcome.ok).toBe(true);
-    expect((await pull(ns, ALICE)).body.outcome.changes).toHaveLength(1);
+    expect(again.status).toBe(410);
+    expect(erasureLeftovers(ns, nameOf(P, ALICE))).toEqual(ERASED_LEFTOVERS);
   });
 
   it("deleteAll on a never-written object is a clean no-op", async () => {

@@ -18,7 +18,11 @@ import {
   formatHlc,
   parseHlc,
 } from "../../../src/services/sync/engine/hlc.js";
-import { applyPush } from "../../../src/services/sync/engine/push.js";
+import {
+  applyPush,
+  CLIENT_BINDING_IDLE_SECONDS,
+  MAX_CLIENT_BINDINGS,
+} from "../../../src/services/sync/engine/push.js";
 import { POLICY_OPS } from "../../../src/services/sync/engine/settings.js";
 import type {
   Classification,
@@ -34,7 +38,7 @@ const at = (ms: number, counter = 0) => formatHlc(ms, counter);
 const route = (
   policy: SettingPolicy,
   scope: "user" | "platform" = "user",
-  extra: { valueInvalid?: boolean } = {},
+  extra: { valueInvalid?: boolean; open?: boolean } = {},
 ): Classification => ({ verdict: "accept", scope, policy, ...extra });
 
 let nextId = 1;
@@ -1008,17 +1012,85 @@ describe("results, rule 1 and rule 4", () => {
     ).toBe(true);
   });
 
-  it("an empty push still binds the clientId", () => {
+  it("an empty push from an unknown client binds nothing", () => {
     const s = new MemoryStore();
     push(s, [], [], { deviceId: "dev1" });
-    expect(s.getClient(C1)).toEqual({
-      clientId: C1,
+    expect(s.getClient(C1)).toBeUndefined();
+    expect(s.clientCount()).toBe(0);
+  });
+
+  it("a known client's binding survives an empty push", () => {
+    const s = new MemoryStore();
+    push(s, [mut("set", { key: "a.b", value: 1 })], route("lastWrite"), {
       deviceId: "dev1",
-      lastMutationId: 0,
     });
     expect(push(s, [], [], { deviceId: "dev2" })).toEqual({
       ok: false,
       error: "client_mismatch",
+    });
+    expect(s.getClient(C1)).toMatchObject({ deviceId: "dev1" });
+  });
+
+  it("keeps at most MAX_CLIENT_BINDINGS bindings: a new client past the cap needs an idle one to replace", () => {
+    let now = NOW;
+    const s = new MemoryStore(() => now / 1000);
+    const id = (i: number) => `c_${String(i).padStart(22, "A")}`;
+    const first = (i: number) =>
+      push(s, [mut("set", { key: "a.b", value: i })], route("lastWrite"), {
+        clientId: id(i),
+        serverNow: now,
+      });
+    for (let i = 0; i < MAX_CLIENT_BINDINGS; i++) {
+      expect(first(i).ok).toBe(true);
+      now += 1000;
+    }
+    expect(s.clientCount()).toBe(MAX_CLIENT_BINDINGS);
+    // All of them are recent: a new client is refused.
+    expect(first(900)).toEqual({
+      ok: false,
+      error: "bad_request",
+      reason: "too_many_clients",
+    });
+    expect(s.clientCount()).toBe(MAX_CLIENT_BINDINGS);
+    // A day later the longest idle one is replaced.
+    now += CLIENT_BINDING_IDLE_SECONDS * 1000;
+    expect(first(900).ok).toBe(true);
+    expect(s.clientCount()).toBe(MAX_CLIENT_BINDINGS);
+    expect(s.getClient(id(0))).toBeUndefined();
+  });
+
+  it("clearing an open key the store never held writes no row, and a declared one still keeps its tombstone", () => {
+    const s = new MemoryStore();
+    const out = results(
+      s,
+      [mut("clear", { key: "open.x" })],
+      route("lastWrite", "user", { open: true }),
+    );
+    expect(out[0]?.status).toBe("ok");
+    expect(s.rows()).toEqual([]);
+    results(s, [mut("clear", { key: "declared.x" })], route("lastWrite"));
+    expect(s.rows()).toHaveLength(1);
+  });
+
+  it("an object that only ever held tombstones is still a new person at the users ceiling", () => {
+    const s = new MemoryStore();
+    const limits = { quotaBytes: 1 << 20, usersAtCeiling: true };
+    const run = (m: SyncMutation, c: Classification) =>
+      applyPush(s, {
+        deviceId: "dev1",
+        serverNow: NOW,
+        limits,
+        classified: [c],
+        request: { clientId: C1, cursor: 0, mutations: [m] },
+      });
+    // A declared-key clear leaves a tombstone, but no live row ever existed.
+    run(mut("clear", { key: "declared.x" }), route("lastWrite"));
+    expect(s.isEmpty()).toBe(false);
+    const grow = run(mut("set", { key: "a.b", value: 1 }), route("lastWrite"));
+    expect(grow.ok && grow.results[0]).toMatchObject({
+      status: "rejected",
+      code: "quota_exceeded",
+      scope: "product",
     });
   });
 

@@ -90,6 +90,9 @@ function migrationsOf(
  *  The race it covers is seconds; once the merge is done the marker is the only record linking
  *  the two pseudonymous ids, so it does not outlive the day. */
 export const ABSORBED_RETENTION_MS = 86_400_000;
+/** An erased object's marker lives this long: a push already in flight at the erasure lands
+ *  within seconds, and the marker refuses it. Then the object goes. */
+export const ERASED_RETENTION_MS = 86_400_000;
 /** The D1 batch gets this long inside the alarm's concurrency block (well under the 30 s limit). */
 export const FLUSH_TIMEOUT_MS = 10_000;
 
@@ -139,6 +142,14 @@ export class CloudSyncDO implements DurableObject {
       const pin = this.pinned();
       if (!pin || this.store.schemaVersion() !== SCHEMA_VERSION) return;
       const nowMs = this.now();
+      const erasedAt = this.store.getMeta("erased_at");
+      if (erasedAt !== undefined) {
+        const due = Number(erasedAt) + ERASED_RETENTION_MS;
+        if (nowMs >= due) await this.eraseSelf();
+        else if ((await this.ctx.storage.getAlarm()) === null)
+          await this.ctx.storage.setAlarm(due);
+        return;
+      }
       const absorbedAt = this.store.getMeta("absorbed_at");
       if (this.store.getMeta("absorbed_into") !== undefined) {
         const due = Number(absorbedAt ?? 0) + ABSORBED_RETENTION_MS;
@@ -255,7 +266,8 @@ export class CloudSyncDO implements DurableObject {
     // An absorbed object (account merge) takes no write; only an erasure (`deleteAll`) and the
     // merge's own repeat delete get through. Reads answer empty.
     if (
-      this.store.getMeta("absorbed_into") !== undefined &&
+      (this.store.getMeta("absorbed_into") !== undefined ||
+        this.store.getMeta("erased_at") !== undefined) &&
       (op.op === "push" || op.op === "absorb")
     )
       return objectError("absorbed", 410);
@@ -279,7 +291,8 @@ export class CloudSyncDO implements DurableObject {
           op: "exportAll",
           // An absorbed object has nothing left to export: a retried merge finds it settled.
           document:
-            this.store.getMeta("absorbed_into") !== undefined
+            this.store.getMeta("absorbed_into") !== undefined ||
+            this.store.getMeta("erased_at") !== undefined
               ? null
               : this.exportAll(op),
         });
@@ -299,7 +312,8 @@ export class CloudSyncDO implements DurableObject {
    * not `seq`: SR-1 N2). A merge delete leaves a marker (`absorbed_into`, `absorbed_at`) and the
    * pin, which refuse every later write with `410 absorbed` instead of letting a late write build
    * an orphan the survivor never sees (SR-1 N3). The marker holds no setting and no value, only
-   * the subject the object was folded into. A plain `deleteAll` is the erasure and leaves nothing.
+   * the subject the object was folded into. A plain `deleteAll` is the erasure: it leaves no data, only the pin and an
+   * `erased_at` marker that refuses writes for a day.
    */
   private async deleteAll(
     op: Extract<CloudSyncOp, { op: "deleteAll" }>,
@@ -351,8 +365,22 @@ export class CloudSyncDO implements DurableObject {
       }
       return reply({ op: "deleteAll", deleted: true });
     }
-    // The erasure: no wake-up on a ghost, and nothing is left behind.
+    // The erasure: everything goes, and a marker (the pin and a time, no data) stays for a day, so
+    // a push that was already on its way refuses instead of rebuilding the object. The cleanup
+    // alarm goes first, so a marker never exists without one; a failure is retryable.
     await this.eraseSelf();
+    const at = this.now();
+    try {
+      await this.ctx.storage.setAlarm(at + ERASED_RETENTION_MS);
+    } catch {
+      return objectError("unavailable", 503);
+    }
+    this.ctx.storage.transactionSync(() => {
+      this.store.prepare(true);
+      this.store.setMeta("product", op.product);
+      this.store.setMeta("subject", op.subject);
+      this.store.setMeta("erased_at", String(at));
+    });
     return reply({ op: "deleteAll", deleted: true });
   }
 

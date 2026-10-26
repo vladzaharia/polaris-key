@@ -300,6 +300,25 @@ export class SqlStore implements SyncStore {
     );
   }
 
+  clientCount(): number {
+    if (!this.hasSchema()) return 0;
+    return Number(
+      this.all<{ n: number }>(`SELECT COUNT(*) AS n FROM clients`)[0]?.n ?? 0,
+    );
+  }
+
+  dropIdleClient(cutoffSeconds: number): boolean {
+    if (!this.hasSchema()) return false;
+    this.requireWritable();
+    const r = this.all<{ client_id: string; last_seen: number }>(
+      `SELECT client_id, last_seen FROM clients ORDER BY last_seen, client_id LIMIT 1`,
+    )[0];
+    if (!r || r.last_seen > cutoffSeconds) return false;
+    this.setMeta("writes", String(this.num("writes") + 1));
+    this.run(`DELETE FROM clients WHERE client_id = ?`, r.client_id);
+    return true;
+  }
+
   /** Forgets client bindings that have not pushed since `cutoff` (epoch seconds). Returns how many. */
   expireClients(cutoff: number): number {
     if (!this.hasSchema()) return 0;
@@ -358,6 +377,8 @@ export class SqlStore implements SyncStore {
    */
   putSetting(row: StoredSetting): void {
     this.requireWritable();
+    if (!row.deleted && this.getMeta("held_data") !== "1")
+      this.setMeta("held_data", "1");
     const fam = row.scope === "platform" ? (row.family ?? "") : "";
     const [table, other] = row.deleted
       ? (["tombstones", "settings"] as const)
@@ -524,6 +545,13 @@ export class SqlStore implements SyncStore {
         `SELECT 1 AS x FROM settings UNION ALL SELECT 1 FROM tombstones LIMIT 1`,
       ).length === 0
     );
+  }
+
+  heldData(): boolean {
+    if (this.getMeta("held_data") === "1") return true;
+    // An object written before the flag existed: any live setting row counts.
+    if (!this.hasSchema()) return false;
+    return this.all(`SELECT 1 AS x FROM settings LIMIT 1`).length > 0;
   }
 
   private hydrate(r: SettingRow, deleted: boolean): StoredSetting {

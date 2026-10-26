@@ -274,6 +274,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // every device's settings from saving.
   syncPushDevice: "open",
   syncPushProduct: "open",
+  // The Cloud Sync pull, per device: the same reasoning as the push (a live device token, a cost
+  // budget, nothing secret behind it).
+  syncPull: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

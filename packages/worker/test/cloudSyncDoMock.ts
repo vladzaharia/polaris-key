@@ -244,3 +244,32 @@ export class CloudSyncNamespaceMock {
 export const asCloudSyncNamespace = (
   m: CloudSyncNamespaceMock,
 ): DurableObjectNamespace => m as unknown as DurableObjectNamespace;
+
+/**
+ * What an erased object still holds: null when it has no schema at all, else the meta keys it
+ * keeps (an erased object keeps only its pin and the erasure time) and its data row counts.
+ */
+export function erasureLeftovers(
+  m: CloudSyncNamespaceMock,
+  name: string,
+): { meta: string[]; rows: number[] } | null {
+  const db = m.instance(name).storage.sql.db;
+  const has = db
+    .prepare("SELECT 1 AS x FROM sqlite_master WHERE name = 'meta'")
+    .get();
+  if (!has) return null;
+  const count = (t: string) =>
+    (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n;
+  return {
+    meta: (
+      db.prepare("SELECT key FROM meta ORDER BY key").all() as { key: string }[]
+    ).map((r) => r.key),
+    rows: ["settings", "tombstones", "setting_members", "clients"].map(count),
+  };
+}
+
+/** The leftovers of a freshly erased object. */
+export const ERASED_LEFTOVERS = {
+  meta: ["erased_at", "product", "schema_version", "subject"],
+  rows: [0, 0, 0, 0],
+};

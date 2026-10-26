@@ -30,6 +30,8 @@ import { KvMock, asKv } from "../../kvMock.js";
 import {
   CloudSyncNamespaceMock,
   asCloudSyncNamespace,
+  ERASED_LEFTOVERS,
+  erasureLeftovers,
 } from "../../cloudSyncDoMock.js";
 
 const P = "acme";
@@ -124,7 +126,7 @@ const tablesOf = (ns: CloudSyncNamespaceMock, name: string) =>
     .all();
 
 describe("erasure", () => {
-  it("leaves nothing in the object: no table, no row, no alarm; the directory row goes; a stranger's object stays", async () => {
+  it("leaves no data in the object, only the pin and the erasure time with a cleanup alarm; the directory row goes; a stranger's object stays", async () => {
     const { ns, env, db } = world();
     await populate(env, P, "a");
     await populate(env, P, "b");
@@ -138,8 +140,8 @@ describe("erasure", () => {
       subject: "a",
     });
     expect(failures).toEqual([]);
-    expect(tablesOf(ns, `${P}:a`)).toEqual([]);
-    expect(await ns.instance(`${P}:a`).storage.getAlarm()).toBeNull();
+    expect(erasureLeftovers(ns, `${P}:a`)).toEqual(ERASED_LEFTOVERS);
+    expect(await ns.instance(`${P}:a`).storage.getAlarm()).not.toBeNull();
     expect(
       await db.all<{ product: string; subject: string }>(
         "SELECT product, subject FROM sync_directory ORDER BY subject",
@@ -190,7 +192,7 @@ describe("erasure", () => {
         { product: P, subject: "a" },
       ),
     ).toEqual([]);
-    expect(tablesOf(ns, `${P}:a`)).toEqual([]);
+    expect(erasureLeftovers(ns, `${P}:a`)).toEqual(ERASED_LEFTOVERS);
     expect(await db.all("SELECT 1 FROM sync_directory")).toHaveLength(0);
   });
 });
@@ -274,7 +276,7 @@ describe("product deletion", () => {
     const { ns, env, db } = await fixture();
     expect(await purgeProductData(db, env as never, P, NOW)).toBe(true);
     for (const s of ["a", "b", "c"])
-      expect(tablesOf(ns, `${P}:${s}`)).toEqual([]);
+      expect(erasureLeftovers(ns, `${P}:${s}`)).toEqual(ERASED_LEFTOVERS);
     await deleteProduct(db, P, NOW);
     for (const t of ["sync_directory", "sync_product_usage"])
       expect(
@@ -331,7 +333,7 @@ describe("product deletion", () => {
     ).toEqual(["b", "c"]);
     expect(await purgeProductData(db, env as never, P, NOW)).toBe(true);
     for (const s of ["a", "b", "c"])
-      expect(tablesOf(ns, `${P}:${s}`)).toEqual([]);
+      expect(erasureLeftovers(ns, `${P}:${s}`)).toEqual(ERASED_LEFTOVERS);
   });
 
   it("a run is bounded: past the cap it answers not done, and the next run finishes", async () => {
