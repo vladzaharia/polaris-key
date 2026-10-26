@@ -9,7 +9,12 @@
 // `CoreContext.headers()` / `.deadline()`, so a new endpoint cannot ship without them (R4-08).
 
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
-import { readManageUrl, type PolarisError } from "@polaris-key/client-core";
+import type { KeyEntries } from "@polaris-key/protocol/identity";
+import {
+  isManageUrl,
+  readManageUrl,
+  type PolarisError,
+} from "@polaris-key/client-core";
 import { ErrorCode } from "../constants.generated.js";
 import type { CoreContext, DocumentResult } from "../core/context.js";
 import {
@@ -33,7 +38,26 @@ import { redactOnPrint } from "../core/redact.js";
 export type ActivationResult =
   /** The device token is stored by the license client. `token` stays readable, but the result
    *  prints (`console.log`, `util.inspect`, `JSON.stringify`) with it redacted. */
-  | { kind: "ok"; token: string; schemaVersion: number }
+  | {
+      kind: "ok";
+      token: string;
+      schemaVersion: number;
+      /** §12.2: the licence's key entries, `{used, limit}`; absent with Identity off. */
+      keyEntries?: KeyEntries;
+    }
+  /** §12.2 step 4: the licence has no key entries left (Identity on, refusals on). Not an auth
+   *  failure and never a wipe: the device keeps its token, cache and store, and nothing is
+   *  retried. `manageUrl` is the portal's activate page, absent while the portal is off. */
+  | {
+      kind: "key-entry-limit";
+      code: string;
+      manageUrl?: string;
+      keyEntries: KeyEntries;
+    }
+  /** §12.2 step 3: the key's licence belongs to an account this device is not enrolled on.
+   *  Not an auth failure and never a wipe; `signInUrl` is the product's login card (it carries
+   *  no key and names no account). */
+  | { kind: "license-owned"; code: string; signInUrl: string }
   /** Every seat is taken. `manageUrl` (PX-W8) is the customer-portal link that frees one,
    *  present while the product's portal is on; add the app's return with `withManageReturn`
    *  and, on an `/activate` link, the key with `withManageKey`. Never an auth failure. */
@@ -83,6 +107,23 @@ export type ActivationResult =
       retryAfterSeconds?: number;
     };
 
+/** Key entries as the wire carries them: two non-negative integers, else none. */
+export function readKeyEntries(body: unknown): KeyEntries | undefined {
+  if (body === null || typeof body !== "object") return undefined;
+  const k = (body as Record<string, unknown>).keyEntries;
+  if (k === null || typeof k !== "object") return undefined;
+  const { used, limit } = k as Record<string, unknown>;
+  const ok = (n: unknown): n is number =>
+    Number.isInteger(n) && (n as number) >= 0;
+  return ok(used) && ok(limit) ? { used, limit } : undefined;
+}
+
+/** `signInUrl` of a `license_owned` body: an absolute https URL (http only to loopback). */
+function readSignInUrl(body: unknown): string | undefined {
+  const v = (body as { signInUrl?: unknown } | null)?.signInUrl;
+  return isManageUrl(v) ? v : undefined;
+}
+
 /** The refusal kinds a registry code names directly (§3.1). */
 const KIND_BY_CODE: Record<
   string,
@@ -96,6 +137,8 @@ const KIND_BY_CODE: Record<
   | "attestation-required"
   | "rate-limited"
   | "unauthorized"
+  | "key-entry-limit"
+  | "license-owned"
 > = {
   device_limit: "device-limit",
   fingerprint_required: "fingerprint-required",
@@ -107,6 +150,8 @@ const KIND_BY_CODE: Record<
   attestation_required: "attestation-required",
   rate_limited: "rate-limited",
   unauthorized: "unauthorized",
+  key_entry_limit: "key-entry-limit",
+  license_owned: "license-owned",
 };
 
 interface RefusalBody {
@@ -197,6 +242,23 @@ export function activationRefusal(
         ...(changed !== undefined ? { changed } : {}),
       };
     }
+    case "key-entry-limit": {
+      const keyEntries = readKeyEntries(body);
+      // A refusal without its counts is not the typed outcome: report it as the plain refusal.
+      if (!keyEntries) return { kind: "refused", code: code!, status, message };
+      const manageUrl = readManageUrl(body);
+      return {
+        kind,
+        code: wire!,
+        keyEntries,
+        ...(manageUrl !== undefined ? { manageUrl } : {}),
+      };
+    }
+    case "license-owned": {
+      const signInUrl = readSignInUrl(body);
+      if (!signInUrl) return { kind: "refused", code: code!, status, message };
+      return { kind, code: wire!, signInUrl };
+    }
     case "rate-limited":
       return {
         kind,
@@ -265,7 +327,7 @@ async function activationLike(
     };
   }
   if (res.status === 200) {
-    let b: { token?: unknown; schemaVersion?: unknown };
+    let b: { token?: unknown; schemaVersion?: unknown; keyEntries?: unknown };
     try {
       b = await readJson(res, path);
     } catch (e) {
@@ -286,11 +348,13 @@ async function activationLike(
         status: 200,
         message: `${path} answered without a device token.`,
       };
+    const keyEntries = readKeyEntries(b);
     return redactOnPrint<ActivationResult & { kind: "ok" }>(
       {
         kind: "ok",
         token: b.token,
         schemaVersion: b.schemaVersion as number,
+        ...(keyEntries ? { keyEntries } : {}),
       },
       ["token"],
     );

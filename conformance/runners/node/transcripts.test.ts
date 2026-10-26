@@ -4,6 +4,7 @@
 //
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
+// @pkey-feature identity.keyentry
 // @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
@@ -199,12 +200,25 @@ function payloadPrefix(t: Transcript, path: string, n: number): Buffer {
 /** Map an activation/enrolment result onto `result` and, for a refusal, `code`. */
 function activation(
   out: Observed,
-  r: { kind: string; code?: string; manageUrl?: string },
+  r: {
+    kind: string;
+    code?: string;
+    manageUrl?: string;
+    signInUrl?: string;
+    keyEntries?: { used: number; limit: number };
+  },
 ): void {
-  out.result = r.kind;
+  // The transcripts spell a `license_owned` refusal as `refused` (the registry code stays the
+  // discriminator); the SDK's own kind is `license-owned`.
+  out.result = r.kind === "license-owned" ? "refused" : r.kind;
   if (r.kind !== "ok" && typeof r.code === "string") out.code = r.code;
   // PX-W8: the refusal link, exactly as served; null when the result carries none.
-  if (r.kind === "device-limit") out.manageUrl = r.manageUrl ?? null;
+  if (r.kind === "device-limit" || r.kind === "key-entry-limit")
+    out.manageUrl = r.manageUrl ?? null;
+  if (r.kind === "license-owned") out.signInUrl = r.signInUrl ?? null;
+  // §12.2: the counts, `null` where the answer carries none (Identity off).
+  if (r.kind === "ok" || r.kind === "key-entry-limit")
+    out.keyEntries = r.keyEntries ?? null;
 }
 
 /** THE mapping from transcript verbs and `expect` keys onto the Node SDK. Kept in one place. */
