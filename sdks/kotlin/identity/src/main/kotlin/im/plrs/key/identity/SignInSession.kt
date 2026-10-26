@@ -20,6 +20,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
+import kotlinx.serialization.json.JsonObject
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -47,6 +48,8 @@ public data class SignInOptions @JvmOverloads constructor(
     val loginHint: String? = null,
     val nameHint: String? = null,
     val purpose: SignInPurpose? = null,
+    /** Redirect channel: `"app"` makes the app show the licence choice itself (§12.4). Honoured only when discovery names the `choice*` endpoints; otherwise the card chooses. */
+    val licenseChoice: String? = null,
 )
 
 /** Where a session stands. `wait()` returns the settled ones; `session.outcome` reads `Pending` until then. */
@@ -69,6 +72,16 @@ public sealed interface SignInOutcome {
         val licenseId: String? = null,
     ) : SignInOutcome {
         override val kind: String get() = "signedIn"
+    }
+
+    /**
+     * Redirect channel with `licenseChoice = "app"` and a choice due (§12.5.1): no token was stored. Show the choice from
+     * [choices] (or read a fresh view with `identity.choice.licenses(grant)`), then finish with `identity.choice.complete`
+     * or `cancel` before [expiresIn] seconds pass. [grant] is a credential: `toString` redacts it.
+     */
+    public data class Choose(val grant: String, val expiresIn: Double, val choices: JsonObject) : SignInOutcome {
+        override val kind: String get() = "choose"
+        override fun toString(): String = "Choose(grant=[redacted], expiresIn=$expiresIn)"
     }
 
     public data object Cancelled : SignInOutcome {
@@ -270,8 +283,7 @@ public class SignInSession internal constructor(
                 Result.failure(SignInError(ErrorCode.signInFailed, "the sign-in redirect was refused (${checked.reason.wire}).")),
             )
             is CallbackResult.Code -> try {
-                val ready = client.redeemRedirect(taken, checked.code, redirectDeviceName)
-                settle(Result.success(SignInOutcome.SignedIn(ready.subject, ready.scope, ready.licenseId)))
+                settle(Result.success(client.redeemRedirect(taken, checked.code, redirectDeviceName)))
             } catch (e: SignInError) {
                 settle(Result.failure(e))
             }

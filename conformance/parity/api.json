@@ -3148,8 +3148,8 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "shape": "property",
+          "reason": "a property returning the choice client"
         },
         "godot": {
           "planned": "I-10b",
@@ -3183,8 +3183,7 @@
           "labels": ["grant"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.licenses"
         },
         "godot": {
           "planned": "I-10b",
@@ -3222,8 +3221,7 @@
           "labels": ["grant", "licenseId"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.devices"
         },
         "godot": {
           "planned": "I-10b",
@@ -3261,8 +3259,7 @@
           "labels": ["grant", "choice"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.complete"
         },
         "godot": {
           "planned": "I-10b",
@@ -3296,8 +3293,7 @@
           "labels": ["grant"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.cancel"
         },
         "godot": {
           "planned": "I-10b",
@@ -3329,6 +3325,11 @@
         },
         "swift": {
           "spelling": "LicenseChoiceModel"
+        },
+        "kotlin": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Kotlin calls the identity.choice primitives"
         }
       },
       "layer": "client"
@@ -5835,6 +5836,86 @@
     },
     {
       "id": "packs.setChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.isSigningIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.cancel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signedInIdentity",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.requestSignIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInPending",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInConfirm",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInFinished",
       "kind": "stream",
       "sdks": {
         "godot": {

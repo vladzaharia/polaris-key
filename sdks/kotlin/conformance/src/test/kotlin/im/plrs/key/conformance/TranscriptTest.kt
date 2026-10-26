@@ -7,7 +7,7 @@
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
-// @pkey-feature identity.redirect.web identity.signin.hints
+// @pkey-feature identity.redirect.web identity.signin.hints identity.choice
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -75,6 +75,8 @@ import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.identity.AttachResult
+import im.plrs.key.identity.ChoiceResult
+import im.plrs.key.identity.LicenseChoice
 import im.plrs.key.identity.ConformanceReplayOnly
 import im.plrs.key.identity.RedirectEntropy
 import im.plrs.key.identity.redirectAcquisitionSync
@@ -176,6 +178,7 @@ class ReplayStore(inner: InMemoryStore, override val stateDirectory: java.io.Fil
 
 object KotlinReplay {
     /** THE mapping from transcript verbs and `expect` keys onto the Kotlin SDK. */
+    @OptIn(ConformanceReplayOnly::class)
     suspend fun act(
         client: PolarisKeyClient,
         store: Store,
@@ -197,7 +200,7 @@ object KotlinReplay {
                         r["path"].stringValue!!.contains("/identity/authorize?")
                 }
                 if (authorize != null) {
-                    val started = redirectSession(client, args)
+                    val started = redirectSession(client, args, replay.transcript)
                     val want = replay.transcript.baseUrl + authorize["request"]!!.obj["path"].stringValue
                     if (started.authorizeUrl != want) {
                         replay.recordFailure("authorize URL differs from the recording:\n    want $want\n    got  ${started.authorizeUrl}")
@@ -208,7 +211,7 @@ object KotlinReplay {
                 for ((key, value) in step["expect"]!!.obj) out[key] = value
             }
             "redirectComplete" -> {
-                val s = redirectSession(client, args)
+                val s = redirectSession(client, args, server?.transcript)
                 try {
                     when (val o = s.complete(args["callbackUrl"].stringValue ?: "")) {
                         is SignInOutcome.SignedIn -> {
@@ -217,6 +220,7 @@ object KotlinReplay {
                             out["subject"] = o.subject?.let { JsonPrimitive(it) } ?: JsonNull
                             out["licenseId"] = o.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
                         }
+                        is SignInOutcome.Choose -> out["result"] = JsonPrimitive("choose")
                         SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
                         else -> out["result"] = JsonPrimitive("error")
                     }
@@ -227,6 +231,47 @@ object KotlinReplay {
                     out["result"] = JsonPrimitive("error")
                     out["code"] = JsonPrimitive(e.code)
                 }
+            }
+            "choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel" -> {
+                // The grant routes (I-10b.19): `client.identity.choice.*`, a refusal being a result.
+                val grant = args["grant"].stringValue ?: ""
+                val choice = client.identity.choice
+                var refused: ChoiceResult.Refused? = null
+                when (action) {
+                    "choiceLicenses" -> when (val r = choice.licenses(grant)) {
+                        is ChoiceResult.Ok -> {
+                            out["state"] = JsonPrimitive(r.value.state)
+                            out["licenses"] = JsonArray(r.value.licenseIds.map { JsonPrimitive(it) })
+                        }
+                        is ChoiceResult.Refused -> refused = r
+                    }
+                    "choiceDevices" -> when (val r = choice.devices(grant, args["licenseId"].stringValue ?: "")) {
+                        is ChoiceResult.Ok -> out["devices"] = JsonArray(r.value.deviceIds.map { JsonPrimitive(it) })
+                        is ChoiceResult.Refused -> refused = r
+                    }
+                    "choiceComplete" -> {
+                        // The step's own `choice` arg, else the one the recording's request carries; a recording with
+                        // none is the Worker's 409 `license_choice_required`, sent as recorded (no `choice`).
+                        val recorded = args["choice"].objectValue
+                            ?: step["exchanges"]!!.obj["items"]!!.arrayValue!!.firstOrNull()?.obj?.get("request")?.obj
+                                ?.get("body").objectValue?.get("json").objectValue?.get("choice").objectValue
+                        val r = if (recorded == null) choice.completeRecorded(grant, null) else choice.complete(grant, LicenseChoice.fromJson(recorded)!!)
+                        when (r) {
+                            is ChoiceResult.Ok -> {
+                                out["licenseId"] = r.value.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
+                                out["subject"] = JsonPrimitive(r.value.subject)
+                                r.value.keyEntries?.let { out["keyEntries"] = JsonObject(mapOf("used" to jsonInt(it.used), "limit" to jsonInt(it.limit))) }
+                            }
+                            is ChoiceResult.Refused -> refused = r
+                        }
+                    }
+                    else -> when (val r = choice.cancel(grant)) {
+                        is ChoiceResult.Ok -> Unit
+                        is ChoiceResult.Refused -> refused = r
+                    }
+                }
+                out["result"] = JsonPrimitive(if (refused != null) "refused" else "ok")
+                refused?.let { out["code"] = JsonPrimitive(it.code) }
             }
             "chunkRange" -> {
                 val transport = objects ?: throw AssertionError("chunkRange without a pack object transport")
@@ -378,6 +423,7 @@ object KotlinReplay {
                         is SignInOutcome.SignedIn -> out["result"] = JsonPrimitive("ready")
                         SignInOutcome.Expired -> out["result"] = JsonPrimitive("expired")
                         SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
+                        is SignInOutcome.Choose -> out["result"] = JsonPrimitive("choose")
                     }
                 } catch (e: SignInError) {
                     out["result"] = JsonPrimitive("error")
@@ -504,7 +550,7 @@ object KotlinReplay {
 
     /** A redirect session the way the step's `args` ask for one: the recorded `state` and verifier (a step may name its own), the hints it carries, the recorded redirect URI. */
     @OptIn(ConformanceReplayOnly::class)
-    private suspend fun redirectSession(client: PolarisKeyClient, args: JsonObject): SignInSession {
+    private suspend fun redirectSession(client: PolarisKeyClient, args: JsonObject, transcript: Transcript?): SignInSession {
         client.identity.redirectEntropy = RedirectEntropy(
             args["state"].stringValue ?: RECORDED_STATE, args["codeVerifier"].stringValue ?: RECORDED_VERIFIER,
         )
@@ -513,8 +559,14 @@ object KotlinReplay {
                 channel = SignInChannel.Redirect, redirectUri = args["redirectUri"].stringValue ?: RECORDED_REDIRECT,
                 loginHint = args["loginHint"].stringValue, nameHint = args["nameHint"].stringValue,
                 purpose = SignInPurpose.entries.firstOrNull { it.wire == args["purpose"].stringValue },
+                // The recorded authorize request asked the app to show the licence choice.
+                licenseChoice = if (transcript?.asksAppChoice() == true) "app" else null,
             ),
         )
+    }
+
+    private fun Transcript.asksAppChoice(): Boolean = steps.any { st ->
+        st["exchanges"]!!.obj["items"]!!.arrayValue!!.any { it.obj["request"]!!.obj["path"].stringValue?.contains("license_choice=app") == true }
     }
 
     /** `redirectComplete`'s `result` for a refusal's code (`format.ts`). */
@@ -850,6 +902,8 @@ class TranscriptTest : ConformanceSuite() {
             "identity-attach", "identity-attach-errors",
             // I-10b.18: the redirect core and the request hints.
             "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
+            // I-10b.19: the licence choice.
+            "choice-key-app", "choice-replace-app", "choice-grant-errors",
         )
     }
 }

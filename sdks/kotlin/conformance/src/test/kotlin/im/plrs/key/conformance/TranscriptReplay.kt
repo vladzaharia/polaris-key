@@ -270,6 +270,7 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         // the fragment names `authorize` and `token`, and the issuer the recorded callback carries (RFC 9207),
         // else the Worker's own `<base>/identity`.
         if (transcript.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) {
+            val choice = transcript.steps.any { it["action"].stringValue?.startsWith("choice") == true }
             var issuer = "$base/identity"
             for (st in transcript.steps) {
                 if (st["action"].stringValue != "redirectComplete") continue
@@ -284,7 +285,17 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             val identity = JsonObject(
                 mapOf(
                     "enabled" to JsonPrimitive(true), "configured" to JsonPrimitive(true), "issuer" to JsonPrimitive(issuer),
-                    "endpoints" to JsonObject(mapOf("authorize" to JsonPrimitive("$base/identity/authorize"), "token" to JsonPrimitive("$base/identity/token"))),
+                    "endpoints" to JsonObject(
+                        buildMap {
+                            put("authorize", JsonPrimitive("$base/identity/authorize"))
+                            put("token", JsonPrimitive("$base/identity/token"))
+                            if (choice) {
+                                for (name in listOf("licenses", "devices", "complete", "cancel")) {
+                                    put("choice" + name.replaceFirstChar { it.uppercase() }, JsonPrimitive("$base/identity/choice/$name"))
+                                }
+                            }
+                        },
+                    ),
                 ),
             )
             return JsonObject(
