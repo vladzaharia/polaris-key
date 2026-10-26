@@ -3136,8 +3136,8 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.licenses",
+          "labels": ["grant"]
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3175,8 +3175,8 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.devices",
+          "labels": ["grant", "licenseId"]
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3214,8 +3214,8 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.complete",
+          "labels": ["grant", "choice"]
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3249,8 +3249,8 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.cancel",
+          "labels": ["grant"]
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3283,6 +3283,9 @@
           "planned": "I-10a",
           "reason": "the React hook over identity.choice (D-3)",
           "shape": "hook"
+        },
+        "swift": {
+          "spelling": "LicenseChoiceModel"
         }
       },
       "layer": "client"

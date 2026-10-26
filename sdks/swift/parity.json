@@ -165,11 +165,11 @@
     },
     "identity.redirect.web": {
       "status": "implemented",
-      "note": "signIn.start(SignInOptions(channel: .redirect, redirectUri:)) builds the S256 authorize URL from discovery (IdentityRedirect, CryptoKit) for a browser the host opens; session.complete(callbackUrl:) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint. Single use; a refusal is a typed SignInError and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's; the licence choice (license_choice=app) is I-10b.12's."
+      "note": "signIn.start(SignInOptions(channel: .redirect, redirectUri:)) builds the S256 authorize URL from discovery (IdentityRedirect, CryptoKit) for a browser the host opens; session.complete(callbackUrl:) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint. Single use; a refusal is a typed SignInError and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's; the licence choice (license_choice=app) is identity.choice."
     },
     "identity.choice": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "SignInOptions(licenseChoice: .app) sends license_choice=app (only when discovery lists the four choice routes; else the card chooses) and session.complete(callbackUrl:) then settles .chooseLicense(PendingSignIn); identity.choice.licenses/devices/complete/cancel(grant:) take the grant, store the device token on complete like a sign-in, and throw a typed ChoiceError (invalid_grant, license_choice_required and device_limit with a fresh view, not_found, rate_limited with retryAfterSeconds); UnsupportedError(product) when a route is not published. LicenseChoiceModel (PolarisKeyUICore, @Observable) drives the LicenseChoice screen's KitInputs from the SDK."
     },
     "identity.signin.hints": {
       "status": "implemented"

@@ -339,9 +339,11 @@ const SWIFT_TYPE: Record<string, string> = {
   packs: "PacksClient",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
+  ChoiceNamespace: "ChoiceNamespace",
 };
 /** Rows with no compile-only reference: actor-isolated properties have no key path, and an unapplied generic method cannot infer `T`. */
 const SWIFT_UNASSERTED = new Set([
+  "identity.useLicenseChoice", // a @MainActor model class (PolarisKeyUICore), not a member of the umbrella
   "commerce.listening",
   "commerce.products",
   "config.decode",

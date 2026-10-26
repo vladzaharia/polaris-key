@@ -44,11 +44,16 @@ public struct SignInOptions: Sendable {
     public var loginHint: String?
     public var nameHint: String?
     public var purpose: SignInPurpose?
+    /// Redirect channel: who shows the licence choice. `.app` asks for `license_choice=app` (sent
+    /// only when discovery publishes the four `choice*` routes; else the card chooses); a due
+    /// choice then settles the session as `.chooseLicense` and the app runs `identity.choice`.
+    public var licenseChoice: LicenseChoiceMode?
 
     public init(
         channel: SignInChannel = .deviceCode, deviceName: String? = nil,
         browser: (any SignInBrowser)? = nil, redirectUri: String? = nil, scope: [String]? = nil,
-        loginHint: String? = nil, nameHint: String? = nil, purpose: SignInPurpose? = nil
+        loginHint: String? = nil, nameHint: String? = nil, purpose: SignInPurpose? = nil,
+        licenseChoice: LicenseChoiceMode? = nil
     ) {
         self.channel = channel
         self.deviceName = deviceName
@@ -58,6 +63,7 @@ public struct SignInOptions: Sendable {
         self.loginHint = loginHint
         self.nameHint = nameHint
         self.purpose = purpose
+        self.licenseChoice = licenseChoice
     }
 }
 
@@ -68,6 +74,9 @@ public enum SignInOutcome: Sendable, Equatable {
     /// The flow is held at the signed-in identity (`attachable`: this device holds an anonymous
     /// enrolled licence the account could take over).
     case choose(identity: SignInIdentity, attachable: Bool)
+    /// Redirect channel with `licenseChoice: .app`: the code was redeemed for a pending sign-in
+    /// grant. Nothing is bound yet; run `client.identity.choice` with `grant`.
+    case chooseLicense(PendingSignIn)
     /// Signed in: the device token is stored and the post-acquisition sync has run.
     case signedIn(SignInReady)
     case cancelled
@@ -78,6 +87,7 @@ public enum SignInOutcome: Sendable, Equatable {
         switch self {
         case .pending: return "pending"
         case .choose: return "choose"
+        case .chooseLicense: return "chooseLicense"
         case .signedIn: return "signedIn"
         case .cancelled: return "cancelled"
         case .expired: return "expired"
@@ -314,9 +324,12 @@ public final class SignInSession: Sendable {
                         message: "the sign-in redirect was refused (\(reason.rawValue)).")))
         case .code(let code):
             do {
-                let ready = try await client.redeemRedirect(
+                switch try await client.redeemRedirect(
                     pending, code: code, deviceName: redirectDeviceName)
-                return try settle(.success(.signedIn(ready)))
+                {
+                case .ready(let ready): return try settle(.success(.signedIn(ready)))
+                case .choose(let grant): return try settle(.success(.chooseLicense(grant)))
+                }
             } catch let error as SignInError {
                 return try settle(.failure(error))
             }

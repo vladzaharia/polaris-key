@@ -193,6 +193,17 @@ public struct IdentityDiscovery: Sendable, Equatable {
     public var signout: String? { endpoints["signout"] }
     /// `POST`: preview or attach the device's licence to the signed-in account.
     public var attach: String? { endpoints["attach"] }
+    /// `POST`: the pending sign-in grant's four routes (§12.5.1); published only together.
+    public var choiceLicenses: String? { endpoints["choiceLicenses"] }
+    public var choiceDevices: String? { endpoints["choiceDevices"] }
+    public var choiceComplete: String? { endpoints["choiceComplete"] }
+    public var choiceCancel: String? { endpoints["choiceCancel"] }
+    /// All four grant routes are published: the app may ask for `license_choice=app`.
+    public var choiceAvailable: Bool {
+        [choiceLicenses, choiceDevices, choiceComplete, choiceCancel].allSatisfy {
+            $0?.isEmpty == false
+        }
+    }
     /// The product's page in the customer portal.
     public var accountPortal: String? { endpoints["accountPortal"] }
 }
