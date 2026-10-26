@@ -6,45 +6,18 @@
 
 import { describe, expect, it } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
-import { makeTestDb } from "../../helpers.js";
-import { KvMock } from "../../kvMock.js";
-import { makeEnv, mkReq, NOW, seedProduct } from "../../seed.js";
-import { loadProduct, type Product } from "../../../src/core/products.js";
-import { setServices } from "../../../src/core/products/store.js";
-import { serializeServices } from "../../../src/core/services.js";
-import { CONFIG_ONLY } from "../../transcripts/world.js";
+import { mkReq, NOW } from "../../seed.js";
 import { handleDeviceKeys } from "../../../src/core/devices/keysRoute.js";
 import {
   getDeviceKeys,
   keyPopMessage,
 } from "../../../src/core/devices/keys.js";
+import { newKeys, world, type World } from "../../deviceKeyFixtures.js";
 import { dispatchWith } from "../../../src/dispatch.js";
-import type { Db } from "../../../src/db/types.js";
-import type { Env } from "../../../src/platform/env.js";
 
 const b64 = (b: Uint8Array): string => base64UrlEncodeBytes(b);
 const DEVICE = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH";
 const DEVICE_2 = "IIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPP";
-
-interface World {
-  db: Db;
-  env: Env;
-  product: Product;
-}
-
-async function world(): Promise<World> {
-  const db = makeTestDb();
-  const env = makeEnv(new KvMock(), ["djdl"]);
-  await seedProduct(db, "djdl");
-  await setServices(
-    db,
-    "djdl",
-    serializeServices({ services: CONFIG_ONLY }),
-    "manifest",
-    NOW,
-  );
-  return { db, env, product: (await loadProduct(env, db, "djdl"))! };
-}
 
 async function register(w: World, deviceId = DEVICE): Promise<string> {
   const res = await dispatchWith(
@@ -58,25 +31,6 @@ async function register(w: World, deviceId = DEVICE): Promise<string> {
   );
   expect(res.status).toBe(200);
   return ((await res.json()) as { token: string }).token;
-}
-
-async function newKeys(): Promise<{
-  signKey: string;
-  agreeKey: string;
-  priv: CryptoKey;
-}> {
-  const kp = (await crypto.subtle.generateKey("Ed25519", true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const signKey = b64(
-    new Uint8Array(
-      (await crypto.subtle.exportKey("raw", kp.publicKey)) as ArrayBuffer,
-    ),
-  );
-  const raw = crypto.getRandomValues(new Uint8Array(32));
-  raw[31]! &= 0x7f;
-  return { signKey, agreeKey: b64(raw), priv: kp.privateKey };
 }
 
 async function body(
