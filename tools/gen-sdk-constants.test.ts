@@ -230,7 +230,7 @@ describe("the sources", () => {
     );
   });
 
-  it("activationResult is SDK-PARITY-PASS §3.1's thirteen kinds and PX-W9's key-entry-limit, in kebab form", () => {
+  it("activationResult is SDK-PARITY-PASS §3.1's thirteen kinds, PX-W9's key-entry-limit and I-10a's license-owned, in kebab form", () => {
     const byName = Object.fromEntries(
       SOURCES.enums.map((e) => [e.name, e.values]),
     );
@@ -248,6 +248,8 @@ describe("the sources", () => {
       "enroll-disabled",
       // PX-W9 (WIRE-CONTRACT-V4 §12.2): the `key_entry_limit` refusal.
       "key-entry-limit",
+      // I-10a.1: the `license_owned` refusal (an owned licence needs its owner's sign-in).
+      "license-owned",
       "refused",
       "error",
     ]);
@@ -270,7 +272,7 @@ describe("the sources", () => {
       backendMatrixVersion: 1,
       contentCorpusVersion: 2,
     });
-    expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
+    expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(5);
     // SP-53 (WIRE-CONTRACT-V4 §14): the backend header joins the HEADER_* names.
     expect(SOURCES.protocol.HEADER_LICENSE).toBe("X-PKey-License");
     // PX-W13: the identity subpath's constants ride along with core's.
@@ -560,7 +562,7 @@ describe("renderers", () => {
     expect(ts).toContain('macos: "macos",');
     expect(ts).toContain('x86_64: "x86_64",');
     expect(ts).toContain('sdkName: "X-PKey-SDK",');
-    expect(ts).toContain("export const PROTOCOL_VERSION = 4;");
+    expect(ts).toContain("export const PROTOCOL_VERSION = 5;");
     expect(ts).toContain('"local-only": "client",');
 
     const py = renderPython(MODEL);
@@ -569,14 +571,14 @@ describe("renderers", () => {
     );
     expect(py).toContain('    LICENSE_CHANNELS: Final = "license.channels"');
     expect(py).toContain('    SDK_NAME: Final = "X-PKey-SDK"');
-    expect(py).toContain("PROTOCOL_VERSION: Final[int] = 4");
+    expect(py).toContain("PROTOCOL_VERSION: Final[int] = 5");
 
     const swift = renderSwift(MODEL);
     expect(swift).toContain(
       'public static let serviceUnavailable = "service-unavailable"',
     );
     expect(swift).toContain('public static let x86_64 = "x86_64"');
-    expect(swift).toContain("public let PROTOCOL_VERSION = 4");
+    expect(swift).toContain("public let PROTOCOL_VERSION = 5");
 
     const kt = renderKotlin(MODEL);
     expect(kt).toContain("package im.plrs.key.core");
@@ -584,7 +586,7 @@ describe("renderers", () => {
       '    public const val serviceUnavailable: String = "service-unavailable"',
     );
     expect(kt).toContain('    public const val x86_64: String = "x86_64"');
-    expect(kt).toContain("public const val PROTOCOL_VERSION: Int = 4");
+    expect(kt).toContain("public const val PROTOCOL_VERSION: Int = 5");
     expect(kt).toContain(
       "public const val MAX_WIRE_INTEGER: Long = 9007199254740991L",
     );
@@ -594,7 +596,7 @@ describe("renderers", () => {
     expect(gd).toContain(
       '\tconst SERVICE_UNAVAILABLE := "service-unavailable"',
     );
-    expect(gd).toContain("const PROTOCOL_VERSION := 4");
+    expect(gd).toContain("const PROTOCOL_VERSION := 5");
   });
 
   it("Swift leaves StoreBackend and StoreDegradedReason to Store.swift; the others emit them", () => {
