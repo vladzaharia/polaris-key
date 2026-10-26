@@ -73,7 +73,7 @@ async function get(
   return { status: res.status, body: (await res.json()) as never };
 }
 
-const PRODUCT_TEN = [
+const PRODUCT_AREAS_ALL = [
   "members",
   "core",
   "license",
@@ -84,10 +84,11 @@ const PRODUCT_TEN = [
   "commerce",
   "keys",
   "settings",
+  "connect",
 ];
 
 describe("/me.permissions", () => {
-  it("gives today's operator (the root rule) every platform area and all ten areas of every product", async () => {
+  it("gives today's operator (the root rule) every platform area and every area of every product", async () => {
     const r = await get("op", "/me", ["admins"]);
     expect(r.status).toBe(200);
     expect(r.body.platformAdmin).toBe(true);
@@ -100,8 +101,8 @@ describe("/me.permissions", () => {
         edit: ["console", "platform", "members", "docs"],
       },
       products: {
-        alpha: { view: PRODUCT_TEN, edit: PRODUCT_TEN },
-        beta: { view: PRODUCT_TEN, edit: PRODUCT_TEN },
+        alpha: { view: PRODUCT_AREAS_ALL, edit: PRODUCT_AREAS_ALL },
+        beta: { view: PRODUCT_AREAS_ALL, edit: PRODUCT_AREAS_ALL },
       },
     });
     expect((r.body.products as { slug: string }[]).map((p) => p.slug)).toEqual([

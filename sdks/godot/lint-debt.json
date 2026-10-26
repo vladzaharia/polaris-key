@@ -490,7 +490,7 @@
       "gdlint:class-variable-name": 1
     },
     "sdks/godot/tests/license/test_activation.gd": {
-      "gdlint:max-line-length": 11
+      "gdlint:max-line-length": 10
     },
     "sdks/godot/tests/license/test_deactivate.gd": {
       "gdlint:max-line-length": 3

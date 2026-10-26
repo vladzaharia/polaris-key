@@ -89,7 +89,7 @@ describe("Home table", () => {
     expect(within(acme).getByText("Missing secret")).toBeTruthy();
     expect(
       within(acme).getByText(
-        "Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce",
+        "Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce, Cloud Connect",
       ),
     ).toBeTruthy();
     const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
