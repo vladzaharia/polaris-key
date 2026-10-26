@@ -126,7 +126,7 @@ describe("WaitingFor (B-220)", () => {
     act(() => {
       vi.advanceTimersByTime(60_000);
     });
-    expect(screen.getByText(/Still waiting\./)).toBeTruthy();
+    expect(screen.getByText(/Still waiting for CI\./)).toBeTruthy();
     expect(screen.queryByText(/Nothing yet/)).toBeNull();
     act(() => {
       screen.getByRole("button", { name: "Keep waiting" }).click();

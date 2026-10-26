@@ -61,7 +61,9 @@ export function WaitingFor({
       ) : timedOut ? (
         <>
           <span className="min-w-0 flex-1 text-fg">
-            {timedOutText}. {waiting}.
+            {timedOutText === "Still waiting" && /^Waiting /.test(waiting)
+              ? `Still waiting ${waiting.slice("Waiting ".length)}.`
+              : `${timedOutText}. ${waiting}.`}
           </span>
           <span className="ms-auto flex flex-wrap items-center gap-2">
             <Button

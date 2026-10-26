@@ -77,7 +77,12 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
       help="A GitHub Actions run exchanges its OIDC token for a short-lived publishing token; no stored secret is involved."
       aside={
         <div className="flex flex-wrap gap-2">
-          {policy.data ? <PublishFromCiEntry slug={slug} /> : null}
+          {policy.isPending ? null : (
+            <PublishFromCiEntry
+              slug={slug}
+              label={policy.data ? undefined : "Set up publishing from CI…"}
+            />
+          )}
           {policy.data ? (
             <Button
               variant="outline"

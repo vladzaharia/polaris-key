@@ -72,7 +72,7 @@ describe("RepoChangeStep: by hand mode", () => {
     expect(tabs.map((t) => t.textContent)).toEqual([
       "One command",
       "By hand",
-      "Let Polaris Key open pull requests",
+      "Pull request",
     ]);
     expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
     expect(document.body.textContent).toContain("pkey ci init --product acme");
@@ -98,7 +98,7 @@ describe("RepoChangeStep: by hand mode", () => {
   it("names the permission and links to its review", async () => {
     const user = userEvent.setup();
     render(<RepoChangeStep {...props} />);
-    await user.click(screen.getByRole("tab", { name: /Let Polaris Key/ }));
+    await user.click(screen.getByRole("tab", { name: /Pull request/ }));
     expect(screen.getByText("Contents: write")).toBeTruthy();
     expect(
       screen

@@ -8,7 +8,6 @@
  * | Context            | Function             | Example                               |
  * | ------------------ | -------------------- | ------------------------------------- |
  * | tables             | `formatTableTime`    | "3 hr. ago" under 7 days, else a date |
- * | detail pages       | `formatDetailTime`   | "3 Sep 2026, 14:05 CEST · 3 hr. ago"  |
  * | calendar dates     | `endOfLocalDay`      | the operator's local day, 23:59:59    |
  * | exports and copy   | `formatIso`          | ISO 8601 UTC                          |
  */
@@ -126,15 +125,6 @@ export function formatTableTime(
   return Math.abs(now - ms) < WEEK
     ? formatRelative(ms, now, opts)
     : formatDate(ms, opts);
-}
-
-/** Detail pages: "3 Sep 2026, 14:05 CEST · 3 hr. ago". */
-export function formatDetailTime(
-  ms: number,
-  now: number = Date.now(),
-  opts: FormatOptions = {},
-): string {
-  return `${formatDateTime(ms, opts)} · ${formatRelative(ms, now, opts)}`;
 }
 
 /** Exports and copy: ISO 8601 in UTC. */

@@ -6,6 +6,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
+import { axe } from "./portalHarness.js";
 
 /**
  * A-32.12: the Publish from CI drawer in real Chromium under the Worker's CSP, both themes. Opened
@@ -22,7 +23,7 @@ const NOW = Math.floor(Date.now() / 1000);
 const API = "/manage/api/products/djdl";
 
 const checks = (ready: boolean) => [
-  { id: "app", state: "ok" },
+  noApp ? { id: "app", state: "missing" } : { id: "app", state: "ok" },
   { id: "release-manifest", state: ready ? "ok" : "missing" },
   { id: "workflow", state: ready ? "ok" : "missing" },
   { id: "environment", state: "ok" },
@@ -33,6 +34,10 @@ const checks = (ready: boolean) => [
 let ready = false;
 let released = false;
 let refuse = false;
+/** `.pkey/release` already declares releaseKeys: the pull request can stand alone. */
+let keyed = true;
+let noApp = false;
+let noPublisher = false;
 
 const routes = (): Record<string, unknown> => ({
   ...CORE_ROUTES,
@@ -63,6 +68,9 @@ const routes = (): Record<string, unknown> => ({
     channels: [],
     floors: [],
   },
+  ...(noPublisher
+    ? { [`${API}/ci-publisher`]: { ok: true, policy: null } }
+    : {}),
   [`${API}/release/ci-readiness`]: {
     repository: "vladzaharia/djdl",
     capabilities: {
@@ -71,8 +79,14 @@ const routes = (): Record<string, unknown> => ({
       environment: true,
       ruleset: true,
     },
+    environmentName: "release",
     checks: checks(ready),
     workflowPreview: "name: release\non:\n  push:\n    tags: ['v*']\n",
+    releaseKeys: keyed,
+    links: {
+      install: "https://github.com/apps/polaris-key/installations/new",
+      installation: "https://github.com/settings/installations/42",
+    },
   },
   [`${API}/release/setup/pull-request`]: {
     repository: "vladzaharia/djdl",
@@ -185,6 +199,15 @@ async function open(
   return page;
 }
 
+const reset = (): void => {
+  ready = false;
+  released = false;
+  refuse = false;
+  keyed = true;
+  noApp = false;
+  noPublisher = false;
+};
+
 const violations = (page: Page): Promise<string[]> =>
   page.evaluate(() => (window as unknown as { __v: string[] }).__v.splice(0));
 
@@ -209,9 +232,7 @@ describe("Publish from CI under the Worker's CSP", () => {
     ["light", 390],
   ] as const) {
     it(`first-release panel to Done (${theme}, ${width})`, async () => {
-      ready = false;
-      released = false;
-      refuse = false;
+      reset();
       const page = await open(theme, width);
       await page.getByRole("button", { name: "Publish from CI…" }).click();
       const dialog = page.getByRole("dialog", { name: "Publish from CI" });
@@ -219,11 +240,12 @@ describe("Publish from CI under the Worker's CSP", () => {
         .getByRole("heading", { name: "1. Run one command" })
         .waitFor();
       await shot(page, `step1-command-${theme}-${width}`);
-      await dialog.getByRole("tab", { name: /Let Polaris Key/ }).click();
       await dialog
         .getByRole("button", { name: "Open the pull request" })
         .click();
-      await dialog.getByText("Merge pull request #7").waitFor();
+      await dialog
+        .getByRole("heading", { name: "1. Merge pull request #7" })
+        .waitFor();
       await shot(page, `step1-pr-${theme}-${width}`);
       ready = true;
       await dialog
@@ -236,9 +258,16 @@ describe("Publish from CI under the Worker's CSP", () => {
       await shot(page, `step2-wait-${theme}-${width}`);
       released = true;
       await dialog
-        .getByText(/0\.1\.0 is published/)
+        .getByText(/0\.1\.0 is live on stable/)
         .waitFor({ timeout: 12_000 });
+      await dialog
+        .getByRole("link", { name: "Publish 0.1.0 everywhere" })
+        .waitFor();
+      await dialog.getByRole("link", { name: "Set up storefronts" }).waitFor();
       await shot(page, `done-${theme}-${width}`);
+      // Done's View release leaves the page under the drawer for the release itself.
+      await dialog.getByRole("link", { name: "View release" }).click();
+      await page.waitForFunction(() => location.hash.includes("releases/"));
       expect(await sideways(page)).toBe(false);
       expect(await violations(page)).toEqual([]);
       await closeContext(page.context());
@@ -246,29 +275,36 @@ describe("Publish from CI under the Worker's CSP", () => {
   }
 
   it("a permission refusal falls back to the one command", async () => {
-    ready = false;
-    released = false;
+    reset();
     refuse = true;
     const page = await open("dark", 1440);
     await page.getByRole("button", { name: "Publish from CI…" }).click();
     const dialog = page.getByRole("dialog", { name: "Publish from CI" });
-    await dialog.getByRole("tab", { name: /Let Polaris Key/ }).click();
     await dialog.getByRole("button", { name: "Open the pull request" }).click();
     await dialog
       .getByRole("alert")
-      .getByText(/pull_requests: write/)
+      .getByText(/Pull requests: Read and write/)
       .waitFor();
-    await dialog.getByRole("tab", { name: "One command" }).click();
+    // The command is selected for you, and the pull request button is off.
     await dialog.getByText(/pkey ci init --channel stable/).waitFor();
+    expect(
+      await dialog
+        .getByRole("tab", { name: "One command" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    await dialog.getByRole("tab", { name: "Pull request" }).click();
+    expect(
+      await dialog
+        .getByRole("button", { name: "Open the pull request" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
     await shot(page, "refusal-dark-1440");
     expect(await violations(page)).toEqual([]);
     await closeContext(page.context());
   });
 
   it("Keys opens it; 320 px and 200 % text keep it reachable", async () => {
-    ready = false;
-    released = false;
-    refuse = false;
+    reset();
     for (const [name, width, zoom] of [
       ["320", 320, false],
       ["zoom200", 1280, true],
@@ -286,5 +322,74 @@ describe("Publish from CI under the Worker's CSP", () => {
       expect(await violations(page)).toEqual([]);
       await closeContext(page.context());
     }
+  });
+
+  it("?setup=ci opens the drawer after a reload; the first view is calm; no link-in-text-block", async () => {
+    reset();
+    ready = true;
+    const page = await open("dark", 1440, "settings/keys?setup=ci");
+    const dialog = page.getByRole("dialog", { name: "Publish from CI" });
+    await dialog.getByRole("heading", { name: "2. Push a tag" }).waitFor();
+    await shot(page, "deep-link-dark-1440");
+    expect(await dialog.locator('[data-state="failed"]').count()).toBe(0);
+    expect(
+      (await axe(page)).filter((l) => l.includes("link-in-text-block")),
+    ).toEqual([]);
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    expect(page.url()).not.toContain("setup=ci");
+    await closeContext(page.context());
+  });
+
+  it("the first view is neutral To do rows, not red failures (dark, light, 390)", async () => {
+    for (const [theme, width] of [
+      ["dark", 1440],
+      ["light", 390],
+    ] as const) {
+      reset();
+      keyed = false;
+      const page = await open(theme, width);
+      await page.getByRole("button", { name: "Publish from CI…" }).click();
+      const dialog = page.getByRole("dialog", { name: "Publish from CI" });
+      await dialog.getByText("It also creates the release key.").waitFor();
+      await dialog.getByText("To do").first().waitFor();
+      expect(await dialog.locator('[data-state="failed"]').count()).toBe(0);
+      expect(
+        await dialog.getByRole("tab", { name: "Pull request" }).count(),
+      ).toBe(0);
+      await shot(page, `first-view-${theme}-${width}`);
+      await closeContext(page.context());
+    }
+  });
+
+  it("an App that is not installed is one row with one install link", async () => {
+    reset();
+    noApp = true;
+    const page = await open("dark", 1440);
+    await page.getByRole("button", { name: "Publish from CI…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Publish from CI" });
+    const install = dialog.getByRole("link", {
+      name: "Install the GitHub App",
+    });
+    await install.waitFor();
+    expect(await install.getAttribute("href")).toBe(
+      "https://github.com/apps/polaris-key/installations/new",
+    );
+    expect(await dialog.locator("li[data-state]").count()).toBe(1);
+    await shot(page, "app-not-installed-dark-1440");
+    await closeContext(page.context());
+  });
+
+  it("Keys offers 'Set up publishing from CI…' before a publisher exists", async () => {
+    reset();
+    noPublisher = true;
+    const page = await open("light", 1440, "settings/keys");
+    await page
+      .getByRole("button", { name: "Set up publishing from CI…" })
+      .click();
+    await page.getByRole("dialog", { name: "Publish from CI" }).waitFor();
+    expect(page.url()).toContain("setup=ci");
+    await shot(page, "keys-no-publisher-light-1440");
+    await closeContext(page.context());
   });
 });

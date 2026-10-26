@@ -11,8 +11,10 @@ interface RepoChangePullRequest {
   number: number;
   /** The pull request on GitHub. */
   url: string;
-  /** What merging it changes, in one line. */
-  summary: string;
+  /** What merging it changes, in one line. Omit it when the step's own heading says so. */
+  summary?: string;
+  /** The step's heading names the pull request: no inner heading, and "Open on GitHub" leads. */
+  compact?: boolean;
   files: readonly { path: string; change?: "added" | "changed" }[];
 }
 
@@ -43,6 +45,9 @@ export function RepoChangeStep({
   timeoutMs,
   onOpenPullRequest,
   opening,
+  openDisabledReason,
+  preferCommand,
+  commandNote,
   notice,
 }: {
   pullRequest?: RepoChangePullRequest | null;
@@ -62,6 +67,12 @@ export function RepoChangeStep({
   /** Adds an "Open the pull request" button to the third tab. */
   onOpenPullRequest?: () => void;
   opening?: boolean;
+  /** Why "Open the pull request" cannot be pressed (a refusal that will not pass on a retry). */
+  openDisabledReason?: string;
+  /** Switches to the One command tab when it turns true (the pull request was refused). */
+  preferCommand?: boolean;
+  /** One more line under the command ("It also creates the release key."). */
+  commandNote?: string;
   /** A refusal or note, shown above the tabs. */
   notice?: React.ReactNode;
 }): React.ReactElement {
@@ -77,6 +88,9 @@ export function RepoChangeStep({
           permission={permission}
           onOpenPullRequest={onOpenPullRequest}
           opening={opening}
+          openDisabledReason={openDisabledReason}
+          preferCommand={preferCommand}
+          commandNote={commandNote}
         />
       )}
       <WaitingFor
@@ -97,16 +111,19 @@ function PullRequestView({
 }): React.ReactElement {
   return (
     <section
-      aria-labelledby={`pr-${pr.number}`}
+      aria-labelledby={pr.compact ? undefined : `pr-${pr.number}`}
+      aria-label={pr.compact ? `Pull request #${pr.number}` : undefined}
       className="space-y-3 rounded-lg border border-border p-4"
     >
-      <h3
-        id={`pr-${pr.number}`}
-        className="text-sm font-semibold text-fg-strong"
-      >
-        Merge pull request #{pr.number}
-      </h3>
-      <p className="text-sm text-fg">{pr.summary}</p>
+      {pr.compact ? null : (
+        <h3
+          id={`pr-${pr.number}`}
+          className="text-sm font-semibold text-fg-strong"
+        >
+          Merge pull request #{pr.number}
+        </h3>
+      )}
+      {pr.summary ? <p className="text-sm text-fg">{pr.summary}</p> : null}
       <ul className="space-y-1 text-sm" aria-label="Files">
         {pr.files.map((f) => (
           <li key={f.path} className="flex min-w-0 items-center gap-2">
@@ -124,7 +141,7 @@ function PullRequestView({
       </ul>
       <Button
         asChild
-        variant="outline"
+        variant={pr.compact ? "primary" : "outline"}
         size="sm"
         iconEnd={<ExternalLink aria-hidden />}
       >
@@ -142,24 +159,34 @@ function ByYourself({
   permission,
   onOpenPullRequest,
   opening,
+  openDisabledReason,
+  preferCommand,
+  commandNote,
 }: {
   command?: string;
   files: readonly SnippetTab[];
   permission?: RepoChangePermission;
   onOpenPullRequest?: () => void;
   opening?: boolean;
+  openDisabledReason?: string;
+  preferCommand?: boolean;
+  commandNote?: string;
 }): React.ReactElement {
   const uid = React.useId();
+  // The zero-terminal path leads when Polaris Key can take it.
+  const pr = { id: "app", label: "Pull request" } as const;
   const tabs = [
+    onOpenPullRequest ? pr : null,
     command ? { id: "command", label: "One command" } : null,
     files.length > 0 ? { id: "hand", label: "By hand" } : null,
-    permission || onOpenPullRequest
-      ? { id: "app", label: "Let Polaris Key open pull requests" }
-      : null,
+    permission && !onOpenPullRequest ? pr : null,
   ].filter(Boolean) as { id: TabId; label: string }[];
   const [selected, setSelected] = React.useState<TabId>(
     tabs[0]?.id ?? "command",
   );
+  React.useEffect(() => {
+    if (preferCommand) setSelected("command");
+  }, [preferCommand]);
   const current = tabs.find((t) => t.id === selected) ?? tabs[0];
   const refs = React.useRef(new Map<TabId, HTMLButtonElement>());
   if (!current) return <></>;
@@ -229,6 +256,7 @@ function ByYourself({
           <>
             <p className="text-sm text-fg-muted">
               Run it in the repository root.
+              {commandNote ? ` ${commandNote}` : ""}
             </p>
             <CodeBlock code={command} language="sh" filename="Terminal" />
           </>
@@ -252,7 +280,12 @@ function ByYourself({
         {current.id === "app" ? (
           <>
             {onOpenPullRequest ? (
-              <Button size="sm" loading={opening} onClick={onOpenPullRequest}>
+              <Button
+                size="sm"
+                loading={opening}
+                onClick={onOpenPullRequest}
+                disabledReason={openDisabledReason}
+              >
                 Open the pull request
               </Button>
             ) : null}

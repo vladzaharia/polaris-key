@@ -129,10 +129,14 @@ function github(w: World): FetchImpl {
     w.calls.push(
       `${init?.method ?? "GET"} ${url.replace("https://api.github.com", "")}`,
     );
+    if (url.endsWith("/app"))
+      return json(200, { slug: "polaris-key-ci", id: 12345 });
     if (/\/app\/installations\/4242$/.test(url))
       return w.installation === "gone"
         ? json(404, {})
         : json(200, {
+            html_url:
+              "https://github.com/organizations/acme-org/settings/installations/4242",
             permissions: w.permissions,
             suspended_at: w.installation === "suspended" ? "2026-01-01" : null,
           });
@@ -402,6 +406,35 @@ describe("ciReadiness", () => {
     ).toBe("ok");
   });
 
+  it("links to the App's install page while it is missing, and to the installation while a permission is", async () => {
+    const gone = world({ installation: "gone" });
+    const { db, env } = await linked(world());
+    const a = await ciReadiness(env, db, SLUG, NOW, github(gone));
+    expect(a.links).toEqual({
+      install: "https://github.com/apps/polaris-key-ci/installations/new",
+      installation: null,
+    });
+    const lacking = world({
+      permissions: { contents: "write", metadata: "read" },
+    });
+    const b = await ciReadiness(env, db, SLUG, NOW, github(lacking));
+    expect(b.links.installation).toBe(
+      "https://github.com/organizations/acme-org/settings/installations/4242",
+    );
+    const ready = await ciReadiness(env, db, SLUG, NOW, github(world()));
+    expect(ready.links).toEqual({ install: null, installation: null });
+  });
+
+  it("a GitHub that does not answer for the links leaves them null", async () => {
+    const w = world({ installation: "gone" });
+    const { db, env } = await linked(world());
+    const fetchImpl: FetchImpl = async (input, init) =>
+      String(input).endsWith("/app") ? json(500, {}) : github(w)(input, init);
+    const r = await ciReadiness(env, db, SLUG, NOW, fetchImpl);
+    expect(r.links.install).toBeNull();
+    expect(r.releaseKeys).toBe(false);
+  });
+
   it("a product without a repository is not installed", async () => {
     const db = makeTestDb();
     const r = await ciReadiness(envFor(), db, "nobody", NOW, github(world()));
@@ -448,6 +481,8 @@ describe("GET …/release/ci-readiness", () => {
       "capabilities",
       "checks",
       "environmentName",
+      "links",
+      "releaseKeys",
       "repository",
       "workflowPreview",
     ]);
