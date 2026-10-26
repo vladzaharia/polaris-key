@@ -48,7 +48,7 @@ const INDEX = join(HERE, "INDEX.md");
 // takes a letter suffix like every other phase's (PX-W9b, the SDK half of PX-W9; PX-W13b); a front-end
 // package split in two takes a/b (PX-14a, PX-14b). Locker mockup re-skins (phase MK) are MK-L1, MK-L2.
 const ID_RE =
-  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC|AX|LK)-\d{2}[a-z]?|PX-(?:\d{2}[a-z]?|W\d{1,2}[a-z]?)|MK-L\d)$/;
+  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC|AX|LK|CC)-\d{2}[a-z]?|PX-(?:\d{2}[a-z]?|W\d{1,2}[a-z]?)|MK-L\d)$/;
 const DONE = new Set(["done", "dropped"]);
 
 const UX_COVERAGE = join(HERE, "ux-coverage.json");
@@ -561,7 +561,7 @@ const fmtEst = ([a, b]) => (a === b ? `${a}` : `${a}–${b}`);
 
 // The header rows every brief carries that are derived from the graph (kept in sync by --sync-briefs).
 const ID_IN_TEXT =
-  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC|AX|LK)-\d{2}[a-z]?|PX-(?:\d{2}[a-z]?|W\d{1,2}[a-z]?)|MK-L\d)\b/g;
+  /\b(?:(?:P0|P1b|P1|P2b|P2|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC|AX|LK|CC)-\d{2}[a-z]?|PX-(?:\d{2}[a-z]?|W\d{1,2}[a-z]?)|MK-L\d)\b/g;
 function dependantsOf() {
   const m = new Map(wps.map((w) => [w.id, []]));
   for (const w of wps) for (const d of w.deps) m.get(d)?.push(w.id);

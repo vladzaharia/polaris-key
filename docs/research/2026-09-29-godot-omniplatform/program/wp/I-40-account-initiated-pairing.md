@@ -2,17 +2,17 @@
 
 > **Optional (I-37, 2026-10-20).** The premise, D1.A's browserless regression, is gone: I-37 ships an explicit approval, so TV and console apps keep account sign-in. This package stays only if the owner wants pairing as a stronger answer to the R1-07 residual.
 
-| Field       | Value                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------ |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                               |
-| Size        | 0.3–0.5 engineer-weeks                                                                           |
-| Depends on  | [I-08](I-08-app-passthrough.md), [I-37](I-37-device-code-explicit-confirm.md)                    |
-| Unblocks    | none                                                                                             |
-| Role        | `pkey-wire-planner` (planning only)                                                              |
-| Plan mode   | yes: planning-only; the plan needs human approval and also covers the package that implements it |
-| Gates       | plan-mode, threat-model                                                                          |
-| Human input | Owner approval of the pairing threat analysis                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                        |
+| Field       | Value                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                                                                                                    |
+| Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                |
+| Depends on  | [I-08](I-08-app-passthrough.md), [I-37](I-37-device-code-explicit-confirm.md), [I-13](I-13-exchange-endpoint.md), [CC-03](CC-03-core-device-keys.md), [CC-01](CC-01-combined-plan.md) |
+| Unblocks    | [CC-15](CC-15-nearby-mode-v.md), [I-47](I-47-node-python-auto-signin.md), [I-50](I-50-signin-docs-help.md)                                                                            |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                 |
+| Plan mode   | yes: planning-only; the plan needs human approval and also covers the package that implements it                                                                                      |
+| Gates       | plan-mode, threat-model                                                                                                                                                               |
+| Human input | Owner approval of the pairing threat analysis                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
 
 ## Goal
 
@@ -58,3 +58,9 @@ node docs/research/2026-09-29-godot-omniplatform/program/check.mjs
 ## Hand-off
 
 The planner sets `--set I-40 awaiting-approval` and stops.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Re-scoped: no longer planning-only or optional. It is the server half of nearby approval (R-2 steps 1 and 7), `identity.nearby`-gated, built on CC-03. Plan: [`plans/CC-01-auto-sign-in.md`](../plans/CC-01-auto-sign-in.md) §2.4.

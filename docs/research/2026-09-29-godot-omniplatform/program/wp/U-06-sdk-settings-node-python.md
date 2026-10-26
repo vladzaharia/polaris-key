@@ -1,16 +1,16 @@
 # U-06 Synced settings on `config.*` in Node and Python
 
-| Field       | Value                                                                                                                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                      |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                               |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-18](U-18-scenario-corpus.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md), [U-08](U-08-merge-prompt.md), [U-32](U-32-catalog-templates-cloud-sync-page-minted.md)                                    |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                               |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                  |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`)                                                                                    |
-| Human input | none                                                                                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                          |
+| Field       | Value                                                                                                                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                                                                                                |
+| Size        | 1.2–1.6 engineer-weeks                                                                                                                                                                                                                                                       |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-18](U-18-scenario-corpus.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [U-35](U-35-machine-v3.md), [U-38](U-38-e2e-client-node-react-python.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md), [U-08](U-08-merge-prompt.md), [U-32](U-32-catalog-templates-cloud-sync-page-minted.md)                                                                                                              |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                         |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                            |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`)                                                                                                                                                              |
+| Human input | none                                                                                                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                    |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -98,3 +98,9 @@ mise exec node@22 -- pnpm parity:check
 The role agent sets `--set U-06 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-06 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.

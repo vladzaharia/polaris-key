@@ -1,16 +1,16 @@
 # U-15a Cloud Sync developer guide (absorbs U-15b)
 
-| Field       | Value                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                            |
-| Size        | 0.4–0.55 engineer-weeks                                                                  |
-| Depends on  | [U-06](U-06-sdk-settings-node-python.md), [U-21](U-21-sdk-settings-godot.md)             |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                   |
-| Role        | `pkey-implementer`                                                                       |
-| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package |
-| Gates       | `check:links`; generated docs pages (`gen-docs` drift)                                   |
-| Human input | none                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                |
+| Field       | Value                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                     |
+| Size        | 0.6–0.8 engineer-weeks                                                                                                                                            |
+| Depends on  | [U-06](U-06-sdk-settings-node-python.md), [U-21](U-21-sdk-settings-godot.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-42](U-42-kit-sync-screens.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                            |
+| Role        | `pkey-implementer`                                                                                                                                                |
+| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                                                          |
+| Gates       | `check:links`; generated docs pages (`gen-docs` drift)                                                                                                            |
+| Human input | none                                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                         |
 
 ## Consolidation 2026-10-07
 
@@ -76,3 +76,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 The role agent sets `--set U-15a in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-15a done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.

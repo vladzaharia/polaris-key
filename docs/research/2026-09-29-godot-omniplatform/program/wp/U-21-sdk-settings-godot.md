@@ -1,16 +1,16 @@
 # U-21 Synced settings on `config.*` in Godot
 
-| Field       | Value                                                                                                                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                                                                               |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                        |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-18](U-18-scenario-corpus.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md), [U-08](U-08-merge-prompt.md), [U-14](U-14-live-pokes.md)                                                                                                                           |
-| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                    |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                           |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`); web export check                                                                                                                           |
-| Human input | none                                                                                                                                                                                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                   |
+| Field       | Value                                                                                                                                                                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                                                                                                                                             |
+| Size        | 1.2–1.6 engineer-weeks                                                                                                                                                                                                                                                                                                    |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-18](U-18-scenario-corpus.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md), [U-35](U-35-machine-v3.md), [U-40](U-40-e2e-client-godot.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md), [U-08](U-08-merge-prompt.md), [U-14](U-14-live-pokes.md)                                                                                                                                                                                         |
+| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                  |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                                                                         |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`); web export check                                                                                                                                                                                         |
+| Human input | none                                                                                                                                                                                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                 |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -122,3 +122,9 @@ mise exec node@22 -- pnpm parity:check
 The role agent sets `--set U-21 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set U-21 done`.
+
+## Amendment (2026-10-26, combined program)
+
+Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
+
+- Amended by the combined program: new deps and sizes in the graph. Plan: [`plans/CC-01-cloud-sync.md`](../plans/CC-01-cloud-sync.md) §5.
