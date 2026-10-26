@@ -3309,8 +3309,7 @@
           "spelling": "attach"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "attach"
         }
       },
       "layer": "client"

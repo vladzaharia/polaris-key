@@ -4,7 +4,8 @@ extends RefCounted
 # polls ask the Worker to hold at the signed-in identity and carry the device's own token; a
 # `confirm` answer emits `sign_in_confirm` and polling stops until the player accepts on the
 # device (`accept_sign_in(attach)`) or cancels; the decision is a paced poll of its own; a stale
-# `confirm` re-sends the decision, a lost attachability asks the player again.
+# `confirm` re-sends the decision, a lost attachability is answered "no" without asking again; with nothing to attach the player is
+# never asked (D-10).
 
 const B := preload("res://tests/identity/support.gd")
 const HELD := "pkeyt_ANONYMOUSENROLLEDANONYMOUSENROLLEDANONYM"
@@ -119,7 +120,7 @@ func _stale_and_lost(t: PKeyTestContext, bed: B) -> void:
 	await sdk.identity.begin_sign_in("x", true)
 	await B.until(func(): return not results.is_empty())
 	var last: Dictionary = bed.polls_sent()[-1]
-	t.check("lost: the player is asked again when nothing is attachable any more", seen == [true, false] and last["body"].get("attachLicense") == false and results.size() == 1 and results[0].ok, "%s %s" % [str(seen), str(results)])
+	t.check("lost: nothing attachable any more is answered no, the player is not asked again", seen == [true] and last["body"].get("attachLicense") == false and results.size() == 1 and results[0].ok, "%s %s" % [str(seen), str(results)])
 
 
 func _no_token(t: PKeyTestContext, bed: B) -> void:
@@ -136,7 +137,7 @@ func _no_token(t: PKeyTestContext, bed: B) -> void:
 	await B.until(func(): return not results.is_empty())
 	var polls := bed.polls_sent()
 	t.check("no token: polls ask to confirm but carry no bearer", polls.size() == 2 and polls[0]["body"].get("confirmIdentity") == true and not polls[0]["headers"].has("authorization"))
-	t.check("no token: the identity is still shown first, nothing attachable", shown.size() == 1 and shown[0]["attachable"] == false and results.size() == 1 and results[0].ok, str(shown))
+	t.check("no token: nothing attachable, so nothing is shown and the SDK answers no itself", shown.is_empty() and polls[1]["body"].get("attachLicense") == false and results.size() == 1 and results[0].ok and results[0].attached == "", str(shown))
 
 
 func _cancel_while_confirming(t: PKeyTestContext, bed: B) -> void:
