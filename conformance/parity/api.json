@@ -3087,6 +3087,35 @@
       "layer": "client"
     },
     {
+      "id": "identity.choice",
+      "kind": "namespace",
+      "feature": "identity.choice",
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "identity.choice.licenses",
       "kind": "method",
       "feature": "identity.choice",
@@ -3097,10 +3126,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3139,10 +3165,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3181,10 +3204,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3219,10 +3239,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3257,6 +3274,11 @@
         }
       ],
       "sdks": {
+        "node": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Node calls the identity.choice primitives"
+        },
         "react": {
           "planned": "I-10a",
           "reason": "the React hook over identity.choice (D-3)",

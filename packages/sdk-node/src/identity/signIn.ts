@@ -31,6 +31,7 @@ import { printAs } from "../core/redact.js";
 import type { TokenManager } from "../core/token.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
 import { writeStoredSubject } from "./account.js";
+import type { ChooseOutcome } from "./choice.js";
 
 /** The name and verified e-mail of a signed-in identity, as the Worker shows them. */
 export interface ShownIdentity {
@@ -73,12 +74,7 @@ export type SignInOutcome =
    *  Worker asked for a longer one. Only `wait({once: true})` answers this. */
   | { kind: "pending"; interval: number; slowDown?: true }
   /** `license_choice=app` and a choice is due (redirect channel). No token was stored. */
-  | {
-      kind: "choose";
-      grant: string;
-      expiresIn: number;
-      choices: Record<string, unknown>;
-    }
+  | ChooseOutcome
   | {
       kind: "signedIn";
       /** The pairwise account subject (`ps_…`), or null when the product serves none. */
