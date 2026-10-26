@@ -70,6 +70,7 @@ import type {
 export const REFUSAL_ORDER = {
   apply: [
     "issuer",
+    "audience",
     "publisher",
     "catalog",
     "declassify",
@@ -81,6 +82,7 @@ export const REFUSAL_ORDER = {
   create: [
     "binary",
     "issuer",
+    "audience",
     "catalog",
     "seal",
     "publisher",

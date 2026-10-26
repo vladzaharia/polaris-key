@@ -39,6 +39,10 @@ import {
   type SignInDraft,
 } from "../components/SignInKeys.js";
 import {
+  PlatformSignInSection,
+  usePlatformSignInVisible,
+} from "../components/PlatformSignIn.js";
+import {
   MethodsSection,
   PresentationSection,
   StatusSection,
@@ -112,6 +116,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
   const area = "identity.keyEntry";
   const keys = useQuery(reads.productSettings(slug, area));
   const hasTierSync = useHasTierSync(slug);
+  const hasPlatform = usePlatformSignInVisible(slug);
   const name = product.data?.name ?? slug;
   const header = (
     <PageHeader
@@ -165,6 +170,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
       limit={keys.data?.settings.find((s) => s.key === LIMIT_KEY)}
       claimByKey={portal.data.claimByKey ?? false}
       hasTierSync={hasTierSync}
+      hasPlatform={hasPlatform}
     />
   );
 }
@@ -179,6 +185,7 @@ function PageBody({
   limit,
   claimByKey,
   hasTierSync,
+  hasPlatform,
 }: {
   slug: string;
   name: string;
@@ -189,6 +196,7 @@ function PageBody({
   limit: ProductSetting | undefined;
   claimByKey: boolean;
   hasTierSync: boolean;
+  hasPlatform: boolean;
 }): React.ReactElement {
   const gate = useWriteGate("signin", slug);
   // The Sign-in switch is a Settings write: the one notice names the access a viewer is missing.
@@ -280,6 +288,9 @@ function PageBody({
     ...(hasTierSync
       ? [{ id: "tier-sync", title: "Tier sync", dirty: tierDirty }]
       : []),
+    ...(hasPlatform
+      ? [{ id: "platform-sign-in", title: "Platform sign-in" }]
+      : []),
     { id: "terms", title: "Terms" },
     { id: "license-keys", title: "License keys", dirty: keysDirty },
     { id: "polaris-locker", title: "Polaris Locker", dirty: lockerDirty },
@@ -315,6 +326,7 @@ function PageBody({
               copy={TIER_SYNC_COPY}
             />
           </div>
+          <PlatformSignInSection slug={slug} />
           <TermsSection slug={slug} name={name} />
           <LicenseKeysSection
             slug={slug}
