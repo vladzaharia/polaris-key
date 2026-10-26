@@ -24,8 +24,8 @@ server runs and nothing leaves the process.
 - "Check for updates" (and the `update` start) offers 2.5.0. "Update now" runs a fake installer that
   downloads 48 MB in about 9 seconds.
 - The Account screen shows the roster of three devices and the release channel (a direct install, with
-  stable and beta to pick). The scripted Worker serves no config document, so its settings list shows the
-  kit's error and Retry.
+  stable and beta to pick). The scripted Worker serves no config document, so its settings list reads "There are no
+  settings to show." "Restart now" ends the fake update with an "Updated to 2.5.0" message.
 
 `pkey.live` builds the real client instead (`PolarisKeyAndroid`: the Android Keystore, the direct
 installer). It reads `BuildConfig`, set from Gradle properties:

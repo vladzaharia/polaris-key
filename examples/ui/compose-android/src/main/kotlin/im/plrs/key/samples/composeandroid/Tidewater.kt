@@ -75,7 +75,11 @@ internal class FixtureInstaller : ProgressiveInstallDriver {
         return InstallResult.Started
     }
 
-    override suspend fun finish(): InstallResult = InstallResult.NothingToInstall
+    /** "Restart now": the fake update ends here, so the stage is Idle and the host is told it started. */
+    override suspend fun finish(): InstallResult {
+        stage.value = InstallStage.Idle
+        return InstallResult.Started
+    }
 }
 
 /** The scripted Worker and the client over it. */
