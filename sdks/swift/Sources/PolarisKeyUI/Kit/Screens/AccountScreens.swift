@@ -96,6 +96,16 @@ struct ServiceCue: View {
                     "bag", PolarisBrand.Light.stateDistributionRing,
                     PolarisBrand.Light.stateDistributionSelectedFill
                 )
+        case .connect:
+            return dark
+                ? (
+                    "dot.radiowaves.left.and.right", PolarisBrand.Dark.stateConnectRing,
+                    PolarisBrand.Dark.stateConnectSelectedFill
+                )
+                : (
+                    "dot.radiowaves.left.and.right", PolarisBrand.Light.stateConnectRing,
+                    PolarisBrand.Light.stateConnectSelectedFill
+                )
         case .config:
             return dark
                 ? (

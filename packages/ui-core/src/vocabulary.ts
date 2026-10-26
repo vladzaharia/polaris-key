@@ -80,6 +80,7 @@ export const SERVICES: readonly {
   { slug: "identity", requires: [] },
   { slug: "sync", requires: ["config", "identity"] },
   { slug: "commerce", requires: ["license"] },
+  { slug: "connect", requires: ["identity"] },
 ];
 
 export const OS = [

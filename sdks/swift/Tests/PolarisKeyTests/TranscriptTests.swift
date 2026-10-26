@@ -130,8 +130,14 @@ enum SwiftReplay {
             }
         // The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
         case "beginSignIn":
-            let p = try await client.identity.signIn.start(
-                SignInOptions(deviceName: step.args["deviceName"]?.stringValue))
+            let p: SignInSession
+            do {
+                p = try await client.identity.signIn.start(
+                    SignInOptions(deviceName: step.args["deviceName"]?.stringValue))
+            } catch let e as PolarisError {
+                out["result"] = .string(e.code)
+                break
+            }
             session.signIn = p
             out["prompt"] = .object([
                 "userCode": .string(p.userCode),

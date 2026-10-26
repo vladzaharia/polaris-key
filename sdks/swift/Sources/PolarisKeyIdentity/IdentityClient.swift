@@ -263,6 +263,12 @@ public final class IdentityClient: Sendable {
         let label = await core.deviceLabel(deviceName)
         if let label { body["deviceName"] = label }
         let response = try await post("identity/auth/device/start", body)
+        // Identity switched off since discovery: the route does not exist (§12.8).
+        if response.status == 404 {
+            throw PolarisError(
+                code: ErrorCode.serviceUnavailable,
+                message: "The Identity service is off for this product.")
+        }
         guard response.status == 200 else {
             throw PolarisError(
                 code: errorCode(response) ?? "sign-in-unavailable",

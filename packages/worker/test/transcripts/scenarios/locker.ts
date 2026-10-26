@@ -268,6 +268,7 @@ export const lockerDiscoveryIdentity: Scenario = {
             identity: true,
             sync: false,
             commerce: false,
+            connect: false,
           },
         },
       );
