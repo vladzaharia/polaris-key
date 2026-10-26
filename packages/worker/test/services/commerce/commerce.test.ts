@@ -168,6 +168,7 @@ describe("commerce: binding and the licence-document grant layer", () => {
           identity: { enabled: false },
           sync: { enabled: false },
           commerce: { enabled: false },
+          connect: { enabled: false },
         },
       }),
       "admin",
@@ -1252,6 +1253,7 @@ describe("commerce: the seams", () => {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     };
     const ctx = {
       env: cw.env,

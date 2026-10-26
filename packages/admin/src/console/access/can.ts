@@ -37,6 +37,7 @@ export const AREA_ACCENTS: Partial<Record<AreaId, string>> = {
   commerce: "commerce",
   keys: "core",
   settings: "core",
+  connect: "connect",
 };
 
 /** The area of every product page. */
@@ -84,6 +85,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   "sync-setup": "sync",
   "sync-usage": "sync",
   "sync-data": "sync",
+  "connect-setup": "connect",
 };
 
 /** The area of every global page: Home and the product list are every member's. */

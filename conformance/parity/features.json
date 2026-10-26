@@ -80,6 +80,10 @@
       "title": "Cloud Sync"
     },
     {
+      "id": "connect",
+      "title": "Cloud Connect"
+    },
+    {
       "id": "devices",
       "title": "Devices and identity"
     },
@@ -682,6 +686,139 @@
         {
           "kind": "transcript",
           "wp": "U-10"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "connect.identity",
+      "family": "connect",
+      "title": "Device certificates and rings: verify, key choice and admission",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "peerCertCases",
+          "wp": "CC-04"
+        },
+        {
+          "kind": "transcript",
+          "wp": "CC-06"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "connect.noise",
+      "family": "connect",
+      "title": "Noise_XX_25519_AESGCM_SHA256 and its primitives",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "noise-vectors.json",
+          "wp": "CC-05"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "connect.protocol",
+      "family": "connect",
+      "title": "pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "peer-matrix.json",
+          "wp": "CC-05"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "connect.lan",
+      "family": "connect",
+      "title": "LAN discovery (mDNS) and TCP channels between a person's devices",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no LAN discovery or sockets; the relay is its only path."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer has no sockets; the host process's Node SDK does LAN discovery."
+        }
+      ]
+    },
+    {
+      "id": "connect.relay",
+      "family": "connect",
+      "title": "The relay: ticket, WebSocket channel, quotas",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "CC-07"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "connect.links",
+      "family": "connect",
+      "title": "Inter-account links: mode p pairing and contacts",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no LAN discovery or sockets; the relay is its only path."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer has no sockets; the host process's Node SDK does LAN discovery."
+        }
+      ]
+    },
+    {
+      "id": "connect.transfer",
+      "family": "connect",
+      "title": "Direct Transfer: data between Cloud Connect peers",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": []
+    },
+    {
+      "id": "connect.app",
+      "family": "connect",
+      "title": "The cloudConnect API: start, stop, peers, devices, open, onChannel",
+      "service": "connect",
+      "proof": [
+        {
+          "kind": "unit"
         }
       ],
       "allowedNa": []

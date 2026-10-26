@@ -134,6 +134,7 @@ async function services(
         identity: { enabled: true },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
         ...over,
       },
     }),

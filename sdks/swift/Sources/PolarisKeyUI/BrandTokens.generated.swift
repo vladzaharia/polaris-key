@@ -66,7 +66,7 @@ public enum PolarisBrand {
     public static let poweredByMarkSize: Double = 16
 
     /// Section ids: core plus every service slug.
-    public static let serviceIds: [String] = ["core", "license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]
+    public static let serviceIds: [String] = ["core", "license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "connect"]
 
     /// The dark theme (default).
     public enum Dark {
@@ -144,6 +144,13 @@ public enum PolarisBrand {
         public static let stateSyncCheckedOn = BrandColor(hex: 0x060912)
         public static let stateSyncCheckedEdge = BrandColor(hex: 0x14f8e1)
         public static let stateSyncContextEdge = BrandColor(hex: 0x14f8e1)
+        public static let stateConnectRing = BrandColor(hex: 0xdec8ff)
+        public static let stateConnectSelectedFill = BrandColor(hex: 0x20202e)
+        public static let stateConnectHoverTint = BrandColor(hex: 0x151623)
+        public static let stateConnectCheckedFill = BrandColor(hex: 0xdec8ff)
+        public static let stateConnectCheckedOn = BrandColor(hex: 0x060912)
+        public static let stateConnectCheckedEdge = BrandColor(hex: 0xdec8ff)
+        public static let stateConnectContextEdge = BrandColor(hex: 0xdec8ff)
         public static let success = BrandColor(hex: 0x56d57b)
         public static let successOn = BrandColor(hex: 0x060912)
         public static let successBorder = BrandColor(hex: 0x3b9555)
@@ -246,6 +253,13 @@ public enum PolarisBrand {
         public static let stateSyncCheckedOn = BrandColor(hex: 0xffffff)
         public static let stateSyncCheckedEdge = BrandColor(hex: 0x086260)
         public static let stateSyncContextEdge = BrandColor(hex: 0x086260)
+        public static let stateConnectRing = BrandColor(hex: 0x746295)
+        public static let stateConnectSelectedFill = BrandColor(hex: 0xecebf7)
+        public static let stateConnectHoverTint = BrandColor(hex: 0xf0f1fa)
+        public static let stateConnectCheckedFill = BrandColor(hex: 0x8d7bb0)
+        public static let stateConnectCheckedOn = BrandColor(hex: 0x060912)
+        public static let stateConnectCheckedEdge = BrandColor(hex: 0x746295)
+        public static let stateConnectContextEdge = BrandColor(hex: 0x746295)
         public static let success = BrandColor(hex: 0x167337)
         public static let successOn = BrandColor(hex: 0xffffff)
         public static let successBorder = BrandColor(hex: 0x348f4f)
@@ -282,6 +296,7 @@ public enum PolarisBrand {
             "identity": BrandAccent(solid: BrandColor(hex: 0xd77df2), fg: BrandColor(hex: 0xd77df2), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x1f172d), bit: BrandColor(hex: 0xd77df2)),
             "sync": BrandAccent(solid: BrandColor(hex: 0x14f8e1), fg: BrandColor(hex: 0x14f8e1), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x08262b), bit: BrandColor(hex: 0x14f8e1)),
             "commerce": BrandAccent(solid: BrandColor(hex: 0x39d075), fg: BrandColor(hex: 0x39d075), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x0c211e), bit: BrandColor(hex: 0x39d075)),
+            "connect": BrandAccent(solid: BrandColor(hex: 0xdec8ff), fg: BrandColor(hex: 0xdec8ff), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x20202e), bit: BrandColor(hex: 0xdec8ff)),
     ]
 
     private static let accentsLight: [String: BrandAccent] = [
@@ -294,6 +309,7 @@ public enum PolarisBrand {
             "identity": BrandAccent(solid: BrandColor(hex: 0x9e34ae), fg: BrandColor(hex: 0x9e34ae), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xede4f7), bit: BrandColor(hex: 0x9e34ae)),
             "sync": BrandAccent(solid: BrandColor(hex: 0x086260), fg: BrandColor(hex: 0x086260), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xdee9ef), bit: BrandColor(hex: 0x086260)),
             "commerce": BrandAccent(solid: BrandColor(hex: 0x05773b), fg: BrandColor(hex: 0x05773b), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xdeebeb), bit: BrandColor(hex: 0x05773b)),
+            "connect": BrandAccent(solid: BrandColor(hex: 0x8d7bb0), fg: BrandColor(hex: 0x746295), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0xecebf7), bit: BrandColor(hex: 0x8d7bb0)),
     ]
 
     /// A section's accent. Unknown ids answer the core (platform) violet.

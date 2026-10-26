@@ -676,6 +676,17 @@ const MUTATIONS: Mutation[] = [
       }),
   },
   {
+    // CC-02.1: Cloud Connect on with Identity off. The legacy `oidc` module satisfies it too.
+    code: "connect_requires_identity",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).modules = {
+        config: { enabled: true },
+        connect: { enabled: true },
+      }),
+  },
+  {
     code: "invalid_trusted_publisher_workflow",
     file: "release",
     schema: "rejects",

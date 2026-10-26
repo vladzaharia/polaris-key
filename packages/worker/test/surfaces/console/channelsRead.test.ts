@@ -135,6 +135,7 @@ async function commerce(enabled: boolean) {
         identity: { enabled: false },
         sync: { enabled: false },
         commerce: { enabled },
+        connect: { enabled: false },
       },
     }),
     "manifest",

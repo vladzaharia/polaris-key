@@ -132,6 +132,7 @@ describe("sections by enablement (D-15)", () => {
         "Sign-in",
         "Cloud Sync",
         "Commerce",
+        "Cloud Connect",
       ]),
     );
   });
@@ -153,6 +154,7 @@ describe("sections by enablement (D-15)", () => {
         "Sign-in",
         "Cloud Sync",
         "Commerce",
+        "Cloud Connect",
       ]),
     );
     expect(within(nav()).queryByRole("link", { name: "Releases" })).toBeNull();

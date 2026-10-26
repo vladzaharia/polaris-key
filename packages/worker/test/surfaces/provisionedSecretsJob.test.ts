@@ -104,6 +104,7 @@ async function world(): Promise<World> {
         identity: { enabled: true },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

@@ -48,6 +48,7 @@ import { updateService } from "./services/update/index.js";
 import { identityService } from "./services/identity/index.js";
 import { syncService } from "./services/sync/index.js";
 import { commerceService } from "./services/commerce/index.js";
+import { connectService } from "./services/connect/index.js";
 
 export const SERVICES: ServiceRegistry = new Map([
   [licenseService.slug, licenseService],
@@ -58,6 +59,7 @@ export const SERVICES: ServiceRegistry = new Map([
   [identityService.slug, identityService],
   [syncService.slug, syncService],
   [commerceService.slug, commerceService],
+  [connectService.slug, connectService],
 ]);
 
 // Core answers its contributions (`core/contributions.ts`: subject stores, licence-holder hooks,

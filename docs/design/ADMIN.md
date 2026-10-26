@@ -134,6 +134,7 @@ the table.
 | `portal`                      | `#/p/<slug>/identity/portal`                 | Sign-in → App sign-in (`#/p/<slug>/identity/app-sign-in`)                  | moved (I-29)     |
 | `sign-in`                     | `#/p/<slug>/identity/sign-in`                | Sign-in → App sign-in (`#/p/<slug>/identity/app-sign-in`)                  | moved (I-29)     |
 | `sync-data`                   | `#/p/<slug>/sync/data`                       | Cloud Sync → Data (`#/p/<slug>/sync/data`)                                 | live             |
+| `connect-setup`               | `#/p/<slug>/connect/setup`                   | Cloud Connect → Cloud Connect (`#/p/<slug>/connect/setup`)                 | live             |
 | `commerce-overview`           | `#/p/<slug>/commerce`                        | Commerce → Overview (`#/p/<slug>/commerce`)                                | live             |
 | `commerce`                    | `#/p/<slug>/commerce/in-app-purchases`       | Commerce → In-app purchases (`#/p/<slug>/commerce/in-app-purchases`)       | live             |
 | `platform-settings`           | `#/platform/settings`                        | Settings (`#/platform/settings`)                                           | live             |

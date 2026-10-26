@@ -54,6 +54,11 @@
       "id": "commerce",
       "label": "Commerce",
       "switches": []
+    },
+    {
+      "id": "cloud-connect",
+      "label": "Cloud Connect",
+      "switches": []
     }
   ],
   "services": [
@@ -168,6 +173,20 @@
         "group": "commerce"
       },
       "docs": "/docs/features/commerce/"
+    },
+    {
+      "slug": "connect",
+      "label": "Cloud Connect",
+      "summary": "Link a person's devices and move data between them directly, over the LAN or a relay.",
+      "defaultEnabled": false,
+      "requires": ["identity"],
+      "legacyModules": [],
+      "console": {
+        "accent": "connect",
+        "icon": "Radar",
+        "group": "cloud-connect"
+      },
+      "docs": "/docs/features/cloud-connect/"
     }
   ]
 }

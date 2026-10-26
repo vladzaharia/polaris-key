@@ -66,6 +66,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     },
     ...over,
   };

@@ -60,6 +60,7 @@ describe("offeredBadges", () => {
         identity: { enabled: true },
         distribution: { enabled: true },
         commerce: { enabled: true },
+        connect: { enabled: false },
         update: { enabled: true },
         sync: { enabled: true },
       }),
@@ -80,6 +81,7 @@ describe("offeredBadges", () => {
     const all = {
       identity: { enabled: true },
       commerce: { enabled: true },
+      connect: { enabled: false },
       distribution: { enabled: true },
     };
     expect(kinds(STATUS, all)).not.toContain("download-from");

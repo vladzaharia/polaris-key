@@ -93,6 +93,7 @@ const ALL_OFF: ServicesMap = {
   identity: { enabled: true },
   sync: { enabled: false },
   commerce: { enabled: false },
+  connect: { enabled: false },
 };
 const LICENSED: Partial<ServicesMap> = { license: { enabled: true } };
 const DOWNLOADS_ONLY: Partial<ServicesMap> = {

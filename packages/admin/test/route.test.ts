@@ -54,6 +54,7 @@ const ALL_ON: ServiceState = {
   identity: { enabled: true },
   sync: { enabled: true },
   commerce: { enabled: true },
+  connect: { enabled: true },
 };
 
 const withOff = (...off: ServiceSlug[]): ServiceState => ({
@@ -556,6 +557,7 @@ describe("the nav model (nav.ts)", () => {
       "sync-setup",
       "sync-usage",
       "sync-data",
+      "connect-setup",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
   });
@@ -571,6 +573,7 @@ describe("the nav model (nav.ts)", () => {
       "identity",
       "sync",
       "commerce",
+      "connect",
     ]);
     expect(SECTIONS[0]!.service).toBeNull();
     for (const s of SECTIONS.slice(1)) expect(s.service).toBe(s.key);
@@ -588,6 +591,7 @@ describe("the nav model (nav.ts)", () => {
       "identity",
       "sync",
       "commerce",
+      "connect",
     ]);
     for (const g of GLOBAL_PAGES) expect(accentOf(g.page)).toBe("core");
     expect(accentOf("tiers")).toBe("license");
@@ -669,6 +673,7 @@ describe("enablement filtering", () => {
       "identity",
       "sync",
       "commerce",
+      "connect",
     ]);
   });
 
@@ -682,6 +687,7 @@ describe("enablement filtering", () => {
       "identity",
       "sync",
       "commerce",
+      "connect",
     );
     expect(visibleSections(none).map((s) => s.key)).toEqual(["core"]);
   });

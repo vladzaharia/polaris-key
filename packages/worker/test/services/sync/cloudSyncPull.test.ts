@@ -83,6 +83,7 @@ async function enable(
         identity: on("identity"),
         sync: on("sync"),
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

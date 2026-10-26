@@ -80,6 +80,7 @@ async function world(
       services: {
         ...parseServices(row?.services_json ?? null).services,
         commerce: { enabled: true },
+        connect: { enabled: false },
       },
     }),
     "admin",
@@ -204,6 +205,7 @@ describe("A-17e: the products read", () => {
         services: {
           ...parseServices(row?.services_json ?? null).services,
           commerce: { enabled: false },
+          connect: { enabled: false },
         },
       }),
       "admin",

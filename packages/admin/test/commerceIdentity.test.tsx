@@ -319,6 +319,7 @@ describe("store identity on the Commerce overview", () => {
         services: {
           license: { enabled: true },
           commerce: { enabled: false },
+          connect: { enabled: false },
         },
       },
     );

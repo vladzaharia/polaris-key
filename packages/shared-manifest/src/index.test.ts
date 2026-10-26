@@ -1386,6 +1386,7 @@ describe("parseManifest carries the enablement set", () => {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     });
   });
 
@@ -1402,6 +1403,7 @@ describe("parseManifest carries the enablement set", () => {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     });
   });
 

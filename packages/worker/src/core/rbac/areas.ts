@@ -27,7 +27,7 @@ export interface AreaDef {
   scope: "membership" | "platform" | "product" | "both";
 }
 
-/** The thirteen areas, in the plan's order. Append only. */
+/** The fourteen areas, in the plan's order. Append only. */
 export const AREAS = [
   { id: "console", name: "Console", scope: "membership" },
   { id: "platform", name: "Platform", scope: "platform" },
@@ -42,6 +42,7 @@ export const AREAS = [
   { id: "commerce", name: "Commerce", scope: "product" },
   { id: "keys", name: "Keys and secrets", scope: "product" },
   { id: "settings", name: "Settings", scope: "product" },
+  { id: "connect", name: "Cloud Connect", scope: "product" },
 ] as const satisfies readonly AreaDef[];
 
 export type AreaId = (typeof AREAS)[number]["id"];
@@ -49,8 +50,8 @@ export type AreaId = (typeof AREAS)[number]["id"];
 export const AREA_IDS: readonly AreaId[] = AREAS.map((a) => a.id);
 
 /**
- * The ten areas a Product admin can hold on a product: the nine product areas and the product's
- * Members (`members` is granted at both scopes). A binding with no `areas` covers all ten.
+ * The eleven areas a Product admin can hold on a product: the ten product areas and the product's
+ * Members (`members` is granted at both scopes). A binding with no `areas` covers all eleven.
  */
 export const PRODUCT_AREAS: readonly AreaId[] = AREAS.filter(
   (a) => a.scope === "product" || a.scope === "both",
@@ -81,6 +82,9 @@ export const SERVICE_AREA: Readonly<Record<ServiceSlug, AreaId>> = {
   identity: "signin",
   sync: "sync",
   commerce: "commerce",
+  // CC-02.3: Cloud Connect's own area (plan CC-01-cloud-connect.md §2.9); its admin routes come
+  // with CC-06.
+  connect: "connect",
 };
 
 /**

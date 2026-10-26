@@ -503,6 +503,38 @@
       "status": "planned",
       "wp": "U-23"
     },
+    "connect.identity": {
+      "status": "planned",
+      "wp": "CC-12"
+    },
+    "connect.noise": {
+      "status": "planned",
+      "wp": "CC-12"
+    },
+    "connect.protocol": {
+      "status": "planned",
+      "wp": "CC-12"
+    },
+    "connect.lan": {
+      "status": "planned",
+      "wp": "CC-12"
+    },
+    "connect.relay": {
+      "status": "planned",
+      "wp": "CC-12"
+    },
+    "connect.links": {
+      "status": "planned",
+      "wp": "CC-19"
+    },
+    "connect.transfer": {
+      "status": "planned",
+      "wp": "CC-20"
+    },
+    "connect.app": {
+      "status": "planned",
+      "wp": "CC-12"
+    },
     "server.license": {
       "status": "implemented",
       "except": [

@@ -1530,6 +1530,49 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     {
+      "$comment": "connect_requires_identity: Cloud Connect links a signed-in person's devices. (The legacy \`oidc\` module enables identity, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["connect"],
+            "properties": {
+              "connect": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["identity"],
+                "properties": {
+                  "identity": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["oidc"],
+                "properties": {
+                  "oidc": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "$comment": "commerce_requires_license: Commerce turns store purchases into licence flags. (The legacy \`licensing\` module enables license, so it satisfies the requirement too.)",
       "if": {
         "required": ["modules"],
@@ -1685,7 +1728,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       }
     },
     "modules": {
-      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity, sync) are canonical. The legacy module names (licensing, releases, oidc, edgeMint) are deprecated but still accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
+      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity, sync, commerce, connect) are canonical. The legacy module names (licensing, releases, oidc, edgeMint) are deprecated but still accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
       "type": "object",
       "properties": {
         "license": { "$ref": "#/$defs/moduleFlag" },
@@ -1696,6 +1739,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "identity": { "$ref": "#/$defs/moduleFlag" },
         "sync": { "$ref": "#/$defs/moduleFlag" },
         "commerce": { "$ref": "#/$defs/moduleFlag" },
+        "connect": { "$ref": "#/$defs/moduleFlag" },
         "licensing": {
           "$ref": "#/$defs/moduleFlag",
           "description": "Deprecated: write the service slug license. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
@@ -17306,7 +17350,8 @@ var SERVICE_SLUGS = [
   "update",
   "identity",
   "sync",
-  "commerce"
+  "commerce",
+  "connect"
 ];
 var DEFAULT_ENABLED_SERVICES = [
   "license",
@@ -17320,7 +17365,8 @@ var SERVICE_REQUIRES = {
   update: ["distribution"],
   identity: [],
   sync: ["config", "identity"],
-  commerce: ["license"]
+  commerce: ["license"],
+  connect: ["identity"]
 };
 var MODULE_SERVICES = {
   licensing: ["license"],
@@ -17334,7 +17380,8 @@ var MODULE_SERVICES = {
   update: ["update"],
   identity: ["identity"],
   sync: ["sync"],
-  commerce: ["commerce"]
+  commerce: ["commerce"],
+  connect: ["connect"]
 };
 var FEATURES = [
   { id: "licensing", label: "Licensing", primary: ["license"] },
@@ -17346,7 +17393,8 @@ var FEATURES = [
   },
   { id: "sign-in", label: "Sign-in", primary: ["identity"] },
   { id: "cloud-sync", label: "Cloud Sync", primary: ["sync"] },
-  { id: "commerce", label: "Commerce", primary: ["commerce"] }
+  { id: "commerce", label: "Commerce", primary: ["commerce"] },
+  { id: "cloud-connect", label: "Cloud Connect", primary: ["connect"] }
 ];
 var ASSET_REF_EXTENSIONS = [
   "png",
@@ -20315,6 +20363,10 @@ var REQUIREMENT_MESSAGES = /* @__PURE__ */ new Map([
   [
     "commerce_requires_license",
     "The commerce service turns store purchases into licence flags, so license must be enabled too."
+  ],
+  [
+    "connect_requires_identity",
+    "Cloud Connect links a signed-in person's devices, so identity must be enabled too."
   ]
 ]);
 var LICENSING_ENTITLEMENT_MODELS = ["legacy", "combined"];

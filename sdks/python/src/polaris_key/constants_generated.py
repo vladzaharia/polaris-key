@@ -796,6 +796,14 @@ class Feature:
     SYNC_SETTINGS: Final = "sync.settings"
     SYNC_CONFLICT: Final = "sync.conflict"
     SYNC_SAVES: Final = "sync.saves"
+    CONNECT_IDENTITY: Final = "connect.identity"
+    CONNECT_NOISE: Final = "connect.noise"
+    CONNECT_PROTOCOL: Final = "connect.protocol"
+    CONNECT_LAN: Final = "connect.lan"
+    CONNECT_RELAY: Final = "connect.relay"
+    CONNECT_LINKS: Final = "connect.links"
+    CONNECT_TRANSFER: Final = "connect.transfer"
+    CONNECT_APP: Final = "connect.app"
     DEVICES_FINGERPRINT: Final = "devices.fingerprint"
     DEVICES_FACTS: Final = "devices.facts"
     DEVICES_REGISTER: Final = "devices.register"
@@ -915,6 +923,14 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "connect.identity",
+    "connect.noise",
+    "connect.protocol",
+    "connect.lan",
+    "connect.relay",
+    "connect.links",
+    "connect.transfer",
+    "connect.app",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
@@ -1661,6 +1677,7 @@ class ServiceSlug:
     IDENTITY: Final = "identity"
     SYNC: Final = "sync"
     COMMERCE: Final = "commerce"
+    CONNECT: Final = "connect"
 
 
 #: Every ``ServiceSlug`` value, in source order.
@@ -1673,6 +1690,7 @@ SERVICE_SLUG_VALUES: Tuple[str, ...] = (
     "identity",
     "sync",
     "commerce",
+    "connect",
 )
 
 
@@ -2149,6 +2167,14 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.settings": CapabilityRow("planned", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
+        "connect.identity": CapabilityRow("planned", "connect", ()),
+        "connect.noise": CapabilityRow("planned", "connect", ()),
+        "connect.protocol": CapabilityRow("planned", "connect", ()),
+        "connect.lan": CapabilityRow("planned", "connect", ()),
+        "connect.relay": CapabilityRow("planned", "connect", ()),
+        "connect.links": CapabilityRow("planned", "connect", ()),
+        "connect.transfer": CapabilityRow("planned", "connect", ()),
+        "connect.app": CapabilityRow("planned", "connect", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
         "devices.register": CapabilityRow("implemented", "core", ()),
@@ -2233,4 +2259,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "2b0120a3ebb22a6861cc4f66b1ffd6ff31d8e740c9d6e2b8e0dd9b2c6d8244e8"
+CAPABILITY_DIGEST: Final[str] = "8c50b453dc8aa11392ec94fc6fb7cdb036bc15344ec3a363378c7824e042f4c3"

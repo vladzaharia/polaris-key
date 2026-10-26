@@ -218,6 +218,24 @@ export const ROLES_MATRIX: {
       ],
     },
     {
+      id: "connect",
+      name: "Cloud Connect",
+      cells: [
+        {
+          kind: "tick",
+        },
+        {
+          kind: "none",
+        },
+        {
+          kind: "tick",
+        },
+        {
+          kind: "none",
+        },
+      ],
+    },
+    {
       id: "members",
       name: "Members",
       detail: "Who can manage this product",

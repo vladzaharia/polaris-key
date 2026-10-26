@@ -298,6 +298,7 @@ async function buildWorld(): Promise<World> {
         identity: { enabled: true },
         sync: { enabled: true },
         commerce: { enabled: true },
+        connect: { enabled: false },
       },
     }),
     "manifest",

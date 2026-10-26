@@ -54,8 +54,6 @@ public enum ErrorCode {
     public static let invalidScope = "invalid_scope"
     public static let redirectUriMismatch = "redirect_uri_mismatch"
     public static let licenseChoiceRequired = "license_choice_required"
-    public static let interstitialRequired = "interstitial_required"
-    public static let notNearby = "not_nearby"
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailUnavailable = "email_unavailable"
     public static let turnstileFailed = "turnstile_failed"
@@ -125,7 +123,6 @@ public enum ErrorCode {
     public static let signInExpired = "sign-in-expired"
     public static let signInDenied = "sign-in-denied"
     public static let signInUnavailable = "sign-in-unavailable"
-    public static let platformIdentityUnavailable = "platform-identity-unavailable"
     public static let invalidOptions = "invalid-options"
     public static let invalidArgument = "invalid-argument"
     public static let invokeNotAllowed = "invoke-not-allowed"
@@ -245,8 +242,6 @@ public let ERROR_CODE_VALUES: [String] = [
     "invalid_scope",
     "redirect_uri_mismatch",
     "license_choice_required",
-    "interstitial_required",
-    "not_nearby",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -316,7 +311,6 @@ public let ERROR_CODE_VALUES: [String] = [
     "sign-in-expired",
     "sign-in-denied",
     "sign-in-unavailable",
-    "platform-identity-unavailable",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -436,8 +430,6 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "invalid_scope": "wire",
     "redirect_uri_mismatch": "wire",
     "license_choice_required": "wire",
-    "interstitial_required": "wire",
-    "not_nearby": "wire",
     "auth_method_disabled": "wire",
     "email_unavailable": "wire",
     "turnstile_failed": "wire",
@@ -507,7 +499,6 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "sign-in-expired": "client",
     "sign-in-denied": "client",
     "sign-in-unavailable": "client",
-    "platform-identity-unavailable": "client",
     "invalid-options": "client",
     "invalid-argument": "client",
     "invoke-not-allowed": "client",
@@ -619,6 +610,14 @@ public enum Feature {
     public static let syncSettings = "sync.settings"
     public static let syncConflict = "sync.conflict"
     public static let syncSaves = "sync.saves"
+    public static let connectIdentity = "connect.identity"
+    public static let connectNoise = "connect.noise"
+    public static let connectProtocol = "connect.protocol"
+    public static let connectLan = "connect.lan"
+    public static let connectRelay = "connect.relay"
+    public static let connectLinks = "connect.links"
+    public static let connectTransfer = "connect.transfer"
+    public static let connectApp = "connect.app"
     public static let devicesFingerprint = "devices.fingerprint"
     public static let devicesFacts = "devices.facts"
     public static let devicesRegister = "devices.register"
@@ -738,6 +737,14 @@ public let FEATURE_VALUES: [String] = [
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "connect.identity",
+    "connect.noise",
+    "connect.protocol",
+    "connect.lan",
+    "connect.relay",
+    "connect.links",
+    "connect.transfer",
+    "connect.app",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
@@ -1749,6 +1756,14 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.settings": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
+    "connect.identity": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.noise": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.protocol": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.lan": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.relay": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.links": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.transfer": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.app": CapabilityRow(status: "planned", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -1761,8 +1776,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.keyentry": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.attach": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.attach": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.account": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "planned", service: "identity", na: []),
@@ -1832,4 +1847,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "e7b144fb6b36587568595cd1ea4da7436a8cb6aea6777fcc9c4b3350cab4cef2"
+public let CAPABILITY_DIGEST = "df1677cb9cd7c6b4e7a0f308dacc56829c828b170704ea7e38601c7b470a98ad"

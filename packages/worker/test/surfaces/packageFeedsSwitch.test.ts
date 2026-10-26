@@ -44,6 +44,7 @@ const ON: ServicesMap = {
   identity: { enabled: false },
   sync: { enabled: false },
   commerce: { enabled: false },
+  connect: { enabled: false },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

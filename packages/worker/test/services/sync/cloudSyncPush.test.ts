@@ -122,6 +122,7 @@ async function enable(db: Db, over: { sync?: boolean } = {}): Promise<void> {
         identity: { enabled: true },
         sync: { enabled: over.sync ?? true },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

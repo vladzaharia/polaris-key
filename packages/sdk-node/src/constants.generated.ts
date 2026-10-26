@@ -50,8 +50,6 @@ export const ErrorCode = {
   invalidScope: "invalid_scope",
   redirectUriMismatch: "redirect_uri_mismatch",
   licenseChoiceRequired: "license_choice_required",
-  interstitialRequired: "interstitial_required",
-  notNearby: "not_nearby",
   authMethodDisabled: "auth_method_disabled",
   emailUnavailable: "email_unavailable",
   turnstileFailed: "turnstile_failed",
@@ -121,7 +119,6 @@ export const ErrorCode = {
   signInExpired: "sign-in-expired",
   signInDenied: "sign-in-denied",
   signInUnavailable: "sign-in-unavailable",
-  platformIdentityUnavailable: "platform-identity-unavailable",
   invalidOptions: "invalid-options",
   invalidArgument: "invalid-argument",
   invokeNotAllowed: "invoke-not-allowed",
@@ -242,8 +239,6 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "invalid_scope",
   "redirect_uri_mismatch",
   "license_choice_required",
-  "interstitial_required",
-  "not_nearby",
   "auth_method_disabled",
   "email_unavailable",
   "turnstile_failed",
@@ -313,7 +308,6 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "sign-in-expired",
   "sign-in-denied",
   "sign-in-unavailable",
-  "platform-identity-unavailable",
   "invalid-options",
   "invalid-argument",
   "invoke-not-allowed",
@@ -436,8 +430,6 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   invalid_scope: "wire",
   redirect_uri_mismatch: "wire",
   license_choice_required: "wire",
-  interstitial_required: "wire",
-  not_nearby: "wire",
   auth_method_disabled: "wire",
   email_unavailable: "wire",
   turnstile_failed: "wire",
@@ -507,7 +499,6 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "sign-in-expired": "client",
   "sign-in-denied": "client",
   "sign-in-unavailable": "client",
-  "platform-identity-unavailable": "client",
   "invalid-options": "client",
   "invalid-argument": "client",
   "invoke-not-allowed": "client",
@@ -619,6 +610,14 @@ export const Feature = {
   syncSettings: "sync.settings",
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
+  connectIdentity: "connect.identity",
+  connectNoise: "connect.noise",
+  connectProtocol: "connect.protocol",
+  connectLan: "connect.lan",
+  connectRelay: "connect.relay",
+  connectLinks: "connect.links",
+  connectTransfer: "connect.transfer",
+  connectApp: "connect.app",
   devicesFingerprint: "devices.fingerprint",
   devicesFacts: "devices.facts",
   devicesRegister: "devices.register",
@@ -739,6 +738,14 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.settings",
   "sync.conflict",
   "sync.saves",
+  "connect.identity",
+  "connect.noise",
+  "connect.protocol",
+  "connect.lan",
+  "connect.relay",
+  "connect.links",
+  "connect.transfer",
+  "connect.app",
   "devices.fingerprint",
   "devices.facts",
   "devices.register",
@@ -1453,6 +1460,7 @@ export const ServiceSlug = {
   identity: "identity",
   sync: "sync",
   commerce: "commerce",
+  connect: "connect",
 } as const;
 export type ServiceSlug = (typeof ServiceSlug)[keyof typeof ServiceSlug];
 
@@ -1466,6 +1474,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
   "identity",
   "sync",
   "commerce",
+  "connect",
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
@@ -1842,6 +1851,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.settings": { status: "planned", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
+  "connect.identity": { status: "planned", service: "connect", na: [] },
+  "connect.noise": { status: "planned", service: "connect", na: [] },
+  "connect.protocol": { status: "planned", service: "connect", na: [] },
+  "connect.lan": { status: "planned", service: "connect", na: [] },
+  "connect.relay": { status: "planned", service: "connect", na: [] },
+  "connect.links": { status: "planned", service: "connect", na: [] },
+  "connect.transfer": { status: "planned", service: "connect", na: [] },
+  "connect.app": { status: "planned", service: "connect", na: [] },
   "devices.fingerprint": { status: "implemented", service: "core", na: [] },
   "devices.facts": { status: "implemented", service: "core", na: [] },
   "devices.register": { status: "implemented", service: "core", na: [] },
@@ -1863,7 +1880,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "identity.toggle": { status: "planned", service: "identity", na: [] },
   "identity.keyentry": { status: "implemented", service: "identity", na: [] },
   "identity.attach": { status: "planned", service: "identity", na: [] },
-  "identity.account": { status: "implemented", service: "identity", na: [] },
+  "identity.account": { status: "planned", service: "identity", na: [] },
   "identity.redirect.web": {
     status: "implemented",
     service: "identity",
@@ -1994,4 +2011,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "84ad0f0528c855072e4342e7beba2724196f643a9892ade0fbd419d76027433c";
+  "f4089a86e3c0f0fe935ed6f7fbd9cac1f947f395b82d0f3b091060c07e3e4983";

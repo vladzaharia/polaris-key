@@ -344,6 +344,10 @@ h6,
   --pkd-group-accent: var(--pk-service-distribution);
 }
 .sidebar-content
+  details:has(> ul > li > a[href*="/docs/features/cloud-connect/"]) {
+  --pkd-group-accent: var(--pk-service-connect);
+}
+.sidebar-content
   details:has(> ul > li > a[href*="/docs/features/ship-builds/updates/"]) {
   --pkd-group-accent: var(--pk-service-update);
 }

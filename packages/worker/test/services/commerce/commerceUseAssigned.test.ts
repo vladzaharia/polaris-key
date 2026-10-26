@@ -74,6 +74,7 @@ const allOn = (over: Record<string, { enabled: boolean }>) => ({
   identity: { enabled: false },
   sync: { enabled: false },
   commerce: { enabled: true },
+  connect: { enabled: false },
   ...over,
 });
 

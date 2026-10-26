@@ -79,6 +79,7 @@ const PRODUCT: ProductDetail = {
     identity: { enabled: true },
     sync: { enabled: false },
     commerce: { enabled: false },
+    connect: { enabled: false },
   },
   sync: {
     source: "webhook",

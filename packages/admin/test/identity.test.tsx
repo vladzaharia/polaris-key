@@ -130,6 +130,7 @@ const PRODUCT: ProductDetail = {
     identity: { enabled: true },
     sync: { enabled: false },
     commerce: { enabled: false },
+    connect: { enabled: false },
   },
 };
 
@@ -185,6 +186,7 @@ const SERVICES = {
     identity: { enabled: true },
     sync: { enabled: false },
     commerce: { enabled: false },
+    connect: { enabled: false },
   },
   source: "manifest",
   facts: {},

@@ -43,6 +43,8 @@ const SERVICE_HOME: Record<ServiceSlug, (slug: string) => string> = {
   identity: (slug) => r.appSignIn(slug),
   sync: (slug) => r.syncData(slug),
   commerce: (slug) => r.commerceOverview(slug),
+  // CC-02.3 gives Cloud Connect its own page; until then its card opens the overview.
+  connect: (slug) => r.overview(slug),
 };
 
 export function featureHref(f: FeatureRow, slug: string): string {

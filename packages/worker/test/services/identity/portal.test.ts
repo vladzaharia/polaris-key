@@ -107,6 +107,7 @@ async function enableReleaseService(db: Db, slug: string): Promise<void> {
         identity: { enabled: false },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

@@ -14,12 +14,13 @@ public enum ServiceSlug: String, Sendable, Codable, Equatable, CaseIterable {
     case identity
     case sync
     case commerce
+    case connect
 
     /// Whether a product runs this service when it has never said otherwise.
     public var isDefaultEnabled: Bool {
         switch self {
         case .license, .config: return true
-        case .release, .distribution, .update, .identity, .sync, .commerce: return false
+        case .release, .distribution, .update, .identity, .sync, .commerce, .connect: return false
         }
     }
 }

@@ -76,6 +76,7 @@ async function world(syncOn = true) {
         identity: on,
         sync: syncOn ? on : off,
         commerce: off,
+        connect: off,
       },
     }),
     "manifest",

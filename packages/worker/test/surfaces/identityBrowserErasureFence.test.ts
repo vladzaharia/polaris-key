@@ -358,6 +358,7 @@ async function setRequiresIdentity(): Promise<void> {
         identity: { enabled: true },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

@@ -454,6 +454,38 @@
       "status": "planned",
       "wp": "U-22"
     },
+    "connect.identity": {
+      "status": "planned",
+      "wp": "CC-08"
+    },
+    "connect.noise": {
+      "status": "planned",
+      "wp": "CC-08"
+    },
+    "connect.protocol": {
+      "status": "planned",
+      "wp": "CC-08"
+    },
+    "connect.lan": {
+      "status": "planned",
+      "wp": "CC-08"
+    },
+    "connect.relay": {
+      "status": "planned",
+      "wp": "CC-08"
+    },
+    "connect.links": {
+      "status": "planned",
+      "wp": "CC-19"
+    },
+    "connect.transfer": {
+      "status": "planned",
+      "wp": "CC-20"
+    },
+    "connect.app": {
+      "status": "planned",
+      "wp": "CC-08"
+    },
     "server.license": {
       "status": "implemented",
       "note": "@polaris-key/server (SP-55): the Fetch core, Express, Hono and Next.js replay backend-matrix.json's verdict and problem rows; verifyLicenseDocument moved there from @polaris-key/node/server."

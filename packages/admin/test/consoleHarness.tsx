@@ -25,6 +25,7 @@ export const ALL_ON: Enablement = {
   identity: { enabled: true },
   sync: { enabled: true },
   commerce: { enabled: true },
+  connect: { enabled: true },
 };
 
 export const NONE: Enablement = Object.fromEntries(

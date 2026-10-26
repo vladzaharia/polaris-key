@@ -539,7 +539,8 @@ describe("router → spec", () => {
   it("every mounted service declares a surface", () => {
     // A service with no HTTP route yet declares `[]` (and is listed here, so the day it gains a
     // route its surface must be declared with it).
-    const ROUTELESS = new Set<string>();
+    const ROUTELESS = new Set<string>(["connect"]);
+    // connect: CC-02.1 lands the row; its routes arrive in CC-06.2.
     for (const [slug, descriptor] of SERVICES) {
       expect(
         Array.isArray(descriptor.surface),

@@ -83,6 +83,12 @@ export const THEME_TOKENS = {
         on: "#060912",
         subtle: "#08262b",
       },
+      lilac: {
+        solid: "#dec8ff",
+        fg: "#dec8ff",
+        on: "#060912",
+        subtle: "#20202e",
+      },
     },
     state: {
       core: {
@@ -165,6 +171,15 @@ export const THEME_TOKENS = {
         checkedOn: "#060912",
         checkedEdge: "#39d075",
         contextEdge: "#39d075",
+      },
+      connect: {
+        ring: "#dec8ff",
+        selectedFill: "#20202e",
+        hoverTint: "#151623",
+        checkedFill: "#dec8ff",
+        checkedOn: "#060912",
+        checkedEdge: "#dec8ff",
+        contextEdge: "#dec8ff",
       },
     },
     status: {
@@ -274,6 +289,12 @@ export const THEME_TOKENS = {
         on: "#ffffff",
         subtle: "#dee9ef",
       },
+      lilac: {
+        solid: "#8d7bb0",
+        fg: "#746295",
+        on: "#060912",
+        subtle: "#ecebf7",
+      },
     },
     state: {
       core: {
@@ -356,6 +377,15 @@ export const THEME_TOKENS = {
         checkedOn: "#ffffff",
         checkedEdge: "#05773b",
         contextEdge: "#05773b",
+      },
+      connect: {
+        ring: "#746295",
+        selectedFill: "#ecebf7",
+        hoverTint: "#f0f1fa",
+        checkedFill: "#8d7bb0",
+        checkedOn: "#060912",
+        checkedEdge: "#746295",
+        contextEdge: "#746295",
       },
     },
     status: {
@@ -484,6 +514,13 @@ export const SERVICE_ACCENTS = {
       subtle: "#0c211e",
       bit: "#39d075",
     },
+    connect: {
+      solid: "#dec8ff",
+      fg: "#dec8ff",
+      on: "#060912",
+      subtle: "#20202e",
+      bit: "#dec8ff",
+    },
   },
   light: {
     core: {
@@ -548,6 +585,13 @@ export const SERVICE_ACCENTS = {
       on: "#ffffff",
       subtle: "#deebeb",
       bit: "#05773b",
+    },
+    connect: {
+      solid: "#8d7bb0",
+      fg: "#746295",
+      on: "#060912",
+      subtle: "#ecebf7",
+      bit: "#8d7bb0",
     },
   },
 } as const satisfies Record<

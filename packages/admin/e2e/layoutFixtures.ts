@@ -95,6 +95,7 @@ const services = Object.fromEntries(
     "identity",
     "sync",
     "commerce",
+    "connect",
   ].map((s) => [s, { enabled: true }]),
 );
 

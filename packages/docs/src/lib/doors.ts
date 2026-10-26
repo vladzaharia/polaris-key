@@ -442,6 +442,11 @@ export const DOOR_TREES: readonly DoorTree[] = [
         items: leaves("features/commerce/index"),
       },
       {
+        label: "Cloud Connect",
+        collapsed: true,
+        items: leaves("features/cloud-connect/index"),
+      },
+      {
         label: "Reference",
         collapsed: true,
         items: [

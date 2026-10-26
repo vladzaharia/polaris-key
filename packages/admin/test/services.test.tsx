@@ -79,6 +79,7 @@ const state = (over: Partial<ServicesResponse> = {}): ServicesResponse => ({
     identity: { enabled: false },
     sync: { enabled: false },
     commerce: { enabled: false },
+    connect: { enabled: false },
   },
   effectiveRegistration: "requires-license",
   source: "manifest",
@@ -421,7 +422,8 @@ describe("Services feature groups", () => {
     mount();
     const sync = await screen.findByRole("switch", { name: /Cloud Sync/i });
     expect(sync.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.getByText(/Turn on Sign-in first/i)).toBeTruthy();
+    // Cloud Connect (CC-02.1) names the same requirement, so there are two.
+    expect(screen.getAllByText(/Turn on Sign-in first/i)).toHaveLength(2);
     // Focusable (Tab reaches it) and inert: a click changes nothing.
     sync.focus();
     expect(document.activeElement).toBe(sync);
@@ -429,7 +431,9 @@ describe("Services feature groups", () => {
     expect(updateServices).not.toHaveBeenCalled();
     expect(servicesDryRun).not.toHaveBeenCalled();
     // The reason moves focus to the switch that fixes it.
-    await userEvent.setup().click(screen.getByText(/Turn on Sign-in first/i));
+    await userEvent
+      .setup()
+      .click(screen.getAllByText(/Turn on Sign-in first/i)[0]!);
     expect(document.activeElement?.id).toBe("feature-sign-in-switch");
   });
 
@@ -575,7 +579,9 @@ describe("Services feature groups", () => {
     expect(
       screen.getByRole("img", { name: "Managed config is on" }),
     ).toBeTruthy();
-    expect(screen.getByRole("img", { name: "Sign-in is off" })).toBeTruthy();
+    expect(
+      screen.getAllByRole("img", { name: "Sign-in is off" }).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("img", { name: "Licensing is on" })).toBeTruthy();
     expect(screen.queryByText("Device registration")).toBeNull();
     const show = screen.getByRole("button", {

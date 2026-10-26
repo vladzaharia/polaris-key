@@ -12,6 +12,7 @@ export const FEATURE_IDS = [
   "sign-in",
   "cloud-sync",
   "commerce",
+  "cloud-connect",
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -62,6 +63,12 @@ export const FEATURES: Readonly<Record<FeatureId, Feature>> = {
     label: "Commerce",
     services: ["commerce"],
     accent: "commerce",
+  },
+  "cloud-connect": {
+    id: "cloud-connect",
+    label: "Cloud Connect",
+    services: ["connect"],
+    accent: "connect",
   },
 };
 

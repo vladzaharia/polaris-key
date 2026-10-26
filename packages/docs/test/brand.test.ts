@@ -61,6 +61,7 @@ describe("docs sections", () => {
       ["cloud-sync", "sync"],
       // Commerce takes the Distribution green family (B1): the brand CSS has no variables of its own.
       ["commerce", "distribution"],
+      ["cloud-connect", "connect"],
     ];
     for (const [dir, slug] of markers) {
       expect(css).toContain(`a[href*="/docs/features/${dir}/"]`);

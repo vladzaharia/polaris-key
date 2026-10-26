@@ -302,6 +302,7 @@ async function seed(db: Db): Promise<void> {
         identity: { enabled: true },
         sync: { enabled: true },
         commerce: { enabled: true },
+        connect: { enabled: false },
       },
     }),
     "manifest",

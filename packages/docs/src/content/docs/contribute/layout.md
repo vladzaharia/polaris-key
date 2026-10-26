@@ -189,8 +189,8 @@ work down the list until it passes.
 6. **Manifest schema.** Add the slug (and any new legacy module name) to
    `$defs.modules.properties` in `packages/shared-manifest/schemas/v1/product.schema.json`.
 7. **Migrations and `TABLE_OWNERS`.** Any tables the service owns get a D1 migration and an
-   entry in `TABLE_OWNERS` (`packages/docs/scripts/gen-reference.mjs`); regenerate the reference
-   pages.
+   entry in `TABLE_OWNERS` (`packages/worker/src/db/owners.ts`; the docs generator only imports it);
+   regenerate the reference pages.
 8. **OpenAPI and the surface.** Add the slug to the discovery document's
    `services.required` in `packages/worker/openapi/polaris-key.v3.yaml` (in table order), every
    new route to the spec. The descriptor's `surface` comes from the routes table, so a row is
@@ -200,9 +200,13 @@ work down the list until it passes.
 9. **Console.** A `SECTIONS` entry in `packages/admin/src/console/nav.ts` with the table's accent (the
    slug) and its pages (each with a path, an icon and a docs link), a page module in
    `packages/admin/src/console/sections/`, a section accent in
-   `@polaris-key/brand` (`packages/brand/src/tokens/services.ts`; its `services.test.ts` fails
-   until there is one, and `gen brand` emits the `[data-service="<slug>"]` rule), and the row's
-   icon in `ServicesCard`'s `SERVICE_ICONS` (a type error until it is there).
+   `@polaris-key/brand` (`SERVICE_IDS`, `SERVICE_FAMILY` and `ACCENTS` in
+   `packages/brand/src/tokens/source.ts`, plus its glyph in `icons.ts`; a new family has to clear the
+   accent-distance floors in `test/accents.test.ts`, and `gen brand` emits the
+   `[data-service="<slug>"]` rule; the row's `icon` must be a glyph in `lucide.ts`). A service with admin routes also needs an RBAC area:
+   append it to `AREAS` in `packages/worker/src/core/rbac/areas.ts` (append-only), set
+   `SERVICE_AREA`, and add the pinned rows to `test/fixtures/rbac-areas.json` and
+   `rbac-route-areas.json`.
 10. **Docs.** The row's `console.group` puts the slug in a feature (`pnpm gen services` writes
     `packages/docs/src/lib/features.generated.ts`). A new feature also needs a `features` entry in
     the table, a `features/<feature>/` directory with an `index` page and a group in the

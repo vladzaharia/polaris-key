@@ -1113,6 +1113,7 @@ describe("claim at next sign-in through a provider: platform product", () => {
               identity: { enabled: true },
               sync: { enabled: false },
               commerce: { enabled: false },
+              connect: { enabled: false },
             },
           }),
           "manifest",

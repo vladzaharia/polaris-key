@@ -51,6 +51,7 @@ async function distribution(on: boolean): Promise<void> {
         identity: { enabled: false },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

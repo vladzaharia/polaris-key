@@ -62,6 +62,7 @@ function services(over: Partial<ServicesMap> = {}): string {
       identity: { enabled: true },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
       ...over,
     },
   });
@@ -539,6 +540,7 @@ describe("the label on activation and registration (§8 Q2)", () => {
           identity: { enabled: false },
           sync: { enabled: false },
           commerce: { enabled: false },
+          connect: { enabled: false },
         },
       }),
       "manifest",
