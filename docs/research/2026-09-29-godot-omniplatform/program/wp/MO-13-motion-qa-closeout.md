@@ -286,3 +286,5 @@ List audit, from the `::view-transition-*` animations of one transition (enterin
 (Run 1 used a looser window, `ms + 400`, and a 5-frame minimum; both were then tightened to the exact window and 2 frames. Runs 2 and 3 on the tightened file, at load 160 to 890, gave 4 to 14 frames for the action moments and p95 from 16.7 to 580 ms: noise.)
 
 - **To do: rerun at a load average below 4** (a quiet machine or CI-like runner) and replace this table; until then S-23 §3.5 (measured on an idle machine) stays the reference, and nothing here shows a regression. Raw JSON of the runs: `/Users/vlad/Repos/pk-wt/_scratch/MO-13.4/perf.json` (last run).
+
+**MO-13.4 status (2026-10-26):** the check is built (`packages/admin/e2e/motionPerf.e2e.test.ts`) but disabled under load per the owner's rule: it could not measure on the shared machine. Re-enable it and replace the table above on a quiet machine. MO-13.8 does not wait for it.
