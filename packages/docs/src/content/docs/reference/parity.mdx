@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 79 | 9 | 27 | 0 |
-| React | `web`, `desktop-bridge` | 82 | 19 | 14 | 0 |
-| Python | `python` | 79 | 9 | 27 | 0 |
-| Swift | `macos`, `ios` | 86 | 9 | 19 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 89 | 9 | 17 | 0 |
-| Kotlin | `android`, `jvm` | 88 | 8 | 18 | 1 |
+| Node | `node` | 82 | 9 | 24 | 0 |
+| React | `web`, `desktop-bridge` | 85 | 19 | 11 | 0 |
+| Python | `python` | 80 | 9 | 26 | 0 |
+| Swift | `macos`, `ios` | 87 | 9 | 18 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 90 | 9 | 16 | 0 |
+| Kotlin | `android`, `jvm` | 89 | 8 | 17 | 1 |
 
 ## Core
 
@@ -96,12 +96,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `identity.devicelabel` | Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1) | `device-label.json` + transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `identity.toggle` | Identity off for a product: every sign-in entry fails fast, licences keep working | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
-| `identity.keyentry` | Key entry on an Identity product: keyEntries on success, and the key-entry-limit refusal with manageUrl | transcripts | planned (PX-W9b) | planned (PX-W9b) | planned (PX-W9b) | planned (PX-W9b) | planned (PX-W9b) | planned (PX-W9b) | — |
-| `identity.attach` | Attach: add the device's licence to the account signed in on it, with a preview | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
-| `identity.account` | The account on the device: subject(), signOut() and openAccount() | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
-| `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
+| `identity.keyentry` | Key entry on an Identity product: keyEntries on success, and the key-entry-limit refusal with manageUrl | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `identity.attach` | Attach: add the device's licence to the account signed in on it, with a preview | transcripts | planned (I-10a) | ✓ | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
+| `identity.account` | The account on the device: subject(), signOut() and openAccount() | transcripts | planned (I-10a) | ✓ | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
+| `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
 | `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
-| `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
+| `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
 
 ## Release and update
 
@@ -159,7 +159,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts + `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
 | `ui.kit.manage` | Device-limit screen: Replace a device (button, or a QR on TV and console) and Try again | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
-| `ui.kit.keyentry` | Key entries: the entries-left line after a key activation, and the key-entry-limit screen (Add it in Polaris Key as a button, or a QR on TV and console) | snapshot tests | N/A (headless: runtime) | planned (PX-W9b) | N/A (headless: runtime) | planned (PX-W9b) | planned (PX-W9b) | planned (PX-W9b) | headless: runtime |
+| `ui.kit.keyentry` | Key entries: the entries-left line after a key activation, and the key-entry-limit screen (Add it in Polaris Key as a button, or a QR on TV and console) | snapshot tests | N/A (headless: runtime) | planned (I-10a) | N/A (headless: runtime) | planned (I-10b) | planned (I-10b) | planned (I-10b) | headless: runtime |
 | `ui.kit.account` | Account screens: License in another account with Sign in, Add to your Library (attach) and Sign out | snapshot tests | N/A (headless: runtime) | planned (I-10a) | N/A (headless: runtime) | planned (I-10b) | planned (I-10b) | planned (I-10b) | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.mount` | Terminal drop-ins: the license verbs mounted into the host's CLI framework (namespace, collisions, exit 4) | `ui-matrix.json` `cli` + unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (UK-54); N/A (android: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |

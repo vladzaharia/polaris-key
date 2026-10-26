@@ -39,9 +39,36 @@ public sealed interface ActivationResult {
     /** The registry code of a refusal (`ErrorCode`), `network` or `server-error` for [Error]; null for [Ok]. */
     public val code: String?
 
-    public data class Ok(val token: String, val schemaVersion: Long) : ActivationResult {
+    /**
+     * 200. [keyEntries] is the key's entry count (I-04, WIRE-CONTRACT-V4 §12.2): present only on a
+     * product with Identity on, null when the answer carries none (never zero-filled).
+     */
+    public data class Ok(val token: String, val schemaVersion: Long, val keyEntries: KeyEntries? = null) : ActivationResult {
         override val code: String? get() = null
-        override fun toString(): String = "Ok(token=[redacted], schemaVersion=$schemaVersion)"
+        override fun toString(): String = "Ok(token=[redacted], schemaVersion=$schemaVersion, keyEntries=$keyEntries)"
+    }
+
+    /**
+     * 403 `key_entry_limit`: the key, in no account, has used every entry (Identity on, refusals on).
+     * [keyEntries] is the count the refusal carried and [manageUrl] the portal's activate page where
+     * the key can join an account (validated by [ManageLink.read], null when absent or unsafe). Not
+     * an auth failure: the client keeps its state; offer the link only behind a user action.
+     */
+    public data class KeyEntryLimit(
+        val manageUrl: String? = null,
+        val keyEntries: KeyEntries? = null,
+    ) : ActivationResult {
+        override val code: String get() = ErrorCode.keyEntryLimit
+    }
+
+    /**
+     * 403 `license_owned`: the licence is in an account, and an owned licence never moves by its key.
+     * [signInUrl] is the product's login card (validated like a manage link; carries no key and
+     * nothing about the account), null when absent or unsafe. Not an auth failure: offer sign-in
+     * behind a user action.
+     */
+    public data class LicenseOwned(val signInUrl: String? = null) : ActivationResult {
+        override val code: String get() = ErrorCode.licenseOwned
     }
 
     /**
@@ -121,6 +148,9 @@ public sealed interface ActivationResult {
     public data class Error(val message: String, override val code: String = ErrorCode.serverError, val status: Int? = null) : ActivationResult
 }
 
+/** A key's entry count: [used] of [limit] (WIRE-CONTRACT-V4 §12.2). [used] may exceed [limit] with refusals off. */
+public data class KeyEntries(val used: Long, val limit: Long)
+
 public object LicenseEndpoints {
     /** `POST /<p>/license/activate`: exchange a licence key for a per-device `pkeyt_` token. */
     public suspend fun activate(core: CoreContext, key: String, fingerprint: HardwareFingerprint? = null): ActivationResult =
@@ -184,12 +214,18 @@ public object LicenseEndpoints {
         val code = (o?.get("error").stringValue ?: nested?.get("code").stringValue)?.takeIf { it.isNotEmpty() }
         val message = o?.get("message").stringValue ?: nested?.get("message").stringValue
         fun long(name: String) = o?.get(name).longValue ?: nested?.get(name).longValue
+        // A `keyEntries {used, limit}` of two non-negative integers, flat or nested; anything else is none.
+        val keyEntries = (o?.get("keyEntries").objectValue ?: nested?.get("keyEntries").objectValue)?.let { m ->
+            val used = m["used"].longValue
+            val limit = m["limit"].longValue
+            if (used != null && limit != null && used >= 0 && limit >= 0) KeyEntries(used, limit) else null
+        }
         val status = response.status
         if (status == 200) {
             val token = o?.get("token").stringValue
             val schemaVersion = o?.get("schemaVersion").longValue
             return if (token == null || schemaVersion == null) ActivationResult.Error("malformed activation response", ErrorCode.serverError, status)
-            else ActivationResult.Ok(token, schemaVersion)
+            else ActivationResult.Ok(token, schemaVersion, keyEntries)
         }
         if (status >= 500 || status < 400) return ActivationResult.Error("activation answered HTTP $status", ErrorCode.serverError, status)
         return when (code) {
@@ -197,6 +233,13 @@ public object LicenseEndpoints {
                 long("limit"),
                 long("deviceCount"),
                 manageUrl = ManageLink.read(o?.get("manageUrl").stringValue, nested?.get("manageUrl").stringValue),
+            )
+            ErrorCode.keyEntryLimit -> ActivationResult.KeyEntryLimit(
+                manageUrl = ManageLink.read(o?.get("manageUrl").stringValue, nested?.get("manageUrl").stringValue),
+                keyEntries = keyEntries,
+            )
+            ErrorCode.licenseOwned -> ActivationResult.LicenseOwned(
+                signInUrl = ManageLink.read(o?.get("signInUrl").stringValue, nested?.get("signInUrl").stringValue),
             )
             ErrorCode.fingerprintRequired -> ActivationResult.FingerprintRequired
             ErrorCode.hardwareMismatch -> ActivationResult.HardwareMismatch(

@@ -37,7 +37,7 @@ export type Surface = [
   ReturnType<typeof useConfigSetting>["visibility"],
   ReturnType<typeof useConfigSetting>["set"],
   ReturnType<typeof useConfigSetting>["clear"],
-  ReturnType<typeof usePolarisKey>["submitKey"],
+  ReturnType<typeof usePolarisKey>["activateWithKey"],
   ReturnType<typeof usePolarisAuth>["signOut"],
   PolarisKeyConfig["auth"],
   PolarisKeyConfig["mode"],

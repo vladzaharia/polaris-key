@@ -57,9 +57,24 @@ const WORKFLOW_FILE = ".github/workflows/release.yml";
 
 /** The tag ruleset's one ref pattern, and the rules it may carry (D-G8). */
 const TAG_REF = "refs/tags/v*";
-const TAG_RULES = new Set(["deletion", "update", "non_fast_forward"]);
+const TAG_RULES = new Set([
+  "creation",
+  "deletion",
+  "update",
+  "non_fast_forward",
+]);
 /** GitHub's built-in repository-admin role id, the only bypass actor. */
 const ADMIN_ROLE_ID = 5;
+
+/**
+ * What the caller has itself confirmed from a preceding read in the same operation: a pull
+ * request number whose head is `pkey/setup` on this repository, a ruleset id it found by name
+ * and target. A PATCH of a pull request or a PUT of a ruleset is authorized only for that id.
+ */
+export interface Verified {
+  pull?: number;
+  ruleset?: number;
+}
 
 /** What the caller wants to send; `path` is relative to the API root, query included. */
 export interface WriteRequest {
@@ -183,6 +198,7 @@ export function authorize(
   owner: string,
   repo: string,
   req: WriteRequest,
+  verified: Verified = {},
 ): Authorized {
   if (!(WRITE_ACTIONS as readonly string[]).includes(action))
     refuse("action", "unknown action");
@@ -296,12 +312,14 @@ export function authorize(
       }
       if (req.method === "PATCH" && /^\/pulls\/[1-9][0-9]{0,9}$/.test(rest)) {
         noQuery();
-        // Title and body only: no `state` (close), no `base` (retarget). The caller must have
-        // read the PR and confirmed its head is `pkey/setup`.
+        // Title and body only: no `state` (close), no `base` (retarget). Only the number the
+        // caller confirmed (`verified.pull`: head `pkey/setup`, this repository) is accepted.
         const b = exactBody(req.body, [], ["title", "body"]);
         if (Object.keys(b).length === 0) refuse("body", "nothing to update");
         if ("title" in b) str(b.title, "title", 256);
         if ("body" in b) str(b.body, "body");
+        if (verified.pull === undefined || rest !== `/pulls/${verified.pull}`)
+          refuse("path", "the pull request was not confirmed as the setup one");
         return ok(b);
       }
       return refuse("method", "not an allowed pull request request");
@@ -310,16 +328,9 @@ export function authorize(
     case "env.release": {
       if (req.method === "PUT" && rest === "/environments/release") {
         noQuery();
-        const b = exactBody(
-          req.body,
-          [],
-          [
-            "deployment_branch_policy",
-            "wait_timer",
-            "prevent_self_review",
-            "reviewers",
-          ],
-        );
+        // No `reviewers`, `wait_timer` or `prevent_self_review`: protection a person set up
+        // is never written, and a PUT that omitted it could reset it.
+        const b = exactBody(req.body, [], ["deployment_branch_policy"]);
         if ("deployment_branch_policy" in b) {
           const p = b.deployment_branch_policy;
           if (p !== null) {
@@ -400,6 +411,8 @@ export function authorize(
               refuse("body", "only repository admins may bypass");
           }
         }
+        if (isPut && rest !== `/rulesets/${verified.ruleset}`)
+          refuse("path", "the ruleset was not found by name and target");
         return ok(b);
       }
       return refuse("method", "not an allowed ruleset request");

@@ -877,6 +877,26 @@ Hand-rolled SVG, no chart library. All charts follow the repo's `dataviz` guidan
 | `useAttention(slug)`                | Derives sidebar badges and the overview's attention list from already-cached queries (setup, mint recipes, readiness holds, Sentry candidates, expiring licenses). No new API.                                              |
 | `useShortcut(keys, handler, opts)`  | Registers a shortcut with the global help sheet (`?`); suppressed in text inputs.                                                                                                                                           |
 
+### 7.1 `src/ui/motion` (the motion layer)
+
+The JavaScript half of the motion system (the patterns are classes in `src/motion.css`). How to
+use it: "Add motion" (`packages/docs/src/content/docs/contribute/motion.md`). Everything is a no-op under reduced motion.
+
+| Export                                                         | Purpose                                                                            |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `reducedMotion()`, `useReducedMotion()`                        | The OS setting or the in-app preference, as a value or as state.                   |
+| `tokenMs(name, fallback)`                                      | A motion token in ms from the computed style (0 under reduced motion).             |
+| `viewTransition(update, opts)`                                 | A same-document View Transition of a synchronous update; `type`, `shared`, `list`. |
+| `viewTransitionsSupported()`, `markViewTransitionSupport()`    | Feature test, and the `html[data-vt-supported]` mark for the fallback fade.        |
+| `LIST_BUDGET`                                                  | Rows a list transition names (30) before it names only those on screen.            |
+| `Presence`, `settle(el)`                                       | Keeps a closing child mounted until its exit animation has finished.               |
+| `CountUp`, `useCountUp`                                        | A counting number with one accessible value.                                       |
+| `setMeter(el, fraction)`                                       | Sets a meter fill (0 to 1) through `--pk-meter`.                                   |
+| `highlight(el)`                                                | Tints a new row, then fades it; returns a cancel.                                  |
+| `Celebration`, `SuccessCheck`                                  | The check and sparks once per moment; the check alone for a repeat success.        |
+| `celebrateOnce(key)`, `momentSeen(key)`, `markMomentSeen(key)` | The once-per-moment key store.                                                     |
+| `Expand`                                                       | An inline region that opens by grid rows, closed content out of the tab order.     |
+
 ---
 
 ## 8. The docs site (a third consumer of `ui/`)

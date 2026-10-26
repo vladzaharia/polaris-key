@@ -114,7 +114,17 @@ export type BridgeOidcPoll =
  *  `hardware-mismatch`) and `refused`, which carries the server's own code so a refusal other
  *  than the device cap is never shown as one (SDK-PARITY-PASS §3.1). */
 export type BridgeActivation =
-  | { kind: "ok" }
+  /** `keyEntries` (identity.keyentry): the licence's entries, when Identity is on. */
+  | { kind: "ok"; keyEntries?: { used: number; limit: number } }
+  /** identity.keyentry: the licence has no key entries left. Not an auth failure: nothing is
+   *  cleared. `manageUrl` is the portal link, re-validated by the renderer. */
+  | {
+      kind: "key-entry-limit";
+      manageUrl?: string;
+      keyEntries?: { used: number; limit: number };
+    }
+  /** identity.keyentry: the key's licence is in an account; `signInUrl` is the sign-in link. */
+  | { kind: "license-owned"; signInUrl?: string }
   /** `manageUrl` (PX-W8): the portal link the host's Node SDK read off the refusal. */
   | {
       kind: "device-limit";
@@ -196,6 +206,22 @@ export type BridgeActivation =
  *   * `("update","install",{decision})` → the host's `client.update.install(decision)`, an `InstallOutcome` over IPC (`restartRequired` and `handedOff` carry a `version`, `storeOpened` a `url`, `unsupported` a `reason` and `detail`). The renderer sends only `binary` and `store` decisions, the ones a driver installs (SP-15).
  *   * `("update","restart")` → apply the install the host just staged (a `restartRequired` outcome's `restart()`), and `("update","markBootAttempt")` / `("update","confirmBoot")` → `client.update.markBootAttempt()` / `client.update.confirmBoot()`. The host's `boot()` already runs the guard, so a renderer that boots through it never calls the last two. The host adds all four to `DEFAULT_INVOKE_VERBS`.
  *   * `("core","boot",opts)` also takes `autoConfirm` (`false` leaves a `ready` launch for the renderer's `confirmBoot()`) and returns `guard`, the `BootAttempt` the guard stage produced, which the renderer passes on as `BootResult.guard` (`null` when the host sends none).
+ *
+ * ── I-10a.9: THE ACCOUNT, WITH NO NEW VERB ──────────────────────────────────────────────────────
+ *
+ * `submitKey`'s `BridgeActivation` carries `keyEntries` on `ok` and adds `key-entry-limit` and
+ * `license-owned` (a host that never sends them keeps working: a refusal outside the named kinds
+ * is `refused{code}`, which the renderer classifies by the same codes). The account calls ride
+ * `invoke`, on a v4 host, one bag each; a host that does not allowlist them rejects
+ * `invoke-not-allowed`, which the renderer reports as the typed `UnsupportedError` (`version`):
+ *
+ *   * `("identity","subject")` → the pairwise subject string, or `null`.
+ *   * `("identity","attach",{confirm})` → `{kind:"confirm", license:{id,tierId,name}}`,
+ *     `{kind:"ok", subject, attached}` (a state push follows) or `{kind:"refused", code, status}`.
+ *   * `("identity","openAccount")` → `null`: the host opens the portal page in the system browser.
+ *
+ * `signOut` stays the bridge method; the renderer reads `released` off the state that follows
+ * (the activation is gone, or it is not).
  *
  * ── WHAT v4 ADDS (UK-06) ─────────────────────────────────────────────────────────────────────
  *

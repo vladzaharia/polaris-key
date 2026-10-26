@@ -204,8 +204,8 @@
       "wp": "I-10b"
     },
     "identity.keyentry": {
-      "status": "planned",
-      "wp": "PX-W9b"
+      "status": "implemented",
+      "note": "I-10b.1: activate_with_key() and enroll() return key-entry-limit (key_entries, manage_url) and license-owned (sign_in_url); key_entries on ok."
     },
     "release.changelog": {
       "status": "implemented"
@@ -480,7 +480,7 @@
     },
     "ui.kit.keyentry": {
       "status": "planned",
-      "wp": "PX-W9b"
+      "wp": "I-10b"
     },
     "ui.cli": {
       "status": "na",

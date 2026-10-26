@@ -706,6 +706,8 @@
   "core.activation.enroll-disabled.message": "This app doesn't offer a free license. Enter a license key or sign in.",
   "core.activation.key-entry-limit.title": "No key entries left",
   "core.activation.key-entry-limit.message": "This key has no entries left. Add it to your account and sign in instead.",
+  "core.activation.license-owned.title": "License in another account",
+  "core.activation.license-owned.message": "This license is already in another Polaris Locker account. A license never moves by its key.",
   "core.activation.refused.title": "Activation refused",
   "core.activation.refused.message": "Activation was refused ({code}).",
   "core.activation.error.title": "Activation failed",

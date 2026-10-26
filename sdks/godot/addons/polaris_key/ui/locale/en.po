@@ -6921,6 +6921,16 @@ msgstr "Sign-in needed"
 msgid "core.codes.sign_in_required.message"
 msgstr "Sign in to your Polaris Locker account in the app, then try again."
 
+#. Not added
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.title"
+msgstr "Not added"
+
+#. This license wasn't added to your account. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.message"
+msgstr "This license wasn't added to your account. Nothing changed."
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"
@@ -7130,6 +7140,16 @@ msgstr "No key entries left"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
 msgstr "This key has no entries left. Add it to your account and sign in instead."
+
+#. License in another account
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.title"
+msgstr "License in another account"
+
+#. This license is already in another Polaris Locker account. A license never moves by its key.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.message"
+msgstr "This license is already in another Polaris Locker account. A license never moves by its key."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

@@ -559,5 +559,7 @@
   "core.codes.license_stale.title": "License needs refreshing",
   "core.codes.license_stale.message": "Connect to the internet so the app can refresh your license, then try again.",
   "core.codes.sign_in_required.title": "Sign-in needed",
-  "core.codes.sign_in_required.message": "Sign in to your Polaris Locker account in the app, then try again."
+  "core.codes.sign_in_required.message": "Sign in to your Polaris Locker account in the app, then try again.",
+  "core.codes.attach-declined.title": "Not added",
+  "core.codes.attach-declined.message": "This license wasn't added to your account. Nothing changed."
 }

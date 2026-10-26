@@ -2650,6 +2650,10 @@
     <string name="core_codes_sign_in_required_title">Sign-in needed</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_message">Sign in to your Polaris Locker account in the app, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_title">Not added</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_message">This license wasn't added to your account. Nothing changed.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">License active</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2734,6 +2738,10 @@
     <string name="core_activation_key_entry_limit_title">No key entries left</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_title">License in another account</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_message">This license is already in another Polaris Locker account. A license never moves by its key.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activation refused</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from ..constants_generated import ErrorCode
 from ..core.context import DocumentResult
 from ..core.errors import PolarisError
-from ..core.manage import read_manage_url
+from ..core.manage import KeyEntries, is_manage_url, read_key_entries, read_manage_url
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..core.context import CoreContext
@@ -26,6 +26,8 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 __all__ = [
     "ActivationOk",
     "ActivationDeviceLimit",
+    "ActivationKeyEntryLimit",
+    "ActivationLicenseOwned",
     "ActivationUnauthorized",
     "ActivationFingerprintRequired",
     "ActivationHardwareMismatch",
@@ -60,6 +62,8 @@ class ActivationOk:
     token: str = field(repr=False)
     schemaVersion: int = 0
     kind: str = "ok"
+    #: Key entries spent of the limit (Identity on); ``None`` with Identity off.
+    key_entries: Optional[KeyEntries] = None
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,30 @@ class ActivationDeviceLimit:
     kind: str = "device-limit"
     code: str = "device_limit"
     manage_url: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class ActivationKeyEntryLimit:
+    """403 ``key_entry_limit`` (Identity on): this key has no entries left for a new device.
+    ``manage_url`` is the server's link where the key can join an account (as for
+    :class:`ActivationDeviceLimit`); ``key_entries`` the count. Never an auth failure: the SDK
+    keeps its token, cache and store, and does not retry."""
+
+    manage_url: Optional[str] = None
+    key_entries: Optional[KeyEntries] = None
+    kind: str = "key-entry-limit"
+    code: str = "key_entry_limit"
+
+
+@dataclass(frozen=True)
+class ActivationLicenseOwned:
+    """403 ``license_owned``: the licence is in an account and never moves by its key.
+    ``sign_in_url`` is the product's login card (no key, nothing about the account), opened
+    only behind a user action. Never an auth failure: no wipe, no retry."""
+
+    sign_in_url: Optional[str] = None
+    kind: str = "license-owned"
+    code: str = "license_owned"
 
 
 @dataclass(frozen=True)
@@ -182,6 +210,8 @@ class ActivationError:
 ActivationResult = Union[
     ActivationOk,
     ActivationDeviceLimit,
+    ActivationKeyEntryLimit,
+    ActivationLicenseOwned,
     ActivationUnauthorized,
     ActivationFingerprintRequired,
     ActivationHardwareMismatch,
@@ -260,6 +290,13 @@ def activation_result_from(status: int, body: Dict[str, Any], res: Any = None) -
             deviceCount=_int_or_none(_field(body, "deviceCount")),
             manage_url=read_manage_url(body),
         )
+    if code == "key_entry_limit":
+        return ActivationKeyEntryLimit(
+            manage_url=read_manage_url(body), key_entries=read_key_entries(body)
+        )
+    if code == "license_owned":
+        sign_in = _field(body, "signInUrl")
+        return ActivationLicenseOwned(sign_in_url=sign_in if is_manage_url(sign_in) else None)
     if code == "hardware_mismatch" or (code is None and status == 409):
         changed = _field(body, "changed")
         return ActivationHardwareMismatch(
@@ -341,6 +378,7 @@ def _activation_like(
         return ActivationOk(
             token=token,
             schemaVersion=schema_version if isinstance(schema_version, int) else 0,
+            key_entries=read_key_entries(b),
         )
     return activation_result_from(res.status_code, _json_or_empty(res), res)
 

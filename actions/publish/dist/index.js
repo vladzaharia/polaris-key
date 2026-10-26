@@ -1947,6 +1947,62 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "maxLength": 256,
             "pattern": "^(?!.*//)(?!.*\\\\.\\\\.)/[^?#*\\\\u0000-\\\\u0020\\\\u007f]*$"
           }
+        },
+        "platformSignIn": {
+          "type": "object",
+          "description": "The native audiences a platform sign-in is verified against (identity.platformSignIn.*). Apple bundle ids are unioned with the App Store and TestFlight outlets' bundle ids.",
+          "additionalProperties": false,
+          "properties": {
+            "google": {
+              "type": "object",
+              "additionalProperties": false,
+              "dependentRequired": { "clientIds": ["serverClientId"] },
+              "properties": {
+                "serverClientId": {
+                  "description": "The web client id: the audience of a Google token (identity.platformSignIn.google.serverClientId).",
+                  "type": "string",
+                  "pattern": "^[0-9]+-[a-z0-9]+\\\\.apps\\\\.googleusercontent\\\\.com$"
+                },
+                "clientIds": {
+                  "description": "The Android and iOS client ids: the authorized parties (identity.platformSignIn.google.clientIds). Needs serverClientId.",
+                  "type": "array",
+                  "maxItems": 8,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[0-9]+-[a-z0-9]+\\\\.apps\\\\.googleusercontent\\\\.com$"
+                  }
+                }
+              }
+            },
+            "apple": {
+              "type": "object",
+              "additionalProperties": false,
+              "dependentRequired": { "bundleIds": ["teamId"] },
+              "properties": {
+                "teamId": {
+                  "description": "The Apple developer team id (identity.platformSignIn.apple.teamId).",
+                  "type": "string",
+                  "pattern": "^[A-Z0-9]{10}$"
+                },
+                "bundleIds": {
+                  "description": "Bundle ids of the app, added to those of the App Store and TestFlight outlets (identity.platformSignIn.apple.bundleIds). Needs teamId.",
+                  "type": "array",
+                  "maxItems": 16,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 155,
+                    "pattern": "^[A-Za-z0-9-]+(\\\\.[A-Za-z0-9-]+)+$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nearby": {
+          "description": "Whether a signed-in device nearby may approve a sign-in here (identity.nearby). Default true; needs no Cloud Connect.",
+          "type": "boolean"
         }
       }
     },
@@ -15771,9 +15827,9 @@ var DISPLAY_TEXT_STRIP = [
   [65279, 65279]
 ];
 
-// ../shared-protocol/dist/chunk-ACSXFTO6.js
+// ../shared-protocol/dist/chunk-6OFYMAM7.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var PROTOCOL_VERSION = 4;
+var PROTOCOL_VERSION = 5;
 var MAX_JSON_DEPTH = 64;
 var MAX_RECORD_JWS_BYTES = 88844;
 var MAX_PACK_VARIANTS = 32;
@@ -17818,6 +17874,31 @@ function channelForOutlet(kind, subkind) {
     (c) => c.outlet.kind === kind && (c.outlet.subkind ?? null) === (subkind ?? null)
   ) ?? null;
 }
+var LISTING_LIMITS = {
+  name: 30,
+  subtitle: 30,
+  shortDescription: 78,
+  description: 4e3,
+  promotionalText: 170,
+  keywords: { maxItems: 50, maxItemChars: 40 },
+  features: { maxItems: 20, maxItemChars: 200 },
+  developerName: 100,
+  category: 64,
+  copyright: 200,
+  contactEmail: 254,
+  url: 2048,
+  iarcCertificateId: 64,
+  /** The serialised content descriptors. */
+  contentDescriptorsBytes: 8192,
+  /** winget's ReleaseNotes, the largest store limit. */
+  releaseNotes: 1e4,
+  /** Play's and F-Droid's. */
+  releaseNotesShort: 500,
+  /** An override's value: generous, since it exists to exceed the model (each store still checks). */
+  override: 1e4,
+  locales: 50,
+  overrides: 400
+};
 var MAX_OUTLETS = 32;
 var TRANSPORTS = [
   "embedded",
@@ -18128,6 +18209,21 @@ function listingValid(raw) {
     return false;
   return listingRefProblems(r).length === 0;
 }
+var MODEL_LIMITED_FIELDS = ["name", "subtitle", "developerName"];
+function warnListingLimits(warnings, raw, at, label) {
+  for (const field of MODEL_LIMITED_FIELDS) {
+    const v = raw[field];
+    const limit = LISTING_LIMITS[field];
+    if (typeof v !== "string" || v.length <= limit) continue;
+    add3(
+      warnings,
+      "distribution",
+      `${at}/${field}`,
+      "listing_exceeds_model_limit",
+      `${label}.${field} is ${v.length} characters; the listing model allows ${limit}, so it will not be imported as it is. Shorten it to ${limit} or fewer.`
+    );
+  }
+}
 function reportListing(errors, warnings, raw, at, label) {
   const problem = listingProblem(raw);
   if (problem) {
@@ -18140,6 +18236,7 @@ function reportListing(errors, warnings, raw, at, label) {
     );
   }
   if (!isRecord4(raw)) return;
+  if (warnings) warnListingLimits(warnings, raw, at, label);
   for (const [below, field, refProblem2] of listingRefProblems(raw)) {
     add3(
       errors,
@@ -20291,6 +20388,10 @@ var IDENTITY_KEY_ENTRY_LIMIT = {
 var IDENTITY_TERMS_VERSION_RE = /^[A-Za-z0-9._-]{1,32}$/;
 var MAX_IDENTITY_REDIRECT_PATHS = 16;
 var MAX_IDENTITY_REDIRECT_PATH_LENGTH = 256;
+var GOOGLE_CLIENT_ID_RE = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
+var MAX_GOOGLE_CLIENT_IDS = 8;
+var APPLE_TEAM_ID_RE = /^[A-Z0-9]{10}$/;
+var MAX_APPLE_SIGN_IN_BUNDLE_IDS = 16;
 var MODULES = Object.keys(MODULE_SERVICES);
 var DEFAULT_ENABLED = DEFAULT_ENABLED_SERVICES;
 var ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -24224,7 +24325,7 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
       "product",
       "/identity",
       "invalid_identity",
-      "identity must be an object with keyEntry, terms and redirectPaths."
+      "identity must be an object with keyEntry, terms, redirectPaths, platformSignIn and nearby."
     );
     return;
   }
@@ -24235,7 +24336,7 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
         "product",
         `/identity/${key}`,
         "invalid_identity",
-        "identity takes only keyEntry, terms and redirectPaths."
+        "identity takes only keyEntry, terms, redirectPaths, platformSignIn and nearby."
       );
     }
   }
@@ -24344,11 +24445,183 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
       }
     }
   }
+  if (identity.nearby !== void 0 && typeof identity.nearby !== "boolean") {
+    add4(
+      errors,
+      "product",
+      "/identity/nearby",
+      "invalid_identity_nearby",
+      "identity.nearby must be true or false."
+    );
+  }
+  if (identity.platformSignIn !== void 0)
+    validatePlatformSignIn(identity.platformSignIn, errors);
+}
+function validatePlatformSignIn(psi, errors) {
+  if (!isRecord6(psi)) {
+    add4(
+      errors,
+      "product",
+      "/identity/platformSignIn",
+      "invalid_identity_platform_sign_in",
+      "identity.platformSignIn must be an object with google and apple."
+    );
+    return;
+  }
+  for (const key of Object.keys(psi)) {
+    if (key !== "google" && key !== "apple") {
+      add4(
+        errors,
+        "product",
+        `/identity/platformSignIn/${key}`,
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn takes only google and apple."
+      );
+    }
+  }
+  const google = psi.google;
+  if (google !== void 0) {
+    if (!isRecord6(google)) {
+      add4(
+        errors,
+        "product",
+        "/identity/platformSignIn/google",
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn.google must be an object with serverClientId and clientIds."
+      );
+    } else {
+      for (const key of Object.keys(google)) {
+        if (key !== "serverClientId" && key !== "clientIds") {
+          add4(
+            errors,
+            "product",
+            `/identity/platformSignIn/google/${key}`,
+            "invalid_identity_platform_sign_in",
+            "identity.platformSignIn.google takes only serverClientId and clientIds."
+          );
+        }
+      }
+      if (google.serverClientId !== void 0 && !(typeof google.serverClientId === "string" && GOOGLE_CLIENT_ID_RE.test(google.serverClientId))) {
+        add4(
+          errors,
+          "product",
+          "/identity/platformSignIn/google/serverClientId",
+          "invalid_google_client_id",
+          "identity.platformSignIn.google.serverClientId must be a Google client id, such as 1234-abc.apps.googleusercontent.com."
+        );
+      }
+      const ids = google.clientIds;
+      if (ids !== void 0) {
+        if (!Array.isArray(ids) || ids.length > MAX_GOOGLE_CLIENT_IDS) {
+          add4(
+            errors,
+            "product",
+            "/identity/platformSignIn/google/clientIds",
+            "invalid_google_client_id",
+            `identity.platformSignIn.google.clientIds must be an array of at most ${MAX_GOOGLE_CLIENT_IDS} Google client ids.`
+          );
+        } else {
+          const seen = /* @__PURE__ */ new Set();
+          for (const [i, id] of ids.entries()) {
+            if (typeof id !== "string" || !GOOGLE_CLIENT_ID_RE.test(id) || seen.has(id)) {
+              add4(
+                errors,
+                "product",
+                `/identity/platformSignIn/google/clientIds/${i}`,
+                "invalid_google_client_id",
+                "identity.platformSignIn.google.clientIds entries must be unique Google client ids, such as 1234-abc.apps.googleusercontent.com."
+              );
+            }
+            if (typeof id === "string") seen.add(id);
+          }
+        }
+        if (google.serverClientId === void 0) {
+          add4(
+            errors,
+            "product",
+            "/identity/platformSignIn/google/clientIds",
+            "google_client_ids_without_server",
+            "identity.platformSignIn.google.clientIds needs serverClientId: the web client is the token audience."
+          );
+        }
+      }
+    }
+  }
+  const apple = psi.apple;
+  if (apple !== void 0) {
+    if (!isRecord6(apple)) {
+      add4(
+        errors,
+        "product",
+        "/identity/platformSignIn/apple",
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn.apple must be an object with teamId and bundleIds."
+      );
+    } else {
+      for (const key of Object.keys(apple)) {
+        if (key !== "teamId" && key !== "bundleIds") {
+          add4(
+            errors,
+            "product",
+            `/identity/platformSignIn/apple/${key}`,
+            "invalid_identity_platform_sign_in",
+            "identity.platformSignIn.apple takes only teamId and bundleIds."
+          );
+        }
+      }
+      if (apple.teamId !== void 0 && !(typeof apple.teamId === "string" && APPLE_TEAM_ID_RE.test(apple.teamId))) {
+        add4(
+          errors,
+          "product",
+          "/identity/platformSignIn/apple/teamId",
+          "invalid_apple_team_id",
+          "identity.platformSignIn.apple.teamId must be 10 upper-case letters or digits."
+        );
+      }
+      const bundles = apple.bundleIds;
+      if (bundles !== void 0) {
+        if (!Array.isArray(bundles) || bundles.length > MAX_APPLE_SIGN_IN_BUNDLE_IDS) {
+          add4(
+            errors,
+            "product",
+            "/identity/platformSignIn/apple/bundleIds",
+            "invalid_apple_bundle_id",
+            `identity.platformSignIn.apple.bundleIds must be an array of at most ${MAX_APPLE_SIGN_IN_BUNDLE_IDS} bundle ids.`
+          );
+        } else {
+          const seen = /* @__PURE__ */ new Set();
+          for (const [i, id] of bundles.entries()) {
+            if (typeof id !== "string" || id.length > MAX_BUNDLE_ID_LENGTH || !BUNDLE_ID_RE.test(id) || seen.has(id)) {
+              add4(
+                errors,
+                "product",
+                `/identity/platformSignIn/apple/bundleIds/${i}`,
+                "invalid_apple_bundle_id",
+                "identity.platformSignIn.apple.bundleIds entries must be unique reverse-DNS bundle ids (such as gg.vlad.diceroll)."
+              );
+            }
+            if (typeof id === "string") seen.add(id);
+          }
+        }
+        if (apple.teamId === void 0) {
+          add4(
+            errors,
+            "product",
+            "/identity/platformSignIn/apple/bundleIds",
+            "apple_sign_in_without_team",
+            "identity.platformSignIn.apple.bundleIds needs teamId: Apple names an app by team and bundle id together."
+          );
+        }
+      }
+    }
+  }
 }
 var IDENTITY_MEMBERS = [
   "keyEntry",
   "terms",
-  "redirectPaths"
+  "redirectPaths",
+  "platformSignIn",
+  "nearby"
 ];
 function normalizeIdentityBlock(raw) {
   if (!isRecord6(raw)) return void 0;
@@ -24371,6 +24644,34 @@ function normalizeIdentityBlock(raw) {
   }
   if (Array.isArray(raw.redirectPaths))
     out.redirectPaths = raw.redirectPaths.filter(isString);
+  if (typeof raw.nearby === "boolean") out.nearby = raw.nearby;
+  const psi = normalizePlatformSignIn(raw.platformSignIn);
+  if (psi) out.platformSignIn = psi;
+  return Object.keys(out).length > 0 ? out : void 0;
+}
+function normalizePlatformSignIn(raw) {
+  if (!isRecord6(raw)) return void 0;
+  const out = {};
+  if (isRecord6(raw.google)) {
+    const google = {};
+    if (typeof raw.google.serverClientId === "string" && GOOGLE_CLIENT_ID_RE.test(raw.google.serverClientId))
+      google.serverClientId = raw.google.serverClientId;
+    if (Array.isArray(raw.google.clientIds))
+      google.clientIds = raw.google.clientIds.filter(
+        (v) => isString(v) && GOOGLE_CLIENT_ID_RE.test(v)
+      );
+    if (Object.keys(google).length > 0) out.google = google;
+  }
+  if (isRecord6(raw.apple)) {
+    const apple = {};
+    if (typeof raw.apple.teamId === "string" && APPLE_TEAM_ID_RE.test(raw.apple.teamId))
+      apple.teamId = raw.apple.teamId;
+    if (Array.isArray(raw.apple.bundleIds))
+      apple.bundleIds = raw.apple.bundleIds.filter(
+        (v) => isString(v) && v.length <= MAX_BUNDLE_ID_LENGTH && BUNDLE_ID_RE.test(v)
+      );
+    if (Object.keys(apple).length > 0) out.apple = apple;
+  }
   return Object.keys(out).length > 0 ? out : void 0;
 }
 function positiveInteger2(v) {
@@ -46797,7 +47098,9 @@ function githubClient(o = {}) {
     const res = await f(`${base}${path37}`, {
       method,
       headers,
-      ...body !== void 0 ? { body: JSON.stringify(body) } : {}
+      ...body !== void 0 ? { body: JSON.stringify(body) } : {},
+      // A redirect would carry the Authorization header along.
+      redirect: "manual"
     });
     if (res.status === 404 && allow404) return null;
     const text3 = await res.text();
@@ -49335,7 +49638,7 @@ ${STOREFRONT_USAGE}`
 // src/ciInit.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var import_yaml10 = __toESM(require_dist(), 1);
-import { mkdir as mkdir12, readFile as readFile23, stat as stat8, writeFile as writeFile20 } from "node:fs/promises";
+import { mkdir as mkdir12, readFile as readFile23, rm as rm6, stat as stat8, writeFile as writeFile20 } from "node:fs/promises";
 import os2 from "node:os";
 import path31 from "node:path";
 import { execFile as execFile2 } from "node:child_process";
@@ -50475,9 +50778,14 @@ async function ciInit(a, io) {
     releaseKeys: true,
     dir
   });
-  await mkdir12(path31.dirname(workflow), { recursive: true });
-  await writeFile20(workflow, text3);
-  if (releaseText) await writeFile20(releaseText.file, releaseText.text);
+  try {
+    await mkdir12(path31.dirname(workflow), { recursive: true });
+    await writeFile20(workflow, text3);
+    if (releaseText) await writeFile20(releaseText.file, releaseText.text);
+  } catch (e) {
+    if (made) await rm6(made.out, { force: true });
+    throw e;
+  }
   const relRelease = path31.relative(io.cwd, loaded2.releasePath ?? "");
   const pinned = ref !== ACTION_REF_PLACEHOLDER;
   if (json) {
@@ -50536,7 +50844,7 @@ async function ciInit(a, io) {
       )
     );
   out.push(
-    `${n++}. Create the release environment, limited to v* tags:`,
+    `${n++}. Create the release environment, limited to v* tags (skip the first command if it exists: it can reset its reviewers):`,
     "   gh api -X PUT repos/{owner}/{repo}/environments/release -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true' --silent",
     "   gh api -X POST repos/{owner}/{repo}/environments/release/deployment-branch-policies -f 'name=v*' -f type=tag --silent"
   );
@@ -51285,7 +51593,7 @@ import {
   mkdir as mkdir13,
   readdir as readdir11,
   readFile as readFile25,
-  rm as rm6,
+  rm as rm7,
   rmdir as rmdir2,
   stat as stat10,
   writeFile as writeFile21
@@ -52498,7 +52806,7 @@ async function clearOut(dir) {
     if (typeof rel !== "string" || rel.startsWith("/") || rel.split("/").includes(".."))
       continue;
     const p = path33.join(dir, ...rel.split("/"));
-    await rm6(p, { force: true });
+    await rm7(p, { force: true });
     for (let d = path33.dirname(p); d.startsWith(dir) && d !== dir; d = path33.dirname(d))
       dirs.add(d);
   }

@@ -6908,6 +6908,16 @@ msgstr "需要登录"
 msgid "core.codes.sign_in_required.message"
 msgstr "请在应用中登录你的Polaris Locker账户，然后重试。"
 
+#. Not added
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.title"
+msgstr "未添加"
+
+#. This license wasn't added to your account. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.message"
+msgstr "此许可证未添加到你的账户。未做任何更改。"
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"
@@ -7117,6 +7127,16 @@ msgstr "密钥已无剩余输入次数"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
 msgstr "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
+
+#. License in another account
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.title"
+msgstr "许可证在另一个账户中"
+
+#. This license is already in another Polaris Locker account. A license never moves by its key.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.message"
+msgstr "此许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。"
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

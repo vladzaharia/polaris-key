@@ -87,7 +87,10 @@ import {
   type CommerceStore,
   type DeviceInfo,
   type DeviceSignIn,
+  type AttachResult,
   type DownloadUrlOptions,
+  type KeyActivation,
+  type SignOutResult,
   type FeedKind,
   type FeedUrl,
   type FeedUrlOptions,
@@ -289,8 +292,28 @@ export class LocalAdapter implements PolarisAdapter {
     throw dial("Activating a key");
   }
 
+  async activateWithKey(_key: string): Promise<KeyActivation> {
+    throw dial("Activating a key");
+  }
+
+  async subject(): Promise<string | null> {
+    throw dial("The account");
+  }
+
+  async attach(_opts: { confirm: boolean }): Promise<AttachResult> {
+    throw dial("Adding a licence to an account");
+  }
+
+  async openAccount(): Promise<void> {
+    throw dial("The account page");
+  }
+
+  onBeforeSignOut(_hook: () => Promise<void> | void): () => void {
+    throw dial("Signing out");
+  }
+
   /** The licence state is fixed, so there is nothing to wipe: said, not silently skipped. */
-  async signOut(): Promise<void> {
+  async signOut(): Promise<SignOutResult> {
     throw new PolarisError(
       "local-only",
       "This adapter's licence state is fixed; there is nothing to sign out of.",

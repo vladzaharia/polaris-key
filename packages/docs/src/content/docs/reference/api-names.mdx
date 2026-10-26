@@ -155,7 +155,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `license.activateWithKey` | `license.activateWithKey` | `usePolarisKey().submitKey` (planned: I-10a) | `license.activate_with_key` | `license.activateWithKey` | `license.activateWithKey` | `license.activate_with_key` | `license.activate` |
+| `license.activateWithKey` | `license.activateWithKey` | `usePolarisKey().activateWithKey` | `license.activate_with_key` | `license.activateWithKey` | `license.activateWithKey` | `license.activate_with_key` | `license.activate` |
 | `license.term` | reserved for LX-19 | | | | | | `license.entitlements` |
 | `license.activation` | `license.activation` | — | `license.activation` | `license.activation` | `license.activation` | `license.activation` | — |
 | `license.licenseInfo` | `license.licenseInfo` | — | `license.license_info` | `license.licenseInfo` | `license.licenseInfo` | — | — |
@@ -184,9 +184,21 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `identity.signIn` | reserved for I-10a | | | | | | `identity.oidc` |
-| `identity.subject` | reserved for I-10a | | | | | | `identity.account` |
+| `identity.signIn` | `identity.signIn` | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.subject` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.account` |
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | planned (I-10b) | `identity.sign_out` | `identity.account` |
+| `identity.signIn.start` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.session.reopen` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.session.cancel` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.session.wait` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.session.complete` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.redirect.web` |
+| `identity.choice.licenses` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.choice.devices` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.choice.complete` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.choice.cancel` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.useLicenseChoice` | — | planned (I-10a) | — | — | — | — | `identity.choice` |
+| `identity.attachLicense` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | `attach` (planned: I-10b) | `identity.attach` |
+| `identity.openAccount` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.account` |
 | `identity.current` | `identity.current` | — | `identity.current` | `identity.current` | — | `identity.current` | — |
 | `identity.forget` | `identity.forget` | — | — | — | — | — | — |
 | `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | — |

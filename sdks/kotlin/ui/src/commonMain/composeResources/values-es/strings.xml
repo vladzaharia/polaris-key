@@ -2663,6 +2663,10 @@
     <string name="core_codes_sign_in_required_title">Es necesario iniciar sesión</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_message">Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_title">No se añadió</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_message">Esta licencia no se añadió a tu cuenta. No ha cambiado nada.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">Licencia activa</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2747,6 +2751,10 @@
     <string name="core_activation_key_entry_limit_title">No quedan usos de la clave</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_message">A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_title">Licencia en otra cuenta</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_message">Esta licencia ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activación rechazada</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

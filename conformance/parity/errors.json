@@ -1078,6 +1078,12 @@
       "description": "An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8)."
     },
     {
+      "code": "attach-declined",
+      "kind": "client",
+      "service": "identity",
+      "description": "`identity.attach` ended without attaching the device's licence because the user declined the preview (WIRE-CONTRACT-V4 §12.3, `confirm: false` writes nothing). Not an error on the wire: the SDK keeps its state. The Worker's own refusals (`account_required`, `license_owned`, `license_email_bound`) keep their wire codes."
+    },
+    {
       "code": "license_required",
       "kind": "backend",
       "service": "license",

@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(183 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(184 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -182,6 +182,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5), or a delegated release whose delegation a verified revocation names (detail `delegation`, plans/P4-19.md §2.6). | [Help](/docs/help/messages/downloads-and-updates/#pack-revoked) |
 | `pack-not-data-only` | `update` | A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file. | [Help](/docs/help/messages/downloads-and-updates/#pack-not-data-only) |
 | `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). | developer only |
+| `attach-declined` | `identity` | `identity.attach` ended without attaching the device's licence because the user declined the preview (WIRE-CONTRACT-V4 §12.3, `confirm: false` writes nothing). Not an error on the wire: the SDK keeps its state. The Worker's own refusals (`account_required`, `license_owned`, `license_email_bound`) keep their wire codes. | developer only |
 
 ## Backend codes (`conformance/parity/errors.json`)
 

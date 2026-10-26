@@ -81,9 +81,6 @@
     "packages/admin/src/lib/actions.ts": {
       "knip:exports": 1
     },
-    "packages/admin/src/lib/format.ts": {
-      "knip:exports": 1
-    },
     "packages/admin/src/lib/labels.ts": {
       "knip:duplicates": 1
     },

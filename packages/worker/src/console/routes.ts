@@ -447,6 +447,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["POST"], `${P}/config/mint/:id/approve`, "config", product, {
     stepUp: true,
   }),
+  // The CI readiness fix writes an environment and a tag ruleset on the customer's repository
+  // (Administration write): a sign-in proven in the last five minutes, ahead of Release's prefix.
+  ...rows(["POST"], `${P}/release/ci-readiness/fix`, "ship", product, {
+    stepUp: true,
+  }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
   // A-20.4: the channels read model (Distribution + Commerce facets), composed in the console layer.
   ...rows(["GET"], `${P}/distribution/channels`, "ship", product),

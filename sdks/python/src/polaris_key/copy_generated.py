@@ -219,6 +219,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "pack-revoked": CopyEntry("Content withdrawn", "This content was withdrawn by its developer and can't be used."),
         "pack-not-data-only": CopyEntry("Content refused", "Some content was refused because it contains files a data pack may not hold."),
         "marker-rejected": CopyEntry("App build problem", "This build's built-in content isn't valid. Reinstall the app or contact the developer."),
+        "attach-declined": CopyEntry("Not added", "This license wasn't added to your account. Nothing changed."),
         "license_required": CopyEntry("License needed", "Activate the app, then try again."),
         "license_invalid": CopyEntry("License not accepted", "Your license couldn't be verified. Reconnect the app, then try again."),
         "license_stale": CopyEntry("License needs refreshing", "Connect to the internet so the app can refresh your license, then try again."),
@@ -258,6 +259,7 @@ COPY_ACTIVATION: Mapping[str, CopyEntry] = MappingProxyType(
         "unauthorized": CopyEntry("Key not accepted", "That license key wasn't accepted. Check it and try again."),
         "enroll-disabled": CopyEntry("No free license", "This app doesn't offer a free license. Enter a license key or sign in."),
         "key-entry-limit": CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),
+        "license-owned": CopyEntry("License in another account", "This license is already in another Polaris Locker account. A license never moves by its key."),
         "refused": CopyEntry("Activation refused", "Activation was refused ({code})."),
         "error": CopyEntry("Activation failed", "Activation didn't finish. Check your connection and try again."),
     }

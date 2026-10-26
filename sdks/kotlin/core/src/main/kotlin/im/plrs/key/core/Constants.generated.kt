@@ -192,6 +192,7 @@ public object ErrorCode {
     public const val packRevoked: String = "pack-revoked"
     public const val packNotDataOnly: String = "pack-not-data-only"
     public const val markerRejected: String = "marker-rejected"
+    public const val attachDeclined: String = "attach-declined"
     public const val licenseRequired: String = "license_required"
     public const val licenseInvalid: String = "license_invalid"
     public const val licenseStale: String = "license_stale"
@@ -379,6 +380,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "attach-declined",
     "license_required",
     "license_invalid",
     "license_stale",
@@ -566,6 +568,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "pack-revoked" to "client",
     "pack-not-data-only" to "client",
     "marker-rejected" to "client",
+    "attach-declined" to "client",
     "license_required" to "backend",
     "license_invalid" to "backend",
     "license_stale" to "backend",
@@ -1337,6 +1340,7 @@ public val ACTIVATION_RESULT_VALUES: List<String> = listOf(
     "unauthorized",
     "enroll-disabled",
     "key-entry-limit",
+    "license-owned",
     "refused",
     "error",
 )
@@ -1402,7 +1406,7 @@ public val HEADER_NAME_VALUES: List<String> = listOf(
 )
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
-public const val PROTOCOL_VERSION: Int = 4
+public const val PROTOCOL_VERSION: Int = 5
 
 /** `corpusVersion` of conformance/corpus/v2/cases.json. */
 public const val CORPUS_VERSION: Int = 2
@@ -1769,7 +1773,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
     "identity.devicelabel" to CapabilityRow("implemented", "identity", listOf()),
     "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
-    "identity.keyentry" to CapabilityRow("planned", "identity", listOf()),
+    "identity.keyentry" to CapabilityRow("implemented", "identity", listOf()),
     "identity.attach" to CapabilityRow("planned", "identity", listOf()),
     "identity.account" to CapabilityRow("planned", "identity", listOf()),
     "identity.redirect.web" to CapabilityRow("planned", "identity", listOf()),
@@ -1841,4 +1845,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "b6cfa66fb2e8e6baef197d9b9c5f9bc72d14f852c642702cdb2d8c4f2a59c91f"
+public const val CAPABILITY_DIGEST: String = "91d6522e990e0521770bec0f7bc7366c2b85c333c918b0d5f589cd0979bee8c9"

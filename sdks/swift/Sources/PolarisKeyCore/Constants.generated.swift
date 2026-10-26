@@ -190,6 +190,7 @@ public enum ErrorCode {
     public static let packRevoked = "pack-revoked"
     public static let packNotDataOnly = "pack-not-data-only"
     public static let markerRejected = "marker-rejected"
+    public static let attachDeclined = "attach-declined"
     public static let licenseRequired = "license_required"
     public static let licenseInvalid = "license_invalid"
     public static let licenseStale = "license_stale"
@@ -377,6 +378,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "attach-declined",
     "license_required",
     "license_invalid",
     "license_stale",
@@ -564,6 +566,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "pack-revoked": "client",
     "pack-not-data-only": "client",
     "marker-rejected": "client",
+    "attach-declined": "client",
     "license_required": "backend",
     "license_invalid": "backend",
     "license_stale": "backend",
@@ -1297,6 +1300,7 @@ public let ACTIVATION_RESULT_VALUES: [String] = [
     "unauthorized",
     "enroll-disabled",
     "key-entry-limit",
+    "license-owned",
     "refused",
     "error",
 ]
@@ -1362,7 +1366,7 @@ public let HEADER_NAME_VALUES: [String] = [
 ]
 
 /// The wire contract version (`@polaris-key/protocol/core`).
-public let PROTOCOL_VERSION = 4
+public let PROTOCOL_VERSION = 5
 
 /// `corpusVersion` of conformance/corpus/v2/cases.json.
 public let CORPUS_VERSION = 2
@@ -1747,7 +1751,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
-    "identity.keyentry": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.keyentry": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.attach": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.account": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "planned", service: "identity", na: []),
@@ -1819,4 +1823,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "a94088bf20773e53c1f99500fb92d1561b06fe44864e7b0ea1fd1ab59f892818"
+public let CAPABILITY_DIGEST = "0b041c180e0454d13fd70c2ed3a23d93379822b0e3f880cce4eda62643ffa088"

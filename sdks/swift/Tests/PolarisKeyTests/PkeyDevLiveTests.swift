@@ -134,7 +134,7 @@ final class PkeyDevLiveTests: XCTestCase {
             defer { recorder.stop() }
 
             let result = await client.license.activateWithKey(try env.key(name))
-            guard case .ok(let token, let schemaVersion) = result else {
+            guard case .ok(let token, let schemaVersion, _) = result else {
                 return XCTFail("\(name): expected an activation, got \(result)")
             }
             XCTAssertTrue(token.hasPrefix("pkeyt_"), "\(name): a device token")

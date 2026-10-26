@@ -1,12 +1,12 @@
-// @polaris-key/protocol/core — wire contract v4 Core substrate types: the shared document
+// @polaris-key/protocol/core — wire contract v5 Core substrate types: the shared document
 // envelope, device principal, telemetry, errors, and transport headers. Types only, no
-// runtime, no crypto. Normative source: docs/security/WIRE-CONTRACT-V4.md. Any field drift
+// runtime, no crypto. Normative source: docs/security/WIRE-CONTRACT-V5.md. Any field drift
 // is wire-breaking: bump PROTOCOL_VERSION and regenerate conformance/corpus/v2.
 //
 // Times are epoch SECONDS (matching the JOSE world the Worker signs in), never millis.
 
 /** Bumped on any wire-breaking change to the document shapes or HTTP contract. */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** The largest value an integer claim may carry, 2^53 − 1 (WIRE-CONTRACT-V4 §3). An integer
  *  claim is a plain integer token (`-?(0|[1-9][0-9]*)`, no fraction, no exponent) from the

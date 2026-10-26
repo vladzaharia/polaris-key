@@ -116,6 +116,8 @@ public fun PolarisSettingsScreen(
     onReset: ((String) -> Unit)? = null,
     /** The host's handler for a release-channel pick; without it the channel choice draws only when locked (with its reason). */
     onChannel: ((String) -> Unit)? = null,
+    /** False inside the account screen, whose header already says the status and the holder. */
+    showStatus: Boolean = true,
 ) {
     val copy = PolarisTheme.copy
     if (ui.loading) {
@@ -140,9 +142,9 @@ public fun PolarisSettingsScreen(
                 PolarisInlineNotice(copy.settingsFailureMessage(it))
                 Spacer(Modifier.height(PolarisSpace.controls))
             }
-            val license = ui.license
+            val license = ui.license?.takeIf { showStatus || it.entitlements.any { n -> entitlementLabel(n) != null } }
             val licenseCard: @Composable (Modifier) -> Unit = { m ->
-                if (license != null) PolarisSection(null, m) { PolarisLicenseRow(license, entitlementLabel) }
+                if (license != null) PolarisSection(null, m) { PolarisLicenseRow(license, entitlementLabel, showStatus) }
             }
             val valuesCard: @Composable (Modifier) -> Unit = { m ->
                 Column(m, verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
@@ -250,15 +252,17 @@ public fun PolarisEntitlementBadge(status: LicenseStatus, modifier: Modifier = M
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun PolarisLicenseRow(license: PolarisLicenseSummary, entitlementLabel: (String) -> String? = { null }) {
+internal fun PolarisLicenseRow(license: PolarisLicenseSummary, entitlementLabel: (String) -> String? = { null }, showStatus: Boolean = true) {
     val labelled = license.entitlements.mapNotNull(entitlementLabel)
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).semantics(mergeDescendants = true) {},
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PolarisEntitlementBadge(license.status)
-        license.holder?.let { holder ->
-            Text(holder, style = MaterialTheme.typography.bodyLarge)
+        if (showStatus) {
+            PolarisEntitlementBadge(license.status)
+            license.holder?.let { holder ->
+                Text(holder, style = MaterialTheme.typography.bodyLarge)
+            }
         }
         if (labelled.isNotEmpty()) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

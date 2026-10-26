@@ -206,8 +206,8 @@
       "wp": "I-10b"
     },
     "identity.keyentry": {
-      "status": "planned",
-      "wp": "PX-W9b"
+      "status": "implemented",
+      "note": "I-10b.14: ActivationResult.Ok.keyEntries, KeyEntryLimit(manageUrl, keyEntries) and LicenseOwned(signInUrl); keyentry-* transcripts replayed."
     },
     "release.changelog": {
       "status": "implemented"
@@ -411,7 +411,7 @@
     },
     "ui.kit.keyentry": {
       "status": "planned",
-      "wp": "PX-W9b"
+      "wp": "I-10b"
     },
     "ui.cli": {
       "status": "na",

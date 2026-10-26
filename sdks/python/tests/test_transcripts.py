@@ -45,6 +45,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 # @pkey-feature license.manage
+# @pkey-feature identity.keyentry
 # @pkey-feature core.presentation ui.cli.portal
 
 from __future__ import annotations
@@ -215,8 +216,16 @@ def _act(
         if r.kind != "ok":
             out["code"] = r.code
         # PX-W8: the refusal link, exactly as served; None when the result carries none.
-        if r.kind == "device-limit":
+        if r.kind in ("device-limit", "key-entry-limit"):
             out["manageUrl"] = r.manage_url
+        # I-10a: the key-entry count the answer carried; None with Identity off.
+        entries = getattr(r, "key_entries", None)
+        out["keyEntries"] = None if entries is None else {"used": entries.used, "limit": entries.limit}
+        if r.kind == "license-owned":
+            # The recorded vocabulary (keyentry-owned) names this refusal ``refused`` with the
+            # wire code; the typed kind carries the sign-in link.
+            out["result"] = "refused"
+            out["signInUrl"] = r.sign_in_url
     elif action == "boot":
         # The shell stage's discovery runs even though the host pinned its services
         # (``initial.services``): the recording's boot loads discovery first.

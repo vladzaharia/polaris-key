@@ -268,11 +268,28 @@ export class ReplayServer {
       out.push("body: expected a JSON body, got none");
     } else {
       let parsed: unknown;
-      try {
-        parsed = JSON.parse(req.body!);
-      } catch {
-        out.push("body: not JSON");
-        return out;
+      const form = /^application\/x-www-form-urlencoded\b/i.test(
+        expected.headers["content-type"] ?? "",
+      );
+      if (form) {
+        // A form body (I-08's token request): compared as the object its names and values make.
+        // A repeated name is a failure here, as it is at the Worker.
+        const fields: Record<string, string> = {};
+        for (const pair of req.body!.split("&")) {
+          const eq = pair.indexOf("=");
+          const dec = (v: string) => decodeURIComponent(v.replace(/\+/g, " "));
+          const name = dec(eq === -1 ? pair : pair.slice(0, eq));
+          if (name in fields) out.push(`body: repeated field "${name}"`);
+          fields[name] = dec(eq === -1 ? "" : pair.slice(eq + 1));
+        }
+        parsed = fields;
+      } else {
+        try {
+          parsed = JSON.parse(req.body!);
+        } catch {
+          out.push("body: not JSON");
+          return out;
+        }
       }
       out.push(
         ...bodyProblems(expected.body.json, parsed, expected.body.match).map(

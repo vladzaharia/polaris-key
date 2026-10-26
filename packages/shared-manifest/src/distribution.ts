@@ -31,6 +31,7 @@ import {
   type ValidationMessage,
 } from "./index.js";
 import { CHANNELS, type ChannelEntry } from "./channels.generated.js";
+import { LISTING_LIMITS } from "./listingLimits.js";
 import {
   assetRefProblem,
   assetRefUrl,
@@ -312,8 +313,9 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
 
 /** A numeric store id: a positive integer, or the same as a string of digits (no leading 0). */
 export const NUMERIC_ID_PATTERN = /^[1-9][0-9]{0,19}$/;
-const BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
-const MAX_BUNDLE_ID_LENGTH = 155;
+/** A reverse-DNS bundle id; also the shape of `identity.platformSignIn.apple.bundleIds`. */
+export const BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+export const MAX_BUNDLE_ID_LENGTH = 155;
 /** The join code of a public TestFlight link (P3-03, from which the feed composes `listingUrl`). */
 export const TESTFLIGHT_PUBLIC_LINK_PATTERN = /^[A-Za-z0-9]{1,32}$/;
 const MARKETPLACE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -730,6 +732,33 @@ function listingValid(raw: unknown): boolean {
   return listingRefProblems(r).length === 0;
 }
 
+/** The text fields whose manifest limit (200) is looser than the listing model's own. */
+const MODEL_LIMITED_FIELDS = ["name", "subtitle", "developerName"] as const;
+
+/**
+ * `listing_exceeds_model_limit` (A-27.5), a warning: the field is valid for the manifest but longer
+ * than the listing model keeps, so an import of it would be refused (never cut).
+ */
+function warnListingLimits(
+  warnings: ValidationMessage[],
+  raw: Record<string, unknown>,
+  at: string,
+  label: string,
+): void {
+  for (const field of MODEL_LIMITED_FIELDS) {
+    const v = raw[field];
+    const limit = LISTING_LIMITS[field];
+    if (typeof v !== "string" || v.length <= limit) continue;
+    add(
+      warnings,
+      "distribution",
+      `${at}/${field}`,
+      "listing_exceeds_model_limit",
+      `${label}.${field} is ${v.length} characters; the listing model allows ${limit}, so it will not be imported as it is. Shorten it to ${limit} or fewer.`,
+    );
+  }
+}
+
 /**
  * Report a listing's problems under `at` (`/listing` or `/outlets/<id>/listing`): its shape
  * (`invalid_listing`), each malformed art ref (`invalid_asset_ref`), an image slot declared
@@ -755,6 +784,7 @@ function reportListing(
     );
   }
   if (!isRecord(raw)) return;
+  if (warnings) warnListingLimits(warnings, raw, at, label);
   for (const [below, field, refProblem] of listingRefProblems(raw)) {
     add(
       errors,

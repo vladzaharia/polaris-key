@@ -1,5 +1,5 @@
 // @pkey-feature license.entitlements license.channels license.activate license.enroll license.deactivate license.refusals
-// @pkey-feature license.manage
+// @pkey-feature license.manage identity.keyentry
 //
 // The licence client over a signed document it verified itself: entitlements, the profile and the
 // licence id are read off the VERIFIED licence document only; `entitledChannels()` is the
@@ -170,6 +170,39 @@ class LicenseClientTest {
         )
     }
 
+    // @pkey-feature identity.keyentry
+    /** I-10b.14: ok carries keyEntries or none; key-entry-limit and license-owned are typed, keep
+     *  their validated links, and are never an auth failure. */
+    @Test
+    fun keyEntryOutcomesAreTyped() {
+        val activate = "https://key.plrs.im/activate?product=djdl"
+        val signIn = "https://key.plrs.im/signin?product=djdl"
+        assertEquals(
+            ActivationResult.Ok("pkeyt_new", 1, KeyEntries(1, 2)),
+            activateAgainst(respond(200, """{"token":"pkeyt_new","schemaVersion":1,"keyEntries":{"used":1,"limit":2}}""")).first,
+        )
+        assertNull((activateAgainst(respond(200, """{"token":"pkeyt_new","schemaVersion":1}""")).first as ActivationResult.Ok).keyEntries)
+        assertNull(
+            (activateAgainst(respond(200, """{"token":"pkeyt_new","schemaVersion":1,"keyEntries":{"used":-1,"limit":2}}""")).first as ActivationResult.Ok).keyEntries,
+        )
+        val limit = activateAgainst(
+            respond(403, """{"error":"key_entry_limit","manageUrl":"$activate","keyEntries":{"used":2,"limit":2}}"""),
+        ).first
+        assertEquals(ActivationResult.KeyEntryLimit(activate, KeyEntries(2, 2)), limit)
+        assertEquals(ErrorCode.keyEntryLimit, limit.code)
+        assertEquals(
+            ActivationResult.KeyEntryLimit(null, null),
+            activateAgainst(respond(403, """{"error":"key_entry_limit","manageUrl":"javascript:x","keyEntries":"2"}""")).first,
+        )
+        val owned = activateAgainst(respond(403, """{"error":"license_owned","signInUrl":"$signIn"}""")).first
+        assertEquals(ActivationResult.LicenseOwned(signIn), owned)
+        assertEquals(ErrorCode.licenseOwned, owned.code)
+        assertEquals(
+            ActivationResult.LicenseOwned(null),
+            activateAgainst(respond(403, """{"error":"license_owned","signInUrl":"javascript:x"}""")).first,
+        )
+    }
+
     @Test
     fun anOptedOutFingerprintSendsTheLabelAlone() {
         val (_, request, _) = activateAgainst(
@@ -223,9 +256,9 @@ class LicenseClientTest {
         assertEquals(ActivationResult.RateLimited(null), map(429, """{"error":"rate_limited"}"""))
         assertEquals(ActivationResult.EnrollDisabled, map(404, """{"error":"enroll_disabled","message":"enrollment is disabled"}"""))
         assertEquals(ActivationResult.Unauthorized, map(401, """{"error":"unauthorized"}"""))
-        // Unknown 403s keep the server's code: I-09's additions arrive as a pure addition later.
+        // Unknown 403s keep the server's code.
         assertEquals(ActivationResult.Refused("registration_closed", 403, null), map(403, """{"error":{"code":"registration_closed"}}"""))
-        assertEquals(ActivationResult.Refused("license_owned", 403, "sign in"), map(403, """{"error":"license_owned","message":"sign in"}"""))
+        assertEquals(ActivationResult.LicenseOwned(null), map(403, """{"error":"license_owned","message":"sign in"}"""))
         assertEquals(ActivationResult.Refused(ErrorCode.badRequest, 400, "missing device id"), map(400, """{"error":"bad_request","message":"missing device id"}"""))
         assertEquals(ActivationResult.Refused(ErrorCode.unknown, 403, null), map(403, "not json"))
         // A 5xx is `server-error`, a transport failure `network`; neither leaks the body as copy.

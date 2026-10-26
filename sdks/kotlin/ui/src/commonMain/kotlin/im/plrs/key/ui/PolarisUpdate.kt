@@ -51,6 +51,11 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.window.Dialog
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
@@ -60,6 +65,7 @@ public fun PolarisCopy.updateBannerText(ui: PolarisUpdateUi): String {
     val version = ui.version
     return when {
         ui.kind == PolarisUpdateUi.Kind.Restart && version != null -> format(updateRestartBody, version)
+        ui.kind == PolarisUpdateUi.Kind.Restart -> updateRestartGeneric
         version != null -> format(updateAvailable, version)
         else -> updateAvailableGeneric
     }
@@ -90,6 +96,7 @@ public fun PolarisUpdateBanner(
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Column(
                 modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                     .widthIn(max = PolarisMaxContentWidth * 1.5f)
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),

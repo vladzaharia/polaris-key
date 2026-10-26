@@ -142,10 +142,13 @@ export {
   bodyCode,
   classifyActivation,
   networkOutcome,
+  readKeyEntries,
   retryAfterSeconds,
   type ActivationKind,
   type ActivationOutcome,
+  type KeyEntries,
 } from "./activation.js";
+export type { AttachResult, KeyActivation, SignOutResult } from "./types.js";
 export { activationError } from "./activationError.js";
 export {
   activationMessage,

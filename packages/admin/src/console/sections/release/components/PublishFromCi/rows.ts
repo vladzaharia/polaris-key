@@ -37,7 +37,7 @@ const MISSING: Record<CiReadinessCheck["id"], string> = {
   "release-manifest": "Add it in the setup pull request",
   workflow: "Added by the setup pull request",
   environment: "Limited to v* tags",
-  ruleset: "Blocks deleting or moving a release tag",
+  ruleset: "Only admins create, delete or move a release tag",
   publisher: "Lets the workflow publish without a token",
   "distribution-pr": "Add distribution:pr to the publisher",
 };

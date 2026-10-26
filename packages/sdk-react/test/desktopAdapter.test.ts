@@ -223,7 +223,12 @@ describe("DesktopAdapter — submitKey", () => {
   });
 
   it.each([
-    [{ kind: "refused", code: "license_owned" }, "refused", "license_owned"],
+    [
+      { kind: "refused", code: "license_owned" },
+      "licenseOwned",
+      "license_owned",
+    ],
+    [{ kind: "refused", code: "no_such_code" }, "refused", "no_such_code"],
     [
       { kind: "refused", code: "enroll_claimed" },
       "enrollClaimed",

@@ -10,6 +10,8 @@ from .client import LicenseAcquiredListener, LicenseClient
 from .endpoints import (
     LICENSE_DOCUMENT_PATH,
     ActivationDeviceLimit,
+    ActivationKeyEntryLimit,
+    ActivationLicenseOwned,
     ActivationEnrollDisabled,
     ActivationError,
     ActivationEnrollClaimed,
@@ -43,6 +45,8 @@ __all__ = [
     "ActivationResult",
     "ActivationOk",
     "ActivationDeviceLimit",
+    "ActivationKeyEntryLimit",
+    "ActivationLicenseOwned",
     "ActivationUnauthorized",
     "ActivationFingerprintRequired",
     "ActivationHardwareMismatch",

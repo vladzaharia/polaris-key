@@ -64,7 +64,7 @@ info:
   version: "3.0.0"
   description: >
     Per-product licensing, managed config, releases, distribution, updates, and identity over wire
-    contract v4 (PROTOCOL_VERSION 4). Every route is scoped by a product slug; signed
+    contract v5 (PROTOCOL_VERSION 5). Every route is scoped by a product slug; signed
     documents are compact EdDSA JWS with typ-separated document kinds; clients verify
     against pinned keys plus a signed trust manifest.
   contact:
@@ -182,7 +182,7 @@ paths:
                   summary: A product running every service (test/surfaces/surfaces.test.ts)
                   value:
                     version: 2
-                    protocolVersion: 4
+                    protocolVersion: 5
                     schemaVersion: 1
                     product: djdl
                     slug: djdl
@@ -16107,7 +16107,8 @@ paths:
         requirement: `app` (the GitHub App is installed on it), `release-manifest` (`.pkey/` reads
         and validates at the default branch head), `workflow` (the trusted publisher's workflow
         file, `.github/workflows/release.yml` by default, exists), `environment` (the publisher's
-        environment, `release` by default, exists), `ruleset` (an active tag ruleset covers
+        environment, `release` by default, exists and limits deployments to a `v*` tag policy;
+        `environmentName` says which), `ruleset` (an active tag ruleset covers
         `refs/tags/v*`), `publisher` (the trusted publisher policy exists; `detail` names its
         workflow and environment) and, only when a Homebrew or Scoop outlet is declared,
         `distribution-pr` (the policy holds `distribution:pr`). A check is `ok`, `missing`, or
@@ -16141,13 +16142,15 @@ paths:
         A-32.6 (FLOWS.md W9). For each requested check that `ci-readiness` reports `missing`,
         writes it through the GitHub App: `environment` creates `release` limited to `v*` tags,
         `ruleset` creates (or, when Polaris Key's own ruleset exists, updates) a tag ruleset on
-        `refs/tags/v*` that blocks deletion, update and non-fast-forward, active, with repository
-        admins able to bypass. A check that is `ok` is left alone (`ok`); one readiness could not
+        `refs/tags/v*` that blocks creation, deletion, update and non-fast-forward, active, with
+        repository admins able to bypass. Only the environment the manifest names is written, and
+        an existing environment is never rewritten (a missing tag policy is added alone). A check that is `ok` is left alone (`ok`); one readiness could not
         read is `skipped`. Nothing is written unless the installation has Administration: write.
         Refused with 409 `reason: app_permission` and `permission: "administration: write"`, or
         409 `app_not_installed`; 502 `github` when GitHub fails. `results` holds what was written
         before a refusal. Each write is audited (`release.ci.environment`, `release.ci.ruleset`).
-        Area `ship`; admin session cookie, write access to the product.
+        Area `ship`; admin session cookie, write access to the product, and a recent sign-in
+        (403 `step_up_required` otherwise).
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -23277,8 +23280,12 @@ components:
           items: { $ref: "#/components/schemas/AdminCiFixOutcome" }
     AdminCiReadiness:
       type: object
-      required: [repository, capabilities, checks, workflowPreview]
+      required:
+        [repository, capabilities, environmentName, checks, workflowPreview]
       properties:
+        environmentName:
+          type: string
+          description: The environment the `environment` check read.
         repository:
           type: [string, "null"]
           description: "`owner/repo`; null while the product has no linked repository."
@@ -26531,7 +26538,7 @@ components:
         ]
       properties:
         version: { type: integer, const: 2 }
-        protocolVersion: { type: integer, const: 4 }
+        protocolVersion: { type: integer, const: 5 }
         schemaVersion: { type: integer }
         product: { type: string }
         slug: { type: string }

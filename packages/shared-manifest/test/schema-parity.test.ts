@@ -169,6 +169,15 @@ function base(): Docs {
         keyEntry: { limit: 10, claimByKey: false },
         terms: { version: "2026-10", url: "https://acme.example/terms" },
         redirectPaths: ["/auth/callback"],
+        // I-42.1: the native audiences and the nearby switch.
+        platformSignIn: {
+          google: {
+            serverClientId: "1234-web.apps.googleusercontent.com",
+            clientIds: ["1234-and.apps.googleusercontent.com"],
+          },
+          apple: { teamId: "ABCDE12345", bundleIds: ["com.acme.app.mac"] },
+        },
+        nearby: true,
       },
       provisioning: [
         {
@@ -1268,6 +1277,97 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) =>
       (p(d).identity.redirectPaths = ["/auth/callback", "/auth/callback"]),
+  },
+  // I-42.1: identity.platformSignIn and identity.nearby (plans/CC-01-auto-sign-in.md §2.6).
+  {
+    code: "invalid_identity_platform_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn = ["google"]),
+  },
+  {
+    code: "invalid_identity_platform_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.facebook = {}),
+  },
+  {
+    code: "invalid_identity_platform_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.google.extra = 1),
+  },
+  {
+    code: "invalid_identity_platform_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.apple = "ABCDE12345"),
+  },
+  {
+    code: "invalid_google_client_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.platformSignIn.google.serverClientId = "web-client"),
+  },
+  {
+    code: "invalid_google_client_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.platformSignIn.google.clientIds = [
+        "1234-and.apps.example.com",
+      ]),
+  },
+  {
+    code: "invalid_google_client_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.platformSignIn.google.clientIds = Array.from(
+        { length: 9 },
+        (_, i) => `${i}-and.apps.googleusercontent.com`,
+      )),
+  },
+  {
+    code: "invalid_apple_team_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.apple.teamId = "abcde12345"),
+  },
+  {
+    code: "invalid_apple_bundle_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.platformSignIn.apple.bundleIds = ["nodots"]),
+  },
+  {
+    code: "invalid_apple_bundle_id",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.platformSignIn.apple.bundleIds = Array.from(
+        { length: 17 },
+        (_, i) => `com.acme.app${i}`,
+      )),
+  },
+  {
+    code: "invalid_identity_nearby",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nearby = "yes"),
+  },
+  {
+    code: "google_client_ids_without_server",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => delete p(d).identity.platformSignIn.google.serverClientId,
+  },
+  {
+    code: "apple_sign_in_without_team",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => delete p(d).identity.platformSignIn.apple.teamId,
   },
   {
     // A redirect URI is an origin from web.origins plus a path: paths with no origin match nothing.
@@ -3213,6 +3313,14 @@ const MUTATIONS: Mutation[] = [
     file: "distribution",
     schema: "accepts",
     mutate: (d) => (outlet(d, "steam").depots["acme.nope"] = "482"),
+  },
+  {
+    // A-27.5, a warning: the manifest allows 200 characters, the listing model 30 (name,
+    // subtitle) and 100 (developerName). Length limits the schema does not carry, so it accepts.
+    code: "listing_exceeds_model_limit",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (dist(d).listing.name = "N".repeat(31)),
   },
   {
     code: "invalid_listing",

@@ -60,6 +60,39 @@ export function readManageUrl(body: unknown): string | undefined {
   return undefined;
 }
 
+/** A key-entry count: `used` of an effective `limit` (WIRE-CONTRACT-V4 §12.2). */
+export interface KeyEntriesCount {
+  used: number;
+  limit: number;
+}
+
+function keyEntriesOf(v: unknown): KeyEntriesCount | undefined {
+  if (v === null || typeof v !== "object") return undefined;
+  const { used, limit } = v as Record<string, unknown>;
+  if (!Number.isSafeInteger(used) || !Number.isSafeInteger(limit))
+    return undefined;
+  const u = used as number;
+  const l = limit as number;
+  // `identity.keyEntry.limit` is 1 to 100; `used` is a count and may exceed it (a lowered limit).
+  return u >= 0 && l >= 1 && l <= 100 ? { used: u, limit: l } : undefined;
+}
+
+/**
+ * The `keyEntries` `{ used, limit }` of an activation or `key_entry_limit` body, or `undefined`
+ * (Identity off, or a malformed value: dropped, never repaired).
+ *
+ * Reads the top-level member and, failing that, one nested under `error`.
+ */
+export function readKeyEntries(body: unknown): KeyEntriesCount | undefined {
+  if (body === null || typeof body !== "object") return undefined;
+  const top = keyEntriesOf((body as Record<string, unknown>).keyEntries);
+  if (top) return top;
+  const nested = (body as Record<string, unknown>).error;
+  if (nested !== null && typeof nested === "object")
+    return keyEntriesOf((nested as Record<string, unknown>).keyEntries);
+  return undefined;
+}
+
 /**
  * The `application/x-www-form-urlencoded` byte serializer (WHATWG URL §5.2): UTF-8, then
  * `A-Z a-z 0-9 * - . _` as themselves, space as `+`, every other byte as `%XX` (upper-case).

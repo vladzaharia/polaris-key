@@ -34,7 +34,9 @@
  *
  *   1. NO URL IN THE REQUEST. The path names a product and one FIXED listing slot (`icon`,
  *      `header`, or a screenshot's position, at most `MAX_LISTING_SCREENSHOTS`); the source is
- *      the product's own stored listing (`delivery().listing()`, Distribution's `dist_listing`,
+ *      the product's own stored URL for that slot: the slot's `hosted_assets.source_ref` (a
+ *      `source_kind = 'url'` row, Core's `hostedAssetSource`, written only by the manifest pull),
+ *      else the stored listing's art (`delivery().listing()`, Distribution's `dist_listing`,
  *      written only by manifest ingest). A visitor cannot aim the fetch.
  *   2. ALLOWLISTED SOURCES ONLY. The source must be `https`, on the default port, with no
  *      credentials, on a GitHub-hosted name (`isAllowedStorageHost`: `github.com`,
@@ -88,7 +90,9 @@ import {
   PRESENTATION_HEADER_SLOTS,
   PRESENTATION_ICON_SLOTS,
   firstHostedImage,
+  hostedAssetSource,
   hostedImageOrigin,
+  listingScreenshotSlots,
   hostedImages,
 } from "../../../core/assets/hostedImages.js";
 import { getPortalProductSettings } from "./repo.js";
@@ -132,16 +136,57 @@ function mediaMaxBytes(asset: MediaAsset): number {
     : SCREENSHOT_MAX_BYTES;
 }
 
-/** The raw source a slot names in the listing (not yet checked against rule 2). */
+/** The hosted-asset slot behind each proxied slot (`screenshot-<n>` is 0-based, the slot 1-based). */
+function hostedSlot(asset: MediaAsset): string {
+  if (asset === "icon") return "listing.icon";
+  if (asset === "header") return "listing.header";
+  return `listing.screenshot:${Number(asset.slice("screenshot-".length)) + 1}`;
+}
+
+/** Every slot the proxy can serve, for the one read of `hostedAssetSource`. */
+const PROXY_SLOTS: readonly string[] = [
+  "listing.icon",
+  "listing.header",
+  ...listingScreenshotSlots(MAX_LISTING_SCREENSHOTS),
+];
+
+/** The slots' declared URLs (A-27.2: `hosted_assets.source_ref`), read once per request. */
+type HostedSources = ReadonlyMap<string, string>;
+
+function readHostedSources(db: Db, product: string): Promise<HostedSources> {
+  return hostedAssetSource(db, product, PROXY_SLOTS);
+}
+
+/**
+ * The raw source a slot names (not yet checked against rule 2): the slot's own `hosted_assets`
+ * row when it has a `url` source, else the listing's art (phase 1 of A-27, the stored listing
+ * from `delivery().listing()`: `listingImageUrl` / `listingScreenshotUrls`, HA-04). A repo-path
+ * ref has no URL in either place. `screenshot-<n>` is the n-th https screenshot, counting by
+ * position so a repo-path screenshot between two URLs is skipped as it always was.
+ */
 function slotSource(
+  hosted: HostedSources,
   listing: object | null,
   asset: MediaAsset,
 ): string | undefined {
   if (asset === "icon" || asset === "header")
-    return listingImageUrl(listing, asset);
-  return listingScreenshotUrls(listing)[
-    Number(asset.slice("screenshot-".length))
-  ];
+    return hosted.get(hostedSlot(asset)) ?? listingImageUrl(listing, asset);
+  const shots = (listing as { screenshots?: unknown } | null)?.screenshots;
+  const count = Array.isArray(shots) ? shots.length : 0;
+  const urls: string[] = [];
+  for (
+    let i = 0;
+    i < Math.min(MAX_LISTING_SCREENSHOTS, Math.max(count, 0));
+    i++
+  ) {
+    const fromRow = hosted.get(`listing.screenshot:${i + 1}`);
+    const fromListing = listingScreenshotUrls({
+      screenshots: [(shots as unknown[])[i]],
+    })[0];
+    const url = fromRow ?? fromListing;
+    if (url !== undefined) urls.push(url);
+  }
+  return urls[Number(asset.slice("screenshot-".length))];
 }
 
 /** Redirect hops followed (each re-checked against the allowlist): Core's guarded fetcher's. */
@@ -194,11 +239,14 @@ export async function mediaVersion(source: string): Promise<string> {
 
 /** The same-origin URL of a product's art (for the library), or `null` when none would serve. */
 export async function mediaUrlFor(
+  db: Db,
   product: string,
   asset: MediaAsset,
   listing: Record<string, unknown> | null,
+  preloaded?: HostedSources,
 ): Promise<string | null> {
-  const source = mediaSourceUrl(slotSource(listing, asset));
+  const hosted = preloaded ?? (await readHostedSources(db, product));
+  const source = mediaSourceUrl(slotSource(hosted, listing, asset));
   if (!source) return null;
   const v = await mediaVersion(source.toString());
   return `/media/${encodeURIComponent(product)}/${asset}?v=${v}`;
@@ -209,16 +257,23 @@ export async function mediaUrlFor(
  * (PS-04, the storefront product page). A screenshot the proxy would refuse is left out.
  */
 export async function screenshotUrlsFor(
+  db: Db,
   product: string,
   listing: Record<string, unknown> | null,
 ): Promise<string[]> {
+  const hosted = await readHostedSources(db, product);
   const out: string[] = [];
-  const count = Math.min(
-    listingScreenshotUrls(listing).length,
-    MAX_LISTING_SCREENSHOTS,
-  );
-  for (let n = 0; n < count; n++) {
-    const url = await mediaUrlFor(product, `screenshot-${n}`, listing);
+  const shots = (listing as { screenshots?: unknown } | null)?.screenshots;
+  const total = Array.isArray(shots) ? shots.length : 0;
+  // `screenshot-<n>` addresses the n-th https screenshot, so n never passes the position count.
+  for (let n = 0; n < Math.min(total, MAX_LISTING_SCREENSHOTS); n++) {
+    const url = await mediaUrlFor(
+      db,
+      product,
+      `screenshot-${n}`,
+      listing,
+      hosted,
+    );
     if (url) out.push(url);
   }
   return out;
@@ -367,7 +422,9 @@ export async function handlePortalMedia(
   if (!hooksFor) return refused();
   const delivery = hooksFor(loaded, now).delivery();
   const listing = delivery ? await delivery.listing() : null;
-  const source = mediaSourceUrl(slotSource(listing, asset));
+  const source = mediaSourceUrl(
+    slotSource(await readHostedSources(db, product), listing, asset),
+  );
   if (!source) return refused();
 
   const version = await mediaVersion(source.toString());

@@ -75,7 +75,7 @@
       "jscpd:duplicate": 23
     },
     "packages/admin/e2e/consoleSessionEnded.e2e.test.ts": {
-      "jscpd:duplicate": 23
+      "jscpd:duplicate": 24
     },
     "packages/admin/e2e/consoleSignin.e2e.test.ts": {
       "jscpd:duplicate": 7
@@ -84,7 +84,7 @@
       "jscpd:duplicate": 6
     },
     "packages/admin/e2e/core.e2e.test.ts": {
-      "jscpd:duplicate": 37
+      "jscpd:duplicate": 40
     },
     "packages/admin/e2e/coreFixtures.ts": {
       "jscpd:duplicate": 1
@@ -93,7 +93,7 @@
       "jscpd:duplicate": 17
     },
     "packages/admin/e2e/dataMotion.e2e.test.ts": {
-      "jscpd:duplicate": 33
+      "jscpd:duplicate": 37
     },
     "packages/admin/e2e/deviceMotion.e2e.test.ts": {
       "jscpd:duplicate": 12
@@ -123,13 +123,13 @@
       "jscpd:duplicate": 11
     },
     "packages/admin/e2e/license.e2e.test.ts": {
-      "jscpd:duplicate": 20
+      "jscpd:duplicate": 21
     },
     "packages/admin/e2e/licenseHolders.e2e.test.ts": {
       "jscpd:duplicate": 19
     },
     "packages/admin/e2e/licenseInviteRecord.e2e.test.ts": {
-      "jscpd:duplicate": 19
+      "jscpd:duplicate": 20
     },
     "packages/admin/e2e/listingSources.e2e.test.ts": {
       "jscpd:duplicate": 7
@@ -141,10 +141,13 @@
       "jscpd:duplicate": 11
     },
     "packages/admin/e2e/motion.e2e.test.ts": {
-      "jscpd:duplicate": 32
+      "jscpd:duplicate": 33
+    },
+    "packages/admin/e2e/motionPerf.e2e.test.ts": {
+      "jscpd:duplicate": 5
     },
     "packages/admin/e2e/newLicenseInvite.e2e.test.ts": {
-      "jscpd:duplicate": 17
+      "jscpd:duplicate": 21
     },
     "packages/admin/e2e/pageMoved.e2e.test.ts": {
       "jscpd:duplicate": 10
@@ -206,6 +209,9 @@
     "packages/admin/e2e/productMembers.e2e.test.ts": {
       "jscpd:duplicate": 7
     },
+    "packages/admin/e2e/publishFromCi.e2e.test.ts": {
+      "jscpd:duplicate": 11
+    },
     "packages/admin/e2e/rolesTab.e2e.test.ts": {
       "jscpd:duplicate": 2
     },
@@ -252,7 +258,7 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/src/console/api/release.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/admin/src/console/api/settings.ts": {
       "jscpd:duplicate": 1
@@ -1725,7 +1731,7 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-react/src/desktop/desktopAdapter.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 9
     },
     "packages/sdk-react/src/kit/desktopCss.ts": {
       "jscpd:duplicate": 1
@@ -2043,7 +2049,7 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 10
     },
     "packages/ui-core/src/browser/sdk/browser/discovery.ts": {
       "jscpd:duplicate": 2
@@ -2847,6 +2853,9 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/release/resync.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/release/setupPr.ts": {
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/release/surface.ts": {

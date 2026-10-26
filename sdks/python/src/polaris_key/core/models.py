@@ -100,7 +100,7 @@ __all__ = [
 
 # ── Version + identity (§8) ─────────────────────────────────────────────────────────
 #: Bumped on any wire-breaking change to the document shape or the HTTP contract.
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 5
 #: The ``iss`` every Polaris Key document carries. A fixed string (Amendment A1), never
 #: derived from the base URL or the serving host; any other issuer is refused.
 ISSUER = "key.plrs.im"

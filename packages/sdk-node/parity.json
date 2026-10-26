@@ -172,20 +172,17 @@
       "wp": "I-10a"
     },
     "identity.redirect.web": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented"
     },
     "identity.choice": {
       "status": "planned",
       "wp": "I-10a"
     },
     "identity.signin.hints": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented"
     },
     "identity.keyentry": {
-      "status": "planned",
-      "wp": "PX-W9b"
+      "status": "implemented"
     },
     "release.changelog": {
       "status": "implemented"

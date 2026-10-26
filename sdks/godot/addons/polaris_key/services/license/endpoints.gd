@@ -60,6 +60,7 @@ static func map_response(r: PKeyResult, is_enroll := false) -> Array:
 			var ok := PKeyActivationResult.of(PKeyActivationResult.KIND_OK, &"", "", status)
 			if PKeyClaims.is_number(v.get("schemaVersion")):
 				ok.schema_version = int(v["schemaVersion"])
+			ok.key_entries = _key_entries(v.get("keyEntries"))
 			return [ok, v["token"]]
 		return [PKeyActivationResult.of(PKeyActivationResult.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The server answered %d without a usable token." % status, status), ""]
 	var e: Dictionary = r.detail["error"] if r.detail.get("error") is Dictionary else PKeyErrors.read_body(PackedByteArray())
@@ -93,6 +94,15 @@ static func map_response(r: PKeyResult, is_enroll := false) -> Array:
 					res.limit = _int_or_null(_field(top, nested, "limit"))
 					res.device_count = _int_or_null(_field(top, nested, "deviceCount"))
 					res.manage_url = PKeyManage.read(top)
+				"key_entry_limit":
+					# Not an auth failure (WIRE-CONTRACT-V4 §12.2): the state is kept, nothing retries.
+					res = _wire(PKeyActivationResult.KIND_KEY_ENTRY_LIMIT, wire, PKeyErrors.KEY_ENTRY_LIMIT, r.message, status)
+					res.key_entries = _key_entries(_field(top, nested, "keyEntries"))
+					res.manage_url = PKeyManage.read(top)
+				"license_owned":
+					res = _wire(PKeyActivationResult.KIND_LICENSE_OWNED, wire, PKeyErrors.LICENSE_OWNED, r.message, status)
+					var url = _field(top, nested, "signInUrl")
+					res.sign_in_url = url if PKeyManage.is_valid(url) else null
 				_:
 					# An unknown or missing 403 code is never device-limit (SDK parity §3.1).
 					res = _wire(PKeyActivationResult.KIND_REFUSED, wire, PKeyErrors.FORBIDDEN, r.message, status)
@@ -126,3 +136,10 @@ static func _field(top: Dictionary, nested: Dictionary, key: String) -> Variant:
 
 static func _int_or_null(v: Variant) -> Variant:
 	return int(v) if PKeyClaims.is_number(v) else null
+
+
+## `{used, limit}` when the body carries both as numbers, else null.
+static func _key_entries(v: Variant) -> Variant:
+	if v is Dictionary and PKeyClaims.is_number(v.get("used")) and PKeyClaims.is_number(v.get("limit")):
+		return {"used": int(v["used"]), "limit": int(v["limit"])}
+	return null

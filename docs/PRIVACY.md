@@ -43,7 +43,7 @@ omitted rather than substituted.
 | `ramBucket`      | Total RAM in whole GiB, rounded down to a power of two; omitted below 1 GiB                                                                        | Coarse on purpose: stable while the reported total stays between two powers of two |
 | `machineModel`   | macOS `hw.model` · Windows `Win32_ComputerSystem.Model` (PowerShell `Get-CimInstance`) · Linux `/sys/class/dmi/id/product_name` · iOS `hw.machine` | Distinguishes device classes                                                       |
 
-The exact derivation rules are normative in the wire contract (v4) and pinned by the conformance
+The exact derivation rules are normative in the wire contract (v5) and pinned by the conformance
 corpus. **No DMI serial or product UUID is read on Linux** (`product_uuid` and `board_serial` are
 root-only, so reading them made the fingerprint depend on the process's privilege). A Linux host
 with no usable machine-id — which includes most container images — therefore has no anchor

@@ -197,6 +197,7 @@ const COPY_CODES := {
 	"pack-revoked": {"title": "Content withdrawn", "message": "This content was withdrawn by its developer and can't be used."},
 	"pack-not-data-only": {"title": "Content refused", "message": "Some content was refused because it contains files a data pack may not hold."},
 	"marker-rejected": {"title": "App build problem", "message": "This build's built-in content isn't valid. Reinstall the app or contact the developer."},
+	"attach-declined": {"title": "Not added", "message": "This license wasn't added to your account. Nothing changed."},
 	"license_required": {"title": "License needed", "message": "Activate the app, then try again."},
 	"license_invalid": {"title": "License not accepted", "message": "Your license couldn't be verified. Reconnect the app, then try again."},
 	"license_stale": {"title": "License needs refreshing", "message": "Connect to the internet so the app can refresh your license, then try again."},
@@ -230,6 +231,7 @@ const COPY_ACTIVATION := {
 	"unauthorized": {"title": "Key not accepted", "message": "That license key wasn't accepted. Check it and try again."},
 	"enroll-disabled": {"title": "No free license", "message": "This app doesn't offer a free license. Enter a license key or sign in."},
 	"key-entry-limit": {"title": "No key entries left", "message": "This key has no entries left. Add it to your account and sign in instead."},
+	"license-owned": {"title": "License in another account", "message": "This license is already in another Polaris Locker account. A license never moves by its key."},
 	"refused": {"title": "Activation refused", "message": "Activation was refused ({code})."},
 	"error": {"title": "Activation failed", "message": "Activation didn't finish. Check your connection and try again."},
 }

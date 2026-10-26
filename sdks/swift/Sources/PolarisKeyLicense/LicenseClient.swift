@@ -208,7 +208,7 @@ public actor LicenseClient {
     /// A failed token write is reported, not swallowed: it used to return `.ok` having stored
     /// nothing, so the app looked activated until the next launch (R4-12).
     private func acquire(_ result: ActivationResult, source: TokenSource) async -> ActivationResult {
-        guard case .ok(let token, _) = result else { return result }
+        guard case .ok(let token, _, _) = result else { return result }
         do {
             try await core.setToken(token, source: source)
         } catch {

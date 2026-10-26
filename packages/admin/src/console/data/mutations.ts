@@ -96,6 +96,7 @@ export type WriteMethod =
   | "revertReleaseChannel"
   | "setChannelFloor"
   | "fixCiReadiness"
+  | "openSetupPullRequest"
   | "yankRelease"
   | "unyankRelease"
   | "updatePortalSettings"
@@ -599,6 +600,13 @@ export const MUTATIONS: MutationTable = {
   fixCiReadiness: {
     label: "CI readiness fix (release environment, tag ruleset)",
     invalidates: (slug) => [prefix(qk.ciReadiness(slug))],
+  },
+  openSetupPullRequest: {
+    label: "setup pull request",
+    invalidates: (slug) => [
+      prefix(qk.ciReadiness(slug)),
+      prefix(qk.setupPullRequest(slug)),
+    ],
   },
   yankRelease: {
     label: "yank release",

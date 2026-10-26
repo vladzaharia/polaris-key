@@ -41,6 +41,7 @@ import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
+import { PublishFromCiEntry } from "../../release/components/PublishFromCi/PublishFromCiEntry.js";
 import { ScopeList, ScopePicker } from "./ciScopes.js";
 import {
   fetchCiPublisher,
@@ -75,17 +76,20 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
       align="block"
       help="A GitHub Actions run exchanges its OIDC token for a short-lived publishing token; no stored secret is involved."
       aside={
-        policy.data ? (
-          <Button
-            variant="outline"
-            size="sm"
-            iconStart={<Pencil aria-hidden />}
-            onClick={() => setEditing(true)}
-            disabledReason={noMint}
-          >
-            Edit…
-          </Button>
-        ) : undefined
+        <div className="flex flex-wrap gap-2">
+          {policy.data ? <PublishFromCiEntry slug={slug} /> : null}
+          {policy.data ? (
+            <Button
+              variant="outline"
+              size="sm"
+              iconStart={<Pencil aria-hidden />}
+              onClick={() => setEditing(true)}
+              disabledReason={noMint}
+            >
+              Edit…
+            </Button>
+          ) : null}
+        </div>
       }
       source={
         policy.data ? (

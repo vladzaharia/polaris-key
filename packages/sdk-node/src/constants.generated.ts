@@ -186,6 +186,7 @@ export const ErrorCode = {
   packRevoked: "pack-revoked",
   packNotDataOnly: "pack-not-data-only",
   markerRejected: "marker-rejected",
+  attachDeclined: "attach-declined",
   licenseRequired: "license_required",
   licenseInvalid: "license_invalid",
   licenseStale: "license_stale",
@@ -374,6 +375,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-revoked",
   "pack-not-data-only",
   "marker-rejected",
+  "attach-declined",
   "license_required",
   "license_invalid",
   "license_stale",
@@ -564,6 +566,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-revoked": "client",
   "pack-not-data-only": "client",
   "marker-rejected": "client",
+  "attach-declined": "client",
   license_required: "backend",
   license_invalid: "backend",
   license_stale: "backend",
@@ -1362,6 +1365,7 @@ export const ACTIVATION_RESULT_VALUES: readonly string[] = [
   "unauthorized",
   "enroll-disabled",
   "key-entry-limit",
+  "license-owned",
   "refused",
   "error",
 ];
@@ -1458,7 +1462,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** `corpusVersion` of conformance/corpus/v2/cases.json. */
 export const CORPUS_VERSION = 2;
@@ -1850,12 +1854,20 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.toggle": { status: "planned", service: "identity", na: [] },
-  "identity.keyentry": { status: "planned", service: "identity", na: [] },
+  "identity.keyentry": { status: "implemented", service: "identity", na: [] },
   "identity.attach": { status: "planned", service: "identity", na: [] },
   "identity.account": { status: "planned", service: "identity", na: [] },
-  "identity.redirect.web": { status: "planned", service: "identity", na: [] },
+  "identity.redirect.web": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "identity.choice": { status: "planned", service: "identity", na: [] },
-  "identity.signin.hints": { status: "planned", service: "identity", na: [] },
+  "identity.signin.hints": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1975,4 +1987,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "7f59a592004c9e0f592c13c8633eae9ade9d34309254e411489d373797fe4ec3";
+  "f9eac179bf71c2a3b094ea1bb62eacbeb3885f187dbbb5d05cbd8ad8487be4f6";

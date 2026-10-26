@@ -307,7 +307,8 @@ describe("activation table (§3.1)", () => {
     [401, { error: "unauthorized" }, "unauthorized"],
     [401, null, "unauthorized"],
     [404, { error: { code: "enroll_disabled" } }, "enrollDisabled"],
-    [403, { error: { code: "license_owned" } }, "refused"],
+    [403, { error: { code: "license_owned" } }, "licenseOwned"],
+    [403, { error: { code: "key_entry_limit" } }, "keyEntryLimit"],
     [403, null, "refused"],
     [500, null, "error"],
   ])("%i %j → %s", (status, body, kind) => {
@@ -316,10 +317,10 @@ describe("activation table (§3.1)", () => {
 
   it("an unknown 403 is never the device limit, and keeps the server's code", () => {
     expect(
-      classifyActivation(403, { error: { code: "key_entry_limit" } }),
+      classifyActivation(403, { error: { code: "no_such_code" } }),
     ).toEqual({
       kind: "refused",
-      code: "key_entry_limit",
+      code: "no_such_code",
       status: 403,
     });
     expect(classifyActivation(403, null).code).toBe("http-error");

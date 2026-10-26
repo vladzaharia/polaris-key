@@ -5,7 +5,7 @@
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
-// @pkey-feature license.manage
+// @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
@@ -244,6 +244,16 @@ object KotlinReplay {
                 r.code?.let { out["code"] = JsonPrimitive(it) }
                 // PX-W8: the refusal link, exactly as served; null when the result carries none.
                 if (r is ActivationResult.DeviceLimit) out["manageUrl"] = r.manageUrl?.let { JsonPrimitive(it) } ?: JsonNull
+                if (r is ActivationResult.KeyEntryLimit) out["manageUrl"] = r.manageUrl?.let { JsonPrimitive(it) } ?: JsonNull
+                // identity.keyentry: the count the answer carried, null when it carried none.
+                val entries = when (r) {
+                    is ActivationResult.Ok -> r.keyEntries
+                    is ActivationResult.KeyEntryLimit -> r.keyEntries
+                    else -> null
+                }
+                if (r is ActivationResult.Ok || r is ActivationResult.KeyEntryLimit) {
+                    out["keyEntries"] = entries?.let { JsonObject(mapOf("used" to jsonInt(it.used), "limit" to jsonInt(it.limit))) } ?: JsonNull
+                }
             }
             "releaseFetch" -> out.putAll(releaseFetch(client, args, session))
             "downloadModel" -> {
@@ -463,6 +473,9 @@ object KotlinReplay {
     private fun activationKind(r: ActivationResult): String = when (r) {
         is ActivationResult.Ok -> "ok"
         is ActivationResult.DeviceLimit -> "device-limit"
+        is ActivationResult.KeyEntryLimit -> "key-entry-limit"
+        // Recorded as a plain refusal carrying `code: license_owned` (keyentry-owned).
+        is ActivationResult.LicenseOwned -> "refused"
         ActivationResult.Unauthorized -> "unauthorized"
         ActivationResult.FingerprintRequired -> "fingerprint-required"
         is ActivationResult.HardwareMismatch -> "hardware-mismatch"

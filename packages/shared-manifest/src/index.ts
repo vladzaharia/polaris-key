@@ -82,6 +82,8 @@ import {
   type ManifestAssetRef,
 } from "./assets.js";
 import {
+  BUNDLE_ID_RE,
+  MAX_BUNDLE_ID_LENGTH,
   normalizeDistribution,
   validateDistribution,
   type DistributionDeliverable,
@@ -338,6 +340,15 @@ export const IDENTITY_TERMS_VERSION_RE = /^[A-Za-z0-9._-]{1,32}$/;
 export const MAX_IDENTITY_REDIRECT_PATHS = 16;
 /** `identity.redirectPaths`: each path at most this many characters. */
 export const MAX_IDENTITY_REDIRECT_PATH_LENGTH = 256;
+/** `identity.platformSignIn.google`: a Google OAuth client id (CC-01 auto sign-in, D-A1). */
+export const GOOGLE_CLIENT_ID_RE =
+  /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
+/** `identity.platformSignIn.google.clientIds`: at most this many. */
+export const MAX_GOOGLE_CLIENT_IDS = 8;
+/** `identity.platformSignIn.apple.teamId`: ten upper-case letters or digits. */
+export const APPLE_TEAM_ID_RE = /^[A-Z0-9]{10}$/;
+/** `identity.platformSignIn.apple.bundleIds`: at most this many. */
+export const MAX_APPLE_SIGN_IN_BUNDLE_IDS = 16;
 
 export type LicensingEntitlementModel =
   (typeof LICENSING_ENTITLEMENT_MODELS)[number];
@@ -376,6 +387,16 @@ export interface ManifestIdentity {
   terms?: { version: string; url?: string };
   /** Web-redirect callback paths, matched exactly against `web.origins` (I-08). */
   redirectPaths?: string[];
+  /**
+   * The native audiences the Worker verifies a platform sign-in against (CC-01, D-A1). The Worker
+   * unions the App Store and TestFlight outlets' bundle ids into `apple.bundleIds`.
+   */
+  platformSignIn?: {
+    google?: { serverClientId?: string; clientIds?: string[] };
+    apple?: { teamId?: string; bundleIds?: string[] };
+  };
+  /** Nearby sign-in (R-13): a developer switch, on when absent; needs no Cloud Connect. */
+  nearby?: boolean;
 }
 
 /** A product-declared companion-application probe the client answers present/absent. */
@@ -6518,7 +6539,7 @@ function isHttpsUrl(v: unknown): v is string {
 
 /**
  * I-09 (plans/I-27.md §3, plans/I-04.md §3): the `identity:` block of `.pkey/product`. I-09 allows
- * `keyEntry {limit, claimByKey}`, `terms {version, url?}` and `redirectPaths`; I-35 widens it.
+ * `keyEntry {limit, claimByKey}`, `terms {version, url?}` and `redirectPaths`; I-42.1 adds `platformSignIn` and `nearby`.
  * Each `add` is written out with literal arguments so the generated validation-codes page lists
  * it.
  */
@@ -6536,7 +6557,7 @@ function validateIdentityBlock(
       "product",
       "/identity",
       "invalid_identity",
-      "identity must be an object with keyEntry, terms and redirectPaths.",
+      "identity must be an object with keyEntry, terms, redirectPaths, platformSignIn and nearby.",
     );
     return;
   }
@@ -6547,7 +6568,7 @@ function validateIdentityBlock(
         "product",
         `/identity/${key}`,
         "invalid_identity",
-        "identity takes only keyEntry, terms and redirectPaths.",
+        "identity takes only keyEntry, terms, redirectPaths, platformSignIn and nearby.",
       );
     }
   }
@@ -6674,6 +6695,212 @@ function validateIdentityBlock(
       }
     }
   }
+
+  if (identity.nearby !== undefined && typeof identity.nearby !== "boolean") {
+    add(
+      errors,
+      "product",
+      "/identity/nearby",
+      "invalid_identity_nearby",
+      "identity.nearby must be true or false.",
+    );
+  }
+  if (identity.platformSignIn !== undefined)
+    validatePlatformSignIn(identity.platformSignIn, errors);
+}
+
+/**
+ * `identity.platformSignIn` (CC-01 D-A1): the Google client ids and Apple team and bundle ids the
+ * Worker checks a platform sign-in token against. Each `add` has literal arguments (the
+ * generated validation-codes page lists them).
+ */
+function validatePlatformSignIn(
+  psi: unknown,
+  errors: ValidationMessage[],
+): void {
+  if (!isRecord(psi)) {
+    add(
+      errors,
+      "product",
+      "/identity/platformSignIn",
+      "invalid_identity_platform_sign_in",
+      "identity.platformSignIn must be an object with google and apple.",
+    );
+    return;
+  }
+  for (const key of Object.keys(psi)) {
+    if (key !== "google" && key !== "apple") {
+      add(
+        errors,
+        "product",
+        `/identity/platformSignIn/${key}`,
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn takes only google and apple.",
+      );
+    }
+  }
+
+  const google = psi.google;
+  if (google !== undefined) {
+    if (!isRecord(google)) {
+      add(
+        errors,
+        "product",
+        "/identity/platformSignIn/google",
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn.google must be an object with serverClientId and clientIds.",
+      );
+    } else {
+      for (const key of Object.keys(google)) {
+        if (key !== "serverClientId" && key !== "clientIds") {
+          add(
+            errors,
+            "product",
+            `/identity/platformSignIn/google/${key}`,
+            "invalid_identity_platform_sign_in",
+            "identity.platformSignIn.google takes only serverClientId and clientIds.",
+          );
+        }
+      }
+      if (
+        google.serverClientId !== undefined &&
+        !(
+          typeof google.serverClientId === "string" &&
+          GOOGLE_CLIENT_ID_RE.test(google.serverClientId)
+        )
+      ) {
+        add(
+          errors,
+          "product",
+          "/identity/platformSignIn/google/serverClientId",
+          "invalid_google_client_id",
+          "identity.platformSignIn.google.serverClientId must be a Google client id, such as 1234-abc.apps.googleusercontent.com.",
+        );
+      }
+      const ids = google.clientIds;
+      if (ids !== undefined) {
+        if (!Array.isArray(ids) || ids.length > MAX_GOOGLE_CLIENT_IDS) {
+          add(
+            errors,
+            "product",
+            "/identity/platformSignIn/google/clientIds",
+            "invalid_google_client_id",
+            `identity.platformSignIn.google.clientIds must be an array of at most ${MAX_GOOGLE_CLIENT_IDS} Google client ids.`,
+          );
+        } else {
+          const seen = new Set<string>();
+          for (const [i, id] of ids.entries()) {
+            if (
+              typeof id !== "string" ||
+              !GOOGLE_CLIENT_ID_RE.test(id) ||
+              seen.has(id)
+            ) {
+              add(
+                errors,
+                "product",
+                `/identity/platformSignIn/google/clientIds/${i}`,
+                "invalid_google_client_id",
+                "identity.platformSignIn.google.clientIds entries must be unique Google client ids, such as 1234-abc.apps.googleusercontent.com.",
+              );
+            }
+            if (typeof id === "string") seen.add(id);
+          }
+        }
+        if (google.serverClientId === undefined) {
+          add(
+            errors,
+            "product",
+            "/identity/platformSignIn/google/clientIds",
+            "google_client_ids_without_server",
+            "identity.platformSignIn.google.clientIds needs serverClientId: the web client is the token audience.",
+          );
+        }
+      }
+    }
+  }
+
+  const apple = psi.apple;
+  if (apple !== undefined) {
+    if (!isRecord(apple)) {
+      add(
+        errors,
+        "product",
+        "/identity/platformSignIn/apple",
+        "invalid_identity_platform_sign_in",
+        "identity.platformSignIn.apple must be an object with teamId and bundleIds.",
+      );
+    } else {
+      for (const key of Object.keys(apple)) {
+        if (key !== "teamId" && key !== "bundleIds") {
+          add(
+            errors,
+            "product",
+            `/identity/platformSignIn/apple/${key}`,
+            "invalid_identity_platform_sign_in",
+            "identity.platformSignIn.apple takes only teamId and bundleIds.",
+          );
+        }
+      }
+      if (
+        apple.teamId !== undefined &&
+        !(
+          typeof apple.teamId === "string" &&
+          APPLE_TEAM_ID_RE.test(apple.teamId)
+        )
+      ) {
+        add(
+          errors,
+          "product",
+          "/identity/platformSignIn/apple/teamId",
+          "invalid_apple_team_id",
+          "identity.platformSignIn.apple.teamId must be 10 upper-case letters or digits.",
+        );
+      }
+      const bundles = apple.bundleIds;
+      if (bundles !== undefined) {
+        if (
+          !Array.isArray(bundles) ||
+          bundles.length > MAX_APPLE_SIGN_IN_BUNDLE_IDS
+        ) {
+          add(
+            errors,
+            "product",
+            "/identity/platformSignIn/apple/bundleIds",
+            "invalid_apple_bundle_id",
+            `identity.platformSignIn.apple.bundleIds must be an array of at most ${MAX_APPLE_SIGN_IN_BUNDLE_IDS} bundle ids.`,
+          );
+        } else {
+          const seen = new Set<string>();
+          for (const [i, id] of bundles.entries()) {
+            if (
+              typeof id !== "string" ||
+              id.length > MAX_BUNDLE_ID_LENGTH ||
+              !BUNDLE_ID_RE.test(id) ||
+              seen.has(id)
+            ) {
+              add(
+                errors,
+                "product",
+                `/identity/platformSignIn/apple/bundleIds/${i}`,
+                "invalid_apple_bundle_id",
+                "identity.platformSignIn.apple.bundleIds entries must be unique reverse-DNS bundle ids (such as gg.vlad.diceroll).",
+              );
+            }
+            if (typeof id === "string") seen.add(id);
+          }
+        }
+        if (apple.teamId === undefined) {
+          add(
+            errors,
+            "product",
+            "/identity/platformSignIn/apple/bundleIds",
+            "apple_sign_in_without_team",
+            "identity.platformSignIn.apple.bundleIds needs teamId: Apple names an app by team and bundle id together.",
+          );
+        }
+      }
+    }
+  }
 }
 
 /** The members of the `identity:` block I-09 allows (I-35 widens the list). */
@@ -6681,6 +6908,8 @@ const IDENTITY_MEMBERS: readonly string[] = [
   "keyEntry",
   "terms",
   "redirectPaths",
+  "platformSignIn",
+  "nearby",
 ];
 
 /** The `identity:` block's declared settings, validated above; `undefined` when none. */
@@ -6711,6 +6940,47 @@ function normalizeIdentityBlock(raw: unknown): ManifestIdentity | undefined {
   }
   if (Array.isArray(raw.redirectPaths))
     out.redirectPaths = raw.redirectPaths.filter(isString);
+  if (typeof raw.nearby === "boolean") out.nearby = raw.nearby;
+  const psi = normalizePlatformSignIn(raw.platformSignIn);
+  if (psi) out.platformSignIn = psi;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** The valid members of `identity.platformSignIn`, in declaration order; `undefined` when none. */
+function normalizePlatformSignIn(
+  raw: unknown,
+): ManifestIdentity["platformSignIn"] | undefined {
+  if (!isRecord(raw)) return undefined;
+  const out: NonNullable<ManifestIdentity["platformSignIn"]> = {};
+  if (isRecord(raw.google)) {
+    const google: NonNullable<typeof out.google> = {};
+    if (
+      typeof raw.google.serverClientId === "string" &&
+      GOOGLE_CLIENT_ID_RE.test(raw.google.serverClientId)
+    )
+      google.serverClientId = raw.google.serverClientId;
+    if (Array.isArray(raw.google.clientIds))
+      google.clientIds = raw.google.clientIds.filter(
+        (v): v is string => isString(v) && GOOGLE_CLIENT_ID_RE.test(v),
+      );
+    if (Object.keys(google).length > 0) out.google = google;
+  }
+  if (isRecord(raw.apple)) {
+    const apple: NonNullable<typeof out.apple> = {};
+    if (
+      typeof raw.apple.teamId === "string" &&
+      APPLE_TEAM_ID_RE.test(raw.apple.teamId)
+    )
+      apple.teamId = raw.apple.teamId;
+    if (Array.isArray(raw.apple.bundleIds))
+      apple.bundleIds = raw.apple.bundleIds.filter(
+        (v): v is string =>
+          isString(v) &&
+          v.length <= MAX_BUNDLE_ID_LENGTH &&
+          BUNDLE_ID_RE.test(v),
+      );
+    if (Object.keys(apple).length > 0) out.apple = apple;
+  }
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
@@ -6758,6 +7028,8 @@ export * from "./feedSetup.js";
 export * from "./distribution.js";
 // A-25.1: the one `outlets` entry a channel adds to `.pkey/distribution`.
 export * from "./outletBlock.js";
+// A-27.5: the listing model's limits, shared with the Worker.
+export * from "./listingLimits.js";
 export * from "./assets.js";
 export * from "./releaseKeys.js";
 // Human-readable build and artifact labels: platform and architecture, together.

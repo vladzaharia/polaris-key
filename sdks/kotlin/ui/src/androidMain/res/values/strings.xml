@@ -147,6 +147,7 @@
     <string name="pkey_ui_update_now">Update now</string>
     <string name="pkey_ui_update_later">Later</string>
     <string name="pkey_ui_update_restart">Restart to update</string>
+    <string name="pkey_ui_update_restart_generic">An update is ready. Restart to finish.</string>
     <string name="pkey_ui_update_restart_body">Version %1$s is ready. Restart to finish updating.</string>
     <string name="pkey_ui_update_ready_title">%1$s %2$s is ready</string>
     <string name="pkey_ui_update_ready_body">Restart to finish updating.</string>

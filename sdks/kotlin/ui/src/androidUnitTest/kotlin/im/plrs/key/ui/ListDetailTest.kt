@@ -6,11 +6,14 @@
 package im.plrs.key.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import im.plrs.key.core.LicenseStatus
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -105,5 +108,25 @@ class ListDetailTest {
     fun withoutAChannelThereIsNoChannelRow() {
         show(sampleSettings.copy(channel = null))
         rule.onNodeWithText("Release channel").assertDoesNotExist()
+    }
+
+    private val studio = sampleSettings.copy(license = sampleSettings.license!!.copy(tierLabel = "Studio", deviceLimit = 5))
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w1280dp-h800dp-mdpi")
+    fun theHeaderNamesTheTierAndTheDevicesRowCountsSeats() {
+        show(studio)
+        rule.onNodeWithText("Studio \u2022 ${copy.entitlementLabel(LicenseStatus.ok)} \u2022 Ada Lovelace").assertIsDisplayed()
+        rule.onNodeWithText("3 of 5 in use").assertIsDisplayed()
+        // The Settings pane (the default) does not say the status and the holder again.
+        rule.onAllNodesWithText("Ada Lovelace", substring = true).assertCountEquals(1)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w1280dp-h800dp-mdpi")
+    fun withNothingToSetTheSettingsRowIsGoneAndDevicesOpens() {
+        show(PolarisSettingsUi(loading = false, license = PolarisLicenseSummary(LicenseStatus.ok, holder = "Ada Lovelace")))
+        rule.onNodeWithText(copy.settingsTitle).assertDoesNotExist()
+        rule.onNodeWithText("Pixel 9 Pro").assertIsDisplayed()
     }
 }

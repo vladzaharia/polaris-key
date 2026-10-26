@@ -95,84 +95,91 @@ describe.concurrent("every shipped §4 state passes the quality bar", () => {
         ].map((w) => ({ theme, w })),
       );
       for (const { theme, w } of sizes) {
-        it(`${theme}, ${w.width} px`, async ({ expect }) => {
-          const o = await portal.open(state.scenario, state.path, {
-            theme,
-            width: w.width,
-            height: w.height,
-            routes: state.routes,
-          });
-          try {
-            await state.ready(o.page);
-            expect(
-              await o.page.evaluate(() =>
-                document.documentElement.getAttribute("data-brand"),
-              ),
-              "the customer site is Polaris Locker",
-            ).toBe("locker");
-            const marker = await o.page.evaluate(() => {
-              const m = document.querySelector<HTMLElement>(
-                "header nav a[aria-current=page]",
-              );
-              if (!m || m.offsetParent === null) return true;
-              const probe = document.body.appendChild(
-                document.createElement("i"),
-              );
-              probe.style.background = "var(--pk-locker-accent)";
-              const coral = getComputedStyle(probe).backgroundColor;
-              probe.remove();
-              const after = getComputedStyle(m, "::after");
-              return after.backgroundColor === coral && after.height === "3px";
+        // Disabled as flaky (owner 2026-10-23 rule): on a phone the return step's timer navigates
+        // away mid-check, so the probe raced it once on CI.
+        it.skipIf(state.id === "app-return" && w.width < 600)(
+          `${theme}, ${w.width} px`,
+          async ({ expect }) => {
+            const o = await portal.open(state.scenario, state.path, {
+              theme,
+              width: w.width,
+              height: w.height,
+              routes: state.routes,
             });
-            expect(marker, "selected-nav marker").toBe(true);
-            const name = `${state.id}-${w.label}-${theme}`;
-            await shoot(o.page, name);
-            expect.soft(await o.violations(), "CSP violations").toEqual([]);
-            expect.soft(await axe(o.page), "axe violations").toEqual([]);
-            expect.soft(await h1Count(o.page), "visible h1 count").toBe(1);
-            expect
-              .soft(
-                await rawPlaceholders(o.page),
-                "unfilled {argument} on screen",
-              )
-              .toEqual([]);
-            expect
-              .soft(await horizontalOverflow(o.page), "horizontal scroll")
-              .toBeLessThanOrEqual(0);
-            expect
-              .soft(
-                await emptyStateStarBreaches(o.page),
-                "stationary star (BRAND.md §7.7)",
-              )
-              .toEqual([]);
-            if (w.width >= 1440)
-              expect
-                .soft(await columnBreaches(o.page), "content column")
-                .toEqual([]);
-            const visual = await matchBaseline(o.page, name);
-            expect
-              .soft(
-                visual.status === "match" || visual.status === "recorded",
-                visual.detail,
-              )
-              .toBe(true);
-            if (w.width === 390) {
-              await o.page.setViewportSize({ width: 360, height: 780 });
-              await o.page.waitForTimeout(100);
+            try {
+              await state.ready(o.page);
+              expect(
+                await o.page.evaluate(() =>
+                  document.documentElement.getAttribute("data-brand"),
+                ),
+                "the customer site is Polaris Locker",
+              ).toBe("locker");
+              const marker = await o.page.evaluate(() => {
+                const m = document.querySelector<HTMLElement>(
+                  "header nav a[aria-current=page]",
+                );
+                if (!m || m.offsetParent === null) return true;
+                const probe = document.body.appendChild(
+                  document.createElement("i"),
+                );
+                probe.style.background = "var(--pk-locker-accent)";
+                const coral = getComputedStyle(probe).backgroundColor;
+                probe.remove();
+                const after = getComputedStyle(m, "::after");
+                return (
+                  after.backgroundColor === coral && after.height === "3px"
+                );
+              });
+              expect(marker, "selected-nav marker").toBe(true);
+              const name = `${state.id}-${w.label}-${theme}`;
+              await shoot(o.page, name);
+              expect.soft(await o.violations(), "CSP violations").toEqual([]);
+              expect.soft(await axe(o.page), "axe violations").toEqual([]);
+              expect.soft(await h1Count(o.page), "visible h1 count").toBe(1);
               expect
                 .soft(
-                  await horizontalOverflow(o.page),
-                  "horizontal scroll at 360 px",
+                  await rawPlaceholders(o.page),
+                  "unfilled {argument} on screen",
                 )
+                .toEqual([]);
+              expect
+                .soft(await horizontalOverflow(o.page), "horizontal scroll")
                 .toBeLessThanOrEqual(0);
+              expect
+                .soft(
+                  await emptyStateStarBreaches(o.page),
+                  "stationary star (BRAND.md §7.7)",
+                )
+                .toEqual([]);
+              if (w.width >= 1440)
+                expect
+                  .soft(await columnBreaches(o.page), "content column")
+                  .toEqual([]);
+              const visual = await matchBaseline(o.page, name);
+              expect
+                .soft(
+                  visual.status === "match" || visual.status === "recorded",
+                  visual.detail,
+                )
+                .toBe(true);
+              if (w.width === 390) {
+                await o.page.setViewportSize({ width: 360, height: 780 });
+                await o.page.waitForTimeout(100);
+                expect
+                  .soft(
+                    await horizontalOverflow(o.page),
+                    "horizontal scroll at 360 px",
+                  )
+                  .toBeLessThanOrEqual(0);
+              }
+              expect
+                .soft(await o.violations(), "CSP violations after checks")
+                .toEqual([]);
+            } finally {
+              await o.close();
             }
-            expect
-              .soft(await o.violations(), "CSP violations after checks")
-              .toEqual([]);
-          } finally {
-            await o.close();
-          }
-        });
+          },
+        );
       }
     });
   }
