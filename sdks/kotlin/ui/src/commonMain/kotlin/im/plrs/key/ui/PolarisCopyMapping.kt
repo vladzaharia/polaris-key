@@ -107,6 +107,8 @@ public fun PolarisCopy.activationMessage(result: ActivationResult): String? = wh
     is ActivationResult.Ok -> null
     // core.copy's activation entry; the screen adds the seat caption (seatCaption) under it.
     is ActivationResult.DeviceLimit -> Copy.activationMessage(im.plrs.key.core.ErrorCode.deviceLimit, locale = coreLocale())
+    is ActivationResult.KeyEntryLimit -> errorCodeMessage(result.code) ?: Copy.message(result.code, locale = coreLocale())
+    is ActivationResult.LicenseOwned -> errorCodeMessage(result.code) ?: Copy.message(result.code, locale = coreLocale())
     ActivationResult.Unauthorized -> activationUnauthorized
     ActivationResult.FingerprintRequired -> activationFingerprintRequired
     is ActivationResult.HardwareMismatch -> activationHardwareMismatch
