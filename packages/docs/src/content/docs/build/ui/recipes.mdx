@@ -23,7 +23,7 @@ pnpm add @polaris-key/elements
 Until the package is published, the samples alias the repo's build. Run them from the repo root:
 
 ```sh
-pnpm --filter @polaris-key/elements build
+pnpm turbo run build --filter=@polaris-key/elements
 pnpm install --frozen-lockfile --dir examples/ui/recipes
 pnpm --dir examples/ui/recipes -r build
 ```
@@ -167,18 +167,14 @@ The Rust bridge is not shipped. Until it is, the elements run on fixtures, or li
 
 The gate takes a host design system through three seams. It writes no style into a shadow root.
 
-1. **Tokens.** Map the host's shape tokens (radius, control height, focus width, font) onto `--pk-*` on `pk-provider`. The kit sets its own scales on `:host`, and a value that only inherits loses to that, so `pk-gate` and `pk-sign-in` take the provider's value explicitly with `inherit`.
+1. **Tokens.** Map the host's shape tokens (radius, control height, focus width, font) onto `--pk-*` on `pk-provider`. The kit sets its own scales on `:host`, so a plain `--pk-*` value on the provider would lose. Set the shape tokens under their provider names, `--pk-provider-<name>`: `--pk-provider-kit-radius-control` overrides `--pk-kit-radius-control`.
 2. **Structure.** `::part(secondary)`, `::part(primary)` and `::part(card)` for borders and shape; never type or color.
 3. **Accent.** Pass the host's brand color as `theme.accent`. The kit resolves it for contrast in each scheme, so colors stay with the scheme and the accent, not a token-by-token map.
 
 ```css
 pk-provider {
-  --pk-kit-radius-control: var(--hds-radius-control);
-  --pk-kit-control-height: var(--hds-control-height);
-}
-pk-provider :is(pk-gate, pk-sign-in) {
-  --pk-kit-radius-control: inherit;
-  --pk-kit-control-height: inherit;
+  --pk-provider-kit-radius-control: var(--hds-radius-control);
+  --pk-provider-kit-control-height: var(--hds-control-height);
 }
 pk-gate::part(secondary) {
   border-color: currentColor;

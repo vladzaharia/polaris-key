@@ -229,7 +229,7 @@ export class PkGate extends PkElement {
   }
 
   /** The gate opens (UI-KITS "never lost across async work"): the screen that held focus is
-   *  gone, so focus goes to the app's first focusable, else to the host. Only when focus was in
+   *  gone, so focus goes to the app's first focusable, else to the app's first h1 or main, else to the host. Only when focus was in
    *  the gate's own screens: an already-open gate on first render, or a person working elsewhere,
    *  keeps theirs. */
   private focusApp(): void {
@@ -251,8 +251,9 @@ export class PkGate extends PkElement {
       first.focus({ preventScroll: true });
       return;
     }
-    if (!this.hasAttribute("tabindex")) this.tabIndex = -1;
-    this.focus({ preventScroll: true });
+    const anchor = this.querySelector<HTMLElement>("h1, main") ?? this;
+    if (!anchor.hasAttribute("tabindex")) anchor.tabIndex = -1;
+    anchor.focus({ preventScroll: true });
   }
 
   /** Focus follows the step (DL9): a new screen takes its own target; Back returns to the

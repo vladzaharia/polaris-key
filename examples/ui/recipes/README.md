@@ -7,7 +7,7 @@ network, no keys). A standalone pnpm workspace: not part of the repo's workspace
 | -------------------- | ------------------------------------------------------------------------------------------------- |
 | `htmx/`              | `<pk-gate>` around an `hx-get` region; the gate survives a swap                                   |
 | `vue/`               | Vue 3: `:input.prop`, `@pk-action`, `isCustomElement`; your own UI over `headless`                |
-| `svelte/`            | Svelte 5: `input` as a property, `on:pk-action`, `customElement` off; your own UI over `headless` |
+| `svelte/`            | Svelte 5: `input` as a property, `onpk-action`, `customElement` off; your own UI over `headless`  |
 | `solid/`             | `prop:input` and `on:pk-action`; your own UI over `headless`                                      |
 | `preact/`            | native properties (`input`) and `onpk-action`; your own UI over `headless`                        |
 | `angular/`           | Angular 21: `CUSTOM_ELEMENTS_SCHEMA`, `[input]`, `(pk-action)`; your own UI over `headless`       |
@@ -17,7 +17,7 @@ network, no keys). A standalone pnpm workspace: not part of the repo's workspace
 ## Run
 
 ```sh
-pnpm --filter @polaris-key/elements build        # from the repo root, once
+pnpm turbo run build --filter=@polaris-key/elements   # from the repo root, once
 pnpm install --frozen-lockfile --dir examples/ui/recipes
 pnpm --dir examples/ui/recipes -r build
 pnpm --dir examples/ui/recipes/htmx dev          # ?theme=dark|light, ?state=needs-activation|ok|grace|expired|revoked
