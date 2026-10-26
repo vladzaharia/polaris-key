@@ -268,7 +268,7 @@ export class PolarisKeyClient {
       this.core,
       this.tokens,
       () => this.onLicenseAcquired(),
-      () => this.license.deactivate(),
+      () => this.license.wipeLocal(),
       () => this.discoveryDoc,
       async () => {
         if (this.discoveryDoc === null) await this.discover();

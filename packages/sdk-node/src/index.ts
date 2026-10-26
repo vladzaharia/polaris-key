@@ -111,6 +111,10 @@ export {
   type WaitForSignInOptions,
 } from "./identity/client.js";
 export {
+  type OpenAccountResult,
+  type SignOutResult,
+} from "./identity/account.js";
+export {
   RedirectSession,
   type RedirectOutcome,
   type RedirectSignInOptions,
@@ -260,6 +264,8 @@ export {
   DEFAULT_SERVICES,
   SERVICE_SLUGS,
   serviceEndpoint,
+  identityFragmentFrom,
+  type IdentityFragment,
   servicesFromList,
   updateEndpointsFrom,
   type DiscoverProductOptions,

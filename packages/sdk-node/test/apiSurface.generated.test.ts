@@ -57,8 +57,12 @@ it("entitlements.all", () =>
   expect("all" in EntitlementsClient.prototype).toBe(true));
 it("identity.signIn", () =>
   expect("signIn" in IdentityClient.prototype).toBe(true));
+it("identity.subject", () =>
+  expect("subject" in IdentityClient.prototype).toBe(true));
 it("identity.signOut", () =>
   expect("signOut" in IdentityClient.prototype).toBe(true));
+it("identity.openAccount", () =>
+  expect("openAccount" in IdentityClient.prototype).toBe(true));
 it("client.discover", () =>
   expect("discover" in PolarisKeyClient.prototype).toBe(true));
 it("client.init", () =>

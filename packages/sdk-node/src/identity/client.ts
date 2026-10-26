@@ -24,7 +24,8 @@
 // `signInWithBrowser()` is device code opened in the system browser, the interim for native hosts
 // until I-15's redirect token route (it needs no new route: it polls `/identity/auth/device/poll`
 // like any device-code sign-in; the old `/identity/auth/poll` is retired and the Worker no longer
-// serves it). `signOut()` deactivates and forgets the signed-in identity; `current()` reads it.
+// serves it). `signOut()` (account.ts) signs out of the account; `current()` reads the
+// signed-in identity.
 
 import { spawn } from "node:child_process";
 import { join } from "node:path";
@@ -38,6 +39,13 @@ import { classifyResponse, errorFrom } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
 import { redactOnPrint } from "../core/redact.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
+import {
+  Account,
+  BeforeSignOutHooks,
+  subjectFile,
+  type OpenAccountResult,
+  type SignOutResult,
+} from "./account.js";
 import {
   startRedirectSignIn,
   type RedirectSession,
@@ -251,8 +259,8 @@ export class IdentityClient {
     private readonly ctx: CoreContext,
     private readonly tokens: TokenManager,
     private readonly onAcquired: SignInAcquiredListener,
-    /** `license.deactivate()`, for `signOut()`. */
-    private readonly deactivate: () => Promise<void> = async () => undefined,
+    /** `license.wipeLocal()`, for a `signOut()` that released the device. */
+    private readonly wipeLocal: () => Promise<void> = async () => undefined,
     /** The discovery document this session loaded, or null. */
     private readonly discovery: () => ProductDiscoveryDocument | null = () =>
       null,
@@ -261,6 +269,33 @@ export class IdentityClient {
       this.discovery(),
   ) {
     this.identityFile = join(ctx.dirs.state, "identity.json");
+    this.account = new Account({
+      ctx,
+      tokens,
+      discovery: this.loadDiscovery,
+      hooks: this.beforeSignOut,
+      forget: () => this.forget(),
+      wipeLocal: this.wipeLocal,
+      openUrl: (url) => openInBrowser(url),
+    });
+  }
+
+  private readonly account: Account;
+  private readonly beforeSignOut = new BeforeSignOutHooks();
+
+  /** Register a function `signOut()` awaits first (Cloud Sync's flush, D-4); returns its remover. */
+  onBeforeSignOut(hook: () => Promise<void> | void): () => void {
+    return this.beforeSignOut.add(hook);
+  }
+
+  /** The pairwise subject of the account signed in on this device, or null (persisted). */
+  subject(): Promise<string | null> {
+    return this.account.subject();
+  }
+
+  /** Open the product's account page in the browser. */
+  openAccount(): Promise<OpenAccountResult> {
+    return this.account.openAccount();
   }
 
   /** Conformance replay only (reached through a typed cast, like `chunkRangeFetch`): the exact
@@ -300,16 +335,18 @@ export class IdentityClient {
     return v && typeof v.signedInAt === "number" ? v : null;
   }
 
-  /** Sign out: deactivate this device (release its seat, wipe credentials) and forget the
-   *  identity. The local wipe happens even when the server cannot be reached. */
-  async signOut(): Promise<void> {
-    await this.deactivate();
-    await this.forget();
+  /** Sign out of the account (`POST signout`) after the pre-sign-out hooks. The device token goes
+   *  only when the server released the device (`released: true`). */
+  signOut(): Promise<SignOutResult> {
+    return this.account.signOut();
   }
 
   /** Forget the stored identity (the facade calls it on every deactivation). */
   async forget(): Promise<void> {
     await rm(this.identityFile, { force: true }).catch(() => undefined);
+    await rm(subjectFile(this.ctx.dirs.state), { force: true }).catch(
+      () => undefined,
+    );
   }
 
   /**

@@ -12,6 +12,7 @@ import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import type { KeyEntries } from "@polaris-key/protocol/identity";
 import {
   isManageUrl,
+  readKeyEntries,
   readManageUrl,
   type PolarisError,
 } from "@polaris-key/client-core";
@@ -106,17 +107,6 @@ export type ActivationResult =
       wireCode?: string;
       retryAfterSeconds?: number;
     };
-
-/** Key entries as the wire carries them: two non-negative integers, else none. */
-export function readKeyEntries(body: unknown): KeyEntries | undefined {
-  if (body === null || typeof body !== "object") return undefined;
-  const k = (body as Record<string, unknown>).keyEntries;
-  if (k === null || typeof k !== "object") return undefined;
-  const { used, limit } = k as Record<string, unknown>;
-  const ok = (n: unknown): n is number =>
-    Number.isInteger(n) && (n as number) >= 0;
-  return ok(used) && ok(limit) ? { used, limit } : undefined;
-}
 
 /** `signInUrl` of a `license_owned` body: an absolute https URL (http only to loopback). */
 function readSignInUrl(body: unknown): string | undefined {

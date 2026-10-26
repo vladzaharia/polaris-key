@@ -15,6 +15,17 @@ const START = {
   interval: 1,
 };
 
+const discovery = () => ({
+  product: "djdl",
+  services: {
+    identity: {
+      enabled: true,
+      configured: true,
+      endpoints: { signout: "https://k.test/djdl/identity/signout" },
+    },
+  },
+});
+
 describe("device-code conveniences (§3.12)", () => {
   it("signInWithBrowser opens the complete URI, runs the attach opt-in, and stores the identity", async () => {
     const license = await signedLicense({ pro: true });
@@ -44,7 +55,8 @@ describe("device-code conveniences (§3.12)", () => {
         "GET /djdl/license/document": () => new Response(license),
         "GET /djdl/config/document": () => new Response("", { status: 404 }),
         "POST /djdl/devices/report": () => json({}),
-        "POST /djdl/license/deauthorize": () => json({}),
+        "GET /djdl/.well-known/polaris.json": () => json(discovery()),
+        "POST /djdl/identity/signout": () => json({ released: true }),
       },
     });
     const opened: string[] = [];
