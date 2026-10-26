@@ -19,7 +19,7 @@ pkey channel add flathub --field appId=com.example.YourApp
 
 ## The secret
 
-`PKEY_PR_TOKEN`: the maintainer's token, with write access to `flathub/<appId>` (an account with two-factor authentication, invited to the app repository). Without it the step is skipped, naming the variable.
+`PKEY_PR_TOKEN`: the maintainer's token, with write access to `flathub/<appId>` (an account with two-factor authentication, invited to the app repository). Without it the step is skipped, naming the variable. Polaris Key issues no GitHub token for `flathub/<appId>`; `distribution:pr` covers Homebrew and Scoop only. Between pull requests, Flathub's external-data checker follows the [checker JSON](/docs/features/ship-builds/channels/feeds/#flathub) and needs no token.
 
 ## The first submission is yours
 
