@@ -173,8 +173,8 @@
       "wp": "I-10a"
     },
     "identity.keyentry": {
-      "status": "planned",
-      "wp": "PX-W9b"
+      "status": "implemented",
+      "note": "I-10a: ActivationOk.key_entries, ActivationKeyEntryLimit(manage_url, key_entries) and ActivationLicenseOwned(sign_in_url); no wipe, no retry."
     },
     "release.changelog": {
       "status": "implemented"

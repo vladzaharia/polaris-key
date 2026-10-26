@@ -13,13 +13,16 @@ links each one builds are byte-identical.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 from urllib.parse import urlsplit
 
 __all__ = [
     "MANAGE_URL_MAX_LENGTH",
+    "KeyEntries",
     "is_manage_url",
     "manage_form_encode",
+    "read_key_entries",
     "read_manage_url",
     "with_manage_key",
     "with_manage_return",
@@ -84,6 +87,34 @@ def read_manage_url(body: Any) -> Optional[str]:
         inner = nested.get("manageUrl")
         if is_manage_url(inner):
             return inner
+    return None
+
+
+@dataclass(frozen=True)
+class KeyEntries:
+    """How many entries of a licence key are spent (``used``) of the most it allows
+    (``limit``), as the Worker reports them with Identity on. ``used`` may exceed ``limit``
+    (refusals off: counted, never refused), so no entries are left when ``used >= limit``."""
+
+    used: int
+    limit: int
+
+
+def _count(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
+def read_key_entries(body: Any) -> Optional[KeyEntries]:
+    """The ``keyEntries`` ``{used, limit}`` of an activation answer (or a ``key_entry_limit``
+    refusal), or ``None``: absent (Identity off) or not two non-negative integers. Reads the
+    top-level member and, failing that, one nested under ``error``."""
+    if not isinstance(body, dict):
+        return None
+    raw = body.get("keyEntries")
+    if raw is None and isinstance(body.get("error"), dict):
+        raw = body["error"].get("keyEntries")
+    if isinstance(raw, dict) and _count(raw.get("used")) and _count(raw.get("limit")):
+        return KeyEntries(used=raw["used"], limit=raw["limit"])
     return None
 
 
