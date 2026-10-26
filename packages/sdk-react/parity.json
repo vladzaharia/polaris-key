@@ -228,7 +228,7 @@
     },
     "identity.keyentry": {
       "status": "planned",
-      "wp": "PX-W9b"
+      "wp": "I-10a"
     },
     "release.changelog": {
       "status": "implemented"
@@ -417,7 +417,7 @@
     },
     "ui.kit.keyentry": {
       "status": "planned",
-      "wp": "PX-W9b"
+      "wp": "I-10a"
     },
     "ui.cli": {
       "status": "na",

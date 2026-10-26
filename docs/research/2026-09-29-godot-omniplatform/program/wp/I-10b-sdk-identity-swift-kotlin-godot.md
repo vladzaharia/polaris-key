@@ -221,3 +221,28 @@ commit of the PR:
 Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
 
 - No `exchange` here. This package is the critical path of automatic sign-in (R-18): I-44, I-45 and I-48 need it. It can start once SP-35b merges.
+
+## Corrections (2026-10-26)
+
+From `plans/I-10-slices.md` §0 (the code is the fact); each wins over the text above.
+
+- **C1.** `exchange` moves to I-44..I-48; I-13 becomes Worker and contract only. The Out and Unblocks-I-13 lines change; the lead drops the I-13 edge.
+- **C2.** `devicecode-choose/replace/choice-required/autoissue.json` and `devicecode-sign-in.json` do not exist (I-08 dropped them, `plans/I-08.md:76`); device code always chooses on the card and its steps do not change.
+- **C3.** PX-W9b is dropped and absorbed: the `keyentry-*` transcripts are replayed here, and the `identity.keyentry` and `ui.kit.keyentry` rows name this package, not PX-W9b.
+- **C4.** The web redirect redeems at `POST /<p>/identity/token`, form-encoded, `grant_type=authorization_code`, `client_id` = the product slug, and checks the callback `iss` against discovery's `issuer` (`plans/I-27.md` §5); I-04's JSON `redirect/token` is superseded.
+- **C5.** `identity.redirect.web` is all six SDKs (`plans/I-08.md:77`, `allowedNa: []`): each SDK ships the redirect core with a host-supplied https `redirectUri` (D-1); I-15 owns loopback, scheme, claimed HTTPS and `request`.
+- **C6.** The client codes `key-entry-limit`, `license-owned`, `account-required`, `attach-declined` are registered in `errors.json` by I-10a.1.
+- **C7.** client-core gains `readKeyEntries` (I-10a.1); the identity wire types already exist in `shared-protocol`, so there is no `shared-protocol` change.
+- **C8.** No SDK has a Cloud Sync client: `signOut()` runs a pre-sign-out hook list (`onBeforeSignOut`, D-4) that U-06, U-07 and U-21 fill.
+- **C9.** Removal, not aliases: `signInWithBrowser`, `beginSignIn`, `pollSignIn`, `waitForSignIn`, `acceptSignIn` are removed (the owner line and SP-35 §12 overrule "deprecated aliases kept").
+- **C10.** The device-code transcripts keep the old action names (`beginSignIn`, `pollSignIn`, `waitForSignIn`); replayers map them onto `signIn.start` and the session (D-6); the files are not re-recorded.
+- **C11.** `help/connected-apps` does not exist; sixteen docs pages, five READMEs and the integration renderer (`shared-manifest/src/integration/usage.ts`) name the removed calls; the React cookie note goes with SP-40 (D-7).
+- **B1.** `PolarisLoginView` is gone (SP-52b.2); the Swift kit is `PolarisKeyGate`, whose `WelcomeView.onSignIn` calls `model.beginSignIn()`.
+- **B2.** Swift has no transcript mirror (it reads `conformance/` in place); only Godot has one.
+- **B3.** Godot's `identity.gd` `attach(core, host)` is boot wiring and collides with the new verb: it is renamed `bind` (D-5).
+- **B4.** Godot P1-07 confirm shows whenever the game opts in with `confirm_identity`, not only after Keep; D-10 narrows it to a `confirm` that carries `attachable`.
+- **B5.** `PKeyLicenseChoiceController` is a static view-model helper; the model that runs the form is `ui/model/sign_in_session.gd`, which takes `primitives` as Callables the SDK supplies.
+- **B6.** Godot's transcript replayer matches JSON bodies only; `/identity/token` is form-encoded, so the replayer needs form support (PKCE S256 is feasible with `HashingContext` and `core/b64url.gd`).
+- **B7.** Kotlin has no identity discovery, no `signOut`, no subject facade and no `Ready` identity; `:identity` is one file with device start and poll only.
+- **B8.** Activation refusals fall into `.refused` (Swift), `ActivationResult.Ok`/`DeviceLimit` only (Kotlin) and `device-limit`-only `manage_url` (Godot); `key_entry_limit` and `license_owned` are new outcomes.
+- **B9.** Screens are UK packages: this package ships SDK primitives and the kits' presentation-core states; the Done step, **Add your name and email** and key-ownership screens are UK-42 and UK-43, and UK-11 (Godot kit) is in progress.

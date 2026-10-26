@@ -230,3 +230,25 @@ commit of the PR:
 Approved by the owner on 2026-10-26 ([`plans/CC-01.md`](../plans/CC-01.md)); this wins over the text above where they differ.
 
 - No `exchange` here. This package is the critical path of automatic sign-in (R-18): I-46 needs it. It can start once SP-35 merges.
+
+## Corrections (2026-10-26)
+
+From `plans/I-10-slices.md` §0 (the code is the fact); each wins over the text above.
+
+- **C1.** `exchange` moves to I-44..I-48; I-13 becomes Worker and contract only. The Out and Unblocks-I-13 lines change; the lead drops the I-13 edge.
+- **C2.** `devicecode-choose/replace/choice-required/autoissue.json` and `devicecode-sign-in.json` do not exist (I-08 dropped them, `plans/I-08.md:76`); device code always chooses on the card and its steps do not change.
+- **C3.** PX-W9b is dropped and absorbed: the `keyentry-*` transcripts are replayed here, and the `identity.keyentry` and `ui.kit.keyentry` rows name this package, not PX-W9b.
+- **C4.** The web redirect redeems at `POST /<p>/identity/token`, form-encoded, `grant_type=authorization_code`, `client_id` = the product slug, and checks the callback `iss` against discovery's `issuer` (`plans/I-27.md` §5); I-04's JSON `redirect/token` is superseded.
+- **C5.** `identity.redirect.web` is all six SDKs (`plans/I-08.md:77`, `allowedNa: []`): each SDK ships the redirect core with a host-supplied https `redirectUri` (D-1); I-15 owns loopback, scheme, claimed HTTPS and `request`.
+- **C6.** The client codes `key-entry-limit`, `license-owned`, `account-required`, `attach-declined` are registered in `errors.json` by I-10a.1.
+- **C7.** client-core gains `readKeyEntries` (I-10a.1); the identity wire types already exist in `shared-protocol`, so there is no `shared-protocol` change.
+- **C8.** No SDK has a Cloud Sync client: `signOut()` runs a pre-sign-out hook list (`onBeforeSignOut`, D-4) that U-06, U-07 and U-21 fill.
+- **C9.** Removal, not aliases: `signInWithBrowser`, `beginSignIn`, `pollSignIn`, `waitForSignIn`, `acceptSignIn` are removed (the owner line and SP-35 §12 overrule "deprecated aliases kept").
+- **C10.** The device-code transcripts keep the old action names (`beginSignIn`, `pollSignIn`, `waitForSignIn`); replayers map them onto `signIn.start` and the session (D-6); the files are not re-recorded.
+- **C11.** `help/connected-apps` does not exist; sixteen docs pages, five READMEs and the integration renderer (`shared-manifest/src/integration/usage.ts`) name the removed calls; the React cookie note goes with SP-40 (D-7).
+- **A1.** React's SDK code lives in `packages/ui-core/src/browser/sdk` (`sdk-react/src/browser/*` are re-exports); hooks stay in `sdk-react/src/react/hooks.ts`.
+- **A2.** React cookie mode is live until SP-40, which follows this package: the PKCE redirect is bearer-mode only.
+- **A3.** React desktop runs over the Electron bridge (SP-31's verbs); no new verb: Node's main maps `beginSignIn` and `pollSignIn` onto the session (D-12).
+- **A4.** Node today: `identity/client.ts` has `signInWithBrowser`, `beginSignIn`, `pollSignIn`, `waitForSignIn`; activation has no `keyEntries` and no `key-entry-limit` or `license-owned` kinds; `discovery.ts` has no identity fragment.
+- **A5.** Python today: `identity/client.py` has `begin_sign_in`, `poll_sign_in`, `accept_sign_in`, `wait_for_sign_in`, `sign_in_with_browser`; `ActivationOk` has no `key_entries`; `EVENT_KINDS` has no `identity`.
+- **A6.** React's `sdk-react/test/transcripts.test.ts` `plannedHere` set pins the applying features: every parity flip edits it.

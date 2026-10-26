@@ -192,6 +192,7 @@ public object ErrorCode {
     public const val packRevoked: String = "pack-revoked"
     public const val packNotDataOnly: String = "pack-not-data-only"
     public const val markerRejected: String = "marker-rejected"
+    public const val attachDeclined: String = "attach-declined"
     public const val licenseRequired: String = "license_required"
     public const val licenseInvalid: String = "license_invalid"
     public const val licenseStale: String = "license_stale"
@@ -379,6 +380,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "attach-declined",
     "license_required",
     "license_invalid",
     "license_stale",
@@ -566,6 +568,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "pack-revoked" to "client",
     "pack-not-data-only" to "client",
     "marker-rejected" to "client",
+    "attach-declined" to "client",
     "license_required" to "backend",
     "license_invalid" to "backend",
     "license_stale" to "backend",
@@ -1337,6 +1340,7 @@ public val ACTIVATION_RESULT_VALUES: List<String> = listOf(
     "unauthorized",
     "enroll-disabled",
     "key-entry-limit",
+    "license-owned",
     "refused",
     "error",
 )

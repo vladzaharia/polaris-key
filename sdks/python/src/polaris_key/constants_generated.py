@@ -362,6 +362,7 @@ class ErrorCode:
     PACK_REVOKED: Final = "pack-revoked"
     PACK_NOT_DATA_ONLY: Final = "pack-not-data-only"
     MARKER_REJECTED: Final = "marker-rejected"
+    ATTACH_DECLINED: Final = "attach-declined"
     LICENSE_REQUIRED: Final = "license_required"
     LICENSE_INVALID: Final = "license_invalid"
     LICENSE_STALE: Final = "license_stale"
@@ -549,6 +550,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "attach-declined",
     "license_required",
     "license_invalid",
     "license_stale",
@@ -738,6 +740,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "pack-revoked": "client",
         "pack-not-data-only": "client",
         "marker-rejected": "client",
+        "attach-declined": "client",
         "license_required": "backend",
         "license_invalid": "backend",
         "license_stale": "backend",
@@ -1566,6 +1569,7 @@ ACTIVATION_RESULT_VALUES: Tuple[str, ...] = (
     "unauthorized",
     "enroll-disabled",
     "key-entry-limit",
+    "license-owned",
     "refused",
     "error",
 )

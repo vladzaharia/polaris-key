@@ -2838,16 +2838,66 @@
     },
     {
       "id": "identity.signIn",
-      "kind": "method",
-      "feature": "identity.oidc",
-      "reserved": "I-10a",
+      "kind": "namespace",
+      "feature": "identity.devicecode",
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
       "layer": "client"
     },
     {
       "id": "identity.subject",
       "kind": "method",
       "feature": "identity.account",
-      "reserved": "I-10a",
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
       "layer": "client"
     },
     {
@@ -2863,6 +2913,433 @@
         "kotlin": {
           "planned": "I-10b",
           "reason": "planned"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.start",
+      "kind": "method",
+      "feature": "identity.devicecode",
+      "args": [
+        {
+          "name": "opts",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.reopen",
+      "kind": "method",
+      "feature": "identity.devicecode",
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.cancel",
+      "kind": "method",
+      "feature": "identity.devicecode",
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.wait",
+      "kind": "method",
+      "feature": "identity.devicecode",
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.complete",
+      "kind": "method",
+      "feature": "identity.redirect.web",
+      "args": [
+        {
+          "name": "callbackUrl",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.choice.licenses",
+      "kind": "method",
+      "feature": "identity.choice",
+      "args": [
+        {
+          "name": "grant",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.choice.devices",
+      "kind": "method",
+      "feature": "identity.choice",
+      "args": [
+        {
+          "name": "grant",
+          "type": "string"
+        },
+        {
+          "name": "licenseId",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.choice.complete",
+      "kind": "method",
+      "feature": "identity.choice",
+      "args": [
+        {
+          "name": "grant",
+          "type": "string"
+        },
+        {
+          "name": "licenseId",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.choice.cancel",
+      "kind": "method",
+      "feature": "identity.choice",
+      "args": [
+        {
+          "name": "grant",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.useLicenseChoice",
+      "kind": "hook",
+      "feature": "identity.choice",
+      "args": [
+        {
+          "name": "grant",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "react": {
+          "planned": "I-10a",
+          "reason": "the React hook over identity.choice (D-3)",
+          "shape": "hook"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.attachLicense",
+      "kind": "method",
+      "feature": "identity.attach",
+      "args": [
+        {
+          "name": "confirm",
+          "type": "bool"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
+          "spelling": "attach"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
+          "spelling": "attach"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
+          "spelling": "attach"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
+          "spelling": "attach"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
+          "spelling": "attach"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
+          "spelling": "attach"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.openAccount",
+      "kind": "method",
+      "feature": "identity.account",
+      "sdks": {
+        "node": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         }
       },
       "layer": "client"

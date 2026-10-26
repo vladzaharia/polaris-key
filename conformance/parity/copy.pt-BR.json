@@ -740,6 +740,10 @@
     "sign_in_required": {
       "title": "É preciso entrar",
       "message": "Entre na sua conta do Polaris Locker no app e tente novamente."
+    },
+    "attach-declined": {
+      "title": "Não adicionada",
+      "message": "Esta licença não foi adicionada à sua conta. Nada mudou."
     }
   },
   "gate": {
@@ -828,6 +832,10 @@
     "key-entry-limit": {
       "title": "Nenhum uso restante da chave",
       "message": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
+    },
+    "license-owned": {
+      "title": "Licença em outra conta",
+      "message": "Esta licença já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave."
     },
     "refused": {
       "title": "Ativação recusada",

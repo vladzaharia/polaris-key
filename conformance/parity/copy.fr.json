@@ -740,6 +740,10 @@
     "sign_in_required": {
       "title": "Connexion nécessaire",
       "message": "Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez."
+    },
+    "attach-declined": {
+      "title": "Non ajoutée",
+      "message": "Cette licence n'a pas été ajoutée à votre compte. Rien n'a changé."
     }
   },
   "gate": {
@@ -828,6 +832,10 @@
     "key-entry-limit": {
       "title": "Aucune saisie restante",
       "message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+    },
+    "license-owned": {
+      "title": "Licence dans un autre compte",
+      "message": "Cette licence est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer."
     },
     "refused": {
       "title": "Activation refusée",
