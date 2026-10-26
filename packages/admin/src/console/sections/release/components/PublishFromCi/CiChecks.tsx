@@ -49,7 +49,10 @@ export function CiChecks({
         </div>
       </details>
     );
-  const title = `Polaris Key does this · ${done.length} of ${items.length} done`;
+  const title =
+    items.length === 1
+      ? "Polaris Key does this"
+      : `Polaris Key does this · ${done.length} of ${items.length} done`;
   if (phone && done.length > 0)
     return (
       <div className="space-y-2">
