@@ -9,7 +9,7 @@ import {
   isCanonicalB64url,
 } from "@polaris-key/jws";
 import type { Db, DbStatement } from "../../db/types.js";
-import { utf8Encode, toArrayBuffer } from "../../platform/bytes.js";
+import { hexEncode, utf8Encode, toArrayBuffer } from "../../platform/bytes.js";
 
 export interface DeviceKeysRow {
   product: string;
@@ -65,12 +65,6 @@ const X25519_LOW_ORDER: readonly string[] = [
   "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
 ];
 
-function hexOf(bytes: Uint8Array): string {
-  let out = "";
-  for (const b of bytes) out += b.toString(16).padStart(2, "0");
-  return out;
-}
-
 /** Canonical base64url of exactly 32 bytes, or null. */
 function raw32(s: unknown): Uint8Array | null {
   if (typeof s !== "string" || s.length !== 43 || !isCanonicalB64url(s)) {
@@ -102,7 +96,7 @@ export function isValidAgreeKey(s: unknown): boolean {
   if (!key) return false;
   const masked = key.slice();
   masked[31]! &= 0x7f;
-  return !X25519_LOW_ORDER.includes(hexOf(masked));
+  return !X25519_LOW_ORDER.includes(hexEncode(masked));
 }
 
 export function validateDeviceKeys(keys: DeviceKeyPair): boolean {

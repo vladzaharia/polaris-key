@@ -36,6 +36,7 @@ import type { ServiceContext } from "../../core/registry.js";
 import { deployIdentity } from "../../core/ops/deployIdentity.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
+import { parseJsonOr } from "../../platform/json.js";
 import { getReleaseConfig } from "./config.js";
 import { fetchRepoFile } from "./github.js";
 import {
@@ -140,13 +141,15 @@ export function parseSetupPrBody(
 const isRefusal = (v: SetupPrInput | SetupPrRefusal): v is SetupPrRefusal =>
   "reason" in v;
 
+const NOT_JSON = Symbol("not json");
+
+/** A `.pkey/` file as JSON, else as YAML (the manifest accepts either). */
 function parseDoc(text: string | undefined): unknown {
   if (text === undefined) return undefined;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return parseYaml(text, { uniqueKeys: false, maxAliasCount: 100 });
-  }
+  const json = parseJsonOr<unknown>(text, NOT_JSON);
+  return json !== NOT_JSON
+    ? json
+    : parseYaml(text, { uniqueKeys: false, maxAliasCount: 100 });
 }
 
 const b64 = (text: string): string => {

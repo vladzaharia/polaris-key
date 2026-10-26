@@ -1614,7 +1614,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/test/cliKit.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-node/test/client.test.ts": {
       "jscpd:duplicate": 13
@@ -1647,7 +1647,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/electronNotifications.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/sdk-node/test/endpoints.test.ts": {
       "jscpd:duplicate": 3
