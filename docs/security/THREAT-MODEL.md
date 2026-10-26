@@ -11100,6 +11100,63 @@ refusal, so an old config cannot set, widen or empty the trust root unnoticed. G
 refuse it and to pre-fill the dock, never as the trust set. A refusal names options, never
 values. `conformance/parity/api.json` and its lint are hygiene, not a security boundary.
 
+### The GitHub write path
+
+**What is new.** Polaris Key writes to a customer's repository through the GitHub App: the setup
+pull request, the `release` environment and the `v*` tag ruleset. Code:
+`services/release/github/{allow,write,prToken}.ts`, `ciFix.ts`.
+
+**Control: a closed allow-list.** Every write is one named action (`setup.branch`, `setup.file`,
+`setup.pr`, `env.release`, `ruleset.tags`) with one request shape and one permission set.
+`authorize()` in `allow.ts` is the only gate and `write.ts` sends nothing it has not passed; a
+request outside the table is refused before any fetch.
+
+**Control: narrowed tokens.** A token is minted per request, for one action's permissions and the
+one repository named in the path. It is never cached or stored. The host is fixed to
+`api.github.com` and redirects are not followed.
+
+**Control: the never-list.** Refused: merging, closing or retargeting a pull request, deleting a
+ref or file, a force update, any branch but `pkey/setup`, the default branch, any path outside
+`.pkey/{distribution,release}.{yaml,yml,json}` and `.github/workflows/release.yml`,
+collaborators, repository settings, hooks, secrets, and any other repository. A test enforces the
+list. Polaris Key opens one pull request; a person merges it.
+
+**Control: the release environment and the tag ruleset.** The environment named `release` is
+limited to `v*` tags, and a tag ruleset over `refs/tags/v*` blocks deletion, update and force
+push, so the OIDC token a publish job presents carries `ref_protected: true` only for a protected
+release tag. A publisher naming another environment is skipped.
+
+**Open items.**
+
+- A partial environment fix can leave the environment with no `v*` policy: CI readiness checks
+  only that the environment exists, so it reports ready.
+- The ruleset's bypass actor is the repository-admin role (id 5). GitHub's REST reference does not
+  list role ids, so this is unverified on a live repository.
+
+### The CI GitHub token exchange
+
+**What is new.** `POST /<product>/distribution/pr/github-token`
+(`services/distribution/pr/githubToken.ts`) gives a CI run a GitHub token to open the pull request
+to a declared Homebrew tap or Scoop bucket, so no personal token is stored.
+
+**Control: scope and repository.** The caller is a `pkeyci_` token holding `distribution:pr`, an
+opt-in scope (never a default, never a manifest grant). The repository is never the caller's word:
+it is the `direct` outlet's declared `homebrewTap` or `scoopBucket`, matched against the
+manifest's pattern, which refuses `Homebrew/*` and `ScoopInstaller/*`. Other outlet kinds have no
+repository here and are refused.
+
+**Control: the token.** Contents and Pull requests write on that one repository, for GitHub's one
+hour. It is in the one response (`Cache-Control: no-store`), not stored, and not audited; the
+audit row `distribution.pr.github_token` names the outlet and the repository.
+
+**Control: the rate limit.** 20 requests per product per hour, charged once the body is
+well-formed and before any GitHub call. The limiter fails closed, since the route mints a
+credential. With Release off the route does not exist.
+
+**Residual.** A `pkeyci_` token with this scope can open pull requests on the declared tap or
+bucket for the hour of each token it exchanges. Anyone who can edit `.pkey/distribution` on the
+default branch can change which repository an outlet declares, within the pattern.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, and the SDK does not trust it.** Every
@@ -11683,7 +11740,7 @@ operator; and denial of service originating from Cloudflare's own network contro
 
 ## 9. Review triggers
 
-Revisit this document when any of the following changes: a `pkeya_` admin API token gains a scope
+Revisit this document when any of the following changes: a row joins the GitHub write allow-list, the never-list loses an entry, or a write token is cached or widened beyond one repository; the `distribution:pr` scope joins `DEFAULT_CI_SCOPES` or the exchange takes its repository from the request; a `pkeya_` admin API token gains a scope
 (an entry in `ADMIN_API_SCOPES`) or a route row gains a `tokenScope` or `personalToken: true` (the rows an admin `pkeyp_` reaches, A17), which widens a credential
 that exists precisely because it is narrower than a session, and A16 stops being true the moment
 the scope vocabulary stops being one word; a new tenant that is not first-party is

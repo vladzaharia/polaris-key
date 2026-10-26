@@ -42,6 +42,13 @@ rules the Worker applies, are on [Trusted publishing](/docs/features/ship-builds
    `release` or `workflow_dispatch`. Give the environment required reviewers if not every writer
    may publish.
 
+## Set it up from the console
+
+**Ship builds → Publish from CI** creates the `release` environment (limited to `v*` tags) and the
+`v*` tag ruleset, and opens one `pkey/setup` pull request, which you merge.
+
+Without the App's write permissions, `pkey ci init` writes the workflow and a release key and prints the `gh` lines for the rest.
+
 ## The workflow
 
 ```yaml title=".github/workflows/release.yml"

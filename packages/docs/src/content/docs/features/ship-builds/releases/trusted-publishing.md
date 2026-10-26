@@ -58,12 +58,19 @@ may publish.
 The default scopes are `release:publish`, `release:promote` and `distribution:report`;
 `release:yank`, `distribution:rollout` (the
 [rollout controls](/docs/features/ship-builds/channels/rollouts/)), `distribution:feeds` and
-`distribution:listing` ([listing assets](/docs/features/ship-builds/channels/polaris-key/#listing-assets)) and `assets:write`
+`distribution:pr` (a GitHub token for the declared Homebrew tap or Scoop bucket, below), `distribution:listing` ([listing assets](/docs/features/ship-builds/channels/polaris-key/#listing-assets)) and `assets:write`
 ([hosted assets](/docs/features/ship-builds/channels/polaris-key/#hosted-assets)) are opt-in. Scopes are an operator setting, never a manifest one: in the console's
 admin API an operator can read the policy (`/manage/api/products/<slug>/ci-publisher`),
 claim and edit it (`PUT`, which also stops resync from changing it), and issue, list and revoke
 **static** `pkeyci_` tokens for a CI that is not GitHub (`/manage/api/products/<slug>/ci-tokens`;
 shown once, expiring at most 90 days out). Every one of those writes is audited.
+
+**Pull requests to your tap or bucket.** With `distribution:pr`, the run asks
+`POST /<product>/distribution/pr/github-token` with `{outlet, store?}`. The answer is a GitHub
+token for the repository the outlet declares (`homebrewTap` or `scoopBucket`), never one the
+caller names: Contents and Pull requests write on that one repository, for one hour, and
+at most 20 requests per product per hour. It needs the GitHub App installed there with those
+permissions. See [Homebrew](/docs/features/ship-builds/channels/homebrew/).
 
 Errors use the platform's flat shape with a machine-readable `reason`
 (`policy_mismatch` names the failing `claim`). The routes are in the

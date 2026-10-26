@@ -272,6 +272,17 @@ stale version is a 409 and nothing changes. Turning it off asks first, because e
 product answers not-found within 30 seconds. **Ship builds → Packages** is in the sidebar whenever Ship builds is on, and shows
 the off state with **Turn on**: see [Package feeds](/docs/features/ship-builds/packages/).
 
+## Publish from CI
+
+**Ship builds → Publish from CI** shows each check for a tag publish as a row: GitHub App installed,
+`.pkey/release`, the release workflow, the release environment, the `v*` tag ruleset, the trusted
+publisher and pull requests to Homebrew and Scoop. **Create** on the environment and ruleset rows
+writes them in the linked repository (environment limited to `v*` tags); **Open pull request** adds
+the workflow through one `pkey/setup` pull request that you merge. A row whose permission the GitHub
+App installation has not accepted shows **Needs administration: write** and links to GitHub's
+installation page. The CLI fallback is on
+[Publishing from CI](/docs/features/ship-builds/ci/#set-it-up-from-the-console).
+
 ## Reference
 
 - The D1 data model (platform admins) — `products`, `product_keys` and `product_secrets`,

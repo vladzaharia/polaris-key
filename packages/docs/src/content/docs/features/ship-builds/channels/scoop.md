@@ -19,7 +19,9 @@ pkey channel add scoop --field scoopBucket=your-name/your-bucket
 
 ## The secret
 
-`PKEY_PR_TOKEN`: a fine-grained token limited to the bucket, with `Contents: Read and write` and `Pull requests: Read and write`. Without it the step is skipped, naming the variable.
+`PKEY_PR_TOKEN`: a fine-grained token limited to the bucket, with `Contents: Read and write` and `Pull requests: Read and write`. Without it, and without the exchange below, the step is skipped, naming the variable.
+
+No personal token is needed when the publish job's `pkeyci_` token has the `distribution:pr` scope (an operator grants it in the console) and the GitHub App is installed on the bucket with Contents and Pull requests write: the step then asks Polaris Key for a one-hour token for the declared bucket only. `PKEY_PR_TOKEN` still wins when set.
 
 ## The publish step runs it
 

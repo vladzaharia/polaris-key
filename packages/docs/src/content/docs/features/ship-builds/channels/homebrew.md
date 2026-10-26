@@ -20,7 +20,9 @@ Use `homebrewCask` for a macOS app and `homebrewFormula` for a command-line tool
 
 ## The secret
 
-`PKEY_PR_TOKEN`: a fine-grained token limited to the tap, with `Contents: Read and write` and `Pull requests: Read and write`. Without it the step is skipped, naming the variable.
+`PKEY_PR_TOKEN`: a fine-grained token limited to the tap, with `Contents: Read and write` and `Pull requests: Read and write`. Without it, and without the exchange below, the step is skipped, naming the variable.
+
+No personal token is needed when the publish job's `pkeyci_` token has the `distribution:pr` scope (an operator grants it in the console) and the GitHub App is installed on the tap with Contents and Pull requests write: the step then asks Polaris Key for a one-hour token for the declared tap only. `PKEY_PR_TOKEN` still wins when set.
 
 ## The publish step runs it
 

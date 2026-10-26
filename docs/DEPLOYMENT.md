@@ -216,9 +216,23 @@ Required settings:
 | -------------------- | ------------------------------------- |
 | Webhook URL          | `https://key.plrs.im/webhooks/github` |
 | Webhook content type | `application/json`                    |
-| Permissions          | Contents: read, Actions: read         |
+| Permissions          | The table below                       |
 | Events               | Push, Release                         |
 | Installation         | the first product's repository        |
+
+| Permission     | Access | Unlocks                                                                        |
+| -------------- | ------ | ------------------------------------------------------------------------------ |
+| Metadata       | read   | Every token (repository lists, rulesets read)                                  |
+| Contents       | write  | Release reads; the `pkey/setup` branch and files; tap and bucket pull requests |
+| Pull requests  | write  | The one setup pull request; tap and bucket pull requests                       |
+| Workflows      | write  | `.github/workflows/release.yml` in the setup pull request                      |
+| Administration | write  | The `release` environment (limited to `v*` tags) and the `v*` tag ruleset      |
+| Actions        | read   | Reading the `release` environment for CI readiness                             |
+
+Contents: read and Actions: read are the read set. The write permissions are optional: without
+them the console falls back to commands the person runs themselves. Each installation has to accept
+the new permissions before they apply. Polaris Key writes only through a closed allow-list, with a
+token narrowed to one repository per request (see the threat model, "The GitHub write path").
 
 Generate and download a private key (`.pem`). Record:
 
