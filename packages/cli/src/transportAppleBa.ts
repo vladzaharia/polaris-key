@@ -190,7 +190,20 @@ export async function baPackage(o: BaPackageOptions): Promise<BaPackageResult> {
       ((cmd: string, args: string[], cwd: string) => {
         execFileSync(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
       });
-    exec("xcrun", ["ba-package", "package", "Manifest.json", "-o", aar], dir);
+    try {
+      exec("xcrun", ["ba-package", "package", "Manifest.json", "-o", aar], dir);
+    } catch (e) {
+      // execFileSync keeps the tool's reason in stderr, below the first line of its message.
+      const raw = (e as { stderr?: unknown }).stderr;
+      const last = String(raw ?? "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .at(-1);
+      throw new Error(
+        `xcrun ba-package failed${last ? `: ${last}` : ` (${(e as Error).message.split("\n")[0]})`}`,
+      );
+    }
     o.stdout.write(`Archived ${path.relative(o.cwd, aar) || aar}\n`);
   }
   await reportTransport(o, loaded, outlets, "pending", {
@@ -602,6 +615,31 @@ async function packagedPayload(
   };
 }
 
+export function assertPartUrl(raw: string): void {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new AscUploadError(
+      "asc-http-error",
+      "an upload part URL is not a URL.",
+    );
+  }
+  const host = u.hostname.toLowerCase();
+  if (
+    u.protocol !== "https:" ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    !host.includes(".") ||
+    host.startsWith("[") ||
+    /^[0-9.]+$/.test(host)
+  )
+    throw new AscUploadError(
+      "asc-http-error",
+      "an upload part URL is not an https URL on a named host.",
+    );
+}
+
 async function uploadFile(
   api: AscApi,
   o: BaUploadOptions,
@@ -641,7 +679,9 @@ async function uploadFile(
         "asc-http-error",
         `upload operation at ${op.offset}+${op.length} is outside ${path.basename(file)} (${bytes.byteLength} bytes).`,
       );
-    // The part URLs are pre-signed: no App Store Connect token goes with them.
+    // The part URLs are pre-signed: no App Store Connect token goes with them. They are Apple's
+    // answer, so only a named https host is used: no plain http, IP literal or localhost.
+    assertPartUrl(op.url);
     const put = await fetchImpl(op.url, {
       method: op.method,
       headers: Object.fromEntries(

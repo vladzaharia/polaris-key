@@ -176,6 +176,10 @@ export async function loadTransportPack(
   from: string,
 ): Promise<LoadedTransportPack> {
   const { slug, pack, app, distribution } = await loadTransportProduct(common);
+  if (!/^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(common.version))
+    throw new Error(
+      `--release ${common.version} is not a release version (letters, digits, . _ + -).`,
+    );
   const root = path.resolve(common.cwd, from, pack.id, common.version);
   let recordJws: string;
   try {

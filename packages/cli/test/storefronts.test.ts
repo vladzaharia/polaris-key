@@ -346,6 +346,31 @@ describe("the itch.io and Snap command plans", () => {
     );
   });
 
+  it("keeps other tools' credentials, the ASC key and the Steam config out of a vendor tool", () => {
+    const env = {
+      PATH: "/usr/bin",
+      BUTLER_API_KEY: "b",
+      SNAPCRAFT_STORE_CREDENTIALS: "s",
+      ASC_PRIVATE_KEY: "p",
+      STEAM_CONFIG_VDF: "v",
+      STEAM_USERNAME: "u",
+    };
+    expect(toolEnv(env, "butler")).toEqual({
+      PATH: "/usr/bin",
+      BUTLER_API_KEY: "b",
+      STEAM_USERNAME: "u",
+    });
+    expect(toolEnv(env, "snapcraft")).toEqual({
+      PATH: "/usr/bin",
+      SNAPCRAFT_STORE_CREDENTIALS: "s",
+      STEAM_USERNAME: "u",
+    });
+    expect(toolEnv(env, "steamcmd")).toEqual({
+      PATH: "/usr/bin",
+      STEAM_USERNAME: "u",
+    });
+  });
+
   it("keeps the CI token, OIDC request variables and the Action's inputs from the vendor tool", () => {
     expect(
       toolEnv({

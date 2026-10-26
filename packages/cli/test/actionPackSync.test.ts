@@ -125,6 +125,8 @@ describe("the Action after a pack publish", () => {
       "game.pack",
       "--from",
       out,
+      "--version",
+      "1.0.0",
     ]);
   });
 
@@ -144,7 +146,35 @@ describe("the Action after a pack publish", () => {
       "game.pack",
       "--from",
       "build/packs",
+      "--version",
+      "1.0.0",
     ]);
+  });
+
+  it("forwards --channel and a --tag's version", async () => {
+    const cwd = await project();
+    await act(
+      cwd,
+      "--deliverable game.pack --tag v2.0.0 --channel beta --dir dist",
+    );
+    expect(calls[1]!.slice(-4)).toEqual([
+      "--channel",
+      "beta",
+      "--version",
+      "2.0.0",
+    ]);
+  });
+
+  it("without RUNNER_TEMP the cache is a fresh private directory", async () => {
+    const cwd = await project();
+    const args = "--deliverable game.pack --version 1.0.0 --dir dist";
+    await act(cwd, args, { RUNNER_TEMP: "" });
+    const first = calls[0]![calls[0]!.indexOf("--out") + 1]!;
+    calls.length = 0;
+    await act(cwd, args, { RUNNER_TEMP: "" });
+    const second = calls[0]![calls[0]!.indexOf("--out") + 1]!;
+    expect(first).toMatch(/pkey-packs-[A-Za-z0-9]{6}$/);
+    expect(second).not.toBe(first);
   });
 
   it("channels none runs no sync and adds no --out", async () => {

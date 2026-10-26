@@ -20,6 +20,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { generateKeyPairSync, createPublicKey, verify } from "node:crypto";
+import { assertPartUrl } from "../src/transportAppleBa.js";
 import { TransportIdError } from "@polaris-key/manifest";
 import {
   AscUploadError,
@@ -213,6 +214,41 @@ const markerOf = (jws: string) =>
 // ── apple-ba package ─────────────────────────────────────────────────────────────────────────
 
 describe("pkey transport apple-ba package", () => {
+  it("an xcrun failure keeps the reason from its last stderr line", async () => {
+    const w = await published();
+    const { c } = common(w);
+    await expect(
+      baPackage({
+        ...c,
+        from: "cache",
+        platform: "darwin",
+        exec: () => {
+          throw Object.assign(new Error("Command failed: xcrun ba-package"), {
+            stderr: Buffer.from(
+              'warn\nerror: unable to find utility "ba-package"\n',
+            ),
+          });
+        },
+      }),
+    ).rejects.toThrow(
+      'xcrun ba-package failed: error: unable to find utility "ba-package"',
+    );
+  });
+
+  it("only an https URL on a named host takes an upload part", () => {
+    for (const ok of ["https://store-upload.example.com/a?x=1"])
+      expect(() => assertPartUrl(ok)).not.toThrow();
+    for (const bad of [
+      "http://upload.example.com/a",
+      "https://127.0.0.1/a",
+      "https://localhost/a",
+      "https://[::1]/a",
+      "https://intranet/a",
+      "nope",
+    ])
+      expect(() => assertPartUrl(bad)).toThrow();
+  });
+
   it("writes Manifest.json, the payload and its marker, the inputs, archives and reports pending", async () => {
     const w = await published();
     const { c, io } = common(w);

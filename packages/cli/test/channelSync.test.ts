@@ -434,15 +434,18 @@ describe("pkey channel sync (A-25.3)", () => {
   it("a missing CI credential fails once, before any step, --dry-run too", async () => {
     const cwd = await repo();
     const { PKEY_CI_TOKEN: _t, ...env } = ENV;
-    for (const args of [[], ["--dry-run"]]) {
-      const r = await sync(cwd, args, { env });
-      expect(r.code).toBe(1);
-      expect(r.err).toBe(
-        "✗  No CI credential: in GitHub Actions add permissions: id-token: write; elsewhere set PKEY_CI_TOKEN.\n",
-      );
-      expect(r.out).toBe("");
-      expect(r.w.seen).toHaveLength(0);
-    }
+    const r = await sync(cwd, [], { env });
+    expect(r.code).toBe(1);
+    expect(r.err).toBe(
+      "✗  No CI credential: in GitHub Actions add permissions: id-token: write; elsewhere set PKEY_CI_TOKEN.\n",
+    );
+    expect(r.out).toBe("");
+    expect(r.w.seen).toHaveLength(0);
+    // A dry run reports nothing, so it needs no credential.
+    const dry = await sync(cwd, ["--dry-run"], { env });
+    expect(dry.code).toBe(0);
+    expect(dry.err).toBe("");
+    expect(dry.w.seen).toHaveLength(0);
     const j = await sync(cwd, ["--json"], { env });
     expect(JSON.parse(j.out)).toMatchObject({
       ok: false,
@@ -642,10 +645,10 @@ describe("pkey channel sync --dir (A-25.4)", () => {
     expect(r.runs).toHaveLength(0);
     expect(r.w.seen).toHaveLength(0);
     expect(r.out).toContain(
-      "itch: would run butler push dist/Diceroll-1.2.0-linux.zip vlad/diceroll:linux --userversion 1.2.0",
+      "itch: would run\n   butler push dist/Diceroll-1.2.0-linux.zip vlad/diceroll:linux --userversion 1.2.0\n",
     );
     expect(r.out).toContain(
-      "snap: would run snapcraft upload dist/diceroll_1.2.0_amd64.snap --release=stable",
+      "snap: would run\n   snapcraft upload dist/diceroll_1.2.0_amd64.snap --release=stable\n",
     );
   });
 
@@ -670,7 +673,7 @@ describe("pkey channel sync --dir (A-25.4)", () => {
     });
     expect(b.code, b.out).toBe(0);
     expect(b.out).toContain(
-      "fdroid: would run pkey storefront fdroid --product diceroll --channel stable --out fdroid-repo --keystore ci.jks --alias repo",
+      "fdroid: would run\n   pkey storefront fdroid --product diceroll --channel stable --out fdroid-repo --keystore ci.jks --alias repo\n",
     );
     expect(a.out + b.out).not.toContain("ks-secret-value");
   });
@@ -743,7 +746,7 @@ describe("pkey channel sync --deliverable (P4-33.3)", () => {
     ]);
     expect(rows.filter((r) => r.note)).toHaveLength(1);
     expect(rows[0]!.note).toBe(
-      "app-store, testflight: served from the Polaris Key CDN until run on macOS.",
+      "app-store, testflight get diceroll.core3d from the Polaris Key CDN until then.",
     );
   });
 
@@ -753,27 +756,37 @@ describe("pkey channel sync --deliverable (P4-33.3)", () => {
       plan({ ...darwin, env: { ...STEAM, ...env } }).find(
         (r) => r.part === "upload",
       )!;
-    expect(first({}).secret).toBe("ASC_KEY_ID");
-    expect(first({ ASC_KEY_ID: "k" }).secret).toBe("ASC_ISSUER_ID");
-    expect(first({ ASC_KEY_ID: "k", ASC_ISSUER_ID: "i" }).secret).toBe(
+    expect(first({}).secrets).toEqual([
+      "ASC_KEY_ID",
+      "ASC_ISSUER_ID",
       "ASC_PRIVATE_KEY",
-    );
+    ]);
+    expect(first({}).secret).toBe("ASC_KEY_ID");
+    expect(first({ ASC_KEY_ID: "k" }).secrets).toEqual([
+      "ASC_ISSUER_ID",
+      "ASC_PRIVATE_KEY",
+    ]);
+    expect(first({ ASC_KEY_ID: "k", ASC_ISSUER_ID: "i" }).secrets).toEqual([
+      "ASC_PRIVATE_KEY",
+    ]);
     expect(
       first({ ASC_KEY_ID: "k", ASC_ISSUER_ID: "i", ASC_KEY_PATH: "k.p8" })
         .state,
     ).toBe("planned");
     expect(plan({ platform: "darwin", env: STEAM })[0]!.note).toBe(
-      "app-store, testflight: served from the Polaris Key CDN until ASC_KEY_ID is set.",
+      "app-store, testflight get diceroll.core3d from the Polaris Key CDN until then.",
     );
     const steam = (env: Record<string, string>) =>
       plan({ ...darwin, env: { ...ASC, ...env }, hasTool: () => true }).filter(
         (r) => r.transport === "steam-depot",
       );
-    expect(steam({}).map((r) => r.secret)).toEqual([
-      "STEAM_USERNAME",
-      "STEAM_USERNAME",
+    expect(steam({}).map((r) => r.secrets)).toEqual([
+      ["STEAM_USERNAME", "STEAM_CONFIG_VDF"],
+      ["STEAM_USERNAME", "STEAM_CONFIG_VDF"],
     ]);
-    expect(steam({ STEAM_USERNAME: "b" })[0]!.secret).toBe("STEAM_CONFIG_VDF");
+    expect(steam({ STEAM_USERNAME: "b" })[0]!.secrets).toEqual([
+      "STEAM_CONFIG_VDF",
+    ]);
     expect(steam({}).filter((r) => r.note)).toHaveLength(1);
   });
 
@@ -785,7 +798,7 @@ describe("pkey channel sync --deliverable (P4-33.3)", () => {
     }).filter((r) => r.transport === "steam-depot");
     expect(rows.map((r) => r.reason)).toEqual(["no-steamcmd", "no-steamcmd"]);
     expect(rows[0]!.note).toBe(
-      "steam: served from the Polaris Key CDN until steamcmd is installed.",
+      "steam gets diceroll.core3d from the Polaris Key CDN until then.",
     );
     const bare = planTransports(
       {
@@ -833,12 +846,24 @@ transports:
     }
 
     it("--json: the rows carry transport, part and pack; no channel rows; no secret value", async () => {
-      const r = await packSync(["--deliverable", PACK, "--json", "--dry-run"], {
-        ...ENV,
-        ...ASC,
-        ...STEAM,
-        PATH: "",
-      });
+      const r = await packSync(
+        [
+          "--deliverable",
+          PACK,
+          "--json",
+          "--dry-run",
+          "--version",
+          "1.0.0",
+          "--from",
+          "cache",
+        ],
+        {
+          ...ENV,
+          ...ASC,
+          ...STEAM,
+          PATH: "",
+        },
+      );
       expect(r.code, r.err + r.out).toBe(0);
       const data = JSON.parse(r.out);
       expect(data.steps.map((x: never) => x["step"])).toEqual(
@@ -858,6 +883,10 @@ transports:
         reason: "no-steamcmd",
         depot: "481",
       });
+      expect(by("play-pad", "modules").command).toBe(
+        `pkey transport play-pad modules --deliverable ${PACK}`,
+      );
+      expect(data).toMatchObject({ deliverable: PACK, version: "1.0.0" });
       expect(r.out).not.toContain("pem-secret-value");
       expect(r.out).not.toContain("vdf-secret-value");
     });
@@ -869,13 +898,13 @@ transports:
       });
       expect(r.code, r.err + r.out).toBe(0);
       expect(r.out).toContain(
-        "steam-depot vdf (steam): skipped: STEAM_USERNAME is not set",
+        "steam-depot vdf, build (steam): skipped: STEAM_USERNAME and STEAM_CONFIG_VDF are not set",
       );
       expect(r.out).toContain(
-        "steam: served from the Polaris Key CDN until STEAM_USERNAME is set.",
+        "steam gets diceroll.core3d from the Polaris Key CDN until then.",
       );
       expect(r.out).toContain(
-        "play-pad modules (play): skipped: run before the build: pkey transport play-pad modules --deliverable diceroll.core3d",
+        "play-pad modules (play): skipped: runs before the build\n   pkey transport play-pad modules --deliverable diceroll.core3d\n",
       );
       expect(r.out).not.toContain("flathub");
     });
