@@ -111,6 +111,8 @@ export {
   type WaitForSignInOptions,
 } from "./identity/client.js";
 export {
+  type AttachLicense,
+  type AttachResult,
   type OpenAccountResult,
   type SignOutResult,
 } from "./identity/account.js";
