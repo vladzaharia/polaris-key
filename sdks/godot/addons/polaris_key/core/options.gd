@@ -97,7 +97,7 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## §12.7.1): sent on device-code sign-in, activation and registration. Empty: the device's model
 ## where the OS reports one, else the OS name.
 @export var device_name := ""
-## Off: send no device label at all (a per-call name to `begin_sign_in` still goes).
+## Off: send no device label at all (a per-call name to `sign_in.start` still goes).
 @export var send_device_name := true
 ## Product-declared companion-app probes answered in the device report, each a Dictionary
 ## {id, label?, macos?, windows?, linux?} naming a path to test on that OS. Nothing else is ever

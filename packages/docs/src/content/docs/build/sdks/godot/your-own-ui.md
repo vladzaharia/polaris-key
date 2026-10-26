@@ -119,41 +119,31 @@ sign-in. The result carries no manage link; a `KIND_KEY_ENTRY_LIMIT` with its li
 
 ## Sign-in: prompt, countdown, and identity
 
-`PolarisKey.identity` emits the prompt and final result. `PKeySignInController` turns those into
-the catalog key, countdown, short address, and identity line; never render or persist the device
-code.
+`PolarisKey.identity.sign_in.start()` returns a session; `session.wait()` settles it. `PKeySignInController`
+turns the session and its outcome into the catalog key, countdown, short address, and identity
+line; never render or persist the device code.
 
 ```gdscript
 extends Node
 
 
-func _ready() -> void:
-	PolarisKey.identity.sign_in_pending.connect(_on_sign_in_pending)
-	PolarisKey.identity.sign_in_finished.connect(_on_sign_in_finished)
-
-
 func begin_sign_in() -> void:
-	var prompt := await PolarisKey.identity.begin_sign_in()
-	if not prompt.ok:
-		push_warning(prompt.code)
-
-
-func _on_sign_in_pending(prompt: PKeySignInPrompt) -> void:
-	var seconds := PKeySignInController.remaining(prompt, Time.get_unix_time_from_system())
-	print(prompt.user_code, PKeySignInController.short_uri(prompt.verification_uri))
+	var session := await PolarisKey.identity.sign_in.start()
+	if not session.ok:
+		push_warning(session.code)
+		return
+	var seconds := PKeySignInController.remaining(session, Time.get_unix_time_from_system())
+	print(session.user_code, PKeySignInController.short_uri(session.verification_uri))
 	print(PKeySignInController.clock(seconds))
-	# Render a QR code from prompt.verification_uri_complete.
-
-
-func _on_sign_in_finished(result: PKeySignInResult) -> void:
+	# Render a QR code from session.verification_uri_complete; session.cancel() stops it.
+	var result := await session.wait()
 	print(PKeySignInController.message_for(result.kind))
 	print(PKeySignInController.identity_line(result.identity))
 ```
 
 The flow states are `starting`, `pending`, `confirm`, and `ended`. Pending shows the user code,
-short URI, QR payload, and countdown. Ended maps `ok`, `expired`, `cancelled`, `denied` (the person pressed Deny),
-`device-mismatch`, `rate-limited`, `service-unavailable`, `timeout`, and other errors to a copy
-key. Use `PolarisKey.identity.current()` after success to restore the signed-in person on a later
+short URI, QR payload, and countdown. Ended maps `signed_in`, `expired`, `cancelled`, `denied` (the person pressed Deny),
+`device-mismatch`, `rate-limited`, `service-unavailable`, and other errors to a copy key. Use `PolarisKey.identity.current()` after success to restore the signed-in person on a later
 screen; `sign_out()` ends the identity and stops counting it.
 
 ## Status and signals
@@ -242,7 +232,7 @@ that is a store page, browser link, native updater, staging operation, or restar
 ## Tests
 
 The controllers are static and have no side effects: test a screen with a small Dictionary, a
-`PKeyActivationResult`, a `PKeySignInPrompt`, a `PKeySignInResult` or an update result, without a
+`PKeyActivationResult`, a `PKeySignInSession`, a `PKeySignInOutcome` or an update result, without a
 scene tree. `PKeyGate.license_state()` is the pure function behind `status()`, so a test can put
 the gate in any state without a server:
 

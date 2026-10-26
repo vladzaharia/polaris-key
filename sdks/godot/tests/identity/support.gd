@@ -106,12 +106,35 @@ func count(method: String, suffix: String) -> int:
 	return server.requests.filter(func(r): return r["method"] == method and String(r["path"]).ends_with(suffix)).size()
 
 
-## Every `sign_in_finished` result `identity` emits, appended to the returned Array. Connect it
-## BEFORE begin_sign_in: a start that fails emits during the call.
-static func record(identity: PKeyIdentity) -> Array:
+## Starts a sign-in and follows it in the background: [session, results], `results` the settled
+## outcomes (never `choose`) as the session's `outcome` signal reports them. `on_choose(outcome,
+## session)` is called with each `choose` outcome and answers it with `session.accept()`; empty, or when it leaves the
+## choice open, the wait stops there and a later `follow` resumes it.
+static func begin(identity: PKeyIdentity, device_name := "", confirm := false, on_choose := Callable()) -> Array:
+	var opts := {"confirm_identity": confirm}
+	if device_name != "":
+		opts["device_name"] = device_name
+	var session: PKeySignInSession = await identity.sign_in.start(opts)
+	return [session, follow(session, on_choose)]
+
+
+## Follows `session` in the background; the settled outcomes land in the returned Array.
+static func follow(session: PKeySignInSession, on_choose := Callable()) -> Array:
 	var box := []
-	identity.sign_in_finished.connect(func(r: PKeySignInResult) -> void: box.append(r))
+	_drive(session, box, on_choose)
 	return box
+
+
+static func _drive(session: PKeySignInSession, box: Array, on_choose: Callable) -> void:
+	while true:
+		var o: PKeySignInOutcome = await session.wait()
+		if o.kind != PKeySignInOutcome.KIND_CHOOSE:
+			box.append(o)
+			return
+		if on_choose.is_valid():
+			on_choose.call(o, session)
+		if session._held:
+			return
 
 
 ## Lets frames pass until `cond` is true (or `max_frames` passed). Returns `cond`'s last value.

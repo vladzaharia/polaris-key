@@ -5,36 +5,36 @@ extends RefCounted
 ##
 ## States: `starting` (the request is in flight), `pending` (show the user code, the QR code of
 ## `verification_uri_complete`, open/copy link and the countdown), `confirm` (the player signed
-## in and the flow holds for acceptance on the device), and `ended` with a PKeySignInResult kind
-## (ok, expired, cancelled, denied, device-mismatch, rate-limited, service-unavailable, timeout,
+## in and the flow holds for acceptance on the device), and `ended` with a PKeySignInOutcome kind
+## (signed_in, expired, cancelled, denied, device-mismatch, rate-limited, service-unavailable,
 ## error).
 
 
 ## The copy key for an ended sign-in.
 static func message_for(kind: StringName) -> String:
 	match kind:
-		PKeySignInResult.KIND_OK:
+		PKeySignInOutcome.KIND_SIGNED_IN:
 			return "sign_in_ok"
-		PKeySignInResult.KIND_EXPIRED, PKeySignInResult.KIND_TIMEOUT:
+		PKeySignInOutcome.KIND_EXPIRED:
 			return "sign_in_expired"
-		PKeySignInResult.KIND_CANCELLED:
+		PKeySignInOutcome.KIND_CANCELLED:
 			return "sign_in_cancelled"
-		PKeySignInResult.KIND_DENIED:
+		PKeySignInOutcome.KIND_DENIED:
 			return "sign_in_denied"
-		PKeySignInResult.KIND_DEVICE_MISMATCH:
+		PKeySignInOutcome.KIND_DEVICE_MISMATCH:
 			return "sign_in_device_mismatch"
-		PKeySignInResult.KIND_RATE_LIMITED:
+		PKeySignInOutcome.KIND_RATE_LIMITED:
 			return "sign_in_rate_limited"
-		PKeySignInResult.KIND_SERVICE_UNAVAILABLE:
+		PKeySignInOutcome.KIND_SERVICE_UNAVAILABLE:
 			return "sign_in_unavailable"
 	return "sign_in_error"
 
 
 ## Seconds left on the code, never negative.
-static func remaining(prompt: PKeySignInPrompt, now: float) -> float:
-	if prompt == null:
+static func remaining(session: PKeySignInSession, now: float) -> float:
+	if session == null:
 		return 0.0
-	return maxf(prompt.expires_at - now, 0.0)
+	return maxf(session.expires_at - now, 0.0)
 
 
 ## "m:ss" for the countdown (data: digits, not copy).

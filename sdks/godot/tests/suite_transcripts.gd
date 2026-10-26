@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature identity.account identity.attach core.discover core.presentation core.sync core.cache config.schema config.mint devices.register devices.report
+# @pkey-feature identity.account identity.attach identity.toggle core.discover core.presentation core.sync core.cache config.schema config.mint devices.register devices.report
 # @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicelabel
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
@@ -260,8 +260,9 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		"report":
 			out["result"] = await sdk.devices.report()
 			out["updatesPending"] = sdk.update.updater.events().size()
+		# The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
 		"beginSignIn":
-			var prompt: PKeySignInPrompt = await sdk.identity.request_sign_in(String(step["args"].get("deviceName", "")))
+			var prompt: PKeySignInSession = await sdk.identity.sign_in.start({"device_name": String(step["args"].get("deviceName", ""))})
 			sdk.set_meta("pkey_prompt", prompt)
 			if prompt.ok:
 				out["prompt"] = {
@@ -275,7 +276,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			else:
 				out["result"] = String(prompt.code)
 		"pollSignIn":
-			var p: Dictionary = await sdk.identity.poll_sign_in(sdk.get_meta("pkey_prompt"))
+			var p: Dictionary = await (sdk.get_meta("pkey_prompt") as PKeySignInSession)._poll_once()
 			out["result"] = _sign_in_status(p["status"])
 			if p["status"] == "denied":
 				out["code"] = String(PKeyErrors.SIGN_IN_DENIED)
@@ -289,8 +290,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		"waitForSignIn":
 			# Any wait between polls would be a real timer; the recorded wait starts past expiry.
 			sdk.identity.sleeper = func(_s: float) -> void: pass
-			var r: PKeySignInResult = await sdk.identity.wait_for_sign_in(sdk.get_meta("pkey_prompt"))
-			out["result"] = "ready" if r.ok else _sign_in_status(String(r.kind))
+			var r: PKeySignInOutcome = await (sdk.get_meta("pkey_prompt") as PKeySignInSession).wait()
+			out["result"] = "ready" if r.kind == PKeySignInOutcome.KIND_SIGNED_IN else ("confirm" if r.kind == PKeySignInOutcome.KIND_CHOOSE else _sign_in_status(String(r.kind)))
 			if String(r.kind) == "denied" or r.code == PKeyErrors.SIGN_IN_FAILED:
 				out["code"] = String(r.code)
 		"changelog":

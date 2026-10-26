@@ -169,23 +169,23 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The old /identity/auth/poll route is retired (the Worker no longer serves it) and was never a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in_with_browser() opens it in the system browser."
+      "note": "Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The old /identity/auth/poll route is retired (the Worker no longer serves it) and was never a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in.start({browser = true}) opens it in the system browser."
     },
     "identity.devicecode": {
       "status": "implemented",
-      "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
+      "note": "PolarisKey.identity (P1-07, I-10b.4): sign_in.start() returns a PKeySignInSession whose wait() polls on the server's cadence (outcome signal, cancel, reopen, typed PKeySignInOutcome), the opt-in confirm-identity step (choose, accept) and licence attach, the `identity` event, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
     },
     "identity.devicelabel": {
       "status": "implemented",
-      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), PKeyOptions.device_name and send_device_name, the model-else-OS default, on begin_sign_in, activation and registration; PKeySignInPrompt.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
+      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), PKeyOptions.device_name and send_device_name, the model-else-OS default, on sign_in.start, activation and registration; PKeySignInSession.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
     },
     "identity.toggle": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.4: a 404 on the device start is `service-unavailable` (detail.kind product, status 404) with the state kept; discovery's Identity-off answers it before any request. identity-disabled replayed."
     },
     "identity.attach": {
       "status": "implemented",
-      "note": "I-10b.3: PolarisKey.identity.attach(confirm) over discovery's identity fragment: preview (detail kind confirm, nothing written), ok (token rotated and stored, subject, attached), a Worker refusal as a failure with its code and detail {kind: refused, status}, and service-unavailable without the endpoint; identity-attach and identity-attach-errors replayed. Device-code confirm (D-10): sign_in_confirm fires only when the poll's confirm is attachable, otherwise the SDK answers no itself."
+      "note": "I-10b.3: PolarisKey.identity.attach(confirm) over discovery's identity fragment: preview (detail kind confirm, nothing written), ok (token rotated and stored, subject, attached), a Worker refusal as a failure with its code and detail {kind: refused, status}, and service-unavailable without the endpoint; identity-attach and identity-attach-errors replayed. Device-code confirm (D-10): wait() returns choose only when the poll's confirm is attachable, otherwise the SDK answers no itself."
     },
     "identity.account": {
       "status": "implemented",

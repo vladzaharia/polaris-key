@@ -64,6 +64,8 @@ signal ui_sound(event: StringName)
 ##   updateAvailable  {version, action, mandatory, channel}   beside `update.update_available` (decide())
 ##   packs            {pack, phase, done, total}              pack progress, every phase
 ##   store            {reason, detail}                        beside `store_error`
+##   identity         {kind, subject, previous}               `kind` signedIn, signedOut or subjectChanged; subject
+##                                                             and previous are the pairwise subjects or null
 ## `entitlement` and `cloudSync` follow with their features. Payloads carry no token or raw hardware value.
 signal event(kind: String, data: Dictionary)
 ## `in_play` changed.
@@ -188,6 +190,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
 	identity.bind(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
+	identity.on_change = _on_identity_change
 	presentation_source.attach(core, self)
 	PKeyUiTheme.use_presentation(presentation_source)
 	return PKeyResult.success()
@@ -509,6 +512,14 @@ func _on_store_error(err: Dictionary) -> void:
 func _emit_event(kind: String, data: Dictionary) -> void:
 	if core != null:
 		event.emit(kind, data)
+
+
+func _on_identity_change(kind: String, subject: String, previous: String) -> void:
+	_emit_event(PKeyIdentity.EVENT_KIND, {
+		"kind": kind,
+		"subject": subject if subject != "" else null,
+		"previous": previous if previous != "" else null,
+	})
 
 
 func _on_config_changes(changes: Array) -> void:

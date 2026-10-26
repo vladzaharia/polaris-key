@@ -533,6 +533,8 @@ const GODOT_SCRIPT: Record<string, string> = {
   license: `"res://addons/polaris_key/services/license.gd"`,
   entitlements: `"res://addons/polaris_key/services/entitlements.gd"`,
   identity: `"res://addons/polaris_key/services/identity.gd"`,
+  PKeySignInNamespace: `"res://addons/polaris_key/services/identity/sign_in_namespace.gd"`,
+  PKeySignInSession: `"res://addons/polaris_key/services/identity/sign_in_session.gd"`,
   devices: `"res://addons/polaris_key/services/devices.gd"`,
   release: `"res://addons/polaris_key/services/release.gd"`,
   distribution: `"res://addons/polaris_key/services/distribution.gd"`,
@@ -564,7 +566,12 @@ function renderGodot(api: Api): string {
             : "method";
     } else {
       script = GODOT_SCRIPT[r.ns];
-      how = r.entry.shape === "signal" ? "signal" : "method";
+      how =
+        r.entry.shape === "signal"
+          ? "signal"
+          : r.entry.shape === "property"
+            ? "property"
+            : "method";
     }
     if (script === undefined) continue;
     rows.push(`\t[${q(r.id)}, ${script}, ${q(how)}, ${q(r.name)}],`);

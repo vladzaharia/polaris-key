@@ -271,7 +271,7 @@ func write_stamp(version: String) -> String:
 ## prompt's verification page, enters its code and confirms. {code, output}: its exit code (0:
 ## approved) and what it printed. `node` is the one on PATH; when it cannot start at all the code
 ## is -1 and the output says so.
-func approve(prompt: PKeySignInPrompt) -> Dictionary:
+func approve(prompt: PKeySignInSession) -> Dictionary:
 	var out: Array = []
 	var code := OS.execute("node", PackedStringArray([approve_path, prompt.verification_uri, prompt.user_code]), out, true)
 	var lines := PackedStringArray()
@@ -301,16 +301,15 @@ static func until_filled(box: Array, seconds: float = HANG_GUARD_SECONDS) -> boo
 	return not box.is_empty()
 
 
-## `identity.wait_for_sign_in(prompt)` with the hang guard: when the code is never approved the
-## wait would run to the code's lifetime, so after HANG_GUARD_SECONDS it is cancelled and ends
-## `cancelled`.
-static func wait_for_sign_in(node: Node, prompt: PKeySignInPrompt) -> PKeySignInResult:
+## `session.wait()` with the hang guard: when the code is never approved the wait would run to
+## the code's lifetime, so after HANG_GUARD_SECONDS it is cancelled and ends `cancelled`.
+static func wait_for_sign_in(session: PKeySignInSession) -> PKeySignInOutcome:
 	var settled := [false]
 	var timer := (Engine.get_main_loop() as SceneTree).create_timer(HANG_GUARD_SECONDS, true, false, true)
 	timer.timeout.connect(func() -> void:
-		if not settled[0] and is_instance_valid(node):
-			node.identity.cancel())
-	var result: PKeySignInResult = await node.identity.wait_for_sign_in(prompt)
+		if not settled[0]:
+			session.cancel())
+	var result: PKeySignInOutcome = await session.wait()
 	settled[0] = true
 	return result
 
