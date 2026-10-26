@@ -6754,6 +6754,8 @@ export * from "./feedSetup.js";
 export * from "./distribution.js";
 // A-25.1: the one `outlets` entry a channel adds to `.pkey/distribution`.
 export * from "./outletBlock.js";
+// A-27.5: the listing model's limits, shared with the Worker.
+export * from "./listingLimits.js";
 export * from "./assets.js";
 export * from "./releaseKeys.js";
 // Human-readable build and artifact labels: platform and architecture, together.

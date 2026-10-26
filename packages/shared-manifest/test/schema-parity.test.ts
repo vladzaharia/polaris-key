@@ -3204,6 +3204,14 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (outlet(d, "steam").depots["acme.nope"] = "482"),
   },
   {
+    // A-27.5, a warning: the manifest allows 200 characters, the listing model 30 (name,
+    // subtitle) and 100 (developerName). Length limits the schema does not carry, so it accepts.
+    code: "listing_exceeds_model_limit",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (dist(d).listing.name = "N".repeat(31)),
+  },
+  {
     code: "invalid_listing",
     file: "distribution",
     schema: "rejects",

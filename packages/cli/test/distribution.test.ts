@@ -238,4 +238,18 @@ describe("pkey validate and .pkey/distribution", () => {
     expect(await runPkey(["validate"], { cwd, ...io })).toBe(0);
     expect(io.out()).toContain("Manifest: valid");
   });
+
+  it("prints listing_exceeds_model_limit as a warning and still exits 0 (A-27.5)", async () => {
+    const cwd = await product();
+    await writeFile(
+      path.join(cwd, ".pkey/distribution.yaml"),
+      `listing:\n  name: ${"N".repeat(31)}\n  subtitle: ${"S".repeat(30)}\n`,
+    );
+    const io = capture();
+    expect(await runPkey(["validate"], { cwd, ...io })).toBe(0);
+    expect(io.out()).toContain(
+      "warning distribution/listing/name (.pkey/distribution.yaml): listing.name is 31 characters; the listing model allows 30",
+    );
+    expect(io.out()).not.toContain("listing/subtitle");
+  });
 });

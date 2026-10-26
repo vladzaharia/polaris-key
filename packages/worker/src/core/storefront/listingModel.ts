@@ -19,6 +19,8 @@
 
 // ── Shape ─────────────────────────────────────────────────────────────────────────────────────
 
+import { LISTING_LIMITS } from "@polaris-key/manifest";
+
 /** Where a value came from: typed in the console, or copied by an import. */
 export type ListingSource = "admin" | "import";
 
@@ -136,32 +138,8 @@ export const LIST_MODEL_FIELDS: readonly ModelField[] = [
 
 // ── Limits ────────────────────────────────────────────────────────────────────────────────────
 
-/** The model's own limits (S-15 §7.1, the A-18b brief). Characters are JavaScript string length. */
-export const LISTING_LIMITS = {
-  name: 30,
-  subtitle: 30,
-  shortDescription: 78,
-  description: 4000,
-  promotionalText: 170,
-  keywords: { maxItems: 50, maxItemChars: 40 },
-  features: { maxItems: 20, maxItemChars: 200 },
-  developerName: 100,
-  category: 64,
-  copyright: 200,
-  contactEmail: 254,
-  url: 2048,
-  iarcCertificateId: 64,
-  /** The serialised content descriptors. */
-  contentDescriptorsBytes: 8192,
-  /** winget's ReleaseNotes, the largest store limit. */
-  releaseNotes: 10000,
-  /** Play's and F-Droid's. */
-  releaseNotesShort: 500,
-  /** An override's value: generous, since it exists to exceed the model (each store still checks). */
-  override: 10000,
-  locales: 50,
-  overrides: 400,
-} as const;
+/** The model's own limits live in `@polaris-key/manifest` (A-27.5: one truth with the validator). */
+export { LISTING_LIMITS };
 
 /** BCP 47-shaped: `en`, `en-US`, `zh-Hans-CN`, `pt-BR`. */
 export const LOCALE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/;

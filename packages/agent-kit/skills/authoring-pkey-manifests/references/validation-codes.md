@@ -9,7 +9,7 @@ Contents:
 - [`product`](#product-codes): 97 codes
 - [`schema`](#schema-codes): 14 codes
 - [`release`](#release-codes): 110 codes
-- [`distribution`](#distribution-codes): 36 codes
+- [`distribution`](#distribution-codes): 37 codes
 - [Release descriptor](#release-descriptor-codes): 95 codes
 
 ## product codes
@@ -271,6 +271,7 @@ Contents:
 | `invalid_transport`             | error    | `/transports/packs`                         | transports.packs must be "auto" or an object keyed by outlet id.                                                                                                                                                                                                    |
 | `invalid_transport`             | error    | `/transports`                               | transports must be an object { default, packs, deliverables }.                                                                                                                                                                                                      |
 | `invalid_transport`             | error    | `${path}/${outletId}`                       | transports must be one of ${TRANSPORTS.join(", ")}.                                                                                                                                                                                                                 |
+| `listing_exceeds_model_limit`   | warning  | `${at}/${field}`                            | ${label}.${field} is ${v.length} characters; the listing model allows ${limit}, so it will not be imported as it is. Shorten it to ${limit} or fewer.                                                                                                               |
 | `listing_field_conflict`        | error    | `${at}/${alias}`                            | ${label} declares both ${field} and its deprecated alias ${alias}; keep ${field}.                                                                                                                                                                                   |
 | `listing_url_field_deprecated`  | warning  | `${at}/${alias}`                            | ${label}.${alias} is deprecated; write ${field} instead (an https URL or a repo path).                                                                                                                                                                              |
 | `outlet_kind_mismatch`          | error    | `/outlets/${id}/kind`                       | outlet ${id} is itself an outlet kind, so its kind may only be ${id} (or omitted); declare another id, such as ${id}-beta, for an outlet of a different kind.                                                                                                       |
