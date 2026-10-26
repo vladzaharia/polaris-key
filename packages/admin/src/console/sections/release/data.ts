@@ -26,6 +26,7 @@ import {
   type ReleaseChannelsResponse,
   type ReleaseHealth,
   type ReleaseStoreResponse,
+  type SetupPullRequestState,
   type SimulateParams,
   type SimulateResponse,
 } from "../../../api.js";
@@ -82,6 +83,19 @@ export const ciReadinessQuery = (slug: string) =>
 
 export function useCiReadiness(slug: string): UseQueryResult<CiReadiness> {
   return useQuery(ciReadinessQuery(slug));
+}
+
+/** The open setup pull request (A-32.5). */
+export const setupPullRequestQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.setupPullRequest(slug),
+    queryFn: () => api.setupPullRequest(slug),
+  });
+
+export function useSetupPullRequest(
+  slug: string,
+): UseQueryResult<SetupPullRequestState> {
+  return useQuery(setupPullRequestQuery(slug));
 }
 
 /** The app and every pack, with declaration, gate and latest release. */

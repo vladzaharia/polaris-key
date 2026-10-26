@@ -14,6 +14,9 @@ const fns = vi.hoisted(() => ({
   fixCiReadiness: vi.fn(),
   ciPublisher: vi.fn(),
   putCiPublisher: vi.fn(),
+  setupPullRequest: vi.fn(),
+  openSetupPullRequest: vi.fn(),
+  releases: vi.fn(),
 }));
 
 vi.mock("../src/api.js", async () =>
@@ -59,6 +62,13 @@ const row = async (name: string): Promise<HTMLElement> =>
   (await screen.findByText(name)).closest("li") as HTMLElement;
 
 beforeEach(() => {
+  fns.setupPullRequest.mockResolvedValue({
+    repository: "acme/tonebox",
+    capabilities: ALL,
+    state: "none",
+    pullRequest: null,
+  });
+  fns.releases.mockResolvedValue({ releases: [], channels: [], floors: [] });
   fns.ciPublisher.mockResolvedValue({ policy: null });
   fns.fixCiReadiness.mockResolvedValue({
     ok: true,
@@ -211,4 +221,92 @@ describe("Publish from CI", () => {
     expect(within(wf).queryByRole("button")).toBeNull();
     expect(within(wf).queryByRole("link")).toBeNull();
   });
+
+  const SETUP = [
+    OK("app"),
+    { id: "release-manifest" as const, state: "missing" as const },
+    { id: "workflow" as const, state: "missing" as const },
+  ];
+
+  it("opens the setup pull request and shows what merging does", async () => {
+    fns.ciReadiness.mockResolvedValue(readiness(SETUP));
+    fns.openSetupPullRequest.mockResolvedValue({
+      ok: true,
+      repository: "acme/tonebox",
+      branch: "pkey/setup",
+      pullRequest: {
+        number: 7,
+        url: "https://github.com/a/b/pull/7",
+        created: true,
+      },
+      files: [
+        { path: ".pkey/release", written: true },
+        { path: ".github/workflows/release.yml", written: true },
+      ],
+      summary: { outlets: [], workflow: true },
+    });
+    mount();
+    await screen.findByText("1. Run one command");
+    await userEvent.click(screen.getByRole("tab", { name: /Let Polaris Key/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open the pull request" }),
+    );
+    expect(fns.openSetupPullRequest).toHaveBeenCalledWith("tonebox", {});
+    await screen.findByText("Merge pull request #7");
+    expect(screen.getByText("After step 1.")).toBeTruthy();
+  });
+
+  it("falls back to the command when GitHub refuses the permission", async () => {
+    fns.ciReadiness.mockResolvedValue(readiness(SETUP));
+    fns.openSetupPullRequest.mockRejectedValue(
+      new HttpError(
+        409,
+        { reason: "app_permission" },
+        {
+          reason: "app_permission",
+          permission: "pull_requests: write",
+          oneCommand: "pkey ci init",
+        },
+      ),
+    );
+    mount();
+    await userEvent.click(
+      await screen.findByRole("tab", { name: /Let Polaris Key/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open the pull request" }),
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("pull_requests: write");
+    await userEvent.click(screen.getByRole("tab", { name: "One command" }));
+    expect(document.body.textContent).toContain("pkey ci init --channel stable");
+  });
+
+  it("waits for the tag, then says Done with the release", async () => {
+    fns.ciReadiness.mockResolvedValue(
+      readiness([OK("app"), OK("release-manifest"), OK("workflow")]),
+    );
+    mount();
+    await screen.findByText(/Waiting for the release from CI/);
+    expect(document.body.textContent).toContain("git push origin v0.1.0");
+    fns.releases.mockResolvedValue({
+      releases: [
+        {
+          releaseId: "app@0.1.0",
+          version: "0.1.0",
+          publishedAt: Date.now(),
+          signer: { kind: "release", kid: "rk_1", recordSha256: "x" },
+        },
+      ],
+      channels: [],
+      floors: [],
+    });
+    const done = await screen.findByText(
+      /0.1.0 is published/,
+      {},
+      { timeout: 9000 },
+    );
+    expect(done.getAttribute("role")).toBe("status");
+    expect(screen.getByText("rk_1")).toBeTruthy();
+  }, 15000);
 });

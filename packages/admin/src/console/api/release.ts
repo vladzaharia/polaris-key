@@ -515,7 +515,37 @@ export interface CiFixResult {
   }[];
 }
 
+/** `GET …/release/setup/pull-request` (A-32.5): the open setup pull request, if any. */
+export interface SetupPullRequestState {
+  repository: string | null;
+  capabilities: CiReadiness["capabilities"];
+  state: "none" | "open" | "unknown";
+  pullRequest: { number: number; url: string } | null;
+}
+
+/** `POST …/release/setup/pull-request`: what the setup pull request covers. */
+export interface SetupPullRequestResult {
+  ok: true;
+  repository: string;
+  branch: string;
+  pullRequest: { number: number; url: string; created: boolean };
+  files: { path: string; written: boolean }[];
+  summary: { outlets: string[]; workflow: boolean };
+}
+
 export const releaseApi = {
+  /** A-32.5: the open setup pull request. */
+  setupPullRequest: (slug: string) =>
+    call<SetupPullRequestState>(`${p(slug)}/release/setup/pull-request`),
+  /** A-32.5: write `.pkey/release` and the workflow onto `pkey/setup` and open the pull request. */
+  openSetupPullRequest: (
+    slug: string,
+    body: { outlets?: { channel: string }[]; workflow?: boolean } = {},
+  ) =>
+    call<SetupPullRequestResult>(`${p(slug)}/release/setup/pull-request`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   /** A-32.6: create the release environment and/or the `v*` tag ruleset. A 409 names the permission. */
   fixCiReadiness: (slug: string, checks: CiFixCheck[]) =>
     call<CiFixResult>(`${p(slug)}/release/ci-readiness/fix`, {

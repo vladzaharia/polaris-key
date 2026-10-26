@@ -41,6 +41,9 @@ export function RepoChangeStep({
   onCheck,
   checking,
   timeoutMs,
+  onOpenPullRequest,
+  opening,
+  notice,
 }: {
   pullRequest?: RepoChangePullRequest | null;
   /** The `pkey` line with every value filled in. */
@@ -56,9 +59,15 @@ export function RepoChangeStep({
   onCheck?: () => void;
   checking?: boolean;
   timeoutMs?: number;
+  /** Adds an "Open the pull request" button to the third tab. */
+  onOpenPullRequest?: () => void;
+  opening?: boolean;
+  /** A refusal or note, shown above the tabs. */
+  notice?: React.ReactNode;
 }): React.ReactElement {
   return (
     <div className="space-y-4">
+      {notice}
       {pullRequest ? (
         <PullRequestView pr={pullRequest} />
       ) : (
@@ -66,6 +75,8 @@ export function RepoChangeStep({
           command={command}
           files={files ?? []}
           permission={permission}
+          onOpenPullRequest={onOpenPullRequest}
+          opening={opening}
         />
       )}
       <WaitingFor
@@ -129,16 +140,20 @@ function ByYourself({
   command,
   files,
   permission,
+  onOpenPullRequest,
+  opening,
 }: {
   command?: string;
   files: readonly SnippetTab[];
   permission?: RepoChangePermission;
+  onOpenPullRequest?: () => void;
+  opening?: boolean;
 }): React.ReactElement {
   const uid = React.useId();
   const tabs = [
     command ? { id: "command", label: "One command" } : null,
     files.length > 0 ? { id: "hand", label: "By hand" } : null,
-    permission
+    permission || onOpenPullRequest
       ? { id: "app", label: "Let Polaris Key open pull requests" }
       : null,
   ].filter(Boolean) as { id: TabId; label: string }[];
@@ -234,22 +249,32 @@ function ByYourself({
             ))}
           </div>
         ) : null}
-        {current.id === "app" && permission ? (
+        {current.id === "app" ? (
           <>
-            <p className="text-sm text-fg">
-              Needs <strong className="font-medium">{permission.needs}</strong>{" "}
-              on this repository.
-            </p>
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              iconEnd={<ExternalLink aria-hidden />}
-            >
-              <a href={permission.reviewUrl} target="_blank" rel="noreferrer">
-                Review permissions on GitHub
-              </a>
-            </Button>
+            {onOpenPullRequest ? (
+              <Button size="sm" loading={opening} onClick={onOpenPullRequest}>
+                Open the pull request
+              </Button>
+            ) : null}
+            {permission ? (
+              <p className="text-sm text-fg">
+                Needs{" "}
+                <strong className="font-medium">{permission.needs}</strong> on
+                this repository.
+              </p>
+            ) : null}
+            {permission ? (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                iconEnd={<ExternalLink aria-hidden />}
+              >
+                <a href={permission.reviewUrl} target="_blank" rel="noreferrer">
+                  Review permissions on GitHub
+                </a>
+              </Button>
+            ) : null}
           </>
         ) : null}
       </div>

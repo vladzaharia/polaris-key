@@ -3,7 +3,8 @@
  * repository and a tag that publishes. "Polaris Key does this" rows from the readiness read; the
  * release environment and the tag ruleset are one click each when the App may write them.
  * A refusal names the permission and sends the owner to GitHub to grant it.
- * The two steps for you (the setup pull request and the first tag) are A-32.12's.
+ * Below them, the two steps for you (A-32.12): the setup pull request or one command, then the
+ * first tag, and Done.
  */
 
 import * as React from "react";
@@ -17,9 +18,13 @@ import { AutoList, type AutoItem } from "../../../../../ui/wizard/index.js";
 import { mutate } from "../../../../data/mutations.js";
 import { Link } from "../../../../router.js";
 import { r } from "../../../../routes.js";
-import { PublisherDrawer } from "../../../core/pages/KeysCi.js";
+import {
+  IssueCiTokenFlow,
+  PublisherDrawer,
+} from "../../../core/pages/KeysCi.js";
 import { useCiPublisher } from "../../../core/pages/ciData.js";
 import { useCiReadiness } from "../../data.js";
+import { PublishSteps } from "./PublishSteps.js";
 import { REVIEW_PERMISSIONS_URL, ciRows, type CiRow } from "./rows.js";
 
 /** The permission a refusal named, if it was the permission refusal. */
@@ -54,6 +59,7 @@ export function PublishFromCiDrawer({
     new Set(),
   );
   const [granting, setGranting] = React.useState(false);
+  const [otherCi, setOtherCi] = React.useState(false);
 
   const fix = async (id: CiFixCheck): Promise<void> => {
     setPending((s) => new Set(s).add(id));
@@ -152,10 +158,19 @@ export function PublishFromCiDrawer({
               onRetry={() => void readiness.refetch()}
             />
           ) : (
-            <AutoList items={withChange} title="Polaris Key checks" />
+            <>
+              <AutoList items={withChange} title="Polaris Key checks" />
+              <PublishSteps
+                slug={slug}
+                readiness={readiness.data}
+                open={open}
+                onUseOtherCi={() => setOtherCi(true)}
+              />
+            </>
           )}
         </DrawerBody>
       </Drawer>
+      <IssueCiTokenFlow slug={slug} open={otherCi} onOpenChange={setOtherCi} />
       <PublisherDrawer
         slug={slug}
         open={granting}
