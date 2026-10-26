@@ -26,7 +26,12 @@ import {
 import { servicesOn } from "../../transcripts/world.js";
 import { setServices } from "../../../src/core/products/store.js";
 import { signIn } from "../../../src/services/identity/accounts/signIn.js";
-import { getDeviceKeys } from "../../../src/core/devices/keys.js";
+import {
+  DeviceKeysInvalidError,
+  getDeviceKeys,
+  upsertDeviceKeys,
+} from "../../../src/core/devices/keys.js";
+import { base64UrlDecode } from "@polaris-key/jws";
 import { sha256B64url } from "../../../src/platform/hash.js";
 import {
   exchangeLinkRef,
@@ -439,6 +444,42 @@ describe("the token exchange", () => {
     );
     expect(res.status).toBe(404);
     expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+  });
+});
+
+describe("device key guards", () => {
+  it("an agreement key another device holds is refused before the bind: nothing is bound", async () => {
+    await link("https://accounts.google.com", "", GOOGLE_SUB, "google");
+    const other = await newKeys();
+    await upsertDeviceKeys(h.db, SLUG, DEVICE_2, other, NOW);
+    const mine = await newKeys(base64UrlDecode(other.agreeKey));
+    const r = await exchange(google(), { keys: mine });
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe("invalid_grant");
+    const row = await h.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM devices WHERE device_id = ?",
+      DEVICE,
+    );
+    expect(row!.n).toBe(0);
+    expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+  });
+
+  it("a rotation expects the key it saw: a key that changed since is refused, not overwritten", async () => {
+    const a = await newKeys();
+    const b = await newKeys();
+    const c = await newKeys();
+    await upsertDeviceKeys(h.db, SLUG, DEVICE, b, NOW);
+    // The caller saw "no key" (or A), but B is there now.
+    await expect(
+      upsertDeviceKeys(h.db, SLUG, DEVICE, c, NOW, undefined, null),
+    ).rejects.toBeInstanceOf(DeviceKeysInvalidError);
+    await expect(
+      upsertDeviceKeys(h.db, SLUG, DEVICE, c, NOW, undefined, a.signKey),
+    ).rejects.toBeInstanceOf(DeviceKeysInvalidError);
+    expect((await getDeviceKeys(h.db, SLUG, DEVICE))?.sign_key).toBe(b.signKey);
+    // The key actually held goes through.
+    await upsertDeviceKeys(h.db, SLUG, DEVICE, c, NOW, undefined, b.signKey);
+    expect((await getDeviceKeys(h.db, SLUG, DEVICE))?.sign_key).toBe(c.signKey);
   });
 });
 

@@ -203,6 +203,12 @@ export async function upsertDeviceKeys(
   keys: DeviceKeyPair,
   now: number,
   popAt?: number,
+  /**
+   * The signing key the caller saw the device hold when it decided to write (`null`: none).
+   * When given, a row that holds any other key by now refuses with `DeviceKeysInvalidError`
+   * instead of being rotated, and the rotation itself only matches that key.
+   */
+  heldSignKey?: string | null,
 ): Promise<UpsertResult> {
   if (!validateDeviceKeys(keys)) throw new DeviceKeysInvalidError();
   const held = await db.first<{ device_id: string }>(
@@ -218,6 +224,12 @@ export async function upsertDeviceKeys(
     current.agree_key === keys.agreeKey
   ) {
     return { keySeq: current.key_seq, changed: false, rotated: false };
+  }
+  if (
+    heldSignKey !== undefined &&
+    (current?.sign_key ?? null) !== heldSignKey
+  ) {
+    throw new DeviceKeysInvalidError();
   }
   const floor = await db.first<{ pop_at: number | null }>(
     "SELECT pop_at FROM device_key_floor WHERE product = ? AND device_id = ?",
@@ -235,8 +247,15 @@ export async function upsertDeviceKeys(
   const write: DbStatement = current
     ? {
         sql: `UPDATE device_keys SET sign_key = ?, agree_key = ?, key_seq = key_seq + 1, rotated_at = ?
-               WHERE product = ? AND device_id = ?`,
-        params: [keys.signKey, keys.agreeKey, now, product, deviceId],
+               WHERE product = ? AND device_id = ? AND sign_key = ?`,
+        params: [
+          keys.signKey,
+          keys.agreeKey,
+          now,
+          product,
+          deviceId,
+          current.sign_key,
+        ],
       }
     : {
         sql: `INSERT INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at, rotated_at)
@@ -272,11 +291,30 @@ export async function upsertDeviceKeys(
     throw e;
   }
   const after = await getDeviceKeys(db, product, deviceId);
+  // The guarded rotation matched nothing: another write changed the key since the read above.
+  if (heldSignKey !== undefined && after?.sign_key !== keys.signKey) {
+    throw new DeviceKeysInvalidError();
+  }
   return {
     keySeq: after?.key_seq ?? (current?.key_seq ?? 0) + 1,
     changed: true,
     rotated: current !== null,
   };
+}
+
+/** True when another device of the product already holds this agreement key. */
+export async function agreeKeyHeldElsewhere(
+  db: Db,
+  product: string,
+  agreeKey: string,
+  deviceId: string,
+): Promise<boolean> {
+  const held = await db.first<{ device_id: string }>(
+    "SELECT device_id FROM device_keys WHERE product = ? AND agree_key = ?",
+    product,
+    agreeKey,
+  );
+  return held !== null && held.device_id !== deviceId;
 }
 
 /** The delete as a statement, for a batch that removes the device (purge, licence delete). */

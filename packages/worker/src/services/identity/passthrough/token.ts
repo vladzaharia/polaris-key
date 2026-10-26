@@ -284,6 +284,8 @@ export interface SignedIn {
    * in the pending grant when a choice is due, for `choice/complete` to write.
    */
   keys?: DeviceKeyPair;
+  /** The signing key the device held when the exchange checked it (`null`: none). */
+  heldSignKey?: string | null;
 }
 
 /**
@@ -389,7 +391,15 @@ export async function bindAndAnswer(
 
   if (p.keys) {
     try {
-      await upsertDeviceKeys(db, product.slug, deviceId, p.keys, now);
+      await upsertDeviceKeys(
+        db,
+        product.slug,
+        deviceId,
+        p.keys,
+        now,
+        undefined,
+        p.heldSignKey,
+      );
     } catch (e) {
       // A key another device of the product holds, or a malformed one: the same plain refusal.
       if (

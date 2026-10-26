@@ -40,8 +40,7 @@ import {
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { OidcNetworkError } from "../../../core/oidc/client.js";
 import { sha256B64url } from "../../../platform/hash.js";
-import { randomId } from "../../../platform/crypto.js";
-import { hashKey } from "../../../platform/crypto.js";
+import { hashKey, randomId } from "../../../platform/crypto.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -51,7 +50,10 @@ import { ErrorCode, errorResponse } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import { isValidClientDeviceId } from "../../../core/devices.js";
-import { deviceSignKey } from "../../../core/devices/keys.js";
+import {
+  agreeKeyHeldElsewhere,
+  deviceSignKey,
+} from "../../../core/devices/keys.js";
 import { verifyDeviceProof } from "../../../core/devices/proof.js";
 import {
   artefactRef,
@@ -240,6 +242,10 @@ export async function handleExchange(ctx: {
     );
   }
 
+  // An agreement key another device holds is refused before anything is bound.
+  if (await agreeKeyHeldElsewhere(db, product.slug, spent.agreeKey, deviceId))
+    return refused();
+
   const terms = await productTerms(
     { env, db, ...(settings ? { registry: settings } : {}) },
     product.slug,
@@ -276,6 +282,7 @@ export async function handleExchange(ctx: {
         summary: `Signed in a device through a native ${id.kind} token`,
       },
       keys: { signKey: deviceKey, agreeKey: spent.agreeKey },
+      heldSignKey: held,
     },
   );
   return answered.status === 200 ? withIssuedType(answered) : answered;
