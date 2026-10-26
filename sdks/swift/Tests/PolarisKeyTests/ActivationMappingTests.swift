@@ -25,6 +25,44 @@ final class ActivationMappingTests: XCTestCase {
         XCTAssertEqual(map(200, "{}").code, ErrorCode.badResponse)
     }
 
+    // I-10b.8: key-entry counts and the two I-09 refusals (WIRE-CONTRACT-V4 §12.2).
+    func testOkCarriesKeyEntriesWhenSent() {
+        XCTAssertEqual(
+            map(200, #"{"token":"pkeyt_x","schemaVersion":3,"keyEntries":{"used":2,"limit":10}}"#),
+            .ok(token: "pkeyt_x", schemaVersion: 3, keyEntries: KeyEntries(used: 2, limit: 10)))
+        // A malformed count never costs the token.
+        for bad in [#""x""#, #"{"used":-1,"limit":3}"#, #"{"used":1,"limit":0}"#, #"{"used":1}"#] {
+            XCTAssertEqual(
+                map(200, #"{"token":"pkeyt_x","schemaVersion":3,"keyEntries":\#(bad)}"#),
+                .ok(token: "pkeyt_x", schemaVersion: 3), bad)
+        }
+    }
+
+    func testKeyEntryLimitAndLicenseOwned() {
+        let manage = "https://key.plrs.im/activate?product=djdl"
+        let limit = map(
+            403,
+            #"{"error":"key_entry_limit","manageUrl":"\#(manage)","keyEntries":{"used":2,"limit":2}}"#
+        )
+        XCTAssertEqual(
+            limit, .keyEntryLimit(manageUrl: manage, keyEntries: KeyEntries(used: 2, limit: 2)))
+        XCTAssertEqual(limit.kind, "key-entry-limit")
+        XCTAssertEqual(limit.code, ErrorCode.keyEntryLimit)
+        XCTAssertNotNil(limit.message)
+        // A portal that is off sends no link; an unsafe link is dropped.
+        XCTAssertEqual(
+            map(403, #"{"error":"key_entry_limit","manageUrl":"javascript:alert(1)"}"#),
+            .keyEntryLimit(manageUrl: nil, keyEntries: nil))
+        let signIn = "https://key.plrs.im/signin?product=djdl"
+        let owned = map(403, #"{"error":"license_owned","signInUrl":"\#(signIn)"}"#)
+        XCTAssertEqual(owned, .licenseOwned(signInUrl: signIn))
+        XCTAssertEqual(owned.kind, "license-owned")
+        XCTAssertEqual(owned.code, ErrorCode.licenseOwned)
+        XCTAssertNotNil(owned.message)
+        XCTAssertEqual(
+            map(403, #"{"error":{"code":"license_owned"}}"#), .licenseOwned(signInUrl: nil))
+    }
+
     func testEveryKindByCode() {
         let rows: [(Int, String, ActivationResult)] = [
             (403, #"{"error":"device_limit","limit":3,"deviceCount":3}"#,
@@ -48,15 +86,15 @@ final class ActivationMappingTests: XCTestCase {
         }
     }
 
-    /// The I-09 additions and anything else this build predates are `refused` with the server's
-    /// own code — never `deviceLimit`, which used to swallow every unknown 403.
+    /// Anything this build predates is `refused` with the server's own code — never
+    /// `deviceLimit`, which used to swallow every unknown 403.
     func testAnUnknown403IsRefusedWithItsCode() {
         XCTAssertEqual(
-            map(403, #"{"error":"license_owned","message":"owned"}"#),
-            .refused(code: "license_owned", status: 403, message: "owned"))
+            map(403, #"{"error":"some_future_code","message":"later"}"#),
+            .refused(code: "some_future_code", status: 403, message: "later"))
         XCTAssertEqual(
-            map(403, #"{"error":{"code":"key_entry_limit"}}"#),
-            .refused(code: "key_entry_limit", status: 403, message: nil))
+            map(403, #"{"error":{"code":"another_future_code"}}"#),
+            .refused(code: "another_future_code", status: 403, message: nil))
         XCTAssertEqual(map(403, "").code, ErrorCode.forbidden)
         XCTAssertEqual(map(403, "not json").kind, "refused")
     }

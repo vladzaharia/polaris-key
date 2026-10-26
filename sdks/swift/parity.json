@@ -179,8 +179,7 @@
       "wp": "I-10b"
     },
     "identity.keyentry": {
-      "status": "planned",
-      "wp": "PX-W9b"
+      "status": "implemented"
     },
     "release.changelog": {
       "status": "implemented"

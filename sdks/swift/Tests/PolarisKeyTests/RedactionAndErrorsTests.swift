@@ -28,7 +28,7 @@ final class RedactionAndErrorsTests: XCTestCase {
         XCTAssertTrue(String(describing: result).contains("<redacted>"))
         XCTAssertTrue(dumped.contains("<redacted>"))
         // The value itself is intact: a pattern match still reads the token.
-        guard case .ok(let t, _) = result else { return XCTFail() }
+        guard case .ok(let t, _, _) = result else { return XCTFail() }
         XCTAssertEqual(t, token)
     }
 
