@@ -134,6 +134,11 @@ public data class PolarisKeyClientOptions @JvmOverloads constructor(
      * on loopback). Empty refuses every URL. A malformed one throws `invalid-options`.
      */
     val backendOrigins: List<String> = emptyList(),
+    /**
+     * How `identity.openAccount()` opens the product's account portal (the system browser). Null:
+     * it answers the URL for the host to show.
+     */
+    val accountOpener: im.plrs.key.identity.AccountOpener? = null,
 )
 
 /**
@@ -152,6 +157,12 @@ public sealed interface PolarisEvent {
 
     /** Pack progress (`download`, `apply`, `done`, `state-issue`). */
     public data class Packs(val progress: im.plrs.key.packs.PackProgress) : PolarisEvent
+
+    /**
+     * The account signed in on the device changed: [subject] is the new pairwise subject, or null
+     * after a sign-out (or when the device turned out to be key-only).
+     */
+    public data class Identity(val subject: String?) : PolarisEvent
 }
 
 /** `channelChoices()`: what a channel picker offers. */
@@ -419,7 +430,18 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     /** Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity. */
-    public val identity: IdentityClient = IdentityClient(core, onAcquired = { syncAfterAcquisition() })
+    public val identity: IdentityClient = IdentityClient(
+        core,
+        onAcquired = { syncAfterAcquisition() },
+        opener = options.accountOpener,
+        onSubject = { eventFlow.tryEmit(PolarisEvent.Identity(it)) },
+        onSignedOut = {
+            // The seat was released and the token dropped: the same follow-through as a deactivation.
+            tokenRejection.clear()
+            config.publish()
+            publishLicense(force = true)
+        },
+    )
 
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
 

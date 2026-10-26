@@ -2884,10 +2884,7 @@
           "planned": "I-10b",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
-        "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "I-10b",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -2905,10 +2902,7 @@
         "swift": {},
         "godot": {},
         "react": {},
-        "kotlin": {
-          "planned": "I-10b",
-          "reason": "planned"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -3323,10 +3317,7 @@
           "planned": "I-10b",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
-        "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "I-10b",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"

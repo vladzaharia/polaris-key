@@ -416,7 +416,7 @@
       "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 2,
       "detekt:style.UnusedParameter": 1,
-      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:argument-list-wrapping": 13,
       "ktlint:standard:binary-expression-wrapping": 2,
       "ktlint:standard:function-literal": 2,
       "ktlint:standard:function-signature": 1,
@@ -432,7 +432,7 @@
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:argument-list-wrapping": 42,
       "ktlint:standard:binary-expression-wrapping": 2,
-      "ktlint:standard:blank-line-between-when-conditions": 46,
+      "ktlint:standard:blank-line-between-when-conditions": 48,
       "ktlint:standard:function-literal": 6,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 5,
@@ -523,7 +523,7 @@
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 6,
-      "detekt:exceptions.TooGenericExceptionCaught": 7,
+      "detekt:exceptions.TooGenericExceptionCaught": 8,
       "detekt:naming.EnumNaming": 7,
       "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MagicNumber": 9,
@@ -990,6 +990,13 @@
       "ktlint:standard:property-wrapping": 2,
       "ktlint:standard:statement-wrapping": 3
     },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityAccount.kt": {
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 3,
+      "detekt:style.MagicNumber": 4,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 2
+    },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt": {
       "detekt:complexity.ComplexCondition": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 1,
@@ -1000,6 +1007,11 @@
       "ktlint:standard:blank-line-between-when-conditions": 4,
       "ktlint:standard:function-signature": 1,
       "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityAccountTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 5,
+      "ktlint:standard:function-signature": 4,
+      "ktlint:standard:statement-wrapping": 3
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityClientTest.kt": {
       "detekt:exceptions.SwallowedException": 1,
