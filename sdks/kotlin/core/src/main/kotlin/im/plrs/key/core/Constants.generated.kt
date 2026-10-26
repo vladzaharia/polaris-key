@@ -56,6 +56,8 @@ public object ErrorCode {
     public const val invalidScope: String = "invalid_scope"
     public const val redirectUriMismatch: String = "redirect_uri_mismatch"
     public const val licenseChoiceRequired: String = "license_choice_required"
+    public const val interstitialRequired: String = "interstitial_required"
+    public const val notNearby: String = "not_nearby"
     public const val authMethodDisabled: String = "auth_method_disabled"
     public const val emailUnavailable: String = "email_unavailable"
     public const val turnstileFailed: String = "turnstile_failed"
@@ -125,6 +127,7 @@ public object ErrorCode {
     public const val signInExpired: String = "sign-in-expired"
     public const val signInDenied: String = "sign-in-denied"
     public const val signInUnavailable: String = "sign-in-unavailable"
+    public const val platformIdentityUnavailable: String = "platform-identity-unavailable"
     public const val invalidOptions: String = "invalid-options"
     public const val invalidArgument: String = "invalid-argument"
     public const val invokeNotAllowed: String = "invoke-not-allowed"
@@ -244,6 +247,8 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "invalid_scope",
     "redirect_uri_mismatch",
     "license_choice_required",
+    "interstitial_required",
+    "not_nearby",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -313,6 +318,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "sign-in-expired",
     "sign-in-denied",
     "sign-in-unavailable",
+    "platform-identity-unavailable",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -432,6 +438,8 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "invalid_scope" to "wire",
     "redirect_uri_mismatch" to "wire",
     "license_choice_required" to "wire",
+    "interstitial_required" to "wire",
+    "not_nearby" to "wire",
     "auth_method_disabled" to "wire",
     "email_unavailable" to "wire",
     "turnstile_failed" to "wire",
@@ -501,6 +509,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "sign-in-expired" to "client",
     "sign-in-denied" to "client",
     "sign-in-unavailable" to "client",
+    "platform-identity-unavailable" to "client",
     "invalid-options" to "client",
     "invalid-argument" to "client",
     "invoke-not-allowed" to "client",
@@ -1799,7 +1808,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
     "identity.keyentry" to CapabilityRow("implemented", "identity", listOf()),
     "identity.attach" to CapabilityRow("planned", "identity", listOf()),
-    "identity.account" to CapabilityRow("planned", "identity", listOf()),
+    "identity.account" to CapabilityRow("implemented", "identity", listOf()),
     "identity.redirect.web" to CapabilityRow("planned", "identity", listOf()),
     "identity.choice" to CapabilityRow("planned", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("planned", "identity", listOf()),
@@ -1869,4 +1878,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "18eb2ebca03edd4c2fca5f981a7e32769ffe36f66178dc0138318d5893f58f5d"
+public const val CAPABILITY_DIGEST: String = "431f96c46d28ac15dee7a19c28370bf7545eb5f379103248525951139843a751"

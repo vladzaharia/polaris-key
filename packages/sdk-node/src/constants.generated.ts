@@ -50,6 +50,8 @@ export const ErrorCode = {
   invalidScope: "invalid_scope",
   redirectUriMismatch: "redirect_uri_mismatch",
   licenseChoiceRequired: "license_choice_required",
+  interstitialRequired: "interstitial_required",
+  notNearby: "not_nearby",
   authMethodDisabled: "auth_method_disabled",
   emailUnavailable: "email_unavailable",
   turnstileFailed: "turnstile_failed",
@@ -119,6 +121,7 @@ export const ErrorCode = {
   signInExpired: "sign-in-expired",
   signInDenied: "sign-in-denied",
   signInUnavailable: "sign-in-unavailable",
+  platformIdentityUnavailable: "platform-identity-unavailable",
   invalidOptions: "invalid-options",
   invalidArgument: "invalid-argument",
   invokeNotAllowed: "invoke-not-allowed",
@@ -239,6 +242,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "invalid_scope",
   "redirect_uri_mismatch",
   "license_choice_required",
+  "interstitial_required",
+  "not_nearby",
   "auth_method_disabled",
   "email_unavailable",
   "turnstile_failed",
@@ -308,6 +313,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "sign-in-expired",
   "sign-in-denied",
   "sign-in-unavailable",
+  "platform-identity-unavailable",
   "invalid-options",
   "invalid-argument",
   "invoke-not-allowed",
@@ -430,6 +436,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   invalid_scope: "wire",
   redirect_uri_mismatch: "wire",
   license_choice_required: "wire",
+  interstitial_required: "wire",
+  not_nearby: "wire",
   auth_method_disabled: "wire",
   email_unavailable: "wire",
   turnstile_failed: "wire",
@@ -499,6 +507,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "sign-in-expired": "client",
   "sign-in-denied": "client",
   "sign-in-unavailable": "client",
+  "platform-identity-unavailable": "client",
   "invalid-options": "client",
   "invalid-argument": "client",
   "invoke-not-allowed": "client",
@@ -1880,7 +1889,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "identity.toggle": { status: "planned", service: "identity", na: [] },
   "identity.keyentry": { status: "implemented", service: "identity", na: [] },
   "identity.attach": { status: "planned", service: "identity", na: [] },
-  "identity.account": { status: "planned", service: "identity", na: [] },
+  "identity.account": { status: "implemented", service: "identity", na: [] },
   "identity.redirect.web": {
     status: "implemented",
     service: "identity",
@@ -2011,4 +2020,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "f4089a86e3c0f0fe935ed6f7fbd9cac1f947f395b82d0f3b091060c07e3e4983";
+  "be6fce170e996187e8716d904d4221d0aed655898847d2ab5920998ca41d3785";
