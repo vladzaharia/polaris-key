@@ -5261,6 +5261,16 @@ msgstr "Gerät nicht eingerichtet"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut."
 
+#. Device not linked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.title"
+msgstr "Gerät nicht verknüpft"
+
+#. This device has not been set up to link with your others. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.message"
+msgstr "Dieses Gerät wurde nicht zum Verknüpfen mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

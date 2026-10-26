@@ -27,6 +27,7 @@ public enum ErrorCode {
     public static let documentNotRepresentable = "document_not_representable"
     public static let signingUnavailable = "signing_unavailable"
     public static let deviceKeysInvalid = "device_keys_invalid"
+    public static let deviceKeysRequired = "device_keys_required"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
     public static let licenseDisabled = "license_disabled"
@@ -227,6 +228,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "document_not_representable",
     "signing_unavailable",
     "device_keys_invalid",
+    "device_keys_required",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -427,6 +429,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "document_not_representable": "wire",
     "signing_unavailable": "wire",
     "device_keys_invalid": "wire",
+    "device_keys_required": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",
     "license_disabled": "wire",

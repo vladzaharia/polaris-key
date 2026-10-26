@@ -24,3 +24,17 @@ Connect identity on the Worker: certificates, rings, discovery keys, linked-devi
 ## Acceptance criteria
 
 [ ] see plan
+
+## Progress and continuation (2026-10-26)
+
+**CC-06.1 done on `wp/CC-06.1-connect-identity` (slice, not the package).**
+
+- [x] `connect_rings` (migration `0145_connect_rings.sql`, the lead renumbers), `TABLE_OWNERS` row `connect`, the subject store `connect.rings` and product deletion.
+- [x] `services/connect/ring.ts`: members through the principal rule (`accountDeviceKeys`, `seatsHeld` when License is on), `members_hash`, epoch bump with a new K_disc (previous key delivered 24 h), `pkey-ring+jws` and `pkey-peer+jws` signing.
+- [x] `GET /<p>/connect/identity` (`{ring, certificate, discKeys}`) and `GET /<p>/connect/devices`, both device bearer and `cors: true`; OpenAPI, descriptor `surface`, `connect` off `ROUTELESS`; discovery fragment endpoints (`ticket` stays `null` for CC-07.3).
+- [x] `device_keys_required` (errors.json, copy in 9 locales, constants regenerated).
+- [x] Roster lifetime: the signer refuses a roster whose span is outside 1..`RING_SECONDS`; V5 §15.3 says so.
+
+**Left for CC-06.2 / CC-06.3:** the verifier side of the roster span (an all-languages wire change with its corpus case; the corpus lane was held), the `onDeviceChange` listener and audit (CC-06.3), the threat-model entry.
+
+**Corrections to the plan:** CC-06.2's identity/devices/discovery steps were built here at the lead's request; the identity answer's shape is defined in OpenAPI (`ConnectIdentity`), not in V5.

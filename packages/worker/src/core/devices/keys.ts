@@ -176,6 +176,50 @@ export async function accountDeviceKeys(
   }));
 }
 
+/** What the linked-devices list shows of one device: display data only, no key. */
+export interface AccountDeviceListing {
+  deviceId: string;
+  label: string | null;
+  platform: string | null;
+  lastSeen: number;
+}
+
+/**
+ * The listing for `accountDeviceKeys`' set (same bound, authorized and seat rules), sorted by
+ * `device_id`. A device with no keys is not listed: it is not in the roster.
+ */
+export async function accountDeviceListing(
+  db: Db,
+  product: string,
+  subject: string,
+  opts: { seatsHeld?: boolean } = {},
+): Promise<AccountDeviceListing[]> {
+  const rows = await db.all<{
+    device_id: string;
+    label: string | null;
+    platform: string | null;
+    last_seen: number;
+  }>(
+    `SELECT d.device_id, d.label, d.platform, d.last_seen
+       FROM device_keys k
+       JOIN devices d ON d.product = k.product AND d.device_id = k.device_id
+      WHERE k.product = ? AND d.subject = ? AND d.status = 'authorized'${
+        opts.seatsHeld
+          ? " AND d.seat_no IS NOT NULL AND d.token_hash IS NOT NULL"
+          : ""
+      }
+      ORDER BY d.device_id`,
+    product,
+    subject,
+  );
+  return rows.map((r) => ({
+    deviceId: r.device_id,
+    label: r.label,
+    platform: r.platform,
+    lastSeen: r.last_seen,
+  }));
+}
+
 // ── Writes ───────────────────────────────────────────────────────────────────────────────────
 
 export interface UpsertResult {

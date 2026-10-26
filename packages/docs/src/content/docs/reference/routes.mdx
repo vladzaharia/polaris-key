@@ -115,6 +115,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
 | POST | `/{product}/config/mint/{mintId}/token` | config | Mint a third-party token (edge-mint) |
 | GET | `/{product}/config/schema` | config | The public config catalog |
+| GET | `/{product}/connect/devices` | connect | The person's linked devices, for display (CC-06.1) |
+| GET | `/{product}/connect/identity` | connect | The device's roster, certificate and discovery keys (CC-06.1) |
 | GET | `/{product}/.well-known/jwks.json` | core | Product signing keys (JWKS) |
 | GET | `/{product}/.well-known/polaris-trust.jws` | core | Signed trust manifest (pkey-trust+jws) |
 | GET | `/{product}/.well-known/polaris.json` | core | Product discovery document |

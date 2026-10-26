@@ -36314,6 +36314,150 @@
     "cookies": [],
     "body": "18:e3933184560739b7"
   },
+  "cors GET /djdl/connect/devices": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors GET+origin /djdl/connect/devices": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+origin+preflight /djdl/connect/devices": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, DELETE",
+      "access-control-allow-headers": "Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch",
+      "access-control-max-age": "600"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors GET+other /djdl/connect/devices": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+other+preflight /djdl/connect/devices": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors OPTIONS /djdl/connect/devices": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors POST+body+origin /djdl/connect/devices": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors GET /djdl/connect/identity": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors GET+origin /djdl/connect/identity": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+origin+preflight /djdl/connect/identity": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, DELETE",
+      "access-control-allow-headers": "Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch",
+      "access-control-max-age": "600"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors GET+other /djdl/connect/identity": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
+  "cors OPTIONS+other+preflight /djdl/connect/identity": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors OPTIONS /djdl/connect/identity": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors POST+body+origin /djdl/connect/identity": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "30:61b5f4a46397ebc3"
+  },
   "cors GET /djdl/distribution/altstore-pal/stable/source.json": {
     "status": 404,
     "headers": {
@@ -39504,6 +39648,75 @@
     "body": "0:e3b0c44298fc1c14"
   },
   "cors POST+body+origin /djdl/identity/choice/licenses": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "32:97af5772e08c551c"
+  },
+  "cors GET /djdl/identity/nonce": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors GET+origin /djdl/identity/nonce": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS+origin+preflight /djdl/identity/nonce": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin",
+      "access-control-allow-origin": "https://play.djdl.example",
+      "access-control-allow-methods": "GET, POST, PATCH, DELETE",
+      "access-control-allow-headers": "Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch",
+      "access-control-max-age": "600"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors GET+other /djdl/identity/nonce": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8",
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS+other+preflight /djdl/identity/nonce": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors OPTIONS /djdl/identity/nonce": {
+    "status": 204,
+    "headers": {
+      "vary": "Origin"
+    },
+    "cookies": [],
+    "body": "0:e3b0c44298fc1c14"
+  },
+  "cors POST+body+origin /djdl/identity/nonce": {
     "status": 400,
     "headers": {
       "content-type": "application/json",

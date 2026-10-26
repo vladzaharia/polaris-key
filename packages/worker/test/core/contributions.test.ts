@@ -76,10 +76,12 @@ describe("what the descriptors contribute", () => {
     expect(contributedSubjectStores().map(([n]) => n)).toEqual([
       "config.accountOverrides",
       "sync.cloudSync",
+      "connect.rings",
     ]);
     // Core's own store is listed beside the contributed one.
     expect(subjectStoreNames()).toEqual([
       "config.accountOverrides",
+      "connect.rings",
       "core.entitlementEvents",
       "core.provisionedSecretMoves",
       "sync.cloudSync",

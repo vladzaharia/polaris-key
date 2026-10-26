@@ -893,6 +893,8 @@
   "core.codes.device_limit.message": "This license is already on all its devices. Replace a device to use it here.",
   "core.codes.device_keys_invalid.title": "Device not set up",
   "core.codes.device_keys_invalid.message": "This device could not be set up for sync. Update the app and try again.",
+  "core.codes.device_keys_required.title": "Device not linked",
+  "core.codes.device_keys_required.message": "This device has not been set up to link with your others. Update the app and try again.",
   "core.codes.key_entry_limit.title": "No key entries left",
   "core.codes.key_entry_limit.message": "This key has no entries left. Add it to your account and sign in instead.",
   "core.codes.license_disabled.title": "License disabled",

@@ -5261,6 +5261,16 @@ msgstr "Device not set up"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "This device could not be set up for sync. Update the app and try again."
 
+#. Device not linked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.title"
+msgstr "Device not linked"
+
+#. This device has not been set up to link with your others. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_required.message"
+msgstr "This device has not been set up to link with your others. Update the app and try again."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

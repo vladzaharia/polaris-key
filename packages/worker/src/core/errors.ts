@@ -18,6 +18,8 @@ export const ErrorCode = {
   /** CC-03.2: `PUT /<p>/devices/keys` refused: a bad key, a failed or stale proof, or an `agreeKey`
    *  another device holds. One code for all three. */
   DeviceKeysInvalid: "device_keys_invalid",
+  /** CC-06.1: a Cloud Connect route was called by a device that has registered no keys (409). */
+  DeviceKeysRequired: "device_keys_required",
   BadRequest: "bad_request",
   NotFound: "not_found",
   ManagedByAdmin: "managed_by_admin",

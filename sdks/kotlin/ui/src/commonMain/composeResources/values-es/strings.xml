@@ -2000,6 +2000,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_required_title">Dispositivo no vinculado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_required_message">Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">No quedan usos de la clave</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.</string>

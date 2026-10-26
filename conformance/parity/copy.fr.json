@@ -77,6 +77,10 @@
       "title": "Appareil non configuré",
       "message": "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez."
     },
+    "device_keys_required": {
+      "title": "Appareil non lié",
+      "message": "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez."
+    },
     "key_entry_limit": {
       "title": "Aucune saisie restante",
       "message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."

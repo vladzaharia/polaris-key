@@ -893,6 +893,8 @@
   "core.codes.device_limit.message": "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui.",
   "core.codes.device_keys_invalid.title": "Dispositivo non configurato",
   "core.codes.device_keys_invalid.message": "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova.",
+  "core.codes.device_keys_required.title": "Dispositivo non collegato",
+  "core.codes.device_keys_required.message": "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova.",
   "core.codes.key_entry_limit.title": "Nessun inserimento rimasto",
   "core.codes.key_entry_limit.message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
   "core.codes.license_disabled.title": "Licenza disattivata",

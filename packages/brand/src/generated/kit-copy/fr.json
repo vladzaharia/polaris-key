@@ -893,6 +893,8 @@
   "core.codes.device_limit.message": "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici.",
   "core.codes.device_keys_invalid.title": "Appareil non configuré",
   "core.codes.device_keys_invalid.message": "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.",
+  "core.codes.device_keys_required.title": "Appareil non lié",
+  "core.codes.device_keys_required.message": "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.",
   "core.codes.key_entry_limit.title": "Aucune saisie restante",
   "core.codes.key_entry_limit.message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
   "core.codes.license_disabled.title": "Licence désactivée",

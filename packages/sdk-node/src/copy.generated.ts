@@ -100,6 +100,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This device could not be set up for sync. Update the app and try again.",
   },
+  device_keys_required: {
+    title: "Device not linked",
+    message:
+      "This device has not been set up to link with your others. Update the app and try again.",
+  },
   device_limit: {
     title: "Device limit reached",
     message:

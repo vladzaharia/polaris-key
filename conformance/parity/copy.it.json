@@ -77,6 +77,10 @@
       "title": "Dispositivo non configurato",
       "message": "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova."
     },
+    "device_keys_required": {
+      "title": "Dispositivo non collegato",
+      "message": "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova."
+    },
     "key_entry_limit": {
       "title": "Nessun inserimento rimasto",
       "message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."

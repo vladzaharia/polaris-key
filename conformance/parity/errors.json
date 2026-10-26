@@ -100,6 +100,12 @@
       "description": "400: the key registration was refused: a key that is not canonical or is of small order, a proof of possession that fails or is outside the 300 s window, or an `agreeKey` another device of the product holds. One code, whichever check failed."
     },
     {
+      "code": "device_keys_required",
+      "kind": "wire",
+      "service": "connect",
+      "description": "409: a Cloud Connect route was called by a device that has registered no keys, or whose keys are not in its roster. Register them with `PUT /<p>/devices/keys`, then retry."
+    },
+    {
       "code": "device_limit",
       "kind": "wire",
       "service": "license",

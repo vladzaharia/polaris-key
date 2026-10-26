@@ -893,6 +893,8 @@
   "core.codes.device_limit.message": "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí.",
   "core.codes.device_keys_invalid.title": "Dispositivo no configurado",
   "core.codes.device_keys_invalid.message": "No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo.",
+  "core.codes.device_keys_required.title": "Dispositivo no vinculado",
+  "core.codes.device_keys_required.message": "Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo.",
   "core.codes.key_entry_limit.title": "No quedan usos de la clave",
   "core.codes.key_entry_limit.message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
   "core.codes.license_disabled.title": "Licencia desactivada",

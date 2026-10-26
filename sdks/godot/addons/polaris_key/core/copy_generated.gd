@@ -34,6 +34,7 @@ const COPY_CODES := {
 	"document_not_representable": {"title": "Service problem", "message": "The service couldn't prepare your settings. Contact the developer."},
 	"signing_unavailable": {"title": "Signing unavailable", "message": "The service can't sign a document right now. Try again in a few minutes."},
 	"device_keys_invalid": {"title": "Device not set up", "message": "This device could not be set up for sync. Update the app and try again."},
+	"device_keys_required": {"title": "Device not linked", "message": "This device has not been set up to link with your others. Update the app and try again."},
 	"device_limit": {"title": "Device limit reached", "message": "This license is already on all its devices. Replace a device to use it here."},
 	"key_entry_limit": {"title": "No key entries left", "message": "This key has no entries left. Add it to your account and sign in instead."},
 	"license_disabled": {"title": "License disabled", "message": "This license has been disabled. Contact the developer."},
