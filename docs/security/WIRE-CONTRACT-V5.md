@@ -2507,7 +2507,7 @@ and keys checked as in §15.2 step 4. At 128 entries the payload is about 20 KiB
 - `R′.epoch > R.epoch`;
 - R′ is not expired.
 
-An expired held ring counts as no ring at all. That is safe, because the certificates of removed
+A roster is expired once `now > expiresAt + 300`, the certificate's clock skew (§15.2 step 6). An expired held ring counts as no ring at all. That is safe, because the certificates of removed
 devices expire on the same horizon.
 
 **Peer admission** with certificate C:

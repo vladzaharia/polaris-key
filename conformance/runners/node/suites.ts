@@ -242,6 +242,14 @@ import {
   type ZstdPort,
 } from "@polaris-key/client-core";
 import {
+  admitPeer,
+  replaceRing,
+  ringExpired,
+  verifyPeerCert,
+  verifyRing,
+  type PeerSession,
+} from "@polaris-key/client-core/peer";
+import {
   BACKEND_LOCALES,
   backendProblem,
   backendVerdict,
@@ -543,6 +551,50 @@ export interface Corpus {
   delegationCases: DelegationCase[];
   /** plans/SP-54.md §4: the signed-in subject, `profile.user`. */
   licenseUserCases: LicenseUserCase[];
+  /** plans/CC-01-cloud-connect.md §2.2: V5 §15.2, the device certificate. */
+  peerCertCases: PeerCertCase[];
+  /** §2.3: V5 §15.3, the roster and its replacement. */
+  ringCases: RingCase[];
+  /** §2.3: V5 §15.3 "Peer admission". */
+  peerAdmissionCases: PeerAdmissionCase[];
+}
+
+interface PeerCase {
+  id: string;
+  description: string;
+  trust: TrustSet;
+  expectedAud: string;
+  now: number;
+}
+interface PeerCertCase extends PeerCase {
+  jws: string;
+  session?: PeerSession;
+  expect:
+    | { valid: true; cert: Record<string, unknown> }
+    | { valid: false; reason: string };
+}
+type RingCase = PeerCase &
+  (
+    | {
+        kind: "verify";
+        jws: string;
+        expect:
+          | { valid: true; epoch: number; devices: number; expired: boolean }
+          | { valid: false; reason: string };
+      }
+    | {
+        kind: "replace";
+        jws: string;
+        heldJws?: string | null;
+        expect: { replace: true } | { replace: false; reason: string };
+      }
+  );
+interface PeerAdmissionCase extends PeerCase {
+  certJws: string;
+  ringJws: string | null;
+  expect:
+    | { admit: true; ringSync: "none" | "request" }
+    | { admit: false; reason: string };
 }
 
 export interface MatrixRow {
@@ -997,6 +1049,88 @@ export function defineCorpusSuites({
         const doc = await verifyLicenseDoc(c.jws, docOpts(c));
         expect(doc, `${c.id} — ${c.description}`).not.toBeNull();
         expect(licenseUserOf(doc), c.description).toEqual(c.expect.user);
+      });
+    }
+  });
+
+  // ── plans/CC-01-cloud-connect.md §2.2, §2.3 — the device certificate and the roster ────────
+
+  // @pkey-feature connect.identity
+  describe(`conformance corpus v${corpus.corpusVersion} — peerCertCases (V5 §15.2)`, () => {
+    it("has every peerCertCases vector", () => {
+      expect(corpus.peerCertCases.length).toBe(113);
+    });
+    for (const c of corpus.peerCertCases) {
+      it(`${c.id} → ${c.expect.valid ? "valid" : c.expect.reason}`, async () => {
+        const r = await verifyPeerCert(c.jws, {
+          trust: c.trust,
+          expectedAud: c.expectedAud,
+          now: c.now,
+          ...(c.session ? { session: c.session } : {}),
+        });
+        expect(r.ok, c.description).toBe(c.expect.valid);
+        if (r.ok && c.expect.valid) expect(r.cert).toEqual(c.expect.cert);
+        if (!r.ok && !c.expect.valid)
+          expect(r.reason, c.description).toBe(c.expect.reason);
+      });
+    }
+  });
+
+  // @pkey-feature connect.identity
+  describe(`conformance corpus v${corpus.corpusVersion} — ringCases (V5 §15.3)`, () => {
+    it("has every ringCases vector", () => {
+      expect(corpus.ringCases.length).toBe(70);
+    });
+    for (const c of corpus.ringCases) {
+      if (c.kind === "verify") {
+        it(`verify ${c.id} → ${c.expect.valid ? "valid" : c.expect.reason}`, async () => {
+          const r = await verifyRing(c.jws, {
+            trust: c.trust,
+            expectedAud: c.expectedAud,
+          });
+          expect(r.ok, c.description).toBe(c.expect.valid);
+          if (r.ok && c.expect.valid) {
+            expect(r.ring.epoch).toBe(c.expect.epoch);
+            expect(r.ring.devices.length).toBe(c.expect.devices);
+            expect(ringExpired(r.ring, c.now), c.description).toBe(
+              c.expect.expired,
+            );
+          }
+          if (!r.ok && !c.expect.valid)
+            expect(r.reason, c.description).toBe(c.expect.reason);
+        });
+      } else {
+        it(`replace ${c.id} → ${c.expect.replace ? "replace" : c.expect.reason}`, async () => {
+          const r = await replaceRing(c.heldJws ?? null, c.jws, {
+            trust: c.trust,
+            expectedAud: c.expectedAud,
+            now: c.now,
+          });
+          expect(r.replace, c.description).toBe(c.expect.replace);
+          if (!r.replace && !c.expect.replace)
+            expect(r.reason, c.description).toBe(c.expect.reason);
+        });
+      }
+    }
+  });
+
+  // @pkey-feature connect.identity
+  describe(`conformance corpus v${corpus.corpusVersion} — peerAdmissionCases (V5 §15.3)`, () => {
+    it("has every peerAdmissionCases vector", () => {
+      expect(corpus.peerAdmissionCases.length).toBe(17);
+    });
+    for (const c of corpus.peerAdmissionCases) {
+      it(`${c.id} → ${c.expect.admit ? c.expect.ringSync : c.expect.reason}`, async () => {
+        const r = await admitPeer(c.certJws, c.ringJws, {
+          trust: c.trust,
+          expectedAud: c.expectedAud,
+          now: c.now,
+        });
+        expect(r.admit, c.description).toBe(c.expect.admit);
+        if (r.admit && c.expect.admit)
+          expect(r.ringSync, c.description).toBe(c.expect.ringSync);
+        if (!r.admit && !c.expect.admit)
+          expect(r.reason, c.description).toBe(c.expect.reason);
       });
     }
   });
