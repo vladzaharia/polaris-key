@@ -25,6 +25,8 @@ const INTERNAL: Record<string, string[]> = {
     "DEVICE_ENTRY_WIDE_WINDOW_SEC",
   ],
   "core/signInBind.ts": ["BIND_TTL_SECONDS"],
+  // The 30 days a reset keeps the replaced ring, fixed by the wire contract (V5 §13.11.4).
+  "core/keyring/store.ts": ["PREVIOUS_RING_SECONDS"],
   // The `keys` proof skew, fixed by the wire contract (V5 §15.8), not an operator setting.
   "core/devices/keys.ts": ["KEY_POP_SKEW_SECONDS"],
   // The floating-major Cache-Control max-age of the elements CDN: a cache header, not a limit.

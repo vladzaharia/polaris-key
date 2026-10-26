@@ -81,6 +81,7 @@ describe("what the descriptors contribute", () => {
     expect(subjectStoreNames()).toEqual([
       "config.accountOverrides",
       "core.entitlementEvents",
+      "core.keyring",
       "core.provisionedSecretMoves",
       "sync.cloudSync",
     ]);

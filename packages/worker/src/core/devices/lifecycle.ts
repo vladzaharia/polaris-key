@@ -20,6 +20,7 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { contributedDeviceChangeListeners } from "../contributions.js";
+import { onDeviceChange as keyringOnDeviceChange } from "../keyring/store.js";
 import { runListeners } from "../authorizationListeners.js";
 import type { WaitUntil } from "../licensing/refusals.js";
 
@@ -47,9 +48,18 @@ export type DeviceChangeListener = (
   event: DeviceChange,
 ) => Promise<void>;
 
-/** Is anyone listening? Callers skip the reads that only feed an event when nobody is. */
+/**
+ * Core's own listeners (U-36.1): Core cannot contribute through a service descriptor, so the ones
+ * it keeps for its own state are listed here and run before the contributed ones. The key ring
+ * drops a device's wraps (`core/keyring/store.ts`).
+ */
+const CORE_LISTENERS: readonly DeviceChangeListener[] = [
+  async ({ db }, event) => keyringOnDeviceChange(db, event),
+];
+
+/** Is anyone listening? Core's own listeners always are, so callers always read what feeds an event. */
 export function hasDeviceChangeListeners(): boolean {
-  return contributedDeviceChangeListeners().length > 0;
+  return CORE_LISTENERS.length + contributedDeviceChangeListeners().length > 0;
 }
 
 /**
@@ -62,7 +72,7 @@ export async function notifyDeviceChange(
   waitUntil?: WaitUntil,
 ): Promise<void> {
   await runListeners(
-    contributedDeviceChangeListeners(),
+    [...CORE_LISTENERS, ...contributedDeviceChangeListeners()],
     (l) => l(ctx, event),
     waitUntil,
   );
