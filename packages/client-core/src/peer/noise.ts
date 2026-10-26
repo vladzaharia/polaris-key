@@ -165,7 +165,10 @@ async function sha256(...parts: Uint8Array[]): Promise<Uint8Array> {
   return new Uint8Array(await subtle().digest("SHA-256", buf(cat(...parts))));
 }
 
-async function hmac(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+export async function hmac(
+  key: Uint8Array,
+  data: Uint8Array,
+): Promise<Uint8Array> {
   const k = await subtle().importKey(
     "raw",
     buf(key),
