@@ -183,7 +183,6 @@ BEST_EFFORT: List[Tuple[str, Call, Callable[[Any], bool]]] = [
     ("boot", lambda c, t: c.boot(auto_confirm=False), lambda r: r.outcome in ("ready", "waiting", "offline", "blocked")),
     ("license.deactivate", lambda c, t: c.license.deactivate(), lambda r: r is None),
     ("deactivate", lambda c, t: c.deactivate(), lambda r: r is None),
-    ("identity.sign_out", lambda c, t: c.identity.sign_out(), lambda r: r is None),
 ]
 
 MODES = [("offline", "network-error", None), ("503", "server-error", 503)]

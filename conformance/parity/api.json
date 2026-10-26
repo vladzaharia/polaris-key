@@ -1305,6 +1305,21 @@
       "reason": "the seam Cloud Sync's SDK package registers its flush on (D-4); not an app verb"
     },
     {
+      "sdk": "python",
+      "path": "license.wipe_local",
+      "reason": "wiring the client installs (the local half of a released sign-out); not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "identity.forget",
+      "reason": "wiring the facade calls on a deactivation; not an app verb"
+    },
+    {
+      "sdk": "python",
+      "path": "identity.on_before_sign_out",
+      "reason": "the seam Cloud Sync's SDK package registers its flush on (D-4); not an app verb"
+    },
+    {
       "sdk": "swift",
       "path": "identity.installSignOut",
       "reason": "wiring the client installs; not an app verb"
@@ -2883,10 +2898,7 @@
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
         "swift": {},
         "kotlin": {},
         "godot": {
@@ -3280,8 +3292,7 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "attach"
         },
         "swift": {
           "spelling": "attach"
@@ -3307,10 +3318,7 @@
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
-        "python": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "python": {},
         "swift": {},
         "kotlin": {},
         "godot": {

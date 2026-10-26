@@ -45,7 +45,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 # @pkey-feature license.manage
-# @pkey-feature identity.keyentry
+# @pkey-feature identity.keyentry identity.account identity.attach
 # @pkey-feature core.presentation ui.cli.portal
 
 from __future__ import annotations
@@ -226,6 +226,24 @@ def _act(
             # wire code; the typed kind carries the sign-in link.
             out["result"] = "refused"
             out["signInUrl"] = r.sign_in_url
+    elif action == "subject":
+        out["subject"] = client.identity.subject()
+    elif action == "signOut":
+        out["released"] = client.identity.sign_out().released
+    elif action == "attach":
+        a = client.identity.attach(confirm=args.get("confirm") is True)
+        out["result"] = a.kind
+        if a.kind == "confirm":
+            out["license"] = {
+                "id": a.license.id,
+                "tierId": a.license.tierId,
+                "name": a.license.name,
+            }
+        elif a.kind == "ok":
+            out["attached"] = a.attached
+            out["subject"] = a.subject
+        else:
+            out["code"] = a.code
     elif action == "boot":
         # The shell stage's discovery runs even though the host pinned its services
         # (``initial.services``): the recording's boot loads discovery first.
@@ -371,9 +389,36 @@ def _release_fetch(
     }
 
 
+def _uses_account(t: Dict[str, Any]) -> bool:
+    """Does this transcript call the account verbs (so discovery must name their endpoints)?"""
+    return any(s["action"] in ("subject", "signOut", "attach") for s in t["steps"])
+
+
 def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
     """The Worker's standard discovery document, for a transcript that loads none itself."""
     base = f"{t['baseUrl']}/{t['product']}"
+    if _uses_account(t):
+        # A slug discovery omits reads as off, so the account transcripts name their services;
+        # the Identity fragment names the account endpoints (WIRE-CONTRACT-V4 §12.6).
+        return {
+            "product": t["product"],
+            "services": {
+                "license": {"enabled": True},
+                "config": {"enabled": True},
+                "identity": {
+                    "enabled": True,
+                    "configured": True,
+                    "account": True,
+                    "issuer": f"{base}/identity",
+                    "endpoints": {
+                        "subject": f"{base}/identity/subject",
+                        "signout": f"{base}/identity/signout",
+                        "attach": f"{base}/identity/attach",
+                        "accountPortal": f"{t['baseUrl']}/#/p/{t['product']}",
+                    },
+                },
+            },
+        }
     return {
         "product": t["product"],
         "services": {
@@ -476,9 +521,14 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
             observed = _act(client, store, step, session)
             server.end_step()
             for key, want in step["expect"].items():
-                assert observed.get(key) == want, (
+                got = observed.get(key)
+                if key == "services" and isinstance(want, dict) and isinstance(got, dict):
+                    # Slugs a recording predates (``connect``, CC-02.1) are not in its
+                    # ``expect``; every slug it does name is still compared exactly.
+                    got = {k: v for k, v in got.items() if k in want}
+                assert got == want, (
                     f"{t['id']} step {i} ({step['action']}): {key}: "
-                    f"expected {want!r}, got {observed.get(key)!r}"
+                    f"expected {want!r}, got {got!r}"
                 )
     finally:
         client.close()

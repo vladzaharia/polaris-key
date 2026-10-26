@@ -17,7 +17,8 @@ after ``license.activate_with_key()``.
 A device-code sign-in yields the SIGNED-IN IDENTITY'S OWN licence and nothing else. The
 Worker's callback merges nothing (P1-06): a device on an anonymous enrolled licence is not
 attached to the account by signing in, and nothing here offers or implies that it is.
-Mirrors ``@polaris-key/node``'s ``identity/client.ts``.
+The account verbs (``subject``, ``sign_out``, ``open_account``, ``attach``) live in
+:mod:`polaris_key.identity.account`. Mirrors ``@polaris-key/node``'s ``identity/client.ts``.
 """
 
 from __future__ import annotations
@@ -34,6 +35,13 @@ from ..constants_generated import ErrorCode, Feature
 from ..core.context import CoreContext, server_message_of
 from ..core.errors import PolarisError
 from ..core.token import TokenManager
+from .account import (
+    Account,
+    AttachResult,
+    BeforeSignOutHooks,
+    OpenAccountResult,
+    SignOutResult,
+)
 
 __all__ = [
     "IdentityClient",
@@ -156,18 +164,27 @@ class IdentityClient:
         tokens: TokenManager,
         on_acquired: Callable[[], None],
         *,
-        deactivate: Optional[Callable[[], None]] = None,
         profile: Optional[Callable[[], Any]] = None,
-        on_signed_out: Optional[Callable[[], None]] = None,
+        discover: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
+        wipe_local: Optional[Callable[[], None]] = None,
+        open_url: Optional[Callable[[str], bool]] = None,
     ) -> None:
         self._ctx = ctx
         self._tokens = tokens
         self._on_acquired = on_acquired
-        self._deactivate = deactivate
         self._profile = profile
-        self._on_signed_out = on_signed_out
         #: The identity the last ``ready`` poll showed (this process).
         self._identity: Optional[SignedInIdentity] = None
+        self._before_sign_out = BeforeSignOutHooks()
+        self._account = Account(
+            ctx,
+            tokens,
+            discover=discover or (lambda: None),
+            hooks=self._before_sign_out,
+            forget=self.forget,
+            wipe_local=wipe_local or tokens.clear,
+            open_url=open_url or _open_in_browser,
+        )
 
     def begin_sign_in(
         self, device_name: Optional[str] = None, *, confirm_identity: bool = False
@@ -436,19 +453,38 @@ class IdentityClient:
             return {"name": self._identity.name, "email": self._identity.email, "activatedAt": None}
         return None
 
-    def sign_out(self) -> None:
-        """Sign this device out: release its seat and wipe the credential and cached documents
-        (``license.deactivate()``), forget the identity, and raise the licence change event."""
+    def forget(self) -> None:
+        """Forget the stored identity and subject (the facade calls it on every deactivation).
+        The token and the licence are not touched."""
         self._identity = None
-        if self._deactivate is not None:
-            self._deactivate()
-        else:
-            self._tokens.clear()
-        if self._on_signed_out is not None:
-            try:
-                self._on_signed_out()
-            except Exception:
-                pass
+        self._account.forget_subject()
+
+    def on_before_sign_out(self, hook: Callable[[], Any]) -> Callable[[], None]:
+        """Register a function ``sign_out()`` calls first (Cloud Sync's flush registers one);
+        returns its remover. A hook that raises stops the sign-out."""
+        return self._before_sign_out.add(hook)
+
+    def subject(self) -> Optional[str]:
+        """The pairwise subject of the account signed in on this device, or ``None``
+        (persisted, so it survives a restart). Raises the typed unsupported result when the
+        product's discovery names no subject endpoint."""
+        return self._account.subject()
+
+    def sign_out(self) -> SignOutResult:
+        """Sign out of the account (``POST signout``) after the pre-sign-out hooks. The device
+        token goes only when the server released the device (``released=True``); a key-activated
+        device keeps its licence and token."""
+        return self._account.sign_out()
+
+    def open_account(self) -> OpenAccountResult:
+        """Open the product's account page in the browser."""
+        return self._account.open_account()
+
+    def attach(self, confirm: bool) -> AttachResult:
+        """``attach(confirm=False)`` previews the device's licence; ``attach(confirm=True)``
+        adds it to the signed-in account and rotates the token. A refusal is an
+        :class:`~polaris_key.identity.account.AttachRefused`, never an auth failure."""
+        return self._account.attach(confirm)
 
     # ── Internals ───────────────────────────────────────────────────────────────────
     @staticmethod
@@ -497,3 +533,12 @@ def _error_code(res: httpx.Response, fallback: str) -> str:
     if isinstance(err, dict) and isinstance(err.get("code"), str):
         return err["code"]
     return fallback
+
+
+def _open_in_browser(url: str) -> bool:
+    import webbrowser
+
+    try:
+        return bool(webbrowser.open(url))
+    except Exception:
+        return False

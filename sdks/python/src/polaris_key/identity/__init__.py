@@ -3,6 +3,14 @@
 See :mod:`polaris_key.identity.client`.
 """
 
+from .account import (
+    AttachConfirm,
+    AttachLicense,
+    AttachOk,
+    AttachRefused,
+    OpenAccountResult,
+    SignOutResult,
+)
 from .client import (
     SLOW_DOWN_STEP_SECONDS,
     IdentityClient,
@@ -12,6 +20,12 @@ from .client import (
 )
 
 __all__ = [
+    "AttachConfirm",
+    "AttachLicense",
+    "AttachOk",
+    "AttachRefused",
+    "OpenAccountResult",
+    "SignOutResult",
     "IdentityClient",
     "SignInPoll",
     "SignInPrompt",

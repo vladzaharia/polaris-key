@@ -4,7 +4,7 @@ listener is logged instead of swallowed.
 
 ``client.license.deactivate()`` (the kit's sign-out verb calls it) used to change the gate with
 no event at all; only the root's ``client.deactivate()`` published it. The licence client now
-raises the change itself, so the root, the sub-client, ``identity.sign_out()`` and
+raises the change itself, so the root, the sub-client and
 ``deauthorize_device(<this device>)`` each emit exactly one ``license`` event and call
 ``on_change`` exactly once.
 """
@@ -21,7 +21,6 @@ from helpers import make_client, routes, sign_config, sign_license
 ENTRY_POINTS: List[Any] = [
     ("license.deactivate", lambda c: c.license.deactivate()),
     ("deactivate", lambda c: c.deactivate()),
-    ("identity.sign_out", lambda c: c.identity.sign_out()),
     ("deauthorize_device(self)", lambda c: c.deauthorize_device(c.core.device_id)),
 ]
 

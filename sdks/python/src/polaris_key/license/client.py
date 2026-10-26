@@ -222,6 +222,11 @@ class LicenseClient:
         if token:
             # `deauthorize` swallows transport failures, including local-only's refusal.
             deauthorize(self._ctx, token)
+        self.wipe_local()
+
+    def wipe_local(self) -> None:
+        """The local half of :meth:`deactivate`: no request. For a sign-out the server has
+        already released (``released: true``), which stops the token working."""
         self._tokens.clear()
         self._cache.clear()
         if self._on_changed is not None:
