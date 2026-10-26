@@ -1311,6 +1311,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     },
     "oidc": { "$ref": "#/$defs/oidc" },
     "identity": { "$ref": "#/$defs/identity" },
+    "connect": { "$ref": "#/$defs/connect" },
     "provisioning": {
       "type": "array",
       "items": { "$ref": "#/$defs/provisioningHook" }
@@ -1897,6 +1898,21 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "properties": { "provider": { "const": "custom" } }
       },
       "then": { "required": ["issuer", "clientId"] }
+    },
+    "connect": {
+      "type": "object",
+      "description": "Cloud Connect settings (CC-02.2), each a claimable setting: the console can override it and Revert returns it to this file. Takes effect only while the connect service is on; declared with it off, pkey validate warns (connect_block_without_service).",
+      "additionalProperties": false,
+      "properties": {
+        "relay": {
+          "description": "Whether the relay carries this product's device traffic when the LAN cannot (cloudConnect.relay.enabled). Default true.",
+          "type": "boolean"
+        },
+        "interAccount": {
+          "description": "Whether devices of different accounts may connect (cloudConnect.interAccount). Default false.",
+          "type": "boolean"
+        }
+      }
     },
     "identity": {
       "type": "object",
@@ -14818,6 +14834,38 @@ function formatFeedSetup(snippets) {
 // ../shared-catalog/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
+// ../shared-catalog/dist/cloudConnect.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var KiB = 1024;
+var MiB = 1024 * KiB;
+var GiB = 1024 * MiB;
+var CLOUD_CONNECT_DEFAULTS = {
+  /** A person's relay bytes per UTC day when nothing sets `pkey.cloudConnect.relayBytes` (the
+   *  `cloudConnect.quota.defaultRelayBytes` setting's default). */
+  relayBytesPerDay: 256 * MiB,
+  /** A device with no usable licence. */
+  unlicensedRelayBytesPerDay: 16 * MiB,
+  /** Relay sockets: two per device (a third replaces the oldest) and 32 per room. */
+  socketsPerDevice: 2,
+  socketsPerRoom: 32,
+  /** One relay message: a 64 KiB frame plus its envelope. */
+  maxMessageBytes: 65564,
+  /** Messages per second per socket, and the burst the bucket holds. */
+  messagesPerSecond: 200,
+  messageBurst: 400
+};
+var CLOUD_CONNECT_CEILINGS = {
+  perPerson: {
+    /** The clamp on a person's relay bytes per UTC day. */
+    relayBytesPerDay: 4 * GiB
+  },
+  perProduct: {
+    /** All people on a product together, per UTC month (the `cloudConnect.ceiling.relayBytes`
+     *  setting's default). */
+    relayBytesPerMonth: 500 * GiB
+  }
+};
+
 // ../shared-catalog/dist/cloudSync.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -14862,18 +14910,18 @@ var CLOUD_SYNC_TEMPLATE_NAMES = [
 var CLOUD_SYNC_COLLECTION_PATTERN = "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
 var CLOUD_SYNC_MAX_MERGE_MEMBERS = SYNC_MAX_MERGE_MEMBERS;
 var CLOUD_SYNC_SAVE_SLOTS = SYNC_SAVE_SLOTS;
-var KiB = 1024;
-var MiB = 1024 * KiB;
-var GiB = 1024 * MiB;
+var KiB2 = 1024;
+var MiB2 = 1024 * KiB2;
+var GiB2 = 1024 * MiB2;
 var CLOUD_SYNC_CEILINGS = {
   perPerson: {
     /** About 1.06 GiB: the owner-confirmed per-person total (settings, records and files). */
-    bytes: 256 * KiB + 64 * MiB + 1 * GiB,
+    bytes: 256 * KiB2 + 64 * MiB2 + 1 * GiB2,
     /** One file. */
-    fileBytes: 1 * GiB
+    fileBytes: 1 * GiB2
   },
   perProduct: {
-    bytes: 50 * GiB,
+    bytes: 50 * GiB2,
     users: 1e5,
     pushesPerSecond: 2e3
   }
@@ -14896,7 +14944,7 @@ var CLOUD_SYNC_DEFAULTS = {
     maxRecords: 1e4,
     maxCollections: 32
   },
-  files: { maxBytes: 32 * MiB, keepRevisions: 5 },
+  files: { maxBytes: 32 * MiB2, keepRevisions: 5 },
   push: {
     maxMutations: SYNC_MAX_MUTATIONS,
     maxBytes: SYNC_MAX_PUSH_BYTES,
@@ -14904,7 +14952,7 @@ var CLOUD_SYNC_DEFAULTS = {
   },
   fileTransfersPerHour: 30
 };
-var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB / 3);
+var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB2 / 3);
 var CLOUD_SYNC_TEMPLATES = {
   saves: {
     label: "Saves",
@@ -14933,7 +14981,7 @@ var CLOUD_SYNC_TEMPLATES = {
     label: "Session",
     conflict: "lastWrite",
     maxRecords: 16,
-    files: { maxBytes: 8 * MiB, keepRevisions: 1 }
+    files: { maxBytes: 8 * MiB2, keepRevisions: 1 }
   }
 };
 function isEditable(entry) {
@@ -16146,6 +16194,12 @@ var RESERVED_ENTITLEMENT_KEYS = [
     key: "pkey.cloudSync.bytes",
     type: "integer",
     rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Sync reads it from the anchor licence as the person's quota in bytes (256 MiB when unset).",
+    injected: false
+  },
+  {
+    key: "pkey.cloudConnect.relayBytes",
+    type: "integer",
+    rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Connect reads it from the anchor licence as the relay bytes a person may use per UTC day (256 MiB when unset, 16 MiB without a usable licence, clamped to 4 GiB).",
     injected: false
   }
 ];
@@ -20870,6 +20924,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   validateLicensingSettings(licensing, errors);
   validateIdentityBlock(productRoot, modules, errors, warnings);
+  validateConnectBlock(productRoot, modules, errors, warnings);
   if (schemaAlwaysRequired || modules.includes("config")) {
     if (requireSchema(errors, manifest.schema)) {
       const catalog = normalizeCatalog(manifest.schema);
@@ -23229,6 +23284,8 @@ function parseManifest(files, opts = {}) {
   if (licensingSettings) parsed.licensing = licensingSettings;
   const identitySettings = normalizeIdentityBlock(productRoot.identity);
   if (identitySettings) parsed.identity = identitySettings;
+  const connectSettings = normalizeConnectBlock(productRoot.connect);
+  if (connectSettings) parsed.connect = connectSettings;
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
   if (validation.enabledModules.includes("distribution") || docs.distribution !== void 0) {
     parsed.distribution = normalizeDistribution(
@@ -24615,6 +24672,57 @@ function validatePlatformSignIn(psi, errors) {
       }
     }
   }
+}
+var CONNECT_MEMBERS = ["relay", "interAccount"];
+function validateConnectBlock(productRoot, modules, errors, warnings) {
+  const connect = productRoot.connect;
+  if (connect === void 0) return;
+  if (!isRecord6(connect)) {
+    add4(
+      errors,
+      "product",
+      "/connect",
+      "invalid_connect",
+      "connect must be an object with relay and interAccount."
+    );
+    return;
+  }
+  for (const key of Object.keys(connect)) {
+    if (!CONNECT_MEMBERS.includes(key)) {
+      add4(
+        errors,
+        "product",
+        `/connect/${key}`,
+        "invalid_connect",
+        "connect takes only relay and interAccount."
+      );
+    } else if (typeof connect[key] !== "boolean") {
+      add4(
+        errors,
+        "product",
+        `/connect/${key}`,
+        "invalid_connect",
+        `connect.${key} must be true or false.`
+      );
+    }
+  }
+  if (!modules.includes("connect")) {
+    add4(
+      warnings,
+      "product",
+      "/connect",
+      "connect_block_without_service",
+      "connect is declared but the connect service is off, so none of it applies."
+    );
+  }
+}
+function normalizeConnectBlock(raw) {
+  if (!isRecord6(raw)) return void 0;
+  const out = {};
+  if (typeof raw.relay === "boolean") out.relay = raw.relay;
+  if (typeof raw.interAccount === "boolean")
+    out.interAccount = raw.interAccount;
+  return Object.keys(out).length > 0 ? out : void 0;
 }
 var IDENTITY_MEMBERS = [
   "keyEntry",
@@ -53317,9 +53425,9 @@ import path34 from "node:path";
 var ASSETS_PUSH_USAGE = "Usage: pkey assets push <file> --slot <slot> [--locale <code>] --product <slug>\n              [--base-url <url>] [--dry-run]";
 var MAX_PUSH_ASSETS = 32;
 var MAX_SCREENSHOTS = 16;
-var MiB2 = 1024 * 1024;
-var ICON_MAX_BYTES = 10 * MiB2;
-var ART_MAX_BYTES = 20 * MiB2;
+var MiB3 = 1024 * 1024;
+var ICON_MAX_BYTES = 10 * MiB3;
+var ART_MAX_BYTES = 20 * MiB3;
 var SLOT_RE = /^[a-z0-9][a-z0-9.:-]{0,199}$/;
 var NOT_PUSHABLE = /^(pack:|youtube-url$|trailer-master$|notes-image:|release-file)/;
 var LOCALE_RE2 = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
