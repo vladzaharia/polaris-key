@@ -504,6 +504,16 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "BUILT review UXR-SWIFT (Opus pkey-ux-reviewer, 2026-10-22) + one fix round KX-SW-FIX f0e07cc3b merged to staging: B1–B4 fixed (mandatory update route, labelled text setting, honest Check for updates, 44 pt rename targets); 43 iPhone baselines re-recorded; swift test green. Copy items → COPY PASS; Restart now (iOS), sign-out consequence line, Devices push → KITS-QUEUE Swift second wave."
+    },
+    "UK-31": {
+      "verdict": "pass",
+      "date": "2026-10-26",
+      "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/UXR-UK31-re.md + _mockups/review/uk31-recipes-re/ (BUILT re-review PASS after one fix round; N1/N2 + N3-N7 fixed in wp/UK-31-followups c07dbc810, verified under strict CSP and forced colors)"
+    },
+    "UK-09b": {
+      "verdict": "pass",
+      "date": "2026-10-26",
+      "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/UXR-UK09b-re.md (BUILT re-review: UK-09 kit PASS/good; UK-09b sample B-1 + S-1 fixed by lead fix list wp/UK-09b-sample-fix c1207eed3, merged 354e00398; kit majors K-1..K-4 queued)"
     }
   }
 }
