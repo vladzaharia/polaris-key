@@ -31,6 +31,7 @@ import {
   upsertDeviceKeys,
   verifyKeyPop,
 } from "./keys.js";
+import { notifyDeviceChange } from "./lifecycle.js";
 
 /** A change a device may make to its keys, per day (a registration counts). */
 export const DEVICE_KEYS_LIMIT = {
@@ -122,6 +123,11 @@ export async function handleDeviceKeys(
       now,
       issuedAt,
     );
+    if (r.changed)
+      await notifyDeviceChange(
+        { db, env, now },
+        { product: product.slug, deviceId, kind: "keys", keySeq: r.keySeq },
+      );
     return json({ keySeq: r.keySeq });
   } catch (e) {
     if (
