@@ -785,10 +785,17 @@ PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
 await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
 await PolarisKey.identity.sign_in_with_browser() # the same, and opens the page in the browser
 var who = PolarisKey.identity.current()          # {name, email, activatedAt} or null
-await PolarisKey.identity.sign_out()             # cancel, forget, license.deactivate()
+await PolarisKey.identity.sign_out()             # cancel, hooks, POST signout (else license.deactivate())
+var s = await PolarisKey.identity.subject()      # ok, detail.subject: "ps_..." or null
+await PolarisKey.identity.open_account()         # the product's account page, detail {url, opened}
 ```
 
-- **Account calls.** `current()` reads the signed-in person off the verified license's profile.
+- **Account calls.** `subject()`, `sign_out()` and `open_account()` use only the endpoints
+  discovery's Identity fragment publishes (`account: true`, `subject`, `signout`, `accountPortal`,
+  on the product's own origin) and never build a URL; a product without them answers
+  `service-unavailable` (`detail.kind == "unavailable"`) and nothing is sent. `sign_out()` runs
+  the hooks registered with `add_before_sign_out(hook)`, then POSTs `signout`; the token goes only
+  on `released: true`, otherwise the license and token stay. `current()` reads the signed-in person off the verified license's profile.
   `sign_out()` cancels any sign-in, forgets the identity and stops counting the device through
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
   `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in

@@ -188,8 +188,8 @@
       "wp": "I-10b"
     },
     "identity.account": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.2: PolarisKey.identity.subject() (kept across restarts in the cache record), sign_out() (pre-sign-out hooks, POST signout, the token goes only on released: true) and open_account() over discovery's identity fragment (PKeyDiscovery.identity_from); a product without the endpoints answers service-unavailable and sign_out() keeps the license.deactivate() path. identity-subject-signout and discovery-identity transcripts replayed."
     },
     "identity.redirect.web": {
       "status": "planned",
