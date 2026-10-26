@@ -258,7 +258,7 @@ describe("the identity block (I-09, plans/I-27.md §3)", () => {
     );
   });
 
-  it("allows only keyEntry, terms and redirectPaths", () => {
+  it("allows only its known members", () => {
     expect(codes(validate({ identity: { native: {} } })).errors).toEqual([
       "invalid_identity",
     ]);
@@ -358,6 +358,55 @@ describe("the identity block (I-09, plans/I-27.md §3)", () => {
     expect(
       codes(validate({ identity: { redirectPaths: "/cb" } })).errors,
     ).toEqual(["invalid_identity_redirect_paths"]);
+  });
+
+  it("checks platformSignIn: Google client ids and an Apple team with bundle ids", () => {
+    const ok = {
+      google: {
+        serverClientId: "1234-web.apps.googleusercontent.com",
+        clientIds: ["1234-and.apps.googleusercontent.com"],
+      },
+      apple: { teamId: "ABCDE12345", bundleIds: ["com.acme.app.mac"] },
+    };
+    const res = parseManifest({
+      product: JSON.stringify({
+        ...PRODUCT,
+        ...IDENTITY_ON,
+        identity: { platformSignIn: ok, nearby: false },
+      }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+    expect(res.ok && res.manifest.identity).toEqual({
+      platformSignIn: ok,
+      nearby: false,
+    });
+    const bad = (platformSignIn: unknown) =>
+      codes(validate({ identity: { platformSignIn } })).errors;
+    expect(bad("google")).toEqual(["invalid_identity_platform_sign_in"]);
+    expect(bad({ facebook: {} })).toEqual([
+      "invalid_identity_platform_sign_in",
+    ]);
+    expect(bad({ google: { secret: "x" } })).toEqual([
+      "invalid_identity_platform_sign_in",
+    ]);
+    expect(bad({ google: { serverClientId: "web" } })).toEqual([
+      "invalid_google_client_id",
+    ]);
+    expect(
+      bad({ google: { clientIds: ["1-a.apps.googleusercontent.com"] } }),
+    ).toEqual(["google_client_ids_without_server"]);
+    expect(bad({ apple: { teamId: "abcde12345" } })).toEqual([
+      "invalid_apple_team_id",
+    ]);
+    expect(bad({ apple: { bundleIds: ["com.acme.app"] } })).toEqual([
+      "apple_sign_in_without_team",
+    ]);
+    expect(
+      bad({ apple: { teamId: "ABCDE12345", bundleIds: ["com.a", "com.a"] } }),
+    ).toEqual(["invalid_apple_bundle_id"]);
+    expect(codes(validate({ identity: { nearby: "yes" } })).errors).toEqual([
+      "invalid_identity_nearby",
+    ]);
   });
 
   it("warns when redirect paths have no web origin to pair with", () => {

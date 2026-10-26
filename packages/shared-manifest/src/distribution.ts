@@ -312,8 +312,9 @@ export const OUTLET_IDENTITY_FIELDS: Readonly<
 
 /** A numeric store id: a positive integer, or the same as a string of digits (no leading 0). */
 export const NUMERIC_ID_PATTERN = /^[1-9][0-9]{0,19}$/;
-const BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
-const MAX_BUNDLE_ID_LENGTH = 155;
+/** A reverse-DNS bundle id; also the shape of `identity.platformSignIn.apple.bundleIds`. */
+export const BUNDLE_ID_RE = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+export const MAX_BUNDLE_ID_LENGTH = 155;
 /** The join code of a public TestFlight link (P3-03, from which the feed composes `listingUrl`). */
 export const TESTFLIGHT_PUBLIC_LINK_PATTERN = /^[A-Za-z0-9]{1,32}$/;
 const MARKETPLACE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
