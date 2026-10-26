@@ -519,6 +519,11 @@
       "verdict": "pass",
       "date": "2026-10-26",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/MO-13/ (BUILT review FIX 2026-10-24: 4 must-fix; all fixed in the one fix round 755081523, merged 2bb07447a; the 4x CPU frame check is deferred to a quiet machine under the owner's load rule)"
+    },
+    "A-32": {
+      "verdict": "pass",
+      "date": "2026-10-26",
+      "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/UXR-A-32.md (BUILT review BLOCK) -> one fix round wp/A-32-uxfix 8d8300395 (B1/B2, F1-F9, V1-V7, step-up), merged e5d22cfdf; lead-verified _evidence/A-32/uxfix/first-view-dark-1440.png; security review + fixes merged 5eac35662"
     }
   }
 }
