@@ -38,6 +38,7 @@ import {
 import type { CapabilityContext } from "@polaris-key/client-core";
 import { isManageUrl } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
+import { BeforeSignOutHooks } from "../core/account.js";
 import {
   BridgePresentationSource,
   type ReactPresentationSource,
@@ -68,6 +69,9 @@ import {
   type UpdateDecision,
 } from "../core/index.js";
 import type {
+  AttachResult,
+  KeyActivation,
+  SignOutResult,
   CommerceBinding,
   CommerceClaimResult,
   CommercePayload,
@@ -99,7 +103,7 @@ import type {
 import type { DownloadModel, ThisPlatform } from "../browser/distribution.js";
 import { isCatalog } from "../browser/catalog.js";
 import { activationError } from "../core/activationError.js";
-import type { ActivationOutcome } from "../core/activation.js";
+import { readKeyEntries, type ActivationOutcome } from "../core/activation.js";
 import { expectedServicesOf } from "../core/expectedServices.js";
 import {
   copyServices,
@@ -472,6 +476,10 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   async submitKey(key: string): Promise<void> {
+    await this.activateWithKey(key);
+  }
+
+  async activateWithKey(key: string): Promise<KeyActivation> {
     if (!this.capabilities.license.enabled) {
       throw this.fail(
         "license",
@@ -489,6 +497,9 @@ export class DesktopAdapter implements PolarisAdapter {
         busy: noBusy(),
         error: noErrors(),
       });
+      return {
+        keyEntries: readKeyEntries({ keyEntries: r.keyEntries }) ?? null,
+      };
     } catch (e) {
       throw this.fail(
         "license",
@@ -499,20 +510,76 @@ export class DesktopAdapter implements PolarisAdapter {
     }
   }
 
-  async signOut(): Promise<void> {
+  /** The renderer-side hooks `signOut()` awaits first (D-4); the host runs its own in main. */
+  private readonly beforeSignOut = new BeforeSignOutHooks();
+
+  onBeforeSignOut(hook: () => Promise<void> | void): () => void {
+    return this.beforeSignOut.add(hook);
+  }
+
+  async signOut(): Promise<SignOutResult> {
     this.setBusy("identity", true);
     try {
+      await this.beforeSignOut.run();
       await this.bridge.signOut();
-      this.apply(await this.bridge.getSyncState(), {
+      const state = await this.bridge.getSyncState();
+      this.apply(state, {
         busy: noBusy(),
         error: noErrors(),
       });
+      // The server released the device when the activation went with it; a device that keeps its
+      // key activation only left the account.
+      return { released: state.activation === null };
     } catch (e) {
       throw this.fail(
         "identity",
         new PolarisError("sign-out-failed", (e as Error).message),
       );
     }
+  }
+
+  /** An account verb over `invoke`: the typed version N/A on a host that does not offer it. */
+  private async account<T>(
+    feature: string,
+    method: string,
+    args?: unknown,
+  ): Promise<T> {
+    try {
+      return await this.invokeV4<T>(
+        feature,
+        `the account call ${method}`,
+        "identity",
+        method,
+        args,
+      );
+    } catch (e) {
+      if (errorCode(e) === "invoke-not-allowed")
+        throw this.v4Unsupported(feature, `the account call ${method}`);
+      throw this.fail("identity", asPolarisError(e));
+    }
+  }
+
+  async subject(): Promise<string | null> {
+    const r = await this.account<unknown>(Feature.identityAccount, "subject");
+    return typeof r === "string" && r !== "" ? r : null;
+  }
+
+  async attach(opts: { confirm: boolean }): Promise<AttachResult> {
+    const r = await this.account<AttachResult>(
+      Feature.identityAttach,
+      "attach",
+      { confirm: opts.confirm === true },
+    );
+    if (r?.kind === "ok")
+      this.apply(await this.bridge.getSyncState(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
+    return r;
+  }
+
+  async openAccount(): Promise<void> {
+    await this.account<unknown>(Feature.identityAccount, "openAccount");
   }
 
   currentDevice(): DeviceInfo | null {
@@ -1267,6 +1334,21 @@ export function bridgeActivationOutcome(
         ...(r.deviceCount !== undefined ? { deviceCount: r.deviceCount } : {}),
         // PX-W8: re-validated here, because the bridge is a process boundary.
         ...(isManageUrl(r.manageUrl) ? { manageUrl: r.manageUrl } : {}),
+      };
+    case "key-entry-limit": {
+      const keyEntries = readKeyEntries({ keyEntries: r.keyEntries });
+      return {
+        kind: "keyEntryLimit",
+        code: "key_entry_limit",
+        ...(isManageUrl(r.manageUrl) ? { manageUrl: r.manageUrl } : {}),
+        ...(keyEntries ? { keyEntries } : {}),
+      };
+    }
+    case "license-owned":
+      return {
+        kind: "licenseOwned",
+        code: "license_owned",
+        ...(isManageUrl(r.signInUrl) ? { signInUrl: r.signInUrl } : {}),
       };
     case "unauthorized":
       return { kind: "unauthorized", code: "unauthorized" };

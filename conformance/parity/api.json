@@ -2728,10 +2728,8 @@
         "swift": {},
         "kotlin": {},
         "react": {
-          "spelling": "usePolarisKey().submitKey",
-          "shape": "hook",
-          "planned": "I-10a",
-          "reason": "the aggregate hook calls it submitKey until I-10a"
+          "spelling": "usePolarisKey().activateWithKey",
+          "shape": "hook"
         }
       },
       "layer": "client"

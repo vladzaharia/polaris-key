@@ -207,12 +207,12 @@
       "wp": "I-10a"
     },
     "identity.attach": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.9: bearer mode over the identity fragment discovery names (subject, signout, attach); the desktop bridge through invoke(\"identity\", …) on a v4 host (typed version N/A otherwise). A cookie page refuses with the runtime reason."
     },
     "identity.account": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.9: bearer mode over the identity fragment discovery names (subject, signout, attach); the desktop bridge through invoke(\"identity\", …) on a v4 host (typed version N/A otherwise). A cookie page refuses with the runtime reason."
     },
     "identity.redirect.web": {
       "status": "planned",
@@ -227,8 +227,8 @@
       "wp": "I-10a"
     },
     "identity.keyentry": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented",
+      "note": "I-10a.9: activateWithKey resolves with keyEntries; key_entry_limit (manageUrl, keyEntries) and license_owned (signInUrl) are typed activation outcomes that keep the token, cache and store. Desktop through submitKey's BridgeActivation."
     },
     "release.changelog": {
       "status": "implemented"

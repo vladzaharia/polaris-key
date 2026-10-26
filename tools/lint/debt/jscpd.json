@@ -1728,7 +1728,7 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-react/src/desktop/desktopAdapter.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 9
     },
     "packages/sdk-react/src/kit/desktopCss.ts": {
       "jscpd:duplicate": 1
@@ -2046,7 +2046,7 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 10
     },
     "packages/ui-core/src/browser/sdk/browser/discovery.ts": {
       "jscpd:duplicate": 2
