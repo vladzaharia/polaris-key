@@ -81,6 +81,8 @@ public struct RedirectPending: Sendable, Equatable {
     public let clientId: String
     public let issuer: String
     public let tokenEndpoint: String
+    /// The authorize URL carries `license_choice=app`: the token endpoint may answer `choose`.
+    public let choiceApp: Bool
 }
 
 extension RedirectPending: CustomStringConvertible, CustomDebugStringConvertible {
@@ -227,7 +229,7 @@ public enum IdentityRedirect {
         return RedirectPending(
             authorizeUrl: "\(authorizeEndpoint)\(joiner)\(formBody(pairs))", state: state,
             codeVerifier: verifier, redirectUri: redirectUri, clientId: clientId, issuer: issuer,
-            tokenEndpoint: tokenEndpoint)
+            tokenEndpoint: tokenEndpoint, choiceApp: licenseChoice == "app" && choiceAvailable)
     }
 
     // ── The callback ─────────────────────────────────────────────────────────────────────
@@ -389,18 +391,21 @@ extension IdentityClient {
                 message: "the token endpoint points outside this product.")
         }
         let entropy = redirectEntropy.current
+        // `license_choice=app` only when asked and all four grant routes are published (§12.6).
+        let choiceAvailable = fragment?.choiceAvailable == true
         return try IdentityRedirect.start(
             authorizeEndpoint: authorize, tokenEndpoint: token, issuer: issuer,
             clientId: core.product, redirectUri: redirectUri, scope: options.scope,
             loginHint: options.loginHint, nameHint: options.nameHint,
-            purpose: options.purpose?.rawValue, state: entropy?.state,
+            purpose: options.purpose?.rawValue, licenseChoice: options.licenseChoice?.rawValue,
+            choiceAvailable: choiceAvailable, state: entropy?.state,
             codeVerifier: entropy?.codeVerifier)
     }
 
     /// Redeem the code at the token endpoint and, on a token, store it and run the acquisition
     /// sync as after a device-code `ready`. A refusal is a `SignInError` under the Worker's code.
     func redeemRedirect(_ pending: RedirectPending, code: String, deviceName: String?)
-        async throws -> SignInReady
+        async throws -> RedirectRedeemed
     {
         guard let url = URL(string: pending.tokenEndpoint) else {
             throw PolarisError(
@@ -437,20 +442,34 @@ extension IdentityClient {
                 code: status >= 500 ? IdentityClient.serverError : error,
                 message: "the token endpoint refused the sign-in (\(error)).",
                 retryAfterSeconds: retry)
-        case .choose:
-            // Only `license_choice=app` makes the Worker answer this, and this client never asks
-            // for it (the licence choice is I-10b.12's).
-            throw PolarisError(
-                code: ErrorCode.badResponse,
-                message: "the token endpoint asked for a licence choice this sign-in did not request.")
+        case .choose(let grant, let expiresIn, let choices):
+            // Only `license_choice=app` makes the Worker answer this; a card sign-in never sees it.
+            guard pending.choiceApp, let view = LicenseChoiceView.read(.object(choices)) else {
+                throw PolarisError(
+                    code: ErrorCode.badResponse,
+                    message: "the token endpoint asked for a licence choice this sign-in did not request.")
+            }
+            let lifetime = wholeSeconds(expiresIn) ?? 0
+            return .choose(
+                PendingSignIn(
+                    grant: grant, expiresIn: lifetime, expiresAt: await core.now() + lifetime,
+                    view: view))
         case .token(let accessToken, let scope, let subject, _, _, let license):
             try await core.setToken(accessToken, source: .signin)
             if redirectAcquisitionSync.current { await onAcquired?() }
             updateSubject(subject)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
-            return SignInReady(
-                identity: nil, attached: nil, subject: subject, scope: scope,
-                licenseId: license?["id"]?.stringValue)
+            return .ready(
+                SignInReady(
+                    identity: nil, attached: nil, subject: subject, scope: scope,
+                    licenseId: license?["id"]?.stringValue))
         }
     }
+}
+
+/// What redeeming a redirect code gave: a signed-in device, or (`license_choice=app`) a pending
+/// sign-in grant the app chooses a licence with.
+enum RedirectRedeemed: Sendable, Equatable {
+    case ready(SignInReady)
+    case choose(PendingSignIn)
 }

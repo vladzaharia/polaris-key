@@ -431,17 +431,27 @@ actor ReplayServer {
                     break
                 }
             }
+            var endpoints: [String: JSONValue] = [
+                "authorize": .string("\(base)/identity/authorize"),
+                "token": .string("\(base)/identity/token"),
+            ]
+            // A transcript that talks to the grant routes finds them published (§12.6), as the
+            // Worker publishes the four together; without them the SDK runs card mode.
+            let choices = transcript.steps.contains {
+                $0.exchanges.items.contains { $0.request.path.contains("/identity/choice/") }
+            }
+            if choices {
+                for name in ["Licenses", "Devices", "Complete", "Cancel"] {
+                    endpoints["choice\(name)"] = .string("\(base)/identity/choice/\(name.lowercased())")
+                }
+            }
             return try? JSONEncoder().encode(
                 JSONValue.object([
                     "product": .string(transcript.product),
                     "services": .object([
                         "identity": .object([
                             "enabled": .bool(true), "configured": .bool(true),
-                            "issuer": .string(issuer),
-                            "endpoints": .object([
-                                "authorize": .string("\(base)/identity/authorize"),
-                                "token": .string("\(base)/identity/token"),
-                            ]),
+                            "issuer": .string(issuer), "endpoints": .object(endpoints),
                         ])
                     ]),
                 ]))
