@@ -109,39 +109,42 @@ that still has a credential: `await client.deauthorizeDevice(id)`.
 
 ## Sign-in and who signed in
 
-`signInWithBrowser()` runs the device-code flow in an `ASWebAuthenticationSession`. Anyone holding
-the code can finish the sign-in elsewhere, so say who signed in before you move on.
+`client.identity.signIn.start(_:)` starts the device-code flow; pass `SignInOptions(browser:)` to
+show the page in an `ASWebAuthenticationSession`. Anyone holding the code can finish the sign-in
+elsewhere, so say who signed in before you move on.
 
 ```swift
 import PolarisKey
 
 func signIn(_ client: PolarisKeyClient) async -> String {
     do {
-        let result = try await client.signInWithBrowser(deviceName: "Studio Mac")
-        switch result {
-        case .ready:
+        let browser = await WebAuthenticationSignInBrowser()
+        let session = try await client.identity.signIn.start(
+            SignInOptions(deviceName: "Studio Mac", browser: browser))
+        switch try await session.wait() {
+        case .signedIn:
             // identity is nil for a key-only device, so ask once sign-in has settled.
             let who = await client.identity.current()
             return "Signed in as \(who?.name ?? who?.email ?? "your account")"
-        case .confirm(let identity, _):
+        case .choose(let identity, _):
             return "Continue as \(identity.name ?? identity.email ?? "this account")?"
         case .expired:
             return "The code expired. Start again."
-        case .error(let message, _):
-            return message
+        case .cancelled, .pending:
+            return "Sign-in stopped."
         }
+    } catch let error as SignInError {
+        return error.message
     } catch {
         return error.localizedDescription
     }
 }
 ```
 
-`signInWithBrowser()` never returns `.confirm`: that case comes only from
-`waitForSignIn(_:confirmIdentity:)` on `client.identity` with `confirmIdentity: true`, which holds at
-the signed-in identity until the person accepts; the license attach it once offered is retired
-(`attachable` is always false). A Deny on the Polaris Locker approval page ends as `.error` with
+`wait()` never returns `.choose` today: that case is for a flow held at the signed-in identity.
+A Deny on the Polaris Locker approval page throws `SignInError` with
 `code == ErrorCode.signInDenied`. Sign-in needs the Identity service; with it off,
-the call throws `service-unavailable` before any request. `try await client.signOut()` ends the
+`start` throws `service-unavailable` before any request. `try await client.signOut()` ends the
 session.
 
 ## Status, offline and refresh

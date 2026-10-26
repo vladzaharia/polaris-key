@@ -7,7 +7,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
-// @pkey-feature release.fetch identity.keyentry identity.account identity.attach
+// @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -45,7 +45,7 @@
 import Foundation
 import PolarisKey
 import PolarisKeyCore
-import PolarisKeyIdentity
+@testable import PolarisKeyIdentity
 import PolarisKeyLicense
 @testable import PolarisKeyPacks
 import PolarisKeyRelease
@@ -70,9 +70,9 @@ private let registerFingerprint = HardwareFingerprint(
     components: ["machineUuid": "REPLAYmachineUuid00000"],
     hwid: "REPLAYhwid0000000000000000000000")
 
-/// The replay's memory between steps: the prompt the last `beginSignIn` returned.
+/// The replay's memory between steps: the session the last `beginSignIn` step started.
 final class ReplaySession: @unchecked Sendable {
-    var prompt: SignInPrompt?
+    var signIn: SignInSession?
     /// `initial.platform`: the device's canonical platform.
     var platform: String?
     /// The transcript's steps (`releaseFetch`'s `partial` seeds from the whole-payload answer).
@@ -128,10 +128,11 @@ enum SwiftReplay {
                 out["result"] = .string("error")
                 out["code"] = .string(e.code)
             }
+        // The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
         case "beginSignIn":
-            let p = try await client.identity.beginSignIn(
-                deviceName: step.args["deviceName"]?.stringValue)
-            session.prompt = p
+            let p = try await client.identity.signIn.start(
+                SignInOptions(deviceName: step.args["deviceName"]?.stringValue))
+            session.signIn = p
             out["prompt"] = .object([
                 "userCode": .string(p.userCode),
                 "verificationUri": .string(p.verificationUri),
@@ -141,9 +142,9 @@ enum SwiftReplay {
                 "deviceName": p.deviceName.map { .string($0) } ?? .null,
             ])
         case "pollSignIn":
-            guard let prompt = session.prompt else { throw ReplayError("pollSignIn before beginSignIn") }
+            guard let sign = session.signIn else { throw ReplayError("pollSignIn before beginSignIn") }
             do {
-                switch try await client.identity.pollSignIn(prompt) {
+                switch try await sign.pollOnce() {
                 case .pending: out["result"] = .string("pending")
                 case .slowDown(let interval):
                     out["result"] = .string("slow-down")
@@ -161,14 +162,18 @@ enum SwiftReplay {
                 out["code"] = .string(e.code)
             }
         case "waitForSignIn":
-            guard let prompt = session.prompt else { throw ReplayError("waitForSignIn before beginSignIn") }
-            switch try await client.identity.waitForSignIn(prompt) {
-            case .ready: out["result"] = .string("ready")
-            case .confirm: out["result"] = .string("confirm")
-            case .expired: out["result"] = .string("expired")
-            case .error(_, let code):
+            guard let sign = session.signIn else { throw ReplayError("waitForSignIn before beginSignIn") }
+            do {
+                switch try await sign.wait() {
+                case .signedIn: out["result"] = .string("ready")
+                case .choose: out["result"] = .string("confirm")
+                case .expired: out["result"] = .string("expired")
+                case .cancelled: out["result"] = .string("cancelled")
+                case .pending: out["result"] = .string("pending")
+                }
+            } catch let e as SignInError {
                 out["result"] = .string("error")
-                if let code { out["code"] = .string(code) }
+                out["code"] = .string(e.code)
             }
         case "mintToken":
             do {

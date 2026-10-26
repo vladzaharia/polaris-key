@@ -310,6 +310,9 @@ public actor PolarisKeyClient {
         }
         // `identity.signOut()` asks the Worker to sign out; when it releases the device the
         // facade wipes the credential and raises `license` (the seat is already released).
+        identity.installIdentityEvents { change in
+            hub.emit(.identity(kind: change.kind, subject: change.subject, previous: change.previous))
+        }
         identity.installSignOut { [core] in
             do {
                 try await core.clearAll()

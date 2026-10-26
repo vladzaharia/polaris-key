@@ -1,16 +1,14 @@
 // Sign-in conveniences on `client.identity` (notes/SDK-PARITY-PASS.md §3.12, SP-S11).
 //
-//   signInWithBrowser()  device code with `verificationUriComplete` opened in a system browser
-//                        sheet (ASWebAuthenticationSession), then the paced wait; the sheet is
-//                        dismissed once the sign-in settles. No new route: this is the interim
-//                        until the native redirect route (I-15) lands. It polls
-//                        `/identity/auth/device/poll` like any device-code sign-in (the old
-//                        `/identity/auth/poll` is retired; the Worker no longer serves it).
+//   signIn.start(_:)     SignInSession.swift: the device-code session. Pass
+//                        `SignInOptions(browser:)` to show the verification page in a browser
+//                        sheet (`WebAuthenticationSignInBrowser` on Apple platforms); the sheet is
+//                        dismissed once the sign-in settles.
 //   signOut()            IdentityAccount.swift: the account's sign-out (`POST identity/signout`).
 //   current()            the signed profile's name, e-mail and activation time, or nil.
 //
-// The same names as every SDK: `identity.signInWithBrowser()`, `identity.signOut()`,
-// `identity.current()` (Python `identity.sign_in_with_browser()`, Godot `identity.current()`).
+// The same names as every SDK: `identity.signIn.start()`, `identity.signOut()`,
+// `identity.current()` (Python `identity.sign_in.start()`, Godot `identity.current()`).
 
 import Foundation
 import PolarisKeyCore
@@ -47,25 +45,6 @@ public protocol SignInBrowser: Sendable {
 }
 
 extension IdentityClient {
-    /// Begin a device-code sign-in, show its page in `browser` (an in-app browser sheet by
-    /// default), and wait for it. Throws `PolarisError` (`service-unavailable` when the product
-    /// runs no Identity, `sign-in-unavailable`, …) or `CancellationError`.
-    public func signInWithBrowser(
-        deviceName: String? = nil, browser: (any SignInBrowser)? = nil
-    ) async throws -> SignInResult {
-        let prompt = try await beginSignIn(deviceName: deviceName)
-        guard let url = URL(string: prompt.verificationUriComplete) else {
-            throw PolarisError(
-                code: ErrorCode.badResponse, message: "the verification URL is not a URL.")
-        }
-        var opener = browser
-        if opener == nil { opener = await defaultSignInBrowser() }
-        // A page that cannot be shown is the caller's to know about, not a silent ten-minute wait.
-        if let opener { try await opener.open(url) }
-        defer { if let opener { Task { @MainActor in opener.close() } } }
-        return try await waitForSignIn(prompt)
-    }
-
     /// The signed-in identity from the verified licence document, or nil when the device holds no
     /// licence or its profile names no one. The server signs a profile on every licence; an
     /// anonymous (keyless) enrolment's carries empty strings, which read as nil here.
@@ -83,8 +62,14 @@ extension IdentityClient {
     public func installSignOut(_ hook: @escaping @Sendable () async throws -> Void) {
         signOutHook.set(hook)
     }
+
+    /// The facade installs the `identity` event's sink here.
+    public func installIdentityEvents(_ sink: @escaping @Sendable (IdentityChange) -> Void) {
+        identityEvents.set(sink)
+    }
 }
 
+/// The platform's browser sheet, or nil where there is none.
 @MainActor
 func defaultSignInBrowser() -> (any SignInBrowser)? {
     #if canImport(AuthenticationServices) && (os(iOS) || os(macOS) || os(visionOS))

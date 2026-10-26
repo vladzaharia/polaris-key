@@ -345,6 +345,11 @@
         "ns": "presentation",
         "type": "PresentationSource",
         "file": "sdks/swift/Sources/PolarisKeyCore/Presentation.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "SignInNamespace",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/SignInSession.swift"
       }
     ],
     "kotlin": [
@@ -2213,6 +2218,11 @@
       "sdk": "kotlin",
       "path": "client.entitlements",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installIdentityEvents",
+      "reason": "wiring the client installs (the `identity` event's sink); not an app verb"
     }
   ],
   "concepts": [
@@ -2874,8 +2884,8 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "shape": "property",
+          "reason": "a computed property returning the signIn namespace"
         },
         "kotlin": {
           "planned": "I-10b",
@@ -2946,8 +2956,7 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInNamespace.start"
         },
         "kotlin": {
           "planned": "I-10b",
@@ -2978,8 +2987,7 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.reopen"
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3010,8 +3018,7 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.cancel"
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3042,8 +3049,7 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.wait"
         },
         "kotlin": {
           "planned": "I-10b",
@@ -3860,7 +3866,6 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {},
         "godot": {}
       },
       "layer": "client"
@@ -3871,7 +3876,6 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {},
         "kotlin": {},
         "godot": {}
       },
@@ -3883,7 +3887,6 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {},
         "kotlin": {},
         "godot": {}
       },
@@ -3895,7 +3898,6 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {},
         "kotlin": {},
         "godot": {}
       },
@@ -4528,7 +4530,6 @@
       "kind": "method",
       "sdks": {
         "python": {},
-        "swift": {},
         "godot": {}
       },
       "layer": "client"
@@ -6585,6 +6586,56 @@
       "package": "SP-52b",
       "scan": {
         "pattern": "\\bGateOptions\\b",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.signInWithBrowser",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.signInWithBrowser\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.beginSignIn",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.beginSignIn\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.pollSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.pollSignIn\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.waitForSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.waitForSignIn\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.acceptSignIn",
+      "to": "identity.attachLicense",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.acceptSignIn\\s*\\(",
         "files": ["*.swift", "fence:swift"]
       }
     }
