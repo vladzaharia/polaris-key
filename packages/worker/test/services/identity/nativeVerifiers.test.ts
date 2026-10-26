@@ -90,6 +90,17 @@ describe("native Google", () => {
     await expect(verify(await google(), "")).rejects.toThrow();
   });
 
+  it("holds iat to 5 minutes: 4 minutes old passes, 8 minutes old is refused", async () => {
+    await verify(await google({ iat: nowSec() - 240 }));
+    await verify(await apple({ iat: nowSec() - 240 }));
+    await expect(
+      verify(await google({ iat: nowSec() - 480 })),
+    ).rejects.toThrow();
+    await expect(
+      verify(await apple({ iat: nowSec() - 480 })),
+    ).rejects.toThrow();
+  });
+
   it("refuses when the product has no server client id", async () => {
     await expect(
       verify(await google(), NONCE, {

@@ -63,6 +63,18 @@ export function nativeProviderOf(token: string): OidcProviderKind | null {
   return null;
 }
 
+/** §12.11.3: `iat` no more than 5 minutes old. jose widens its own max-age check by the clock tolerance. */
+const NATIVE_MAX_AGE_SEC = 300;
+
+function assertFresh(claims: JWTPayload, opts: NativeVerifyOpts): void {
+  const nowSec = Math.floor((opts.nowMs ?? Date.now()) / 1000);
+  if (
+    typeof claims.iat !== "number" ||
+    nowSec - claims.iat > NATIVE_MAX_AGE_SEC
+  )
+    refuse();
+}
+
 function refuse(): never {
   throw new OidcVerifyError("native token refused");
 }
@@ -99,6 +111,7 @@ export async function verifyNativeToken(
       nonce,
       ...opts,
     });
+    assertFresh(claims, opts);
     const email =
       typeof claims.email === "string" && claims.email.includes("@")
         ? claims.email.trim().toLowerCase()
@@ -137,6 +150,7 @@ export async function verifyNativeToken(
     nonce,
     ...opts,
   });
+  assertFresh(claims, opts);
   const email =
     typeof claims.email === "string" && claims.email.includes("@")
       ? claims.email.trim().toLowerCase()
