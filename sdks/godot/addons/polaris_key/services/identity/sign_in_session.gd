@@ -51,8 +51,11 @@ const REDACTED := "[redacted]"
 ## before the player is asked again.
 const MAX_DECISION_RESENDS := 3
 
-## The channel this session runs on (the device code; the redirect channel is I-10b.5's).
+## The channel this session runs on: `device-code`, or `redirect` (see `complete()`).
 var channel: StringName = &"device-code"
+## Redirect channel: the URL to open in the browser. It carries the challenge and `state`, never
+## the verifier. "" on the device-code channel, as are the code fields.
+var authorize_url := ""
 ## The poll credential. Never show it, never put it in a URL.
 var device_code := ""
 ## What the player types on the verification page, e.g. `WDJB-MJHT`.
@@ -77,6 +80,8 @@ var confirm_identity := false
 var device_name := ""
 
 var _identity: PKeyIdentity = null
+## The redirect request until `complete()` or `cancel()` takes it (single use); {} otherwise.
+var _pending: Dictionary = {}
 var _cancelled := false
 var _running := false
 var _held := false
@@ -104,6 +109,10 @@ func wait() -> PKeySignInOutcome:
 		return _failure
 	if _settled != null:
 		return _settled
+	if channel == &"redirect":
+		if _cancelled:
+			return _cancelled_outcome()
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyConstants.ErrorCode.INVALID_ARGUMENT, "A redirect sign-in settles through complete(callback_url), not wait().")
 	if _running:
 		return await outcome
 	if _identity == null:
@@ -122,10 +131,46 @@ func cancel() -> void:
 	if _settled != null or _cancelled:
 		return
 	_cancelled = true
+	_pending = {}
 	_held = false
 	_woke.emit()
 	if not _running and ok:
 		_publish(_cancelled_outcome())
+
+
+## Redirect channel: redeem the callback the browser was sent to. Checks the redirect URI, `state`
+## and `iss` first (a mismatch is `sign-in-failed`, nothing sent), then POSTs the form body to
+## discovery's `token` endpoint. `error=access_denied` settles `cancelled`; any other callback
+## error is `sign-in-failed`. The Worker's refusal is an `error` outcome under its own code.
+##
+## Single use: the PKCE verifier is dropped before the first request, so a second call (a replayed
+## callback) is refused locally with `sign-in-failed` and sends nothing. A refusal never wipes the
+## device token or the cache; only `signed_in` changes state. Emits `outcome`. A coroutine.
+func complete(callback_url: String) -> PKeySignInOutcome:
+	if channel != &"redirect":
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyConstants.ErrorCode.INVALID_ARGUMENT, "complete(callback_url) belongs to a redirect sign-in; use wait().")
+	if not ok:
+		return await wait()
+	var pending := _pending
+	_pending = {}
+	if pending.is_empty() or _identity == null:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "This sign-in is already finished or was cancelled; start a new one.")
+	var result: PKeySignInOutcome
+	var checked := PKeyIdentityRedirect.check_callback(pending, callback_url)
+	match checked["kind"]:
+		"cancelled":
+			result = _cancelled_outcome()
+		"failed":
+			result = PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, "The sign-in redirect was refused (%s)." % checked["reason"])
+		_:
+			result = await _identity._redeem(self, pending, checked["code"])
+	_publish(result)
+	return result
+
+
+## The page to open: `authorize_url` on the redirect channel, else `verification_uri_complete`.
+func _page_url() -> String:
+	return authorize_url if channel == &"redirect" else verification_uri_complete
 
 
 ## The player accepted the identity `choose` showed, on the device. `attach_license`: also attach

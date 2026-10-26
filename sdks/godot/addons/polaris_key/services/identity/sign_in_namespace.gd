@@ -21,6 +21,15 @@ func _init(owner: PKeyIdentity) -> void:
 ##                     licence attach (see PKeySignInSession)
 ##   browser           open the verification page in the system browser at once; the code and
 ##                     QR code stay on screen for another device
+##   channel           "device-code" (default), or "redirect": the OAuth authorization-code flow
+##                     for a host that can take the browser back to an https page it registered.
+##                     The session's `authorize_url` is the page to open; hand the URL the browser
+##                     landed on to `session.complete(callback_url)`.
+##   redirect_uri      redirect: the https URI the product registered (required)
+##   scope             redirect: scopes asked for, a String or Array; default "profile email"
+##   login_hint, name_hint, purpose
+##                     redirect: prefill the card (WIRE-CONTRACT-V4 §12.4); they verify nothing.
+##                     `purpose` is "signin" or "attach"
 ## A session that could not start has `ok == false` and a typed `code`: `service-unavailable`
 ## before any request when Identity is off or not set up, and for a start the Worker answers 404;
 ## `rate_limited`, `invalid-response` or a transport code otherwise. A sign-in already running is

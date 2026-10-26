@@ -5,7 +5,7 @@ extends RefCounted
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
-# @pkey-feature license.manage identity.keyentry
+# @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints
 # @pkey-feature release.fetch
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
@@ -108,8 +108,12 @@ static func replay(tr: Dictionary) -> Array:
 	var store := PKeyMemoryStore.new(tr["initial"]["deviceId"], tr["initial"].get("token", ""))
 	var clock := [tr["now"]]
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
+	var redirects: bool = tr["steps"].any(func(st): return st["action"] in ["browser", "redirectComplete"])
 	if tr["initial"].get("services") is Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
+	elif redirects:
+		# The redirect conversations ride a product that runs Identity (their discovery names it).
+		opts.expected_services = PackedStringArray(["license", "config", "identity"])
 	# PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
 	opts.send_device_name = tr["initial"].get("deviceName") is String
 	opts.device_name = String(tr["initial"].get("deviceName", ""))
@@ -138,6 +142,10 @@ static func replay(tr: Dictionary) -> Array:
 			if not updater.slots.save_state(st):
 				fails.append("the update journal could not be seeded")
 		await sdk.start()
+		if redirects:
+			# The recordings hold the token exchange, not the sync a sign-in triggers after it.
+			sdk.identity.redirect_acquisition_sync = false
+			sdk.set_meta("pkey_replay", {"tr": tr, "engine": engine, "base": server.base_url()})
 		for i in tr["steps"].size():
 			var step: Dictionary = engine.begin_step(i)
 			clock[0] = step.get("now", tr["now"])
@@ -147,6 +155,8 @@ static func replay(tr: Dictionary) -> Array:
 			if step["action"] in ["subject", "signOut", "attach"] and sdk.core.discovery_manifest == null:
 				# identity.account: the account endpoints at the Worker's standard paths, on the loopback server.
 				sdk.core.discovery_manifest = _standard_identity_discovery(server.base_url(), tr["product"])
+			if step["action"] in ["browser", "redirectComplete"] and sdk.core.discovery_manifest == null:
+				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
 			if step["action"] in ["chunkRange", "releaseFetch"] and sdk.core.discovery_manifest is Dictionary:
 				# The discovered blobs template names the transcript's base; the bytes come from the
 				# loopback server.
@@ -260,6 +270,40 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		"report":
 			out["result"] = await sdk.devices.report()
 			out["updatesPending"] = sdk.update.updater.events().size()
+		"browser":
+			# The browser's half is the recording's; the SDK's half is the authorize URL it builds for
+			# the request the Worker answered with a 303 to the card (hints included).
+			var ctx: Dictionary = sdk.get_meta("pkey_replay")
+			var engine: PKeyTranscriptReplay = ctx["engine"]
+			for item in step["exchanges"]["items"]:
+				if item["request"]["method"] == "GET" and int(item["response"]["status"]) == 303 and String(item["request"]["path"]).contains("/identity/authorize?"):
+					var started := await _redirect_session(sdk, step)
+					var want: String = String(ctx["tr"]["baseUrl"]) + String(item["request"]["path"])
+					var got := started.authorize_url.replace(String(ctx["base"]), String(ctx["tr"]["baseUrl"])) if started.ok else "(%s)" % started.code
+					if got != want:
+						engine.failures.append("authorize URL differs from the recording:\n    want %s\n    got  %s" % [want, got])
+			engine.serve_browser_exchanges()
+			# Facts the recorder read off the browser's pages; nothing of the SDK's.
+			for k in step["expect"]:
+				out[k] = step["expect"][k]
+		"redirectComplete":
+			var s := await _redirect_session(sdk, step)
+			if not s.ok:
+				out["result"] = "error"
+				out["code"] = String(s.code)
+			else:
+				var o: PKeySignInOutcome = await s.complete(String(step["args"].get("callbackUrl", "")))
+				match o.kind:
+					PKeySignInOutcome.KIND_SIGNED_IN:
+						out["result"] = "ok"
+						out["scope"] = o.scope
+						out["subject"] = o.subject if o.subject != "" else null
+						out["licenseId"] = o.license_id if o.license_id != "" else null
+					PKeySignInOutcome.KIND_CANCELLED:
+						out["result"] = "cancelled"
+					_:
+						out["result"] = _redirect_result(String(o.code))
+						out["code"] = String(o.code)
 		# The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
 		"beginSignIn":
 			var prompt: PKeySignInSession = await sdk.identity.sign_in.start({"device_name": String(step["args"].get("deviceName", ""))})
@@ -462,6 +506,50 @@ static func _standard_identity_discovery(base: String, product: String) -> Dicti
 				"endpoints": {"attach": root + "/attach", "subject": root + "/subject", "signout": root + "/signout", "accountPortal": "%s/#/p/%s" % [base, product]},
 			},
 		},
+	}
+
+
+## The recorder's constants for a redirect conversation (packages/worker/test/transcripts).
+const RECORDED_STATE := "tidewater-state-0123456789"
+const RECORDED_VERIFIER := "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+const RECORDED_REDIRECT := "https://app.example/auth/callback"
+
+
+## A redirect session the way the step's `args` ask for one: the recorded `state` and verifier (a
+## step may name its own), the hints it carries, the recorded redirect URI.
+static func _redirect_session(sdk: Node, step: Dictionary) -> PKeySignInSession:
+	var a: Dictionary = step["args"]
+	sdk.identity.redirect_entropy = {"state": String(a.get("state", RECORDED_STATE)), "code_verifier": String(a.get("codeVerifier", RECORDED_VERIFIER))}
+	var opts := {"channel": "redirect", "redirect_uri": String(a.get("redirectUri", RECORDED_REDIRECT))}
+	for pair in [["loginHint", "login_hint"], ["nameHint", "name_hint"], ["purpose", "purpose"]]:
+		if a.get(pair[0]) is String:
+			opts[pair[1]] = a[pair[0]]
+	return await sdk.identity.sign_in.start(opts)
+
+
+## `redirectComplete`'s `result` for a refusal's code (format.ts).
+static func _redirect_result(code: String) -> String:
+	if code in ["invalid_grant", "invalid_request", "invalid_client", "license_choice_required", "rate_limited"]:
+		return code.replace("_", "-")
+	return "error"
+
+
+## Discovery for the redirect conversations: Identity on, the authorize and token endpoints at the
+## Worker's standard paths on the loopback server, and the issuer the recorded callback carries
+## (RFC 9207), else the Worker's own `<base>/<product>/identity`.
+static func _redirect_discovery(base: String, tr: Dictionary) -> Dictionary:
+	var root := "%s/%s/identity" % [base, tr["product"]]
+	var issuer := root
+	for step in tr["steps"]:
+		if step["action"] == "redirectComplete":
+			var url := String(step["args"].get("callbackUrl", ""))
+			var m := RegEx.create_from_string("[?&]iss=([^&#]*)").search(url)
+			if m != null:
+				issuer = m.get_string(1).uri_decode()
+				break
+	return {
+		"product": tr["product"],
+		"services": {"identity": {"enabled": true, "configured": true, "issuer": issuer, "endpoints": {"authorize": root + "/authorize", "token": root + "/token"}}},
 	}
 
 

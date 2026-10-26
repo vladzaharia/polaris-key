@@ -194,12 +194,13 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.signIn.session.accept` | — | — | — | — | — | `PKeySignInSession.accept` | — |
 | `identity.signIn.session.isWaiting` | — | — | — | — | — | `PKeySignInSession.is_waiting` | — |
 | `identity.signIn.session.outcome` | — | — | — | — | — | `PKeySignInSession.outcome` | — |
-| `identity.signIn.session.complete` | `identity.signIn.session.complete` | planned (I-10a) | planned (I-10a) | `SignInSession.complete` | planned (I-10b) | planned (I-10b) | `identity.redirect.web` |
-| `identity.choice.licenses` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.licenses` | planned (I-10b) | planned (I-10b) | `identity.choice` |
-| `identity.choice.devices` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.devices` | planned (I-10b) | planned (I-10b) | `identity.choice` |
-| `identity.choice.complete` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.complete` | planned (I-10b) | planned (I-10b) | `identity.choice` |
-| `identity.choice.cancel` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.cancel` | planned (I-10b) | planned (I-10b) | `identity.choice` |
-| `identity.useLicenseChoice` | — | planned (I-10a) | — | `LicenseChoiceModel` | — | — | `identity.choice` |
+| `identity.signIn.session.complete` | `identity.signIn.session.complete` | planned (I-10a) | planned (I-10a) | `SignInSession.complete` | `SignInSession.complete` | `PKeySignInSession.complete` | `identity.redirect.web` |
+| `identity.choice` | `identity.choice` | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.choice.licenses` | `identity.choice.licenses` | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.licenses` | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.choice.devices` | `identity.choice.devices` | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.devices` | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.choice.complete` | `identity.choice.complete` | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.complete` | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.choice.cancel` | `identity.choice.cancel` | planned (I-10a) | planned (I-10a) | `ChoiceNamespace.cancel` | planned (I-10b) | planned (I-10b) | `identity.choice` |
+| `identity.useLicenseChoice` | `identity.choice` | planned (I-10a) | — | `LicenseChoiceModel` | — | — | `identity.choice` |
 | `identity.attachLicense` | `attach` | planned (I-10a) | `attach` | `attach` | `attach` | `attach` | `identity.attach` |
 | `identity.openAccount` | `identity.openAccount` | planned (I-10a) | `identity.open_account` | `identity.openAccount` | `identity.openAccount` | `identity.open_account` | `identity.account` |
 | `identity.current` | `identity.current` | — | `identity.current` | `identity.current` | — | `identity.current` | — |

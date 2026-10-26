@@ -71,6 +71,17 @@ func end_step() -> Array:
 	return out
 
 
+## A `browser` step's exchanges: the requests a person's browser makes in a redirect sign-in. They
+## are served from the recording and asserted by nothing (format.ts); captures still bind.
+func serve_browser_exchanges() -> void:
+	if _step == null:
+		return
+	var items: Array = _step["exchanges"]["items"]
+	for i in items.size():
+		_served[i] = true
+		_capture(items[i])
+
+
 ## The PKeyFakeServer handler.
 func handle(req: Dictionary) -> Dictionary:
 	var label := "%s %s" % [req["method"], req["path"]]
@@ -122,14 +133,32 @@ func problems(item: Dictionary, req: Dictionary) -> Array:
 	elif body.is_empty():
 		out.append("body: expected a JSON body, got none")
 	else:
-		var j := JSON.new()
-		if j.parse(body.get_string_from_utf8()) != OK:
-			out.append("body: not JSON")
-			return out
-		for p in body_problems(want["json"], j.data, want["match"], "$"):
+		# `token` (WIRE-CONTRACT-V4 §12.5): a request that asserts a form content type carries its
+		# `body.json` members as the form's fields (strings, each name once).
+		var data: Variant
+		if String(expected["headers"].get("content-type", expected["headers"].get("Content-Type", ""))).begins_with("application/x-www-form-urlencoded"):
+			var fields := {}
+			for pair in body.get_string_from_utf8().split("&", false):
+				var eq := pair.find("=")
+				var fname = PKeyIdentityRedirect.decode(pair if eq == -1 else pair.substr(0, eq))
+				var fvalue = PKeyIdentityRedirect.decode("" if eq == -1 else pair.substr(eq + 1))
+				if fname == null or fvalue == null:
+					out.append("body: not a form")
+					return out
+				if fields.has(fname):
+					out.append("body: repeated field %s" % fname)
+				fields[fname] = fvalue
+			data = fields
+		else:
+			var j := JSON.new()
+			if j.parse(body.get_string_from_utf8()) != OK:
+				out.append("body: not JSON")
+				return out
+			data = j.data
+		for p in body_problems(want["json"], data, want["match"], "$"):
 			out.append("body %s" % p)
-		if want.get("allowedKeys") is Array and j.data is Dictionary:
-			for k in j.data:
+		if want.get("allowedKeys") is Array and data is Dictionary:
+			for k in data:
 				if not want["allowedKeys"].has(k):
 					out.append("body: key \"%s\" is not allowed" % k)
 	return out

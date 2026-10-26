@@ -18,6 +18,12 @@ extends PKeyResult
 ##   error                anything else (a transport failure, a malformed answer, a sign-in that
 ##                        failed after approval)
 ##
+## A redirect sign-in (`channel: "redirect"`) settles through `complete(callback_url)`: `signed_in`
+## (with `scope`, `subject`, `license_id`), `cancelled` (the person pressed Cancel on the card), or
+## an `error` whose `code` is `sign-in-failed` (the callback was refused locally: nothing was sent),
+## the Worker's own OAuth code (`invalid_grant`, `invalid_client`, `rate_limited`, ...; detail
+## {retry_after_seconds} when it named one), `server-error` or a transport code.
+##
 ## `ok` is true for `pending`, `choose` and `signed_in`; every other kind carries its typed
 ## `code` (`sign-in-denied`, `sign-in-expired`, `cancelled`, `service-unavailable`, `unauthorized`,
 ## `rate_limited`, `sign-in-failed`, ...). Show `identity` after `signed_in`: when someone else
@@ -50,6 +56,10 @@ var stored := false
 var sync: PKeySyncResult = null
 ## On `signed_in`: the account's pairwise subject when the Worker said, else "".
 var subject := ""
+## On `signed_in` from the redirect channel: the granted scope, space-delimited; "" otherwise.
+var scope := ""
+## On `signed_in` from the redirect channel: the licence the device runs on; "" when it has none.
+var license_id := ""
 ## The HTTP status of the answer that ended the sign-in, or 0.
 var status := 0
 

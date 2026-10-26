@@ -64,6 +64,13 @@ var on_change: Callable = Callable():
 ## `sign_in.start(opts)`.
 var sign_in: PKeySignInNamespace
 
+## Conformance replay only: the exact `state` and `code_verifier` of a recorded redirect
+## conversation ({state, code_verifier}); empty draws fresh entropy.
+var redirect_entropy: Dictionary = {}
+## Conformance replay only: false skips the forced sync after a redirect token (the `redirect-web-*`
+## recordings hold the token exchange, not the sync that follows it).
+var redirect_acquisition_sync := true
+
 var _core_ref: WeakRef = null
 var _account: PKeyIdentityAccount = null
 var _before_sign_out: Array[Callable] = []
@@ -119,20 +126,20 @@ func is_available() -> bool:
 
 
 
-## Open `verification_uri_complete` in the system browser (on web: `window.open`, which popup
-## blockers eat outside an input event, so always render the link and the QR code as well).
-## Returns the `OS.shell_open` error code.
+## Open the sign-in page in the system browser: `verification_uri_complete`, or `authorize_url` on
+## the redirect channel (on web: `window.open`, which popup blockers eat outside an input event, so
+## always render the link and the QR code as well). Returns the `OS.shell_open` error code.
 func open_in_browser(session: PKeySignInSession) -> int:
 	# Only an https link ever reaches the browser, whatever the server sent.
-	if session == null or not PKeyOutletAdapter.is_https(session.verification_uri_complete):
+	if session == null or not PKeyOutletAdapter.is_https(session._page_url()):
 		return ERR_INVALID_PARAMETER
-	return OS.shell_open(session.verification_uri_complete)
+	return OS.shell_open(session._page_url())
 
 
-## Put `verification_uri_complete` on the clipboard.
+## Put the sign-in page's link (see open_in_browser) on the clipboard.
 func copy_link(session: PKeySignInSession) -> void:
-	if session != null and session.verification_uri_complete != "":
-		DisplayServer.clipboard_set(session.verification_uri_complete)
+	if session != null and session._page_url() != "":
+		DisplayServer.clipboard_set(session._page_url())
 
 
 ## The signed-in person, SDK parity §3.12's `identity.current()`: {name, email, activatedAt} off
@@ -236,12 +243,16 @@ func _start(opts: Dictionary) -> PKeySignInSession:
 	_cancel_active()
 	var gen := _starts
 	var channel := String(opts.get("channel", "device-code"))
-	if channel != "device-code":
-		return _failed(PKeyErrors.INVALID_OPTIONS, "Only the device-code channel is available here (channel: %s)." % channel)
-	var session := await _request_start(String(opts.get("device_name", "")))
+	if channel != "device-code" and channel != "redirect":
+		return _failed(PKeyErrors.INVALID_OPTIONS, "The channel is \"device-code\" or \"redirect\" (channel: %s)." % channel)
+	var session: PKeySignInSession
+	if channel == "redirect":
+		session = await _begin_redirect(opts)
+	else:
+		session = await _request_start(String(opts.get("device_name", "")))
 	if not session.ok:
 		return session
-	session.confirm_identity = opts.get("confirm_identity", false) == true
+	session.confirm_identity = opts.get("confirm_identity", false) == true and channel == "device-code"
 	session._identity = self
 	_active = weakref(session)
 	if gen != _starts:
@@ -250,6 +261,103 @@ func _start(opts: Dictionary) -> PKeySignInSession:
 	elif opts.get("browser", false) == true:
 		session.reopen()
 	return session
+
+
+## `sign_in.start({channel = "redirect", redirect_uri})` (WIRE-CONTRACT-V4 §12.4): nothing is
+## sent. The authorize URL is built from discovery's `authorize` endpoint and `issuer` (never
+## from a guessed path), with the S256 challenge, the `state` and the hints. The token endpoint
+## must be on this product's origin: the device's headers go nowhere else.
+func _begin_redirect(opts: Dictionary) -> PKeySignInSession:
+	var core := _core()
+	if core == null or not core.started:
+		return _failed(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() before sign_in.start().")
+	if core.discovery_manifest == null:
+		# An endpoint is used only when discovery names it; the answer may also say Identity is off.
+		await core.discover()
+	if not core.enabled("identity") or not is_available():
+		var off := _failed(PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled (or not set up) for %s." % core.product)
+		off.detail = PKeyResult.product_detail(PKeyConstants.Feature.IDENTITY_REDIRECT_WEB, "identity")
+		return off
+	if not PKeyIdentityRedirect.is_redirect_uri(opts.get("redirect_uri")):
+		return _failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "redirect_uri must be an absolute https URL with no fragment.")
+	var fragment := PKeyDiscovery.identity_from(core.discovery_manifest)
+	var endpoints: Dictionary = fragment.get("endpoints", {})
+	var authorize: String = endpoints.get("authorize", "")
+	var token: String = endpoints.get("token", "")
+	var issuer: String = fragment.get("issuer", "")
+	if authorize == "" or token == "" or issuer == "":
+		return _failed(PKeyConstants.ErrorCode.SIGN_IN_UNAVAILABLE, "This product's discovery serves no redirect sign-in.")
+	if not _own(token):
+		return _failed(PKeyErrors.INVALID_RESPONSE, "The token endpoint points outside this product.")
+	var started := PKeyIdentityRedirect.start({
+		"authorize_endpoint": authorize, "token_endpoint": token, "issuer": issuer, "client_id": core.product,
+		"redirect_uri": opts.get("redirect_uri"), "scope": opts.get("scope"),
+		"login_hint": opts.get("login_hint"), "name_hint": opts.get("name_hint"), "purpose": opts.get("purpose"),
+		"state": redirect_entropy.get("state"), "code_verifier": redirect_entropy.get("code_verifier"),
+	})
+	if not started["ok"]:
+		return _failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, started["message"])
+	var session := PKeySignInSession.new(true)
+	session.channel = &"redirect"
+	session._pending = started["pending"]
+	session.authorize_url = started["pending"]["authorize_url"]
+	session.device_name = PKeyDeviceLabel.resolve(String(opts.get("device_name", "")), core.options)
+	return session
+
+
+func _own(url: String) -> bool:
+	var u := PKeyTransport.parse_url(url)
+	var base := PKeyTransport.parse_url(_core().base_url)
+	return not u.is_empty() and not base.is_empty() and u["origin"] == base["origin"]
+
+
+## Redeem the code at the token endpoint (form body, no bearer) and, on a token, store it. Returns
+## a PKeySignInOutcome: signed_in, or an error carrying the Worker's own code (`invalid_grant`,
+## `invalid_client`, `rate_limited` with detail {retry_after_seconds}, `server-error` for a 5xx).
+## A refusal never touches the stored token or the cache. A coroutine.
+func _redeem(session: PKeySignInSession, pending: Dictionary, code: String) -> PKeySignInOutcome:
+	var core := _core()
+	if core == null or not core.started:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	var form := PKeyIdentityRedirect.token_form(pending, code, session.device_name)
+	var h := core.headers({"Content-Type": PKeyIdentityRedirect.TOKEN_CONTENT_TYPE})
+	var r := await core.transport.request("POST", pending["token_endpoint"], h, form.to_utf8_buffer())
+	if not r.ok:
+		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, r.code if r.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, r.message)
+	var status := _status(r)
+	var parsed := PKeyJson.parse_bytes(r.detail["body"])
+	var answer := PKeyIdentityRedirect.parse_token_answer(status, parsed["value"] if parsed["ok"] else null)
+	match answer["kind"]:
+		"malformed":
+			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The token endpoint answered without a complete sign-in.", status)
+		"choose":
+			# Only `license_choice=app` makes the Worker answer this, and this client never asks for
+			# it yet (the licence choice is I-10b.6's).
+			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The token endpoint asked for a licence choice this sign-in did not request.", status)
+		"refused":
+			var retry = answer.get("retry_after_seconds")
+			if retry == null:
+				var header = r.detail["headers"].get("retry-after") if r.detail["headers"] is Dictionary else null
+				if header is String and (header as String).strip_edges().is_valid_int():
+					retry = int((header as String).strip_edges())
+			var refused := PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SERVER_ERROR if status >= 500 else StringName(answer["error"]), "The token endpoint refused the sign-in (%s)." % answer["error"], status)
+			if retry != null:
+				refused.detail = {"retry_after_seconds": retry}
+			return refused
+	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN)
+	var subject: String = answer["subject"]
+	if _account != null:
+		_account.note_signed_in(subject)
+	var synced: PKeySyncResult = null
+	if redirect_acquisition_sync and on_acquired.is_valid():
+		synced = await on_acquired.call()
+		var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
+		if not problem.is_empty():
+			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, problem["code"], problem["message"], int(problem["status"]))
+	var out := PKeySignInOutcome.signed_in({}, "", stored, synced, subject)
+	out.scope = answer["scope"]
+	out.license_id = answer["license"].get("id", "") if answer["license"] is Dictionary and answer["license"].get("id") is String else ""
+	return out
 
 
 func _request_start(device_name: String) -> PKeySignInSession:

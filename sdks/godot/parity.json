@@ -192,16 +192,15 @@
       "note": "I-10b.2: PolarisKey.identity.subject() (kept across restarts in the cache record), sign_out() (pre-sign-out hooks, POST signout, the token goes only on released: true) and open_account() over discovery's identity fragment (PKeyDiscovery.identity_from); a product without the endpoints answers service-unavailable and sign_out() keeps the license.deactivate() path. identity-subject-signout and discovery-identity transcripts replayed."
     },
     "identity.redirect.web": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.5: sign_in.start({channel = \"redirect\", redirect_uri}) builds the S256 authorize URL from discovery (PKeyIdentityRedirect) for a browser the host opens; session.complete(callback_url) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint (form body, product origin only). Single use; a refusal is a typed outcome and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's; the licence choice (license_choice=app) is I-10b.6's."
     },
     "identity.choice": {
       "status": "planned",
       "wp": "I-10b"
     },
     "identity.signin.hints": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented"
     },
     "identity.keyentry": {
       "status": "implemented",

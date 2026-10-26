@@ -14,6 +14,10 @@ var sleeps: Array = []
 ## `func(req) -> Dictionary`); the last one repeats.
 var starts: Array = []
 var polls: Array = []
+## Answers for `POST …/identity/token` (the redirect channel): as `starts`; the last repeats.
+var tokens: Array = []
+## Every token request: {path, body (the form text), headers}.
+var token_requests: Array = []
 ## Every device-flow request with the clock reading when it arrived: {path, at, body, headers}.
 var flow_requests: Array = []
 var sdk: Node = null
@@ -68,6 +72,12 @@ func _answer(req: Dictionary) -> Dictionary:
 			return {"status": 500}
 		var a = q[0] if q.size() == 1 else q.pop_front()
 		return a.call(req) if a is Callable else a
+	if path.ends_with("/identity/token"):
+		token_requests.append({"path": path, "body": (req["body"] as PackedByteArray).get_string_from_utf8(), "headers": req["headers"]})
+		if tokens.is_empty():
+			return {"status": 500}
+		var t = tokens[0] if tokens.size() == 1 else tokens.pop_front()
+		return t.call(req) if t is Callable else t
 	if path.ends_with("/.well-known/polaris-trust.jws"):
 		return {"status": 200, "headers": {"Content-Type": "application/jose"}, "body": F["trust_jws"]}
 	if path.ends_with("/license/document"):
