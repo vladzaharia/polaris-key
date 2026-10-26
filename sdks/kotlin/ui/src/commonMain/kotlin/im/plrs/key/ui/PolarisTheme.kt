@@ -47,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -214,7 +215,8 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *   `core.presentation`): it fills only what the integrator left out. [logo] falls back to the
  *   verified product icon, then the monogram; branded, [accent] falls back to the product's accent
  *   (its dark one on a dark ground), then a colour derived from the icon, then ink (never the core violet).
- *   Neutral keeps the host's primary. Defaults to the client PolarisKeyProvider provides, if any.
+ *   Neutral keeps the host's primary. Defaults to the client PolarisKeyProvider provides, if any, and a
+ *   PolarisKeyGate inside the theme supplies it, so the one-liner needs no argument.
  */
 @Composable
 public fun PolarisTheme(
@@ -230,12 +232,16 @@ public fun PolarisTheme(
     presentation: PresentationSource? = LocalPolarisKey.current?.presentationSource,
     content: @Composable () -> Unit,
 ) {
+    // A gate inside this theme (PolarisTheme { PolarisKeyGate(client) { ... } }) fills what the integrator left out.
+    val sink = remember { mutableStateOf<PresentationSource?>(null) }
+    val given = integratorOr(presentation, sink.value)
+
     // GNOME: the portal's accent-color is the native preset's accent (UK-10.6); null elsewhere and for an integrator's own.
     val hostAccent = if (branding == PolarisBranding.None && accent == null) nativeAccent() else null
-    val member = rememberPresentation(presentation)
+    val member = rememberPresentation(given)
     // The icon is fetched only for what it fills: the logo, or a branded accent nothing else gives.
     val wantsArt = logo == null || (branding == PolarisBranding.PolarisKey && accent == null && member?.accentFor(darkTheme) == null)
-    val art = rememberPresentationArt(presentation.takeIf { wantsArt }, member)
+    val art = rememberPresentationArt(given.takeIf { wantsArt }, member)
     PolarisThemeResolved(
         branding = branding,
         showPoweredBy = showPoweredBy,
@@ -251,9 +257,12 @@ public fun PolarisTheme(
         accent = themeAccent(accent ?: hostAccent, branding, member, darkTheme, art?.derivedAccent),
         deviceCodeUrl = deviceCodeUrl,
         developer = developer ?: member?.developerName?.takeIf { it.isNotBlank() },
-        content = content,
+        content = { CompositionLocalProvider(LocalPolarisPresentationSink provides sink, content = content) },
     )
 }
+
+/** The integrator's presentation, else the one a gate inside the theme supplied. */
+private fun integratorOr(given: PresentationSource?, fromGate: PresentationSource?): PresentationSource? = given ?: fromGate
 
 /** [PolarisTheme] once the presentation's defaults are applied. */
 @Composable

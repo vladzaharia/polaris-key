@@ -202,6 +202,8 @@ public data class PolarisCopy(
     val updateNow: String = "Update now",
     val updateLater: String = "Later",
     val updateRestart: String = "Restart to update",
+    /** The banner for a Restart offer whose version is unknown. */
+    val updateRestartGeneric: String = "An update is ready. Restart to finish.",
     val updateRestartBody: String = "Version %1\$s is ready. Restart to finish updating.",
     /** The update prompt once the update is ready: %1$s the product, %2$s the version. */
     val updateReadyTitle: String = "%1\$s %2\$s is ready",

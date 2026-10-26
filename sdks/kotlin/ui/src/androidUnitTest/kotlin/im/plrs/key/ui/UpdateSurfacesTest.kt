@@ -7,7 +7,7 @@ package im.plrs.key.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -26,7 +26,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-mdpi")
 class UpdateSurfacesTest {
     @get:Rule
-    val rule = createComposeRule()
+    val rule = createAndroidComposeRule<androidx.activity.ComponentActivity>()
 
     private val copy = sampleCopy
 
@@ -56,6 +56,41 @@ class UpdateSurfacesTest {
     fun aReadyUpdateBannerRestartsNow() {
         show { PolarisUpdateBanner(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart), onDismiss = {}) }
         rule.onNodeWithText(copy.updateRestartNow).assertIsDisplayed()
+    }
+
+    @Test
+    fun aRestartWithNoVersionHasItsOwnLine() {
+        show { PolarisUpdateBanner(PolarisUpdateUi(null, kind = PolarisUpdateUi.Kind.Restart), onDismiss = {}) }
+        rule.onNodeWithText("An update is ready. Restart to finish.").assertIsDisplayed()
+    }
+
+    @Test
+    fun theBannerClearsTheStatusBar() {
+        val bar = 48
+        rule.setContent {
+            StockHost(false) {
+                PolarisTheme(branding = PolarisBranding.PolarisKey, copy = copy, darkTheme = false) {
+                    PolarisUpdateBanner(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart), onDismiss = {})
+                }
+            }
+        }
+        rule.runOnUiThread {
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(rule.activity.window, false)
+        }
+        rule.waitForIdle()
+        val line = copy.updateBannerText(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart))
+        val before = rule.onNodeWithText(line).getUnclippedBoundsInRoot().top
+        rule.runOnUiThread {
+            val density = rule.activity.resources.displayMetrics.density
+            val px = (bar * density).toInt()
+            val insets = androidx.core.view.WindowInsetsCompat.Builder()
+                .setInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars(), androidx.core.graphics.Insets.of(0, px, 0, 0))
+                .build()
+            androidx.core.view.ViewCompat.dispatchApplyWindowInsets(rule.activity.window.decorView, insets)
+        }
+        rule.waitForIdle()
+        val after = rule.onNodeWithText(line).getUnclippedBoundsInRoot().top
+        assertTrue("the text moves down by the bar: $before -> $after", after - before >= bar.dp - 1.dp)
     }
 
     @Test

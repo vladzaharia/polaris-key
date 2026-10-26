@@ -51,6 +51,17 @@ import kotlinx.serialization.json.JsonElement
 /** What the account list opens. */
 internal enum class AccountItem { Settings, Channel, Devices }
 
+/** Whether the account list draws this row. */
+private fun AccountItem.drawn(channel: Boolean, settings: Boolean): Boolean = when (this) {
+    AccountItem.Channel -> channel
+    AccountItem.Settings -> settings
+    AccountItem.Devices -> true
+}
+
+/** A value, a managed row, a failure to retry or a labelled entitlement: what the Settings pane would show. */
+private fun PolarisSettingsUi.hasContent(label: (String) -> String?): Boolean =
+    loading || entries.isNotEmpty() || loadFailure != null || license?.entitlements?.any { label(it) != null } == true
+
 /** The gap between the rows of a connected group. */
 private val ConnectedGap = 2.dp
 
@@ -123,15 +134,20 @@ public fun PolarisAccountScreen(
         val split = window.wide
         // The channel row exists only where the picker would draw (Release on, a choice or a lock).
         val channelUi = settingsUi.channel?.takeIf { it.drawn }
-        val entries = AccountItem.entries.filter { it != AccountItem.Channel || channelUi != null }
+        // Settings is a row only when its pane has something to show: a value, a managed row, a failure to retry, or a labelled entitlement.
+        val hasSettings = settingsUi.hasContent(entitlementLabel)
+        val entries = AccountItem.entries.filter { it.drawn(channelUi != null, hasSettings) }
         val channelError = settingsUi.error?.takeIf { channelUi != null && it.code == ErrorCode.channelNotAllowed }?.let(copy::settingsFailureMessage)
         // Two panes always show an item; one pane shows the list until an item is chosen.
         val item = chosen?.let { runCatching { AccountItem.valueOf(it) }.getOrNull() }?.takeIf { it in entries }
-        val open = item ?: if (split) AccountItem.Settings else null
+        val open = item ?: if (split) entries.first() else null
         val back = PolarisBackHandler(enabled = !split && item != null) { chosen = null }
         val detailTitle = detailPaneTitle(open, copy, channelTitle)
         val manageLabel = KitCopy.bundled.format("menu.manageLicense", kitLocale())
         val signOutLabel = KitCopy.bundled.format("common.signOut", kitLocale())
+        // "N of M in use" once the roster is read and the licence states a limit; the catalog's line otherwise.
+        val limit = settingsUi.license?.deviceLimit
+        val devicesSupporting = seatLine(devicesUi, settingsUi.license?.deviceLimit) ?: copy.devicesSubtitle
         val list: @Composable () -> Unit = {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.group)) {
                 navigationIcon?.let {
@@ -148,7 +164,7 @@ public fun PolarisAccountScreen(
                         add { shape ->
                             AccountListItem(
                                 title = if (entry == AccountItem.Settings) copy.settingsTitle else if (entry == AccountItem.Channel) channelRowTitle else copy.devicesTitle,
-                                supporting = if (entry == AccountItem.Devices) copy.devicesSubtitle else if (entry == AccountItem.Channel) channelUi?.let { channelLabel(it.current, it.labels) } else null,
+                                supporting = if (entry == AccountItem.Devices) devicesSupporting else if (entry == AccountItem.Channel) channelUi?.let { channelLabel(it.current, it.labels) } else null,
                                 icon = if (entry == AccountItem.Settings) PolarisSymbols.Tune else if (entry == AccountItem.Channel) PolarisSymbols.Refresh else PolarisSymbols.Devices,
                                 chevron = !split,
                                 selected = split && open == entry,
@@ -188,6 +204,7 @@ public fun PolarisAccountScreen(
                             error = settingsUi.error?.takeIf { it.code != ErrorCode.channelNotAllowed },
                         ),
                         entitlementLabel = entitlementLabel,
+                        showStatus = false,
                         onRetry = onRetrySettings,
                         onSet = onSet,
                         onReset = onReset,
@@ -231,6 +248,14 @@ public fun PolarisAccountScreen(
     }
 }
 
+/** "N of M in use" once the roster is read and the licence states a limit; null otherwise. */
+@Composable
+private fun seatLine(devices: PolarisDevicesUi, limit: Int?): String? {
+    if (limit == null || devices.loading || devices.error) return null
+    val used = CopyArgument.Number(devices.devices.size)
+    return KitCopy.bundled.format("part.seatMeter.caption", kitLocale(), mapOf("used" to used, "limit" to CopyArgument.Number(limit)))
+}
+
 private fun detailPaneTitle(open: AccountItem?, copy: PolarisCopy, channelTitle: String): String =
     if (open == AccountItem.Devices) copy.devicesTitle else if (open == AccountItem.Channel) channelTitle else copy.settingsTitle
 
@@ -256,7 +281,7 @@ internal fun AccountHeaderCard(license: PolarisLicenseSummary?, notActivated: Bo
     if (name == null && license == null && !notActivated) return
     // A device with no licence says so in the catalog's words (the desktop Settings window), never "Inactive".
     val status = if (notActivated) KitCopy.bundled.format("core.codes.no_token.title", kitLocale()) else license?.let { copy.entitlementLabel(it.status) }
-    val support = listOfNotNull(status, license?.holder?.takeIf { it.isNotBlank() }).joinToString(" \u2022 ")
+    val support = listOfNotNull(license?.tierLabel, status, license?.holder).filter(String::isNotBlank).joinToString(" \u2022 ")
     Row(
         Modifier
             .fillMaxWidth()

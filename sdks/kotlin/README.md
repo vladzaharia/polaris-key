@@ -111,7 +111,7 @@ Maven, the coordinate table and the other SDKs:
   data (`PresentationRules`, client-core's rules): `client.presentation()` (name, developer,
   accents, icon), `client.presentationIcon(px, scale)` (verified bytes, or null) and
   `client.presentationSource` (the `PresentationSource` seam the Compose kit reads:
-  `PolarisTheme(presentation = client.presentationSource)`). The icon is a plain GET with no
+  `PolarisTheme { PolarisKeyGate(client) { … } }` passes it to the theme itself). The icon is a plain GET with no
   headers and no redirect followed, SHA-256 checked, cached by hash under the store's state
   directory (`presentation/`, at most four files, `presentation.json` for a cold start). The
   integrator's logo and accent always win; the kit falls back to the icon, then the monogram.

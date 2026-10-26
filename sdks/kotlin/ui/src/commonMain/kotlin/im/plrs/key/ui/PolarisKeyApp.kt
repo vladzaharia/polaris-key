@@ -17,10 +17,16 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,6 +36,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import im.plrs.key.core.BootOptions
 import im.plrs.key.core.LicenseState
+import im.plrs.key.core.PresentationSource
 import im.plrs.key.sdk.bootHost
 import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
@@ -49,8 +56,14 @@ public val LocalPolarisKey: androidx.compose.runtime.ProvidableCompositionLocal<
 /** Provide [client] to [content] (PolarisKeyGate does this itself). */
 @Composable
 public fun PolarisKeyProvider(client: PolarisKeyClient, content: @Composable () -> Unit) {
+    // A PolarisTheme above this gate has no client of its own: hand it the product's presentation.
+    val sink = LocalPolarisPresentationSink.current
+    SideEffect { sink?.value = client.presentationSource }
     CompositionLocalProvider(LocalPolarisKey provides client, content = content)
 }
+
+/** What a [PolarisTheme] provides so a gate inside it can fill the product presentation (name, icon, accent). */
+internal val LocalPolarisPresentationSink = staticCompositionLocalOf<MutableState<PresentationSource?>?> { null }
 
 /** The provided client; throws outside PolarisKeyGate or PolarisKeyProvider. */
 @Composable
@@ -167,14 +180,16 @@ internal fun PolarisKeyAppHost(
             val offer by update.offer.collectAsState()
             Column {
                 // Restart to finish is the banner's; an offered version is the sheet or card's (decision 9).
-                offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Restart }?.let { ui ->
+                val restart = offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Restart }
+                restart?.let { ui ->
                     PolarisUpdateBanner(
                         ui,
                         onUpdate = { update.install(updateActions, scope, onQuit) },
                         onDismiss = if (ui.mandatory) null else update::dismiss,
                     )
                 }
-                content()
+                // The banner draws under the status bar, so the content below must not pad for it twice.
+                Box(if (restart != null) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier) { content() }
             }
             offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Install && (optionalUpdateInDialog || it.mandatory) }?.let { ui ->
                 PolarisUpdatePromptDialog(
