@@ -6934,6 +6934,16 @@ msgstr "É preciso entrar"
 msgid "core.codes.sign_in_required.message"
 msgstr "Entre na sua conta do Polaris Locker no app e tente novamente."
 
+#. Not added
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.title"
+msgstr "Não adicionada"
+
+#. This license wasn't added to your account. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.message"
+msgstr "Esta licença não foi adicionada à sua conta. Nada mudou."
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"
@@ -7143,6 +7153,16 @@ msgstr "Nenhum uso restante da chave"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
 msgstr "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
+
+#. License in another account
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.title"
+msgstr "Licença em outra conta"
+
+#. This license is already in another Polaris Locker account. A license never moves by its key.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.message"
+msgstr "Esta licença já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

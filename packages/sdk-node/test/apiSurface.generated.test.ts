@@ -55,6 +55,8 @@ it("entitlements.value", () =>
   expect("value" in EntitlementsClient.prototype).toBe(true));
 it("entitlements.all", () =>
   expect("all" in EntitlementsClient.prototype).toBe(true));
+it("identity.signIn", () =>
+  expect("signIn" in IdentityClient.prototype).toBe(true));
 it("identity.signOut", () =>
   expect("signOut" in IdentityClient.prototype).toBe(true));
 it("client.discover", () =>

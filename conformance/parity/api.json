@@ -3276,28 +3276,23 @@
       "sdks": {
         "node": {
           "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
-          "spelling": "attach"
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "react": {
           "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
-          "spelling": "attach"
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "python": {
           "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
-          "spelling": "attach"
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
           "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
-          "spelling": "attach"
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "kotlin": {
           "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
-          "spelling": "attach"
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "godot": {
           "planned": "I-10b",

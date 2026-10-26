@@ -36,6 +36,7 @@ import { Textarea } from "../../../../ui/Textarea.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { EntityLink } from "../../../components/EntityLink.js";
+import { CdnFallbackNote } from "./CdnFallbackNote.js";
 import { mutate } from "../../../data/mutations.js";
 import { useConnectors } from "../data.js";
 import {
@@ -416,13 +417,6 @@ function ReadinessSection({
   const [clearing, setClearing] = React.useState(false);
   const [reason, setReason] = React.useState("");
   const overridden = readiness.state === "overridden";
-  const cdnPacks = [
-    ...new Set(
-      (readiness.notes ?? [])
-        .filter((n) => n.note === "cdn-fallback")
-        .map((n) => n.pack),
-    ),
-  ];
   const canOverride =
     !overridden && readiness.holdable && readiness.state !== "ready";
   return (
@@ -475,24 +469,7 @@ function ReadinessSection({
       {readiness.pendingReason ? (
         <p className="text-sm text-fg-muted">{readiness.pendingReason}</p>
       ) : null}
-      {cdnPacks.length > 0 ? (
-        <p className="text-sm text-fg-muted">
-          {cdnPacks.map((pack, i) => (
-            <React.Fragment key={pack}>
-              {i === 0 ? "" : i === cdnPacks.length - 1 ? " and " : ", "}
-              <EntityLink
-                slug={slug}
-                kind="deliverable"
-                id={pack}
-                label={pack}
-              />
-            </React.Fragment>
-          ))}{" "}
-          {cdnPacks.length === 1
-            ? "is served from the Polaris Key CDN until its Background Asset is approved in App Store Connect."
-            : "are served from the Polaris Key CDN until their Background Assets are approved in App Store Connect."}
-        </p>
-      ) : null}
+      <CdnFallbackNote slug={slug} notes={readiness.notes} />
       {readiness.override ? (
         <p className="text-sm text-fg-muted">
           Overridden by {readiness.override.by}

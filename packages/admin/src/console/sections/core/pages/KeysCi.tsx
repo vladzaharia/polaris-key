@@ -41,7 +41,7 @@ import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
-import { PublishFromCiDrawer } from "../../release/components/PublishFromCi/PublishFromCiDrawer.js";
+import { PublishFromCiEntry } from "../../release/components/PublishFromCi/PublishFromCiEntry.js";
 import { ScopeList, ScopePicker } from "./ciScopes.js";
 import {
   fetchCiPublisher,
@@ -69,7 +69,6 @@ export function CiPublishingSection({
 function PublisherRow({ slug }: { slug: string }): React.ReactElement {
   const policy = useCiPublisher(slug);
   const [editing, setEditing] = React.useState(false);
-  const [publishing, setPublishing] = React.useState(false);
   const noMint = useBreakGlassReason();
   return (
     <SettingsRow
@@ -78,15 +77,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
       help="A GitHub Actions run exchanges its OIDC token for a short-lived publishing token; no stored secret is involved."
       aside={
         <div className="flex flex-wrap gap-2">
-          {policy.data ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPublishing(true)}
-            >
-              Publish from CI…
-            </Button>
-          ) : null}
+          {policy.data ? <PublishFromCiEntry slug={slug} /> : null}
           {policy.data ? (
             <Button
               variant="outline"
@@ -167,13 +158,6 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
         onClose={() => setEditing(false)}
         onOpen={() => setEditing(true)}
       />
-      {policy.data ? (
-        <PublishFromCiDrawer
-          slug={slug}
-          open={publishing}
-          onOpenChange={setPublishing}
-        />
-      ) : null}
     </SettingsRow>
   );
 }

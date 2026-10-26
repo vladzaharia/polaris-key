@@ -6908,6 +6908,16 @@ msgstr "サインインが必要です"
 msgid "core.codes.sign_in_required.message"
 msgstr "アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。"
 
+#. Not added
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.title"
+msgstr "追加されませんでした"
+
+#. This license wasn't added to your account. Nothing changed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attach-declined.message"
+msgstr "このライセンスはアカウントに追加されませんでした。何も変更されていません。"
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"
@@ -7117,6 +7127,16 @@ msgstr "キーの入力回数が残っていません"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
 msgstr "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。"
+
+#. License in another account
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.title"
+msgstr "別のアカウントのライセンス"
+
+#. This license is already in another Polaris Locker account. A license never moves by its key.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-owned.message"
+msgstr "このライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。"
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

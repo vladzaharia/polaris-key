@@ -84,7 +84,7 @@
       "jscpd:duplicate": 6
     },
     "packages/admin/e2e/core.e2e.test.ts": {
-      "jscpd:duplicate": 39
+      "jscpd:duplicate": 40
     },
     "packages/admin/e2e/coreFixtures.ts": {
       "jscpd:duplicate": 1
@@ -93,7 +93,7 @@
       "jscpd:duplicate": 17
     },
     "packages/admin/e2e/dataMotion.e2e.test.ts": {
-      "jscpd:duplicate": 34
+      "jscpd:duplicate": 37
     },
     "packages/admin/e2e/deviceMotion.e2e.test.ts": {
       "jscpd:duplicate": 12
@@ -141,7 +141,10 @@
       "jscpd:duplicate": 11
     },
     "packages/admin/e2e/motion.e2e.test.ts": {
-      "jscpd:duplicate": 32
+      "jscpd:duplicate": 33
+    },
+    "packages/admin/e2e/motionPerf.e2e.test.ts": {
+      "jscpd:duplicate": 5
     },
     "packages/admin/e2e/newLicenseInvite.e2e.test.ts": {
       "jscpd:duplicate": 21

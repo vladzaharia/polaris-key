@@ -2637,6 +2637,10 @@
     <string name="core_codes_sign_in_required_title">需要登录</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_message">请在应用中登录你的Polaris Locker账户，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_title">未添加</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_message">此许可证未添加到你的账户。未做任何更改。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">许可证有效</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2721,6 +2725,10 @@
     <string name="core_activation_key_entry_limit_title">密钥已无剩余输入次数</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_message">此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_title">许可证在另一个账户中</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_message">此许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">激活被拒绝</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

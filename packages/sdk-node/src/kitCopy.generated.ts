@@ -1550,6 +1550,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "Sign-in needed",
     "core.codes.sign_in_required.message":
       "Sign in to your Polaris Locker account in the app, then try again.",
+    "core.codes.attach-declined.title": "Not added",
+    "core.codes.attach-declined.message":
+      "This license wasn't added to your account. Nothing changed.",
     "core.gate.ok.title": "License active",
     "core.gate.ok.message": "Your license is active.",
     "core.gate.grace.title": "Offline grace",
@@ -1610,6 +1613,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "No key entries left",
     "core.activation.key-entry-limit.message":
       "This key has no entries left. Add it to your account and sign in instead.",
+    "core.activation.license-owned.title": "License in another account",
+    "core.activation.license-owned.message":
+      "This license is already in another Polaris Locker account. A license never moves by its key.",
     "core.activation.refused.title": "Activation refused",
     "core.activation.refused.message": "Activation was refused ({code}).",
     "core.activation.error.title": "Activation failed",
@@ -3250,6 +3256,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "Anmeldung erforderlich",
     "core.codes.sign_in_required.message":
       "Melden Sie sich in der App bei Ihrem Polaris Locker-Konto an und versuchen Sie es dann erneut.",
+    "core.codes.attach-declined.title": "Nicht hinzugefügt",
+    "core.codes.attach-declined.message":
+      "Diese Lizenz wurde Ihrem Konto nicht hinzugefügt. Es hat sich nichts geändert.",
     "core.gate.ok.title": "Lizenz aktiv",
     "core.gate.ok.message": "Ihre Lizenz ist aktiv.",
     "core.gate.grace.title": "Offline-Kulanzzeit",
@@ -3311,6 +3320,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "Keine Schlüsseleingaben mehr",
     "core.activation.key-entry-limit.message":
       "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
+    "core.activation.license-owned.title": "Lizenz in einem anderen Konto",
+    "core.activation.license-owned.message":
+      "Diese Lizenz befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
     "core.activation.refused.title": "Aktivierung abgelehnt",
     "core.activation.refused.message":
       "Die Aktivierung wurde abgelehnt ({code}).",
@@ -4935,6 +4947,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "Connexion nécessaire",
     "core.codes.sign_in_required.message":
       "Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez.",
+    "core.codes.attach-declined.title": "Non ajoutée",
+    "core.codes.attach-declined.message":
+      "Cette licence n'a pas été ajoutée à votre compte. Rien n'a changé.",
     "core.gate.ok.title": "Licence active",
     "core.gate.ok.message": "Votre licence est active.",
     "core.gate.grace.title": "Période de grâce hors ligne",
@@ -4997,6 +5012,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "Aucune saisie restante",
     "core.activation.key-entry-limit.message":
       "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
+    "core.activation.license-owned.title": "Licence dans un autre compte",
+    "core.activation.license-owned.message":
+      "Cette licence est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer.",
     "core.activation.refused.title": "Activation refusée",
     "core.activation.refused.message": "L’activation a été refusée ({code}).",
     "core.activation.error.title": "Échec de l’activation",
@@ -6605,6 +6623,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "Es necesario iniciar sesión",
     "core.codes.sign_in_required.message":
       "Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo.",
+    "core.codes.attach-declined.title": "No se añadió",
+    "core.codes.attach-declined.message":
+      "Esta licencia no se añadió a tu cuenta. No ha cambiado nada.",
     "core.gate.ok.title": "Licencia activa",
     "core.gate.ok.message": "Tu licencia está activa.",
     "core.gate.grace.title": "Periodo de gracia",
@@ -6668,6 +6689,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "No quedan usos de la clave",
     "core.activation.key-entry-limit.message":
       "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
+    "core.activation.license-owned.title": "Licencia en otra cuenta",
+    "core.activation.license-owned.message":
+      "Esta licencia ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.",
     "core.activation.refused.title": "Activación rechazada",
     "core.activation.refused.message": "Se rechazó la activación ({code}).",
     "core.activation.error.title": "Error de activación",
@@ -8247,6 +8271,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "É preciso entrar",
     "core.codes.sign_in_required.message":
       "Entre na sua conta do Polaris Locker no app e tente novamente.",
+    "core.codes.attach-declined.title": "Não adicionada",
+    "core.codes.attach-declined.message":
+      "Esta licença não foi adicionada à sua conta. Nada mudou.",
     "core.gate.ok.title": "Licença ativa",
     "core.gate.ok.message": "Sua licença está ativa.",
     "core.gate.grace.title": "Período offline",
@@ -8307,6 +8334,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "Nenhum uso restante da chave",
     "core.activation.key-entry-limit.message":
       "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.",
+    "core.activation.license-owned.title": "Licença em outra conta",
+    "core.activation.license-owned.message":
+      "Esta licença já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave.",
     "core.activation.refused.title": "Ativação recusada",
     "core.activation.refused.message": "A ativação foi recusada ({code}).",
     "core.activation.error.title": "Falha na ativação",
@@ -9901,6 +9931,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "Accesso richiesto",
     "core.codes.sign_in_required.message":
       "Accedi al tuo account Polaris Locker nell'app, poi riprova.",
+    "core.codes.attach-declined.title": "Non aggiunta",
+    "core.codes.attach-declined.message":
+      "Questa licenza non è stata aggiunta al tuo account. Non è cambiato nulla.",
     "core.gate.ok.title": "Licenza attiva",
     "core.gate.ok.message": "La tua licenza è attiva.",
     "core.gate.grace.title": "Tolleranza offline",
@@ -9964,6 +9997,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "Nessun inserimento rimasto",
     "core.activation.key-entry-limit.message":
       "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
+    "core.activation.license-owned.title": "Licenza in un altro account",
+    "core.activation.license-owned.message":
+      "Questa licenza è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave.",
     "core.activation.refused.title": "Attivazione rifiutata",
     "core.activation.refused.message":
       "L'attivazione è stata rifiutata ({code}).",
@@ -11579,6 +11615,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "サインインが必要です",
     "core.codes.sign_in_required.message":
       "アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。",
+    "core.codes.attach-declined.title": "追加されませんでした",
+    "core.codes.attach-declined.message":
+      "このライセンスはアカウントに追加されませんでした。何も変更されていません。",
     "core.gate.ok.title": "ライセンス有効",
     "core.gate.ok.message": "ライセンスは有効です。",
     "core.gate.grace.title": "オフライン猶予期間",
@@ -11642,6 +11681,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "キーの入力回数が残っていません",
     "core.activation.key-entry-limit.message":
       "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
+    "core.activation.license-owned.title": "別のアカウントのライセンス",
+    "core.activation.license-owned.message":
+      "このライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。",
     "core.activation.refused.title": "アクティベーションが拒否されました",
     "core.activation.refused.message":
       "アクティベーションが拒否されました（{code}）。",
@@ -13181,6 +13223,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "로그인 필요",
     "core.codes.sign_in_required.message":
       "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.",
+    "core.codes.attach-declined.title": "추가되지 않음",
+    "core.codes.attach-declined.message":
+      "이 라이선스는 계정에 추가되지 않았습니다. 변경된 내용은 없습니다.",
     "core.gate.ok.title": "라이선스 활성",
     "core.gate.ok.message": "라이선스가 활성 상태예요.",
     "core.gate.grace.title": "오프라인 유예",
@@ -13241,6 +13286,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "남은 키 등록 횟수 없음",
     "core.activation.key-entry-limit.message":
       "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.",
+    "core.activation.license-owned.title": "다른 계정의 라이선스",
+    "core.activation.license-owned.message":
+      "이 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
     "core.activation.refused.title": "활성화 거부됨",
     "core.activation.refused.message": "활성화가 거부됐어요({code}).",
     "core.activation.error.title": "활성화 실패",
@@ -14658,6 +14706,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign_in_required.title": "需要登录",
     "core.codes.sign_in_required.message":
       "请在应用中登录你的Polaris Locker账户，然后重试。",
+    "core.codes.attach-declined.title": "未添加",
+    "core.codes.attach-declined.message":
+      "此许可证未添加到你的账户。未做任何更改。",
     "core.gate.ok.title": "许可证有效",
     "core.gate.ok.message": "你的许可证有效。",
     "core.gate.grace.title": "离线宽限期",
@@ -14712,6 +14763,9 @@ export const KIT_COPY: Readonly<
     "core.activation.key-entry-limit.title": "密钥已无剩余输入次数",
     "core.activation.key-entry-limit.message":
       "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。",
+    "core.activation.license-owned.title": "许可证在另一个账户中",
+    "core.activation.license-owned.message":
+      "此许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。",
     "core.activation.refused.title": "激活被拒绝",
     "core.activation.refused.message": "激活被拒绝（{code}）。",
     "core.activation.error.title": "激活失败",

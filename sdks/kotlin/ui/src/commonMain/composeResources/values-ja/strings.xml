@@ -2637,6 +2637,10 @@
     <string name="core_codes_sign_in_required_title">サインインが必要です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_message">アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_title">追加されませんでした</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attach_declined_message">このライセンスはアカウントに追加されませんでした。何も変更されていません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_ok_title">ライセンス有効</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
@@ -2721,6 +2725,10 @@
     <string name="core_activation_key_entry_limit_title">キーの入力回数が残っていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_message">このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_title">別のアカウントのライセンス</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_owned_message">このライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">アクティベーションが拒否されました</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->
