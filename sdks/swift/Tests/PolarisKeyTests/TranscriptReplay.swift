@@ -287,7 +287,30 @@ actor ReplayServer {
                 out.append("body: expected a JSON body, got none")
                 return out
             }
-            guard let parsed = try? JSONDecoder().decode(JSONValue.self, from: body) else {
+            // `token` (WIRE-CONTRACT-V4 §12.5): a request that asserts a form content type carries
+            // its `body.json` members as the form's fields.
+            let isForm = expected.headers["content-type"]?.hasPrefix("application/x-www-form-urlencoded") == true
+            let parsed: JSONValue
+            if isForm {
+                var fields: [String: JSONValue] = [:]
+                for pair in String(decoding: body, as: UTF8.self).split(separator: "&") {
+                    let eq = pair.firstIndex(of: "=")
+                    func decode(_ s: Substring) -> String? {
+                        s.replacingOccurrences(of: "+", with: " ").removingPercentEncoding
+                    }
+                    guard let name = decode(eq.map { pair[..<$0] } ?? pair),
+                        let value = decode(eq.map { pair[pair.index(after: $0)...] } ?? "")
+                    else {
+                        out.append("body: not a form")
+                        return out
+                    }
+                    if fields[name] != nil { out.append("body: repeated field \(name)") }
+                    fields[name] = .string(value)
+                }
+                parsed = .object(fields)
+            } else if let json = try? JSONDecoder().decode(JSONValue.self, from: body) {
+                parsed = json
+            } else {
                 out.append("body: not JSON")
                 return out
             }
@@ -349,6 +372,16 @@ actor ReplayServer {
 
     func recordFailure(_ message: String) { failures.append(message) }
 
+    /// A `browser` step's exchanges: the requests a person's browser makes in a redirect sign-in.
+    /// They are served from the recording and asserted by nothing (`format.ts`).
+    func serveBrowserExchanges() {
+        guard let step else { return }
+        for index in served.indices {
+            served[index] = true
+            capture(step.exchanges.items[index])
+        }
+    }
+
     private var discoveryLoaded = false
 
     /// The Worker's standard discovery document, for a transcript that loads discovery nowhere
@@ -382,6 +415,34 @@ actor ReplayServer {
                         "license": .object(["enabled": .bool(true)]),
                         "config": .object(["enabled": .bool(true)]),
                         "identity": identity,
+                    ]),
+                ]))
+        }
+        // The redirect transcripts (identity.redirect.web, identity.signin.hints) ride a product
+        // that runs Identity; the fragment names `authorize` and `token`, and the issuer the
+        // recorded callback carries (RFC 9207), else the Worker's own `<base>/identity`.
+        if transcript.steps.contains(where: { ["browser", "redirectComplete"].contains($0.action) }) {
+            var issuer = "\(base)/identity"
+            for step in transcript.steps where step.action == "redirectComplete" {
+                if let raw = step.args["callbackUrl"]?.stringValue,
+                    let iss = URLComponents(string: raw)?.queryItems?.first(where: { $0.name == "iss" })?.value
+                {
+                    issuer = iss
+                    break
+                }
+            }
+            return try? JSONEncoder().encode(
+                JSONValue.object([
+                    "product": .string(transcript.product),
+                    "services": .object([
+                        "identity": .object([
+                            "enabled": .bool(true), "configured": .bool(true),
+                            "issuer": .string(issuer),
+                            "endpoints": .object([
+                                "authorize": .string("\(base)/identity/authorize"),
+                                "token": .string("\(base)/identity/token"),
+                            ]),
+                        ])
                     ]),
                 ]))
         }

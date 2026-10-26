@@ -145,7 +145,7 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity.signIn.start(SignInOptions(browser:)), which opens the device-code verification URL in ASWebAuthenticationSession; session.wait() polls /identity/auth/device/poll (identity.devicecode; the old /identity/auth/poll is retired and the Worker no longer serves it)."
+      "note": "Native browser sign-in (loopback, scheme, claimed HTTPS) waits on I-15; the host-supplied https redirect is identity.redirect.web. The device-code route is client.identity.signIn.start(SignInOptions(browser:)), which opens the device-code verification URL in ASWebAuthenticationSession; session.wait() polls /identity/auth/device/poll (identity.devicecode; the old /identity/auth/poll is retired and the Worker no longer serves it)."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -164,16 +164,15 @@
       "status": "implemented"
     },
     "identity.redirect.web": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "signIn.start(SignInOptions(channel: .redirect, redirectUri:)) builds the S256 authorize URL from discovery (IdentityRedirect, CryptoKit) for a browser the host opens; session.complete(callbackUrl:) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint. Single use; a refusal is a typed SignInError and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's; the licence choice (license_choice=app) is I-10b.12's."
     },
     "identity.choice": {
       "status": "planned",
       "wp": "I-10b"
     },
     "identity.signin.hints": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented"
     },
     "identity.keyentry": {
       "status": "implemented"
