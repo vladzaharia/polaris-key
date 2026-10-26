@@ -95,6 +95,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "The service can't sign a document right now. Try again in a few minutes.",
   },
+  device_keys_invalid: {
+    title: "Device not set up",
+    message:
+      "This device could not be set up for sync. Update the app and try again.",
+  },
   device_limit: {
     title: "Device limit reached",
     message:
@@ -316,6 +321,28 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "Syncing is paused for a moment. Your changes are kept and will sync later.",
   },
+  encryption_mismatch: {
+    title: "Encryption mismatch",
+    message:
+      "This app and the sync service don't agree on encryption. Update the app and try again.",
+  },
+  upload_expired: {
+    title: "Upload expired",
+    message: "This upload took too long and was cancelled. Try again.",
+  },
+  upload_incomplete: {
+    title: "Upload incomplete",
+    message: "Part of the file didn't arrive. Try again.",
+  },
+  file_too_large: {
+    title: "File too large",
+    message: "This file is over the size limit for synced files.",
+  },
+  keyring_conflict: {
+    title: "Already set up",
+    message:
+      "Encryption is already set up for this account. Unlock with another device or your recovery code.",
+  },
   email_mismatch: {
     title: "Email not verified",
     message:
@@ -531,6 +558,20 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Sign-in unavailable",
     message:
       "This device can't sign you in automatically. Use another way to sign in.",
+  },
+  "sync-locked": {
+    title: "Sync locked",
+    message:
+      "Unlock sync on this device with your recovery code or another signed-in device.",
+  },
+  "recovery-code-invalid": {
+    title: "Recovery code not valid",
+    message: "That recovery code isn't right. Check it and try again.",
+  },
+  "sync-encryption-pinned": {
+    title: "Encryption required",
+    message:
+      "This app needs encrypted sync, which isn't available right now. Sync stays off.",
   },
   "invalid-options": {
     title: "App not set up",

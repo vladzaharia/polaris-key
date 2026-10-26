@@ -91,8 +91,8 @@ final class CapabilitiesTests: XCTestCase {
             XCTAssertEqual(answer.unsupported, e.unsupported)
         }
         do {
-            _ = try await c.identity.beginSignIn()
-            XCTFail("beginSignIn() did not refuse")
+            _ = try await c.identity.signIn.start()
+            XCTFail("signIn.start() did not refuse")
         } catch let e as PolarisError {
             XCTAssertEqual(e.unsupported?.feature, Feature.identityDevicecode)
             XCTAssertEqual(e.unsupported?.reason, UnsupportedReason.product)

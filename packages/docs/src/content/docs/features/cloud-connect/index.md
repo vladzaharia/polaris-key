@@ -23,6 +23,10 @@ Declare it with `modules: { connect: { enabled: true } }` in `.pkey/product`. It
 | ---------- | ------------------------------------------------------------ |
 | `identity` | Devices are linked by the account that is signed in on each. |
 
+## Settings
+
+The `connect:` block in `.pkey/product` sets `relay` (on by default) and `interAccount` (off by default); see [Cloud Connect settings](/docs/build/manifest/product/#cloud-connect-settings-connect). Nothing reads them until the relay ships. A person's relay bytes per day are the `pkey.cloudConnect.relayBytes` entitlement: 256 MiB when unset, 16 MiB without a usable license, at most 4 GiB. A product's relay is capped at 500 GiB a month.
+
 ## In the console
 
 The **Cloud Connect** section has one page today, with nothing to set up. Setup, Usage and Linked devices come later.

@@ -1983,6 +1983,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_title">Device not set up</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_message">This device could not be set up for sync. Update the app and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">No key entries left</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">This key has no entries left. Add it to your account and sign in instead.</string>
@@ -2174,6 +2178,26 @@
     <string name="core_codes_writes_paused_title">Sync paused</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_writes_paused_message">Syncing is paused for a moment. Your changes are kept and will sync later.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_title">Encryption mismatch</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_message">This app and the sync service don't agree on encryption. Update the app and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_title">Upload expired</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_message">This upload took too long and was cancelled. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_title">Upload incomplete</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_message">Part of the file didn't arrive. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_title">File too large</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_message">This file is over the size limit for synced files.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_title">Already set up</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_message">Encryption is already set up for this account. Unlock with another device or your recovery code.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">Email not verified</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2378,6 +2402,18 @@
     <string name="core_codes_platform_identity_unavailable_title">Sign-in unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_identity_unavailable_message">This device can't sign you in automatically. Use another way to sign in.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_title">Sync locked</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_message">Unlock sync on this device with your recovery code or another signed-in device.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_title">Recovery code not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_message">That recovery code isn't right. Check it and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_title">Encryption required</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_message">This app needs encrypted sync, which isn't available right now. Sync stays off.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App not set up</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

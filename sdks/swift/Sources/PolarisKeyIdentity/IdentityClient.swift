@@ -1,15 +1,16 @@
 // The Identity sub-client — device-code sign-in (RFC 8628) for hosts that cannot complete a
 // browser redirect: a CLI, a daemon, a TV app, a kiosk.
 //
-//   beginSignIn(deviceName:)  POST /<p>/identity/auth/device/start → the code the player types
-//                             and the two verification URIs (the complete one, with the code in
-//                             it, is the QR payload). The device code — the POLL credential —
-//                             stays inside the prompt.
-//   pollSignIn(_:)            POST /<p>/identity/auth/device/poll, exactly once. The caller paces.
-//   waitForSignIn(_:)         the paced loop: at least `interval` between polls, longer after a
-//                             `slow_down`, never faster because a poll failed, and stopped by
-//                             expiry or by cancelling the task (it then throws
-//                             `CancellationError`).
+//   signIn.start(_:)          SignInSession.swift: `POST /<p>/identity/auth/device/start` → a
+//                             `SignInSession` with the code the player types and the two
+//                             verification URIs (the complete one, with the code in it, is the
+//                             QR payload). The device code — the POLL credential — stays inside
+//                             the session. `session.wait()` is the paced loop: at least
+//                             `interval` between polls, longer after a `slow_down`, never faster
+//                             because a poll failed, stopped by expiry or `cancel()`.
+//
+// This file holds the two requests the session drives (`startDeviceCode`, `pollDeviceCode`) and
+// the loop (`waitDeviceCode`); they are internal, and the tests reach them through the session.
 //
 // A `ready` poll stores the device token through Core and raises the acquisition event, so the
 // facade's forced sync runs exactly as it does after activation.
@@ -106,10 +107,15 @@ public struct SignInReady: Sendable, Equatable {
     /// `claimed` or `migrated` when the device's anonymous enrolled licence was attached to the
     /// account on the player's opt-in; nil when nothing was attached.
     public let attached: String?
+    /// The account's subject, when the Worker said (held for `identity.account`).
+    public let subject: String?
 
-    public init(identity: SignInIdentity? = nil, attached: String? = nil) {
+    public init(
+        identity: SignInIdentity? = nil, attached: String? = nil, subject: String? = nil
+    ) {
         self.identity = identity
         self.attached = attached
+        self.subject = subject
     }
 }
 
@@ -120,30 +126,48 @@ public enum SignInPoll: Sendable, Equatable {
     /// Polled too fast: wait `interval` seconds before the next poll (RFC 8628 §3.5).
     case slowDown(interval: Int)
     /// Only with `confirmIdentity`: the flow is held at the signed-in identity so the device can
-    /// show it ("Is this you?") and the player can accept it (`acceptSignIn`). `attachable` is
+    /// show it ("Is this you?") and the player can accept it. `attachable` is
     /// true when this device holds an anonymous enrolled licence the account could take over.
     case confirm(identity: SignInIdentity, attachable: Bool)
     /// Signed in: the device token is stored and the post-acquisition sync has run.
     case ready(SignInReady)
-    /// The code expired (or the server no longer knows it). Begin again.
+    /// The code expired (or the server no longer knows it). Start again.
     case expired
-    /// The sign-in failed or was refused. Begin again. `code` is `ErrorCode.signInDenied` when the
+    /// The sign-in failed or was refused. Start again. `code` is `ErrorCode.signInDenied` when the
     /// Worker answered its generic `error` (the provider failed, or the person pressed Deny; the
     /// server never says which).
     case error(message: String, code: String? = nil)
 }
 
-/// How `waitForSignIn` ended. Cancellation throws `CancellationError` instead.
-public enum SignInResult: Sendable, Equatable {
+/// How the wait loop ended. Cancellation throws `CancellationError` instead. The session turns it
+/// into a `SignInOutcome` or a `SignInError`.
+enum SignInResult: Sendable, Equatable {
     case ready(SignInReady)
-    /// Only with `confirmIdentity`: show the identity, then `acceptSignIn` or cancel.
+    /// Only with `confirmIdentity`: the flow is held at the signed-in identity.
     case confirm(identity: SignInIdentity, attachable: Bool)
     case expired
     case error(message: String, code: String? = nil)
 
-    public var isReady: Bool {
+    var isReady: Bool {
         if case .ready = self { return true }
         return false
+    }
+}
+
+/// One identity change the facade turns into the `identity` event.
+public struct IdentityChange: Sendable, Equatable {
+    public static let signedIn = "signedIn"
+    public static let signedOut = "signedOut"
+    public static let subjectChanged = "subjectChanged"
+
+    public let kind: String
+    public let subject: String?
+    public let previous: String?
+
+    public init(kind: String, subject: String? = nil, previous: String? = nil) {
+        self.kind = kind
+        self.subject = subject
+        self.previous = previous
     }
 }
 
@@ -154,7 +178,7 @@ public typealias SignInAcquiredListener = @Sendable () async -> Void
 /// repeated interval-less answers keep lengthening it.
 public let SLOW_DOWN_STEP_SECONDS = 5
 
-/// The seconds `waitForSignIn` actually sleeps: never under one second (a zero or negative interval
+/// The seconds the wait loop actually sleeps: never under one second (a zero or negative interval
 /// would spin) and never past the code's own lifetime.
 func pollDelay(interval: Int, expiresIn: Int) -> Int {
     min(max(interval, 1), max(expiresIn, 1))
@@ -184,9 +208,11 @@ public final class IdentityClient: Sendable {
     let subjectValue = LockedValue<String?>(nil)
     /// `onBeforeSignOut` hooks, in registration order.
     let beforeSignOut = LockedValue<[SignOutHook]>([])
+    /// Where the facade hears of a sign-in, a sign-out and a changed subject (`installIdentityEvents`).
+    let identityEvents = LockedValue<(@Sendable (IdentityChange) -> Void)?>(nil)
     private let sleep: @Sendable (Double) async throws -> Void
 
-    /// - Parameter sleep: how `waitForSignIn` waits between polls. Defaults to `Task.sleep`, which
+    /// - Parameter sleep: how the wait loop waits between polls. Defaults to `Task.sleep`, which
     ///   throws `CancellationError` when the task is cancelled; tests inject a clock-driven one.
     public init(
         core: CoreContext,
@@ -201,6 +227,22 @@ public final class IdentityClient: Sendable {
             }
     }
 
+    func notifyIdentity(_ change: IdentityChange) { identityEvents.current?(change) }
+
+    /// Hold `subject` and say so when it differs from the one held before.
+    func updateSubject(_ subject: String?) {
+        let previous = subjectValue.with { held -> String? in
+            let old = held
+            held = subject
+            return old
+        }
+        if previous != subject {
+            notifyIdentity(
+                IdentityChange(
+                    kind: IdentityChange.subjectChanged, subject: subject, previous: previous))
+        }
+    }
+
     /// `seconds` as `Task.sleep`'s nanoseconds, clamped first: `UInt64(seconds * 1e9)` traps on a
     /// negative, non-finite or huge value.
     static func sleepNanoseconds(_ seconds: Double) -> UInt64 {
@@ -208,12 +250,12 @@ public final class IdentityClient: Sendable {
         return UInt64(bounded * 1_000_000_000)
     }
 
-    /// Begin a device-code sign-in. Throws `PolarisError(service-unavailable)` before any request
+    /// Ask for a device code (`signIn.start`). Throws `PolarisError(service-unavailable)` before any request
     /// when this product does not run Identity (D-21).
     ///
     /// No bearer is sent even when the device holds a token: a sign-in asks for the IDENTITY's
     /// credential, and the server binds the flow to this device by its id.
-    public func beginSignIn(deviceName: String? = nil) async throws -> SignInPrompt {
+    func startDeviceCode(deviceName: String? = nil) async throws -> SignInPrompt {
         try await core.requireService(.identity, feature: Feature.identityDevicecode)
         var body: [String: String] = ["deviceId": await core.deviceId]
         // §12.7.1: the per-call name, else `CoreOptions.deviceName`, else the platform default,
@@ -248,13 +290,13 @@ public final class IdentityClient: Sendable {
     ///
     /// Throws `PolarisError(network-error)` when the request never got an answer and
     /// `PolarisError(server-error)` on a 5xx — neither says anything about the sign-in, so neither
-    /// is folded into a status. `waitForSignIn` rides both out.
+    /// is folded into a status. The wait loop rides both out.
     ///
     /// P1-07's opt-in: with `confirmIdentity` the Worker holds the flow at the signed-in identity
     /// (`.confirm`) instead of completing it; the decision is then sent as `attachLicense` (with
     /// the device's bearer, which names the anonymous enrolled licence to attach). Without either,
     /// the poll completes exactly as before: the identity's own licence, nothing attached.
-    public func pollSignIn(
+    func pollDeviceCode(
         _ prompt: SignInPrompt, confirmIdentity: Bool = false, attachLicense: Bool? = nil
     ) async throws -> SignInPoll {
         try await poll(
@@ -309,7 +351,11 @@ public final class IdentityClient: Sendable {
             }
             try await core.setToken(token, source: .signin)
             await onAcquired?()
-            return .ready(SignInReady(identity: body?.identity, attached: body?.attached))
+            let subject = body?.subject.flatMap { $0.isEmpty ? nil : $0 }
+            if let subject { subjectValue.set(subject) }
+            notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
+            return .ready(
+                SignInReady(identity: body?.identity, attached: body?.attached, subject: subject))
         case "error":
             // A Deny names itself (`reason: access_denied`); a bare `error` failed after approval.
             return .error(
@@ -325,22 +371,10 @@ public final class IdentityClient: Sendable {
     /// transient failure is retried at the SAME interval. Returns `.expired` once the prompt's
     /// `expiresAt` has passed, without asking the server. Cancelling the task stops polling and
     /// throws `CancellationError`.
-    ///
-    /// With `confirmIdentity` the wait ends at `.confirm` once the player signed in; show the
-    /// identity and call `acceptSignIn(_:attachLicense:)` (or drop the prompt to cancel).
-    public func waitForSignIn(_ prompt: SignInPrompt, confirmIdentity: Bool = false) async throws
+    func waitDeviceCode(_ prompt: SignInPrompt, confirmIdentity: Bool = false) async throws
         -> SignInResult
     {
         try await wait(prompt, confirmIdentity: confirmIdentity, attachLicense: nil)
-    }
-
-    /// The player accepted the identity a `.confirm` showed: complete the sign-in, attaching this
-    /// device's anonymous enrolled licence to the account when `attachLicense` (and only when the
-    /// confirm said it was `attachable`). Paced like `waitForSignIn`.
-    public func acceptSignIn(_ prompt: SignInPrompt, attachLicense: Bool) async throws
-        -> SignInResult
-    {
-        try await wait(prompt, confirmIdentity: true, attachLicense: attachLicense)
     }
 
     private func wait(_ prompt: SignInPrompt, confirmIdentity: Bool, attachLicense: Bool?)
@@ -449,6 +483,7 @@ private struct PollBody: Decodable {
     let identity: SignInIdentity?
     let attached: String?
     let attachable: Bool?
+    let subject: String?
 }
 
 private struct FlatError: Decodable { let error: String }

@@ -259,8 +259,9 @@ class PolarisKeyClient:
             self.core,
             self._tokens,
             self._on_license_acquired,
-            deactivate=lambda: self.license.deactivate(),
             profile=lambda: self.license.get_profile(),
+            discover=self._discovery_or_load,
+            wipe_local=lambda: self.license.wipe_local(),
         )
         self.release = ReleaseClient(self.core, self._tokens, lambda: self._discovery_doc)
         #: The public download model (``distribution/download.json``, SDK parity pass §3.8).
@@ -482,6 +483,13 @@ class PolarisKeyClient:
             except Exception:
                 pass
         return result
+
+    def _discovery_or_load(self) -> Optional[Dict[str, Any]]:
+        """The discovery document, loaded once when this session has none (the account verbs
+        read the Identity fragment from it)."""
+        if self._discovery_doc is None:
+            self.discover()
+        return self._discovery_doc
 
     # ── The product page link (core.portal, DISC-01) ────────────────────────────────
     def portal(self) -> Optional[Dict[str, Any]]:

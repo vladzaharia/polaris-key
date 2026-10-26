@@ -16,8 +16,16 @@ extends RefCounted
 ##   signed_in_identity()                  who the device is signed in as, for the UI to show
 ##   current()                             {name, email, activatedAt} of the signed-in person off
 ##                                         the verified licence, or null (SDK parity §3.12)
-##   sign_out()                            cancel any sign-in, forget the identity and release
-##                                         this device (license.deactivate()); a PKeyResult
+##   subject()                             the pairwise subject signed in on the device (GET the
+##                                         discovered `subject`; kept across restarts); ok with
+##                                         detail {subject: String or null}
+##   sign_out()                            cancel any sign-in, run the pre-sign-out hooks, POST the
+##                                         discovered `signout` and forget the identity; the token
+##                                         goes only on `released: true`. ok with detail {released}.
+##                                         Without the endpoint it is the old path: release this
+##                                         device with license.deactivate()
+##   open_account()                        open the product's account page (the discovered
+##                                         `accountPortal`); ok with detail {url, opened}
 ##   sign_in_with_browser(device_name)     begin_sign_in, then open the verification page in the
 ##                                         system browser (the interim "Sign in with browser"
 ##                                         until a native redirect route exists, I-15)
@@ -68,7 +76,16 @@ var sleeper: Callable = Callable()
 ## sync. Empty: no sync.
 var on_acquired: Callable = Callable()
 
+## `func(url: String) -> bool`, how open_account() opens the page. Empty: the system browser.
+var account_opener: Callable = Callable():
+	set(value):
+		account_opener = value
+		if _account != null:
+			_account.opener = value
+
 var _core_ref: WeakRef = null
+var _account: PKeyIdentityAccount = null
+var _before_sign_out: Array[Callable] = []
 var _host: Node = null
 ## The sign-in `begin_sign_in` is running, or null.
 var _active: PKeySignInPrompt = null
@@ -81,10 +98,13 @@ var _last_identity: Dictionary = {}
 
 
 ## Bind to Core (PolarisKey.configure). A sign-in in progress is cancelled.
-func attach(core: PKeyCore, host: Node) -> void:
+func bind(core: PKeyCore, host: Node) -> void:
 	cancel()
 	_core_ref = weakref(core)
 	_host = host
+	_account = PKeyIdentityAccount.new(core, _before_sign_out)
+	_account.opener = account_opener
+	_account.on_wiped = _on_account_wiped
 
 
 func _core() -> PKeyCore:
@@ -219,16 +239,56 @@ func current() -> Variant:
 
 
 ## Sign this device out (SDK parity §3.12's `identity.signOut()`): cancel a sign-in in progress,
-## forget the identity this session saw, and release the seat with license.deactivate() (its
-## best-effort server call, then the mandatory local wipe). The PKeyResult is deactivate()'s;
-## `state_changed` fires as for a deactivation. A coroutine.
+## forget the identity this session saw, run the pre-sign-out hooks and POST the product's
+## discovered `signout`. ok, detail {released}: true when the seat was released and the token and
+## cache wiped (the device needs activating again), false when the licence and token stay.
+## A product that publishes no `signout` keeps the pre-account behaviour: the seat is released
+## with license.deactivate() (its best-effort server call, then the mandatory local wipe) and the
+## PKeyResult is deactivate()'s. `state_changed` fires as for a deactivation. A coroutine.
 func sign_out() -> PKeyResult:
 	cancel()
 	_last_identity = {}
 	var license = _host.get("license") if _host != null and is_instance_valid(_host) else null
-	if license == null:
+	if license == null or _account == null:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	var r := await _account.sign_out()
+	if r.ok or not (r.detail is Dictionary and r.detail.get("kind") == "unavailable"):
+		return r
+	for hook in _before_sign_out.duplicate():
+		await hook.call()
 	return await license.deactivate()
+
+
+## The pairwise subject signed in on the device (ok, detail {subject}: null for a key-only device
+## or none). A product without the account endpoints answers `service-unavailable`
+## (`detail.kind == "unavailable"`) and nothing is sent. A coroutine.
+func subject() -> PKeyResult:
+	if _account == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	return await _account.subject()
+
+
+## Open the product's page in the customer portal (ok, detail {url, opened}; when not opened,
+## show `url` as a link or QR code). `service-unavailable` when the product publishes none.
+## A coroutine.
+func open_account() -> PKeyResult:
+	if _account == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	return await _account.open_account()
+
+
+## Register a step `sign_out()` awaits before it signs out, in registration order (Cloud Sync's
+## flush, D-4): a `func() -> void`, a coroutine allowed. Nothing is registered until Cloud Sync
+## does.
+func add_before_sign_out(hook: Callable) -> void:
+	_before_sign_out.append(hook)
+
+
+## A released sign-out wiped the credential: the licence surface reports the change.
+func _on_account_wiped() -> void:
+	var license = _host.get("license") if _host != null and is_instance_valid(_host) else null
+	if license != null and license.on_changed.is_valid():
+		license.on_changed.call()
 
 
 ## "Sign in with browser" (SDK parity §3.12): begin_sign_in, then open the verification page in

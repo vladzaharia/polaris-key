@@ -182,7 +182,10 @@ export type TypV3 =
   | "pkey-trust+jws"
   | "pkey-bundle+jws"
   | "pkey-feed+jws"
-  | "pkey-release+jws";
+  | "pkey-release+jws"
+  /** Wire contract v5 §15: a device certificate and the roster, both signed by the product key. */
+  | "pkey-peer+jws"
+  | "pkey-ring+jws";
 
 /** §8 — the ISSUER is host-neutral. `key.plrs.im` remains the serving HOST and is no longer
  *  a valid `iss`; `license-iss-v2-host-rejected` pins exactly that. */

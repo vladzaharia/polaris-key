@@ -453,8 +453,8 @@
       "wp": "U-22"
     },
     "connect.identity": {
-      "status": "planned",
-      "wp": "CC-08"
+      "status": "implemented",
+      "note": "Verification is client-core's peer/cert.ts (verifyPeerCert, verifyRing, replaceRing, admitPeer), which the Node SDK consumes directly; the Node runner drives peerCertCases, ringCases and peerAdmissionCases (CC-04.4). The identity routes and the transcript replay follow in CC-06 and CC-08."
     },
     "connect.noise": {
       "status": "planned",

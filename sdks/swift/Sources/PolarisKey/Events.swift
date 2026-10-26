@@ -17,6 +17,8 @@
 //                   `mandatory`, `channel`; PolarisKeyUpdate emits it)
 //   packs           pack install progress (`pack`, `phase`, `done`, `total`)
 //   store           the credential store is degraded or failed (`reason`, `detail`)
+//   identity        the account changed (`kind`: `signedIn`, `signedOut` or `subjectChanged`;
+//                   `subject`, `previous`)
 //
 // license, entitlement and config are derived the same way everywhere: after anything that can
 // move them, the facade takes a fresh observation (gate status, every entitlement through the
@@ -52,9 +54,11 @@ public enum PolarisKeyEvent: Sendable, Equatable {
     /// The credential store is degraded (`StoreDegradedReason`) or a write failed
     /// (`store-failed`).
     case store(reason: String, detail: String?)
+    /// The account changed: `kind` is `signedIn`, `signedOut` or `subjectChanged`.
+    case identity(kind: String, subject: String?, previous: String?)
 
     /// The event's kind name (`license`, `entitlement`, `config`, `updateAvailable`, `packs`,
-    /// `store`).
+    /// `store`, `identity`).
     public var kind: String {
         switch self {
         case .license: return "license"
@@ -63,11 +67,12 @@ public enum PolarisKeyEvent: Sendable, Equatable {
         case .updateAvailable: return "updateAvailable"
         case .packs: return "packs"
         case .store: return "store"
+        case .identity: return "identity"
         }
     }
 
     /// Every kind name, in the shared order.
-    public static let kinds = ["license", "entitlement", "config", "updateAvailable", "packs", "store"]
+    public static let kinds = ["license", "entitlement", "config", "updateAvailable", "packs", "store", "identity"]
 }
 
 /// The fan-out behind `client.events`.

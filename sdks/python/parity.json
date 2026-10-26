@@ -153,12 +153,10 @@
       "wp": "I-10a"
     },
     "identity.attach": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented"
     },
     "identity.account": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented"
     },
     "identity.redirect.web": {
       "status": "planned",

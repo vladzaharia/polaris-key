@@ -70,6 +70,35 @@ static func parse(value: Variant, expected_product: String) -> Dictionary:
 	return {"kind": "ok", "services": services, "manifest": manifest}
 
 
+## The Identity fragment's account members (WIRE-CONTRACT-V4 §12.6) from a parsed discovery
+## manifest, or {} while the product's Identity service is off or the document has none:
+## {account: bool, issuer, key_entry_limit (int, or -1 when absent), attach, subject, signout,
+## account_portal ("" when absent), endpoints: every string endpoint as served}. A client uses an
+## endpoint only when it is here and never builds one.
+static func identity_from(manifest: Variant) -> Dictionary:
+	if not (manifest is Dictionary) or not (manifest.get("services") is Dictionary):
+		return {}
+	var fragment = manifest["services"].get("identity")
+	if not (fragment is Dictionary) or not PKeyClaims.is_true(fragment.get("enabled")):
+		return {}
+	var endpoints := {}
+	if fragment.get("endpoints") is Dictionary:
+		for k in fragment["endpoints"]:
+			if k is String and _nonempty(fragment["endpoints"][k]):
+				endpoints[k] = fragment["endpoints"][k]
+	var limit = fragment.get("keyEntryLimit")
+	return {
+		"account": PKeyClaims.is_true(fragment.get("account")),
+		"issuer": fragment["issuer"] if _nonempty(fragment.get("issuer")) else "",
+		"key_entry_limit": int(limit) if PKeyClaims.is_number(limit) else -1,
+		"attach": endpoints.get("attach", ""),
+		"subject": endpoints.get("subject", ""),
+		"signout": endpoints.get("signout", ""),
+		"account_portal": endpoints.get("accountPortal", ""),
+		"endpoints": endpoints,
+	}
+
+
 static func _nonempty(v: Variant) -> bool:
 	return v is String and v != ""
 

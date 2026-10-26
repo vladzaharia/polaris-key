@@ -184,28 +184,28 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `identity.signIn` | `identity.signIn` | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
-| `identity.subject` | `identity.subject` | planned (I-10a) | planned (I-10a) | `identity.subject` | `identity.subject` | planned (I-10b) | `identity.account` |
+| `identity.signIn` | `identity.signIn` | planned (I-10a) | planned (I-10a) | `identity.signIn` | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.subject` | `identity.subject` | planned (I-10a) | `identity.subject` | `identity.subject` | `identity.subject` | `identity.subject` | `identity.account` |
 | `identity.signOut` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.signOut` | `identity.signOut` | `identity.sign_out` | `identity.account` |
-| `identity.signIn.start` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
-| `identity.signIn.session.reopen` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
-| `identity.signIn.session.cancel` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
-| `identity.signIn.session.wait` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.start` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `SignInNamespace.start` | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.session.reopen` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `SignInSession.reopen` | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.session.cancel` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `SignInSession.cancel` | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
+| `identity.signIn.session.wait` | planned (I-10a) | planned (I-10a) | planned (I-10a) | `SignInSession.wait` | planned (I-10b) | planned (I-10b) | `identity.devicecode` |
 | `identity.signIn.session.complete` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.redirect.web` |
 | `identity.choice.licenses` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
 | `identity.choice.devices` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
 | `identity.choice.complete` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
 | `identity.choice.cancel` | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | `identity.choice` |
 | `identity.useLicenseChoice` | — | planned (I-10a) | — | — | — | — | `identity.choice` |
-| `identity.attachLicense` | `attach` | planned (I-10a) | planned (I-10a) | `attach` | planned (I-10b) | `attach` (planned: I-10b) | `identity.attach` |
-| `identity.openAccount` | `identity.openAccount` | planned (I-10a) | planned (I-10a) | `identity.openAccount` | `identity.openAccount` | planned (I-10b) | `identity.account` |
+| `identity.attachLicense` | `attach` | planned (I-10a) | `attach` | `attach` | `attach` | planned (I-10b) | `identity.attach` |
+| `identity.openAccount` | `identity.openAccount` | planned (I-10a) | `identity.open_account` | `identity.openAccount` | `identity.openAccount` | `identity.open_account` | `identity.account` |
 | `identity.current` | `identity.current` | — | `identity.current` | `identity.current` | — | `identity.current` | — |
 | `identity.forget` | `identity.forget` | — | — | — | — | — | — |
-| `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | — |
-| `identity.beginSignIn` | `identity.beginSignIn` | — | `identity.begin_sign_in` | `identity.beginSignIn` | `identity.beginSignIn` | `identity.begin_sign_in` | — |
-| `identity.pollSignIn` | `identity.pollSignIn` | — | `identity.poll_sign_in` | `identity.pollSignIn` | `identity.pollSignIn` | `identity.poll_sign_in` | — |
-| `identity.waitForSignIn` | `identity.waitForSignIn` | — | `identity.wait_for_sign_in` | `identity.waitForSignIn` | `identity.waitForSignIn` | `identity.wait_for_sign_in` | — |
-| `identity.acceptSignIn` | — | — | `identity.accept_sign_in` | `identity.acceptSignIn` | — | `identity.accept_sign_in` | — |
+| `identity.signInWithBrowser` | `identity.signInWithBrowser` | — | `identity.sign_in_with_browser` | — | — | `identity.sign_in_with_browser` | — |
+| `identity.beginSignIn` | `identity.beginSignIn` | — | `identity.begin_sign_in` | — | `identity.beginSignIn` | `identity.begin_sign_in` | — |
+| `identity.pollSignIn` | `identity.pollSignIn` | — | `identity.poll_sign_in` | — | `identity.pollSignIn` | `identity.poll_sign_in` | — |
+| `identity.waitForSignIn` | `identity.waitForSignIn` | — | `identity.wait_for_sign_in` | — | `identity.waitForSignIn` | `identity.wait_for_sign_in` | — |
+| `identity.acceptSignIn` | — | — | `identity.accept_sign_in` | — | — | `identity.accept_sign_in` | — |
 | `identity.isAvailable` | — | — | — | — | — | `identity.is_available` | — |
 | `identity.isSigningIn` | — | — | — | — | — | `identity.is_signing_in` | — |
 | `identity.cancel` | — | — | — | — | — | `identity.cancel` | — |
@@ -469,3 +469,8 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | Swift | `PolarisSignIn` | the kit's sign-in screens (PolarisKeyGate) | SP-52b |
 | Swift | `PolarisOfflineActivation` | the kit's offline screens (PolarisKeyGate) | SP-52b |
 | Swift | `GateOptions` | KitGateOptions | SP-52b |
+| Swift | `identity.signInWithBrowser` | `identity.signIn.start` | I-10b |
+| Swift | `identity.beginSignIn` | `identity.signIn.start` | I-10b |
+| Swift | `identity.pollSignIn` | `identity.signIn.session.wait` | I-10b |
+| Swift | `identity.waitForSignIn` | `identity.signIn.session.wait` | I-10b |
+| Swift | `identity.acceptSignIn` | `identity.attachLicense` | I-10b |

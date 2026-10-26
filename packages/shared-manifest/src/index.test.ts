@@ -453,6 +453,46 @@ describe("the identity block (I-09, plans/I-27.md §3)", () => {
   });
 });
 
+describe("the connect block (CC-02.2)", () => {
+  const codes = (r: ReturnType<typeof validateManifestDocuments>) => ({
+    errors: r.errors.map((e) => e.code).sort(),
+    warnings: r.warnings.map((w) => w.code).sort(),
+  });
+  const withConnect = (connect: unknown, on = true) =>
+    validateManifestDocuments({
+      product: {
+        ...PRODUCT,
+        modules: on
+          ? { identity: { enabled: true }, connect: { enabled: true } }
+          : { license: { enabled: true } },
+        connect,
+      },
+      schema: catalogWithSecretDelivery(),
+    });
+
+  it("accepts relay and interAccount, and reads them back", () => {
+    const res = withConnect({ relay: false, interAccount: true });
+    expect(res.ok).toBe(true);
+    expect(codes(res).warnings).not.toContain("connect_block_without_service");
+  });
+
+  it("refuses a non-object, an unknown member and a non-boolean", () => {
+    expect(codes(withConnect("on")).errors).toEqual(["invalid_connect"]);
+    expect(codes(withConnect({ turn: true })).errors).toEqual([
+      "invalid_connect",
+    ]);
+    expect(codes(withConnect({ relay: "yes" })).errors).toEqual([
+      "invalid_connect",
+    ]);
+  });
+
+  it("warns when declared while the connect service is off", () => {
+    const res = withConnect({ relay: true }, false);
+    expect(res.ok).toBe(true);
+    expect(codes(res).warnings).toContain("connect_block_without_service");
+  });
+});
+
 describe("release candidate filter (stableTagPattern, ignoreTags)", () => {
   const withFields = (fields: Record<string, unknown>) =>
     parseManifest({

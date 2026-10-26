@@ -9,19 +9,22 @@
  * `validateServices` refuses a set with Cloud Connect on and Identity off
  * (`connect_requires_identity`).
  *
- * CC-02.1 lands the row, the descriptor and the coherence code only: no route serves data yet
- * (the table is empty) and the service contributes nothing.
+ * CC-02.1 lands the row, the descriptor and the coherence code: no route serves data yet (the
+ * table is empty). CC-02.2 adds its settings slice.
  */
 
 import type { ServiceDescriptor } from "../../core/registry.js";
 import { connectIntegration } from "./integration.js";
 import { CONNECT_ROUTES } from "./routes.js";
+import { CONNECT_SETTINGS_SLICE } from "./settings.js";
 
 export const connectService: ServiceDescriptor = {
   slug: "connect",
   contributes: { integration: connectIntegration },
   handle: CONNECT_ROUTES.handle,
   surface: CONNECT_ROUTES.surface,
+  /** CC-02.2: the manifest switches and the product ceiling; CC-07.3 reads them. */
+  settings: CONNECT_SETTINGS_SLICE,
   /** `{"enabled": true}` and nothing else: no endpoint is served yet (CC-06.2 adds them). */
   discoveryFragment: async () => ({ enabled: true }),
 };

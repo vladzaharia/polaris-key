@@ -73,6 +73,10 @@
       "title": "已达到设备上限",
       "message": "此许可证已用满所有设备。请替换一台设备以在此使用。"
     },
+    "device_keys_invalid": {
+      "title": "设备未设置",
+      "message": "无法为同步设置此设备。请更新应用后重试。"
+    },
     "key_entry_limit": {
       "title": "密钥已无剩余输入次数",
       "message": "此密钥已没有剩余的输入次数。请将它添加到你的账户，然后改为登录。"
@@ -264,6 +268,26 @@
     "writes_paused": {
       "title": "同步已暂停",
       "message": "同步暂时暂停。你的更改会保留，稍后同步。"
+    },
+    "encryption_mismatch": {
+      "title": "加密不一致",
+      "message": "应用与同步服务的加密设置不一致。请更新应用后重试。"
+    },
+    "upload_expired": {
+      "title": "上传已过期",
+      "message": "上传耗时过长，已取消。请重试。"
+    },
+    "upload_incomplete": {
+      "title": "上传不完整",
+      "message": "文件的一部分没有送达。请重试。"
+    },
+    "file_too_large": {
+      "title": "文件过大",
+      "message": "此文件超过了同步文件的大小上限。"
+    },
+    "keyring_conflict": {
+      "title": "已设置",
+      "message": "此账户已设置加密。请用另一台设备或恢复码解锁。"
     },
     "email_mismatch": {
       "title": "电子邮件未验证",
@@ -468,6 +492,18 @@
     "platform-identity-unavailable": {
       "title": "无法登录",
       "message": "此设备无法自动登录。请使用其他登录方式。"
+    },
+    "sync-locked": {
+      "title": "同步已锁定",
+      "message": "请用恢复码或另一台已登录的设备，为这台设备解锁同步。"
+    },
+    "recovery-code-invalid": {
+      "title": "恢复码无效",
+      "message": "恢复码不正确。请检查后重试。"
+    },
+    "sync-encryption-pinned": {
+      "title": "需要加密",
+      "message": "此应用需要加密同步，但目前不可用。同步将保持关闭。"
     },
     "invalid-options": {
       "title": "应用未设置",

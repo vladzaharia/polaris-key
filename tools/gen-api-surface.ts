@@ -337,6 +337,8 @@ const SWIFT_TYPE: Record<string, string> = {
   distribution: "DistributionClient",
   commerce: "CommerceClient",
   packs: "PacksClient",
+  SignInNamespace: "SignInNamespace",
+  SignInSession: "SignInSession",
 };
 /** Rows with no compile-only reference: actor-isolated properties have no key path, and an unapplied generic method cannot infer `T`. */
 const SWIFT_UNASSERTED = new Set([

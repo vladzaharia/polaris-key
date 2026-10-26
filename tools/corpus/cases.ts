@@ -11,6 +11,11 @@ import { buildFeedCases } from "./feed.js";
 import { buildJwsCases } from "./jws.js";
 import { buildLicenseUserCases } from "./license-user.js";
 import {
+  buildAdmissionCases,
+  buildPeerCertCases,
+  buildRingCases,
+} from "./peer.js";
+import {
   buildMarkerCases,
   buildPackRecordCases,
   checkPackClaimCases,
@@ -46,6 +51,11 @@ export async function buildV2(): Promise<unknown> {
     delegationCases: await buildDelegationCases(),
     // plans/SP-54.md §4: the signed-in subject, read beside the claims; the last section.
     licenseUserCases: await buildLicenseUserCases(),
+    // V5 §15.2, §15.3 (plans/CC-01-cloud-connect.md §2.9): the device certificate, the roster
+    // and admission; inert until each SDK's `connect.identity` parity row flips.
+    peerCertCases: await buildPeerCertCases(),
+    ringCases: await buildRingCases(),
+    peerAdmissionCases: await buildAdmissionCases(),
   };
   checkCorpusV4(corpus as unknown as Record<string, AnyCase[]>);
   checkPackClaimCases(corpus as unknown as Record<string, AnyCase[]>);

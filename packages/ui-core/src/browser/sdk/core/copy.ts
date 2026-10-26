@@ -161,6 +161,14 @@ const FR: CopyBundle = {
       "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.",
     writes_paused:
       "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard.",
+    encryption_mismatch:
+      "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
+    upload_expired: "L’envoi a pris trop de temps et a été annulé. Réessayez.",
+    upload_incomplete: "Une partie du fichier n’est pas arrivée. Réessayez.",
+    file_too_large:
+      "Ce fichier dépasse la taille maximale des fichiers synchronisés.",
+    keyring_conflict:
+      "Le chiffrement est déjà configuré pour ce compte. Déverrouillez avec un autre appareil ou votre code de récupération.",
     body_too_large: "Cet élément est trop volumineux pour être envoyé.",
     method_not_allowed:
       "La requête n’était pas valide. Mettez l’app à jour, puis réessayez.",
@@ -304,6 +312,12 @@ const FR: CopyBundle = {
       "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.",
     "platform-identity-unavailable":
       "Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion.",
+    "sync-locked":
+      "Déverrouillez la synchronisation sur cet appareil avec votre code de récupération ou un autre appareil connecté.",
+    "recovery-code-invalid":
+      "Ce code de récupération n’est pas correct. Vérifiez-le et réessayez.",
+    "sync-encryption-pinned":
+      "Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée.",
     "sign-out-failed": "La déconnexion n’a pas abouti. Réessayez.",
     "bundle-rejected": "Le fichier d’activation a été refusé.",
     "bundle-import-unsupported":

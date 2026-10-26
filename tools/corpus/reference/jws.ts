@@ -20,7 +20,7 @@ import {
 
 // ── A reference JWS verifier (V4 §1.1–§1.2), to recompute every new verdict ─────────────────
 
-function refPointOk(enc: Uint8Array): boolean {
+export function refPointOk(enc: Uint8Array): boolean {
   if (enc.length !== 32) return false;
   if ((leToBig(enc) & (2n ** 255n - 1n)) >= ED_P) return false;
   const hex = bytesHex(enc);
