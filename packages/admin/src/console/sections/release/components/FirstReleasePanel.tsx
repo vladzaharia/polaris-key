@@ -39,7 +39,6 @@ import {
   useCiPublisher,
   useCiTokens,
 } from "../../core/pages/KeysCi.js";
-import { PublishFromCiDrawer } from "./PublishFromCi/PublishFromCiDrawer.js";
 import { LinkRepositoryDrawer } from "../../core/pages/LinkRepository.js";
 
 /** How often the store is re-read while the panel waits for the first release. */
@@ -69,6 +68,8 @@ export interface FirstReleasePanelProps {
   /** The product is linked to a GitHub repository (`releaseSource`). */
   linked: boolean;
   /** The repo sync health (linked products only): its `github` check is the App row. */
+  /** Opens the Publish from CI drawer (the page hosts it, so it outlives this panel). */
+  onPublish?: () => void;
   health: {
     data: ReleaseHealth | undefined;
     isPending: boolean;
@@ -82,6 +83,7 @@ export function FirstReleasePanel({
   productName,
   linked,
   health,
+  onPublish,
 }: FirstReleasePanelProps): React.ReactElement {
   const queryClient = useQueryClient();
   const publisher = useCiPublisher(slug);
@@ -90,7 +92,6 @@ export function FirstReleasePanel({
   const [issuing, setIssuing] = React.useState(false);
   const noMint = useBreakGlassReason();
   const [linking, setLinking] = React.useState(false);
-  const [publishing, setPublishing] = React.useState(false);
   const { copy, state: copyState } = useCopy();
   const policy = publisher.data ?? null;
   const step = workflowStep(slug);
@@ -321,13 +322,11 @@ export function FirstReleasePanel({
           <p className="max-w-prose text-sm text-fg-muted">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {linked ? (
-            <Button onClick={() => setPublishing(true)}>
-              Publish from CI…
-            </Button>
+          {linked && onPublish ? (
+            <Button onClick={onPublish}>Publish from CI…</Button>
           ) : null}
           <Button
-            variant={linked ? "outline" : "primary"}
+            variant={linked && onPublish ? "outline" : "primary"}
             iconStart={
               copyState === "copied" ? (
                 <Check aria-hidden />
@@ -368,13 +367,6 @@ export function FirstReleasePanel({
         onOpen={() => setEditingPublisher(true)}
       />
       <IssueCiTokenFlow slug={slug} open={issuing} onOpenChange={setIssuing} />
-      {linked ? (
-        <PublishFromCiDrawer
-          slug={slug}
-          open={publishing}
-          onOpenChange={setPublishing}
-        />
-      ) : null}
       {!linked ? (
         <LinkRepositoryDrawer
           slug={slug}

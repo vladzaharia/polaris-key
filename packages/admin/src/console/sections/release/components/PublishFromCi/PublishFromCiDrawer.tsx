@@ -165,6 +165,7 @@ export function PublishFromCiDrawer({
                 readiness={readiness.data}
                 open={open}
                 onUseOtherCi={() => setOtherCi(true)}
+                onRefetchReadiness={() => void readiness.refetch()}
               />
             </>
           )}

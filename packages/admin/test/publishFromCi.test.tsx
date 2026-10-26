@@ -279,7 +279,9 @@ describe("Publish from CI", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("pull_requests: write");
     await userEvent.click(screen.getByRole("tab", { name: "One command" }));
-    expect(document.body.textContent).toContain("pkey ci init --channel stable");
+    expect(document.body.textContent).toContain(
+      "pkey ci init --channel stable",
+    );
   });
 
   it("waits for the tag, then says Done with the release", async () => {

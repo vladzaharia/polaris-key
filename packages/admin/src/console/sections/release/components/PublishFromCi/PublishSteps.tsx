@@ -69,11 +69,13 @@ export function PublishSteps({
   readiness,
   open,
   onUseOtherCi,
+  onRefetchReadiness,
 }: {
   slug: string;
   readiness: CiReadiness;
   open: boolean;
   onUseOtherCi: () => void;
+  onRefetchReadiness: () => void;
 }): React.ReactElement {
   const missing = readiness.checks.filter(
     (c) =>
@@ -108,10 +110,13 @@ export function PublishSteps({
     const id = window.setInterval(() => {
       if (document.hidden) return;
       if (ready) void refetchStore();
-      else void refetchPr();
+      else {
+        onRefetchReadiness();
+        void refetchPr();
+      }
     }, POLL_MS);
     return () => window.clearInterval(id);
-  }, [open, ready, newest, refetchStore, refetchPr]);
+  }, [open, ready, newest, refetchStore, refetchPr, onRefetchReadiness]);
 
   const openPr = async (): Promise<void> => {
     setOpening(true);
@@ -199,7 +204,10 @@ export function PublishSteps({
             }
             waiting="Waiting for the change to reach main"
             found={null}
-            onCheck={() => void refetchPr()}
+            onCheck={() => {
+              onRefetchReadiness();
+              void refetchPr();
+            }}
           />
         )}
       </li>
