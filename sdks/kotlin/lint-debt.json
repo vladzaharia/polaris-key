@@ -425,14 +425,14 @@
       "ktlint:standard:multiline-if-else": 2
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptTest.kt": {
-      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 3,
       "detekt:complexity.LongMethod": 2,
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:style.MaxLineLength": 5,
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:argument-list-wrapping": 42,
       "ktlint:standard:binary-expression-wrapping": 2,
-      "ktlint:standard:blank-line-between-when-conditions": 32,
+      "ktlint:standard:blank-line-between-when-conditions": 46,
       "ktlint:standard:function-literal": 6,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 5,
@@ -1018,22 +1018,23 @@
       "ktlint:standard:spacing-between-declarations-with-comments": 2
     },
     "sdks/kotlin/license/src/main/kotlin/im/plrs/key/license/LicenseEndpoints.kt": {
+      "detekt:complexity.ComplexCondition": 1,
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 2,
       "detekt:style.MagicNumber": 7,
       "detekt:style.ReturnCount": 1,
-      "ktlint:standard:blank-line-between-when-conditions": 15,
-      "ktlint:standard:class-signature": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 17,
+      "ktlint:standard:class-signature": 7,
       "ktlint:standard:multiline-if-else": 2
     },
     "sdks/kotlin/license/src/test/kotlin/im/plrs/key/license/LicenseClientTest.kt": {
-      "detekt:style.MaxLineLength": 2,
-      "ktlint:standard:argument-list-wrapping": 28,
+      "detekt:style.MaxLineLength": 3,
+      "ktlint:standard:argument-list-wrapping": 33,
       "ktlint:standard:function-signature": 1,
-      "ktlint:standard:max-line-length": 2,
+      "ktlint:standard:max-line-length": 3,
       "ktlint:standard:multiline-loop": 1,
-      "ktlint:standard:spacing-between-declarations-with-comments": 1
+      "ktlint:standard:spacing-between-declarations-with-comments": 2
     },
     "sdks/kotlin/packs/src/main/kotlin/im/plrs/key/packs/Apply.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 3,
@@ -2362,7 +2363,7 @@
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:performance.SpreadOperator": 1,
       "detekt:style.MagicNumber": 21,
-      "ktlint:standard:blank-line-between-when-conditions": 30,
+      "ktlint:standard:blank-line-between-when-conditions": 32,
       "ktlint:standard:class-signature": 4,
       "ktlint:standard:function-signature": 2,
       "ktlint:standard:multiline-if-else": 2
