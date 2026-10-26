@@ -2263,7 +2263,7 @@ Every symmetric key seals one plaintext, so the nonce is a constant (12 zero byt
 
 **`pkey-sync-file/1`** seals a file as a stream of segments:
 
-- a 64-byte header: `PKSYNCF1`, `version` u16 1, `flags` u16, `segmentBytes` u32 (1 MiB), `kid` 16 bytes, `salt` 32 bytes;
+- a 64-byte little-endian header, like `pkey-sync-chunks/1`: `PKSYNCF1`, `version` u16 1, `flags` u16, `segmentBytes` u32 (1 MiB), `kid` 16 bytes, `salt` 32 bytes. Only the nonce counter below is big-endian;
 - segment `i` is `AES-256-GCM(K_file, nonce = u8(last) ‖ 0³ ‖ u64be(i), aad = header, segment)`;
 - an empty file is one empty last segment. A truncated stream, a reordered segment or a missing last flag is refused.
 
