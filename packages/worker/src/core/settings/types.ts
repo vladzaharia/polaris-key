@@ -237,6 +237,11 @@ export interface SettingDef<T = unknown> {
    * L1 in its widening direction (rule 2).
    */
   securityWidening?: boolean;
+  /**
+   * Names of `Env` vars whose values this setting may never hold (a product's audience may not be
+   * the platform's own client id). A console write and a resync that name one are refused.
+   */
+  reservedFrom?: readonly string[];
   /** `secret`: only presence is ever shown or audited, never a value. */
   sensitivity: "config" | "secret";
   /**

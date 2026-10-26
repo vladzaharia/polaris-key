@@ -27,6 +27,12 @@
  */
 
 import {
+  APPLE_TEAM_ID_RE,
+  BUNDLE_ID_RE,
+  MAX_BUNDLE_ID_LENGTH,
+  GOOGLE_CLIENT_ID_RE,
+  MAX_APPLE_SIGN_IN_BUNDLE_IDS,
+  MAX_GOOGLE_CLIENT_IDS,
   MAX_IDENTITY_REDIRECT_PATH_LENGTH,
   MAX_IDENTITY_REDIRECT_PATHS,
   OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
@@ -276,6 +282,123 @@ const REDIRECT_PATHS: SettingDef = setting({
   since: "I-09",
 });
 
+// ── Platform sign-in (CC-01 auto sign-in, D-A1): the audiences a native token is checked against ──
+
+const PLATFORM_SIGN_IN_DOCS = "/docs/features/sign-in/";
+const PS_AREA = "identity.platformSignIn";
+/** The platform's own login-card clients: never a product's audience (both ways). */
+const PLATFORM_CLIENT_VARS = [
+  "SIGNIN_GOOGLE_CLIENT_ID",
+  "SIGNIN_APPLE_SERVICES_ID",
+] as const;
+
+/** One claimable audience row; the manifest path is the same dotted key. */
+function audienceSetting(
+  key: string,
+  label: string,
+  description: string,
+  keywords: string[],
+  value: SettingDef["value"],
+  defaultValue: unknown,
+): SettingDef {
+  return setting({
+    key,
+    rbacArea: "keys",
+    scope: "product",
+    service: "identity",
+    area: PS_AREA,
+    label,
+    description,
+    keywords,
+    docs: PLATFORM_SIGN_IN_DOCS,
+    value,
+    defaultValue,
+    ...(defaultValue === null ? { allowUnset: true } : {}),
+    merge: "cascade",
+    ownership: "claimable",
+    manifest: { path: `product:${key}` },
+    securityWidening: true,
+    widensWhen: "any",
+    critical: true,
+    confirm: { change: "L1" },
+    reservedFrom: PLATFORM_CLIENT_VARS,
+    visibleWhen: VISIBLE,
+    storage: { kind: "scalar" },
+    readers: ["services/identity/platformSignIn.ts"],
+    since: "I-42.2",
+  });
+}
+
+const GOOGLE_ID_SPEC = {
+  kind: "string",
+  pattern: GOOGLE_CLIENT_ID_RE.source,
+  maxLength: 128,
+} as const;
+
+const PS_GOOGLE_SERVER = audienceSetting(
+  "identity.platformSignIn.google.serverClientId",
+  "Google web client id",
+  "The web client Google signs in to. Android and iOS tokens name it as their audience.",
+  ["google", "audience", "aud", "oauth"],
+  GOOGLE_ID_SPEC,
+  null,
+);
+const PS_GOOGLE_CLIENTS = audienceSetting(
+  "identity.platformSignIn.google.clientIds",
+  "Google app client ids",
+  "The Android and iOS clients of the app. Needs the web client id.",
+  ["google", "android", "ios", "azp"],
+  { kind: "list", of: GOOGLE_ID_SPEC, max: MAX_GOOGLE_CLIENT_IDS },
+  [],
+);
+const PS_APPLE_TEAM = audienceSetting(
+  "identity.platformSignIn.apple.teamId",
+  "Apple team id",
+  "The ten-character id of the team that owns the app. Apple sign-in is per team.",
+  ["apple", "team"],
+  { kind: "string", pattern: APPLE_TEAM_ID_RE.source, maxLength: 10 },
+  null,
+);
+const PS_APPLE_BUNDLES = audienceSetting(
+  "identity.platformSignIn.apple.bundleIds",
+  "Apple bundle ids",
+  "The app's bundle ids. The App Store and TestFlight channels' bundle ids count too. Needs the team id.",
+  ["apple", "bundle"],
+  {
+    kind: "list",
+    of: {
+      kind: "string",
+      pattern: BUNDLE_ID_RE.source,
+      maxLength: MAX_BUNDLE_ID_LENGTH,
+    },
+    max: MAX_APPLE_SIGN_IN_BUNDLE_IDS,
+  },
+  [],
+);
+/** `identity.nearby`: on unless a developer switches it off; widens nothing by itself. */
+const NEARBY: SettingDef = setting({
+  key: "identity.nearby",
+  rbacArea: "keys",
+  scope: "product",
+  service: "identity",
+  area: PS_AREA,
+  label: "Sign in from a nearby device",
+  description:
+    "Whether a signed-out app may ask a nearby signed-in device to approve its sign-in. On unless you turn it off.",
+  keywords: ["nearby", "approve", "phone"],
+  docs: "/docs/features/sign-in/",
+  value: { kind: "boolean" },
+  defaultValue: true,
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.nearby" },
+  confirm: { on: "L0", off: "L0" },
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  readers: ["services/identity/platformSignIn.ts"],
+  since: "I-42.2",
+});
+
 /** `browserSession.ts`'s 30-day browser session: a product may only shorten it (rule 3). */
 const BROWSER_SESSION_DAYS = 30;
 
@@ -288,6 +411,11 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     PORTAL_KEY_REISSUE,
     TERMS,
     REDIRECT_PATHS,
+    PS_GOOGLE_SERVER,
+    PS_GOOGLE_CLIENTS,
+    PS_APPLE_TEAM,
+    PS_APPLE_BUNDLES,
+    NEARBY,
     setting({
       key: "identity.oidc",
       rbacArea: "keys",
@@ -408,6 +536,20 @@ export const IDENTITY_ROW_SETTINGS: readonly SettingDef[] = [
   KEY_ENTRY_LIMIT,
   TERMS,
   REDIRECT_PATHS,
+  PS_GOOGLE_SERVER,
+  PS_GOOGLE_CLIENTS,
+  PS_APPLE_TEAM,
+  PS_APPLE_BUNDLES,
+  NEARBY,
+];
+
+/** The platform-sign-in rows, in the order the console lists them. */
+export const PLATFORM_SIGN_IN_SETTINGS: readonly SettingDef[] = [
+  PS_GOOGLE_SERVER,
+  PS_GOOGLE_CLIENTS,
+  PS_APPLE_TEAM,
+  PS_APPLE_BUNDLES,
+  NEARBY,
 ];
 
 /**

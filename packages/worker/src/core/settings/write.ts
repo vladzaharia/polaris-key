@@ -59,6 +59,7 @@ import {
   type ResolvedSetting,
 } from "./resolve.js";
 import { NO_GUARD } from "./columns.js";
+import { reservedValueIn } from "./rules.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
   BREAK_GLASS_REASON_MAX,
@@ -445,6 +446,7 @@ function commonChecks(
   before: unknown,
   after: unknown,
   opts: WriteOptions,
+  env: SettingsEnv,
 ): WriteRefusal | null {
   if (op === "set" && !isSettingValue(def, w.value))
     return refuse(
@@ -453,6 +455,14 @@ function commonChecks(
       `${def.key} is not a valid value (${describeSpec(def)})`,
       def.key,
       { value: def.value },
+    );
+  if (op === "set" && reservedValueIn(def, w.value, env) !== null)
+    return refuse(
+      422,
+      "invalid_value",
+      `${def.key} may not use a value the platform reserves`,
+      def.key,
+      { reserved: true },
     );
   const strict = opts.strict !== false;
   const versionOk =
@@ -789,7 +799,15 @@ async function writeProduct(
       }
     } else after = { value: undefined, source: manifestSide };
 
-    const refused = commonChecks(def, w, op, before.value, after.value, opts);
+    const refused = commonChecks(
+      def,
+      w,
+      op,
+      before.value,
+      after.value,
+      opts,
+      ctx.env,
+    );
     if (refused) return refused;
     if (op === "set") {
       const out = outOfBounds(def, w.value, await platformLinks(ctx, def));
@@ -1071,7 +1089,15 @@ async function writePlatform(
             value: fallback?.value ?? def.defaultValue,
             source: fallback?.source ?? "default",
           };
-    const refused = commonChecks(def, w, op, before.value, after.value, opts);
+    const refused = commonChecks(
+      def,
+      w,
+      op,
+      before.value,
+      after.value,
+      opts,
+      ctx.env,
+    );
     if (refused) return refused;
     plans.push({
       def,

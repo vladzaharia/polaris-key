@@ -16,6 +16,7 @@ import type {
   ManifestContribution,
   ManifestContributor,
 } from "../../core/ingest/types.js";
+import { reservedAudienceIn } from "./platformSignIn.js";
 import { identityManifestIngest } from "./settings.js";
 
 /** A stored `oidc_config` row's columns (`stmtInsertOidcConfig`'s, after the product). */
@@ -211,6 +212,22 @@ function oidcStatement(ctx: IngestContext): DbStatement | null {
 
 export const identityManifest: ManifestContributor = {
   checks: (ctx) => [
+    {
+      check: "audience",
+      run: async () => {
+        // CC-01 D-A1: a product may not name the platform's own login-card client as its audience.
+        const hit = reservedAudienceIn(ctx.manifest, ctx.env);
+        return hit
+          ? {
+              check: "audience",
+              message: `identity.platformSignIn names ${hit}, which the platform reserves. Use your own client id.`,
+              area: "identity",
+              file: "product",
+              path: "/identity/platformSignIn",
+            }
+          : null;
+      },
+    },
     {
       check: "issuer",
       run: async () => {

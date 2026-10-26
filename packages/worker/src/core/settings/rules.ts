@@ -624,3 +624,25 @@ export function checkRegistry(registry: SettingsRegistry): string[] {
 
   return out;
 }
+
+/**
+ * The first string in `value` (a string or a list of them) that equals a value of one of the
+ * `Env` vars `def.reservedFrom` names, or `null`. Case-insensitive; unset vars reserve nothing.
+ */
+export function reservedValueIn(
+  def: Pick<SettingDef, "reservedFrom">,
+  value: unknown,
+  env: Readonly<Record<string, unknown>>,
+): string | null {
+  if (!def.reservedFrom) return null;
+  const reserved = new Set<string>();
+  for (const name of def.reservedFrom) {
+    const v = env[name];
+    if (typeof v === "string" && v !== "") reserved.add(v.toLowerCase());
+  }
+  const items = Array.isArray(value) ? value : [value];
+  for (const item of items)
+    if (typeof item === "string" && reserved.has(item.toLowerCase()))
+      return item;
+  return null;
+}
