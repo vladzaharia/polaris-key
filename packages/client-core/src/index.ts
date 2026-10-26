@@ -442,3 +442,24 @@ export {
   withManageReturn,
 } from "./manage.js";
 export type { KeyEntriesCount } from "./manage.js";
+
+export {
+  DEFAULT_REDIRECT_SCOPE,
+  PKCE_VERIFIER_MAX,
+  PKCE_VERIFIER_MIN,
+  TOKEN_CONTENT_TYPE,
+  checkCallback,
+  generateCodeVerifier,
+  generateState,
+  isRedirectUri,
+  parseTokenAnswer,
+  pkceChallenge,
+  startRedirect,
+  tokenForm,
+  type CallbackFailure,
+  type CallbackResult,
+  type RandomBytes,
+  type RedirectPending,
+  type StartRedirectOptions,
+  type TokenAnswer,
+} from "./identityRedirect.js";

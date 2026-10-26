@@ -186,7 +186,6 @@ export const ErrorCode = {
   packRevoked: "pack-revoked",
   packNotDataOnly: "pack-not-data-only",
   markerRejected: "marker-rejected",
-  attachDeclined: "attach-declined",
   licenseRequired: "license_required",
   licenseInvalid: "license_invalid",
   licenseStale: "license_stale",
@@ -375,7 +374,6 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-revoked",
   "pack-not-data-only",
   "marker-rejected",
-  "attach-declined",
   "license_required",
   "license_invalid",
   "license_stale",
@@ -566,7 +564,6 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-revoked": "client",
   "pack-not-data-only": "client",
   "marker-rejected": "client",
-  "attach-declined": "client",
   license_required: "backend",
   license_invalid: "backend",
   license_stale: "backend",
@@ -1365,7 +1362,6 @@ export const ACTIVATION_RESULT_VALUES: readonly string[] = [
   "unauthorized",
   "enroll-disabled",
   "key-entry-limit",
-  "license-owned",
   "refused",
   "error",
 ];
@@ -1852,12 +1848,20 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.toggle": { status: "planned", service: "identity", na: [] },
-  "identity.keyentry": { status: "implemented", service: "identity", na: [] },
+  "identity.keyentry": { status: "planned", service: "identity", na: [] },
   "identity.attach": { status: "planned", service: "identity", na: [] },
   "identity.account": { status: "planned", service: "identity", na: [] },
-  "identity.redirect.web": { status: "planned", service: "identity", na: [] },
+  "identity.redirect.web": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "identity.choice": { status: "planned", service: "identity", na: [] },
-  "identity.signin.hints": { status: "planned", service: "identity", na: [] },
+  "identity.signin.hints": {
+    status: "implemented",
+    service: "identity",
+    na: [],
+  },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1977,4 +1981,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "d289a235d3277c94d81997829525cbf9fe1cfeafe254d0ffe54a34d0d25836c0";
+  "396c79251eeb745b0ddc7fcac46b66d58450f92dd7c6962291466202a2cb5ab4";

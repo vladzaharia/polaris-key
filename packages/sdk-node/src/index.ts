@@ -111,6 +111,11 @@ export {
   type WaitForSignInOptions,
 } from "./identity/client.js";
 export {
+  RedirectSession,
+  type RedirectOutcome,
+  type RedirectSignInOptions,
+} from "./identity/redirect.js";
+export {
   DevicesClient,
   type AccountDevice,
   type DevicesClientOptions,
