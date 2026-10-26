@@ -1,7 +1,7 @@
-// @pkey-feature identity.devicecode
+// @pkey-feature identity.devicecode identity.toggle
 //
-// RFC 8628 pacing and the prompt, beyond what the devicecode transcripts pin: `waitForSignIn`
-// waits one interval before the first poll, lengthens the interval after a `slow_down` (by the
+// RFC 8628 pacing and the prompt, beyond what the devicecode transcripts pin: `signIn.start` and
+// `session.wait()`: it waits one interval before the first poll, lengthens the interval after a `slow_down` (by the
 // server's interval, or by five seconds when a 429 carries none) and never shortens it, rides out
 // a transient failure at the same interval, stops at expiry without asking the server, and stops
 // when the coroutine is cancelled. Server seconds round UP; the device code is redacted.
@@ -60,7 +60,7 @@ class IdentityClientTest {
     @Test
     fun thePromptRoundsUpAndRedactsTheDeviceCode() = runBlocking {
         val (core, transport, _) = setup(mutableListOf())
-        val prompt = IdentityClient(core).beginSignIn("  Living room  ")
+        val prompt = IdentityClient(core).signIn.start(SignInOptions(deviceName = "  Living room  ")).prompt
         assertEquals(2L, prompt.interval)
         assertEquals(600L, prompt.expiresIn)
         assertEquals(clock + 600, prompt.expiresAt)
@@ -71,24 +71,28 @@ class IdentityClientTest {
     }
 
     @Test
-    fun waitForSignInPacesSlowsDownAndRidesOutFailures() = runBlocking {
+    fun waitPacesSlowsDownAndRidesOutFailures() = runBlocking {
         val polls = mutableListOf<() -> PolarisResponse>(
             { respond(200, """{"status":"pending"}""") },
             { respond(429, """{"status":"slow_down"}""") },
             { throw PolarisException(ErrorCode.networkError, "flaky") },
             { respond(503) },
             { respond(429, """{"status":"slow_down","interval":3}""") },
-            { respond(200, """{"status":"ready","token":"pkeyt_signed_in"}""") },
+            { respond(200, """{"status":"ready","token":"pkeyt_signed_in","subject":"ps_""" + "a".repeat(32) + """"}""") },
         )
         val (core, _, store) = setup(polls)
         val slept = ArrayList<Long>()
         var acquired = 0
-        val identity = IdentityClient(core, onAcquired = { acquired++ }) { s ->
+        val subjects = ArrayList<String?>()
+        val identity = IdentityClient(core, onAcquired = { acquired++ }, onSubject = { subjects += it }, sleep = { s ->
             slept += s
             clock += s
-        }
-        val prompt = identity.beginSignIn()
-        assertEquals(SignInResult.Ready, identity.waitForSignIn(prompt))
+        })
+        val session = identity.signIn.start()
+        assertEquals(SignInOutcome.SignedIn("ps_" + "a".repeat(32)), session.wait())
+        assertEquals(SignInOutcome.SignedIn("ps_" + "a".repeat(32)), session.outcome)
+        assertEquals(listOf<String?>("ps_" + "a".repeat(32)), subjects)
+        assertEquals("ps_" + "a".repeat(32), core.storedSubject())
         // 2, then 2 (pending), then 2+5 after an interval-less slow_down, held through two
         // transient failures, and never shortened by a smaller server interval (3 < 7).
         assertEquals(listOf(2L, 2L, 7L, 7L, 7L, 7L), slept)
@@ -98,35 +102,104 @@ class IdentityClientTest {
     }
 
     @Test
-    fun waitForSignInStopsAtExpiryWithoutAskingTheServer() = runBlocking {
+    fun waitStopsAtExpiryWithoutAskingTheServer() = runBlocking {
         val (core, transport, _) = setup(mutableListOf({ respond(200, """{"status":"pending"}""") }))
-        val identity = IdentityClient(core) { s -> clock += s * 200 }
-        val prompt = identity.beginSignIn()
-        assertEquals(SignInResult.Expired, identity.waitForSignIn(prompt))
+        val identity = IdentityClient(core, sleep = { s -> clock += s * 200 })
+        assertEquals(SignInOutcome.Expired, identity.signIn.start().wait())
         assertEquals(2, transport.requests().size) // start + one poll; the second wait ran past expiry
     }
 
     @Test
     fun cancellingTheCoroutineStopsPolling() = runBlocking {
         val (core, transport, _) = setup(mutableListOf())
-        val identity = IdentityClient(core) { awaitCancellation() }
-        val prompt = identity.beginSignIn()
-        val wait = async { identity.waitForSignIn(prompt) }
+        val identity = IdentityClient(core, sleep = { awaitCancellation() })
+        val session = identity.signIn.start()
+        val wait = async { session.wait() }
         wait.cancel()
         try {
             wait.await()
             fail("a cancelled wait returned")
         } catch (e: CancellationException) {
-            // expected
+            // expected: the caller's cancellation throws and the session keeps going
         }
+        assertEquals(SignInOutcome.Pending(2), session.outcome)
         assertEquals(1, transport.requests().size)
+    }
+
+    @Test
+    fun sessionCancelEndsTheWaitAsCancelled() = runBlocking {
+        val (core, transport, _) = setup(mutableListOf())
+        val session = IdentityClient(core, sleep = { awaitCancellation() }).signIn.start()
+        val wait = async(kotlinx.coroutines.Dispatchers.Default) { session.wait() }
+        kotlinx.coroutines.delay(50)
+        session.cancel()
+        assertEquals(SignInOutcome.Cancelled, wait.await())
+        assertEquals(SignInOutcome.Cancelled, session.wait())
+        assertEquals(SignInOutcome.Cancelled, session.outcome)
+        assertEquals(1, transport.requests().size)
+    }
+
+    @Test
+    fun waitOncePollsOnceAndReportsPendingAndSlowDown() = runBlocking {
+        val polls = mutableListOf<() -> PolarisResponse>(
+            { respond(200, """{"status":"pending"}""") },
+            { respond(429, """{"status":"slow_down","interval":9}""") },
+            { respond(503) },
+        )
+        val (core, transport, _) = setup(polls)
+        val session = IdentityClient(core, sleep = { fail("once does not pause") }).signIn.start()
+        assertEquals(SignInOutcome.Pending(2), session.wait(once = true))
+        assertEquals(SignInOutcome.Pending(9, slowDown = true), session.wait(once = true))
+        assertEquals(SignInOutcome.Pending(9), session.outcome)
+        try {
+            session.wait(once = true)
+            fail("a 5xx poll answered")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.serverError, e.code)
+        }
+        assertEquals(4, transport.requests().size)
+    }
+
+    @Test
+    fun aDenyOrFailureIsATypedSignInError() = runBlocking {
+        for ((body, code) in listOf(
+            """{"status":"error","reason":"access_denied"}""" to ErrorCode.signInDenied,
+            """{"status":"error"}""" to ErrorCode.signInFailed,
+        )) {
+            val (core, _, _) = setup(mutableListOf({ respond(200, body) }))
+            val session = IdentityClient(core, sleep = {}).signIn.start()
+            try {
+                session.wait()
+                fail("a refused sign-in returned an outcome")
+            } catch (e: SignInError) {
+                assertEquals(code, e.code)
+            }
+            // A settled session answers the same again.
+            try {
+                session.wait()
+                fail("settled")
+            } catch (e: SignInError) {
+                assertEquals(code, e.code)
+            }
+        }
+    }
+
+    @Test
+    fun reopenUsesTheOpenerAndAnswersFalseWithout() = runBlocking {
+        val (core, _, _) = setup(mutableListOf())
+        val opened = ArrayList<String>()
+        val session = IdentityClient(core).signIn.start(SignInOptions(opener = { opened += it; true }))
+        assertEquals(listOf("https://key.plrs.im/djdl/identity/auth/device?user_code=ABCD-EFGH"), opened)
+        assertTrue(session.reopen())
+        assertEquals(2, opened.size)
+        assertFalse(IdentityClient(core).signIn.start().reopen())
     }
 
     @Test
     fun aProductWithoutIdentityRefusesBeforeAnyRequest() = runBlocking {
         val (core, transport, _) = setup(mutableListOf(), services = listOf(ServiceSlug.license))
         try {
-            IdentityClient(core).beginSignIn()
+            IdentityClient(core).signIn.start()
             fail("began without Identity")
         } catch (e: PolarisException) {
             assertEquals(ErrorCode.serviceUnavailable, e.code)

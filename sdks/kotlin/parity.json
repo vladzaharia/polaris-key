@@ -179,11 +179,11 @@
     },
     "identity.devicelabel": {
       "status": "implemented",
-      "note": "PX-W13: normalizeDeviceLabel over code points, CoreOptions.deviceName and defaultDeviceName (the JVM host name without .local/.lan/.home; on Android Settings.Global.DEVICE_NAME, else Build.MODEL, from the :android glue), on beginSignIn, activation and registration; SignInPrompt.deviceName is the echo, and PolarisSignIn shows it under the countdown."
+      "note": "PX-W13: normalizeDeviceLabel over code points, CoreOptions.deviceName and defaultDeviceName (the JVM host name without .local/.lan/.home; on Android Settings.Global.DEVICE_NAME, else Build.MODEL, from the :android glue), on signIn.start, activation and registration; SignInPrompt.deviceName is the echo, and PolarisSignIn shows it under the countdown."
     },
     "identity.toggle": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.17: identity.signIn.start(SignInOptions) returns a SignInSession (wait, wait(once), cancel, reopen; Futures signInStart/signInWait); a refusal is a typed SignInError; the subject is stored through core.setSubject on signedIn; beginSignIn, pollSignIn and waitForSignIn are removed."
     },
     "identity.attach": {
       "status": "implemented",

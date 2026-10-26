@@ -159,8 +159,8 @@ suspend fun start(key: String) {
     if (!isUsable(client.status())) showGate()
     val theme = client.config.get("ui.theme", JsonPrimitive("dark"))
     val notes = client.release.changelog()
-    val prompt = client.identity.beginSignIn("Living room TV")  // RFC 8628; show prompt.userCode
-    client.identity.waitForSignIn(prompt)
+    val session = client.identity.signIn.start(SignInOptions(deviceName = "Living room TV"))  // RFC 8628; show session.userCode
+    session.wait()
 }
 ```
 
@@ -241,7 +241,7 @@ suspend fun start(key: String) {
   `BillingFailed` (`unsupported`); `restore()`'s `Restored.unlisted` names the product types Play
   could not list. Built on Play Billing Library 9 (Play's floor for new apps and updates from
   31 August 2026).
-- **`:identity`**: `beginSignIn`, `pollSignIn` (once), `waitForSignIn` (paced, cancellable).
+- **`:identity`**: `identity.signIn.start(options)` and its `SignInSession` (`wait()` paced and cancellable, `wait(once = true)`, `cancel()`, `reopen()`).
 - **Delivery helpers** (notes/SDK-PARITY-PASS.md §3.5–§3.8, §3.14): `release.fetch(target, to,
 onProgress)` downloads one build of a verified release record (a `binary` decision, a version +
   build + record hash, or a record you verified) from discovery's builds template, with the bearer

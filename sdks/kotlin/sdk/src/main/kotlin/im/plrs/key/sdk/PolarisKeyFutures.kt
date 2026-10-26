@@ -18,6 +18,9 @@ import im.plrs.key.core.LicenseState
 import im.plrs.key.core.SyncResult
 import im.plrs.key.core.UpdateCheck
 import im.plrs.key.identity.AttachResult
+import im.plrs.key.identity.SignInOptions
+import im.plrs.key.identity.SignInOutcome
+import im.plrs.key.identity.SignInSession
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseInfo
 import im.plrs.key.core.FetchedFile
@@ -65,6 +68,16 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     public fun enroll(): CompletableFuture<ActivationResult> = call { client.enroll() }
 
     public fun deactivate(): CompletableFuture<Unit> = call { client.deactivate() }
+
+    /** `identity.signIn.start(options)`: the device-code session to show and wait on. */
+    @JvmOverloads
+    public fun signInStart(options: SignInOptions = SignInOptions()): CompletableFuture<SignInSession> =
+        call { client.identity.signIn.start(options) }
+
+    /** `session.wait(once)`: poll until the sign-in settles; a refusal completes it exceptionally with `SignInError`. */
+    @JvmOverloads
+    public fun signInWait(session: SignInSession, once: Boolean = false): CompletableFuture<SignInOutcome> =
+        call { session.wait(once) }
 
     /** `identity.attach(confirm)`: preview (false) or add the device's licence to the signed-in account (true). */
     public fun attach(confirm: Boolean): CompletableFuture<AttachResult> = call { client.identity.attach(confirm) }

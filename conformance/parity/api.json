@@ -393,6 +393,11 @@
         "file": "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt"
       },
       {
+        "ns": "identity",
+        "type": "SignInNamespace",
+        "file": "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/SignInSession.kt"
+      },
+      {
         "ns": "devices",
         "type": "DevicesFacet",
         "file": "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt"
@@ -2893,8 +2898,8 @@
           "reason": "a computed property returning the signIn namespace"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "shape": "property",
+          "reason": "a property returning the signIn namespace"
         },
         "godot": {
           "planned": "I-10b",
@@ -2961,8 +2966,7 @@
           "spelling": "SignInNamespace.start"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInNamespace.start"
         },
         "godot": {
           "planned": "I-10b",
@@ -2992,8 +2996,7 @@
           "spelling": "SignInSession.reopen"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.reopen"
         },
         "godot": {
           "planned": "I-10b",
@@ -3023,8 +3026,7 @@
           "spelling": "SignInSession.cancel"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.cancel"
         },
         "godot": {
           "planned": "I-10b",
@@ -3054,8 +3056,7 @@
           "spelling": "SignInSession.wait"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.wait"
         },
         "godot": {
           "planned": "I-10b",
@@ -3874,7 +3875,6 @@
       "sdks": {
         "node": {},
         "python": {},
-        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3885,7 +3885,6 @@
       "sdks": {
         "node": {},
         "python": {},
-        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -3896,7 +3895,6 @@
       "sdks": {
         "node": {},
         "python": {},
-        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -6635,6 +6633,36 @@
       "scan": {
         "pattern": "\\b(?:identity|client)\\.acceptSignIn\\s*\\(",
         "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "identity.beginSignIn",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.beginSignIn\\s*\\(",
+        "files": ["*.kt", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "identity.pollSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.pollSignIn\\s*\\(",
+        "files": ["*.kt", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "identity.waitForSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.waitForSignIn\\s*\\(",
+        "files": ["*.kt", "fence:kotlin"]
       }
     }
   ]

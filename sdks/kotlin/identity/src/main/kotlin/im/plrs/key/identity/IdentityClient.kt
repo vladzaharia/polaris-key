@@ -1,16 +1,20 @@
 // The Identity sub-client — device-code sign-in (RFC 8628) for hosts that cannot complete a browser
 // redirect: a TV app, a kiosk, a console, a CLI. A port of Swift's `IdentityClient`.
 //
-//   beginSignIn(deviceName)  POST /<p>/identity/auth/device/start → the code the player types and
-//                            the two verification URIs (the complete one is the QR payload). The
-//                            device code, the POLL credential, stays inside the prompt.
-//   pollSignIn(prompt)       POST /<p>/identity/auth/device/poll, exactly once. The caller paces.
-//   waitForSignIn(prompt)    the paced loop: at least `interval` between polls, longer after a
-//                            `slow_down`, never faster because a poll failed, stopped by expiry or
-//                            by cancelling the coroutine (which throws CancellationException).
+//   signIn.start(opts)       SignInSession.kt: POST /<p>/identity/auth/device/start → a `SignInSession`
+//                            with the code the player types and the two verification URIs (the
+//                            complete one is the QR payload). The device code, the POLL credential,
+//                            stays inside the session. `session.wait()` is the paced loop: at least
+//                            `interval` between polls, longer after a `slow_down`, never faster
+//                            because a poll failed, stopped by expiry, `cancel()` or by cancelling
+//                            the coroutine (which throws CancellationException).
 //
-// A `ready` poll stores the device token through Core and raises the acquisition event, so the
-// facade's forced sync runs exactly as after activation. A device-code sign-in yields the signed-in
+// This file holds the two requests the session drives (`startDeviceCode`, `pollDeviceCode`) and the
+// loop (`waitDeviceCode`); they are internal.
+//
+// A `ready` poll stores the device token through Core (and the subject the Worker reported, through
+// `core.setSubject`) and raises the acquisition event, so the facade's forced sync runs exactly as
+// after activation. A device-code sign-in yields the signed-in
 // identity's OWN licence and nothing else (the Worker merges nothing, P1-06).
 //
 // The OIDC browser redirect is NOT here: as in Swift it stays a host-supplied sign-in closure
@@ -26,6 +30,8 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.TokenSource
+import im.plrs.key.core.Unsupported
+import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.decimalValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
@@ -68,28 +74,31 @@ public data class SignInPrompt(
 }
 
 /** One poll's answer. */
-public sealed interface SignInPoll {
+internal sealed interface SignInPoll {
     /** The player has not finished yet. */
-    public data object Pending : SignInPoll
+    data object Pending : SignInPoll
 
     /** Polled too fast: wait [interval] seconds before the next poll (RFC 8628 §3.5). */
-    public data class SlowDown(val interval: Long) : SignInPoll
+    data class SlowDown(val interval: Long) : SignInPoll
 
     /** Signed in: the device token is stored and the post-acquisition sync has run. */
-    public data object Ready : SignInPoll
+    data class Ready(val subject: String? = null) : SignInPoll
 
     /** The code expired (or the server no longer knows it). Begin again. */
-    public data object Expired : SignInPoll
+    data object Expired : SignInPoll
 
     /**
      * The sign-in failed or was refused. Begin again. [code] is [ErrorCode.signInDenied] when the
      * Worker answered its generic `error` (the provider failed, or the person pressed Deny; the
      * server never says which).
      */
-    public data class Error(val message: String, val code: String? = null) : SignInPoll
+    data class Error(val message: String, val code: String? = null) : SignInPoll
 }
 
-/** How [IdentityClient.waitForSignIn] ended. Cancellation throws instead. */
+/**
+ * How a sign-in wait ended, as the Compose-free kit state maps it. Cancellation throws instead.
+ * Apps read [SignInSession.wait]'s [SignInOutcome]; this stays for `:ui-core`'s actions until I-10b.20.
+ */
 public sealed interface SignInResult {
     public data object Ready : SignInResult
     public data object Expired : SignInResult
@@ -108,7 +117,7 @@ public const val SLOW_DOWN_STEP_SECONDS: Long = 5
 /** The longest wait or lifetime this client represents: about 68 years. */
 private const val MAX_SECONDS: Long = Int.MAX_VALUE.toLong()
 
-/** The seconds [IdentityClient.waitForSignIn] sleeps: never under one, never past the code's lifetime. */
+/** The seconds the wait loop sleeps: never under one, never past the code's lifetime. */
 internal fun pollDelay(interval: Long, expiresIn: Long): Long = minOf(maxOf(interval, 1), maxOf(expiresIn, 1))
 
 /** A server's seconds rounded UP and capped; null for anything that is not a positive number. */
@@ -120,16 +129,16 @@ internal fun wholeSeconds(value: JsonElement?): Long? {
 }
 
 /**
- * @param sleep how [waitForSignIn] waits between polls, in seconds. Defaults to `delay`, which
+ * @param sleep how the wait loop waits between polls, in seconds. Defaults to `delay`, which
  *   throws CancellationException when the coroutine is cancelled; tests inject a clock-driven one.
  */
 public class IdentityClient(
     private val core: CoreContext,
     private val onAcquired: SignInAcquiredListener? = null,
     /** How `openAccount()` opens the portal: the system browser. Null: it answers the URL for the host to show. */
-    opener: AccountOpener? = null,
+    internal val opener: AccountOpener? = null,
     /** Raised when the stored subject changes (a `subject()` read, a sign-out); the facade emits `PolarisEvent.Identity`. */
-    onSubject: suspend (String?) -> Unit = {},
+    private val onSubject: suspend (String?) -> Unit = {},
     /** Raised after a sign-out released the seat and dropped the token; the facade republishes the licence. */
     onSignedOut: suspend () -> Unit = {},
     sleep: (suspend (Long) -> Unit)? = null,
@@ -137,6 +146,9 @@ public class IdentityClient(
     private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut)
+
+    /** `signIn.start(options)`: the device-code session (see SignInSession.kt). */
+    public val signIn: SignInNamespace get() = SignInNamespace(this)
 
     /** The pairwise subject signed in on this device (reads `GET subject`, stores it). */
     public suspend fun subject(): SubjectResult = account.subject()
@@ -154,11 +166,11 @@ public class IdentityClient(
     public suspend fun attach(confirm: Boolean): AttachResult = account.attach(confirm)
 
     /**
-     * Begin a device-code sign-in. Throws `service-unavailable` before any request when this product
+     * `signIn.start`'s request. Throws `service-unavailable` before any request when this product
      * does not run Identity (D-21). No bearer is sent even when the device holds a token: a sign-in
      * asks for the IDENTITY's credential, and the server binds the flow to this device by its id.
      */
-    public suspend fun beginSignIn(deviceName: String? = null): SignInPrompt {
+    internal suspend fun startDeviceCode(deviceName: String? = null): SignInPrompt {
         core.requireService(ServiceSlug.identity, Feature.identityDevicecode)
         val body = linkedMapOf<String, JsonElement>("deviceId" to JsonPrimitive(core.deviceId()))
         // §12.7.1: the per-call name, else `CoreOptions.deviceName`, else the platform default,
@@ -166,6 +178,15 @@ public class IdentityClient(
         val label = core.deviceLabel(deviceName)
         label?.let { body["deviceName"] = JsonPrimitive(it) }
         val response = post(core.endpoints.identityDeviceStart, JsonObject(body))
+        // Device routes never say "Identity is off": a client with a stale discovery map gets a 404
+        // `not_found`, which it reports as `service-unavailable` (identity-disabled transcript).
+        if (response.status == 404) {
+            val unsupported = Unsupported(Feature.identityDevicecode, UnsupportedReason.product, "the product does not run the identity service")
+            throw PolarisException(
+                ErrorCode.serviceUnavailable, "The identity service is not enabled for ${core.product}.",
+                detail = unsupported.detail, unsupported = unsupported,
+            )
+        }
         if (response.status != 200) {
             throw PolarisException(
                 errorCode(response) ?: ErrorCode.signInUnavailable, "device sign-in could not start (status ${response.status}).",
@@ -193,10 +214,7 @@ public class IdentityClient(
      * completed before this returns. Throws `network-error` when the request got no answer and
      * `server-error` on a 5xx: neither says anything about the sign-in, so neither is a status.
      */
-    public suspend fun pollSignIn(prompt: SignInPrompt): SignInPoll = poll(prompt, prompt.interval)
-
-    /** One poll, where an interval-less `slow_down` lengthens [current], the interval being paced. */
-    private suspend fun poll(prompt: SignInPrompt, current: Long): SignInPoll {
+    internal suspend fun pollDeviceCode(prompt: SignInPrompt, current: Long = prompt.interval): SignInPoll {
         core.requireService(ServiceSlug.identity, Feature.identityDevicecode)
         val response = post(
             core.endpoints.identityDevicePoll,
@@ -221,8 +239,11 @@ public class IdentityClient(
                 val token = body?.get("token").stringValue
                 if (token.isNullOrEmpty()) return SignInPoll.Error("ready without a token.")
                 core.setToken(token, TokenSource.signin)
+                // The pairwise subject the Worker reports (`identity.account`); the facade hears of a change.
+                val subject = body?.get("subject").stringValue?.takeIf { it.isNotEmpty() }
+                if (subject != null && core.setSubject(subject)) onSubject(subject)
                 onAcquired?.invoke()
-                SignInPoll.Ready
+                SignInPoll.Ready(subject)
             }
             // A Deny names itself (`reason: access_denied`); a bare `error` failed after approval.
             "error" -> SignInPoll.Error(
@@ -234,22 +255,22 @@ public class IdentityClient(
     }
 
     /**
-     * Poll until the sign-in settles. The first poll waits one `interval` after the prompt; a
+     * Poll until the sign-in settles (`session.wait()`). The first poll waits one `interval` after the prompt; a
      * `slow_down` lengthens the interval for every later poll and never shortens it; a transient
-     * failure is retried at the SAME interval. Returns [SignInResult.Expired] once `expiresAt` has
+     * failure is retried at the SAME interval. Returns [SignInPoll.Expired] once `expiresAt` has
      * passed, without asking the server. Cancelling the coroutine stops polling.
      */
-    public suspend fun waitForSignIn(prompt: SignInPrompt): SignInResult {
+    internal suspend fun waitDeviceCode(prompt: SignInPrompt): SignInPoll {
         core.requireService(ServiceSlug.identity, Feature.identityDevicecode)
         var interval = prompt.interval
         while (true) {
             coroutineContext.ensureActive()
-            if (core.now() >= prompt.expiresAt) return SignInResult.Expired
+            if (core.now() >= prompt.expiresAt) return SignInPoll.Expired
             sleep(pollDelay(interval, prompt.expiresIn))
             coroutineContext.ensureActive()
-            if (core.now() >= prompt.expiresAt) return SignInResult.Expired
+            if (core.now() >= prompt.expiresAt) return SignInPoll.Expired
             val result = try {
-                poll(prompt, interval)
+                pollDeviceCode(prompt, interval)
             } catch (e: PolarisException) {
                 if (e.code == ErrorCode.networkError || e.code == ErrorCode.serverError) continue
                 throw e
@@ -257,9 +278,7 @@ public class IdentityClient(
             when (result) {
                 SignInPoll.Pending -> continue
                 is SignInPoll.SlowDown -> interval = maxOf(interval, result.interval)
-                SignInPoll.Ready -> return SignInResult.Ready
-                SignInPoll.Expired -> return SignInResult.Expired
-                is SignInPoll.Error -> return SignInResult.Error(result.message, result.code)
+                is SignInPoll.Ready, SignInPoll.Expired, is SignInPoll.Error -> return result
             }
         }
     }
