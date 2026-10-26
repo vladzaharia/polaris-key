@@ -212,6 +212,7 @@ export function coreLicenseDeleteStatements(
     byDevice("release_download_tokens"),
     byDevice("device_fingerprints"),
     byDevice("device_facts"),
+    byDevice("device_keys"),
     byDevice("delta_demand_devices"),
     {
       sql: "DELETE FROM devices WHERE product = ? AND license_id = ?",

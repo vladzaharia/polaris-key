@@ -25,6 +25,8 @@ const INTERNAL: Record<string, string[]> = {
     "DEVICE_ENTRY_WIDE_WINDOW_SEC",
   ],
   "core/signInBind.ts": ["BIND_TTL_SECONDS"],
+  // The `keys` proof skew, fixed by the wire contract (V5 §15.8), not an operator setting.
+  "core/devices/keys.ts": ["KEY_POP_SKEW_SECONDS"],
   // The floating-major Cache-Control max-age of the elements CDN: a cache header, not a limit.
   "core/elements.ts": ["ELEMENTS_MAJOR_MAX_AGE"],
   "console/handlers/access.ts": ["ACCESS_ADMINS_LIMIT"],

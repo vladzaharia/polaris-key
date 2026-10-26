@@ -171,6 +171,7 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_admin_api_tokens_hash",
   "idx_audit_time",
   "idx_ci_tokens_jti",
+  "idx_device_keys_agree",
   "idx_devices_license_status",
   "idx_devices_seat",
   "idx_licenses_email_lower",

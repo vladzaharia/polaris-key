@@ -19,6 +19,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_connector_events",
     "dist_connector_settings",
     "devices",
+    // CC-03.1: a device's public keys (core/devices/keys.ts).
+    "device_keys",
     // P0-23: the portal's single-use download tokens (core/assets/downloadTokens.ts).
     "release_download_tokens",
     "license_refusals",
