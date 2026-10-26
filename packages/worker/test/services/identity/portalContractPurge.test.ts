@@ -227,17 +227,21 @@ describe("0141_b index assertion", () => {
     seedClean(raw);
     raw.exec(read("migrations", PURGE));
     raw.exec(read("migrations", ASSERTION));
+    // This file's own list: the names the 0141_b assertion declares.
+    const names = [
+      ...read("migrations", ASSERTION).matchAll(/\('(idx_[a-z0-9_]+)'\)/g),
+    ].map((m) => m[1]!);
     expect(
       raw
         .prepare("SELECT expected, found, missing FROM schema_index_assertion")
         .get(),
     ).toEqual({
-      expected: REQUIRED_INDEXES.length,
-      found: REQUIRED_INDEXES.length,
+      expected: names.length,
+      found: names.length,
       missing: "",
     });
-    expect(
-      REQUIRED_INDEXES.filter((n) => /portal_(account|license)/.test(n)),
-    ).toEqual([]);
+    // The newest list (REQUIRED_INDEXES) has moved on since 0141_b: it only has to cover this one.
+    expect(REQUIRED_INDEXES).toEqual(expect.arrayContaining(names));
+    expect(names.filter((n) => /portal_(account|license)/.test(n))).toEqual([]);
   });
 });

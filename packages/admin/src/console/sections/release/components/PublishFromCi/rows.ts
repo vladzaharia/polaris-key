@@ -201,7 +201,7 @@ export function ciRows(readiness: CiReadiness, ctx: RowContext): CiRow[] {
           ...needs(
             id,
             ctx.refused.get(id)!,
-            "Ask a repository admin to grant it.",
+            "Ask a repository admin to give it access.",
           ),
           recheck: true,
         });
