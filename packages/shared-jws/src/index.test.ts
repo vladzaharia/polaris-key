@@ -7,6 +7,8 @@ import {
   importVerifyKey,
   sha256Base64Url,
   hasDuplicateKeys,
+  isAcceptableEd25519Point,
+  isX25519LowOrder,
   type TrustSet,
 } from "./index.js";
 
@@ -456,5 +458,57 @@ describe("hasDuplicateKeys", () => {
 
   it("accepts distinct keys", () => {
     expect(hasDuplicateKeys('{"a":1,"b":[{"a":2}],"c":{"a":3}}')).toBe(false);
+  });
+});
+
+describe("the v5 typs and key helpers (WIRE-CONTRACT-V5 §15)", () => {
+  it("separates pkey-peer+jws from pkey-ring+jws", async () => {
+    const peer = await signJws(
+      { a: 1 },
+      DJDL_TEST_PEM,
+      DJDL_TEST_KID,
+      "pkey-peer+jws",
+    );
+    const trust = { [DJDL_TEST_KID]: DJDL_TEST_PUB };
+    expect(
+      await verifyJws(peer, trust, { typ: "pkey-peer+jws" }),
+    ).not.toBeNull();
+    expect(await verifyJws(peer, trust, { typ: "pkey-ring+jws" })).toBeNull();
+    expect(
+      await verifyJws(peer, trust, { typ: "pkey-license+jws" }),
+    ).toBeNull();
+  });
+
+  it("flags every spelling of the five low-order X25519 points", () => {
+    const pt = (lastByte: number, first: number): Uint8Array => {
+      const b = new Uint8Array(32);
+      b[0] = first;
+      b[31] = lastByte;
+      return b;
+    };
+    expect(isX25519LowOrder(pt(0, 0))).toBe(true);
+    expect(isX25519LowOrder(pt(0, 1))).toBe(true);
+    expect(isX25519LowOrder(pt(0x80, 1))).toBe(true); // high bit masked
+    const pm1 = new Uint8Array(32).fill(0xff);
+    pm1[0] = 0xec;
+    pm1[31] = 0x7f;
+    expect(isX25519LowOrder(pm1)).toBe(true);
+    const p = pm1.slice();
+    p[0] = 0xed; // p reduces to 0
+    expect(isX25519LowOrder(p)).toBe(true);
+    const order8 = Uint8Array.from(
+      "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800"
+        .match(/../g)!
+        .map((h) => parseInt(h, 16)),
+    );
+    expect(isX25519LowOrder(order8)).toBe(true);
+    expect(isX25519LowOrder(pt(0, 9))).toBe(false); // the base point
+    expect(isX25519LowOrder(new Uint8Array(31))).toBe(false);
+  });
+
+  it("applies the Ed25519 point checks to a raw key", () => {
+    const zero = new Uint8Array(32);
+    expect(isAcceptableEd25519Point(zero)).toBe(false);
+    expect(isAcceptableEd25519Point(base64UrlDecode(DJDL_TEST_PUB))).toBe(true);
   });
 });

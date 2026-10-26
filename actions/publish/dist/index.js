@@ -34238,6 +34238,13 @@ function isAcceptablePoint(enc32) {
   if (NEGATIVE_ZERO_ENCODINGS.includes(hex5)) return false;
   return !SMALL_ORDER_ENCODINGS.includes(hex5);
 }
+var X25519_LOW_ORDER_U = [
+  0n,
+  1n,
+  325606250916557431795983626356110631294008115727848805560023387167927233504n,
+  39382357235489614581723060781553021112529911719440698176882885853963445705823n,
+  ED25519_P2 - 1n
+];
 function ed25519Prechecks(key, sig) {
   if (key.length !== 32 || sig.length !== 64) return false;
   if (littleEndian(sig.subarray(32, 64)) >= ED25519_L) return false;

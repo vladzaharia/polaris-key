@@ -151,3 +151,103 @@ describe("the builders compute graceUntil with integer arithmetic", () => {
     ).resolves.toMatch(/^ey/);
   });
 });
+
+// WIRE-CONTRACT-V5 §15.2, §15.3: the signer refuses a certificate or roster no v5 verifier accepts.
+describe("signDoc's Cloud Connect write checks", () => {
+  const b64 = (bytes: Uint8Array): string =>
+    Buffer.from(bytes).toString("base64url");
+  const key = (seed: number): string => b64(new Uint8Array(32).fill(seed));
+  const dev = (n: number): Record<string, string> => ({
+    deviceId: String(n).padStart(32, "0"),
+    signKey: key(0x10 + n),
+    agreeKey: b64(Uint8Array.from({ length: 32 }, (_, k) => (k === 0 ? n : 9))),
+  });
+  const SUB = `ps_${"A".repeat(22)}`;
+  const cert = (
+    over: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    iss: ISSUER,
+    aud: "djdl",
+    sub: SUB,
+    ...dev(1),
+    ringEpoch: 1,
+    issuedAt: NOW,
+    expiresAt: NOW + 604_800,
+    ...over,
+  });
+  const ring = (
+    over: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    iss: ISSUER,
+    aud: "djdl",
+    sub: SUB,
+    epoch: 1,
+    issuedAt: NOW,
+    expiresAt: NOW + 604_800,
+    devices: [dev(1), dev(2)],
+    ...over,
+  });
+  const sign = (doc: unknown, typ: "pkey-peer+jws" | "pkey-ring+jws") =>
+    signDoc(doc, TEST_PEM, TEST_KID, typ);
+
+  it("signs a well-formed certificate and roster, and each verifies under its typ only", async () => {
+    const c = await sign(cert(), "pkey-peer+jws");
+    const r = await sign(ring(), "pkey-ring+jws");
+    expect(await verifyJws(c, TRUST, { typ: "pkey-peer+jws" })).not.toBeNull();
+    expect(await verifyJws(r, TRUST, { typ: "pkey-ring+jws" })).not.toBeNull();
+    expect(await verifyJws(c, TRUST, { typ: "pkey-ring+jws" })).toBeNull();
+    expect(await verifyJws(r, TRUST, { typ: "pkey-peer+jws" })).toBeNull();
+  });
+
+  const lowOrder = b64(new Uint8Array(32)); // u = 0
+  const badCerts: [string, Record<string, unknown>][] = [
+    ["a foreign issuer", { iss: "evil.example" }],
+    ["an account id as sub", { sub: "acct_123" }],
+    ["a short deviceId", { deviceId: "short" }],
+    ["a padded key", { signKey: `${key(5)}=` }],
+    ["a small-order signKey", { signKey: lowOrder }],
+    ["a low-order agreeKey", { agreeKey: lowOrder }],
+    ["ringEpoch 0", { ringEpoch: 0 }],
+    ["a fractional ringEpoch", { ringEpoch: 1.5 }],
+    ["a seven-day-plus-one lifetime", { expiresAt: NOW + 604_801 }],
+    ["a zero lifetime", { expiresAt: NOW }],
+  ];
+  for (const [name, over] of badCerts) {
+    it(`refuses a certificate with ${name}`, async () => {
+      await expect(sign(cert(over), "pkey-peer+jws")).rejects.toBeInstanceOf(
+        StrictJsonError,
+      );
+    });
+  }
+
+  const dupId = { ...dev(2), deviceId: dev(1).deviceId };
+  const dupKey = { ...dev(2), agreeKey: dev(1).agreeKey };
+  const badRings: [string, Record<string, unknown>][] = [
+    ["no devices", { devices: [] }],
+    ["129 devices", { devices: Array.from({ length: 129 }, (_, i) => dev(i)) }],
+    ["devices out of order", { devices: [dev(2), dev(1)] }],
+    ["a repeated deviceId", { devices: [dev(1), dupId] }],
+    ["a repeated key", { devices: [dev(1), dupKey] }],
+    ["a low-order agreeKey", { devices: [{ ...dev(1), agreeKey: lowOrder }] }],
+    ["epoch 0", { epoch: 0 }],
+    ["devices that is not a list", { devices: {} }],
+  ];
+  for (const [name, over] of badRings) {
+    it(`refuses a roster with ${name}`, async () => {
+      await expect(sign(ring(over), "pkey-ring+jws")).rejects.toBeInstanceOf(
+        StrictJsonError,
+      );
+    });
+  }
+
+  it("signs a roster of exactly 128 devices", async () => {
+    const devices = Array.from({ length: 128 }, (_, i) => dev(i));
+    await expect(sign(ring({ devices }), "pkey-ring+jws")).resolves.toMatch(
+      /^ey/,
+    );
+  });
+
+  it("leaves other typs alone", () => {
+    expect(() => assertIntegerClaims({}, "pkey-feed+jws")).not.toThrow();
+  });
+});
