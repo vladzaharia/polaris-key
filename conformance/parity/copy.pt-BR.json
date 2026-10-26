@@ -73,6 +73,10 @@
       "title": "Limite de dispositivos atingido",
       "message": "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui."
     },
+    "device_keys_invalid": {
+      "title": "Dispositivo não configurado",
+      "message": "Não foi possível configurar este dispositivo para a sincronização. Atualize o app e tente de novo."
+    },
     "key_entry_limit": {
       "title": "Nenhum uso restante da chave",
       "message": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."

@@ -1983,6 +1983,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_title">Gerät nicht eingerichtet</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_message">Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Keine Schlüsseleingaben mehr</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.</string>

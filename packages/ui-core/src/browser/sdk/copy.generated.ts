@@ -95,6 +95,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "The service can't sign a document right now. Try again in a few minutes.",
   },
+  device_keys_invalid: {
+    title: "Device not set up",
+    message:
+      "This device could not be set up for sync. Update the app and try again.",
+  },
   device_limit: {
     title: "Device limit reached",
     message:

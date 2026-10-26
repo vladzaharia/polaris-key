@@ -1996,6 +1996,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_title">Dispositivo não configurado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_message">Não foi possível configurar este dispositivo para a sincronização. Atualize o app e tente de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Nenhum uso restante da chave</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso.</string>

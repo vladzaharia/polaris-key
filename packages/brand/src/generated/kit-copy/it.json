@@ -891,6 +891,8 @@
   "core.codes.signing_unavailable.message": "Il servizio non può firmare un documento al momento. Riprova tra qualche minuto.",
   "core.codes.device_limit.title": "Limite di dispositivi raggiunto",
   "core.codes.device_limit.message": "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui.",
+  "core.codes.device_keys_invalid.title": "Dispositivo non configurato",
+  "core.codes.device_keys_invalid.message": "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova.",
   "core.codes.key_entry_limit.title": "Nessun inserimento rimasto",
   "core.codes.key_entry_limit.message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece.",
   "core.codes.license_disabled.title": "Licenza disattivata",

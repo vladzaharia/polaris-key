@@ -124,6 +124,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/{product}/devices/{deviceId}` | core | Deauthorize a device |
 | POST | `/{product}/devices/attest/challenge` | core | A single-use device attestation challenge (P6-02) |
 | POST | `/{product}/devices/attest` | core | Raise the device's trust level with App Attest or Play Integrity (P6-02) |
+| PUT | `/{product}/devices/keys` | core | Register or rotate the device's public keys (CC-03.2) |
 | POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
 | POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |
 | GET | `/{product}/devices` | core | List the devices sharing this device's device pool |

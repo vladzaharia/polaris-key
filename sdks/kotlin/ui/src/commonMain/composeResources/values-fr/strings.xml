@@ -1996,6 +1996,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_title">Appareil non configuré</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_message">Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Aucune saisie restante</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>

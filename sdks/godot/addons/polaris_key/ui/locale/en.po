@@ -5251,6 +5251,16 @@ msgstr "Device limit reached"
 msgid "core.codes.device_limit.message"
 msgstr "This license is already on all its devices. Replace a device to use it here."
 
+#. Device not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.title"
+msgstr "Device not set up"
+
+#. This device could not be set up for sync. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.message"
+msgstr "This device could not be set up for sync. Update the app and try again."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"

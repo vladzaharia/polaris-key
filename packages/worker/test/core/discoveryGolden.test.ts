@@ -55,6 +55,8 @@
  * every document: `{"enabled":true,"activate":"<customer origin>/activate?product=<slug>"}` while
  * the product's portal is on (all three fixtures; the recording world has no `CUSTOMER_ORIGIN`),
  * `{"enabled":false}` while it is off. Additive, like `core.presentation`.
+ * CC-03.2 (plans/CC-01-cloud-connect.md §2.8, approved) added `core.endpoints.deviceKeys` (`<base>/devices/keys`)
+ * after `report`, in every document. Additive.
  */
 
 import { readFileSync } from "node:fs";

@@ -73,6 +73,10 @@
       "title": "Limite d’appareils atteinte",
       "message": "Cette licence est déjà utilisée sur tous ses appareils. Remplacez un appareil pour l’utiliser ici."
     },
+    "device_keys_invalid": {
+      "title": "Appareil non configuré",
+      "message": "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez."
+    },
     "key_entry_limit": {
       "title": "Aucune saisie restante",
       "message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
