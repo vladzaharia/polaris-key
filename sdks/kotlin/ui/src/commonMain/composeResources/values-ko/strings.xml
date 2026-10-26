@@ -2078,6 +2078,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">이 기기에서 사용할 라이선스를 선택한 다음 계속하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_title">로그인을 완료하세요</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_message">Polaris Locker 페이지에서 로그인을 완료한 뒤 앱으로 돌아오세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_title">근처에 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_message">다른 기기가 이 네트워크에 없습니다. 가까이 이동하거나 코드로 로그인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">로그인 방법 사용 불가</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">해당 로그인 방법은 꺼져 있어요. 다른 방법을 선택하세요.</string>
@@ -2353,6 +2361,10 @@
     <string name="core_codes_sign_in_unavailable_title">로그인 사용 불가</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_unavailable_message">지금은 로그인을 사용할 수 없어요. 몇 분 후에 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_title">로그인을 사용할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_message">이 기기에서는 자동 로그인을 할 수 없습니다. 다른 방법으로 로그인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">앱이 설정되지 않음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

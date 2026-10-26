@@ -181,6 +181,14 @@
       "title": "Elige una licencia",
       "message": "Elige qué licencia usa este dispositivo y continúa."
     },
+    "interstitial_required": {
+      "title": "Termina de iniciar sesión",
+      "message": "Termina de iniciar sesión en la página de Polaris Locker y vuelve a la app."
+    },
+    "not_nearby": {
+      "title": "No está cerca",
+      "message": "El otro dispositivo no está en esta red. Acércate o inicia sesión con un código."
+    },
     "auth_method_disabled": {
       "title": "Método de inicio de sesión no disponible",
       "message": "Ese método de inicio de sesión está desactivado. Elige otro."
@@ -456,6 +464,10 @@
     "sign-in-unavailable": {
       "title": "Inicio de sesión no disponible",
       "message": "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos."
+    },
+    "platform-identity-unavailable": {
+      "title": "Inicio de sesión no disponible",
+      "message": "Este dispositivo no puede iniciar sesión automáticamente. Usa otra forma de iniciar sesión."
     },
     "invalid-options": {
       "title": "App no configurada",

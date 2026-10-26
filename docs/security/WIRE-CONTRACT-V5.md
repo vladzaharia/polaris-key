@@ -1,6 +1,6 @@
 # Polaris Wire Contract v5
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V4.md` (CC-04.1), the way v4 superseded v3. v4 remains the record, including the amendment history in its header; everything v4 said that v5 does not change is restated here, so this document can be read on its own. v5 adds two signed documents and one new section, §15 (Cloud Connect), and nothing else changes on the wire. §12.11 (platform sign-in, written by I-13.1) and §13.10 and §13.11 (end-to-end files and the key ring, written by U-33.1) are placeholders until those slices land. The plans are `plans/CC-01.md` (R-8) and `plans/CC-01-cloud-connect.md`.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V4.md` (CC-04.1), the way v4 superseded v3. v4 remains the record, including the amendment history in its header; everything v4 said that v5 does not change is restated here, so this document can be read on its own. v5 adds two signed documents and one new section, §15 (Cloud Connect), and nothing else changes on the wire. §12.11 (platform sign-in) is written; §13.10 and §13.11 (end-to-end files and the key ring, written by U-33.1) are placeholders until that slice lands. The plans are `plans/CC-01.md` (R-8) and `plans/CC-01-cloud-connect.md`.
 **PROTOCOL_VERSION:** `5` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the eight signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen corpus --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -1585,8 +1585,8 @@ on (§12.8).
    `400 invalid_grant`, `400 unsupported_grant_type`, `400 invalid_scope`; and the Polaris refusals
    beside them, as on `license/activate`: `403 not_entitled`, `403 device_limit` (with `limit`,
    `deviceCount`, `manageUrl`), `409 license_choice_required`, `429 rate_limited`.
-   `interstitial_required` is reserved for I-13; the other grants (token exchange I-13, refresh
-   I-21) answer `unsupported_grant_type` until then.
+   `interstitial_required` is answered only by the token-exchange grant (§12.11.3); refresh
+   (I-21) answers `unsupported_grant_type` until then.
 6. **Never a token in a URL.** The device token is in the body of this response only, and the
    redirect carries a code that is useless without the verifier.
 
@@ -1896,7 +1896,104 @@ first, and nothing else changes for it.
 
 ### 12.11 Platform sign-in, the link offer and nearby approval
 
-> **Placeholder.** Written by I-13.1 (`plans/CC-01-auto-sign-in.md`). Nothing in this subsection is normative until that slice lands. It will define the device-bound sign-in grant, the link offer and nearby approval (mode `v`, §15.5 and §15.6). Nothing here signs a new document: `PROTOCOL_VERSION` stays 5.
+Written by I-13.1 (`plans/CC-01-auto-sign-in.md` §2). Nothing here signs a new document: `PROTOCOL_VERSION` stays 5 and `DISCOVERY_VERSION` 2. The Worker serves the subsections in the slices named below, and discovery names an endpoint only from the release that serves it (§12.6), so an SDK uses a rung only when its endpoint is present. The types are in `@polaris-key/protocol/identity`. The platform sign-in answers only while the product's Identity service is on; with it off every route here is `404 not_found` and discovery omits the members (§12.8).
+
+#### 12.11.1 The device proof (`pkey-proof/1`)
+
+Every route here that binds a device takes `proof`: an Ed25519 signature (64 bytes, base64url) by the device's signing key (P-1, §15.8) over UTF-8 lines joined by `\n`, with no trailing newline:
+
+1. `pkey-proof/1`
+2. the purpose
+3. the product slug
+4. the `X-PKey-Device` value
+5. the purpose's value
+6. the base64url SHA-256 of the presented provider token, or `-` when none
+
+A field holding a newline makes the proof invalid. Purposes are `keys`, `nonce`, `exchange`, `link`, `nearby-start`, `nearby-poll`, `nearby-approve`, `vouch` and `restore`. Keys are raw 32-byte public keys in base64url. A proof is one purpose only: one signed for another purpose, product or device does not verify. Its vectors are `device-proof.json` (§15.8). A bad proof is `400 invalid_grant` on `token`; no refusal names the field that failed.
+
+#### 12.11.2 The nonce
+
+`POST /<p>/identity/nonce`: JSON `{signKey, agreeKey}`, `X-PKey-Device`, `no-store`. The answer is `200 {"nonce": "…", "expiresIn": 300}`. `nonce` is 32 random bytes in base64url (43 characters), held once under a peppered hash with the product, the device and the signing key's thumbprint. The exchange (§12.11.3) registers both keys through Core's device-key operation (§15.8) in its own press. A device row that already has a registered signing key must present that key here; any other key is refused. The route is limited to 30 a minute per client network and 10 a minute per device, failing closed (`429 rate_limited`).
+
+The nonce is what the provider signs into its ID token. Both providers receive it as it is, with no hashing (Apple's `nonce` and Google's `nonce` request field alike). It cannot be replayed to another device, product or key, because the proof of §12.11.3 binds all three.
+
+#### 12.11.3 The grant
+
+`POST /<p>/identity/token`, form-encoded, as §12.5, with the RFC 8693 grant:
+
+| Parameter             | Value                                                                |
+| --------------------- | -------------------------------------------------------------------- |
+| `grant_type`          | `urn:ietf:params:oauth:grant-type:token-exchange`                    |
+| `client_id`           | the product slug                                                     |
+| `subject_token`       | the provider's ID token                                              |
+| `subject_token_type`  | `urn:ietf:params:oauth:token-type:id_token`                          |
+| `nonce`               | the nonce of §12.11.2                                                |
+| `device_key`, `proof` | the signing key and the `exchange` proof (§12.11.1); `X-PKey-Device` |
+| `license_choice`      | `app` (default) or `card`, as §12.5.1                                |
+| `device_name`         | as §12.7.1                                                           |
+
+The value of an `exchange` proof is `<nonce>.<device_key>`, and its sixth line is the SHA-256 of `subject_token`. The provider is picked from the token's unverified `iss` and then verified strictly. Every one of these checks refuses with the same `400 invalid_grant`, so a caller learns nothing about which failed: the signature (against the provider's keys), `iss`, `aud` among the product's audiences, `azp` among the product's client ids when the token carries one, `exp`, `iat` no more than 5 minutes old, `nonce` equal to the one presented, the nonce record unspent and bound to this product, device and key, and the proof. A nonce is spent by the first attempt that reaches it, whether or not the rest passes. An audience that equals a platform built-in client (the card's Google client, the Polaris Services ID) is never a product audience.
+
+| Provider | `aud`                                                                           | `azp`                               | Link key (issuer, tenant scope, subject)                                                                              |
+| -------- | ------------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Google   | the product's Google server client id                                           | its Google client ids, when present | `(https://accounts.google.com, '', sub)`, then `(https://accounts.google.com, 'google-client:<serverClientId>', sub)` |
+| Apple    | a bundle id the product declares, or one of its App Store or TestFlight outlets | none                                | `(https://appleid.apple.com, 'apple-team:<teamId>', sub)`                                                             |
+
+The lookup finds an existing link and never creates an account. It is never by email: an address in the token joins nothing.
+
+**Answers.**
+
+| HTTP | Body                                                                                                            | Meaning                                                                                |
+| ---- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 200  | `TokenResponse` (§12.5) plus `issued_token_type: "urn:polaris-key:token-type:device"`                           | The link and the person's consent for this product exist and no choice is due          |
+| 200  | `{"status":"confirm","grant":"sg_…","expiresIn":300,"consent":ExchangeConsentView,"choices":LicenseChoiceView}` | The link exists, but the person has not consented to this app, or what it asks changed |
+| 200  | `{"status":"choose","grant":"sg_…","expiresIn":300,"choices":LicenseChoiceView}`                                | A licence choice is due and consent stands (§12.5.1)                                   |
+| 403  | `{"error":"interstitial_required","reason":"no_link","url":"…","linkHandle":"lh_…","expiresIn":600}`            | No link exists for this token. Sign in the regular way, then offer the link            |
+| 403  | `{"error":"interstitial_required","reason":"terms","url":"…"}`                                                  | The product's terms version is unaccepted; only the card takes acceptance              |
+| 403  | `not_entitled`, `device_limit`, `license_choice_required` (409), `rate_limited` (429)                           | As §12.5                                                                               |
+
+1. **`status: "confirm"`.** The `grant` is §12.5.1's pending sign-in grant, with the same bounds (bound to the product, the account, the pairwise subject and the redeeming device; 300 seconds; consumed by `complete` or `cancel`). `ExchangeConsentView` is `{client: {appName, developerName, iconUrl, nameVerified}, as: {provider, email | null}, items: ConsentItem[], scopeHash, firstTime, changed}`. `as.email` is the token's own address, so the app learns nothing it did not already hold. `scopeHash` and `ConsentItem` are §12.7.3's. `confirm` is answered when the account has no `account_product_grants` row for this product, or its `scopeHash` differs.
+2. **`complete` takes consent.** `choice/complete` (§12.5.1) takes `{grant, choice, consent?: {claims}, deviceName?}`. `consent` is required on a grant that was issued with `confirm`, and its absence is `400 bad_request` with the grant left open. The consent row is written in the same press that binds the device and, for `create`, mints the licence. `cancel` writes nothing.
+3. **`choose` and `confirm` are one grant.** A client that gets `confirm` shows the consent, then the choice from `choices` in the same form, and sends both once.
+4. **`interstitial_required`.** `reason` is `no_link` or `terms`; a client reads an unknown `reason` as `no_link`. `url` is the sign-in card for this product. `linkHandle` is `lh_` and 43 base64url characters, held 600 seconds, and bound to the product, the device and the key. It is used once, by the link offer (§12.11.4), so the app does not ask the provider for a second token.
+5. **The grant is same-device.** A grant issued here follows §12.5.1 rule 5: the exchange is a same-device channel. Device code and nearby approval never issue one.
+6. **Never a token in a URL**, and a `subject_token` is never logged or audited. Audit carries the provider kind and the outcome only.
+
+#### 12.11.4 The link offer
+
+A signed-in device offers to add a platform identity to the person's account, so the next launch signs in silently.
+
+- **Step-up.** The offer needs a same-device sign-in at most 300 seconds old on this device. The web redirect, the loopback, scheme and claimed-HTTPS channels (I-15) and the card's `choice/complete` after one of them make one. The device code, nearby approval, restore and the exchange never do.
+- `GET /<p>/identity/link` (device bearer): `{"offer":[{"kind":"google"|"apple","reach":"global"|"developer"|null}]}`. `kind` is one of the product's declared kinds with no link on the account in its scope. `reach` is what a link would cover, `null` while that is not known before a token. The list is empty without a live step-up.
+- `POST /<p>/identity/link` (device bearer), JSON `{linkHandle, proof}` or `{subjectToken, nonce, signKey, agreeKey, proof}`; the proof's purpose is `link`. It consumes the step-up, then links. Answers: `200 {"linked":{"kind","reach"}}`; `401 step_up_required`; `409 link_conflict`; `400 invalid_grant` (nested); `404 not_found` (an unknown or spent handle).
+- **Scope of an app-made link.** The link is global (tenant scope `''`) only when the provider vouches for the token's email and that address is already verified on this account. Otherwise it is scoped to the developer: `google-client:<serverClientId>`. An Apple link is always `apple-team:<teamId>`. An app that supplies a token of its own therefore cannot link an identity the person did not prove they own to the account everywhere: a token for someone else's Google account lands in the developer's scope, where it recognises that person only inside this developer's products, and can never sign in to the card or another developer's app.
+- The link adds an audit row `identity.link.added` with `via: app`. The "sign-in method added" email goes to the account's primary address and to the linked identity's verified address, and names the app.
+
+#### 12.11.5 Nearby approval
+
+A device with no way to sign in (D) is approved by a signed-in device nearby (M). It is the server half of the mode `v` handshake (§15.5, §15.6), and it replaces the device code for this case because a code a person can type is the proof a victim can be talked into reading out.
+
+| Route                   | Caller            | Body                                                                       | Answer                                                                                                                                                                                                            |
+| ----------------------- | ----------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST …/nearby/start`   | D                 | `{signKey, agreeKey, deviceName?, proof}` (purpose `nearby-start`)         | `201 {"request":"nr_…","expiresIn":300,"interval":3}`                                                                                                                                                             |
+| `POST …/nearby/approve` | M (device bearer) | `{request, signKey, agreeKey, decision:"approve"\|"deny", choice?, proof}` | `200 {"status":"approved","deviceLabel"}`; `200 {"status":"choose","choices"}` (nothing written); `204` (deny); `403 not_nearby`; `403 device_limit`; `403 account_required`; `404 not_found`; `429 rate_limited` |
+| `POST …/nearby/poll`    | D                 | `{request, proof}` (purpose `nearby-poll`)                                 | `200 {"status":"pending"}`; `429 {"status":"slow_down","interval"}`; `200 {"status":"timeout"}`; `200 {"status":"error","reason":"access_denied"}`; `200` `TokenResponse` once                                    |
+
+All three live under `/<p>/identity`. The request handle is `nr_` and 22 base64url characters, held 300 seconds.
+
+1. **Keys.** The `signKey` and `agreeKey` M sends must equal D's start keys, which M learned from D's authenticated `VOUCH_REQ` (§15.6). Approval registers D's keys through Core's device-key operation (§15.8).
+2. **Proximity.** The client network of `approve` must equal that of `start` (IPv4 exact, IPv6 /64), or the answer is `403 not_nearby`. Nothing is written and the request stays open. The device code is the fallback for a person who is not nearby.
+3. **Approver.** M must be signed in on the product and sign with its registered signing key (purpose `nearby-approve`). A device with no sign-in is `403 account_required`.
+4. **One decision.** An approval or a denial is final for its request. The licence is chosen on M: `license` and `create` only, with no Replace in this version. A full licence is `403 device_limit` on M.
+5. **D never holds a grant** (§12.5.1 rule 5). Approval binds the seat and writes D's device row; D's first valid poll after it receives the token. A denial is sticky and the poll answers it as §12.10 rule 2 does.
+6. **Budgets.** `nearby/start` 10 a minute per client network; `approve` 10 a minute per device and 5 an hour per subject; `poll` by its `interval`.
+7. Audit rows `identity.nearby.approved` and `identity.nearby.denied` carry the label only. Approval emails the account's primary address that the app signed in on a device with that label.
+
+#### 12.11.6 Discovery and errors
+
+- **Discovery** (identity fragment): `exchange: {"kinds":("google"|"apple")[], "google"?: {"serverClientId"}}`, present only when the product declares a kind; `nearby: true`; the endpoints `nonce`, `link`, `nearbyStart`, `nearbyApprove` and `nearbyPoll`. Unsigned and additive. A client that finds none of them starts at the regular sign-in.
+- **Errors.** Two new Worker codes: `interstitial_required` (403, flat, on the exchange) and `not_nearby` (403, nested, on `nearby/approve`). One new client-only code: `platform-identity-unavailable` (no Play services, no declared kind, or the OS refused). The rest are existing codes: `invalid_grant`, `step_up_required`, `link_conflict`, `device_limit`, `license_choice_required`, `account_required`, `not_found`, `rate_limited`, `cancelled` and `sign-in-denied`. The registry is `conformance/parity/errors.json`.
+- **Deployed clients and workers.** The Worker deploys first. A client that predates this subsection ignores the discovery members and never sends the grant. A client of this version against an older Worker sees no `exchange` member and starts at the regular sign-in; an `unsupported_grant_type` is treated as a failed rung. Pending nonces, handles and requests expire within 600 seconds.
 
 ## 13. Cloud Sync (HTTP, additive)
 

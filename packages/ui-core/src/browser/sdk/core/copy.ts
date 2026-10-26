@@ -225,6 +225,10 @@ const FR: CopyBundle = {
       "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.",
     license_choice_required:
       "Choisissez la licence que cet appareil utilise, puis continuez.",
+    interstitial_required:
+      "Terminez la connexion sur la page Polaris Locker, puis revenez à l’app.",
+    not_nearby:
+      "L’autre appareil n’est pas sur ce réseau. Rapprochez-vous ou connectez-vous avec un code.",
     auth_method_disabled:
       "Cette méthode de connexion est désactivée. Choisissez-en une autre.",
     email_unavailable:
@@ -298,6 +302,8 @@ const FR: CopyBundle = {
     "sign-in-denied": "La connexion a été refusée. Recommencez.",
     "sign-in-unavailable":
       "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.",
+    "platform-identity-unavailable":
+      "Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion.",
     "sign-out-failed": "La déconnexion n’a pas abouti. Réessayez.",
     "bundle-rejected": "Le fichier d’activation a été refusé.",
     "bundle-import-unsupported":

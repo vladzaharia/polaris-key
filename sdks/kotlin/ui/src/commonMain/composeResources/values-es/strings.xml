@@ -2104,6 +2104,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Elige qué licencia usa este dispositivo y continúa.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_title">Termina de iniciar sesión</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_message">Termina de iniciar sesión en la página de Polaris Locker y vuelve a la app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_title">No está cerca</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_message">El otro dispositivo no está en esta red. Acércate o inicia sesión con un código.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Método de inicio de sesión no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Ese método de inicio de sesión está desactivado. Elige otro.</string>
@@ -2379,6 +2387,10 @@
     <string name="core_codes_sign_in_unavailable_title">Inicio de sesión no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_unavailable_message">El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_title">Inicio de sesión no disponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_message">Este dispositivo no puede iniciar sesión automáticamente. Usa otra forma de iniciar sesión.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App no configurada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

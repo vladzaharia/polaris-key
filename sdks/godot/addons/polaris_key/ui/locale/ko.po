@@ -5508,6 +5508,26 @@ msgstr "라이선스 선택"
 msgid "core.codes.license_choice_required.message"
 msgstr "이 기기에서 사용할 라이선스를 선택한 다음 계속하세요."
 
+#. Finish signing in
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interstitial_required.title"
+msgstr "로그인을 완료하세요"
+
+#. Finish signing in on the Polaris Locker page, then return to the app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interstitial_required.message"
+msgstr "Polaris Locker 페이지에서 로그인을 완료한 뒤 앱으로 돌아오세요."
+
+#. Not nearby
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_nearby.title"
+msgstr "근처에 없음"
+
+#. The other device isn't on this network. Move closer, or sign in with a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_nearby.message"
+msgstr "다른 기기가 이 네트워크에 없습니다. 가까이 이동하거나 코드로 로그인하세요."
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"
@@ -6197,6 +6217,16 @@ msgstr "로그인 사용 불가"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-unavailable.message"
 msgstr "지금은 로그인을 사용할 수 없어요. 몇 분 후에 다시 시도하세요."
+
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-identity-unavailable.title"
+msgstr "로그인을 사용할 수 없음"
+
+#. This device can't sign you in automatically. Use another way to sign in.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-identity-unavailable.message"
+msgstr "이 기기에서는 자동 로그인을 할 수 없습니다. 다른 방법으로 로그인하세요."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

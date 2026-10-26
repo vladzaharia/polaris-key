@@ -44,6 +44,11 @@
             "sync"
           ]
         },
+        "plannedBy": {
+          "description": "Only on a `wire` entry: the work package that will make the Worker emit the code. Registered ahead of the Worker by a contract slice; the generator skips the 'nothing emits it' check while this is set and fails once the Worker does emit it, so the member is removed in that package.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*-[0-9]+(\\.[0-9]+)?$"
+        },
         "description": {
           "description": "One sentence: what happened. Rendered on reference/error-codes.",
           "type": "string",

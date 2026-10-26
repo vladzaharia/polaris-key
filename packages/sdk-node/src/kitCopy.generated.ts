@@ -1143,6 +1143,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "Choose a license",
     "core.codes.license_choice_required.message":
       "Choose which license this device uses, then continue.",
+    "core.codes.interstitial_required.title": "Finish signing in",
+    "core.codes.interstitial_required.message":
+      "Finish signing in on the Polaris Locker page, then return to the app.",
+    "core.codes.not_nearby.title": "Not nearby",
+    "core.codes.not_nearby.message":
+      "The other device isn't on this network. Move closer, or sign in with a code instead.",
     "core.codes.auth_method_disabled.title": "Sign-in method unavailable",
     "core.codes.auth_method_disabled.message":
       "That sign-in method is turned off. Choose another one.",
@@ -1340,6 +1346,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "Sign-in unavailable",
     "core.codes.sign-in-unavailable.message":
       "Sign-in isn't available right now. Try again in a few minutes.",
+    "core.codes.platform-identity-unavailable.title": "Sign-in unavailable",
+    "core.codes.platform-identity-unavailable.message":
+      "This device can't sign you in automatically. Use another way to sign in.",
     "core.codes.invalid-options.title": "App not set up",
     "core.codes.invalid-options.message":
       "The app's licensing isn't set up correctly. Contact the developer.",
@@ -2832,6 +2841,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "Lizenz wählen",
     "core.codes.license_choice_required.message":
       "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort.",
+    "core.codes.interstitial_required.title": "Anmeldung abschließen",
+    "core.codes.interstitial_required.message":
+      "Schließen Sie die Anmeldung auf der Polaris Locker-Seite ab und kehren Sie dann zur App zurück.",
+    "core.codes.not_nearby.title": "Nicht in der Nähe",
+    "core.codes.not_nearby.message":
+      "Das andere Gerät ist nicht in diesem Netzwerk. Gehen Sie näher heran oder melden Sie sich stattdessen mit einem Code an.",
     "core.codes.auth_method_disabled.title": "Anmeldemethode nicht verfügbar",
     "core.codes.auth_method_disabled.message":
       "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere.",
@@ -3042,6 +3057,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "Anmeldung nicht verfügbar",
     "core.codes.sign-in-unavailable.message":
       "Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut.",
+    "core.codes.platform-identity-unavailable.title":
+      "Anmeldung nicht verfügbar",
+    "core.codes.platform-identity-unavailable.message":
+      "Dieses Gerät kann Sie nicht automatisch anmelden. Verwenden Sie eine andere Anmeldeart.",
     "core.codes.invalid-options.title": "App nicht eingerichtet",
     "core.codes.invalid-options.message":
       "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.",
@@ -4523,6 +4542,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "Choisissez une licence",
     "core.codes.license_choice_required.message":
       "Choisissez la licence que cet appareil utilise, puis continuez.",
+    "core.codes.interstitial_required.title": "Terminer la connexion",
+    "core.codes.interstitial_required.message":
+      "Terminez la connexion sur la page Polaris Locker, puis revenez à l’app.",
+    "core.codes.not_nearby.title": "Pas à proximité",
+    "core.codes.not_nearby.message":
+      "L’autre appareil n’est pas sur ce réseau. Rapprochez-vous ou connectez-vous avec un code.",
     "core.codes.auth_method_disabled.title":
       "Méthode de connexion indisponible",
     "core.codes.auth_method_disabled.message":
@@ -4732,6 +4757,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "Connexion indisponible",
     "core.codes.sign-in-unavailable.message":
       "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.",
+    "core.codes.platform-identity-unavailable.title": "Connexion indisponible",
+    "core.codes.platform-identity-unavailable.message":
+      "Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion.",
     "core.codes.invalid-options.title": "App non configurée",
     "core.codes.invalid-options.message":
       "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.",
@@ -6202,6 +6230,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "Elige una licencia",
     "core.codes.license_choice_required.message":
       "Elige qué licencia usa este dispositivo y continúa.",
+    "core.codes.interstitial_required.title": "Termina de iniciar sesión",
+    "core.codes.interstitial_required.message":
+      "Termina de iniciar sesión en la página de Polaris Locker y vuelve a la app.",
+    "core.codes.not_nearby.title": "No está cerca",
+    "core.codes.not_nearby.message":
+      "El otro dispositivo no está en esta red. Acércate o inicia sesión con un código.",
     "core.codes.auth_method_disabled.title":
       "Método de inicio de sesión no disponible",
     "core.codes.auth_method_disabled.message":
@@ -6411,6 +6445,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "Inicio de sesión no disponible",
     "core.codes.sign-in-unavailable.message":
       "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos.",
+    "core.codes.platform-identity-unavailable.title":
+      "Inicio de sesión no disponible",
+    "core.codes.platform-identity-unavailable.message":
+      "Este dispositivo no puede iniciar sesión automáticamente. Usa otra forma de iniciar sesión.",
     "core.codes.invalid-options.title": "App no configurada",
     "core.codes.invalid-options.message":
       "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.",
@@ -7860,6 +7898,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "Escolha uma licença",
     "core.codes.license_choice_required.message":
       "Escolha qual licença este dispositivo usa e continue.",
+    "core.codes.interstitial_required.title": "Conclua o login",
+    "core.codes.interstitial_required.message":
+      "Conclua o login na página do Polaris Locker e volte ao app.",
+    "core.codes.not_nearby.title": "Não está por perto",
+    "core.codes.not_nearby.message":
+      "O outro dispositivo não está nesta rede. Aproxime-se ou entre com um código.",
     "core.codes.auth_method_disabled.title": "Método de acesso indisponível",
     "core.codes.auth_method_disabled.message":
       "Esse método de acesso está desativado. Escolha outro.",
@@ -8060,6 +8104,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "Acesso indisponível",
     "core.codes.sign-in-unavailable.message":
       "O acesso não está disponível agora. Tente novamente em alguns minutos.",
+    "core.codes.platform-identity-unavailable.title": "Login indisponível",
+    "core.codes.platform-identity-unavailable.message":
+      "Este dispositivo não consegue fazer login automaticamente. Use outra forma de entrar.",
     "core.codes.invalid-options.title": "App não configurado",
     "core.codes.invalid-options.message":
       "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor.",
@@ -9515,6 +9562,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "Scegli una licenza",
     "core.codes.license_choice_required.message":
       "Scegli quale licenza deve usare questo dispositivo, poi continua.",
+    "core.codes.interstitial_required.title": "Completa l'accesso",
+    "core.codes.interstitial_required.message":
+      "Completa l'accesso sulla pagina di Polaris Locker, poi torna all'app.",
+    "core.codes.not_nearby.title": "Non nelle vicinanze",
+    "core.codes.not_nearby.message":
+      "L'altro dispositivo non è su questa rete. Avvicinati oppure accedi con un codice.",
     "core.codes.auth_method_disabled.title":
       "Metodo di accesso non disponibile",
     "core.codes.auth_method_disabled.message":
@@ -9721,6 +9774,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "Accesso non disponibile",
     "core.codes.sign-in-unavailable.message":
       "L'accesso non è disponibile al momento. Riprova tra qualche minuto.",
+    "core.codes.platform-identity-unavailable.title": "Accesso non disponibile",
+    "core.codes.platform-identity-unavailable.message":
+      "Questo dispositivo non può eseguire l'accesso automatico. Usa un altro metodo di accesso.",
     "core.codes.invalid-options.title": "App non configurata",
     "core.codes.invalid-options.message":
       "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.",
@@ -11190,6 +11246,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "ライセンスを選択",
     "core.codes.license_choice_required.message":
       "このデバイスで使うライセンスを選んでから続行してください。",
+    "core.codes.interstitial_required.title": "サインインを完了してください",
+    "core.codes.interstitial_required.message":
+      "Polaris Lockerのページでサインインを完了し、アプリに戻ってください。",
+    "core.codes.not_nearby.title": "近くにありません",
+    "core.codes.not_nearby.message":
+      "もう一方のデバイスがこのネットワークにありません。近づくか、コードでサインインしてください。",
     "core.codes.auth_method_disabled.title": "サインイン方法を利用できません",
     "core.codes.auth_method_disabled.message":
       "このサインイン方法は無効になっています。別の方法を選択してください。",
@@ -11402,6 +11464,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "サインインを利用できません",
     "core.codes.sign-in-unavailable.message":
       "現在サインインを利用できません。数分後にもう一度お試しください。",
+    "core.codes.platform-identity-unavailable.title":
+      "サインインを利用できません",
+    "core.codes.platform-identity-unavailable.message":
+      "このデバイスでは自動サインインができません。別の方法でサインインしてください。",
     "core.codes.invalid-options.title": "アプリが設定されていません",
     "core.codes.invalid-options.message":
       "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。",
@@ -12813,6 +12879,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "라이선스 선택",
     "core.codes.license_choice_required.message":
       "이 기기에서 사용할 라이선스를 선택한 다음 계속하세요.",
+    "core.codes.interstitial_required.title": "로그인을 완료하세요",
+    "core.codes.interstitial_required.message":
+      "Polaris Locker 페이지에서 로그인을 완료한 뒤 앱으로 돌아오세요.",
+    "core.codes.not_nearby.title": "근처에 없음",
+    "core.codes.not_nearby.message":
+      "다른 기기가 이 네트워크에 없습니다. 가까이 이동하거나 코드로 로그인하세요.",
     "core.codes.auth_method_disabled.title": "로그인 방법 사용 불가",
     "core.codes.auth_method_disabled.message":
       "해당 로그인 방법은 꺼져 있어요. 다른 방법을 선택하세요.",
@@ -13012,6 +13084,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "로그인 사용 불가",
     "core.codes.sign-in-unavailable.message":
       "지금은 로그인을 사용할 수 없어요. 몇 분 후에 다시 시도하세요.",
+    "core.codes.platform-identity-unavailable.title": "로그인을 사용할 수 없음",
+    "core.codes.platform-identity-unavailable.message":
+      "이 기기에서는 자동 로그인을 할 수 없습니다. 다른 방법으로 로그인하세요.",
     "core.codes.invalid-options.title": "앱이 설정되지 않음",
     "core.codes.invalid-options.message":
       "앱의 라이선스 설정이 올바르지 않아요. 개발자에게 문의하세요.",
@@ -14337,6 +14412,12 @@ export const KIT_COPY: Readonly<
     "core.codes.license_choice_required.title": "选择许可证",
     "core.codes.license_choice_required.message":
       "选择此设备使用的许可证，然后继续。",
+    "core.codes.interstitial_required.title": "完成登录",
+    "core.codes.interstitial_required.message":
+      "请在 Polaris Locker 页面完成登录，然后返回应用。",
+    "core.codes.not_nearby.title": "不在附近",
+    "core.codes.not_nearby.message":
+      "另一台设备不在此网络中。请靠近一些，或改用代码登录。",
     "core.codes.auth_method_disabled.title": "登录方式不可用",
     "core.codes.auth_method_disabled.message":
       "该登录方式已关闭。请选择其他方式。",
@@ -14515,6 +14596,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-unavailable.title": "登录不可用",
     "core.codes.sign-in-unavailable.message":
       "登录目前不可用。请几分钟后重试。",
+    "core.codes.platform-identity-unavailable.title": "无法登录",
+    "core.codes.platform-identity-unavailable.message":
+      "此设备无法自动登录。请使用其他登录方式。",
     "core.codes.invalid-options.title": "应用未设置",
     "core.codes.invalid-options.message":
       "应用的许可功能未正确设置。请联系开发者。",

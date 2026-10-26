@@ -5534,6 +5534,26 @@ msgstr "Escolha uma licença"
 msgid "core.codes.license_choice_required.message"
 msgstr "Escolha qual licença este dispositivo usa e continue."
 
+#. Finish signing in
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interstitial_required.title"
+msgstr "Conclua o login"
+
+#. Finish signing in on the Polaris Locker page, then return to the app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interstitial_required.message"
+msgstr "Conclua o login na página do Polaris Locker e volte ao app."
+
+#. Not nearby
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_nearby.title"
+msgstr "Não está por perto"
+
+#. The other device isn't on this network. Move closer, or sign in with a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_nearby.message"
+msgstr "O outro dispositivo não está nesta rede. Aproxime-se ou entre com um código."
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"
@@ -6223,6 +6243,16 @@ msgstr "Acesso indisponível"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-unavailable.message"
 msgstr "O acesso não está disponível agora. Tente novamente em alguns minutos."
+
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-identity-unavailable.title"
+msgstr "Login indisponível"
+
+#. This device can't sign you in automatically. Use another way to sign in.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-identity-unavailable.message"
+msgstr "Este dispositivo não consegue fazer login automaticamente. Use outra forma de entrar."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

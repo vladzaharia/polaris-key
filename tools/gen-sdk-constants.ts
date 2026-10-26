@@ -102,6 +102,12 @@ export interface ErrorEntry {
   kind: ErrorKind;
   service: string;
   description: string;
+  /**
+   * A `wire` code a contract slice registers before the Worker emits it: the work package that
+   * will emit it. While set, the "nothing emits it" check is skipped; once the Worker emits the
+   * code the entry must drop this member (the list only shrinks).
+   */
+  plannedBy?: string;
 }
 
 export interface ErrorRegistry {
@@ -457,7 +463,11 @@ export function checkCoverage(
   const byCode = new Map(errors.map((e) => [e.code, e]));
   for (const [code, where] of scanned) {
     const entry = byCode.get(code);
-    if (!entry) {
+    if (entry?.plannedBy !== undefined) {
+      problems.push(
+        `"${code}" is emitted by the Worker (${where[0]}) but errors.json still says plannedBy "${entry.plannedBy}" — remove that member`,
+      );
+    } else if (!entry) {
       problems.push(
         `the Worker emits "${code}" (${where[0]}${where.length > 1 ? `, +${where.length - 1} more` : ""}) but conformance/parity/errors.json has no entry — add one`,
       );
@@ -472,7 +482,11 @@ export function checkCoverage(
     }
   }
   for (const entry of errors) {
-    if (entry.kind === "wire" && !scanned.has(entry.code)) {
+    if (
+      entry.kind === "wire" &&
+      entry.plannedBy === undefined &&
+      !scanned.has(entry.code)
+    ) {
       problems.push(
         `errors.json lists wire code "${entry.code}" but the Worker's source no longer emits it — remove it or mark it "client"`,
       );

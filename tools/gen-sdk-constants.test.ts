@@ -340,6 +340,23 @@ describe("the source test: errors.json against the Worker", () => {
     ]);
   });
 
+  it("skips a plannedBy wire code until the Worker emits it, then asks for the member's removal", () => {
+    const entry = {
+      code: "planned_code",
+      kind: "wire" as const,
+      service: "identity",
+      description: "x",
+      plannedBy: "I-13.4",
+    };
+    expect(checkCoverage([entry], new Map())).toEqual([]);
+    expect(
+      checkCoverage([{ ...entry, plannedBy: undefined }], new Map()),
+    ).toEqual([expect.stringContaining("no longer emits")]);
+    expect(
+      checkCoverage([entry], new Map([["planned_code", ["f.ts:1"]]])),
+    ).toEqual([expect.stringContaining('still says plannedBy "I-13.4"')]);
+  });
+
   it("resolves ErrorCode.<Member> call sites, and refuses an unknown member", () => {
     const call = (member: string) => ({
       path: "f.ts",
