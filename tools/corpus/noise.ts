@@ -24,6 +24,7 @@ import {
   refX25519Public,
   sha256,
 } from "./reference/noise.js";
+import { refPrologue as prologue } from "./reference/peerMatrix.js";
 import {
   REF_X25519_LOW_ORDER_HEX,
   refX25519LowOrder,
@@ -245,16 +246,6 @@ const MODES = {
   p: { protocol: "Noise_XX_25519_AESGCM_SHA256", psk: false },
 } as const;
 type Mode = keyof typeof MODES;
-
-const prologue = (slug: string, mode: string): Uint8Array =>
-  cat(
-    utf8("pkey-peer/1"),
-    Uint8Array.of(0),
-    utf8(slug),
-    Uint8Array.of(0),
-    utf8(mode),
-    Uint8Array.of(0),
-  );
 
 const PAYLOADS: Record<Mode, string[]> = {
   a: [

@@ -2538,6 +2538,7 @@ devices expire on the same horizon.
   after a bump). A device advertises only under the newest key.
 - **Why server-delivered.** This keeps L-13's server-delivered key over a root-key derivation.
   Connect then works without Cloud Sync E2E, and rotation is trivial.
+- **Byte-level choices (`peer-matrix.json` `adverts`).** `deviceId` in the HMAC is the 24 bytes the 32 base64url characters decode to. The instance suffix is the first 16 characters of the RFC 4648 base32 alphabet in lower case (`a-z2-7`), unpadded, of the 32-byte MAC. A browser matches an instance against the current epoch and the one before, newest key first, and against no other. A TXT entry splits at its first `=`; an entry without `=` and a key this section does not define are ignored; keys are case-sensitive; a repeated key refuses the whole advert. `v` must be `1`; `m` must be `a`, `v` or `p`; `h` is read for `v` and `p` only and must be 16 lower-case hex characters.
 
 ### 15.5 Handshake
 
@@ -2557,6 +2558,7 @@ devices expire on the same horizon.
   bytes, RFC 5869), the 32-byte discovery key as the input keying material and the label as info.
 - Message 1's payload is `{"v":1}`.
 - Payloads are strict JSON of at most 8 KiB.
+  - **Payload rules (`peer-matrix.json` `handshakePayloads`).** A payload is one JSON object under §1.2 (no byte order mark). Message 1 needs `v` = 1 and no `cert`. Messages 2 and 3 need `v` = 1 and `caps`; in mode `a` also a non-empty string `cert` and an integer `ring` of at least 1 that is a safe integer; in modes `v` and `p` a `cert` refuses. Unknown members are ignored. The session's capabilities are the entries both sides list, once each, in byte order.
 - `caps` holds at most 32 entries matching `^[a-z0-9]+/[0-9]+$`. v1 defines `ring/1`, `trust/1`,
   `cand/1`, `vouch/1` and `app/1`. The session uses the intersection.
 
@@ -2580,6 +2582,8 @@ An approver accepts at most 5 handshakes a minute per advert, so a man in the mi
 probability about 10^-6 per attempt. The vectors go in `peer-matrix.json` `sas`, with commit and
 reveal rows.
 
+**Encodings (`peer-matrix.json` `sas`).** `h` is the 32-byte Noise handshake hash. The code is shown as six digits, zero-padded, with a space between the triples (`058 429`). `nD`, `nM` and `c` are 32 bytes written as 43 canonical base64url characters, in a compact JSON object with the one member `c`, `nM` or `nD`; anything else (another length, padding, a hex spelling) refuses and closes the session with `peer_bad_frame`. The reveal is valid when SHA-256 of the decoded `nD` equals the decoded `c`.
+
 **No identity before consent.** Modes `v` and `p` carry no certificate in the handshake.
 
 ### 15.6 Records and framing
@@ -2592,6 +2596,7 @@ reveal rows.
   - A type with bit `0x8000` set is critical. An unknown critical type closes the session with
     `peer_unknown_critical`; an unknown non-critical type is ignored.
   - A type not allowed in the session's mode closes it with `peer_not_allowed`.
+  - **Order of checks (`peer-matrix.json` `records`).** Per record: the flag bits, then a record of another type while a `MORE` chain is open (`peer_bad_frame`), then the type (unknown critical, then the mode), then the running size over 1 MiB (`peer_bad_frame`), and on a chain's last record a fixed body length (`PING` and `PONG` 8 bytes, `REKEY` empty; `peer_bad_frame`). An unknown non-critical type is dropped with its whole chain. A frame whose length is zero closes with `peer_bad_frame`.
 
 | Type                         | Name                                    | Modes | Body                                                                                                                                                               |
 | ---------------------------- | --------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -2639,6 +2644,8 @@ from the client.
 | DO to client | 0x84 | PONG                                                 |
 | DO to client | 0x85 | GONE: `device(24)`                                   |
 | DO to client | 0x86 | LIMIT: `u8` 1 rate · 2 person · 3 product · 4 paused |
+
+**Byte-level choices (`peer-matrix.json` `relayEnvelopes`).** A device is its 24 decoded device-id bytes. `MEMBERS` carries its count `n` as one byte. `PONG` echoes the 8 bytes of the `PING` it answers. The limit of 65,564 bytes is the whole message: the op, 24, 4 and a Noise frame of at most 65,535 bytes. A message that does not match its layout exactly, an op in the wrong direction and a `LIMIT` outside 1 to 4 are refused.
 
 **Close codes:** 4001 bad ticket · 4003 not a member · 4008 limit · 4009 replaced.
 
