@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature identity.devicecode license.deactivate identity.account
+# @pkey-feature identity.devicecode license.deactivate identity.account identity.attach
 # SDK parity §3.12: identity.current() reads the signed-in person off the verified licence's
 # profile (null when none), and identity.sign_out() cancels a sign-in, forgets the identity and
 # releases the seat through license.deactivate() (the best-effort server call, then the wipe).
@@ -35,7 +35,51 @@ func run(t: PKeyTestContext) -> void:
 	t.check("account: sign_out() before configure() is refused", not r2.ok and r2.code == PKeyErrors.NOT_CONFIGURED)
 	cold.queue_free()
 	await _discovered(t)
+	await _attach(t)
 	h.free_server()
+
+
+## identity.attach (I-10b.3): preview, confirm, typed refusals, no endpoint.
+func _attach(t: PKeyTestContext) -> void:
+	h.plan.clear()
+	h.server.requests.clear()
+	h.serve_docs([h.F["token"]])
+	var root := "%s/%s/identity" % [h.server.base_url(), h.F["product"]]
+	var fragment := {"enabled": true, "account": true, "endpoints": {"attach": root + "/attach", "subject": root + "/subject", "signout": root + "/signout", "accountPortal": h.server.base_url() + "/#/p/djdl"}}
+	var doc := {"product": h.F["product"], "services": {"license": {"enabled": true}, "config": {"enabled": true}, "identity": fragment}}
+	h.plan["polaris.json"] = [S.json(200, doc)]
+	h.plan["/identity/attach"] = [
+		S.json(200, {"status": "confirm", "license": {"id": "lic_1", "tierId": null, "name": "Ada"}}),
+		S.json(200, {"token": "pkeyt_ROTATEDROTATEDROTATEDROTATEDROTATEDROTATE", "subject": "ps_abc", "attached": "claimed"}),
+		S.json(409, {"error": {"code": "license_owned"}}),
+		S.json(401, {"error": "unauthorized"}),
+		S.json(200, {"status": "ok"}),
+	]
+	var store := PKeyMemoryStore.new(h.F["device_id"], h.F["token"])
+	var sdk = await h.sdk(store)
+	await sdk.sync()
+	var r: PKeyResult = await sdk.identity.attach(false)
+	var sent: Array = h.requests("POST", "/identity/attach")
+	t.check("attach: the preview names the licence and writes nothing", r.ok and r.detail["kind"] == "confirm" and r.detail["license"]["id"] == "lic_1" and r.detail["license"]["tier_id"] == null and store.token == h.F["token"], str(r))
+	t.check("attach: the preview POSTs {confirm: false} with the device token", sent.size() == 1 and S.bearer(sent[0]) == h.F["token"] and JSON.parse_string(sent[0]["body"].get_string_from_utf8()) == {"confirm": false}, str(sent.size()))
+	r = await sdk.identity.attach(true)
+	t.check("attach: confirm stores the rotated token and the subject", r.ok and r.detail["kind"] == "ok" and r.detail["attached"] == "claimed" and r.detail["subject"] == "ps_abc" and store.token.begins_with("pkeyt_ROTATED") and sdk.core.cache.subject == "ps_abc", str(r))
+	r = await sdk.identity.attach(true)
+	t.check("attach: a Worker refusal keeps its code and the token", not r.ok and r.code == &"license_owned" and r.detail["kind"] == "refused" and r.detail["status"] == 409 and store.token.begins_with("pkeyt_ROTATED"), str(r))
+	r = await sdk.identity.attach(true)
+	t.check("attach: a bare error string is the code too", not r.ok and r.code == &"unauthorized" and r.detail["status"] == 401, str(r))
+	r = await sdk.identity.attach(true)
+	t.check("attach: an answer without a token is invalid and changes nothing", not r.ok and r.code == PKeyErrors.INVALID_RESPONSE and store.token.begins_with("pkeyt_ROTATED"), str(r))
+	sdk.queue_free()
+
+	# No endpoint: unavailable, nothing sent.
+	h.plan["polaris.json"] = [S.json(200, {"product": h.F["product"], "services": {"license": {"enabled": true}, "identity": {"enabled": false}}})]
+	h.server.requests.clear()
+	store = PKeyMemoryStore.new(h.F["device_id"], h.F["token"])
+	sdk = await h.sdk(store)
+	r = await sdk.identity.attach(true)
+	t.check("attach: no fragment is unavailable and nothing is sent", not r.ok and r.code == PKeyErrors.SERVICE_UNAVAILABLE and r.detail["kind"] == "unavailable" and h.requests("POST", "/identity/attach").is_empty(), str(r))
+	sdk.queue_free()
 
 
 ## identity.account (I-10b.2): subject(), sign_out() and open_account() over a discovered fragment.

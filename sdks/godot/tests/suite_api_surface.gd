@@ -36,6 +36,7 @@ const ROWS := [
 	["entitlements.all", "res://addons/polaris_key/services/entitlements.gd", "method", "all"],
 	["identity.subject", "res://addons/polaris_key/services/identity.gd", "method", "subject"],
 	["identity.signOut", "res://addons/polaris_key/services/identity.gd", "method", "sign_out"],
+	["identity.attachLicense", "res://addons/polaris_key/services/identity.gd", "method", "attach"],
 	["identity.openAccount", "res://addons/polaris_key/services/identity.gd", "method", "open_account"],
 	["events", SDK, "signal", "event"],
 	["client.discover", SDK, "method", "discover"],

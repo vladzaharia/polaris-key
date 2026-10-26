@@ -15,6 +15,11 @@ extends RefCounted
 ##                  when the server answers `released: true` (the sign-in had counted this device
 ##                  against a licence of the account); `released: false` keeps licence and token.
 ##   open_account() hands `accountPortal` to the opener (OS.shell_open, https only).
+##   attach(confirm) POST <attach> {confirm}: false previews the device's own licence and writes
+##                  nothing; true puts it in the signed-in account, rotates and stores the token.
+##                  A Worker refusal (`account_required`, `license_owned`, `license_email_bound`,
+##                  `unauthorized`, `not_found`, ...) is a failure whose `code` is the Worker's and
+##                  whose detail is {kind: "refused", status}; it keeps token, cache and identity.
 ##
 ## Not instantiated by a game: PKeyIdentity owns one.
 
@@ -63,10 +68,14 @@ static func _unavailable(what: String) -> PKeyResult:
 	return PKeyResult.failure(PKeyErrors.SERVICE_UNAVAILABLE, "The product does not serve %s." % what, {"kind": "unavailable"})
 
 
-func _send(method: String, url: String) -> PKeyResult:
+func _send(method: String, url: String, body: Variant = null) -> PKeyResult:
 	var core := _core()
 	var h := core.headers({"Authorization": "Bearer %s" % core.tokens.current()})
-	var r := await core.transport.request(method, url, h, PackedByteArray())
+	var bytes := PackedByteArray()
+	if body is Dictionary:
+		bytes = PKeyJson.stringify(body).to_utf8_buffer()
+		h["Content-Type"] = "application/json"
+	var r := await core.transport.request(method, url, h, bytes)
 	if not r.ok:
 		return PKeyResult.failure(r.code if r.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, r.message)
 	return r
@@ -174,6 +183,53 @@ func open_account() -> PKeyResult:
 	elif PKeyOutletAdapter.is_https(url):
 		opened = OS.shell_open(url) == OK
 	return PKeyResult.success({"url": url, "opened": opened})
+
+
+## ok: detail {kind: "confirm", license: {id, tier_id, name}} for `confirm == false` (nothing is
+## written), or {kind: "ok", subject: String or "", attached: "claimed" or ""} for `true`: the
+## rotated token is stored; the caller syncs, as after `activate_with_key`. A refusal is a failure
+## (code = the Worker's, detail {kind: "refused", status}); no endpoint (no `account: true`) is
+## `service-unavailable` with detail.kind "unavailable" and nothing is sent.
+func attach(confirm: bool) -> PKeyResult:
+	var core := _core()
+	if core == null or not core.started:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	var fragment := await _fragment()
+	var url: String = fragment.get("attach", "") if fragment.get("account") == true else ""
+	if url == "" or not _own(url):
+		return _unavailable("attaching a license")
+	if not core.tokens.has_token():
+		return PKeyResult.failure(PKeyErrors.NO_TOKEN, "Activate or sign in before attaching.")
+	var r := await _send("POST", url, {"confirm": confirm})
+	if not r.ok:
+		return r
+	var status: int = r.detail["status"]
+	var body = _body(r)
+	if status >= 500:
+		return PKeyResult.failure(PKeyErrors.SERVER_ERROR, "Attach failed with status %d." % status, {"status": status})
+	if status != 200:
+		var err = body.get("error") if body is Dictionary else null
+		var code = err.get("code") if err is Dictionary else err
+		var name: String = code if code is String and code != "" else "http_%d" % status
+		return PKeyResult.failure(StringName(name), "Attach was refused (status %d)." % status, {"kind": "refused", "status": status})
+	if not (body is Dictionary):
+		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "Attach answered without a body.")
+	if body.get("status") == "confirm":
+		var l = body.get("license")
+		var lic: Dictionary = l if l is Dictionary else {}
+		return PKeyResult.success({"kind": "confirm", "license": {
+			"id": lic["id"] if lic.get("id") is String else "",
+			"tier_id": lic.get("tierId") if lic.get("tierId") is String else null,
+			"name": lic.get("name") if lic.get("name") is String else null,
+		}})
+	var token = body.get("token")
+	if not (token is String and token != ""):
+		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "Attach answered without a token.")
+	if not core.tokens.set_token(token, PKeyTokenManager.SOURCE_ACTIVATE):
+		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The rotated token could not be stored.")
+	var subject = body.get("subject")
+	_store_subject(subject if subject is String else "")
+	return PKeyResult.success({"kind": "ok", "subject": subject if subject is String else "", "attached": "claimed" if body.get("attached") == "claimed" else ""})
 
 
 func _store_subject(value: String) -> void:

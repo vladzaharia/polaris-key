@@ -24,6 +24,8 @@ extends RefCounted
 ##                                         goes only on `released: true`. ok with detail {released}.
 ##                                         Without the endpoint it is the old path: release this
 ##                                         device with license.deactivate()
+##   attach(confirm)                       preview (false) or add this device's licence to the signed-in
+##                                         account (true); see attach()
 ##   open_account()                        open the product's account page (the discovered
 ##                                         `accountPortal`); ok with detail {url, opened}
 ##   sign_in_with_browser(device_name)     begin_sign_in, then open the verification page in the
@@ -42,10 +44,12 @@ extends RefCounted
 ## 401, `ready` or `cancel()`. Every poll carries the device id that `X-PKey-Device` carries.
 ##
 ## The opt-in attach (P1-07): with `confirm_identity`, the polls ask the Worker to hold the flow
-## at the signed-in identity. Once the player has signed in, the SDK emits
-## `sign_in_confirm({identity, attachable})` and stops polling until the game calls
-## `accept_sign_in(attach_license)` (or `cancel()`). Show the name and e-mail, and only offer
-## "attach this device's licence to my account" when `attachable` is true. Nothing is minted or
+## at the signed-in identity. When the player has signed in and the device holds a licence that
+## can be attached (`attachable`: the Keep step on the card), the SDK emits
+## `sign_in_confirm({identity, attachable: true})` and stops polling until the game calls
+## `accept_sign_in(attach_license)` (or `cancel()`). Show the name and e-mail and offer "attach
+## this device's licence to my account". With nothing to attach no prompt is emitted: the SDK
+## answers the hold with "no" itself (D-10), and a plain `ready` never asks. Nothing is minted or
 ## merged until the player accepts ON THE DEVICE; a stranger who confirmed the code on their own
 ## phone can never trigger the attach (they do not hold the device code).
 ##
@@ -277,6 +281,20 @@ func open_account() -> PKeyResult:
 	return await _account.open_account()
 
 
+## `POST attach` over the discovered endpoint (identity.attach). `confirm == false` previews the
+## device's own licence: ok, detail {kind: "confirm", license: {id, tier_id, name}}, nothing is
+## written. `true` adds it to the signed-in account and stores the rotated token: ok, detail
+## {kind: "ok", subject, attached ("claimed" when this call attached it, else "")}; sync after, as
+## after `activate_with_key`. The Worker's refusals (`account_required`, `license_owned`,
+## `license_email_bound`, `unauthorized`, `not_found`, ...) are failures with that `code` and
+## detail {kind: "refused", status}; token, cache and identity stay. A product without the
+## endpoint answers `service-unavailable` (detail.kind "unavailable"). A coroutine.
+func attach(confirm: bool) -> PKeyResult:
+	if _account == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	return await _account.attach(confirm)
+
+
 ## Register a step `sign_out()` awaits before it signs out, in registration order (Cloud Sync's
 ## flush, D-4): a `func() -> void`, a coroutine allowed. Nothing is registered until Cloud Sync
 ## does.
@@ -437,8 +455,8 @@ func _poll(prompt: PKeySignInPrompt, current: int, decision: Variant) -> Diction
 
 ## Poll until the sign-in settles: the loop `begin_sign_in` runs (see the class doc for the
 ## rules). Ends `expired` once `prompt.expires_at` has passed without asking the server, and
-## `cancelled` after `cancel()`. With `prompt.confirm_identity`, a `confirm` answer emits
-## `sign_in_confirm` and the wait holds for `accept_sign_in()` (or cancel, or expiry). A coroutine.
+## `cancelled` after `cancel()`. With `prompt.confirm_identity`, a `confirm` answer that carries
+## `attachable: true` emits `sign_in_confirm` and the wait holds for `accept_sign_in()` (or cancel, or expiry). A coroutine.
 func wait_for_sign_in(prompt: PKeySignInPrompt) -> PKeySignInResult:
 	return await _wait(prompt, _generation)
 
@@ -480,6 +498,14 @@ func _wait(prompt: PKeySignInPrompt, gen: int) -> PKeySignInResult:
 				# the same decision) or the licence stopped being attachable (ask the player again).
 				if decision != null and resends < MAX_DECISION_RESENDS and not (bool(decision) and not p["attachable"]):
 					resends += 1
+					continue
+				if not p["attachable"]:
+					# D-10: "Is this you?" is for the Keep step on the card only. With no licence to
+					# attach there is nothing to ask: answer the server's hold with "no" at once.
+					if decision != null and not bool(decision):
+						return PKeySignInResult.ended(PKeySignInResult.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The sign-in stayed on its confirmation after a decision.", 200)
+					decision = false
+					resends = 0
 					continue
 				decision = null
 				resends = 0

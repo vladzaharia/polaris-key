@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature identity.account core.discover core.presentation core.sync core.cache config.schema config.mint devices.register devices.report
+# @pkey-feature identity.account identity.attach core.discover core.presentation core.sync core.cache config.schema config.mint devices.register devices.report
 # @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicelabel
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
@@ -144,7 +144,7 @@ static func replay(tr: Dictionary) -> Array:
 			if step["action"] == "updateDecide" and sdk.core.discovery_manifest == null:
 				# The transcript ran no discovery: the Worker's standard templates, as React's replayer.
 				sdk.core.discovery_manifest = _standard_discovery(server.base_url(), tr["product"])
-			if step["action"] in ["subject", "signOut"] and sdk.core.discovery_manifest == null:
+			if step["action"] in ["subject", "signOut", "attach"] and sdk.core.discovery_manifest == null:
 				# identity.account: the account endpoints at the Worker's standard paths, on the loopback server.
 				sdk.core.discovery_manifest = _standard_identity_discovery(server.base_url(), tr["product"])
 			if step["action"] in ["chunkRange", "releaseFetch"] and sdk.core.discovery_manifest is Dictionary:
@@ -185,6 +185,22 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				out["released"] = r.detail["released"]
 			else:
 				out["result"] = "unavailable" if r.code == PKeyErrors.SERVICE_UNAVAILABLE else String(r.code)
+		"attach":
+			var r: PKeyResult = await sdk.identity.attach(PKeyClaims.is_true(step["args"].get("confirm")))
+			if r.ok and r.detail["kind"] == "confirm":
+				var l: Dictionary = r.detail["license"]
+				out["result"] = "confirm"
+				out["license"] = {"id": l["id"], "tierId": l["tier_id"], "name": l["name"]}
+			elif r.ok:
+				out["result"] = "ok"
+				out["subject"] = r.detail["subject"] if r.detail["subject"] != "" else null
+				out["attached"] = r.detail["attached"] if r.detail["attached"] != "" else null
+			elif r.detail is Dictionary and r.detail.get("kind") == "unavailable":
+				out["result"] = "unavailable"
+			else:
+				out["result"] = "refused"
+				out["code"] = String(r.code)
+			out["tokenHeld"] = store.token != ""
 		"fetchSchema":
 			out["catalog"] = await sdk.config.fetch_schema()
 		"mintToken":
