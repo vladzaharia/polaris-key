@@ -68,6 +68,8 @@ export interface FirstReleasePanelProps {
   /** The product is linked to a GitHub repository (`releaseSource`). */
   linked: boolean;
   /** The repo sync health (linked products only): its `github` check is the App row. */
+  /** Opens the Publish from CI drawer (the page hosts it, so it outlives this panel). */
+  onPublish?: () => void;
   health: {
     data: ReleaseHealth | undefined;
     isPending: boolean;
@@ -81,6 +83,7 @@ export function FirstReleasePanel({
   productName,
   linked,
   health,
+  onPublish,
 }: FirstReleasePanelProps): React.ReactElement {
   const queryClient = useQueryClient();
   const publisher = useCiPublisher(slug);
@@ -319,7 +322,11 @@ export function FirstReleasePanel({
           <p className="max-w-prose text-sm text-fg-muted">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {linked && onPublish ? (
+            <Button onClick={onPublish}>Publish from CI…</Button>
+          ) : null}
           <Button
+            variant={linked && onPublish ? "outline" : "primary"}
             iconStart={
               copyState === "copied" ? (
                 <Check aria-hidden />
