@@ -80,7 +80,9 @@ public struct PolarisKeyPreview: View {
         case .activate:
             ActivateView(
                 screen: model.activate, text: $model.keyText, onSubmit: {},
-                onReplaceDevice: {}, onCancel: {}, onDone: {})
+                onReplaceDevice: {}, onCancel: {}, onDone: {},
+                refusalLink: ActivateRefusal.link(model.activate, model.inputs.activation),
+                onRefusalLink: model.inputs.platform.isTV ? nil : {})
         case .offlineActivation:
             OfflineActivationView(
                 screen: model.offlineActivation, requestCode: model.offlineRequestCode,
