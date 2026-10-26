@@ -1,8 +1,8 @@
 # @pkey-feature identity.devicecode
 """Sign-in conveniences (SDK parity pass §3.12, SP-P10): P1-07's attach opt-in, ``ready`` carrying
 the identity, ``sign_in_with_browser()`` (device code opened in the system browser, polled at
-``/identity/auth/device/poll``, never the retired ``/identity/auth/poll``), ``current()`` and
-``sign_out()``."""
+``/identity/auth/device/poll``, never the retired ``/identity/auth/poll``), and ``current()``. ``sign_out()`` is the account verb
+(tests/test_identity_account.py)."""
 
 from __future__ import annotations
 
@@ -76,12 +76,3 @@ def test_sign_in_with_browser_opens_the_complete_uri(clock) -> None:
     assert r.status == "ready"
     assert opened == [prompts[0].verificationUriComplete]
     assert not any(x["path"].endswith("/identity/auth/poll") for x in plane.calls)
-
-
-def test_sign_out_clears_the_credential_and_identity(clock) -> None:
-    plane = Plane(clock, {START: [started()], POLL: [READY_ID]})
-    c = make(plane, ["identity"])
-    c.identity.wait_for_sign_in(c.identity.begin_sign_in())
-    c.identity.sign_out()
-    assert c._tokens.current is None and c.identity.current() is None
-    assert any(x["path"].endswith("/license/deauthorize") for x in plane.calls)
