@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "protocolVersion": 4,
+  "protocolVersion": 5,
   "schemaVersion": 1,
   "product": "acme",
   "slug": "acme",

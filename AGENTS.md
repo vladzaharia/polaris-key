@@ -18,7 +18,7 @@ build. The gate runs once, at hand-off.
 | Add a catalog entry                          | `adding-a-catalog-entry`           | `products/<slug>/catalog.json` or the `.pkey/` schema                           | `pnpm --filter @polaris-key/manifest test`                                                             |
 | Edit a `.pkey/` manifest                     | `authoring-pkey-manifests`         | the product repo's `.pkey/`                                                     | `pkey validate`                                                                                        |
 | Change a generator input ([rule 3](#rule-3)) | —                                  | `tools/generators.ts`                                                           | `pnpm gen --changed --check`                                                                           |
-| Change the wire ([rule 2](#rule-2))          | —                                  | a plan first (`CLAUDE.md`), then `docs/security/WIRE-CONTRACT-V4.md`            | `pnpm gen corpus`, then every SDK's conformance runner                                                 |
+| Change the wire ([rule 2](#rule-2))          | —                                  | a plan first (`CLAUDE.md`), then `docs/security/WIRE-CONTRACT-V5.md`            | `pnpm gen corpus`, then every SDK's conformance runner                                                 |
 | Add an error code                            | —                                  | `conformance/parity/errors.json`, first                                         | `pnpm gen constants --check`                                                                           |
 | Add a D1 table ([rule 6](#rule-6))           | —                                  | `packages/worker/src/db/owners.ts`                                              | `packages/worker/test/tableCrossings.test.ts`                                                          |
 | Add a service                                | —                                  | `tools/services.json`, `packages/docs/src/content/docs/contribute/layout.md`    | `pnpm gen services --check`                                                                            |
@@ -137,8 +137,8 @@ a runner to make a change pass. Enforced by `pnpm gen corpus --check` and
 `conformance/README.md`.
 
 <a id="rule-2"></a>**2. A wire change bumps `PROTOCOL_VERSION` and regenerates the corpus.** The
-constant is in `packages/shared-protocol/src/core.ts` (now 4); the spec, with the signed document
-set, is `docs/security/WIRE-CONTRACT-V4.md`. The order is contract → catalog → corpus → SDKs, and a
+constant is in `packages/shared-protocol/src/core.ts` (now 5); the spec, with the eight signed
+documents, is `docs/security/WIRE-CONTRACT-V5.md` (V4 is the superseded record). The order is contract → catalog → corpus → SDKs, and a
 feature is done when every SDK passes (Kotlin for what its parity manifest implements). Enforced by
 every SDK's conformance runner; detail: `conformance/README.md`.
 

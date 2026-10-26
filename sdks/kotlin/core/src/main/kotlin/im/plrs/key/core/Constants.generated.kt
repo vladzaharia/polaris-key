@@ -1402,7 +1402,7 @@ public val HEADER_NAME_VALUES: List<String> = listOf(
 )
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
-public const val PROTOCOL_VERSION: Int = 4
+public const val PROTOCOL_VERSION: Int = 5
 
 /** `corpusVersion` of conformance/corpus/v2/cases.json. */
 public const val CORPUS_VERSION: Int = 2

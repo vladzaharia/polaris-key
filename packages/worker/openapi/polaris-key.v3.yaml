@@ -64,7 +64,7 @@ info:
   version: "3.0.0"
   description: >
     Per-product licensing, managed config, releases, distribution, updates, and identity over wire
-    contract v4 (PROTOCOL_VERSION 4). Every route is scoped by a product slug; signed
+    contract v5 (PROTOCOL_VERSION 5). Every route is scoped by a product slug; signed
     documents are compact EdDSA JWS with typ-separated document kinds; clients verify
     against pinned keys plus a signed trust manifest.
   contact:
@@ -182,7 +182,7 @@ paths:
                   summary: A product running every service (test/surfaces/surfaces.test.ts)
                   value:
                     version: 2
-                    protocolVersion: 4
+                    protocolVersion: 5
                     schemaVersion: 1
                     product: djdl
                     slug: djdl
@@ -26530,7 +26530,7 @@ components:
         ]
       properties:
         version: { type: integer, const: 2 }
-        protocolVersion: { type: integer, const: 4 }
+        protocolVersion: { type: integer, const: 5 }
         schemaVersion: { type: integer }
         product: { type: string }
         slug: { type: string }

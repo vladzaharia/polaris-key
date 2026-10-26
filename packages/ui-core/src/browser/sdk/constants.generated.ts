@@ -1456,7 +1456,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 /** `corpusVersion` of conformance/corpus/v2/cases.json. */
 export const CORPUS_VERSION = 2;

@@ -931,7 +931,7 @@ class ServiceSlug:
 const SERVICE_SLUG_VALUES := ["license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]
 
 ## The wire contract version (`@polaris-key/protocol/core`).
-const PROTOCOL_VERSION := 4
+const PROTOCOL_VERSION := 5
 
 ## `corpusVersion` of conformance/corpus/v2/cases.json.
 const CORPUS_VERSION := 2

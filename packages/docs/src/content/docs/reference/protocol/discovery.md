@@ -18,7 +18,7 @@ It is assembled by Core from the service registry, and it is **unsigned**.
 ```jsonc
 {
   "version": 2,
-  "protocolVersion": 4, // PROTOCOL_VERSION — the wire contract
+  "protocolVersion": 5, // PROTOCOL_VERSION — the wire contract
   "schemaVersion": 4, // the PRODUCT's active config catalog version
   "product": "<slug>",
   "slug": "<slug>",
@@ -67,7 +67,7 @@ It is assembled by Core from the service registry, and it is **unsigned**.
 ```
 
 `version` is the document's own version and is **2**; `protocolVersion` is the wire contract's
-`PROTOCOL_VERSION` (4); `schemaVersion` is the product's active config catalog version, not the
+`PROTOCOL_VERSION` (5); `schemaVersion` is the product's active config catalog version, not the
 wire version. Three numbers, three owners — they are not expected to agree.
 
 All URLs are absolute and built from the origin the request actually arrived on, so a consumer

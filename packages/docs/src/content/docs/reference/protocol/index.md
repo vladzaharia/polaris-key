@@ -1,6 +1,6 @@
 ---
 title: "The protocol"
-description: "PROTOCOL_VERSION 4: the frozen JWS envelope and its strict verifier, the type-separated documents, and the conformance corpus that proves every SDK agrees."
+description: "PROTOCOL_VERSION 5: the frozen JWS envelope and its strict verifier, the type-separated documents, and the conformance corpus that proves every SDK agrees."
 sidebar:
   order: 5
   label: "The protocol"
@@ -14,13 +14,13 @@ manifest, an offline activation bundle, a channel feed and a release record are 
 envelope with different `typ` values and different payloads. Learn the envelope once and every
 document is the same artifact.
 
-`PROTOCOL_VERSION` is **4**. It is exported from `@polaris-key/protocol/core` as
+`PROTOCOL_VERSION` is **5**. It is exported from `@polaris-key/protocol/core` as
 `core.PROTOCOL_VERSION`, and it is bumped on any wire-breaking change to a document shape or
 to the HTTP contract that carries one.
 
 This section teaches the contract for people integrating an SDK, porting the contract to another language, or
-debugging a verification failure. These pages summarize wire contract v4, and each cites the section of
-`docs/security/WIRE-CONTRACT-V4.md` it comes from. When a page and the spec disagree, the spec
+debugging a verification failure. These pages summarize wire contract v5, and each cites the section of
+`docs/security/WIRE-CONTRACT-V5.md` it comes from. When a page and the spec disagree, the spec
 wins and the page is a bug.
 
 ## What "frozen" means
@@ -38,7 +38,8 @@ rule that makes that possible:
   exists to catch (spec §10).
 - **A change is a version step.** Altering a document shape or the transport around it means
   bumping `PROTOCOL_VERSION` and regenerating `conformance/corpus/v2/`. v4 added two documents
-  and one stricter verifier without changing the four v3 documents' bytes (spec §9).
+  and one stricter verifier without changing the four v3 documents' bytes; v5 added two more
+  (a device certificate and a roster, for Cloud Connect) without changing the six before them (spec §9).
 - **Every verifier is equally strict.** Ed25519 encodings (`S < L`, canonical and
   non-small-order keys and `R`), the JSON (well-formed UTF-8, no BOM, no lone surrogate, no
   U+0000 in a member name, numbers in binary64's range, at most 64 levels), and every integer
@@ -137,7 +138,7 @@ them is the most common way to misread a document (spec §9).
 
 | Counter                | Value | Owner / meaning                                                                                              |
 | ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
-| `PROTOCOL_VERSION`     | `4`   | The wire contract itself. `@polaris-key/protocol/core`.                                                      |
+| `PROTOCOL_VERSION`     | `5`   | The wire contract itself. `@polaris-key/protocol/core`.                                                      |
 | `CACHE_VERSION` (`v`)  | `3`   | The on-disk cache record format. Any other value is discarded, never migrated.                               |
 | `corpusVersion`        | `2`   | The conformance corpus at `conformance/corpus/v2/`.                                                          |
 | `gateMatrixVersion`    | `2`   | The gate-transition matrix inside that corpus.                                                               |
@@ -181,7 +182,7 @@ reading these pages with a checkout in front of you:
 
 | What                     | Path                                                                                                                                                                                                           |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The normative spec       | `docs/security/WIRE-CONTRACT-V4.md`                                                                                                                                                                            |
+| The normative spec       | `docs/security/WIRE-CONTRACT-V5.md`                                                                                                                                                                            |
 | Its predecessor          | `docs/security/WIRE-CONTRACT-V3.md`                                                                                                                                                                            |
 | The conformance corpus   | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `feed-url-matrix.json` |
 | The corpus generator     | `tools/sign-corpus.ts`, a driver over `tools/corpus/<family>.ts` and `tools/corpus/reference/`                                                                                                                 |

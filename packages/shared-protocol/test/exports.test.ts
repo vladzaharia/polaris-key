@@ -18,8 +18,8 @@ import * as license from "../src/license.js";
 import type { DocProfile, SignedInUser } from "../src/license.js";
 
 describe("@polaris-key/protocol layout", () => {
-  it("core carries wire contract v4", () => {
-    expect(core.PROTOCOL_VERSION).toBe(4);
+  it("core carries wire contract v5", () => {
+    expect(core.PROTOCOL_VERSION).toBe(5);
     expect(core.MAX_WIRE_INTEGER).toBe(Number.MAX_SAFE_INTEGER);
     expect(core.MAX_JSON_DEPTH).toBe(64);
     // verifyJws's encoded caps: header 1 370 + "." + payload 87 386 + "." + signature 86.

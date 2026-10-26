@@ -15727,9 +15727,9 @@ var DISPLAY_TEXT_STRIP = [
   [65279, 65279]
 ];
 
-// ../shared-protocol/dist/chunk-ACSXFTO6.js
+// ../shared-protocol/dist/chunk-6OFYMAM7.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var PROTOCOL_VERSION = 4;
+var PROTOCOL_VERSION = 5;
 var MAX_JSON_DEPTH = 64;
 var MAX_RECORD_JWS_BYTES = 88844;
 var MAX_PACK_VARIANTS = 32;
