@@ -1790,6 +1790,54 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => csCat(d).migrations[0].drop.push("run.parallel"),
   },
   {
+    // U-33.3: anything but e2e or server.
+    code: "invalid_cloud_sync",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (csCat(d).encryption = "none"),
+  },
+  {
+    // U-33.3: delta is a boolean.
+    code: "invalid_cloud_sync",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (csCat(d).collections[2].files.delta = "yes"),
+  },
+  {
+    // U-33.3: `x:` is reserved for blinded names (a collection name).
+    code: "cloud_sync_reserved_prefix",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (csCat(d).collections[0].name = "x:progress"),
+  },
+  {
+    // U-33.3: `x:` is reserved for blinded names (a config key).
+    code: "cloud_sync_reserved_prefix",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => (cat(d).entries[0].key = "x:run.concurrency"),
+  },
+  {
+    // U-33.3: mapValues under the default (e2e) mode.
+    code: "cloud_sync_e2e_map_values",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) =>
+      (csCat(d).migrations[0].mapValues = {
+        "run.concurrency": { low: "1" },
+      }),
+  },
+  {
+    // U-33.3: mapValues under an explicit e2e.
+    code: "cloud_sync_e2e_map_values",
+    file: "schema",
+    schema: "rejects",
+    mutate: (d) => {
+      csCat(d).encryption = "e2e";
+      csCat(d).migrations[0].mapValues = { "run.concurrency": { low: "1" } };
+    },
+  },
+  {
     code: "invalid_cloud_sync",
     file: "schema",
     schema: "rejects",

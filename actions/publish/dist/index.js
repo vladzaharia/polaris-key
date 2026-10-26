@@ -4055,7 +4055,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "key": {
           "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency). On a flag, the names channels, deviceLimit, app.minVersion, app.maxVersion, license.tier and license.tierLabel, and every name under license., app. and pkey., are reserved entitlement names the platform sets itself: a declaration of one must match the system key's type (channels an array of strings, deviceLimit an integer, app.* and license.* strings) and may only narrow it. The validator reports an incompatible one (incompatible_reserved_name) as a warning or an error, as the platform's licensing.reservedNames setting says; this schema does not check it.",
           "type": "string",
-          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+          "pattern": "^(?!x:)[A-Za-z0-9._:-]{1,64}$"
         },
         "kind": {
           "description": "config = plaintext client setting · secret = redacted, delivered to the OS keyring · flag = an entitlement.",
@@ -4242,6 +4242,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "The data shape of the product's Cloud Sync records (the Cloud Sync service): its collections and the migrations the server applies to synced values. A person's quota is not here: it is the pkey.cloudSync.bytes entitlement a tier, a licence override or an add-on sets.",
       "type": "object",
       "properties": {
+        "encryption": {
+          "description": "e2e (default): the server holds ciphertext only and cannot read synced values. server: the server can read them, which migrations' mapValues needs.",
+          "enum": ["e2e", "server"]
+        },
         "collections": {
           "type": "array",
           "maxItems": 32,
@@ -4249,9 +4253,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "type": "object",
             "properties": {
               "name": {
-                "description": "[A-Za-z0-9._:-], at most 128 characters; a trailing .* makes a pattern matching every collection with that prefix. Names are unique and patterns disjoint.",
+                "description": "[A-Za-z0-9._:-], at most 128 characters, not starting with x: (reserved for blinded names); a trailing .* makes a pattern matching every collection with that prefix. Names are unique and patterns disjoint.",
                 "type": "string",
-                "pattern": "^[A-Za-z0-9._:-]{1,126}(?:\\\\.\\\\*)?$"
+                "pattern": "^(?!x:)[A-Za-z0-9._:-]{1,126}(?:\\\\.\\\\*)?$"
               },
               "label": {
                 "description": "Shown in the console and the portal. Default: the template's label, else the name.",
@@ -4295,7 +4299,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
                 "type": "object",
                 "properties": {
                   "maxBytes": { "type": "integer", "minimum": 0 },
-                  "keepRevisions": { "type": "integer", "minimum": 0 }
+                  "keepRevisions": { "type": "integer", "minimum": 0 },
+                  "delta": {
+                    "description": "Send only the changed chunks of a new version. Default true for a saves collection, false otherwise.",
+                    "type": "boolean"
+                  }
                 },
                 "additionalProperties": false
               },
@@ -4338,6 +4346,18 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             },
             "required": ["toSchemaVersion"],
             "additionalProperties": false
+          }
+        }
+      },
+      "if": {
+        "properties": { "encryption": { "const": "server" } },
+        "required": ["encryption"]
+      },
+      "else": {
+        "$comment": "mapValues rewrites values the server cannot read under E2E.",
+        "properties": {
+          "migrations": {
+            "items": { "not": { "required": ["mapValues"] } }
           }
         }
       },
@@ -14907,6 +14927,14 @@ var CLOUD_SYNC_TEMPLATE_NAMES = [
   "saves",
   "session"
 ];
+var CLOUD_SYNC_ENCRYPTION_MODES = [
+  "e2e",
+  "server"
+];
+var CLOUD_SYNC_RESERVED_PREFIX = "x:";
+function cloudSyncEncryption(catalog) {
+  return catalog.cloudSync?.encryption === "server" ? "server" : "e2e";
+}
 var CLOUD_SYNC_COLLECTION_PATTERN = "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
 var CLOUD_SYNC_MAX_MERGE_MEMBERS = SYNC_MAX_MERGE_MEMBERS;
 var CLOUD_SYNC_SAVE_SLOTS = SYNC_SAVE_SLOTS;
@@ -14960,7 +14988,8 @@ var CLOUD_SYNC_TEMPLATES = {
     maxRecords: CLOUD_SYNC_SAVE_SLOTS,
     files: {
       maxBytes: CLOUD_SYNC_DEFAULTS.files.maxBytes,
-      keepRevisions: CLOUD_SYNC_DEFAULTS.files.keepRevisions
+      keepRevisions: CLOUD_SYNC_DEFAULTS.files.keepRevisions,
+      delta: true
     },
     schema: {
       type: "object",
@@ -14981,7 +15010,7 @@ var CLOUD_SYNC_TEMPLATES = {
     label: "Session",
     conflict: "lastWrite",
     maxRecords: 16,
-    files: { maxBytes: 8 * MiB2, keepRevisions: 1 }
+    files: { maxBytes: 8 * MiB2, keepRevisions: 1, delta: false }
   }
 };
 function isEditable(entry) {
@@ -15006,7 +15035,11 @@ function settingRoute(entry) {
   };
 }
 function syncedSettings(catalog) {
-  return catalog.entries.map(settingRoute);
+  const routes = catalog.entries.map(settingRoute);
+  if (catalog.cloudSync === void 0)
+    return routes;
+  const encryption = cloudSyncEncryption(catalog);
+  return routes.map((r) => ({ ...r, encryption }));
 }
 var USER_BLOCK_MEMBERS = /* @__PURE__ */ new Set(["sync", "conflict", "listed"]);
 var isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -16335,7 +16368,7 @@ function reservedNameDeclarations(catalog) {
   return out;
 }
 var COLLECTION_RE = new RegExp(CLOUD_SYNC_COLLECTION_PATTERN);
-var CATALOG_MEMBERS = /* @__PURE__ */ new Set(["collections", "migrations"]);
+var CATALOG_MEMBERS = /* @__PURE__ */ new Set(["encryption", "collections", "migrations"]);
 var COLLECTION_MEMBERS = /* @__PURE__ */ new Set([
   "name",
   "label",
@@ -16348,7 +16381,7 @@ var COLLECTION_MEMBERS = /* @__PURE__ */ new Set([
   "files",
   "requires"
 ]);
-var FILES_MEMBERS = /* @__PURE__ */ new Set(["maxBytes", "keepRevisions"]);
+var FILES_MEMBERS = /* @__PURE__ */ new Set(["maxBytes", "keepRevisions", "delta"]);
 var MIGRATION_MEMBERS = /* @__PURE__ */ new Set([
   "toSchemaVersion",
   "rename",
@@ -16369,6 +16402,18 @@ function validateCloudSync(errors, warnings, ctx) {
         if (raw.user.sync !== "local")
           declaresSync = true;
       }
+    }
+  }
+  if (ctx.catalogChecked && ctx.entries) {
+    for (const [i, raw] of ctx.entries.entries()) {
+      if (isRecord22(raw) && typeof raw.key === "string" && raw.key.startsWith(CLOUD_SYNC_RESERVED_PREFIX))
+        add(
+          errors,
+          "schema",
+          `/entries/${i}/key`,
+          "cloud_sync_reserved_prefix",
+          `The key ${raw.key} starts with ${CLOUD_SYNC_RESERVED_PREFIX}, which Cloud Sync reserves for blinded names; choose another key.`
+        );
     }
   }
   if (ctx.catalogChecked && ctx.catalogCloudSync !== void 0) {
@@ -16444,6 +16489,14 @@ function validateCatalogBlock(errors, block2, flags, keys) {
       );
     else shape(errors, "schema", at, `${k} is not a member here.`);
   }
+  if (block2.encryption !== void 0 && !isOneOf(block2.encryption, CLOUD_SYNC_ENCRYPTION_MODES)) {
+    shape(
+      errors,
+      "schema",
+      `${base}/encryption`,
+      `cloudSync.encryption must be ${CLOUD_SYNC_ENCRYPTION_MODES.join(" or ")}; e2e is the default.`
+    );
+  }
   if (block2.collections !== void 0) {
     const max = CLOUD_SYNC_DEFAULTS.records.maxCollections;
     if (!Array.isArray(block2.collections) || block2.collections.length > max) {
@@ -16472,7 +16525,13 @@ function validateCatalogBlock(errors, block2, flags, keys) {
       );
     } else {
       for (const [i, m] of block2.migrations.entries()) {
-        validateMigration(errors, m, keys, `${base}/migrations/${i}`);
+        validateMigration(
+          errors,
+          m,
+          keys,
+          block2.encryption === "server",
+          `${base}/migrations/${i}`
+        );
       }
     }
   }
@@ -16501,6 +16560,15 @@ function validateCollections(errors, collections, flags, base) {
           `${path37}/${escapePointer2(k)}`,
           `${k} is not a member here.`
         );
+    }
+    if (typeof raw.name === "string" && raw.name.startsWith(CLOUD_SYNC_RESERVED_PREFIX)) {
+      add(
+        errors,
+        "schema",
+        `${path37}/name`,
+        "cloud_sync_reserved_prefix",
+        `The collection name ${raw.name} starts with ${CLOUD_SYNC_RESERVED_PREFIX}, which Cloud Sync reserves for blinded names; choose another name.`
+      );
     }
     if (raw.access !== void 0 && !isOneOf(raw.access, CLOUD_SYNC_ACCESS)) {
       shape(
@@ -16588,12 +16656,12 @@ function validateCollections(errors, collections, flags, base) {
     }
     if (raw.files !== void 0) {
       const f = raw.files;
-      if (!isRecord22(f) || Object.keys(f).some((k) => !FILES_MEMBERS.has(k)) || f.maxBytes !== void 0 && !nonNegativeInteger(f.maxBytes) || f.keepRevisions !== void 0 && !nonNegativeInteger(f.keepRevisions)) {
+      if (!isRecord22(f) || Object.keys(f).some((k) => !FILES_MEMBERS.has(k)) || f.maxBytes !== void 0 && !nonNegativeInteger(f.maxBytes) || f.keepRevisions !== void 0 && !nonNegativeInteger(f.keepRevisions) || f.delta !== void 0 && typeof f.delta !== "boolean") {
         shape(
           errors,
           "schema",
           `${path37}/files`,
-          "A collection's files has maxBytes and keepRevisions (non-negative integers)."
+          "A collection's files has maxBytes and keepRevisions (non-negative integers) and delta (a boolean)."
         );
       } else {
         ceilingCheck(
@@ -16680,7 +16748,7 @@ function namesOverlap(a, b) {
   if (pb && a.startsWith(pb)) return true;
   return false;
 }
-function validateMigration(errors, m, keys, path37) {
+function validateMigration(errors, m, keys, serverReadable, path37) {
   if (!isRecord22(m)) {
     shape(errors, "schema", path37, "A migration must be an object.");
     return;
@@ -16710,6 +16778,15 @@ function validateMigration(errors, m, keys, path37) {
       "schema",
       `${path37}/mapValues`,
       "A migration's mapValues maps each key to an object of old value to new value."
+    );
+  }
+  if (mapValues !== void 0 && !serverReadable) {
+    add(
+      errors,
+      "schema",
+      `${path37}/mapValues`,
+      "cloud_sync_e2e_map_values",
+      'mapValues needs the server to read synced values, which an E2E catalog does not allow. Use rename and drop, or set cloudSync.encryption to "server".'
     );
   }
   const drop = m.drop;

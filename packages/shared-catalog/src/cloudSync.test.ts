@@ -12,6 +12,7 @@ import {
   SYNC_CONFLICTS,
   USER_SETTING_CONFLICTS,
   USER_SETTING_SYNC_SCOPES,
+  cloudSyncEncryption,
   resolveCollection,
   syncedSettings,
   userSettingIssues,
@@ -149,7 +150,7 @@ describe("templates", () => {
       conflictField: null,
       schema: null,
       maxRecords: 10_000,
-      files: { maxBytes: 32 * 1024 ** 2, keepRevisions: 5 },
+      files: { maxBytes: 32 * 1024 ** 2, keepRevisions: 5, delta: false },
       requires: null,
     });
     expect(resolveCollection({ name: "s", template: "session" })).toMatchObject(
@@ -157,7 +158,7 @@ describe("templates", () => {
         label: "Session",
         conflict: "lastWrite",
         maxRecords: 16,
-        files: { maxBytes: 8 * 1024 ** 2, keepRevisions: 1 },
+        files: { maxBytes: 8 * 1024 ** 2, keepRevisions: 1, delta: false },
       },
     );
   });
@@ -308,5 +309,42 @@ describe("userSettingIssues", () => {
     expect(
       codes({ kind: "config", schema: {}, user: { conflict: "revision" } }),
     ).toEqual([["invalid_user_setting", "error", "user.conflict"]]);
+  });
+});
+
+describe("encryption and delta", () => {
+  it("defaults delta on for saves, off otherwise, and lets a declaration override", () => {
+    expect(
+      resolveCollection({ name: "s", template: "saves" }).files.delta,
+    ).toBe(true);
+    expect(resolveCollection({ name: "n" }).files.delta).toBe(false);
+    expect(
+      resolveCollection({
+        name: "s",
+        template: "saves",
+        files: { delta: false },
+      }).files.delta,
+    ).toBe(false);
+  });
+
+  it("reads the mode as e2e unless the catalog opts out", () => {
+    expect(cloudSyncEncryption({})).toBe("e2e");
+    expect(cloudSyncEncryption({ cloudSync: {} })).toBe("e2e");
+    expect(cloudSyncEncryption({ cloudSync: { encryption: "server" } })).toBe(
+      "server",
+    );
+  });
+
+  it("carries the mode on every route when the catalog hands over its cloudSync block", () => {
+    const entries = [entry({ key: "a" }), entry({ key: "b", kind: "secret" })];
+    expect(syncedSettings({ entries })[0]).not.toHaveProperty("encryption");
+    expect(
+      syncedSettings({ entries, cloudSync: {} }).map((r) => r.encryption),
+    ).toEqual(["e2e", "e2e"]);
+    expect(
+      syncedSettings({ entries, cloudSync: { encryption: "server" } }).map(
+        (r) => r.encryption,
+      ),
+    ).toEqual(["server", "server"]);
   });
 });

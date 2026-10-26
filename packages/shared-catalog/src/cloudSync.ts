@@ -23,6 +23,7 @@ import {
 import type {
   CloudSyncAccess,
   CloudSyncCollection,
+  CloudSyncEncryption,
   CloudSyncTemplate,
   ConfigEntry,
   JsonSchema,
@@ -65,6 +66,26 @@ export const CLOUD_SYNC_TEMPLATE_NAMES: readonly CloudSyncTemplate[] = [
   "saves",
   "session",
 ];
+
+/** `cloudSync.encryption` values; the first is the default. */
+export const CLOUD_SYNC_ENCRYPTION_MODES: readonly CloudSyncEncryption[] = [
+  "e2e",
+  "server",
+];
+
+/** The mode a catalog gets when it declares none. */
+export const CLOUD_SYNC_DEFAULT_ENCRYPTION: CloudSyncEncryption = "e2e";
+
+/** The prefix of every blinded name an E2E client writes (V5 §13.10); a declared config key or
+ *  collection name may not start with it. */
+export const CLOUD_SYNC_RESERVED_PREFIX = "x:";
+
+/** A catalog's effective mode: its declaration, else `e2e`. */
+export function cloudSyncEncryption(
+  catalog: Pick<ProductCatalog, "cloudSync">,
+): CloudSyncEncryption {
+  return catalog.cloudSync?.encryption === "server" ? "server" : "e2e";
+}
 
 /** A Cloud Sync key, record id, slot or collection name (S-17 §5.7). */
 export const CLOUD_SYNC_KEY_PATTERN = SYNC_KEY_PATTERN;
@@ -145,7 +166,7 @@ export interface ResolvedCollection {
   conflictField: string | null;
   schema: JsonSchema | null;
   maxRecords: number;
-  files: { maxBytes: number; keepRevisions: number };
+  files: { maxBytes: number; keepRevisions: number; delta: boolean };
   requires: string | null;
 }
 
@@ -154,7 +175,7 @@ export interface CloudSyncTemplateDef {
   label: string;
   conflict: SyncConflict;
   maxRecords: number;
-  files: { maxBytes: number; keepRevisions: number };
+  files: { maxBytes: number; keepRevisions: number; delta: boolean };
   schema?: JsonSchema;
 }
 
@@ -177,6 +198,7 @@ export const CLOUD_SYNC_TEMPLATES: Readonly<
     files: {
       maxBytes: CLOUD_SYNC_DEFAULTS.files.maxBytes,
       keepRevisions: CLOUD_SYNC_DEFAULTS.files.keepRevisions,
+      delta: true,
     },
     schema: {
       type: "object",
@@ -197,7 +219,7 @@ export const CLOUD_SYNC_TEMPLATES: Readonly<
     label: "Session",
     conflict: "lastWrite",
     maxRecords: 16,
-    files: { maxBytes: 8 * MiB, keepRevisions: 1 },
+    files: { maxBytes: 8 * MiB, keepRevisions: 1, delta: false },
   },
 };
 
@@ -227,6 +249,7 @@ export function resolveCollection(c: CloudSyncCollection): ResolvedCollection {
         c.files?.keepRevisions ??
         t?.files.keepRevisions ??
         CLOUD_SYNC_DEFAULTS.files.keepRevisions,
+      delta: c.files?.delta ?? t?.files.delta ?? false,
     },
     requires: c.requires ?? null,
   };
@@ -249,8 +272,13 @@ export type SettingRoute =
       policy: UserSettingConflict;
       listed: boolean;
       schema?: JsonSchema;
+      encryption?: CloudSyncEncryption;
     }
-  | { key: string; route: "local" | "locked" | "refused" };
+  | {
+      key: string;
+      route: "local" | "locked" | "refused";
+      encryption?: CloudSyncEncryption;
+    };
 
 /** Whether a `config` entry is Editable: the catalog sets no `managementDefault` that locks it. */
 export function isEditable(
@@ -286,9 +314,14 @@ export function settingRoute(entry: ConfigEntry): SettingRoute {
  * re-implement it, proven by `sync-scenarios.json`'s `settingCases`.
  */
 export function syncedSettings(
-  catalog: Pick<ProductCatalog, "entries">,
+  catalog: Pick<ProductCatalog, "entries" | "cloudSync">,
 ): SettingRoute[] {
-  return catalog.entries.map(settingRoute);
+  const routes = catalog.entries.map(settingRoute);
+  // A caller that hands over the catalog's `cloudSync` block gets the mode on every route; one
+  // that hands over entries only gets the routes alone (the `settingCases` shape).
+  if (catalog.cloudSync === undefined) return routes;
+  const encryption = cloudSyncEncryption(catalog);
+  return routes.map((r) => ({ ...r, encryption }));
 }
 
 // ── The `user` block rules (shape, 1–5), shared by every checker ─────────────────────────────
