@@ -22,6 +22,8 @@ import { KvMock, asKv } from "../../kvMock.js";
 import {
   CloudSyncNamespaceMock,
   asCloudSyncNamespace,
+  ERASED_LEFTOVERS,
+  erasureLeftovers,
 } from "../../cloudSyncDoMock.js";
 
 const T0 = 1_760_000_000_000;
@@ -258,19 +260,17 @@ describe("directory flush (U-05.9)", () => {
       { product: P, subject: A },
       { op: "deleteAll" },
     );
-    // The alarm is gone with the data; even a stray one is a no-op.
-    expect(w.ns.instance(NAME(A)).storage.alarm).toBeNull();
+    // Only the cleanup alarm of the erasure marker is left: it flushes nothing, and a day on
+    // it erases the marker too.
+    expect(w.ns.instance(NAME(A)).storage.alarm).toBe(T0 + 86_400_000);
     await w.ns.fireAlarm(NAME(A));
     expect(w.batches).toHaveLength(0);
     expect(await dirRow(w, A)).toBeNull();
-    expect(
-      w.ns
-        .instance(NAME(A))
-        .storage.sql.db.prepare(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
-        )
-        .all(),
-    ).toEqual([]);
+    expect(erasureLeftovers(w.ns, NAME(A))).toEqual(ERASED_LEFTOVERS);
+    w.clock.t = T0 + 86_400_000;
+    await w.ns.fireAlarm(NAME(A));
+    expect(erasureLeftovers(w.ns, NAME(A))).toBeNull();
+    expect(w.ns.instance(NAME(A)).storage.alarm).toBeNull();
   });
 
   it("a deleteAll that races an in-flight flush waits for it, and the object stays erased", async () => {
@@ -295,7 +295,7 @@ describe("directory flush (U-05.9)", () => {
     expect(await dirRow(w, A)).toBeNull();
     await w.ns.fireAlarm(NAME(A));
     expect(await dirRow(w, A)).toBeNull();
-    expect(w.ns.instance(NAME(A)).storage.alarm).toBeNull();
+    expect(erasureLeftovers(w.ns, NAME(A))).toEqual(ERASED_LEFTOVERS);
   });
 
   it("size falls back to the object until the alarm runs, then the directory answers", async () => {
@@ -323,14 +323,7 @@ describe("directory flush (U-05.9)", () => {
       now: T0 / 1000,
     });
     expect(out.done).toBe(true);
-    expect(
-      w.ns
-        .instance(NAME(A))
-        .storage.sql.db.prepare(
-          "SELECT 1 FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'",
-        )
-        .all(),
-    ).toEqual([]);
+    expect(erasureLeftovers(w.ns, NAME(A))).toEqual(ERASED_LEFTOVERS);
   });
 
   describe("the merge marker's cleanup alarm (SR-2)", () => {

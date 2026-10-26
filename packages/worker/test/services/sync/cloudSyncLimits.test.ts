@@ -42,6 +42,14 @@ import {
   syncLimiterShard,
 } from "../../../src/services/sync/limits.js";
 import { recordLimiterChecks } from "../../rlMock.js";
+import { syncProductPurge } from "../../../src/services/sync/productDeletion.js";
+import { productIsPurging } from "../../../src/services/sync/purgeFlag.js";
+import { deleteProduct } from "../../../src/core/products/store.js";
+import {
+  callCloudSync,
+  deleteCloudSync,
+} from "../../../src/services/sync/do/client.js";
+import { SYNC_MAX_SETTINGS } from "@polaris-key/protocol/sync";
 
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
@@ -372,5 +380,108 @@ describe("Cloud Sync push: the users ceiling", () => {
     expect(
       (await resultsOf(await push(w, [set("audio.gain", 1)])))[0]!.status,
     ).toBe("ok");
+  });
+});
+
+const objectCount = (w: World, table: string, where = "1 = 1"): number => {
+  const inst = w.ns.instances.get(`${SLUG}:${w.subject}`);
+  if (!inst) return 0;
+  return (
+    inst.storage.sql.db
+      .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`)
+      .get() as { n: number }
+  ).n;
+};
+
+describe("Cloud Sync abuse bounds", () => {
+  it("clearing names the store never held writes no row, however many a device sends", async () => {
+    const w = await world();
+    pin();
+    for (let b = 0; b < 4; b++) {
+      const res = await push(
+        w,
+        Array.from({ length: 100 }, (_, i) => mut(`junk.${b}.${i}`, "clear")),
+      );
+      expect(res.status).toBe(200);
+    }
+    expect(objectCount(w, "tombstones")).toBeLessThanOrEqual(SYNC_MAX_SETTINGS);
+    expect(objectCount(w, "tombstones")).toBe(0);
+  });
+
+  it("an empty batch from a fresh clientId adds no client binding", async () => {
+    const w = await world();
+    pin();
+    for (let i = 0; i < 30; i++) {
+      const id = `c_${String(i).padStart(22, "A")}`;
+      expect((await push(w, [], { clientId: id })).status).toBe(200);
+    }
+    expect(objectCount(w, "clients")).toBe(0);
+  });
+
+  it("a new person at the users ceiling cannot grow after a clear-only push", async () => {
+    const w = await world();
+    pin();
+    await setUsers(w, 100_000);
+    const first = await resultsOf(await push(w, [set("audio.gain", 1)]));
+    expect(first[0]!.status).toBe("rejected");
+    expect((await push(w, [mut("x.y", "clear")])).status).toBe(200);
+    // A declared key's clear keeps its tombstone; the person is still new.
+    expect((await push(w, [mut("audio.gain", "clear")])).status).toBe(200);
+    const again = await resultsOf(await push(w, [set("audio.gain", 1)]));
+    expect(again[0]!.status).toBe("rejected");
+  });
+
+  it("a push between the purge finishing and the product row flipping is refused", async () => {
+    const w = await world();
+    pin();
+    expect((await push(w, [set("audio.gain", 1)])).status).toBe(200);
+    const done = await syncProductPurge({
+      db: w.db,
+      env: w.env,
+      product: SLUG,
+      now: NOW,
+    });
+    expect(done.done).toBe(true);
+    expect(await productIsPurging(w.env, SLUG)).toBe(true);
+    expect((await push(w, [set("audio.volume", 0.5)])).status).toBe(404);
+    await deleteProduct(w.db, SLUG, NOW);
+    expect(objectCount(w, "settings", "key = 'audio.volume'")).toBe(0);
+  });
+
+  it("the pull answers 429 to a device that pulls more than 120 times a minute", async () => {
+    const w = await world();
+    pin();
+    const path = `/${SLUG}/sync`;
+    const statuses: number[] = [];
+    for (let i = 0; i < 125; i++)
+      statuses.push((await send(w, null, authed(w), path, "GET")).status);
+    expect(statuses.slice(0, 120).every((s) => s === 200)).toBe(true);
+    const limited = await send(w, null, authed(w), path, "GET");
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toBe(String(60 - (NOW % 60)));
+  });
+
+  it("refuses a push that was in flight when the person's object was erased", async () => {
+    const w = await world();
+    pin();
+    expect((await push(w, [set("audio.gain", 1)])).status).toBe(200);
+    const pinned = { product: SLUG, subject: w.subject };
+    await deleteCloudSync(w.env, pinned);
+    await expect(
+      callCloudSync<"push">(w.env, pinned, {
+        op: "push",
+        deviceId: DEVICE,
+        family: "desktop",
+        limits: { quotaBytes: 1 << 20 },
+        request: {
+          clientId: CLIENT,
+          cursor: 0,
+          mutations: [set("audio.gain", 2)],
+        },
+        classified: [{ verdict: "accept", scope: "user", policy: "lastWrite" }],
+        serverNow: NOW * 1000,
+      }),
+    ).rejects.toMatchObject({ status: 410, code: "absorbed" });
+    expect(objectCount(w, "settings")).toBe(0);
   });
 });

@@ -20,6 +20,8 @@ import { makeTestDb } from "../../helpers.js";
 import {
   CloudSyncNamespaceMock,
   asCloudSyncNamespace,
+  ERASED_LEFTOVERS,
+  erasureLeftovers,
 } from "../../cloudSyncDoMock.js";
 import { callCloudSync } from "../../../src/services/sync/do/client.js";
 import { formatHlc } from "../../../src/services/sync/engine/hlc.js";
@@ -226,7 +228,8 @@ describe("sync.cloudSync subject store", () => {
     expect(dump.settings.settings.map((r: any) => r.key)).toEqual(["theme"]);
     await lastNs.instance("acme:a").storage.setAlarm(Date.now() + 1000);
     await runSubjectDelete(ctx, { product: "acme", subject: "a" });
-    expect(await lastNs.instance("acme:a").storage.getAlarm()).toBeNull();
+    // Only the erasure marker's cleanup alarm is left.
+    expect(erasureLeftovers(lastNs, "acme:a")).toEqual(ERASED_LEFTOVERS);
     const after = (await store.export!(ctx, {
       product: "acme",
       subject: "a",

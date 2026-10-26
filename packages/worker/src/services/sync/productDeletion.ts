@@ -17,7 +17,7 @@ import type {
   ProductPurgeContributor,
 } from "../../core/contributions.js";
 import { deleteCloudSync } from "./do/client.js";
-import { clearProductPurging, markProductPurging } from "./purgeFlag.js";
+import { markProductPurging } from "./purgeFlag.js";
 
 /** Objects erased per run: each is one subrequest, and a run must stay inside the Worker's limit. */
 export const PURGE_OBJECTS_PER_RUN = 400;
@@ -51,7 +51,8 @@ export const syncProductPurge: ProductPurgeContributor = async ({
       PAGE,
     );
     if (page.length === 0) {
-      await clearProductPurging(env, product);
+      // The flag stays: the product row flips after this returns, and a push in the gap must
+      // still be refused. Its TTL ends it.
       return { done: true };
     }
     for (const { subject } of page) {

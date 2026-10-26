@@ -25,6 +25,11 @@ import { applySettingMutation } from "./settings.js";
 import type { PushInput, PushOutcome, Stamp, SyncStore } from "./types.js";
 import { validatePush } from "./validate.js";
 
+/** Client bindings one person's object keeps; a new one past it needs an idle one to replace. */
+export const MAX_CLIENT_BINDINGS = 32;
+/** A binding this idle (seconds) may be replaced by a new client once the cap is reached. */
+export const CLIENT_BINDING_IDLE_SECONDS = 86_400;
+
 /** Thrown inside an atomic batch's transaction to roll its writes back. */
 class AtomicRollback extends Error {
   constructor(readonly results: MutationResult[]) {
@@ -94,9 +99,21 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
     return { ok: false, error: "client_mismatch" };
   const startLast = bound?.lastMutationId ?? 0;
 
-  // The users ceiling (U-05.14): an object that never held data refuses growth once the product
-  // is at its user limit. Decided once, before the batch, so a batch cannot admit itself.
-  if (input.limits?.usersAtCeiling && store.isEmpty())
+  // A new binding costs a row. A request with nothing to process never makes one, and at the cap a
+  // new client replaces a binding that has been idle for a day, or is refused.
+  if (
+    !bound &&
+    mutations.length > 0 &&
+    store.clientCount() >= MAX_CLIENT_BINDINGS &&
+    !store.dropIdleClient(
+      Math.floor(input.serverNow / 1000) - CLIENT_BINDING_IDLE_SECONDS,
+    )
+  )
+    return { ok: false, error: "bad_request", reason: "too_many_clients" };
+
+  // The users ceiling (U-05.14): an object that never held a live setting refuses growth once
+  // the product is at its user limit. Decided once, before the batch, so a batch cannot admit itself.
+  if (input.limits?.usersAtCeiling && !store.heldData())
     input = { ...input, limits: { ...input.limits, productOverCeiling: true } };
 
   const run = (): MutationResult[] => {
@@ -118,6 +135,7 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
 
   const advance = (results: readonly MutationResult[]): number => {
     const last = Math.max(startLast, ...results.map((r) => r.mutationId));
+    if (!bound && results.length === 0) return last;
     store.putClient({
       clientId,
       deviceId: input.deviceId,

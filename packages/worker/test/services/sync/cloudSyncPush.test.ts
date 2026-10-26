@@ -1009,11 +1009,11 @@ describe("POST /<p>/sync/ops: a deleted or erasing product is refused before the
     expect(w.ns.calls).toEqual([]);
   });
 
-  it("a finished purge deletes the flag, so a slug created again within the hour is not refused", async () => {
+  it("a finished purge keeps the flag, so a push before the product row flips is still refused", async () => {
     const w = await world();
     await markProductPurging(w.env, SLUG);
     expect(await productIsPurging(w.env, SLUG)).toBe(true);
-    // Nothing is listed: this run is the last, and clears the flag.
+    // Nothing is listed: this run is the last, and the flag stays until its TTL lapses.
     const out = await syncProductPurge({
       db: w.db,
       env: w.env,
@@ -1021,8 +1021,8 @@ describe("POST /<p>/sync/ops: a deleted or erasing product is refused before the
       now: NOW,
     });
     expect(out).toEqual({ done: true });
-    expect(await productIsPurging(w.env, SLUG)).toBe(false);
-    expect((await push(w, [set("audio.gain", 1)])).status).toBe(200);
+    expect(await productIsPurging(w.env, SLUG)).toBe(true);
+    expect((await push(w, [set("audio.gain", 1)])).status).toBe(404);
   });
 
   it("the flag is per product, and reads (the pull) are not refused", async () => {

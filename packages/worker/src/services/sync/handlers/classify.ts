@@ -134,6 +134,7 @@ export function classifyMutations(
         verdict: "accept",
         scope: "user",
         policy: "lastWrite",
+        open: true,
         ...(openInvalid(m) ? { valueInvalid: true } : {}),
       };
     if (route.route !== "synced") return NOT_SYNCED;

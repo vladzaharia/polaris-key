@@ -9,9 +9,12 @@ import { freshSqlStore } from "./cloudSyncDoMock.js";
  * module with this class and replay the engine suites unchanged).
  */
 export class SqlTestStore extends SqlStore {
-  constructor() {
+  constructor(clock?: () => number) {
     const { storage } = freshSqlStore();
-    super(storage as unknown as ConstructorParameters<typeof SqlStore>[0]);
+    super(
+      storage as unknown as ConstructorParameters<typeof SqlStore>[0],
+      clock,
+    );
     this.prepare(true);
   }
 

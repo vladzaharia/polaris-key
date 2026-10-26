@@ -108,6 +108,15 @@ export interface SyncStore {
   ): StoredSetting[];
   /** No row at all, tombstones included. */
   isEmpty(): boolean;
+  /** The object has held a live setting at some point (a tombstone alone does not count). */
+  heldData(): boolean;
+  /** How many client bindings the object keeps. */
+  clientCount(): number;
+  /**
+   * Forgets the binding that pushed longest ago, if it has been idle since `cutoffSeconds` (epoch
+   * seconds) or earlier. Returns whether one went.
+   */
+  dropIdleClient(cutoffSeconds: number): boolean;
   /** The person's running totals. The engine keeps them current; a store only holds them. */
   getUsage(): StoreUsage;
   setUsage(usage: StoreUsage): void;
@@ -141,6 +150,8 @@ export type Classification =
       /** The route's scope: the target must name the same one. Open settings are `user`. */
       scope: SyncScope;
       policy: SettingPolicy;
+      /** The key is not declared by the catalog: the person names it, so nothing bounds the names. */
+      open?: boolean;
       /** The Worker's schema check of the mutation's value (or member value) failed. */
       valueInvalid?: boolean;
     }

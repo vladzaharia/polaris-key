@@ -37,6 +37,8 @@ import { makeEnv, seedProduct, NOW } from "../../seed.js";
 import {
   CloudSyncNamespaceMock,
   asCloudSyncNamespace,
+  ERASED_LEFTOVERS,
+  erasureLeftovers,
 } from "../../cloudSyncDoMock.js";
 import { TEST_ROOT } from "../../paths.js";
 
@@ -225,19 +227,12 @@ describe("absorb: the join", () => {
       await exportCloudSync(env, { product: P, subject: "from" }),
     ).toBeNull();
     await merge(env, "from", "to");
-    // Erasure removes the marker with everything else; the object can be written afresh.
+    // Erasure replaces the merge marker with the erasure marker: no data, and writes stay refused.
     await deleteCloudSync(env, { product: P, subject: "from" });
-    expect(
-      ns
-        .instance(`${P}:from`)
-        .storage.sql.db.prepare(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-        )
-        .all(),
-    ).toEqual([]);
-    expect((await setOne(env, "from", "fresh", 3, at(6), C2, "d2")).ok).toBe(
-      true,
-    );
+    expect(erasureLeftovers(ns, `${P}:from`)).toEqual(ERASED_LEFTOVERS);
+    await expect(
+      setOne(env, "from", "fresh", 3, at(6), C2, "d2"),
+    ).rejects.toMatchObject({ status: 410, code: "absorbed" });
   });
 
   it("a write that does not move the sequence (a conflict-only push) between export and delete keeps the object (SR-1 N2)", async () => {

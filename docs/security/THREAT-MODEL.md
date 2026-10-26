@@ -8298,6 +8298,11 @@ cached document or the audit log. Rows are S-17 §5.14's; the route is `services
   `syncAccess().subject`, from the device's sign-in binding; a key-activated device on an
   account-owned licence has none and gets `403 account_required`, with no object call and no
   change to the licence, device or key rows (`test/services/sync/cloudSyncPull.test.ts`).
+- **Erasure leaves a marker.** An account erasure wipes the object and leaves only its pin and the
+  erasure time (no setting, value or client), with a cleanup alarm a day out. Until then the object
+  refuses `push` and `absorb` with `410 absorbed` and answers reads empty, so a request that
+  resolved the principal before the deletion cannot rebuild the person's data; the Worker then
+  finds no principal and answers `account_required`. After the day the marker erases itself.
 - **T3, a stolen token after sign-out.** The subject is read from the device row on every request,
   and again after the object answers (from a fresh row, never the one the request started with). A
   sign-out, a "sign out everywhere" or a merge that lands in between changes the answer: no
@@ -8341,7 +8346,12 @@ at T16, so T17 here is the plan's: a push that outlives the data it must not rec
 - **T6, storage and cost abuse.** The device's quota and tier come from `syncAccess` (a body
   member named `quota` or `limits` is dropped; the Worker forwards only `clientId`, `cursor`,
   `atomic` and `mutations`). A licence-less device is 1 MiB with files refused, quota `0` is reads
-  only, and a clear always passes (it frees space). The product ceiling compares the 15-minute
+  only, and a clear of a stored key always passes (it frees space). A clear of an open key the
+  object never held is a no-op that writes no row (a tombstone costs no quota, so a free one per
+  invented name would be unbounded storage); a declared key is bounded by the catalog and keeps
+  its tombstone. A client binding costs a row too: a request with nothing to process never makes
+  one, an object keeps at most 32, and a new client past that replaces a binding idle for a day
+  or is refused (`400 bad_request`). The product ceiling compares the 15-minute
   aggregate `sync_product_usage.bytes` with `cloudSync.ceiling.bytes`: a product can overshoot by
   what its people write inside one aggregate window (up to 15 minutes), which is acceptable for a
   cost control and is the reason the object, not the aggregate, enforces the per-person quota.
@@ -8352,14 +8362,17 @@ at T16, so T17 here is the plan's: a push that outlives the data it must not rec
   (`syncPushDevice`, charged first, so an over-limit device never spends the product's budget) and
   2,000 a second per product (`syncPushProduct`), counted over eight `RateLimitDO` objects named
   `sync:product:<p>:<0-7>` by a hash of the caller's subject. The answer is `429 rate_limited` with
-  `Retry-After` (seconds left in the window). Both buckets are fail open (L10, `FAIL_MODE`): the
+  `Retry-After` (seconds left in the window). The pull has its own bucket, `syncPull`: 120 a
+  minute per device, charged right after the token and principal and before any object call, in the
+  same shard and with the same `429`. All three buckets are fail open (L10, `FAIL_MODE`): the
   caller holds a live device token and a principal, the client's journal survives a 429 either
   way, and the person's object bounds the work per principal; the cost of an unlimited window
   during a limiter outage is bounded by the per-person quota and the product ceiling. **Users
   ceiling:** `sync_product_usage.users` (the same 15-minute aggregate over `sync_directory`) at
   100,000 or more makes the object refuse growth with `quota_exceeded`, `scope: product`, but
-  only when it never held data (`store.isEmpty()`: no settings and no tombstones), decided once
-  before the batch. People already syncing, and a person who cleared their data, keep writing; the latter holds only until the 90-day tombstone GC removes their tombstones.
+  only when it never held a live setting (`store.heldData()`, a flag set by the first live row; a
+  tombstone alone does not count), decided once before the batch. People already syncing, and a
+  person who cleared their data, keep writing; a person who has only ever cleared keys is still new.
   The aggregate lags up to 15 minutes, so the count can overshoot by the new people admitted in
   one window.
 - **Device trust.** `trustRefusal(…, "cloudSyncWrite", …, "wire")`: log-only writes at most one
@@ -8396,8 +8409,9 @@ attestation_required` for the whole request, in the nested `wireError` shape eve
   (`services/sync/purgeFlag.ts`, `pk()`-scoped, one-hour TTL renewed by every run) BEFORE it erases
   an object; the push reads the flag and re-reads the product row immediately before the object
   call, and answers `404` for a soft-deleted or purging product. A KV read that fails refuses the
-  push (retryable) instead of assuming no purge. The flag is deleted when the purge finishes, so a
-  slug created again within the hour is not refused. Residual: KV is eventually consistent, so a
+  push (retryable) instead of assuming no purge. The flag is not cleared when the purge finishes:
+  the product row flips only after the last run, and a push in between must still be refused, so
+  the TTL ends it (a deleted slug stays taken, so nothing needs the flag gone sooner). Residual: KV is eventually consistent, so a
   push served in another location can land for up to about a minute after the first purge run, and
   the directory row it writes is guarded on the product being live (U-05.9). The object closes that
   itself: its alarm flush ends with a directory upsert guarded on the product being live, and when

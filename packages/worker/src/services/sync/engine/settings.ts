@@ -195,6 +195,16 @@ export function applySettingMutation(
   const base = stored ?? empty(m, target.scope, ctx.family);
   const fresh = stored === undefined;
 
+  // Clearing an open key the store has never seen changes nothing and writes no row: a tombstone
+  // costs no quota, so a free one per invented name would be unbounded storage. (A declared key
+  // is bounded by the catalog and keeps its tombstone: a later older write must still lose.)
+  if (m.op === "clear" && fresh && route.open)
+    return {
+      mutationId: m.mutationId,
+      status: "ok",
+      version: store.currentSeq(),
+    };
+
   if (route.policy === "merge")
     return applyMerge(store, ctx, m, stored, base, stamp);
 

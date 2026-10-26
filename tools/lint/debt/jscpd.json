@@ -3396,7 +3396,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/services/identity/portalEmailGate.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/worker/test/services/identity/portalErasureFence.test.ts": {
       "jscpd:duplicate": 3
@@ -3512,6 +3512,12 @@
     "packages/worker/test/services/release/settings-discovery.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/worker/test/services/sync/cloudSyncAbuse.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/sync/cloudSyncAbuseWorld.ts": {
+      "jscpd:duplicate": 8
+    },
     "packages/worker/test/services/sync/cloudSyncBudget.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -3522,13 +3528,13 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/services/sync/cloudSyncLimits.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/services/sync/cloudSyncMerge.test.ts": {
       "jscpd:duplicate": 3
     },
     "packages/worker/test/services/sync/cloudSyncPull.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 10
     },
     "packages/worker/test/services/sync/cloudSyncPush.test.ts": {
       "jscpd:duplicate": 13
@@ -4068,7 +4074,7 @@
       "jscpd:duplicate": 8
     },
     "packages/worker/test/surfaces/provisionedSecretsJob.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 6
     },
     "packages/worker/test/surfaces/provisioningTarget.test.ts": {
       "jscpd:duplicate": 5
@@ -4158,7 +4164,7 @@
       "jscpd:duplicate": 21
     },
     "packages/worker/test/surfaces/syncPrincipal.test.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 15
     },
     "packages/worker/test/surfaces/updateFeed.test.ts": {
       "jscpd:duplicate": 9

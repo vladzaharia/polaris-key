@@ -26,6 +26,7 @@
  * response (SR-2).
  */
 
+import { pullLimited } from "../limits.js";
 import {
   SYNC_CLIENT_ID_PATTERN,
   type PullResponse,
@@ -84,6 +85,15 @@ async function pullInner(
 
   const caller = await authenticateSync(req, env, db, product, now);
   if (caller instanceof Response) return caller;
+
+  const limited = await pullLimited(
+    env,
+    product.slug,
+    caller.access.subject,
+    caller.device.device_id,
+    now,
+  );
+  if (limited) return limited;
 
   const url = new URL(req.url);
   const cursor = parseCursor(url.searchParams.get("cursor"));
