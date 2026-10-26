@@ -463,3 +463,5 @@ export {
   type StartRedirectOptions,
   type TokenAnswer,
 } from "./identityRedirect.js";
+
+export * from "./peer/index.js";

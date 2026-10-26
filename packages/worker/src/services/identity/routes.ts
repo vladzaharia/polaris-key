@@ -22,6 +22,7 @@
  *                                           POST  record a step of it, or the choice
  *     /identity/authorize                   GET   I-08, begin the app passthrough sign-in
  *     /identity/token                       POST  I-08, redeem the code (form body)
+ *     /identity/nonce                       POST  I-13.2, the native exchange's nonce (keys in the body)
  *     /identity/choice/licenses             POST  I-08b, the pending sign-in grant: the licence view
  *     /identity/choice/devices              POST  I-08b, a full licence's seat-holding devices
  *     /identity/choice/complete             POST  I-08b, the choice; answers the `token` response
@@ -75,6 +76,7 @@ import {
 } from "./attach.js";
 import { handleAuthorize } from "./passthrough/authorize.js";
 import { handleToken } from "./passthrough/token.js";
+import { handleExchangeNonce } from "./passthrough/nonce.js";
 import { readCiJson } from "../../core/ciScope.js";
 import { handleChoice } from "./passthrough/choiceRoutes.js";
 
@@ -147,6 +149,15 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "code" },
     handler: ({ req, env, db, product, now }) =>
       handleToken({ req, env, db, product, now }),
+  },
+  // I-13.2 (§12.11.2): the native exchange's nonce; the keys in the body are bound, not trusted.
+  {
+    path: "nonce",
+    cors: true,
+    methods: ["POST"],
+    auth: { kind: "none" },
+    handler: ({ req, env, db, product, now }) =>
+      handleExchangeNonce(req, env, db, product, now),
   },
   // I-08b (§12.5.1): the pending sign-in grant's routes.
   choiceRow("licenses"),

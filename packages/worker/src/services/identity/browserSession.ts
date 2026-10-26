@@ -733,6 +733,7 @@ export async function handleBrowserLogout(
       product.slug,
       session.record.deviceId,
       "deauthorized",
+      { env },
     );
     await deleteTokenRecord(env, product.slug, deviceTokenHash);
     await env.HOT.delete(sessionKey(product.slug, session.tokenHash));

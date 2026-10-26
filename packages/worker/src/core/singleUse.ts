@@ -75,7 +75,9 @@ export type SingleUseKind =
   /** A webhook delivery already processed, by delivery id / body hash. */
   | "webhook-claim"
   /** An attestation challenge already redeemed, by product + challenge. */
-  | "attest-claim";
+  | "attest-claim"
+  /** A native-token exchange nonce (I-13.2, WIRE-CONTRACT-V5 §12.11.2), by product + the hash of the nonce. */
+  | "exchange-nonce";
 
 /** The address of one artefact. */
 export interface ArtefactRef {

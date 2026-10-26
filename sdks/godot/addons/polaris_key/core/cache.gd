@@ -66,6 +66,9 @@ var blocked = null
 ## Epoch seconds of the last verification: the newest verified document's signed `issuedAt` at
 ## load, then the time of each successful authenticated exchange (200 or 304). null: never.
 var last_verified_at = null
+## The pairwise subject (`ps_...`) the last account read reported: an unsigned display hint kept
+## beside the token so it survives a restart. Never a gate input. "" when none is known.
+var subject := ""
 ## The platform the update slices are reloaded for (a record is kept only while a committed
 ## feed's target for this platform pins it); set by Core before load_record().
 var platform := ""
@@ -157,6 +160,7 @@ func load_record() -> void:
 
 	last_sync_unauthorized = PKeyClaims.is_true(_record.get("lastSyncUnauthorized"))
 	blocked = _record.get("blocked")
+	subject = _record.get("subject", "")
 	last_verified_at = newest if newest > 0 else null
 
 
@@ -299,6 +303,16 @@ func patch(changes: Dictionary) -> bool:
 	return store.write_cache(_record)
 
 
+## Keep `value` (the pairwise subject; "" forgets it) beside the token. True when the stored value
+## changed; the store's verdict decides whether it is written.
+func set_subject(value: String) -> bool:
+	if value == subject:
+		return false
+	subject = value
+	patch({"subject": value if value != "" else null})
+	return true
+
+
 ## Persist whatever `apply_*` staged, with `changes` folded into the same single write.
 func flush(changes: Dictionary = {}) -> bool:
 	return patch(changes)
@@ -342,6 +356,7 @@ func _reset_loaded() -> void:
 	bundle = null
 	last_sync_unauthorized = false
 	blocked = null
+	subject = ""
 	last_verified_at = null
 	feeds = {}
 	feed_floors = {}
@@ -411,6 +426,8 @@ static func _normalize(rec: Dictionary) -> Dictionary:
 	var b = PKeyGate.sanitize_blocked(rec.get("blocked"))
 	if b != null:
 		out["blocked"] = b
+	if rec.get("subject") is String and rec["subject"] != "":
+		out["subject"] = rec["subject"]
 	for slice in UPDATE_SLICES + ["pinRevocations"]:
 		if rec.get(slice) is Dictionary:
 			var m := {}

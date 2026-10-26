@@ -21,8 +21,8 @@
 // fails) FAILS: a lane that cannot reach its server must not look green.
 //
 // WHAT IS THE SDK'S AND WHAT IS THE HARNESS'S. Every checkpoint below is reached through the SDK:
-// `PolarisKeyClient.activate`, `client.events` and `sync()`, `client.identity.beginSignIn` /
-// `pollSignIn` / `waitForSignIn`, `client.update.decide`. Only the things a person or an operator
+// `PolarisKeyClient.activate`, `client.events` and `sync()`, `client.identity.signIn.start` /
+// `pollDeviceCode` / `waitDeviceCode`, `client.update.decide`. Only the things a person or an operator
 // does are the harness's, over plain HTTP: reading the seeded keys at `/__dev/info`, the control
 // commands (`/__dev/config`, `/__dev/release`, the same ones `pkey dev config` and `pkey dev
 // release` send), and the approval click.
@@ -55,7 +55,7 @@ import Foundation
 import PolarisKey
 import PolarisKeyConfig
 import PolarisKeyCore
-import PolarisKeyIdentity
+@testable import PolarisKeyIdentity
 import PolarisKeyLicense
 import PolarisKeyUpdate
 import XCTest
@@ -302,9 +302,9 @@ final class PkeyDevLiveTests: XCTestCase {
 
     // ── B4: device-code sign-in ──────────────────────────────────────────────────────────
 
-    /// `beginSignIn` asks the Worker for a code; a person (the harness, `PKEY_DEV_APPROVE`) opens
-    /// the verification page and approves; `pollSignIn` sees the flow still pending until then and
-    /// `waitForSignIn` settles it `ready`, with the fake IdP's person, a stored credential and an
+    /// `startDeviceCode` asks the Worker for a code; a person (the harness, `PKEY_DEV_APPROVE`) opens
+    /// the verification page and approves; `pollDeviceCode` sees the flow still pending until then and
+    /// `waitDeviceCode` settles it `ready`, with the fake IdP's person, a stored credential and an
     /// open gate.
     func testB4DeviceCodeSignInIsApprovedAndSettlesThroughTheSdk() async throws {
         let env = try await DevLiveEnvironment.load()
@@ -314,7 +314,7 @@ final class PkeyDevLiveTests: XCTestCase {
         let recorder = DevLiveEvents(client.events)
         defer { recorder.stop() }
 
-        let prompt = try await client.identity.beginSignIn(deviceName: "SP-41 Swift live test")
+        let prompt = try await client.identity.startDeviceCode(deviceName: "SP-41 Swift live test")
         XCTAssertFalse(prompt.userCode.isEmpty)
         XCTAssertFalse(prompt.deviceCode.isEmpty)
         XCTAssertGreaterThan(prompt.interval, 0)
@@ -331,8 +331,8 @@ final class PkeyDevLiveTests: XCTestCase {
             DevLiveApprover.normalize(prompt.userCode), "the complete URI carries the code")
 
         // One poll before the person has done anything: still pending, and the SDK's own pacing is
-        // what the Worker enforces, so `waitForSignIn` below is never told to slow down by this one.
-        let early = try await client.identity.pollSignIn(prompt)
+        // what the Worker enforces, so `wait` below is never told to slow down by this one.
+        let early = try await client.identity.pollDeviceCode(prompt)
         XCTAssertEqual(early, .pending)
         let tokenBefore = await client.core.token
         XCTAssertNil(tokenBefore, "no credential until the person approves")
@@ -344,8 +344,8 @@ final class PkeyDevLiveTests: XCTestCase {
 
         // The device's side: the paced wait. A hung flow would otherwise outlast the code (ten
         // minutes), so it is bounded and cancelled.
-        let result = try await devLiveDeadline(90, "waitForSignIn") {
-            try await client.identity.waitForSignIn(prompt)
+        let result = try await devLiveDeadline(90, "waitDeviceCode") {
+            try await client.identity.waitDeviceCode(prompt)
         }
         guard case .ready(let ready) = result else {
             return XCTFail("expected a completed sign-in, got \(result)")

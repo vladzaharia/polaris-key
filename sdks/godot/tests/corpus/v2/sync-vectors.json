@@ -1,0 +1,595 @@
+{
+  "syncVectorsVersion": 1,
+  "description": "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+  "constants": {
+    "envelopeOverheadBytes": 113,
+    "envelopeFixedBytes": 49,
+    "paddingBlockBytes": 64
+  },
+  "ringId": "rg_AAAAAAAAAAAAAAAAAAAAAA",
+  "hkdfCases": [
+    {
+      "id": "rfc5869-case-1",
+      "description": "RFC 5869 appendix A.1: the published known answer, so the reference is anchored outside this file.",
+      "label": "rfc5869",
+      "ikmHex": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+      "saltHex": "000102030405060708090a0b0c",
+      "infoHex": "f0f1f2f3f4f5f6f7f8f9",
+      "length": 42,
+      "okmHex": "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+    },
+    {
+      "id": "rfc5869-case-3",
+      "description": "RFC 5869 appendix A.3: empty salt and empty info (an empty salt is 32 zero bytes).",
+      "label": "rfc5869",
+      "ikmHex": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+      "saltHex": "",
+      "infoHex": "",
+      "length": 42,
+      "okmHex": "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"
+    },
+    {
+      "id": "kid",
+      "description": "kid = HKDF(R, empty, 'pkey-sync/1 kid', 16): in every envelope header, in the clear.",
+      "label": "kid",
+      "ikmHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "saltHex": "",
+      "infoHex": "706b65792d73796e632f31206b6964",
+      "length": 16,
+      "okmHex": "59c632a8309f827930905fa8a05fddf2"
+    },
+    {
+      "id": "k-coll-settings",
+      "description": "K_coll('$settings'): the info is the label, a NUL, then the collection name.",
+      "label": "coll",
+      "ikmHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "saltHex": "",
+      "infoHex": "706b65792d73796e632f3120636f6c6c002473657474696e6773",
+      "length": 32,
+      "okmHex": "e4e4ed9cae75a68015deaad782fb8ce3ca127b99b27fabf20aab0a0adb744565"
+    },
+    {
+      "id": "k-coll-saves",
+      "description": "K_coll for a concrete collection name.",
+      "label": "coll",
+      "ikmHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "saltHex": "",
+      "infoHex": "706b65792d73796e632f3120636f6c6c007361766573",
+      "length": 32,
+      "okmHex": "c9b284b215ef82cebe4a8358df99896f91563ee20df52e0a2705019750a49a21"
+    },
+    {
+      "id": "k-names",
+      "description": "K_names: keys every blinded name.",
+      "label": "names",
+      "ikmHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "saltHex": "",
+      "infoHex": "706b65792d73796e632f31206e616d6573",
+      "length": 32,
+      "okmHex": "4d68d25edde411fe84da4543b7c3fdae6526b828b21088a6cfaf6df94b2eb4fb"
+    },
+    {
+      "id": "k-cid-saves",
+      "description": "K_cid(c): keys the chunk ids of one collection.",
+      "label": "chunk-id",
+      "ikmHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "saltHex": "",
+      "infoHex": "706b65792d73796e632f31206368756e6b2d6964007361766573",
+      "length": 32,
+      "okmHex": "6fda89c4959d47122c43d1b5b784260681e1e1404468c03fd086bd8901c6953d"
+    },
+    {
+      "id": "k-msg",
+      "description": "K_msg: one key per value, from K_coll and a fresh 16-byte salt.",
+      "label": "value",
+      "ikmHex": "e4e4ed9cae75a68015deaad782fb8ce3ca127b99b27fabf20aab0a0adb744565",
+      "saltHex": "cf61eefd138150311ab5a9ea71cb5c00",
+      "infoHex": "706b65792d73796e632f312076616c7565",
+      "length": 32,
+      "okmHex": "0fc55eaf66515799a6ccce062e450609ec71dafe31f9dc9a58802ae8c18b29dd"
+    },
+    {
+      "id": "k-file",
+      "description": "K_file: one key per file version, from K_coll and a 32-byte salt.",
+      "label": "file",
+      "ikmHex": "c9b284b215ef82cebe4a8358df99896f91563ee20df52e0a2705019750a49a21",
+      "saltHex": "f82e282e9f9f089b09323e840a364bb68d178a23a1a964c071c6bf40e5008b13",
+      "infoHex": "706b65792d73796e632f312066696c65",
+      "length": 32,
+      "okmHex": "6e94a59b0df2bc660fece44abd035fd7babd4e9c653f6bfc27718005454b6037"
+    },
+    {
+      "id": "k-chunk",
+      "description": "K_chunk: one key per chunk id (the 32 raw bytes of the id are the salt).",
+      "label": "chunk",
+      "ikmHex": "c9b284b215ef82cebe4a8358df99896f91563ee20df52e0a2705019750a49a21",
+      "saltHex": "0113880be903e5424b854827cb89a9f2ce05e372d29ed6e299eb34db69800395",
+      "infoHex": "706b65792d73796e632f31206368756e6b",
+      "length": 32,
+      "okmHex": "7f158455783a8eedbef0f838b09ce5711ec5f61f2a15554de1b4e156e88731c4"
+    },
+    {
+      "id": "k-rec",
+      "description": "K_rec: the recovery code (16 bytes) is the key material and the ringId text is the salt.",
+      "label": "recovery",
+      "ikmHex": "d95818e2ae4a7da7dfe372c8aaa1d6e7",
+      "saltHex": "72675f41414141414141414141414141414141414141414141",
+      "infoHex": "706b65792d73796e632f31207265636f76657279",
+      "length": 32,
+      "okmHex": "8e581ecf913d8af5d041f1134ee91914941399231e4878a7a7d3c4d6ff7163f7"
+    },
+    {
+      "id": "k-adopt",
+      "description": "K_adopt: wraps a foreign root after an account merge.",
+      "label": "adopt",
+      "ikmHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "saltHex": "",
+      "infoHex": "706b65792d73796e632f312061646f7074",
+      "length": 32,
+      "okmHex": "cc1580cd8d07bf1213bf22757a96f5f816edf4b51244710e8e0a3c87ab550f19"
+    }
+  ],
+  "envelopeCases": [
+    {
+      "id": "seal-string",
+      "description": "A string setting: P = {\"k\":\"theme\",\"v\":\"dark\"} (27 bytes) padded with 0x80 and zeros to 64; the envelope is 33 + 64 + 16 = 113 bytes, the smallest there is.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "seal": {
+        "saltHex": "254f04d782f321b52733b0bcd03495eb",
+        "value": "dark"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb5",
+      "expect": { "result": "ok", "name": "theme", "value": "dark" }
+    },
+    {
+      "id": "seal-object-key-order",
+      "description": "Canonical JSON sorts object keys and has no whitespace, so the plaintext is identical whatever order the writer built the object in.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "audio",
+      "aliases": [],
+      "seal": {
+        "saltHex": "9daf297e41d84b70f29accabc900a464",
+        "value": { "z": 1, "a": [true, null, "x"], "m": { "b": 2, "a": 1 } }
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf29daf297e41d84b70f29accabc900a464544e823165c6dbe2012d99925a32c684e13f49a735e442a9118e6c9b2912f0ef843d276cfa1f93834d95b942910041094f2059e2be5f3ffa2a7d51395c3c9192e1f10abe666ad7c91e4ab7ed6c6d9a16",
+      "expect": {
+        "result": "ok",
+        "name": "audio",
+        "value": { "z": 1, "a": [true, null, "x"], "m": { "b": 2, "a": 1 } }
+      }
+    },
+    {
+      "id": "seal-unicode",
+      "description": "Non-ASCII text is UTF-8 in P, never escaped; the record name stays the person's own string.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "slot-\u00e9\u3042",
+      "aliases": [],
+      "seal": {
+        "saltHex": "96513f85905dfeb5d8d725541f56e28a",
+        "value": "\u00fcber \ud83c\udfae"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf296513f85905dfeb5d8d725541f56e28a9fca6f57eb8c7acf0a8fc7f5adb87569ef373015292b75dbe3dd8fbcc9543f41dee469b1901930784c4603fff12678f05346b68a3d2336f96d97dbc7331cfe10d55821bf8682456efa8faff3343c0f2d",
+      "expect": {
+        "result": "ok",
+        "name": "slot-\u00e9\u3042",
+        "value": "\u00fcber \ud83c\udfae"
+      }
+    },
+    {
+      "id": "seal-pad-boundary-exact",
+      "description": "P is exactly 63 bytes: padding is the single 0x80 byte and the envelope is 113 bytes.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "k",
+      "aliases": [],
+      "seal": {
+        "saltHex": "8ee09568c8a01236ddb365d324d0250b",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf28ee09568c8a01236ddb365d324d0250b6007fb81414b01f3344eb4ec12b001f5776ca3a1a2a671474f04bb7420cb16a3d4ce8b765481d6e9c7d3ffb272b7509ed5d030caa90ce66c5c79cd1e9ae8d0cae58097f8f8ae57d732e0ff3f8ec38e88",
+      "expect": {
+        "result": "ok",
+        "name": "k",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "id": "seal-pad-boundary-full-block",
+      "description": "P is exactly 64 bytes: a whole block of padding is added (0x80 then 63 zeros), so padding is never zero bytes and the envelope is 177 bytes.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "k",
+      "aliases": [],
+      "seal": {
+        "saltHex": "d57e2c43863af797d386a19f81d25468",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2d57e2c43863af797d386a19f81d25468d56d8d899ae02b7aa38e7bafbe54133ef19bae8f483679a27ea4709f2ead1639d23d0dbb45867d79fab6381ee670d2bc2d4087b720b1e22a6d6055eb039f470e5b1e9a945906b49125437e6d8b211a20f630728b9e0cafad7c7aae6fd4879fc43a04bd03024710d2b20f1dedd2b8da23e9cc7824b7d05109f0c0298d55847877aed6f358f6ecf450352320b3666389d4",
+      "expect": {
+        "result": "ok",
+        "name": "k",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "id": "seal-pad-boundary-over",
+      "description": "P is 65 bytes: padded to 128, so the envelope is 177 bytes.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "k",
+      "aliases": [],
+      "seal": {
+        "saltHex": "2cdd0cbe23963a8257897542438a121f",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf22cdd0cbe23963a8257897542438a121fafc42599a2395ea07ac1afb7b2c76476be006cab0322e8b6376cf2b499dd58516af961082eceb0bc8e53a7015047ccd0cc3ab2aea721fbaf60b770e25773bd93b57253140f9d5dc60c78c7fe06e5d7c2086648c8644b06de6bd754f6cbf00f3667a1275ac5880bafcb0f9df68de96b281c9937c310a8b0aec4fa6630dd6a33f7998f516fdf08cf022468cb7a0b317fd3",
+      "expect": {
+        "result": "ok",
+        "name": "k",
+        "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "id": "seal-null-value",
+      "description": "A null value is a value: {\"k\":..., \"v\":null}.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "rec",
+      "aliases": [],
+      "seal": { "saltHex": "13b9a570640c7bdc474549079ddef645", "value": null },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf213b9a570640c7bdc474549079ddef645202993ee1fc547dee832b314b387f064a16928ae6e93f4f75eeafc7b56d2d84d14b82128e68bfcf0e6846e35dea2104f046ce110eab3523348b5d6ebfb3ec783a8b2e56aa557ac0b852b98155911ce20",
+      "expect": { "result": "ok", "name": "rec", "value": null }
+    },
+    {
+      "id": "open-alias",
+      "description": "The reader accepts a 'k' equal to an 'aliases' source: the catalog renamed 'volume' to 'masterVolume'.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "masterVolume",
+      "aliases": ["volume"],
+      "seal": { "saltHex": "7bcc4b306ba4b18666dd8fb0df158e1d", "value": 7 },
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf27bcc4b306ba4b18666dd8fb0df158e1dfed48a6757023381761e57dc208a3557c200a9cfbc7a1e73890d580ac141c43842ca9a91a39da5439ae3fb003e310c364fb942d28d1f273badd4b5f9b8535d1409f25142c05101372f41480016b17419",
+      "expect": { "result": "ok", "name": "volume", "value": 7 }
+    },
+    {
+      "id": "tamper-ciphertext",
+      "description": "One flipped ciphertext bit: authentication fails.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf9f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb5",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "tamper-tag",
+      "description": "One flipped tag bit.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb4",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "tamper-salt",
+      "description": "A changed salt derives another key (and changes the aad).",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d682f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb5",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "wrong-collection",
+      "description": "The same envelope read under another collection: another K_coll, so authentication fails.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "saves",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb5",
+      "expect": { "result": "invalid", "reason": "auth" }
+    },
+    {
+      "id": "wrong-kid",
+      "description": "A kid that is not this ring's: refused before any decryption, so the caller can look for another root.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0158c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb5",
+      "expect": { "result": "invalid", "reason": "kid" }
+    },
+    {
+      "id": "wrong-version",
+      "description": "Version byte 0x02.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0259c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb5",
+      "expect": { "result": "invalid", "reason": "version" }
+    },
+    {
+      "id": "truncated-shape",
+      "description": "One byte short: (length - 49) mod 64 is not 0.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74c",
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "extended-shape",
+      "description": "One byte long.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb500",
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "short-below-minimum",
+      "description": "49 bytes (header and tag only) is below the 113-byte minimum.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2af",
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "empty",
+      "description": "No bytes.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "",
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "wrong-name",
+      "description": "Authentic, but 'k' is 'theme' and the reader expects 'language': invalid, never returned as the other setting's value.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "language",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2254f04d782f321b52733b0bcd03495eb75a0ae95b569adf8f7ff648e07cda2afa67e06a4973eb9a73704a7e2a5dc37e7912a67c5874dc382b378bfca30a46e787b9e3bde4816ccdec3f862f8322639bc3fb15c726190ee9621fd5f17c1a74cb5",
+      "expect": { "result": "invalid", "reason": "name" }
+    },
+    {
+      "id": "bad-padding-no-marker",
+      "description": "Authentic, but the padded plaintext ends in no 0x80 marker.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2c7345cb7122ff06d8891c430ea59249e6500ed890e854ceccc6ad6f21ddf3fe8a442ffbbe502279c870134696b136dbe811e7664607ad0b54c2e582fca5d383dfb14b671080b6b895259cbcd841d8cfbc0c08391992cb7d50d47413f07c6e3f6",
+      "expect": { "result": "invalid", "reason": "padding" }
+    },
+    {
+      "id": "bad-padding-nonzero-fill",
+      "description": "Authentic, but a non-zero byte follows the 0x80 marker.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf202c2c595b4739ead0284c49e07ca2e506b3abcba5df3173440b58858c4b37bb9edf4290e6eb83cef5f79ae504ebf1a4426ffe93016fc70727fe28940ec4d6cf57326f8ad1c266d81ed36a5b1956fccc4d1d090d741fd19c91c919fb2b182e784",
+      "expect": { "result": "invalid", "reason": "padding" }
+    },
+    {
+      "id": "bad-json",
+      "description": "Authentic, but P is not JSON.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf2e8ea1fe0d17d84b57c71557c4ecc801435435bf97f316c362d71f915df1b38fc4f58d36752599aac670c3fabc80cf5f5448dcb747c9bb33c886b6744e7150e9b20cb7e00a9b709ebce2af1a1f4fc65f24b5a560132c63e782a74e36b10a6e5b2",
+      "expect": { "result": "invalid", "reason": "json" }
+    },
+    {
+      "id": "bad-json-extra-member",
+      "description": "Authentic, but P has a member besides 'k' and 'v'.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "collection": "$settings",
+      "name": "theme",
+      "aliases": [],
+      "envelopeHex": "0159c632a8309f827930905fa8a05fddf25a84d877cdbac94372bc61796b49be9c0f31988e622aa0c9731ba23ad98b6fee5cf5c0b58589b0597302aa1761ee16289d5db65790854e14e82d165828858a80e140d31d82d4e7ff22151076da5baf10076b9f418c68ed7e7c90b84b0753cf98",
+      "expect": { "result": "invalid", "reason": "json" }
+    }
+  ],
+  "blindCases": [
+    {
+      "id": "setting",
+      "description": "An open-setting key under the declared key that scopes it.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "setting",
+      "ctx": "$settings",
+      "n": "custom.hotkey",
+      "blinded": "x:cH5-IdFpRrxNDEZw5XZ0SUIY79ATKnmna-L4Q1Nl-B4"
+    },
+    {
+      "id": "member",
+      "description": "A merge member name: ctx is the declared merge setting.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "member",
+      "ctx": "keybinds",
+      "n": "jump",
+      "blinded": "x:g9jiHGPtp8Sb6A6mS3MwCb51Lry2kXytqzt97W7YETM"
+    },
+    {
+      "id": "record",
+      "description": "A record id: ctx is the collection.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "record",
+      "ctx": "saves",
+      "n": "slot-1",
+      "blinded": "x:KRHDvlVis7BpYgFEvwfMWDBG7EizdaFliRRLSJbjxwQ"
+    },
+    {
+      "id": "field",
+      "description": "A field name inside a record collection.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "field",
+      "ctx": "saves",
+      "n": "playtime",
+      "blinded": "x:Xbp5b9BO8-Qwz9Fau3-k_gjypc_MfFehG7-4FWd9CVQ"
+    },
+    {
+      "id": "element",
+      "description": "A union element is its canonical JSON.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "element",
+      "ctx": "favorites",
+      "n": "{\"id\":7,\"tag\":\"a\"}",
+      "blinded": "x:ElLbIs10bXD6lcSXhWOGQRVxLlRkXGQezr_iLyzMews"
+    },
+    {
+      "id": "record-unicode",
+      "description": "A person-chosen id with non-ASCII text.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "record",
+      "ctx": "saves",
+      "n": "caf\u00e9 \ud83c\udfae",
+      "blinded": "x:v-wUwASWvPi28ps6xFMSvnojEwu3K4Gf7A8k0TxSyZg"
+    },
+    {
+      "id": "record-empty-name",
+      "description": "An empty name is still blinded.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "record",
+      "ctx": "saves",
+      "n": "",
+      "blinded": "x:vAznVUepRPJf4xOenfsJaP2oklK-jwe5GqAAbMog7RM"
+    },
+    {
+      "id": "kind-separates",
+      "description": "Same ctx and name as 'record-slot-1', another kind: a different value.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "field",
+      "ctx": "saves",
+      "n": "slot-1",
+      "blinded": "x:8CR7YELSfTK75sd6zNewl6uM1fN_iiM7IL5LDNtH1Gc"
+    },
+    {
+      "id": "ctx-separates",
+      "description": "Same kind and name as 'record-slot-1', another ctx: a different value.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "record",
+      "ctx": "autosaves",
+      "n": "slot-1",
+      "blinded": "x:g2eqGNpR9mlblpyNfhxuxl0XtDEe23BtujE14RRb7NQ"
+    },
+    {
+      "id": "nul-framing",
+      "description": "The 0x00 separators frame the fields; a one-character ctx and name.",
+      "rootHex": "bbd99e5fc4444f4fe228b4205e7781e14fc257641406b427e5e70a75df3a4845",
+      "kind": "record",
+      "ctx": "a",
+      "n": "b",
+      "blinded": "x:VaFWsOnyRQlXqE9eCnMnIdMgQ_PZJHYA6ot4I_dTsSk"
+    }
+  ],
+  "transferPlanCases": [
+    {
+      "id": "empty-file",
+      "description": "An empty file is a single PUT.",
+      "size": 0,
+      "delta": false,
+      "expect": { "mode": "single", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "single-small",
+      "description": "A small file.",
+      "size": 1000,
+      "delta": false,
+      "expect": { "mode": "single", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "single-at-limit",
+      "description": "Exactly 16 MiB is still one PUT.",
+      "size": 16777216,
+      "delta": false,
+      "expect": { "mode": "single", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "multipart-just-over",
+      "description": "One byte over 16 MiB: multipart with 8 MiB parts (3 parts).",
+      "size": 16777217,
+      "delta": false,
+      "expect": { "mode": "multipart", "partBytes": 8388608, "parts": 3 }
+    },
+    {
+      "id": "multipart-100-mib",
+      "description": "100 MiB: 8 MiB parts, 13 parts.",
+      "size": 104857600,
+      "delta": false,
+      "expect": { "mode": "multipart", "partBytes": 8388608, "parts": 13 }
+    },
+    {
+      "id": "multipart-1-gib",
+      "description": "1 GiB: ceil(size / 9,999) is 107,386 bytes, rounded up to 1 MiB, below the 8 MiB floor.",
+      "size": 1073741824,
+      "delta": false,
+      "expect": { "mode": "multipart", "partBytes": 8388608, "parts": 128 }
+    },
+    {
+      "id": "multipart-1-gib-exact-parts",
+      "description": "A size that is an exact multiple of the part size has no short part.",
+      "size": 838860800,
+      "delta": false,
+      "expect": { "mode": "multipart", "partBytes": 8388608, "parts": 100 }
+    },
+    {
+      "id": "delta-below-minimum",
+      "description": "files.delta, but under 1 MiB: not chunked, single.",
+      "size": 1048575,
+      "delta": true,
+      "expect": { "mode": "single", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "delta-at-minimum",
+      "description": "files.delta and exactly 1 MiB: chunks.",
+      "size": 1048576,
+      "delta": true,
+      "expect": { "mode": "chunks", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "delta-large",
+      "description": "files.delta and 500 MiB: chunks, never multipart.",
+      "size": 524288000,
+      "delta": true,
+      "expect": { "mode": "chunks", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "delta-off-large",
+      "description": "files.delta off and 1 MiB: still single.",
+      "size": 1048576,
+      "delta": false,
+      "expect": { "mode": "single", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "too-large",
+      "description": "One byte over 1 GiB is refused (SYNC_FILE_MAX_BYTES).",
+      "size": 1073741825,
+      "delta": false,
+      "expect": { "mode": "too_large", "partBytes": null, "parts": null }
+    },
+    {
+      "id": "too-large-delta",
+      "description": "The cap applies to chunked collections too.",
+      "size": 1073741825,
+      "delta": true,
+      "expect": { "mode": "too_large", "partBytes": null, "parts": null }
+    }
+  ]
+}

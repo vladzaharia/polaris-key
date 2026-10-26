@@ -76,7 +76,7 @@ describe("roles matrix", () => {
     expect([...MATRIX_ROLES]).toEqual([...ROLES]);
   });
 
-  it("lists the ten product areas in AREAS order with Members last, then the six platform rows", () => {
+  it("lists the eleven product areas in AREAS order with Members last, then the six platform rows", () => {
     expect(PRODUCT_ROWS.map((r) => r.area)).toEqual([
       ...PRODUCT_AREAS.filter((a) => a !== "members"),
       "members",
@@ -84,7 +84,7 @@ describe("roles matrix", () => {
     expect([...PRODUCT_ROWS.map((r) => r.area)].sort()).toEqual(
       [...PRODUCT_AREAS].sort(),
     );
-    expect(PRODUCT_ROWS).toHaveLength(10);
+    expect(PRODUCT_ROWS).toHaveLength(11);
     expect(PLATFORM_ROWS.map((r) => r.name)).toEqual([
       "Members",
       "Connections",

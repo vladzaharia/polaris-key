@@ -841,6 +841,8 @@ const CORS_EXCLUDED = new Set([
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
   // P6-02: device attestation — only a native iOS or Android build can attest, never a page.
+  // CC-03.2: key registration — a native device, never a page.
+  "/{product}/devices/keys",
   "/{product}/devices/attest/challenge",
   "/{product}/devices/attest",
   // P6-03: the Sentry alert webhook, called server-to-server by Sentry.

@@ -197,6 +197,7 @@ paths:
                         trustManifest: https://key.plrs.im/djdl/.well-known/polaris-trust.jws
                         devices: https://key.plrs.im/djdl/devices
                         report: https://key.plrs.im/djdl/devices/report
+                        deviceKeys: https://key.plrs.im/djdl/devices/keys
                         register: https://key.plrs.im/djdl/devices/register
                       portal:
                         enabled: true
@@ -975,6 +976,60 @@ paths:
               examples:
                 limited: { value: { error: { code: rate_limited } } }
 
+  /{product}/devices/keys:
+    put:
+      operationId: putDeviceKeys
+      tags: [core]
+      summary: Register or rotate the device's public keys (CC-03.2)
+      description: >
+        Registers the device's Ed25519 `signKey` and X25519 `agreeKey` against its device row, or
+        rotates them. Both keys travel together. `sig` is a `pkey-proof/1` signature by `signKey`
+        with purpose `keys`, over the value `<signKey>.<agreeKey>.<issuedAt>`; `issuedAt` must be
+        within 300 seconds of the Worker's clock. Both keys must be canonical base64url of 32
+        bytes and not of small order, and an `agreeKey` is unique per product. Sending the keys the
+        device already holds changes nothing and answers the current `keySeq`. Any other write bumps
+        `keySeq`, at most 4 a day per device, fail-closed. A rejected key, a failed proof and an
+        `agreeKey` held by another device all answer `400 device_keys_invalid`. Not browser-readable.
+      security: [{ deviceToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceKeysRequest" }
+      responses:
+        "200":
+          description: "Registered or unchanged. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceKeysResult" }
+              examples:
+                registered:
+                  value: { keySeq: 1 }
+        "400":
+          description: >
+            A malformed body (`bad_request`), or a refused registration (`device_keys_invalid`:
+            bad key, failed or stale proof, or an `agreeKey` another device holds).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: device_keys_invalid } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "413":
+          description: The body is over 2 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: The device changed its keys 4 times in the last day.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
   /{product}/devices/attest:
     post:
       operationId: attestDevice
@@ -8482,6 +8537,75 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
     options:
       operationId: preflightIdentityToken
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/nonce:
+    post:
+      operationId: identityNonce
+      tags: [identity]
+      summary: A nonce for a native platform sign-in (I-13.2)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.2. The app passes the nonce to the platform provider (Apple and
+        Google, as it is, no hashing); the exchange later requires it. The answer holds 32 random
+        bytes in base64url and is kept once for 300 seconds, bound to the product, the
+        `X-PKey-Device` and the signing key's thumbprint. No credential is needed: the keys are
+        bound here and proven at the exchange. A device that already has a registered signing key
+        must send that key; any other key, and any key that is not a canonical 32-byte key of
+        the right order, answers `400 device_keys_invalid`. 30 calls a minute per client network
+        and 10 per device, fail-closed. NESTED errors. With Identity off the route does not exist
+        (`404 not_found`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExchangeNonceRequest" }
+      responses:
+        "200":
+          description: "The nonce. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExchangeNonceResponse" }
+              examples:
+                issued:
+                  value:
+                    nonce: Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    expiresIn: 300
+        "400":
+          description: >
+            A malformed body or device id (`bad_request`), or a refused key set
+            (`device_keys_invalid`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: device_keys_invalid } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "413":
+          description: The body is over 1 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: Over the network or device limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+    options:
+      operationId: preflightIdentityNonce
       tags: [identity]
       summary: CORS preflight
       description: >
@@ -26590,6 +26714,7 @@ components:
                 trustManifest: { type: string, format: uri }
                 devices: { type: string, format: uri }
                 report: { type: string, format: uri }
+                deviceKeys: { type: string, format: uri }
                 register:
                   type: string
                   format: uri
@@ -27318,6 +27443,39 @@ components:
         trustLevel: { type: string, enum: [attested] }
         kind: { type: string, enum: [app-attest, play-integrity] }
         attestedAt: { type: integer, description: Epoch seconds. }
+    DeviceKeysRequest:
+      type: object
+      description: >
+        A key registration. `signKey` and `agreeKey` are canonical unpadded base64url of 32 bytes;
+        `sig` is the 64-byte Ed25519 signature, base64url (86 characters).
+      required: [signKey, agreeKey, issuedAt, sig]
+      properties:
+        signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        issuedAt: { type: integer, minimum: 0, description: Unix seconds. }
+        sig: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+    ExchangeNonceRequest:
+      type: object
+      description: >
+        The keys the nonce is bound to. Canonical unpadded base64url of 32 bytes each (§12.11.2).
+      required: [signKey, agreeKey]
+      properties:
+        signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+    ExchangeNonceResponse:
+      type: object
+      required: [nonce, expiresIn]
+      properties:
+        nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        expiresIn: { type: integer, enum: [300] }
+    DeviceKeysResult:
+      type: object
+      required: [keySeq]
+      properties:
+        keySeq:
+          type: integer
+          minimum: 1
+          description: 1 on first registration; bumped by each rotation.
     RegistrationResult:
       type: object
       description: Keyless registration's answer — the token and the device id it is bound to.

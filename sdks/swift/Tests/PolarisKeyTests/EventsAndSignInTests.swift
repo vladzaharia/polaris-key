@@ -4,14 +4,14 @@
 // subscriber and reports, as one event per difference, the gate status, each entitlement and
 // each setting (the kinds and fields Python's `client.events` uses); the device-code poll
 // carries P1-07's opt-in (`confirmIdentity`, then `attachLicense` with the device bearer) and a
-// ready poll carries the identity and what was attached; `identity.signInWithBrowser()` opens
-// the pre-filled page and waits; `identity.signOut()` wipes the credential once the Worker released the device; `identity.current()`
+// ready poll carries the identity and what was attached; `identity.signIn.start()` shows
+// the pre-filled page in the given browser and `wait()` settles it; `identity.signOut()` wipes the credential once the Worker released the device; `identity.current()`
 // reads the signed profile.
 
 import Foundation
 import PolarisKey
 import PolarisKeyCore
-import PolarisKeyIdentity
+@testable import PolarisKeyIdentity
 import XCTest
 
 @MainActor
@@ -147,7 +147,7 @@ final class EventsAndSignInTests: XCTestCase {
     func testEventKindsMatchTheSharedVocabulary() {
         XCTAssertEqual(
             PolarisKeyEvent.kinds,
-            ["license", "entitlement", "config", "updateAvailable", "packs", "store"])
+            ["license", "entitlement", "config", "updateAvailable", "packs", "store", "identity"])
         let samples: [PolarisKeyEvent] = [
             .license(status: .ok, previous: .needsActivation),
             .entitlement(name: "pro", value: .bool(true), previous: nil),
@@ -155,6 +155,7 @@ final class EventsAndSignInTests: XCTestCase {
             .updateAvailable(version: "2.0.0", action: "binary", mandatory: false, channel: "stable"),
             .packs(pack: "p", phase: "download", done: 1, total: 2),
             .store(reason: "store-failed", detail: nil),
+            .identity(kind: "signedIn", subject: nil, previous: nil),
         ]
         XCTAssertEqual(samples.map(\.kind), PolarisKeyEvent.kinds)
     }
@@ -254,14 +255,14 @@ final class EventsAndSignInTests: XCTestCase {
                 body: #"{"status":"confirm","identity":{"name":"Ada","email":"a@e.com"},"attachable":true}"#)
         }
         let c = try await client(token: "pkeyt_enrolled")
-        let prompt = try await c.identity.beginSignIn()
-        let held = try await c.identity.pollSignIn(prompt, confirmIdentity: true)
+        let prompt = try await c.identity.startDeviceCode()
+        let held = try await c.identity.pollDeviceCode(prompt, confirmIdentity: true)
         XCTAssertEqual(
             held, .confirm(identity: SignInIdentity(name: "Ada", email: "a@e.com"), attachable: true))
         let first = await server.requests(forPath: "/djdl/identity/auth/device/poll").last
         XCTAssertNil(first?.headers["authorization"], "no bearer until the player opts in")
 
-        let done = try await c.identity.pollSignIn(prompt, attachLicense: true)
+        let done = try await c.identity.pollDeviceCode(prompt, attachLicense: true)
         XCTAssertEqual(
             done,
             .ready(
@@ -279,8 +280,8 @@ final class EventsAndSignInTests: XCTestCase {
             "/djdl/identity/auth/device/poll",
             body: #"{"status":"ready","token":"pkeyt_signed","schemaVersion":1,"identity":{"email":"a@e.com"}}"#)
         let c = try await client()
-        let prompt = try await c.identity.beginSignIn()
-        let r = try await c.identity.pollSignIn(prompt)
+        let prompt = try await c.identity.startDeviceCode()
+        let r = try await c.identity.pollDeviceCode(prompt)
         XCTAssertEqual(r, .ready(SignInReady(identity: SignInIdentity(email: "a@e.com"))))
         let sent = await server.requests(forPath: "/djdl/identity/auth/device/poll").last
         let body = try JSONDecoder().decode(JSONValue.self, from: sent?.body ?? Data()).objectValue
@@ -288,15 +289,17 @@ final class EventsAndSignInTests: XCTestCase {
         XCTAssertNil(body?["attachLicense"])
     }
 
-    func testSignInWithBrowserOpensThePageAndWaits() async throws {
+    func testSignInStartOpensThePageAndWaitSettlesIt() async throws {
         await startFlow()
         await server.reply(
             "/djdl/identity/auth/device/poll",
             body: #"{"status":"ready","token":"pkeyt_signed","schemaVersion":1}"#)
         let c = try await client()
         let browser = await FakeBrowser()
-        let r = try await c.identity.signInWithBrowser(browser: browser)
-        XCTAssertTrue(r.isReady)
+        let session = try await c.identity.signIn.start(SignInOptions(browser: browser))
+        XCTAssertEqual(session.userCode, "ABCD-EFGH")
+        let outcome = try await session.wait()
+        XCTAssertEqual(outcome, .signedIn(SignInReady()))
         let opened = await browser.opened
         XCTAssertEqual(opened, [URL(string: "https://key.example/d?user_code=ABCD-EFGH")!])
         let token = await c.core.token
@@ -318,7 +321,7 @@ final class EventsAndSignInTests: XCTestCase {
     func testSignInRefusesWithoutIdentity() async throws {
         let c = try await client(services: [.license])
         do {
-            _ = try await c.identity.signInWithBrowser(browser: await FakeBrowser())
+            _ = try await c.identity.signIn.start()
             XCTFail("expected service-unavailable")
         } catch let e as PolarisError {
             XCTAssertEqual(e.code, PolarisError.serviceUnavailable)

@@ -67,7 +67,13 @@ public data class IdentityDiscovery(
     val accountPortal: String? = null,
     /** Every published endpoint, as served. */
     val endpoints: Map<String, String> = emptyMap(),
-)
+) {
+    /** The authorize endpoint a redirect sign-in sends the browser to. */
+    val authorize: String? get() = endpoints["authorize"]
+
+    /** `POST`: the token endpoint a redirect sign-in redeems its code at. */
+    val token: String? get() = endpoints["token"]
+}
 
 public data class ProductDiscoveryDocument(
     val product: String,

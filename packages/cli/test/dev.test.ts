@@ -668,7 +668,7 @@ describe("the Node SDK against a live pkey dev server", () => {
     expect(seen).toEqual(["high"]);
   });
 
-  it("B4: device-code sign-in through the SDK's beginSignIn, pollSignIn and waitForSignIn", async () => {
+  it("B4: device-code sign-in through the SDK's signIn.start session", async () => {
     const running = await start({ autoApprove: true });
     const { s, info } = running;
     // The fake IdP signs in one made-up person; the Worker keeps the email because the IdP says
@@ -676,7 +676,8 @@ describe("the Node SDK against a live pkey dev server", () => {
     const person = { name: info.idp.person.name, email: info.idp.person.email };
     expect(person.email).toContain("@");
     const client = await nodeClient(await nodeQuickstart(running));
-    const prompt = await client.identity.beginSignIn({
+    const prompt = await client.identity.signIn.start({
+      channel: "device-code",
       deviceName: "pkey dev test",
     });
     // What a person is shown: a code to type, and a page on this server to type it into.
@@ -687,8 +688,8 @@ describe("the Node SDK against a live pkey dev server", () => {
     );
     expect(prompt.deviceName).toBe("pkey dev test");
     // Nobody has approved it, so a poll is pending and the device holds nothing.
-    expect(await client.identity.pollSignIn(prompt)).toEqual({
-      status: "pending",
+    expect(await prompt.wait({ once: true })).toMatchObject({
+      kind: "pending",
     });
     expect(client.hasToken).toBe(false);
 
@@ -697,12 +698,10 @@ describe("the Node SDK against a live pkey dev server", () => {
       (await approveDeviceCode(prompt.verificationUriComplete)).status,
     ).toBe(200);
 
-    // waitForSignIn paces itself by the advertised interval, then the sign-in settles. The signal
+    // wait() paces itself by the advertised interval, then the sign-in settles. The signal
     // bounds a sign-in that never settles, which would otherwise poll on after the test is over.
-    const done = await client.identity.waitForSignIn(prompt, {
-      signal: AbortSignal.timeout(10_000),
-    });
-    expect(done).toMatchObject({ status: "ready", identity: person });
+    const done = await prompt.wait({ signal: AbortSignal.timeout(10_000) });
+    expect(done).toMatchObject({ kind: "signedIn", identity: person });
     // The poll's token is the device's now: stored, usable, and read back as the identity.
     expect(client.hasToken).toBe(true);
     expect(client.license.activation()).toBe("token");

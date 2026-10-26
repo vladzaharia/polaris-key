@@ -8184,7 +8184,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/backlog-sweep.md"
       ],
       "brief": "wp/A-32-github-write-path-publish-from-ci.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "A-33",
@@ -14573,7 +14573,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/MO-13-motion-qa-closeout.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PS-01",

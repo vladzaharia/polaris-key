@@ -7,11 +7,14 @@ const client = await PolarisKeyClient.create({
   version: "1.4.2", // your app's version
 });
 
-const result = await client.identity.signInWithBrowser({
+const session = await client.identity.signIn.start({
+  channel: "device-code",
   deviceName: "tidewater on this computer",
-  onPrompt: (p) => console.log(p.userCode, p.verificationUri),
 });
-if (result.status === "ready") {
-  const profile = client.license.getProfile();
-  console.log(profile?.name, profile?.email);
+console.log(session.userCode, session.verificationUri);
+await session.reopen(); // opens the system browser
+
+const result = await session.wait();
+if (result.kind === "signedIn") {
+  console.log(result.identity?.name, result.identity?.email);
 }

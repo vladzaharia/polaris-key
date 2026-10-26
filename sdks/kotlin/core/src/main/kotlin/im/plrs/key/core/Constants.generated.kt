@@ -28,6 +28,7 @@ public object ErrorCode {
     public const val valueNotRepresentable: String = "value_not_representable"
     public const val documentNotRepresentable: String = "document_not_representable"
     public const val signingUnavailable: String = "signing_unavailable"
+    public const val deviceKeysInvalid: String = "device_keys_invalid"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
     public const val licenseDisabled: String = "license_disabled"
@@ -77,6 +78,11 @@ public object ErrorCode {
     public const val collectionUnknown: String = "collection_unknown"
     public const val quotaExceeded: String = "quota_exceeded"
     public const val writesPaused: String = "writes_paused"
+    public const val encryptionMismatch: String = "encryption_mismatch"
+    public const val uploadExpired: String = "upload_expired"
+    public const val uploadIncomplete: String = "upload_incomplete"
+    public const val fileTooLarge: String = "file_too_large"
+    public const val keyringConflict: String = "keyring_conflict"
     public const val emailMismatch: String = "email_mismatch"
     public const val linkConflict: String = "link_conflict"
     public const val lastLink: String = "last_link"
@@ -128,6 +134,9 @@ public object ErrorCode {
     public const val signInDenied: String = "sign-in-denied"
     public const val signInUnavailable: String = "sign-in-unavailable"
     public const val platformIdentityUnavailable: String = "platform-identity-unavailable"
+    public const val syncLocked: String = "sync-locked"
+    public const val recoveryCodeInvalid: String = "recovery-code-invalid"
+    public const val syncEncryptionPinned: String = "sync-encryption-pinned"
     public const val invalidOptions: String = "invalid-options"
     public const val invalidArgument: String = "invalid-argument"
     public const val invokeNotAllowed: String = "invoke-not-allowed"
@@ -219,6 +228,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "value_not_representable",
     "document_not_representable",
     "signing_unavailable",
+    "device_keys_invalid",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -268,6 +278,11 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "collection_unknown",
     "quota_exceeded",
     "writes_paused",
+    "encryption_mismatch",
+    "upload_expired",
+    "upload_incomplete",
+    "file_too_large",
+    "keyring_conflict",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -319,6 +334,9 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
+    "sync-locked",
+    "recovery-code-invalid",
+    "sync-encryption-pinned",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -410,6 +428,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "value_not_representable" to "wire",
     "document_not_representable" to "wire",
     "signing_unavailable" to "wire",
+    "device_keys_invalid" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",
     "license_disabled" to "wire",
@@ -459,6 +478,11 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "collection_unknown" to "wire",
     "quota_exceeded" to "wire",
     "writes_paused" to "wire",
+    "encryption_mismatch" to "wire",
+    "upload_expired" to "wire",
+    "upload_incomplete" to "wire",
+    "file_too_large" to "wire",
+    "keyring_conflict" to "wire",
     "email_mismatch" to "wire",
     "link_conflict" to "wire",
     "last_link" to "wire",
@@ -510,6 +534,9 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "sign-in-denied" to "client",
     "sign-in-unavailable" to "client",
     "platform-identity-unavailable" to "client",
+    "sync-locked" to "client",
+    "recovery-code-invalid" to "client",
+    "sync-encryption-pinned" to "client",
     "invalid-options" to "client",
     "invalid-argument" to "client",
     "invoke-not-allowed" to "client",
@@ -1568,11 +1595,68 @@ public const val REQUEST_HANDLE_PATTERN: String = "^rq_[A-Za-z0-9_-]{22}\$"
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
 
+/** Cloud Sync: `SYNC_BLINDED_NAME_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_BLINDED_NAME_PATTERN: String = "^x:[A-Za-z0-9_-]{43}\$"
+
+/** Cloud Sync: `SYNC_BLINDED_PREFIX` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_BLINDED_PREFIX: String = "x:"
+
+/** Cloud Sync: `SYNC_CDC_AVG_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_CDC_AVG_BYTES: Int = 262144
+
+/** Cloud Sync: `SYNC_CDC_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_CDC_FORMAT: String = "pkey-sync-cdc/1"
+
+/** Cloud Sync: `SYNC_CDC_GEAR_SEED` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_CDC_GEAR_SEED: Long = 2654435769L
+
+/** Cloud Sync: `SYNC_CDC_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_CDC_MAX_BYTES: Int = 1048576
+
+/** Cloud Sync: `SYNC_CDC_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_CDC_MIN_BYTES: Int = 65536
+
+/** Cloud Sync: `SYNC_CHUNK_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_CHUNK_FORMAT: String = "pkey-sync-chunk/1"
+
+/** Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_CHUNK_ID_PATTERN: String = "^[0-9a-f]{64}\$"
+
+/** Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_CHUNK_PLAN_MAX_IDS: Int = 1024
+
+/** Cloud Sync: `SYNC_CHUNK_REQUESTS_PER_MINUTE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_CHUNK_REQUESTS_PER_MINUTE: Int = 600
+
 /** Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`). */
 public const val SYNC_CLIENT_ID_PATTERN: String = "^c_[A-Za-z0-9_-]{22}\$"
 
 /** Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
 public const val SYNC_DEBOUNCE_MS: Int = 2000
+
+/** Cloud Sync: `SYNC_DELTA_MIN_FILE_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_DELTA_MIN_FILE_BYTES: Int = 1048576
+
+/** Cloud Sync: `SYNC_E2E_OVERHEAD_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_E2E_OVERHEAD_BYTES: Int = 113
+
+/** Cloud Sync: `SYNC_ENVELOPE_FIXED_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_ENVELOPE_FIXED_BYTES: Int = 49
+
+/** Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_ENVELOPE_PAD_BLOCK: Int = 64
+
+/** Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_FILE_FORMAT: String = "pkey-sync-file/1"
+
+/** Cloud Sync: `SYNC_FILE_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_FILE_MAX_BYTES: Int = 1073741824
+
+/** Cloud Sync: `SYNC_FILE_SEGMENT_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_FILE_SEGMENT_BYTES: Int = 1048576
+
+/** Cloud Sync: `SYNC_FILE_TRANSFERS_PER_HOUR` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_FILE_TRANSFERS_PER_HOUR: Int = 30
 
 /** Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`). */
 public const val SYNC_HLC_PATTERN: String = "^[0-9a-f]{12}:[0-9a-f]{4}\$"
@@ -1580,8 +1664,20 @@ public const val SYNC_HLC_PATTERN: String = "^[0-9a-f]{12}:[0-9a-f]{4}\$"
 /** Cloud Sync: `SYNC_IMPORT_HLC` (WIRE-CONTRACT-V4 §11.5, §13.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_IMPORT_HLC: String = "000000000000:0000"
 
+/** Cloud Sync: `SYNC_KEYCHAIN_SERVICE_PREFIX` (WIRE-CONTRACT-V4 §8, §13.11.5, `@polaris-key/protocol/sync`). */
+public const val SYNC_KEYCHAIN_SERVICE_PREFIX: String = "pkey-sync:"
+
 /** Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`). */
 public const val SYNC_KEY_PATTERN: String = "^[A-Za-z0-9._:-]{1,128}\$"
+
+/** Cloud Sync: `SYNC_KID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_KID_PATTERN: String = "^[0-9a-f]{32}\$"
+
+/** Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+public const val SYNC_MANIFEST_FORMAT: String = "pkey-sync-chunks/1"
+
+/** Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_CHUNKS_PER_FILE: Int = 16384
 
 /** Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_MAX_CLOCK_SKEW_MS: Int = 300000
@@ -1591,6 +1687,12 @@ public const val SYNC_MAX_MERGE_MEMBERS: Int = 256
 
 /** Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_MAX_MUTATIONS: Int = 100
+
+/** Cloud Sync: `SYNC_MAX_OPEN_UPLOADS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_OPEN_UPLOADS: Int = 4
+
+/** Cloud Sync: `SYNC_MAX_PARTS` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_MAX_PARTS: Int = 9999
 
 /** Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_MAX_PUSH_BYTES: Int = 262144
@@ -1610,6 +1712,15 @@ public const val SYNC_MAX_UNION_ELEMENT_BYTES: Int = 1024
 /** Cloud Sync: `SYNC_MAX_VALUE_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
 public const val SYNC_MAX_VALUE_BYTES: Int = 8192
 
+/** Cloud Sync: `SYNC_PART_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_PART_MAX_BYTES: Int = 67108864
+
+/** Cloud Sync: `SYNC_PART_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_PART_MIN_BYTES: Int = 8388608
+
+/** Cloud Sync: `SYNC_PART_ROUND_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_PART_ROUND_BYTES: Int = 1048576
+
 /** Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
 public const val SYNC_PENDING_DAYS: Int = 30
 
@@ -1619,17 +1730,41 @@ public const val SYNC_PULL_PAGE_CHANGES: Int = 500
 /** Cloud Sync: `SYNC_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
 public const val SYNC_QUOTA_BYTES: Int = 268435456
 
+/** Cloud Sync: `SYNC_RECOVERY_READS_PER_DAY` (WIRE-CONTRACT-V4 §13.11.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_RECOVERY_READS_PER_DAY: Int = 5
+
+/** Cloud Sync: `SYNC_RESET_KEEP_DAYS` (WIRE-CONTRACT-V4 §13.11.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_RESET_KEEP_DAYS: Int = 30
+
+/** Cloud Sync: `SYNC_RING_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.11, `@polaris-key/protocol/sync`). */
+public const val SYNC_RING_ID_PATTERN: String = "^rg_[A-Za-z0-9_-]{22}\$"
+
 /** Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`). */
 public const val SYNC_SAVE_SLOTS: Int = 16
 
 /** Cloud Sync: `SYNC_SIGNOUT_FLUSH_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
 public const val SYNC_SIGNOUT_FLUSH_MS: Int = 5000
 
+/** Cloud Sync: `SYNC_SINGLE_PUT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_SINGLE_PUT_MAX_BYTES: Int = 16777216
+
 /** Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`). */
 public const val SYNC_TOMBSTONE_DAYS: Int = 90
 
 /** Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
 public const val SYNC_UNLICENSED_QUOTA_BYTES: Int = 1048576
+
+/** Cloud Sync: `SYNC_UPLOAD_PARALLELISM` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_UPLOAD_PARALLELISM: Int = 4
+
+/** Cloud Sync: `SYNC_UPLOAD_TTL_SECONDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+public const val SYNC_UPLOAD_TTL_SECONDS: Int = 86400
+
+/** Cloud Sync: `SYNC_VALUE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+public const val SYNC_VALUE_FORMAT: String = "pkey-sync-value/1"
+
+/** Cloud Sync: `SYNC_WRAP_FORMAT` (WIRE-CONTRACT-V4 §13.11.1, `@polaris-key/protocol/sync`). */
+public const val SYNC_WRAP_FORMAT: String = "pkey-sync-wrap/1"
 
 /** Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`). */
 public const val SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS: Int = 300
@@ -1805,13 +1940,13 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.oidc" to CapabilityRow("planned", "identity", listOf()),
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
     "identity.devicelabel" to CapabilityRow("implemented", "identity", listOf()),
-    "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
+    "identity.toggle" to CapabilityRow("implemented", "identity", listOf()),
     "identity.keyentry" to CapabilityRow("implemented", "identity", listOf()),
-    "identity.attach" to CapabilityRow("planned", "identity", listOf()),
+    "identity.attach" to CapabilityRow("implemented", "identity", listOf()),
     "identity.account" to CapabilityRow("implemented", "identity", listOf()),
-    "identity.redirect.web" to CapabilityRow("planned", "identity", listOf()),
+    "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
     "identity.choice" to CapabilityRow("planned", "identity", listOf()),
-    "identity.signin.hints" to CapabilityRow("planned", "identity", listOf()),
+    "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -1878,4 +2013,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "431f96c46d28ac15dee7a19c28370bf7545eb5f379103248525951139843a751"
+public const val CAPABILITY_DIGEST: String = "e23657a09d9a624e5e6728adb941ae3c2cba67a90840b1ac9108b59e1d281545"

@@ -170,7 +170,7 @@ host CLI that mounts the verbs pays for the client only when a verb runs.
 | `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate, `entitled_channels()`          |
 | `polaris_key.config`   | the signed config document + layered resolution, `fetch_schema()` (the catalog), edge-mint (`mint_token`)            |
 | `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                |
-| `polaris_key.identity` | device-code sign-in (RFC 8628): `begin_sign_in` / `poll_sign_in` / `wait_for_sign_in` / `sign_in_with_browser`       |
+| `polaris_key.identity` | device-code sign-in (RFC 8628): `sign_in.start()` answers a session with `wait` / `reopen` / `cancel`                |
 | `polaris_key.release`  | changelog, install script, artifact URLs, verified `fetch()`                                                         |
 | `polaris_key.update`   | version check, the Sparkle appcast URL, the signed update decision (`decide`, `feed`, `release_record`, `build_url`) |
 | `polaris_key.commerce` | store purchase claims: `binding()`, `claim()`, `claim_steam()`, `claim_play()`, `claim_app_store()`                  |
@@ -382,16 +382,17 @@ the server-supplied `manageUrl` on a `device_limit` refusal (`manage_url`, PX-W8
 import polaris_key
 
 
-async def main(prompt: polaris_key.SignInPrompt) -> None:
+async def main() -> None:
     client = await polaris_key.AsyncClient.create(product_slug="djdl", version="1.0.0", pinned_keys=TRUST)
     outcome = await client.boot()
-    result = await client.identity.wait_for_sign_in(prompt)        # cancels at once
+    session = await client.identity.sign_in.start()
+    result = await session.wait()                                  # cancelling the task cancels the session
     async for progress in client.update.packs.progress(until_done=True):
         ...
 ```
 
 `AsyncClient` shares the sync client's core, cache and gate: each sub-client method is a
-coroutine, `wait_for_sign_in` and `sign_in_with_browser` are native `asyncio` loops that cancel
+coroutine, a sign-in session's `wait` is a native `asyncio` loop that cancels
 immediately, and `events.stream()` is an async iterator. A forgotten `await` raises:
 `if client.is_licensed():` is a `TypeError`, never a truthy coroutine that passes the gate.
 
@@ -462,45 +463,43 @@ For a host that cannot complete a browser redirect — a CLI over SSH, a daemon,
 `PolarisError("service-unavailable")` before any request.
 
 ```python
-prompt = client.identity.begin_sign_in(device_name="Build agent 7")
-# Show prompt.userCode; render prompt.verificationUriComplete as a QR code (the verification
-# page with the code filled in); show prompt.verificationUri as the short URL.
-result = client.identity.wait_for_sign_in(prompt, timeout=300, cancel=stop_event)
-if result.status == "ready":
+session = client.identity.sign_in.start(device_name="Build agent 7")
+# Show session.user_code; render session.verification_uri_complete as a QR code (the
+# verification page with the code filled in); show session.verification_uri as the short URL.
+session.reopen()  # opens the system browser; False when no opener ran
+outcome = session.wait(timeout=300, cancel_token=stop_event)
+if outcome.kind == "signed_in":
     ...  # the device token is stored and the post-activation sync has already run
 ```
 
-`wait_for_sign_in` waits at least `prompt.interval` seconds before each poll; a `slow_down`
-lengthens the interval for every later poll (to the server's value, or by five seconds), and a
-poll that fails on the network or with a 5xx is retried at the same interval, never faster. It
-returns `expired` once `prompt.expiresAt` has passed without asking the server again, raises
-`TimeoutError` when `timeout` runs out first, and raises `PolarisError("canceled")` when the
-`cancel` event (a `threading.Event`) is set. `poll_sign_in(prompt)` makes exactly one poll
-(`pending`, `slow-down` with an `interval`, `ready`, `expired` or `error`).
+`wait` waits at least `session.interval` seconds before each poll; a `slow_down` lengthens the
+interval for every later poll (to the server's value, or by five seconds), and a poll that fails
+on the network or with a 5xx is retried at the same interval, never faster. It answers
+`expired` once `session.expires_at` has passed without asking the server again, raises
+`TimeoutError` when `timeout` runs out first, and answers `cancelled` when `session.cancel()`
+is called or the `cancel_token` event (a `threading.Event`) is set. `wait(once=True)` makes
+exactly one poll and may answer `pending` (with the `interval` to wait). The outcome's `kind` is
+`pending`, `choose`, `signed_in`, `cancelled` or `expired`.
 
-A refused start or poll carries the server's message (`PolarisError.message`,
-`SignInPoll.message`). `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
-identity's **own** license; it does not attach a license this device already held.
+A refused start or poll carries the server's message (`PolarisError.message`). The poll
+credential is not an attribute of the session, and its `repr` never lists it. A sign-in yields
+the signed-in identity's **own** license; it does not attach a license this device already held.
 
-**After `ready`, show on the device which account signed in.** Anyone holding the user code can
-complete the sign-in on the verification page, so the player must be able to see a mis-binding:
-`ready` carries `identity` (a `SignedInIdentity`) when the Worker sent it, and the
+**After `signed_in`, show on the device which account signed in.** Anyone holding the user code
+can complete the sign-in on the verification page, so the player must be able to see a
+mis-binding: the outcome carries `identity` (a `SignedInIdentity`) when the Worker sent it, and the
 post-acquisition sync has already run, so `client.license.get_profile()` also returns the signed
 license profile (`name`, `email`) — show, for example, "Signed in as Ada Lovelace
 <ada@example.com>" with a way to sign out (`client.identity.sign_out()`).
 
-`client.identity.sign_in_with_browser()` is the native interim until the redirect-token route
-lands: it begins a device-code sign-in, opens `verificationUriComplete` with
-`webbrowser.open` and waits. Pass `on_prompt` to show the code and a terminal QR
-(`polaris_key.qr.terminal(prompt.verificationUriComplete)`) for a browser on another device.
-The attach opt-in (`confirm_identity=True`, `on_confirm`, `accept_sign_in(..., attach_license=True)`)
-is retired: `attachable` is always `False` and nothing is claimed or merged. The person approving
-presses Sign in or Deny on the Polaris Locker page; a Deny ends the poll as `status="error"` with
-`code="sign-in-denied"`; a sign-in that fails after approval ends as `code="sign-in-failed"`. It polls `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
-retired and the Worker no longer serves it.
+Pass `confirm=` to `wait` to opt in to the device-confirmed attach: it is called with the
+identity and whether a license is attachable, and its answer is sent. Without it nothing is
+claimed or merged. The person approving presses Sign in or Deny on the Polaris Locker page; a Deny
+raises `PolarisError` with `code="sign-in-denied"`; a sign-in that fails after approval raises
+`code="sign-in-failed"`. It polls `/identity/auth/device/poll` like any device-code sign-in; the
+old `/identity/auth/poll` route is retired and the Worker no longer serves it.
 
-The prompt's `repr` leaves out `deviceCode`, and a `MintedToken`'s leaves out `token`, so
-logging either object does not leak the credential.
+A `MintedToken`'s `repr` leaves out `token`, so logging it does not leak the credential.
 
 ## Edge-mint
 

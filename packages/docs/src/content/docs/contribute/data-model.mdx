@@ -23,6 +23,10 @@ this page or fails the freshness gate.
 | `dist_connector_settings` | 0042_distribution_connector_settings.sql | `product`, `connector`, `settings_json`, `updated_at`, `updated_by` |
 | `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)`, `trust_level (0053)`, `attested_at (0053)`, `attestation_json (0053)`, `subject (0068)`, `bound_by (0068)` |
 | `device_keys` | 0143_a_device_keys.sql | `product`, `device_id`, `sign_key`, `agree_key`, `key_seq`, `created_at`, `rotated_at` |
+| `device_key_floor` | 0144_device_key_floor.sql | `product`, `device_id`, `key_seq`, `pop_at` |
+| `keyrings` | 0145_keyrings.sql | `product`, `subject`, `ring_id`, `epoch`, `root_kid`, `state`, `recovery_ct`, `recovery_at`, `previous_ring_id`, `previous_kid`, `previous_until`, `created_by`, `created_at`, `updated_at` |
+| `keyring_wraps` | 0145_keyrings.sql | `product`, `subject`, `device_id`, `ring_id`, `epoch`, `kid`, `kem`, `enc`, `ct`, `by_device`, `created_at` |
+| `keyring_adopted` | 0145_keyrings.sql | `product`, `subject`, `ring_id`, `epoch`, `kid`, `ct`, `created_at` |
 | `release_download_tokens` | 0016_drop_dead_pii.sql (rebuilt 0016) | `product`, `token_hash`, `release_id`, `artifact_id`, `device_id`, `scope_json`, `expires_at`, `used_at`, `created_at` |
 | `license_refusals` | 0074_license_refusals.sql | `product`, `id`, `license_id`, `at`, `reason`, `device_label`, `device_hash` |
 | `license_auto_attach_blocks` | 0092_license_auto_attach_blocks.sql | `product`, `license_id`, `account_id`, `created_at` |

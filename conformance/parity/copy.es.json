@@ -73,6 +73,10 @@
       "title": "Límite de dispositivos alcanzado",
       "message": "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí."
     },
+    "device_keys_invalid": {
+      "title": "Dispositivo no configurado",
+      "message": "No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo."
+    },
     "key_entry_limit": {
       "title": "No quedan usos de la clave",
       "message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
@@ -264,6 +268,26 @@
     "writes_paused": {
       "title": "Sincronización en pausa",
       "message": "La sincronización está en pausa un momento. Tus cambios se conservan y se sincronizarán más tarde."
+    },
+    "encryption_mismatch": {
+      "title": "Cifrado incompatible",
+      "message": "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo."
+    },
+    "upload_expired": {
+      "title": "Subida caducada",
+      "message": "La subida tardó demasiado y se canceló. Inténtalo de nuevo."
+    },
+    "upload_incomplete": {
+      "title": "Subida incompleta",
+      "message": "Una parte del archivo no llegó. Inténtalo de nuevo."
+    },
+    "file_too_large": {
+      "title": "Archivo demasiado grande",
+      "message": "Este archivo supera el límite de tamaño de los archivos sincronizados."
+    },
+    "keyring_conflict": {
+      "title": "Ya configurado",
+      "message": "El cifrado ya está configurado para esta cuenta. Desbloquea con otro dispositivo o con tu código de recuperación."
     },
     "email_mismatch": {
       "title": "Correo no verificado",
@@ -468,6 +492,18 @@
     "platform-identity-unavailable": {
       "title": "Inicio de sesión no disponible",
       "message": "Este dispositivo no puede iniciar sesión automáticamente. Usa otra forma de iniciar sesión."
+    },
+    "sync-locked": {
+      "title": "Sincronización bloqueada",
+      "message": "Desbloquea la sincronización en este dispositivo con tu código de recuperación o con otro dispositivo con sesión iniciada."
+    },
+    "recovery-code-invalid": {
+      "title": "Código de recuperación no válido",
+      "message": "Ese código de recuperación no es correcto. Compruébalo e inténtalo de nuevo."
+    },
+    "sync-encryption-pinned": {
+      "title": "Cifrado obligatorio",
+      "message": "Esta app necesita sincronización cifrada, que ahora no está disponible. La sincronización sigue desactivada."
     },
     "invalid-options": {
       "title": "App no configurada",

@@ -32,7 +32,7 @@ import {
   keyEntryState,
   parseKeyEntryLimit,
 } from "../../src/core/licensing/keyEntries.js";
-import { serializeServices } from "../../src/core/services.js";
+import { SERVICE_SLUGS, serializeServices } from "../../src/core/services.js";
 import { SETTINGS } from "../../src/mount.js";
 import { invalidatePlatformSettings } from "../../src/core/platformSettings.js";
 import { claimDeviceSeat } from "../../src/core/devices/store.js";
@@ -72,16 +72,7 @@ async function setIdentity(on: boolean): Promise<Product> {
     ? ["license", "config", "identity"]
     : ["license", "config"];
   const services = Object.fromEntries(
-    [
-      "license",
-      "config",
-      "release",
-      "distribution",
-      "update",
-      "identity",
-      "sync",
-      "commerce",
-    ].map((s) => [s, { enabled: enabled.includes(s as ServiceSlug) }]),
+    SERVICE_SLUGS.map((s) => [s, { enabled: enabled.includes(s) }]),
   );
   await setServices(
     db,

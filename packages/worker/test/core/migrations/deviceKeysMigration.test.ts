@@ -77,4 +77,26 @@ describe("device keys migration", () => {
     }
     expect(await left()).toEqual([]);
   });
+
+  it("0144 adds the floor table, and its down script drops it", async () => {
+    const db = makeTestDb();
+    const cols = await db.all<{ name: string }>(
+      "SELECT name FROM pragma_table_info('device_key_floor')",
+    );
+    expect(cols.map((c) => c.name)).toEqual([
+      "product",
+      "device_id",
+      "key_seq",
+      "pop_at",
+    ]);
+    const down = sqlFile("scripts/rollback", "0144_device_key_floor.down.sql");
+    for (const stmt of down.replace(/^--.*$/gm, "").split(";")) {
+      if (stmt.trim()) await db.run(stmt);
+    }
+    expect(
+      await db.first(
+        "SELECT 1 FROM sqlite_master WHERE name = 'device_key_floor'",
+      ),
+    ).toBeNull();
+  });
 });

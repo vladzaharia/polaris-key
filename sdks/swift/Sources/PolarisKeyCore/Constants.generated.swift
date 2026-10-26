@@ -26,6 +26,7 @@ public enum ErrorCode {
     public static let valueNotRepresentable = "value_not_representable"
     public static let documentNotRepresentable = "document_not_representable"
     public static let signingUnavailable = "signing_unavailable"
+    public static let deviceKeysInvalid = "device_keys_invalid"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
     public static let licenseDisabled = "license_disabled"
@@ -75,6 +76,11 @@ public enum ErrorCode {
     public static let collectionUnknown = "collection_unknown"
     public static let quotaExceeded = "quota_exceeded"
     public static let writesPaused = "writes_paused"
+    public static let encryptionMismatch = "encryption_mismatch"
+    public static let uploadExpired = "upload_expired"
+    public static let uploadIncomplete = "upload_incomplete"
+    public static let fileTooLarge = "file_too_large"
+    public static let keyringConflict = "keyring_conflict"
     public static let emailMismatch = "email_mismatch"
     public static let linkConflict = "link_conflict"
     public static let lastLink = "last_link"
@@ -126,6 +132,9 @@ public enum ErrorCode {
     public static let signInDenied = "sign-in-denied"
     public static let signInUnavailable = "sign-in-unavailable"
     public static let platformIdentityUnavailable = "platform-identity-unavailable"
+    public static let syncLocked = "sync-locked"
+    public static let recoveryCodeInvalid = "recovery-code-invalid"
+    public static let syncEncryptionPinned = "sync-encryption-pinned"
     public static let invalidOptions = "invalid-options"
     public static let invalidArgument = "invalid-argument"
     public static let invokeNotAllowed = "invoke-not-allowed"
@@ -217,6 +226,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "value_not_representable",
     "document_not_representable",
     "signing_unavailable",
+    "device_keys_invalid",
     "device_limit",
     "key_entry_limit",
     "license_disabled",
@@ -266,6 +276,11 @@ public let ERROR_CODE_VALUES: [String] = [
     "collection_unknown",
     "quota_exceeded",
     "writes_paused",
+    "encryption_mismatch",
+    "upload_expired",
+    "upload_incomplete",
+    "file_too_large",
+    "keyring_conflict",
     "email_mismatch",
     "link_conflict",
     "last_link",
@@ -317,6 +332,9 @@ public let ERROR_CODE_VALUES: [String] = [
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
+    "sync-locked",
+    "recovery-code-invalid",
+    "sync-encryption-pinned",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -408,6 +426,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "value_not_representable": "wire",
     "document_not_representable": "wire",
     "signing_unavailable": "wire",
+    "device_keys_invalid": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",
     "license_disabled": "wire",
@@ -457,6 +476,11 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "collection_unknown": "wire",
     "quota_exceeded": "wire",
     "writes_paused": "wire",
+    "encryption_mismatch": "wire",
+    "upload_expired": "wire",
+    "upload_incomplete": "wire",
+    "file_too_large": "wire",
+    "keyring_conflict": "wire",
     "email_mismatch": "wire",
     "link_conflict": "wire",
     "last_link": "wire",
@@ -508,6 +532,9 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "sign-in-denied": "client",
     "sign-in-unavailable": "client",
     "platform-identity-unavailable": "client",
+    "sync-locked": "client",
+    "recovery-code-invalid": "client",
+    "sync-encryption-pinned": "client",
     "invalid-options": "client",
     "invalid-argument": "client",
     "invoke-not-allowed": "client",
@@ -1528,11 +1555,68 @@ public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
 /// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 public let REQUEST_HANDLE_TTL_SECONDS = 600
 
+/// Cloud Sync: `SYNC_BLINDED_NAME_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`).
+public let SYNC_BLINDED_NAME_PATTERN = "^x:[A-Za-z0-9_-]{43}$"
+
+/// Cloud Sync: `SYNC_BLINDED_PREFIX` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`).
+public let SYNC_BLINDED_PREFIX = "x:"
+
+/// Cloud Sync: `SYNC_CDC_AVG_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_CDC_AVG_BYTES = 262144
+
+/// Cloud Sync: `SYNC_CDC_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_CDC_FORMAT = "pkey-sync-cdc/1"
+
+/// Cloud Sync: `SYNC_CDC_GEAR_SEED` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_CDC_GEAR_SEED = 2654435769
+
+/// Cloud Sync: `SYNC_CDC_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_CDC_MAX_BYTES = 1048576
+
+/// Cloud Sync: `SYNC_CDC_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_CDC_MIN_BYTES = 65536
+
+/// Cloud Sync: `SYNC_CHUNK_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_CHUNK_FORMAT = "pkey-sync-chunk/1"
+
+/// Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_CHUNK_ID_PATTERN = "^[0-9a-f]{64}$"
+
+/// Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+public let SYNC_CHUNK_PLAN_MAX_IDS = 1024
+
+/// Cloud Sync: `SYNC_CHUNK_REQUESTS_PER_MINUTE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+public let SYNC_CHUNK_REQUESTS_PER_MINUTE = 600
+
 /// Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`).
 public let SYNC_CLIENT_ID_PATTERN = "^c_[A-Za-z0-9_-]{22}$"
 
 /// Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
 public let SYNC_DEBOUNCE_MS = 2000
+
+/// Cloud Sync: `SYNC_DELTA_MIN_FILE_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+public let SYNC_DELTA_MIN_FILE_BYTES = 1048576
+
+/// Cloud Sync: `SYNC_E2E_OVERHEAD_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+public let SYNC_E2E_OVERHEAD_BYTES = 113
+
+/// Cloud Sync: `SYNC_ENVELOPE_FIXED_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+public let SYNC_ENVELOPE_FIXED_BYTES = 49
+
+/// Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+public let SYNC_ENVELOPE_PAD_BLOCK = 64
+
+/// Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+public let SYNC_FILE_FORMAT = "pkey-sync-file/1"
+
+/// Cloud Sync: `SYNC_FILE_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+public let SYNC_FILE_MAX_BYTES = 1073741824
+
+/// Cloud Sync: `SYNC_FILE_SEGMENT_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+public let SYNC_FILE_SEGMENT_BYTES = 1048576
+
+/// Cloud Sync: `SYNC_FILE_TRANSFERS_PER_HOUR` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+public let SYNC_FILE_TRANSFERS_PER_HOUR = 30
 
 /// Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`).
 public let SYNC_HLC_PATTERN = "^[0-9a-f]{12}:[0-9a-f]{4}$"
@@ -1540,8 +1624,20 @@ public let SYNC_HLC_PATTERN = "^[0-9a-f]{12}:[0-9a-f]{4}$"
 /// Cloud Sync: `SYNC_IMPORT_HLC` (WIRE-CONTRACT-V4 §11.5, §13.3, `@polaris-key/protocol/sync`).
 public let SYNC_IMPORT_HLC = "000000000000:0000"
 
+/// Cloud Sync: `SYNC_KEYCHAIN_SERVICE_PREFIX` (WIRE-CONTRACT-V4 §8, §13.11.5, `@polaris-key/protocol/sync`).
+public let SYNC_KEYCHAIN_SERVICE_PREFIX = "pkey-sync:"
+
 /// Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`).
 public let SYNC_KEY_PATTERN = "^[A-Za-z0-9._:-]{1,128}$"
+
+/// Cloud Sync: `SYNC_KID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.2, `@polaris-key/protocol/sync`).
+public let SYNC_KID_PATTERN = "^[0-9a-f]{32}$"
+
+/// Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
+public let SYNC_MANIFEST_FORMAT = "pkey-sync-chunks/1"
+
+/// Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_CHUNKS_PER_FILE = 16384
 
 /// Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
 public let SYNC_MAX_CLOCK_SKEW_MS = 300000
@@ -1551,6 +1647,12 @@ public let SYNC_MAX_MERGE_MEMBERS = 256
 
 /// Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
 public let SYNC_MAX_MUTATIONS = 100
+
+/// Cloud Sync: `SYNC_MAX_OPEN_UPLOADS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_OPEN_UPLOADS = 4
+
+/// Cloud Sync: `SYNC_MAX_PARTS` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+public let SYNC_MAX_PARTS = 9999
 
 /// Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
 public let SYNC_MAX_PUSH_BYTES = 262144
@@ -1570,6 +1672,15 @@ public let SYNC_MAX_UNION_ELEMENT_BYTES = 1024
 /// Cloud Sync: `SYNC_MAX_VALUE_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
 public let SYNC_MAX_VALUE_BYTES = 8192
 
+/// Cloud Sync: `SYNC_PART_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+public let SYNC_PART_MAX_BYTES = 67108864
+
+/// Cloud Sync: `SYNC_PART_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+public let SYNC_PART_MIN_BYTES = 8388608
+
+/// Cloud Sync: `SYNC_PART_ROUND_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+public let SYNC_PART_ROUND_BYTES = 1048576
+
 /// Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
 public let SYNC_PENDING_DAYS = 30
 
@@ -1579,17 +1690,41 @@ public let SYNC_PULL_PAGE_CHANGES = 500
 /// Cloud Sync: `SYNC_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
 public let SYNC_QUOTA_BYTES = 268435456
 
+/// Cloud Sync: `SYNC_RECOVERY_READS_PER_DAY` (WIRE-CONTRACT-V4 §13.11.2, `@polaris-key/protocol/sync`).
+public let SYNC_RECOVERY_READS_PER_DAY = 5
+
+/// Cloud Sync: `SYNC_RESET_KEEP_DAYS` (WIRE-CONTRACT-V4 §13.11.4, `@polaris-key/protocol/sync`).
+public let SYNC_RESET_KEEP_DAYS = 30
+
+/// Cloud Sync: `SYNC_RING_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.11, `@polaris-key/protocol/sync`).
+public let SYNC_RING_ID_PATTERN = "^rg_[A-Za-z0-9_-]{22}$"
+
 /// Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
 public let SYNC_SAVE_SLOTS = 16
 
 /// Cloud Sync: `SYNC_SIGNOUT_FLUSH_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
 public let SYNC_SIGNOUT_FLUSH_MS = 5000
 
+/// Cloud Sync: `SYNC_SINGLE_PUT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`).
+public let SYNC_SINGLE_PUT_MAX_BYTES = 16777216
+
 /// Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`).
 public let SYNC_TOMBSTONE_DAYS = 90
 
 /// Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
 public let SYNC_UNLICENSED_QUOTA_BYTES = 1048576
+
+/// Cloud Sync: `SYNC_UPLOAD_PARALLELISM` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+public let SYNC_UPLOAD_PARALLELISM = 4
+
+/// Cloud Sync: `SYNC_UPLOAD_TTL_SECONDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
+public let SYNC_UPLOAD_TTL_SECONDS = 86400
+
+/// Cloud Sync: `SYNC_VALUE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`).
+public let SYNC_VALUE_FORMAT = "pkey-sync-value/1"
+
+/// Cloud Sync: `SYNC_WRAP_FORMAT` (WIRE-CONTRACT-V4 §13.11.1, `@polaris-key/protocol/sync`).
+public let SYNC_WRAP_FORMAT = "pkey-sync-wrap/1"
 
 /// Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`).
 public let SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS = 300
@@ -1783,13 +1918,13 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.toggle": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.keyentry": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.attach": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.redirect.web": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "planned", service: "identity", na: []),
-    "identity.signin.hints": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1856,4 +1991,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "d123b8a0ef8c2d0c5ea08f7de68d02b9d99f35f7c36680b61aea5db6852e7676"
+public let CAPABILITY_DIGEST = "ec7c9d8f3cdebec7d2004091e096aa90d3b2e1b463b3d17b03598a2f14656a41"

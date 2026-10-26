@@ -8,7 +8,8 @@
 // @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
-// @pkey-feature identity.redirect.web identity.signin.hints identity.account
+// @pkey-feature identity.toggle identity.redirect.web identity.signin.hints identity.account
+// @pkey-feature identity.attach identity.choice
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -65,7 +66,8 @@ import {
   PolarisKeyClient,
   type CacheRecordV3,
   type RedirectSession,
-  type SignInPrompt,
+  type DeviceCodeSession,
+  type LicenseChoice,
   type Store,
 } from "@polaris-key/node";
 import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
@@ -172,7 +174,10 @@ function usesRedirect(t: Transcript): boolean {
 
 /** Does this transcript call the account verbs (so discovery must name their endpoints)? */
 function usesAccount(t: Transcript): boolean {
-  return t.steps.some((s) => s.action === "subject" || s.action === "signOut");
+  return t.steps.some(
+    (s) =>
+      s.action === "subject" || s.action === "signOut" || s.action === "attach",
+  );
 }
 
 /** The Worker's standard discovery document, for a transcript that loads none itself. */
@@ -198,6 +203,7 @@ function standardDiscovery(t: Transcript): string {
               endpoints: {
                 subject: `${base}/identity/subject`,
                 signout: `${base}/identity/signout`,
+                attach: `${base}/identity/attach`,
                 accountPortal: `${t.baseUrl}/#/p/${t.product}`,
                 authorize: `${base}/identity/authorize`,
                 token: `${base}/identity/token`,
@@ -233,7 +239,7 @@ function standardDiscovery(t: Transcript): string {
 
 /** The replay's memory between steps: the prompt the last `beginSignIn` returned. */
 interface Session {
-  prompt: SignInPrompt | null;
+  prompt: DeviceCodeSession | null;
   transcript: Transcript;
   server: ReplayServer;
   /** The redirect session the last authorize step started (its URL is what the browser opens). */
@@ -251,6 +257,19 @@ const REDIRECT_DEFAULTS = {
 function stringArg(step: Step, name: string): string | undefined {
   const v = step.args[name];
   return typeof v === "string" ? v : undefined;
+}
+
+/** The `choice` a `choiceComplete` step sends: the step's own `choice` arg, else the one the
+ *  recording's request carries (a key is not a transcript arg). A recording with none is the
+ *  Worker's 409 `license_choice_required` for a completion that names no choice: an SDK's typed
+ *  call cannot be made to omit it, so the replay sends the body as recorded (no `choice`). */
+function recordedChoice(step: Step): LicenseChoice {
+  const arg = step.args.choice;
+  if (arg !== undefined) return arg as unknown as LicenseChoice;
+  const body = step.exchanges.items[0]?.request.body?.json as
+    | { choice?: unknown }
+    | undefined;
+  return body?.choice as LicenseChoice;
 }
 
 /** A fresh redirect sign-in with the recorded entropy, as the host would start it. */
@@ -434,10 +453,20 @@ async function act(
   const out: Observed = {};
   switch (step.action) {
     case "beginSignIn": {
+      // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
       const name = step.args.deviceName;
-      const p = await client.identity.beginSignIn(
-        typeof name === "string" ? { deviceName: name } : {},
-      );
+      let p: DeviceCodeSession;
+      try {
+        p = await client.identity.signIn.start({
+          channel: "device-code",
+          ...(typeof name === "string" ? { deviceName: name } : {}),
+        });
+      } catch (e) {
+        if (!(e instanceof PolarisError)) throw e;
+        out.result = e.code;
+        out.tokenHeld = store.token !== null;
+        break;
+      }
       session.prompt = p;
       out.prompt = {
         userCode: p.userCode,
@@ -451,26 +480,27 @@ async function act(
     }
     case "pollSignIn": {
       try {
-        const poll = await client.identity.pollSignIn(session.prompt!);
-        out.result = poll.status;
-        if (poll.status === "slow-down") out.interval = poll.interval;
-        if (poll.status === "error" && poll.code) out.code = poll.code;
+        const o = await session.prompt!.wait({ once: true });
+        if (o.kind === "pending") {
+          out.result = o.slowDown ? "slow-down" : "pending";
+          if (o.slowDown) out.interval = o.interval;
+        } else out.result = o.kind === "signedIn" ? "ready" : o.kind;
       } catch (e) {
-        // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
-        if (
-          !(e instanceof PolarisError) ||
-          (e.code !== "server-error" && e.code !== "network-error")
-        )
-          throw e;
-        out.result = "transient";
-        out.code = e.code;
+        if (!(e instanceof PolarisError)) throw e;
+        if (e.code === "sign-in-denied" || e.code === "sign-in-failed") {
+          out.result = "error";
+          out.code = e.code;
+        } else if (e.code === "server-error" || e.code === "network-error") {
+          // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
+          out.result = "transient";
+          out.code = e.code;
+        } else throw e;
       }
       break;
     }
     case "waitForSignIn": {
-      const done = await client.identity.waitForSignIn(session.prompt!);
-      out.result = done.status;
-      if (done.status === "error" && done.code) out.code = done.code;
+      const done = await session.prompt!.wait();
+      out.result = done.kind === "signedIn" ? "ready" : done.kind;
       break;
     }
     case "browser":
@@ -504,9 +534,55 @@ async function act(
       }
       break;
     }
+    case "choiceLicenses":
+    case "choiceDevices":
+    case "choiceComplete":
+    case "choiceCancel": {
+      // The grant routes (I-10a.8): `client.identity.choice.*`, a refusal being a result.
+      const grant = String(step.args.grant);
+      const choice = client.identity.choice;
+      let refused: { code: string } | null = null;
+      if (step.action === "choiceLicenses") {
+        const r = await choice.licenses(grant);
+        if (r.kind === "ok") {
+          out.state = r.view.state;
+          out.licenses = r.view.choices.map((c) => c.id);
+        } else refused = r;
+      } else if (step.action === "choiceDevices") {
+        const r = await choice.devices(grant, String(step.args.licenseId));
+        if (r.kind === "ok") out.devices = r.view.devices.map((d) => d.id);
+        else refused = r;
+      } else if (step.action === "choiceComplete") {
+        const r = await choice.complete(grant, recordedChoice(step));
+        if (r.kind === "ok") {
+          out.licenseId = r.licenseId;
+          out.subject = r.subject;
+          if (r.keyEntries) out.keyEntries = r.keyEntries;
+        } else refused = r;
+      } else {
+        const r = await choice.cancel(grant);
+        if (r.kind !== "ok") refused = r;
+      }
+      out.result = refused ? "refused" : "ok";
+      if (refused) out.code = refused.code;
+      break;
+    }
     case "subject":
       out.subject = await client.identity.subject();
       break;
+    case "attach": {
+      const r = await client.identity.attach({
+        confirm: step.args.confirm === true,
+      });
+      out.result = r.status;
+      if (r.status === "confirm") out.license = { ...r.license };
+      else if (r.status === "ok") {
+        out.attached = r.attached ?? null;
+        out.subject = r.subject;
+      } else out.code = r.code;
+      out.tokenHeld = store.token !== null;
+      break;
+    }
     case "signOut": {
       const r = await client.identity.signOut();
       out.released = r.released;

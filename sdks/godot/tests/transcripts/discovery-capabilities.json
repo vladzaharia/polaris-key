@@ -52,6 +52,7 @@
                     "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
                     "devices": "https://key.plrs.im/djdl/devices",
                     "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys",
                     "register": "https://key.plrs.im/djdl/devices/register"
                   },
                   "portal": {
@@ -114,7 +115,8 @@
           "update": false,
           "identity": false,
           "sync": false,
-          "commerce": false
+          "commerce": false,
+          "connect": false
         }
       }
     }

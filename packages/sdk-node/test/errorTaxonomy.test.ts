@@ -21,7 +21,6 @@ import { describe, expect, it } from "vitest";
 import { PolarisError } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
-import type { SignInPrompt } from "../src/identity/client.js";
 import { InsecureBaseUrlError } from "../src/core/context.js";
 import { DeviceManagementUnsupportedError } from "../src/devices/client.js";
 import { retryAfterSeconds } from "../src/core/http.js";
@@ -117,16 +116,16 @@ interface Seen {
   message?: string;
 }
 
-const PROMPT = {
+/** What `auth/device/start` answers when a poll case needs a session to poll. */
+const STARTED = {
+  status: "pending",
   deviceCode: "device-code",
   userCode: "ABCD-EFGH",
   verificationUri: `${BASE}/${PRODUCT}/identity/auth/device`,
   verificationUriComplete: `${BASE}/${PRODUCT}/identity/auth/device?user_code=ABCD-EFGH`,
   expiresIn: 600,
   interval: 5,
-  expiresAt: Number.MAX_SAFE_INTEGER,
-  deviceName: null,
-} satisfies SignInPrompt;
+};
 
 const RECORD = {
   record: {
@@ -147,6 +146,8 @@ const RECORD = {
 const CALLS: {
   name: string;
   path: string;
+  /** A route the case first needs to answer 200 (the sign-in start behind a poll). */
+  prime?: string;
   run: (c: PolarisKeyClient) => Promise<Seen>;
 }[] = [
   {
@@ -194,21 +195,21 @@ const CALLS: {
       ),
   },
   {
-    name: "identity.beginSignIn",
+    name: "identity.signIn.start",
     path: "/identity/auth/device/start",
-    run: (c) => thrown(c.identity.beginSignIn()),
+    run: (c) => thrown(c.identity.signIn.start({ channel: "device-code" })),
   },
   {
-    name: "identity.pollSignIn",
+    name: "identity.signIn wait",
     path: "/identity/auth/device/poll",
+    prime: "/identity/auth/device/start",
     run: async (c) => {
       try {
-        const poll = await c.identity.pollSignIn(PROMPT);
-        return {
-          thrown: false,
-          code: poll.status,
-          ...(poll.status === "error" ? { message: poll.message } : {}),
-        };
+        const session = await c.identity.signIn.start({
+          channel: "device-code",
+        });
+        const o = await session.wait({ once: true });
+        return { thrown: false, code: o.kind };
       } catch (e) {
         return fromError(e);
       }
@@ -420,7 +421,7 @@ const EXPECTED: Record<string, Partial<Record<number, string>>> = {
   // §5's document ladder: a 429 on a signed document is the device cap.
   sync: { 429: "device-cap" },
   // RFC 8628 §3.5: a 429 on a poll is `slow_down`; any other refusal is a poll status.
-  "identity.pollSignIn": { 404: "error", 429: "slow-down" },
+  "identity.signIn wait": { 404: "sign-in-failed", 429: "pending" },
   // The registration ladder: 404 is "registration is not set up", 429 its own kind.
   "devices.register": { 404: "not-configured", 429: "rate-limited" },
   // Discovery's own kind for an unregistered product.
@@ -444,6 +445,7 @@ describe("SP-46 acceptance 2: the 404/429/500/503 matrix", () => {
             path.endsWith("/.well-known/polaris.json")
           )
             return json(DISCOVERY);
+          if (call.prime && path.includes(call.prime)) return json(STARTED);
           if (path.includes(call.path)) return ANSWERS[status]!();
           return new Response("", { status: 404 });
         });
@@ -481,6 +483,7 @@ describe("SP-46 acceptance 2: the 404/429/500/503 matrix", () => {
         const { client } = await makeClient((path) => {
           if (path.endsWith("/.well-known/polaris.json"))
             return json(DISCOVERY);
+          if (call.prime && path.includes(call.prime)) return json(STARTED);
           return path.includes(call.path)
             ? json({}, status)
             : new Response("", { status: 404 });
@@ -634,7 +637,9 @@ describe("SP-46: beginSignIn refuses locally when discovery says Identity is off
 
   it("off: service-unavailable, no request", async () => {
     const { client, calls } = await withIdentity({ enabled: false });
-    await expect(client.identity.beginSignIn()).rejects.toMatchObject({
+    await expect(
+      client.identity.signIn.start({ channel: "device-code" }),
+    ).rejects.toMatchObject({
       code: "service-unavailable",
     });
     client.close();
@@ -646,7 +651,9 @@ describe("SP-46: beginSignIn refuses locally when discovery says Identity is off
       enabled: true,
       configured: false,
     });
-    const e = await client.identity.beginSignIn().catch((x: unknown) => x);
+    const e = await client.identity.signIn
+      .start({ channel: "device-code" })
+      .catch((x: unknown) => x);
     client.close();
     expect(e).toBeInstanceOf(PolarisError);
     expect(e).toMatchObject({ code: "disabled" });
@@ -658,7 +665,9 @@ describe("SP-46: beginSignIn refuses locally when discovery says Identity is off
       enabled: true,
       configured: true,
     });
-    await expect(client.identity.beginSignIn()).rejects.toMatchObject({
+    await expect(
+      client.identity.signIn.start({ channel: "device-code" }),
+    ).rejects.toMatchObject({
       code: "server-error",
     });
     client.close();

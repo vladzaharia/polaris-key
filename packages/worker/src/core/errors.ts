@@ -15,6 +15,9 @@ export const ErrorCode = {
   Unauthorized: "unauthorized",
   NotEntitled: "not_entitled",
   DeviceLimit: "device_limit",
+  /** CC-03.2: `PUT /<p>/devices/keys` refused: a bad key, a failed or stale proof, or an `agreeKey`
+   *  another device holds. One code for all three. */
+  DeviceKeysInvalid: "device_keys_invalid",
   BadRequest: "bad_request",
   NotFound: "not_found",
   ManagedByAdmin: "managed_by_admin",

@@ -1,6 +1,7 @@
 // Product store (P0-18): the `products` row and its policies, sealed key custody, the active
 // catalog, and the registration statement-builders. Split out of `core/repo.ts`.
 
+import { stmtsDeleteProductKeyrings } from "../keyring/store.js";
 import { stmtRevokeProductCiTokens } from "../publisher.js";
 import { stmtRevokeProductRegistryTokens } from "../registry/registryTokens.js";
 import { productGrantErasureStatements } from "../licensing/grants.js";
@@ -530,6 +531,11 @@ export async function deleteProduct(
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],
     },
+    // CC-03: a deleted product keeps no device keys and no key floors.
+    { sql: "DELETE FROM device_keys WHERE product = ?", params: [slug] },
+    { sql: "DELETE FROM device_key_floor WHERE product = ?", params: [slug] },
+    // U-36.1: nor any key ring, wrap or sealed recovery blob.
+    ...stmtsDeleteProductKeyrings(slug),
     {
       sql: "UPDATE product_keys SET status = 'revoked', rotated_at = ?, revoked_at = ? WHERE product = ?",
       params: [now, now, slug],

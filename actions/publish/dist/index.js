@@ -1311,6 +1311,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     },
     "oidc": { "$ref": "#/$defs/oidc" },
     "identity": { "$ref": "#/$defs/identity" },
+    "connect": { "$ref": "#/$defs/connect" },
     "provisioning": {
       "type": "array",
       "items": { "$ref": "#/$defs/provisioningHook" }
@@ -1897,6 +1898,21 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "properties": { "provider": { "const": "custom" } }
       },
       "then": { "required": ["issuer", "clientId"] }
+    },
+    "connect": {
+      "type": "object",
+      "description": "Cloud Connect settings (CC-02.2), each a claimable setting: the console can override it and Revert returns it to this file. Takes effect only while the connect service is on; declared with it off, pkey validate warns (connect_block_without_service).",
+      "additionalProperties": false,
+      "properties": {
+        "relay": {
+          "description": "Whether the relay carries this product's device traffic when the LAN cannot (cloudConnect.relay.enabled). Default true.",
+          "type": "boolean"
+        },
+        "interAccount": {
+          "description": "Whether devices of different accounts may connect (cloudConnect.interAccount). Default false.",
+          "type": "boolean"
+        }
+      }
     },
     "identity": {
       "type": "object",
@@ -4039,7 +4055,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "key": {
           "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency). On a flag, the names channels, deviceLimit, app.minVersion, app.maxVersion, license.tier and license.tierLabel, and every name under license., app. and pkey., are reserved entitlement names the platform sets itself: a declaration of one must match the system key's type (channels an array of strings, deviceLimit an integer, app.* and license.* strings) and may only narrow it. The validator reports an incompatible one (incompatible_reserved_name) as a warning or an error, as the platform's licensing.reservedNames setting says; this schema does not check it.",
           "type": "string",
-          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+          "pattern": "^(?!x:)[A-Za-z0-9._:-]{1,64}$"
         },
         "kind": {
           "description": "config = plaintext client setting · secret = redacted, delivered to the OS keyring · flag = an entitlement.",
@@ -4226,6 +4242,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "description": "The data shape of the product's Cloud Sync records (the Cloud Sync service): its collections and the migrations the server applies to synced values. A person's quota is not here: it is the pkey.cloudSync.bytes entitlement a tier, a licence override or an add-on sets.",
       "type": "object",
       "properties": {
+        "encryption": {
+          "description": "e2e (default): the server holds ciphertext only and cannot read synced values. server: the server can read them, which migrations' mapValues needs.",
+          "enum": ["e2e", "server"]
+        },
         "collections": {
           "type": "array",
           "maxItems": 32,
@@ -4233,9 +4253,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "type": "object",
             "properties": {
               "name": {
-                "description": "[A-Za-z0-9._:-], at most 128 characters; a trailing .* makes a pattern matching every collection with that prefix. Names are unique and patterns disjoint.",
+                "description": "[A-Za-z0-9._:-], at most 128 characters, not starting with x: (reserved for blinded names); a trailing .* makes a pattern matching every collection with that prefix. Names are unique and patterns disjoint.",
                 "type": "string",
-                "pattern": "^[A-Za-z0-9._:-]{1,126}(?:\\\\.\\\\*)?$"
+                "pattern": "^(?!x:)[A-Za-z0-9._:-]{1,126}(?:\\\\.\\\\*)?$"
               },
               "label": {
                 "description": "Shown in the console and the portal. Default: the template's label, else the name.",
@@ -4279,7 +4299,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
                 "type": "object",
                 "properties": {
                   "maxBytes": { "type": "integer", "minimum": 0 },
-                  "keepRevisions": { "type": "integer", "minimum": 0 }
+                  "keepRevisions": { "type": "integer", "minimum": 0 },
+                  "delta": {
+                    "description": "Send only the changed chunks of a new version. Default true for a saves collection, false otherwise.",
+                    "type": "boolean"
+                  }
                 },
                 "additionalProperties": false
               },
@@ -4322,6 +4346,18 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             },
             "required": ["toSchemaVersion"],
             "additionalProperties": false
+          }
+        }
+      },
+      "if": {
+        "properties": { "encryption": { "const": "server" } },
+        "required": ["encryption"]
+      },
+      "else": {
+        "$comment": "mapValues rewrites values the server cannot read under E2E.",
+        "properties": {
+          "migrations": {
+            "items": { "not": { "required": ["mapValues"] } }
           }
         }
       },
@@ -14818,6 +14854,38 @@ function formatFeedSetup(snippets) {
 // ../shared-catalog/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
+// ../shared-catalog/dist/cloudConnect.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var KiB = 1024;
+var MiB = 1024 * KiB;
+var GiB = 1024 * MiB;
+var CLOUD_CONNECT_DEFAULTS = {
+  /** A person's relay bytes per UTC day when nothing sets `pkey.cloudConnect.relayBytes` (the
+   *  `cloudConnect.quota.defaultRelayBytes` setting's default). */
+  relayBytesPerDay: 256 * MiB,
+  /** A device with no usable licence. */
+  unlicensedRelayBytesPerDay: 16 * MiB,
+  /** Relay sockets: two per device (a third replaces the oldest) and 32 per room. */
+  socketsPerDevice: 2,
+  socketsPerRoom: 32,
+  /** One relay message: a 64 KiB frame plus its envelope. */
+  maxMessageBytes: 65564,
+  /** Messages per second per socket, and the burst the bucket holds. */
+  messagesPerSecond: 200,
+  messageBurst: 400
+};
+var CLOUD_CONNECT_CEILINGS = {
+  perPerson: {
+    /** The clamp on a person's relay bytes per UTC day. */
+    relayBytesPerDay: 4 * GiB
+  },
+  perProduct: {
+    /** All people on a product together, per UTC month (the `cloudConnect.ceiling.relayBytes`
+     *  setting's default). */
+    relayBytesPerMonth: 500 * GiB
+  }
+};
+
 // ../shared-catalog/dist/cloudSync.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -14859,21 +14927,29 @@ var CLOUD_SYNC_TEMPLATE_NAMES = [
   "saves",
   "session"
 ];
+var CLOUD_SYNC_ENCRYPTION_MODES = [
+  "e2e",
+  "server"
+];
+var CLOUD_SYNC_RESERVED_PREFIX = "x:";
+function cloudSyncEncryption(catalog) {
+  return catalog.cloudSync?.encryption === "server" ? "server" : "e2e";
+}
 var CLOUD_SYNC_COLLECTION_PATTERN = "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
 var CLOUD_SYNC_MAX_MERGE_MEMBERS = SYNC_MAX_MERGE_MEMBERS;
 var CLOUD_SYNC_SAVE_SLOTS = SYNC_SAVE_SLOTS;
-var KiB = 1024;
-var MiB = 1024 * KiB;
-var GiB = 1024 * MiB;
+var KiB2 = 1024;
+var MiB2 = 1024 * KiB2;
+var GiB2 = 1024 * MiB2;
 var CLOUD_SYNC_CEILINGS = {
   perPerson: {
     /** About 1.06 GiB: the owner-confirmed per-person total (settings, records and files). */
-    bytes: 256 * KiB + 64 * MiB + 1 * GiB,
+    bytes: 256 * KiB2 + 64 * MiB2 + 1 * GiB2,
     /** One file. */
-    fileBytes: 1 * GiB
+    fileBytes: 1 * GiB2
   },
   perProduct: {
-    bytes: 50 * GiB,
+    bytes: 50 * GiB2,
     users: 1e5,
     pushesPerSecond: 2e3
   }
@@ -14896,7 +14972,7 @@ var CLOUD_SYNC_DEFAULTS = {
     maxRecords: 1e4,
     maxCollections: 32
   },
-  files: { maxBytes: 32 * MiB, keepRevisions: 5 },
+  files: { maxBytes: 32 * MiB2, keepRevisions: 5 },
   push: {
     maxMutations: SYNC_MAX_MUTATIONS,
     maxBytes: SYNC_MAX_PUSH_BYTES,
@@ -14904,7 +14980,7 @@ var CLOUD_SYNC_DEFAULTS = {
   },
   fileTransfersPerHour: 30
 };
-var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB / 3);
+var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB2 / 3);
 var CLOUD_SYNC_TEMPLATES = {
   saves: {
     label: "Saves",
@@ -14912,7 +14988,8 @@ var CLOUD_SYNC_TEMPLATES = {
     maxRecords: CLOUD_SYNC_SAVE_SLOTS,
     files: {
       maxBytes: CLOUD_SYNC_DEFAULTS.files.maxBytes,
-      keepRevisions: CLOUD_SYNC_DEFAULTS.files.keepRevisions
+      keepRevisions: CLOUD_SYNC_DEFAULTS.files.keepRevisions,
+      delta: true
     },
     schema: {
       type: "object",
@@ -14933,7 +15010,7 @@ var CLOUD_SYNC_TEMPLATES = {
     label: "Session",
     conflict: "lastWrite",
     maxRecords: 16,
-    files: { maxBytes: 8 * MiB, keepRevisions: 1 }
+    files: { maxBytes: 8 * MiB2, keepRevisions: 1, delta: false }
   }
 };
 function isEditable(entry) {
@@ -14958,7 +15035,11 @@ function settingRoute(entry) {
   };
 }
 function syncedSettings(catalog) {
-  return catalog.entries.map(settingRoute);
+  const routes = catalog.entries.map(settingRoute);
+  if (catalog.cloudSync === void 0)
+    return routes;
+  const encryption = cloudSyncEncryption(catalog);
+  return routes.map((r) => ({ ...r, encryption }));
 }
 var USER_BLOCK_MEMBERS = /* @__PURE__ */ new Set(["sync", "conflict", "listed"]);
 var isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -16147,6 +16228,12 @@ var RESERVED_ENTITLEMENT_KEYS = [
     type: "integer",
     rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Sync reads it from the anchor licence as the person's quota in bytes (256 MiB when unset).",
     injected: false
+  },
+  {
+    key: "pkey.cloudConnect.relayBytes",
+    type: "integer",
+    rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Connect reads it from the anchor licence as the relay bytes a person may use per UTC day (256 MiB when unset, 16 MiB without a usable licence, clamped to 4 GiB).",
+    injected: false
   }
 ];
 var RESERVED_ENTITLEMENT_PREFIXES = [
@@ -16281,7 +16368,7 @@ function reservedNameDeclarations(catalog) {
   return out;
 }
 var COLLECTION_RE = new RegExp(CLOUD_SYNC_COLLECTION_PATTERN);
-var CATALOG_MEMBERS = /* @__PURE__ */ new Set(["collections", "migrations"]);
+var CATALOG_MEMBERS = /* @__PURE__ */ new Set(["encryption", "collections", "migrations"]);
 var COLLECTION_MEMBERS = /* @__PURE__ */ new Set([
   "name",
   "label",
@@ -16294,7 +16381,7 @@ var COLLECTION_MEMBERS = /* @__PURE__ */ new Set([
   "files",
   "requires"
 ]);
-var FILES_MEMBERS = /* @__PURE__ */ new Set(["maxBytes", "keepRevisions"]);
+var FILES_MEMBERS = /* @__PURE__ */ new Set(["maxBytes", "keepRevisions", "delta"]);
 var MIGRATION_MEMBERS = /* @__PURE__ */ new Set([
   "toSchemaVersion",
   "rename",
@@ -16315,6 +16402,18 @@ function validateCloudSync(errors, warnings, ctx) {
         if (raw.user.sync !== "local")
           declaresSync = true;
       }
+    }
+  }
+  if (ctx.catalogChecked && ctx.entries) {
+    for (const [i, raw] of ctx.entries.entries()) {
+      if (isRecord22(raw) && typeof raw.key === "string" && raw.key.startsWith(CLOUD_SYNC_RESERVED_PREFIX))
+        add(
+          errors,
+          "schema",
+          `/entries/${i}/key`,
+          "cloud_sync_reserved_prefix",
+          `The key ${raw.key} starts with ${CLOUD_SYNC_RESERVED_PREFIX}, which Cloud Sync reserves for blinded names; choose another key.`
+        );
     }
   }
   if (ctx.catalogChecked && ctx.catalogCloudSync !== void 0) {
@@ -16390,6 +16489,14 @@ function validateCatalogBlock(errors, block2, flags, keys) {
       );
     else shape(errors, "schema", at, `${k} is not a member here.`);
   }
+  if (block2.encryption !== void 0 && !isOneOf(block2.encryption, CLOUD_SYNC_ENCRYPTION_MODES)) {
+    shape(
+      errors,
+      "schema",
+      `${base}/encryption`,
+      `cloudSync.encryption must be ${CLOUD_SYNC_ENCRYPTION_MODES.join(" or ")}; e2e is the default.`
+    );
+  }
   if (block2.collections !== void 0) {
     const max = CLOUD_SYNC_DEFAULTS.records.maxCollections;
     if (!Array.isArray(block2.collections) || block2.collections.length > max) {
@@ -16418,7 +16525,13 @@ function validateCatalogBlock(errors, block2, flags, keys) {
       );
     } else {
       for (const [i, m] of block2.migrations.entries()) {
-        validateMigration(errors, m, keys, `${base}/migrations/${i}`);
+        validateMigration(
+          errors,
+          m,
+          keys,
+          block2.encryption === "server",
+          `${base}/migrations/${i}`
+        );
       }
     }
   }
@@ -16447,6 +16560,15 @@ function validateCollections(errors, collections, flags, base) {
           `${path37}/${escapePointer2(k)}`,
           `${k} is not a member here.`
         );
+    }
+    if (typeof raw.name === "string" && raw.name.startsWith(CLOUD_SYNC_RESERVED_PREFIX)) {
+      add(
+        errors,
+        "schema",
+        `${path37}/name`,
+        "cloud_sync_reserved_prefix",
+        `The collection name ${raw.name} starts with ${CLOUD_SYNC_RESERVED_PREFIX}, which Cloud Sync reserves for blinded names; choose another name.`
+      );
     }
     if (raw.access !== void 0 && !isOneOf(raw.access, CLOUD_SYNC_ACCESS)) {
       shape(
@@ -16534,12 +16656,12 @@ function validateCollections(errors, collections, flags, base) {
     }
     if (raw.files !== void 0) {
       const f = raw.files;
-      if (!isRecord22(f) || Object.keys(f).some((k) => !FILES_MEMBERS.has(k)) || f.maxBytes !== void 0 && !nonNegativeInteger(f.maxBytes) || f.keepRevisions !== void 0 && !nonNegativeInteger(f.keepRevisions)) {
+      if (!isRecord22(f) || Object.keys(f).some((k) => !FILES_MEMBERS.has(k)) || f.maxBytes !== void 0 && !nonNegativeInteger(f.maxBytes) || f.keepRevisions !== void 0 && !nonNegativeInteger(f.keepRevisions) || f.delta !== void 0 && typeof f.delta !== "boolean") {
         shape(
           errors,
           "schema",
           `${path37}/files`,
-          "A collection's files has maxBytes and keepRevisions (non-negative integers)."
+          "A collection's files has maxBytes and keepRevisions (non-negative integers) and delta (a boolean)."
         );
       } else {
         ceilingCheck(
@@ -16626,7 +16748,7 @@ function namesOverlap(a, b) {
   if (pb && a.startsWith(pb)) return true;
   return false;
 }
-function validateMigration(errors, m, keys, path37) {
+function validateMigration(errors, m, keys, serverReadable, path37) {
   if (!isRecord22(m)) {
     shape(errors, "schema", path37, "A migration must be an object.");
     return;
@@ -16656,6 +16778,15 @@ function validateMigration(errors, m, keys, path37) {
       "schema",
       `${path37}/mapValues`,
       "A migration's mapValues maps each key to an object of old value to new value."
+    );
+  }
+  if (mapValues !== void 0 && !serverReadable) {
+    add(
+      errors,
+      "schema",
+      `${path37}/mapValues`,
+      "cloud_sync_e2e_map_values",
+      'mapValues needs the server to read synced values, which an E2E catalog does not allow. Use rename and drop, or set cloudSync.encryption to "server".'
     );
   }
   const drop = m.drop;
@@ -20870,6 +21001,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   validateLicensingSettings(licensing, errors);
   validateIdentityBlock(productRoot, modules, errors, warnings);
+  validateConnectBlock(productRoot, modules, errors, warnings);
   if (schemaAlwaysRequired || modules.includes("config")) {
     if (requireSchema(errors, manifest.schema)) {
       const catalog = normalizeCatalog(manifest.schema);
@@ -23229,6 +23361,8 @@ function parseManifest(files, opts = {}) {
   if (licensingSettings) parsed.licensing = licensingSettings;
   const identitySettings = normalizeIdentityBlock(productRoot.identity);
   if (identitySettings) parsed.identity = identitySettings;
+  const connectSettings = normalizeConnectBlock(productRoot.connect);
+  if (connectSettings) parsed.connect = connectSettings;
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
   if (validation.enabledModules.includes("distribution") || docs.distribution !== void 0) {
     parsed.distribution = normalizeDistribution(
@@ -24615,6 +24749,57 @@ function validatePlatformSignIn(psi, errors) {
       }
     }
   }
+}
+var CONNECT_MEMBERS = ["relay", "interAccount"];
+function validateConnectBlock(productRoot, modules, errors, warnings) {
+  const connect = productRoot.connect;
+  if (connect === void 0) return;
+  if (!isRecord6(connect)) {
+    add4(
+      errors,
+      "product",
+      "/connect",
+      "invalid_connect",
+      "connect must be an object with relay and interAccount."
+    );
+    return;
+  }
+  for (const key of Object.keys(connect)) {
+    if (!CONNECT_MEMBERS.includes(key)) {
+      add4(
+        errors,
+        "product",
+        `/connect/${key}`,
+        "invalid_connect",
+        "connect takes only relay and interAccount."
+      );
+    } else if (typeof connect[key] !== "boolean") {
+      add4(
+        errors,
+        "product",
+        `/connect/${key}`,
+        "invalid_connect",
+        `connect.${key} must be true or false.`
+      );
+    }
+  }
+  if (!modules.includes("connect")) {
+    add4(
+      warnings,
+      "product",
+      "/connect",
+      "connect_block_without_service",
+      "connect is declared but the connect service is off, so none of it applies."
+    );
+  }
+}
+function normalizeConnectBlock(raw) {
+  if (!isRecord6(raw)) return void 0;
+  const out = {};
+  if (typeof raw.relay === "boolean") out.relay = raw.relay;
+  if (typeof raw.interAccount === "boolean")
+    out.interAccount = raw.interAccount;
+  return Object.keys(out).length > 0 ? out : void 0;
 }
 var IDENTITY_MEMBERS = [
   "keyEntry",
@@ -29445,13 +29630,16 @@ var NODE_LIBRARY = {
     code: lines2(
       NODE_HEAD(c),
       ``,
-      `const result = await client.identity.signInWithBrowser({`,
+      `const session = await client.identity.signIn.start({`,
+      `  channel: "device-code",`,
       `  deviceName: ${q2(`${c.appName} on this computer`)},`,
-      `  onPrompt: (p) => console.log(p.userCode, p.verificationUri),`,
       `});`,
-      `if (result.status === "ready") {`,
-      `  const profile = client.license.getProfile();`,
-      `  console.log(profile?.name, profile?.email);`,
+      `console.log(session.userCode, session.verificationUri);`,
+      `await session.reopen(); // opens the system browser`,
+      ``,
+      `const result = await session.wait();`,
+      `if (result.kind === "signedIn") {`,
+      `  console.log(result.identity?.name, result.identity?.email);`,
       `}`
     )
   }),
@@ -29895,8 +30083,12 @@ var PY_LIBRARY = {
     code: lines2(
       PY_HEAD(c),
       ``,
-      `result = client.identity.sign_in_with_browser(device_name=${q2(`${c.appName} on this computer`)})`,
-      `if result.status == "ready":`,
+      `session = client.identity.sign_in.start(device_name=${q2(`${c.appName} on this computer`)})`,
+      `print(session.user_code, session.verification_uri)`,
+      `session.reopen()  # opens the system browser`,
+      ``,
+      `result = session.wait()`,
+      `if result.kind == "signed_in":`,
       `    profile = client.license.get_profile()`,
       `    print(profile.name if profile else "Signed in")`
     )
@@ -53317,9 +53509,9 @@ import path34 from "node:path";
 var ASSETS_PUSH_USAGE = "Usage: pkey assets push <file> --slot <slot> [--locale <code>] --product <slug>\n              [--base-url <url>] [--dry-run]";
 var MAX_PUSH_ASSETS = 32;
 var MAX_SCREENSHOTS = 16;
-var MiB2 = 1024 * 1024;
-var ICON_MAX_BYTES = 10 * MiB2;
-var ART_MAX_BYTES = 20 * MiB2;
+var MiB3 = 1024 * 1024;
+var ICON_MAX_BYTES = 10 * MiB3;
+var ART_MAX_BYTES = 20 * MiB3;
 var SLOT_RE = /^[a-z0-9][a-z0-9.:-]{0,199}$/;
 var NOT_PUSHABLE = /^(pack:|youtube-url$|trailer-master$|notes-image:|release-file)/;
 var LOCALE_RE2 = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;

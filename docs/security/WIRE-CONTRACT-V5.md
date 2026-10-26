@@ -1,6 +1,6 @@
 # Polaris Wire Contract v5
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V4.md` (CC-04.1), the way v4 superseded v3. v4 remains the record, including the amendment history in its header; everything v4 said that v5 does not change is restated here, so this document can be read on its own. v5 adds two signed documents and one new section, §15 (Cloud Connect), and nothing else changes on the wire. §12.11 (platform sign-in) is written; §13.10 and §13.11 (end-to-end files and the key ring, written by U-33.1) are placeholders until that slice lands. The plans are `plans/CC-01.md` (R-8) and `plans/CC-01-cloud-connect.md`.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V4.md` (CC-04.1), the way v4 superseded v3. v4 remains the record, including the amendment history in its header; everything v4 said that v5 does not change is restated here, so this document can be read on its own. v5 adds two signed documents and one new section, §15 (Cloud Connect), and nothing else changes on the wire. §12.11 (platform sign-in) is written. U-33.1 amends §13 (Cloud Sync): files on records (§13.2, §13.8), end-to-end push and pull (§13.3, §13.4), the new error codes (§13.9), and the new §13.10 (end-to-end encryption) and §13.11 (the key ring), with the identifiers (§8), counters (§9) and client machine (§11.5) that follow. Those amendments are unsigned and add no `typ`, claim or signed shape. The plans are `plans/CC-01.md` (R-1, R-3, R-8, R-9, R-11), `plans/CC-01-cloud-connect.md` and `plans/CC-01-cloud-sync.md`.
 **PROTOCOL_VERSION:** `5` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the eight signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen corpus --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -1191,6 +1191,13 @@ Amendment A1 (see the design spec) withdrew the interim `plrs` rebrand, so the v
 | Cloud Sync HLC           | `editedHlc`, `^[0-9a-f]{12}:[0-9a-f]{4}$`: 48-bit milliseconds and a 16-bit counter, lowercase hex; the import floor is `000000000000:0000` (§11.5)                                                                                                                              | —                                                         |
 | Cloud Sync cursor        | an integer from 0 to 2^53−1, the principal's change sequence; `0` asks for a snapshot (§13.4)                                                                                                                                                                                    | —                                                         |
 | Cloud Sync key           | `^[A-Za-z0-9._:-]{1,128}$`: a setting key, a record id or a collection name (a collection may end in `.*`, §13.7)                                                                                                                                                                | —                                                         |
+| Cloud Sync `ringId`      | `rg_` + 22 base64url characters, `^rg_[A-Za-z0-9_-]{22}$`: one key ring per (product, subject), with an `epoch` of at least 1 (§13.11)                                                                                                                                           | —                                                         |
+| Cloud Sync `kid`         | 16 bytes, lowercase hex (32 characters) in JSON and raw in an envelope header: `HKDF(R, ∅, "pkey-sync/1 kid", 16)` (§13.10.2)                                                                                                                                                    | —                                                         |
+| Cloud Sync blinded name  | `x:` + the base64url of a 32-byte HMAC (43 characters), `^x:[A-Za-z0-9_-]{43}$`: the E2E form of a person-chosen setting key, record id, member, field or element. Declared keys and collection names never start with `x:` (§13.10.3)                                           | —                                                         |
+| Cloud Sync `uploadId`    | an opaque token minted by `begin`, in the key charset above; lives `SYNC_UPLOAD_TTL_SECONDS` = 86 400 (§13.8)                                                                                                                                                                    | —                                                         |
+| Cloud Sync chunk id      | 64 lowercase hex characters: `HMAC-SHA256(K_cid(c), plainChunk)` in E2E mode, the plain SHA-256 in server mode (§13.8.3)                                                                                                                                                         | —                                                         |
+| Cloud Sync formats       | `pkey-sync-value/1`, `pkey-sync-file/1`, `pkey-sync-chunk/1`, `pkey-sync-chunks/1` (manifest), `pkey-sync-cdc/1` (chunker), `pkey-sync-wrap/1` (§13.10, §13.11)                                                                                                                  | —                                                         |
+| Keychain service (Sync)  | `pkey-sync:<product>`: the synchronizable item that backs up a root, account `<subject>:<ringId>` (§13.11.5). It is distinct from `pkey:<product>`                                                                                                                               | —                                                         |
 | Backend header           | `X-PKey-License` (`HEADER_LICENSE`): the compact licence document, from an app to its developer's own backend, never to the Worker; at most 16 384 bytes (§14.1)                                                                                                                 | —                                                         |
 | Backend challenge scheme | `PKey-License` (`BACKEND_AUTH_SCHEME`): `WWW-Authenticate: PKey-License realm="<slug>", error="<code>"` on a backend's 401 (§14.3)                                                                                                                                               | —                                                         |
 | Server SDK ids           | `node-server`, `python-server`, `swift-server`, `kotlin-server`: the `X-PKey-SDK` a server core sends on its trust-manifest fetch (§14.4; `enums.json` `sdkId`)                                                                                                                  | —                                                         |
@@ -1207,7 +1214,7 @@ The outlet kind `direct` is presented as Polaris Key: the console, the download 
 
 v5 is additive on the wire: the six v4 documents keep their shapes and bytes, and no SDK enforces `protocolVersion`, so a deployed v4 SDK is unaffected. The two new `typ`s (§2) enter with the bump, as `pkey-bundle+jws` entered with v3 and `pkey-feed+jws` and `pkey-release+jws` with v4. An SDK that predates v5 never fetches or verifies either, and refuses an unknown `typ`. Every SDK's constant follows `PROTOCOL_VERSION` through `pnpm gen constants`; nothing else is required until its parity row for the Cloud Connect features (`connect.*`) flips. The new corpus sections and files (§15.9) are inert until then, because runners read named sections. Version counters: `PROTOCOL_VERSION` goes from 4 to 5. `corpusVersion` stays 2 (the sections are additive, as `feedCases` were), `DISCOVERY_VERSION` stays 2, and `CACHE_VERSION` stays 3: Connect state is its own store record, never the licence cache. The new counters are `noiseVectorsVersion = 1` and `peerMatrixVersion = 1`. The statements below that say a counter "stays 4" were written inside v4 and are restated for v5 with the new value.
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. Cloud Sync files and end-to-end encryption (§13.2–§13.4, §13.8–§13.11) add unsigned routes, discovery members and one new cipher suite for stored data, and no `typ`, claim, header or signed shape. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2 and `CACHE_VERSION` 3. Two client tables move when their corpus lands: `syncScenariosVersion` goes from 2 to 3 (§11.5) and the new `sync-vectors.json` starts at `syncVectorsVersion = 1` (§13.10.8). A new SDK on a Worker that does not advertise `services.sync.encryption` stays local with status `unsupported` when the app requires E2E; an SDK that predates this amendment ignores every new member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 
@@ -1330,7 +1337,7 @@ Version 3 (`plans/P4-01.md` §2.10) adds the pack rows. A new option, `essential
 
 ### 11.5 The Cloud Sync client state machine (`sync-scenarios.json`)
 
-Client behaviour beside the Cloud Sync routes (§13; `plans/U-01.md` §2.3, §2.4, §4.1, as amended by `plans/U-01b.md` §2.5, §4 and its Revision 2; S-17 §5.4–§5.6). `sync-scenarios.json` (`syncScenariosVersion` 2) is literal data written by `tools/sync-scenarios.ts`, not computed by an implementation; `@polaris-key/client-core/cloud-sync` is its first implementation and every SDK replays it with a fake clock, a fake transport that answers from the scenario's `respond` steps, and a `clientId` source that returns `init.clientIds` in order. Version 2 renames the calls to the shipped `set` and `clear`, gives every pull body §13.4's `quota` and `usage`, routes the scenario catalog, pins the `sync` state, changes one expectation (`locked-key-refused`: a lock answers `managed_by_admin`, and an undeclared key is an open setting, not an error) and appends rules, scenarios, the `legacyLocal` init member and a `settingCases` section.
+Client behaviour beside the Cloud Sync routes (§13; `plans/U-01.md` §2.3, §2.4, §4.1, as amended by `plans/U-01b.md` §2.5, §4 and its Revision 2; S-17 §5.4–§5.6). `sync-scenarios.json` (`syncScenariosVersion` 2; 3 with the end-to-end rules below) is literal data written by `tools/sync-scenarios.ts`, not computed by an implementation; `@polaris-key/client-core/cloud-sync` is its first implementation and every SDK replays it with a fake clock, a fake transport that answers from the scenario's `respond` steps, and a `clientId` source that returns `init.clientIds` in order. Version 2 renames the calls to the shipped `set` and `clear`, gives every pull body §13.4's `quota` and `usage`, routes the scenario catalog, pins the `sync` state, changes one expectation (`locked-key-refused`: a lock answers `managed_by_admin`, and an undeclared key is an open setting, not an error) and appends rules, scenarios, the `legacyLocal` init member and a `settingCases` section.
 
 - **Routes.** The host derives one route per declared key with `@polaris-key/catalog` `syncedSettings(catalog)` and hands them to the machine as `CloudSyncCatalog.settings`: `{key, route: "synced", scope: "user" | "platform", policy, schema?}` for an Editable `config` key, or `{key, route: "local" | "locked" | "refused"}`. A key with no route is an **open setting**: scope `user`, `lastWrite`, no schema. `settingCases` pins the derivation (catalog entries in, routes out), so each SDK port re-implements it identically. The host runs the machine only while discovery says `services.sync.settings: true`; otherwise `config.set` keeps its shipped device-local path, with no 8 KiB limit and no `secret`/`flag` refusal.
 - **Partitions.** The journal holds one partition per subject (`clientId`, `nextMutationId`, `cursor`, `pending`, `held`, the cloud snapshot) and the unbound `local` partition (one value per synced or open key, with its `editedHlc`). Nothing written in one partition is sent under another. `deviceLocal` holds the `local` keys; it is the SDK's existing `config.local` store and belongs to no partition. Reads are optimistic: the active partition's snapshot with its pending operations and debounced drafts applied by the key's policy (`max`/`min` keep the extreme, `merge` applies member ops), falling through to the rest of the resolution chain (`from: "document"`) when there is no value, when the stored value fails the key's schema (`invalid`), or when the current document marks the key `enforced` or `hidden`: a lock beats every synced and local value. A `local` key reads from `deviceLocal` (`from: "device"`). `settingState(key)` is `{sync, invalid, locked}`. `sync` is `local` with no principal or for a `local` key, `pending` while a draft or a journal operation for the key exists (a parked one included), and `synced` otherwise.
@@ -1340,6 +1347,13 @@ Client behaviour beside the Cloud Sync routes (§13; `plans/U-01.md` §2.3, §2.
 - **Requests.** One at a time: a pull (`GET /<p>/sync?cursor=&clientId=`) while uncontacted or after `cursor_expired` (cursor 0), else a push of up to 100 pending operations that are not parked, in `mutationId` order, else a pull when one is wanted (start, sign-in, back online, `more`). A request-level failure (transport, `400`, `413`, `429`, `5xx`) changes nothing and waits for the next trigger. A `503` whose `error.code` is `writes_paused` on a push also leaves the journal unchanged, and sets `status.state: "paused"` (with `pending`), never `blocked`: it needs no `refresh`, the host's backoff honours `Retry-After` (300 s when absent), the next trigger retries, and the next `200` push clears it. Pulls are still served. A `401` blocks (`status.reason: "unauthorized"`) until `refresh` (a successful licence or config document fetch). A `403 attestation_required` blocks with `reason: "attestation"`, and any other `403` except `account_required` with `reason: "forbidden"`; both keep the journal and wait for `refresh`. `409 client_mismatch` regenerates the `clientId`, renumbers the pending operations from 1 and resends; `410 cursor_expired` keeps the journal, resets the cursor and pulls a snapshot before pushing again. A file route's `403` (§13.8) is that call's error and never blocks the machine.
 - **Results.** Every processed result removes its mutation (rule 1), except a parked one. `ok` updates the snapshot (`renamedTo` names the server key; `dropped` changes nothing and reports `origin: "migration"`). A setting `conflict` takes the server copy and enqueues nothing (Q6), and so does a `lastWrite`, `max` or `min` record `conflict`. A `revision` record `conflict` takes the server copy and enqueues a new mutation on the server's version only for a held edit or a keep-local hook (rule 2); it is the only conflict an app is asked to resolve. A setting result `rejected` with `quota_exceeded` or `entitlement_required` **parks** the operation: it stays in the journal marked `parked: "quota"` or `"entitlement"`, is not sent, still applies to reads (so `sync` stays `pending`), sets `status.reason` to `quota` or `entitlement`, and emits no event. It is re-sent as a new mutation (a fresh `mutationId`, the original `editedHlc`) after a `200` whose `quota.bytes − usage.bytes` grew (quota-parked operations), or at sign-in to that subject (both kinds). A newer local edit of the key, or a change or tombstone with a later `editedHlc`, drops it. Every other `rejected` code (`value_invalid`, `setting_not_synced`, `op_invalid_for_policy`, `collection_unknown`) is terminal: the value reverts and `{type: "rejected", mutationId, code}` is emitted. A cursor-0 answer replaces the snapshot; `changes`, `tombstones`, `cursor` and `aliases` are then applied, and `quota` and `usage` are read only for the parked rule. Value changes emit `{type: "change", keys, origin}` grouped by origin (`local`, `remote`, `merge`, `migration`), keys in byte order; a key whose moved first-sign-in operation was resolved in that response reports `merge`.
 - **Sign-in and sign-out.** Sign-in moves every local-partition setting into the subject's partition as ordinary operations marked `moved` (keeping `editedHlc` and `preContact`), empties the local partition in the same write and re-sends that partition's parked operations; `deviceLocal` is never moved. Sign-out commits drafts, flushes for up to 5,000 ms when online, then emits `{type: "signedOut", reason, unsynced}` (and `unsyncedData` when operations remain and were not discarded; parked ones count); under `onSignOut: clear` it wipes the snapshot and resets the cursor, keeping the pending operations in that partition. `403 account_required` (then `blocked` with `signInOffered`) and a response naming another subject are handled the same way with no flush. A signed-out partition expires 30 days after sign-out, checked at sign-in and at start. Cloud Sync never writes licence state, cached documents or `lastSyncUnauthorized`.
+- **End-to-end mode (`syncScenariosVersion` 3).** Init gains `encryption: "e2e" | "server"`. The fake transport speaks plaintext, and sealing is the host codec's job, pinned by `sync-vectors.json` (§13.10.8). Four rules join the list: `e2e-client-policy`, `e2e-locked`, `encryption-pinned` and `encryption-since`.
+  - **Locked.** A device with no root for the current ring is `locked`. `status.state` is `locked` with `reason: "keyring"`. Reads fall through to the rest of the resolution chain, an edit is journaled as a draft in the clear on the device (never sent), and nothing is pushed or pulled as plaintext. The journal is kept. When a root arrives (§13.11) the machine unlocks, seals the held operations and pushes them in `mutationId` order. A pull may run while locked, so the snapshot is stored sealed and opened at unlock.
+  - **The encryption pin.** An app that requires E2E (its catalog says `e2e`, the default) never speaks to a Worker whose discovery says `encryption: "server"` or omits it: the machine stays local with `status.state: "unsupported"` and the client code `sync-encryption-pinned`. A downgrade after contact is the same refusal, and the journal and snapshot are kept. The mode is decided by discovery and the pull's `encryption`, never by a response body that carries `value`.
+  - **Client policy.** `max` and `min` are decided by the client in E2E mode (§13.10.5). On `conflict` the client opens the server copy, keeps the better value, and re-pushes on the server's `version` with `origin: "merge"`. It never prompts. `merge` and `union` stay on the server over blinded names. A schema failure is `bad_request` on write and `invalid` on read.
+  - **`encryptionSince`.** A pull carries `encryptionSince`, the store sequence from which every row is sealed. A row below it is legacy plaintext: an E2E client reads it, and re-seals it on its next write. A row at or above it that is not sealed is `invalid`.
+  - **Scenarios** (`syncScenariosVersion` 3): `e2e-max-conflict-remerged`, `e2e-min-server-wins`, `e2e-merge-member-cells`, `e2e-locked-keeps-journal`, `e2e-unlock-pushes`, `e2e-downgrade-refused`, `e2e-legacy-plain-below-since` and `server-mode-unchanged`. `settingCases` gains E2E rows: each route carries `encryption`.
+- **Files.** A file `begin`, part, chunk and `finalize` are driven by the host's transfer engine, not by the scenario machine. A file route's failure is that call's error (§13.8) and changes no journal state.
 - **Error names.** The scenarios name canonical codes from `conformance/parity/errors.json`. Godot's `config.set_value` answers `invalid-options` for the refusal the scenarios call `bad_request` (a value that fails the schema, a `secret` or `flag` key), so its runner maps the canonical code to the native one; `errors.json` stays the arbiter. The client codes `setting-locked` and `setting-unknown` are not registered: `managed_by_admin` and `bad_request` already ship.
 
 ## 12. Accounts and Identity
@@ -1909,7 +1923,7 @@ Every route here that binds a device takes `proof`: an Ed25519 signature (64 byt
 5. the purpose's value
 6. the base64url SHA-256 of the presented provider token, or `-` when none
 
-A field holding a newline makes the proof invalid. Purposes are `keys`, `nonce`, `exchange`, `link`, `nearby-start`, `nearby-poll`, `nearby-approve`, `vouch` and `restore`. Keys are raw 32-byte public keys in base64url. A proof is one purpose only: one signed for another purpose, product or device does not verify. Its vectors are `device-proof.json` (§15.8). A bad proof is `400 invalid_grant` on `token`; no refusal names the field that failed.
+A field holding a newline makes the proof invalid. Purposes are `keys`, `nonce`, `exchange`, `link`, `nearby-start`, `nearby-poll`, `nearby-approve`, `vouch` and `restore`. Keys are raw 32-byte public keys in base64url. A proof is one purpose only: one signed for another purpose, product or device does not verify. Its vectors are `device-proof.json` (§15.8). A bad proof is `400 invalid_grant` on `token`; no refusal names the field that failed. The `keys` purpose (§15.8) also needs `issuedAt` strictly newer than the last one accepted for the device.
 
 #### 12.11.2 The nonce
 
@@ -2021,17 +2035,29 @@ Cloud Sync stores a signed-in person's synced settings and records, any of which
 
 ### 13.2 Routes
 
-| Route                                                     | Package | Purpose                                                                                        |
-| --------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
-| `GET /<p>/sync?cursor=&clientId=`                         | U-05    | Pull since `cursor` (absent or `0`: a snapshot); strong ETag `"<seq>.<lastMutationId>"`, `304` |
-| `POST /<p>/sync/ops`                                      | U-05    | Push a batch; the `200` body also carries a pull since the request's `cursor`                  |
-| `POST /<p>/sync/files/{collection}/{id}/begin`            | U-10    | Start a file upload for a record; the quota is checked here                                    |
-| `PUT /<p>/sync/files/{collection}/{id}/upload/{uploadId}` | U-10    | The file's bytes, streamed and checked against its `sha256`                                    |
-| `POST /<p>/sync/files/{collection}/{id}/finalize`         | U-10    | Idempotent; points the record at the new file and returns its `version`                        |
-| `GET /<p>/sync/files/{collection}/{id}[?version=]`        | U-10    | The file, `application/octet-stream`, `Content-Disposition: attachment`                        |
-| `GET /<p>/sync/files/{collection}/{id}/revisions`         | U-10    | The file's kept versions                                                                       |
+All routes live under `/<p>/sync` and take the device bearer (§13.1). `{collection}` is a declared collection name, and `{id}` is a record id (the blinded id in E2E mode, §13.10.3). Every file body is the bytes as stored: ciphertext in E2E mode.
 
-Every answer is `no-store` except the pull's ETag revalidation. Deleting a file is its record's `delete` operation. There is no slot-list route: a pull of `saves` lists the slots. `/<p>/sync/live` is not reserved. Collection names and record ids use the key charset (§8).
+| Route                                                     | Package | Body → answer                                                                                                                                                                                          |
+| --------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /<p>/sync?cursor=&clientId=`                         | U-05    | Pull since `cursor` (absent or `0`: a snapshot); strong ETag `"<seq>.<lastMutationId>"`, `304`                                                                                                         |
+| `POST /<p>/sync/ops`                                      | U-05    | Push a batch; the `200` body also carries a pull since the request's `cursor`                                                                                                                          |
+| `POST /<p>/sync/files/{collection}/{id}/begin`            | U-10    | `{size, sha256, format: "whole"\|"chunks", enc: "e2e"\|"none", baseVersion}` → `200 {uploadId, mode: "single"\|"multipart"\|"chunks", partBytes?, expiresAt}`; checks the quota and reserves the bytes |
+| `PUT /<p>/sync/files/{collection}/{id}/upload/{uploadId}` | U-10    | Mode `single`: the bytes, with `Content-Length` and `Content-Digest: sha-256=:…:` → `204`                                                                                                              |
+| `PUT …/{id}/upload/{uploadId}/parts/{n}`                  | U-10    | Mode `multipart`: part `n` (from 1), exactly `partBytes` except the last, with `Content-Digest` → `204`. Resending a part replaces it                                                                  |
+| `GET …/{id}/upload/{uploadId}`                            | U-10    | → `{mode, size, partBytes?, received: [n…]?, missing: [chunkId…]?, expiresAt}`                                                                                                                         |
+| `DELETE …/{id}/upload/{uploadId}`                         | U-10    | → `204`: aborts the upload and releases its reservation                                                                                                                                                |
+| `POST …/{id}/upload/{uploadId}/chunks`                    | U-37    | Mode `chunks`: `{chunks: [[chunkId, storedBytes]…]}`, at most 1,024 a call, accumulated → `{missing: [chunkId…], present: [[chunkId, storedBytes]…]}`; reserves the missing bytes                      |
+| `PUT …/{id}/upload/{uploadId}/chunks/{chunkId}`           | U-37    | One chunk object with `Content-Digest`, create-only → `204`                                                                                                                                            |
+| `POST /<p>/sync/files/{collection}/{id}/finalize`         | U-10    | `{uploadId}` → `200 {version, size, sha256, format}`; idempotent per `uploadId`                                                                                                                        |
+| `GET /<p>/sync/files/{collection}/{id}[?version=]`        | U-10    | The stored file (the whole ciphertext, or the manifest in `chunks` format): `application/octet-stream`, `Content-Disposition: attachment`, `Range`/`206`, `ETag "<sha256>"`, `Repr-Digest`             |
+| `GET /<p>/sync/files/{collection}/{id}/revisions`         | U-10    | → `{revisions: [{version, size, sha256, format, createdAt}]}`: the kept versions                                                                                                                       |
+| `GET /<p>/sync/files/{collection}/chunks/{chunkId}`       | U-37    | One chunk object, only when the person's store lists it for that collection                                                                                                                            |
+
+Every answer is `no-store` except the pull's ETag revalidation. Deleting a file is its record's `delete` operation. There is no slot-list route: a pull of `saves` lists the slots. `/<p>/sync/live` is not reserved. Collection names and record ids use the key charset (§8). A browser device may `PUT`: the CORS allow-list carries `PUT` and `Content-Digest`, and exposes `Repr-Digest`, `Content-Range` and `Retry-After`.
+
+**Key ring routes.** The key ring (§13.11) is served by Core under `/<p>/devices/keyring`, not under `/<p>/sync`. It answers `404` unless Cloud Sync is on and in E2E mode (or another service that needs a ring says so).
+
+**Discovery.** `services.sync` gains `encryption: "e2e" | "server"` and `endpoints.keyring` (`<base>/devices/keyring`, E2E mode only). The member is absent on a Worker that cannot take `ct`; an SDK that requires E2E then stays local with status `unsupported` (§11.5).
 
 ### 13.3 Push (U-05, U-09)
 
@@ -2059,6 +2085,19 @@ The `200` body is `{subject, serverNow, results, lastMutationId, …the pull mem
 - `rejected` with `code`: `value_invalid`, `setting_not_synced`, `op_invalid_for_policy`, `collection_unknown`, `entitlement_required`, or `quota_exceeded` with `scope` (`user`, `collection` or `product`);
 - `duplicate` (at or below the client's last processed `mutationId`), or `aborted` (the rest of a failed atomic batch).
 
+**End-to-end mode (§13.10).** In E2E mode `ct` replaces `value`, and every person-chosen name is blinded:
+
+```json
+{"mutationId":42,"target":{"setting":"x:3q2…","scope":"user"},"op":"set","ct":"AQ…","editedHlc":"0190f3a2c1b4:0003"}
+{"mutationId":43,"target":{"setting":"game.bestLap","scope":"user"},"op":"set","ct":"AQ…","baseVersion":7,"editedHlc":"…"}
+{"mutationId":44,"target":{"record":["saves","x:Zk…"]},"op":"set","ct":"AQ…","baseVersion":3}
+```
+
+- `ct` is a `pkey-sync-value/1` envelope in canonical base64url (§13.10.4). A `value` on an E2E product, or a `ct` on a server-mode product, is `rejected` with `encryption_mismatch`. So is an undeclared setting key that is not blinded, and a record id, member, field or element that is not blinded, because it would leak a name.
+- The server checks only the envelope's shape: canonical base64url, byte 0 equal to 1, and `(length − 49) mod 64 = 0`, under the caps. It stores the `kid`. A malformed envelope is `value_invalid`.
+- Member, field and element operations carry blinded names: `setMember {member: "x:…", ct}`, `setField {field: "x:…", ct}` and `add {element: "x:…", ct}`. `removeMember`, `removeField` and `remove` take the blinded name alone.
+- `max` and `min` settings are a compare-and-swap register in E2E mode: `set` carries `baseVersion`, and the client decides the better value (§11.5, §13.10.5).
+
 Push and journal rules 1–8 are normative as S-17 §5.4 states them. Rule 1: the last processed `mutationId` advances past every processed mutation, and only a request-level failure leaves it (transport error, `5xx`, `400`, `401`, `403`, `409 client_mismatch`, `413`, `429`, `503 writes_paused`). Rule 4: `clientId` matches §8's pattern, one per (install, partition), stored with the next `mutationId` (an integer from 1 to 2^53−1, strictly increasing) in one atomic journal write. The HLC orders writes, with `clientId` as the final tie-break. The server clamps an `editedHlc` later than `serverNow + 300 000 ms` to `serverNow` and accepts every earlier stamp, the import floor `000000000000:0000` included.
 
 ### 13.4 Pull (U-05)
@@ -2070,6 +2109,7 @@ Push and journal rules 1–8 are normative as S-17 §5.4 states them. Rule 1: th
 - A change is `{setting, scope, value, version, editedHlc, updatedBy, members?}` or `{record: [collection, id], value, version, editedHlc?}`; a tombstone is `{setting}` or `{record: [collection, id]}` with its `editedHlc`. Pages hold at most 500 changes, with `more: true` while more remain.
 - A cursor older than the 90-day tombstone horizon is `410 cursor_expired`.
 - A `subject` other than the client's partition key, like `403 account_required`, is a principal change, handled exactly like sign-out (§11.5).
+- **End-to-end pull.** A change carries `ct` in place of `value`, and a merge setting's members are `[{member, ct, editedHlc}]` with blinded `member`. The pull gains `encryption` (`"e2e"` or `"server"`) and `encryptionSince`, the store sequence from which every row is sealed (§11.5, §13.10.7). The server never decodes a `ct`.
 
 ### 13.5 Discovery (U-05)
 
@@ -2112,38 +2152,202 @@ A catalog declares collections in `cloudSync.collections`: `name` (the key chars
 
 A record, its metadata included, is at most 64 KiB; a thumbnail (about 32 KiB decoded) is a field, not a second file, so a pull of 16 slots is at most about 1 MiB. At the first sign-in a client pushes its local records as ordinary create-only mutations (`baseVersion: "*"`); there is no attach prompt.
 
-### 13.8 Files on records (U-10)
+### 13.8 Files on records (U-10, U-37)
 
-`begin` takes `{sha256, size, baseVersion}` and answers `{uploadId, expiresAt}`, checking the quota. The `PUT` streams the bytes and checks them against `sha256`. `finalize` is idempotent: it points the record at the new file and returns its `version`; the previous file stays as a revision for the collection's `keepRevisions`. Files are stored under a per-principal key and collected by an alarm once nothing points at them. Errors: `409 revision_conflict` on a stale `baseVersion` (with the server's version), `400 upload_mismatch` on a `sha256` or size mismatch, `403 quota_exceeded`, and `403 entitlement_required` for a collection's `requires` or a quota with `files: false`. A file route's `403` is that call's error: it never blocks the client state machine.
+Any record may carry one file. A file travels in one of three modes, chosen by the server at `begin` from the size and the collection, and every mode ends in the same idempotent `finalize`.
+
+#### 13.8.1 Begin, upload, finalize
+
+`begin` takes `{size, sha256, format, enc, baseVersion}`. `format` is `whole` (the file is one stream) or `chunks` (the file is a manifest over chunks, §13.8.3). `enc` is `e2e` or `none` and must match the product's mode (§13.10.1): otherwise `400 encryption_mismatch`. `sha256` is the hash of what is stored, which in E2E mode is the ciphertext: the server never sees a plaintext hash. `baseVersion` is a number (compare-and-swap), `"*"` (create-only) or absent. `begin` answers `{uploadId, mode, partBytes?, expiresAt}`, checks the quota and the collection's `files.maxBytes`, and reserves the bytes. `finalize` charges what was stored, points the record at the new file and returns `{version, size, sha256, format}`. It is idempotent per `uploadId`. The previous file stays as a revision for the collection's `keepRevisions`, and a file is collected once nothing points at it. Downloads go through the Worker, never a public or presigned URL.
+
+| Mode        | When                                                                  | Bytes                                                                                                                                                   | Verified                                                                                              |
+| ----------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `single`    | the whole file is at most `SYNC_SINGLE_PUT_MAX_BYTES` (16 MiB)        | one `PUT`                                                                                                                                               | at the `PUT`: a size or digest mismatch is `400 upload_mismatch` and nothing is stored                |
+| `multipart` | the whole file is over 16 MiB (at most 1 GiB)                         | parts of `partBytes` = `max(8 MiB, ⌈size / 9,999⌉ rounded up to 1 MiB)`, at most 64 MiB, the last shorter. Parts go in any order, at most 4 in parallel | each part by its `Content-Digest`; at `finalize` the server streams the whole object against `sha256` |
+| `chunks`    | the collection has `files.delta: true` and the file is at least 1 MiB | content-defined chunks (§13.8.3); only the chunks the person lacks are uploaded                                                                         | each chunk by its `Content-Digest`; `finalize` checks that every declared chunk exists with its size  |
+
+#### 13.8.2 Resume, expiry and limits
+
+- **Resume.** `GET …/upload/{uploadId}` answers the parts received (`multipart`) or the chunk ids still missing (`chunks`). A client resends only those.
+- **Expiry.** An upload lives `SYNC_UPLOAD_TTL_SECONDS` (86,400 s), and its quota reservation with it. An expired upload answers `410 upload_expired`; the server aborts it and deletes what it stored.
+- **Limits.** At most 4 open uploads per person (`SYNC_MAX_OPEN_UPLOADS`; the next `begin` is `429 rate_limited`), 30 file transfers per device an hour (`begin` and whole-file `GET`), 600 part and chunk requests per device a minute (`SYNC_CHUNK_REQUESTS_PER_MINUTE`), at most 16,384 chunks per file (`SYNC_MAX_CHUNKS_PER_FILE`), and 1,024 chunk ids per plan call.
+- **Quota.** `begin` reserves, `finalize` charges what was stored, and expiry or `DELETE` releases the reservation. Kept revisions count against the person's usage.
+
+#### 13.8.3 Patched (delta) files: `pkey-sync-cdc/1`
+
+- **Chunker.** Cut points follow `fastcdc-2016-nc1` over the whole plaintext, with the gear table of the pack chunker (seeded `0x9e3779b9`), average 256 KiB, minimum 64 KiB and maximum 1 MiB. Every implementation cuts at the same offsets (`cdcCases`, §13.10.8).
+- **Chunk id.** In E2E mode `hex(HMAC-SHA256(K_cid(c), plainChunk))`; in server mode the plain SHA-256. Chunks are deduplicated per person and per collection, never across people, so the server learns only which chunks repeat inside one person's collection.
+- **Chunk object** (`pkey-sync-chunk/1`, E2E mode): `0x01 ‖ codec ‖ AES-256-GCM(K_chunk, nonce 0¹², aad = 0x01 ‖ codec ‖ id, body)`. `K_chunk` is derived per chunk id (§13.10.2), so each key seals one plaintext and the zero nonce is safe. `codec` 0 is raw and 1 is one zstd frame. A writer may compress; a reader must decode both. Chunk objects are create-only and self-describing.
+- **The manifest is the file.** In `chunks` format the stored file is a `pkey-sync-chunks/1` manifest, sealed as a `pkey-sync-file/1` stream (§13.10.4): a 64-byte little-endian header (`PKSYNCCH`, `version` u16 1, `recordSize` u16 48, `flags` u32 0, `chunkCount` u32, reserved u32, `plainSize` u64, `plainSha256` 32 bytes), then `chunkCount` records of `id[32] ‖ plainLen u32 ‖ flags u32 ‖ reserved u64` in file order. A reader refuses the first violation, in a fixed order (`manifestCases`).
+- **A new version costs only what changed.** An upload carries the changed chunks and the manifest; a download fetches only the chunks missing from the device's cache.
+
+#### 13.8.4 Errors
+
+`409 revision_conflict` on a stale `baseVersion` (with the server's `version`), at `begin` and at `finalize`. `400 upload_mismatch` on a `sha256`, size or digest mismatch. `400 encryption_mismatch` for a wrong `enc`. `409 upload_incomplete` at `finalize` with `missing` (the parts or chunk ids). `410 upload_expired`. `413 file_too_large` over `files.maxBytes`. `403 quota_exceeded` with `scope`, and `403 entitlement_required` for a collection's `requires` or a quota with `files: false`. `400 collection_unknown`. A file route's `403` is that call's error: it never blocks the client state machine (§11.5).
 
 ### 13.9 Errors
 
-Each code is registered in `conformance/parity/errors.json` by the package that first emits it.
+Each code is registered in `conformance/parity/errors.json` by the package that first emits it. `upload_mismatch`, `revision_conflict`, `quota_exceeded`, `entitlement_required`, `collection_unknown`, `rate_limited`, `not_found` and `body_too_large` are reused by the file routes.
 
-| Code                                     | Kind and HTTP                 | Package    | Note                                                                                      |
-| ---------------------------------------- | ----------------------------- | ---------- | ----------------------------------------------------------------------------------------- |
-| `account_required`                       | wire 403                      | I-09       | no principal; `signInUrl` additive                                                        |
-| `cursor_expired`                         | wire 410                      | U-05       | the cursor is older than the 90-day tombstone horizon                                     |
-| `client_mismatch`                        | wire 409                      | U-05       | the `clientId` belongs to another device                                                  |
-| `value_invalid`, `op_invalid_for_policy` | wire result                   | U-05       |                                                                                           |
-| `setting_not_synced`                     | wire result                   | U-05       | a declared non-`config` or `local` key, or the wrong scope                                |
-| `quota_exceeded`                         | wire result, or 403 for files | U-05       | `scope` is `user`, `collection` or `product`                                              |
-| `writes_paused`                          | wire 503                      | U-05       | `cloudSync.writesPaused` is on; `Retry-After` gives the seconds to wait (300 when absent) |
-| `attestation_required`                   | wire 403                      | U-05       | the existing Core code, now also for a Cloud Sync write                                   |
-| `collection_unknown`                     | wire result                   | U-09       |                                                                                           |
-| `entitlement_required`                   | wire result, or 403 for files | U-09, U-10 | a collection's `requires`, or files under a quota with `files: false`                     |
-| `revision_conflict`                      | wire 409                      | U-10       |                                                                                           |
-| `upload_mismatch`                        | wire 400                      | U-10       |                                                                                           |
+| Code                                     | Kind and HTTP                 | Package    | Note                                                                                       |
+| ---------------------------------------- | ----------------------------- | ---------- | ------------------------------------------------------------------------------------------ |
+| `account_required`                       | wire 403                      | I-09       | no principal; `signInUrl` additive                                                         |
+| `cursor_expired`                         | wire 410                      | U-05       | the cursor is older than the 90-day tombstone horizon                                      |
+| `client_mismatch`                        | wire 409                      | U-05       | the `clientId` belongs to another device                                                   |
+| `value_invalid`, `op_invalid_for_policy` | wire result                   | U-05       |                                                                                            |
+| `setting_not_synced`                     | wire result                   | U-05       | a declared non-`config` or `local` key, or the wrong scope                                 |
+| `quota_exceeded`                         | wire result, or 403 for files | U-05       | `scope` is `user`, `collection` or `product`                                               |
+| `writes_paused`                          | wire 503                      | U-05       | `cloudSync.writesPaused` is on; `Retry-After` gives the seconds to wait (300 when absent)  |
+| `attestation_required`                   | wire 403                      | U-05       | the existing Core code, now also for a Cloud Sync write                                    |
+| `collection_unknown`                     | wire result                   | U-09       |                                                                                            |
+| `entitlement_required`                   | wire result, or 403 for files | U-09, U-10 | a collection's `requires`, or files under a quota with `files: false`                      |
+| `revision_conflict`                      | wire 409                      | U-10       |                                                                                            |
+| `upload_mismatch`                        | wire 400                      | U-10       |                                                                                            |
+| `encryption_mismatch`                    | wire result, or 400 on begin  | U-09, U-10 | `ct` on a server product, `value` or an unblinded name on an E2E product, or a wrong `enc` |
+| `upload_expired`                         | wire 410                      | U-10       | the upload outlived `SYNC_UPLOAD_TTL_SECONDS`                                              |
+| `upload_incomplete`                      | wire 409                      | U-10, U-37 | `finalize` with parts or chunks missing; `missing` lists them                              |
+| `file_too_large`                         | wire 413                      | U-10       | the file is over its collection's `files.maxBytes`                                         |
+| `keyring_conflict`                       | wire 409                      | U-36       | a ring or a wrap already exists (§13.11)                                                   |
+| `sync-locked`                            | client                        | U-33       | the device holds no root for the current ring (§11.5)                                      |
+| `recovery-code-invalid`                  | client                        | U-33       | the recovery code's checksum or its unwrap failed (§13.11.4)                               |
+| `sync-encryption-pinned`                 | client                        | U-33       | the app requires E2E and the Worker offers server mode (§11.5)                             |
 
 No longer used: `setting_unknown` (open settings have no unknown key; `setting_not_synced` replaces it), `store_requires_flag` (`entitlement_required` replaces it), `access_denied` (its three reasons are gone), and the client codes `setting-locked` and `setting-unknown` (`managed_by_admin` and `bad_request` already ship).
 
 ### 13.10 End-to-end encryption
 
-> **Placeholder.** Written by U-33.1 (`plans/CC-01-cloud-sync.md`). Not normative until that slice lands.
+Cloud Sync stores a person's data either as ciphertext the server cannot read (`e2e`, the default) or in the clear, validated and merged by the server (`server`). One AEAD serves every layer: **AES-256-GCM**. Nothing in this section is signed.
+
+#### 13.10.1 Mode and what the server sees
+
+The mode is per product, set by the catalog's `cloudSync.encryption` and advertised as `services.sync.encryption` (§13.2). In `e2e` mode the server sees:
+
+- declared names in the clear: catalog setting keys and collection names;
+- sizes, versions, HLCs, timestamps, policies, ciphertext SHA-256s, chunk counts and `kid`s;
+- every person-chosen name only blinded (open-setting keys, record ids, member, field and element names);
+- every value only as ciphertext.
+
+A product's mode is changed only by publishing a catalog that says so. Neither direction rewrites stored data: a switch to `e2e` leaves legacy plaintext rows readable (§13.10.7), and a switch to `server` leaves sealed rows that no client can open without a root.
+
+#### 13.10.2 Key hierarchy
+
+All derivations are HKDF-SHA256 (RFC 5869). `R` is the 32-byte root of a ring (§13.11). Labels are ASCII, `‖` is concatenation, `∅` is an empty salt, and the last argument is the output length (32 unless shown).
+
+```
+kid       = HKDF(R, ∅, "pkey-sync/1 kid", 16)                    in every envelope header, in the clear
+K_coll(c) = HKDF(R, ∅, "pkey-sync/1 coll\0" ‖ c)                 c = "$settings" or the concrete collection name
+K_names   = HKDF(R, ∅, "pkey-sync/1 names")
+K_cid(c)  = HKDF(R, ∅, "pkey-sync/1 chunk-id\0" ‖ c)
+K_msg     = HKDF(K_coll(c), salt16, "pkey-sync/1 value")         one per value
+K_file    = HKDF(K_coll(c), salt32, "pkey-sync/1 file")          one per file version
+K_chunk   = HKDF(K_coll(c), chunkId, "pkey-sync/1 chunk")        one per chunk id
+K_rec     = HKDF(code16, ringId, "pkey-sync/1 recovery")
+K_adopt   = HKDF(R, ∅, "pkey-sync/1 adopt")
+```
+
+Every symmetric key seals one plaintext, so the nonce is a constant (12 zero bytes, or the segment counter in a file) and there is no nonce-reuse or message-count limit. There is no `K_disc` derived from `R`: the server delivers the discovery key. The corpus pins every label (`hkdfCases`, §13.10.8).
+
+#### 13.10.3 Blinded names
+
+`blind(kind, ctx, n) = "x:" ‖ base64url(HMAC-SHA256(K_names, kind ‖ 0x00 ‖ ctx ‖ 0x00 ‖ n))`, with `kind` one of `setting`, `member`, `record`, `field` and `element`. `ctx` is the declared setting key or collection name that scopes the name, and `n` is the person-chosen name (an element is its canonical JSON). A declared key or collection name that starts with `x:` is refused at publish time (`cloud_sync_reserved_prefix`), so a blinded name never collides with a declared one. The server compares blinded names by bytes and never learns the plaintext.
+
+#### 13.10.4 Formats
+
+**`pkey-sync-value/1`** seals one setting, record, member, field or element value:
+
+```
+0x01 ‖ kid(16) ‖ salt(16) ‖ AES-256-GCM(K_msg, nonce 0¹², aad = the first 33 bytes, P)
+```
+
+`P` is the UTF-8 canonical JSON `{"k": name, "v": value}` padded with `0x80 0x00…` to a multiple of 64 bytes. The reader checks that `k` equals the expected name or one of its `aliases` sources; otherwise the value is `invalid`. The envelope is `33 + len(P) + 16` bytes, which is why the server's shape check is `(length − 49) mod 64 = 0`. `SYNC_E2E_OVERHEAD_BYTES` is 113 (49 of envelope and at most 64 of padding): budgets (256 keys, 64 KiB, 8 KiB, §13.1) are charged on `envelopeBytes − 113`, so they keep their meaning, while the quota charges the stored bytes.
+
+**`pkey-sync-file/1`** seals a file as a stream of segments:
+
+- a 64-byte little-endian header, like `pkey-sync-chunks/1`: `PKSYNCF1`, `version` u16 1, `flags` u16, `segmentBytes` u32 (1 MiB), `kid` 16 bytes, `salt` 32 bytes. Only the nonce counter below is big-endian;
+- segment `i` is `AES-256-GCM(K_file, nonce = u8(last) ‖ 0³ ‖ u64be(i), aad = header, segment)`;
+- an empty file is one empty last segment. A truncated stream, a reordered segment or a missing last flag is refused.
+
+Segments allow ranged downloads and resume. **`pkey-sync-chunk/1`** and **`pkey-sync-chunks/1`** are in §13.8.3.
+
+#### 13.10.5 Conflict policies in E2E mode
+
+| Policy       | Behaviour                                                                                                                                                                                                             |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lastWrite`  | The server, unchanged: HLC order over ciphertext                                                                                                                                                                      |
+| `merge`      | The server, per member or field, last write wins on **blinded** names, each member a sealed value. It compares HLCs, never values, so it needs no plaintext                                                           |
+| `union`      | The server's observed-remove set on blinded element ids, `blind("element", c, canonicalJson(e))`                                                                                                                      |
+| `revision`   | The server's compare-and-swap, unchanged; it is the case that prompts                                                                                                                                                 |
+| `max`, `min` | **The client.** The server keeps a compare-and-swap register. On `conflict` the client opens the server copy, keeps the better value and re-pushes on the server's `version` with `origin: "merge"`; it never prompts |
+| schema       | The client: `bad_request` on write, `invalid` on read                                                                                                                                                                 |
+| `mapValues`  | Refused for an E2E catalog (`cloud_sync_e2e_map_values`): a migration cannot rewrite values the server cannot read                                                                                                    |
+
+#### 13.10.6 Pinning and downgrade
+
+An app requires E2E unless its catalog says `server`. It never sends plaintext to a Worker that advertises `encryption: "server"` or omits the member (§11.5, `sync-encryption-pinned`). A server-mode product is unchanged from §13.3 and §13.4.
+
+#### 13.10.7 Legacy rows
+
+The pull's `encryptionSince` is the store sequence from which every row is sealed. An E2E client reads a plaintext row below it as legacy data and re-seals it on its next write; a plaintext row at or above it is `invalid`. A Worker that turns E2E on for a product with existing plaintext data sets `encryptionSince` to the sequence at that moment.
+
+#### 13.10.8 Corpus
+
+`sync-vectors.json` (`syncVectorsVersion` 1) is a client table written by `tools/corpus/syncVectors.ts` with an independent reference implementation, and mirrored for Godot. Its sections: `hkdfCases` (every label above), `envelopeCases` (seal, open, tamper, wrong `k`, alias, padding), `blindCases`, `wrapCases`, `recoveryCodeCases`, `adoptCases`, `cdcCases`, `chunkCases`, `fileStreamCases`, `manifestCases` and `transferPlanCases` (mode, `partBytes` and part count from size and collection). The scenario machine's fake transport speaks plaintext, so `sync-vectors.json` is the only table that pins sealing. A runner reads named sections only, so the table is inert to an SDK that has not implemented `sync.e2e`.
 
 ### 13.11 The key ring
 
-> **Placeholder.** Written by U-33.1. The ring is delivered to a new device by `KEYRING_WRAP` (0x0030, mode `v` only, §15.6). Not normative until that slice lands.
+One ring holds the root `R` of a person's E2E data for one product. The ring is Core's, not Sync's: it is served under `/<p>/devices/keyring`, and Cloud Sync is its first client. Cloud Sync's E2E mode never needs Cloud Connect, and no Sync key crosses a Cloud Connect session in mode `a`, the mode that admits a peer on a Worker-signed certificate (§15.6).
+
+#### 13.11.1 The ring and its wraps
+
+- **Ring.** `ringId` (§8), `epoch` (at least 1), `rootKid` (the `kid` of `R`, §13.10.2), a state, and the creation time. There is one ring per (product, subject). A device accepts a root only when `kid(R)` equals the ring's `rootKid`, and once it holds a root for (`ringId`, `epoch`) it never replaces it.
+- **Wrap to a device** (`pkey-sync-wrap/1`): RFC 9180 HPKE `mode_base` with KEM 0x0020 (X25519), KDF 0x0001 (HKDF-SHA256) and AEAD 0x0002 (AES-256-GCM). `info = "pkey-sync/1 wrap\0" ‖ product ‖ 0x00 ‖ deviceId ‖ 0x00 ‖ ringId ‖ 0x00 ‖ u32be(epoch)`, `aad = kid`, and the plaintext is `R`. The wrap carries its `kem`, so a later key type changes one field.
+- **Server view.** The server stores wraps (`{epoch, kid, kem, enc, ct, by}` per device) and the sealed recovery blob. It holds no key that opens either.
+
+#### 13.11.2 Routes
+
+Device bearer, `no-store`, CORS enabled, and `404` unless the ring is enabled for the product (§13.2).
+
+| Route                                          | Body → answer                                                                                                                                                                                                  |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /<p>/devices/keyring`                     | → `{ring: null \| {ringId, epoch, rootKid, state, createdAt, recovery: {set, createdAt}, adopted: [{ringId, epoch, kid, ct}], previous?: {ringId, kid, until}}, wrap: null \| {epoch, kid, kem, enc, ct, by}}` |
+| `POST /<p>/devices/keyring`                    | create: `{ringId, rootKid, wrap: {kem, enc, ct}, recovery?: {ct}}` → `201`; `409 keyring_conflict` when a ring exists                                                                                          |
+| `PUT /<p>/devices/keyring/wraps/{deviceId}`    | `{epoch, kid, kem, enc, ct}` → `204`. The target must be a live device of the same subject. Create-only: `409 keyring_conflict` if a wrap exists                                                               |
+| `DELETE /<p>/devices/keyring/wraps/{deviceId}` | → `204`, for the device's own wrap only                                                                                                                                                                        |
+| `PUT /<p>/devices/keyring/recovery`            | `{ct, epoch, kid}` → `204`; audited, and the account is emailed "recovery code changed"                                                                                                                        |
+| `GET /<p>/devices/keyring/recovery`            | → `{ct, epoch, kid}`; at most 5 a day per device, audited, and the account is emailed "Recovery started on <device label>"                                                                                     |
+| `POST /<p>/devices/keyring/adopt`              | `{fromRingId, epoch, kid, ct}` → `204`: a foreign or previous root sealed under `K_adopt`                                                                                                                      |
+| `POST /<p>/devices/keyring/reset`              | `{ringId, rootKid, wrap, recovery?}` → `201`. The old ring becomes `previous` for 30 days. Audited and emailed                                                                                                 |
+
+A removed device loses its wraps with its token. A device whose key changes loses its wrap and fetches a new one (Core subscribes to the device lifecycle). Deleting a person's Cloud Sync data, a product or an account deletes the ring rows and the recovery blob: with the ciphertext still stored, that is the last key material on the server (crypto-shredding).
+
+#### 13.11.3 Delivery to a new device
+
+A new device obtains `R` in exactly one of two ways. Both end in the device writing no `R` to the server.
+
+- **Nearby approval.** A signed-in device that holds `R` wraps it to the new device's agreement key and sends it as `KEYRING_WRAP` (0x0030, §15.6) over the nearby channel, then `PUT`s the same wrap to `/devices/keyring/wraps/{deviceId}`. `KEYRING_WRAP` is legal only in mode `v`, after the code and the server's approval. The code both screens show is the commit-reveal short code of §15.6 (`SAS_COMMIT`, `SAS_NONCE`, `SAS_REVEAL`, §15.6), never a value derived from an agreement key, so a man in the middle cannot grind keys to a matching code. Mode `a` never carries a Sync key. There is no wrap path without the nearby channel, and no remote approval: a browser unlocks only with the recovery code.
+- **Recovery code or platform backup** (§13.11.4, §13.11.5).
+
+A device with no root is `locked` (§11.5). It reads the ring (`GET`) to learn `rootKid` and whether a wrap exists for it.
+
+#### 13.11.4 The recovery code
+
+- **Code.** 16 random bytes and a 4-byte SHA-256 checksum make 32 Crockford base32 characters, shown as 8 groups of 4. The parser ignores case, spaces and hyphens, and maps `I` and `L` to `1` and `O` to `0`. A bad checksum or a failed unwrap is the client code `recovery-code-invalid`. There is one code per product.
+- **Recovery blob.** `recoveryWrap = 0x01 ‖ n12 ‖ AES-256-GCM(K_rec, n, aad = "pkey-sync/1 recovery" ‖ ringId ‖ u32be(epoch) ‖ kid, R)`, stored by the server as `recovery.ct`. 128 random bits cannot be brute-forced offline, so the server learns nothing from the blob; the rate limit and the email guard against a stolen device token.
+- **Reset.** `reset` makes a new ring and a new code. The old ring is kept read-only for 30 days and a device that still holds its root can `adopt` it (re-seal under the new root). After 30 days the server deletes rows whose `kid` belongs to the abandoned ring.
+- **Account merge.** The absorbed subject's ring becomes an `adopted` candidate. A device that holds both roots seals the adoption under `K_adopt`.
+
+#### 13.11.5 Platform backup
+
+On by default, with a developer opt-out, a device keeps `R` in a synchronizable platform item so a new device of the same person restores silently.
+
+- **Apple:** an iCloud Keychain item (`kSecAttrSynchronizable`), service `pkey-sync:<product>`, account `<subject>:<ringId>`.
+- **Android:** Block Store with `setShouldBackupToCloud(true)`, only when `isEndToEndEncryptionAvailable()`.
+
+A sign-out keeps the root backup item: deleting a synchronizable keychain item deletes it on every device of that Apple ID. Only Reset encryption, Start over or account deletion removes it. A platform without a backup API (web, Node, Python, JVM desktop) relies on the recovery code and nearby approval.
+
+#### 13.11.6 Rotation
+
+There is no automatic rotation. A lost device is removed (its wraps and token go), and "Reset encryption" is a manual action that makes a new epoch and a new code.
 
 ## 14. Product backends (SP-53)
 
@@ -2267,6 +2471,7 @@ against the effective product set (§1).
 4. `signKey` and `agreeKey` are canonical base64url of exactly 32 bytes.
    - `signKey` passes §1.1 checks 2–3.
    - `agreeKey` is not one of the X25519 low-order points (the list is in `noise-vectors.json`).
+   - The issuer (the Worker, at registration and at signing) also refuses a non-canonical `agreeKey`: bit 255 set, or `u ≥ 2^255 − 19`. X25519 masks and reduces those spellings, so they name a key under a second string. A verifier stays lenient and accepts them, so no certificate the issuer signs carries one.
 5. `1 ≤ expiresAt − issuedAt ≤ MAX_PEER_CERT_SECONDS` (604800).
 6. Against the effective clock (§4.2): `issuedAt ≤ now + 300` and `now ≤ expiresAt + 300`.
 7. In a session, `agreeKey` equals the Noise remote static key. In mode `a`, `sub` equals the
@@ -2303,7 +2508,7 @@ and keys checked as in §15.2 step 4. At 128 entries the payload is about 20 KiB
 - `R′.epoch > R.epoch`;
 - R′ is not expired.
 
-An expired held ring counts as no ring at all. That is safe, because the certificates of removed
+A roster is expired once `now > expiresAt + 300`, the certificate's clock skew (§15.2 step 6). An expired held ring counts as no ring at all. That is safe, because the certificates of removed
 devices expire on the same horizon.
 
 **Peer admission** with certificate C:
@@ -2347,6 +2552,9 @@ devices expire on the same horizon.
 
 - The prologue is `"pkey-peer/1"‖0x00‖slug‖0x00‖mode‖0x00`. A version, product or mode mismatch
   fails by construction.
+- The mode-a PSK is `HKDF-SHA256(salt = empty, ikm = K_disc, info = "pkey-peer/1 psk"‖0x00‖slug)`
+  at 32 bytes. The argument order is pinned by `noise-vectors.json`: an empty salt (HashLen zero
+  bytes, RFC 5869), the 32-byte discovery key as the input keying material and the label as info.
 - Message 1's payload is `{"v":1}`.
 - Payloads are strict JSON of at most 8 KiB.
 - `caps` holds at most 32 entries matching `^[a-z0-9]+/[0-9]+$`. v1 defines `ring/1`, `trust/1`,
@@ -2455,9 +2663,12 @@ from the client.
 
 - §15.2 step 4 applies to both keys.
 - `agreeKey` is unique per product.
+- A registration whose `agreeKey` is not the canonical X25519 spelling is refused (§15.2 step 4).
+- A proof that changes the keys must carry an `issuedAt` strictly newer than the last one accepted for the device, so a captured proof cannot be replayed inside its window. The Worker keeps that floor, and the highest `keySeq`, in a row that outlives the device's keys.
+- `keySeq` only increases: after the device is deauthorized and registers again it continues from its last value.
 - A device may rotate at most 4 times a day (a rate limit).
 - A rotation bumps the device's `keySeq` and raises a device-change event of kind `keys` inside the Worker.
-- When a device is removed or purged, its row goes too.
+- When a device is removed or purged, its row goes too; the floors above stay until the device row or the product is erased.
 
 **Registration.** A device's keys are registered by one Core operation with three entry points: this route, the platform sign-in exchange (§12.11) and nearby approval (§12.11). Every registration carries both keys. The route is matched before `/devices/{deviceId}`.
 

@@ -5264,6 +5264,16 @@ msgstr "Limite di dispositivi raggiunto"
 msgid "core.codes.device_limit.message"
 msgstr "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui."
 
+#. Device not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.title"
+msgstr "Dispositivo non configurato"
+
+#. This device could not be set up for sync. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_keys_invalid.message"
+msgstr "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova."
+
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.key_entry_limit.title"
@@ -5743,6 +5753,56 @@ msgstr "Sincronizzazione in pausa"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.writes_paused.message"
 msgstr "La sincronizzazione è in pausa per un momento. Le tue modifiche restano salvate e verranno sincronizzate più tardi."
+
+#. Encryption mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.encryption_mismatch.title"
+msgstr "Crittografia non compatibile"
+
+#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.encryption_mismatch.message"
+msgstr "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova."
+
+#. Upload expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_expired.title"
+msgstr "Caricamento scaduto"
+
+#. This upload took too long and was cancelled. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_expired.message"
+msgstr "Il caricamento ha richiesto troppo tempo ed è stato annullato. Riprova."
+
+#. Upload incomplete
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_incomplete.title"
+msgstr "Caricamento incompleto"
+
+#. Part of the file didn't arrive. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_incomplete.message"
+msgstr "Una parte del file non è arrivata. Riprova."
+
+#. File too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file_too_large.title"
+msgstr "File troppo grande"
+
+#. This file is over the size limit for synced files.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file_too_large.message"
+msgstr "Questo file supera il limite di dimensione dei file sincronizzati."
+
+#. Already set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.keyring_conflict.title"
+msgstr "Già configurato"
+
+#. Encryption is already set up for this account. Unlock with another device or your recovery code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.keyring_conflict.message"
+msgstr "La crittografia è già configurata per questo account. Sblocca con un altro dispositivo o con il codice di recupero."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6253,6 +6313,36 @@ msgstr "Accesso non disponibile"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-identity-unavailable.message"
 msgstr "Questo dispositivo non può eseguire l'accesso automatico. Usa un altro metodo di accesso."
+
+#. Sync locked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-locked.title"
+msgstr "Sincronizzazione bloccata"
+
+#. Unlock sync on this device with your recovery code or another signed-in device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-locked.message"
+msgstr "Sblocca la sincronizzazione su questo dispositivo con il codice di recupero o con un altro dispositivo connesso."
+
+#. Recovery code not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.recovery-code-invalid.title"
+msgstr "Codice di recupero non valido"
+
+#. That recovery code isn't right. Check it and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.recovery-code-invalid.message"
+msgstr "Il codice di recupero non è corretto. Controllalo e riprova."
+
+#. Encryption required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-encryption-pinned.title"
+msgstr "Crittografia obbligatoria"
+
+#. This app needs encrypted sync, which isn't available right now. Sync stays off.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-encryption-pinned.message"
+msgstr "Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

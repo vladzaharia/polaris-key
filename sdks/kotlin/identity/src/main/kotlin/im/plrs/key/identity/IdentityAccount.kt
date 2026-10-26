@@ -11,6 +11,11 @@
 //                  server answers `released: true` (the sign-in had bound this device to a licence of
 //                  the account, which deauthorized it); `released: false` keeps the licence and token.
 //   openAccount()  hands discovery's `accountPortal` to the host's opener.
+//   attach(confirm) POST <attach> `{confirm}`: false previews the device's own licence and writes
+//                  nothing; true puts it in the signed-in account, rotates and stores the token. A
+//                  Worker refusal (`account_required`, `license_owned`, `license_email_bound`,
+//                  `unauthorized`, `not_found`, ...) is a typed `Refused`, never a throw, and keeps
+//                  the token, the cache and the identity.
 
 package im.plrs.key.identity
 
@@ -20,11 +25,14 @@ import im.plrs.key.core.IdentityDiscovery
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
+import im.plrs.key.core.TokenSource
 import im.plrs.key.core.boolValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /** `subject()`'s answer. */
 public sealed interface SubjectResult {
@@ -60,6 +68,28 @@ public sealed interface OpenAccountResult {
 
     /** The product publishes no `accountPortal`. */
     public data object Unavailable : OpenAccountResult
+}
+
+/** The licence an `attach(confirm = false)` preview names. */
+public data class AttachLicense(val id: String, val tierId: String? = null, val name: String? = null)
+
+/** `attach(confirm)`'s answer. */
+public sealed interface AttachResult {
+    /** `confirm = false`: the device's own licence, written nowhere. */
+    public data class Confirm(val license: AttachLicense) : AttachResult
+
+    /**
+     * `confirm = true`: the licence is in the signed-in account and the token is rotated and stored.
+     * [attached] is `claimed` when this call put it there, null when it already was. The caller syncs,
+     * as after `activateWithKey`.
+     */
+    public data class Ok(val subject: String?, val attached: String?) : AttachResult
+
+    /** The Worker refused ([code] is its error code, e.g. `account_required`). Nothing local changed. */
+    public data class Refused(val code: String, val status: Int) : AttachResult
+
+    /** The product publishes no `attach` endpoint (no `account: true`); nothing was sent. */
+    public data object Unavailable : AttachResult
 }
 
 /** How the host opens the account portal: the system browser on a desktop or phone; true when it did. */
@@ -157,8 +187,33 @@ internal class IdentityAccount(
         return if (opened) OpenAccountResult.Opened(url) else OpenAccountResult.NotOpened(url)
     }
 
-    private suspend fun send(url: String, method: String, token: String): PolarisResponse = try {
-        core.request(url, method = method, headers = mapOf("authorization" to "Bearer $token"))
+    suspend fun attach(confirm: Boolean): AttachResult {
+        val url = fragment()?.takeIf { it.account }?.attach ?: return AttachResult.Unavailable
+        val token = core.token() ?: throw PolarisException(ErrorCode.noToken, "Activate or sign in before attaching.")
+        val body = JsonObject(mapOf("confirm" to JsonPrimitive(confirm))).toString().toByteArray()
+        val response = send(url, "POST", token, body)
+        val json = JsonText.parseOrNull(response.text).objectValue
+        if (response.status != 200) {
+            val error = json?.get("error")
+            val code = error.objectValue?.get("code").stringValue ?: error.stringValue ?: "http_${response.status}"
+            return AttachResult.Refused(code, response.status)
+        }
+        val answer = json ?: throw PolarisException(ErrorCode.badResponse, "attach answered without a body.")
+        if (answer["status"].stringValue == "confirm") {
+            val l = answer["license"].objectValue
+            return AttachResult.Confirm(AttachLicense(l?.get("id").stringValue ?: "", l?.get("tierId").stringValue, l?.get("name").stringValue))
+        }
+        val newToken = answer["token"].stringValue?.takeIf { it.isNotEmpty() }
+            ?: throw PolarisException(ErrorCode.badResponse, "attach answered without a token.")
+        core.setToken(newToken, TokenSource.activate)
+        val subject = answer["subject"].stringValue?.takeIf { it.isNotEmpty() }
+        if (core.setSubject(subject)) onSubject(subject)
+        return AttachResult.Ok(subject, if (answer["attached"].stringValue == "claimed") "claimed" else null)
+    }
+
+    private suspend fun send(url: String, method: String, token: String, body: ByteArray? = null): PolarisResponse = try {
+        val headers = mapOf("authorization" to "Bearer $token") + if (body != null) mapOf("content-type" to "application/json") else emptyMap()
+        core.request(url, method = method, headers = headers, body = body)
     } catch (e: CancellationException) {
         throw e
     } catch (e: PolarisException) {

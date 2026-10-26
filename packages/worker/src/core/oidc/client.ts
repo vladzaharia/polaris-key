@@ -529,8 +529,18 @@ async function loadJwks(
 }
 
 export interface IdTokenExpectations {
-  /** The ONE client this token must have been minted for. Required; never defaulted. */
-  audience: string;
+  /**
+   * The ONE client this token must have been minted for. Required; never defaulted. A list is a
+   * set of acceptable audiences (a product's Apple bundle ids): the token must name one of them.
+   */
+  audience: string | readonly string[];
+  /**
+   * The clients allowed as `azp`. Unset: `azp`, when present, must equal the audience (the
+   * card's rule). Set (native sign-in): a present `azp` must be in this list, a token with
+   * several audiences must carry an `azp` from it, and an empty list refuses any `azp`. Google's
+   * Credential Manager mints `aud` = the web (server) client and `azp` = the Android client.
+   */
+  authorizedParties?: readonly string[];
   /** The flow's nonce. When set, the token must carry exactly this value. */
   nonce?: string;
   /** Required claims beyond the defaults (`sub`, `exp`, `iat`). */
@@ -553,7 +563,13 @@ export async function verifyIdToken(
   token: string,
   expect: IdTokenExpectations,
 ): Promise<JWTPayload> {
-  if (typeof expect.audience !== "string" || expect.audience.trim() === "") {
+  const audiences = (
+    Array.isArray(expect.audience) ? expect.audience : [expect.audience]
+  ) as unknown[];
+  if (
+    audiences.length === 0 ||
+    audiences.some((a) => typeof a !== "string" || a.trim() === "")
+  ) {
     // Fail closed: there is no "any audience" mode.
     throw new OidcVerifyError("no audience configured");
   }
@@ -568,7 +584,7 @@ export async function verifyIdToken(
     );
     const { payload } = await jwtVerify(token, createLocalJWKSet(jwks), {
       issuer: issuers,
-      audience: expect.audience,
+      audience: audiences as string[],
       algorithms: [...(rp.algorithms ?? ALLOWED_ID_TOKEN_ALGS)],
       clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
       maxTokenAge: expect.maxTokenAge ?? ID_TOKEN_MAX_AGE,
@@ -601,11 +617,29 @@ export async function verifyIdToken(
   }
 
   const aud = payload.aud;
-  if (Array.isArray(aud) && aud.length > 1 && payload.azp !== expect.audience) {
-    throw new OidcVerifyError("multi-audience token without matching azp");
+  const parties = expect.authorizedParties;
+  if (!parties && audiences.length > 1) {
+    throw new OidcVerifyError("several audiences need authorizedParties");
   }
-  if (payload.azp !== undefined && payload.azp !== expect.audience) {
-    throw new OidcVerifyError("azp mismatch");
+  if (parties) {
+    const azp = payload.azp;
+    if (
+      azp !== undefined &&
+      (typeof azp !== "string" || !parties.includes(azp))
+    ) {
+      throw new OidcVerifyError("azp mismatch");
+    }
+    if (Array.isArray(aud) && aud.length > 1 && azp === undefined) {
+      throw new OidcVerifyError("multi-audience token without matching azp");
+    }
+  } else {
+    const only = audiences[0];
+    if (Array.isArray(aud) && aud.length > 1 && payload.azp !== only) {
+      throw new OidcVerifyError("multi-audience token without matching azp");
+    }
+    if (payload.azp !== undefined && payload.azp !== only) {
+      throw new OidcVerifyError("azp mismatch");
+    }
   }
   if (
     !expect.subjectless &&

@@ -140,6 +140,7 @@ export async function handleDiscovery(
         trustManifest: trustManifestUrl,
         devices: `${base}/devices`,
         report: `${base}/devices/report`,
+        deviceKeys: `${base}/devices/keys`,
         // Advertised only when the policy could ever say yes. Under `requires-license` the
         // endpoint answers a flat 403 to everyone, and publishing a URL that is defined never
         // to work is how a client ends up implementing a retry loop against a wall.

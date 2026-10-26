@@ -1996,6 +1996,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_title">Dispositivo no configurado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_message">No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">No quedan usos de la clave</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.</string>
@@ -2187,6 +2191,26 @@
     <string name="core_codes_writes_paused_title">Sincronización en pausa</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_writes_paused_message">La sincronización está en pausa un momento. Tus cambios se conservan y se sincronizarán más tarde.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_title">Cifrado incompatible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_message">La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_title">Subida caducada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_message">La subida tardó demasiado y se canceló. Inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_title">Subida incompleta</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_message">Una parte del archivo no llegó. Inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_title">Archivo demasiado grande</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_message">Este archivo supera el límite de tamaño de los archivos sincronizados.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_title">Ya configurado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_message">El cifrado ya está configurado para esta cuenta. Desbloquea con otro dispositivo o con tu código de recuperación.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">Correo no verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2391,6 +2415,18 @@
     <string name="core_codes_platform_identity_unavailable_title">Inicio de sesión no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_identity_unavailable_message">Este dispositivo no puede iniciar sesión automáticamente. Usa otra forma de iniciar sesión.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_title">Sincronización bloqueada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_message">Desbloquea la sincronización en este dispositivo con tu código de recuperación o con otro dispositivo con sesión iniciada.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_title">Código de recuperación no válido</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_message">Ese código de recuperación no es correcto. Compruébalo e inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_title">Cifrado obligatorio</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_message">Esta app necesita sincronización cifrada, que ahora no está disponible. La sincronización sigue desactivada.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App no configurada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

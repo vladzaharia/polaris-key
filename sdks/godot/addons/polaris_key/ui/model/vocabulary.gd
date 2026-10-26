@@ -41,6 +41,7 @@ const SERVICES := [
 	{"slug": "identity", "requires": []},
 	{"slug": "sync", "requires": ["config", "identity"]},
 	{"slug": "commerce", "requires": ["license"]},
+	{"slug": "connect", "requires": ["identity"]},
 ]
 
 const OS_NAMES := ["macos", "ios", "android", "windows", "linux", "web", "tvos", "visionos", "watchos"]

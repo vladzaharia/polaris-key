@@ -1,4 +1,4 @@
-// @pkey-feature identity.account
+// @pkey-feature identity.account identity.attach
 // The account verbs (I-10a.3): `subject()` is persisted and survives a restart, `signOut()` runs
 // the pre-sign-out hooks and drops the token only on `released: true`, `openAccount()` opens the
 // portal link. Each answers the typed `service-unavailable` N/A, with no request, when
@@ -29,12 +29,34 @@ function discovery(endpoints: Record<string, string> | null): Handler {
 const ALL = {
   subject: `${BASE}/identity/subject`,
   signout: `${BASE}/identity/signout`,
+  attach: `${BASE}/identity/attach`,
   accountPortal: "https://k.test/#/p/djdl",
 };
 
 /** The client's state directory (the namespaced one the subject file lives in). */
 const stateOf = (c: { identity: unknown }): string =>
   (c.identity as { ctx: { dirs: { state: string } } }).ctx.dirs.state;
+
+/** Discovery names only `signout`: the call answers the typed N/A after the discovery read alone. */
+async function expectNoEndpoint(
+  call: (
+    c: Awaited<ReturnType<typeof seededClient>>["client"],
+  ) => Promise<unknown>,
+): Promise<void> {
+  const { client, seen } = await seededClient({
+    token: "pkeyt_a",
+    extra,
+    routes: {
+      "GET /djdl/.well-known/polaris.json": discovery({
+        signout: ALL.signout,
+      }),
+    },
+  });
+  const err = (await call(client).catch((e) => e)) as { code: string };
+  expect(err).toBeInstanceOf(UnsupportedError);
+  expect(err.code).toBe("service-unavailable");
+  expect(seen.map((r) => r.url)).toEqual([`${BASE}/.well-known/polaris.json`]);
+}
 
 const extra = { expectedServices: ["license", "config", "identity"] as never };
 
@@ -105,23 +127,8 @@ describe("subject()", () => {
     expect(await readStoredSubject(stateOf(client))).toBeNull();
   });
 
-  it("answers service-unavailable, dialling nothing, when discovery names no subject endpoint", async () => {
-    const { client, seen } = await seededClient({
-      token: "pkeyt_a",
-      extra,
-      routes: {
-        "GET /djdl/.well-known/polaris.json": discovery({
-          signout: ALL.signout,
-        }),
-      },
-    });
-    const err = await client.identity.subject().catch((e) => e);
-    expect(err).toBeInstanceOf(UnsupportedError);
-    expect(err.code).toBe("service-unavailable");
-    expect(seen.map((r) => r.url)).toEqual([
-      `${BASE}/.well-known/polaris.json`,
-    ]);
-  });
+  it("answers service-unavailable, dialling nothing, when discovery names no subject endpoint", () =>
+    expectNoEndpoint((c) => c.identity.subject()));
 
   it("answers service-unavailable while Identity is off", async () => {
     const { client } = await seededClient({
@@ -258,4 +265,70 @@ describe("openAccount()", () => {
       });
     }
   });
+});
+
+describe("attach({confirm})", () => {
+  const LICENSE = { id: "lic_1", tierId: null, name: "Ada" };
+
+  /** A client whose attach endpoint answers `answer`. */
+  const attachClient = (answer: () => Response) =>
+    seededClient({
+      token: "pkeyt_a",
+      extra,
+      routes: {
+        "GET /djdl/.well-known/polaris.json": discovery(ALL),
+        "POST /djdl/identity/attach": answer,
+      },
+    });
+
+  it("previews with confirm: false and writes nothing", async () => {
+    const { client, store, seen } = await attachClient(() =>
+      json({ status: "confirm", license: LICENSE }),
+    );
+    expect(await client.identity.attach({ confirm: false })).toEqual({
+      status: "confirm",
+      license: LICENSE,
+    });
+    const post = seen.find((r) => r.url.endsWith("/identity/attach"));
+    expect(post?.headers.get("authorization")).toBe("Bearer pkeyt_a");
+    expect(await store.getToken()).toBe("pkeyt_a");
+    expect(await readStoredSubject(stateOf(client))).toBeNull();
+  });
+
+  it("confirms: rotates and stores the token, persists the subject", async () => {
+    const { client, store } = await attachClient(() =>
+      json({ token: "pkeyt_b", subject: SUBJECT, attached: "claimed" }),
+    );
+    expect(await client.identity.attach({ confirm: true })).toEqual({
+      status: "ok",
+      subject: SUBJECT,
+      attached: "claimed",
+    });
+    expect(await store.getToken()).toBe("pkeyt_b");
+    expect(await readStoredSubject(stateOf(client))).toBe(SUBJECT);
+  });
+
+  it.each([
+    [401, "unauthorized"],
+    [403, "account_required"],
+    [403, "license_owned"],
+    [403, "license_email_bound"],
+    [404, "not_found"],
+  ])(
+    "a %i %s refusal is a typed result that keeps the token",
+    async (status, code) => {
+      const { client, store } = await attachClient(() =>
+        json({ error: { code } }, status),
+      );
+      expect(await client.identity.attach({ confirm: true })).toEqual({
+        status: "refused",
+        code,
+        httpStatus: status,
+      });
+      expect(await store.getToken()).toBe("pkeyt_a");
+    },
+  );
+
+  it("answers service-unavailable, dialling nothing, when discovery names no attach endpoint", () =>
+    expectNoEndpoint((c) => c.identity.attach({ confirm: false })));
 });

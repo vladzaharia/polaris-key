@@ -674,6 +674,9 @@
     "tools/corpus/license-user.ts": {
       "knip:files": 1
     },
+    "tools/corpus/noise.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/nonwire.ts": {
       "knip:files": 1
     },
@@ -684,6 +687,9 @@
       "knip:files": 1
     },
     "tools/corpus/packs.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/peer.ts": {
       "knip:files": 1
     },
     "tools/corpus/record.ts": {
@@ -722,6 +728,9 @@
     "tools/corpus/reference/headers.ts": {
       "knip:files": 1
     },
+    "tools/corpus/reference/noise.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/reference/outlet.ts": {
       "knip:files": 1
     },
@@ -734,10 +743,16 @@
     "tools/corpus/reference/patterns.ts": {
       "knip:files": 1
     },
+    "tools/corpus/reference/peer.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/reference/record.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/revocation.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/syncVectors.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/tokens.ts": {
@@ -762,6 +777,9 @@
       "knip:files": 1
     },
     "tools/corpus/stage.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/syncVectors.ts": {
       "knip:files": 1
     },
     "tools/corpus/trust.ts": {

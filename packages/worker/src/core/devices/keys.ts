@@ -90,13 +90,24 @@ export function isValidSignKey(s: unknown): boolean {
   return key !== null && ed25519Prechecks(key, PASSING_SIG);
 }
 
-/** `agreeKey`: canonical, 32 bytes, not a low-order point (the top bit is masked, as X25519 does). */
+/**
+ * True for the one spelling an X25519 library emits: bit 255 clear and u < p (p = 2^255 - 19).
+ * X25519 masks bit 255 and reduces u mod p, so every other spelling of a key is the same key under a
+ * different string. The issuer refuses them (a registration, a signed certificate or roster); the
+ * verifiers stay lenient (V5 §15.2).
+ */
+export function isCanonicalX25519(key: Uint8Array): boolean {
+  if (key.length !== 32 || (key[31]! & 0x80) !== 0) return false;
+  if (key[31] !== 0x7f || key[0]! < 0xed) return true;
+  for (let i = 1; i < 31; i++) if (key[i] !== 0xff) return true;
+  return false; // 2^255 - 19 .. 2^255 - 1
+}
+
+/** `agreeKey`: canonical base64url, 32 bytes, the canonical X25519 spelling, not a low-order point. */
 export function isValidAgreeKey(s: unknown): boolean {
   const key = raw32(s);
-  if (!key) return false;
-  const masked = key.slice();
-  masked[31]! &= 0x7f;
-  return !X25519_LOW_ORDER.includes(hexEncode(masked));
+  if (!key || !isCanonicalX25519(key)) return false;
+  return !X25519_LOW_ORDER.includes(hexEncode(key));
 }
 
 export function validateDeviceKeys(keys: DeviceKeyPair): boolean {
@@ -127,14 +138,17 @@ export async function deviceSignKey(
 }
 
 /**
- * The devices bound to a subject that hold a seat and have keys: what Cloud Sync wraps the root key
- * to. Bound means `devices.subject` is the subject, authorized means `status = 'authorized'`.
+ * The devices bound to a subject that have keys: what Cloud Sync wraps the root key to. Bound means
+ * `devices.subject` is the subject, authorized means `status = 'authorized'`. With `seatsHeld` (the
+ * licence service is on) a device whose seat and token were released (`releaseDormantSeats`) is left
+ * out; with the service off a seat is never held, so the caller leaves it unset.
  * Sorted by `device_id` so two callers see one order.
  */
 export async function accountDeviceKeys(
   db: Db,
   product: string,
   subject: string,
+  opts: { seatsHeld?: boolean } = {},
 ): Promise<AccountDeviceKeys[]> {
   const rows = await db.all<{
     device_id: string;
@@ -145,7 +159,11 @@ export async function accountDeviceKeys(
     `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq
        FROM device_keys k
        JOIN devices d ON d.product = k.product AND d.device_id = k.device_id
-      WHERE k.product = ? AND d.subject = ? AND d.status = 'authorized'
+      WHERE k.product = ? AND d.subject = ? AND d.status = 'authorized'${
+        opts.seatsHeld
+          ? " AND d.seat_no IS NOT NULL AND d.token_hash IS NOT NULL"
+          : ""
+      }
       ORDER BY k.device_id`,
     product,
     subject,
@@ -170,9 +188,13 @@ export interface UpsertResult {
 
 /**
  * Register or rotate a device's keys. Both keys are always written together. Registering the keys a
- * device already holds changes nothing and keeps `key_seq`; any other write bumps it. Throws
- * `DeviceKeysInvalidError` for a bad key and `DeviceKeysConflictError` when another device of the
- * product holds the `agreeKey`. Callers own the device check and the rate limit.
+ * device already holds changes nothing and keeps `key_seq`; any other write bumps it. `key_seq` and
+ * the last accepted proof time live on in `device_key_floor`, which outlasts a deauthorize, so a
+ * re-registration continues the count and `keySeq` only increases. `popAt` is the `issuedAt` of the
+ * proof behind the write: a change must carry one strictly newer than the last accepted for the
+ * device, so a captured proof cannot be replayed. Throws `DeviceKeysInvalidError` for a bad key or a
+ * stale proof and `DeviceKeysConflictError` when another device of the product holds the
+ * `agreeKey`. Callers own the device check and the rate limit.
  */
 export async function upsertDeviceKeys(
   db: Db,
@@ -180,6 +202,7 @@ export async function upsertDeviceKeys(
   deviceId: string,
   keys: DeviceKeyPair,
   now: number,
+  popAt?: number,
 ): Promise<UpsertResult> {
   if (!validateDeviceKeys(keys)) throw new DeviceKeysInvalidError();
   const held = await db.first<{ device_id: string }>(
@@ -196,28 +219,51 @@ export async function upsertDeviceKeys(
   ) {
     return { keySeq: current.key_seq, changed: false, rotated: false };
   }
+  const floor = await db.first<{ pop_at: number | null }>(
+    "SELECT pop_at FROM device_key_floor WHERE product = ? AND device_id = ?",
+    product,
+    deviceId,
+  );
+  if (
+    popAt !== undefined &&
+    floor?.pop_at !== null &&
+    floor?.pop_at !== undefined &&
+    popAt <= floor.pop_at
+  ) {
+    throw new DeviceKeysInvalidError();
+  }
+  const write: DbStatement = current
+    ? {
+        sql: `UPDATE device_keys SET sign_key = ?, agree_key = ?, key_seq = key_seq + 1, rotated_at = ?
+               WHERE product = ? AND device_id = ?`,
+        params: [keys.signKey, keys.agreeKey, now, product, deviceId],
+      }
+    : {
+        sql: `INSERT INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at, rotated_at)
+              VALUES (?, ?, ?, ?,
+                COALESCE((SELECT key_seq FROM device_key_floor WHERE product = ? AND device_id = ?), 0) + 1,
+                ?, NULL)`,
+        params: [
+          product,
+          deviceId,
+          keys.signKey,
+          keys.agreeKey,
+          product,
+          deviceId,
+          now,
+        ],
+      };
   try {
-    if (!current) {
-      await db.run(
-        `INSERT INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at, rotated_at)
-         VALUES (?, ?, ?, ?, 1, ?, NULL)`,
-        product,
-        deviceId,
-        keys.signKey,
-        keys.agreeKey,
-        now,
-      );
-      return { keySeq: 1, changed: true, rotated: false };
-    }
-    await db.run(
-      `UPDATE device_keys SET sign_key = ?, agree_key = ?, key_seq = key_seq + 1, rotated_at = ?
-        WHERE product = ? AND device_id = ?`,
-      keys.signKey,
-      keys.agreeKey,
-      now,
-      product,
-      deviceId,
-    );
+    await db.batch([
+      write,
+      {
+        sql: `INSERT INTO device_key_floor (product, device_id, key_seq, pop_at)
+              SELECT product, device_id, key_seq, ? FROM device_keys WHERE product = ? AND device_id = ?
+              ON CONFLICT (product, device_id) DO UPDATE SET key_seq = excluded.key_seq,
+                pop_at = COALESCE(excluded.pop_at, device_key_floor.pop_at)`,
+        params: [popAt ?? null, product, deviceId],
+      },
+    ]);
   } catch (e) {
     // A concurrent registration took the `agreeKey` between the read above and this write.
     if (e instanceof Error && /UNIQUE constraint failed/i.test(e.message)) {
@@ -227,9 +273,9 @@ export async function upsertDeviceKeys(
   }
   const after = await getDeviceKeys(db, product, deviceId);
   return {
-    keySeq: after?.key_seq ?? current.key_seq + 1,
+    keySeq: after?.key_seq ?? (current?.key_seq ?? 0) + 1,
     changed: true,
-    rotated: true,
+    rotated: current !== null,
   };
 }
 

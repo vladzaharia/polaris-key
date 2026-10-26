@@ -20,6 +20,12 @@ init python:
         except Exception:
             return None
 
+    def pkey_sign_in():
+        """Sign in over the device code: open the page, then wait (call it off the UI thread)."""
+        session = pkey.identity.sign_in.start()
+        session.reopen()
+        return session.wait()
+
 label splashscreen:
     $ pkey_outcome = pkey_boot()
     if pkey_outcome is not None and pkey_outcome.needs_activation:
@@ -33,5 +39,5 @@ screen pkey_activate():
         vbox:
             spacing 12
             text "Activate [PKEY_PRODUCT]"
-            textbutton "Sign in with your browser" action Function(renpy.invoke_in_thread, pkey.identity.sign_in_with_browser)
+            textbutton "Sign in with your browser" action Function(renpy.invoke_in_thread, pkey_sign_in)
             textbutton "Continue" action Return()

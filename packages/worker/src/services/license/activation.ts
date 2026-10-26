@@ -331,6 +331,7 @@ export async function handleDeauthorize(
     product.slug,
     valid.device.device_id,
     "deauthorized",
+    { env },
   );
   await deleteTokenRecord(env, product.slug, tokenHash);
   return json({ ok: true });

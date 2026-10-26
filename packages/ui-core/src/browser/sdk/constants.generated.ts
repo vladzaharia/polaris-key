@@ -22,6 +22,7 @@ export const ErrorCode = {
   valueNotRepresentable: "value_not_representable",
   documentNotRepresentable: "document_not_representable",
   signingUnavailable: "signing_unavailable",
+  deviceKeysInvalid: "device_keys_invalid",
   deviceLimit: "device_limit",
   keyEntryLimit: "key_entry_limit",
   licenseDisabled: "license_disabled",
@@ -71,6 +72,11 @@ export const ErrorCode = {
   collectionUnknown: "collection_unknown",
   quotaExceeded: "quota_exceeded",
   writesPaused: "writes_paused",
+  encryptionMismatch: "encryption_mismatch",
+  uploadExpired: "upload_expired",
+  uploadIncomplete: "upload_incomplete",
+  fileTooLarge: "file_too_large",
+  keyringConflict: "keyring_conflict",
   emailMismatch: "email_mismatch",
   linkConflict: "link_conflict",
   lastLink: "last_link",
@@ -122,6 +128,9 @@ export const ErrorCode = {
   signInDenied: "sign-in-denied",
   signInUnavailable: "sign-in-unavailable",
   platformIdentityUnavailable: "platform-identity-unavailable",
+  syncLocked: "sync-locked",
+  recoveryCodeInvalid: "recovery-code-invalid",
+  syncEncryptionPinned: "sync-encryption-pinned",
   invalidOptions: "invalid-options",
   invalidArgument: "invalid-argument",
   invokeNotAllowed: "invoke-not-allowed",
@@ -214,6 +223,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "value_not_representable",
   "document_not_representable",
   "signing_unavailable",
+  "device_keys_invalid",
   "device_limit",
   "key_entry_limit",
   "license_disabled",
@@ -263,6 +273,11 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "collection_unknown",
   "quota_exceeded",
   "writes_paused",
+  "encryption_mismatch",
+  "upload_expired",
+  "upload_incomplete",
+  "file_too_large",
+  "keyring_conflict",
   "email_mismatch",
   "link_conflict",
   "last_link",
@@ -314,6 +329,9 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "sign-in-denied",
   "sign-in-unavailable",
   "platform-identity-unavailable",
+  "sync-locked",
+  "recovery-code-invalid",
+  "sync-encryption-pinned",
   "invalid-options",
   "invalid-argument",
   "invoke-not-allowed",
@@ -408,6 +426,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   value_not_representable: "wire",
   document_not_representable: "wire",
   signing_unavailable: "wire",
+  device_keys_invalid: "wire",
   device_limit: "wire",
   key_entry_limit: "wire",
   license_disabled: "wire",
@@ -457,6 +476,11 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   collection_unknown: "wire",
   quota_exceeded: "wire",
   writes_paused: "wire",
+  encryption_mismatch: "wire",
+  upload_expired: "wire",
+  upload_incomplete: "wire",
+  file_too_large: "wire",
+  keyring_conflict: "wire",
   email_mismatch: "wire",
   link_conflict: "wire",
   last_link: "wire",
@@ -508,6 +532,9 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "sign-in-denied": "client",
   "sign-in-unavailable": "client",
   "platform-identity-unavailable": "client",
+  "sync-locked": "client",
+  "recovery-code-invalid": "client",
+  "sync-encryption-pinned": "client",
   "invalid-options": "client",
   "invalid-argument": "client",
   "invoke-not-allowed": "client",
@@ -1624,11 +1651,68 @@ export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 export const REQUEST_HANDLE_TTL_SECONDS = 600;
 
+/** Cloud Sync: `SYNC_BLINDED_NAME_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`). */
+export const SYNC_BLINDED_NAME_PATTERN = "^x:[A-Za-z0-9_-]{43}$";
+
+/** Cloud Sync: `SYNC_BLINDED_PREFIX` (WIRE-CONTRACT-V4 §8, §13.10.3, `@polaris-key/protocol/sync`). */
+export const SYNC_BLINDED_PREFIX = "x:";
+
+/** Cloud Sync: `SYNC_CDC_AVG_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_CDC_AVG_BYTES = 262144;
+
+/** Cloud Sync: `SYNC_CDC_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_CDC_FORMAT = "pkey-sync-cdc/1";
+
+/** Cloud Sync: `SYNC_CDC_GEAR_SEED` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_CDC_GEAR_SEED = 2654435769;
+
+/** Cloud Sync: `SYNC_CDC_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_CDC_MAX_BYTES = 1048576;
+
+/** Cloud Sync: `SYNC_CDC_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_CDC_MIN_BYTES = 65536;
+
+/** Cloud Sync: `SYNC_CHUNK_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_CHUNK_FORMAT = "pkey-sync-chunk/1";
+
+/** Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_CHUNK_ID_PATTERN = "^[0-9a-f]{64}$";
+
+/** Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+export const SYNC_CHUNK_PLAN_MAX_IDS = 1024;
+
+/** Cloud Sync: `SYNC_CHUNK_REQUESTS_PER_MINUTE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+export const SYNC_CHUNK_REQUESTS_PER_MINUTE = 600;
+
 /** Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`). */
 export const SYNC_CLIENT_ID_PATTERN = "^c_[A-Za-z0-9_-]{22}$";
 
 /** Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
 export const SYNC_DEBOUNCE_MS = 2000;
+
+/** Cloud Sync: `SYNC_DELTA_MIN_FILE_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+export const SYNC_DELTA_MIN_FILE_BYTES = 1048576;
+
+/** Cloud Sync: `SYNC_E2E_OVERHEAD_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+export const SYNC_E2E_OVERHEAD_BYTES = 113;
+
+/** Cloud Sync: `SYNC_ENVELOPE_FIXED_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+export const SYNC_ENVELOPE_FIXED_BYTES = 49;
+
+/** Cloud Sync: `SYNC_ENVELOPE_PAD_BLOCK` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+export const SYNC_ENVELOPE_PAD_BLOCK = 64;
+
+/** Cloud Sync: `SYNC_FILE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+export const SYNC_FILE_FORMAT = "pkey-sync-file/1";
+
+/** Cloud Sync: `SYNC_FILE_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+export const SYNC_FILE_MAX_BYTES = 1073741824;
+
+/** Cloud Sync: `SYNC_FILE_SEGMENT_BYTES` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+export const SYNC_FILE_SEGMENT_BYTES = 1048576;
+
+/** Cloud Sync: `SYNC_FILE_TRANSFERS_PER_HOUR` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+export const SYNC_FILE_TRANSFERS_PER_HOUR = 30;
 
 /** Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`). */
 export const SYNC_HLC_PATTERN = "^[0-9a-f]{12}:[0-9a-f]{4}$";
@@ -1636,8 +1720,20 @@ export const SYNC_HLC_PATTERN = "^[0-9a-f]{12}:[0-9a-f]{4}$";
 /** Cloud Sync: `SYNC_IMPORT_HLC` (WIRE-CONTRACT-V4 §11.5, §13.3, `@polaris-key/protocol/sync`). */
 export const SYNC_IMPORT_HLC = "000000000000:0000";
 
+/** Cloud Sync: `SYNC_KEYCHAIN_SERVICE_PREFIX` (WIRE-CONTRACT-V4 §8, §13.11.5, `@polaris-key/protocol/sync`). */
+export const SYNC_KEYCHAIN_SERVICE_PREFIX = "pkey-sync:";
+
 /** Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`). */
 export const SYNC_KEY_PATTERN = "^[A-Za-z0-9._:-]{1,128}$";
+
+/** Cloud Sync: `SYNC_KID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.10.2, `@polaris-key/protocol/sync`). */
+export const SYNC_KID_PATTERN = "^[0-9a-f]{32}$";
+
+/** Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
+export const SYNC_MANIFEST_FORMAT = "pkey-sync-chunks/1";
+
+/** Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+export const SYNC_MAX_CHUNKS_PER_FILE = 16384;
 
 /** Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
 export const SYNC_MAX_CLOCK_SKEW_MS = 300000;
@@ -1647,6 +1743,12 @@ export const SYNC_MAX_MERGE_MEMBERS = 256;
 
 /** Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
 export const SYNC_MAX_MUTATIONS = 100;
+
+/** Cloud Sync: `SYNC_MAX_OPEN_UPLOADS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+export const SYNC_MAX_OPEN_UPLOADS = 4;
+
+/** Cloud Sync: `SYNC_MAX_PARTS` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+export const SYNC_MAX_PARTS = 9999;
 
 /** Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`). */
 export const SYNC_MAX_PUSH_BYTES = 262144;
@@ -1666,6 +1768,15 @@ export const SYNC_MAX_UNION_ELEMENT_BYTES = 1024;
 /** Cloud Sync: `SYNC_MAX_VALUE_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
 export const SYNC_MAX_VALUE_BYTES = 8192;
 
+/** Cloud Sync: `SYNC_PART_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+export const SYNC_PART_MAX_BYTES = 67108864;
+
+/** Cloud Sync: `SYNC_PART_MIN_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+export const SYNC_PART_MIN_BYTES = 8388608;
+
+/** Cloud Sync: `SYNC_PART_ROUND_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+export const SYNC_PART_ROUND_BYTES = 1048576;
+
 /** Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
 export const SYNC_PENDING_DAYS = 30;
 
@@ -1675,17 +1786,41 @@ export const SYNC_PULL_PAGE_CHANGES = 500;
 /** Cloud Sync: `SYNC_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
 export const SYNC_QUOTA_BYTES = 268435456;
 
+/** Cloud Sync: `SYNC_RECOVERY_READS_PER_DAY` (WIRE-CONTRACT-V4 §13.11.2, `@polaris-key/protocol/sync`). */
+export const SYNC_RECOVERY_READS_PER_DAY = 5;
+
+/** Cloud Sync: `SYNC_RESET_KEEP_DAYS` (WIRE-CONTRACT-V4 §13.11.4, `@polaris-key/protocol/sync`). */
+export const SYNC_RESET_KEEP_DAYS = 30;
+
+/** Cloud Sync: `SYNC_RING_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.11, `@polaris-key/protocol/sync`). */
+export const SYNC_RING_ID_PATTERN = "^rg_[A-Za-z0-9_-]{22}$";
+
 /** Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`). */
 export const SYNC_SAVE_SLOTS = 16;
 
 /** Cloud Sync: `SYNC_SIGNOUT_FLUSH_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`). */
 export const SYNC_SIGNOUT_FLUSH_MS = 5000;
 
+/** Cloud Sync: `SYNC_SINGLE_PUT_MAX_BYTES` (WIRE-CONTRACT-V4 §13.8.1, `@polaris-key/protocol/sync`). */
+export const SYNC_SINGLE_PUT_MAX_BYTES = 16777216;
+
 /** Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`). */
 export const SYNC_TOMBSTONE_DAYS = 90;
 
 /** Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`). */
 export const SYNC_UNLICENSED_QUOTA_BYTES = 1048576;
+
+/** Cloud Sync: `SYNC_UPLOAD_PARALLELISM` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+export const SYNC_UPLOAD_PARALLELISM = 4;
+
+/** Cloud Sync: `SYNC_UPLOAD_TTL_SECONDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
+export const SYNC_UPLOAD_TTL_SECONDS = 86400;
+
+/** Cloud Sync: `SYNC_VALUE_FORMAT` (WIRE-CONTRACT-V4 §13.10.4, `@polaris-key/protocol/sync`). */
+export const SYNC_VALUE_FORMAT = "pkey-sync-value/1";
+
+/** Cloud Sync: `SYNC_WRAP_FORMAT` (WIRE-CONTRACT-V4 §13.11.1, `@polaris-key/protocol/sync`). */
+export const SYNC_WRAP_FORMAT = "pkey-sync-wrap/1";
 
 /** Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`). */
 export const SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS = 300;

@@ -105,6 +105,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - **Builds or backs 9 mockup item(s):** `licenses.tiers-states`, `licenses.tiers`, `products.integration`, `entitlements.duration-trial`, `entitlements.duration-version`, `entitlements.duration`, `entitlements.extend-major`, `entitlements.new-major`, `entitlements.start-major`.
 
+## Motion strip (MO-13 follow-up, 2026-10-26)
+
+MO-13 shipped without this surface. When it lands, add the duration marker: a frame strip (both themes and reduced), with `frameStrip` from `packages/admin/e2e/strips.ts` and an always-on assertion in the matching `*Motion.e2e.test.ts`; reduced motion is an instant swap. Plan: `_lead/plans/I-28-MO-13-slices.md` §8 M6.
+
 ## Acceptance criteria
 
 - [ ] Each preset yields a valid tier and term with no further settings

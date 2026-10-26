@@ -42,6 +42,7 @@ import {
   StrictJsonError,
   type JwsTyp,
 } from "@polaris-key/jws";
+import { isCanonicalX25519 } from "./devices/keys.js";
 import { ISSUER, PAIRWISE_SUBJECT_PATTERN } from "@polaris-key/protocol/core";
 import {
   MAX_PEER_CERT_SECONDS,
@@ -161,6 +162,9 @@ function deviceKeys(typ: string, d: unknown): string {
   }
   const agree = keyBytes(typ, "agreeKey", o.agreeKey);
   if (isX25519LowOrder(agree)) refuse(typ, "agreeKey is a low-order point");
+  if (!isCanonicalX25519(agree)) {
+    refuse(typ, "agreeKey is not the canonical X25519 spelling");
+  }
   return o.deviceId;
 }
 

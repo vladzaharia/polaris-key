@@ -184,12 +184,12 @@
       "wp": "I-10b"
     },
     "identity.attach": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.3: PolarisKey.identity.attach(confirm) over discovery's identity fragment: preview (detail kind confirm, nothing written), ok (token rotated and stored, subject, attached), a Worker refusal as a failure with its code and detail {kind: refused, status}, and service-unavailable without the endpoint; identity-attach and identity-attach-errors replayed. Device-code confirm (D-10): sign_in_confirm fires only when the poll's confirm is attachable, otherwise the SDK answers no itself."
     },
     "identity.account": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.2: PolarisKey.identity.subject() (kept across restarts in the cache record), sign_out() (pre-sign-out hooks, POST signout, the token goes only on released: true) and open_account() over discovery's identity fragment (PKeyDiscovery.identity_from); a product without the endpoints answers service-unavailable and sign_out() keeps the license.deactivate() path. identity-subject-signout and discovery-identity transcripts replayed."
     },
     "identity.redirect.web": {
       "status": "planned",

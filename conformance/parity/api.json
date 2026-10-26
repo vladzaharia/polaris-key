@@ -345,6 +345,11 @@
         "ns": "presentation",
         "type": "PresentationSource",
         "file": "sdks/swift/Sources/PolarisKeyCore/Presentation.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "SignInNamespace",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/SignInSession.swift"
       }
     ],
     "kotlin": [
@@ -386,6 +391,11 @@
         "ns": "identity",
         "type": "IdentityClient",
         "file": "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt"
+      },
+      {
+        "ns": "identity",
+        "type": "SignInNamespace",
+        "file": "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/SignInSession.kt"
       },
       {
         "ns": "devices",
@@ -462,6 +472,16 @@
       {
         "ns": "identity",
         "file": "sdks/godot/addons/polaris_key/services/identity.gd"
+      },
+      {
+        "ns": "identity",
+        "type": "PKeySignInNamespace",
+        "file": "sdks/godot/addons/polaris_key/services/identity/sign_in_namespace.gd"
+      },
+      {
+        "ns": "identity",
+        "type": "PKeySignInSession",
+        "file": "sdks/godot/addons/polaris_key/services/identity/sign_in_session.gd"
       },
       {
         "ns": "devices",
@@ -1841,8 +1861,13 @@
     },
     {
       "sdk": "godot",
-      "path": "identity.attach",
-      "reason": "wiring the boot and update flows call; not an app verb"
+      "path": "identity.bind",
+      "reason": "wiring PolarisKey.configure calls; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.add_before_sign_out",
+      "reason": "the seam Cloud Sync's SDK package registers its flush on (D-4); not an app verb"
     },
     {
       "sdk": "godot",
@@ -2213,6 +2238,11 @@
       "sdk": "kotlin",
       "path": "client.entitlements",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installIdentityEvents",
+      "reason": "wiring the client installs (the `identity` event's sink); not an app verb"
     }
   ],
   "concepts": [
@@ -2871,16 +2901,16 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "shape": "property",
+          "reason": "a computed property returning the signIn namespace"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "shape": "property",
+          "reason": "a property returning the signIn namespace"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "shape": "property",
+          "reason": "a property holding the sign-in namespace"
         }
       },
       "layer": "client"
@@ -2898,10 +2928,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -2930,26 +2957,20 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "python": {},
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInNamespace.start"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInNamespace.start"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeySignInNamespace.start"
         }
       },
       "layer": "client"
@@ -2959,26 +2980,20 @@
       "kind": "method",
       "feature": "identity.devicecode",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "python": {},
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.reopen"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.reopen"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeySignInSession.reopen"
         }
       },
       "layer": "client"
@@ -2988,26 +3003,20 @@
       "kind": "method",
       "feature": "identity.devicecode",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "python": {},
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.cancel"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.cancel"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeySignInSession.cancel"
         }
       },
       "layer": "client"
@@ -3017,26 +3026,57 @@
       "kind": "method",
       "feature": "identity.devicecode",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "python": {},
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.wait"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.wait"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "PKeySignInSession.wait"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.accept",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "spelling": "PKeySignInSession.accept"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.isWaiting",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "spelling": "PKeySignInSession.is_waiting"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.outcome",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal",
+          "spelling": "PKeySignInSession.outcome"
         }
       },
       "layer": "client"
@@ -3052,10 +3092,34 @@
         }
       ],
       "sdks": {
-        "node": {
+        "node": {},
+        "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
+        "python": {
+          "planned": "I-10a",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        },
+        "swift": {
+          "spelling": "SignInSession.complete"
+        },
+        "kotlin": {
+          "spelling": "SignInSession.complete"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.choice",
+      "kind": "namespace",
+      "feature": "identity.choice",
+      "sdks": {
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3069,8 +3133,8 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "shape": "property",
+          "reason": "a property returning the choice client"
         },
         "godot": {
           "planned": "I-10b",
@@ -3090,10 +3154,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3103,12 +3164,11 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.licenses",
+          "labels": ["grant"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.licenses"
         },
         "godot": {
           "planned": "I-10b",
@@ -3132,10 +3192,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3145,12 +3202,11 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.devices",
+          "labels": ["grant", "licenseId"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.devices"
         },
         "godot": {
           "planned": "I-10b",
@@ -3174,10 +3230,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3187,12 +3240,11 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.complete",
+          "labels": ["grant", "choice"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.complete"
         },
         "godot": {
           "planned": "I-10b",
@@ -3212,10 +3264,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3225,12 +3274,11 @@
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
         },
         "swift": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceNamespace.cancel",
+          "labels": ["grant"]
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "ChoiceClient.cancel"
         },
         "godot": {
           "planned": "I-10b",
@@ -3250,10 +3298,23 @@
         }
       ],
       "sdks": {
+        "node": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Node calls the identity.choice primitives"
+        },
         "react": {
           "planned": "I-10a",
           "reason": "the React hook over identity.choice (D-3)",
           "shape": "hook"
+        },
+        "swift": {
+          "spelling": "LicenseChoiceModel"
+        },
+        "kotlin": {
+          "spelling": "identity.choice",
+          "shape": "property",
+          "reason": "no hook: Kotlin calls the identity.choice primitives"
         }
       },
       "layer": "client"
@@ -3270,8 +3331,7 @@
       ],
       "sdks": {
         "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "attach"
         },
         "react": {
           "planned": "I-10a",
@@ -3284,12 +3344,9 @@
           "spelling": "attach"
         },
         "kotlin": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "attach"
         },
         "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)",
           "spelling": "attach"
         }
       },
@@ -3308,10 +3365,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "I-10b",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -3844,44 +3898,25 @@
     {
       "id": "identity.signInWithBrowser",
       "kind": "method",
-      "sdks": {
-        "node": {},
-        "swift": {},
-        "godot": {}
-      },
+      "sdks": {},
       "layer": "client"
     },
     {
       "id": "identity.beginSignIn",
       "kind": "method",
-      "sdks": {
-        "node": {},
-        "swift": {},
-        "kotlin": {},
-        "godot": {}
-      },
+      "sdks": {},
       "layer": "client"
     },
     {
       "id": "identity.pollSignIn",
       "kind": "method",
-      "sdks": {
-        "node": {},
-        "swift": {},
-        "kotlin": {},
-        "godot": {}
-      },
+      "sdks": {},
       "layer": "client"
     },
     {
       "id": "identity.waitForSignIn",
       "kind": "method",
-      "sdks": {
-        "node": {},
-        "swift": {},
-        "kotlin": {},
-        "godot": {}
-      },
+      "sdks": {},
       "layer": "client"
     },
     {
@@ -4509,10 +4544,7 @@
     {
       "id": "identity.acceptSignIn",
       "kind": "method",
-      "sdks": {
-        "swift": {},
-        "godot": {}
-      },
+      "sdks": {},
       "layer": "client"
     },
     {
@@ -5423,28 +5455,6 @@
       "layer": "client"
     },
     {
-      "id": "identity.isSigningIn",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.cancel",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
       "id": "identity.openInBrowser",
       "kind": "method",
       "sdks": {
@@ -5457,28 +5467,6 @@
     },
     {
       "id": "identity.copyLink",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signedInIdentity",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.requestSignIn",
       "kind": "method",
       "sdks": {
         "godot": {
@@ -5750,42 +5738,6 @@
       "layer": "client"
     },
     {
-      "id": "identity.signInPending",
-      "kind": "stream",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
-          "shape": "signal"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signInConfirm",
-      "kind": "stream",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
-          "shape": "signal"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signInFinished",
-      "kind": "stream",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
-          "shape": "signal"
-        }
-      },
-      "layer": "client"
-    },
-    {
       "id": "update.updateStaged",
       "kind": "stream",
       "sdks": {
@@ -5859,6 +5811,86 @@
     },
     {
       "id": "packs.setChanged",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.isSigningIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.cancel",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signedInIdentity",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.requestSignIn",
+      "kind": "method",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInPending",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInConfirm",
+      "kind": "stream",
+      "sdks": {
+        "godot": {
+          "sdkOnly": true,
+          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
+          "shape": "signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signInFinished",
       "kind": "stream",
       "sdks": {
         "godot": {
@@ -6568,6 +6600,230 @@
       "scan": {
         "pattern": "\\bGateOptions\\b",
         "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "node",
+      "from": "identity.signInWithBrowser",
+      "to": "identity.signIn.start",
+      "package": "I-10a"
+    },
+    {
+      "sdk": "node",
+      "from": "identity.beginSignIn",
+      "to": "identity.signIn.start",
+      "package": "I-10a"
+    },
+    {
+      "sdk": "node",
+      "from": "identity.pollSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10a"
+    },
+    {
+      "sdk": "node",
+      "from": "identity.waitForSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10a"
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.signInWithBrowser",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.signInWithBrowser\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.beginSignIn",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.beginSignIn\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.pollSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.pollSignIn\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.waitForSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.waitForSignIn\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "swift",
+      "from": "identity.acceptSignIn",
+      "to": "identity.attachLicense",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.acceptSignIn\\s*\\(",
+        "files": ["*.swift", "fence:swift"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "identity.beginSignIn",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.beginSignIn\\s*\\(",
+        "files": ["*.kt", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "identity.pollSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.pollSignIn\\s*\\(",
+        "files": ["*.kt", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "kotlin",
+      "from": "identity.waitForSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\b(?:identity|client)\\.waitForSignIn\\s*\\(",
+        "files": ["*.kt", "fence:kotlin"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.begin_sign_in",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.begin_sign_in\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.sign_in_with_browser",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.sign_in_with_browser\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.request_sign_in",
+      "to": "identity.signIn.start",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.request_sign_in\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.poll_sign_in",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.poll_sign_in\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.wait_for_sign_in",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.wait_for_sign_in\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.accept_sign_in",
+      "to": "identity.signIn.session.accept",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.accept_sign_in\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.cancel",
+      "to": "identity.signIn.session.cancel",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.cancel\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.is_signing_in",
+      "to": "identity.signIn.session.isWaiting",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.is_signing_in\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.signed_in_identity",
+      "to": "identity.subject",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.signed_in_identity\\s*\\(",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.sign_in_pending",
+      "to": "identity.signIn.session.outcome",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.sign_in_pending\\b",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.sign_in_confirm",
+      "to": "identity.signIn.session.outcome",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.sign_in_confirm\\b",
+        "files": ["*.gd", "fence:gdscript"]
+      }
+    },
+    {
+      "sdk": "godot",
+      "from": "identity.sign_in_finished",
+      "to": "identity.signIn.session.outcome",
+      "package": "I-10b",
+      "scan": {
+        "pattern": "\\bidentity\\.sign_in_finished\\b",
+        "files": ["*.gd", "fence:gdscript"]
       }
     },
     {

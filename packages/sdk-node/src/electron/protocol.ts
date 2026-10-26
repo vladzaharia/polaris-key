@@ -78,6 +78,10 @@ export const DEFAULT_INVOKE_VERBS = [
   "update.restart",
   "update.markBootAttempt",
   "update.confirmBoot",
+  // I-10a.9: the account, over `invoke` (no new bridge method)
+  "identity.subject",
+  "identity.attach",
+  "identity.openAccount",
 ] as const;
 
 /** What every handler resolves. */

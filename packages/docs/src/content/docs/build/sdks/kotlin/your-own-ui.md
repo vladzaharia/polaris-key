@@ -127,23 +127,30 @@ freed from a device that still holds a credential, with `client.deauthorizeDevic
 ## Sign-in and who signed in
 
 ```kotlin
-import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInError
+import im.plrs.key.identity.SignInOptions
+import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.sdk.PolarisKeyClient
 
 suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: String, qr: String) -> Unit): String {
-    val prompt = client.identity.beginSignIn("Living-room PC")
+    val session = client.identity.signIn.start(SignInOptions(deviceName = "Living-room PC"))
     // Show userCode large, verificationUri as the short address and the QR of
-    // verificationUriComplete. Never show deviceCode.
-    show(prompt.userCode, prompt.verificationUri, prompt.verificationUriComplete)
-    return when (val result = client.identity.waitForSignIn(prompt)) {
-        is SignInResult.Ready -> "Signed in as ${client.license.getLicenseUser()?.subject}"
-        is SignInResult.Expired -> "The code expired. Start again."
-        is SignInResult.Error -> result.message
+    // verificationUriComplete.
+    show(session.userCode, session.verificationUri, session.verificationUriComplete)
+    return try {
+        when (session.wait()) {
+            is SignInOutcome.SignedIn -> "Signed in as ${client.license.getLicenseUser()?.subject}"
+            SignInOutcome.Expired -> "The code expired. Start again."
+            SignInOutcome.Cancelled -> "Sign-in cancelled."
+            is SignInOutcome.Pending -> "Still waiting."
+        }
+    } catch (e: SignInError) {
+        e.message ?: e.code
     }
 }
 ```
 
-`waitForSignIn` paces its polls and stops when its coroutine is canceled; when it answers `Ready`,
+`session.wait()` paces its polls and stops when its coroutine is canceled (`session.cancel()` ends the sign-in itself); when it answers `SignedIn`,
 the token is stored and the first sync is done. `getLicenseUser()` is the pairwise subject only (it
 ships after `0.9.3`); the person's name and email are planned. Anyone holding the code can finish
 the sign-in elsewhere, so say who signed in. Sign-in needs the Identity service; with it off, every
@@ -333,7 +340,9 @@ import im.plrs.key.core.LicenseState
 import im.plrs.key.core.ManageLink
 import im.plrs.key.core.isUsable
 import im.plrs.key.desktop.PolarisKeyDesktop
-import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInError
+import im.plrs.key.identity.SignInOptions
+import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
@@ -393,12 +402,17 @@ fun ActivationForm(client: PolarisKeyClient, headline: String) {
             link?.let { url -> Button(onClick = { Desktop.getDesktop().browse(URI(url)) }) { Text("Replace a device") } }
             Button(onClick = {
                 scope.launch {
-                    val prompt = client.identity.beginSignIn("Tidewater")
-                    message = "Enter ${prompt.userCode} at ${prompt.verificationUri}"
-                    message = when (val r = client.identity.waitForSignIn(prompt)) {
-                        is SignInResult.Ready -> "Signed in."
-                        is SignInResult.Expired -> "The code expired."
-                        is SignInResult.Error -> r.message
+                    val session = client.identity.signIn.start(SignInOptions(deviceName = "Tidewater"))
+                    message = "Enter ${session.userCode} at ${session.verificationUri}"
+                    message = try {
+                        when (session.wait()) {
+                            is SignInOutcome.SignedIn -> "Signed in."
+                            is SignInOutcome.Pending -> "Still waiting."
+                            SignInOutcome.Cancelled -> "Sign-in cancelled."
+                            SignInOutcome.Expired -> "The code expired."
+                        }
+                    } catch (e: SignInError) {
+                        e.message ?: e.code
                     }
                 }
             }) { Text("Sign in") }

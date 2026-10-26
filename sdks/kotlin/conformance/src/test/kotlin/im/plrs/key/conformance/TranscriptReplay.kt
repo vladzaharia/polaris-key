@@ -108,7 +108,7 @@ fun bodyProblems(expected: JsonElement, actual: JsonElement?, mode: String, path
 private val PLACEHOLDER = Regex("""\{([A-Za-z][A-Za-z0-9]*)\}""")
 
 /** The fake Worker a replay points the SDK at. */
-class ReplayServer(private val transcript: Transcript) : PolarisTransport {
+class ReplayServer(val transcript: Transcript) : PolarisTransport {
     private val lock = Mutex()
     val bindings = HashMap<String, String>()
     private val failures = ArrayList<String>()
@@ -183,12 +183,14 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
         }
         val hasBody = body != null && body.isNotEmpty()
         val expectedBody = expected["body"]
+        // `token` (WIRE-CONTRACT-V4 §12.5): a request that asserts a form content type carries its `body.json` members as the form's fields.
+        val isForm = expected["headers"]!!.obj["content-type"].stringValue?.startsWith("application/x-www-form-urlencoded") == true
         if (expectedBody == null || expectedBody is JsonNull) {
             if (hasBody) out += "body: expected none, got ${body!!.take(120)}"
         } else if (!hasBody) {
             out += "body: expected a JSON body, got none"
         } else {
-            val parsed = JsonText.parseOrNull(body!!)
+            val parsed: JsonElement? = if (isForm) formFields(body!!, out) else JsonText.parseOrNull(body!!)
             if (parsed == null) {
                 out += "body: not JSON"
                 return out
@@ -202,6 +204,42 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
         }
         return out
     }
+
+    private fun formFields(body: String, out: MutableList<String>): JsonElement? {
+        val fields = LinkedHashMap<String, JsonElement>()
+        for (pair in body.split('&').filter { it.isNotEmpty() }) {
+            val eq = pair.indexOf('=')
+            val name = formDecode(if (eq == -1) pair else pair.substring(0, eq))
+            val value = formDecode(if (eq == -1) "" else pair.substring(eq + 1))
+            if (name == null || value == null) {
+                out += "body: not a form"
+                return JsonObject(emptyMap())
+            }
+            if (fields.containsKey(name)) out += "body: repeated field $name"
+            fields[name] = JsonPrimitive(value)
+        }
+        return JsonObject(fields)
+    }
+
+    private fun formDecode(s: String): String? = try {
+        java.net.URLDecoder.decode(s, "UTF-8")
+    } catch (e: IllegalArgumentException) {
+        null
+    }
+
+    /**
+     * A `browser` step's exchanges: the requests a person's browser makes in a redirect sign-in. They are
+     * served from the recording and asserted by nothing (`format.ts`).
+     */
+    suspend fun serveBrowserExchanges(): Unit = lock.withLock {
+        val s = step ?: return@withLock
+        items(s).forEachIndexed { i, item ->
+            served[i] = true
+            capture(item)
+        }
+    }
+
+    suspend fun recordFailure(message: String): Unit = lock.withLock { failures += message }
 
     private fun capture(item: JsonObject) {
         val cap = item["capture"].objectValue ?: return
@@ -228,7 +266,32 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
         fun service(endpoints: Map<String, String>) = JsonObject(
             mapOf("enabled" to JsonPrimitive(true), "endpoints" to JsonObject(endpoints.mapValues { JsonPrimitive(it.value) })),
         )
-        val services = if ("identity.account" in transcript.features) {
+        // The redirect transcripts (identity.redirect.web, identity.signin.hints) ride a product that runs Identity;
+        // the fragment names `authorize` and `token`, and the issuer the recorded callback carries (RFC 9207),
+        // else the Worker's own `<base>/identity`.
+        if (transcript.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) {
+            var issuer = "$base/identity"
+            for (st in transcript.steps) {
+                if (st["action"].stringValue != "redirectComplete") continue
+                val raw = st["args"]!!.obj["callbackUrl"].stringValue ?: continue
+                val iss = raw.substringAfter('?', "").substringBefore('#').split('&')
+                    .map { it.split('=', limit = 2) }.firstOrNull { it[0] == "iss" }?.getOrNull(1)
+                if (iss != null) {
+                    issuer = java.net.URLDecoder.decode(iss, "UTF-8")
+                    break
+                }
+            }
+            val identity = JsonObject(
+                mapOf(
+                    "enabled" to JsonPrimitive(true), "configured" to JsonPrimitive(true), "issuer" to JsonPrimitive(issuer),
+                    "endpoints" to JsonObject(mapOf("authorize" to JsonPrimitive("$base/identity/authorize"), "token" to JsonPrimitive("$base/identity/token"))),
+                ),
+            )
+            return JsonObject(
+                mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(mapOf("identity" to identity))),
+            ).toString()
+        }
+        val services = if ("identity.account" in transcript.features || "identity.attach" in transcript.features) {
             // identity.account: Identity with its account endpoints, beside the licence the steps use.
             mapOf(
                 "license" to service(mapOf("activate" to "$base/license/activate", "document" to "$base/license/document")),

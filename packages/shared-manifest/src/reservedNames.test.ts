@@ -52,6 +52,7 @@ describe("reserved entitlement names (S-19 §7.4, LX-05)", () => {
       "license.tier",
       "license.tierLabel",
       "pkey.cloudSync.bytes",
+      "pkey.cloudConnect.relayBytes",
       "license.anything",
       "app.build",
       "pkey.future",

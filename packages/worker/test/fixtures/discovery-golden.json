@@ -18,7 +18,8 @@
         "jwks": "https://key.plrs.im/dflt/.well-known/jwks.json",
         "trustManifest": "https://key.plrs.im/dflt/.well-known/polaris-trust.jws",
         "devices": "https://key.plrs.im/dflt/devices",
-        "report": "https://key.plrs.im/dflt/devices/report"
+        "report": "https://key.plrs.im/dflt/devices/report",
+        "deviceKeys": "https://key.plrs.im/dflt/devices/keys"
       },
       "portal": {
         "enabled": true,
@@ -110,7 +111,8 @@
         "jwks": "https://key.plrs.im/full/.well-known/jwks.json",
         "trustManifest": "https://key.plrs.im/full/.well-known/polaris-trust.jws",
         "devices": "https://key.plrs.im/full/devices",
-        "report": "https://key.plrs.im/full/devices/report"
+        "report": "https://key.plrs.im/full/devices/report",
+        "deviceKeys": "https://key.plrs.im/full/devices/keys"
       },
       "portal": {
         "enabled": true,
@@ -280,6 +282,7 @@
         "trustManifest": "https://key.plrs.im/cfg/.well-known/polaris-trust.jws",
         "devices": "https://key.plrs.im/cfg/devices",
         "report": "https://key.plrs.im/cfg/devices/report",
+        "deviceKeys": "https://key.plrs.im/cfg/devices/keys",
         "register": "https://key.plrs.im/cfg/devices/register"
       },
       "portal": {

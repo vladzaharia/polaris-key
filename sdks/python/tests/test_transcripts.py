@@ -45,7 +45,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 # @pkey-feature license.manage
-# @pkey-feature identity.keyentry identity.account identity.attach
+# @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 
 from __future__ import annotations
@@ -538,10 +538,6 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
             server.end_step()
             for key, want in step["expect"].items():
                 got = observed.get(key)
-                if key == "services" and isinstance(want, dict) and isinstance(got, dict):
-                    # Slugs a recording predates (``connect``, CC-02.1) are not in its
-                    # ``expect``; every slug it does name is still compared exactly.
-                    got = {k: v for k, v in got.items() if k in want}
                 assert got == want, (
                     f"{t['id']} step {i} ({step['action']}): {key}: "
                     f"expected {want!r}, got {got!r}"

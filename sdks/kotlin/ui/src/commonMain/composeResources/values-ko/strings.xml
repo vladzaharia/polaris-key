@@ -1970,6 +1970,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_title">기기를 설정하지 못했어요</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_keys_invalid_message">이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">남은 키 등록 횟수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_message">이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.</string>
@@ -2161,6 +2165,26 @@
     <string name="core_codes_writes_paused_title">동기화 일시 중지</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_writes_paused_message">동기화가 잠시 일시 중지되었습니다. 변경 사항은 보관되며 나중에 동기화됩니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_title">암호화 불일치</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_encryption_mismatch_message">앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_title">업로드 만료</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_expired_message">업로드가 너무 오래 걸려 취소되었습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_title">업로드 미완료</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_incomplete_message">파일의 일부가 도착하지 않았습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_title">파일이 너무 큼</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_too_large_message">이 파일은 동기화 파일 크기 제한을 넘습니다.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_title">이미 설정됨</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_keyring_conflict_message">이 계정의 암호화는 이미 설정되어 있습니다. 다른 기기나 복구 코드로 잠금을 해제하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">인증되지 않은 이메일</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2365,6 +2389,18 @@
     <string name="core_codes_platform_identity_unavailable_title">로그인을 사용할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_identity_unavailable_message">이 기기에서는 자동 로그인을 할 수 없습니다. 다른 방법으로 로그인하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_title">동기화 잠김</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_locked_message">복구 코드나 로그인된 다른 기기로 이 기기의 동기화 잠금을 해제하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_title">복구 코드가 올바르지 않음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_recovery_code_invalid_message">복구 코드가 올바르지 않습니다. 확인한 뒤 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_title">암호화 필요</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_encryption_pinned_message">이 앱은 암호화된 동기화가 필요하지만 지금은 사용할 수 없습니다. 동기화는 꺼진 상태로 유지됩니다.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">앱이 설정되지 않음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

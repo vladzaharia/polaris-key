@@ -740,7 +740,13 @@ describe("the settings API refuses what the registry refuses", () => {
       // I-09: the identity block's live row-backed settings (claimByKey since ST-14).
       "identity.keyEntry.claimByKey",
       "identity.keyEntry.limit",
+      "identity.nearby",
       "identity.oidc.syncTierOnSignIn",
+      // I-42.2: the platform sign-in audiences.
+      "identity.platformSignIn.apple.bundleIds",
+      "identity.platformSignIn.apple.teamId",
+      "identity.platformSignIn.google.clientIds",
+      "identity.platformSignIn.google.serverClientId",
       // I-08: `authorize` reads it.
       "identity.redirectPaths",
       "identity.terms",

@@ -73,6 +73,10 @@
       "title": "Gerätelimit erreicht",
       "message": "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
     },
+    "device_keys_invalid": {
+      "title": "Gerät nicht eingerichtet",
+      "message": "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut."
+    },
     "key_entry_limit": {
       "title": "Keine Schlüsseleingaben mehr",
       "message": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
@@ -264,6 +268,26 @@
     "writes_paused": {
       "title": "Synchronisierung pausiert",
       "message": "Die Synchronisierung ist kurz pausiert. Ihre Änderungen bleiben erhalten und werden später synchronisiert."
+    },
+    "encryption_mismatch": {
+      "title": "Verschlüsselung passt nicht",
+      "message": "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
+    },
+    "upload_expired": {
+      "title": "Upload abgelaufen",
+      "message": "Der Upload hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut."
+    },
+    "upload_incomplete": {
+      "title": "Upload unvollständig",
+      "message": "Ein Teil der Datei ist nicht angekommen. Versuchen Sie es erneut."
+    },
+    "file_too_large": {
+      "title": "Datei zu groß",
+      "message": "Diese Datei überschreitet die Größengrenze für synchronisierte Dateien."
+    },
+    "keyring_conflict": {
+      "title": "Bereits eingerichtet",
+      "message": "Die Verschlüsselung ist für dieses Konto bereits eingerichtet. Entsperren Sie mit einem anderen Gerät oder Ihrem Wiederherstellungscode."
     },
     "email_mismatch": {
       "title": "E-Mail-Adresse nicht bestätigt",
@@ -468,6 +492,18 @@
     "platform-identity-unavailable": {
       "title": "Anmeldung nicht verfügbar",
       "message": "Dieses Gerät kann Sie nicht automatisch anmelden. Verwenden Sie eine andere Anmeldeart."
+    },
+    "sync-locked": {
+      "title": "Sync gesperrt",
+      "message": "Entsperren Sie den Sync auf diesem Gerät mit Ihrem Wiederherstellungscode oder einem anderen angemeldeten Gerät."
+    },
+    "recovery-code-invalid": {
+      "title": "Wiederherstellungscode ungültig",
+      "message": "Dieser Wiederherstellungscode stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut."
+    },
+    "sync-encryption-pinned": {
+      "title": "Verschlüsselung erforderlich",
+      "message": "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus."
     },
     "invalid-options": {
       "title": "App nicht eingerichtet",

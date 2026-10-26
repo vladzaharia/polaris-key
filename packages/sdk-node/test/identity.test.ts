@@ -1,5 +1,5 @@
-// @pkey-feature identity.devicecode
-// Device-code sign-in (RFC 8628): the pacing rules `waitForSignIn` owns, which a transcript
+// @pkey-feature identity.devicecode identity.toggle
+// Device-code sign-in (RFC 8628, `identity.signIn.start({channel: "device-code"})`): the pacing rules `wait()` owns, which a transcript
 // cannot show because a recorded conversation has no clock between its requests.
 //
 //   * no poll comes earlier than `interval` after the previous one (or after the prompt);
@@ -20,8 +20,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PolarisError } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
+import { readStoredSubject } from "../src/identity/account.js";
 import type { ServiceSlug } from "../src/discovery.js";
-import type { SignInPrompt } from "../src/identity/client.js";
 
 const PRODUCT = "djdl";
 const BASE_URL = "https://k.test";
@@ -110,7 +110,7 @@ async function client(
   return { c, store };
 }
 
-/** Drive `waitForSignIn` to completion under fake timers. */
+/** Drive `wait()` to completion under fake timers. */
 async function settle<T>(p: Promise<T>): Promise<T> {
   let done = false;
   p.then(
@@ -121,6 +121,9 @@ async function settle<T>(p: Promise<T>): Promise<T> {
     await vi.advanceTimersByTimeAsync(500);
   return p;
 }
+
+const start = (c: PolarisKeyClient, over: Record<string, unknown> = {}) =>
+  c.identity.signIn.start({ channel: "device-code", ...over });
 
 const polls = (calls: Call[]) => calls.filter((c) => c.path === POLL);
 const gaps = (times: number[], from: number) =>
@@ -133,11 +136,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("beginSignIn", () => {
+describe("signIn.start", () => {
   it("refuses with service-unavailable before any request when Identity is off", async () => {
     const p = plane({ [START]: [started()] });
     const { c } = await client(p.fetchImpl, ["license", "config"]);
-    await expect(c.identity.beginSignIn()).rejects.toMatchObject({
+    await expect(start(c)).rejects.toMatchObject({
       code: "service-unavailable",
     });
     expect(p.calls).toEqual([]);
@@ -148,7 +151,7 @@ describe("beginSignIn", () => {
     const { c, store } = await client(p.fetchImpl);
     await store.setToken("pkeyt_anonymous");
     await c.init();
-    const prompt = await c.identity.beginSignIn({ deviceName: " Deck " });
+    const prompt = await start(c, { deviceName: " Deck " });
     expect(p.calls[0]!.body).toEqual({
       deviceId: c.core.deviceId,
       deviceName: "Deck",
@@ -190,7 +193,7 @@ describe("the device label (WIRE-CONTRACT-V4 §12.7.1, PX-W13)", () => {
 
   it("normalises a per-call name before sending it", async () => {
     const { p, c } = await labelled(undefined);
-    await c.identity.beginSignIn({ deviceName: " Den\u202e\tPC " });
+    await start(c, { deviceName: " Den\u202e\tPC " });
     expect((p.calls[0]!.body as Record<string, unknown>).deviceName).toBe(
       "Den PC",
     );
@@ -198,7 +201,7 @@ describe("the device label (WIRE-CONTRACT-V4 §12.7.1, PX-W13)", () => {
 
   it("sends the configured name when the call passes none", async () => {
     const { p, c } = await labelled("Living room TV");
-    await c.identity.beginSignIn();
+    await start(c);
     expect((p.calls[0]!.body as Record<string, unknown>).deviceName).toBe(
       "Living room TV",
     );
@@ -206,7 +209,7 @@ describe("the device label (WIRE-CONTRACT-V4 §12.7.1, PX-W13)", () => {
 
   it("sends the hostname, without .local, by default", async () => {
     const { p, c } = await labelled(undefined);
-    await c.identity.beginSignIn();
+    await start(c);
     const sent = (p.calls[0]!.body as Record<string, unknown>).deviceName as
       | string
       | undefined;
@@ -215,28 +218,28 @@ describe("the device label (WIRE-CONTRACT-V4 §12.7.1, PX-W13)", () => {
 
   it("an empty name opts out, at either level", async () => {
     const a = await labelled("");
-    await a.c.identity.beginSignIn();
+    await start(a.c);
     expect(a.p.calls[0]!.body).not.toHaveProperty("deviceName");
     const b = await labelled("Deck");
-    await b.c.identity.beginSignIn({ deviceName: "" });
+    await start(b.c, { deviceName: "" });
     expect(b.p.calls[0]!.body).not.toHaveProperty("deviceName");
   });
 
   it("the prompt carries the echo, else (an older Worker) the label sent", async () => {
     const echoed = await labelled("Deck", { deviceName: "Deck" });
-    expect((await echoed.c.identity.beginSignIn()).deviceName).toBe("Deck");
+    expect((await start(echoed.c)).deviceName).toBe("Deck");
     const nulled = await labelled("", { deviceName: null });
-    expect((await nulled.c.identity.beginSignIn()).deviceName).toBeNull();
+    expect((await start(nulled.c)).deviceName).toBeNull();
     const old = await labelled("Deck");
-    expect((await old.c.identity.beginSignIn()).deviceName).toBe("Deck");
+    expect((await start(old.c)).deviceName).toBe("Deck");
   });
 });
 
-describe("waitForSignIn", () => {
+describe("wait()", () => {
   async function begin(answers: Record<string, Answer[]>) {
     const p = plane({ [START]: [started()], ...answers });
     const { c, store } = await client(p.fetchImpl);
-    const prompt = await c.identity.beginSignIn();
+    const prompt = await start(c);
     return { p, c, store, prompt };
   }
 
@@ -244,8 +247,8 @@ describe("waitForSignIn", () => {
     const { p, c, store, prompt } = await begin({
       [POLL]: [pending(), pending(), ready()],
     });
-    const result = await settle(c.identity.waitForSignIn(prompt));
-    expect(result).toEqual({ status: "ready" });
+    const result = await settle(prompt.wait());
+    expect(result).toMatchObject({ kind: "signedIn" });
     const times = polls(p.calls).map((x) => x.at);
     expect(times).toHaveLength(3);
     for (const gap of gaps(times, T0)) expect(gap).toBeGreaterThanOrEqual(2);
@@ -264,7 +267,7 @@ describe("waitForSignIn", () => {
         ready(),
       ],
     });
-    await settle(c.identity.waitForSignIn(prompt));
+    await settle(prompt.wait());
     expect(
       gaps(
         polls(p.calls).map((x) => x.at),
@@ -281,7 +284,7 @@ describe("waitForSignIn", () => {
         ready(),
       ],
     });
-    await settle(c.identity.waitForSignIn(prompt));
+    await settle(prompt.wait());
     expect(
       gaps(
         polls(p.calls).map((x) => x.at),
@@ -299,7 +302,7 @@ describe("waitForSignIn", () => {
         ready(),
       ],
     });
-    await settle(c.identity.waitForSignIn(prompt));
+    await settle(prompt.wait());
     expect(
       gaps(
         polls(p.calls).map((x) => x.at),
@@ -310,7 +313,12 @@ describe("waitForSignIn", () => {
 
   it("clamps a negative interval to one second", async () => {
     const { p, c, prompt } = await begin({ [POLL]: [pending(), ready()] });
-    await settle(c.identity.waitForSignIn({ ...prompt, interval: -3 }));
+    await settle(
+      (() => {
+        prompt.interval = -3;
+        return prompt.wait();
+      })(),
+    );
     expect(
       gaps(
         polls(p.calls).map((x) => x.at),
@@ -325,9 +333,9 @@ describe("waitForSignIn", () => {
       [POLL]: [pending(), ready()],
     });
     const { c } = await client(p.fetchImpl);
-    const prompt = await c.identity.beginSignIn();
+    const prompt = await start(c);
     expect(prompt.interval).toBe(1);
-    await settle(c.identity.waitForSignIn(prompt));
+    await settle(prompt.wait());
     expect(
       gaps(
         polls(p.calls).map((x) => x.at),
@@ -342,9 +350,9 @@ describe("waitForSignIn", () => {
       [POLL]: [pending()],
     });
     const { c } = await client(p.fetchImpl);
-    const prompt = await c.identity.beginSignIn();
-    const result = await settle(c.identity.waitForSignIn(prompt));
-    expect(result).toEqual({ status: "expired" });
+    const prompt = await start(c);
+    const result = await settle(prompt.wait());
+    expect(result).toEqual({ kind: "expired" });
     // One 60 s sleep, then expiry: no poll, and not a 1 ms timer overflow.
     expect(polls(p.calls)).toHaveLength(0);
     expect(Date.now() / 1000 - T0).toBeGreaterThanOrEqual(60);
@@ -358,8 +366,8 @@ describe("waitForSignIn", () => {
         ready(),
       ],
     });
-    const result = await settle(c.identity.waitForSignIn(prompt));
-    expect(result).toEqual({ status: "ready" });
+    const result = await settle(prompt.wait());
+    expect(result).toMatchObject({ kind: "signedIn" });
     expect(
       gaps(
         polls(p.calls).map((x) => x.at),
@@ -374,9 +382,9 @@ describe("waitForSignIn", () => {
       [POLL]: [pending()],
     });
     const { c } = await client(p.fetchImpl);
-    const prompt = await c.identity.beginSignIn();
-    const result = await settle(c.identity.waitForSignIn(prompt));
-    expect(result).toEqual({ status: "expired" });
+    const prompt = await start(c);
+    const result = await settle(prompt.wait());
+    expect(result).toEqual({ kind: "expired" });
     // Polls at +2 and +4; at +6 the prompt has expired, so there is no third.
     expect(polls(p.calls).map((x) => x.at - T0)).toEqual([2, 4]);
   });
@@ -385,15 +393,13 @@ describe("waitForSignIn", () => {
     const { c, prompt } = await begin({
       [POLL]: [pending(), json({ status: "timeout" })],
     });
-    expect(await settle(c.identity.waitForSignIn(prompt))).toEqual({
-      status: "expired",
-    });
+    expect(await settle(prompt.wait())).toEqual({ kind: "expired" });
   });
 
   it("stops polling when the signal aborts, rejecting with its reason", async () => {
     const { p, c, prompt } = await begin({ [POLL]: [pending()] });
     const abort = new AbortController();
-    const waiting = c.identity.waitForSignIn(prompt, { signal: abort.signal });
+    const waiting = prompt.wait({ signal: abort.signal });
     waiting.catch(() => undefined);
     await vi.advanceTimersByTimeAsync(2500);
     expect(polls(p.calls)).toHaveLength(1);
@@ -407,59 +413,170 @@ describe("waitForSignIn", () => {
     const { c, store, prompt } = await begin({
       [POLL]: [json({ error: "unauthorized" }, 401)],
     });
-    const result = await settle(c.identity.waitForSignIn(prompt));
-    expect(result.status).toBe("error");
+    await expect(settle(prompt.wait())).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
     expect(await store.getToken()).toBeNull();
   });
 });
 
-describe("printing a prompt", () => {
-  it("redacts the device code from console.log and JSON.stringify", async () => {
+describe("printing a session", () => {
+  it("never shows the device code in console.log or JSON.stringify", async () => {
     const p = plane({ [START]: [started()] });
     const { c } = await client(p.fetchImpl);
-    const prompt = await c.identity.beginSignIn();
-    expect(prompt.deviceCode).toBe("device-code-1");
-    expect(Object.keys(prompt)).toContain("deviceCode");
-    for (const printed of [inspect(prompt), JSON.stringify(prompt)]) {
+    const session = await start(c);
+    expect(Object.keys(session)).not.toContain("deviceCode");
+    for (const printed of [inspect(session), JSON.stringify(session)]) {
       expect(printed).not.toContain("device-code-1");
       expect(printed).toContain("WDJB-MJHT");
-      expect(printed).toContain("[redacted]");
     }
   });
 });
 
-describe("pollSignIn", () => {
+describe("wait({ once })", () => {
   it("polls exactly once and reports slow-down with the server's interval", async () => {
     const p = plane({
+      [START]: [started()],
       [POLL]: [json({ status: "slow_down", interval: 2 }, 429)],
     });
     const { c } = await client(p.fetchImpl);
-    const prompt: SignInPrompt = {
-      deviceCode: "device-code-1",
-      userCode: "WDJB-MJHT",
-      verificationUri: "u",
-      verificationUriComplete: "u?user_code=WDJB-MJHT",
-      expiresIn: 600,
+    const session = await start(c);
+    expect(await session.wait({ once: true })).toEqual({
+      kind: "pending",
       interval: 2,
-      expiresAt: T0 + 600,
-      deviceName: null,
-    };
-    expect(await c.identity.pollSignIn(prompt)).toEqual({
-      status: "slow-down",
-      interval: 2,
+      slowDown: true,
     });
     expect(polls(p.calls)).toHaveLength(1);
     expect(polls(p.calls)[0]!.body).toEqual({
       deviceCode: "device-code-1",
       deviceId: c.core.deviceId,
     });
+    expect(polls(p.calls)[0]!.at).toBe(T0);
+  });
+
+  it("answers pending while the person is still at it", async () => {
+    const p = plane({ [START]: [started()], [POLL]: [pending()] });
+    const { c } = await client(p.fetchImpl);
+    const session = await start(c);
+    expect(await session.wait({ once: true })).toEqual({
+      kind: "pending",
+      interval: 2,
+    });
   });
 
   it("throws network-error rather than inventing a status", async () => {
-    const p = plane({ [POLL]: [new TypeError("offline")] });
+    const p = plane({
+      [START]: [started()],
+      [POLL]: [new TypeError("offline")],
+    });
     const { c } = await client(p.fetchImpl);
-    await expect(
-      c.identity.pollSignIn({ deviceCode: "d" } as SignInPrompt),
-    ).rejects.toBeInstanceOf(PolarisError);
+    const session = await start(c);
+    await expect(session.wait({ once: true })).rejects.toBeInstanceOf(
+      PolarisError,
+    );
+  });
+});
+
+describe("how a sign-in ends", () => {
+  async function begin(answers: Record<string, Answer[]>) {
+    const p = plane({ [START]: [started()], ...answers });
+    const { c, store } = await client(p.fetchImpl);
+    return { p, c, store, session: await start(c) };
+  }
+
+  it("a person's refusal throws sign-in-denied and keeps the device unsigned", async () => {
+    const { session, store } = await begin({
+      [POLL]: [json({ status: "error", reason: "access_denied" })],
+    });
+    await expect(settle(session.wait())).rejects.toMatchObject({
+      code: "sign-in-denied",
+    });
+    expect(await store.getToken()).toBeNull();
+  });
+
+  it("a failure after approval throws sign-in-failed", async () => {
+    const { session } = await begin({ [POLL]: [json({ status: "error" })] });
+    await expect(settle(session.wait())).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
+  });
+
+  it("cancel() ends a waiting session as cancelled, with no further poll", async () => {
+    const { p, session } = await begin({ [POLL]: [pending()] });
+    const waiting = session.wait();
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(polls(p.calls)).toHaveLength(1);
+    session.cancel();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(polls(p.calls)).toHaveLength(1);
+    expect(await session.wait()).toEqual({ kind: "cancelled" });
+  });
+
+  it("signed in stores the token and the subject, and raises the identity event", async () => {
+    const subject = "ps_QQMMVm-ciTWvmWEIfhAVgQ";
+    const events: unknown[] = [];
+    const p = plane({
+      [START]: [started()],
+      [POLL]: [ready()],
+      [`/${PRODUCT}/.well-known/polaris.json`]: [
+        json({
+          product: PRODUCT,
+          services: {
+            identity: {
+              enabled: true,
+              configured: true,
+              endpoints: { subject: `${BASE_URL}/${PRODUCT}/identity/subject` },
+            },
+          },
+        }),
+      ],
+      [`/${PRODUCT}/identity/subject`]: [json({ subject })],
+    });
+    const { c, store } = await client(p.fetchImpl);
+    c.events.on("identity", (e) => events.push(e));
+    const session = await start(c);
+    const done = await settle(session.wait());
+    expect(done).toMatchObject({ kind: "signedIn", subject });
+    expect(await store.getToken()).toBe("pkeyt_signed_in");
+    expect(
+      await readStoredSubject(
+        (c.identity as unknown as { ctx: { dirs: { state: string } } }).ctx.dirs
+          .state,
+      ),
+    ).toBe(subject);
+    expect(events).toEqual([{ kind: "signedIn", subject }]);
+  });
+});
+
+describe("hints", () => {
+  it("sends loginHint, nameHint, purpose and scope on auth/device/start", async () => {
+    const p = plane({ [START]: [started()] });
+    const { c } = await client(p.fetchImpl);
+    await start(c, {
+      deviceName: "Deck",
+      loginHint: "mara@example.test",
+      nameHint: "Mara",
+      purpose: "attach",
+      scope: ["profile", "email"],
+    });
+    expect(p.calls[0]!.body).toEqual({
+      deviceId: c.core.deviceId,
+      deviceName: "Deck",
+      loginHint: "mara@example.test",
+      nameHint: "Mara",
+      purpose: "attach",
+      scope: "profile email",
+    });
+  });
+
+  it("sends none by default", async () => {
+    const p = plane({ [START]: [started()] });
+    const { c } = await client(p.fetchImpl);
+    await start(c, { deviceName: "Deck" });
+    expect(Object.keys(p.calls[0]!.body as object).sort()).toEqual([
+      "deviceId",
+      "deviceName",
+    ]);
   });
 });

@@ -21,6 +21,12 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "devices",
     // CC-03.1: a device's public keys (core/devices/keys.ts).
     "device_keys",
+    // The floors that outlive a device's keys (core/devices/keys.ts).
+    "device_key_floor",
+    // U-36.1: the Cloud Sync key ring (rings, wraps, adopted roots); store: core/keyring/store.ts.
+    "keyrings",
+    "keyring_wraps",
+    "keyring_adopted",
     // P0-23: the portal's single-use download tokens (core/assets/downloadTokens.ts).
     "release_download_tokens",
     "license_refusals",

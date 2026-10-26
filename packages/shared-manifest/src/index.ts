@@ -399,6 +399,18 @@ export interface ManifestIdentity {
   nearby?: boolean;
 }
 
+/**
+ * The `connect:` block (CC-02.2; plans/CC-01-cloud-connect.md §2.9): Cloud Connect's two developer
+ * switches, each a claimable setting (`cloudConnect.relay.enabled`, `cloudConnect.interAccount`).
+ * A member is present only when the manifest declares it.
+ */
+export interface ManifestConnect {
+  /** Whether the relay carries this product's traffic when the LAN cannot (default on). */
+  relay?: boolean;
+  /** Whether devices of different accounts may connect (default off). */
+  interAccount?: boolean;
+}
+
 /** A product-declared companion-application probe the client answers present/absent. */
 export interface ManifestProbe {
   id: string;
@@ -736,6 +748,11 @@ export interface ParsedManifest {
    * Worker's registry entries name them by path (`product:identity.keyEntry.limit`, …).
    */
   identity?: ManifestIdentity;
+  /**
+   * The `connect:` block's settings (CC-02.2): present only when it declares at least one. The
+   * Worker's registry entries name them by path (`product:connect.relay`, …).
+   */
+  connect?: ManifestConnect;
   release?: ManifestRelease;
   edgeMint: ManifestEdgeMint[];
   /**
@@ -1852,6 +1869,7 @@ function validateDocuments(
   }
   validateLicensingSettings(licensing, errors);
   validateIdentityBlock(productRoot, modules, errors, warnings);
+  validateConnectBlock(productRoot, modules, errors, warnings);
 
   if (schemaAlwaysRequired || modules.includes("config")) {
     if (requireSchema(errors, manifest.schema)) {
@@ -4825,6 +4843,8 @@ export function parseManifest(
   if (licensingSettings) parsed.licensing = licensingSettings;
   const identitySettings = normalizeIdentityBlock(productRoot.identity);
   if (identitySettings) parsed.identity = identitySettings;
+  const connectSettings = normalizeConnectBlock(productRoot.connect);
+  if (connectSettings) parsed.connect = connectSettings;
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
   if (
     validation.enabledModules.includes("distribution") ||
@@ -6901,6 +6921,71 @@ function validatePlatformSignIn(
       }
     }
   }
+}
+
+/** The members of the `connect:` block. */
+const CONNECT_MEMBERS: readonly string[] = ["relay", "interAccount"];
+
+/**
+ * CC-02.2: the `connect:` block of `.pkey/product`: `relay` and `interAccount`, each a boolean.
+ * Each `add` is written out with literal arguments so the generated validation-codes page lists it.
+ */
+function validateConnectBlock(
+  productRoot: Record<string, unknown>,
+  modules: readonly string[],
+  errors: ValidationMessage[],
+  warnings: ValidationMessage[],
+): void {
+  const connect = productRoot.connect;
+  if (connect === undefined) return;
+  if (!isRecord(connect)) {
+    add(
+      errors,
+      "product",
+      "/connect",
+      "invalid_connect",
+      "connect must be an object with relay and interAccount.",
+    );
+    return;
+  }
+  for (const key of Object.keys(connect)) {
+    if (!CONNECT_MEMBERS.includes(key)) {
+      add(
+        errors,
+        "product",
+        `/connect/${key}`,
+        "invalid_connect",
+        "connect takes only relay and interAccount.",
+      );
+    } else if (typeof connect[key] !== "boolean") {
+      add(
+        errors,
+        "product",
+        `/connect/${key}`,
+        "invalid_connect",
+        `connect.${key} must be true or false.`,
+      );
+    }
+  }
+  if (!modules.includes("connect")) {
+    add(
+      warnings,
+      "product",
+      "/connect",
+      "connect_block_without_service",
+      "connect is declared but the connect service is off, so none of it applies.",
+    );
+  }
+}
+
+/** The `connect:` block's declared settings, validated above; `undefined` when none. */
+function normalizeConnectBlock(raw: unknown): ManifestConnect | undefined {
+  if (!isRecord(raw)) return undefined;
+  const out: ManifestConnect = {};
+  if (typeof raw.relay === "boolean") out.relay = raw.relay;
+  if (typeof raw.interAccount === "boolean")
+    out.interAccount = raw.interAccount;
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /** The members of the `identity:` block I-09 allows (I-35 widens the list). */

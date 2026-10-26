@@ -138,6 +138,18 @@ function renderNode(api: Api): string {
       types.push(`PolarisKeyClient["events"]`);
     } else if (r.handle) {
       types.push(`ConfigSetting[${q(r.name)}]`);
+    } else if (r.id === "identity.signIn.start") {
+      // `signIn` is a getter on the client; `start` is its one verb.
+      lines.push(
+        `it(${q(r.id)}, () => expect("signIn" in IdentityClient.prototype).toBe(true));`,
+      );
+    } else if (r.id.startsWith("identity.signIn.session.")) {
+      // The sessions `signIn.start` answers: device code (wait, reopen, cancel), redirect (complete, cancel).
+      const cls =
+        r.name === "complete" ? "RedirectSession" : "DeviceCodeSession";
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
+      );
     } else if (NODE_CLASS[r.ns]) {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${NODE_CLASS[r.ns]}.prototype).toBe(true));`,
@@ -160,10 +172,12 @@ function renderNode(api: Api): string {
     `import { expect, it } from "vitest";`,
     `import {`,
     `  ConfigClient,`,
+    `  DeviceCodeSession,`,
     `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
     `  PolarisKeyClient,`,
+    `  RedirectSession,`,
     `  type ConfigSetting,`,
     `  type PolarisKeyClientOptions,`,
     `} from "../src/index.js";`,
@@ -333,6 +347,8 @@ const SWIFT_TYPE: Record<string, string> = {
   distribution: "DistributionClient",
   commerce: "CommerceClient",
   packs: "PacksClient",
+  SignInNamespace: "SignInNamespace",
+  SignInSession: "SignInSession",
 };
 /** Rows with no compile-only reference: actor-isolated properties have no key path, and an unapplied generic method cannot infer `T`. */
 const SWIFT_UNASSERTED = new Set([
@@ -424,6 +440,8 @@ const KOTLIN_TYPE: Record<string, string> = {
   license: "LicenseClient",
   entitlements: "EntitlementsClient",
   identity: "IdentityClient",
+  SignInNamespace: "SignInNamespace",
+  SignInSession: "SignInSession",
   events: "PolarisKeyClient",
   devices: "PolarisKeyClient.DevicesFacet",
   release: "ReleaseClient",
@@ -483,6 +501,8 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.core.CoreOptions`,
     `import im.plrs.key.core.PresentationSource`,
     `import im.plrs.key.identity.IdentityClient`,
+    `import im.plrs.key.identity.SignInNamespace`,
+    `import im.plrs.key.identity.SignInSession`,
     `import im.plrs.key.license.EntitlementsClient`,
     `import im.plrs.key.license.LicenseClient`,
     `import im.plrs.key.packs.PacksClient`,

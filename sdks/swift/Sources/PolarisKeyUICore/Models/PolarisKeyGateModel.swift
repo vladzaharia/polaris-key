@@ -237,7 +237,7 @@ public final class PolarisKeyGateModel {
     private var deferredVersion: String?
     private var currentVersion: String? = KitUpdateFacts.bundleVersion()
 
-    private var prompt: SignInPrompt?
+    private var session: SignInSession?
     private var observation: Task<Void, Never>?
     private var signInTask: Task<Void, Never>?
     private var unsubscribe: (@Sendable () -> Void)?
@@ -585,31 +585,30 @@ public final class PolarisKeyGateModel {
         signInTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let prompt = try await client.identity.beginSignIn(deviceName: nil)
+                let session = try await client.identity.signIn.start()
                 try Task.checkCancellation()
-                self.prompt = prompt
+                self.session = session
                 self.request = KitSignInRequest(
-                    userCode: prompt.userCode, verificationUri: prompt.verificationUri,
-                    verificationUriComplete: prompt.verificationUriComplete,
-                    expiresAt: prompt.expiresAt)
+                    userCode: session.userCode, verificationUri: session.verificationUri,
+                    verificationUriComplete: session.verificationUriComplete,
+                    expiresAt: session.expiresAt)
                 self.pending = nil
                 self.signIn?.outcome = .pending
                 if code {
                     self.signIn?.channel = .deviceCode
                     self.deviceCode = KitDeviceCode(phase: .waiting, secondsLeft: self.secondsLeft)
                 } else {
-                    let opened = await self.openBrowser(prompt.verificationUriComplete)
+                    let opened = await self.openBrowser(session.verificationUriComplete)
                     self.signIn?.browserOpened = opened
                 }
                 self.rebuild()
                 self.announce(self.signInScreen.copy.first)
-                await self.waitForSignIn(prompt)
+                await self.waitForSignIn(session)
             } catch is CancellationError {
                 return
             } catch {
                 self.pending = nil
-                self.signInError = KitError(
-                    code: (error as? PolarisError)?.code ?? "sign-in-failed")
+                self.signInError = KitError(code: Self.signInCode(error))
                 self.rebuild()
                 self.announce(self.signInScreen.copy.first)
             }
@@ -618,10 +617,10 @@ public final class PolarisKeyGateModel {
 
     /// "Open browser again": the same request's page, never a second request.
     public func reopenBrowser() {
-        guard let prompt else { return }
+        guard let session else { return }
         signIn?.event = .reopen
         Task { [weak self] in
-            let opened = await self?.openBrowser(prompt.verificationUriComplete) ?? false
+            let opened = await self?.openBrowser(session.verificationUriComplete) ?? false
             self?.signIn?.browserOpened = opened
             self?.rebuild()
         }
@@ -629,7 +628,7 @@ public final class PolarisKeyGateModel {
 
     /// "Use a code instead": the same request's code, in place.
     public func useCode() {
-        guard prompt != nil else { return }
+        guard session != nil else { return }
         signIn?.channel = .deviceCode
         signIn?.event = .useCode
         deviceCode = KitDeviceCode(phase: .waiting, secondsLeft: secondsLeft)
@@ -651,7 +650,8 @@ public final class PolarisKeyGateModel {
         signInTask?.cancel()
         signInTask = nil
         activeBrowser?.close()
-        prompt = nil
+        session?.cancel()
+        session = nil
         request = nil
         deviceCode = nil
         signInError = nil
@@ -691,14 +691,13 @@ public final class PolarisKeyGateModel {
         #endif
     }
 
-    private func waitForSignIn(_ prompt: SignInPrompt) async {
-        guard let client else { return }
+    private func waitForSignIn(_ session: SignInSession) async {
         do {
-            let result = try await client.identity.waitForSignIn(prompt)
+            let outcome = try await session.wait()
             try Task.checkCancellation()
             activeBrowser?.close()
-            switch result {
-            case .ready(let ready):
+            switch outcome {
+            case .signedIn(let ready):
                 if signIn?.channel == .deviceCode { deviceCode = KitDeviceCode(phase: .ok) }
                 signIn?.redeeming = true
                 rebuild()
@@ -709,14 +708,10 @@ public final class PolarisKeyGateModel {
                 signIn?.issuedNow = false
                 rebuild()
                 announce(signInScreen.copy.first)
-                if let name = signedInName {
+                if let name = signedInName, let client {
                     let info = await client.licenseInfo()
                     toastSignedIn(name: name, tier: info?.tierLabel ?? info?.tier)
                 }
-            case .confirm:
-                // waitForSignIn without confirmIdentity never stops here; treat it as unfinished.
-                signInError = KitError(code: "sign-in-failed")
-                rebuild()
             case .expired:
                 if signIn?.channel == .deviceCode {
                     deviceCode = KitDeviceCode(phase: .expired)
@@ -725,14 +720,25 @@ public final class PolarisKeyGateModel {
                 }
                 rebuild()
                 announce(signInScreen.copy.first)
-            case .error:
+            case .cancelled:
+                return
+            case .pending, .choose:
+                // No licence choice is requested yet (I-10b.12); treat it as unfinished.
                 signInError = KitError(code: "sign-in-failed")
                 rebuild()
-                announce(signInScreen.copy.first)
             }
-        } catch {
+        } catch is CancellationError {
             return
+        } catch {
+            signInError = KitError(code: "sign-in-failed")
+            rebuild()
+            announce(signInScreen.copy.first)
         }
+    }
+
+    /// The kit's error code for a failed start or wait.
+    private static func signInCode(_ error: Error) -> String {
+        (error as? PolarisError)?.code ?? (error as? SignInError)?.code ?? "sign-in-failed"
     }
 
     // MARK: Blocking states

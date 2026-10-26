@@ -33,9 +33,9 @@ ROWS = [
     (429, {"error": "rate_limited"}, "rate-limited", "rate_limited"),
     (401, {"error": "unauthorized"}, "unauthorized", "unauthorized"),
     (404, {"error": "enroll_disabled", "message": "enrollment is disabled"}, "enroll-disabled", "enroll_disabled"),
-    # I-09's future codes and anything else: refused with the server's code, never device-limit.
-    (403, {"error": "license_owned"}, "refused", "license_owned"),
-    (403, {"error": "key_entry_limit"}, "refused", "key_entry_limit"),
+    # I-10a.13 typed these two; anything else unknown is refused with the server's code, never device-limit.
+    (403, {"error": "license_owned"}, "license-owned", "license_owned"),
+    (403, {"error": "key_entry_limit"}, "key-entry-limit", "key_entry_limit"),
     (403, {"error": "forbidden"}, "refused", "forbidden"),
     (404, {"error": "not_found"}, "refused", "not_found"),
     (400, {"error": "bad_request", "message": "missing device id"}, "refused", "bad_request"),

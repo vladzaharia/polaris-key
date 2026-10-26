@@ -204,7 +204,9 @@ describe("Publish from CI", () => {
     );
     const after = await row("Tag ruleset");
     expect(after.textContent).toContain("Administration: Read and write");
-    expect(after.textContent).toContain("Ask a repository admin to grant it.");
+    expect(after.textContent).toContain(
+      "Ask a repository admin to give it access.",
+    );
     const link = within(after).getByRole("link", {
       name: /Review permissions on GitHub/,
     });

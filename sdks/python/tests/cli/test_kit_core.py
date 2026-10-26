@@ -340,10 +340,10 @@ def test_activation_view() -> None:
 
 def test_sign_in_model_walks_its_states() -> None:
     class P:
-        userCode = "WDJB-MJHT"
-        verificationUri = "https://polaris.locker/device"
-        verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
-        expiresAt = 600
+        user_code = "WDJB-MJHT"
+        verification_uri = "https://polaris.locker/device"
+        verification_uri_complete = "https://polaris.locker/device?user_code=WDJB-MJHT"
+        expires_at = 600
 
     m = SignInModel()
     assert m.view.state == "starting"
@@ -353,10 +353,10 @@ def test_sign_in_model_walks_its_states() -> None:
     h = SignInModel(headless=True, device_code_url="https://driftkart.gg/tv")
     assert h.prompted(P(), 0).url == "https://driftkart.gg/tv"
     assert SignInModel().cancelled().state == "cancelled"
-    done = SignInModel().finished(type("R", (), {"status": "ready", "identity": type("I", (), {"name": "M", "email": "m@x"})()})())
+    done = SignInModel().finished(type("R", (), {"kind": "signed_in", "identity": type("I", (), {"name": "M", "email": "m@x"})()})())
     assert (done.state, done.name, done.email) == ("done", "M", "m@x")
-    assert SignInModel().finished(type("R", (), {"status": "expired"})()).state == "expired"
-    assert SignInModel().finished(type("R", (), {"status": "error", "code": "sign-in-denied"})()).state == "denied"
+    assert SignInModel().finished(type("R", (), {"kind": "expired"})()).state == "expired"
+    assert SignInModel().errored("sign-in-denied").state == "denied"
 
 
 def test_update_view_maps_every_action() -> None:

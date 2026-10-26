@@ -27,7 +27,7 @@ const discovery = () => ({
 });
 
 describe("device-code conveniences (§3.12)", () => {
-  it("signInWithBrowser opens the complete URI, runs the attach opt-in, and stores the identity", async () => {
+  it("a session reopens the complete URI, runs the attach opt-in, and stores the identity", async () => {
     const license = await signedLicense({ pro: true });
     const polls: { body: Record<string, unknown>; auth: string | null }[] = [];
     const { client } = await seededClient({
@@ -60,21 +60,25 @@ describe("device-code conveniences (§3.12)", () => {
       },
     });
     const opened: string[] = [];
-    const shownTo: string[] = [];
-    const r = await client.identity.signInWithBrowser({
-      openUrl: (u) => (opened.push(u), true),
-      onPrompt: (p) => shownTo.push(p.userCode),
+    // The session's `reopen()` opens the complete URI; nothing opens a browser behind the host's back.
+    const session = await client.identity.signIn.start({
+      channel: "device-code",
+    });
+    (session as unknown as { reopen(): Promise<boolean> }).reopen =
+      async () => (opened.push(session.verificationUriComplete), true);
+    await session.reopen();
+    const r = await session.wait({
       confirm: async (identity, attachable) => {
         expect(identity).toEqual({ name: "Ada", email: "ada@example.com" });
         return attachable;
       },
     });
     expect(opened).toEqual([START.verificationUriComplete]);
-    expect(shownTo).toEqual(["WDJB-MJHT"]);
-    expect(r).toEqual({
-      status: "ready",
+    expect(session.userCode).toBe("WDJB-MJHT");
+    expect(r).toMatchObject({
+      kind: "signedIn",
       identity: { name: "Ada", email: "ada@example.com" },
-      attached: "claimed",
+      activation: { attached: "claimed" },
     });
     expect(polls[0]).toEqual({
       body: {
@@ -110,8 +114,11 @@ describe("device-code conveniences (§3.12)", () => {
         },
       },
     });
-    const p = await client.identity.beginSignIn();
-    expect(await client.identity.pollSignIn(p)).toEqual({ status: "pending" });
+    const p = await client.identity.signIn.start({ channel: "device-code" });
+    expect(await p.wait({ once: true })).toEqual({
+      kind: "pending",
+      interval: 1,
+    });
     expect(Object.keys(JSON.parse(bodies[0]!)).sort()).toEqual([
       "deviceCode",
       "deviceId",

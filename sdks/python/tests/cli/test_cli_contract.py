@@ -35,6 +35,7 @@ from polaris_key.ui.terminal.env import detect
 from polaris_key.ui.terminal.exit import EXIT
 from polaris_key.ui.terminal.flows import Terminal
 
+from .fake_session import FakeSession, raises, sign_in_of
 from .fixtures import kit
 from .golden_support import env
 
@@ -304,35 +305,18 @@ class _StatusClient:
 
 
 class _Identity:
-    def begin_sign_in(self, name: Any = None, confirm_identity: bool = False) -> Any:
-        return SimpleNamespace(
-            deviceCode="dc",
-            userCode="WDJB-MJHT",
-            verificationUri="https://polaris.locker/device",
-            verificationUriComplete="https://polaris.locker/device?user_code=WDJB-MJHT",
-            expiresIn=600,
-            interval=1,
-            expiresAt=int(time.time()) + 600,
-        )
+    """``sign_in.start()`` answers a session that waits for Esc (the cancelled outcome)."""
 
-    def wait_for_sign_in(self, prompt: Any, *, cancel: Any, on_confirm: Any = None) -> Any:
-        cancel.wait(5)
-        raise PolarisError("cancelled", "cancelled")
+    def __init__(self, behave: Any = None) -> None:
+        self.sign_in = sign_in_of(FakeSession(behave=behave))
 
 
 class _PollEnds:
-    """A sign-in whose device-code poll ends in an error carrying ``code``."""
+    """A sign-in whose wait ends in an error carrying ``code``."""
 
     def __init__(self, code: str) -> None:
         self.product = "tidewater"
-        self._code = code
-        self.identity = self
-
-    def begin_sign_in(self, name: Any = None, confirm_identity: bool = False) -> Any:
-        return _Identity().begin_sign_in(name, confirm_identity)
-
-    def wait_for_sign_in(self, prompt: Any, *, cancel: Any, on_confirm: Any = None) -> Any:
-        return SimpleNamespace(status="error", message="device sign-in failed.", code=self._code, identity=None)
+        self.identity = _Identity(raises(PolarisError(code, "device sign-in failed.")))
 
 
 def _offline() -> Any:

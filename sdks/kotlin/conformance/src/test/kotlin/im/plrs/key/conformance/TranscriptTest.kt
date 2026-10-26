@@ -1,12 +1,13 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode identity.devicelabel config.mint
+// @pkey-feature identity.devicecode identity.devicelabel identity.toggle config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
-// @pkey-feature core.presentation identity.account
+// @pkey-feature core.presentation identity.account identity.attach
+// @pkey-feature identity.redirect.web identity.signin.hints
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -73,11 +74,19 @@ import im.plrs.key.core.jsonEquals
 import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
-import im.plrs.key.identity.SignInPoll
+import im.plrs.key.identity.AttachResult
+import im.plrs.key.identity.ConformanceReplayOnly
+import im.plrs.key.identity.RedirectEntropy
+import im.plrs.key.identity.redirectAcquisitionSync
+import im.plrs.key.identity.redirectEntropy
+import im.plrs.key.identity.SignInChannel
+import im.plrs.key.identity.SignInPurpose
+import im.plrs.key.identity.SignInError
+import im.plrs.key.identity.SignInOptions
+import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.identity.SignOutResult
 import im.plrs.key.identity.SubjectResult
-import im.plrs.key.identity.SignInPrompt
-import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInSession
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.core.JsonText
@@ -154,10 +163,10 @@ fun packsObjectFetch(packs: PacksClient, transport: PackObjectTransport): Object
     }
 }
 
-/** The replay's memory between steps: the prompt the last `beginSignIn` returned, the last whole
+/** The replay's memory between steps: the session the last `beginSignIn` started, the last whole
  *  `releaseFetch` payload, the scratch directories to remove and the device's `initial.platform`. */
 class ReplaySession(val platform: String? = null) {
-    var prompt: SignInPrompt? = null
+    var prompt: SignInSession? = null
     var payload: ByteArray? = null
     val dirs = ArrayList<java.io.File>()
 }
@@ -173,10 +182,52 @@ object KotlinReplay {
         step: JsonObject,
         session: ReplaySession,
         objects: PackObjectTransport? = null,
+        server: ReplayServer? = null,
     ): Map<String, JsonElement> {
         val out = LinkedHashMap<String, JsonElement>()
         val args = step["args"]!!.obj
         when (val action = step["action"].stringValue) {
+            "browser" -> {
+                // The browser's half is the recording's; the SDK's half is the authorize URL it builds for the
+                // request the Worker answered with a 303 to the card.
+                val replay = server ?: throw AssertionError("browser without a replay server")
+                val authorize = step["exchanges"]!!.obj["items"]!!.arrayValue!!.map { it.obj }.firstOrNull {
+                    val r = it["request"]!!.obj
+                    r["method"].stringValue == "GET" && (it["response"]!!.obj["status"] as JsonPrimitive).content == "303" &&
+                        r["path"].stringValue!!.contains("/identity/authorize?")
+                }
+                if (authorize != null) {
+                    val started = redirectSession(client, args)
+                    val want = replay.transcript.baseUrl + authorize["request"]!!.obj["path"].stringValue
+                    if (started.authorizeUrl != want) {
+                        replay.recordFailure("authorize URL differs from the recording:\n    want $want\n    got  ${started.authorizeUrl}")
+                    }
+                }
+                replay.serveBrowserExchanges()
+                // Facts the recorder read off the browser's pages; nothing of the SDK's.
+                for ((key, value) in step["expect"]!!.obj) out[key] = value
+            }
+            "redirectComplete" -> {
+                val s = redirectSession(client, args)
+                try {
+                    when (val o = s.complete(args["callbackUrl"].stringValue ?: "")) {
+                        is SignInOutcome.SignedIn -> {
+                            out["result"] = JsonPrimitive("ok")
+                            out["scope"] = o.scope?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["subject"] = o.subject?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["licenseId"] = o.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
+                        }
+                        SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
+                        else -> out["result"] = JsonPrimitive("error")
+                    }
+                } catch (e: SignInError) {
+                    out["result"] = JsonPrimitive(redirectResult(e.code))
+                    out["code"] = JsonPrimitive(e.code)
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
+                }
+            }
             "chunkRange" -> {
                 val transport = objects ?: throw AssertionError("chunkRange without a pack object transport")
                 val fetchRange = chunkRangeFetch(packsObjectFetch(client.packs, transport))
@@ -298,8 +349,9 @@ object KotlinReplay {
             } catch (e: PolarisException) {
                 out["result"] = JsonPrimitive(e.code)
             }
-            "beginSignIn" -> {
-                val p = client.identity.beginSignIn(args["deviceName"].stringValue)
+            // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
+            "beginSignIn" -> try {
+                val p = client.identity.signIn.start(SignInOptions(deviceName = args["deviceName"].stringValue))
                 session.prompt = p
                 out["prompt"] = JsonObject(
                     mapOf(
@@ -311,23 +363,25 @@ object KotlinReplay {
                         "deviceName" to (p.deviceName?.let { JsonPrimitive(it) } ?: JsonNull),
                     ),
                 )
+            } catch (e: PolarisException) {
+                // identity-disabled: the refusal is the step's result.
+                out["result"] = JsonPrimitive(e.code)
             }
             "pollSignIn" -> {
-                val prompt = session.prompt ?: throw AssertionError("pollSignIn before beginSignIn")
+                val sess = session.prompt ?: throw AssertionError("pollSignIn before beginSignIn")
                 try {
-                    when (val poll = client.identity.pollSignIn(prompt)) {
-                        SignInPoll.Pending -> out["result"] = JsonPrimitive("pending")
-                        is SignInPoll.SlowDown -> {
+                    when (val o = sess.wait(once = true)) {
+                        is SignInOutcome.Pending -> if (o.slowDown) {
                             out["result"] = JsonPrimitive("slow-down")
-                            out["interval"] = jsonInt(poll.interval)
-                        }
-                        SignInPoll.Ready -> out["result"] = JsonPrimitive("ready")
-                        SignInPoll.Expired -> out["result"] = JsonPrimitive("expired")
-                        is SignInPoll.Error -> {
-                            out["result"] = JsonPrimitive("error")
-                            poll.code?.let { out["code"] = JsonPrimitive(it) }
-                        }
+                            out["interval"] = jsonInt(o.interval)
+                        } else out["result"] = JsonPrimitive("pending")
+                        is SignInOutcome.SignedIn -> out["result"] = JsonPrimitive("ready")
+                        SignInOutcome.Expired -> out["result"] = JsonPrimitive("expired")
+                        SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
                     }
+                } catch (e: SignInError) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
                 } catch (e: PolarisException) {
                     // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
                     if (e.code != "server-error" && e.code != "network-error") throw e
@@ -345,15 +399,39 @@ object KotlinReplay {
                 is SignOutResult.SignedOut -> out["released"] = JsonPrimitive(r.released)
                 SignOutResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
             }
+            // identity.attach: the preview, the confirm, and the typed refusals.
+            "attach" -> when (val r = client.identity.attach(args["confirm"].boolValue == true)) {
+                is AttachResult.Confirm -> {
+                    out["result"] = JsonPrimitive("confirm")
+                    out["license"] = JsonObject(
+                        mapOf(
+                            "id" to JsonPrimitive(r.license.id),
+                            "tierId" to (r.license.tierId?.let { JsonPrimitive(it) } ?: JsonNull),
+                            "name" to (r.license.name?.let { JsonPrimitive(it) } ?: JsonNull),
+                        ),
+                    )
+                }
+                is AttachResult.Ok -> {
+                    out["result"] = JsonPrimitive("ok")
+                    out["attached"] = r.attached?.let { JsonPrimitive(it) } ?: JsonNull
+                    out["subject"] = r.subject?.let { JsonPrimitive(it) } ?: JsonNull
+                }
+                is AttachResult.Refused -> {
+                    out["result"] = JsonPrimitive("refused")
+                    out["code"] = JsonPrimitive(r.code)
+                }
+                AttachResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
+            }
             "waitForSignIn" -> {
-                val prompt = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
-                when (val done = client.identity.waitForSignIn(prompt)) {
-                    SignInResult.Ready -> out["result"] = JsonPrimitive("ready")
-                    SignInResult.Expired -> out["result"] = JsonPrimitive("expired")
-                    is SignInResult.Error -> {
-                        out["result"] = JsonPrimitive("error")
-                        done.code?.let { out["code"] = JsonPrimitive(it) }
+                val sess = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
+                try {
+                    when (val done = sess.wait()) {
+                        is SignInOutcome.SignedIn -> out["result"] = JsonPrimitive("ready")
+                        else -> out["result"] = JsonPrimitive(done.kind)
                     }
+                } catch (e: SignInError) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
                 }
             }
             "changelog" -> try {
@@ -417,6 +495,32 @@ object KotlinReplay {
         out["licenseStatus"] = JsonPrimitive(client.status().status.wire)
         out["tokenHeld"] = JsonPrimitive(store.getToken() != null)
         return out
+    }
+
+    /** The recorder's constants for a redirect conversation (`packages/worker/test/transcripts`). */
+    private const val RECORDED_STATE = "tidewater-state-0123456789"
+    private const val RECORDED_VERIFIER = "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+    private const val RECORDED_REDIRECT = "https://app.example/auth/callback"
+
+    /** A redirect session the way the step's `args` ask for one: the recorded `state` and verifier (a step may name its own), the hints it carries, the recorded redirect URI. */
+    @OptIn(ConformanceReplayOnly::class)
+    private suspend fun redirectSession(client: PolarisKeyClient, args: JsonObject): SignInSession {
+        client.identity.redirectEntropy = RedirectEntropy(
+            args["state"].stringValue ?: RECORDED_STATE, args["codeVerifier"].stringValue ?: RECORDED_VERIFIER,
+        )
+        return client.identity.signIn.start(
+            SignInOptions(
+                channel = SignInChannel.Redirect, redirectUri = args["redirectUri"].stringValue ?: RECORDED_REDIRECT,
+                loginHint = args["loginHint"].stringValue, nameHint = args["nameHint"].stringValue,
+                purpose = SignInPurpose.entries.firstOrNull { it.wire == args["purpose"].stringValue },
+            ),
+        )
+    }
+
+    /** `redirectComplete`'s `result` for a refusal's code (`format.ts`). */
+    private fun redirectResult(code: String): String = when (code) {
+        "invalid_grant", "invalid_request", "invalid_client", "license_choice_required", "rate_limited" -> code.replace('_', '-')
+        else -> "error"
     }
 
     /** `initial.update.outlet`: a kind, or `{id, kind, subkind?}`. */
@@ -519,7 +623,12 @@ object KotlinReplay {
             fun strings(k: String) = cache[k].objectValue?.mapValues { it.value.stringValue!! } ?: emptyMap()
             store.writeCache(CacheRecord(feeds = strings("feeds"), releaseRecords = strings("releaseRecords")))
         }
-        val services = (t.initial["services"]?.arrayValue?.map { it.stringValue!! } ?: if (u != null) listOf("release", "distribution", "update") else null)
+        // The redirect conversations ride a product that runs Identity (their discovery names it).
+        val redirects = t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }
+        val services = (
+            t.initial["services"]?.arrayValue?.map { it.stringValue!! }
+                ?: if (u != null) listOf("release", "distribution", "update") else if (redirects) listOf("license", "config", "identity") else null
+            )
             ?.mapNotNull { ServiceSlug.of(it) }
         val installed = u?.get("installed").objectValue
         val client = PolarisKeyClient.create(
@@ -548,12 +657,15 @@ object KotlinReplay {
                 },
             ),
         )
+        // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
+        @OptIn(ConformanceReplayOnly::class)
+        if (redirects) client.identity.redirectAcquisitionSync = false
         val session = ReplaySession(t.initial["platform"].stringValue)
         try {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
                 clock = step["now"].longValue ?: t.now
-                val observed = act(client, store, step, session, ReplayPackObjectTransport(server))
+                val observed = act(client, store, step, session, ReplayPackObjectTransport(server), server)
                 server.endStep()
                 for ((key, want) in step["expect"]!!.obj.entries.sortedBy { it.key }) {
                     val got = observed[key]
@@ -734,6 +846,10 @@ class TranscriptTest : ConformanceSuite() {
             "boot-cold-register",
             // I-10b.15: the account on the device.
             "discovery-identity", "locker-discovery-identity", "identity-subject-signout",
+            // I-10b.16: attach.
+            "identity-attach", "identity-attach-errors",
+            // I-10b.18: the redirect core and the request hints.
+            "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
         )
     }
 }

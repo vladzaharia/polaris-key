@@ -76,17 +76,17 @@ def kit(env: TermEnv, theme: Optional[Theme] = None) -> Kit:
 
 
 class _Prompt:
-    userCode = "WDJB-MJHT"
-    verificationUri = "https://polaris.locker/device"
-    verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
-    expiresAt = NOW + 252
+    user_code = "WDJB-MJHT"
+    verification_uri = "https://polaris.locker/device"
+    verification_uri_complete = "https://polaris.locker/device?user_code=WDJB-MJHT"
+    expires_at = NOW + 252
 
 
 class _Result:
-    def __init__(self, status: str, name: Optional[str] = None, email: Optional[str] = None, message: str = "", code: Optional[str] = None) -> None:
-        self.status = status
-        self.message = message
-        self.code = code
+    """A session outcome: ``kind`` is ``signed_in`` or ``expired`` (a refusal is ``errored``)."""
+
+    def __init__(self, kind: str, name: Optional[str] = None, email: Optional[str] = None) -> None:
+        self.kind = kind
         self.identity = type("I", (), {"name": name, "email": email})() if (name or email) else None
 
 
@@ -151,11 +151,11 @@ FIXTURES: Tuple[Fixture, ...] = (
     Fixture("SignInHandoff", "code", "login", _sign_in(True)),
     Fixture("SignInHandoff", "waiting", "login", _sign_in(False, ("use_code", None))),
     Fixture("SignInHandoff", "link-copied", "login", _sign_in(True, ("copied", None))),
-    Fixture("SignIn", "finishing", "login", lambda k: screens.sign_in(k, SignInModel()._set(component="SignIn", state="finishing", url_complete=_Prompt.verificationUriComplete), "login", frame=2)),
-    Fixture("SignIn", "done", "login", _sign_in(False, ("finished", _Result("ready", "Mara Fennick", "mara@fennick.studio")))),
+    Fixture("SignIn", "finishing", "login", lambda k: screens.sign_in(k, SignInModel()._set(component="SignIn", state="finishing", url_complete=_Prompt.verification_uri_complete), "login", frame=2)),
+    Fixture("SignIn", "done", "login", _sign_in(False, ("finished", _Result("signed_in", "Mara Fennick", "mara@fennick.studio")))),
     Fixture("SignInHandoff", "expired", "login", _sign_in(True, ("finished", _Result("expired")))),
-    Fixture("SignInHandoff", "denied", "login", _sign_in(True, ("finished", _Result("error", message="device sign-in was declined.", code="sign-in-denied")))),
-    Fixture("SignInHandoff", "failed", "login", _sign_in(True, ("finished", _Result("error", message="device sign-in failed.", code="sign-in-failed")))),
+    Fixture("SignInHandoff", "denied", "login", _sign_in(True, ("errored", "sign-in-denied"))),
+    Fixture("SignInHandoff", "failed", "login", _sign_in(True, ("errored", "sign-in-failed"))),
     Fixture("SignInHandoff", "cancelled", "login", _sign_in(False, ("cancelled", None))),
     Fixture("SignIn", "error", "login", _sign_in(False, ("failed", "sign-in-unavailable"))),
     # ── Activate ──

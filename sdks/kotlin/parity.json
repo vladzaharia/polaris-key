@@ -179,31 +179,30 @@
     },
     "identity.devicelabel": {
       "status": "implemented",
-      "note": "PX-W13: normalizeDeviceLabel over code points, CoreOptions.deviceName and defaultDeviceName (the JVM host name without .local/.lan/.home; on Android Settings.Global.DEVICE_NAME, else Build.MODEL, from the :android glue), on beginSignIn, activation and registration; SignInPrompt.deviceName is the echo, and PolarisSignIn shows it under the countdown."
+      "note": "PX-W13: normalizeDeviceLabel over code points, CoreOptions.deviceName and defaultDeviceName (the JVM host name without .local/.lan/.home; on Android Settings.Global.DEVICE_NAME, else Build.MODEL, from the :android glue), on signIn.start, activation and registration; SignInPrompt.deviceName is the echo, and PolarisSignIn shows it under the countdown."
     },
     "identity.toggle": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.17: identity.signIn.start(SignInOptions) returns a SignInSession (wait, wait(once), cancel, reopen; Futures signInStart/signInWait); a refusal is a typed SignInError; the subject is stored through core.setSubject on signedIn; beginSignIn, pollSignIn and waitForSignIn are removed."
     },
     "identity.attach": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.16: IdentityClient.attach(confirm) (and PolarisKeyFutures.attach) over discovery's identity fragment: AttachResult.Confirm (preview, nothing written), Ok (token rotated and stored, subject, attached), Refused (the Worker's code and status; the token stays) and Unavailable; identity-attach and identity-attach-errors replayed."
     },
     "identity.account": {
       "status": "implemented",
       "note": "I-10b.15: IdentityClient.subject(), signOut() (pre-sign-out hooks, released drops the token) and openAccount(), over discovery's identity fragment; PolarisEvent.Identity; BootResult.subject; identity-subject-signout and discovery-identity transcripts replayed."
     },
     "identity.redirect.web": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.18: signIn.start(SignInOptions(channel = Redirect, redirectUri)) builds the S256 authorize URL from discovery (IdentityRedirect) for a browser the host opens; session.complete(callbackUrl) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint (form body, product origin only). Single use; a refusal is a typed SignInError and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's; the licence choice (license_choice=app) is I-10b.19's."
     },
     "identity.choice": {
       "status": "planned",
       "wp": "I-10b"
     },
     "identity.signin.hints": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented"
     },
     "identity.keyentry": {
       "status": "implemented",

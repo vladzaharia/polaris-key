@@ -24,6 +24,7 @@ import { readJson, writeJson } from "../core/jsonFile.js";
 import type { CoreContext } from "../core/context.js";
 import { classifyResponse, errorFrom } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
+import type { IdentityEvent } from "./signIn.js";
 import {
   identityFragmentFrom,
   type IdentityFragment,
@@ -100,17 +101,42 @@ export interface AccountDeps {
   wipeLocal: () => Promise<void>;
   /** Open a URL in the host's browser; false when it could not. */
   openUrl: (url: string) => Promise<boolean>;
+  /** `client.events` "identity"; absent in a bare account. */
+  emit?: (e: IdentityEvent) => void;
 }
 
-type AccountEndpoint = "subject" | "signout" | "accountPortal";
+type AccountEndpoint = "subject" | "signout" | "accountPortal" | "attach";
+
+/** The licence an `attach({confirm: false})` preview names. */
+export interface AttachLicense {
+  id: string;
+  tierId: string | null;
+  name: string | null;
+}
+
+/**
+ * What `attach({confirm})` answered (§12.3). `confirm`: the preview, nothing written. `ok`: the
+ * licence is in the signed-in account, the token rotated and stored (`attached` is `claimed` when
+ * this call put it there, absent when it already was); the caller syncs, as after `activate`.
+ * `refused`: the Worker said no (`account_required`, `license_owned`, `license_email_bound`,
+ * `unauthorized`, `not_found`, ...), by its wire code. A refusal is a result, never a thrown auth
+ * failure, and it keeps the token, the cache and the identity.
+ */
+export type AttachResult =
+  | { status: "confirm"; license: AttachLicense }
+  | { status: "ok"; subject: string | null; attached?: "claimed" }
+  | { status: "refused"; code: string; httpStatus: number };
 
 export class Account {
   constructor(private readonly deps: AccountDeps) {}
 
   /** The discovery endpoint, else the typed N/A. Nothing is dialled before this answers. */
-  private async endpoint(name: AccountEndpoint): Promise<string> {
+  private async endpoint(
+    name: AccountEndpoint,
+    feature: Feature = Feature.identityAccount,
+  ): Promise<string> {
     const { ctx } = this.deps;
-    ctx.requireService("identity", Feature.identityAccount);
+    ctx.requireService("identity", feature);
     const fragment: IdentityFragment | null = identityFragmentFrom(
       await this.deps.discovery(),
     );
@@ -121,7 +147,7 @@ export class Account {
       throw new UnsupportedError(
         {
           supported: false,
-          feature: Feature.identityAccount,
+          feature,
           reason: "product",
           detail: `this product's discovery names no identity ${name} endpoint`,
         },
@@ -135,6 +161,15 @@ export class Account {
    * or one with no token). The answer is persisted, so it survives a restart.
    */
   async subject(): Promise<string | null> {
+    const before = await readStoredSubject(this.deps.ctx.dirs.state);
+    const now = await this.fetchSubject();
+    if (now !== before)
+      this.deps.emit?.({ kind: "subjectChanged", subject: now });
+    return now;
+  }
+
+  /** Ask the Worker for the subject and persist the answer; no event (a sign-in raises its own). */
+  async fetchSubject(): Promise<string | null> {
     const url = await this.endpoint("subject");
     const { ctx, tokens } = this.deps;
     const token = tokens.current;
@@ -207,7 +242,89 @@ export class Account {
       );
     await this.deps.forget();
     if (body.released) await this.deps.wipeLocal();
+    this.deps.emit?.({ kind: "signedOut", released: body.released });
     return { released: body.released };
+  }
+
+  /**
+   * `POST identity/attach`. `confirm: false` previews the device's licence and writes nothing;
+   * `confirm: true` puts it in the signed-in account, rotates the token and stores it, and
+   * persists the subject. A Worker refusal is a typed result that changes nothing local.
+   */
+  async attach(confirm: boolean): Promise<AttachResult> {
+    const url = await this.endpoint("attach", Feature.identityAttach);
+    const { ctx, tokens } = this.deps;
+    const token = tokens.current;
+    if (token === null)
+      throw new PolarisError(
+        ErrorCode.noToken,
+        "Activate or sign in before attaching the license.",
+      );
+    const res = await ctx.request(
+      url,
+      {
+        method: "POST",
+        headers: ctx.headers({
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        }),
+        body: JSON.stringify({ confirm }),
+      },
+      "attach",
+    );
+    const text = await res.text().catch(() => "");
+    let body: Record<string, unknown> | null = null;
+    try {
+      const v: unknown = JSON.parse(text);
+      if (v && typeof v === "object" && !Array.isArray(v))
+        body = v as Record<string, unknown>;
+    } catch {
+      body = null;
+    }
+    if (res.status !== 200) {
+      const e = body?.error;
+      const code =
+        typeof e === "string"
+          ? e
+          : e &&
+              typeof e === "object" &&
+              typeof (e as { code?: unknown }).code === "string"
+            ? (e as { code: string }).code
+            : `http_${res.status}`;
+      return { status: "refused", code, httpStatus: res.status };
+    }
+    if (body?.status === "confirm") {
+      const l = (body.license ?? {}) as Record<string, unknown>;
+      return {
+        status: "confirm",
+        license: {
+          id: typeof l.id === "string" ? l.id : "",
+          tierId: typeof l.tierId === "string" ? l.tierId : null,
+          name: typeof l.name === "string" ? l.name : null,
+        },
+      };
+    }
+    if (typeof body?.token !== "string" || body.token === "")
+      throw new PolarisError(
+        ErrorCode.badResponse,
+        "attach answered without a token.",
+      );
+    await tokens.set(body.token, "activate");
+    const subject =
+      typeof body.subject === "string" && isSubject(body.subject)
+        ? body.subject
+        : null;
+    if (subject !== null) {
+      const before = await readStoredSubject(ctx.dirs.state);
+      await writeStoredSubject(ctx.dirs.state, subject);
+      if (subject !== before)
+        this.deps.emit?.({ kind: "subjectChanged", subject });
+    }
+    return {
+      status: "ok",
+      subject,
+      ...(body.attached === "claimed" ? { attached: "claimed" as const } : {}),
+    };
   }
 
   /** Open the product's page in the customer portal in the host's browser. */

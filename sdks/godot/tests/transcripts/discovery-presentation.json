@@ -51,7 +51,8 @@
                     "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
                     "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
                     "devices": "https://key.plrs.im/djdl/devices",
-                    "report": "https://key.plrs.im/djdl/devices/report"
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys"
                   },
                   "presentation": {
                     "name": "djdl",
@@ -208,7 +209,8 @@
                     "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
                     "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
                     "devices": "https://key.plrs.im/djdl/devices",
-                    "report": "https://key.plrs.im/djdl/devices/report"
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys"
                   },
                   "portal": {
                     "enabled": true,

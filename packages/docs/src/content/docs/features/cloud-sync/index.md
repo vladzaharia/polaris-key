@@ -82,7 +82,9 @@ A product declares collections in the catalog's `cloudSync` block, authored in `
 }
 ```
 
-A collection has a `name` (the key charset `[A-Za-z0-9._:-]`, a trailing `.*` makes a pattern), `label`, `template`, `conflict`, `conflictField`, `schema`, `maxRecords` (at most 10,000), `files` (`maxBytes` up to 1 GiB, `keepRevisions`) and `requires`, an entitlement the person's license must grant. A product declares at most 32 collections. `migrations` apply renames, value maps and drops to synced values when the catalog reaches `toSchemaVersion`. A record is at most 64 KiB.
+A collection has a `name` (the key charset `[A-Za-z0-9._:-]`, a trailing `.*` makes a pattern), `label`, `template`, `conflict`, `conflictField`, `schema`, `maxRecords` (at most 10,000), `files` (`maxBytes` up to 1 GiB, `keepRevisions`, `delta`) and `requires`, an entitlement the person's license must grant. A product declares at most 32 collections. `migrations` apply renames, value maps and drops to synced values when the catalog reaches `toSchemaVersion`. A record is at most 64 KiB. `files.delta` sends only the changed chunks of a new file version; it is on for `saves` and off otherwise.
+
+`cloudSync.encryption` is `e2e` (the default) or `server`. With `e2e` the server holds ciphertext and cannot read synced values; `server` is a per-product opt-out that lets it read them, and only then can a migration use `mapValues`. Names starting with `x:` are reserved for the blinded names an E2E client writes, so no config key or collection may use them.
 
 `template: "saves"` declares 16 save slots per player, which nothing raises. A save holds `playtime`, `progress`, `chapter`, `formatVersion` and a `thumbnail`, plus one file of up to 32 MiB, and the last 5 versions of the file are kept. `template: "session"` is 16 records, last write wins, one 8 MiB file.
 
@@ -123,6 +125,8 @@ A platform admin controls three settings: the platform default (`cloudSync.quota
 | `collection_conflict_field`        | `max` and `min` name a number `conflictField`, and only they do                           |
 | `cloud_sync_unknown_entitlement`   | `requires` names a declared flag or a reserved entitlement                                |
 | `cloud_sync_limit_over_ceiling`    | `maxRecords` at most 10,000, `files.maxBytes` at most 1 GiB                               |
+| `cloud_sync_reserved_prefix`       | No config key or collection name starts with `x:`                                         |
+| `cloud_sync_e2e_map_values`        | `mapValues` needs `cloudSync.encryption: "server"`                                        |
 | `invalid_cloud_sync_migration`     | Rename targets are declared keys, and no key is both renamed and dropped                  |
 | `invalid_cloud_sync`               | The block's shape; names the replacement of each retired member                           |
 | `cloud_sync_block_without_service` | A warning: declarations while Cloud Sync is off                                           |

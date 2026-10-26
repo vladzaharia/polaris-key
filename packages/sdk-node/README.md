@@ -83,21 +83,21 @@ client.startRefresh(); // long-running hosts: hourly sync, at once after a wake,
 `license/enroll` where the product allows it). `client.events` is one typed EventEmitter for
 what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
 
-| Need                   | Call                                                                                                                                                                                                                                                                                                                                            |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Activation refusals    | `activateWithKey` / `enroll` answer a typed `ActivationResult`; every kind carries the server's `code`, an unknown 4xx is `refused{code}` and never `device-limit`. `copy.message(code)` (`core.copy`) is the sentence to show.                                                                                                                 |
-| Entitlements           | `entitlements.has(name)` is false whenever the gate is not usable (revoked, expired past grace); `entitlements.value(name)`, `entitlements.all()`, `license.licenseInfo()`.                                                                                                                                                                     |
-| Local settings         | `config.set(key, value)` / `config.clear(key)` persist an override in the state directory (refused for operator-locked keys); `config.setting(key)` is one key's handle; `onConfigChange(key \| "*")`.                                                                                                                                          |
-| Sign-in                | `identity.signInWithBrowser()` opens the device-code page in the system browser; `waitForSignIn(prompt, { confirm })` is the retired attach opt-in (`attachable` is always false); a Deny on the approval page ends as `{ status: "error", code: "sign-in-denied" }`; `identity.current()`, `identity.signOut()`; `qr.terminal()` / `qr.svg()`. |
-| Store purchases        | `client.commerce`: `binding()`, `claim(store, payload)`, `claimSteam(ticketHex, dlcAppId)`, `claimAppStore(jws)`, `claimPlay(productId, token)`. The host passes what its store gave it.                                                                                                                                                        |
-| Verified download      | `release.fetch(target, { to, onProgress, signal })`: bearer, `Range` resume, size and SHA-256 checked against the signed record; never leaves a partial file at `to`.                                                                                                                                                                           |
-| Updater feeds          | `update.feedUrl("appcast" \| "winsparkle" \| "velopack" \| "appInstaller" \| "zsync")` from discovery (typed `Unsupported` when unpublished); `client.distribution.downloadModel()`.                                                                                                                                                            |
-| Install an update      | `update.install(decision)` through a driver (below), answering `restartRequired`, `handedOff`, `storeOpened` or `unsupported{reason}`.                                                                                                                                                                                                          |
-| Boot guard             | `update.markBootAttempt()` at start-up, `update.confirmBoot()` once healthy; after `MAX_FAILED_BOOTS` the driver's rollback runs, else `boot_rolled_back` is reported and the version is skipped.                                                                                                                                               |
-| Update health          | decide, packs, downloads, drivers and the guard journal update-health events in the state directory; each device report carries at most 16 and marks them sent.                                                                                                                                                                                 |
-| Server-side check      | Moved to `@polaris-key/server` in 0.9 (no alias): `createPolarisKey()` and the Express, Hono and Next.js drop-ins, and `verifyLicenseDocument` there.                                                                                                                                                                                           |
-| Crash reporting        | `client.crashTags()` → `{ release, environment, "pkey.outlet" }` for a Sentry init (`release`, `environment`, and a tag).                                                                                                                                                                                                                       |
-| Build stamp and outlet | `.polaris_key/build.json` is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                                                                                                                                        |
+| Need                   | Call                                                                                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Activation refusals    | `activateWithKey` / `enroll` answer a typed `ActivationResult`; every kind carries the server's `code`, an unknown 4xx is `refused{code}` and never `device-limit`. `copy.message(code)` (`core.copy`) is the sentence to show. |
+| Entitlements           | `entitlements.has(name)` is false whenever the gate is not usable (revoked, expired past grace); `entitlements.value(name)`, `entitlements.all()`, `license.licenseInfo()`.                                                     |
+| Local settings         | `config.set(key, value)` / `config.clear(key)` persist an override in the state directory (refused for operator-locked keys); `config.setting(key)` is one key's handle; `onConfigChange(key \| "*")`.                          |
+| Sign-in                | `identity.signIn.start({ channel: "device-code" })` answers a session: `reopen()` opens the device-code page in the system browser, `wait({ confirm })` settles `signedIn                                                       | expired | cancelled`; a Deny on the approval page throws `sign-in-denied`; `identity.current()`, `identity.signOut()`; `qr.terminal()`/`qr.svg()`. |
+| Store purchases        | `client.commerce`: `binding()`, `claim(store, payload)`, `claimSteam(ticketHex, dlcAppId)`, `claimAppStore(jws)`, `claimPlay(productId, token)`. The host passes what its store gave it.                                        |
+| Verified download      | `release.fetch(target, { to, onProgress, signal })`: bearer, `Range` resume, size and SHA-256 checked against the signed record; never leaves a partial file at `to`.                                                           |
+| Updater feeds          | `update.feedUrl("appcast" \| "winsparkle" \| "velopack" \| "appInstaller" \| "zsync")` from discovery (typed `Unsupported` when unpublished); `client.distribution.downloadModel()`.                                            |
+| Install an update      | `update.install(decision)` through a driver (below), answering `restartRequired`, `handedOff`, `storeOpened` or `unsupported{reason}`.                                                                                          |
+| Boot guard             | `update.markBootAttempt()` at start-up, `update.confirmBoot()` once healthy; after `MAX_FAILED_BOOTS` the driver's rollback runs, else `boot_rolled_back` is reported and the version is skipped.                               |
+| Update health          | decide, packs, downloads, drivers and the guard journal update-health events in the state directory; each device report carries at most 16 and marks them sent.                                                                 |
+| Server-side check      | Moved to `@polaris-key/server` in 0.9 (no alias): `createPolarisKey()` and the Express, Hono and Next.js drop-ins, and `verifyLicenseDocument` there.                                                                           |
+| Crash reporting        | `client.crashTags()` → `{ release, environment, "pkey.outlet" }` for a Sentry init (`release`, `environment`, and a tag).                                                                                                       |
+| Build stamp and outlet | `.polaris_key/build.json` is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                        |
 
 Products whose device-trust policy requires platform attestation refuse a Node client
 (`attestation-required`): Node has no attestation service (`devices.attest` is a declared N/A).
@@ -173,7 +173,7 @@ The window gets the kit as well: with `@polaris-key/react`, `<PolarisKeyGate the
 | `client.license`      | `@polaris-key/node/license`      | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                            |
 | `client.config`       | `@polaris-key/node/config`       | `get` / `clearAll` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint) |
 | `client.devices`      | `@polaris-key/node/devices`      | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas             |
-| `client.identity`     | `@polaris-key/node/identity`     | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                                 |
+| `client.identity`     | `@polaris-key/node/identity`     | `signIn.start` — device-code sign-in (RFC 8628)                                                                                 |
 | `client.release`      | `@polaris-key/node/release`      | `changelog` / `installUrl` / `downloadUrl`                                                                                      |
 | `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)                  |
 | `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe     |
@@ -379,43 +379,41 @@ For a host that cannot complete a browser redirect — a CLI over SSH, a daemon,
 `client.identity` signs in with a device code (RFC 8628). It needs the Identity service
 (`expectedServices` or discovery); with it off, every call throws `service-unavailable` before
 any request. When this session's discovery says Identity is on but no sign-in provider is set up,
-`beginSignIn` throws `disabled`, the Worker's own code, also before any request.
+`signIn.start` throws `disabled`, the Worker's own code, also before any request.
 
 ```ts
-const prompt = await client.identity.beginSignIn({
+const session = await client.identity.signIn.start({
+  channel: "device-code",
   deviceName: "Living-room PC",
 });
-// Show prompt.userCode large; render prompt.verificationUriComplete as a QR code (it is the
-// verification page with the code filled in); show prompt.verificationUri as the short URL.
+// Show session.userCode large; render session.verificationUriComplete as a QR code (it is the
+// verification page with the code filled in); show session.verificationUri as the short URL.
 const abort = new AbortController(); // e.g. the player backs out of the sign-in screen
-const result = await client.identity.waitForSignIn(prompt, {
-  signal: abort.signal,
-});
-if (result.status === "ready") {
+const result = await session.wait({ signal: abort.signal });
+if (result.kind === "signedIn") {
   // The device token is stored and the post-activation sync has already run.
 }
 ```
 
-`waitForSignIn` waits at least `prompt.interval` seconds before each poll; a `slow_down`
+`wait()` waits at least `session.interval` seconds before each poll; a `slow_down`
 lengthens the interval for every later poll (to the server's value, or by five seconds), and a
 poll that fails on the network or with a 5xx is retried at the same interval, never faster. It
-resolves `expired` once `prompt.expiresAt` has passed without asking the server again, and
-rejects with the signal's reason when the signal aborts. `pollSignIn(prompt)` makes exactly one
-poll (`pending`, `slow-down` with an `interval`, `ready`, `expired` or `error`) for a host that
-paces itself — an Electron bridge, say.
+resolves `expired` once `session.expiresAt` has passed without asking the server again, and
+rejects with the signal's reason when the signal aborts. `wait({ once: true })` makes exactly one
+poll (`pending` with an `interval`, `signedIn`, `expired` or `cancelled`) for a host that
+paces itself — an Electron bridge, say. `session.cancel()` ends it as `cancelled`.
 
-`prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
+The poll credential is private to the session: it is not a field and never prints. A sign-in yields the signed-in
 identity's **own** license; it does not attach a license this device already held.
 
-**After `ready`, show on the device which account signed in.** Anyone holding the user code can
+**After `signedIn`, show on the device which account signed in.** Anyone holding the user code can
 complete the sign-in on the verification page, so the player must be able to see a mis-binding:
-`ready` carries no identity itself, but the post-acquisition sync has already run, so
-`client.license.getProfile()` returns the signed license profile (`name`, `email`) to show — for
+`signedIn` carries the shown `identity` (`name`, `email`) when the Worker named one, and
+`client.license.getProfile()` returns the signed license profile to show — for
 example "Signed in as Ada Lovelace <ada@example.com>" with a way to sign out.
 
-A prompt from `beginSignIn` and a `MintedToken` print with the credential redacted:
-`console.log` and `JSON.stringify` show `deviceCode` / `token` as `[redacted]`, while the
-properties themselves read normally.
+A `MintedToken` prints with the credential redacted: `console.log` and `JSON.stringify` show
+`token` as `[redacted]`, while the property itself reads normally.
 
 ## Edge-mint
 

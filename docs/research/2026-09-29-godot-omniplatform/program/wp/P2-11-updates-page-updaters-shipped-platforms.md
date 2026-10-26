@@ -104,6 +104,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - **Builds or backs 4 mockup item(s):** `products.integration`, `packages.updates-failing`, `packages.updates-godot`, `packages.updates`.
 
+## Motion strip (MO-13 follow-up, 2026-10-26)
+
+MO-13 shipped without this surface. When it lands, add updater failure persistence: a frame strip (both themes and reduced) showing the failure stays and nothing loops after it, with `frameStrip` from `packages/admin/e2e/strips.ts` and an always-on assertion in the matching `*Motion.e2e.test.ts`; reduced motion is an instant swap. Plan: `_lead/plans/I-28-MO-13-slices.md` §8 M6.
+
 ## Acceptance criteria
 
 - [ ] A Windows-only product sees no Sparkle setup

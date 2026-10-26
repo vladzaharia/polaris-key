@@ -42,7 +42,7 @@ func _tables(t: PKeyTestContext, copy: PKeyCopy) -> void:
 		if copy.activation_message(result, "x") != PKeyCopy.fill(e["message"], "x") or copy.activation_title(result) != e["title"]:
 			bad.append(result)
 	t.check("copy: every activation result reads its generated entry", bad.is_empty(), str(bad))
-	t.check("copy: table sizes", PKeyCoreCopy.COPY_CODES.size() >= 100 and PKeyCoreCopy.COPY_GATE.size() == 9 and PKeyCoreCopy.COPY_ACTIVATION.size() == 14, "%d/%d/%d" % [PKeyCoreCopy.COPY_CODES.size(), PKeyCoreCopy.COPY_GATE.size(), PKeyCoreCopy.COPY_ACTIVATION.size()])
+	t.check("copy: table sizes", PKeyCoreCopy.COPY_CODES.size() >= 100 and PKeyCoreCopy.COPY_GATE.size() == 9 and PKeyCoreCopy.COPY_ACTIVATION.size() == 15, "%d/%d/%d" % [PKeyCoreCopy.COPY_CODES.size(), PKeyCoreCopy.COPY_GATE.size(), PKeyCoreCopy.COPY_ACTIVATION.size()])
 	t.check("copy: PolarisKey core exposes the shared copy", PKeyCore.new().copy == PKeyCopy.shared())
 
 

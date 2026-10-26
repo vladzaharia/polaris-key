@@ -385,10 +385,10 @@ def test_signed_in_as_never_leaves_a_dangling_bracket(columns: int) -> None:
     from .golden_support import env
 
     class Prompt:
-        userCode = "WDJB-MJHT"
-        verificationUri = "https://polaris.locker/device"
-        verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT"
-        expiresAt = 10**10
+        user_code = "WDJB-MJHT"
+        verification_uri = "https://polaris.locker/device"
+        verification_uri_complete = "https://polaris.locker/device?user_code=WDJB-MJHT"
+        expires_at = 10**10
 
     for name, email in (("Mara Fennick", "mara.fennick@tidewater.example"), ("Al", "a@b.example"), ("Mara", "mara@x.io")):
         m = SignInModel(headless=False)

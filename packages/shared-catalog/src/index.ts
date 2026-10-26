@@ -12,16 +12,25 @@ export type {
   CloudSyncAccess,
   SyncConflict,
   CloudSyncTemplate,
+  CloudSyncEncryption,
   CloudSyncCollection,
   CloudSyncMigration,
   CatalogCloudSync,
 } from "./types.js";
+export {
+  CLOUD_CONNECT_DEFAULTS,
+  CLOUD_CONNECT_CEILINGS,
+} from "./cloudConnect.js";
 export {
   USER_SETTING_SYNC_SCOPES,
   USER_SETTING_CONFLICTS,
   SYNC_CONFLICTS,
   CLOUD_SYNC_ACCESS,
   CLOUD_SYNC_TEMPLATE_NAMES,
+  CLOUD_SYNC_ENCRYPTION_MODES,
+  CLOUD_SYNC_DEFAULT_ENCRYPTION,
+  CLOUD_SYNC_RESERVED_PREFIX,
+  cloudSyncEncryption,
   CLOUD_SYNC_KEY_PATTERN,
   CLOUD_SYNC_COLLECTION_PATTERN,
   CLOUD_SYNC_MAX_MERGE_MEMBERS,

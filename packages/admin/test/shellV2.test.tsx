@@ -40,6 +40,7 @@ describe("every page names its data-service (B5)", () => {
       "identity",
       "sync",
       "commerce",
+      "connect",
     ]);
     for (const p of ALL_PAGES) {
       const accent = accentOf(p.page);

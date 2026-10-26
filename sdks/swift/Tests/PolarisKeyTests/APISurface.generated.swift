@@ -32,8 +32,15 @@ func apiSurface() async {
     _ = EntitlementsClient.has  // entitlements.has
     _ = EntitlementsClient.value  // entitlements.value
     _ = EntitlementsClient.all  // entitlements.all
+    _ = \IdentityClient.signIn  // identity.signIn
     _ = IdentityClient.subject  // identity.subject
     _ = IdentityClient.signOut  // identity.signOut
+    _ = SignInNamespace.start  // identity.signIn.start
+    _ = SignInSession.reopen  // identity.signIn.session.reopen
+    _ = SignInSession.cancel  // identity.signIn.session.cancel
+    _ = SignInSession.wait  // identity.signIn.session.wait
+    _ = SignInSession.complete  // identity.signIn.session.complete
+    _ = IdentityClient.LicenseChoiceModel  // identity.useLicenseChoice
     _ = IdentityClient.attach  // identity.attachLicense
     _ = IdentityClient.openAccount  // identity.openAccount
     _ = \PolarisKeyClient.events  // events
@@ -69,10 +76,6 @@ func apiSurface() async {
     _ = LicenseClient.enroll  // license.enroll
     _ = LicenseClient.deactivate  // license.deactivate
     _ = IdentityClient.current  // identity.current
-    _ = IdentityClient.signInWithBrowser  // identity.signInWithBrowser
-    _ = IdentityClient.beginSignIn  // identity.beginSignIn
-    _ = IdentityClient.pollSignIn  // identity.pollSignIn
-    _ = IdentityClient.waitForSignIn  // identity.waitForSignIn
     _ = DevicesClient.list  // devices.list
     _ = DevicesClient.rename  // devices.rename
     _ = DevicesClient.deauthorize  // devices.deauthorize
@@ -109,7 +112,6 @@ func apiSurface() async {
     _ = PolarisKeyClient.currentDevice  // client.currentDevice
     _ = PolarisKeyClient.deactivate  // client.deactivate
     _ = LicenseClient.getLicenseUser  // license.getLicenseUser
-    _ = IdentityClient.acceptSignIn  // identity.acceptSignIn
     _ = LicenseClient.status  // license.status
     _ = LicenseClient.isLicensed  // license.isLicensed
     _ = PolarisKeyClient.start  // client.start

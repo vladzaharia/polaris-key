@@ -1041,7 +1041,7 @@ export const GLOBAL_PAGES: NavPage[] = [
     keywords: "passkey security key console sign in account",
     path: "account/sign-in-methods",
     icon: KeyRound,
-    docs: "/docs/operate/console/",
+    docs: "/docs/help/passkeys/",
     inNav: false,
   },
   ...PLATFORM_PAGES,

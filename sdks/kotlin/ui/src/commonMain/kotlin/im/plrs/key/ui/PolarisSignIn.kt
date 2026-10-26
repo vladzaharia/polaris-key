@@ -2,7 +2,7 @@
 // (UI-KITS.md §4.3, SignInHandoff) shows the product header, "Sign in with a code", the lede with
 // the address set inline, the user code at hero size (spelled out for TalkBack, with a copy
 // button for the pre-filled link), and a countdown; the SDK polls in the background
-// (IdentityClient.waitForSignIn) and the state moves to Done, Expired or Failed.
+// (SignInSession.wait) and the state moves to Done, Expired or Failed.
 //
 // On Android TV the person signs in on another device: the screen leads with a QR code of the
 // pre-filled page and has no "Open sign-in page" (a TV may have no browser), and D-pad focus starts
