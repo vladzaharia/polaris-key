@@ -13,6 +13,8 @@ export interface AutoItem {
   result?: React.ReactNode;
   /** Where the row comes from ("GitHub App"). */
   source?: string;
+  /** Replaces the state's word ("Missing"). */
+  status?: string;
   /** Retry, or the permission to grant: shown on a `needs` or `failed` row. */
   action?: React.ReactNode;
 }
@@ -67,7 +69,7 @@ export function AutoList({
                 <CircleDashed className="size-4 text-fg-muted" />
               )}
             </span>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[12rem] flex-1">
               <p className="text-sm text-fg-strong">{a.label}</p>
               {a.result || a.source ? (
                 <p className="text-xs text-fg-muted">
@@ -88,7 +90,7 @@ export function AutoList({
                     : "text-fg-muted",
               )}
             >
-              {WORDS[a.state]}
+              {a.status ?? WORDS[a.state]}
             </span>
             {(a.state === "failed" || a.state === "needs") && a.action ? (
               <span className="shrink-0">{a.action}</span>

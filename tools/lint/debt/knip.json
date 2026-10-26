@@ -148,7 +148,7 @@
     },
     "packages/admin/src/ui/wizard/index.ts": {
       "knip:exports": 1,
-      "knip:types": 9
+      "knip:types": 8
     },
     "packages/brand/src/emailCopy.ts": {
       "knip:duplicates": 1
