@@ -80,12 +80,19 @@ import {
   SdkId,
 } from "../../constants.generated.js";
 import { SDK_VERSION } from "../../version.js";
+import { BeforeSignOutHooks } from "../../core/account.js";
 import {
   classifyActivation,
+  bodyCode,
   networkOutcome,
+  readKeyEntries,
   type ActivationOutcome,
 } from "../../core/activation.js";
-import { PolarisError, type PolarisErrorCode } from "../../core/types.js";
+import {
+  PolarisError,
+  type AttachResult,
+  type PolarisErrorCode,
+} from "../../core/types.js";
 import type { BridgeState } from "../../desktop/bridge.js";
 import type { ServiceSlug } from "../../core/services.js";
 import type { TrustSet } from "../offline.js";
@@ -298,6 +305,10 @@ export interface BearerSessionOptions {
   store: Store;
   /** Whether the product runs a service (discovery, or the host's expectation). */
   enabled: (slug: ServiceSlug) => boolean;
+  /** The identity endpoints discovery named (`identity.endpoints`): `subject`, `signout`,
+   *  `attach`, `accountPortal`. A call whose endpoint is absent answers unavailable and builds no
+   *  URL; the default answers none. */
+  identityEndpoints?: () => IdentityAccountEndpoints | null;
   /** A hashed hardware fingerprint. A browser has none; the default answers null. */
   fingerprint?: () => HardwareFingerprint | null;
   /** This device's label (§12.7.1). A browser has no platform name: when omitted, or `""`, none
@@ -319,6 +330,22 @@ export interface BearerSessionOptions {
   random?: () => number;
   /** A fresh update-event id (tests). Defaults to 16 random bytes in hex, then the event. */
   eventId?: (event: UpdateEvent) => string;
+}
+
+/** The four account endpoints of the identity fragment (WIRE-CONTRACT-V4 §12.6). */
+export interface IdentityAccountEndpoints {
+  subject?: string;
+  signout?: string;
+  attach?: string;
+  accountPortal?: string;
+}
+
+/** Why an account call could not run: the endpoint is not in discovery. */
+export class AccountUnavailableError extends Error {
+  constructor(readonly endpoint: string) {
+    super(`the product's discovery names no identity ${endpoint} endpoint`);
+    this.name = "AccountUnavailableError";
+  }
 }
 
 type DocumentResult =
@@ -369,6 +396,9 @@ export class BearerSession {
   >();
   private readonly journal: UpdateEventEntry[] = [];
   private loaded: Promise<void> | null = null;
+  /** The signed-in account's pairwise subject, as last answered (this page only). */
+  private subjectValue: string | null = null;
+  private readonly beforeSignOut = new BeforeSignOutHooks();
   /** Consecutive sync passes that hit a 5xx, a 429 or a network failure (SP-R02). */
   private syncFailures = 0;
   /** Epoch seconds before which `sync()` does not touch the network. */
@@ -745,7 +775,14 @@ export class BearerSession {
       const token = (body as { token?: unknown } | null)?.token;
       if (!isString(token))
         return { kind: "error", code: "invalid-response", status: 200 };
-      return { kind: "ok", code: "ok", status: 200, token };
+      const keyEntries = readKeyEntries(body);
+      return {
+        kind: "ok",
+        code: "ok",
+        status: 200,
+        token,
+        ...(keyEntries ? { keyEntries } : {}),
+      };
     }
     return classifyActivation(res.status, body, res.headers.get("retry-after"));
   }
@@ -791,6 +828,12 @@ export class BearerSession {
         // best-effort: the local wipe is what matters
       }
     }
+    await this.wipeLocal();
+  }
+
+  /** Forget the token, the grants and the subject. Makes no request. */
+  private async wipeLocal(): Promise<void> {
+    this.subjectValue = null;
     this.token = null;
     this.tokenSource = null;
     this.mints.clear();
@@ -811,6 +854,142 @@ export class BearerSession {
     this.lastVerifiedAt = null;
     this.record = { v: CACHE_VERSION, ...carried };
     await this.opts.store.writeCache(this.record).catch(() => undefined);
+  }
+
+  // ── The account (WIRE-CONTRACT-V4 §12.3, §12.6) ────────────────────────────────────────────
+
+  /** The held account subject, from the last `subject()`, `attach()` or sign-in; null for a
+   *  device with no account. */
+  get account(): string | null {
+    return this.subjectValue;
+  }
+
+  /** Whether discovery names the account endpoints (`identity.account: true`'s fragment). */
+  accountPortal(): string | null {
+    const url = this.opts.identityEndpoints?.()?.accountPortal;
+    return isString(url) ? url : null;
+  }
+
+  private accountEndpoint(name: "subject" | "signout" | "attach"): string {
+    const url = this.opts.identityEndpoints?.()?.[name];
+    if (!isString(url)) throw new AccountUnavailableError(name);
+    return url;
+  }
+
+  /** The endpoint's path under this product, for `send`. A URL on another origin or product is
+   *  refused rather than followed: the bearer goes only to the Worker that issued it. */
+  private accountPath(url: string): string {
+    const prefix = `${this.opts.baseUrl}/${this.opts.product}/`;
+    if (!url.startsWith(prefix))
+      throw new PolarisError(
+        "bad_response",
+        "an identity endpoint points outside this product.",
+      );
+    return url.slice(prefix.length);
+  }
+
+  /** Run `fn` with the device bearer; the token is the caller's, never logged. */
+  private async withBearer(
+    path: string,
+    init: { method: string; headers?: Record<string, string>; body?: string },
+  ): Promise<Response> {
+    await this.init();
+    const token = this.requireToken();
+    try {
+      return await this.send(path, {
+        ...init,
+        headers: this.headers({
+          authorization: `Bearer ${token}`,
+          ...init.headers,
+        }),
+      });
+    } catch (e) {
+      throw new PolarisError("network-error", (e as Error).message);
+    }
+  }
+
+  /** Register a function `signOut()` awaits before it signs out. Returns the remover. */
+  onBeforeSignOut(hook: () => Promise<void> | void): () => void {
+    return this.beforeSignOut.add(hook);
+  }
+
+  /** `GET identity/subject`: the account this device's licence is in, or null. */
+  async subject(): Promise<string | null> {
+    const res = await this.withBearer(
+      this.accountPath(this.accountEndpoint("subject")),
+      { method: "GET" },
+    );
+    if (res.status !== 200) throw await refusal(res, `http_${res.status}`);
+    const b = (await res.json().catch(() => ({}))) as { subject?: unknown };
+    this.subjectValue = isString(b.subject) ? b.subject : null;
+    return this.subjectValue;
+  }
+
+  /**
+   * Sign out of the account: the pre-sign-out hooks, then `POST identity/signout`. On
+   * `released: true` the server freed this device, so the token, the grants and the subject go;
+   * on `released: false` the device keeps its token (it is still activated by key) and only the
+   * subject is forgotten.
+   */
+  async signOut(): Promise<{ released: boolean }> {
+    const path = this.accountPath(this.accountEndpoint("signout"));
+    await this.beforeSignOut.run();
+    const res = await this.withBearer(path, { method: "POST" });
+    if (res.status !== 200) throw await refusal(res, `http_${res.status}`);
+    const b = (await res.json().catch(() => ({}))) as { released?: unknown };
+    if (typeof b.released !== "boolean")
+      throw new PolarisError(
+        "bad_response",
+        "sign-out answered without `released`.",
+      );
+    if (b.released) await this.wipeLocal();
+    else this.subjectValue = null;
+    return { released: b.released };
+  }
+
+  /**
+   * `POST identity/attach`. `confirm: false` previews the device's licence; `confirm: true`
+   * puts it in the signed-in account, rotates and stores the token (the caller syncs, as after `activate`). A refusal is a
+   * typed result that keeps every piece of state.
+   */
+  async attach(confirm: boolean): Promise<AttachResult> {
+    const path = this.accountPath(this.accountEndpoint("attach"));
+    const res = await this.withBearer(path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ confirm }),
+    });
+    const body: unknown = await res.json().catch(() => null);
+    if (res.status !== 200)
+      return {
+        kind: "refused",
+        code: bodyCode(body) ?? `http_${res.status}`,
+        status: res.status,
+      };
+    const b = (body ?? {}) as Record<string, unknown>;
+    if (b.status === "confirm") {
+      const l = (b.license ?? {}) as Record<string, unknown>;
+      return {
+        kind: "confirm",
+        license: {
+          id: isString(l.id) ? l.id : "",
+          tierId: isString(l.tierId) ? l.tierId : null,
+          name: isString(l.name) ? l.name : null,
+        },
+      };
+    }
+    if (!isString(b.token))
+      throw new PolarisError(
+        "bad_response",
+        "attach answered without a token.",
+      );
+    await this.setToken(b.token, "activate");
+    this.subjectValue = isString(b.subject) ? b.subject : null;
+    return {
+      kind: "ok",
+      subject: this.subjectValue,
+      attached: b.attached === "claimed" ? "claimed" : null,
+    };
   }
 
   // ── The §5 single re-acquire ─────────────────────────────────────────────────────────────

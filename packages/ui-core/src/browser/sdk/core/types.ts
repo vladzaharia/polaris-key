@@ -29,7 +29,7 @@ import type { ProductCatalog } from "@polaris-key/catalog";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
 // erased, so this value import creates no runtime cycle.
 import { noBusy, noErrors } from "./services.js";
-import type { ActivationOutcome } from "./activation.js";
+import type { ActivationOutcome, KeyEntries } from "./activation.js";
 import type { BootAttempt } from "./bootGuard.js";
 import type { BootResult, BootRunOptions } from "./boot.js";
 import type { CrashTags, CrashTagsOptions } from "./crash.js";
@@ -231,6 +231,31 @@ export class PolarisError extends Error {
     if (manageUrl !== undefined) this.manageUrl = manageUrl;
   }
 }
+
+/** What a key activation answered on success (identity.keyentry): the licence's key entries,
+ *  or `null` with Identity off. A refusal throws `sign-in-failed` whose `activation` is the typed
+ *  outcome (`keyEntryLimit` with `manageUrl` and `keyEntries`, `licenseOwned` with `signInUrl`);
+ *  neither clears the device's token, cache or store. */
+export interface KeyActivation {
+  keyEntries: KeyEntries | null;
+}
+
+/** `signOut()`'s answer: `released` is true when the server freed this device (the token is
+ *  gone), false when the device keeps its key activation and only the account is forgotten. */
+export interface SignOutResult {
+  released: boolean;
+}
+
+/** `attach({confirm})`'s typed answer (identity.attach). A refusal is a result, never a throw: it
+ *  keeps the token, the cache and the subject (`code` is the server's: `account_required`,
+ *  `license_owned`, `license_email_bound`, `not_found`, `unauthorized`). */
+export type AttachResult =
+  | {
+      kind: "confirm";
+      license: { id: string; tierId: string | null; name: string | null };
+    }
+  | { kind: "ok"; subject: string | null; attached: "claimed" | null }
+  | { kind: "refused"; code: string; status: number };
 
 /** What `decideUpdate()` takes: the same three arguments as `@polaris-key/node`'s
  *  `client.update.decide()`. */
@@ -437,8 +462,26 @@ export interface PolarisAdapter {
   signInWithOidc(): Promise<OidcSignInHandle | void>;
   /** Activate with a typed key using the active transport. */
   submitKey(key: string): Promise<void>;
-  /** Sign out / deauthorize and wipe local state. */
-  signOut(): Promise<void>;
+  /** `submitKey`'s SDK-named form (license.activateWithKey): resolves with the licence's
+   *  `keyEntries`; a refusal throws `sign-in-failed` with the typed `activation` (see
+   *  {@link KeyActivation}). */
+  activateWithKey(key: string): Promise<KeyActivation>;
+  /** Sign out. With the product's account endpoints (discovery's `identity.endpoints.signout`),
+   *  after the {@link onBeforeSignOut} hooks, it asks the server to release this device;
+   *  without them it deauthorizes and wipes local state, as it always did. */
+  signOut(): Promise<SignOutResult>;
+  /** The account this device's licence is in (a pairwise `ps_` subject), or `null`. Bearer and
+   *  desktop modes; a cookie page, or a product with no account endpoint, throws the typed
+   *  `UnsupportedError`. */
+  subject(): Promise<string | null>;
+  /** `attach({confirm: false})` previews the device's licence, `{confirm: true}` puts it in the
+   *  signed-in account. Typed `UnsupportedError` where the transport or product cannot. */
+  attach(opts: { confirm: boolean }): Promise<AttachResult>;
+  /** Open the product's page in the customer portal (discovery's `accountPortal`). Typed
+   *  `UnsupportedError` when the product names none. */
+  openAccount(): Promise<void>;
+  /** Register a function `signOut()` awaits first (Cloud Sync's flush). Returns the remover. */
+  onBeforeSignOut(hook: () => Promise<void> | void): () => void;
   /** The current device, when the active session has a verified device-bound document. */
   currentDevice(): DeviceInfo | null;
   /** List account/license devices when supported by the backend. */

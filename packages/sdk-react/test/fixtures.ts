@@ -311,3 +311,38 @@ export async function signCompact(
   );
   return `${input}.${b64url(new Uint8Array(sig))}`;
 }
+
+/** A signed licence and config pair for one device (empty grants), as a bearer page syncs them. */
+export async function signedDocs(
+  key: TestKey,
+  opts: { aud: string; deviceId: string; now: number },
+): Promise<{ license: string; config: string }> {
+  const claims = {
+    iss: "key.plrs.im",
+    aud: opts.aud,
+    deviceId: opts.deviceId,
+    issuedAt: opts.now - 10,
+    expiresAt: opts.now + 3600,
+    graceUntil: opts.now + 86400,
+  };
+  return {
+    license: await signCompact(
+      { ...claims, licenseId: "lic-1", entitlements: {} },
+      key,
+      "pkey-license+jws",
+    ),
+    config: await signCompact(
+      { ...claims, schemaVersion: 1, secrets: {}, config: {} },
+      key,
+      "pkey-config+jws",
+    ),
+  };
+}
+
+/** Wait for an adapter's first snapshot. */
+export async function settled(adapter: {
+  snapshot(): { phase: string };
+}): Promise<void> {
+  for (let i = 0; i < 200 && adapter.snapshot().phase === "loading"; i += 1)
+    await new Promise((r) => setTimeout(r, 2));
+}

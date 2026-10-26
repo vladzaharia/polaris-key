@@ -533,8 +533,9 @@ export function describeError(
         : {}),
     };
     // `refused` names the server's code: its own sentence when the catalog has one, else the
-    // activation table's "refused ({code})". Every other kind reads the activation table.
-    if (a.kind !== "refused")
+    // activation table's "refused ({code})"; `licenseOwned` (no activation entry of its own,
+    // I-46.1's copy) reads the same way. Every other kind reads the activation table.
+    if (a.kind !== "refused" && a.kind !== "licenseOwned")
       return activationMessage(a.kind, { locale, code: a.code, params });
     return hasCopy(a.code)
       ? copyMessage(a.code, { locale, params })

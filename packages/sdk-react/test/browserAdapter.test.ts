@@ -303,8 +303,8 @@ describe("BrowserAdapter — an unknown 403 is never the device limit (SDK-PARIT
     ["enroll_claimed", "enrollClaimed"],
     ["license_disabled", "licenseDisabled"],
     ["attestation_required", "attestationRequired"],
-    ["license_owned", "refused"],
-    ["key_entry_limit", "refused"],
+    ["license_owned", "licenseOwned"],
+    ["key_entry_limit", "keyEntryLimit"],
   ])("403 %s → %s, keeping the server's code", async (code, kind) => {
     const adapter = browserAdapter({
       auth: "cookie",
@@ -369,7 +369,7 @@ describe("BrowserAdapter — signOut", () => {
       now: () => NOW_SEC,
     });
     await ready(adapter);
-    await expect(adapter.signOut()).resolves.toBeUndefined();
+    await expect(adapter.signOut()).resolves.toEqual({ released: true });
     expect(adapter.snapshot().status).toBe("needs-activation");
     adapter.dispose();
   });

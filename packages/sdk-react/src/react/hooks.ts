@@ -21,6 +21,7 @@ import {
   type DeviceInfo,
   type LicenseState,
   type PolarisAdapter,
+  type SignOutResult,
   type PolarisError,
   type PolarisState,
   type ServiceBusyMap,
@@ -110,7 +111,10 @@ export interface UsePolarisKey {
   refresh: () => Promise<void>;
   signInWithOidc: PolarisAdapter["signInWithOidc"];
   submitKey: (key: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  /** `submitKey`'s SDK-named form: resolves with the licence's `keyEntries` (identity.keyentry);
+   *  a refusal throws `sign-in-failed` with the typed `activation`. */
+  activateWithKey: PolarisAdapter["activateWithKey"];
+  signOut: () => Promise<SignOutResult>;
   currentDevice: () => DeviceInfo | null;
   listDevices: () => Promise<DeviceInfo[]>;
   renameDevice: (deviceId: string, label: string | null) => Promise<void>;
@@ -149,6 +153,7 @@ export function usePolarisKey(): UsePolarisKey {
       refresh: () => adapter.refresh({ force: true }),
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
+      activateWithKey: (key: string) => adapter.activateWithKey(key),
       signOut: () => adapter.signOut(),
       currentDevice: () => adapter.currentDevice(),
       listDevices: () => adapter.listDevices(),
@@ -375,7 +380,14 @@ export interface UsePolarisAuth {
   signInWithOidc: PolarisAdapter["signInWithOidc"];
   /** Activate with a license key using the active transport. */
   submitKey: (key: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  /** The account calls (identity.account, identity.attach); bearer and desktop modes, a typed
+   *  `UnsupportedError` otherwise. */
+  signOut: () => Promise<SignOutResult>;
+  subject: PolarisAdapter["subject"];
+  attach: PolarisAdapter["attach"];
+  openAccount: PolarisAdapter["openAccount"];
+  /** Register a function `signOut()` awaits first. Returns the remover. */
+  onBeforeSignOut: PolarisAdapter["onBeforeSignOut"];
   /** True when this product exposes generic OIDC sign-in. DERIVED from the identity service's
    *  discovery fragment — a product with no identity service has no login to offer. */
   supportsOidcLogin: boolean;
@@ -400,6 +412,10 @@ export function usePolarisAuth(): UsePolarisAuth {
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
+      subject: () => adapter.subject(),
+      attach: (opts) => adapter.attach(opts),
+      openAccount: () => adapter.openAccount(),
+      onBeforeSignOut: (hook) => adapter.onBeforeSignOut(hook),
       supportsOidcLogin: state.capabilities.identity.enabled,
       supportsKeyEntry: state.capabilities.license.enabled,
       keyEntryBusy: state.busy.license,

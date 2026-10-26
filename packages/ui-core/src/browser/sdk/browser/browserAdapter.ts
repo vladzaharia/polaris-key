@@ -214,12 +214,21 @@ import type { InstallOptions, InstallOutcome } from "../core/install.js";
 import type { BrowserBootGuard } from "./bootGuard.js";
 import type { SwContainer } from "./serviceWorkerUpdate.js";
 import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
-import { classifyActivation } from "../core/activation.js";
+import { classifyActivation, readKeyEntries } from "../core/activation.js";
+import {
+  AccountFeature,
+  accountEndpointsOf,
+  accountUnavailable,
+  openPortal,
+} from "../core/account.js";
 import { activationError } from "../core/activationError.js";
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
 import type { StoreStatus } from "@polaris-key/client-core";
 import type {
+  AttachResult,
   BrowserAuthMode,
+  KeyActivation,
+  SignOutResult,
   CommerceBinding,
   CommerceClaimResult,
   CommercePayload,
@@ -695,6 +704,7 @@ export class BrowserAdapter implements PolarisAdapter {
         pinned: this.pinned,
         store: this.bearerStore,
         enabled: (slug) => this.capabilities[slug].enabled,
+        identityEndpoints: () => accountEndpointsOf(this.discovery_),
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
         ...(opts.deviceName !== undefined
           ? { deviceName: opts.deviceName }
@@ -1232,6 +1242,10 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async submitKey(key: string): Promise<void> {
+    await this.activateWithKey(key);
+  }
+
+  async activateWithKey(key: string): Promise<KeyActivation> {
     if (this.configError) throw this.fail("license", this.configError);
     if (!this.capabilities.license.enabled) {
       throw this.fail(
@@ -1249,7 +1263,7 @@ export class BrowserAdapter implements PolarisAdapter {
         if (outcome.kind !== "ok") throw activationError(outcome);
         await this.bearer.sync();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
-        return;
+        return { keyEntries: outcome.keyEntries ?? null };
       } catch (e) {
         throw this.fail(
           "license",
@@ -1278,10 +1292,12 @@ export class BrowserAdapter implements PolarisAdapter {
           classifyActivation(res.status, body, res.headers.get("retry-after")),
         );
       }
+      const ok: unknown = await res.json().catch(() => null);
       this.apply(await this.fetchSession(), {
         busy: noBusy(),
         error: noErrors(),
       });
+      return { keyEntries: readKeyEntries(ok) ?? null };
     } catch (e) {
       throw this.fail(
         "license",
@@ -1292,14 +1308,22 @@ export class BrowserAdapter implements PolarisAdapter {
     }
   }
 
-  async signOut(): Promise<void> {
+  async signOut(): Promise<SignOutResult> {
     if (this.configError) throw this.fail("identity", this.configError);
     this.setBusy("identity", true);
     if (this.bearer) {
       try {
+        await this.ensureDiscovery();
+        // With the account endpoints the server releases the device; without them (a key-only
+        // product) sign-out is the device deauthorization it always was.
+        if (accountEndpointsOf(this.discovery_)?.signout) {
+          const r = await this.bearer.signOut();
+          this.applyBearer({ busy: noBusy(), error: noErrors() });
+          return r;
+        }
         await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
-        return;
+        return { released: true };
       } catch (e) {
         throw this.fail(
           "identity",
@@ -1358,6 +1382,7 @@ export class BrowserAdapter implements PolarisAdapter {
           },
         ),
       );
+      return { released: true };
     } catch (e) {
       throw this.fail(
         "identity",
@@ -1366,6 +1391,62 @@ export class BrowserAdapter implements PolarisAdapter {
           : new PolarisError("sign-out-failed", (e as Error).message),
       );
     }
+  }
+
+  /** The bearer session and the endpoint an account call needs, or the typed refusal: a cookie
+   *  page holds no device token, and a product whose discovery names no endpoint has no account. */
+  private async accountSession(
+    feature: string,
+    endpoint: "subject" | "signout" | "attach" | "accountPortal",
+  ): Promise<BearerSession> {
+    const b = this.requireBearer(feature, COOKIE_DETAIL);
+    await this.ensureDiscovery();
+    if (!accountEndpointsOf(this.discovery_)?.[endpoint])
+      throw accountUnavailable(feature, endpoint);
+    return b;
+  }
+
+  /** Run an account call, keeping a refusal as the identity slice's error. */
+  private async account<T>(run: () => Promise<T>): Promise<T> {
+    this.setBusy("identity", true);
+    try {
+      const r = await run();
+      this.setBusy("identity", false);
+      return r;
+    } catch (e) {
+      throw this.fail("identity", asError(e));
+    }
+  }
+
+  async subject(): Promise<string | null> {
+    const b = await this.accountSession(AccountFeature.account, "subject");
+    return this.account(() => b.subject());
+  }
+
+  async attach(opts: { confirm: boolean }): Promise<AttachResult> {
+    const b = await this.accountSession(AccountFeature.attach, "attach");
+    return this.account(async () => {
+      const r = await b.attach(opts.confirm === true);
+      if (r.kind === "ok") {
+        await b.sync();
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+      }
+      return r;
+    });
+  }
+
+  async openAccount(): Promise<void> {
+    const b = await this.accountSession(
+      AccountFeature.account,
+      "accountPortal",
+    );
+    const url = b.accountPortal();
+    if (url) openPortal(url);
+  }
+
+  onBeforeSignOut(hook: () => Promise<void> | void): () => void {
+    const b = this.requireBearer(AccountFeature.account, COOKIE_DETAIL);
+    return b.onBeforeSignOut(hook);
   }
 
   currentDevice(): DeviceInfo | null {
@@ -1409,7 +1490,11 @@ export class BrowserAdapter implements PolarisAdapter {
   async deauthorizeDevice(deviceId: string): Promise<void> {
     const current = this.currentDevice();
     if (current?.id === deviceId) {
-      await this.signOut();
+      // This device's own seat: the deauthorization `signOut()` makes for a key-only product.
+      if (this.bearer) {
+        await this.bearer.deactivate();
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+      } else await this.signOut();
       return;
     }
     const b = this.requireBearer(
@@ -2343,6 +2428,8 @@ const BEARER_ONLY = new Set<string>([
   Feature.licenseEnroll,
   Feature.licenseReregister,
   Feature.identityDevicecode,
+  Feature.identityAccount,
+  Feature.identityAttach,
   Feature.configMint,
   Feature.commerceReceipt,
   // SP-58: a cookie page holds no signed licence document to send.

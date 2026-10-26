@@ -6,7 +6,7 @@
 // @pkey-feature license.reregister devices.register devices.report identity.devicecode config.mint
 // @pkey-feature commerce.receipt license.refusals telemetry.updates
 // @pkey-feature ui.boot release.fetch release.distribution
-// @pkey-feature core.presentation
+// @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 //
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
 // device token run through the browser's bearer engine, `BearerSession`
@@ -110,6 +110,7 @@ import { fetchDownloadModel } from "../src/browser/distribution.js";
 import { ErrorCode } from "../src/constants.generated.js";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { projectState } from "../src/core/adapter.js";
+import { accountEndpointsOf } from "../src/core/account.js";
 import { DesktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisBridge } from "../src/desktop/bridge.js";
 import type { CommerceClaimResult } from "../src/core/types.js";
@@ -266,6 +267,13 @@ async function replay(t: Transcript): Promise<void> {
     deviceName: t.initial.deviceName ?? "",
     outlet: () => (outletId === null ? null : { id: outletId }),
     eventId: () => nextEventId ?? "unexpected-event-id",
+    // The account endpoints: the last discovery's, else the Worker's standard ones.
+    identityEndpoints: () =>
+      accountEndpointsOf(discovered as Record<string, unknown> | null) ?? {
+        subject: `${t.baseUrl}/${t.product}/identity/subject`,
+        signout: `${t.baseUrl}/${t.product}/identity/signout`,
+        attach: `${t.baseUrl}/${t.product}/identity/attach`,
+      },
   });
   await session.init();
   for (const e of journal) {
@@ -346,13 +354,35 @@ async function replay(t: Transcript): Promise<void> {
         if (r.kind === "ok") await session.sync();
         // license.refusals: the §3.1 kind in the shared activationResult vocabulary
         // (`deviceLimit` → `device-limit`), and the server's code it was classified from.
-        observed.result = r.kind.replace(
-          /[A-Z]/g,
-          (c) => `-${c.toLowerCase()}`,
-        );
+        // identity.keyentry: `license_owned` is a `refused` in the shared vocabulary (its kind,
+        // `licenseOwned`, carries the sign-in link); the entries are null with Identity off.
+        observed.result =
+          r.kind === "licenseOwned"
+            ? "refused"
+            : r.kind.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
         observed.code = r.code;
         // PX-W8: the refusal link, validated, or null when the Worker sent none.
-        if (r.kind === "deviceLimit") observed.manageUrl = r.manageUrl ?? null;
+        if (r.kind === "deviceLimit" || r.kind === "keyEntryLimit")
+          observed.manageUrl = r.manageUrl ?? null;
+        if (r.kind === "ok" || r.kind === "keyEntryLimit")
+          observed.keyEntries = r.keyEntries ? { ...r.keyEntries } : null;
+        break;
+      }
+      case "subject":
+        observed.subject = await session.subject();
+        break;
+      case "signOut":
+        observed.released = (await session.signOut()).released;
+        break;
+      case "attach": {
+        const r = await session.attach(step.args.confirm === true);
+        observed.result = r.kind === "refused" ? "refused" : r.kind;
+        if (r.kind === "confirm") observed.license = r.license;
+        if (r.kind === "ok") {
+          observed.attached = r.attached;
+          observed.subject = r.subject;
+        }
+        if (r.kind === "refused") observed.code = r.code;
         break;
       }
       case "deactivate":
@@ -651,20 +681,16 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       (t) => t.id,
     );
     // Planned here, so its transcript does not apply: identity.toggle (PX-W17's identity-disabled
-    // transcript; React's port is I-10a) and identity.keyentry (PX-W9's three keyentry-*
-    // transcripts; React's port is PX-W9b). commerce.receipt is SP-16's, telemetry.updates SP-14's.
-    // identity.attach and identity.account are I-09's attach, subject and sign-out transcripts
-    // (and discovery-identity); React's port is I-10a. identity.redirect.web and
+    // transcript; React's port is I-10a.10). commerce.receipt is SP-16's, telemetry.updates
+    // SP-14's. identity.keyentry, identity.account and identity.attach run here (I-10a.9: the
+    // keyentry-* and identity-* transcripts, over the bearer engine). identity.redirect.web and
     // identity.signin.hints are I-08's redirect-web-* and identity-request-hints transcripts
     // (the browser's `authorize` and Continue are `browser` steps no SDK asserts); React's port
-    // is I-10a. identity.choice is I-08b's redirect-web-choose*, choice-* transcripts (the choice.*
-    // primitives); React's port is I-10a. sync.settings is U-05's cloudsync-* transcripts (the
-    // cloudSyncPull and cloudSyncPush steps); React's port is U-20.
+    // is I-10a.10. identity.choice is I-08b's redirect-web-choose*, choice-* transcripts (the
+    // choice.* primitives); React's port is I-10a.11. sync.settings is U-05's cloudsync-*
+    // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
     const plannedHere = [
       "identity.toggle",
-      "identity.keyentry",
-      "identity.attach",
-      "identity.account",
       "identity.redirect.web",
       "identity.signin.hints",
       "identity.choice",

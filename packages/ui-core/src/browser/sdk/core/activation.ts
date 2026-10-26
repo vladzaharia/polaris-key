@@ -14,7 +14,27 @@
 // server's code and whose `activation` is the kind below, so a component branches on
 // `err.activation.kind` and reads its copy by `err.wireCode` (`./copy.ts`).
 
-import { readManageUrl } from "@polaris-key/client-core";
+import { isManageUrl, readManageUrl } from "@polaris-key/client-core";
+
+/** WIRE-CONTRACT-V4 §12.2 rule 5: a licence's key entries. `used` may exceed `limit`. */
+export interface KeyEntries {
+  used: number;
+  limit: number;
+}
+
+/** The `keyEntries` of an activation answer, or `undefined` (Identity off, or malformed). */
+export function readKeyEntries(body: unknown): KeyEntries | undefined {
+  if (body === null || typeof body !== "object") return undefined;
+  const k = (body as { keyEntries?: unknown }).keyEntries;
+  if (k === null || typeof k !== "object") return undefined;
+  const { used, limit } = k as { used?: unknown; limit?: unknown };
+  return Number.isInteger(used) &&
+    (used as number) >= 0 &&
+    Number.isInteger(limit) &&
+    (limit as number) >= 1
+    ? { used: used as number, limit: limit as number }
+    : undefined;
+}
 
 /** The §3.1 kinds. `ok` never appears on an error. */
 export type ActivationKind =
@@ -29,6 +49,8 @@ export type ActivationKind =
   | "rateLimited"
   | "unauthorized"
   | "enrollDisabled"
+  | "keyEntryLimit"
+  | "licenseOwned"
   | "refused"
   | "error";
 
@@ -46,6 +68,12 @@ export interface ActivationOutcome {
   /** `deviceLimit` (PX-W8): the customer-portal link that frees a seat, validated
    *  (`readManageUrl`), present while the product's portal is on. Never an auth failure. */
   manageUrl?: string;
+  /** `ok` (Identity on) and `keyEntryLimit`: the licence's key entries. A refusal keeps the
+   *  device's token, cache and store, and is never retried. */
+  keyEntries?: KeyEntries;
+  /** `licenseOwned`: the sign-in page link (`<origin>/signin?product=<slug>`), validated like
+   *  `manageUrl`. It carries no key and names no account. */
+  signInUrl?: string;
   /** `rateLimited`: the server's `Retry-After`, in seconds, when it sent one. */
   retryAfterSeconds?: number;
   /** The server's own human message, when it sent one (never shown verbatim by the kits). */
@@ -64,6 +92,8 @@ const KIND_BY_CODE: Readonly<Record<string, ActivationKind>> = {
   rate_limited: "rateLimited",
   unauthorized: "unauthorized",
   enroll_disabled: "enrollDisabled",
+  key_entry_limit: "keyEntryLimit",
+  license_owned: "licenseOwned",
 };
 
 /** The body shapes the Worker answers with: v3 nested (`{error:{code,…}}`) and v2 flat. */
@@ -113,7 +143,15 @@ export function classifyActivation(
   body: unknown,
   retryAfter?: string | null,
 ): ActivationOutcome {
-  if (status >= 200 && status < 300) return { kind: "ok", code: "ok", status };
+  if (status >= 200 && status < 300) {
+    const keyEntries = readKeyEntries(body);
+    return {
+      kind: "ok",
+      code: "ok",
+      status,
+      ...(keyEntries ? { keyEntries } : {}),
+    };
+  }
   const code = bodyCode(body);
   const b = (
     typeof body === "object" && body !== null ? body : {}
@@ -136,6 +174,26 @@ export function classifyActivation(
       ...(limit !== undefined ? { limit } : {}),
       ...(deviceCount !== undefined ? { deviceCount } : {}),
       ...(manageUrl !== undefined ? { manageUrl } : {}),
+    };
+  }
+  if (named === "keyEntryLimit") {
+    const manageUrl = readManageUrl(body);
+    const keyEntries = readKeyEntries(body);
+    return {
+      kind: "keyEntryLimit",
+      code: code!,
+      ...base,
+      ...(manageUrl !== undefined ? { manageUrl } : {}),
+      ...(keyEntries ? { keyEntries } : {}),
+    };
+  }
+  if (named === "licenseOwned") {
+    const signInUrl = (b as { signInUrl?: unknown }).signInUrl;
+    return {
+      kind: "licenseOwned",
+      code: code!,
+      ...base,
+      ...(isManageUrl(signInUrl) ? { signInUrl } : {}),
     };
   }
   if (named === "rateLimited" || (status === 429 && !code)) {
