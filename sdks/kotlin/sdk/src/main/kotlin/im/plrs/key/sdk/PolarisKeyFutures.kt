@@ -17,6 +17,7 @@ package im.plrs.key.sdk
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.SyncResult
 import im.plrs.key.core.UpdateCheck
+import im.plrs.key.identity.AttachResult
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseInfo
 import im.plrs.key.core.FetchedFile
@@ -64,6 +65,9 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     public fun enroll(): CompletableFuture<ActivationResult> = call { client.enroll() }
 
     public fun deactivate(): CompletableFuture<Unit> = call { client.deactivate() }
+
+    /** `identity.attach(confirm)`: preview (false) or add the device's licence to the signed-in account (true). */
+    public fun attach(confirm: Boolean): CompletableFuture<AttachResult> = call { client.identity.attach(confirm) }
 
     // ── Config ───────────────────────────────────────────────────────────────────────────────
 

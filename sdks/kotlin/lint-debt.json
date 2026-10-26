@@ -432,7 +432,7 @@
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:argument-list-wrapping": 42,
       "ktlint:standard:binary-expression-wrapping": 2,
-      "ktlint:standard:blank-line-between-when-conditions": 48,
+      "ktlint:standard:blank-line-between-when-conditions": 52,
       "ktlint:standard:function-literal": 6,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 5,
@@ -993,9 +993,9 @@
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityAccount.kt": {
       "detekt:exceptions.SwallowedException": 2,
       "detekt:exceptions.TooGenericExceptionCaught": 3,
-      "detekt:style.MagicNumber": 4,
-      "detekt:style.ReturnCount": 1,
-      "detekt:style.ThrowsCount": 2
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.ThrowsCount": 3
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt": {
       "detekt:complexity.ComplexCondition": 1,
@@ -1012,6 +1012,9 @@
       "ktlint:standard:argument-list-wrapping": 5,
       "ktlint:standard:function-signature": 4,
       "ktlint:standard:statement-wrapping": 3
+    },
+    "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityAttachTest.kt": {
+      "ktlint:standard:argument-list-wrapping": 5
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityClientTest.kt": {
       "detekt:exceptions.SwallowedException": 1,

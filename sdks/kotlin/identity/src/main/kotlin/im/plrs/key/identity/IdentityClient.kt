@@ -148,6 +148,12 @@ public class IdentityClient(
     public suspend fun openAccount(): OpenAccountResult = account.openAccount()
 
     /**
+     * `POST attach`: [confirm] false previews the device's licence and writes nothing; true adds it to
+     * the signed-in account and rotates the token. A refusal is a typed [AttachResult.Refused].
+     */
+    public suspend fun attach(confirm: Boolean): AttachResult = account.attach(confirm)
+
+    /**
      * Begin a device-code sign-in. Throws `service-unavailable` before any request when this product
      * does not run Identity (D-21). No bearer is sent even when the device holds a token: a sign-in
      * asks for the IDENTITY's credential, and the server binds the flow to this device by its id.

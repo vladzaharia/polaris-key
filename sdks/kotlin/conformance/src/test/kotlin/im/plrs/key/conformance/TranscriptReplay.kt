@@ -228,7 +228,7 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
         fun service(endpoints: Map<String, String>) = JsonObject(
             mapOf("enabled" to JsonPrimitive(true), "endpoints" to JsonObject(endpoints.mapValues { JsonPrimitive(it.value) })),
         )
-        val services = if ("identity.account" in transcript.features) {
+        val services = if ("identity.account" in transcript.features || "identity.attach" in transcript.features) {
             // identity.account: Identity with its account endpoints, beside the licence the steps use.
             mapOf(
                 "license" to service(mapOf("activate" to "$base/license/activate", "document" to "$base/license/document")),

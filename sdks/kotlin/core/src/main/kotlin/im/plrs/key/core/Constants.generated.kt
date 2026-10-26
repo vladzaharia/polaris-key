@@ -1807,7 +1807,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.devicelabel" to CapabilityRow("implemented", "identity", listOf()),
     "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
     "identity.keyentry" to CapabilityRow("implemented", "identity", listOf()),
-    "identity.attach" to CapabilityRow("planned", "identity", listOf()),
+    "identity.attach" to CapabilityRow("implemented", "identity", listOf()),
     "identity.account" to CapabilityRow("implemented", "identity", listOf()),
     "identity.redirect.web" to CapabilityRow("planned", "identity", listOf()),
     "identity.choice" to CapabilityRow("planned", "identity", listOf()),
@@ -1878,4 +1878,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "431f96c46d28ac15dee7a19c28370bf7545eb5f379103248525951139843a751"
+public const val CAPABILITY_DIGEST: String = "ed3ff22c9899722ce3b027b85c4421a12c43fd4e6034d39a77dbab5a314717f8"
