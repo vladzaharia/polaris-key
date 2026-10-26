@@ -7,7 +7,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
-// @pkey-feature release.fetch identity.keyentry
+// @pkey-feature release.fetch identity.keyentry identity.account identity.attach
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -260,6 +260,26 @@ enum SwiftReplay {
             case .rateLimited: out["result"] = .string("rate-limited")
             case .notConfigured: out["result"] = .string("not-configured")
             case .error: out["result"] = .string("error")
+            }
+        case "subject":
+            out["subject"] = try await client.identity.subject().map(JSONValue.string) ?? .null
+        case "signOut":
+            out["released"] = .bool(try await client.identity.signOut().released)
+        case "attach":
+            switch try await client.identity.attach(confirm: step.args["confirm"] == .bool(true)) {
+            case .confirm(let l):
+                out["result"] = .string("confirm")
+                out["license"] = .object([
+                    "id": .string(l.id), "tierId": l.tierId.map(JSONValue.string) ?? .null,
+                    "name": l.name.map(JSONValue.string) ?? .null,
+                ])
+            case .ok(let subject, let attached):
+                out["result"] = .string("ok")
+                out["attached"] = attached.map(JSONValue.string) ?? .null
+                out["subject"] = subject.map(JSONValue.string) ?? .null
+            case .refused(let code, _):
+                out["result"] = .string("refused")
+                out["code"] = .string(code)
             }
         case "deactivate":
             try await client.deactivate()

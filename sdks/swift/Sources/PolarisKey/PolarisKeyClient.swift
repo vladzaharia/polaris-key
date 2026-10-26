@@ -308,9 +308,16 @@ public actor PolarisKeyClient {
         if devices.attestSupport().isSupported {
             core.setAttestor { await devices.attest().isAttested }
         }
-        // `identity.signOut()` is the facade's `deactivate()`: seat release, wipe, `license`.
-        identity.installSignOut {
-            try await PolarisKeyClient.deactivate(license: license, publisher: publisher)
+        // `identity.signOut()` asks the Worker to sign out; when it releases the device the
+        // facade wipes the credential and raises `license` (the seat is already released).
+        identity.installSignOut { [core] in
+            do {
+                try await core.clearAll()
+            } catch {
+                await publisher.publish()
+                throw error
+            }
+            await publisher.publish()
         }
         backendSync.set { [weak self] force in
             guard let self else { return false }

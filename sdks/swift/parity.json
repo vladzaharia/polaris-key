@@ -159,12 +159,10 @@
       "wp": "I-10b"
     },
     "identity.attach": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented"
     },
     "identity.account": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented"
     },
     "identity.redirect.web": {
       "status": "planned",

@@ -15,7 +15,8 @@ extension PolarisKeyClient {
     }
 
     /// `identity.signOut()`.
-    public func signOut() async throws {
+    @discardableResult
+    public func signOut() async throws -> SignOutResult {
         try await identity.signOut()
     }
 
