@@ -271,8 +271,7 @@
       "code": "interstitial_required",
       "kind": "wire",
       "service": "identity",
-      "description": "403, flat, from the token-exchange grant on POST /<p>/identity/token (WIRE-CONTRACT-V5 §12.11.3): the app cannot finish the sign-in itself. `reason` is `no_link` (no link exists for the provider token; carries `linkHandle` and `expiresIn`) or `terms` (the product's terms version is unaccepted); `url` is the sign-in card for the product. A client reads an unknown `reason` as `no_link`.",
-      "plannedBy": "I-13.4"
+      "description": "403, flat, from the token-exchange grant on POST /<p>/identity/token (WIRE-CONTRACT-V5 §12.11.3): the app cannot finish the sign-in itself. `reason` is `no_link` (no link exists for the provider token; carries `linkHandle` and `expiresIn`) or `terms` (the product's terms version is unaccepted); `url` is the sign-in card for the product. A client reads an unknown `reason` as `no_link`."
     },
     {
       "code": "not_nearby",
