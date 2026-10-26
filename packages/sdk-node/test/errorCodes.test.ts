@@ -100,7 +100,7 @@ describe("error-code registry (core.errors)", () => {
     expect(ERROR_CODE_KINDS.unauthorized).toBe("wire");
     expect(Object.keys(ERROR_CODE_KINDS)).toEqual([...ERROR_CODE_VALUES]);
     expect(BarrelErrorCode).toBe(ErrorCode);
-    expect(PROTOCOL_VERSION).toBe(4);
+    expect(PROTOCOL_VERSION).toBe(5);
   });
 
   it("the package root re-exports every generated constant", () => {

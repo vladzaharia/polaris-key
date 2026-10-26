@@ -1668,7 +1668,7 @@ SERVICE_SLUG_VALUES: Tuple[str, ...] = (
 
 
 #: The wire contract version (`@polaris-key/protocol/core`).
-PROTOCOL_VERSION: Final[int] = 4
+PROTOCOL_VERSION: Final[int] = 5
 
 
 #: `corpusVersion` of conformance/corpus/v2/cases.json.

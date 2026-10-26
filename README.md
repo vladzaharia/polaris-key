@@ -67,7 +67,7 @@ docs/                RUNBOOK, DEPLOYMENT, PRIVACY; security/ (threat model, wire
 | Help       | People using an app built on Polaris Key   | `packages/docs/src/content/docs/help/`                                                               |
 | Contribute | Working on this repo                       | `packages/docs/src/content/docs/contribute/` (admin tier), and [`AGENTS.md`](AGENTS.md)              |
 
-Every wire-format rule is in [`docs/security/WIRE-CONTRACT-V4.md`](docs/security/WIRE-CONTRACT-V4.md);
+Every wire-format rule is in [`docs/security/WIRE-CONTRACT-V5.md`](docs/security/WIRE-CONTRACT-V5.md);
 the threat model is [`docs/security/THREAT-MODEL.md`](docs/security/THREAT-MODEL.md).
 
 ## Develop

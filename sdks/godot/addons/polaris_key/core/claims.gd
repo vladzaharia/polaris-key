@@ -1,9 +1,9 @@
 class_name PKeyClaims
 extends RefCounted
-## Wire constants (WIRE-CONTRACT-V4 §1–§3; client-core `claims.ts`, shared-protocol `core.ts`).
+## Wire constants (WIRE-CONTRACT-V5 §1–§3; client-core `claims.ts`, shared-protocol `core.ts`).
 ## Normative: identical in every implementation.
 
-const PROTOCOL_VERSION := 4
+const PROTOCOL_VERSION := 5
 ## The fixed issuer (Amendment A1) — never derived from a base URL.
 const ISSUER := "key.plrs.im"
 ## Tolerance on every clock comparison, in seconds.

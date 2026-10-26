@@ -39,7 +39,7 @@ In both, extra fields such as `message`, `allowedRange` or `limit` sit at the to
 
 ## Versioning
 
-The spec's file name, `v3`, versions the API description. The signed documents carry their own version, `PROTOCOL_VERSION` 4, in the protocol ([The protocol](/docs/reference/protocol/)). Neither appears in a path: a change that breaks a response shape bumps the protocol version and ships to every SDK together.
+The spec's file name, `v3`, versions the API description. The signed documents carry their own version, `PROTOCOL_VERSION` 5, in the protocol ([The protocol](/docs/reference/protocol/)). Neither appears in a path: a change that breaks a response shape bumps the protocol version and ships to every SDK together.
 
 ## Pagination
 

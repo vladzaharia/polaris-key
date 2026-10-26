@@ -13,7 +13,7 @@ The golden vectors, recorded HTTP conversations and parity registries that make 
 
 ```
 conformance/
-  corpus/v2/            golden vectors from one signer (wire contract v4); generated
+  corpus/v2/            golden vectors from one signer (wire contract v5); generated
     cases.json          signed documents, JWS cases, trust, bundles, feeds, release records
     *-matrix.json       gate, stage, config, update, outlet, plan, feed-url, presentation, ui, backend
     fingerprint.json, headers.json, device-label.json, sync-scenarios.json
@@ -93,12 +93,12 @@ The HTTP transcripts follow the same rule. `transcripts/*.json` and their Godot 
 
 ### Changing the wire
 
-A wire change is an all-languages event, in this order: contract (`docs/security/WIRE-CONTRACT-V4.md`), catalog, corpus, SDKs. A feature is not done until every implementation passes: client-core, Node, React, Python, Swift, Godot, and Kotlin for the features its parity manifest has implemented.
+A wire change is an all-languages event, in this order: contract (`docs/security/WIRE-CONTRACT-V5.md`), catalog, corpus, SDKs. A feature is not done until every implementation passes: client-core, Node, React, Python, Swift, Godot, and Kotlin for the features its parity manifest has implemented.
 
 ## Docs
 
 - [Corpus](../packages/docs/src/content/docs/contribute/corpus.md): the generator, its families, adding a case
 - [Conformance corpus reference](../packages/docs/src/content/docs/reference/protocol/corpus.mdx)
 - [Parity reference](../packages/docs/src/content/docs/reference/parity.mdx)
-- [Wire contract v4](../docs/security/WIRE-CONTRACT-V4.md)
+- [Wire contract v5](../docs/security/WIRE-CONTRACT-V5.md)
 - [Generators reference](../packages/docs/src/content/docs/reference/generators.mdx)

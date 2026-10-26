@@ -7,7 +7,7 @@ Operator material, design specs, the security record and research for the reposi
 - People read it: operators (`RUNBOOK.md`, `DEPLOYMENT.md`), UI authors (`design/`), reviewers (`security/`) and planners (`research/`).
 - `packages/docs` imports `RUNBOOK.md` and `DEPLOYMENT.md` into the Operate → Platform pages and `PRIVACY.md` into the Reference page "What apps collect". The site reads the file in place, so there is one copy.
 - `design/BRAND.md` is implemented by `packages/brand`; `design/UI-KITS.md` by the UI kits and `packages/ui-qa`.
-- `security/WIRE-CONTRACT-V4.md` is the normative wire spec that `conformance/` pins.
+- `security/WIRE-CONTRACT-V5.md` is the normative wire spec that `conformance/` pins.
 - Long-form adopter and authoring material is not here; it lives in `packages/docs/src/content/docs/`.
 
 ## Layout
@@ -28,7 +28,7 @@ docs/
     console-product-card/, flows/, licenses/, portal/, setup/, sign-in/, experience/   static boards and screenshots
   security/         repo only; never published to the site
     THREAT-MODEL.md   the threat model
-    WIRE-CONTRACT-V4.md   normative wire contract; V2 and V3 are the superseded record
+    WIRE-CONTRACT-V5.md   normative wire contract; V2, V3 and V4 are the superseded record
     arch/             architecture reviews: multi-tenant blast radius, operational resilience
   legal/            unreviewed drafts of the privacy policy, terms and help page, with review notes
   research/         dated plans and research, one folder per topic
@@ -89,7 +89,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 - [Published docs](../packages/docs/src/content/docs/index.mdx): the site's landing page
 - [Concepts](../packages/docs/src/content/docs/start/concepts.md): the glossary
 - [Writing docs](../packages/docs/src/content/docs/contribute/writing-docs.md)
-- [Wire contract v4](security/WIRE-CONTRACT-V4.md)
+- [Wire contract v5](security/WIRE-CONTRACT-V5.md)
 - [Brand design system](design/BRAND.md)
 - [Mockups](design/mockups/README.md)
 - [Godot omniplatform program](research/2026-09-29-godot-omniplatform/program/README.md)

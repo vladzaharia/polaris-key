@@ -1366,7 +1366,7 @@ public let HEADER_NAME_VALUES: [String] = [
 ]
 
 /// The wire contract version (`@polaris-key/protocol/core`).
-public let PROTOCOL_VERSION = 4
+public let PROTOCOL_VERSION = 5
 
 /// `corpusVersion` of conformance/corpus/v2/cases.json.
 public let CORPUS_VERSION = 2
