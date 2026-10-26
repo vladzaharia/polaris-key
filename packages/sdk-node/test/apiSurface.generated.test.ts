@@ -61,6 +61,8 @@ it("identity.subject", () =>
   expect("subject" in IdentityClient.prototype).toBe(true));
 it("identity.signOut", () =>
   expect("signOut" in IdentityClient.prototype).toBe(true));
+it("identity.attachLicense", () =>
+  expect("attach" in IdentityClient.prototype).toBe(true));
 it("identity.openAccount", () =>
   expect("openAccount" in IdentityClient.prototype).toBe(true));
 it("client.discover", () =>
