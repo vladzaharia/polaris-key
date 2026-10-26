@@ -1117,7 +1117,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "pack's store transports instead of the channels: Background Assets (package, " +
           "upload; needs macOS and ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or " +
           "ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, " +
-          "STEAM_CONFIG_VDF and steamcmd) and Play Asset Delivery, which is always " +
+          "STEAM_CONFIG_VDF, the secret your workflow writes to ~/Steam/config/config.vdf, and steamcmd) and Play Asset Delivery, which is always " +
           "skipped: run pkey transport play-pad modules before the build. A transport " +
           "that skips leaves the pack on the Polaris Key CDN. It runs the rest from " +
           "--from, the pack publish's --out directory, for the pack release --version; " +

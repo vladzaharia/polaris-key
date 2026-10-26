@@ -96,6 +96,8 @@ export interface SyncRow {
   state: RowState;
   /** The secret's environment variable when it is what the row waits on (never its value). */
   secret?: string;
+  /** Every secret the row waits on (`secret` is the first). */
+  secrets?: string[];
   reason?:
     | "missing-secret"
     | "needs-dir"
@@ -116,6 +118,10 @@ export interface SyncRow {
   depot?: string;
   /** transport: why an `auto` route is served from the CDN meanwhile (one per skipped set). */
   note?: string;
+  /** transport: set with `note`; the machine form of "served from the Polaris Key CDN". */
+  fallback?: "pkey-cdn";
+  /** transport `earlier-failed`: the part of the same transport that failed. */
+  after?: string;
   /** local-files: the matched build's platform and its file (absolute). */
   platform?: string;
   file?: string;
@@ -263,14 +269,21 @@ export function planSync(
 }
 
 /** The ASC key Background Assets upload with; the first one unset is the one named. */
-function ascMissing(env: PlanOptions["env"]): string | undefined {
-  if (!env.ASC_KEY_ID?.trim()) return "ASC_KEY_ID";
-  if (!env.ASC_ISSUER_ID?.trim()) return "ASC_ISSUER_ID";
+function ascMissing(env: PlanOptions["env"]): string[] {
+  const out: string[] = [];
+  if (!env.ASC_KEY_ID?.trim()) out.push("ASC_KEY_ID");
+  if (!env.ASC_ISSUER_ID?.trim()) out.push("ASC_ISSUER_ID");
   if (!env.ASC_PRIVATE_KEY?.trim() && !env.ASC_KEY_PATH?.trim())
-    return "ASC_PRIVATE_KEY";
-  return undefined;
+    out.push("ASC_PRIVATE_KEY");
+  return out;
 }
 
+/**
+ * Both are presence gates, never read here: STEAM_USERNAME is the build account, and
+ * STEAM_CONFIG_VDF is the secret the workflow decodes into steamcmd's own
+ * `~/Steam/config/config.vdf` before the run. Nothing in the code uses its value, and steamcmd
+ * is not given the variable.
+ */
 export const STEAM_SECRETS = ["STEAM_USERNAME", "STEAM_CONFIG_VDF"] as const;
 
 /** `steamcmd` (or its `steamcmd.sh` wrapper) on the PATH. */
@@ -288,8 +301,8 @@ export function toolOnPath(env: PlanOptions["env"], name: string): boolean {
   return false;
 }
 
-const cdnNote = (outlets: string[], until: string): string =>
-  `${outlets.join(", ")}: served from the Polaris Key CDN until ${until}.`;
+const cdnNote = (outlets: string[], pack: string): string =>
+  `${outlets.join(", ")} ${outlets.length > 1 ? "get" : "gets"} ${pack} from the Polaris Key CDN until then.`;
 
 /**
  * The plan for one pack (`--deliverable`): its routes on apple-ba, steam-depot and play-pad, one
@@ -306,8 +319,13 @@ export function planTransports(
     routes.filter((r) => r.transport === t);
   const outletOf = (id: string) => p.outlets.find((x) => x.id === id);
   const base = (transport: string, part: string, ids: string[]): SyncRow => ({
-    outlet: ids.join(","),
-    channel: transport,
+    // The outlet only when there is exactly one; `outlets` always.
+    outlet: ids.length === 1 ? ids[0]! : "",
+    channel:
+      (() => {
+        const x = outletOf(ids[0]!);
+        return x ? channelsOf(x)[0]?.id : undefined;
+      })() ?? transport,
     step: "transport",
     store: transport,
     state: "planned",
@@ -320,18 +338,24 @@ export function planTransports(
     rows: SyncRow[],
     reason: NonNullable<SyncRow["reason"]>,
     group: ManifestTransportRoute[],
-    until: string | null,
-    secret?: string,
+    cdn: boolean,
+    secrets?: string[],
   ): void => {
     for (const r of rows) {
       r.state = "skipped";
       r.reason = reason;
-      if (secret) r.secret = secret;
+      if (secrets?.length) {
+        r.secret = secrets[0];
+        r.secrets = secrets;
+      }
     }
     const auto = group
       .filter((r) => r.origin === "auto")
       .map((r) => r.outletId);
-    if (auto.length && until) rows[0]!.note = cdnNote(auto, until);
+    if (auto.length && cdn) {
+      rows[0]!.note = cdnNote(auto, packId);
+      rows[0]!.fallback = "pkey-cdn";
+    }
   };
   const rows: SyncRow[] = [];
 
@@ -344,9 +368,8 @@ export function planTransports(
     ];
     const missing = ascMissing(o.env);
     if ((o.platform ?? process.platform) !== "darwin")
-      skip(group, "needs-macos", ba, "run on macOS");
-    else if (missing)
-      skip(group, "missing-secret", ba, `${missing} is set`, missing);
+      skip(group, "needs-macos", ba, true);
+    else if (missing.length) skip(group, "missing-secret", ba, true, missing);
     rows.push(...group);
   }
 
@@ -359,13 +382,12 @@ export function planTransports(
       { ...base("steam-depot", "vdf", [r.outletId]), depot: id },
       { ...base("steam-depot", "build", [r.outletId]), depot: id },
     ];
-    const missing = STEAM_SECRETS.find((e) => !o.env[e]?.trim());
+    const missing = STEAM_SECRETS.filter((e) => !o.env[e]?.trim());
     const has = o.hasTool ?? (() => true);
-    if (id === undefined) skip(group, "no-depot", [r], null);
-    else if (missing)
-      skip(group, "missing-secret", [r], `${missing} is set`, missing);
-    else if (!has("steamcmd"))
-      skip(group, "no-steamcmd", [r], "steamcmd is installed");
+    if (id === undefined) skip(group, "no-depot", [r], false);
+    else if (missing.length)
+      skip(group, "missing-secret", [r], true, [...missing]);
+    else if (!has("steamcmd")) skip(group, "no-steamcmd", [r], true);
     rows.push(...group);
   }
 
@@ -373,7 +395,8 @@ export function planTransports(
   if (pad.length) {
     const ids = pad.map((r) => r.outletId);
     const row = base("play-pad", "modules", ids);
-    skip([row], "pre-build", pad, null);
+    row.command = `pkey transport play-pad modules --deliverable ${packId}`;
+    skip([row], "pre-build", pad, false);
     rows.push(row);
   }
   return rows;
@@ -488,8 +511,6 @@ interface TransportRun {
   appBuilds: Map<string, string>;
 }
 
-const ACCOUNT_MARK = "STEAM_ACCOUNT_SHOWN";
-
 /** The allow-listed `steamcmd +run_app_build` of one app build script. */
 function steamBuildStep(
   outlet: StepOutlet,
@@ -502,6 +523,8 @@ function steamBuildStep(
     command: "run-app-build",
     tool: ciStore("steam")!.list.tool,
     argv: ["+login", account, "+run_app_build", script, "+quit"],
+    // The account is never shown, reported or quoted: the variable's name stands for it.
+    shownArgv: ["+login", "STEAM_USERNAME", "+run_app_build", script, "+quit"],
     outlet,
   };
 }
@@ -572,15 +595,13 @@ async function runTransport(
       script = `${DEFAULT_STEAM_OUT}/app_build_${app}.vdf`;
     }
     const step = steamBuildStep(outlet, io.env.STEAM_USERNAME!.trim(), script);
-    if (dryRun) {
-      checkStep(step);
-      // The account shows as its variable, never its value.
-      row.command = commandLine(step.tool, [
-        "+login",
-        ACCOUNT_MARK,
-        ...step.argv.slice(2),
-      ]).replace(ACCOUNT_MARK, "$STEAM_USERNAME");
-    } else
+    // The account shows as its variable, never its value.
+    row.command = commandLine(step.tool, step.shownArgv!).replace(
+      "+login STEAM_USERNAME",
+      "+login $STEAM_USERNAME",
+    );
+    if (dryRun) checkStep(step);
+    else
       await runStoreSteps([step], {
         cwd: io.cwd,
         product: t.product,
@@ -614,18 +635,20 @@ async function runRows(
     appBuilds: new Map(),
   };
   // A transport's later part waits on its earlier one (package, upload; vdf, build).
-  const broken = new Set<string>();
+  const broken = new Map<string, string>();
   for (const row of rows) {
     if (row.state !== "planned") continue;
     const group = `${row.transport}|${row.outlets?.join(",")}`;
     if (row.step === "transport" && broken.has(group)) {
       row.state = "skipped";
       row.reason = "earlier-failed";
+      row.after = broken.get(group);
       continue;
     }
     if (dryRun && row.step === "pr") continue;
     const stdout = sink();
     const stderr = sink();
+    let failNotes: string[] = [];
     try {
       if (row.step === "transport") {
         await runTransport(
@@ -682,10 +705,14 @@ async function runRows(
         continue;
       }
       row.state = "failed";
-      if (row.step === "transport") broken.add(group);
-      row.error = (err instanceof Error ? err.message : String(err)).split(
+      if (row.step === "transport") broken.set(group, row.part!);
+      const lines = (err instanceof Error ? err.message : String(err)).split(
         "\n",
-      )[0]!;
+      );
+      row.error = lines[0]!;
+      // A transport's reason can run over lines: the next few show dim under the row.
+      if (row.step === "transport")
+        failNotes = lines.slice(1, 5).filter(Boolean);
     }
     const notes = [
       ...stdout.text().split("\n"),
@@ -696,7 +723,8 @@ async function runRows(
       row.step === "transport"
         ? stderr.text().split("\n").filter(Boolean)
         : notes;
-    if (kept.length && !dryRun) row.notes = kept;
+    if ((kept.length || failNotes.length) && !dryRun)
+      row.notes = [...failNotes, ...kept];
   }
 }
 
@@ -707,15 +735,30 @@ const DONE_PART: Readonly<Record<string, string>> = {
   "steam-depot build": "built",
 };
 
+/** "A is not set", "A and B are not set", "A, B and C are not set". */
+function notSet(names: string[]): string {
+  const shown = names.map((n) =>
+    n === "ASC_PRIVATE_KEY" ? "ASC_PRIVATE_KEY (or ASC_KEY_PATH)" : n,
+  );
+  const list =
+    shown.length > 1
+      ? `${shown.slice(0, -1).join(", ")} and ${shown.at(-1)}`
+      : shown[0]!;
+  return `${list} ${shown.length > 1 ? "are" : "is"} not set`;
+}
+
+/** The prose of a row; its command, if it shows one, is `commandOf` (never wrapped). */
 function describe(r: SyncRow, dryRun: boolean): string {
   switch (r.state) {
     case "planned":
       return r.step === "transport"
-        ? `${dryRun ? "would run" : "planned"} ${r.command ?? `pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}`}`
+        ? dryRun
+          ? "would run"
+          : "planned"
         : !dryRun
           ? "pending"
           : r.command
-            ? `would run ${r.command}`
+            ? "would run"
             : r.step === "pr"
               ? "would open a pull request"
               : "would run";
@@ -724,17 +767,17 @@ function describe(r: SyncRow, dryRun: boolean): string {
         ? (r.channel === "homebrew" || r.channel === "scoop") &&
           r.secret === PR_TOKEN_ENV
           ? `skipped: needs ${PR_TOKEN_ENV} or the GitHub App`
-          : `skipped: ${r.secret} is not set`
+          : `skipped: ${notSet(r.secrets ?? [r.secret!])}`
         : r.reason === "needs-macos"
           ? "skipped: needs macOS"
           : r.reason === "no-steamcmd"
-            ? "skipped: steamcmd is not installed"
+            ? "skipped: steamcmd is not on PATH"
             : r.reason === "no-depot"
               ? `skipped: set depots.${r.pack} on the steam outlet`
               : r.reason === "earlier-failed"
-                ? "skipped: the step before it failed"
+                ? `skipped: ${r.after ?? "the step before it"} failed`
                 : r.reason === "pre-build"
-                  ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}`
+                  ? "skipped: runs before the build"
                   : r.reason === "no-file"
                     ? "skipped: no fitting file under --dir"
                     : r.reason === "first-submission"
@@ -759,13 +802,48 @@ function describe(r: SyncRow, dryRun: boolean): string {
   }
 }
 
+/** The command a row shows on a line of its own: pasted from a terminal it runs as printed. */
+function commandOf(r: SyncRow, dryRun: boolean): string | undefined {
+  if (!r.command) return undefined;
+  if (r.state === "planned") return dryRun ? r.command : undefined;
+  if (r.state === "skipped")
+    return r.reason === "pre-build" ? r.command : undefined;
+  if (r.state === "failed")
+    return r.step === "transport" && r.part === "build" ? r.command : undefined;
+  return undefined;
+}
+
 /** A row's name: its channel, and its outlet id too when that differs (`scoop (homebrew)`). */
-const labelOf = (r: SyncRow): string =>
+const labelOf = (r: SyncRow, parts?: string[]): string =>
   r.step === "transport"
-    ? `${r.transport} ${r.part} (${r.outlets!.join(", ")})`
+    ? `${r.transport} ${(parts ?? [r.part!]).join(", ")} (${r.outlets!.join(", ")})`
     : r.outlet === r.channel
       ? r.channel
       : `${r.channel} (${r.outlet})`;
+
+/** The text rows: consecutive parts of one transport that skip for one reason read as one row. */
+function groupRows(
+  rows: readonly SyncRow[],
+): { row: SyncRow; parts: string[] }[] {
+  const out: { row: SyncRow; parts: string[] }[] = [];
+  for (const r of rows) {
+    const last = out.at(-1);
+    if (
+      last &&
+      r.step === "transport" &&
+      r.state === "skipped" &&
+      last.row.step === "transport" &&
+      last.row.state === "skipped" &&
+      last.row.transport === r.transport &&
+      last.row.outlets!.join() === r.outlets!.join() &&
+      last.row.reason === r.reason &&
+      (last.row.secrets ?? []).join() === (r.secrets ?? []).join()
+    )
+      last.parts.push(r.part!);
+    else out.push({ row: r, parts: r.step === "transport" ? [r.part!] : [] });
+  }
+  return out;
+}
 
 function writeText(
   rows: readonly SyncRow[],
@@ -775,6 +853,7 @@ function writeText(
   io: ChannelIo,
   term: Term,
   pack?: string,
+  version?: string,
 ): void {
   const { painter, symbols, caps } = term;
   const u = (v: string) => untrusted(v, io.env);
@@ -801,24 +880,33 @@ function writeText(
       `${count(["opened", "existing", "unchanged", "done"])} done`,
     count(["skipped"]) && `${count(["skipped"])} skipped`,
   ].filter(Boolean);
+  const allSkipped = parts.length === 1 && count(["skipped"]) > 0;
   const glyph = failed
     ? painter.style(symbols.fail, ["danger"])
-    : dryRun
-      ? painter.style(symbols.stepActive, ["muted"])
-      : parts.length === 1 && count(["skipped"])
-        ? painter.style(symbols.warn, ["warning"])
+    : allSkipped
+      ? painter.style(symbols.warn, ["warning"])
+      : dryRun
+        ? painter.style(symbols.stepActive, ["muted"])
         : painter.style(symbols.ok, ["success"]);
-  out.write(
-    `${glyph}  ${painter.line([
-      { text: u(product), style: ["strong"] },
-      {
-        text: ` ${symbols.separator} track ${u(track)}${dryRun ? ` ${symbols.separator} dry run` : ""}`,
-        style: ["muted"],
-      },
-      { text: `: ${parts.join(", ")}` },
-    ])}\n`,
-  );
+  const pad = " ".repeat(cellWidth(symbols.ok));
   const width = Math.max(10, caps.columns - 3);
+  const emit = (mark: string, spans: Line): void => {
+    const lines = caps.tty
+      ? wrapSpans(spans, width, symbols.ellipsis)
+      : [spans];
+    lines.forEach((l, i) =>
+      out.write(`${i === 0 ? mark : pad}  ${painter.line(l)}\n`),
+    );
+  };
+  const name = pack ? `${pack}${version ? ` ${version}` : ""}` : product;
+  emit(glyph, [
+    { text: u(name), style: ["strong"] },
+    {
+      text: ` ${symbols.separator} track ${u(track)}${dryRun ? ` ${symbols.separator} dry run` : ""}`,
+      style: ["muted"],
+    },
+    { text: `: ${parts.join(", ")}` },
+  ]);
   const markOf = (r: SyncRow): string =>
     r.state === "failed"
       ? painter.style(symbols.fail, ["danger"])
@@ -827,24 +915,19 @@ function writeText(
         : r.state === "planned"
           ? painter.style(symbols.stepActive, ["muted"])
           : painter.style(symbols.ok, ["success"]);
-  for (const r of rows) {
-    const spans: Line = [
-      { text: u(labelOf(r)), style: ["strong"] },
-      { text: ": ", style: ["muted"] },
-      { text: u(describe(r, dryRun)) },
-    ];
-    const lines = caps.tty
-      ? wrapSpans(spans, width, symbols.ellipsis)
-      : [spans];
-    lines.forEach((l, i) =>
-      out.write(
-        `${i === 0 ? markOf(r) : " ".repeat(cellWidth(symbols.ok))}  ${painter.line(l)}\n`,
-      ),
-    );
+  for (const { row: r, parts: ps } of groupRows(rows)) {
+    emit(markOf(r), [
+      {
+        text: u(labelOf(r, ps.length ? ps : undefined)) + ":",
+        style: ["strong"],
+      },
+      { text: ` ${u(describe(r, dryRun))}` },
+    ]);
+    // A command is never cut: it takes its own line and the terminal soft-wraps it.
+    const cmd = commandOf(r, dryRun);
+    if (cmd) out.write(`${pad}  ${u(cmd)}\n`);
     for (const n of [...(r.note ? [r.note] : []), ...(r.notes ?? [])])
-      out.write(
-        `${" ".repeat(cellWidth(symbols.ok))}  ${painter.style(u(n), ["muted"])}\n`,
-      );
+      emit(pad, [{ text: u(n), style: ["muted"] }]);
   }
 }
 
@@ -862,6 +945,9 @@ async function matchBuilds(cwd: string, dir: string): Promise<MatchedBuild[]> {
   if (real.length) throw new Error(real.join("\n"));
   return m.builds;
 }
+
+/** A release version as a path segment: no separator, no leading dot or dash. */
+export const VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z._+-]*$/;
 
 export const NO_CI_CREDENTIAL =
   "No CI credential: in GitHub Actions add permissions: id-token: write; elsewhere set PKEY_CI_TOKEN.";
@@ -917,7 +1003,9 @@ export async function channelSync(
       })
     : planSync(product.outlets, { dir, builds, env: io.env });
   // One check before any step: every step reports into the ledger with the CI credential.
+  // A dry run reports nothing, so it needs none.
   if (
+    !dryRun &&
     rows.some((r) => r.state === "planned") &&
     !io.env[CI_TOKEN_ENV]?.trim() &&
     !canRequestGithubOidc(io.env)
@@ -933,8 +1021,13 @@ export async function channelSync(
       io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
     return 1;
   }
-  if (pack && !dryRun && rows.some((r) => r.state === "planned")) {
-    if (!versionOf(a, io.env))
+  const version = pack ? versionOf(a, io.env) : undefined;
+  if (version !== undefined && !VERSION_RE.test(version))
+    throw new UsageError(
+      `--version ${version} is not a release version (letters, digits, . _ + -).`,
+    );
+  if (pack && rows.some((r) => r.state === "planned")) {
+    if (!version)
       throw new UsageError(
         "--version is required: the pack release the transports package (or run in a tag build).",
       );
@@ -951,7 +1044,10 @@ export async function channelSync(
         dryRun,
         product: product.slug,
         track,
-        steps: rows.map(({ store: _store, notes: _notes, ...r }) => r),
+        ...(pack ? { deliverable: pack, ...(version ? { version } : {}) } : {}),
+        steps: rows.map(({ store: _store, notes: _notes, ...r }) =>
+          r.outlet === "" ? (({ outlet: _o, ...x }) => x)(r) : r,
+        ),
       }),
     );
   } else {
@@ -963,6 +1059,7 @@ export async function channelSync(
       io,
       termOf(io, io.stdout),
       pack,
+      version,
     );
   }
   return failed ? 1 : 0;

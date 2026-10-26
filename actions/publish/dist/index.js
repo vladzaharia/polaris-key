@@ -25375,7 +25375,7 @@ var COMMANDS = [
       },
       {
         subs: ["sync"],
-        text: "channel sync runs what each declared channel needs: a pull request for winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and with --dir an itch.io push per platform, a Snap upload and the F-Droid repository build, from the files .pkey/release maps (no fitting file is a skip). --channel is the release track (default stable); --version is what itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first submission (pkey storefront flathub init). A failed step fails the command after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs nothing and prints each checked command. --deliverable <packId> plans that pack's store transports instead of the channels: Background Assets (package, upload; needs macOS and ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, STEAM_CONFIG_VDF and steamcmd) and Play Asset Delivery, which is always skipped: run pkey transport play-pad modules before the build. A transport that skips leaves the pack on the Polaris Key CDN. It runs the rest from --from, the pack publish's --out directory, for the pack release --version; a step after one that failed is skipped. --dry-run prints each command, the Steam account as $STEAM_USERNAME."
+        text: "channel sync runs what each declared channel needs: a pull request for winget, Homebrew, Scoop and Flathub, as pkey storefront <store> pr does, and with --dir an itch.io push per platform, a Snap upload and the F-Droid repository build, from the files .pkey/release maps (no fitting file is a skip). --channel is the release track (default stable); --version is what itch.io records (default: the tag in GITHUB_REF_NAME). A channel whose credential is unset is skipped, naming the variable (PKEY_PR_TOKEN, BUTLER_API_KEY, SNAPCRAFT_STORE_CREDENTIALS, PKEY_FDROID_KS_PASS, PKEY_FDROID_KEYSTORE, PKEY_FDROID_ALIAS); Flathub is skipped until its first submission (pkey storefront flathub init). A failed step fails the command after the rest ran. It needs PKEY_CI_TOKEN, or permissions: id-token: write in GitHub Actions. snap metadata stays a pre-build step. --dry-run runs nothing and prints each checked command. --deliverable <packId> plans that pack's store transports instead of the channels: Background Assets (package, upload; needs macOS and ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY or ASC_KEY_PATH), a Steam depot (vdf, build; needs STEAM_USERNAME, STEAM_CONFIG_VDF, the secret your workflow writes to ~/Steam/config/config.vdf, and steamcmd) and Play Asset Delivery, which is always skipped: run pkey transport play-pad modules before the build. A transport that skips leaves the pack on the Polaris Key CDN. It runs the rest from --from, the pack publish's --out directory, for the pack release --version; a step after one that failed is skipped. --dry-run prints each command, the Steam account as $STEAM_USERNAME."
       }
     ]
   },
@@ -44223,6 +44223,10 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
 }
 async function loadTransportPack(common, from) {
   const { slug, pack, app, distribution } = await loadTransportProduct(common);
+  if (!/^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(common.version))
+    throw new Error(
+      `--release ${common.version} is not a release version (letters, digits, . _ + -).`
+    );
   const root = path20.resolve(common.cwd, from, pack.id, common.version);
   let recordJws;
   try {
@@ -44490,7 +44494,15 @@ async function baPackage(o) {
     const exec = o.exec ?? ((cmd, args, cwd) => {
       execFileSync2(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
     });
-    exec("xcrun", ["ba-package", "package", "Manifest.json", "-o", aar], dir);
+    try {
+      exec("xcrun", ["ba-package", "package", "Manifest.json", "-o", aar], dir);
+    } catch (e) {
+      const raw = e.stderr;
+      const last = String(raw ?? "").split("\n").map((l) => l.trim()).filter(Boolean).at(-1);
+      throw new Error(
+        `xcrun ba-package failed${last ? `: ${last}` : ` (${e.message.split("\n")[0]})`}`
+      );
+    }
     o.stdout.write(`Archived ${path21.relative(o.cwd, aar) || aar}
 `);
   }
@@ -44799,6 +44811,23 @@ async function packagedPayload(content, name) {
     ).catch(() => null)
   };
 }
+function assertPartUrl(raw) {
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new AscUploadError(
+      "asc-http-error",
+      "an upload part URL is not a URL."
+    );
+  }
+  const host = u.hostname.toLowerCase();
+  if (u.protocol !== "https:" || host === "localhost" || host.endsWith(".localhost") || !host.includes(".") || host.startsWith("[") || /^[0-9.]+$/.test(host))
+    throw new AscUploadError(
+      "asc-http-error",
+      "an upload part URL is not an https URL on a named host."
+    );
+}
 async function uploadFile(api, o, versionId, file, assetType) {
   const bytes = new Uint8Array(await readFile17(file));
   const r = await api.call("POST", "/v1/backgroundAssetUploadFiles", {
@@ -44826,6 +44855,7 @@ async function uploadFile(api, o, versionId, file, assetType) {
         "asc-http-error",
         `upload operation at ${op.offset}+${op.length} is outside ${path21.basename(file)} (${bytes.byteLength} bytes).`
       );
+    assertPartUrl(op.url);
     const put = await fetchImpl(op.url, {
       method: op.method,
       headers: Object.fromEntries(
@@ -47220,18 +47250,28 @@ async function runFileChecks(step, cwd) {
     }
   }
 }
-function toolEnv(env) {
+var OWN_SECRET = {
+  butler: "BUTLER_API_KEY",
+  snapcraft: "SNAPCRAFT_STORE_CREDENTIALS"
+};
+function toolEnv(env, tool) {
+  const own = tool ? OWN_SECRET[tool] : void 0;
+  const others = Object.values(OWN_SECRET).filter((v) => v !== own);
   const out = {};
   for (const [k, v] of Object.entries(env))
-    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_") && !k.startsWith("INPUT_"))
+    if (!k.startsWith("PKEY_") && !k.startsWith("ACTIONS_ID_TOKEN_") && !k.startsWith("INPUT_") && !k.startsWith("ASC_") && k !== "STEAM_CONFIG_VDF" && !(tool && others.includes(k)))
       out[k] = v;
   return out;
 }
 var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve2, reject) => {
   const child = spawn3(tool, [...argv2], {
     cwd,
-    env: toolEnv(process.env),
-    stdio: "inherit",
+    env: toolEnv(
+      process.env,
+      path24.basename(tool).replace(/\.(exe|sh|cmd|bat)$/i, "")
+    ),
+    // The tool's own output goes to stderr: stdout carries only pkey's report (and --json).
+    stdio: ["inherit", 2, "inherit"],
     shell: false
   });
   child.on(
@@ -47265,7 +47305,7 @@ async function runStoreSteps(steps, o) {
   if (o.dryRun) {
     for (const step of steps)
       o.stdout.write(
-        `Would run: ${untrusted(commandLine(o.toolPath ?? step.tool, step.argv), o.env)}
+        `Would run: ${untrusted(commandLine(o.toolPath ?? step.tool, step.shownArgv ?? step.argv), o.env)}
 `
       );
     return steps.map((step) => ({ step, outcome: "dry-run", exitCode: null }));
@@ -47301,7 +47341,7 @@ async function runStoreSteps(steps, o) {
       store: step.store,
       op: step.op,
       command: step.command,
-      argv: step.argv,
+      argv: step.shownArgv ?? step.argv,
       ...step.outlet ? { outlet: step.outlet.id } : {},
       runId,
       state,
@@ -47309,7 +47349,7 @@ async function runStoreSteps(steps, o) {
       ...runUrl ? { runUrl } : {}
     });
     const line = untrusted(
-      commandLine(o.toolPath ?? step.tool, step.argv),
+      commandLine(o.toolPath ?? step.tool, step.shownArgv ?? step.argv),
       o.env
     );
     if (client) {
@@ -47352,7 +47392,9 @@ Nothing ran: ${line}`);
       });
     outcomes.push({ step, outcome: "ran", exitCode });
     if (exitCode !== 0)
-      throw new Error(`${step.tool} exited ${exitCode}: ${line}`);
+      throw new Error(
+        step.shownArgv ? `${step.tool} exited ${exitCode}; its output is above` : `${step.tool} exited ${exitCode}: ${line}`
+      );
   }
   return outcomes;
 }
@@ -49544,11 +49586,12 @@ function planSync(outlets, o) {
   return rows;
 }
 function ascMissing(env) {
-  if (!env.ASC_KEY_ID?.trim()) return "ASC_KEY_ID";
-  if (!env.ASC_ISSUER_ID?.trim()) return "ASC_ISSUER_ID";
+  const out = [];
+  if (!env.ASC_KEY_ID?.trim()) out.push("ASC_KEY_ID");
+  if (!env.ASC_ISSUER_ID?.trim()) out.push("ASC_ISSUER_ID");
   if (!env.ASC_PRIVATE_KEY?.trim() && !env.ASC_KEY_PATH?.trim())
-    return "ASC_PRIVATE_KEY";
-  return void 0;
+    out.push("ASC_PRIVATE_KEY");
+  return out;
 }
 var STEAM_SECRETS = ["STEAM_USERNAME", "STEAM_CONFIG_VDF"];
 function toolOnPath(env, name) {
@@ -49563,14 +49606,18 @@ function toolOnPath(env, name) {
       }
   return false;
 }
-var cdnNote = (outlets, until) => `${outlets.join(", ")}: served from the Polaris Key CDN until ${until}.`;
+var cdnNote = (outlets, pack) => `${outlets.join(", ")} ${outlets.length > 1 ? "get" : "gets"} ${pack} from the Polaris Key CDN until then.`;
 function planTransports(p, packId, o) {
   const routes = p.routes.filter((r) => r.deliverableId === packId);
   const on = (t) => routes.filter((r) => r.transport === t);
   const outletOf = (id) => p.outlets.find((x) => x.id === id);
   const base = (transport, part, ids) => ({
-    outlet: ids.join(","),
-    channel: transport,
+    // The outlet only when there is exactly one; `outlets` always.
+    outlet: ids.length === 1 ? ids[0] : "",
+    channel: (() => {
+      const x = outletOf(ids[0]);
+      return x ? channelsOf(x)[0]?.id : void 0;
+    })() ?? transport,
     step: "transport",
     store: transport,
     state: "planned",
@@ -49579,14 +49626,20 @@ function planTransports(p, packId, o) {
     pack: packId,
     outlets: ids
   });
-  const skip = (rows2, reason, group, until, secret) => {
+  const skip = (rows2, reason, group, cdn, secrets) => {
     for (const r of rows2) {
       r.state = "skipped";
       r.reason = reason;
-      if (secret) r.secret = secret;
+      if (secrets?.length) {
+        r.secret = secrets[0];
+        r.secrets = secrets;
+      }
     }
     const auto = group.filter((r) => r.origin === "auto").map((r) => r.outletId);
-    if (auto.length && until) rows2[0].note = cdnNote(auto, until);
+    if (auto.length && cdn) {
+      rows2[0].note = cdnNote(auto, packId);
+      rows2[0].fallback = "pkey-cdn";
+    }
   };
   const rows = [];
   const ba = on("apple-ba");
@@ -49598,9 +49651,8 @@ function planTransports(p, packId, o) {
     ];
     const missing2 = ascMissing(o.env);
     if ((o.platform ?? process.platform) !== "darwin")
-      skip(group, "needs-macos", ba, "run on macOS");
-    else if (missing2)
-      skip(group, "missing-secret", ba, `${missing2} is set`, missing2);
+      skip(group, "needs-macos", ba, true);
+    else if (missing2.length) skip(group, "missing-secret", ba, true, missing2);
     rows.push(...group);
   }
   for (const r of on("steam-depot")) {
@@ -49610,20 +49662,20 @@ function planTransports(p, packId, o) {
       { ...base("steam-depot", "vdf", [r.outletId]), depot: id },
       { ...base("steam-depot", "build", [r.outletId]), depot: id }
     ];
-    const missing2 = STEAM_SECRETS.find((e) => !o.env[e]?.trim());
+    const missing2 = STEAM_SECRETS.filter((e) => !o.env[e]?.trim());
     const has3 = o.hasTool ?? (() => true);
-    if (id === void 0) skip(group, "no-depot", [r], null);
-    else if (missing2)
-      skip(group, "missing-secret", [r], `${missing2} is set`, missing2);
-    else if (!has3("steamcmd"))
-      skip(group, "no-steamcmd", [r], "steamcmd is installed");
+    if (id === void 0) skip(group, "no-depot", [r], false);
+    else if (missing2.length)
+      skip(group, "missing-secret", [r], true, [...missing2]);
+    else if (!has3("steamcmd")) skip(group, "no-steamcmd", [r], true);
     rows.push(...group);
   }
   const pad2 = on("play-pad");
   if (pad2.length) {
     const ids = pad2.map((r) => r.outletId);
     const row2 = base("play-pad", "modules", ids);
-    skip([row2], "pre-build", pad2, null);
+    row2.command = `pkey transport play-pad modules --deliverable ${packId}`;
+    skip([row2], "pre-build", pad2, false);
     rows.push(row2);
   }
   return rows;
@@ -49709,7 +49761,6 @@ async function runLocal(row2, outlet, a, io, product, dryRun, log, err) {
   if (dryRun) row2.command = commandLine(step.tool, step.argv);
   else row2.state = "done";
 }
-var ACCOUNT_MARK = "STEAM_ACCOUNT_SHOWN";
 function steamBuildStep(outlet, account, script) {
   return {
     store: "steam",
@@ -49717,6 +49768,8 @@ function steamBuildStep(outlet, account, script) {
     command: "run-app-build",
     tool: ciStore("steam").list.tool,
     argv: ["+login", account, "+run_app_build", script, "+quit"],
+    // The account is never shown, reported or quoted: the variable's name stands for it.
+    shownArgv: ["+login", "STEAM_USERNAME", "+run_app_build", script, "+quit"],
     outlet
   };
 }
@@ -49776,14 +49829,12 @@ async function runTransport(row2, t, a, io, outlets, dryRun, log, err) {
       script = `${DEFAULT_STEAM_OUT}/app_build_${app}.vdf`;
     }
     const step = steamBuildStep(outlet, io.env.STEAM_USERNAME.trim(), script);
-    if (dryRun) {
-      checkStep(step);
-      row2.command = commandLine(step.tool, [
-        "+login",
-        ACCOUNT_MARK,
-        ...step.argv.slice(2)
-      ]).replace(ACCOUNT_MARK, "$STEAM_USERNAME");
-    } else
+    row2.command = commandLine(step.tool, step.shownArgv).replace(
+      "+login STEAM_USERNAME",
+      "+login $STEAM_USERNAME"
+    );
+    if (dryRun) checkStep(step);
+    else
       await runStoreSteps([step], {
         cwd: io.cwd,
         product: t.product,
@@ -49807,18 +49858,20 @@ async function runRows(rows, a, io, product, outlets, dryRun) {
     track: str6(a, "channel") ?? "stable",
     appBuilds: /* @__PURE__ */ new Map()
   };
-  const broken = /* @__PURE__ */ new Set();
+  const broken = /* @__PURE__ */ new Map();
   for (const row2 of rows) {
     if (row2.state !== "planned") continue;
     const group = `${row2.transport}|${row2.outlets?.join(",")}`;
     if (row2.step === "transport" && broken.has(group)) {
       row2.state = "skipped";
       row2.reason = "earlier-failed";
+      row2.after = broken.get(group);
       continue;
     }
     if (dryRun && row2.step === "pr") continue;
     const stdout = sink();
     const stderr = sink();
+    let failNotes = [];
     try {
       if (row2.step === "transport") {
         await runTransport(
@@ -49869,17 +49922,21 @@ async function runRows(rows, a, io, product, outlets, dryRun) {
         continue;
       }
       row2.state = "failed";
-      if (row2.step === "transport") broken.add(group);
-      row2.error = (err instanceof Error ? err.message : String(err)).split(
+      if (row2.step === "transport") broken.set(group, row2.part);
+      const lines4 = (err instanceof Error ? err.message : String(err)).split(
         "\n"
-      )[0];
+      );
+      row2.error = lines4[0];
+      if (row2.step === "transport")
+        failNotes = lines4.slice(1, 5).filter(Boolean);
     }
     const notes = [
       ...stdout.text().split("\n"),
       ...stderr.text().split("\n")
     ].filter(Boolean);
     const kept = row2.step === "transport" ? stderr.text().split("\n").filter(Boolean) : notes;
-    if (kept.length && !dryRun) row2.notes = kept;
+    if ((kept.length || failNotes.length) && !dryRun)
+      row2.notes = [...failNotes, ...kept];
   }
 }
 var DONE_PART = {
@@ -49888,12 +49945,19 @@ var DONE_PART = {
   "steam-depot vdf": "written",
   "steam-depot build": "built"
 };
+function notSet(names) {
+  const shown4 = names.map(
+    (n) => n === "ASC_PRIVATE_KEY" ? "ASC_PRIVATE_KEY (or ASC_KEY_PATH)" : n
+  );
+  const list3 = shown4.length > 1 ? `${shown4.slice(0, -1).join(", ")} and ${shown4.at(-1)}` : shown4[0];
+  return `${list3} ${shown4.length > 1 ? "are" : "is"} not set`;
+}
 function describe(r, dryRun) {
   switch (r.state) {
     case "planned":
-      return r.step === "transport" ? `${dryRun ? "would run" : "planned"} ${r.command ?? `pkey transport ${r.transport} ${r.part} --deliverable ${r.pack}`}` : !dryRun ? "pending" : r.command ? `would run ${r.command}` : r.step === "pr" ? "would open a pull request" : "would run";
+      return r.step === "transport" ? dryRun ? "would run" : "planned" : !dryRun ? "pending" : r.command ? "would run" : r.step === "pr" ? "would open a pull request" : "would run";
     case "skipped":
-      return r.reason === "missing-secret" ? (r.channel === "homebrew" || r.channel === "scoop") && r.secret === PR_TOKEN_ENV ? `skipped: needs ${PR_TOKEN_ENV} or the GitHub App` : `skipped: ${r.secret} is not set` : r.reason === "needs-macos" ? "skipped: needs macOS" : r.reason === "no-steamcmd" ? "skipped: steamcmd is not installed" : r.reason === "no-depot" ? `skipped: set depots.${r.pack} on the steam outlet` : r.reason === "earlier-failed" ? "skipped: the step before it failed" : r.reason === "pre-build" ? `skipped: run before the build: pkey transport play-pad modules --deliverable ${r.pack}` : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
+      return r.reason === "missing-secret" ? (r.channel === "homebrew" || r.channel === "scoop") && r.secret === PR_TOKEN_ENV ? `skipped: needs ${PR_TOKEN_ENV} or the GitHub App` : `skipped: ${notSet(r.secrets ?? [r.secret])}` : r.reason === "needs-macos" ? "skipped: needs macOS" : r.reason === "no-steamcmd" ? "skipped: steamcmd is not on PATH" : r.reason === "no-depot" ? `skipped: set depots.${r.pack} on the steam outlet` : r.reason === "earlier-failed" ? `skipped: ${r.after ?? "the step before it"} failed` : r.reason === "pre-build" ? "skipped: runs before the build" : r.reason === "no-file" ? "skipped: no fitting file under --dir" : r.reason === "first-submission" ? "skipped: the first submission is by hand (pkey storefront flathub init)" : "skipped: needs --dir";
     case "done":
       return r.step === "transport" ? DONE_PART[`${r.transport} ${r.part}`] ?? "done" : r.platform && r.store === "itch" ? `pushed ${r.platform}` : r.store === "snap" ? "uploaded" : "built and registered";
     case "opened":
@@ -49906,8 +49970,27 @@ function describe(r, dryRun) {
       return `failed: ${r.error ?? "see above"}`;
   }
 }
-var labelOf2 = (r) => r.step === "transport" ? `${r.transport} ${r.part} (${r.outlets.join(", ")})` : r.outlet === r.channel ? r.channel : `${r.channel} (${r.outlet})`;
-function writeText(rows, product, track, dryRun, io, term, pack) {
+function commandOf(r, dryRun) {
+  if (!r.command) return void 0;
+  if (r.state === "planned") return dryRun ? r.command : void 0;
+  if (r.state === "skipped")
+    return r.reason === "pre-build" ? r.command : void 0;
+  if (r.state === "failed")
+    return r.step === "transport" && r.part === "build" ? r.command : void 0;
+  return void 0;
+}
+var labelOf2 = (r, parts) => r.step === "transport" ? `${r.transport} ${(parts ?? [r.part]).join(", ")} (${r.outlets.join(", ")})` : r.outlet === r.channel ? r.channel : `${r.channel} (${r.outlet})`;
+function groupRows(rows) {
+  const out = [];
+  for (const r of rows) {
+    const last = out.at(-1);
+    if (last && r.step === "transport" && r.state === "skipped" && last.row.step === "transport" && last.row.state === "skipped" && last.row.transport === r.transport && last.row.outlets.join() === r.outlets.join() && last.row.reason === r.reason && (last.row.secrets ?? []).join() === (r.secrets ?? []).join())
+      last.parts.push(r.part);
+    else out.push({ row: r, parts: r.step === "transport" ? [r.part] : [] });
+  }
+  return out;
+}
+function writeText(rows, product, track, dryRun, io, term, pack, version) {
   const { painter, symbols, caps } = term;
   const u = (v) => untrusted(v, io.env);
   const out = io.stdout;
@@ -49932,38 +50015,40 @@ function writeText(rows, product, track, dryRun, io, term, pack) {
     count(["opened", "existing", "unchanged", "done"]) && `${count(["opened", "existing", "unchanged", "done"])} done`,
     count(["skipped"]) && `${count(["skipped"])} skipped`
   ].filter(Boolean);
-  const glyph = failed ? painter.style(symbols.fail, ["danger"]) : dryRun ? painter.style(symbols.stepActive, ["muted"]) : parts.length === 1 && count(["skipped"]) ? painter.style(symbols.warn, ["warning"]) : painter.style(symbols.ok, ["success"]);
-  out.write(
-    `${glyph}  ${painter.line([
-      { text: u(product), style: ["strong"] },
-      {
-        text: ` ${symbols.separator} track ${u(track)}${dryRun ? ` ${symbols.separator} dry run` : ""}`,
-        style: ["muted"]
-      },
-      { text: `: ${parts.join(", ")}` }
-    ])}
-`
-  );
+  const allSkipped = parts.length === 1 && count(["skipped"]) > 0;
+  const glyph = failed ? painter.style(symbols.fail, ["danger"]) : allSkipped ? painter.style(symbols.warn, ["warning"]) : dryRun ? painter.style(symbols.stepActive, ["muted"]) : painter.style(symbols.ok, ["success"]);
+  const pad2 = " ".repeat(cellWidth(symbols.ok));
   const width = Math.max(10, caps.columns - 3);
-  const markOf = (r) => r.state === "failed" ? painter.style(symbols.fail, ["danger"]) : r.state === "skipped" ? painter.style(symbols.warn, ["warning"]) : r.state === "planned" ? painter.style(symbols.stepActive, ["muted"]) : painter.style(symbols.ok, ["success"]);
-  for (const r of rows) {
-    const spans = [
-      { text: u(labelOf2(r)), style: ["strong"] },
-      { text: ": ", style: ["muted"] },
-      { text: u(describe(r, dryRun)) }
-    ];
+  const emit = (mark, spans) => {
     const lines4 = caps.tty ? wrapSpans(spans, width, symbols.ellipsis) : [spans];
     lines4.forEach(
-      (l, i) => out.write(
-        `${i === 0 ? markOf(r) : " ".repeat(cellWidth(symbols.ok))}  ${painter.line(l)}
-`
-      )
+      (l, i) => out.write(`${i === 0 ? mark : pad2}  ${painter.line(l)}
+`)
     );
+  };
+  const name = pack ? `${pack}${version ? ` ${version}` : ""}` : product;
+  emit(glyph, [
+    { text: u(name), style: ["strong"] },
+    {
+      text: ` ${symbols.separator} track ${u(track)}${dryRun ? ` ${symbols.separator} dry run` : ""}`,
+      style: ["muted"]
+    },
+    { text: `: ${parts.join(", ")}` }
+  ]);
+  const markOf = (r) => r.state === "failed" ? painter.style(symbols.fail, ["danger"]) : r.state === "skipped" ? painter.style(symbols.warn, ["warning"]) : r.state === "planned" ? painter.style(symbols.stepActive, ["muted"]) : painter.style(symbols.ok, ["success"]);
+  for (const { row: r, parts: ps } of groupRows(rows)) {
+    emit(markOf(r), [
+      {
+        text: u(labelOf2(r, ps.length ? ps : void 0)) + ":",
+        style: ["strong"]
+      },
+      { text: ` ${u(describe(r, dryRun))}` }
+    ]);
+    const cmd = commandOf(r, dryRun);
+    if (cmd) out.write(`${pad2}  ${u(cmd)}
+`);
     for (const n of [...r.note ? [r.note] : [], ...r.notes ?? []])
-      out.write(
-        `${" ".repeat(cellWidth(symbols.ok))}  ${painter.style(u(n), ["muted"])}
-`
-      );
+      emit(pad2, [{ text: u(n), style: ["muted"] }]);
   }
 }
 async function matchBuilds(cwd, dir) {
@@ -49978,6 +50063,7 @@ async function matchBuilds(cwd, dir) {
   if (real.length) throw new Error(real.join("\n"));
   return m.builds;
 }
+var VERSION_RE5 = /^[0-9A-Za-z][0-9A-Za-z._+-]*$/;
 var NO_CI_CREDENTIAL = "No CI credential: in GitHub Actions add permissions: id-token: write; elsewhere set PKEY_CI_TOKEN.";
 var KNOWN_FLAGS2 = [
   "channel",
@@ -50022,7 +50108,7 @@ async function channelSync(a, io) {
     platform: io.platform,
     hasTool: (n) => toolOnPath(io.env, n)
   }) : planSync(product.outlets, { dir, builds, env: io.env });
-  if (rows.some((r) => r.state === "planned") && !io.env[CI_TOKEN_ENV]?.trim() && !canRequestGithubOidc(io.env)) {
+  if (!dryRun && rows.some((r) => r.state === "planned") && !io.env[CI_TOKEN_ENV]?.trim() && !canRequestGithubOidc(io.env)) {
     if (json)
       io.stdout.write(
         envelope("channel sync", 1, {
@@ -50034,8 +50120,13 @@ async function channelSync(a, io) {
       io.stderr.write(failLine(NO_CI_CREDENTIAL, termOf(io, io.stderr), "tty"));
     return 1;
   }
-  if (pack && !dryRun && rows.some((r) => r.state === "planned")) {
-    if (!versionOf(a, io.env))
+  const version = pack ? versionOf(a, io.env) : void 0;
+  if (version !== void 0 && !VERSION_RE5.test(version))
+    throw new UsageError(
+      `--version ${version} is not a release version (letters, digits, . _ + -).`
+    );
+  if (pack && rows.some((r) => r.state === "planned")) {
+    if (!version)
       throw new UsageError(
         "--version is required: the pack release the transports package (or run in a tag build)."
       );
@@ -50052,7 +50143,10 @@ async function channelSync(a, io) {
         dryRun,
         product: product.slug,
         track,
-        steps: rows.map(({ store: _store, notes: _notes, ...r }) => r)
+        ...pack ? { deliverable: pack, ...version ? { version } : {} } : {},
+        steps: rows.map(
+          ({ store: _store, notes: _notes, ...r }) => r.outlet === "" ? (({ outlet: _o, ...x }) => x)(r) : r
+        )
       })
     );
   } else {
@@ -50063,7 +50157,8 @@ async function channelSync(a, io) {
       dryRun,
       io,
       termOf(io, io.stdout),
-      pack
+      pack,
+      version
     );
   }
   return failed ? 1 : 0;
@@ -54701,7 +54796,7 @@ async function cmdListingImport(parsed, cwd, stdout, ci, token) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import os3 from "node:os";
 import path36 from "node:path";
-import { stat as stat13 } from "node:fs/promises";
+import { mkdtemp as mkdtemp2, stat as stat13 } from "node:fs/promises";
 var ACTION_INPUTS = [
   "command",
   "args",
@@ -54816,7 +54911,12 @@ async function publishedPack(argv2, cwd) {
 function packSyncArgv(argv2, pack, out, dryRun) {
   const forward = [
     ["product", flagValue(argv2, "product")],
-    ["base-url", flagValue(argv2, "base-url")]
+    ["base-url", flagValue(argv2, "base-url")],
+    ["channel", flagValue(argv2, "channel")],
+    [
+      "version",
+      flagValue(argv2, "version") ?? flagValue(argv2, "tag")?.replace(/^v/, "")
+    ]
   ];
   const sync = ["channel", "sync", "--deliverable", pack, "--from", out];
   for (const [k, v] of forward) if (v !== void 0) sync.push(`--${k}`, v);
@@ -54873,10 +54973,8 @@ async function runAction(io) {
   if (pack !== void 0) {
     packOut = flagValue(argv2, "out");
     if (packOut === void 0) {
-      packOut = path36.join(
-        io.env["RUNNER_TEMP"]?.trim() || os3.tmpdir(),
-        "pkey-packs"
-      );
+      const temp = io.env["RUNNER_TEMP"]?.trim();
+      packOut = temp ? path36.join(temp, "pkey-packs") : await mkdtemp2(path36.join(os3.tmpdir(), "pkey-packs-"));
       argv2.push("--out", packOut);
     }
   }

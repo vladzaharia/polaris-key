@@ -51,6 +51,8 @@ export interface StoreStep {
   argv: string[];
   /** The outlet whose identity binds the step's parameters. */
   outlet?: StepOutlet;
+  /** The argv as shown, reported and quoted in errors, when the real one carries an account name. */
+  shownArgv?: string[];
 }
 
 export type SpawnTool = (
@@ -223,18 +225,33 @@ async function runFileChecks(step: StoreStep, cwd: string): Promise<void> {
   }
 }
 
+/** The credential env a tool owns; every other tool's is stripped from its environment. */
+const OWN_SECRET: Readonly<Record<string, string>> = {
+  butler: "BUTLER_API_KEY",
+  snapcraft: "SNAPCRAFT_STORE_CREDENTIALS",
+};
+
 /**
  * The vendor tool's environment: the job's, minus the Polaris Key CI token, the GitHub OIDC
  * request variables and the Action's inputs (`INPUT_RELEASE-KEY` and `INPUT_CONTENT-KEY` hold
- * keys), which no vendor tool needs.
+ * keys), the App Store Connect key, `STEAM_CONFIG_VDF` (the workflow writes it to steamcmd's
+ * config.vdf; steamcmd reads the file, not the variable) and the other stores' credentials.
  */
-export function toolEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+export function toolEnv(
+  env: NodeJS.ProcessEnv,
+  tool?: string,
+): NodeJS.ProcessEnv {
+  const own = tool ? OWN_SECRET[tool] : undefined;
+  const others = Object.values(OWN_SECRET).filter((v) => v !== own);
   const out: NodeJS.ProcessEnv = {};
   for (const [k, v] of Object.entries(env))
     if (
       !k.startsWith("PKEY_") &&
       !k.startsWith("ACTIONS_ID_TOKEN_") &&
-      !k.startsWith("INPUT_")
+      !k.startsWith("INPUT_") &&
+      !k.startsWith("ASC_") &&
+      k !== "STEAM_CONFIG_VDF" &&
+      !(tool && others.includes(k))
     )
       out[k] = v;
   return out;
@@ -244,8 +261,12 @@ const defaultSpawn: SpawnTool = (tool, argv, cwd) =>
   new Promise((resolve, reject) => {
     const child = spawn(tool, [...argv], {
       cwd,
-      env: toolEnv(process.env),
-      stdio: "inherit",
+      env: toolEnv(
+        process.env,
+        path.basename(tool).replace(/\.(exe|sh|cmd|bat)$/i, ""),
+      ),
+      // The tool's own output goes to stderr: stdout carries only pkey's report (and --json).
+      stdio: ["inherit", 2, "inherit"],
       shell: false,
     });
     child.on("error", (e) =>
@@ -293,7 +314,7 @@ export async function runStoreSteps(
   if (o.dryRun) {
     for (const step of steps)
       o.stdout.write(
-        `Would run: ${untrusted(commandLine(o.toolPath ?? step.tool, step.argv), o.env)}\n`,
+        `Would run: ${untrusted(commandLine(o.toolPath ?? step.tool, step.shownArgv ?? step.argv), o.env)}\n`,
       );
     return steps.map((step) => ({ step, outcome: "dry-run", exitCode: null }));
   }
@@ -328,7 +349,7 @@ export async function runStoreSteps(
       store: step.store,
       op: step.op,
       command: step.command,
-      argv: step.argv,
+      argv: step.shownArgv ?? step.argv,
       ...(step.outlet ? { outlet: step.outlet.id } : {}),
       runId,
       state,
@@ -337,7 +358,7 @@ export async function runStoreSteps(
     });
     // The argv carries the outlet's identity (the server's): the line is cleaned to be shown.
     const line = untrusted(
-      commandLine(o.toolPath ?? step.tool, step.argv),
+      commandLine(o.toolPath ?? step.tool, step.shownArgv ?? step.argv),
       o.env,
     );
     if (client) {
@@ -380,7 +401,11 @@ export async function runStoreSteps(
       });
     outcomes.push({ step, outcome: "ran", exitCode });
     if (exitCode !== 0)
-      throw new Error(`${step.tool} exited ${exitCode}: ${line}`);
+      throw new Error(
+        step.shownArgv
+          ? `${step.tool} exited ${exitCode}; its output is above`
+          : `${step.tool} exited ${exitCode}: ${line}`,
+      );
   }
   return outcomes;
 }

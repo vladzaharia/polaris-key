@@ -193,7 +193,7 @@ describe("channel sync --deliverable runs the transport rows (P4-33.4)", () => {
       "apple-ba package (app-store): failed: xcrun failed",
     );
     expect(r.out).toContain(
-      "apple-ba upload (app-store): skipped: the step before it failed",
+      "apple-ba upload (app-store): skipped: package failed",
     );
     expect(r.out).toContain("steam-depot build (steam): built");
   });
@@ -207,8 +207,15 @@ describe("channel sync --deliverable runs the transport rows (P4-33.4)", () => {
     const b = await run(ARGS, { spawn: async () => 3 });
     expect(b.code).toBe(1);
     expect(b.out).toContain(
-      "steam-depot build (steam): failed: steamcmd exited 3",
+      "steam-depot build (steam): failed: steamcmd exited 3; its output is above",
     );
+    expect(b.out).toContain(
+      "\n   steamcmd +login $STEAM_USERNAME +run_app_build",
+    );
+    // The account is never shown or reported; the real value is spawned.
+    expect(b.out + b.err).not.toContain("builder");
+    expect(JSON.stringify(b.reports)).not.toContain("builder");
+    expect(b.spawned[0]!.argv[1]).toBe("builder");
   });
 
   it("--dry-run runs nothing and prints the exact commands, the account by its variable", async () => {
@@ -223,25 +230,33 @@ describe("channel sync --deliverable runs the transport rows (P4-33.4)", () => {
     expect(r.spawned).toEqual([]);
     expect(r.reports).toEqual([]);
     expect(r.out).toContain(
-      `would run pkey transport apple-ba package --deliverable ${PACK} --release 1.0.0 --from cache`,
+      `would run\n   pkey transport apple-ba package --deliverable ${PACK} --release 1.0.0 --from cache\n`,
     );
     expect(r.out).toContain(
-      `would run pkey transport apple-ba upload --deliverable ${PACK} --release 1.0.0 --dir build/pkey-transport/apple-ba --from cache`,
+      `would run\n   pkey transport apple-ba upload --deliverable ${PACK} --release 1.0.0 --dir build/pkey-transport/apple-ba --from cache\n`,
     );
     expect(r.out).toContain(
-      `would run pkey transport steam-depot vdf --deliverable ${PACK} --release 1.0.0 --from cache --depot 481 --channel stable`,
+      `would run\n   pkey transport steam-depot vdf --deliverable ${PACK} --release 1.0.0 --from cache --depot 481 --channel stable\n`,
     );
     expect(r.out).toContain(
-      "would run steamcmd +login $STEAM_USERNAME +run_app_build build/pkey-transport/steam/app_build_480.vdf +quit",
+      "would run\n   steamcmd +login $STEAM_USERNAME +run_app_build build/pkey-transport/steam/app_build_480.vdf +quit\n",
     );
     expect(r.out).not.toContain("builder");
     expect(r.out).not.toContain("secret-value");
   });
 
-  it("a dry run needs neither --version nor --from; a real run does", async () => {
-    const dry = await run(["--dry-run", `--deliverable=${PACK}`]);
-    expect(dry.code, dry.err).toBe(0);
-    expect(dry.out).toContain("--release <version> --from <dir>");
+  it("a plan with a row to run needs --version and --from, a dry run too", async () => {
+    await expect(run(["--dry-run", `--deliverable=${PACK}`])).rejects.toThrow(
+      /--version is required/,
+    );
+    // Nothing planned (every row skips): nothing to need.
+    const none = await run(["--dry-run", `--deliverable=${PACK}`], {
+      env: { ASC_KEY_ID: "", STEAM_USERNAME: "" },
+    });
+    expect(none.code, none.err).toBe(0);
+    await expect(
+      run([`--deliverable=${PACK}`, "--from=cache", "--version=../x"]),
+    ).rejects.toThrow(/not a release version/);
     await expect(
       run([`--deliverable=${PACK}`, "--from=cache"]),
     ).rejects.toThrow(/--version is required/);
@@ -259,5 +274,6 @@ describe("channel sync --deliverable runs the transport rows (P4-33.4)", () => {
     expect(calls).toEqual([]);
     expect(r.out).toContain("skipped: ASC_KEY_ID is not set");
     expect(r.out).toContain("skipped: STEAM_USERNAME is not set");
+    expect(r.out).toContain("apple-ba package, upload (app-store)");
   });
 });

@@ -22,7 +22,7 @@
 
 import os from "node:os";
 import path from "node:path";
-import { stat } from "node:fs/promises";
+import { mkdtemp, stat } from "node:fs/promises";
 import type { Out } from "./ci.js";
 import type { CiEnv } from "./oidc.js";
 import { COMMANDS, VALUELESS_FLAGS } from "./help.js";
@@ -205,6 +205,11 @@ function packSyncArgv(
   const forward: [string, string | undefined][] = [
     ["product", flagValue(argv, "product")],
     ["base-url", flagValue(argv, "base-url")],
+    ["channel", flagValue(argv, "channel")],
+    [
+      "version",
+      flagValue(argv, "version") ?? flagValue(argv, "tag")?.replace(/^v/, ""),
+    ],
   ];
   const sync = ["channel", "sync", "--deliverable", pack, "--from", out];
   for (const [k, v] of forward) if (v !== undefined) sync.push(`--${k}`, v);
@@ -265,10 +270,11 @@ export async function runAction(io: ActionIo): Promise<number> {
   if (pack !== undefined) {
     packOut = flagValue(argv, "out");
     if (packOut === undefined) {
-      packOut = path.join(
-        io.env["RUNNER_TEMP"]?.trim() || os.tmpdir(),
-        "pkey-packs",
-      );
+      // RUNNER_TEMP is the runner's own private directory; without it, a fresh 0700 one.
+      const temp = io.env["RUNNER_TEMP"]?.trim();
+      packOut = temp
+        ? path.join(temp, "pkey-packs")
+        : await mkdtemp(path.join(os.tmpdir(), "pkey-packs-"));
       argv.push("--out", packOut);
     }
   }
