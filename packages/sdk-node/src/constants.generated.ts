@@ -2030,7 +2030,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [],
   },
-  "identity.choice": { status: "planned", service: "identity", na: [] },
+  "identity.choice": { status: "implemented", service: "identity", na: [] },
   "identity.signin.hints": {
     status: "implemented",
     service: "identity",
@@ -2155,4 +2155,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "9852d53951542f6cb6e76c249a5c94eb3fb5c42506f0313e6bee18b99985aeb5";
+  "282cdb7cf22f696643413ae525e2b88868d18eb9aea33c52f9ef31b277d799e6";
