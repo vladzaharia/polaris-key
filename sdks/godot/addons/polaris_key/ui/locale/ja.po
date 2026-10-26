@@ -5718,6 +5718,56 @@ msgstr "同期を一時停止中"
 msgid "core.codes.writes_paused.message"
 msgstr "同期は少しの間一時停止されています。変更は保持され、後で同期されます。"
 
+#. Encryption mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.encryption_mismatch.title"
+msgstr "暗号化が一致しません"
+
+#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.encryption_mismatch.message"
+msgstr "アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。"
+
+#. Upload expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_expired.title"
+msgstr "アップロードの期限切れ"
+
+#. This upload took too long and was cancelled. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_expired.message"
+msgstr "アップロードに時間がかかりすぎたため、キャンセルされました。もう一度お試しください。"
+
+#. Upload incomplete
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_incomplete.title"
+msgstr "アップロードが未完了"
+
+#. Part of the file didn't arrive. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_incomplete.message"
+msgstr "ファイルの一部が届きませんでした。もう一度お試しください。"
+
+#. File too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file_too_large.title"
+msgstr "ファイルが大きすぎます"
+
+#. This file is over the size limit for synced files.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file_too_large.message"
+msgstr "このファイルは同期できるファイルのサイズ上限を超えています。"
+
+#. Already set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.keyring_conflict.title"
+msgstr "設定済み"
+
+#. Encryption is already set up for this account. Unlock with another device or your recovery code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.keyring_conflict.message"
+msgstr "このアカウントの暗号化はすでに設定されています。別のデバイスまたは復旧コードでロックを解除してください。"
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"
@@ -6227,6 +6277,36 @@ msgstr "サインインを利用できません"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-identity-unavailable.message"
 msgstr "このデバイスでは自動サインインができません。別の方法でサインインしてください。"
+
+#. Sync locked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-locked.title"
+msgstr "同期がロック中"
+
+#. Unlock sync on this device with your recovery code or another signed-in device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-locked.message"
+msgstr "復旧コード、またはサインイン済みの別のデバイスで、このデバイスの同期のロックを解除してください。"
+
+#. Recovery code not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.recovery-code-invalid.title"
+msgstr "復旧コードが無効です"
+
+#. That recovery code isn't right. Check it and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.recovery-code-invalid.message"
+msgstr "復旧コードが正しくありません。確認してもう一度お試しください。"
+
+#. Encryption required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-encryption-pinned.title"
+msgstr "暗号化が必要です"
+
+#. This app needs encrypted sync, which isn't available right now. Sync stays off.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-encryption-pinned.message"
+msgstr "このアプリには暗号化された同期が必要ですが、現在は利用できません。同期はオフのままです。"
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

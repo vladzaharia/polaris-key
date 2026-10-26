@@ -265,6 +265,26 @@
       "title": "Sincronizzazione in pausa",
       "message": "La sincronizzazione è in pausa per un momento. Le tue modifiche restano salvate e verranno sincronizzate più tardi."
     },
+    "encryption_mismatch": {
+      "title": "Crittografia non compatibile",
+      "message": "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova."
+    },
+    "upload_expired": {
+      "title": "Caricamento scaduto",
+      "message": "Il caricamento ha richiesto troppo tempo ed è stato annullato. Riprova."
+    },
+    "upload_incomplete": {
+      "title": "Caricamento incompleto",
+      "message": "Una parte del file non è arrivata. Riprova."
+    },
+    "file_too_large": {
+      "title": "File troppo grande",
+      "message": "Questo file supera il limite di dimensione dei file sincronizzati."
+    },
+    "keyring_conflict": {
+      "title": "Già configurato",
+      "message": "La crittografia è già configurata per questo account. Sblocca con un altro dispositivo o con il codice di recupero."
+    },
     "email_mismatch": {
       "title": "Email non verificata",
       "message": "Questa licenza appartiene a un indirizzo email che il tuo account non ha verificato. Aggiungi e verifica quell'email, poi riprova."
@@ -468,6 +488,18 @@
     "platform-identity-unavailable": {
       "title": "Accesso non disponibile",
       "message": "Questo dispositivo non può eseguire l'accesso automatico. Usa un altro metodo di accesso."
+    },
+    "sync-locked": {
+      "title": "Sincronizzazione bloccata",
+      "message": "Sblocca la sincronizzazione su questo dispositivo con il codice di recupero o con un altro dispositivo connesso."
+    },
+    "recovery-code-invalid": {
+      "title": "Codice di recupero non valido",
+      "message": "Il codice di recupero non è corretto. Controllalo e riprova."
+    },
+    "sync-encryption-pinned": {
+      "title": "Crittografia obbligatoria",
+      "message": "Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata."
     },
     "invalid-options": {
       "title": "App non configurata",

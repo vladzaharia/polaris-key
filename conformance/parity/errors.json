@@ -390,6 +390,41 @@
       "description": "503: `cloudSync.writesPaused` is on. `Retry-After` gives the seconds to wait (`SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` = 300 when absent). Pulls still answer (WIRE-CONTRACT-V4 §13.9; U-05)."
     },
     {
+      "code": "encryption_mismatch",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, or 400 from POST /<p>/sync/files/{collection}/{id}/begin: a `ct` on a server-mode product, a `value` or an unblinded name on an end-to-end product, or an `enc` that does not match the product's mode (WIRE-CONTRACT-V5 §13.3, §13.8.4, §13.9, §13.10.1; U-09, U-10).",
+      "plannedBy": "U-09"
+    },
+    {
+      "code": "upload_expired",
+      "kind": "wire",
+      "service": "sync",
+      "description": "410: the file upload outlived `SYNC_UPLOAD_TTL_SECONDS` (86,400 s); the server aborted it and released its reservation, and the client begins again (WIRE-CONTRACT-V5 §13.8.2, §13.9; U-10).",
+      "plannedBy": "U-10"
+    },
+    {
+      "code": "upload_incomplete",
+      "kind": "wire",
+      "service": "sync",
+      "description": "409 from POST /<p>/sync/files/{collection}/{id}/finalize: parts or chunks are still missing. `missing` lists them; the client uploads those and finalizes again (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10, U-37).",
+      "plannedBy": "U-10"
+    },
+    {
+      "code": "file_too_large",
+      "kind": "wire",
+      "service": "sync",
+      "description": "413 from a file `begin`: the file is over its collection's `files.maxBytes` (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10).",
+      "plannedBy": "U-10"
+    },
+    {
+      "code": "keyring_conflict",
+      "kind": "wire",
+      "service": "core",
+      "description": "409 from the key ring routes: a ring already exists for the product and subject, or a wrap already exists for the device. The client reads the ring and continues from it (WIRE-CONTRACT-V5 §13.11.2, §13.9; U-36).",
+      "plannedBy": "U-36"
+    },
+    {
       "code": "email_mismatch",
       "kind": "wire",
       "service": "identity",
@@ -694,6 +729,24 @@
       "kind": "client",
       "service": "identity",
       "description": "The platform sign-in rung cannot run: no Play services, no declared provider kind for the product, or the OS refused the request (WIRE-CONTRACT-V5 §12.11.6). The client falls to the next rung."
+    },
+    {
+      "code": "sync-locked",
+      "kind": "client",
+      "service": "sync",
+      "description": "Cloud Sync E2E: this device holds no root for the current key ring, so it cannot read or write synced values until it is unlocked by a nearby device, the recovery code or a platform backup (WIRE-CONTRACT-V5 §11.5, §13.11)."
+    },
+    {
+      "code": "recovery-code-invalid",
+      "kind": "client",
+      "service": "sync",
+      "description": "Cloud Sync E2E: the recovery code's checksum or its unwrap failed (WIRE-CONTRACT-V5 §13.11.4)."
+    },
+    {
+      "code": "sync-encryption-pinned",
+      "kind": "client",
+      "service": "sync",
+      "description": "Cloud Sync E2E: the app requires end-to-end encryption and the Worker offers server mode, or none; sync stays off rather than downgrade (WIRE-CONTRACT-V5 §11.5, §13.10.6)."
     },
     {
       "code": "invalid-options",

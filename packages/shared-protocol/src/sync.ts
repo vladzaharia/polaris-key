@@ -4,9 +4,10 @@
 // with their values unchanged. WIRE-CONTRACT-V4 §13 is the normative text; each export names its
 // subsection.
 //
-// Nothing here is signed. `PROTOCOL_VERSION` stays 4. Constants are strings and integers only so
-// that `gen constants` can emit them into every SDK (U-05.2). Saves-slot and file types are
-// U-10's, and there is no `limits` member (§13.5).
+// Nothing here is signed. `PROTOCOL_VERSION` stays 5. Constants are strings and integers only so
+// that `gen constants` can emit them into every SDK (U-05.2), and there is no `limits` member
+// (§13.5). U-33.2 adds the file routes, the end-to-end shapes and the key ring (WIRE-CONTRACT-V5
+// §13.2-§13.4, §13.8-§13.11); every export of this file named SYNC_* is a generated constant.
 
 /** A JSON value. */
 export type SyncJson =
@@ -73,6 +74,87 @@ export const SYNC_PULL_PAGE_CHANGES = 500;
 export const SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS = 300;
 
 // ---------------------------------------------------------------------------------------------
+// Files, end-to-end encryption and the key ring: constants (U-33.2)
+// ---------------------------------------------------------------------------------------------
+
+/** §8, §13.11: `rg_` + 22 base64url characters; one key ring per (product, subject). */
+export const SYNC_RING_ID_PATTERN = "^rg_[A-Za-z0-9_-]{22}$";
+/** §8, §13.10.2: a `kid` is 16 bytes, lowercase hex (32 characters) in JSON and raw in an envelope header. */
+export const SYNC_KID_PATTERN = "^[0-9a-f]{32}$";
+/** §8, §13.10.3: `x:` + the base64url of a 32-byte HMAC (43 characters), the blinded form of a person-chosen name. */
+export const SYNC_BLINDED_NAME_PATTERN = "^x:[A-Za-z0-9_-]{43}$";
+/** §8, §13.10.3: the prefix a declared key or collection name never starts with. */
+export const SYNC_BLINDED_PREFIX = "x:";
+/** §8, §13.8.3: 64 lowercase hex characters; an HMAC-SHA256 in E2E mode, the plain SHA-256 in server mode. */
+export const SYNC_CHUNK_ID_PATTERN = "^[0-9a-f]{64}$";
+/** §8, §13.11.5: the prefix of the Keychain service that backs up a root (`pkey-sync:<product>`). */
+export const SYNC_KEYCHAIN_SERVICE_PREFIX = "pkey-sync:";
+
+/** §13.8.1: a whole file up to this size is one `PUT` (mode `single`; 16 MiB). */
+export const SYNC_SINGLE_PUT_MAX_BYTES = 16_777_216;
+/** §13.8.1: the largest whole file (mode `multipart`; 1 GiB). */
+export const SYNC_FILE_MAX_BYTES = 1_073_741_824;
+/** §13.8.1: the smallest `partBytes` (8 MiB). */
+export const SYNC_PART_MIN_BYTES = 8_388_608;
+/** §13.8.1: the largest `partBytes` (64 MiB). */
+export const SYNC_PART_MAX_BYTES = 67_108_864;
+/** §13.8.1: `partBytes` rounds up to a multiple of this (1 MiB). */
+export const SYNC_PART_ROUND_BYTES = 1_048_576;
+/** §13.8.1: `partBytes` = max(8 MiB, ceil(size / this) rounded up to 1 MiB). */
+export const SYNC_MAX_PARTS = 9999;
+/** §13.8.1: a collection with `files.delta` sends a file of at least this size as chunks (1 MiB). */
+export const SYNC_DELTA_MIN_FILE_BYTES = 1_048_576;
+/** §13.8.2: an upload and its quota reservation live this long. */
+export const SYNC_UPLOAD_TTL_SECONDS = 86_400;
+/** §13.8.2: open uploads per person; the next `begin` is `429 rate_limited`. */
+export const SYNC_MAX_OPEN_UPLOADS = 4;
+/** §13.8.2: parts a client sends in parallel. */
+export const SYNC_UPLOAD_PARALLELISM = 4;
+/** §13.8.2: file transfers per device an hour (`begin` and whole-file `GET`). */
+export const SYNC_FILE_TRANSFERS_PER_HOUR = 30;
+/** §13.8.2: part and chunk requests per device a minute. */
+export const SYNC_CHUNK_REQUESTS_PER_MINUTE = 600;
+/** §13.8.2: chunks per file. */
+export const SYNC_MAX_CHUNKS_PER_FILE = 16_384;
+/** §13.8.2: chunk ids in one plan call. */
+export const SYNC_CHUNK_PLAN_MAX_IDS = 1024;
+
+/** §13.8.3: the content-defined chunker's minimum chunk size (64 KiB). */
+export const SYNC_CDC_MIN_BYTES = 65_536;
+/** §13.8.3: the chunker's average chunk size (256 KiB). */
+export const SYNC_CDC_AVG_BYTES = 262_144;
+/** §13.8.3: the chunker's maximum chunk size (1 MiB). */
+export const SYNC_CDC_MAX_BYTES = 1_048_576;
+/** §13.8.3: the gear table's seed, as in the pack chunker (0x9e3779b9). */
+export const SYNC_CDC_GEAR_SEED = 2_654_435_769;
+
+/** §13.10.4: an envelope is 49 bytes of header and tag plus the padded payload (`(length - 49) mod 64 = 0`). */
+export const SYNC_ENVELOPE_FIXED_BYTES = 49;
+/** §13.10.4: the payload is padded to a multiple of this. */
+export const SYNC_ENVELOPE_PAD_BLOCK = 64;
+/** §13.10.4: the most an envelope adds to a value (49 fixed and at most 64 of padding); budgets are charged on `envelopeBytes - 113`. */
+export const SYNC_E2E_OVERHEAD_BYTES = 113;
+/** §13.10.4: the segment size of a `pkey-sync-file/1` stream (1 MiB). */
+export const SYNC_FILE_SEGMENT_BYTES = 1_048_576;
+/** §13.10.4: the sealed value format. */
+export const SYNC_VALUE_FORMAT = "pkey-sync-value/1";
+/** §13.10.4: the sealed file stream format. */
+export const SYNC_FILE_FORMAT = "pkey-sync-file/1";
+/** §13.8.3: the stored chunk object format. */
+export const SYNC_CHUNK_FORMAT = "pkey-sync-chunk/1";
+/** §13.8.3: the chunk manifest format (the file of a `chunks` upload). */
+export const SYNC_MANIFEST_FORMAT = "pkey-sync-chunks/1";
+/** §13.8.3: the chunker's name. */
+export const SYNC_CDC_FORMAT = "pkey-sync-cdc/1";
+/** §13.11.1: the wrap format. */
+export const SYNC_WRAP_FORMAT = "pkey-sync-wrap/1";
+
+/** §13.11.2: reads of the recovery blob per device a day. */
+export const SYNC_RECOVERY_READS_PER_DAY = 5;
+/** §13.11.4: a reset keeps the old ring this many days, read-only. */
+export const SYNC_RESET_KEEP_DAYS = 30;
+
+// ---------------------------------------------------------------------------------------------
 // Targets and operations (§13.3)
 // ---------------------------------------------------------------------------------------------
 
@@ -115,8 +197,10 @@ export interface SyncMutation {
   member?: string;
   /** `setField` and `removeField`. */
   field?: string;
-  /** `add` and `remove` on a `union` record. */
+  /** `add` and `remove` on a `union` record. In E2E mode a blinded name (§13.10.3). */
   element?: SyncJson;
+  /** §13.3, §13.10: the sealed value, a `pkey-sync-value/1` envelope in canonical base64url. Replaces `value` in E2E mode. */
+  ct?: string;
   /** `remove` on a `union` record. */
   observedSeq?: number;
   /** A number is compare-and-swap, `"*"` create-only, absent unconditional. */
@@ -143,7 +227,8 @@ export type SyncRejectCode =
   | "op_invalid_for_policy"
   | "collection_unknown"
   | "entitlement_required"
-  | "quota_exceeded";
+  | "quota_exceeded"
+  | "encryption_mismatch";
 
 /** §13.3: the server's copy carried by a `conflict`. */
 export interface SyncServerCopy {
@@ -221,7 +306,7 @@ export type SyncTombstone =
   | { record: [collection: string, id: string]; editedHlc: string };
 
 /** §13.4: the pull body, whose members a push `200` also carries. */
-export interface PullResponse {
+export interface PullResponse extends Partial<PullEncryption> {
   subject: string;
   serverNow: number;
   cursor: number;
@@ -235,6 +320,41 @@ export interface PullResponse {
   empty?: true;
   changes: SyncChange[];
   tombstones: SyncTombstone[];
+}
+
+/** §13.4, §13.10.1: a product's mode, set by the catalog's `cloudSync.encryption`. */
+export type SyncEncryptionMode = "e2e" | "server";
+
+/** §13.4, §13.10.7: the members an end-to-end pull adds; absent from an older Worker's answer. */
+export interface PullEncryption {
+  encryption: SyncEncryptionMode;
+  /** The store sequence from which every row is sealed; a plaintext row below it is legacy data. */
+  encryptionSince: number;
+}
+
+/** §13.4: a sealed setting or record change; `ct` replaces `value`, and a merge setting's `members` are sealed. */
+export type SyncSealedChange =
+  | {
+      setting: string;
+      scope: SyncScope;
+      ct: string;
+      version: number;
+      editedHlc: string;
+      updatedBy: string;
+      members?: SyncSealedMember[];
+    }
+  | {
+      record: [collection: string, id: string];
+      ct: string;
+      version: number;
+      editedHlc?: string;
+    };
+
+/** §13.4: one member of a sealed `merge` setting; `member` is blinded. */
+export interface SyncSealedMember {
+  member: string;
+  ct: string;
+  editedHlc: string;
 }
 
 /** §13.3: the push `200` body: the results beside the pull members. */
@@ -263,9 +383,215 @@ export type SyncDiscovery =
       settings: boolean;
       collections: boolean;
       saves: boolean;
+      /** §13.2, §13.10.1: absent on a Worker that cannot take `ct`; an app that requires E2E then stays local (`unsupported`). */
+      encryption?: SyncEncryptionMode;
       endpoints: {
         pull: string | null;
         push: string | null;
         files: string | null;
+        /** §13.2: `<base>/devices/keyring`, E2E only; absent on an old Worker. */
+        keyring?: string | null;
       };
     };
+
+// ---------------------------------------------------------------------------------------------
+// Files (§13.2, §13.8)
+//
+// Routes (service `sync`, device bearer, `no-store`, under `/<p>/sync/files/{collection}/{id}`;
+// `{id}` is the blinded record id in E2E mode):
+//   POST   …/begin                              BeginFileRequest -> BeginFileResponse
+//   PUT    …/upload/{uploadId}                  mode `single`: the bytes, `Content-Digest` -> 204
+//   PUT    …/upload/{uploadId}/parts/{n}        mode `multipart`: part n (1…), `Content-Digest` -> 204
+//   GET    …/upload/{uploadId}                  -> UploadStatus
+//   DELETE …/upload/{uploadId}                  -> 204 (aborts, releases the reservation)
+//   POST   …/upload/{uploadId}/chunks           ChunkPlanRequest -> ChunkPlanResponse
+//   PUT    …/upload/{uploadId}/chunks/{chunkId} one chunk object, create-only -> 204
+//   POST   …/finalize                           FinalizeRequest -> FinalizeResponse
+//   GET    …/{id}[?version=]                    the stored file; `Range`/`206`, `ETag`, `Repr-Digest`
+//   GET    …/{id}/revisions                     -> FileRevisionsResponse
+//   GET    /<p>/sync/files/{collection}/chunks/{chunkId}   one chunk object
+// ---------------------------------------------------------------------------------------------
+
+/** §13.8.1: `whole` is one stream; `chunks` is a manifest over chunks (§13.8.3). */
+export type SyncFileFormat = "whole" | "chunks";
+
+/** §13.8.1: `e2e` or `none`; it must match the product's mode, else `400 encryption_mismatch`. */
+export type SyncFileEnc = "e2e" | "none";
+
+/** §13.8.1: how the bytes travel, chosen by the server at `begin`. */
+export type SyncUploadMode = "single" | "multipart" | "chunks";
+
+/** §13.8.1: the `begin` body. `sha256` is the hash of what is stored (ciphertext in E2E mode). */
+export interface BeginFileRequest {
+  size: number;
+  sha256: string;
+  format: SyncFileFormat;
+  enc: SyncFileEnc;
+  /** A number is compare-and-swap, `"*"` create-only, absent unconditional. */
+  baseVersion?: number | "*";
+}
+
+/** §13.8.1: the `begin` answer. */
+export interface BeginFileResponse {
+  uploadId: string;
+  mode: SyncUploadMode;
+  /** `multipart` only. */
+  partBytes?: number;
+  expiresAt: number;
+}
+
+/** §13.8.2: the resume answer. `received` is for `multipart`, `missing` for `chunks`. */
+export interface UploadStatus {
+  mode: SyncUploadMode;
+  size: number;
+  partBytes?: number;
+  received?: number[];
+  missing?: string[];
+  expiresAt: number;
+}
+
+/** §13.2: `[chunkId, storedBytes]`. */
+export type SyncChunkRef = [chunkId: string, storedBytes: number];
+
+/** §13.2: the chunk plan call, at most `SYNC_CHUNK_PLAN_MAX_IDS` ids. */
+export interface ChunkPlanRequest {
+  chunks: SyncChunkRef[];
+}
+
+/** §13.2: the chunks to send and the ones the person's collection already holds. */
+export interface ChunkPlanResponse {
+  missing: string[];
+  present: SyncChunkRef[];
+}
+
+/** §13.8.1: the `finalize` body; idempotent per `uploadId`. */
+export interface FinalizeRequest {
+  uploadId: string;
+}
+
+/** §13.8.1: the `finalize` answer. */
+export interface FinalizeResponse {
+  version: number;
+  size: number;
+  sha256: string;
+  format: SyncFileFormat;
+}
+
+/** §13.2: one kept revision of a record's file. */
+export interface FileRevision {
+  version: number;
+  size: number;
+  sha256: string;
+  format: SyncFileFormat;
+  createdAt: number;
+}
+
+/** §13.2: the revisions answer. */
+export interface FileRevisionsResponse {
+  revisions: FileRevision[];
+}
+
+/** §13.8.4: `409 upload_incomplete` carries what is still missing (part numbers or chunk ids). */
+export interface UploadIncompleteBody {
+  missing: (number | string)[];
+}
+
+/** §13.8.4: `409 revision_conflict` from `begin` or `finalize` carries the server's version. */
+export interface FileRevisionConflictBody {
+  server: { version: number };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The key ring (§13.11): Core's, served under `/<p>/devices/keyring`
+//
+//   GET    /<p>/devices/keyring                       -> KeyringResponse
+//   POST   /<p>/devices/keyring                       CreateKeyringRequest -> 201
+//   PUT    /<p>/devices/keyring/wraps/{deviceId}      PutWrapRequest -> 204 (create-only)
+//   DELETE /<p>/devices/keyring/wraps/{deviceId}      -> 204 (the device's own wrap)
+//   PUT    /<p>/devices/keyring/recovery              RecoveryBlob -> 204
+//   GET    /<p>/devices/keyring/recovery              -> RecoveryBlob
+//   POST   /<p>/devices/keyring/adopt                 AdoptRequest -> 204
+//   POST   /<p>/devices/keyring/reset                 ResetKeyringRequest -> 201
+// ---------------------------------------------------------------------------------------------
+
+/** §13.11.1: the wrap's KEM; 0x0020 is X25519 (`pkey-sync-wrap/1`). The member is `kem` so a later key type changes one field. */
+export type SyncWrapKem = string;
+
+/** §13.11.2: a wrap of `R` to one device, as the server stores it. `enc` and `ct` are base64url. */
+export interface KeyringWrap {
+  epoch: number;
+  kid: string;
+  kem: SyncWrapKem;
+  enc: string;
+  ct: string;
+  /** The device that made the wrap. */
+  by: string;
+}
+
+/** §13.11.2: a root of another ring sealed under `K_adopt`. */
+export interface KeyringAdopted {
+  ringId: string;
+  epoch: number;
+  kid: string;
+  ct: string;
+}
+
+/** §13.11.2: the ring as `GET` answers it. */
+export interface KeyringRing {
+  ringId: string;
+  epoch: number;
+  rootKid: string;
+  state: string;
+  createdAt: number;
+  recovery: { set: boolean; createdAt: number | null };
+  adopted: KeyringAdopted[];
+  previous?: { ringId: string; kid: string; until: number };
+}
+
+/** §13.11.2: `GET /<p>/devices/keyring`; `wrap` is this device's, `null` while it has none. */
+export interface KeyringResponse {
+  ring: KeyringRing | null;
+  wrap: KeyringWrap | null;
+}
+
+/** §13.11.4: the recovery blob (`0x01 ‖ n12 ‖ AES-256-GCM(K_rec, …)`), base64url. */
+export interface RecoveryBlob {
+  ct: string;
+  epoch: number;
+  kid: string;
+}
+
+/** §13.11.2: a wrap as a client sends it with a new ring. */
+export interface NewKeyringWrap {
+  kem: SyncWrapKem;
+  enc: string;
+  ct: string;
+}
+
+/** §13.11.2: `POST /<p>/devices/keyring`; `409 keyring_conflict` when a ring exists. */
+export interface CreateKeyringRequest {
+  ringId: string;
+  rootKid: string;
+  wrap: NewKeyringWrap;
+  recovery?: { ct: string };
+}
+
+/** §13.11.2: `PUT /<p>/devices/keyring/wraps/{deviceId}`; `409 keyring_conflict` when a wrap exists. */
+export interface PutWrapRequest {
+  epoch: number;
+  kid: string;
+  kem: SyncWrapKem;
+  enc: string;
+  ct: string;
+}
+
+/** §13.11.2: `POST /<p>/devices/keyring/adopt`. */
+export interface AdoptRequest {
+  fromRingId: string;
+  epoch: number;
+  kid: string;
+  ct: string;
+}
+
+/** §13.11.2: `POST /<p>/devices/keyring/reset`; the old ring becomes `previous` for `SYNC_RESET_KEEP_DAYS`. */
+export type ResetKeyringRequest = CreateKeyringRequest;

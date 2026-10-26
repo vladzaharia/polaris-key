@@ -265,6 +265,26 @@
       "title": "Synchronisation en pause",
       "message": "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard."
     },
+    "encryption_mismatch": {
+      "title": "Chiffrement incompatible",
+      "message": "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
+    },
+    "upload_expired": {
+      "title": "Envoi expiré",
+      "message": "L’envoi a pris trop de temps et a été annulé. Réessayez."
+    },
+    "upload_incomplete": {
+      "title": "Envoi incomplet",
+      "message": "Une partie du fichier n’est pas arrivée. Réessayez."
+    },
+    "file_too_large": {
+      "title": "Fichier trop volumineux",
+      "message": "Ce fichier dépasse la taille maximale des fichiers synchronisés."
+    },
+    "keyring_conflict": {
+      "title": "Déjà configuré",
+      "message": "Le chiffrement est déjà configuré pour ce compte. Déverrouillez avec un autre appareil ou votre code de récupération."
+    },
     "email_mismatch": {
       "title": "E-mail non vérifié",
       "message": "Cette licence est liée à une adresse e-mail que votre compte n’a pas vérifiée. Ajoutez et vérifiez cette adresse, puis réessayez."
@@ -468,6 +488,18 @@
     "platform-identity-unavailable": {
       "title": "Connexion indisponible",
       "message": "Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion."
+    },
+    "sync-locked": {
+      "title": "Synchronisation verrouillée",
+      "message": "Déverrouillez la synchronisation sur cet appareil avec votre code de récupération ou un autre appareil connecté."
+    },
+    "recovery-code-invalid": {
+      "title": "Code de récupération invalide",
+      "message": "Ce code de récupération n’est pas correct. Vérifiez-le et réessayez."
+    },
+    "sync-encryption-pinned": {
+      "title": "Chiffrement requis",
+      "message": "Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée."
     },
     "invalid-options": {
       "title": "App non configurée",
