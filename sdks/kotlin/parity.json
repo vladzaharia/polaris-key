@@ -194,16 +194,15 @@
       "note": "I-10b.15: IdentityClient.subject(), signOut() (pre-sign-out hooks, released drops the token) and openAccount(), over discovery's identity fragment; PolarisEvent.Identity; BootResult.subject; identity-subject-signout and discovery-identity transcripts replayed."
     },
     "identity.redirect.web": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.18: signIn.start(SignInOptions(channel = Redirect, redirectUri)) builds the S256 authorize URL from discovery (IdentityRedirect) for a browser the host opens; session.complete(callbackUrl) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint (form body, product origin only). Single use; a refusal is a typed SignInError and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's; the licence choice (license_choice=app) is I-10b.19's."
     },
     "identity.choice": {
       "status": "planned",
       "wp": "I-10b"
     },
     "identity.signin.hints": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented"
     },
     "identity.keyentry": {
       "status": "implemented",

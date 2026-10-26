@@ -7,6 +7,7 @@
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
+// @pkey-feature identity.redirect.web identity.signin.hints
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -74,6 +75,12 @@ import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.identity.AttachResult
+import im.plrs.key.identity.ConformanceReplayOnly
+import im.plrs.key.identity.RedirectEntropy
+import im.plrs.key.identity.redirectAcquisitionSync
+import im.plrs.key.identity.redirectEntropy
+import im.plrs.key.identity.SignInChannel
+import im.plrs.key.identity.SignInPurpose
 import im.plrs.key.identity.SignInError
 import im.plrs.key.identity.SignInOptions
 import im.plrs.key.identity.SignInOutcome
@@ -175,10 +182,52 @@ object KotlinReplay {
         step: JsonObject,
         session: ReplaySession,
         objects: PackObjectTransport? = null,
+        server: ReplayServer? = null,
     ): Map<String, JsonElement> {
         val out = LinkedHashMap<String, JsonElement>()
         val args = step["args"]!!.obj
         when (val action = step["action"].stringValue) {
+            "browser" -> {
+                // The browser's half is the recording's; the SDK's half is the authorize URL it builds for the
+                // request the Worker answered with a 303 to the card.
+                val replay = server ?: throw AssertionError("browser without a replay server")
+                val authorize = step["exchanges"]!!.obj["items"]!!.arrayValue!!.map { it.obj }.firstOrNull {
+                    val r = it["request"]!!.obj
+                    r["method"].stringValue == "GET" && (it["response"]!!.obj["status"] as JsonPrimitive).content == "303" &&
+                        r["path"].stringValue!!.contains("/identity/authorize?")
+                }
+                if (authorize != null) {
+                    val started = redirectSession(client, args)
+                    val want = replay.transcript.baseUrl + authorize["request"]!!.obj["path"].stringValue
+                    if (started.authorizeUrl != want) {
+                        replay.recordFailure("authorize URL differs from the recording:\n    want $want\n    got  ${started.authorizeUrl}")
+                    }
+                }
+                replay.serveBrowserExchanges()
+                // Facts the recorder read off the browser's pages; nothing of the SDK's.
+                for ((key, value) in step["expect"]!!.obj) out[key] = value
+            }
+            "redirectComplete" -> {
+                val s = redirectSession(client, args)
+                try {
+                    when (val o = s.complete(args["callbackUrl"].stringValue ?: "")) {
+                        is SignInOutcome.SignedIn -> {
+                            out["result"] = JsonPrimitive("ok")
+                            out["scope"] = o.scope?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["subject"] = o.subject?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["licenseId"] = o.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
+                        }
+                        SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
+                        else -> out["result"] = JsonPrimitive("error")
+                    }
+                } catch (e: SignInError) {
+                    out["result"] = JsonPrimitive(redirectResult(e.code))
+                    out["code"] = JsonPrimitive(e.code)
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
+                }
+            }
             "chunkRange" -> {
                 val transport = objects ?: throw AssertionError("chunkRange without a pack object transport")
                 val fetchRange = chunkRangeFetch(packsObjectFetch(client.packs, transport))
@@ -448,6 +497,32 @@ object KotlinReplay {
         return out
     }
 
+    /** The recorder's constants for a redirect conversation (`packages/worker/test/transcripts`). */
+    private const val RECORDED_STATE = "tidewater-state-0123456789"
+    private const val RECORDED_VERIFIER = "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+    private const val RECORDED_REDIRECT = "https://app.example/auth/callback"
+
+    /** A redirect session the way the step's `args` ask for one: the recorded `state` and verifier (a step may name its own), the hints it carries, the recorded redirect URI. */
+    @OptIn(ConformanceReplayOnly::class)
+    private suspend fun redirectSession(client: PolarisKeyClient, args: JsonObject): SignInSession {
+        client.identity.redirectEntropy = RedirectEntropy(
+            args["state"].stringValue ?: RECORDED_STATE, args["codeVerifier"].stringValue ?: RECORDED_VERIFIER,
+        )
+        return client.identity.signIn.start(
+            SignInOptions(
+                channel = SignInChannel.Redirect, redirectUri = args["redirectUri"].stringValue ?: RECORDED_REDIRECT,
+                loginHint = args["loginHint"].stringValue, nameHint = args["nameHint"].stringValue,
+                purpose = SignInPurpose.entries.firstOrNull { it.wire == args["purpose"].stringValue },
+            ),
+        )
+    }
+
+    /** `redirectComplete`'s `result` for a refusal's code (`format.ts`). */
+    private fun redirectResult(code: String): String = when (code) {
+        "invalid_grant", "invalid_request", "invalid_client", "license_choice_required", "rate_limited" -> code.replace('_', '-')
+        else -> "error"
+    }
+
     /** `initial.update.outlet`: a kind, or `{id, kind, subkind?}`. */
     private fun hostOutlet(v: JsonElement?): HostOutlet? = when {
         v == null || v is JsonNull -> null
@@ -548,7 +623,12 @@ object KotlinReplay {
             fun strings(k: String) = cache[k].objectValue?.mapValues { it.value.stringValue!! } ?: emptyMap()
             store.writeCache(CacheRecord(feeds = strings("feeds"), releaseRecords = strings("releaseRecords")))
         }
-        val services = (t.initial["services"]?.arrayValue?.map { it.stringValue!! } ?: if (u != null) listOf("release", "distribution", "update") else null)
+        // The redirect conversations ride a product that runs Identity (their discovery names it).
+        val redirects = t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }
+        val services = (
+            t.initial["services"]?.arrayValue?.map { it.stringValue!! }
+                ?: if (u != null) listOf("release", "distribution", "update") else if (redirects) listOf("license", "config", "identity") else null
+            )
             ?.mapNotNull { ServiceSlug.of(it) }
         val installed = u?.get("installed").objectValue
         val client = PolarisKeyClient.create(
@@ -577,12 +657,15 @@ object KotlinReplay {
                 },
             ),
         )
+        // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
+        @OptIn(ConformanceReplayOnly::class)
+        if (redirects) client.identity.redirectAcquisitionSync = false
         val session = ReplaySession(t.initial["platform"].stringValue)
         try {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
                 clock = step["now"].longValue ?: t.now
-                val observed = act(client, store, step, session, ReplayPackObjectTransport(server))
+                val observed = act(client, store, step, session, ReplayPackObjectTransport(server), server)
                 server.endStep()
                 for ((key, want) in step["expect"]!!.obj.entries.sortedBy { it.key }) {
                     val got = observed[key]
@@ -765,6 +848,8 @@ class TranscriptTest : ConformanceSuite() {
             "discovery-identity", "locker-discovery-identity", "identity-subject-signout",
             // I-10b.16: attach.
             "identity-attach", "identity-attach-errors",
+            // I-10b.18: the redirect core and the request hints.
+            "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
         )
     }
 }

@@ -51,6 +51,7 @@ internal suspend fun apiSurface() {
     SignInSession::reopen  // identity.signIn.session.reopen
     SignInSession::cancel  // identity.signIn.session.cancel
     SignInSession::wait  // identity.signIn.session.wait
+    SignInSession::complete  // identity.signIn.session.complete
     IdentityClient::attach  // identity.attachLicense
     IdentityClient::openAccount  // identity.openAccount
     PolarisKeyClient::events  // events
