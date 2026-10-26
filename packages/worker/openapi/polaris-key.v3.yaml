@@ -1030,6 +1030,182 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
               examples:
                 limited: { value: { error: { code: rate_limited } } }
+  /{product}/devices/keyring:
+    get:
+      operationId: getKeyring
+      tags: [core]
+      summary: Read the person's key ring and this device's wrap (U-36.2)
+      description: >
+        The Cloud Sync key ring (WIRE-CONTRACT-V5 §13.11) of the signed-in person for this product,
+        and this device's own wrap of its root. `404` unless a service needs the ring for the
+        product (Cloud Sync in end-to-end mode). `ring` is `null` before the first device creates
+        one. `wrap` is `null` until a device wraps the root to this one, and also when the wrap
+        predates the device's current keys: a wrap is served only to its own device, and only while
+        it is current. The server holds sealed values it cannot open. `cache-control: no-store`.
+      security: [{ deviceToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The ring and this device's wrap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyringState" }
+              examples:
+                none: { value: { ring: null, wrap: null } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: No account is signed in on the device (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                accountRequired:
+                  { value: { error: { code: account_required } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    post:
+      operationId: createKeyring
+      tags: [core]
+      summary: Create the person's key ring (U-36.2)
+      description: >
+        Creates the ring at epoch 1 with the calling device's own wrap, and optionally the sealed
+        recovery blob. There is one ring per product and person: `409 keyring_conflict` when it
+        exists, and nothing is written. The device must have registered its keys.
+      security: [{ deviceToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringCreateRequest" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KeyringCreated" }
+              examples:
+                created:
+                  { value: { ringId: rg_AAAAAAAAAAAAAAAAAAAAAA, epoch: 1 } }
+        "400":
+          description: A malformed body, or the device has no registered keys (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: No account is signed in on the device (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: A ring already exists.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightKeyring
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/devices/keyring/wraps/{deviceId}:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+      - name: deviceId
+        in: path
+        required: true
+        schema: { type: string, pattern: "^[A-Za-z0-9_-]{1,128}$" }
+    put:
+      operationId: putKeyringWrap
+      tags: [core]
+      summary: Store a wrap of the ring root for a device (U-36.2)
+      description: >
+        Stores `pkey-sync-wrap/1` for `deviceId`. The target must be a live device of the same
+        person that has registered keys, else `404 not_found` (one answer, whatever the reason).
+        `epoch` and `kid` must be the ring's current ones, else `409 keyring_conflict`, which is
+        also the answer when a wrap already exists (create-only) or there is no ring. A device
+        stores a wrap for ANOTHER device only while it holds a current wrap itself, else `403
+        forbidden`; it may always store one for itself. Wraps reach other devices only through
+        nearby approval, the recovery code or platform backup (R-9); the server cannot see the
+        channel and enforces what it can.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KeyringWrapRequest" }
+      responses:
+        "204": { description: Stored. }
+        "400":
+          description: A malformed body (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device (`account_required`), or the calling device
+            holds no wrap and cannot deposit one for another (`forbidden`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: A wrap exists, the epoch or `kid` is not the ring's, or there is no ring.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: keyring_conflict } } }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    delete:
+      operationId: deleteKeyringWrap
+      tags: [core]
+      summary: Remove this device's own wrap (U-36.2)
+      description: >
+        Removes the calling device's wrap. Idempotent. `403 forbidden` for any other `deviceId`.
+      security: [{ deviceToken: [] }]
+      responses:
+        "204": { description: Removed, or there was none. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            No account is signed in on the device (`account_required`), or `deviceId` is another
+            device (`forbidden`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+    options:
+      operationId: preflightKeyringWrap
+      tags: [core]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. See `CorsPreflight`.
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/devices/attest:
     post:
       operationId: attestDevice
@@ -27476,6 +27652,89 @@ components:
           type: integer
           minimum: 1
           description: 1 on first registration; bumped by each rotation.
+    KeyringWrap:
+      type: object
+      description: A `pkey-sync-wrap/1` (V5 §13.11.1). `enc` and `ct` are unpadded base64url.
+      required: [kem, enc, ct]
+      properties:
+        kem: { type: string, pattern: "^[A-Za-z0-9._-]{1,32}$" }
+        enc: { type: string, pattern: "^[A-Za-z0-9_-]+$", maxLength: 128 }
+        ct: { type: string, pattern: "^[A-Za-z0-9_-]+$", maxLength: 512 }
+    KeyringWrapRequest:
+      allOf:
+        - $ref: "#/components/schemas/KeyringWrap"
+        - type: object
+          required: [epoch, kid]
+          properties:
+            epoch: { type: integer, minimum: 1 }
+            kid: { type: string, pattern: "^[0-9a-f]{32}$" }
+    KeyringCreateRequest:
+      type: object
+      required: [ringId, rootKid, wrap]
+      properties:
+        ringId: { type: string, pattern: "^rg_[A-Za-z0-9_-]{22}$" }
+        rootKid: { type: string, pattern: "^[0-9a-f]{32}$" }
+        wrap: { $ref: "#/components/schemas/KeyringWrap" }
+        recovery:
+          type: object
+          required: [ct]
+          properties:
+            ct: { type: string, pattern: "^[A-Za-z0-9_-]+$", maxLength: 512 }
+    KeyringCreated:
+      type: object
+      required: [ringId, epoch]
+      properties:
+        ringId: { type: string }
+        epoch: { type: integer, minimum: 1 }
+    KeyringState:
+      type: object
+      required: [ring, wrap]
+      properties:
+        ring:
+          nullable: true
+          type: object
+          required:
+            [ringId, epoch, rootKid, state, createdAt, recovery, adopted]
+          properties:
+            ringId: { type: string }
+            epoch: { type: integer, minimum: 1 }
+            rootKid: { type: string }
+            state: { type: string, enum: [active] }
+            createdAt: { type: integer, description: Epoch seconds. }
+            recovery:
+              type: object
+              required: [set, createdAt]
+              properties:
+                set: { type: boolean }
+                createdAt: { type: integer, nullable: true }
+            adopted:
+              type: array
+              items:
+                type: object
+                required: [ringId, epoch, kid, ct]
+                properties:
+                  ringId: { type: string }
+                  epoch: { type: integer }
+                  kid: { type: string }
+                  ct: { type: string, nullable: true }
+            previous:
+              type: object
+              required: [ringId, kid, until]
+              properties:
+                ringId: { type: string }
+                kid: { type: string }
+                until: { type: integer, description: Epoch seconds. }
+        wrap:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/KeyringWrap"
+            - type: object
+              required: [epoch, kid, by]
+              properties:
+                epoch: { type: integer }
+                kid: { type: string }
+                by:
+                  { type: string, description: The device that made the wrap. }
     RegistrationResult:
       type: object
       description: Keyless registration's answer — the token and the device id it is bound to.

@@ -33,6 +33,7 @@ import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
 import { serviceContext } from "./core/registry.js";
 import { handleDevices, handleReport } from "./core/devices.js";
 import { handleDeviceKeys } from "./core/devices/keysRoute.js";
+import { handleKeyring } from "./core/keyring/routes.js";
 import { handleRegister } from "./core/register.js";
 import {
   handleAttest,
@@ -175,6 +176,30 @@ export const CORE_ROUTES: readonly CoreRouteDecl[] = [
     cors: false,
     auth: { kind: "device" },
     handler: (c) => handleDeviceKeys(c.req, c.env, c.db, c.product, c.now),
+  },
+  // U-36.2: the Core key ring (WIRE-CONTRACT-V5 §13.11). `404` unless a service needs it for the
+  // product (Cloud Sync in end-to-end mode). `rest` is the decoded path after `keyring`; U-36.3
+  // adds recovery, adopt and reset to the same kind.
+  {
+    kind: "keyring",
+    surface: [
+      { path: "/{product}/devices/keyring", methods: ["get", "post"] },
+      {
+        path: "/{product}/devices/keyring/wraps/{deviceId}",
+        methods: ["put", "delete"],
+      },
+    ],
+    cors: true,
+    auth: { kind: "device" },
+    handler: (c) =>
+      handleKeyring(
+        c.req,
+        c.env,
+        c.db,
+        c.product,
+        c.now,
+        (c.route as { rest?: string[] }).rest ?? [],
+      ),
   },
   // HA-06: CI pushes files into hosted-asset slots (`assets:write`, checked by the handler).
   {

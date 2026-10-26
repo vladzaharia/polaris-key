@@ -18,6 +18,8 @@ export const ErrorCode = {
   /** CC-03.2: `PUT /<p>/devices/keys` refused: a bad key, a failed or stale proof, or an `agreeKey`
    *  another device holds. One code for all three. */
   DeviceKeysInvalid: "device_keys_invalid",
+  /** U-36.2: a key ring, or a wrap for that device, already exists. */
+  KeyringConflict: "keyring_conflict",
   BadRequest: "bad_request",
   NotFound: "not_found",
   ManagedByAdmin: "managed_by_admin",

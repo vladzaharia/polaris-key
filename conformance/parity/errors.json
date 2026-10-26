@@ -427,8 +427,7 @@
       "code": "keyring_conflict",
       "kind": "wire",
       "service": "core",
-      "description": "409 from the key ring routes: a ring already exists for the product and subject, or a wrap already exists for the device. The client reads the ring and continues from it (WIRE-CONTRACT-V5 §13.11.2, §13.9; U-36).",
-      "plannedBy": "U-36"
+      "description": "409 from the key ring routes: a ring already exists for the product and subject, or a wrap already exists for the device. The client reads the ring and continues from it (WIRE-CONTRACT-V5 §13.11.2, §13.9; U-36)."
     },
     {
       "code": "email_mismatch",
