@@ -226,6 +226,8 @@ class ErrorCode:
     INVALID_SCOPE: Final = "invalid_scope"
     REDIRECT_URI_MISMATCH: Final = "redirect_uri_mismatch"
     LICENSE_CHOICE_REQUIRED: Final = "license_choice_required"
+    INTERSTITIAL_REQUIRED: Final = "interstitial_required"
+    NOT_NEARBY: Final = "not_nearby"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_UNAVAILABLE: Final = "email_unavailable"
     TURNSTILE_FAILED: Final = "turnstile_failed"
@@ -295,6 +297,7 @@ class ErrorCode:
     SIGN_IN_EXPIRED: Final = "sign-in-expired"
     SIGN_IN_DENIED: Final = "sign-in-denied"
     SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
+    PLATFORM_IDENTITY_UNAVAILABLE: Final = "platform-identity-unavailable"
     INVALID_OPTIONS: Final = "invalid-options"
     INVALID_ARGUMENT: Final = "invalid-argument"
     INVOKE_NOT_ALLOWED: Final = "invoke-not-allowed"
@@ -414,6 +417,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "invalid_scope",
     "redirect_uri_mismatch",
     "license_choice_required",
+    "interstitial_required",
+    "not_nearby",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -483,6 +488,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "sign-in-expired",
     "sign-in-denied",
     "sign-in-unavailable",
+    "platform-identity-unavailable",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -604,6 +610,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "invalid_scope": "wire",
         "redirect_uri_mismatch": "wire",
         "license_choice_required": "wire",
+        "interstitial_required": "wire",
+        "not_nearby": "wire",
         "auth_method_disabled": "wire",
         "email_unavailable": "wire",
         "turnstile_failed": "wire",
@@ -673,6 +681,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "sign-in-expired": "client",
         "sign-in-denied": "client",
         "sign-in-unavailable": "client",
+        "platform-identity-unavailable": "client",
         "invalid-options": "client",
         "invalid-argument": "client",
         "invoke-not-allowed": "client",

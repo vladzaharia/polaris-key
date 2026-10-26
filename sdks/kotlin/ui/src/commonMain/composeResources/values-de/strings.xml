@@ -2091,6 +2091,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_title">Anmeldung abschließen</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_message">Schließen Sie die Anmeldung auf der Polaris Locker-Seite ab und kehren Sie dann zur App zurück.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_title">Nicht in der Nähe</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_message">Das andere Gerät ist nicht in diesem Netzwerk. Gehen Sie näher heran oder melden Sie sich stattdessen mit einem Code an.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Anmeldemethode nicht verfügbar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere.</string>
@@ -2366,6 +2374,10 @@
     <string name="core_codes_sign_in_unavailable_title">Anmeldung nicht verfügbar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_unavailable_message">Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_title">Anmeldung nicht verfügbar</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_message">Dieses Gerät kann Sie nicht automatisch anmelden. Verwenden Sie eine andere Anmeldeart.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App nicht eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

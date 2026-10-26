@@ -222,6 +222,16 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Choose a license",
     message: "Choose which license this device uses, then continue.",
   },
+  interstitial_required: {
+    title: "Finish signing in",
+    message:
+      "Finish signing in on the Polaris Locker page, then return to the app.",
+  },
+  not_nearby: {
+    title: "Not nearby",
+    message:
+      "The other device isn't on this network. Move closer, or sign in with a code instead.",
+  },
   auth_method_disabled: {
     title: "Sign-in method unavailable",
     message: "That sign-in method is turned off. Choose another one.",
@@ -516,6 +526,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   "sign-in-unavailable": {
     title: "Sign-in unavailable",
     message: "Sign-in isn't available right now. Try again in a few minutes.",
+  },
+  "platform-identity-unavailable": {
+    title: "Sign-in unavailable",
+    message:
+      "This device can't sign you in automatically. Use another way to sign in.",
   },
   "invalid-options": {
     title: "App not set up",

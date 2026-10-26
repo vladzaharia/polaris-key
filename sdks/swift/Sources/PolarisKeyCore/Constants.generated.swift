@@ -54,6 +54,8 @@ public enum ErrorCode {
     public static let invalidScope = "invalid_scope"
     public static let redirectUriMismatch = "redirect_uri_mismatch"
     public static let licenseChoiceRequired = "license_choice_required"
+    public static let interstitialRequired = "interstitial_required"
+    public static let notNearby = "not_nearby"
     public static let authMethodDisabled = "auth_method_disabled"
     public static let emailUnavailable = "email_unavailable"
     public static let turnstileFailed = "turnstile_failed"
@@ -123,6 +125,7 @@ public enum ErrorCode {
     public static let signInExpired = "sign-in-expired"
     public static let signInDenied = "sign-in-denied"
     public static let signInUnavailable = "sign-in-unavailable"
+    public static let platformIdentityUnavailable = "platform-identity-unavailable"
     public static let invalidOptions = "invalid-options"
     public static let invalidArgument = "invalid-argument"
     public static let invokeNotAllowed = "invoke-not-allowed"
@@ -242,6 +245,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "invalid_scope",
     "redirect_uri_mismatch",
     "license_choice_required",
+    "interstitial_required",
+    "not_nearby",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -311,6 +316,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "sign-in-expired",
     "sign-in-denied",
     "sign-in-unavailable",
+    "platform-identity-unavailable",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -430,6 +436,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "invalid_scope": "wire",
     "redirect_uri_mismatch": "wire",
     "license_choice_required": "wire",
+    "interstitial_required": "wire",
+    "not_nearby": "wire",
     "auth_method_disabled": "wire",
     "email_unavailable": "wire",
     "turnstile_failed": "wire",
@@ -499,6 +507,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "sign-in-expired": "client",
     "sign-in-denied": "client",
     "sign-in-unavailable": "client",
+    "platform-identity-unavailable": "client",
     "invalid-options": "client",
     "invalid-argument": "client",
     "invoke-not-allowed": "client",

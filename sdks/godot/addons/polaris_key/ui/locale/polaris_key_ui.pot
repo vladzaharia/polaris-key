@@ -5520,6 +5520,26 @@ msgstr ""
 msgid "core.codes.license_choice_required.message"
 msgstr ""
 
+#. Finish signing in
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interstitial_required.title"
+msgstr ""
+
+#. Finish signing in on the Polaris Locker page, then return to the app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.interstitial_required.message"
+msgstr ""
+
+#. Not nearby
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_nearby.title"
+msgstr ""
+
+#. The other device isn't on this network. Move closer, or sign in with a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_nearby.message"
+msgstr ""
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"
@@ -6208,6 +6228,16 @@ msgstr ""
 #. Sign-in isn't available right now. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-unavailable.message"
+msgstr ""
+
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-identity-unavailable.title"
+msgstr ""
+
+#. This device can't sign you in automatically. Use another way to sign in.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-identity-unavailable.message"
 msgstr ""
 
 #. App not set up

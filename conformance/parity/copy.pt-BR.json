@@ -181,6 +181,14 @@
       "title": "Escolha uma licença",
       "message": "Escolha qual licença este dispositivo usa e continue."
     },
+    "interstitial_required": {
+      "title": "Conclua o login",
+      "message": "Conclua o login na página do Polaris Locker e volte ao app."
+    },
+    "not_nearby": {
+      "title": "Não está por perto",
+      "message": "O outro dispositivo não está nesta rede. Aproxime-se ou entre com um código."
+    },
     "auth_method_disabled": {
       "title": "Método de acesso indisponível",
       "message": "Esse método de acesso está desativado. Escolha outro."
@@ -456,6 +464,10 @@
     "sign-in-unavailable": {
       "title": "Acesso indisponível",
       "message": "O acesso não está disponível agora. Tente novamente em alguns minutos."
+    },
+    "platform-identity-unavailable": {
+      "title": "Login indisponível",
+      "message": "Este dispositivo não consegue fazer login automaticamente. Use outra forma de entrar."
     },
     "invalid-options": {
       "title": "App não configurado",

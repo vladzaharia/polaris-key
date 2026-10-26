@@ -181,6 +181,14 @@
       "title": "Choisissez une licence",
       "message": "Choisissez la licence que cet appareil utilise, puis continuez."
     },
+    "interstitial_required": {
+      "title": "Terminer la connexion",
+      "message": "Terminez la connexion sur la page Polaris Locker, puis revenez à l’app."
+    },
+    "not_nearby": {
+      "title": "Pas à proximité",
+      "message": "L’autre appareil n’est pas sur ce réseau. Rapprochez-vous ou connectez-vous avec un code."
+    },
     "auth_method_disabled": {
       "title": "Méthode de connexion indisponible",
       "message": "Cette méthode de connexion est désactivée. Choisissez-en une autre."
@@ -456,6 +464,10 @@
     "sign-in-unavailable": {
       "title": "Connexion indisponible",
       "message": "La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes."
+    },
+    "platform-identity-unavailable": {
+      "title": "Connexion indisponible",
+      "message": "Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion."
     },
     "invalid-options": {
       "title": "App non configurée",

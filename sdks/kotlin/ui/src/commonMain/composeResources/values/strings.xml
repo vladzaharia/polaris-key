@@ -2091,6 +2091,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Choose which license this device uses, then continue.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_title">Finish signing in</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_message">Finish signing in on the Polaris Locker page, then return to the app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_title">Not nearby</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_message">The other device isn't on this network. Move closer, or sign in with a code instead.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Sign-in method unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">That sign-in method is turned off. Choose another one.</string>
@@ -2366,6 +2374,10 @@
     <string name="core_codes_sign_in_unavailable_title">Sign-in unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_unavailable_message">Sign-in isn't available right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_title">Sign-in unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_message">This device can't sign you in automatically. Use another way to sign in.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App not set up</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

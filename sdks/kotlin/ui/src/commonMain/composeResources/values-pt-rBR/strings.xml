@@ -2104,6 +2104,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Escolha qual licença este dispositivo usa e continue.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_title">Conclua o login</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_message">Conclua o login na página do Polaris Locker e volte ao app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_title">Não está por perto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_message">O outro dispositivo não está nesta rede. Aproxime-se ou entre com um código.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Método de acesso indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Esse método de acesso está desativado. Escolha outro.</string>
@@ -2379,6 +2387,10 @@
     <string name="core_codes_sign_in_unavailable_title">Acesso indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_unavailable_message">O acesso não está disponível agora. Tente novamente em alguns minutos.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_title">Login indisponível</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_message">Este dispositivo não consegue fazer login automaticamente. Use outra forma de entrar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App não configurado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

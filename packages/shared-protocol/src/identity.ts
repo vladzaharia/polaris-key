@@ -342,6 +342,13 @@ export interface IdentityDiscovery {
   account?: true;
   /** The product's effective `identity.keyEntry.limit` (§12.2 rule 5): the value enforced. */
   keyEntryLimit?: number;
+  /** I-13 (§12.11.6): present only when the product declares a platform sign-in kind. */
+  exchange?: {
+    kinds: ExchangeKind[];
+    google?: { serverClientId: string };
+  };
+  /** I-40 (§12.11.5): nearby approval is served. */
+  nearby?: true;
   endpoints: {
     session: string;
     sessionLicense: string;
@@ -361,6 +368,12 @@ export interface IdentityDiscovery {
     choiceDevices?: string;
     choiceComplete?: string;
     choiceCancel?: string;
+    /** I-13 (§12.11): the exchange's nonce, the link offer and the nearby approval routes. */
+    nonce?: string;
+    link?: string;
+    nearbyStart?: string;
+    nearbyApprove?: string;
+    nearbyPoll?: string;
     attach?: string;
     subject?: string;
     signout?: string;
@@ -444,6 +457,7 @@ export interface TokenError {
     | "license_owned"
     | "key_entry_limit"
     | "license_choice_required"
+    | "interstitial_required"
     | "rate_limited";
   error_description?: string;
   message?: string;
@@ -566,7 +580,203 @@ export interface ChoiceDevicesRequest {
 export interface ChoiceCompleteRequest {
   grant: string;
   choice: LicenseChoiceInput;
+  /** §12.11.3: required on a grant issued with `status: "confirm"`; absent is `400 bad_request`. */
+  consent?: { claims: string[] };
+  deviceName?: string;
 }
 export interface ChoiceCancelRequest {
   grant: string;
 }
+
+// ── I-13: platform sign-in, the link offer and nearby approval (§12.11) ─────────────────────────
+
+/** §12.11.3: the token-exchange grant (RFC 8693) on `POST /<p>/identity/token`. */
+export const TOKEN_EXCHANGE_GRANT_TYPE =
+  "urn:ietf:params:oauth:grant-type:token-exchange";
+/** §12.11.3: the `subject_token_type`. */
+export const EXCHANGE_SUBJECT_TOKEN_TYPE =
+  "urn:ietf:params:oauth:token-type:id_token";
+/** §12.11.3: the `issued_token_type` of an exchange's `TokenResponse`. */
+export const EXCHANGE_ISSUED_TOKEN_TYPE = "urn:polaris-key:token-type:device";
+
+/** §12.11.1: what a `pkey-proof/1` signature is for. One proof, one purpose. */
+export type DeviceProofPurpose =
+  | "keys"
+  | "nonce"
+  | "exchange"
+  | "link"
+  | "nearby-start"
+  | "nearby-poll"
+  | "nearby-approve"
+  | "vouch"
+  | "restore";
+
+/** §12.11.1: the first line of every proof. */
+export const DEVICE_PROOF_VERSION = "pkey-proof/1";
+
+/** §12.11.3: the platform identity providers an exchange accepts. */
+export type ExchangeKind = "google" | "apple";
+
+/** §12.11.2: `POST /<p>/identity/nonce`. Raw 32-byte public keys, base64url. */
+export interface ExchangeNonceRequest {
+  signKey: string;
+  agreeKey: string;
+}
+
+/** §12.11.2: the answer. `nonce` is 32 random bytes in base64url (43 characters). */
+export interface ExchangeNonceResponse {
+  nonce: string;
+  expiresIn: number;
+}
+
+/** Lifetime of an exchange nonce, seconds (§12.11.2). */
+export const EXCHANGE_NONCE_TTL_SECONDS = 300;
+/** `nonce` is 32 random bytes in base64url (§12.11.2). */
+export const EXCHANGE_NONCE_PATTERN = "^[A-Za-z0-9_-]{43}$";
+
+/** §12.11.3: the form parameters of the exchange grant. */
+export interface ExchangeTokenParams {
+  grant_type: typeof TOKEN_EXCHANGE_GRANT_TYPE;
+  /** The product slug. */
+  client_id: string;
+  subject_token: string;
+  subject_token_type: typeof EXCHANGE_SUBJECT_TOKEN_TYPE;
+  nonce: string;
+  /** The device's signing key, raw 32 bytes in base64url. */
+  device_key: string;
+  /** A `pkey-proof/1` signature, purpose `exchange` (§12.11.1). */
+  proof: string;
+  license_choice?: AuthorizeLicenseChoice;
+  device_name?: string;
+}
+
+/** §12.11.3: a silent exchange's `200`: the §12.5 body plus the RFC 8693 token type. */
+export interface ExchangeTokenResponse extends TokenResponse {
+  issued_token_type: typeof EXCHANGE_ISSUED_TOKEN_TYPE;
+}
+
+/** §12.11.3 rule 1: what the person is asked to consent to, in the app's own form. */
+export interface ExchangeConsentView {
+  client: {
+    appName: string;
+    developerName: string | null;
+    iconUrl: string | null;
+    nameVerified: boolean;
+  };
+  /** `email` is the token's own address, so the app learns nothing it did not hold. */
+  as: { provider: ExchangeKind; email: string | null };
+  items: ConsentItem[];
+  /** Lowercase hex SHA-256, as {@link AppConsentView.scopeHash}. */
+  scopeHash: string;
+  firstTime: boolean;
+  changed: boolean;
+}
+
+/**
+ * §12.11.3: a `200` when the link exists but consent for this product does not (or its
+ * `scopeHash` changed). The grant is §12.5.1's; `choice/complete` then needs `consent`.
+ */
+export interface ConfirmSignIn {
+  status: "confirm";
+  grant: string;
+  expiresIn: number;
+  consent: ExchangeConsentView;
+  choices: LicenseChoiceView;
+}
+
+/** §12.11.3 rule 4: why the exchange cannot finish in the app. */
+export type InterstitialReason = "no_link" | "terms";
+
+/**
+ * §12.11.3: the flat `403` of the exchange. `linkHandle` (`lh_` and 43 base64url characters)
+ * and `expiresIn` come with `no_link` only.
+ */
+export interface InterstitialRequiredBody {
+  error: "interstitial_required";
+  reason: InterstitialReason;
+  url: string;
+  linkHandle?: string;
+  expiresIn?: number;
+}
+
+/** §12.11.3 rule 4: `lh_` and 32 random bytes in base64url. */
+export const LINK_HANDLE_PATTERN = "^lh_[A-Za-z0-9_-]{43}$";
+/** Lifetime of a link handle, seconds (§12.11.3). */
+export const LINK_HANDLE_TTL_SECONDS = 600;
+
+/** §12.11.4: how far a link reaches. `null` is unknown before a token. */
+export type LinkReach = "global" | "developer";
+
+/** §12.11.4: `GET /<p>/identity/link`. Empty without a live same-device step-up. */
+export interface LinkOfferResponse {
+  offer: { kind: ExchangeKind; reach: LinkReach | null }[];
+}
+
+/** §12.11.4: `POST /<p>/identity/link`, by handle or by a token of its own. */
+export type LinkRequest =
+  | { linkHandle: string; proof: string }
+  | {
+      subjectToken: string;
+      nonce: string;
+      signKey: string;
+      agreeKey: string;
+      proof: string;
+    };
+
+/** §12.11.4: the `200`. */
+export interface LinkResponse {
+  linked: { kind: ExchangeKind; reach: LinkReach };
+}
+
+/** §12.11.5: `POST /<p>/identity/nearby/start`, from the new device D. */
+export interface NearbyStartRequest {
+  signKey: string;
+  agreeKey: string;
+  deviceName?: string;
+  /** Purpose `nearby-start`. */
+  proof: string;
+}
+
+/** §12.11.5: the `201`. `request` is `nr_` and 22 base64url characters. */
+export interface NearbyStartResponse {
+  request: string;
+  expiresIn: number;
+  interval: number;
+}
+
+/** §12.11.5: `nr_` and 22 base64url characters. */
+export const NEARBY_REQUEST_PATTERN = "^nr_[A-Za-z0-9_-]{22}$";
+/** Lifetime of a nearby request, seconds (§12.11.5). */
+export const NEARBY_REQUEST_TTL_SECONDS = 300;
+
+/** §12.11.5: `POST /<p>/identity/nearby/approve`, from the signed-in device M. */
+export interface NearbyApproveRequest {
+  request: string;
+  signKey: string;
+  agreeKey: string;
+  decision: "approve" | "deny";
+  /** `license` or `create` only; no Replace in this version. */
+  choice?: LicenseChoiceInput;
+  /** Purpose `nearby-approve`. */
+  proof: string;
+}
+
+/** §12.11.5: the `200` of `approve`; a deny is `204` with no body. */
+export type NearbyApproveResponse =
+  | { status: "approved"; deviceLabel: string }
+  | { status: "choose"; choices: LicenseChoiceView };
+
+/** §12.11.5: `POST /<p>/identity/nearby/poll`, from D. */
+export interface NearbyPollRequest {
+  request: string;
+  /** Purpose `nearby-poll`. */
+  proof: string;
+}
+
+/** §12.11.5: the poll's answers; the token itself is a {@link TokenResponse}. */
+export type NearbyPollResponse =
+  | { status: "pending" }
+  | { status: "timeout" }
+  | { status: "error"; reason: typeof DEVICE_POLL_DENIED }
+  | TokenResponse
+  | DevicePollSlowDown;

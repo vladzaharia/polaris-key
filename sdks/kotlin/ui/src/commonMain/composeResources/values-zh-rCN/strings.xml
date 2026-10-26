@@ -2078,6 +2078,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">选择此设备使用的许可证，然后继续。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_title">完成登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_message">请在 Polaris Locker 页面完成登录，然后返回应用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_title">不在附近</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_message">另一台设备不在此网络中。请靠近一些，或改用代码登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">登录方式不可用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">该登录方式已关闭。请选择其他方式。</string>
@@ -2353,6 +2361,10 @@
     <string name="core_codes_sign_in_unavailable_title">登录不可用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_unavailable_message">登录目前不可用。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_title">无法登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_message">此设备无法自动登录。请使用其他登录方式。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">应用未设置</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

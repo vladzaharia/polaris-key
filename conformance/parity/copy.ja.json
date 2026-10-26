@@ -181,6 +181,14 @@
       "title": "ライセンスを選択",
       "message": "このデバイスで使うライセンスを選んでから続行してください。"
     },
+    "interstitial_required": {
+      "title": "サインインを完了してください",
+      "message": "Polaris Lockerのページでサインインを完了し、アプリに戻ってください。"
+    },
+    "not_nearby": {
+      "title": "近くにありません",
+      "message": "もう一方のデバイスがこのネットワークにありません。近づくか、コードでサインインしてください。"
+    },
     "auth_method_disabled": {
       "title": "サインイン方法を利用できません",
       "message": "このサインイン方法は無効になっています。別の方法を選択してください。"
@@ -456,6 +464,10 @@
     "sign-in-unavailable": {
       "title": "サインインを利用できません",
       "message": "現在サインインを利用できません。数分後にもう一度お試しください。"
+    },
+    "platform-identity-unavailable": {
+      "title": "サインインを利用できません",
+      "message": "このデバイスでは自動サインインができません。別の方法でサインインしてください。"
     },
     "invalid-options": {
       "title": "アプリが設定されていません",

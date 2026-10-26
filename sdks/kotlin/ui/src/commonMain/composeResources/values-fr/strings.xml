@@ -2104,6 +2104,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Choisissez la licence que cet appareil utilise, puis continuez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_title">Terminer la connexion</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_interstitial_required_message">Terminez la connexion sur la page Polaris Locker, puis revenez à l’app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_title">Pas à proximité</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_nearby_message">L’autre appareil n’est pas sur ce réseau. Rapprochez-vous ou connectez-vous avec un code.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">Méthode de connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Cette méthode de connexion est désactivée. Choisissez-en une autre.</string>
@@ -2379,6 +2387,10 @@
     <string name="core_codes_sign_in_unavailable_title">Connexion indisponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_unavailable_message">La connexion n’est pas disponible pour le moment. Réessayez dans quelques minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_title">Connexion indisponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_identity_unavailable_message">Cet appareil ne peut pas vous connecter automatiquement. Utilisez une autre méthode de connexion.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App non configurée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

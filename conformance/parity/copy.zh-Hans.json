@@ -181,6 +181,14 @@
       "title": "选择许可证",
       "message": "选择此设备使用的许可证，然后继续。"
     },
+    "interstitial_required": {
+      "title": "完成登录",
+      "message": "请在 Polaris Locker 页面完成登录，然后返回应用。"
+    },
+    "not_nearby": {
+      "title": "不在附近",
+      "message": "另一台设备不在此网络中。请靠近一些，或改用代码登录。"
+    },
     "auth_method_disabled": {
       "title": "登录方式不可用",
       "message": "该登录方式已关闭。请选择其他方式。"
@@ -456,6 +464,10 @@
     "sign-in-unavailable": {
       "title": "登录不可用",
       "message": "登录目前不可用。请几分钟后重试。"
+    },
+    "platform-identity-unavailable": {
+      "title": "无法登录",
+      "message": "此设备无法自动登录。请使用其他登录方式。"
     },
     "invalid-options": {
       "title": "应用未设置",
