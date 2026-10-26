@@ -270,13 +270,14 @@ any request.
 import PolarisKey
 
 func signInOnTV(_ client: PolarisKeyClient) async throws {
-    let prompt = try await client.identity.beginSignIn(deviceName: "Living-room Apple TV")
-    // Show prompt.userCode and prompt.verificationUri (the short URL); "Open browser" opens
-    // prompt.verificationUriComplete (the page with the code filled in). On a TV, also render that
+    let session = try await client.identity.signIn.start(
+        SignInOptions(deviceName: "Living-room Apple TV"))
+    // Show session.userCode and session.verificationUri (the short URL); "Open browser" opens
+    // session.verificationUriComplete (the page with the code filled in). On a TV, also render that
     // URL as a QR code; never on a phone, tablet or Mac.
-    let signIn = Task { try await client.identity.waitForSignIn(prompt) }
-    // …cancel `signIn` if the player backs out: polling stops and it throws CancellationError.
-    if case .ready(let ready) = try await signIn.value {
+    let waiting = Task { try await session.wait() }
+    // …call `session.cancel()` if the player backs out: polling stops and `wait()` returns `.cancelled`.
+    if case .signedIn(let ready) = try await waiting.value {
         // The device token is stored and the post-activation sync has already run.
         // `ready.identity` names who signed in (name, email) when the Worker said.
         _ = ready.identity
@@ -284,26 +285,26 @@ func signInOnTV(_ client: PolarisKeyClient) async throws {
 }
 ```
 
-`waitForSignIn` waits at least `prompt.interval` seconds before each poll; a `slow_down`
+`wait()` waits at least `session.interval` seconds before each poll; a `slow_down`
 lengthens the interval for every later poll (to the server's value, or by five seconds), and a
 poll that fails on the network or with a 5xx is retried at the same interval, never faster. It
-returns `.expired` once `prompt.expiresAt` has passed without asking the server again.
-`pollSignIn(_:)` makes exactly one poll (`.pending`, `.slowDown(interval:)`, `.ready`, `.expired`
-or `.error`). `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the
-signed-in identity's **own** license; it does not attach a license this device already held (the
-attach opt-in is retired). A Deny on the approval page ends as `.error(message:code:)` with
-`code == ErrorCode.signInDenied`.
+returns `.expired` once `session.expiresAt` has passed without asking the server again. The poll
+credential stays inside the session: never ask for it, never show it. A sign-in yields the
+signed-in identity's **own** license; it does not attach a license this device already held. A
+Deny on the approval page throws `SignInError` with `code == ErrorCode.signInDenied`.
+`SignInOptions(browser:)` shows the verification page in a browser sheet as the session starts;
+`session.reopen()` shows it again.
 
-**After `.ready`, show on the device which account signed in.** Anyone holding the user code can
+**After `.signedIn`, show on the device which account signed in.** Anyone holding the user code can
 complete the sign-in on the verification page, so the player must be able to see a mis-binding.
-`.ready(let ready)` carries `ready.identity` (name and email, when the Worker said) and
+`.signedIn(let ready)` carries `ready.identity` (name and email, when the Worker said) and
 `ready.attached`; the post-acquisition sync has already run, so `await client.currentDevice().profile`
 (or `LicenseClient.getProfile()`) returns the signed license profile too. Show "Signed in as Ada
 Lovelace <ada@example.com>" with a way out: the kit's sign-in form does, ending in Continue and
 "Not you?" (which signs out and starts again).
 
-`SignInPrompt` and `MintedToken` print (`print`, `String(describing:)`, `debugPrint`, `dump`)
-with `deviceCode` / `token` as `[redacted]`; the properties themselves read normally.
+`MintedToken` prints (`print`, `String(describing:)`, `debugPrint`, `dump`) with `token` as
+`[redacted]`; the property itself reads normally.
 
 ### Edge-mint
 

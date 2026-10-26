@@ -145,18 +145,17 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls /identity/auth/device/poll (identity.devicecode; the old /identity/auth/poll is retired and the Worker no longer serves it)."
+      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity.signIn.start(SignInOptions(browser:)), which opens the device-code verification URL in ASWebAuthenticationSession; session.wait() polls /identity/auth/device/poll (identity.devicecode; the old /identity/auth/poll is retired and the Worker no longer serves it)."
     },
     "identity.devicecode": {
       "status": "implemented"
     },
     "identity.devicelabel": {
       "status": "implemented",
-      "note": "PX-W13: normalizeDeviceLabel over Unicode scalars, CoreOptions.deviceName and the platform default (macOS Host.current().localizedName, iOS-family UIDevice.current.name), on beginSignIn, activation and registration; SignInPrompt.deviceName is the Worker's echo. PolarisKeyUI has no device-code sign-in view to show it in (ui.kit is planned and unowned)."
+      "note": "PX-W13: normalizeDeviceLabel over Unicode scalars, CoreOptions.deviceName and the platform default (macOS Host.current().localizedName, iOS-family UIDevice.current.name), on signIn.start, activation and registration; SignInPrompt.deviceName is the Worker's echo. PolarisKeyUI has no device-code sign-in view to show it in (ui.kit is planned and unowned)."
     },
     "identity.toggle": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented"
     },
     "identity.attach": {
       "status": "implemented"

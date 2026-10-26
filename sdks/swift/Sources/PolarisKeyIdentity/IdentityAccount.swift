@@ -81,7 +81,7 @@ extension IdentityClient {
         guard response.status == 200 else { throw refusal(response) }
         let value = (try? JSONDecoder().decode(JSONValue.self, from: response.body))?
             .objectValue?["subject"]?.stringValue
-        subjectValue.set(value)
+        updateSubject(value)
         return value
     }
 
@@ -105,10 +105,15 @@ extension IdentityClient {
             throw PolarisError(
                 code: ErrorCode.badResponse, message: "sign-out answered without `released`.")
         }
-        subjectValue.set(nil)
+        let previous = subjectValue.with { held -> String? in
+            let old = held
+            held = nil
+            return old
+        }
         if released {
             if let wipe = signOutHook.current { try await wipe() } else { try await core.clearAll() }
         }
+        notifyIdentity(IdentityChange(kind: IdentityChange.signedOut, previous: previous))
         return SignOutResult(released: released)
     }
 
@@ -169,7 +174,7 @@ extension IdentityClient {
         }
         try await core.setToken(token, source: .activate)
         let subject = object["subject"]?.stringValue
-        subjectValue.set(subject)
+        updateSubject(subject)
         return .ok(subject: subject, attached: object["attached"]?.stringValue == "claimed" ? "claimed" : nil)
     }
 

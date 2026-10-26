@@ -171,7 +171,7 @@ final class IdentityMintTests: XCTestCase {
         let plane = Plane(clock: ReplayClock(t0), [startPath: [started()]])
         let (core, _) = try await core(plane, services: [.license, .config])
         do {
-            _ = try await identity(core, plane).beginSignIn()
+            _ = try await identity(core, plane).startDeviceCode()
             XCTFail("expected service-unavailable")
         } catch let error as PolarisError {
             XCTAssertEqual(error.code, PolarisError.serviceUnavailable)
@@ -182,7 +182,7 @@ final class IdentityMintTests: XCTestCase {
     func testBeginPostsDeviceIdAndNameWithoutABearer() async throws {
         let plane = Plane(clock: ReplayClock(t0), [startPath: [started()]])
         let (core, _) = try await core(plane, services: [.identity], token: "pkeyt_anonymous")
-        let prompt = try await identity(core, plane).beginSignIn(deviceName: " Deck ")
+        let prompt = try await identity(core, plane).startDeviceCode(deviceName: " Deck ")
         XCTAssertEqual(
             plane.calls.first?.body,
             ["deviceId": String(repeating: "D", count: 32), "deviceName": "Deck"])
@@ -198,7 +198,7 @@ final class IdentityMintTests: XCTestCase {
         let (core, store) = try await core(plane, services: [.identity])
         let acquired = expectation(description: "acquisition event")
         let client = identity(core, plane) { acquired.fulfill() }
-        let result = try await client.waitForSignIn(try await client.beginSignIn())
+        let result = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertTrue(result.isReady, "\(result)")
         let times = plane.at(pollPath)
         XCTAssertEqual(times.count, 3)
@@ -219,7 +219,7 @@ final class IdentityMintTests: XCTestCase {
             ])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        _ = try await client.waitForSignIn(try await client.beginSignIn())
+        _ = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [2, 7, 7, 7])
     }
 
@@ -235,7 +235,7 @@ final class IdentityMintTests: XCTestCase {
             ])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        _ = try await client.waitForSignIn(try await client.beginSignIn())
+        _ = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [2, 7, 7])
     }
 
@@ -246,7 +246,7 @@ final class IdentityMintTests: XCTestCase {
             [startPath: [started()], pollPath: [limited, limited, limited, ready]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        _ = try await client.waitForSignIn(try await client.beginSignIn())
+        _ = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [2, 7, 12, 17])
     }
 
@@ -257,7 +257,7 @@ final class IdentityMintTests: XCTestCase {
             deviceCode: "device-code-1", userCode: "WDJB-MJHT", verificationUri: "u",
             verificationUriComplete: "u?user_code=WDJB-MJHT", expiresIn: 600, interval: -3,
             expiresAt: t0 + 600)
-        let result = try await identity(core, plane).waitForSignIn(prompt)
+        let result = try await identity(core, plane).waitDeviceCode(prompt)
         XCTAssertTrue(result.isReady, "\(result)")
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [1, 1])
     }
@@ -268,9 +268,9 @@ final class IdentityMintTests: XCTestCase {
             [startPath: [started(interval: "0.5")], pollPath: [pending, ready]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        let prompt = try await client.beginSignIn()
+        let prompt = try await client.startDeviceCode()
         XCTAssertEqual(prompt.interval, 1)
-        let result = try await client.waitForSignIn(prompt)
+        let result = try await client.waitDeviceCode(prompt)
         XCTAssertTrue(result.isReady, "\(result)")
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [1, 1])
     }
@@ -281,7 +281,7 @@ final class IdentityMintTests: XCTestCase {
             [startPath: [started(expiresIn: "60", interval: "1e12")], pollPath: [pending]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        let result = try await client.waitForSignIn(try await client.beginSignIn())
+        let result = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertEqual(result, .expired)
         // One 60 s sleep, then expiry: no poll.
         XCTAssertTrue(plane.at(pollPath).isEmpty)
@@ -305,7 +305,7 @@ final class IdentityMintTests: XCTestCase {
             let plane = Plane(clock: ReplayClock(t0), [startPath: [answer]])
             let (core, _) = try await core(plane, services: [.identity])
             do {
-                _ = try await identity(core, plane).beginSignIn()
+                _ = try await identity(core, plane).startDeviceCode()
                 XCTFail("expected bad_response")
             } catch let error as PolarisError {
                 XCTAssertEqual(error.code, "bad_response")
@@ -316,7 +316,7 @@ final class IdentityMintTests: XCTestCase {
     func testAPrintedPromptHidesTheDeviceCode() async throws {
         let plane = Plane(clock: ReplayClock(t0), [startPath: [started()]])
         let (core, _) = try await core(plane, services: [.identity])
-        let prompt = try await identity(core, plane).beginSignIn()
+        let prompt = try await identity(core, plane).startDeviceCode()
         XCTAssertEqual(prompt.deviceCode, "device-code-1")
         var dumped = ""
         dump(prompt, to: &dumped)
@@ -333,7 +333,7 @@ final class IdentityMintTests: XCTestCase {
             [startPath: [started()], pollPath: [.fail, .reply(503, "{}"), ready]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        let result = try await client.waitForSignIn(try await client.beginSignIn())
+        let result = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertTrue(result.isReady, "\(result)")
         XCTAssertEqual(gaps(plane.at(pollPath), from: t0), [2, 2, 2])
     }
@@ -343,7 +343,7 @@ final class IdentityMintTests: XCTestCase {
             clock: ReplayClock(t0), [startPath: [started(expiresIn: "5")], pollPath: [pending]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        let result = try await client.waitForSignIn(try await client.beginSignIn())
+        let result = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertEqual(result, .expired)
         XCTAssertEqual(plane.at(pollPath).map { $0 - t0 }, [2, 4])
     }
@@ -354,7 +354,7 @@ final class IdentityMintTests: XCTestCase {
             [startPath: [started()], pollPath: [pending, .reply(200, #"{"status":"timeout"}"#)]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        let result = try await client.waitForSignIn(try await client.beginSignIn())
+        let result = try await client.waitDeviceCode(try await client.startDeviceCode())
         XCTAssertEqual(result, .expired)
     }
 
@@ -362,7 +362,7 @@ final class IdentityMintTests: XCTestCase {
         let plane = Plane(clock: ReplayClock(t0), [startPath: [started()], pollPath: [pending]])
         let (core, _) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        let prompt = try await client.beginSignIn()
+        let prompt = try await client.startDeviceCode()
         // The hook is in place before the task can make its first request, and the gate keeps
         // the task from polling until the box holds it, so the first poll always cancels.
         let box = TaskBox()
@@ -370,7 +370,7 @@ final class IdentityMintTests: XCTestCase {
         let (gate, open) = AsyncStream<Void>.makeStream()
         let task = Task {
             for await _ in gate { break }
-            return try await client.waitForSignIn(prompt)
+            return try await client.waitDeviceCode(prompt)
         }
         box.set(task)
         open.yield()
@@ -388,7 +388,7 @@ final class IdentityMintTests: XCTestCase {
             [startPath: [started()], pollPath: [.reply(401, #"{"error":"unauthorized"}"#)]])
         let (core, store) = try await core(plane, services: [.identity])
         let client = identity(core, plane)
-        let result = try await client.waitForSignIn(try await client.beginSignIn())
+        let result = try await client.waitDeviceCode(try await client.startDeviceCode())
         guard case .error = result else { return XCTFail("expected .error, got \(result)") }
         let token = await store.getToken()
         XCTAssertNil(token)
