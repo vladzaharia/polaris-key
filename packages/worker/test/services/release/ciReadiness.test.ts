@@ -81,6 +81,9 @@ interface World {
   writes: Array<{ method: string; path: string; body: unknown }>;
   /** A status to answer the deployment-branch-policy POST with. */
   policyStatus: number;
+  /** The environment's deployment-branch policies, and whether it limits deploys to them. */
+  policies: Array<{ name: string; type: string }>;
+  customPolicies: boolean;
 }
 
 const world = (over: Partial<World> = {}): World => ({
@@ -112,6 +115,8 @@ const world = (over: Partial<World> = {}): World => ({
   calls: [],
   writes: [],
   policyStatus: 201,
+  policies: [{ name: "v*", type: "tag" }],
+  customPolicies: true,
   ...over,
 });
 
@@ -158,10 +163,14 @@ function github(w: World): FetchImpl {
       });
       if (url.endsWith("/environments/release")) {
         w.environment = 200;
+        w.customPolicies = true;
         return json(200, { name: "release" });
       }
-      if (url.endsWith("/deployment-branch-policies"))
+      if (url.endsWith("/deployment-branch-policies")) {
+        if (w.policyStatus === 201 || w.policyStatus === 200)
+          w.policies.push({ name: "v*", type: "tag" });
         return json(w.policyStatus, {});
+      }
       if (url.endsWith("/rulesets")) {
         w.rulesets.push({ id: 77, target: "tag", enforcement: "active" });
         return json(201, { id: 77 });
@@ -169,7 +178,18 @@ function github(w: World): FetchImpl {
       return json(200, {});
     }
     if (url.endsWith("/environments/release"))
-      return json(w.environment, { name: "release" });
+      return json(w.environment, {
+        name: "release",
+        deployment_branch_policy: {
+          protected_branches: false,
+          custom_branch_policies: w.customPolicies,
+        },
+      });
+    if (url.endsWith("/environments/release/deployment-branch-policies"))
+      return json(200, {
+        total_count: w.policies.length,
+        branch_policies: w.policies,
+      });
     if (url.endsWith("/rulesets"))
       return w.rulesetList === 200
         ? json(
@@ -427,6 +447,7 @@ describe("GET …/release/ci-readiness", () => {
     expect(Object.keys(body).sort()).toEqual([
       "capabilities",
       "checks",
+      "environmentName",
       "repository",
       "workflowPreview",
     ]);
@@ -494,7 +515,7 @@ describe("fixCiReadiness (A-32.6)", () => {
               actor_id: 5,
             },
           ],
-          rules: ["non_fast_forward", "update", "deletion"]
+          rules: ["non_fast_forward", "update", "deletion", "creation"]
             .reverse()
             .map((type) => ({ type })),
           conditions: { ref_name: { exclude: [], include: ["refs/tags/v*"] } },
@@ -553,10 +574,16 @@ describe("fixCiReadiness (A-32.6)", () => {
     ]);
   });
 
-  it("an existing deployment policy is not a failure", async () => {
-    const w = world({ environment: 404, policyStatus: 422 });
+  it("a duplicate deployment policy (GitHub's 303) is not a failure", async () => {
+    const w = world({ environment: 404, policyStatus: 303 });
     const r = await fixOnly(w, "environment");
     expect(r).toMatchObject({ ok: true, results: [{ state: "created" }] });
+  });
+
+  it("a rejected deployment policy (422) is a failure, not created", async () => {
+    const w = world({ environment: 404, policyStatus: 422 });
+    const r = await fixOnly(w, "environment");
+    expect(r).toMatchObject({ ok: false, status: 502, reason: "github" });
   });
 
   it("without Administration write: 409 naming it, nothing written", async () => {
@@ -607,13 +634,19 @@ describe("fixCiReadiness (A-32.6)", () => {
 });
 
 describe("POST …/release/ci-readiness/fix", () => {
-  async function call(groups: string[], body: unknown) {
+  async function call(groups: string[], body: unknown, stepUp = true) {
     const w = world({ environment: 404, rulesets: [] });
     const { db, env } = await linked(w);
     const { token, csrf } = await consoleTestSession(
       env,
       db,
-      { sub: "u1", name: "Ada", email: "ada@x.io", groups },
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups,
+        ...(stepUp ? { authTime: NOW, stepUp: true } : {}),
+      },
       NOW,
     );
     vi.stubGlobal("fetch", github(w));
@@ -669,9 +702,116 @@ describe("POST …/release/ci-readiness/fix", () => {
       expect((await call([PLATFORM_GROUP], { checks })).status).toBe(422);
   });
 
+  it("needs a recent sign-in proof (step-up): nothing is written without one", async () => {
+    const r = await call([PLATFORM_GROUP], { checks: ["ruleset"] }, false);
+    expect(r.status).toBe(403);
+    expect(r.body.code).toBe("step_up_required");
+    expect(r.w.writes).toEqual([]);
+  });
+
   it("refuses a session with no access to the product", async () => {
     const r = await call([], { checks: ["ruleset"] });
     expect(r.status).toBe(403);
     expect(r.w.writes).toEqual([]);
+  });
+});
+
+const fixEnv = (
+  env: Env,
+  db: ReturnType<typeof makeTestDb>,
+  w: World,
+): ReturnType<typeof fixCiReadiness> =>
+  fixCiReadiness(env, db, SLUG, ["environment"], NOW, github(w));
+
+/** The one outcome of fixing the environment of a linked world. */
+async function fixSkipped(w: World): Promise<string> {
+  const { db, env } = await linked(w);
+  const r = await fixEnv(env, db, w);
+  return r.ok ? r.results[0]!.state : "failed";
+}
+
+describe("the environment check reads its deployment policies", () => {
+  it("an environment without the v* tag policy is missing, and the fix adds only the policy", async () => {
+    const w = world({ policies: [] });
+    const { db, env } = await linked(w);
+    const after = await ciReadiness(env, db, SLUG, NOW, github(w));
+    expect(states(after).environment).toBe("missing");
+    const r = await fixEnv(env, db, w);
+    expect(r).toMatchObject({ ok: true });
+    // No PUT: an update of an existing environment may reset its reviewers.
+    expect(
+      w.writes.map((x) => `${x.method} ${x.path.split("/").pop()}`),
+    ).toEqual(["POST deployment-branch-policies"]);
+    expect(
+      states(await ciReadiness(env, db, SLUG, NOW, github(w))).environment,
+    ).toBe("ok");
+  });
+
+  it("a half-applied fix is offered again", async () => {
+    const w = world({
+      environment: 404,
+      rulesets: [],
+      policyStatus: 500,
+      policies: [],
+    });
+    const { db, env } = await linked(w);
+    const first = await fixEnv(env, db, w);
+    expect(first).toMatchObject({
+      ok: false,
+      status: 502,
+      reason: "github",
+      results: [
+        {
+          id: "environment",
+          state: "created",
+          detail: "environment created, tag policy not added",
+        },
+      ],
+    });
+    expect(
+      states(await ciReadiness(env, db, SLUG, NOW, github(w))).environment,
+    ).toBe("missing");
+    w.policyStatus = 201;
+    const again = await fixEnv(env, db, w);
+    expect(again).toMatchObject({
+      ok: true,
+      results: [{ id: "environment", state: "created" }],
+    });
+    expect(
+      states(await ciReadiness(env, db, SLUG, NOW, github(w))).environment,
+    ).toBe("ok");
+  });
+
+  it("an environment not limited to selected tags is left to the person (no PUT)", async () => {
+    const w = world({ customPolicies: false, policies: [] });
+    expect(await fixSkipped(w)).toBe("skipped");
+    expect(w.writes).toEqual([]);
+  });
+
+  it("an environment name of dots is not read", async () => {
+    const w = world();
+    w.files[".pkey/release.json"] = RELEASE.replace(
+      '"environment":"release"',
+      '"environment":".."',
+    );
+    const { db, env } = await linked(w);
+    await ciReadiness(env, db, SLUG, NOW, github(w));
+    expect(w.calls.some((c) => /\/\.\.(\/|$)/.test(c))).toBe(false);
+  });
+
+  it("the fix writes release only when the manifest names that environment", async () => {
+    const w = world({ environment: 404, rulesets: [] });
+    w.files[".pkey/release.json"] = RELEASE.replace(
+      '"environment":"release"',
+      '"environment":"production"',
+    );
+    expect(await fixSkipped(w)).toBe("skipped");
+    expect(w.writes).toEqual([]);
+  });
+});
+
+describe("the tag ruleset", () => {
+  it("also blocks creating a v* tag", () => {
+    expect(releaseRuleset().rules.map((r) => r.type)).toContain("creation");
   });
 });

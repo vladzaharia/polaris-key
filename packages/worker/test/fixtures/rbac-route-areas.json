@@ -140,6 +140,7 @@
   "POST /products/:slug/identity/**": "signin",
   "POST /products/:slug/keys/:action": "keys",
   "POST /products/:slug/license/**": "license",
+  "POST /products/:slug/release/ci-readiness/fix": "ship",
   "POST /products/:slug/release/**": "ship",
   "POST /products/:slug/services/revert": "core",
   "POST /products/:slug/settings/backfill": "settings",

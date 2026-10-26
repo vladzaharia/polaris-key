@@ -70,6 +70,7 @@ describe("pkey ci init", () => {
       `gh secret set PKEY_RELEASE_KEY --env release < ${keyFile(r.cfg)}`,
     );
     expect(res.out).toContain("environments/release -F");
+    expect(res.out).toContain("can reset its reviewers");
     expect(res.out).toContain(
       "deployment-branch-policies -f 'name=v*' -f type=tag",
     );
@@ -132,6 +133,19 @@ describe("pkey ci init", () => {
     const pem = await readFile(keyFile(r.cfg), "utf8");
     for (const line of pem.split("\n").filter((l) => l && !l.startsWith("---")))
       expect(res.out).not.toContain(line);
+  });
+
+  it("removes the key file it made when a later write fails", async () => {
+    const r = await repo();
+    // `.github` is a file, so the workflow directory cannot be made.
+    await writeFile(path.join(r.cwd, ".github"), "x");
+    await pkey(r).catch(() => undefined);
+    await expect(stat(keyFile(r.cfg))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    // The next run is not blocked by a key it refuses to overwrite.
+    await rm(path.join(r.cwd, ".github"));
+    expect((await pkey(r)).code).toBe(0);
   });
 
   it("refuses a key directory inside the repo", async () => {

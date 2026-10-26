@@ -3,8 +3,8 @@
 /**
  * A-32.6: fix what the CI readiness read found missing (`POST …/release/ci-readiness/fix`,
  * FLOWS W9; plan D-G8): the `release` environment, deployment-limited to `v*` tags, and the
- * tag ruleset on `refs/tags/v*` (deletion, update and non-fast-forward blocked, active, bypass
- * for repository admins).
+ * tag ruleset on `refs/tags/v*` (creation, deletion, update and non-fast-forward blocked, active,
+ * bypass for repository admins: only an admin creates a release tag).
  *
  * Readiness decides. A check is written only when `ciReadiness` says `missing` and the
  * installation's capabilities allow it; `ok` is left alone, `unknown` is not touched. Every write
@@ -15,9 +15,14 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { getPublisherPolicy } from "../../core/publisher.js";
-import { ciReadiness } from "./ciReadiness.js";
+import {
+  ENV_NOT_TAG_LIMITED,
+  ENV_NO_TAG_POLICY,
+  ciReadiness,
+} from "./ciReadiness.js";
 import { getReleaseConfig } from "./config.js";
 import { discoverInstallation, type FetchImpl } from "./githubApp.js";
+import type { Verified } from "./github/allow.js";
 import { githubWrite, type WriteResult } from "./github/write.js";
 
 export const FIX_CHECKS = ["environment", "ruleset"] as const;
@@ -51,7 +56,12 @@ export type FixResult =
     };
 
 /** The rules the ruleset carries (D-G8). */
-const RULE_TYPES = ["deletion", "update", "non_fast_forward"] as const;
+const RULE_TYPES = [
+  "creation",
+  "deletion",
+  "update",
+  "non_fast_forward",
+] as const;
 /** GitHub's built-in repository-admin role. */
 const ADMIN_ROLE = { actor_id: 5, actor_type: "RepositoryRole" } as const;
 
@@ -70,12 +80,15 @@ type Send = (
   method: string,
   path: string,
   body?: unknown,
+  verified?: Verified,
 ) => Promise<WriteResult>;
 
 class Refused extends Error {
   constructor(
     readonly reason: "app_permission" | "github",
     readonly status: 409 | 502,
+    /** What was written before this refusal, when the step was half done. */
+    readonly partial?: FixOutcome,
   ) {
     super(reason);
   }
@@ -88,23 +101,43 @@ function expectOk(res: WriteResult, also: number[] = []): void {
   throw new Refused("github", 502);
 }
 
-async function fixEnvironment(send: Send): Promise<FixOutcome> {
-  expectOk(
-    await send("env.release", "PUT", "/environments/release", {
-      deployment_branch_policy: {
-        protected_branches: false,
-        custom_branch_policies: true,
-      },
-    }),
-  );
+/**
+ * Create the environment and its `v*` tag policy. `exists` is true when readiness found the
+ * environment already there (a half-applied fix): the PUT is then not sent, because an update
+ * that omits an environment's reviewers and wait timer may reset them.
+ */
+async function fixEnvironment(
+  send: Send,
+  exists: boolean,
+): Promise<FixOutcome> {
+  if (!exists)
+    expectOk(
+      await send("env.release", "PUT", "/environments/release", {
+        deployment_branch_policy: {
+          protected_branches: false,
+          custom_branch_policies: true,
+        },
+      }),
+    );
   const policy = await send(
     "env.release",
     "POST",
     "/environments/release/deployment-branch-policies",
     { name: "v*", type: "tag" },
   );
-  // A policy that is already there answers 409 or 422: the environment is as wanted.
-  expectOk(policy, [409, 422]);
+  // GitHub's documented answer for a policy that is already there is 303 (the request is sent
+  // with redirects off); any other failure, 422 included, is a failure.
+  try {
+    expectOk(policy, [303]);
+  } catch (e) {
+    if (e instanceof Refused && !exists)
+      throw new Refused(e.reason, e.status, {
+        id: "environment",
+        state: "created",
+        detail: "environment created, tag policy not added",
+      });
+    throw e;
+  }
   return { id: "environment", state: "created" };
 }
 
@@ -123,7 +156,9 @@ async function fixRuleset(send: Send): Promise<FixOutcome> {
     : undefined;
   if (mine !== undefined) {
     expectOk(
-      await send("ruleset.tags", "PUT", `/rulesets/${mine}`, releaseRuleset()),
+      await send("ruleset.tags", "PUT", `/rulesets/${mine}`, releaseRuleset(), {
+        ruleset: mine,
+      }),
     );
     return { id: "ruleset", state: "updated" };
   }
@@ -150,13 +185,22 @@ export async function fixCiReadiness(
       results: [],
     };
 
-  // The allow-list writes the environment named `release` only; a publisher that names
-  // another one is not ours to create.
+  // The allow-list writes the environment named `release` only; a manifest or a publisher that
+  // names another one is not ours to create, and `release` is not the one being checked.
   const policy = await getPublisherPolicy(db, slug);
-  const foreignEnv = policy !== null && policy.environment !== "release";
+  const foreignEnv =
+    readiness.environmentName !== "release" ||
+    (policy !== null && policy.environment !== "release");
+  // An environment that exists but is not limited to selected tags would need a PUT, which may
+  // reset its reviewers: left to the person.
+  const envCheck = readiness.checks.find((c) => c.id === "environment");
+  const envPresetUnsafe = envCheck?.detail === ENV_NOT_TAG_LIMITED;
+  const envExists = envCheck?.detail === ENV_NO_TAG_POLICY;
 
   const todo = checks.filter(
-    (id) => state(id) === "missing" && !(id === "environment" && foreignEnv),
+    (id) =>
+      state(id) === "missing" &&
+      !(id === "environment" && (foreignEnv || envPresetUnsafe)),
   );
   // Refuse before the first write when any of them lacks the grant.
   if (todo.some((id) => !readiness.capabilities[id]))
@@ -180,8 +224,10 @@ export async function fixCiReadiness(
               state: "skipped",
               detail:
                 id === "environment" && foreignEnv && s === "missing"
-                  ? "the publisher names another environment"
-                  : "readiness could not tell",
+                  ? "the manifest or publisher names another environment"
+                  : id === "environment" && envPresetUnsafe && s === "missing"
+                    ? "the environment exists; limit its deployments to the v* tag yourself"
+                    : "readiness could not tell",
             },
       );
     }
@@ -196,11 +242,11 @@ export async function fixCiReadiness(
     const installId =
       cfg?.gh_installation_id ??
       (await discoverInstallation(env, owner, repo, now, fetchImpl));
-    const send: Send = (action, method, path, body) =>
+    const send: Send = (action, method, path, body, verified) =>
       githubWrite(
         env,
         installId,
-        { owner, repo },
+        { owner, repo, ...(verified ? { verified } : {}) },
         action,
         {
           method,
@@ -213,11 +259,14 @@ export async function fixCiReadiness(
     for (const id of todo)
       results.push(
         id === "environment"
-          ? await fixEnvironment(send)
+          ? await fixEnvironment(send, envExists)
           : await fixRuleset(send),
       );
   } catch (e) {
-    const done = [...results].sort(order);
+    const done = [
+      ...results,
+      ...(e instanceof Refused && e.partial ? [e.partial] : []),
+    ].sort(order);
     if (e instanceof Refused)
       return {
         ok: false,

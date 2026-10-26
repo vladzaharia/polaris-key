@@ -72,6 +72,11 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
     why: "retargets, re-secrets, narrows or turns off an alert destination (only turning one on skips it)",
   },
   {
+    method: "POST",
+    path: "/products/:slug/release/ci-readiness/fix",
+    why: "writes an environment and a tag ruleset on the product's repository",
+  },
+  {
     method: "GET",
     path: "/products/:slug/users/:subject/export",
     why: "exports personal data",

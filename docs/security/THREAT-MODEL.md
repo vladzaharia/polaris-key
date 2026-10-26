@@ -11139,14 +11139,18 @@ collaborators, repository settings, hooks, secrets, and any other repository. A 
 list. Polaris Key opens one pull request; a person merges it.
 
 **Control: the release environment and the tag ruleset.** The environment named `release` is
-limited to `v*` tags, and a tag ruleset over `refs/tags/v*` blocks deletion, update and force
-push, so the OIDC token a publish job presents carries `ref_protected: true` only for a protected
-release tag. A publisher naming another environment is skipped.
+limited to `v*` tags, and a tag ruleset over `refs/tags/v*` blocks creation, deletion, update and
+force push (repository admins bypass), so only an admin can create the release tag a publish job
+runs on, and the OIDC token it presents carries `ref_protected: true` only for a protected release
+tag. Only the environment the manifest names is written, and only `release`; an existing
+environment is never rewritten (a PUT may reset its reviewers), a missing tag policy is added
+alone, and CI readiness reports the environment ready only when it lists the `v*` tag policy.
+A pull request PATCH and a ruleset PUT are authorized only for the number or id the caller
+confirmed in the same operation; an environment write carries no reviewers. The fix route needs a
+step-up.
 
 **Open items.**
 
-- A partial environment fix can leave the environment with no `v*` policy: CI readiness checks
-  only that the environment exists, so it reports ready.
 - The ruleset's bypass actor is the repository-admin role (id 5). GitHub's REST reference does not
   list role ids, so this is unverified on a live repository.
 
@@ -11160,7 +11164,10 @@ to a declared Homebrew tap or Scoop bucket, so no personal token is stored.
 opt-in scope (never a default, never a manifest grant). The repository is never the caller's word:
 it is the `direct` outlet's declared `homebrewTap` or `scoopBucket`, matched against the
 manifest's pattern, which refuses `Homebrew/*` and `ScoopInstaller/*`. Other outlet kinds have no
-repository here and are refused.
+repository here and are refused. The pattern accepts any owner, so the binding is the
+installation: the token is minted only when the installation GitHub reports for the repository is
+the product's own linked one (`release_config.gh_installation_id`). A repository of another
+customer, and one without the App, answer the same 404, so the route is no oracle for installs.
 
 **Control: the token.** Contents and Pull requests write on that one repository, for GitHub's one
 hour. It is in the one response (`Cache-Control: no-store`), not stored, and not audited; the
@@ -11170,8 +11177,10 @@ audit row `distribution.pr.github_token` names the outlet and the repository.
 well-formed and before any GitHub call. The limiter fails closed, since the route mints a
 credential. With Release off the route does not exist.
 
-**Residual.** A `pkeyci_` token with this scope can open pull requests on the declared tap or
-bucket for the hour of each token it exchanges. Anyone who can edit `.pkey/distribution` on the
+**Residual.** A `pkeyci_` token with this scope holds Contents write on the declared tap or
+bucket for the hour of each token it exchanges. That opens pull requests, and it also allows a
+direct push to the default branch and creating branches and tags unless the repository has branch
+protection (recommended on every tap and bucket); any later step of the CI job can use it. Anyone who can edit `.pkey/distribution` on the
 default branch can change which repository an outlet declares, within the pattern.
 
 ### Boundaries that are weaker than they look

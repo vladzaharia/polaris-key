@@ -21,6 +21,7 @@ import {
   authorize,
   basePermissions,
   type Permissions,
+  type Verified,
   type WriteAction,
   type WriteRequest,
 } from "./allow.js";
@@ -65,13 +66,19 @@ export interface WriteResult {
 export async function githubWrite(
   env: Env,
   installId: number,
-  target: { owner: string; repo: string },
+  target: { owner: string; repo: string; verified?: Verified },
   action: WriteAction | string,
   req: WriteRequest,
   now: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<WriteResult> {
-  const sent = authorize(action, target.owner, target.repo, req);
+  const sent = authorize(
+    action,
+    target.owner,
+    target.repo,
+    req,
+    target.verified,
+  );
   const token = await mintInstallationToken(
     env,
     installId,

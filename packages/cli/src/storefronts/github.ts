@@ -128,6 +128,8 @@ export function githubClient(o: GitHubClientOptions = {}): GitHubClient {
       method,
       headers,
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      // A redirect would carry the Authorization header along.
+      redirect: "manual",
     });
     if (res.status === 404 && allow404) return null;
     const text = await res.text();

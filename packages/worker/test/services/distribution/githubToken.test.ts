@@ -41,6 +41,8 @@ let db: Db;
 let env: Env;
 let calls: Array<{ url: string; method: string; body: unknown }>;
 let installed: Set<string>;
+/** Repositories another customer installed the same App on (a different installation). */
+let others: Set<string>;
 let mintStatus: number;
 
 function fakeGithub(): typeof fetch {
@@ -55,7 +57,11 @@ function fakeGithub(): typeof fetch {
     if (inst)
       return installed.has(inst[1]!)
         ? Response.json({ id: 9 })
-        : new Response("{}", { status: 404 });
+        : others.has(inst[1]!)
+          ? Response.json({ id: 77 })
+          : new Response("{}", { status: 404 });
+    if (url.endsWith("/app/installations/77/access_tokens"))
+      return Response.json({ token: SECRET }, { status: 201 });
     if (url.endsWith("/app/installations/9/access_tokens"))
       return mintStatus === 201
         ? Response.json({ token: SECRET }, { status: 201 })
@@ -102,12 +108,20 @@ beforeEach(async () => {
   });
   calls = [];
   installed = new Set(["acme/homebrew-tap", "acme/bucket"]);
+  others = new Set(["victimco/homebrew-private", "victimco/private-app"]);
   mintStatus = 201;
   vi.stubGlobal("fetch", fakeGithub());
   db = makeTestDb();
   env = envFor({ kv: new KvMock() });
   await seedProduct(db, SLUG);
   await enableServices(db, true, SLUG);
+  // The product's own linked installation: the one id the token may be minted through.
+  await db.run(
+    `INSERT INTO release_config (product, gh_owner, gh_repo, gh_installation_id, beta_branch,
+       binary_name, summary_marker, metadata_access, artifacts_access)
+     VALUES (?, 'acme', 'app', 9, 'main', 'acme', 'pkey:summary', 'public', 'public')`,
+    SLUG,
+  );
   await outlet("direct", "direct", { homebrewTap: "acme/homebrew-tap" });
 });
 
@@ -242,6 +256,35 @@ describe("POST /<p>/distribution/pr/github-token", () => {
     expect(res.status).toBe(404);
     expect((await refusal(res)).reason).toBe("app_not_installed");
     expect(calls).toHaveLength(1);
+  });
+
+  it("refuses another customer's repository, and answers it exactly like 'not installed'", async () => {
+    await outlet("other", "direct", {
+      homebrewTap: "victimco/homebrew-private",
+    });
+    await outlet("other2", "direct", { scoopBucket: "victimco/private-app" });
+    await outlet("none", "direct", { scoopBucket: "victimco/not-installed" });
+    const answers: Array<{ status: number; body: string }> = [];
+    for (const [id, store] of [
+      ["other", "homebrew"],
+      ["other2", "scoop"],
+      ["none", "scoop"],
+    ] as const) {
+      const res = await post({ outlet: id, store });
+      answers.push({ status: res.status, body: await res.text() });
+    }
+    expect(answers.map((a) => a.status)).toEqual([404, 404, 404]);
+    expect(new Set(answers.map((a) => a.body)).size).toBe(1);
+    // No token was minted for any of them.
+    expect(calls.some((c) => c.url.endsWith("/access_tokens"))).toBe(false);
+    expect(JSON.stringify(answers)).not.toContain(SECRET);
+  });
+
+  it("refuses when the product has no linked installation", async () => {
+    await db.run("DELETE FROM release_config WHERE product = ?", SLUG);
+    const res = await post({ outlet: "direct" });
+    expect(res.status).toBe(404);
+    expect(calls.some((c) => c.url.endsWith("/access_tokens"))).toBe(false);
   });
 
   it("answers 503 app_permission when GitHub refuses the narrowed grant", async () => {
