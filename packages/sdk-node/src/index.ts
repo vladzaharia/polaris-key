@@ -101,15 +101,17 @@ export {
 export {
   IdentityClient,
   openInBrowser,
-  type AttachOptIn,
   type CurrentIdentity,
-  type ShownIdentity,
-  type SignInWithBrowserOptions,
-  type SignInPoll,
-  type SignInPrompt,
-  type SignInResult,
-  type WaitForSignInOptions,
 } from "./identity/client.js";
+export {
+  DeviceCodeSession,
+  SLOW_DOWN_STEP_SECONDS,
+  type DeviceCodeSignInOptions,
+  type IdentityEvent,
+  type ShownIdentity,
+  type SignInOutcome,
+  type WaitOptions,
+} from "./identity/signIn.js";
 export {
   type AttachLicense,
   type AttachResult,

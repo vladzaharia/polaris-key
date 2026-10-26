@@ -4,6 +4,8 @@
 // from discovery or not at all. The wire conversation itself is the transcripts'
 // (`redirect-web-*`, `identity-request-hints`).
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PolarisKeyClient } from "../src/client.js";
 import { InMemoryStore } from "../src/core/store.js";
@@ -151,8 +153,15 @@ describe("redirect sign-in", () => {
       subject: "ps_abc",
       scope: "profile email",
       licenseId: "lic_1",
+      activation: { licenseId: "lic_1" },
     });
     expect(await env.store.getToken()).toBe("pkeyt_new");
+    // The subject is persisted for `identity.subject()` (a value that is no `ps_` subject reads as none).
+    const dir = (c.identity as unknown as { ctx: { dirs: { state: string } } })
+      .ctx.dirs.state;
+    expect(JSON.parse(readFileSync(join(dir, "subject.json"), "utf8"))).toEqual(
+      { subject: "ps_abc" },
+    );
     const [call] = tokenCalls(env);
     expect(call!.type).toBe("application/x-www-form-urlencoded");
     const form = new URLSearchParams(call!.body);

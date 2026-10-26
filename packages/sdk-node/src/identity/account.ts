@@ -24,6 +24,7 @@ import { readJson, writeJson } from "../core/jsonFile.js";
 import type { CoreContext } from "../core/context.js";
 import { classifyResponse, errorFrom } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
+import type { IdentityEvent } from "./signIn.js";
 import {
   identityFragmentFrom,
   type IdentityFragment,
@@ -100,6 +101,8 @@ export interface AccountDeps {
   wipeLocal: () => Promise<void>;
   /** Open a URL in the host's browser; false when it could not. */
   openUrl: (url: string) => Promise<boolean>;
+  /** `client.events` "identity"; absent in a bare account. */
+  emit?: (e: IdentityEvent) => void;
 }
 
 type AccountEndpoint = "subject" | "signout" | "accountPortal" | "attach";
@@ -158,6 +161,15 @@ export class Account {
    * or one with no token). The answer is persisted, so it survives a restart.
    */
   async subject(): Promise<string | null> {
+    const before = await readStoredSubject(this.deps.ctx.dirs.state);
+    const now = await this.fetchSubject();
+    if (now !== before)
+      this.deps.emit?.({ kind: "subjectChanged", subject: now });
+    return now;
+  }
+
+  /** Ask the Worker for the subject and persist the answer; no event (a sign-in raises its own). */
+  async fetchSubject(): Promise<string | null> {
     const url = await this.endpoint("subject");
     const { ctx, tokens } = this.deps;
     const token = tokens.current;
@@ -230,6 +242,7 @@ export class Account {
       );
     await this.deps.forget();
     if (body.released) await this.deps.wipeLocal();
+    this.deps.emit?.({ kind: "signedOut", released: body.released });
     return { released: body.released };
   }
 
@@ -301,7 +314,12 @@ export class Account {
       typeof body.subject === "string" && isSubject(body.subject)
         ? body.subject
         : null;
-    if (subject !== null) await writeStoredSubject(ctx.dirs.state, subject);
+    if (subject !== null) {
+      const before = await readStoredSubject(ctx.dirs.state);
+      await writeStoredSubject(ctx.dirs.state, subject);
+      if (subject !== before)
+        this.deps.emit?.({ kind: "subjectChanged", subject });
+    }
     return {
       status: "ok",
       subject,

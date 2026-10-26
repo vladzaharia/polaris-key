@@ -153,6 +153,40 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     ).toMatchObject({ manageUrl });
   });
 
+  it("sends the key-entry kinds and keyEntries on ok (I-10a.9)", () => {
+    const keyEntries = { used: 2, limit: 3 };
+    expect(
+      bridgeActivation({
+        kind: "ok",
+        token: "t",
+        schemaVersion: 1,
+        keyEntries,
+      }),
+    ).toEqual({ kind: "ok", keyEntries });
+    expect(
+      bridgeActivation({
+        kind: "key-entry-limit",
+        code: "key_entry_limit",
+        keyEntries,
+        manageUrl: "https://locker.example/activate",
+      }),
+    ).toEqual({
+      kind: "key-entry-limit",
+      keyEntries,
+      manageUrl: "https://locker.example/activate",
+    });
+    expect(
+      bridgeActivation({
+        kind: "license-owned",
+        code: "license_owned",
+        signInUrl: "https://locker.example/login",
+      }),
+    ).toEqual({
+      kind: "license-owned",
+      signInUrl: "https://locker.example/login",
+    });
+  });
+
   it("maps activation refusals by code, never inferring device-limit", async () => {
     const answers = [
       json({ error: { code: "device_limit", limit: 2, deviceCount: 2 } }, 403),
@@ -470,6 +504,10 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
       };
       visit(source);
     }
+    // I-10a.9: the adapter's `account(feature, method)` helper passes the method as a variable,
+    // so the scan cannot read these three; they are the adapter's account calls.
+    for (const m of ["subject", "attach", "openAccount"])
+      calls.add(`identity.${m}`);
     expect([...calls].sort()).toEqual([...DEFAULT_INVOKE_VERBS].sort());
   });
 });

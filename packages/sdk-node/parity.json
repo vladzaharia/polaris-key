@@ -150,7 +150,7 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4). The interim is identity.signInWithBrowser(): device code opened in the system browser and polled at /identity/auth/device/poll like any device-code sign-in (SDK parity pass §3.12); the old /identity/auth/poll is retired and the Worker no longer serves it."
+      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4). The interim is identity.signIn.start with channel device-code: device code opened in the system browser (session.reopen()) and polled at /identity/auth/device/poll like any device-code sign-in (SDK parity pass §3.12); the old /identity/auth/poll is retired and the Worker no longer serves it."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -160,8 +160,7 @@
       "note": "PX-W13: the label (client-core normalizeDeviceLabel, the deviceName option, os.hostname() without .local/.lan/.home by default) on beginSignIn, activateWithKey and register; SignInPrompt.deviceName is the Worker's echo."
     },
     "identity.toggle": {
-      "status": "planned",
-      "wp": "I-10a"
+      "status": "implemented"
     },
     "identity.attach": {
       "status": "implemented"

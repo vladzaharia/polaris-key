@@ -48,7 +48,7 @@ Every SDK composes one always-on **Core** (device id, credential, trust, the off
 | `client.license`  | activation, enrollment, deactivation, status, entitlements, profile                               |
 | `client.config`   | the signed config document + layered resolution (`get`, `getSecret`), minted tokens (`mintToken`) |
 | `client.devices`  | registration, the roster, fingerprint/facts                                                       |
-| `client.identity` | device-code sign-in (`beginSignIn`, `waitForSignIn`)                                              |
+| `client.identity` | device-code sign-in (`signIn.start`)                                                              |
 | `client.release`  | changelog, install script, artifact URLs                                                          |
 | `client.update`   | version check, the Sparkle appcast URL                                                            |
 

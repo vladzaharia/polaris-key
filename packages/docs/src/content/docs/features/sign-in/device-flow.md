@@ -105,7 +105,7 @@ The user-code page budget is per network (an IPv4 address or an IPv6 /64). There
 
 ## From an SDK
 
-Node, Python, Swift, Kotlin and Godot drive this flow. In Node, `client.identity.beginSignIn()` returns the user code and both URLs, `waitForSignIn()` polls at `interval`, honors `slow_down` and stops at `expiresIn`, and `pollSignIn()` makes one poll for a host that paces itself. Python names them `begin_sign_in`, `wait_for_sign_in` and `poll_sign_in`. See [Node](/docs/build/sdks/node/), [Python](/docs/build/sdks/python/) and [Swift](/docs/build/sdks/swift/).
+Node, Python, Swift, Kotlin and Godot drive this flow. In Node, `client.identity.signIn.start()` returns a session with the user code and both URLs, `wait()` polls at `interval`, honors `slow_down` and stops at `expiresIn`, and `wait({ once: true })` makes one poll for a host that paces itself. Python names them `begin_sign_in`, `wait_for_sign_in` and `poll_sign_in`. See [Node](/docs/build/sdks/node/), [Python](/docs/build/sdks/python/) and [Swift](/docs/build/sdks/swift/).
 
 ## Next steps
 

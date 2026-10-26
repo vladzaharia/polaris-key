@@ -138,6 +138,18 @@ function renderNode(api: Api): string {
       types.push(`PolarisKeyClient["events"]`);
     } else if (r.handle) {
       types.push(`ConfigSetting[${q(r.name)}]`);
+    } else if (r.id === "identity.signIn.start") {
+      // `signIn` is a getter on the client; `start` is its one verb.
+      lines.push(
+        `it(${q(r.id)}, () => expect("signIn" in IdentityClient.prototype).toBe(true));`,
+      );
+    } else if (r.id.startsWith("identity.signIn.session.")) {
+      // The sessions `signIn.start` answers: device code (wait, reopen, cancel), redirect (complete, cancel).
+      const cls =
+        r.name === "complete" ? "RedirectSession" : "DeviceCodeSession";
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
+      );
     } else if (NODE_CLASS[r.ns]) {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${NODE_CLASS[r.ns]}.prototype).toBe(true));`,
@@ -160,10 +172,12 @@ function renderNode(api: Api): string {
     `import { expect, it } from "vitest";`,
     `import {`,
     `  ConfigClient,`,
+    `  DeviceCodeSession,`,
     `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
     `  PolarisKeyClient,`,
+    `  RedirectSession,`,
     `  type ConfigSetting,`,
     `  type PolarisKeyClientOptions,`,
     `} from "../src/index.js";`,

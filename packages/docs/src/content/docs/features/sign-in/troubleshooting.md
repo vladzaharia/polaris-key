@@ -29,7 +29,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** A second poll arrived inside the 2-second `interval`. The answer is `429` with `interval`.
 
-**Fix** Wait the `interval` between polls. The SDKs' `waitForSignIn()` and `wait_for_sign_in` do this and honor `slow_down`.
+**Fix** Wait the `interval` between polls. The Node session's `wait()` and Python's `wait_for_sign_in` do this and honor `slow_down`.
 
 **Check it works** The next poll returns `pending` or `ready`.
 

@@ -274,6 +274,8 @@ export class PolarisKeyClient {
         if (this.discoveryDoc === null) await this.discover();
         return this.discoveryDoc;
       },
+      (e) => this.events.safeEmit("identity", e),
+      () => this.cache.state.license?.doc.licenseId ?? null,
     );
     this.release = new ReleaseClient(
       this.core,

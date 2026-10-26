@@ -2945,10 +2945,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -2976,10 +2973,7 @@
       "kind": "method",
       "feature": "identity.devicecode",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3007,10 +3001,7 @@
       "kind": "method",
       "feature": "identity.devicecode",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3038,10 +3029,7 @@
       "kind": "method",
       "feature": "identity.devicecode",
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3075,10 +3063,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
-        },
+        "node": {},
         "react": {
           "planned": "I-10a",
           "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
@@ -3861,7 +3846,6 @@
       "id": "identity.signInWithBrowser",
       "kind": "method",
       "sdks": {
-        "node": {},
         "python": {},
         "godot": {}
       },
@@ -3871,7 +3855,6 @@
       "id": "identity.beginSignIn",
       "kind": "method",
       "sdks": {
-        "node": {},
         "python": {},
         "kotlin": {},
         "godot": {}
@@ -3882,7 +3865,6 @@
       "id": "identity.pollSignIn",
       "kind": "method",
       "sdks": {
-        "node": {},
         "python": {},
         "kotlin": {},
         "godot": {}
@@ -3893,7 +3875,6 @@
       "id": "identity.waitForSignIn",
       "kind": "method",
       "sdks": {
-        "node": {},
         "python": {},
         "kotlin": {},
         "godot": {}
@@ -6585,6 +6566,30 @@
         "pattern": "\\bGateOptions\\b",
         "files": ["*.swift", "fence:swift"]
       }
+    },
+    {
+      "sdk": "node",
+      "from": "identity.signInWithBrowser",
+      "to": "identity.signIn.start",
+      "package": "I-10a"
+    },
+    {
+      "sdk": "node",
+      "from": "identity.beginSignIn",
+      "to": "identity.signIn.start",
+      "package": "I-10a"
+    },
+    {
+      "sdk": "node",
+      "from": "identity.pollSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10a"
+    },
+    {
+      "sdk": "node",
+      "from": "identity.waitForSignIn",
+      "to": "identity.signIn.session.wait",
+      "package": "I-10a"
     },
     {
       "sdk": "swift",
