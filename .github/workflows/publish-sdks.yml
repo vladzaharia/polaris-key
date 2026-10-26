@@ -496,9 +496,9 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           tools/check_publication.sh
-          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor ui ui-android ui-core ui-desktop update zstd"
+          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor ui ui-android ui-core update zstd"
           repo=build/repo/im/plrs/key
-          actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | grep -vx 'spring-boot-starter' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
+          actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | grep -vxE 'spring-boot-starter|ui-desktop' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
           if [ "$actual" != "$expected" ]; then
             echo "::error::build/repo holds [$actual], the release publishes [$expected]: add each new artifact to .pkey/release and this workflow's lists." >&2
             exit 1
@@ -560,7 +560,8 @@ jobs:
           - desktop
           - ui-android
           - ui-core
-          - ui-desktop
+          # ui-desktop is held out of 0.9.18: production's stored manifest predates it, so its
+          # publish is refused. It returns once production has re-read .pkey/release.
           - server
           - server-ktor
     permissions:

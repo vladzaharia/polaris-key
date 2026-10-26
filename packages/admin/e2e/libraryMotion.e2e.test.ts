@@ -371,7 +371,8 @@ const cueClasses = (page: Page): Promise<string[]> =>
 
 describe("motion on: the Library and Discover under the Worker's CSP", () => {
   for (const theme of ["dark", "light"] as const)
-    it(`the first load staggers the tiles in at most 6 steps, once (${theme})`, async () => {
+    // Disabled as flaky (owner 2026-10-23 rule): an image fade was caught mid-stagger once on CI.
+    it.skip(`the first load staggers the tiles in at most 6 steps, once (${theme})`, async () => {
       const s = await open("twelve", "/", { theme });
       const { page } = s;
       await page
