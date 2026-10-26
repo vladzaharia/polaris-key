@@ -149,7 +149,8 @@
           "update": false,
           "identity": true,
           "sync": false,
-          "commerce": false
+          "commerce": false,
+          "connect": false
         }
       }
     }
