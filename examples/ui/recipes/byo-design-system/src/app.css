@@ -21,28 +21,18 @@ h1 {
   font-weight: 600;
 }
 
-/* 1. Tokens: the host's values onto the kit's --pk-* names, on the provider. Only the shape
+/* 1. Tokens: the host's values onto the kit's --pk-provider-* names, on the provider (the kit's
+   :host reads them as the override). Only the shape
    tokens the kit leaves open are mapped. Not mapped, on purpose: the spacing scale
    (--pk-space-*) and the three type weights (--pk-kit-type-*-weight), which keep the kit's
    rhythm; and the colors, which come from the scheme and theme.accent. */
 pk-provider {
-  --pk-font-sans: var(--hds-font);
-  --pk-kit-radius-control: var(--hds-radius-control);
-  --pk-kit-radius-card: var(--hds-radius-card);
-  --pk-kit-radius-group: var(--hds-radius-card);
-  --pk-kit-control-height: var(--hds-control-height);
-  --pk-kit-focus-width: var(--hds-focus-width);
-}
-
-/* The kit sets its own scales on :host, which beats a value that only inherits. Taking the
-   provider's value explicitly lets the mapping reach the element. */
-pk-provider :is(pk-gate, pk-sign-in) {
-  --pk-font-sans: inherit;
-  --pk-kit-radius-control: inherit;
-  --pk-kit-radius-card: inherit;
-  --pk-kit-radius-group: inherit;
-  --pk-kit-control-height: inherit;
-  --pk-kit-focus-width: inherit;
+  --pk-provider-font-sans: var(--hds-font);
+  --pk-provider-kit-radius-control: var(--hds-radius-control);
+  --pk-provider-kit-radius-card: var(--hds-radius-card);
+  --pk-provider-kit-radius-group: var(--hds-radius-card);
+  --pk-provider-kit-control-height: var(--hds-control-height);
+  --pk-provider-kit-focus-width: var(--hds-focus-width);
 }
 
 /* 2. Structure: parts only. Harbor DS outlines its secondary buttons. */

@@ -16,7 +16,12 @@
             "tsConfig": "tsconfig.json",
             "outputPath": { "base": "dist", "browser": "" },
             "baseHref": "./",
-            "styles": ["src/styles.css"]
+            "styles": ["src/styles.css"],
+            "optimization": {
+              "scripts": true,
+              "styles": { "minify": true, "inlineCritical": false },
+              "fonts": true
+            }
           }
         },
         "serve": {
