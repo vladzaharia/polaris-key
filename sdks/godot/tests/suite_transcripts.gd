@@ -5,7 +5,7 @@ extends RefCounted
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
-# @pkey-feature license.manage
+# @pkey-feature license.manage identity.keyentry
 # @pkey-feature release.fetch
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
@@ -193,20 +193,16 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["documents"] = docs
 		"activate":
 			var r: PKeyActivationResult = await sdk.license.activate_with_key(step["args"]["key"])
-			out["result"] = String(r.kind)
-			if not r.ok:
+			out["result"] = _activation_name(r)
+			if not r.ok and r.kind != PKeyActivationResult.KIND_KEY_ENTRY_LIMIT:
 				out["code"] = String(r.code)
-			# PX-W8: the refusal link, exactly as served; null when the result carries none.
-			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
-				out["manageUrl"] = r.manage_url
+			_report_activation(out, r)
 		"enroll":
 			var r: PKeyActivationResult = await sdk.license.enroll()
-			out["result"] = String(r.kind)
-			if not r.ok:
+			out["result"] = _activation_name(r)
+			if not r.ok and r.kind != PKeyActivationResult.KIND_KEY_ENTRY_LIMIT:
 				out["code"] = String(r.code)
-			# PX-W8: the refusal link, exactly as served; null when the result carries none.
-			if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT:
-				out["manageUrl"] = r.manage_url
+			_report_activation(out, r)
 		"boot":
 			var view := PKeyBoot.new()
 			view.auto_sdk = false
@@ -650,3 +646,19 @@ func _synthetic_update(t: PKeyTestContext) -> void:
 		}]
 		fails = await replay(rb)
 		t.check("synthetic updateDecide: a lower seq for the canonical channel is a rollback, decided from the committed feed", fails.is_empty(), "\n  ".join(fails))
+
+
+## The transcript's name for an activation outcome: license_owned is a plain `refused` there.
+static func _activation_name(r: PKeyActivationResult) -> String:
+	return "refused" if r.kind == PKeyActivationResult.KIND_LICENSE_OWNED else String(r.kind)
+
+
+## PX-W8 / identity.keyentry: the refusal link and the key entries, exactly as served; null when
+## the result carries none.
+static func _report_activation(out: Dictionary, r: PKeyActivationResult) -> void:
+	if r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT or r.kind == PKeyActivationResult.KIND_KEY_ENTRY_LIMIT:
+		out["manageUrl"] = r.manage_url
+	if r.kind == PKeyActivationResult.KIND_OK or r.kind == PKeyActivationResult.KIND_KEY_ENTRY_LIMIT:
+		out["keyEntries"] = r.key_entries
+	if r.kind == PKeyActivationResult.KIND_LICENSE_OWNED:
+		out["signInUrl"] = r.sign_in_url

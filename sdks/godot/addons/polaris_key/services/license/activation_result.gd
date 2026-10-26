@@ -9,6 +9,11 @@ extends PKeyResult
 ##   ok                    200: the token is stored (source activate or enroll) and a sync ran
 ##   device-limit          403 device_limit: every seat is taken (`limit`, `device_count`,
 ##                         and `manage_url`, the portal link that frees one)
+##   key-entry-limit       403 key_entry_limit (identity.keyentry): the key has no entries left
+##                         (`key_entries` {used, limit}, `manage_url`, the portal's activate page).
+##                         Not an auth failure: nothing is wiped and nothing retries
+##   license-owned         403 license_owned (identity.keyentry): the licence belongs to an
+##                         account; `sign_in_url` is where its owner signs in. Not an auth failure
 ##   unauthorized          401: the key is unknown or revoked
 ##   fingerprint-required  403 fingerprint_required: the tier (or keyless enrolment, always)
 ##                         needs a hardware fingerprint this host did not send
@@ -36,6 +41,8 @@ extends PKeyResult
 
 const KIND_OK := &"ok"
 const KIND_DEVICE_LIMIT := &"device-limit"
+const KIND_KEY_ENTRY_LIMIT := &"key-entry-limit"
+const KIND_LICENSE_OWNED := &"license-owned"
 const KIND_UNAUTHORIZED := &"unauthorized"
 const KIND_FINGERPRINT_REQUIRED := &"fingerprint-required"
 const KIND_ENROLL_DISABLED := &"enroll-disabled"
@@ -62,6 +69,13 @@ var device_count: Variant = null
 ## `PKeyManage.with_return` and, on an `/activate` link, the key with `PKeyManage.with_key`.
 ## Never an auth failure: open it only behind a player action.
 var manage_url: Variant = null
+## ok and key-entry-limit (identity.keyentry): `{used, limit}` as served, or null when Identity is
+## off (the body has none). Never changes the result's kind: a game reads it to say "2 of 3 keys".
+var key_entries: Variant = null
+## license-owned: the sign-in link (`<origin>/signin?product=<slug>`, validated like `manage_url`),
+## or null when absent or not an acceptable link. It never carries the key. Open it only behind a
+## player action.
+var sign_in_url: Variant = null
 ## hardware-mismatch: how many stored components drifted and which, or null when omitted.
 var drift: Variant = null
 var changed: Variant = null

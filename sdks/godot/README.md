@@ -168,9 +168,10 @@ screen tells a key holder the difference yet.
 with any code other than the known ones (`registration_closed`, a code a later server adds) is
 `refused` with that code, never `device-limit`; a 5xx or a code-less answer is `error`. Today's
 server answers an expired key `unauthorized`, so `license-expired` does not occur against it yet.
-A key with no entries left (`key_entry_limit`) is `refused` with that code: the words come from
-`PKeyActivationController.message_for(r)` and `PKeyUiCopy`, and its manage link is not on the
-result. Every code has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`,
+A key with no entries left is `key-entry-limit` (`key_entries` {used, limit}, `manage_url`); a
+licence that belongs to an account is `license-owned` (`sign_in_url`). Neither wipes state or
+retries, and `key_entries` is also on `ok` when Identity is on (else null). The words come from
+`PKeyActivationController.message_for(r)` and `PKeyUiCopy`. Every code has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`,
 `for_result(result)`), so a custom screen shows the same text the kit does. The client gate is a
 user-experience gate, not DRM: see [Platform caveats](#platform-caveats).
 
