@@ -19,7 +19,7 @@
 // the token is stored through Core's token manager, the acquisition sync runs, and the subject
 // is read and persisted (`writeStoredSubject`).
 
-import { PolarisError } from "@polaris-key/client-core";
+import { PolarisError, UnsupportedError } from "@polaris-key/client-core";
 import {
   DEVICE_POLL_DENIED,
   type AuthorizePurpose,
@@ -452,6 +452,18 @@ export async function startDeviceCodeSignIn(
       typeof opts.scope === "string" ? opts.scope : opts.scope.join(" ");
   if (opts.licenseChoice !== undefined) body.licenseChoice = opts.licenseChoice;
   const res = await post(ctx, "identity/auth/device/start", body);
+  // A 404 here means the Worker serves no sign-in for this product (Identity off before
+  // discovery said so): the typed N/A, the same answer the Swift and Kotlin sessions give.
+  if (res.status === 404)
+    throw new UnsupportedError(
+      {
+        supported: false,
+        feature: Feature.identityDevicecode,
+        reason: "product",
+        detail: "this product does not serve device sign-in",
+      },
+      ErrorCode.serviceUnavailable,
+    );
   if (res.status !== 200)
     throw errorFrom(
       await classifyResponse(res, ErrorCode.signInUnavailable),

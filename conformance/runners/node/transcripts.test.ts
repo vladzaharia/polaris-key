@@ -441,10 +441,18 @@ async function act(
     case "beginSignIn": {
       // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
       const name = step.args.deviceName;
-      const p = await client.identity.signIn.start({
-        channel: "device-code",
-        ...(typeof name === "string" ? { deviceName: name } : {}),
-      });
+      let p: DeviceCodeSession;
+      try {
+        p = await client.identity.signIn.start({
+          channel: "device-code",
+          ...(typeof name === "string" ? { deviceName: name } : {}),
+        });
+      } catch (e) {
+        if (!(e instanceof PolarisError)) throw e;
+        out.result = e.code;
+        out.tokenHeld = store.token !== null;
+        break;
+      }
       session.prompt = p;
       out.prompt = {
         userCode: p.userCode,
