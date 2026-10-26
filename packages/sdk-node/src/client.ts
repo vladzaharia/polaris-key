@@ -270,6 +270,10 @@ export class PolarisKeyClient {
       () => this.onLicenseAcquired(),
       () => this.license.deactivate(),
       () => this.discoveryDoc,
+      async () => {
+        if (this.discoveryDoc === null) await this.discover();
+        return this.discoveryDoc;
+      },
     );
     this.release = new ReleaseClient(
       this.core,

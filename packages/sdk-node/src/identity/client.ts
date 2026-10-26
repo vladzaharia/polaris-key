@@ -38,6 +38,11 @@ import { classifyResponse, errorFrom } from "../core/http.js";
 import type { TokenManager } from "../core/token.js";
 import { redactOnPrint } from "../core/redact.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
+import {
+  startRedirectSignIn,
+  type RedirectSession,
+  type RedirectSignInOptions,
+} from "./redirect.js";
 
 /** What the host shows the player, plus the poll credential the SDK keeps using. A prompt from
  *  `beginSignIn` prints (`console.log`, `JSON.stringify`) with `deviceCode` redacted. */
@@ -251,8 +256,41 @@ export class IdentityClient {
     /** The discovery document this session loaded, or null. */
     private readonly discovery: () => ProductDiscoveryDocument | null = () =>
       null,
+    /** Load discovery when this session has not (the redirect channel needs its endpoints). */
+    private readonly loadDiscovery: () => Promise<ProductDiscoveryDocument | null> = async () =>
+      this.discovery(),
   ) {
     this.identityFile = join(ctx.dirs.state, "identity.json");
+  }
+
+  /** Conformance replay only (reached through a typed cast, like `chunkRangeFetch`): the exact
+   *  `state` and verifier of a recorded redirect conversation. */
+  private redirectEntropy:
+    | { state?: string; codeVerifier?: string }
+    | undefined;
+
+  /**
+   * The sign-in sessions. `start({channel: "redirect", redirectUri})` returns a
+   * {@link RedirectSession}: open its `authorizeUrl` in a browser, then `complete(callbackUrl)`.
+   * The device-code channel joins in I-10a.5; until then `beginSignIn` is the device-code call.
+   */
+  get signIn(): {
+    start(opts: RedirectSignInOptions): Promise<RedirectSession>;
+  } {
+    return {
+      start: (opts) =>
+        startRedirectSignIn(
+          {
+            ctx: this.ctx,
+            tokens: this.tokens,
+            discovery: this.loadDiscovery,
+            onAcquired: this.onAcquired,
+            forget: () => this.forget(),
+            ...(this.redirectEntropy ? { entropy: this.redirectEntropy } : {}),
+          },
+          opts,
+        ),
+    };
   }
 
   /** Who this device is signed in as (from the last `ready`), or null. */

@@ -2839,8 +2839,30 @@
     {
       "id": "identity.signIn",
       "kind": "method",
-      "feature": "identity.oidc",
-      "reserved": "I-10a",
+      "feature": "identity.devicecode",
+      "sdks": {
+        "node": {},
+        "python": {
+          "planned": "I-10a",
+          "reason": "planned"
+        },
+        "react": {
+          "planned": "I-10a",
+          "reason": "planned"
+        },
+        "swift": {
+          "planned": "I-10b",
+          "reason": "planned"
+        },
+        "kotlin": {
+          "planned": "I-10b",
+          "reason": "planned"
+        },
+        "godot": {
+          "planned": "I-10b",
+          "reason": "planned"
+        }
+      },
       "layer": "client"
     },
     {
