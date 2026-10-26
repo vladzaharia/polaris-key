@@ -70,7 +70,7 @@ public fun PolarisKeyClient.signInActions(deviceName: String? = null): PolarisSi
                 when (outcome) {
                     is SignInOutcome.SignedIn -> SignInResult.Ready
                     SignInOutcome.Expired, SignInOutcome.Cancelled -> SignInResult.Expired
-                    is SignInOutcome.Pending -> SignInResult.Error("sign-in did not settle.")
+                    is SignInOutcome.Pending, is SignInOutcome.Choose -> SignInResult.Error("sign-in did not settle.")
                 }
             } catch (e: SignInError) {
                 sessions.remove(prompt)

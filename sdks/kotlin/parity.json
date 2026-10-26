@@ -198,8 +198,8 @@
       "note": "I-10b.18: signIn.start(SignInOptions(channel = Redirect, redirectUri)) builds the S256 authorize URL from discovery (IdentityRedirect) for a browser the host opens; session.complete(callbackUrl) checks the redirect URI, state and iss before anything is sent, then redeems the code at discovery's token endpoint (form body, product origin only). Single use; a refusal is a typed SignInError and never wipes the token. Loopback, scheme and claimed-HTTPS redirects are I-15's; the licence choice (license_choice=app) is I-10b.19's."
     },
     "identity.choice": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.19: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer, the grant never in an error; a Worker refusal is ChoiceResult.Refused (retryAfterSeconds, manageUrl, signInUrl, keyEntries, the fresh view); Keep completes attachable. The three choice-* transcripts are replayed."
     },
     "identity.signin.hints": {
       "status": "implemented"

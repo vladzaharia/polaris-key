@@ -119,6 +119,8 @@ public class RedirectPending internal constructor(
     public val clientId: String,
     public val issuer: String,
     public val tokenEndpoint: String,
+    /** The authorize request carried `license_choice=app`: the token endpoint may answer `choose`. */
+    internal val licenseChoice: Boolean = false,
 ) {
     override fun toString(): String = "RedirectPending(authorizeUrl=$authorizeUrl, codeVerifier=[redacted])"
 }
@@ -246,6 +248,7 @@ public object IdentityRedirect {
         val joiner = if (authorizeEndpoint.contains('?')) "&" else "?"
         return RedirectPending(
             "$authorizeEndpoint$joiner${formBody(pairs)}", theState, verifier, redirectUri, clientId, issuer, tokenEndpoint,
+            licenseChoice == "app" && choiceAvailable,
         )
     }
 
@@ -441,21 +444,19 @@ internal suspend fun IdentityClient.startRedirect(options: SignInOptions): Redir
         throw PolarisException(ErrorCode.badResponse, "the token endpoint points outside this product.")
     }
     val entropy = redirectEntropyValue
+    val choiceAvailable = listOf("choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel").all { !fragment.endpoints[it].isNullOrEmpty() }
     return IdentityRedirect.start(
         authorizeEndpoint = authorize, tokenEndpoint = token, issuer = issuer, clientId = core.product,
         redirectUri = redirectUri, scope = options.scope, loginHint = options.loginHint, nameHint = options.nameHint,
-        purpose = options.purpose?.wire, state = entropy?.state, codeVerifier = entropy?.codeVerifier,
+        purpose = options.purpose?.wire, licenseChoice = options.licenseChoice, choiceAvailable = choiceAvailable, state = entropy?.state, codeVerifier = entropy?.codeVerifier,
     )
 }
-
-/** What a redeemed redirect code signed in. */
-internal class RedirectReady(val subject: String, val scope: String, val licenseId: String?)
 
 /**
  * Redeem the code at the token endpoint and, on a token, store it and run the acquisition sync as after
  * a device-code `ready`. A refusal is a [SignInError] under the Worker's code.
  */
-internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, code: String, deviceName: String?): RedirectReady {
+internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, code: String, deviceName: String?): SignInOutcome {
     val label = core.deviceLabel(deviceName)
     val form = IdentityRedirect.tokenForm(pending.clientId, pending.codeVerifier, pending.redirectUri, code, label)
     val response: PolarisResponse = try {
@@ -481,16 +482,18 @@ internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, cod
                 "the token endpoint refused the sign-in (${answer.error}).", retry,
             )
         }
-        // Only `license_choice=app` makes the Worker answer this, and this client never asks for it
-        // (the licence choice is I-10b.19's).
-        is TokenAnswer.Choose -> throw PolarisException(
-            ErrorCode.badResponse, "the token endpoint asked for a licence choice this sign-in did not request.",
-        )
+        // Only `license_choice=app` makes the Worker answer this; nothing is stored and `identity.choice.*` finishes it.
+        is TokenAnswer.Choose ->
+            if (pending.licenseChoice) {
+                SignInOutcome.Choose(answer.grant, answer.expiresIn, answer.choices)
+            } else {
+                throw PolarisException(ErrorCode.badResponse, "the token endpoint asked for a licence choice this sign-in did not request.")
+            }
         is TokenAnswer.Token -> {
             core.setToken(answer.accessToken, TokenSource.signin)
             if (core.setSubject(answer.subject)) onSubject(answer.subject)
             if (redirectAcquisitionSyncValue) onAcquired?.invoke()
-            RedirectReady(answer.subject, answer.scope, answer.license?.get("id").stringValue)
+            SignInOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue)
         }
     }
 }

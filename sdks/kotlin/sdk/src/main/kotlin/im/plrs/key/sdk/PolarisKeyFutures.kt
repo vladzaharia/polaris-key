@@ -18,6 +18,11 @@ import im.plrs.key.core.LicenseState
 import im.plrs.key.core.SyncResult
 import im.plrs.key.core.UpdateCheck
 import im.plrs.key.identity.AttachResult
+import im.plrs.key.identity.ChoiceCompleted
+import im.plrs.key.identity.ChoiceResult
+import im.plrs.key.identity.LicenseChoice
+import im.plrs.key.identity.LicenseChoiceView
+import im.plrs.key.identity.ReplaceView
 import im.plrs.key.identity.SignInOptions
 import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.identity.SignInSession
@@ -82,6 +87,20 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** Redirect channel: `session.complete(callbackUrl)`; a refusal completes it exceptionally with `SignInError`. */
     public fun signInComplete(session: SignInSession, callbackUrl: String): CompletableFuture<SignInOutcome> =
         call { session.complete(callbackUrl) }
+
+    /** `identity.choice.licenses(grant)`: the licences the account can run this device on; a refusal is a `ChoiceResult.Refused`. */
+    public fun choiceLicenses(grant: String): CompletableFuture<ChoiceResult<LicenseChoiceView>> = call { client.identity.choice.licenses(grant) }
+
+    /** `identity.choice.devices(grant, licenseId)`: a full licence's seated devices, for Replace. */
+    public fun choiceDevices(grant: String, licenseId: String): CompletableFuture<ChoiceResult<ReplaceView>> =
+        call { client.identity.choice.devices(grant, licenseId) }
+
+    /** `identity.choice.complete(grant, choice)`: finish the sign-in with the person's choice. */
+    public fun choiceComplete(grant: String, choice: LicenseChoice): CompletableFuture<ChoiceResult<ChoiceCompleted>> =
+        call { client.identity.choice.complete(grant, choice) }
+
+    /** `identity.choice.cancel(grant)`: give the grant up. */
+    public fun choiceCancel(grant: String): CompletableFuture<ChoiceResult<Unit>> = call { client.identity.choice.cancel(grant) }
 
     /** `identity.attach(confirm)`: preview (false) or add the device's licence to the signed-in account (true). */
     public fun attach(confirm: Boolean): CompletableFuture<AttachResult> = call { client.identity.attach(confirm) }

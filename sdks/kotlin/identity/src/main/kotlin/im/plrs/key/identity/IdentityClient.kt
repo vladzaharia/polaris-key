@@ -153,6 +153,15 @@ public class IdentityClient(
     /** `signIn.start(options)`: the device-code or redirect session (see SignInSession.kt). */
     public val signIn: SignInNamespace get() = SignInNamespace(this)
 
+    private val choiceClient: ChoiceClient by lazy { ChoiceClient(this) }
+
+    /**
+     * The licence choice an app shows itself after a redirect sign-in settled [SignInOutcome.Choose]:
+     * `licenses(grant)`, `devices(grant, licenseId)`, `complete(grant, choice)`, `cancel(grant)`
+     * (IdentityChoice.kt). Each throws the typed `service-unavailable` N/A when discovery names no choice endpoint.
+     */
+    public val choice: ChoiceClient get() = choiceClient
+
     /** The pairwise subject signed in on this device (reads `GET subject`, stores it). */
     public suspend fun subject(): SubjectResult = account.subject()
 

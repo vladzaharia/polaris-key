@@ -6,6 +6,7 @@ package polaris.generated
 import im.plrs.key.config.ConfigClient
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.PresentationSource
+import im.plrs.key.identity.ChoiceClient
 import im.plrs.key.identity.IdentityClient
 import im.plrs.key.identity.SignInNamespace
 import im.plrs.key.identity.SignInSession
@@ -52,6 +53,12 @@ internal suspend fun apiSurface() {
     SignInSession::cancel  // identity.signIn.session.cancel
     SignInSession::wait  // identity.signIn.session.wait
     SignInSession::complete  // identity.signIn.session.complete
+    IdentityClient::choice  // identity.choice
+    ChoiceClient::licenses  // identity.choice.licenses
+    ChoiceClient::devices  // identity.choice.devices
+    ChoiceClient::complete  // identity.choice.complete
+    ChoiceClient::cancel  // identity.choice.cancel
+    IdentityClient::choice  // identity.useLicenseChoice
     IdentityClient::attach  // identity.attachLicense
     IdentityClient::openAccount  // identity.openAccount
     PolarisKeyClient::events  // events
