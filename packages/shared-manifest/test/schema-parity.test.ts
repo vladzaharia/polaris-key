@@ -121,6 +121,7 @@ function base(): Docs {
         update: { enabled: true },
         identity: { enabled: true },
         sync: { enabled: true },
+        connect: { enabled: true },
       },
       web: { origins: ["https://app.acme.example", "http://localhost:8060"] },
       presentation: {
@@ -179,6 +180,8 @@ function base(): Docs {
         },
         nearby: true,
       },
+      // CC-02.2: the connect block, every member declared.
+      connect: { relay: true, interAccount: false },
       provisioning: [
         {
           claim: "vpnAccess",
@@ -1376,6 +1379,32 @@ const MUTATIONS: Mutation[] = [
     schema: "accepts",
     mutate: (d) => delete p(d).web,
   },
+  // CC-02.2: the connect block (plans/CC-01-cloud-connect.md §2.9).
+  {
+    code: "invalid_connect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).connect = ["relay"]),
+  },
+  {
+    code: "invalid_connect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).connect.turn = true),
+  },
+  {
+    code: "invalid_connect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).connect.relay = "yes"),
+  },
+  {
+    // Declared while the service is off: none of it applies (a warning).
+    code: "connect_block_without_service",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).modules.connect = { enabled: false }),
+  },
   {
     // Declared while the service is off: none of it applies (a warning).
     code: "identity_block_without_service",
@@ -1384,6 +1413,7 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => {
       p(d).modules.identity = { enabled: false };
       p(d).modules.sync = { enabled: false };
+      p(d).modules.connect = { enabled: false };
     },
   },
   {

@@ -142,6 +142,7 @@
     },
     "oidc": { "$ref": "#/$defs/oidc" },
     "identity": { "$ref": "#/$defs/identity" },
+    "connect": { "$ref": "#/$defs/connect" },
     "provisioning": {
       "type": "array",
       "items": { "$ref": "#/$defs/provisioningHook" }
@@ -728,6 +729,21 @@
         "properties": { "provider": { "const": "custom" } }
       },
       "then": { "required": ["issuer", "clientId"] }
+    },
+    "connect": {
+      "type": "object",
+      "description": "Cloud Connect settings (CC-02.2), each a claimable setting: the console can override it and Revert returns it to this file. Takes effect only while the connect service is on; declared with it off, pkey validate warns (connect_block_without_service).",
+      "additionalProperties": false,
+      "properties": {
+        "relay": {
+          "description": "Whether the relay carries this product's device traffic when the LAN cannot (cloudConnect.relay.enabled). Default true.",
+          "type": "boolean"
+        },
+        "interAccount": {
+          "description": "Whether devices of different accounts may connect (cloudConnect.interAccount). Default false.",
+          "type": "boolean"
+        }
+      }
     },
     "identity": {
       "type": "object",

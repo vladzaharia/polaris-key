@@ -14,7 +14,12 @@
  * Adding an entry is a THREAT-MODEL §9 review trigger.
  */
 
-import { CLOUD_SYNC_CEILINGS, CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
+import {
+  CLOUD_CONNECT_CEILINGS,
+  CLOUD_CONNECT_DEFAULTS,
+  CLOUD_SYNC_CEILINGS,
+  CLOUD_SYNC_DEFAULTS,
+} from "@polaris-key/catalog";
 import {
   DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
   DEFAULT_RESERVED_NAMES_MODE,
@@ -522,6 +527,74 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     readers: ["core/accounts/syncAccess.ts"],
     storage: { kind: "scalar" },
     since: "U-01b",
+  }),
+
+  // ── Cloud Connect (plans/CC-01-cloud-connect.md §2.9; CC-07.3 adds the readers) ──────────
+  // The deployment's one relay kill switch. Pausing restricts (no relay connection is admitted),
+  // so the permissive side is off; a platform lock, never a product value. The local network is
+  // unaffected and nothing is deleted (`relay_paused`).
+  setting({
+    key: "cloudConnect.relayPaused",
+    scope: "platform",
+    service: "platform",
+    area: "cloudConnect",
+    label: "Pause the Cloud Connect relay",
+    description:
+      "Pauses the relay on this deployment: no new relay connection is admitted and open ones close. Connections on the local network keep working.",
+    keywords: [
+      "cloud connect",
+      "relay",
+      "kill switch",
+      "pause",
+      "relay_paused",
+    ],
+    docs: "/docs/features/cloud-connect/",
+    value: { kind: "switch" },
+    defaultValue: "off",
+    merge: "policy",
+    policyBound: "lock",
+    // Off is the permissive side: with the pause off, every relay connection is admitted.
+    widensWhen: "off",
+    ownership: "operator",
+    critical: true,
+    confirm: { on: "L2", off: "L1" },
+    storage: { kind: "scalar" },
+    since: "CC-02.2",
+    pending: { wp: "CC-07" },
+  }),
+  // The relay bytes a person gets per UTC day when no tier, licence override or add-on sets
+  // `pkey.cloudConnect.relayBytes`. Clamped to the per-person ceiling. One write reaches every
+  // product with Cloud Connect on, so it takes the passkey confirm.
+  setting({
+    key: "cloudConnect.quota.defaultRelayBytes",
+    scope: "platform",
+    service: "platform",
+    area: "cloudConnect",
+    label: "Default relay quota",
+    description:
+      "How many relay bytes one person may use per UTC day on a product when no tier, license or add-on sets pkey.cloudConnect.relayBytes. A change reaches every product with Cloud Connect on.",
+    keywords: [
+      "cloud connect",
+      "relay",
+      "quota",
+      "bandwidth",
+      "pkey.cloudConnect.relayBytes",
+    ],
+    docs: "/docs/features/cloud-connect/",
+    value: {
+      kind: "integer",
+      unit: "bytes",
+      min: CLOUD_CONNECT_DEFAULTS.unlicensedRelayBytesPerDay,
+      max: CLOUD_CONNECT_CEILINGS.perPerson.relayBytesPerDay,
+    },
+    defaultValue: CLOUD_CONNECT_DEFAULTS.relayBytesPerDay,
+    merge: "cascade",
+    ownership: "operator",
+    critical: true,
+    confirm: { up: "L2", down: "L2" },
+    storage: { kind: "scalar" },
+    since: "CC-02.2",
+    pending: { wp: "CC-07" },
   }),
 
   // ── Email and alerts (ST-09; I-18) ──────────────────────────────────────────────────────

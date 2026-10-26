@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 274 distinct emit sites.
+codes with their JSON-pointer paths. 278 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -28,6 +28,7 @@ the offending value, or the allowed set.
 | `conflicting_spelling` | warning | schema | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |
 | `conflicting_spelling` | warning | release | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |
 | `conflicting_versioning` | error | release | `/release/deliverables/app/versioning` | stableTagPattern and ignoreTags are declared both at the release root and under deliverables.app.versioning; keep one spelling. |
+| `connect_block_without_service` | warning | product | `/connect` | connect is declared but the connect service is off, so none of it applies. |
 | `connect_requires_identity` | error | product | `/modules/connect` | Cloud Connect links a signed-in person's devices, so identity must be enabled too. |
 | `content_keys_not_supported` | warning | release | `/release/contentKeys` | release.contentKeys is not used: delegate a content key with `pkey release delegate`; the signed delegation is the only grant (P4-19). |
 | `deprecated_spelling` | warning | product | `${path}` | $\{old\} is a deprecated spelling$\{ignored\}; write $\{write\}. |
@@ -83,6 +84,9 @@ the offending value, or the allowed set.
 | `invalid_channel` | error | release | `${at}/channels` | a pack's channels lists 1 to $\{MAX_PACK_CHANNELS\} distinct canonical channel names ($\{CANONICAL_CHANNEL_PATTERN.source\}, and not an alias such as $\{CHANNEL_ALIAS_NAMES.join(" or ")\}). |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning hooks require claim. |
 | `invalid_claim` | error | product | `/provisioning/${i}/claim` | Provisioning claim names must match ^[A-Za-z0-9][A-Za-z0-9._:-]\{0,127\}$. |
+| `invalid_connect` | error | product | `/connect/${key}` | connect takes only relay and interAccount. |
+| `invalid_connect` | error | product | `/connect/${key}` | connect.$\{key\} must be true or false. |
+| `invalid_connect` | error | product | `/connect` | connect must be an object with relay and interAccount. |
 | `invalid_deliverable_id` | error | release | `/release/deliverables/${id}` | deliverable ids must match $\{DELIVERABLE_ID_PATTERN.source\} and be at most $\{MAX_DELIVERABLE_ID_LENGTH\} characters. |
 | `invalid_deliverable_id` | error | release | `/release/deliverables` | release.deliverables must be an object keyed by deliverable id. |
 | `invalid_deliverable_kind` | error | release | `/release/deliverables/${id}/kind` | each deliverable must be an object whose kind is one of $\{DELIVERABLE_KINDS.join(", ")\}. |

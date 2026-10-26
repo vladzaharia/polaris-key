@@ -6,8 +6,8 @@
  * override merge (`packages/worker/src/core/licensing/entitlements.ts`): `channels`, `deviceLimit`,
  * `app.minVersion`, `app.maxVersion`, `license.tier` and `license.tierLabel`. They share one
  * namespace with the product's own catalog `flag` entries, so a product flag of the same name is
- * silently overwritten. It only reads `pkey.cloudSync.bytes`, the Cloud Sync quota a tier, a
- * licence override or an add-on sets (`injected: false`). This module is the ONE place that knows
+ * silently overwritten. It only reads `pkey.cloudSync.bytes` and `pkey.cloudConnect.relayBytes`, the Cloud Sync
+ * and Cloud Connect relay quotas a tier, a licence override or an add-on sets (`injected: false`). This module is the ONE place that knows
  * which names are reserved and what a compatible declaration of one looks like; the manifest
  * validator, the Worker's console write paths and the platform "Reserved names" report all ask
  * it.
@@ -91,6 +91,12 @@ export const RESERVED_ENTITLEMENT_KEYS: readonly ReservedEntitlementKey[] = [
     key: "pkey.cloudSync.bytes",
     type: "integer",
     rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Sync reads it from the anchor licence as the person's quota in bytes (256 MiB when unset).",
+    injected: false,
+  },
+  {
+    key: "pkey.cloudConnect.relayBytes",
+    type: "integer",
+    rule: "Not injected. A tier, a licence override or an add-on sets it, and Cloud Connect reads it from the anchor licence as the relay bytes a person may use per UTC day (256 MiB when unset, 16 MiB without a usable licence, clamped to 4 GiB).",
     injected: false,
   },
 ];

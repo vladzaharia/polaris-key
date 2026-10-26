@@ -17,6 +17,10 @@ export type {
   CatalogCloudSync,
 } from "./types.js";
 export {
+  CLOUD_CONNECT_DEFAULTS,
+  CLOUD_CONNECT_CEILINGS,
+} from "./cloudConnect.js";
+export {
   USER_SETTING_SYNC_SCOPES,
   USER_SETTING_CONFLICTS,
   SYNC_CONFLICTS,
