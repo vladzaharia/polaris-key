@@ -57,6 +57,7 @@ import {
   type CompletionShell,
 } from "./help.js";
 import { EXIT, type FlowResult } from "./json.js";
+import { waitForCli } from "./signInResult.js";
 import {
   activate,
   boot,
@@ -128,9 +129,10 @@ export function signIn(
   opts: { qr?: boolean; deviceName?: string } = {},
 ): Promise<CommandResult> {
   return guarded("Sign-in", async () => {
-    const prompt = await client.identity.beginSignIn(
-      opts.deviceName ? { deviceName: opts.deviceName } : {},
-    );
+    const prompt = await client.identity.signIn.start({
+      channel: "device-code",
+      ...(opts.deviceName ? { deviceName: opts.deviceName } : {}),
+    });
     io.print(
       `Open ${prompt.verificationUri} and enter the code ${prompt.userCode}`,
     );
@@ -139,10 +141,7 @@ export function signIn(
       if (code) io.print(code);
     }
     io.print("Waiting for you to finish in the browser…");
-    const r = await client.identity.waitForSignIn(
-      prompt,
-      io.signal ? { signal: io.signal } : {},
-    );
+    const r = await waitForCli(prompt, io.signal ? { signal: io.signal } : {});
     if (r.status === "ready") {
       const who = r.identity?.email ?? r.identity?.name;
       return {
@@ -156,7 +155,9 @@ export function signIn(
       message:
         r.status === "expired"
           ? "Sign-in failed: the code expired. Run sign-in again."
-          : `Sign-in failed: ${r.message}`,
+          : r.status === "cancelled"
+            ? "Sign-in cancelled."
+            : `Sign-in failed: ${r.message}`,
       data: r,
     };
   });

@@ -1523,8 +1523,8 @@
     "packages/sdk-node/src/electron/main.ts": {
       "jscpd:duplicate": 1
     },
-    "packages/sdk-node/src/identity/client.ts": {
-      "jscpd:duplicate": 3
+    "packages/sdk-node/src/identity/signIn.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/packs/client.ts": {
       "jscpd:duplicate": 3
@@ -1668,7 +1668,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/identity.test.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/sdk-node/test/identityParity.test.ts": {
       "jscpd:duplicate": 1
@@ -2043,7 +2043,7 @@
       "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/bearer/session.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 9
     },
     "packages/ui-core/src/browser/sdk/browser/boot.ts": {
       "jscpd:duplicate": 1

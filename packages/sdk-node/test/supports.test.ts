@@ -243,7 +243,9 @@ describe("a refused call carries supports()'s fields", () => {
     expect(c.supports(Feature.releaseChangelog)).toEqual(
       (thrown as UnsupportedError).unsupported,
     );
-    await expect(c.identity.beginSignIn()).rejects.toMatchObject({
+    await expect(
+      c.identity.signIn.start({ channel: "device-code" }),
+    ).rejects.toMatchObject({
       code: "service-unavailable",
       feature: "identity.devicecode",
       reason: "product",

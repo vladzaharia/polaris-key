@@ -6,12 +6,14 @@
 //   config           a resolved config value changed (a sync, or a local set/clear)
 //   updateAvailable  `update.decide()` offered a newer build
 //   packs            pack download/apply progress
+//   identity         the signed-in account changed (signed in, signed out, subject changed)
 //   store            the token store's backend or degradation changed
 
 import { EventEmitter } from "node:events";
 import type { PackProgress, StoreStatus } from "@polaris-key/client-core";
 import type { LicenseState } from "@polaris-key/client-core";
 import type { UpdateCheck } from "@polaris-key/protocol/update";
+import type { IdentityEvent } from "../identity/signIn.js";
 import type { ConfigChange } from "../config/client.js";
 
 export interface PolarisEvents {
@@ -19,6 +21,7 @@ export interface PolarisEvents {
   config: [ConfigChange];
   updateAvailable: [UpdateCheck];
   packs: [PackProgress];
+  identity: [IdentityEvent];
   store: [StoreStatus | null];
 }
 

@@ -20,7 +20,7 @@ import type { ClientBootOptions } from "../boot.js";
 import type { ClaimResult, CommerceStore } from "../commerce/client.js";
 import { ErrorCode, type UpdateEvent } from "../constants.generated.js";
 import { copy } from "../core/copy.js";
-import type { SignInPrompt } from "../identity/client.js";
+import type { DeviceCodeSession } from "../identity/signIn.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import type { FeedKind } from "../update/client.js";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
@@ -249,7 +249,7 @@ export type PolarisBridgeHandle = {
 };
 
 interface FlowEntry {
-  prompt: SignInPrompt;
+  prompt: DeviceCodeSession;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -1026,9 +1026,10 @@ export function exposePolarisBridge(
     beginSignIn: async (_e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
       const deviceName = optStr(bag(begin).deviceName) ?? opts.deviceName;
-      const prompt = await client.identity.beginSignIn(
-        deviceName ? { deviceName } : {},
-      );
+      const prompt = await client.identity.signIn.start({
+        channel: "device-code",
+        ...(deviceName ? { deviceName } : {}),
+      });
       const flowId = randomUUID();
       const ttl = Math.max(0, prompt.expiresIn * 1000) + graceMs;
       const timer = setTimeout(() => flows.delete(flowId), ttl);
@@ -1048,20 +1049,27 @@ export function exposePolarisBridge(
       if (!flow) return { kind: "expired" };
       let r;
       try {
-        r = await client.identity.pollSignIn(flow.prompt);
+        r = await flow.prompt.wait({ once: true });
       } catch (e) {
         // Transport trouble says nothing about the sign-in: keep polling.
         const code = (e as { code?: unknown }).code;
         if (code === "network-error" || code === "server-error")
           return { kind: "pending" };
+        if (code === ErrorCode.signInDenied) {
+          forgetFlow(flowId as string);
+          return { kind: "denied" };
+        }
+        if (code === ErrorCode.signInFailed) {
+          forgetFlow(flowId as string);
+          return { kind: "error", message: (e as Error).message };
+        }
         throw e;
       }
-      switch (r.status) {
+      switch (r.kind) {
         case "pending":
-        case "slow-down":
-        case "confirm":
+        case "choose":
           return { kind: "pending" };
-        case "ready":
+        case "signedIn":
           forgetFlow(flowId as string);
           pushState();
           notify("signedIn");
@@ -1069,13 +1077,9 @@ export function exposePolarisBridge(
             ? { kind: "ok", identity: r.identity }
             : { kind: "ok" };
         case "expired":
+        case "cancelled":
           forgetFlow(flowId as string);
           return { kind: "expired" };
-        case "error":
-          forgetFlow(flowId as string);
-          return r.code === ErrorCode.signInDenied
-            ? { kind: "denied" }
-            : { kind: "error", message: r.message };
       }
     },
     submitKey: async (_e, key) => {

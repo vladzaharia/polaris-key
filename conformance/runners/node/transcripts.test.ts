@@ -8,7 +8,7 @@
 // @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
-// @pkey-feature identity.redirect.web identity.signin.hints identity.account
+// @pkey-feature identity.toggle identity.redirect.web identity.signin.hints identity.account
 // @pkey-feature identity.attach
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
@@ -66,7 +66,7 @@ import {
   PolarisKeyClient,
   type CacheRecordV3,
   type RedirectSession,
-  type SignInPrompt,
+  type DeviceCodeSession,
   type Store,
 } from "@polaris-key/node";
 import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
@@ -238,7 +238,7 @@ function standardDiscovery(t: Transcript): string {
 
 /** The replay's memory between steps: the prompt the last `beginSignIn` returned. */
 interface Session {
-  prompt: SignInPrompt | null;
+  prompt: DeviceCodeSession | null;
   transcript: Transcript;
   server: ReplayServer;
   /** The redirect session the last authorize step started (its URL is what the browser opens). */
@@ -439,10 +439,12 @@ async function act(
   const out: Observed = {};
   switch (step.action) {
     case "beginSignIn": {
+      // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
       const name = step.args.deviceName;
-      const p = await client.identity.beginSignIn(
-        typeof name === "string" ? { deviceName: name } : {},
-      );
+      const p = await client.identity.signIn.start({
+        channel: "device-code",
+        ...(typeof name === "string" ? { deviceName: name } : {}),
+      });
       session.prompt = p;
       out.prompt = {
         userCode: p.userCode,
@@ -456,26 +458,27 @@ async function act(
     }
     case "pollSignIn": {
       try {
-        const poll = await client.identity.pollSignIn(session.prompt!);
-        out.result = poll.status;
-        if (poll.status === "slow-down") out.interval = poll.interval;
-        if (poll.status === "error" && poll.code) out.code = poll.code;
+        const o = await session.prompt!.wait({ once: true });
+        if (o.kind === "pending") {
+          out.result = o.slowDown ? "slow-down" : "pending";
+          if (o.slowDown) out.interval = o.interval;
+        } else out.result = o.kind === "signedIn" ? "ready" : o.kind;
       } catch (e) {
-        // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
-        if (
-          !(e instanceof PolarisError) ||
-          (e.code !== "server-error" && e.code !== "network-error")
-        )
-          throw e;
-        out.result = "transient";
-        out.code = e.code;
+        if (!(e instanceof PolarisError)) throw e;
+        if (e.code === "sign-in-denied" || e.code === "sign-in-failed") {
+          out.result = "error";
+          out.code = e.code;
+        } else if (e.code === "server-error" || e.code === "network-error") {
+          // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
+          out.result = "transient";
+          out.code = e.code;
+        } else throw e;
       }
       break;
     }
     case "waitForSignIn": {
-      const done = await client.identity.waitForSignIn(session.prompt!);
-      out.result = done.status;
-      if (done.status === "error" && done.code) out.code = done.code;
+      const done = await session.prompt!.wait();
+      out.result = done.kind === "signedIn" ? "ready" : done.kind;
       break;
     }
     case "browser":

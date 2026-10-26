@@ -5,6 +5,7 @@
 // screen at the moment the scenario calls `snap()`).
 
 import { PassThrough } from "node:stream";
+import { PolarisError } from "@polaris-key/client-core";
 import type { PolarisKeyClient } from "../../src/client.js";
 import { createKitContext, type KitContext } from "../../src/cli/context.js";
 import type { Ticker } from "../../src/cli/term/live.js";
@@ -282,6 +283,47 @@ export function deferred<T>(): { promise: Promise<T>; resolve(v: T): void } {
 
 type Stub = Record<string, unknown>;
 
+/**
+ * Stubs keep the legacy two-step vocabulary (`beginSignIn` answers the prompt, `waitForSignIn`
+ * the result); the client the CLI sees has `identity.signIn.start()` answering a session. This
+ * folds the one onto the other (I-10a.5), so a scenario still reads as the sign-in it drives.
+ */
+function sessionStub(id: Stub): Stub {
+  const { beginSignIn, waitForSignIn, ...rest } = id as {
+    beginSignIn: (o: unknown) => Promise<Record<string, unknown>>;
+    waitForSignIn: (p: unknown, o: unknown) => Promise<Record<string, unknown>>;
+  } & Stub;
+  const outcome = (r: Record<string, unknown>) => {
+    if (r.status === "ready")
+      return {
+        kind: "signedIn",
+        subject: null,
+        activation: {
+          licenseId: null,
+          ...(r.attached ? { attached: r.attached } : {}),
+        },
+        ...(r.identity ? { identity: r.identity } : {}),
+      };
+    if (r.status === "expired") return { kind: "expired" };
+    throw new PolarisError(
+      typeof r.code === "string" ? r.code : "sign-in-failed",
+      String(r.message ?? "sign-in failed"),
+    );
+  };
+  return {
+    ...rest,
+    signIn: {
+      start: async (o: unknown) => {
+        const p = await beginSignIn(o);
+        return {
+          ...p,
+          wait: async (w: unknown) => outcome(await waitForSignIn(p, w)),
+        };
+      },
+    },
+  };
+}
+
 /** A stub client: the Tidewater fixture, with `over` replacing any part. */
 export function stubClient(
   over: {
@@ -362,7 +404,7 @@ export function stubClient(
       deactivate: async () => undefined,
       ...over.license,
     },
-    identity: {
+    identity: sessionStub({
       beginSignIn: async () => ({
         deviceCode: "dc_secret",
         userCode: "WDJB-MJHT",
@@ -386,7 +428,7 @@ export function stubClient(
         signedInAt: NOW / 1000 - 86_400,
       }),
       ...over.identity,
-    },
+    }),
     update: {
       decidable: true,
       outlet: null,

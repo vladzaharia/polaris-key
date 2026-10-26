@@ -107,8 +107,10 @@ describe("SP-46: no public result prints a device token", () => {
     const activated = await client.license.activateWithKey("pkey_djdl_x");
     const enrolled = await client.license.enroll();
     const registered = await client.devices.register();
-    const prompt = await client.identity.beginSignIn();
-    const ready = await client.identity.pollSignIn(prompt);
+    const prompt = await client.identity.signIn.start({
+      channel: "device-code",
+    });
+    const ready = await prompt.wait({ once: true });
     const minted = await client.config.mintToken("recipe");
 
     // The tokens are still there to read: only printing hides them.

@@ -12,11 +12,8 @@ import { fstatSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { PolarisKeyClient } from "../client.js";
-import type {
-  ShownIdentity,
-  SignInPrompt,
-  SignInResult,
-} from "../identity/client.js";
+import type { DeviceCodeSession, ShownIdentity } from "../identity/signIn.js";
+import { waitForCli, type CliSignInResult } from "./signInResult.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
@@ -1611,12 +1608,12 @@ export async function loginFlow(
   }
   const verb = args.verb ?? "login";
   const header = () => productHeader(ctx, verb);
-  let prompt: SignInPrompt;
+  let prompt: DeviceCodeSession;
   try {
     prompt = await busy(
       ctx,
       t("signInHandoff.starting"),
-      () => client.identity.beginSignIn(),
+      () => client.identity.signIn.start({ channel: "device-code" }),
       header,
     );
   } catch (e) {
@@ -1786,9 +1783,9 @@ export async function loginFlow(
     }
   })();
 
-  let r: SignInResult | "cancelled";
+  let r: CliSignInResult;
   try {
-    r = await client.identity.waitForSignIn(prompt, {
+    r = await waitForCli(prompt, {
       signal: abort.signal,
       // A device that holds a key license is asked before that license is added to the account,
       // and the answer is No unless the person says yes (nobody to ask: a pipe, --json, CI).
@@ -1808,7 +1805,7 @@ export async function loginFlow(
       },
     });
   } catch (e) {
-    if (abort.signal.aborted) r = "cancelled";
+    if (abort.signal.aborted) r = { status: "cancelled" };
     else {
       stopSpin();
       abort.abort();
@@ -1821,7 +1818,7 @@ export async function loginFlow(
   }
   // Esc or Ctrl-C at the attach question answered No to let the wait end, but it cancelled the
   // sign-in: nothing that follows may read as signed in.
-  if (abort.signal.aborted) r = "cancelled";
+  if (abort.signal.aborted) r = { status: "cancelled" };
   abort.abort();
   await keyLoop;
   // The outcome replaces the whole screen, header included: one result block, never the code view
@@ -1838,7 +1835,7 @@ export async function loginFlow(
       },
     ]);
 
-  if (r === "cancelled") {
+  if (r.status === "cancelled") {
     // Cancelling is not an error (DL7): the block closes on a neutral line, no ✗ and no screen.
     finish([endRow(t("cli.nothingChanged"))]);
     if (interrupt) return interrupted({ state: "cancelled" });
