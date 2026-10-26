@@ -149,6 +149,18 @@ export {
   type KeyEntries,
 } from "./activation.js";
 export type { AttachResult, KeyActivation, SignOutResult } from "./types.js";
+export type {
+  AuthorizePurpose,
+  DeviceCodeSignInOptions,
+  DeviceCodeSignInSession,
+  RedirectSignInOptions,
+  RedirectSignInSession,
+  SignInHints,
+  SignInNamespace,
+  SignInOptions,
+  SignInOutcome,
+  SignInSession,
+} from "./signIn.js";
 export { activationError } from "./activationError.js";
 export {
   activationMessage,

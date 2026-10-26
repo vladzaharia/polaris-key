@@ -34,6 +34,11 @@
 import {
   CACHE_VERSION,
   REFRESH_MARGIN_SECONDS,
+  TOKEN_CONTENT_TYPE,
+  checkCallback,
+  parseTokenAnswer,
+  startRedirect,
+  tokenForm,
   channelForVersion,
   compareKidBytes,
   effectiveNow,
@@ -48,6 +53,7 @@ import {
   verifyTrustManifest,
   type BlockedState,
   type CacheRecordV3,
+  type RedirectPending,
   type Store,
   type TrustManifestResult,
 } from "@polaris-key/client-core";
@@ -101,7 +107,18 @@ import {
   type UpdateEventEntry,
   type UpdateEventInput,
 } from "../../core/updateEvents.js";
-import { ErrorCode, type UpdateEvent } from "../../constants.generated.js";
+import {
+  ErrorCode,
+  Feature,
+  type UpdateEvent,
+} from "../../constants.generated.js";
+import { UnsupportedError } from "../../core/caps.js";
+import type {
+  DeviceCodeSignInOptions,
+  RedirectEndpoints,
+  RedirectSignInOptions,
+  SignInOutcome,
+} from "../../core/signIn.js";
 
 /** How the current token was obtained, which picks the §5 re-acquire route (as Node). */
 export type TokenSource =
@@ -309,6 +326,12 @@ export interface BearerSessionOptions {
    *  `attach`, `accountPortal`. A call whose endpoint is absent answers unavailable and builds no
    *  URL; the default answers none. */
   identityEndpoints?: () => IdentityAccountEndpoints | null;
+  /** The redirect endpoints and issuer discovery named (`identity.endpoints.authorize`, `token`,
+   *  `identity.issuer`). A redirect sign-in with none is `sign-in-unavailable`; the default
+   *  answers none. */
+  redirectEndpoints?: () => RedirectEndpoints | null;
+  /** Conformance replay only: the exact `state` and verifier of a recorded conversation. */
+  redirectEntropy?: () => { state?: string; codeVerifier?: string };
   /** A hashed hardware fingerprint. A browser has none; the default answers null. */
   fingerprint?: () => HardwareFingerprint | null;
   /** This device's label (§12.7.1). A browser has no platform name: when omitted, or `""`, none
@@ -679,7 +702,7 @@ export class BearerSession {
   // ── Registration and activation ──────────────────────────────────────────────────────────
 
   /** The label to send (§12.7.1): `override`, else the `deviceName` option; no platform default. */
-  private deviceLabel(override?: string): string | null {
+  deviceLabel(override?: string): string | null {
     return normalizeDeviceLabel(override ?? this.opts.deviceName ?? null);
   }
 
@@ -1617,13 +1640,48 @@ export class BearerSession {
     }
   }
 
+  /** The post-acquisition sync. A product that serves neither the licence nor the config
+   *  document has nothing to fetch, verify or report, so a sign-in alone leaves it at rest. */
+  private async syncAfterSignIn(): Promise<void> {
+    if (this.opts.enabled("license") || this.opts.enabled("config"))
+      await this.sync();
+  }
+
+  /** `service-unavailable`: the product does not run Identity (the typed N/A Node gives). */
+  private identityOff(feature: string): UnsupportedError {
+    return new UnsupportedError(
+      {
+        supported: false,
+        feature,
+        reason: "product",
+        detail: "the product does not run the identity service",
+      },
+      ErrorCode.serviceUnavailable,
+    );
+  }
+
   /** Begin a device-code sign-in. No bearer: a sign-in asks for the IDENTITY's credential. */
-  async beginSignIn(opts: { deviceName?: string } = {}): Promise<SignInPrompt> {
+  async beginSignIn(
+    opts: Partial<Omit<DeviceCodeSignInOptions, "channel">> = {},
+  ): Promise<SignInPrompt> {
     await this.init();
+    if (!this.opts.enabled("identity"))
+      throw this.identityOff(Feature.identityDevicecode);
     const body: Record<string, string> = { deviceId: this.deviceIdValue };
     const label = this.deviceLabel(opts.deviceName);
     if (label) body.deviceName = label;
+    if (opts.loginHint !== undefined) body.loginHint = opts.loginHint;
+    if (opts.nameHint !== undefined) body.nameHint = opts.nameHint;
+    if (opts.purpose !== undefined) body.purpose = opts.purpose;
+    if (opts.scope !== undefined)
+      body.scope =
+        typeof opts.scope === "string" ? opts.scope : opts.scope.join(" ");
+    if (opts.licenseChoice !== undefined)
+      body.licenseChoice = opts.licenseChoice;
     const res = await this.postJson("identity/auth/device/start", body);
+    // A 404 means the Worker serves no sign-in for this product (Identity off before discovery
+    // said so): the typed N/A, as in Node.
+    if (res.status === 404) throw this.identityOff(Feature.identityDevicecode);
     if (res.status !== 200) throw await refusal(res, "sign-in-unavailable");
     const b = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (
@@ -1711,7 +1769,7 @@ export class BearerSession {
         if (!isString(b.token))
           return { status: "error", message: "ready without a token." };
         await this.setToken(b.token, "signin");
-        await this.sync();
+        await this.syncAfterSignIn();
         const id = b.identity as
           | { name?: unknown; email?: unknown }
           | undefined;
@@ -1765,6 +1823,150 @@ export class BearerSession {
         continue;
       }
       return poll;
+    }
+  }
+
+  // ── Redirect sign-in (identity.redirect.web, WIRE-CONTRACT-V4 §12.4, §12.5) ──────────────
+
+  /**
+   * Build the authorize request for a navigation. Refuses before any request when the product
+   * does not run Identity (`service-unavailable`) or its discovery serves no `authorize`, `token`
+   * or `issuer` (`sign-in-unavailable`). The caller keeps the returned pending request (in
+   * `sessionStorage`, across the navigation) for `redeemRedirect`.
+   */
+  async startRedirect(
+    opts: Omit<RedirectSignInOptions, "channel">,
+  ): Promise<RedirectPending> {
+    if (!this.opts.enabled("identity"))
+      throw this.identityOff(Feature.identityRedirectWeb);
+    const found = this.opts.redirectEndpoints?.() ?? null;
+    if (!found)
+      throw new PolarisError(
+        ErrorCode.signInUnavailable,
+        "this product's discovery serves no redirect sign-in.",
+      );
+    const entropy = this.opts.redirectEntropy?.() ?? {};
+    // client-core's own `PolarisError` (a bad redirect URI, state or verifier) becomes this
+    // package's, with the same code.
+    return await startRedirect({
+      ...found,
+      clientId: this.opts.product,
+      redirectUri: opts.redirectUri,
+      ...(opts.scope !== undefined ? { scope: opts.scope } : {}),
+      ...(opts.loginHint !== undefined ? { loginHint: opts.loginHint } : {}),
+      ...(opts.nameHint !== undefined ? { nameHint: opts.nameHint } : {}),
+      ...(opts.purpose !== undefined ? { purpose: opts.purpose } : {}),
+      ...(opts.licenseChoice !== undefined
+        ? { licenseChoice: opts.licenseChoice }
+        : {}),
+      ...(entropy.state !== undefined ? { state: entropy.state } : {}),
+      ...(entropy.codeVerifier !== undefined
+        ? { codeVerifier: entropy.codeVerifier }
+        : {}),
+    }).catch((e: unknown) => {
+      const code = (e as { code?: unknown }).code;
+      throw new PolarisError(
+        typeof code === "string" &&
+          (ERROR_CODE_VALUES as readonly string[]).includes(code)
+          ? (code as PolarisErrorCode)
+          : ErrorCode.signInUnavailable,
+        (e as Error).message,
+      );
+    });
+  }
+
+  /**
+   * Redeem the callback a redirect brought back. Checks `state` and `iss` first (a mismatch is
+   * `sign-in-failed`, nothing sent), then POSTs the form body to the token endpoint.
+   * `error=access_denied` is `cancelled`; any other callback error is `sign-in-failed`; the
+   * Worker's refusal is thrown under its own code (`invalid_grant`, `rate_limited` with
+   * `retryAfterSeconds`, …) and changes nothing. Only `signedIn` stores a token (and syncs).
+   */
+  async redeemRedirect(
+    pending: RedirectPending,
+    callbackUrl: string,
+    deviceName?: string | null,
+  ): Promise<SignInOutcome> {
+    await this.init();
+    const checked = checkCallback(pending, callbackUrl);
+    if (checked.kind === "cancelled") return { kind: "cancelled" };
+    if (checked.kind === "failed")
+      throw new PolarisError(
+        ErrorCode.signInFailed,
+        `the sign-in redirect was refused (${checked.reason}).`,
+      );
+    let res: Response;
+    try {
+      res = await this.opts.fetchImpl(pending.tokenEndpoint, {
+        method: "POST",
+        credentials: "omit",
+        headers: this.headers({ "content-type": TOKEN_CONTENT_TYPE }),
+        body: tokenForm(pending, checked.code, deviceName ?? undefined),
+      });
+    } catch (e) {
+      throw new PolarisError(ErrorCode.networkError, (e as Error).message);
+    }
+    const body: unknown = await res
+      .text()
+      .then((t) => JSON.parse(t) as unknown)
+      .catch(() => null);
+    const answer = parseTokenAnswer(res.status, body);
+    switch (answer.kind) {
+      case "malformed":
+        throw new PolarisError(
+          ErrorCode.badResponse,
+          "the token endpoint answered without a complete sign-in.",
+          undefined,
+          undefined,
+          { status: res.status },
+        );
+      case "refused": {
+        const retry = parseRetryAfter(
+          res.headers.get("retry-after"),
+          this.now(),
+        );
+        const retryAfterSeconds = answer.retryAfterSeconds ?? retry;
+        const server = answer.status >= 500;
+        const known = (ERROR_CODE_VALUES as readonly string[]).includes(
+          answer.error,
+        );
+        throw new PolarisError(
+          server
+            ? ErrorCode.serverError
+            : known
+              ? (answer.error as PolarisErrorCode)
+              : "http-error",
+          `the token endpoint refused the sign-in (${answer.error}).`,
+          answer.error,
+          undefined,
+          {
+            status: answer.status,
+            ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
+          },
+        );
+      }
+      case "choose":
+        return {
+          kind: "choose",
+          grant: answer.grant,
+          expiresIn: answer.expiresIn,
+          choices: answer.choices,
+        };
+      case "token": {
+        await this.setToken(answer.accessToken, "signin");
+        await this.syncAfterSignIn();
+        this.subjectValue = answer.subject;
+        const licenseId =
+          answer.license && typeof answer.license.id === "string"
+            ? answer.license.id
+            : null;
+        return {
+          kind: "signedIn",
+          subject: answer.subject,
+          scope: answer.scope,
+          activation: { licenseId },
+        };
+      }
     }
   }
 

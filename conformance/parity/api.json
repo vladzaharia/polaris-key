@@ -2886,8 +2886,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().signIn",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -2952,8 +2952,8 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "usePolarisAuth().signIn.start",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -2979,8 +2979,7 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "DeviceCodeSignInSession.reopen"
         },
         "python": {
           "planned": "I-10a",
@@ -3006,8 +3005,7 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.cancel"
         },
         "python": {
           "planned": "I-10a",
@@ -3033,8 +3031,7 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "DeviceCodeSignInSession.wait"
         },
         "python": {
           "planned": "I-10a",
@@ -3066,8 +3063,7 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "I-10a",
-          "reason": "SDK identity v2 (plans/I-10-slices.md D-3)"
+          "spelling": "SignInSession.complete"
         },
         "python": {
           "planned": "I-10a",

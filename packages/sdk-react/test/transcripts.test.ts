@@ -7,6 +7,7 @@
 // @pkey-feature commerce.receipt license.refusals telemetry.updates
 // @pkey-feature ui.boot release.fetch release.distribution
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
+// @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
 //
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
 // device token run through the browser's bearer engine, `BearerSession`
@@ -111,6 +112,10 @@ import { ErrorCode } from "../src/constants.generated.js";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { projectState } from "../src/core/adapter.js";
 import { accountEndpointsOf } from "../src/core/account.js";
+import {
+  redirectEndpointsOf,
+  type RedirectEndpoints,
+} from "../src/core/signIn.js";
 import { DesktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { PolarisBridge } from "../src/desktop/bridge.js";
 import type { CommerceClaimResult } from "../src/core/types.js";
@@ -134,6 +139,7 @@ import {
   loadTranscripts,
   ReplayServer,
   type JsonValue,
+  type Step,
   type Transcript,
 } from "../../../conformance/runners/node/transcriptReplay.js";
 
@@ -167,6 +173,54 @@ function standardDiscovery(t: Transcript): DiscoveryDocument {
       },
     },
   } as unknown as DiscoveryDocument;
+}
+
+/** The issuer the Worker's discovery names for a redirect transcript: the `iss` its recorded
+ *  callbacks carry (the customer host's issuer differs from the API host's), else the product's. */
+function redirectIssuer(t: Transcript): string {
+  for (const step of t.steps) {
+    const cb = step.args.callbackUrl;
+    if (typeof cb === "string") {
+      const iss = new URL(cb).searchParams.get("iss");
+      if (iss) return iss;
+    }
+  }
+  return `${t.baseUrl}/${t.product}/identity`;
+}
+
+/** Does this transcript replay a redirect sign-in? */
+function usesRedirect(t: Transcript): boolean {
+  return t.steps.some(
+    (s) => s.action === "browser" || s.action === "redirectComplete",
+  );
+}
+
+/** The endpoints the Worker's discovery names for a redirect transcript that loads none. */
+function standardRedirect(t: Transcript): RedirectEndpoints {
+  const base = `${t.baseUrl}/${t.product}`;
+  return {
+    authorizeEndpoint: `${base}/identity/authorize`,
+    tokenEndpoint: `${base}/identity/token`,
+    issuer: redirectIssuer(t),
+    choiceAvailable: t.steps.some((s) =>
+      s.exchanges.items.some((x) =>
+        x.request.path.includes("/identity/choice/"),
+      ),
+    ),
+  };
+}
+
+/** The `state`, verifier and redirect URI the Worker scenarios use (their `browser` and
+ *  `redirectComplete` args name them when a step differs from these). */
+const REDIRECT_DEFAULTS = {
+  state: "tidewater-state-0123456789",
+  codeVerifier: "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+  redirectUri: "https://app.example/auth/callback",
+};
+
+function stringArg(step: Step, name: string): string | undefined {
+  const v = step.args[name];
+  return typeof v === "string" ? v : undefined;
 }
 
 /** A fixed hashed fingerprint, as the Node replayer's. */
@@ -234,6 +288,117 @@ function claimObserved(r: CommerceClaimResult): Record<string, JsonValue> {
   return o;
 }
 
+/**
+ * One `browser` step: the page the person's browser would load. The authorize request is the
+ * one the SDK built (`startRedirect`'s `authorizeUrl`), unless the step is a refusal
+ * (`expect.error` on an authorize exchange: a wrong client, an unregistered redirect URI, plain
+ * PKCE, `openid`): an SDK cannot be made to send those, so the browser plays the recorded
+ * request. Every other request is the card's own and is played as recorded. The observation is
+ * where the browser ended up.
+ */
+async function browserStep(
+  session: BearerSession,
+  server: ReplayServer,
+  step: Step,
+  t: Transcript,
+  setEntropy: (e: { state: string; codeVerifier: string }) => void,
+): Promise<Record<string, JsonValue>> {
+  const out: Record<string, JsonValue> = {};
+  const authorizePath = `/${t.product}/identity/authorize`;
+  const redirectUri =
+    stringArg(step, "redirectUri") ?? REDIRECT_DEFAULTS.redirectUri;
+  let last: { status: number; headers: Headers; text: string } | null = null;
+  for (const item of step.exchanges.items) {
+    const req = item.request;
+    let path = req.path;
+    if (
+      req.method === "GET" &&
+      path.startsWith(authorizePath) &&
+      step.expect.error === undefined
+    ) {
+      setEntropy({
+        state: stringArg(step, "state") ?? REDIRECT_DEFAULTS.state,
+        codeVerifier:
+          stringArg(step, "codeVerifier") ?? REDIRECT_DEFAULTS.codeVerifier,
+      });
+      const recorded = new URL(path, t.baseUrl);
+      const loginHint = stringArg(step, "loginHint");
+      const nameHint = stringArg(step, "nameHint");
+      const purpose = stringArg(step, "purpose");
+      const pending = await session.startRedirect({
+        redirectUri,
+        ...(loginHint !== undefined ? { loginHint } : {}),
+        ...(nameHint !== undefined ? { nameHint } : {}),
+        ...(purpose !== undefined
+          ? { purpose: purpose as "signin" | "attach" }
+          : {}),
+        ...(recorded.searchParams.get("license_choice") === "app"
+          ? { licenseChoice: "app" as const }
+          : {}),
+      });
+      const built = new URL(pending.authorizeUrl);
+      path = built.pathname + built.search;
+    }
+    const init: RequestInit = { method: req.method, redirect: "manual" };
+    if (req.body !== null) {
+      init.body = JSON.stringify(req.body.json);
+      init.headers = { "content-type": "application/json" };
+    }
+    const res = await server.fetch(`${t.baseUrl}${path}`, init);
+    last = {
+      status: res.status,
+      headers: res.headers,
+      text: await res.text(),
+    };
+  }
+  if (last === null) return out;
+  const appUri = new URL(redirectUri);
+  const location =
+    last.headers.get("location") ??
+    (() => {
+      try {
+        const j = JSON.parse(last.text) as { redirect?: unknown };
+        return typeof j.redirect === "string" ? j.redirect : null;
+      } catch {
+        return null;
+      }
+    })();
+  if (location !== null) {
+    const to = new URL(location, t.baseUrl);
+    if (to.origin === appUri.origin && to.pathname === appUri.pathname) {
+      out.navigated = "app";
+      const error = to.searchParams.get("error");
+      if (error) out.error = error;
+    } else if (to.searchParams.has("bind")) out.navigated = "bind";
+    else out.navigated = "card";
+    return out;
+  }
+  if (last.status === 404) {
+    out.navigated = "refused";
+    return out;
+  }
+  if ((last.headers.get("content-type") ?? "").startsWith("text/html")) {
+    out.navigated = "page";
+    // The refusal page names no code in its body; the Worker's mapping is by status.
+    out.error =
+      last.status === 401 ? "invalid_client" : "redirect_uri_mismatch";
+    return out;
+  }
+  // The card reading its request (hints) or answering a refused Continue: still on the card.
+  out.navigated = "card";
+  try {
+    const view = JSON.parse(last.text) as Record<string, unknown>;
+    if ("request" in view) {
+      out.loginHint = (view.loginHint ?? null) as JsonValue;
+      out.nameHint = (view.nameHint ?? null) as JsonValue;
+      out.purpose = (view.purpose ?? null) as JsonValue;
+    }
+  } catch {
+    // not JSON: nothing more to read
+  }
+  return out;
+}
+
 async function replay(t: Transcript): Promise<void> {
   const server = new ReplayServer(t);
   let discovered: DiscoveryDocument | null = null;
@@ -241,7 +406,11 @@ async function replay(t: Transcript): Promise<void> {
   let slices: UpdateSlices = structuredClone(initialUpdate?.cache ?? {});
   let belief: ServicesMap = t.initial.services
     ? servicesFromList(t.initial.services as never)
-    : defaultServices();
+    : usesRedirect(t)
+      ? servicesFromList(["identity"] as never)
+      : defaultServices();
+  // identity.redirect.web: the entropy of the recorded conversation, set by the step.
+  let entropy: { state?: string; codeVerifier?: string } = {};
   const base = {
     baseUrl: t.baseUrl,
     product: t.product,
@@ -267,6 +436,10 @@ async function replay(t: Transcript): Promise<void> {
     deviceName: t.initial.deviceName ?? "",
     outlet: () => (outletId === null ? null : { id: outletId }),
     eventId: () => nextEventId ?? "unexpected-event-id",
+    redirectEndpoints: () =>
+      redirectEndpointsOf(discovered as Record<string, unknown> | null) ??
+      standardRedirect(t),
+    redirectEntropy: () => entropy,
     // The account endpoints: the last discovery's, else the Worker's standard ones.
     identityEndpoints: () =>
       accountEndpointsOf(discovered as Record<string, unknown> | null) ?? {
@@ -394,9 +567,17 @@ async function replay(t: Transcript): Promise<void> {
         break;
       case "beginSignIn": {
         const name = step.args.deviceName;
-        prompt = await session.beginSignIn(
-          typeof name === "string" ? { deviceName: name } : {},
-        );
+        try {
+          prompt = await session.beginSignIn(
+            typeof name === "string" ? { deviceName: name } : {},
+          );
+        } catch (e) {
+          // identity.toggle: Identity off is the typed `service-unavailable`, before or after
+          // the Worker's 404.
+          if (!(e instanceof PolarisError)) throw e;
+          observed.result = e.code;
+          break;
+        }
         observed.prompt = {
           userCode: prompt.userCode,
           verificationUri: prompt.verificationUri,
@@ -405,6 +586,38 @@ async function replay(t: Transcript): Promise<void> {
           interval: prompt.interval,
           deviceName: prompt.deviceName,
         };
+        break;
+      }
+      case "browser":
+        Object.assign(
+          observed,
+          await browserStep(session, server, step, t, (e) => (entropy = e)),
+        );
+        break;
+      case "redirectComplete": {
+        const callbackUrl = String(step.args.callbackUrl);
+        const cb = new URL(callbackUrl);
+        entropy = {
+          state: stringArg(step, "state") ?? REDIRECT_DEFAULTS.state,
+          codeVerifier:
+            stringArg(step, "codeVerifier") ?? REDIRECT_DEFAULTS.codeVerifier,
+        };
+        const pending = await session.startRedirect({
+          redirectUri: `${cb.origin}${cb.pathname}`,
+        });
+        try {
+          const done = await session.redeemRedirect(pending, callbackUrl);
+          observed.result = done.kind === "signedIn" ? "ok" : done.kind;
+          if (done.kind === "signedIn") {
+            observed.scope = done.scope ?? null;
+            observed.licenseId = done.activation.licenseId;
+            observed.subject = done.subject;
+          }
+        } catch (e) {
+          if (!(e instanceof PolarisError)) throw e;
+          observed.result = e.code.replace(/_/g, "-");
+          observed.code = e.code;
+        }
         break;
       }
       case "pollSignIn": {
@@ -680,22 +893,16 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     const ids = TRANSCRIPTS.filter((t) => applies(t, MANIFEST)).map(
       (t) => t.id,
     );
-    // Planned here, so its transcript does not apply: identity.toggle (PX-W17's identity-disabled
-    // transcript; React's port is I-10a.10). commerce.receipt is SP-16's, telemetry.updates
-    // SP-14's. identity.keyentry, identity.account and identity.attach run here (I-10a.9: the
-    // keyentry-* and identity-* transcripts, over the bearer engine). identity.redirect.web and
-    // identity.signin.hints are I-08's redirect-web-* and identity-request-hints transcripts
-    // (the browser's `authorize` and Continue are `browser` steps no SDK asserts); React's port
-    // is I-10a.10. identity.choice is I-08b's redirect-web-choose*, choice-* transcripts (the
+    // Planned here, so its transcript does not apply: commerce.receipt is SP-16's,
+    // telemetry.updates SP-14's. identity.keyentry, identity.account and identity.attach run here
+    // (I-10a.9: the keyentry-* and identity-* transcripts, over the bearer engine), and so do
+    // identity.toggle (PX-W17's identity-disabled), identity.redirect.web and
+    // identity.signin.hints (I-08's redirect-web-* and identity-request-hints transcripts; the
+    // browser's `authorize` and Continue are `browser` steps the replayer plays as recorded,
+    // I-10a.10). identity.choice is I-08b's redirect-web-choose*, choice-* transcripts (the
     // choice.* primitives); React's port is I-10a.11. sync.settings is U-05's cloudsync-*
     // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
-    const plannedHere = [
-      "identity.toggle",
-      "identity.redirect.web",
-      "identity.signin.hints",
-      "identity.choice",
-      "sync.settings",
-    ];
+    const plannedHere = ["identity.choice", "sync.settings"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

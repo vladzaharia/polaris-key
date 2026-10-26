@@ -95,7 +95,8 @@ describe("core.local: the adapter never touches the network", () => {
       ["installUrl", () => a.installUrl()],
       ["downloadUrl", () => a.downloadUrl("1.0.0", "app", "x64")],
       ["enroll", () => a.enroll()],
-      ["beginSignIn", () => a.beginSignIn()],
+      ["signIn.start", () => a.signIn.start({ channel: "device-code" })],
+      ["signIn.complete", () => a.signIn.complete("https://app.example/cb")],
       ["mintToken", () => a.mintToken("r")],
       ["commerceBinding", () => a.commerceBinding()],
       [

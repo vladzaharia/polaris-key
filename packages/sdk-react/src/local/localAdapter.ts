@@ -78,6 +78,7 @@ import {
   type ServicesMap,
 } from "../core/services.js";
 import { createStore, type Store } from "../core/store.js";
+import type { SignInNamespace } from "../core/signIn.js";
 import {
   PolarisError,
   type ChangelogEntry,
@@ -86,7 +87,6 @@ import {
   type CommercePayload,
   type CommerceStore,
   type DeviceInfo,
-  type DeviceSignIn,
   type AttachResult,
   type DownloadUrlOptions,
   type KeyActivation,
@@ -455,9 +455,13 @@ export class LocalAdapter implements PolarisAdapter {
     throw dial("Enrolling");
   }
 
-  async beginSignIn(_opts?: { deviceName?: string }): Promise<DeviceSignIn> {
-    throw dial("Signing in");
-  }
+  readonly signIn: SignInNamespace = {
+    start: (() =>
+      Promise.reject(
+        dial("Signing in"),
+      )) as unknown as SignInNamespace["start"],
+    complete: () => Promise.reject(dial("Signing in")),
+  };
 
   async mintToken(_recipeId: string): Promise<MintedToken> {
     throw dial("Minting a token");
