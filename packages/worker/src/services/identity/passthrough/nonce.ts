@@ -56,6 +56,8 @@ export interface ExchangeNonceRecord {
   deviceId: string;
   /** Base64url SHA-256 of the raw signing key. */
   keyThumbprint: string;
+  /** The X25519 key named with the signing key; the exchange registers both (I-13.4). */
+  agreeKey: string;
   issuedAt: number;
 }
 
@@ -176,6 +178,7 @@ export async function handleExchangeNonce(
     product: product.slug,
     deviceId,
     keyThumbprint: await signKeyThumbprint(signKey),
+    agreeKey,
     issuedAt: now,
   };
   await putArtefact(

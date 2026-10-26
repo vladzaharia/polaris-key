@@ -77,7 +77,9 @@ export type SingleUseKind =
   /** An attestation challenge already redeemed, by product + challenge. */
   | "attest-claim"
   /** A native-token exchange nonce (I-13.2, WIRE-CONTRACT-V5 §12.11.2), by product + the hash of the nonce. */
-  | "exchange-nonce";
+  | "exchange-nonce"
+  /** A link handle (I-13.4, WIRE-CONTRACT-V5 §12.11.3 rule 4): the verified provider identity of a token exchange that found no link, by product + the hash of the handle. */
+  | "exchange-link";
 
 /** The address of one artefact. */
 export interface ArtefactRef {

@@ -340,9 +340,18 @@ export async function verifyKeyPop(input: KeyPopInput): Promise<boolean> {
   if (Math.abs(input.issuedAt - input.now) > KEY_POP_SKEW_SECONDS) return false;
   const message = keyPopMessage(input);
   if (!message) return false;
-  if (input.sig.length !== 86 || !isCanonicalB64url(input.sig)) return false;
-  const sig = base64UrlDecode(input.sig);
-  const pub = base64UrlDecode(input.signKey);
+  return verifyEd25519Strict(input.signKey, input.sig, message);
+}
+
+/** A strict Ed25519 verification (V5 §1.1 prechecks first) of a base64url signature by a raw key. */
+export async function verifyEd25519Strict(
+  signKey: string,
+  sigB64: string,
+  message: Uint8Array,
+): Promise<boolean> {
+  if (sigB64.length !== 86 || !isCanonicalB64url(sigB64)) return false;
+  const sig = base64UrlDecode(sigB64);
+  const pub = base64UrlDecode(signKey);
   if (sig.length !== 64 || !ed25519Prechecks(pub, sig)) return false;
   try {
     const key = await crypto.subtle.importKey(

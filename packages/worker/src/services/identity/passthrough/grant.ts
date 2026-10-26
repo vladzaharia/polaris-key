@@ -47,6 +47,11 @@ export interface GrantRecord {
   /** The device that redeemed the code, the only one the grant answers. */
   deviceId: string;
   scope: string[];
+  /**
+   * The device keys a token exchange (I-13.4) proved possession of, written by `choice/complete`
+   * when the device binds (I-13.5). Absent on every other grant.
+   */
+  keys?: { signKey: string; agreeKey: string };
   /** Reads spent so far. */
   reads: number;
   /** Epoch seconds the grant ends, for restoring it after a retryable refusal. */
