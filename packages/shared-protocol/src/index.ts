@@ -262,3 +262,18 @@ export type {
 } from "./trust.js";
 
 export { IDENTITY_DISABLED_ERROR_PARAM } from "./identity.js";
+
+export {
+  PEER_CERT_TYP,
+  RING_TYP,
+  PEER_CERT_SECONDS,
+  MAX_PEER_CERT_SECONDS,
+  PEER_CERT_RENEW_SECONDS,
+  RING_SECONDS,
+  MAX_RING_DEVICES,
+  MAX_PEER_MESSAGE_BYTES,
+  PEER_CLOCK_SKEW_SECONDS,
+  PEER_DEVICE_ID_PATTERN,
+  PEER_KEY_PATTERN,
+} from "./connect.js";
+export type { PeerDeviceKeys, PeerCertDoc, RingDoc } from "./connect.js";

@@ -33,7 +33,23 @@
  * own body shape (`isStrictJsonError`); none lets it escape as an unhandled throw.
  */
 
-import { signJws, StrictJsonError, type JwsTyp } from "@polaris-key/jws";
+import {
+  isAcceptableEd25519Point,
+  isCanonicalB64url,
+  isX25519LowOrder,
+  base64UrlDecode,
+  signJws,
+  StrictJsonError,
+  type JwsTyp,
+} from "@polaris-key/jws";
+import { ISSUER, PAIRWISE_SUBJECT_PATTERN } from "@polaris-key/protocol/core";
+import {
+  MAX_PEER_CERT_SECONDS,
+  MAX_RING_DEVICES,
+  PEER_CERT_TYP,
+  PEER_DEVICE_ID_PATTERN,
+  RING_TYP,
+} from "@polaris-key/protocol/connect";
 
 export { StrictJsonError };
 
@@ -62,6 +78,17 @@ const INTEGER_CLAIMS: Partial<
     ["expiresAt", 0],
   ],
   "pkey-bundle+jws": [
+    ["issuedAt", 0],
+    ["expiresAt", 0],
+  ],
+  // WIRE-CONTRACT-V5 §15.2, §15.3.
+  "pkey-peer+jws": [
+    ["ringEpoch", 1],
+    ["issuedAt", 0],
+    ["expiresAt", 0],
+  ],
+  "pkey-ring+jws": [
+    ["epoch", 1],
     ["issuedAt", 0],
     ["expiresAt", 0],
   ],
@@ -97,6 +124,99 @@ export function assertIntegerClaims(
   }
 }
 
+function refuse(typ: string, why: string): never {
+  throw new StrictJsonError(
+    "payload",
+    `${typ}: ${why} (WIRE-CONTRACT-V5 §15), so no v5 verifier would accept it`,
+  );
+}
+
+const DEVICE_ID_RE = new RegExp(PEER_DEVICE_ID_PATTERN);
+const SUBJECT_RE = new RegExp(PAIRWISE_SUBJECT_PATTERN);
+
+/** §15.2 step 4: canonical base64url of exactly 32 bytes; returns the bytes. */
+function keyBytes(typ: string, name: string, value: unknown): Uint8Array {
+  if (
+    typeof value !== "string" ||
+    value.length !== 43 ||
+    !isCanonicalB64url(value)
+  ) {
+    refuse(typ, `${name} is not canonical base64url of 32 bytes`);
+  }
+  return base64UrlDecode(value);
+}
+
+/** One device's three members, as the certificate and the roster both carry them. */
+function deviceKeys(typ: string, d: unknown): string {
+  if (d === null || typeof d !== "object" || Array.isArray(d)) {
+    refuse(typ, "a device entry is not an object");
+  }
+  const o = d as Record<string, unknown>;
+  if (typeof o.deviceId !== "string" || !DEVICE_ID_RE.test(o.deviceId)) {
+    refuse(typ, "deviceId does not match its pattern");
+  }
+  const sign = keyBytes(typ, "signKey", o.signKey);
+  if (!isAcceptableEd25519Point(sign)) {
+    refuse(typ, "signKey fails the Ed25519 point checks");
+  }
+  const agree = keyBytes(typ, "agreeKey", o.agreeKey);
+  if (isX25519LowOrder(agree)) refuse(typ, "agreeKey is a low-order point");
+  return o.deviceId;
+}
+
+function envelope(typ: string, o: Record<string, unknown>): void {
+  if (o.iss !== ISSUER) refuse(typ, "iss is not the fixed issuer");
+  if (typeof o.aud !== "string" || o.aud.length === 0) {
+    refuse(typ, "aud is not a product");
+  }
+  if (typeof o.sub !== "string" || !SUBJECT_RE.test(o.sub)) {
+    refuse(typ, "sub is not a pairwise subject");
+  }
+  // Step 5 is the certificate's; §15.3 sets no span for a roster.
+  if (typ === PEER_CERT_TYP) {
+    const ttl = (o.expiresAt as number) - (o.issuedAt as number);
+    if (ttl < 1 || ttl > MAX_PEER_CERT_SECONDS) {
+      refuse(typ, "expiresAt − issuedAt is outside 1..604800");
+    }
+  }
+}
+
+/**
+ * Refuse to sign a device certificate or roster that a v5 verifier would refuse (§15.2 steps 2–5,
+ * §15.3). Runs after `assertIntegerClaims`, so the integer claims are safe integers here. The
+ * clock checks (step 6) and the Noise binding (step 7) belong to the verifier's session.
+ */
+export function assertConnectDoc(doc: unknown, typ: JwsTyp | undefined): void {
+  if (typ !== PEER_CERT_TYP && typ !== RING_TYP) return;
+  const o = doc as Record<string, unknown>;
+  envelope(typ, o);
+  if (typ === PEER_CERT_TYP) {
+    deviceKeys(typ, o);
+    return;
+  }
+  const devices = o.devices;
+  if (
+    !Array.isArray(devices) ||
+    devices.length < 1 ||
+    devices.length > MAX_RING_DEVICES
+  ) {
+    refuse(typ, `devices is not 1..${MAX_RING_DEVICES} entries`);
+  }
+  const ids = devices.map((d) => deviceKeys(typ, d));
+  const keys = new Set<string>();
+  for (let i = 0; i < devices.length; i++) {
+    const d = devices[i] as Record<string, string>;
+    // Sorted by deviceId bytes (ASCII, so code-unit order), strictly: unique ids.
+    if (i > 0 && !(ids[i - 1]! < ids[i]!)) {
+      refuse(typ, "devices are not sorted by unique deviceId");
+    }
+    for (const k of [d.signKey, d.agreeKey]) {
+      if (keys.has(k!)) refuse(typ, "a key appears twice in devices");
+      keys.add(k!);
+    }
+  }
+}
+
 /** True for the guards' refusal, which a signing route answers as `500 document_not_representable`. */
 export function isStrictJsonError(e: unknown): e is StrictJsonError {
   return e instanceof StrictJsonError;
@@ -109,5 +229,6 @@ export async function signDoc(
   typ?: JwsTyp,
 ): Promise<string> {
   assertIntegerClaims(doc, typ);
+  assertConnectDoc(doc, typ);
   return signJws(doc, privateKeyPem, kid, typ);
 }

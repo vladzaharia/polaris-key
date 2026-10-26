@@ -33,7 +33,7 @@ export interface JwsHeader {
 /**
  * Document-type domain separator. One signing key signs every document kind, so without this
  * a trust manifest could be replayed where a config document is expected.
- * See docs/security/WIRE-CONTRACT-V3.md §2.
+ * See docs/security/WIRE-CONTRACT-V5.md §2 (the V3 §2 rule, carried through V4).
  *
  * `pkey-config+jws` and `pkey-trust+jws` carry over verbatim from wire contract v2 — the
  * document *shapes* changed in v3, the type strings did not (Amendment A1; pre-launch, and
@@ -47,11 +47,15 @@ export type JwsTyp =
   /** Wire contract v4 §2.3: the channel feed, signed by the product key. */
   | "pkey-feed+jws"
   /** Wire contract v4 §2.4: the release record, signed by a CI-held release key. */
-  | "pkey-release+jws";
+  | "pkey-release+jws"
+  /** Wire contract v5 §15.2: a device certificate, signed by the product key. */
+  | "pkey-peer+jws"
+  /** Wire contract v5 §15.3: the roster of an account's devices, signed by the product key. */
+  | "pkey-ring+jws";
 
 export interface VerifyOptions {
   /**
-   * Require this `typ` (WIRE-CONTRACT-V3 §2). A header carrying a DIFFERENT type is rejected,
+   * Require this `typ` (WIRE-CONTRACT-V5 §2). A header carrying a DIFFERENT type is rejected,
    * and so is a header carrying NONE — there is no tolerance for an absent `typ`, because a
    * typeless artifact is exactly the one that can be replayed at whichever call site an
    * attacker prefers.
@@ -674,6 +678,30 @@ function isAcceptablePoint(enc32: Uint8Array): boolean {
   return !SMALL_ORDER_ENCODINGS.includes(hex);
 }
 
+/** V4 §1.1 checks 2 and 3 for a raw 32-byte Ed25519 public key: canonical, not of small order. */
+export function isAcceptableEd25519Point(enc32: Uint8Array): boolean {
+  return isAcceptablePoint(enc32);
+}
+
+/**
+ * WIRE-CONTRACT-V5 §15.2 step 4: true when a raw 32-byte X25519 public key is a low-order point.
+ * The high bit is masked and the value reduced mod p (RFC 7748 §5), so every spelling of the
+ * five low-order u-coordinates (0, 1, the two of order 8, p − 1) is caught, canonical or not.
+ */
+export function isX25519LowOrder(enc32: Uint8Array): boolean {
+  if (enc32.length !== 32) return false;
+  const u = (littleEndian(enc32) & ((1n << 255n) - 1n)) % ED25519_P;
+  return X25519_LOW_ORDER_U.includes(u);
+}
+
+const X25519_LOW_ORDER_U: readonly bigint[] = [
+  0n,
+  1n,
+  325606250916557431795983626356110631294008115727848805560023387167927233504n,
+  39382357235489614581723060781553021112529911719440698176882885853963445705823n,
+  ED25519_P - 1n,
+];
+
 /**
  * WIRE-CONTRACT-V4 §1.1 checks 1–3, on the trusted key `A` and the 64-byte signature `R ‖ S`,
  * before the backend's verify call: `S < L`, `A` and `R` canonical, neither of small order.
@@ -874,7 +902,7 @@ export async function verifyJws<T = unknown>(
 
   // --- 3. Algorithm + type + key selection, all BEFORE any signature math. ---------------
   if (header.alg !== "EdDSA") return null;
-  // Domain separation (WIRE-CONTRACT-V3 §2). Once the caller names a `typ`, a header carrying
+  // Domain separation (WIRE-CONTRACT-V5 §2). Once the caller names a `typ`, a header carrying
   // a DIFFERENT one and a header carrying NONE are both rejected: tolerating absence would
   // leave every typeless artifact replayable at whichever call site an attacker prefers,
   // which is the cross-protocol replay this field exists to close.

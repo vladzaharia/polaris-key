@@ -10,6 +10,7 @@ import * as distribution from "../src/distribution.js";
 import * as identity from "../src/identity.js";
 import * as packs from "../src/packs.js";
 import * as release from "../src/release.js";
+import * as connect from "../src/connect.js";
 import * as sync from "../src/sync.js";
 import * as trust from "../src/trust.js";
 import * as update from "../src/update.js";
@@ -508,5 +509,27 @@ describe("@polaris-key/protocol layout", () => {
       expect(name.startsWith("SYNC_")).toBe(true);
       expect(typeof v === "string" || Number.isInteger(v)).toBe(true);
     }
+  });
+
+  it("the /connect subpath (WIRE-CONTRACT-V5 §15.1-§15.3)", () => {
+    expect(connect.PEER_CERT_TYP).toBe("pkey-peer+jws");
+    expect(connect.RING_TYP).toBe("pkey-ring+jws");
+    expect(connect.PEER_CERT_SECONDS).toBe(604_800);
+    expect(connect.MAX_PEER_CERT_SECONDS).toBe(604_800);
+    expect(connect.PEER_CERT_RENEW_SECONDS).toBe(302_400);
+    expect(connect.RING_SECONDS).toBe(604_800);
+    expect(connect.MAX_RING_DEVICES).toBe(128);
+    expect(connect.MAX_PEER_MESSAGE_BYTES).toBe(1_048_576);
+    expect(connect.PEER_CLOCK_SKEW_SECONDS).toBe(300);
+    expect(barrel.RING_SECONDS).toBe(connect.RING_SECONDS);
+    expect(
+      new RegExp(connect.PEER_DEVICE_ID_PATTERN).test("A".repeat(32)),
+    ).toBe(true);
+    expect(new RegExp(connect.PEER_KEY_PATTERN).test("A".repeat(43))).toBe(
+      true,
+    );
+    expect(new RegExp(connect.PEER_KEY_PATTERN).test("A".repeat(44))).toBe(
+      false,
+    );
   });
 });

@@ -67,6 +67,10 @@
     "./sync": {
       "types": "./dist/sync.d.ts",
       "default": "./dist/sync.js"
+    },
+    "./connect": {
+      "types": "./dist/connect.d.ts",
+      "default": "./dist/connect.js"
     }
   },
   "files": [
@@ -74,7 +78,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/core.ts src/license.ts src/config.ts src/release.ts src/update.ts src/trust.ts src/distribution.ts src/packs.ts src/identity.ts src/sync.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/core.ts src/license.ts src/config.ts src/release.ts src/update.ts src/trust.ts src/distribution.ts src/packs.ts src/identity.ts src/sync.ts src/connect.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "prettier --check \"src/**/*.ts\"",
