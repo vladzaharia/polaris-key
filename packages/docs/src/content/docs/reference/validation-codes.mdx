@@ -8,13 +8,14 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 258 distinct emit sites.
+codes with their JSON-pointer paths. 272 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
 
 | Code | Severity | Document | Path | Message |
 | --- | --- | --- | --- | --- |
+| `apple_sign_in_without_team` | error | product | `/identity/platformSignIn/apple/bundleIds` | identity.platformSignIn.apple.bundleIds needs teamId: Apple names an app by team and bundle id together. |
 | `bare_arch_artifact_id` | warning | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} names an architecture but no platform; name the build by platform and arch (macos-$\{entry.id\}, windows-$\{entry.id\}, …), and its files likewise (app-macos-$\{entry.id\}.zip). |
 | `catalog_delivery_server_only` | warning | schema | `${at}/delivery` | `delivery: serverOnly` has no consumer. Keep a secret only the Worker reads in the product's secrets (Keys and secrets), not the catalog. |
 | `catalog_edge_mint_legacy` | warning | release | `/edgeMint/${i}` | The edgeMint[] recipe $\{String(id)\} moves into the \ |
@@ -36,6 +37,7 @@ the offending value, or the allowed set.
 | `duplicate_profile_id` | error | product | `${profilesAt}/${i}/id` | Profile ids must be unique. |
 | `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
 | `edge_mint_recipe_duplicate` | error | schema | `${at}/mint` | $\{String(raw.key)\} has a \ |
+| `google_client_ids_without_server` | error | product | `/identity/platformSignIn/google/clientIds` | identity.platformSignIn.google.clientIds needs serverClientId: the web client is the token audience. |
 | `identity_block_without_service` | warning | product | `/identity` | identity is declared but the identity service is off, so none of it applies. |
 | `identity_redirect_paths_without_origins` | warning | product | `/identity/redirectPaths` | identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths. |
 | `incompatible_reserved_name` | error | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. Incompatible reserved-name declarations are refused on this platform. |
@@ -48,6 +50,9 @@ the offending value, or the allowed set.
 | `invalid_app_content` | error | release | `/release/deliverables/app/content` | a product that declares pack deliverables declares deliverables.app with content.contentApi, the content shape its code expects. |
 | `invalid_app_content` | error | release | `/release/deliverables/app/content` | deliverables.app.content is \{ contentApi: an integer from 1 to $\{MAX_CONTENT_API\}, packChannels?, attachable? \}; holds are chosen per app release at publish (the content stamp), never declared here. |
 | `invalid_app_content` | error | release | `/release/deliverables/app/content` | a product that declares pack deliverables declares deliverables.app.content.contentApi, the content shape its code expects. |
+| `invalid_apple_bundle_id` | error | product | `/identity/platformSignIn/apple/bundleIds/${i}` | identity.platformSignIn.apple.bundleIds entries must be unique reverse-DNS bundle ids (such as gg.vlad.diceroll). |
+| `invalid_apple_bundle_id` | error | product | `/identity/platformSignIn/apple/bundleIds` | identity.platformSignIn.apple.bundleIds must be an array of at most $\{MAX_APPLE_SIGN_IN_BUNDLE_IDS\} bundle ids. |
+| `invalid_apple_team_id` | error | product | `/identity/platformSignIn/apple/teamId` | identity.platformSignIn.apple.teamId must be 10 upper-case letters or digits. |
 | `invalid_architecture` | error | release | `/release/artifactPolicy/architectures` | artifactPolicy.architectures must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_artifact_arch` | error | release | `/release/deliverables/app/artifacts/${i}/arch` | artifacts[].arch must be one of $\{RELEASE_ARCHES.join(", ")\}. |
 | `invalid_artifact_entry` | error | release | `/release/deliverables/app/artifacts/${i}/format` | artifacts[].format must match $\{ARTIFACT_FORMAT_PATTERN.source\} (installer versus portable is a format: zip, exe, msi, …). |
@@ -96,16 +101,26 @@ the offending value, or the allowed set.
 | `invalid_fingerprint_enabled` | error | product | `/fingerprint/enabled` | fingerprint.enabled must be a boolean. |
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_fingerprint` | error | product | `/fingerprint` | fingerprint must be an object. |
+| `invalid_google_client_id` | error | product | `/identity/platformSignIn/google/clientIds/${i}` | identity.platformSignIn.google.clientIds entries must be unique Google client ids, such as 1234-abc.apps.googleusercontent.com. |
+| `invalid_google_client_id` | error | product | `/identity/platformSignIn/google/clientIds` | identity.platformSignIn.google.clientIds must be an array of at most $\{MAX_GOOGLE_CLIENT_IDS\} Google client ids. |
+| `invalid_google_client_id` | error | product | `/identity/platformSignIn/google/serverClientId` | identity.platformSignIn.google.serverClientId must be a Google client id, such as 1234-abc.apps.googleusercontent.com. |
 | `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
 | `invalid_identity_claim_by_key` | error | product | `/identity/keyEntry/claimByKey` | identity.keyEntry.claimByKey must be true or false. |
 | `invalid_identity_key_entry_limit` | error | product | `/identity/keyEntry/limit` | identity.keyEntry.limit must be an integer from 1 to 100. |
+| `invalid_identity_nearby` | error | product | `/identity/nearby` | identity.nearby must be true or false. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/${key}` | identity.platformSignIn takes only google and apple. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/apple/${key}` | identity.platformSignIn.apple takes only teamId and bundleIds. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/apple` | identity.platformSignIn.apple must be an object with teamId and bundleIds. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/google/${key}` | identity.platformSignIn.google takes only serverClientId and clientIds. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/google` | identity.platformSignIn.google must be an object with serverClientId and clientIds. |
+| `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn` | identity.platformSignIn must be an object with google and apple. |
 | `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths/${i}` | identity.redirectPaths entries $\{problem\}. |
 | `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths` | identity.redirectPaths must be an array of at most $\{MAX_IDENTITY_REDIRECT_PATHS\} paths. |
 | `invalid_identity_terms` | error | product | `/identity/terms` | identity.terms must be \{version, url?\}: a version of 1 to 32 characters of A-Z, a-z, 0-9, ., _ and -, and an https URL when url is given. |
-| `invalid_identity` | error | product | `/identity/${key}` | identity takes only keyEntry, terms and redirectPaths. |
+| `invalid_identity` | error | product | `/identity/${key}` | identity takes only keyEntry, terms, redirectPaths, platformSignIn and nearby. |
 | `invalid_identity` | error | product | `/identity/keyEntry/${key}` | identity.keyEntry takes only limit and claimByKey. |
 | `invalid_identity` | error | product | `/identity/keyEntry` | identity.keyEntry must be an object with limit and claimByKey. |
-| `invalid_identity` | error | product | `/identity` | identity must be an object with keyEntry, terms and redirectPaths. |
+| `invalid_identity` | error | product | `/identity` | identity must be an object with keyEntry, terms, redirectPaths, platformSignIn and nearby. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags/${i}` | deliverables.app.versioning.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags` | deliverables.app.versioning.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
@@ -215,7 +230,6 @@ the offending value, or the allowed set.
 | `invalid_web_origin` | error | product | `/web/origins/${i}` | web.origins entries $\{problem\}. |
 | `invalid_web_origins` | error | product | `/web/origins` | web.origins must be an array of at most $\{MAX_WEB_ORIGINS\} origins. |
 | `invalid_web_origins` | error | product | `/web` | web must be an object. |
-| `listing_exceeds_model_limit` | warning | distribution | `${at}/${field}` | $\{label\}.$\{field\} is $\{v.length\} characters; the listing model allows $\{limit\}, so it will not be imported as it is. Shorten it to $\{limit\} or fewer. |
 | `listing_field_conflict` | error | distribution | `${at}/${alias}` | $\{label\} declares both $\{field\} and its deprecated alias $\{alias\}; keep $\{field\}. |
 | `listing_url_field_deprecated` | warning | distribution | `${at}/${alias}` | $\{label\}.$\{alias\} is deprecated; write $\{field\} instead (an https URL or a repo path). |
 | `missing_auto_issue_tier` | error | product | `/autoIssue/tierId` | autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything. |

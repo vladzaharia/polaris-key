@@ -734,6 +734,62 @@
             "maxLength": 256,
             "pattern": "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$"
           }
+        },
+        "platformSignIn": {
+          "type": "object",
+          "description": "The native audiences a platform sign-in is verified against (identity.platformSignIn.*). Apple bundle ids are unioned with the App Store and TestFlight outlets' bundle ids.",
+          "additionalProperties": false,
+          "properties": {
+            "google": {
+              "type": "object",
+              "additionalProperties": false,
+              "dependentRequired": { "clientIds": ["serverClientId"] },
+              "properties": {
+                "serverClientId": {
+                  "description": "The web client id: the audience of a Google token (identity.platformSignIn.google.serverClientId).",
+                  "type": "string",
+                  "pattern": "^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$"
+                },
+                "clientIds": {
+                  "description": "The Android and iOS client ids: the authorized parties (identity.platformSignIn.google.clientIds). Needs serverClientId.",
+                  "type": "array",
+                  "maxItems": 8,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$"
+                  }
+                }
+              }
+            },
+            "apple": {
+              "type": "object",
+              "additionalProperties": false,
+              "dependentRequired": { "bundleIds": ["teamId"] },
+              "properties": {
+                "teamId": {
+                  "description": "The Apple developer team id (identity.platformSignIn.apple.teamId).",
+                  "type": "string",
+                  "pattern": "^[A-Z0-9]{10}$"
+                },
+                "bundleIds": {
+                  "description": "Bundle ids of the app, added to those of the App Store and TestFlight outlets (identity.platformSignIn.apple.bundleIds). Needs teamId.",
+                  "type": "array",
+                  "maxItems": 16,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 155,
+                    "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nearby": {
+          "description": "Whether a signed-in device nearby may approve a sign-in here (identity.nearby). Default true; needs no Cloud Connect.",
+          "type": "boolean"
         }
       }
     },

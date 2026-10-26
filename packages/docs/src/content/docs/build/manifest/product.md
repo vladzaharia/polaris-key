@@ -328,6 +328,14 @@ identity:
   keyEntry: { limit: 10, claimByKey: false }
   terms: { version: "2026-10", url: "https://example.com/terms" }
   redirectPaths: ["/auth/callback"]
+  platformSignIn:
+    google:
+      serverClientId: "1234-web.apps.googleusercontent.com"
+      clientIds: ["1234-and.apps.googleusercontent.com"]
+    apple:
+      teamId: "ABCDE12345"
+      bundleIds: ["com.example.nightfall.mac"]
+  nearby: true
 ```
 
 - `keyEntry.limit`: how many times the key of a license in no account may be entered on new
@@ -339,6 +347,13 @@ identity:
   product. `version` is 1 to 32 characters of `A-Z a-z 0-9 . _ -`; `url` is an https URL.
 - `redirectPaths`: the paths a web app's sign-in may return to, matched exactly with an origin
   from `web.origins` (up to 16, each rooted at `/`, with no `?`, `#`, `*`, `//` or `..`).
+- `platformSignIn`: the native audiences a sign-in with Google or Apple on the device is checked
+  against. `google.serverClientId` is the web client id (the token's audience); `google.clientIds`
+  are your Android and iOS client ids (up to 8) and need it. `apple.teamId` is your 10-character
+  team id; `apple.bundleIds` (up to 16) are added to the bundle ids of your App Store and
+  TestFlight outlets, and need `teamId`.
+- `nearby`: whether a signed-in device nearby may approve a sign-in on a new one. On when
+  absent; it needs no Cloud Connect.
 
 Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntry.claimByKey`,
 `identity.terms`, `identity.redirectPaths`): a console change claims it until you revert it.
