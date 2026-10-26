@@ -110,8 +110,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from .core.errors import InsecureBaseUrlError, PolarisError
     from .core.manage import (
         MANAGE_URL_MAX_LENGTH,
+        KeyEntries,
         is_manage_url,
         manage_form_encode,
+        read_key_entries,
         read_manage_url,
         with_manage_key,
         with_manage_return,
@@ -264,6 +266,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from .license.client import LicenseClient, LicenseInfo
     from .license.endpoints import (
         ActivationDeviceLimit,
+        ActivationKeyEntryLimit,
+        ActivationLicenseOwned,
         ActivationEnrollDisabled,
         ActivationError,
         ActivationEnrollClaimed,
@@ -403,8 +407,10 @@ _EXPORTS: Dict[str, Tuple[str, ...]] = {
     ),
     ".core.manage": (
         "MANAGE_URL_MAX_LENGTH",
+        "KeyEntries",
         "is_manage_url",
         "manage_form_encode",
+        "read_key_entries",
         "read_manage_url",
         "with_manage_key",
         "with_manage_return",
@@ -595,6 +601,8 @@ _EXPORTS: Dict[str, Tuple[str, ...]] = {
     ),
     ".license.endpoints": (
         "ActivationDeviceLimit",
+        "ActivationKeyEntryLimit",
+        "ActivationLicenseOwned",
         "ActivationEnrollDisabled",
         "ActivationError",
         "ActivationEnrollClaimed",
@@ -686,8 +694,10 @@ __all__ = [
     "canonical_arch",
     # refusal links (PX-W8)
     "MANAGE_URL_MAX_LENGTH",
+    "KeyEntries",
     "is_manage_url",
     "manage_form_encode",
+    "read_key_entries",
     "read_manage_url",
     "with_manage_key",
     "with_manage_return",
@@ -798,6 +808,8 @@ __all__ = [
     "ActivationResult",
     "ActivationOk",
     "ActivationDeviceLimit",
+    "ActivationKeyEntryLimit",
+    "ActivationLicenseOwned",
     "ActivationUnauthorized",
     "ActivationFingerprintRequired",
     "ActivationHardwareMismatch",

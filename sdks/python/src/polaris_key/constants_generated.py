@@ -2151,7 +2151,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
         "identity.devicelabel": CapabilityRow("implemented", "identity", ()),
         "identity.toggle": CapabilityRow("planned", "identity", ()),
-        "identity.keyentry": CapabilityRow("planned", "identity", ()),
+        "identity.keyentry": CapabilityRow("implemented", "identity", ()),
         "identity.attach": CapabilityRow("planned", "identity", ()),
         "identity.account": CapabilityRow("planned", "identity", ()),
         "identity.redirect.web": CapabilityRow("planned", "identity", ()),
@@ -2224,4 +2224,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "d4da003bd1727f2683866c6b1e2fa4686cdbd296c4f7d2b7a269b6d2e9482cba"
+CAPABILITY_DIGEST: Final[str] = "2b0120a3ebb22a6861cc4f66b1ffd6ff31d8e740c9d6e2b8e0dd9b2c6d8244e8"

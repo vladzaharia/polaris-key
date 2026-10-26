@@ -206,6 +206,9 @@ def activation_view(result: Any, key: Optional[str] = None) -> ActivateView:
         )
     if kind == "refused" and code == "key_entry_limit":
         kind = "key-entry-limit"
+    elif kind == "license-owned":
+        # No catalog line of its own: the code's copy (`core.codes.license_owned`) speaks.
+        kind = "refused"
     return ActivateView("Activate", "rejected", kind, code if isinstance(code, str) else None, key)
 
 
