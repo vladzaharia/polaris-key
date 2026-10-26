@@ -1648,6 +1648,7 @@ class ServiceSlug:
     IDENTITY: Final = "identity"
     SYNC: Final = "sync"
     COMMERCE: Final = "commerce"
+    CONNECT: Final = "connect"
 
 
 #: Every ``ServiceSlug`` value, in source order.
@@ -1660,6 +1661,7 @@ SERVICE_SLUG_VALUES: Tuple[str, ...] = (
     "identity",
     "sync",
     "commerce",
+    "connect",
 )
 
 

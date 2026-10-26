@@ -86,6 +86,7 @@ const ALL_OFF: ServicesMap = {
   identity: { enabled: true },
   sync: { enabled: false },
   commerce: { enabled: false },
+  connect: { enabled: false },
 };
 
 async function services(

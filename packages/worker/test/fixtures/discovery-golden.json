@@ -85,6 +85,9 @@
       },
       "commerce": {
         "enabled": false
+      },
+      "connect": {
+        "enabled": false
       }
     }
   },
@@ -251,6 +254,9 @@
           "binding": "https://key.plrs.im/full/commerce/binding",
           "claim": "https://key.plrs.im/full/commerce/claim"
         }
+      },
+      "connect": {
+        "enabled": false
       }
     }
   },
@@ -333,6 +339,9 @@
         "enabled": false
       },
       "commerce": {
+        "enabled": false
+      },
+      "connect": {
         "enabled": false
       }
     }

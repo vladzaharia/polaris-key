@@ -13,7 +13,8 @@ export type ServiceSlug =
   | "update"
   | "identity"
   | "sync"
-  | "commerce";
+  | "commerce"
+  | "connect";
 
 /** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
 export const SERVICE_SLUGS: readonly ServiceSlug[] = [
@@ -25,6 +26,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "identity",
   "sync",
   "commerce",
+  "connect",
 ];
 
 /**
@@ -52,6 +54,7 @@ export const SERVICE_REQUIRES: Readonly<
   identity: [],
   sync: ["config", "identity"],
   commerce: ["license"],
+  connect: ["identity"],
 };
 
 /** The legacy `.pkey/product` `modules:` vocabulary (design spec §2.1). */
@@ -79,6 +82,7 @@ export const MODULE_SERVICES: Readonly<
   identity: ["identity"],
   sync: ["sync"],
   commerce: ["commerce"],
+  connect: ["connect"],
 };
 
 /** The console's features: the grouping of slugs an operator turns on (the wizard's "What is it for?"). */
@@ -88,7 +92,8 @@ export type FeatureId =
   | "ship-builds"
   | "sign-in"
   | "cloud-sync"
-  | "commerce";
+  | "commerce"
+  | "cloud-connect";
 
 export interface FeatureRow {
   id: FeatureId;
@@ -109,4 +114,5 @@ export const FEATURES: readonly FeatureRow[] = [
   { id: "sign-in", label: "Sign-in", primary: ["identity"] },
   { id: "cloud-sync", label: "Cloud Sync", primary: ["sync"] },
   { id: "commerce", label: "Commerce", primary: ["commerce"] },
+  { id: "cloud-connect", label: "Cloud Connect", primary: ["connect"] },
 ];

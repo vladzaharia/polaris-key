@@ -24,3 +24,16 @@ Cloud Connect service row, descriptor, coherence, manifest block, settings and c
 ## Acceptance criteria
 
 [ ] see plan
+
+## Progress and continuation (2026-10-26)
+
+- CC-02.1 done on `wp/CC-02.1-service-row`: services.json row and `cloud-connect` feature, the stub
+  `services/connect/` descriptor (empty routes table, integration contributor, discovery fragment
+  `{enabled:true}`), `connect_requires_identity` (worker, manifest, schema, mutation row, console
+  message), OpenAPI `services.required`, sighting bit 1024.
+- Correction to the plan: a new service row also widens `ServiceSlug` in the admin and brand
+  packages, so CC-02.1 carries three placeholders that CC-02.3 replaces: the brand accent
+  (`connect` aliases Cloud Sync's teal in `SERVICE_ALIAS`; the Radar glyph is vendored), the
+  `SERVICE_AREA` entry (`connect` shares `sync` until the `connect` RBAC area lands with the admin
+  routes), and a null admin section module. The admin `nav.ts` `SECTIONS` entry is not added, so
+  admin `test/serviceTable.test.ts` fails until CC-02.3.

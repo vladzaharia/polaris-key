@@ -235,6 +235,7 @@ export function featureCopy(id: FeatureId, name: string): string {
     "ship-builds": "Publish releases from CI to every store.",
     "sign-in": "Let people sign in with a Polaris Locker account.",
     "cloud-sync": "Each person's saves and settings, the same on every device.",
+    "cloud-connect": "Link a person's devices and move data between them.",
     commerce:
       "Sell packs and tiers on App Store, Google Play, Steam and itch.io.",
   }[id];

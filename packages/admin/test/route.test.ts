@@ -54,6 +54,7 @@ const ALL_ON: ServiceState = {
   identity: { enabled: true },
   sync: { enabled: true },
   commerce: { enabled: true },
+  connect: { enabled: false },
 };
 
 const withOff = (...off: ServiceSlug[]): ServiceState => ({

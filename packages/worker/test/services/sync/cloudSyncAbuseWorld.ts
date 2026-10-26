@@ -63,6 +63,7 @@ export async function world(): Promise<World> {
         identity: { enabled: true },
         sync: { enabled: true },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

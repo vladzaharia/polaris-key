@@ -87,6 +87,7 @@ const CONFIG_ONLY: ServicesMap = {
   identity: { enabled: false },
   sync: { enabled: false },
   commerce: { enabled: false },
+  connect: { enabled: false },
 };
 
 const ES_PEM =

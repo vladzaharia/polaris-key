@@ -177,6 +177,13 @@ SERVICE_ACCENTS = {
             "subtle": "#0c211e",
             "bit": "#39d075",
         },
+        "connect": {
+            "solid": "#14f8e1",
+            "fg": "#14f8e1",
+            "on": "#060912",
+            "subtle": "#08262b",
+            "bit": "#14f8e1",
+        },
     },
     "light": {
         "core": {
@@ -241,6 +248,13 @@ SERVICE_ACCENTS = {
             "on": "#ffffff",
             "subtle": "#deebeb",
             "bit": "#05773b",
+        },
+        "connect": {
+            "solid": "#086260",
+            "fg": "#086260",
+            "on": "#ffffff",
+            "subtle": "#dee9ef",
+            "bit": "#086260",
         },
     },
 }

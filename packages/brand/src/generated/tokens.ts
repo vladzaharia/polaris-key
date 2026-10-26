@@ -166,6 +166,15 @@ export const THEME_TOKENS = {
         checkedEdge: "#39d075",
         contextEdge: "#39d075",
       },
+      connect: {
+        ring: "#14f8e1",
+        selectedFill: "#08262b",
+        hoverTint: "#071a20",
+        checkedFill: "#14f8e1",
+        checkedOn: "#060912",
+        checkedEdge: "#14f8e1",
+        contextEdge: "#14f8e1",
+      },
     },
     status: {
       success: {
@@ -357,6 +366,15 @@ export const THEME_TOKENS = {
         checkedEdge: "#05773b",
         contextEdge: "#05773b",
       },
+      connect: {
+        ring: "#086260",
+        selectedFill: "#dee9ef",
+        hoverTint: "#e8eff5",
+        checkedFill: "#086260",
+        checkedOn: "#ffffff",
+        checkedEdge: "#086260",
+        contextEdge: "#086260",
+      },
     },
     status: {
       success: {
@@ -484,6 +502,13 @@ export const SERVICE_ACCENTS = {
       subtle: "#0c211e",
       bit: "#39d075",
     },
+    connect: {
+      solid: "#14f8e1",
+      fg: "#14f8e1",
+      on: "#060912",
+      subtle: "#08262b",
+      bit: "#14f8e1",
+    },
   },
   light: {
     core: {
@@ -548,6 +573,13 @@ export const SERVICE_ACCENTS = {
       on: "#ffffff",
       subtle: "#deebeb",
       bit: "#05773b",
+    },
+    connect: {
+      solid: "#086260",
+      fg: "#086260",
+      on: "#ffffff",
+      subtle: "#dee9ef",
+      bit: "#086260",
     },
   },
 } as const satisfies Record<

@@ -81,6 +81,9 @@ export const SERVICE_AREA: Readonly<Record<ServiceSlug, AreaId>> = {
   identity: "signin",
   sync: "sync",
   commerce: "commerce",
+  // CC-02.1: Cloud Connect has no admin route yet; its own `connect` area comes with them (plan
+  // CC-01-cloud-connect.md §2.9), so it shares Cloud Sync's until then.
+  connect: "sync",
 };
 
 /**

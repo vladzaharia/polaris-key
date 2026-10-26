@@ -268,6 +268,7 @@ export const SERVICES: ServicesResponse = {
     identity: { enabled: false },
     sync: { enabled: false },
     commerce: { enabled: false },
+    connect: { enabled: false },
   },
   effectiveRegistration: "requires-license",
   source: "manifest",

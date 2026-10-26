@@ -13,7 +13,8 @@ export type ServiceSlug =
   | "update"
   | "identity"
   | "sync"
-  | "commerce";
+  | "commerce"
+  | "connect";
 
 /** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
 export const SERVICE_SLUGS: readonly ServiceSlug[] = [
@@ -25,6 +26,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "identity",
   "sync",
   "commerce",
+  "connect",
 ];
 
 /**
@@ -52,6 +54,7 @@ export const SERVICE_REQUIRES: Readonly<
   identity: [],
   sync: ["config", "identity"],
   commerce: ["license"],
+  connect: ["identity"],
 };
 
 /** A service section's `data-service` accent token (D-17). The platform section's `core` is
@@ -64,7 +67,8 @@ export type ServiceAccentToken =
   | "update"
   | "identity"
   | "sync"
-  | "commerce";
+  | "commerce"
+  | "connect";
 
 /** The lucide-react icon each service's row uses. `ServicesCard` maps every name to a
  *  component, so a new icon here is a type error until it is imported there. */
@@ -76,7 +80,8 @@ export type ServiceIconName =
   | "CircleArrowUp"
   | "UserRound"
   | "Cloud"
-  | "ShoppingBag";
+  | "ShoppingBag"
+  | "Radar";
 
 export interface ServiceTableRow {
   slug: ServiceSlug;
@@ -191,6 +196,18 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     requires: ["license"],
     group: "commerce",
   },
+  {
+    slug: "connect",
+    label: "Cloud Connect",
+    summary:
+      "Link a person's devices and move data between them directly, over the LAN or a relay.",
+    accent: "connect",
+    icon: "Radar",
+    docs: "/docs/features/cloud-connect/",
+    defaultEnabled: false,
+    requires: ["identity"],
+    group: "cloud-connect",
+  },
 ];
 
 /** The console's features (ST-38): the grouping of slugs an operator turns on. */
@@ -200,7 +217,8 @@ export type FeatureId =
   | "ship-builds"
   | "sign-in"
   | "cloud-sync"
-  | "commerce";
+  | "commerce"
+  | "cloud-connect";
 
 /** Every switch or fact a feature's row holds below its own switch. The console renders each
  *  `setting` and `fact` id itself, so a new one is a type error until it does. */
@@ -309,6 +327,15 @@ export const FEATURES: readonly FeatureRow[] = [
     icon: "ShoppingBag",
     services: ["commerce"],
     primary: ["commerce"],
+    switches: [],
+  },
+  {
+    id: "cloud-connect",
+    label: "Cloud Connect",
+    accent: "connect",
+    icon: "Radar",
+    services: ["connect"],
+    primary: ["connect"],
     switches: [],
   },
 ];

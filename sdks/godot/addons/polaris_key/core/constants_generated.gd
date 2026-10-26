@@ -925,10 +925,11 @@ class ServiceSlug:
 	const IDENTITY := "identity"
 	const SYNC := "sync"
 	const COMMERCE := "commerce"
+	const CONNECT := "connect"
 
 
 ## Every `ServiceSlug` value, in source order.
-const SERVICE_SLUG_VALUES := ["license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]
+const SERVICE_SLUG_VALUES := ["license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "connect"]
 
 ## The wire contract version (`@polaris-key/protocol/core`).
 const PROTOCOL_VERSION := 4

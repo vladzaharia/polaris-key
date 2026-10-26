@@ -94,7 +94,8 @@
       { "slug": "update", "requires": ["distribution"] },
       { "slug": "identity", "requires": [] },
       { "slug": "sync", "requires": ["config", "identity"] },
-      { "slug": "commerce", "requires": ["license"] }
+      { "slug": "commerce", "requires": ["license"] },
+      { "slug": "connect", "requires": ["identity"] }
     ],
     "serviceDependencies": {
       "PolarisKeyGate": ["license"],
@@ -479,7 +480,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open",
         "gate": { "status": "not-applicable" }
@@ -1044,7 +1046,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open",
         "gate": { "status": "not-applicable" }
@@ -1128,7 +1131,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open",
         "gate": { "status": "not-applicable" }
@@ -1224,7 +1228,8 @@
           "distribution",
           "identity",
           "sync",
-          "commerce"
+          "commerce",
+          "connect"
         ],
         "toast": { "kind": "update" }
       },
@@ -1380,7 +1385,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity"
       },
@@ -1399,7 +1405,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open"
       },
@@ -1732,7 +1739,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open"
       },
@@ -1925,7 +1933,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open",
         "capabilities": { "offlineActivation": true }
@@ -2390,7 +2399,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity",
         "signIn": {
@@ -2423,7 +2433,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity",
         "signIn": {
@@ -4257,7 +4268,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity",
         "signIn": {
@@ -4282,7 +4294,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity",
         "signIn": {
@@ -7968,7 +7981,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity",
         "signIn": {
@@ -7989,7 +8003,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity",
         "signIn": {
@@ -8279,7 +8294,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open"
       },
@@ -8677,7 +8693,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open"
       },
@@ -9043,7 +9060,8 @@
           "distribution",
           "identity",
           "sync",
-          "commerce"
+          "commerce",
+          "connect"
         ]
       },
       "expect": { "component": "UpdatePrompt", "state": "hidden", "copy": [] }
@@ -9197,7 +9215,8 @@
           "distribution",
           "identity",
           "sync",
-          "commerce"
+          "commerce",
+          "connect"
         ]
       },
       "expect": { "component": "UpdateProgress", "state": "hidden", "copy": [] }
@@ -9323,7 +9342,14 @@
     {
       "name": "ReleaseNotes: Release off",
       "input": {
-        "services": ["license", "config", "identity", "sync", "commerce"]
+        "services": [
+          "license",
+          "config",
+          "identity",
+          "sync",
+          "commerce",
+          "connect"
+        ]
       },
       "expect": { "component": "ReleaseNotes", "state": "hidden", "copy": [] }
     }
@@ -9502,7 +9528,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "requires-identity",
         "account": { "signedIn": true, "holder": "account" }
@@ -9535,7 +9562,8 @@
           "distribution",
           "update",
           "identity",
-          "commerce"
+          "commerce",
+          "connect"
         ],
         "account": { "signedIn": true, "holder": "account" }
       },
@@ -9568,7 +9596,8 @@
           "distribution",
           "identity",
           "sync",
-          "commerce"
+          "commerce",
+          "connect"
         ],
         "account": { "signedIn": true, "holder": "account" }
       },
@@ -9599,7 +9628,8 @@
           "distribution",
           "update",
           "identity",
-          "commerce"
+          "commerce",
+          "connect"
         ],
         "account": { "signedIn": true, "holder": "account" }
       },
@@ -10338,7 +10368,8 @@
           "distribution",
           "update",
           "identity",
-          "commerce"
+          "commerce",
+          "connect"
         ]
       },
       "expect": { "component": "Settings", "state": "hidden", "copy": [] }
@@ -10540,7 +10571,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open",
         "entitlement": { "name": "pro.export", "entitled": false }
@@ -10641,7 +10673,8 @@
           "distribution",
           "update",
           "identity",
-          "sync"
+          "sync",
+          "connect"
         ],
         "registration": "open",
         "entitlement": { "name": "pro.export", "entitled": false }

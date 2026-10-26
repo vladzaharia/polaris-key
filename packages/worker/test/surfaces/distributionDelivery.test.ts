@@ -208,6 +208,7 @@ async function services(
         identity: { enabled: false },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",
@@ -587,6 +588,7 @@ async function ingestWithDistributionOff(w: World, mode: string) {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     },
     NOW,
   );
@@ -622,6 +624,7 @@ async function ingestManifest(
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     },
     NOW,
   );

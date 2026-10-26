@@ -327,6 +327,7 @@ paths:
                       identity: { enabled: false }
                       sync: { enabled: false }
                       commerce: { enabled: false }
+                      connect: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
@@ -26622,6 +26623,7 @@ components:
               identity,
               sync,
               commerce,
+              connect,
             ]
           properties:
             distribution: { $ref: "#/components/schemas/DistributionFragment" }

@@ -89,6 +89,7 @@ async function tidewater(db: Db): Promise<void> {
         identity: { enabled: false },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
       },
     }),
     "manifest",

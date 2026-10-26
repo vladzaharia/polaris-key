@@ -627,6 +627,7 @@ describe("not configured: the service not-found shape", () => {
           identity: { enabled: false },
           sync: { enabled: false },
           commerce: { enabled: false },
+          connect: { enabled: false },
         },
       }),
       "manifest",

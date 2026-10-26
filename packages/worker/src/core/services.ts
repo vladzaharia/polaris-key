@@ -255,6 +255,7 @@ export const REQUIREMENT_CODES = [
   "sync_requires_config",
   "sync_requires_identity",
   "commerce_requires_license",
+  "connect_requires_identity",
 ] as const;
 
 /** The stable code for `slug` being on while `requirement` is off. */

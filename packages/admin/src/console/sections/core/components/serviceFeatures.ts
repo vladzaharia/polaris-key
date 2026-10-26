@@ -60,6 +60,7 @@ export const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
     "Sign-in through this product stops. Licenses stay attached to their owners' accounts.",
   sync: "Cloud Sync stops: settings stay on each device and nothing syncs.",
   commerce: "Commerce's endpoints answer not-found: no purchase claims.",
+  connect: "Cloud Connect stops: devices no longer link or transfer.",
 };
 
 /** Play drops what Commerce cannot receive: the limits an operator has to beat when it is off. */

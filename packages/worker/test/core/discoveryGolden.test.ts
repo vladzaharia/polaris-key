@@ -41,6 +41,9 @@
  * CM-29 added the eighth service, Commerce (plans/CM-29.md §2): each golden gained
  * `services.commerce` after `sync`, `{"enabled":false}` when off; the everything product runs it
  * and pins the fragment (the two device endpoints, nothing about any store). Additive.
+ * CC-02.1 added the ninth service, Cloud Connect (plans/CC-01-cloud-connect.md §2.9): each golden
+ * gained `services.connect` after `commerce`, `{"enabled":false}` (it is off by default and no
+ * product here turns it on). Additive.
  * I-08 (WIRE-CONTRACT-V4 §12.4, §12.5, plans/I-08.md, approved) added Identity's `issuer` after
  * `configured` (now always true: the platform sign-in needs no per-product IdP row) and the
  * `authorize` and `token` endpoints after `authDevicePoll`. Additive; every Identity-off fragment

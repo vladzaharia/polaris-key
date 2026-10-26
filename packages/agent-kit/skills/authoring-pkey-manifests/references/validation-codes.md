@@ -6,7 +6,7 @@ Every error and warning `pkey validate` can emit, with its JSON-pointer path and
 
 Contents:
 
-- [`product`](#product-codes): 97 codes
+- [`product`](#product-codes): 98 codes
 - [`schema`](#schema-codes): 14 codes
 - [`release`](#release-codes): 110 codes
 - [`distribution`](#distribution-codes): 36 codes
@@ -19,6 +19,7 @@ Contents:
 | `commerce_requires_license`               | error    | `/modules/commerce`                            | The commerce service turns store purchases into licence flags, so license must be enabled too.                                                                                                                                                                 |
 | `config_without_activation`               | warning  | `/modules/config`                              | Config is enabled without an activation method.                                                                                                                                                                                                                |
 | `conflicting_spelling`                    | warning  | `${path}`                                      | ${old} and ${write} are both set; ${used} is used. Keep only ${write}.                                                                                                                                                                                         |
+| `connect_requires_identity`               | error    | `/modules/connect`                             | Cloud Connect links a signed-in person's devices, so identity must be enabled too.                                                                                                                                                                             |
 | `deprecated_spelling`                     | warning  | `${path}`                                      | ${old} is a deprecated spelling${ignored}; write ${write}.                                                                                                                                                                                                     |
 | `distribution_requires_release`           | error    | `/modules/distribution`                        | The distribution service delivers release artifacts, so release must be enabled too.                                                                                                                                                                           |
 | `duplicate_profile_id`                    | error    | `${profilesAt}/${i}/id`                        | Profile ids must be unique.                                                                                                                                                                                                                                    |

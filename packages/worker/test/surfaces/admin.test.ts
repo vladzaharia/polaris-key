@@ -1435,6 +1435,7 @@ describe("admin services enablement", () => {
     identity: { enabled: false },
     sync: { enabled: false },
     commerce: { enabled: false },
+    connect: { enabled: false },
   };
 
   async function world(): Promise<{
@@ -1489,6 +1490,7 @@ describe("admin services enablement", () => {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     });
     expect(body.effectiveRegistration).toBe("requires-license");
     expect(body.source).toBe("manifest");
@@ -1571,6 +1573,7 @@ describe("admin services enablement", () => {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     });
     const product = await loadProduct(w.env, w.db, "djdl");
     expect(product?.services.update.enabled).toBe(true);
@@ -1645,7 +1648,7 @@ describe("admin services enablement", () => {
     expect(status).toBe(200);
     const row = await getProduct(w.db, "djdl");
     expect(row?.services_json).toBe(
-      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"sync":{"enabled":false},"commerce":{"enabled":false},"zeta":{"enabled":true}}',
+      '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":false},"update":{"enabled":false},"identity":{"enabled":false},"sync":{"enabled":false},"commerce":{"enabled":false},"connect":{"enabled":false},"zeta":{"enabled":true}}',
     );
     // The console still cannot patch a slug it does not know.
     const bad = await call(w, "PATCH", "", {
@@ -1700,6 +1703,7 @@ describe("admin services enablement", () => {
       identity: { enabled: false },
       sync: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     });
   });
 
@@ -1726,6 +1730,7 @@ describe("admin services enablement", () => {
     expect(off.body.services).toMatchObject({
       license: { enabled: false },
       commerce: { enabled: false },
+      connect: { enabled: false },
     });
     // Turning License back on does not turn Commerce back on.
     const back = await call(w, "PATCH", "", {
@@ -1783,6 +1788,7 @@ describe("admin services enablement", () => {
           identity: { enabled: false },
           sync: { enabled: false },
           commerce: { enabled: false },
+          connect: { enabled: false },
         }),
         "manifest",
         NOW,
@@ -1846,6 +1852,7 @@ describe("admin services enablement", () => {
         identity: { enabled: true },
         sync: { enabled: false },
         commerce: { enabled: false },
+        connect: { enabled: false },
       }),
       "manifest",
       NOW + 1,

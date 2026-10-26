@@ -131,7 +131,8 @@
                     }
                   },
                   "sync": { "enabled": false },
-                  "commerce": { "enabled": false }
+                  "commerce": { "enabled": false },
+                  "connect": { "enabled": false }
                 }
               }
             }

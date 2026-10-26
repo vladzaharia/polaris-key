@@ -61,6 +61,7 @@ export const SIGHTING_BITS = {
   commerce: 128,
   packs: 256,
   trust: 512,
+  connect: 1024,
 } as const;
 export type SightingNamespace = keyof typeof SIGHTING_BITS;
 

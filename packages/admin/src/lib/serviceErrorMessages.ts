@@ -9,5 +9,6 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
   update_requires_distribution: "In-app updates need Rollouts to be on first.",
   sync_requires_config: "Cloud Sync needs Managed config to be on first.",
   sync_requires_identity: "Cloud Sync needs Sign-in to be on first.",
+  connect_requires_identity: "Cloud Connect needs Sign-in to be on first.",
   commerce_requires_license: "Commerce needs Licensing to be on first.",
 };

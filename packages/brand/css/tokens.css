@@ -761,6 +761,22 @@
   --pk-section-bit-display: inline;
 }
 
+[data-service="connect"] {
+  --pk-accent: var(--pk-service-sync);
+  --pk-accent-fg: var(--pk-service-sync-fg);
+  --pk-accent-on: var(--pk-service-sync-on);
+  --pk-accent-subtle: var(--pk-service-sync-subtle);
+  --pk-state-ring: var(--pk-state-sync-ring);
+  --pk-state-selected-fill: var(--pk-state-sync-selected-fill);
+  --pk-state-hover-tint: var(--pk-state-sync-hover-tint);
+  --pk-state-checked-fill: var(--pk-state-sync-checked-fill);
+  --pk-state-checked-on: var(--pk-state-sync-checked-on);
+  --pk-state-checked-edge: var(--pk-state-sync-checked-edge);
+  --pk-state-context-edge: var(--pk-state-sync-context-edge);
+  --pk-section-bit: var(--pk-service-sync-bit);
+  --pk-section-bit-display: inline;
+}
+
 /*
  * Kit rule (B1, CM-29b): Commerce shares Distribution's green, which reads close to success, so a
  * link in a Commerce page's content (inside main, so dialogs, the sidebar and other sections are untouched) is strong text (underlined by the kit), never the accent. The accent never

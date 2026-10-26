@@ -19,6 +19,7 @@ export const SERVICE_ICON_IDS = [
   "identity",
   "sync",
   "commerce",
+  "connect",
   "packs",
 ] as const;
 
@@ -69,6 +70,12 @@ export const SERVICE_ICONS: Record<ServiceIconId, ServiceIconSpec> = {
     glyph: "Waypoints",
     label: "Distribution",
     accent: "distribution",
+    dataService: true,
+  },
+  connect: {
+    glyph: "Radar",
+    label: "Cloud Connect",
+    accent: "sync",
     dataService: true,
   },
   update: {

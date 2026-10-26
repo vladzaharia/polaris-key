@@ -208,6 +208,10 @@ const REQUIREMENT_MESSAGES: ReadonlyMap<string, string> = new Map([
     "commerce_requires_license",
     "The commerce service turns store purchases into licence flags, so license must be enabled too.",
   ],
+  [
+    "connect_requires_identity",
+    "Cloud Connect links a signed-in person's devices, so identity must be enabled too.",
+  ],
 ]);
 
 /** Who may register a device against this product (design spec §2.3). The policy is derived from

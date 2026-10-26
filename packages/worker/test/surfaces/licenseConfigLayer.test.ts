@@ -133,6 +133,7 @@ async function world(
           identity: { enabled: opts.identity ?? true },
           sync: { enabled: false },
           commerce: { enabled: false },
+          connect: { enabled: false },
         },
       }),
       "manifest",

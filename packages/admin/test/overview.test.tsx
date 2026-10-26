@@ -341,6 +341,7 @@ describe("Core → Overview", () => {
         services: {
           ...enablement(["license"]),
           commerce: { enabled: true },
+          connect: { enabled: false },
         } as Record<ServiceSlug, { enabled: boolean }>,
       }),
     });

@@ -38,7 +38,7 @@ const BADGE_MIN := Vector2i(320, 104)
 const POWERED_BY_MARK_SIZE := 16
 
 ## Section ids: core plus every service slug.
-const SERVICE_IDS: Array[String] = ["core", "license", "config", "release", "distribution", "update", "identity", "sync", "commerce"]
+const SERVICE_IDS: Array[String] = ["core", "license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "connect"]
 
 
 ## The dark theme (default).
@@ -185,6 +185,11 @@ class Dark:
 	const SERVICE_COMMERCE_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const SERVICE_COMMERCE_SUBTLE := Color(0.047059, 0.129412, 0.117647, 1.0) # #0c211e
 	const SERVICE_COMMERCE_BIT := Color(0.223529, 0.815686, 0.458824, 1.0) # #39d075
+	const SERVICE_CONNECT := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
+	const SERVICE_CONNECT_FG := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
+	const SERVICE_CONNECT_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
+	const SERVICE_CONNECT_SUBTLE := Color(0.031373, 0.14902, 0.168627, 1.0) # #08262b
+	const SERVICE_CONNECT_BIT := Color(0.078431, 0.972549, 0.882353, 1.0) # #14f8e1
 
 
 ## The light theme.
@@ -331,6 +336,11 @@ class Light:
 	const SERVICE_COMMERCE_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
 	const SERVICE_COMMERCE_SUBTLE := Color(0.870588, 0.921569, 0.921569, 1.0) # #deebeb
 	const SERVICE_COMMERCE_BIT := Color(0.019608, 0.466667, 0.231373, 1.0) # #05773b
+	const SERVICE_CONNECT := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
+	const SERVICE_CONNECT_FG := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
+	const SERVICE_CONNECT_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
+	const SERVICE_CONNECT_SUBTLE := Color(0.870588, 0.913725, 0.937255, 1.0) # #dee9ef
+	const SERVICE_CONNECT_BIT := Color(0.031373, 0.384314, 0.376471, 1.0) # #086260
 
 
 const _SERVICE_DARK := {
@@ -343,6 +353,7 @@ const _SERVICE_DARK := {
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 	"sync": Color(0.078431, 0.972549, 0.882353, 1.0),
 	"commerce": Color(0.223529, 0.815686, 0.458824, 1.0),
+	"connect": Color(0.078431, 0.972549, 0.882353, 1.0),
 }
 const _SERVICE_LIGHT := {
 	"core": Color(0.478431, 0.184314, 1.0, 1.0),
@@ -354,6 +365,7 @@ const _SERVICE_LIGHT := {
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 	"sync": Color(0.031373, 0.384314, 0.376471, 1.0),
 	"commerce": Color(0.019608, 0.466667, 0.231373, 1.0),
+	"connect": Color(0.031373, 0.384314, 0.376471, 1.0),
 }
 const _SERVICE_FG_DARK := {
 	"core": Color(0.603922, 0.360784, 1.0, 1.0),
@@ -365,6 +377,7 @@ const _SERVICE_FG_DARK := {
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 	"sync": Color(0.078431, 0.972549, 0.882353, 1.0),
 	"commerce": Color(0.223529, 0.815686, 0.458824, 1.0),
+	"connect": Color(0.078431, 0.972549, 0.882353, 1.0),
 }
 const _SERVICE_FG_LIGHT := {
 	"core": Color(0.478431, 0.184314, 1.0, 1.0),
@@ -376,6 +389,7 @@ const _SERVICE_FG_LIGHT := {
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 	"sync": Color(0.031373, 0.384314, 0.376471, 1.0),
 	"commerce": Color(0.019608, 0.466667, 0.231373, 1.0),
+	"connect": Color(0.031373, 0.384314, 0.376471, 1.0),
 }
 const _BIT_DARK := {
 	"license": Color(0.776471, 0.913725, 0.25098, 1.0),
@@ -386,6 +400,7 @@ const _BIT_DARK := {
 	"identity": Color(0.843137, 0.490196, 0.94902, 1.0),
 	"sync": Color(0.078431, 0.972549, 0.882353, 1.0),
 	"commerce": Color(0.223529, 0.815686, 0.458824, 1.0),
+	"connect": Color(0.078431, 0.972549, 0.882353, 1.0),
 }
 const _BIT_LIGHT := {
 	"license": Color(0.427451, 0.52549, 0.0, 1.0),
@@ -396,6 +411,7 @@ const _BIT_LIGHT := {
 	"identity": Color(0.619608, 0.203922, 0.682353, 1.0),
 	"sync": Color(0.031373, 0.384314, 0.376471, 1.0),
 	"commerce": Color(0.019608, 0.466667, 0.231373, 1.0),
+	"connect": Color(0.031373, 0.384314, 0.376471, 1.0),
 }
 
 
