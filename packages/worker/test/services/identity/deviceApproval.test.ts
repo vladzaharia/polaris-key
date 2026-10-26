@@ -32,6 +32,7 @@ import {
 import type { Env } from "../../../src/platform/env.js";
 import type { SqliteDb } from "../../../src/db/sqlite.js";
 import { artefacts } from "../../singleUseMock.js";
+import { artefactRef, getArtefact } from "../../../src/core/singleUse.js";
 
 const idpKey = vi.hoisted(() => ({
   getKey: null as null | (() => Promise<unknown>),
@@ -363,6 +364,13 @@ describe("the gate: nothing account-bound until the person approves", () => {
     expect(out.status).toBe("ready");
     expect(out.identity).toEqual({ name: "Ada", email: "ada@example.com" });
     expect(await count("devices")).toBe(1);
+    // The device code is not a same-device sign-in: no step-up mark (I-43.1).
+    const bound = await db.first<{ id: string }>(
+      "SELECT device_id AS id FROM devices WHERE product = 'djdl'",
+    );
+    expect(
+      await getArtefact(env, artefactRef("signin-fresh", `djdl:${bound!.id}`)),
+    ).toBeNull();
     // Approving is audited, naming the device label and nothing else.
     const rows = await db.all<{ action: string; summary: string }>(
       "SELECT action, summary FROM audit WHERE product = 'djdl' AND action LIKE 'identity.signin.device_%'",

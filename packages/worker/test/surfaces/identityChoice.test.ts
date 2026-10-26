@@ -23,6 +23,7 @@ import {
 } from "../seed.js";
 import { stmtsDeauthorizeDevice } from "../../src/core/devices/store.js";
 import { withMintClaim } from "../../src/services/identity/passthrough/mint.js";
+import { artefactRef, getArtefact } from "../../src/core/singleUse.js";
 import { dispatchWith } from "../../src/dispatch.js";
 import {
   serializeServices,
@@ -1028,6 +1029,74 @@ describe("the pending sign-in grant (app mode, §12.5.1)", () => {
     expect(body.status).toBeUndefined();
     expect(body.access_token).toBeTruthy();
     expect((body.license as { id: string }).id).toMatch(/^lic_/);
+  });
+});
+
+describe("the step-up mark (I-43.1, §12.11.4)", () => {
+  const fresh = (device = DEVICE) =>
+    getArtefact(env, artefactRef("signin-fresh", `${SLUG}:${device}`));
+
+  it("a same-device token writes it for that device only, for 300 s", async () => {
+    const { code } = await codeFor();
+    expect(await fresh()).toBeNull();
+    const res = await tokenReq({ code });
+    expect(res.status).toBe(200);
+    expect(await fresh()).not.toBeNull();
+    expect(await fresh(DEVICE_B)).toBeNull();
+  });
+
+  it("a refused token writes nothing", async () => {
+    const { code } = await codeFor();
+    const res = await tokenReq({ code, code_verifier: "w".repeat(48) });
+    expect(res.status).toBe(400);
+    expect(await fresh()).toBeNull();
+  });
+
+  it("a grant earns it only at complete, not at issue or cancel", async () => {
+    const s0 = await signedIn();
+    await ownLicense(s0.id, "lic_a");
+    const { res } = await chooseGrant();
+    const { grant } = (await res.json()) as { grant: string };
+    expect(await fresh()).toBeNull();
+    const done = await grantReq("complete", {
+      grant,
+      choice: { kind: "license", licenseId: "lic_a" },
+    });
+    expect(done.status).toBe(200);
+    expect(await fresh()).not.toBeNull();
+  });
+
+  it("a cancelled grant leaves no mark", async () => {
+    const s0 = await signedIn();
+    await ownLicense(s0.id, "lic_a");
+    const { res } = await chooseGrant();
+    const { grant } = (await res.json()) as { grant: string };
+    expect((await grantReq("cancel", { grant })).status).toBe(204);
+    expect(await fresh()).toBeNull();
+  });
+
+  it("a grant that did not come from authorization_code does not write it", async () => {
+    const { issueGrant } =
+      await import("../../src/services/identity/passthrough/grant.js");
+    const s0 = await signedIn();
+    await ownLicense(s0.id, "lic_a");
+    const grant = await issueGrant(
+      env,
+      {
+        product: SLUG,
+        accountId: s0.id,
+        subject: `ps_${"x".repeat(22)}`,
+        deviceId: DEVICE,
+        scope: [],
+      },
+      NOW,
+    );
+    const done = await grantReq("complete", {
+      grant,
+      choice: { kind: "license", licenseId: "lic_a" },
+    });
+    expect(done.status).toBe(200);
+    expect(await fresh()).toBeNull();
   });
 });
 

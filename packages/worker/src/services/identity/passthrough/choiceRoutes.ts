@@ -57,6 +57,7 @@ import {
 } from "./grant.js";
 import { bindChoice, type BindRefusal } from "./bind.js";
 import { tokenBody } from "./token.js";
+import { markFresh } from "./fresh.js";
 
 /** The grant routes: 60 a minute per client network (a guess at a grant or a key is not free). */
 export const CHOICE_RATE = {
@@ -323,6 +324,7 @@ export async function handleChoice(
     return nestedRefusal(r, extra);
   }
 
+  if (taken.fresh) await markFresh(env, product.slug, deviceId);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),
