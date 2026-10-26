@@ -391,6 +391,8 @@ public data class BootResult(
     val decision: UpdateCheck?,
     /** Every emit, in order. */
     val emits: List<BootEmit>,
+    /** The pairwise subject signed in on the device (stored by an earlier `identity.subject()` or sign-in); null when none. */
+    val subject: String? = null,
 )
 
 /**
@@ -429,5 +431,5 @@ public suspend fun PolarisKeyClient.boot(options: ClientBootOptions = ClientBoot
     if (confirmation == BootConfirmation.now || (confirmation == BootConfirmation.afterOkSeconds && options.autoConfirm)) {
         scope.launch { quietly { host.confirm(state.outcome) } }
     }
-    return BootResult(state.outcome, state, status(), decision, emits.toList())
+    return BootResult(state.outcome, state, status(), decision, emits.toList(), subject = quietly { core.storedSubject() })
 }

@@ -6,7 +6,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
-// @pkey-feature core.presentation
+// @pkey-feature core.presentation identity.account
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -74,6 +74,8 @@ import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.identity.SignInPoll
+import im.plrs.key.identity.SignOutResult
+import im.plrs.key.identity.SubjectResult
 import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.identity.SignInResult
 import im.plrs.key.license.ActivationResult
@@ -332,6 +334,16 @@ object KotlinReplay {
                     out["result"] = JsonPrimitive("transient")
                     out["code"] = JsonPrimitive(e.code)
                 }
+            }
+            // identity.account: the subject the device reports (null for a key-only device), and the sign-out.
+            "subject" -> out["subject"] = when (val r = client.identity.subject()) {
+                is SubjectResult.Subject -> JsonPrimitive(r.subject)
+                SubjectResult.None -> JsonNull
+                SubjectResult.Unavailable -> JsonPrimitive("unavailable")
+            }
+            "signOut" -> when (val r = client.identity.signOut()) {
+                is SignOutResult.SignedOut -> out["released"] = JsonPrimitive(r.released)
+                SignOutResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
             }
             "waitForSignIn" -> {
                 val prompt = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
@@ -720,6 +732,8 @@ class TranscriptTest : ConformanceSuite() {
             "activate-refusals", "telemetry-report-updates", "release-fetch-gated", "distribution-download-model",
             // SP-20: the one-call boot.
             "boot-cold-register",
+            // I-10b.15: the account on the device.
+            "discovery-identity", "locker-discovery-identity", "identity-subject-signout",
         )
     }
 }

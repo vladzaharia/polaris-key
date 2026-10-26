@@ -188,6 +188,25 @@ public class CoreContext(options: CoreOptions) {
         preferred = channel?.takeIf { it != buildChannel }
         preferenceLoaded = true
     }
+
+    // ── The signed-in subject (I-10b.15) ───────────────────────────────────────────────────
+    // The pairwise subject (`ps_…`) the last account read or sign-in reported, kept beside the
+    // token so it survives a restart. Never a gate input.
+    private val subjectSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "identity-subject")) } ?: MemoryStateSlot()
+    }
+
+    /** The subject last stored, or null (a key-only device, or none yet). */
+    public suspend fun storedSubject(): String? = io { subjectSlot.read()?.trim()?.takeIf { it.isNotEmpty() } }
+
+    /** Store [subject]; null forgets it. Returns true when the stored value changed. */
+    public suspend fun setSubject(subject: String?): Boolean = io {
+        val before = subjectSlot.read()?.trim()?.takeIf { it.isNotEmpty() }
+        if (before == subject) return@io false
+        subjectSlot.write(subject ?: "")
+        true
+    }
+
     public val pinnedTrust: TrustSet = options.pinnedKeys
     public val trustRefreshEnabled: Boolean = options.trustRefresh
     public val store: Store = options.store ?: defaultStore(storageNamespace)
@@ -360,6 +379,11 @@ public class CoreContext(options: CoreOptions) {
             }
         }
         var failure: Exception? = null
+        try {
+            io { subjectSlot.write("") }
+        } catch (e: Exception) {
+            failure = e
+        }
         try {
             onStore { store.clearToken() }
         } catch (e: Exception) {

@@ -42,6 +42,9 @@ internal suspend fun apiSurface() {
     EntitlementsClient::has  // entitlements.has
     EntitlementsClient::value  // entitlements.value
     EntitlementsClient::all  // entitlements.all
+    IdentityClient::subject  // identity.subject
+    IdentityClient::signOut  // identity.signOut
+    IdentityClient::openAccount  // identity.openAccount
     PolarisKeyClient::events  // events
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation

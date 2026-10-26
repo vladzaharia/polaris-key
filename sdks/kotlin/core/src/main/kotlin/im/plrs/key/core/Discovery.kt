@@ -50,6 +50,25 @@ public data class DiscoveryTrust(
     val pinnedKeys: TrustSet = emptyMap(),
 )
 
+/**
+ * The Identity fragment's account members (WIRE-CONTRACT-V4 §12.6): present only while the product's
+ * Identity service is on. A client uses an endpoint only when it is here and never builds one.
+ */
+public data class IdentityDiscovery(
+    /** `account: true`: attach, subject, sign-out and the account portal are served. */
+    val account: Boolean = false,
+    val issuer: String? = null,
+    /** The product's effective `identity.keyEntry.limit`, as key entry enforces it. */
+    val keyEntryLimit: Long? = null,
+    val attach: String? = null,
+    val subject: String? = null,
+    val signout: String? = null,
+    /** The product's page in the customer portal (`openAccount()`). */
+    val accountPortal: String? = null,
+    /** Every published endpoint, as served. */
+    val endpoints: Map<String, String> = emptyMap(),
+)
+
 public data class ProductDiscoveryDocument(
     val product: String,
     val name: String? = null,
@@ -65,6 +84,8 @@ public data class ProductDiscoveryDocument(
      * invalid one); a malformed field is dropped and never refuses the document.
      */
     val presentation: Presentation? = null,
+    /** The Identity fragment's account members; null while Identity is off or the document has none. */
+    val identity: IdentityDiscovery? = null,
 ) {
     /** The capability map Core gates sub-clients on. */
     val servicesMap: ServicesMap get() = ServiceSlug.entries.associateWith { services[it]?.enabled == true }
@@ -83,6 +104,22 @@ public sealed interface DiscoveryResult {
 public object Discovery {
     private fun strings(o: JsonObject?): Map<String, String> =
         o?.entries?.mapNotNull { (k, v) -> v.stringValue?.let { k to it } }?.toMap() ?: emptyMap()
+
+    /** The identity fragment's typed members; null while Identity is off. */
+    private fun identity(fragment: ServiceFragment?): IdentityDiscovery? {
+        if (fragment == null || !fragment.enabled) return null
+        val e = fragment.endpoints
+        return IdentityDiscovery(
+            account = fragment.extras["account"].boolValue == true,
+            issuer = fragment.extras["issuer"].stringValue,
+            keyEntryLimit = fragment.extras["keyEntryLimit"].longValue,
+            attach = e["attach"],
+            subject = e["subject"],
+            signout = e["signout"],
+            accountPortal = e["accountPortal"],
+            endpoints = e,
+        )
+    }
 
     /** Parse a discovery document; the fail-closed rules as pure data. */
     public fun parse(text: String, expectedProduct: String): DiscoveryResult {
@@ -138,6 +175,7 @@ public object Discovery {
                 trust = trust,
                 services = services,
                 presentation = PresentationRules.parsePresentation(obj["core"], obj["name"], product),
+                identity = identity(services[ServiceSlug.identity]),
             ),
         )
     }

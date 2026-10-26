@@ -190,8 +190,8 @@
       "wp": "I-10b"
     },
     "identity.account": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.15: IdentityClient.subject(), signOut() (pre-sign-out hooks, released drops the token) and openAccount(), over discovery's identity fragment; PolarisEvent.Identity; BootResult.subject; identity-subject-signout and discovery-identity transcripts replayed."
     },
     "identity.redirect.web": {
       "status": "planned",

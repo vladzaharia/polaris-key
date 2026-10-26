@@ -126,9 +126,26 @@ internal fun wholeSeconds(value: JsonElement?): Long? {
 public class IdentityClient(
     private val core: CoreContext,
     private val onAcquired: SignInAcquiredListener? = null,
+    /** How `openAccount()` opens the portal: the system browser. Null: it answers the URL for the host to show. */
+    opener: AccountOpener? = null,
+    /** Raised when the stored subject changes (a `subject()` read, a sign-out); the facade emits `PolarisEvent.Identity`. */
+    onSubject: suspend (String?) -> Unit = {},
+    /** Raised after a sign-out released the seat and dropped the token; the facade republishes the licence. */
+    onSignedOut: suspend () -> Unit = {},
     sleep: (suspend (Long) -> Unit)? = null,
 ) {
     private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
+    internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
+    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut)
+
+    /** The pairwise subject signed in on this device (reads `GET subject`, stores it). */
+    public suspend fun subject(): SubjectResult = account.subject()
+
+    /** Run the pre-sign-out hooks, sign out, forget the subject; the token goes only when the seat was released. */
+    public suspend fun signOut(): SignOutResult = account.signOut()
+
+    /** Open the product's page in the customer portal through the host's opener. */
+    public suspend fun openAccount(): OpenAccountResult = account.openAccount()
 
     /**
      * Begin a device-code sign-in. Throws `service-unavailable` before any request when this product

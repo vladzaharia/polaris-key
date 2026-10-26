@@ -228,18 +228,32 @@ class ReplayServer(private val transcript: Transcript) : PolarisTransport {
         fun service(endpoints: Map<String, String>) = JsonObject(
             mapOf("enabled" to JsonPrimitive(true), "endpoints" to JsonObject(endpoints.mapValues { JsonPrimitive(it.value) })),
         )
-        return JsonObject(
+        val services = if ("identity.account" in transcript.features) {
+            // identity.account: Identity with its account endpoints, beside the licence the steps use.
             mapOf(
-                "product" to JsonPrimitive(transcript.product),
-                "services" to JsonObject(
+                "license" to service(mapOf("activate" to "$base/license/activate", "document" to "$base/license/document")),
+                "config" to service(mapOf("document" to "$base/config/document")),
+                "identity" to JsonObject(
                     mapOf(
-                        "release" to service(mapOf("record" to "$base/release/records/{sha256}")),
-                        "distribution" to service(mapOf("builds" to "$base/distribution/builds/{selector}/{buildId}")),
-                        "update" to service(mapOf("feed" to "$base/update/{channel}/feed.jws")),
+                        "enabled" to JsonPrimitive(true),
+                        "account" to JsonPrimitive(true),
+                        "endpoints" to JsonObject(
+                            mapOf(
+                                "attach" to "$base/identity/attach", "subject" to "$base/identity/subject",
+                                "signout" to "$base/identity/signout", "accountPortal" to "${transcript.baseUrl}/#/p/${transcript.product}",
+                            ).mapValues { JsonPrimitive(it.value) },
+                        ),
                     ),
                 ),
-            ),
-        ).toString()
+            )
+        } else {
+            mapOf(
+                "release" to service(mapOf("record" to "$base/release/records/{sha256}")),
+                "distribution" to service(mapOf("builds" to "$base/distribution/builds/{selector}/{buildId}")),
+                "update" to service(mapOf("feed" to "$base/update/{channel}/feed.jws")),
+            )
+        }
+        return JsonObject(mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(services))).toString()
     }
 
     override suspend fun send(request: PolarisRequest): PolarisResponse = lock.withLock {
