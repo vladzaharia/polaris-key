@@ -204,8 +204,8 @@ sync; it carries those hashes, the device name and the build's facts, and nothin
 
 ### Identity
 
-Device-code sign-in (RFC 8628) with a QR code: `begin_sign_in()`, then `sign_in_pending(prompt)`
-gives the code and the URL to show, and `sign_in_finished(result)` the outcome. `PKeySignInDialog`
+Device-code sign-in (RFC 8628) with a QR code: `sign_in.start()` returns a session with the code
+and the URL to show, and `await session.wait()` the outcome. `PKeySignInDialog`
 is the drop-in screen. Details in [Identity](#identity-polariskeyidentity).
 
 ### Update and release
@@ -776,17 +776,18 @@ var speed_setting := PolarisKey.config.setting("dice.animSpeed") # .value .sourc
 ## Identity (`PolarisKey.identity`)
 
 ```gdscript
-PolarisKey.identity.sign_in_pending.connect(func(p: PKeySignInPrompt):
-	print(p.user_code)                                       # show it large
-	print(p.verification_uri_complete)                       # the QR payload (a PKeyQrRect)
-	print(PKeySignInController.short_uri(p.verification_uri)))   # the short URL to type
-PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
-	if r.ok: print("Signed in as ", PKeySignInController.identity_line(r.identity)))
-await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
-await PolarisKey.identity.sign_in_with_browser() # the same, and opens the page in the browser
+var s := await PolarisKey.identity.sign_in.start({device_name = "Deck"})  # s.ok false: typed s.code
+print(s.user_code)                                       # show it large
+print(s.verification_uri_complete)                       # the QR payload (a PKeyQrRect)
+print(PKeySignInController.short_uri(s.verification_uri))   # the short URL to type
+var o := await s.wait()                                  # polls until it settles; s.cancel() stops it
+if o.kind == PKeySignInOutcome.KIND_SIGNED_IN: print("Signed in as ", PKeySignInController.identity_line(o.identity))
+s.reopen()                                               # open the page in the browser again (start({browser = true}) at once)
+PolarisKey.event.connect(func(kind, data):
+	if kind == "identity": print(data))               # {kind: signedIn, signedOut or subjectChanged, subject, previous}
 var who = PolarisKey.identity.current()          # {name, email, activatedAt} or null
 await PolarisKey.identity.sign_out()             # cancel, hooks, POST signout (else license.deactivate())
-var s = await PolarisKey.identity.subject()      # ok, detail.subject: "ps_..." or null
+var who_id = await PolarisKey.identity.subject()  # ok, detail.subject: "ps_..." or null
 await PolarisKey.identity.open_account()         # the product's account page, detail {url, opened}
 ```
 
@@ -798,25 +799,28 @@ await PolarisKey.identity.open_account()         # the product's account page, d
   on `released: true`, otherwise the license and token stay. `current()` reads the signed-in person off the verified license's profile.
   `sign_out()` cancels any sign-in, forgets the identity and stops counting the device through
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
-  `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
+  `state_changed` fires as for a deactivation. `sign_in.start({browser = true})` is the interim "Sign in
   with browser": device code with the verification page opened in the system browser. A native
   redirect sign-in waits on the server's redirect token route. It polls
   `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route
   is retired and the Worker no longer serves it.
 
 - Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
-  `begin_sign_in` refuses with `service-unavailable` before any request when Identity is off or,
-  per this session's discovery, not configured.
+  `sign_in.start()` refuses with `service-unavailable` before any request when Identity is off or,
+  per this session's discovery, not configured; a start the Worker answers 404 is the same
+  `service-unavailable`. A session that could not start has `ok == false` and a typed `code`, and
+  `wait()` returns it as a `PKeySignInOutcome`.
 - Polling follows the server's cadence: at least `interval` between polls (never under one
   second, never past the code's lifetime), a `slow_down` uses the returned interval or adds five
   seconds to the current one, a poll that got no answer or a 5xx is retried at the same
   interval, and nothing is sent after `expires_at`. Every poll carries the `X-PKey-Device` id.
 - `ready` stores the device token (source `signin`) and runs one forced `sync(true)`, so the
-  license and config documents arrive at once. Show `PKeySignInResult.identity` afterwards: it
+  license and config documents arrive at once. Show `PKeySignInOutcome.identity` afterwards: it
   is how a player notices a stranger confirmed the code and signed the device in to their
   account.
-- **License attach (retired).** `begin_sign_in(name, true)` still holds the flow at the signed-in
-  identity (`sign_in_confirm({identity, attachable})`), but `attachable` is always false: the device
+- **License attach (retired).** `sign_in.start({confirm_identity = true})` still holds the flow at the
+  signed-in identity (`wait()` returns `choose` with `identity`, `attachable`; `accept()` then `wait()`
+  again), but `attachable` is always false: the device
   signs in on the identity's own license and nothing is claimed or merged. The person approving
   presses Sign in or Deny on the Polaris Locker page; Deny ends the sign-in as `denied`
   (`sign-in-denied`).

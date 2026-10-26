@@ -23,13 +23,19 @@ extends RefCounted
 ##
 ## Not instantiated by a game: PKeyIdentity owns one.
 
+const KIND_SIGNED_IN := "signedIn"
+const KIND_SIGNED_OUT := "signedOut"
+const KIND_SUBJECT_CHANGED := "subjectChanged"
+
 ## `func(url: String) -> bool`, awaited by open_account(); true when it opened the page. Empty:
 ## the system browser (https only).
 var opener: Callable = Callable()
 ## `func() -> void` (a coroutine allowed): fires after a released sign-out wiped the credential.
 var on_wiped: Callable = Callable()
-## `func(subject: String) -> void`: the stored subject changed ("" = forgotten).
-var on_subject: Callable = Callable()
+## `func(kind: String, subject: String, previous: String) -> void`: the account changed
+## (`signedIn`, `signedOut` or `subjectChanged`; "" = none). PKeyIdentity turns it into the
+## `identity` event.
+var on_change: Callable = Callable()
 
 var _core_ref: WeakRef = null
 ## Shared with PKeyIdentity.add_before_sign_out: `func() -> void`, each awaited in order.
@@ -145,6 +151,7 @@ func sign_out() -> PKeyResult:
 		return _unavailable("sign-out")
 	for hook in _hooks.duplicate():
 		await hook.call()
+	var previous := core.cache.subject
 	var released := false
 	if core.tokens.has_token():
 		var sent := await _post_signout(url)
@@ -152,15 +159,14 @@ func sign_out() -> PKeyResult:
 			return sent["failure"]
 		released = sent["released"]
 	if not released:
-		_store_subject("")
+		core.cache.set_subject("")
+		_notify(KIND_SIGNED_OUT, "", previous)
 		return PKeyResult.success({"released": false})
 	# The seat is released server-side: the token and everything it vouched for go, the subject
 	# with the cache record. The device id stays.
-	var had := core.cache.subject != ""
 	var wiped := core.tokens.clear()
 	wiped = core.cache.clear() and wiped
-	if had:
-		_notify_subject("")
+	_notify(KIND_SIGNED_OUT, "", previous)
 	if on_wiped.is_valid():
 		await on_wiped.call()
 	if not wiped:
@@ -232,12 +238,21 @@ func attach(confirm: bool) -> PKeyResult:
 	return PKeyResult.success({"kind": "ok", "subject": subject if subject is String else "", "attached": "claimed" if body.get("attached") == "claimed" else ""})
 
 
+## A device-code sign-in ended signed in as `subject` ("" when the Worker did not say): keep it
+## beside the token and raise `signedIn`.
+func note_signed_in(subject: String) -> void:
+	if subject != "":
+		_core().cache.set_subject(subject)
+	_notify(KIND_SIGNED_IN, subject, "")
+
+
 func _store_subject(value: String) -> void:
 	var core := _core()
+	var previous := core.cache.subject
 	if core.cache.set_subject(value):
-		_notify_subject(value)
+		_notify(KIND_SUBJECT_CHANGED, value, previous)
 
 
-func _notify_subject(value: String) -> void:
-	if on_subject.is_valid():
-		on_subject.call(value)
+func _notify(kind: String, subject: String, previous: String) -> void:
+	if on_change.is_valid():
+		on_change.call(kind, subject, previous)

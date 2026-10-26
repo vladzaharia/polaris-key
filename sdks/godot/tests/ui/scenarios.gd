@@ -368,8 +368,8 @@ func activation_manage(how: String) -> Control:
 	return p
 
 
-func prompt_fixture() -> PKeySignInPrompt:
-	var p := PKeySignInPrompt.new(true)
+func prompt_fixture() -> PKeySignInSession:
+	var p := PKeySignInSession.new(true)
 	p.device_code = "dc_fixture"
 	p.user_code = "WDJB-MJHT"
 	p.verification_uri = PKeyConstants.DEVICE_CODE_PAGE
@@ -398,13 +398,13 @@ func sign_in(state: String) -> Control:
 			d.show_prompt(prompt_fixture())
 			d.show_confirm({"identity": {"name": "Ada Lovelace", "email": "ada@example.com"}, "attachable": true})
 		"ok":
-			d.show_result(PKeySignInResult.signed_in({"name": "Ada"}, "", true, null))
+			d.show_result(PKeySignInOutcome.signed_in({"name": "Ada"}, "", true, null))
 		"expired":
-			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+			d.show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
 		"denied":
-			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED, ""))
+			d.show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED, ""))
 		"failed":
-			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, ""))
+			d.show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, ""))
 	return d
 
 

@@ -96,16 +96,22 @@ func _discovered(t: PKeyTestContext) -> void:
 	var store := PKeyMemoryStore.new(h.F["device_id"], h.F["token"])
 	var sdk = await h.sdk(store)
 	await sdk.sync()
+	var events: Array = []
+	sdk.event.connect(func(kind: String, data: Dictionary) -> void:
+		if kind == "identity":
+			events.append(data))
 	var r: PKeyResult = await sdk.identity.subject()
 	t.check("account: subject() reads the discovered endpoint", r.ok and r.detail["subject"] == "ps_abc" and S.bearer(h.requests("GET", "/identity/subject")[0]) == h.F["token"], str(r))
 	t.check("account: the subject is kept in the cache record", sdk.core.cache.subject == "ps_abc" and store.cache.get("subject") == "ps_abc")
 	var order: Array = []
 	sdk.identity.add_before_sign_out(func() -> void: order.append("hook"))
+	t.check("account: the first subject read is a subjectChanged event", events == [{"kind": "subjectChanged", "subject": "ps_abc", "previous": null}], str(events))
 	r = await sdk.identity.sign_out()
 	t.check("account: released: false keeps the token and the licence", r.ok and r.detail["released"] == false and store.token == h.F["token"] and sdk.license.is_licensed(), str(r))
 	t.check("account: the hook ran before the server was asked, the subject is forgotten", order == ["hook"] and sdk.core.cache.subject == "" and not store.cache.has("subject"))
 	r = await sdk.identity.subject()
 	t.check("account: subject() is null once forgotten", r.ok and r.detail["subject"] == null, str(r))
+	t.check("account: a sign-out is a signedOut event carrying the subject it forgot", events.size() == 2 and events[1] == {"kind": "signedOut", "subject": null, "previous": "ps_abc"}, str(events))
 	r = await sdk.identity.sign_out()
 	t.check("account: released: true drops the token and the cache", r.ok and r.detail["released"] == true and store.token == "" and not sdk.license.is_licensed(), str(r))
 	t.check("account: no deauthorize call on the released path", h.requests("POST", "/license/deauthorize").is_empty(), str(h.requests("POST", "/license/deauthorize").size()))

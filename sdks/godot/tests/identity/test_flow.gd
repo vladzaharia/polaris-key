@@ -47,29 +47,33 @@ func _happy(t: PKeyTestContext, bed: B) -> void:
 		B.state("ready", {"token": B.TOKEN, "schemaVersion": 1, "identity": {"name": "Ada", "email": "ada@example.com"}}),
 	]
 	var sdk = await bed.make_sdk()
-	var pending := []
-	sdk.identity.sign_in_pending.connect(func(p: PKeySignInPrompt) -> void: pending.append(p))
-	var results := B.record(sdk.identity)
 	var syncs := []
 	sdk.sync_finished.connect(func(r: PKeySyncResult) -> void: syncs.append(r))
-	var prompt: PKeySignInPrompt = await sdk.identity.begin_sign_in("Living-room PC")
+	var events := []
+	sdk.event.connect(func(kind: String, data: Dictionary) -> void:
+		if kind == "identity":
+			events.append(data))
+	var run := await B.begin(sdk.identity, "Living-room PC")
+	var prompt: PKeySignInSession = run[0]
+	var results: Array = run[1]
 	t.check("happy: the prompt", prompt.ok and prompt.user_code == "WDJB-MJHT" and prompt.interval == 2 and prompt.expires_in == 600 \
 			and prompt.expires_at == bed.F["now"] + 600 and prompt.verification_uri_complete.ends_with("?user_code=WDJB-MJHT"), str(prompt))
-	t.check("happy: sign_in_pending carried the prompt", pending.size() == 1 and pending[0] == prompt)
-	t.check("happy: is_signing_in while polling", sdk.identity.is_signing_in())
+	t.check("happy: waiting while polling", prompt.is_waiting())
 	await B.until(func(): return not results.is_empty())
-	if not t.check("happy: sign_in_finished fired once", results.size() == 1, str(results)):
+	if not t.check("happy: the outcome signal fired once", results.size() == 1, str(results)):
 		return
-	var r: PKeySignInResult = results[0]
-	t.check("happy: ok", r.ok and r.kind == PKeySignInResult.KIND_OK, str(r))
+	var r: PKeySignInOutcome = results[0]
+	t.check("happy: ok", r.ok and r.kind == PKeySignInOutcome.KIND_SIGNED_IN, str(r))
 	t.check("happy: the signed-in identity is reported", r.identity == {"name": "Ada", "email": "ada@example.com"}, str(r.identity))
 	t.check("happy: nothing attached without the opt-in", r.attached == "")
 	t.check("happy: the token is stored with source signin", r.stored and sdk.core.tokens.current() == B.TOKEN and sdk.core.tokens.source() == PKeyTokenManager.SOURCE_SIGNIN)
 	t.check("happy: exactly one forced sync ran", syncs.size() == 1 and r.sync != null and bed.count("GET", "/license/document") == 1 and bed.count("GET", "/config/document") == 1,
 			"%d syncs, %d licence fetches" % [syncs.size(), bed.count("GET", "/license/document")])
 	t.check("happy: the licence gate is ok after the sync", sdk.is_licensed() and sdk.status()["status"] == "ok", str(sdk.status()))
-	t.check("happy: no longer signing in", not sdk.identity.is_signing_in())
-	t.check("happy: signed_in_identity() names someone", not sdk.identity.signed_in_identity().is_empty(), str(sdk.identity.signed_in_identity()))
+	t.check("happy: no longer waiting", not prompt.is_waiting())
+	t.check("happy: identity.current() names someone off the verified licence", sdk.identity.current() != null, str(sdk.identity.current()))
+	t.check("happy: the identity event says signedIn once", events.size() == 1 and events[0]["kind"] == "signedIn" and events[0]["previous"] == null, str(events))
+	t.check("happy: a settled session answers the same outcome again, without a request", await prompt.wait() == r and bed.polls_sent().size() == 4)
 	# Pacing: the first poll waits one interval; after the slow_down the RETURNED interval is used.
 	t.check("happy: sleeps 2, 2, 7, 7", bed.sleeps == [2.0, 2.0, 7.0, 7.0], str(bed.sleeps))
 	var polls := bed.polls_sent()
@@ -96,33 +100,31 @@ func _slow_down_without_interval(t: PKeyTestContext, bed: B) -> void:
 		B.state("timeout"),
 	]
 	var sdk = await bed.make_sdk()
-	var results := B.record(sdk.identity)
-	await sdk.identity.begin_sign_in("x")
+	var results: Array = (await B.begin(sdk.identity, "x"))[1]
 	await B.until(func(): return not results.is_empty())
 	t.check("slow_down: 2, then +5 => 7, then +5 from the current => 12, never shortened by a smaller one", bed.sleeps == [2.0, 7.0, 12.0, 12.0], str(bed.sleeps))
-	t.check("slow_down: timeout maps to timeout", results.size() == 1 and results[0].kind == PKeySignInResult.KIND_TIMEOUT and results[0].code == PKeyErrors.SIGN_IN_EXPIRED, str(results))
+	t.check("slow_down: timeout maps to expired", results.size() == 1 and results[0].kind == PKeySignInOutcome.KIND_EXPIRED and results[0].code == PKeyErrors.SIGN_IN_EXPIRED, str(results))
 
 
 ## timeout, error, a 401 and a malformed ready map to their kinds; nothing is stored.
 func _endings(t: PKeyTestContext, bed: B) -> void:
 	var cases := [
-		[B.state("timeout"), PKeySignInResult.KIND_TIMEOUT, PKeyErrors.SIGN_IN_EXPIRED],
-		[B.state("error", {"reason": "access_denied"}), PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED],
-		[B.state("error"), PKeySignInResult.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED],
-		[B.json(401, {"error": "unauthorized", "message": "device mismatch"}), PKeySignInResult.KIND_DEVICE_MISMATCH, PKeyErrors.UNAUTHORIZED],
-		[B.state("ready"), PKeySignInResult.KIND_ERROR, PKeyErrors.INVALID_RESPONSE],
-		[B.state("weird"), PKeySignInResult.KIND_ERROR, PKeyErrors.INVALID_RESPONSE],
-		[B.json(400, {"error": "bad_request", "message": "missing deviceCode/deviceId"}), PKeySignInResult.KIND_ERROR, PKeyErrors.BAD_REQUEST],
+		[B.state("timeout"), PKeySignInOutcome.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED],
+		[B.state("error", {"reason": "access_denied"}), PKeySignInOutcome.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED],
+		[B.state("error"), PKeySignInOutcome.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED],
+		[B.json(401, {"error": "unauthorized", "message": "device mismatch"}), PKeySignInOutcome.KIND_DEVICE_MISMATCH, PKeyErrors.UNAUTHORIZED],
+		[B.state("ready"), PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE],
+		[B.state("weird"), PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE],
+		[B.json(400, {"error": "bad_request", "message": "missing deviceCode/deviceId"}), PKeySignInOutcome.KIND_ERROR, PKeyErrors.BAD_REQUEST],
 	]
 	for c in cases:
 		_reset(bed)
 		bed.starts = [B.started(2)]
 		bed.polls = [c[0]]
 		var sdk = await bed.make_sdk()
-		var results := B.record(sdk.identity)
-		await sdk.identity.begin_sign_in("x")
+		var results: Array = (await B.begin(sdk.identity, "x"))[1]
 		await B.until(func(): return not results.is_empty())
-		var r: PKeySignInResult = results[0] if not results.is_empty() else null
+		var r: PKeySignInOutcome = results[0] if not results.is_empty() else null
 		t.check("ending %s: kind %s, code %s" % [c[0]["body"], c[1], c[2]], r != null and not r.ok and r.kind == c[1] and r.code == c[2], str(r))
 		t.check("ending %s: one poll, nothing stored" % c[1], bed.polls_sent().size() == 1 and sdk.core.tokens.current() == "")
 
@@ -133,20 +135,24 @@ func _expiry(t: PKeyTestContext, bed: B) -> void:
 	bed.starts = [B.started(2, 5)]
 	bed.polls = [B.state("pending")]
 	var sdk = await bed.make_sdk()
-	var results := B.record(sdk.identity)
-	var prompt: PKeySignInPrompt = await sdk.identity.begin_sign_in("x")
+	var run := await B.begin(sdk.identity, "x")
+	var prompt: PKeySignInSession = run[0]
+	var results: Array = run[1]
 	await B.until(func(): return not results.is_empty())
 	var times: Array = bed.polls_sent().map(func(p): return p["at"])
 	var after := times.filter(func(at): return at >= prompt.expires_at)
-	t.check("expiry: ends expired", results.size() == 1 and results[0].kind == PKeySignInResult.KIND_EXPIRED and results[0].code == PKeyErrors.SIGN_IN_EXPIRED, str(results))
+	t.check("expiry: ends expired", results.size() == 1 and results[0].kind == PKeySignInOutcome.KIND_EXPIRED and results[0].code == PKeyErrors.SIGN_IN_EXPIRED, str(results))
 	t.check("expiry: no poll at or after expires_at", after.is_empty() and times.size() == 2, "polls at %s, expires_at %s" % [str(times), prompt.expires_at])
 	t.check("expiry: the last wait is clamped to the remaining second", bed.sleeps == [2.0, 2.0, 1.0], str(bed.sleeps))
 
-	# wait_for_sign_in on a prompt already past its expiry sends nothing.
+	# A session already past its expiry waits for nothing and sends nothing.
 	bed.flow_requests.clear()
-	bed.clock[0] = prompt.expires_at + 1
-	var r: PKeySignInResult = await sdk.identity.wait_for_sign_in(prompt)
-	t.check("expiry: a wait past expiry ends at once without a request", r.kind == PKeySignInResult.KIND_EXPIRED and bed.flow_requests.is_empty(), str(r))
+	bed.clock[0] = bed.F["now"]
+	var late: PKeySignInSession = await sdk.identity.sign_in.start({"device_name": "x"})
+	bed.flow_requests.clear()
+	bed.clock[0] = late.expires_at + 1
+	var r: PKeySignInOutcome = await late.wait()
+	t.check("expiry: a wait past expiry ends at once without a request", r.kind == PKeySignInOutcome.KIND_EXPIRED and bed.flow_requests.is_empty(), str(r))
 
 
 ## A poll that got no answer (5xx here) is retried at the SAME interval, never faster.
@@ -155,11 +161,10 @@ func _transient(t: PKeyTestContext, bed: B) -> void:
 	bed.starts = [B.started(3)]
 	bed.polls = [{"status": 503}, B.state("pending"), B.state("error", {"reason": "access_denied"})]
 	var sdk = await bed.make_sdk()
-	var results := B.record(sdk.identity)
-	await sdk.identity.begin_sign_in("x")
+	var results: Array = (await B.begin(sdk.identity, "x"))[1]
 	await B.until(func(): return not results.is_empty())
 	t.check("transient: a 5xx is retried at the same interval", bed.sleeps == [3.0, 3.0, 3.0] and bed.polls_sent().size() == 3, str(bed.sleeps))
-	t.check("transient: then error ends denied", results.size() == 1 and results[0].kind == PKeySignInResult.KIND_DENIED, str(results))
+	t.check("transient: then error ends denied", results.size() == 1 and results[0].kind == PKeySignInOutcome.KIND_DENIED, str(results))
 
 
 ## D-21: Identity off, or on but not set up, refuses before any request; a 429 start is
@@ -168,18 +173,18 @@ func _refused(t: PKeyTestContext, bed: B) -> void:
 	_reset(bed)
 	bed.starts = [B.started(2)]
 	var sdk = await bed.make_sdk("", PackedStringArray(["license", "config"]))
-	var results := B.record(sdk.identity)
 	t.check("refused: is_available() is false with identity off", not sdk.identity.is_available())
-	var p: PKeySignInPrompt = await sdk.identity.begin_sign_in("x")
+	var p: PKeySignInSession = await sdk.identity.sign_in.start({"device_name": "x"})
 	t.check("refused: identity off -> service-unavailable", not p.ok and p.code == PKeyErrors.SERVICE_UNAVAILABLE, str(p))
 	t.check("refused: and no request was sent", bed.server.requests.is_empty(), str(bed.server.requests.size()))
-	t.check("refused: sign_in_finished reports service-unavailable", results.size() == 1 and results[0].kind == PKeySignInResult.KIND_SERVICE_UNAVAILABLE)
+	var gone: PKeySignInOutcome = await p.wait()
+	t.check("refused: wait() reports service-unavailable", gone.kind == PKeySignInOutcome.KIND_SERVICE_UNAVAILABLE and gone.code == PKeyErrors.SERVICE_UNAVAILABLE)
 
 	# Discovery says enabled but not configured (no IdP yet).
 	sdk = await bed.make_sdk()
 	sdk.core.discovery_manifest = {"services": {"identity": {"enabled": true, "configured": false}}}
 	t.check("refused: is_available() is false when discovery says not configured", not sdk.identity.is_available())
-	p = await sdk.identity.request_sign_in("x")
+	p = await sdk.identity.sign_in.start({"device_name": "x"})
 	t.check("refused: not configured -> service-unavailable, no request", not p.ok and p.code == PKeyErrors.SERVICE_UNAVAILABLE and bed.flow_requests.is_empty())
 	sdk.core.discovery_manifest = {"services": {"identity": {"enabled": true, "configured": true}}}
 	t.check("refused: is_available() once configured", sdk.identity.is_available())
@@ -187,22 +192,30 @@ func _refused(t: PKeyTestContext, bed: B) -> void:
 	# Before configure(): the sub-object exists and refuses.
 	var bare := PKeyTestFixtures.new_sdk()
 	t.check("refused: identity exists before configure() and is unavailable", bare.identity != null and not bare.identity.is_available())
-	var np: PKeySignInPrompt = await bare.identity.request_sign_in("x")
+	var np: PKeySignInSession = await bare.identity.sign_in.start({"device_name": "x"})
 	t.check("refused: before configure() -> not-configured", not np.ok and np.code == PKeyErrors.NOT_CONFIGURED)
 	bare.queue_free()
 
 	_reset(bed)
 	bed.starts = [B.json(429, {"error": "rate_limited", "message": "too many requests"})]
 	sdk = await bed.make_sdk()
-	results = B.record(sdk.identity)
-	p = await sdk.identity.begin_sign_in("x")
-	t.check("refused: a 429 start -> rate-limited", not p.ok and results.size() == 1 and results[0].kind == PKeySignInResult.KIND_RATE_LIMITED and results[0].status == 429, str(results))
-	t.check("refused: and nothing polls", bed.polls_sent().is_empty() and not sdk.identity.is_signing_in())
+	p = await sdk.identity.sign_in.start({"device_name": "x"})
+	var limited: PKeySignInOutcome = await p.wait()
+	t.check("refused: a 429 start -> rate-limited", not p.ok and limited.kind == PKeySignInOutcome.KIND_RATE_LIMITED and limited.status == 429, str(limited))
+	t.check("refused: and nothing polls", bed.polls_sent().is_empty())
+
+	# A start the Worker answers 404 (it never says "identity is off") is the typed service-unavailable.
+	_reset(bed)
+	bed.starts = [B.json(404, {"error": {"code": "not_found"}})]
+	sdk = await bed.make_sdk(B.TOKEN)
+	p = await sdk.identity.sign_in.start({"device_name": "x"})
+	var off: PKeySignInOutcome = await p.wait()
+	t.check("refused: a 404 start -> service-unavailable, the token kept", not p.ok and p.code == PKeyErrors.SERVICE_UNAVAILABLE and off.kind == PKeySignInOutcome.KIND_SERVICE_UNAVAILABLE and sdk.core.tokens.current() == B.TOKEN, str(off))
 
 	_reset(bed)
 	bed.starts = [B.json(200, {"status": "pending", "deviceCode": "x", "userCode": "y"})]
 	sdk = await bed.make_sdk()
-	p = await sdk.identity.request_sign_in("x")
+	p = await sdk.identity.sign_in.start({"device_name": "x"})
 	t.check("refused: an incomplete start -> invalid-response", not p.ok and p.code == PKeyErrors.INVALID_RESPONSE, str(p))
 
 	# The default device name is sent when the game gives none.
@@ -210,13 +223,12 @@ func _refused(t: PKeyTestContext, bed: B) -> void:
 	bed.starts = [B.started(2)]
 	bed.polls = [B.state("timeout")]
 	sdk = await bed.make_sdk()
-	results = B.record(sdk.identity)
-	await sdk.identity.begin_sign_in()
+	var results: Array = (await B.begin(sdk.identity))[1]
 	await B.until(func(): return not results.is_empty())
 	var sent_name = bed.flow_requests[0]["body"].get("deviceName")
 	# PX-W13: the configured PKeyOptions.device_name (the fixtures set "Test Device"), else the
 	# platform default; a per-call name wins, and send_device_name = false sends none.
-	t.check("refused: begin_sign_in() names the device by default", sent_name is String and sent_name == "Test Device", str(sent_name))
+	t.check("refused: sign_in.start() names the device by default", sent_name is String and sent_name == "Test Device", str(sent_name))
 	var label_opts := PKeyOptions.new()
 	t.check("label: an unset device_name falls back to the platform default", PKeyDeviceLabel.resolve("", label_opts) == PKeyDeviceLabel.normalize(PKeyIdentity.default_device_name()) and PKeyDeviceLabel.resolve("", label_opts) != "")
 	t.check("label: a per-call name wins and is normalised", PKeyDeviceLabel.resolve(" Den\tPC ", label_opts) == "Den PC")
@@ -230,8 +242,9 @@ func _cancel(t: PKeyTestContext, bed: B) -> void:
 	bed.starts = [B.started(1)]
 	bed.polls = [B.state("pending")]
 	var sdk = await bed.make_sdk("", PackedStringArray(["license", "config", "identity"]), false)
-	var results := B.record(sdk.identity)
-	await sdk.identity.begin_sign_in("x")
+	var run := await B.begin(sdk.identity, "x")
+	var session: PKeySignInSession = run[0]
+	var results: Array = run[1]
 	# Let the first real poll go out (one interval = 1 s), then cancel partway into the next.
 	await B.until(func(): return bed.polls_sent().size() >= 1, 600)
 	await (Engine.get_main_loop() as SceneTree).create_timer(0.3).timeout
@@ -242,25 +255,26 @@ func _cancel(t: PKeyTestContext, bed: B) -> void:
 	var frames := 0
 	var tree := Engine.get_main_loop() as SceneTree
 	var at := Time.get_ticks_msec()
-	sdk.identity.cancel()
+	session.cancel()
 	while results.is_empty() and frames < CANCEL_FRAMES:
 		await tree.process_frame
 		frames += 1
 	var took := Time.get_ticks_msec() - at
 	t.info("cancel: the cancelled result landed after %d frames (%d ms)" % [frames, took])
-	t.check("cancel: sign_in_finished(cancelled) at once (within %d frame)" % CANCEL_FRAMES, results.size() == 1 and results[0].kind == PKeySignInResult.KIND_CANCELLED and results[0].code == PKeyErrors.CANCELLED, "%s after %d frames, %d ms" % [str(results), frames, took])
+	t.check("cancel: the cancelled outcome at once (within %d frame)" % CANCEL_FRAMES, results.size() == 1 and results[0].kind == PKeySignInOutcome.KIND_CANCELLED and results[0].code == PKeyErrors.CANCELLED, "%s after %d frames, %d ms" % [str(results), frames, took])
 	await (Engine.get_main_loop() as SceneTree).create_timer(1.5).timeout
 	t.check("cancel: no poll after cancel()", bed.polls_sent().size() == sent, "%d -> %d" % [sent, bed.polls_sent().size()])
-	t.check("cancel: not signing in", not sdk.identity.is_signing_in())
+	t.check("cancel: not waiting", not session.is_waiting())
+	t.check("cancel: a cancelled session stays cancelled", (await session.wait()).kind == PKeySignInOutcome.KIND_CANCELLED)
 
 
 func _units(t: PKeyTestContext) -> void:
 	t.check("poll_delay: never under one second", PKeyIdentity.poll_delay(0, 600) == 1.0 and PKeyIdentity.poll_delay(-3, 600) == 1.0 and PKeyIdentity.poll_delay(NAN, 600) == 1.0)
 	t.check("poll_delay: never past the remaining lifetime", PKeyIdentity.poll_delay(10, 3.5) == 3.5 and PKeyIdentity.poll_delay(10, 0.2) == 1.0)
 	t.check("poll_delay: the interval otherwise", PKeyIdentity.poll_delay(5, 600) == 5.0)
-	var p := PKeySignInPrompt.new(true)
+	var p := PKeySignInSession.new(true)
 	p.device_code = "SECRETDEVICECODE0000001"
 	p.user_code = "WDJB-MJHT"
 	t.check("prompt: str() redacts the device code", not str(p).contains("SECRETDEVICECODE") and str(p).contains("[redacted]") and str(p).contains("WDJB-MJHT"), str(p))
-	var r := PKeySignInResult.signed_in({"name": "Ada"}, "", true, null)
+	var r := PKeySignInOutcome.signed_in({"name": "Ada"}, "", true, null)
 	t.check("result: str() shows the identity", str(r).contains("Ada"), str(r))

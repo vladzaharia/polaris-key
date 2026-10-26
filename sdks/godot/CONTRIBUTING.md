@@ -155,7 +155,7 @@ sdks/godot/
                               PKeyMintResult, PKeyConfigBinding
     services/identity.gd      PKeyIdentity (PolarisKey.identity): device-code sign-in, polling,
                               the opt-in confirm-identity step and licence attach
-    services/identity/        PKeySignInPrompt, PKeySignInResult
+    services/identity/        PKeySignInSession, PKeySignInOutcome, PKeySignInNamespace
     ui/qr/                    PKeyQr (byte mode, level M, versions 1-10), PKeyQrCode, PKeyQrRect
     ui/pkey_ui_view.gd        PKeyUiView: the base of every scene (copy, focus chain, sdk)
     ui/boot/                  PKeyBoot (pkey_boot.tscn), PKeyBootHost (each stage's work and the

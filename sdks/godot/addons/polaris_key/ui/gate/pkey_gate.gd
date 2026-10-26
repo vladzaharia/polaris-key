@@ -137,7 +137,7 @@ func _on_child_copied() -> void:
 
 
 ## "Signed in as <name>" and the tier, as a toast that outlives the gate (the shared toast host).
-func _on_signed_in(r: PKeySignInResult) -> void:
+func _on_signed_in(r: PKeySignInOutcome) -> void:
 	if not r.ok or sdk == null or not is_instance_valid(sdk) or not sdk.has_method("toasts"):
 		return
 	var t := c()

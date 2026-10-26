@@ -12,8 +12,8 @@ extends RefCounted
 #                device-limit-full answers `device_limit` and key-entry-limit `key_entry_limit`
 #   config       a config value changed on the server arrives with the next sync as one
 #                `config_changed`, enforced
-#   signin       device-code sign-in approved by the harness approver, through request_sign_in,
-#                poll_sign_in and wait_for_sign_in, and through begin_sign_in's signals
+#   signin       device-code sign-in approved by the harness approver, through sign_in.start,
+#                one poll and wait(), and through the `outcome` signal
 #   update       update.decide(): a build current on the newest stable release is offered nothing,
 #                and the same build is offered a release the server then publishes
 #

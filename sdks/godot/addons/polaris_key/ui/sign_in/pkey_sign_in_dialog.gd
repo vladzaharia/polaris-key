@@ -4,7 +4,7 @@ extends PKeyUiView
 ## browser" and "Copy link", a countdown from the code's lifetime, and Cancel. Built for a sofa: a
 ## phone scans the QR code, and every control is reachable with a gamepad.
 ##
-##   $PKeySignInDialog.begin()        # PolarisKey.identity.begin_sign_in(device_name, confirm)
+##   $PKeySignInDialog.begin()        # PolarisKey.identity.sign_in.start({device_name, confirm_identity})
 ##   $PKeySignInDialog.finished.connect(func(r): if r.ok: ...)
 ##
 ## With `confirm_identity`, the flow stops at the signed-in identity ("Is this you?") with an
@@ -24,8 +24,8 @@ extends PKeyUiView
 ## Steam Deck in game mode) there is no browser to open, so the screen is the address, the code
 ## and the QR code with "Use a license key instead" and Cancel.
 
-## The sign-in ended (every way: PKeySignInResult.kind).
-signal finished(result: PKeySignInResult)
+## The sign-in ended (every way: PKeySignInOutcome.kind).
+signal finished(result: PKeySignInOutcome)
 ## The player closed the dialog after it ended (or cancelled).
 signal closed()
 ## The player chose "Use a license key instead" (a pad-only device has no browser to open).
@@ -47,11 +47,12 @@ var show_product := true:
 var now_source: Callable = Callable()
 
 var state := "starting"
-var prompt: PKeySignInPrompt = null
+var prompt: PKeySignInSession = null
 var confirmation: Dictionary = {}
-var result: PKeySignInResult = null
+var result: PKeySignInOutcome = null
 var copied := false
 
+var _session: PKeySignInSession = null
 var _root: VBoxContainer
 var _body: BoxContainer
 var _qr_column: CenterContainer
@@ -386,18 +387,36 @@ func _fit_code() -> void:
 var _fitting := false
 
 
-## Start a sign-in through `sdk.identity` and follow it to the end.
+## Start a sign-in through `sdk.identity.sign_in` and follow it to the end. A coroutine.
 func begin() -> void:
 	show_starting()
 	if sdk == null or sdk.get("identity") == null:
-		show_result(PKeySignInResult.ended(PKeySignInResult.KIND_SERVICE_UNAVAILABLE, PKeyErrors.NOT_CONFIGURED, "No SDK."))
+		show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_SERVICE_UNAVAILABLE, PKeyErrors.NOT_CONFIGURED, "No SDK."))
 		return
+	if _session != null:
+		_session.cancel()
 	var identity: PKeyIdentity = sdk.identity
-	if not identity.sign_in_pending.is_connected(show_prompt):
-		identity.sign_in_pending.connect(show_prompt)
-		identity.sign_in_confirm.connect(show_confirm)
-		identity.sign_in_finished.connect(show_result)
-	identity.begin_sign_in(device_name, confirm_identity)
+	var session: PKeySignInSession = await identity.sign_in.start({"device_name": device_name, "confirm_identity": confirm_identity})
+	if not is_instance_valid(self):
+		return
+	_session = session
+	if not session.ok:
+		show_result(await session.wait())
+		return
+	show_prompt(session)
+	_follow(session)
+
+
+## Wait on `session` and show what it settles on; `choose` shows "Is this you?" and returns, and
+## the player's answer (`_on_continue`) follows again.
+func _follow(session: PKeySignInSession) -> void:
+	var outcome := await session.wait()
+	if not is_instance_valid(self) or session != _session:
+		return
+	if outcome.kind == PKeySignInOutcome.KIND_CHOOSE:
+		show_confirm({"identity": outcome.identity, "attachable": outcome.attachable})
+		return
+	show_result(outcome)
 
 
 func show_starting() -> void:
@@ -408,7 +427,7 @@ func show_starting() -> void:
 	refresh_view()
 
 
-func show_prompt(p: PKeySignInPrompt) -> void:
+func show_prompt(p: PKeySignInSession) -> void:
 	state = "pending"
 	prompt = p
 	copied = false
@@ -421,9 +440,9 @@ func show_confirm(c_: Dictionary) -> void:
 	refresh_view()
 
 
-func show_result(r: PKeySignInResult) -> void:
+func show_result(r: PKeySignInOutcome) -> void:
 	result = r
-	if r.kind == PKeySignInResult.KIND_CANCELLED:
+	if r.kind == PKeySignInOutcome.KIND_CANCELLED:
 		# A cancel is the player's own choice: it closes the dialog, it does not show a card.
 		var already := state == "cancelled"
 		state = "cancelled"
@@ -446,7 +465,7 @@ func _render() -> void:
 	var pending := _pending()
 	var confirming := state == "confirm"
 	var ended := state == "ended" and result != null
-	var expired := ended and (result.kind == PKeySignInResult.KIND_EXPIRED or result.kind == PKeySignInResult.KIND_TIMEOUT)
+	var expired := ended and (result.kind == PKeySignInOutcome.KIND_EXPIRED)
 	var failed := ended and not result.ok
 	_product.visible = show_product
 	if show_product:
@@ -535,7 +554,7 @@ func _process(delta: float) -> void:
 			var left := PKeySignInController.remaining(prompt, _now())
 			if left <= 0.0:
 				# The code ran out: say so now, without waiting for the poll to answer.
-				result = PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, "")
+				result = PKeySignInOutcome.ended(PKeySignInOutcome.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, "")
 				state = "ended"
 				refresh_view()
 				return
@@ -578,16 +597,16 @@ func _on_use_key() -> void:
 func _on_continue() -> void:
 	if _busy:
 		return
-	if sdk != null and sdk.get("identity") != null:
-		sdk.identity.accept_sign_in(_attach.visible and _attach.button_pressed)
+	if _session != null and _session.accept(_attach.visible and _attach.button_pressed):
+		_follow(_session)
 
 
 func _on_cancel() -> void:
 	if is_closing():
 		return
 	var ended := state == "ended"
-	if not ended and sdk != null and sdk.get("identity") != null:
-		sdk.identity.cancel()
+	if not ended and _session != null:
+		_session.cancel()
 	# Cancelling closes the dialog (it fades out first); the flow's own cancelled result changes nothing more.
 	close_then(func() -> void:
 		if not ended:

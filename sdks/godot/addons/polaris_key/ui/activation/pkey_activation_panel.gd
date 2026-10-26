@@ -243,7 +243,7 @@ func _build() -> void:
 	sign_in_dialog.confirm_identity = confirm_identity
 	sign_in_dialog.closed.connect(_back)
 	sign_in_dialog.use_key_requested.connect(func() -> void: _key_after_back = true)
-	sign_in_dialog.finished.connect(func(r: PKeySignInResult): if r.ok: activated.emit())
+	sign_in_dialog.finished.connect(func(r: PKeySignInOutcome): if r.ok: activated.emit())
 	_stack.add_child(sign_in_dialog)
 	offline_dialog = PKeyOfflineDialog.new()
 	offline_dialog.auto_sdk = false
