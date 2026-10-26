@@ -122,6 +122,10 @@
       "types": "./dist/cloud-sync.d.ts",
       "default": "./dist/cloud-sync.js"
     },
+    "./sync": {
+      "types": "./dist/sync/index.d.ts",
+      "default": "./dist/sync/index.js"
+    },
     "./portal": {
       "types": "./dist/portal.d.ts",
       "default": "./dist/portal.js"
