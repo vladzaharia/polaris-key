@@ -230,9 +230,15 @@ const ACCEPTED: Array<[string, string, WriteRequest, Record<string, string>]> =
     ],
   ];
 
+/** The caller's own confirmation of the pull request or ruleset the path ends in. */
+const confirmed = (path: string) => {
+  const n = Number(/\/(?:pulls|rulesets)\/(\d+)$/.exec(path)?.[1]);
+  return Number.isInteger(n) ? { pull: n, ruleset: n } : {};
+};
+
 describe("allow-list", () => {
   it.each(ACCEPTED)("%s: %s", (action, _name, req, permissions) => {
-    const a = authorize(action, "acme", "app", req);
+    const a = authorize(action, "acme", "app", req, confirmed(req.path));
     expect(a.permissions).toEqual(permissions);
     expect(a.method).toBe(req.method);
     expect(a.path).toBe(req.path);
@@ -591,7 +597,7 @@ describe("never-list", () => {
   it.each(REFUSED)("refuses %s", (_name, action, reason, req) => {
     let err: unknown;
     try {
-      authorize(action, "acme", "app", req);
+      authorize(action, "acme", "app", req, confirmed(req.path));
     } catch (e) {
       err = e;
     }

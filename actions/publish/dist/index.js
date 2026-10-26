@@ -46745,7 +46745,9 @@ function githubClient(o = {}) {
     const res = await f(`${base}${path37}`, {
       method,
       headers,
-      ...body !== void 0 ? { body: JSON.stringify(body) } : {}
+      ...body !== void 0 ? { body: JSON.stringify(body) } : {},
+      // A redirect would carry the Authorization header along.
+      redirect: "manual"
     });
     if (res.status === 404 && allow404) return null;
     const text3 = await res.text();
@@ -49283,7 +49285,7 @@ ${STOREFRONT_USAGE}`
 // src/ciInit.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var import_yaml10 = __toESM(require_dist(), 1);
-import { mkdir as mkdir12, readFile as readFile23, stat as stat8, writeFile as writeFile20 } from "node:fs/promises";
+import { mkdir as mkdir12, readFile as readFile23, rm as rm6, stat as stat8, writeFile as writeFile20 } from "node:fs/promises";
 import os2 from "node:os";
 import path31 from "node:path";
 import { execFile as execFile2 } from "node:child_process";
@@ -50423,9 +50425,14 @@ async function ciInit(a, io) {
     releaseKeys: true,
     dir
   });
-  await mkdir12(path31.dirname(workflow), { recursive: true });
-  await writeFile20(workflow, text3);
-  if (releaseText) await writeFile20(releaseText.file, releaseText.text);
+  try {
+    await mkdir12(path31.dirname(workflow), { recursive: true });
+    await writeFile20(workflow, text3);
+    if (releaseText) await writeFile20(releaseText.file, releaseText.text);
+  } catch (e) {
+    if (made) await rm6(made.out, { force: true });
+    throw e;
+  }
   const relRelease = path31.relative(io.cwd, loaded2.releasePath ?? "");
   const pinned = ref !== ACTION_REF_PLACEHOLDER;
   if (json) {
@@ -50484,7 +50491,7 @@ async function ciInit(a, io) {
       )
     );
   out.push(
-    `${n++}. Create the release environment, limited to v* tags:`,
+    `${n++}. Create the release environment, limited to v* tags (skip the first command if it exists: it can reset its reviewers):`,
     "   gh api -X PUT repos/{owner}/{repo}/environments/release -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true' --silent",
     "   gh api -X POST repos/{owner}/{repo}/environments/release/deployment-branch-policies -f 'name=v*' -f type=tag --silent"
   );
@@ -51233,7 +51240,7 @@ import {
   mkdir as mkdir13,
   readdir as readdir11,
   readFile as readFile25,
-  rm as rm6,
+  rm as rm7,
   rmdir as rmdir2,
   stat as stat10,
   writeFile as writeFile21
@@ -52446,7 +52453,7 @@ async function clearOut(dir) {
     if (typeof rel !== "string" || rel.startsWith("/") || rel.split("/").includes(".."))
       continue;
     const p = path33.join(dir, ...rel.split("/"));
-    await rm6(p, { force: true });
+    await rm7(p, { force: true });
     for (let d = path33.dirname(p); d.startsWith(dir) && d !== dir; d = path33.dirname(d))
       dirs.add(d);
   }

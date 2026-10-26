@@ -398,6 +398,7 @@ describe("negative controls", () => {
         "POST /me/passkeys/options",
         "POST /products/:slug/members",
         "PUT /products/:slug/ci-publisher",
+        "POST /products/:slug/release/ci-readiness/fix",
         "POST /products/:slug/ci-tokens",
       ].sort(),
     );

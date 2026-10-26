@@ -8,7 +8,7 @@
  * does not validate.
  */
 
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -276,9 +276,16 @@ export async function ciInit(a: ChannelArgs, io: ChannelIo): Promise<number> {
     releaseKeys: true,
     dir,
   });
-  await mkdir(path.dirname(workflow), { recursive: true });
-  await writeFile(workflow, text);
-  if (releaseText) await writeFile(releaseText.file, releaseText.text);
+  try {
+    await mkdir(path.dirname(workflow), { recursive: true });
+    await writeFile(workflow, text);
+    if (releaseText) await writeFile(releaseText.file, releaseText.text);
+  } catch (e) {
+    // A key whose public half never reached the manifest is of no use, and the next run would
+    // refuse to overwrite it: take back the file this run made.
+    if (made) await rm(made.out, { force: true });
+    throw e;
+  }
 
   const relRelease = path.relative(io.cwd, loaded.releasePath ?? "");
   const pinned = ref !== ACTION_REF_PLACEHOLDER;
@@ -343,7 +350,7 @@ export async function ciInit(a: ChannelArgs, io: ChannelIo): Promise<number> {
     );
   // Every command is one unwrapped line: a terminal re-joins a soft wrap on copy.
   out.push(
-    `${n++}. Create the release environment, limited to v* tags:`,
+    `${n++}. Create the release environment, limited to v* tags (skip the first command if it exists: it can reset its reviewers):`,
     "   gh api -X PUT repos/{owner}/{repo}/environments/release -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true' --silent",
     "   gh api -X POST repos/{owner}/{repo}/environments/release/deployment-branch-policies -f 'name=v*' -f type=tag --silent",
   );

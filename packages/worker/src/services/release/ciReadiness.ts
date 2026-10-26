@@ -52,6 +52,8 @@ export interface CiReadiness {
   /** `owner/repo`, `null` while the product has no linked repository. */
   repository: string | null;
   capabilities: WriteCapabilities;
+  /** The environment the checks read: the manifest's trusted publisher names it, else `release`. */
+  environmentName: string;
   checks: ReadinessCheck[];
   /** `.github/workflows/release.yml` as Polaris Key would write it, pinned to this Worker's commit. */
   workflowPreview: string | null;
@@ -61,7 +63,13 @@ export interface CiReadiness {
 const PR_SCOPE = "distribution:pr";
 const DEFAULT_WORKFLOW = ".github/workflows/release.yml";
 const WORKFLOW_PATH = /^\.github\/workflows\/[A-Za-z0-9._-]+\.ya?ml$/;
-const ENV_NAME = /^[A-Za-z0-9._-]{1,100}$/;
+/** Not `.` or `..`: those would turn the environment read into another path. */
+const ENV_NAME = /^(?!\.+$)[A-Za-z0-9._-]{1,100}$/;
+/** The environment's `detail` while it exists but does not yet limit deploys to `v*` tags. */
+export const ENV_NO_TAG_POLICY = "no v* tag policy";
+export const ENV_NOT_TAG_LIMITED =
+  "deployments are not limited to selected tags";
+
 /** The tag ruleset reads: GitHub lists a repository's rulesets without their conditions. */
 const MAX_RULESETS = 10;
 
@@ -171,6 +179,7 @@ export async function ciReadiness(
   const notInstalled = (repository: string | null): CiReadiness => ({
     repository,
     capabilities: NO_CAPABILITIES,
+    environmentName: "release",
     checks: [{ id: "app", state: "missing" }, ...unknowns(ALL_CHECKS.slice(1))],
     workflowPreview: preview(),
   });
@@ -180,6 +189,7 @@ export async function ciReadiness(
   const unseen = (app: ReadinessState): CiReadiness => ({
     repository,
     capabilities: NO_CAPABILITIES,
+    environmentName: "release",
     checks: [{ id: "app", state: app }, ...unknowns(ALL_CHECKS.slice(1))],
     workflowPreview: preview(),
   });
@@ -268,20 +278,49 @@ export async function ciReadiness(
         now,
         fetchImpl,
       );
-      const res = await getJson(
-        fetchImpl,
-        envToken,
-        `${root}/environments/${envName}`,
-      );
-      checks.push({
-        id: "environment",
-        state:
-          res.status === 200
-            ? "ok"
-            : res.status === 404
-              ? "missing"
-              : "unknown",
-      });
+      const envRoot = `${root}/environments/${envName}`;
+      const res = await getJson(fetchImpl, envToken, envRoot);
+      if (res.status === 404)
+        checks.push({ id: "environment", state: "missing" });
+      else if (res.status !== 200)
+        checks.push({ id: "environment", state: "unknown" });
+      else {
+        // It exists. Ready means deploys are limited to selected policies AND a `v*` tag policy
+        // is among them: an environment a half-applied fix left behind is offered again.
+        const limit = isObject(res.body)
+          ? res.body.deployment_branch_policy
+          : null;
+        if (!isObject(limit) || limit.custom_branch_policies !== true)
+          checks.push({
+            id: "environment",
+            state: "missing",
+            detail: ENV_NOT_TAG_LIMITED,
+          });
+        else {
+          const pol = await getJson(
+            fetchImpl,
+            envToken,
+            `${envRoot}/deployment-branch-policies`,
+          );
+          const list =
+            isObject(pol.body) && Array.isArray(pol.body.branch_policies)
+              ? pol.body.branch_policies
+              : null;
+          checks.push(
+            pol.status !== 200 || list === null
+              ? { id: "environment", state: "unknown" }
+              : list.some(
+                    (p) => isObject(p) && p.name === "v*" && p.type === "tag",
+                  )
+                ? { id: "environment", state: "ok" }
+                : {
+                    id: "environment",
+                    state: "missing",
+                    detail: ENV_NO_TAG_POLICY,
+                  },
+          );
+        }
+      }
     } catch {
       checks.push({ id: "environment", state: "unknown" });
     }
@@ -326,6 +365,7 @@ export async function ciReadiness(
   return {
     repository,
     capabilities,
+    environmentName: envName,
     checks,
     workflowPreview: preview(
       manifest

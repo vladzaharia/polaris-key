@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { runPkey } from "../src/index.js";
 import { CI_PLANE } from "../src/storefronts/ciPlane.generated.js";
 import { ciLiterals, matchCiCommand } from "../src/storefronts/allowList.js";
+import { githubClient } from "../src/storefronts/github.js";
 import {
   developerId,
   FLATHUB_RUNTIME_VERSION,
@@ -1422,5 +1423,21 @@ describe("pkey storefront <store> pr: the GitHub App token (A-32.8)", () => {
       stepOptions("homebrew", w.fetchImpl, { env: NO_PR_ENV }).o,
     ).catch((e: Error) => e);
     expect((err as Error).message).not.toContain("\u001b");
+  });
+});
+
+describe("the GitHub client", () => {
+  it("never follows a redirect with the token on it", async () => {
+    const seen: Array<RequestInit | undefined> = [];
+    const gh = githubClient({
+      token: "ghs_FAKE",
+      fetchImpl: (async (_u: unknown, init?: RequestInit) => {
+        seen.push(init);
+        return new Response(JSON.stringify({ login: "bot" }), { status: 200 });
+      }) as typeof fetch,
+    });
+    await gh.login();
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((i) => i?.redirect === "manual")).toBe(true);
   });
 });

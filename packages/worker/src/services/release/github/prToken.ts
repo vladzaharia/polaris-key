@@ -6,10 +6,13 @@
  * (`core/hooks.ts`, rule 6). The token is minted per call, never cached (`mintInstallationToken`
  * does not touch the read-token cache), narrowed by GitHub to the one repository and to Contents
  * and Pull requests write, and is not logged here. Which repositories may be asked for is
- * Distribution's decision; this file only mints.
+ * Distribution's decision; this file also insists that the installation covering the repository
+ * is the product's own linked one, so a declared tap or bucket cannot reach another customer's
+ * installation. "Not installed" and "not the product's" answer alike (`null`).
  */
 
 import type { GithubPrToken, HookContext } from "../../../core/hooks.js";
+import { getReleaseConfig } from "../config.js";
 import {
   discoverInstallation,
   mintInstallationToken,
@@ -48,6 +51,9 @@ export function githubPrToken(
         if (e instanceof Error && e.message === NOT_INSTALLED) return null;
         throw e;
       }
+      const cfg = await getReleaseConfig(ctx.db, ctx.product.slug);
+      if (!cfg?.gh_installation_id || cfg.gh_installation_id !== installId)
+        return null;
       const token = await mintInstallationToken(
         ctx.env,
         installId,

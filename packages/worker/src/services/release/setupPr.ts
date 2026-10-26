@@ -44,7 +44,7 @@ import {
   githubHeaders,
   type FetchImpl,
 } from "./githubApp.js";
-import { SETUP_BRANCH } from "./github/allow.js";
+import { SETUP_BRANCH, type Verified } from "./github/allow.js";
 import {
   githubWrite,
   installationCapabilities,
@@ -399,11 +399,12 @@ export async function createSetupPullRequest(
     method: string,
     path: string,
     body?: unknown,
+    verified?: Verified,
   ): Promise<WriteResult> =>
     githubWrite(
       env,
       installId,
-      { owner, repo },
+      { owner, repo, ...(verified ? { verified } : {}) },
       action,
       {
         method,
@@ -486,6 +487,7 @@ export async function createSetupPullRequest(
             title: PR_TITLE,
             body: PR_BODY,
           },
+          { pull: open.number },
         );
         if (!patched.ok)
           return githubFailure("pull request update", patched.status);
