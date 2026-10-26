@@ -740,6 +740,10 @@
     "sign_in_required": {
       "title": "로그인 필요",
       "message": "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
+    },
+    "attach-declined": {
+      "title": "추가되지 않음",
+      "message": "이 라이선스는 계정에 추가되지 않았습니다. 변경된 내용은 없습니다."
     }
   },
   "gate": {
@@ -828,6 +832,10 @@
     "key-entry-limit": {
       "title": "남은 키 등록 횟수 없음",
       "message": "이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요."
+    },
+    "license-owned": {
+      "title": "다른 계정의 라이선스",
+      "message": "이 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
     },
     "refused": {
       "title": "활성화 거부됨",

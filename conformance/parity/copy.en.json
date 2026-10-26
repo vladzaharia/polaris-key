@@ -739,6 +739,10 @@
     "sign_in_required": {
       "title": "Sign-in needed",
       "message": "Sign in to your Polaris Locker account in the app, then try again."
+    },
+    "attach-declined": {
+      "title": "Not added",
+      "message": "This license wasn't added to your account. Nothing changed."
     }
   },
   "gate": {
@@ -827,6 +831,10 @@
     "key-entry-limit": {
       "title": "No key entries left",
       "message": "This key has no entries left. Add it to your account and sign in instead."
+    },
+    "license-owned": {
+      "title": "License in another account",
+      "message": "This license is already in another Polaris Locker account. A license never moves by its key."
     },
     "refused": {
       "title": "Activation refused",

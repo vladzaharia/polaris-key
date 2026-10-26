@@ -6,6 +6,7 @@ import {
   MANAGE_URL_MAX_LENGTH,
   isManageUrl,
   manageFormEncode,
+  readKeyEntries,
   readManageUrl,
   withManageKey,
   withManageReturn,
@@ -59,6 +60,50 @@ describe("readManageUrl", () => {
     const exact = base + "a".repeat(MANAGE_URL_MAX_LENGTH - base.length);
     expect(isManageUrl(exact)).toBe(true);
     expect(readManageUrl({ manageUrl: `${exact}a` })).toBeUndefined();
+  });
+});
+
+describe("readKeyEntries", () => {
+  it.each([
+    [
+      "top-level",
+      { keyEntries: { used: 2, limit: 10 } },
+      { used: 2, limit: 10 },
+    ],
+    ["zero used", { keyEntries: { used: 0, limit: 1 } }, { used: 0, limit: 1 }],
+    [
+      "used above limit",
+      { keyEntries: { used: 12, limit: 10 } },
+      { used: 12, limit: 10 },
+    ],
+    [
+      "limit 100",
+      { keyEntries: { used: 1, limit: 100 } },
+      { used: 1, limit: 100 },
+    ],
+    [
+      "nested",
+      { error: { keyEntries: { used: 10, limit: 10 } } },
+      { used: 10, limit: 10 },
+    ],
+    [
+      "extra members dropped",
+      { keyEntries: { used: 1, limit: 2, x: 1 } },
+      { used: 1, limit: 2 },
+    ],
+    ["limit 0", { keyEntries: { used: 0, limit: 0 } }, undefined],
+    ["limit 101", { keyEntries: { used: 0, limit: 101 } }, undefined],
+    ["negative used", { keyEntries: { used: -1, limit: 10 } }, undefined],
+    ["fractional", { keyEntries: { used: 1.5, limit: 10 } }, undefined],
+    ["string numbers", { keyEntries: { used: "1", limit: "10" } }, undefined],
+    ["missing limit", { keyEntries: { used: 1 } }, undefined],
+    ["not an object", { keyEntries: 3 }, undefined],
+    ["null member", { keyEntries: null }, undefined],
+    ["absent (Identity off)", { ok: true }, undefined],
+    ["body not an object", "x", undefined],
+    ["null body", null, undefined],
+  ])("%s", (_name, body, want) => {
+    expect(readKeyEntries(body)).toEqual(want);
   });
 });
 

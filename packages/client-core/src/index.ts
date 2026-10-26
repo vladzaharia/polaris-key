@@ -436,7 +436,9 @@ export {
   MANAGE_URL_MAX_LENGTH,
   isManageUrl,
   manageFormEncode,
+  readKeyEntries,
   readManageUrl,
   withManageKey,
   withManageReturn,
 } from "./manage.js";
+export type { KeyEntriesCount } from "./manage.js";

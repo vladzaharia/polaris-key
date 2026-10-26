@@ -270,6 +270,7 @@
         "unauthorized",
         "enroll-disabled",
         "key-entry-limit",
+        "license-owned",
         "refused",
         "error"
       ]

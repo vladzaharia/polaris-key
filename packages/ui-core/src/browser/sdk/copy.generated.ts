@@ -831,6 +831,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This build's built-in content isn't valid. Reinstall the app or contact the developer.",
   },
+  "attach-declined": {
+    title: "Not added",
+    message: "This license wasn't added to your account. Nothing changed.",
+  },
   license_required: {
     title: "License needed",
     message: "Activate the app, then try again.",
@@ -945,6 +949,11 @@ export const COPY_ACTIVATION: Readonly<Record<string, CopyEntry>> = {
     title: "No key entries left",
     message:
       "This key has no entries left. Add it to your account and sign in instead.",
+  },
+  "license-owned": {
+    title: "License in another account",
+    message:
+      "This license is already in another Polaris Locker account. A license never moves by its key.",
   },
   refused: {
     title: "Activation refused",

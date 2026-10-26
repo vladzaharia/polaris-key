@@ -958,11 +958,11 @@
       "proof": [
         {
           "kind": "transcript",
-          "wp": "PX-W9b"
+          "wp": "I-10a"
         }
       ],
       "allowedNa": [],
-      "note": "PX-W9 (WIRE-CONTRACT-V4 §12.2): an activation by key on a product with Identity on exposes keyEntries {used, limit} on ok, and the typed key-entry-limit result (keyEntries, manageUrl) when a new device meets the licence's limit with refusals on. Never an auth failure: the client keeps its state and never retries. Pinned by keyentry-limit.json, keyentry-refusals-off.json and keyentry-identity-off.json; client-core's keyEntries table (PX-W9b) pins readKeyEntries. I-09 adds step 3: a licence in an account refused to a new device with license_owned and signInUrl (keyentry-owned.json); the typed license-owned result is I-10a's and I-10b's."
+      "note": "PX-W9 (WIRE-CONTRACT-V4 §12.2): an activation by key on a product with Identity on exposes keyEntries {used, limit} on ok, and the typed key-entry-limit result (keyEntries, manageUrl) when a new device meets the licence's limit with refusals on. Never an auth failure: the client keeps its state and never retries. Pinned by keyentry-limit.json, keyentry-refusals-off.json and keyentry-identity-off.json; client-core's keyEntries table (manage.test.ts) pins readKeyEntries. I-09 adds step 3: a licence in an account refused to a new device with license_owned and signInUrl (keyentry-owned.json); the typed license-owned result is I-10a's (Node, React, Python) and I-10b's (Swift, Kotlin, Godot)."
     },
     {
       "id": "identity.attach",

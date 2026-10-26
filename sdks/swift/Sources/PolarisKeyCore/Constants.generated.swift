@@ -190,6 +190,7 @@ public enum ErrorCode {
     public static let packRevoked = "pack-revoked"
     public static let packNotDataOnly = "pack-not-data-only"
     public static let markerRejected = "marker-rejected"
+    public static let attachDeclined = "attach-declined"
     public static let licenseRequired = "license_required"
     public static let licenseInvalid = "license_invalid"
     public static let licenseStale = "license_stale"
@@ -377,6 +378,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "attach-declined",
     "license_required",
     "license_invalid",
     "license_stale",
@@ -564,6 +566,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "pack-revoked": "client",
     "pack-not-data-only": "client",
     "marker-rejected": "client",
+    "attach-declined": "client",
     "license_required": "backend",
     "license_invalid": "backend",
     "license_stale": "backend",
@@ -1297,6 +1300,7 @@ public let ACTIVATION_RESULT_VALUES: [String] = [
     "unauthorized",
     "enroll-disabled",
     "key-entry-limit",
+    "license-owned",
     "refused",
     "error",
 ]
