@@ -11,6 +11,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import im.plrs.key.ui.PolarisUpdateState
+import im.plrs.key.update.InstallResult
+import im.plrs.key.update.InstallStage
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -69,5 +75,23 @@ class NavigationTest {
     @Test
     fun aPlainLaunchShowsHome() {
         launch(null).use { waitForText("Licensed. Open your account or check for updates.") }
+    }
+
+    @Test
+    fun checkingAgainAfterLaterOffersTheUpdateAgain() {
+        val world = Tidewater(Start.Gate)
+        val update = PolarisUpdateState()
+        assertTrue(world.offerUpdate(update))
+        update.dismiss()
+        assertEquals(null, update.offer.value)
+        assertTrue(world.offerUpdate(update))
+        assertNotNull(update.offer.value)
+    }
+
+    @Test
+    fun restartNowEndsTheFakeUpdate() {
+        val installer = FixtureInstaller()
+        assertEquals(InstallResult.Started, runBlocking { installer.finish() })
+        assertEquals(InstallStage.Idle, installer.progress.value)
     }
 }

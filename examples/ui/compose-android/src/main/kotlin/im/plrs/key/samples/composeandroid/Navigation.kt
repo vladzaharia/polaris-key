@@ -68,9 +68,10 @@ internal const val RETURN_URI = "tidewater://polaris"
 private const val HOME = "home"
 
 /** Fixtures only: the check the install is handed, then the offer the prompt draws (without the check, "Update now" does nothing). */
-internal fun Tidewater.offerUpdate(update: PolarisUpdateState) {
-    update.show(check())
+internal fun Tidewater.offerUpdate(update: PolarisUpdateState): Boolean {
+    val open = update.showRequested(check()) // a person's own check re-offers a version they dismissed
     update.show(offer())
+    return open
 }
 
 /** The product's own screen, shown once the licence allows it: home, and the kit's screens as destinations. */
@@ -96,11 +97,18 @@ internal fun TidewaterApp(client: PolarisKeyClient, world: Tidewater?, options: 
             if (options.start == Start.Progress) update.install(actions, scope)
         }
     }
+    val updatedTo = stringResource(R.string.updated_to, "2.5.0")
     val offer by update.offer.collectAsState()
     offer?.let { ui ->
         PolarisUpdatePromptDialog(
             ui,
-            onUpdate = { update.install(actions, scope) },
+            onUpdate = {
+                update.install(actions, scope) {
+                    // Fixtures: the fake restart ends here; the live kit's host quits and relaunches instead.
+                    update.show(null)
+                    scope.launch { snackbar.showSnackbar(updatedTo) }
+                }
+            },
             onLater = update::dismiss,
             onSkip = if (ui.mandatory) null else update::skip,
         )
@@ -117,7 +125,7 @@ internal fun TidewaterApp(client: PolarisKeyClient, world: Tidewater?, options: 
                 true
             }
             // Fixtures only: the live kit offers the real update by itself.
-            PolarisKeyRoute.Update -> world?.offerUpdate(update) != null
+            PolarisKeyRoute.Update -> world?.offerUpdate(update) == true
             // Already signed in: the kit's sign-in belongs to the gate and has nothing to open here.
             PolarisKeyRoute.SignIn, null -> false
         }
