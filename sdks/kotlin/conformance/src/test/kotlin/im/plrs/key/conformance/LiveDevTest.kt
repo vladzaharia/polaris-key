@@ -45,9 +45,9 @@ import im.plrs.key.core.Store
 import im.plrs.key.core.UpdateDecision
 import im.plrs.key.core.action
 import im.plrs.key.core.storeNamespace
-import im.plrs.key.identity.SignInPoll
+import im.plrs.key.identity.SignInOptions
+import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.identity.SignInPrompt
-import im.plrs.key.identity.SignInResult
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.isUsable
 import im.plrs.key.sdk.PolarisEvent
@@ -253,17 +253,18 @@ class LiveDevTest : ConformanceSuite() {
     @Test
     fun b4_deviceCodeSignIn() = scenario {
         val client = device("signin").client
-        val prompt = client.identity.beginSignIn("Kotlin live test")
+        val session = client.identity.signIn.start(SignInOptions(deviceName = "Kotlin live test"))
+        val prompt = session.prompt
         assertTrue("the sign-in page is the dev server's: ${prompt.verificationUriComplete}", prompt.verificationUriComplete.startsWith("${live.origin}/"))
         assertTrue(prompt.userCode.isNotEmpty())
         assertNull(client.core.token())
 
         // Nobody has approved yet.
-        assertEquals(SignInPoll.Pending, client.identity.pollSignIn(prompt))
+        assertEquals(SignInOutcome.Pending(prompt.interval), session.wait(once = true))
 
         approve(prompt)
 
-        assertEquals(SignInResult.Ready, withTimeout(60.seconds) { client.identity.waitForSignIn(prompt) })
+        assertTrue(withTimeout(60.seconds) { session.wait() } is SignInOutcome.SignedIn)
         assertNotNull("the sign-in stored a device token", client.core.token())
         assertEquals(ActivationSource.token, client.license.activation())
 

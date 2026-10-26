@@ -1,7 +1,7 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode identity.devicelabel config.mint
+// @pkey-feature identity.devicecode identity.devicelabel identity.toggle config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
@@ -74,11 +74,12 @@ import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import im.plrs.key.identity.AttachResult
-import im.plrs.key.identity.SignInPoll
+import im.plrs.key.identity.SignInError
+import im.plrs.key.identity.SignInOptions
+import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.identity.SignOutResult
 import im.plrs.key.identity.SubjectResult
-import im.plrs.key.identity.SignInPrompt
-import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInSession
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.core.JsonText
@@ -155,10 +156,10 @@ fun packsObjectFetch(packs: PacksClient, transport: PackObjectTransport): Object
     }
 }
 
-/** The replay's memory between steps: the prompt the last `beginSignIn` returned, the last whole
+/** The replay's memory between steps: the session the last `beginSignIn` started, the last whole
  *  `releaseFetch` payload, the scratch directories to remove and the device's `initial.platform`. */
 class ReplaySession(val platform: String? = null) {
-    var prompt: SignInPrompt? = null
+    var prompt: SignInSession? = null
     var payload: ByteArray? = null
     val dirs = ArrayList<java.io.File>()
 }
@@ -299,8 +300,9 @@ object KotlinReplay {
             } catch (e: PolarisException) {
                 out["result"] = JsonPrimitive(e.code)
             }
-            "beginSignIn" -> {
-                val p = client.identity.beginSignIn(args["deviceName"].stringValue)
+            // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
+            "beginSignIn" -> try {
+                val p = client.identity.signIn.start(SignInOptions(deviceName = args["deviceName"].stringValue))
                 session.prompt = p
                 out["prompt"] = JsonObject(
                     mapOf(
@@ -312,23 +314,25 @@ object KotlinReplay {
                         "deviceName" to (p.deviceName?.let { JsonPrimitive(it) } ?: JsonNull),
                     ),
                 )
+            } catch (e: PolarisException) {
+                // identity-disabled: the refusal is the step's result.
+                out["result"] = JsonPrimitive(e.code)
             }
             "pollSignIn" -> {
-                val prompt = session.prompt ?: throw AssertionError("pollSignIn before beginSignIn")
+                val sess = session.prompt ?: throw AssertionError("pollSignIn before beginSignIn")
                 try {
-                    when (val poll = client.identity.pollSignIn(prompt)) {
-                        SignInPoll.Pending -> out["result"] = JsonPrimitive("pending")
-                        is SignInPoll.SlowDown -> {
+                    when (val o = sess.wait(once = true)) {
+                        is SignInOutcome.Pending -> if (o.slowDown) {
                             out["result"] = JsonPrimitive("slow-down")
-                            out["interval"] = jsonInt(poll.interval)
-                        }
-                        SignInPoll.Ready -> out["result"] = JsonPrimitive("ready")
-                        SignInPoll.Expired -> out["result"] = JsonPrimitive("expired")
-                        is SignInPoll.Error -> {
-                            out["result"] = JsonPrimitive("error")
-                            poll.code?.let { out["code"] = JsonPrimitive(it) }
-                        }
+                            out["interval"] = jsonInt(o.interval)
+                        } else out["result"] = JsonPrimitive("pending")
+                        is SignInOutcome.SignedIn -> out["result"] = JsonPrimitive("ready")
+                        SignInOutcome.Expired -> out["result"] = JsonPrimitive("expired")
+                        SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
                     }
+                } catch (e: SignInError) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
                 } catch (e: PolarisException) {
                     // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
                     if (e.code != "server-error" && e.code != "network-error") throw e
@@ -370,14 +374,15 @@ object KotlinReplay {
                 AttachResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
             }
             "waitForSignIn" -> {
-                val prompt = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
-                when (val done = client.identity.waitForSignIn(prompt)) {
-                    SignInResult.Ready -> out["result"] = JsonPrimitive("ready")
-                    SignInResult.Expired -> out["result"] = JsonPrimitive("expired")
-                    is SignInResult.Error -> {
-                        out["result"] = JsonPrimitive("error")
-                        done.code?.let { out["code"] = JsonPrimitive(it) }
+                val sess = session.prompt ?: throw AssertionError("waitForSignIn before beginSignIn")
+                try {
+                    when (val done = sess.wait()) {
+                        is SignInOutcome.SignedIn -> out["result"] = JsonPrimitive("ready")
+                        else -> out["result"] = JsonPrimitive(done.kind)
                     }
+                } catch (e: SignInError) {
+                    out["result"] = JsonPrimitive("error")
+                    out["code"] = JsonPrimitive(e.code)
                 }
             }
             "changelog" -> try {

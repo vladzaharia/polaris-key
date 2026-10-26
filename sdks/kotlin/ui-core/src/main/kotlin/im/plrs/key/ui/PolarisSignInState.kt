@@ -4,8 +4,11 @@
 package im.plrs.key.ui
 
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.identity.SignInError
+import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInSession
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -47,12 +50,33 @@ public interface PolarisSignInActions {
     public suspend fun wait(prompt: SignInPrompt): SignInResult
 }
 
-/** The umbrella client's identity service as sign-in actions. */
+/** The umbrella client's identity service as sign-in actions: one [SignInSession] per `begin`, waited by its prompt. */
 public fun PolarisKeyClient.signInActions(deviceName: String? = null): PolarisSignInActions {
     val identity = this.identity
+    val sessions = java.util.concurrent.ConcurrentHashMap<SignInPrompt, SignInSession>()
     return object : PolarisSignInActions {
-        override suspend fun begin(): SignInPrompt = identity.beginSignIn(deviceName)
-        override suspend fun wait(prompt: SignInPrompt): SignInResult = identity.waitForSignIn(prompt)
+        override suspend fun begin(): SignInPrompt {
+            val session = identity.signIn.start(im.plrs.key.identity.SignInOptions(deviceName = deviceName))
+            sessions[session.prompt] = session
+            return session.prompt
+        }
+
+        override suspend fun wait(prompt: SignInPrompt): SignInResult {
+            val session = sessions[prompt] ?: return SignInResult.Error("no sign-in session for this code.")
+            // A paused screen cancels this coroutine and waits again on the same prompt, so the session stays until it settles.
+            return try {
+                val outcome = session.wait()
+                sessions.remove(prompt)
+                when (outcome) {
+                    is SignInOutcome.SignedIn -> SignInResult.Ready
+                    SignInOutcome.Expired, SignInOutcome.Cancelled -> SignInResult.Expired
+                    is SignInOutcome.Pending -> SignInResult.Error("sign-in did not settle.")
+                }
+            } catch (e: SignInError) {
+                sessions.remove(prompt)
+                SignInResult.Error(e.message ?: "", e.code)
+            }
+        }
     }
 }
 

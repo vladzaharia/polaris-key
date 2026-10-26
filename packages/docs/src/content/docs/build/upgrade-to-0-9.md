@@ -195,6 +195,9 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | swift | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |
 | swift | `identity.waitForSignIn` | `identity.signIn.session.wait` | 0.9 |
 | swift | `identity.acceptSignIn` | `identity.attachLicense` | 0.9 |
+| kotlin | `identity.beginSignIn` | `identity.signIn.start` | 0.9 |
+| kotlin | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |
+| kotlin | `identity.waitForSignIn` | `identity.signIn.session.wait` | 0.9 |
 
 <!-- /GENERATED:upgrade-sdk -->
 <!-- prettier-ignore-end -->

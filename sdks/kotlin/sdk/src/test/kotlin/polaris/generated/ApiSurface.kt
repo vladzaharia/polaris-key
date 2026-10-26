@@ -7,6 +7,8 @@ import im.plrs.key.config.ConfigClient
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.PresentationSource
 import im.plrs.key.identity.IdentityClient
+import im.plrs.key.identity.SignInNamespace
+import im.plrs.key.identity.SignInSession
 import im.plrs.key.license.EntitlementsClient
 import im.plrs.key.license.LicenseClient
 import im.plrs.key.packs.PacksClient
@@ -42,8 +44,13 @@ internal suspend fun apiSurface() {
     EntitlementsClient::has  // entitlements.has
     EntitlementsClient::value  // entitlements.value
     EntitlementsClient::all  // entitlements.all
+    IdentityClient::signIn  // identity.signIn
     IdentityClient::subject  // identity.subject
     IdentityClient::signOut  // identity.signOut
+    SignInNamespace::start  // identity.signIn.start
+    SignInSession::reopen  // identity.signIn.session.reopen
+    SignInSession::cancel  // identity.signIn.session.cancel
+    SignInSession::wait  // identity.signIn.session.wait
     IdentityClient::attach  // identity.attachLicense
     IdentityClient::openAccount  // identity.openAccount
     PolarisKeyClient::events  // events
@@ -77,9 +84,6 @@ internal suspend fun apiSurface() {
     LicenseClient::getLicenseId  // license.getLicenseId
     LicenseClient::enroll  // license.enroll
     LicenseClient::deactivate  // license.deactivate
-    IdentityClient::beginSignIn  // identity.beginSignIn
-    IdentityClient::pollSignIn  // identity.pollSignIn
-    IdentityClient::waitForSignIn  // identity.waitForSignIn
     PolarisKeyClient.DevicesFacet::register  // devices.register
     PolarisKeyClient.DevicesFacet::list  // devices.list
     PolarisKeyClient.DevicesFacet::rename  // devices.rename
