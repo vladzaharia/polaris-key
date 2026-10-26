@@ -2552,6 +2552,9 @@ devices expire on the same horizon.
 
 - The prologue is `"pkey-peer/1"‖0x00‖slug‖0x00‖mode‖0x00`. A version, product or mode mismatch
   fails by construction.
+- The mode-a PSK is `HKDF-SHA256(salt = empty, ikm = K_disc, info = "pkey-peer/1 psk"‖0x00‖slug)`
+  at 32 bytes. The argument order is pinned by `noise-vectors.json`: an empty salt (HashLen zero
+  bytes, RFC 5869), the 32-byte discovery key as the input keying material and the label as info.
 - Message 1's payload is `{"v":1}`.
 - Payloads are strict JSON of at most 8 KiB.
 - `caps` holds at most 32 entries matching `^[a-z0-9]+/[0-9]+$`. v1 defines `ring/1`, `trust/1`,

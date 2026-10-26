@@ -457,8 +457,8 @@
       "note": "Verification is client-core's peer/cert.ts (verifyPeerCert, verifyRing, replaceRing, admitPeer), which the Node SDK consumes directly; the Node runner drives peerCertCases, ringCases and peerAdmissionCases (CC-04.4). The identity routes and the transcript replay follow in CC-06 and CC-08."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-08"
+      "status": "implemented",
+      "note": "client-core's peer/noise.ts (NoiseHandshake, CipherState, peerPsk) over WebCrypto X25519 and AES-256-GCM, which the Node SDK consumes directly; the Node runner drives every noise-vectors.json row, the failures and the anchors (CC-05.2). The XXpsk0 anchor and the session machine follow."
     },
     "connect.protocol": {
       "status": "planned",
