@@ -12,8 +12,11 @@ import { fstatSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { PolarisKeyClient } from "../client.js";
-import type { DeviceCodeSession, ShownIdentity } from "../identity/signIn.js";
-import { waitForCli, type CliSignInResult } from "./signInResult.js";
+import type {
+  DeviceCodeSession,
+  ShownIdentity,
+  SignInOutcome,
+} from "../identity/signIn.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
@@ -1783,9 +1786,10 @@ export async function loginFlow(
     }
   })();
 
-  let r: CliSignInResult;
+  // The session's outcome, plus the two refusals `wait()` throws (a denial, a failure after approval).
+  let r: SignInOutcome | { kind: "denied" | "failed"; message: string };
   try {
-    r = await waitForCli(prompt, {
+    r = await prompt.wait({
       signal: abort.signal,
       // A device that holds a key license is asked before that license is added to the account,
       // and the answer is No unless the person says yes (nobody to ask: a pipe, --json, CI).
@@ -1805,7 +1809,13 @@ export async function loginFlow(
       },
     });
   } catch (e) {
-    if (abort.signal.aborted) r = { status: "cancelled" };
+    const code = (e as { code?: unknown }).code;
+    if (abort.signal.aborted) r = { kind: "cancelled" };
+    else if (code === ErrorCode.signInDenied || code === ErrorCode.signInFailed)
+      r = {
+        kind: code === ErrorCode.signInDenied ? "denied" : "failed",
+        message: (e as Error).message,
+      };
     else {
       stopSpin();
       abort.abort();
@@ -1818,7 +1828,7 @@ export async function loginFlow(
   }
   // Esc or Ctrl-C at the attach question answered No to let the wait end, but it cancelled the
   // sign-in: nothing that follows may read as signed in.
-  if (abort.signal.aborted) r = { status: "cancelled" };
+  if (abort.signal.aborted) r = { kind: "cancelled" };
   abort.abort();
   await keyLoop;
   // The outcome replaces the whole screen, header included: one result block, never the code view
@@ -1835,7 +1845,7 @@ export async function loginFlow(
       },
     ]);
 
-  if (r.status === "cancelled") {
+  if (r.kind === "cancelled") {
     // Cancelling is not an error (DL7): the block closes on a neutral line, no ✗ and no screen.
     finish([endRow(t("cli.nothingChanged"))]);
     if (interrupt) return interrupted({ state: "cancelled" });
@@ -1846,7 +1856,7 @@ export async function loginFlow(
       result: { state: "cancelled" },
     };
   }
-  if (r.status === "ready") {
+  if (r.kind === "signedIn") {
     // The identity the sign-in showed; when it showed none, the one now stored on this device.
     const who =
       r.identity && (present(r.identity.name) || present(r.identity.email))
@@ -1859,13 +1869,13 @@ export async function loginFlow(
       state: "signedIn",
       name: who.name ?? null,
       email: who.email ?? null,
-      attached: r.attached ?? null,
+      attached: r.activation.attached ?? null,
       status: client.status().status,
     };
     finish([
       stepRow("ok", line),
       // Said once the license key is on the account, so a yes and a no read differently.
-      ...(r.attached ? [textRow(t("cli.login.attached"))] : []),
+      ...(r.activation.attached ? [textRow(t("cli.login.attached"))] : []),
       useCode ? endRow() : endRow(t("signin.cli.closeTab")),
     ]);
     return { exitCode: EXIT.ok, state: "signedIn", result };
@@ -1873,11 +1883,11 @@ export async function loginFlow(
   // Three ways to end without signing in (DENY-01): the code lapsed, a person refused, or the
   // sign-in failed after approval. Only the poll's refusal code is a refusal.
   const how =
-    r.status === "expired"
-      ? ("expired" as const)
-      : r.status === "error" && r.code === ErrorCode.signInDenied
-        ? ("denied" as const)
-        : ("failed" as const);
+    r.kind === "denied"
+      ? ("denied" as const)
+      : r.kind === "failed"
+        ? ("failed" as const)
+        : ("expired" as const);
   const error: CliJsonError =
     how === "expired"
       ? {

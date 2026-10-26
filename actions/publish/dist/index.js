@@ -29553,13 +29553,16 @@ var NODE_LIBRARY = {
     code: lines2(
       NODE_HEAD(c),
       ``,
-      `const result = await client.identity.signInWithBrowser({`,
+      `const session = await client.identity.signIn.start({`,
+      `  channel: "device-code",`,
       `  deviceName: ${q2(`${c.appName} on this computer`)},`,
-      `  onPrompt: (p) => console.log(p.userCode, p.verificationUri),`,
       `});`,
-      `if (result.status === "ready") {`,
-      `  const profile = client.license.getProfile();`,
-      `  console.log(profile?.name, profile?.email);`,
+      `console.log(session.userCode, session.verificationUri);`,
+      `await session.reopen(); // opens the system browser`,
+      ``,
+      `const result = await session.wait();`,
+      `if (result.kind === "signedIn") {`,
+      `  console.log(result.identity?.name, result.identity?.email);`,
       `}`
     )
   }),

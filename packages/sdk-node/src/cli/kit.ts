@@ -57,7 +57,7 @@ import {
   type CompletionShell,
 } from "./help.js";
 import { EXIT, type FlowResult } from "./json.js";
-import { waitForCli } from "./signInResult.js";
+import { ErrorCode } from "../constants.generated.js";
 import {
   activate,
   boot,
@@ -141,24 +141,38 @@ export function signIn(
       if (code) io.print(code);
     }
     io.print("Waiting for you to finish in the browser…");
-    const r = await waitForCli(prompt, io.signal ? { signal: io.signal } : {});
-    if (r.status === "ready") {
+    let r: Awaited<ReturnType<typeof prompt.wait>>;
+    try {
+      r = await prompt.wait(io.signal ? { signal: io.signal } : {});
+    } catch (e) {
+      const code = (e as { code?: unknown }).code;
+      if (code !== ErrorCode.signInDenied && code !== ErrorCode.signInFailed)
+        throw e;
+      return {
+        ok: false,
+        message: `Sign-in failed: ${(e as Error).message}`,
+        data: { status: "error", code, message: (e as Error).message },
+      };
+    }
+    if (r.kind === "signedIn") {
       const who = r.identity?.email ?? r.identity?.name;
       return {
         ok: true,
         message: `Signed in${who ? ` as ${who}` : ""}. Status: ${client.status().status}`,
-        data: r,
+        data: {
+          status: "ready",
+          ...(r.identity ? { identity: r.identity } : {}),
+          ...(r.activation.attached ? { attached: r.activation.attached } : {}),
+        },
       };
     }
     return {
       ok: false,
       message:
-        r.status === "expired"
-          ? "Sign-in failed: the code expired. Run sign-in again."
-          : r.status === "cancelled"
-            ? "Sign-in cancelled."
-            : `Sign-in failed: ${r.message}`,
-      data: r,
+        r.kind === "cancelled"
+          ? "Sign-in cancelled."
+          : "Sign-in failed: the code expired. Run sign-in again.",
+      data: { status: r.kind === "cancelled" ? "cancelled" : "expired" },
     };
   });
 }

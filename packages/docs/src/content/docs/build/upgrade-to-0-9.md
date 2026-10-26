@@ -186,6 +186,10 @@ Each removal, with its fix and the release that made it, is in the [developer ch
 | swift | `PolarisSignIn` | `undefined` | 0.9 |
 | swift | `PolarisOfflineActivation` | `undefined` | 0.9 |
 | swift | `GateOptions` | `undefined` | 0.9 |
+| node | `identity.signInWithBrowser` | `identity.signIn.start` | 0.9 |
+| node | `identity.beginSignIn` | `identity.signIn.start` | 0.9 |
+| node | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |
+| node | `identity.waitForSignIn` | `identity.signIn.session.wait` | 0.9 |
 | swift | `identity.signInWithBrowser` | `identity.signIn.start` | 0.9 |
 | swift | `identity.beginSignIn` | `identity.signIn.start` | 0.9 |
 | swift | `identity.pollSignIn` | `identity.signIn.session.wait` | 0.9 |

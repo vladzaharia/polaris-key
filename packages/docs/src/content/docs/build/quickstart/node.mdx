@@ -137,7 +137,7 @@ The renderer wraps the app in `<PolarisKeyProvider config={polarisKey}>` and `<P
   </Fragment>
   <Fragment slot="library">
 
-Call the client and handle each state yourself. Activate with `client.license.activateWithKey(key)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.identity.signInWithBrowser()`. [Your own UI](/docs/build/sdks/node/your-own-ui/) gives each call with its states and words, for a CLI, for Electron and for a server.
+Call the client and handle each state yourself. Activate with `client.license.activateWithKey(key)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.identity.signIn.start()`. [Your own UI](/docs/build/sdks/node/your-own-ui/) gives each call with its states and words, for a CLI, for Electron and for a server.
 
 ```ts title="own-ui.ts"
 import { copy, type PolarisKeyClient } from "@polaris-key/node";

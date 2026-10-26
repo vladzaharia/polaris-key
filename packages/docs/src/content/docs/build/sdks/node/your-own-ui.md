@@ -118,25 +118,27 @@ A device that a key counts is also freed from a device that still has a credenti
 import { qr, type PolarisKeyClient } from "@polaris-key/node";
 
 export async function signIn(client: PolarisKeyClient, signal: AbortSignal) {
-  const prompt = await client.identity.beginSignIn({
+  const session = await client.identity.signIn.start({
+    channel: "device-code",
     deviceName: "Living-room PC",
   });
-  // Show prompt.userCode large, prompt.verificationUri as the short address, and the QR
-  // of prompt.verificationUriComplete. Never show prompt.deviceCode.
-  console.log(prompt.userCode, prompt.verificationUri);
-  console.log(qr.terminal(prompt.verificationUriComplete));
+  // Show session.userCode large, session.verificationUri as the short address, and the QR
+  // of session.verificationUriComplete. The poll credential is never a field.
+  console.log(session.userCode, session.verificationUri);
+  console.log(qr.terminal(session.verificationUriComplete));
 
-  const result = await client.identity.waitForSignIn(prompt, { signal });
-  if (result.status !== "ready") return result.status; // "expired" or an error
+  const result = await session.wait({ signal });
+  if (result.kind !== "signedIn") return result.kind; // "expired" or "cancelled"
   // Anyone holding the code can finish the sign-in elsewhere: say who signed in.
-  const profile = client.license.getProfile();
-  return `Signed in as ${profile?.name ?? ""} ${profile?.email ?? ""}`.trim();
+  const who = result.identity;
+  return `Signed in as ${who?.name ?? ""} ${who?.email ?? ""}`.trim();
 }
 ```
 
-`signInWithBrowser()` does the same and opens the system browser. Sign-in needs the Identity
-service; with it off, every call throws `service-unavailable` before any request.
-`client.identity.signOut()` and `client.license.deactivate()` end the session.
+`session.reopen()` opens the system browser. A person's refusal throws `sign-in-denied`; a failure
+after approval throws `sign-in-failed`. Sign-in needs the Identity service; with it off,
+`signIn.start` throws `service-unavailable` before any request. `client.identity.signOut()` and
+`client.license.deactivate()` end the session.
 
 ## Status, offline and refresh
 
@@ -238,7 +240,7 @@ export async function submit(key: string): Promise<string | null> {
 
 The adapter's `snapshot()` is a `PolarisState` (`status`, `gate`, `profile`, `config`,
 `entitlements`, per-service `busy` and `error`). The device code of a sign-in never leaves the main
-process; `adapter.beginSignIn()` hands the renderer only what to show.
+process; `adapter.beginSignIn()` (the bridge verb, mapped onto the session) hands the renderer only what to show.
 
 ## Tests
 

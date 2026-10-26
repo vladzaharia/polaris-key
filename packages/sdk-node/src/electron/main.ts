@@ -321,7 +321,22 @@ export function bridgeState(
 export function bridgeActivation(r: ActivationResult): Record<string, unknown> {
   switch (r.kind) {
     case "ok":
-      return { kind: "ok" };
+      return r.keyEntries
+        ? {
+            kind: "ok",
+            keyEntries: { used: r.keyEntries.used, limit: r.keyEntries.limit },
+          }
+        : { kind: "ok" };
+    case "key-entry-limit": {
+      const out: Record<string, unknown> = {
+        kind: "key-entry-limit",
+        keyEntries: { used: r.keyEntries.used, limit: r.keyEntries.limit },
+      };
+      if (r.manageUrl !== undefined) out.manageUrl = r.manageUrl;
+      return out;
+    }
+    case "license-owned":
+      return { kind: "license-owned", signInUrl: r.signInUrl };
     case "device-limit": {
       const out: Record<string, unknown> = { kind: "device-limit" };
       if (r.limit !== undefined) out.limit = r.limit;
@@ -855,6 +870,28 @@ export function exposePolarisBridge(
     },
     "core.storeStatus": async () => client.storeStatus(),
     "devices.id": async () => client.currentDevice().id,
+    // ── I-10a.9: the account ─────────────────────────────────────────────────────────────
+    "identity.subject": async () => client.identity.subject(),
+    "identity.attach": async (a) => {
+      const r = await client.identity.attach({
+        confirm: bag(a).confirm === true,
+      });
+      // The renderer's `{kind}` vocabulary.
+      if (r.status === "confirm")
+        return { kind: "confirm", license: r.license };
+      if (r.status === "refused")
+        return { kind: "refused", code: r.code, status: r.httpStatus };
+      pushState();
+      return {
+        kind: "ok",
+        subject: r.subject,
+        ...(r.attached ? { attached: r.attached } : {}),
+      };
+    },
+    "identity.openAccount": async () => {
+      await client.identity.openAccount();
+      return null;
+    },
     // ── v4 (SP-12) ─────────────────────────────────────────────────────────────────────
     "core.boot": async (a) => {
       const b = bag(a);
