@@ -180,8 +180,9 @@ export interface CloudSyncCollection {
   /** The most records one person may keep here (at most 10,000). Not allowed on a `saves`
    *  collection, whose slots are a platform constant. */
   maxRecords?: number;
-  /** The one file a record may carry. */
-  files?: { maxBytes?: number; keepRevisions?: number };
+  /** The one file a record may carry. `delta` sends only the changed chunks of a new version
+   *  (default `true` for a `saves` collection, `false` otherwise). */
+  files?: { maxBytes?: number; keepRevisions?: number; delta?: boolean };
   /** An entitlement the anchor licence must grant before a record is written. */
   requires?: string;
 }
@@ -196,8 +197,15 @@ export interface CloudSyncMigration {
   drop?: string[];
 }
 
+/** How a product's synced data is stored: `e2e` (the default; the server holds ciphertext only)
+ *  or `server` (readable by the server, a per-product opt-out; V5 §13.10). */
+export type CloudSyncEncryption = "e2e" | "server";
+
 /** A catalog's `cloudSync` block. */
 export interface CatalogCloudSync {
+  /** Default `e2e`. `server` lets the server read synced values, so `mapValues` migrations
+   *  work. */
+  encryption?: CloudSyncEncryption;
   collections?: CloudSyncCollection[];
   migrations?: CloudSyncMigration[];
 }

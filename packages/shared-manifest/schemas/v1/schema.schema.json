@@ -32,7 +32,7 @@
         "key": {
           "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency). On a flag, the names channels, deviceLimit, app.minVersion, app.maxVersion, license.tier and license.tierLabel, and every name under license., app. and pkey., are reserved entitlement names the platform sets itself: a declaration of one must match the system key's type (channels an array of strings, deviceLimit an integer, app.* and license.* strings) and may only narrow it. The validator reports an incompatible one (incompatible_reserved_name) as a warning or an error, as the platform's licensing.reservedNames setting says; this schema does not check it.",
           "type": "string",
-          "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+          "pattern": "^(?!x:)[A-Za-z0-9._:-]{1,64}$"
         },
         "kind": {
           "description": "config = plaintext client setting · secret = redacted, delivered to the OS keyring · flag = an entitlement.",
@@ -219,6 +219,10 @@
       "description": "The data shape of the product's Cloud Sync records (the Cloud Sync service): its collections and the migrations the server applies to synced values. A person's quota is not here: it is the pkey.cloudSync.bytes entitlement a tier, a licence override or an add-on sets.",
       "type": "object",
       "properties": {
+        "encryption": {
+          "description": "e2e (default): the server holds ciphertext only and cannot read synced values. server: the server can read them, which migrations' mapValues needs.",
+          "enum": ["e2e", "server"]
+        },
         "collections": {
           "type": "array",
           "maxItems": 32,
@@ -226,9 +230,9 @@
             "type": "object",
             "properties": {
               "name": {
-                "description": "[A-Za-z0-9._:-], at most 128 characters; a trailing .* makes a pattern matching every collection with that prefix. Names are unique and patterns disjoint.",
+                "description": "[A-Za-z0-9._:-], at most 128 characters, not starting with x: (reserved for blinded names); a trailing .* makes a pattern matching every collection with that prefix. Names are unique and patterns disjoint.",
                 "type": "string",
-                "pattern": "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$"
+                "pattern": "^(?!x:)[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$"
               },
               "label": {
                 "description": "Shown in the console and the portal. Default: the template's label, else the name.",
@@ -272,7 +276,11 @@
                 "type": "object",
                 "properties": {
                   "maxBytes": { "type": "integer", "minimum": 0 },
-                  "keepRevisions": { "type": "integer", "minimum": 0 }
+                  "keepRevisions": { "type": "integer", "minimum": 0 },
+                  "delta": {
+                    "description": "Send only the changed chunks of a new version. Default true for a saves collection, false otherwise.",
+                    "type": "boolean"
+                  }
                 },
                 "additionalProperties": false
               },
@@ -315,6 +323,18 @@
             },
             "required": ["toSchemaVersion"],
             "additionalProperties": false
+          }
+        }
+      },
+      "if": {
+        "properties": { "encryption": { "const": "server" } },
+        "required": ["encryption"]
+      },
+      "else": {
+        "$comment": "mapValues rewrites values the server cannot read under E2E.",
+        "properties": {
+          "migrations": {
+            "items": { "not": { "required": ["mapValues"] } }
           }
         }
       },
