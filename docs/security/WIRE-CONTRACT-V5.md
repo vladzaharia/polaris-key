@@ -2300,7 +2300,7 @@ One ring holds the root `R` of a person's E2E data for one product. The ring is 
 #### 13.11.1 The ring and its wraps
 
 - **Ring.** `ringId` (§8), `epoch` (at least 1), `rootKid` (the `kid` of `R`, §13.10.2), a state, and the creation time. There is one ring per (product, subject). A device accepts a root only when `kid(R)` equals the ring's `rootKid`, and once it holds a root for (`ringId`, `epoch`) it never replaces it.
-- **Wrap to a device** (`pkey-sync-wrap/1`): RFC 9180 HPKE `mode_base` with KEM 0x0020 (X25519), KDF 0x0001 (HKDF-SHA256) and AEAD 0x0002 (AES-256-GCM). `info = "pkey-sync/1 wrap\0" ‖ product ‖ 0x00 ‖ deviceId ‖ 0x00 ‖ ringId ‖ 0x00 ‖ u32be(epoch)`, `aad = kid`, and the plaintext is `R`. The wrap carries its `kem`, so a later key type changes one field.
+- **Wrap to a device** (`pkey-sync-wrap/1`): RFC 9180 HPKE `mode_base` with KEM 0x0020 (X25519), KDF 0x0001 (HKDF-SHA256) and AEAD 0x0002 (AES-256-GCM). `info = "pkey-sync/1 wrap\0" ‖ product ‖ 0x00 ‖ deviceId ‖ 0x00 ‖ ringId ‖ 0x00 ‖ u32be(epoch)`, `aad = kid`, and the plaintext is `R`. The wrap carries its `kem`, so a later key type changes one field. `kem` is the HPKE KEM id as a JSON integer (`32` for 0x0020; a P-256 key would be `16`), `enc` is the 32-byte encapsulated key and `ct` is `R` sealed with its 16-byte tag (48 bytes); a reader refuses any other `kem`, an `enc` that is not 32 bytes and an all-zero DH output. Sequence 0 is the only message, so the nonce is the key schedule's `base_nonce`. `product` is the product slug, `deviceId` and `ringId` are their text forms (§8) and the PSK is empty. `wrapCases` and `hpkeAnchor` (the RFC 9180 vector for this suite) pin all of it.
 - **Server view.** The server stores wraps (`{epoch, kid, kem, enc, ct, by}` per device) and the sealed recovery blob. It holds no key that opens either.
 
 #### 13.11.2 Routes
@@ -2331,10 +2331,10 @@ A device with no root is `locked` (§11.5). It reads the ring (`GET`) to learn `
 
 #### 13.11.4 The recovery code
 
-- **Code.** 16 random bytes and a 4-byte SHA-256 checksum make 32 Crockford base32 characters, shown as 8 groups of 4. The parser ignores case, spaces and hyphens, and maps `I` and `L` to `1` and `O` to `0`. A bad checksum or a failed unwrap is the client code `recovery-code-invalid`. There is one code per product.
+- **Code.** 16 random bytes and a 4-byte SHA-256 checksum make 32 Crockford base32 characters, shown as 8 groups of 4. The parser ignores case, spaces and hyphens, and maps `I` and `L` to `1` and `O` to `0`. The checksum is the first 4 bytes of SHA-256 of the 16 code bytes; the 20 bytes are read as one big-endian 160-bit number, five bits per character from the most significant, over the alphabet `0123456789ABCDEFGHJKMNPQRSTVWXYZ`. The groups are joined by hyphens and shown in upper case. A bad checksum or a failed unwrap is the client code `recovery-code-invalid`. There is one code per product.
 - **Recovery blob.** `recoveryWrap = 0x01 ‖ n12 ‖ AES-256-GCM(K_rec, n, aad = "pkey-sync/1 recovery" ‖ ringId ‖ u32be(epoch) ‖ kid, R)`, stored by the server as `recovery.ct`. 128 random bits cannot be brute-forced offline, so the server learns nothing from the blob; the rate limit and the email guard against a stolen device token.
 - **Reset.** `reset` makes a new ring and a new code. The old ring is kept read-only for 30 days and a device that still holds its root can `adopt` it (re-seal under the new root). After 30 days the server deletes rows whose `kid` belongs to the abandoned ring.
-- **Account merge.** The absorbed subject's ring becomes an `adopted` candidate. A device that holds both roots seals the adoption under `K_adopt`.
+- **Account merge.** The absorbed subject's ring becomes an `adopted` candidate. A device that holds both roots seals the adoption under `K_adopt`. The `ct` of `POST /<p>/devices/keyring/adopt` has the recovery blob's layout: `0x01 ‖ n12 ‖ AES-256-GCM(K_adopt, n, aad = "pkey-sync/1 adopt" ‖ fromRingId ‖ u32be(epoch) ‖ kid, R_old)`, where `K_adopt` is derived from the current root, and `epoch`, `kid` and `fromRingId` name the ring and root being adopted (the request's members). The `recoveryWrap` and adopt blobs are exactly 61 bytes, and a blob of another length or version is refused. `n` is random per blob. `recoveryCodeCases` and `adoptCases` pin both.
 
 #### 13.11.5 Platform backup
 

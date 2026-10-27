@@ -1,0 +1,32 @@
+{
+  "description": "The RFC 9180 test vector for HPKE mode_base with KEM 0x0020, KDF 0x0001 and AEAD 0x0002 (pkey-sync-wrap/1) that anchors the wrap reference in tools/corpus/reference/syncVectors.ts. Copied from the pinned upstream file (key sequence 0 only, hex fields); `sha256` is over the vector as JSON with sorted keys and no whitespace, `source.sha256` over the whole upstream file. Never edited: the generator fails when a hash differs.",
+  "source": {
+    "id": "cfrg-hpke",
+    "url": "https://raw.githubusercontent.com/cfrg/draft-irtf-cfrg-hpke/5f503c564da00b0687b3de75f1dfbdfc4079ad31/test-vectors.json",
+    "sha256": "61fc662f01996cd06d713dacf5e133167bd309a1f329442d53f1e21a47b3ede6"
+  },
+  "vector": {
+    "mode": 0,
+    "kem_id": 32,
+    "kdf_id": 1,
+    "aead_id": 2,
+    "info": "4f6465206f6e2061204772656369616e2055726e",
+    "skRm": "497b4502664cfea5d5af0b39934dac72242a74f8480451e1aee7d6a53320333d",
+    "pkRm": "430f4b9859665145a6b1ba274024487bd66f03a2dd577d7753c68d7d7d00c00c",
+    "skEm": "179d4b53b6365c45b600c4163b61d95cbc2f4d9e36f1695558dce265ab8bab11",
+    "pkEm": "6c93e09869df3402d7bf231bf540fadd35cd56be14f97178f0954db94b7fc256",
+    "enc": "6c93e09869df3402d7bf231bf540fadd35cd56be14f97178f0954db94b7fc256",
+    "shared_secret": "3101c54c3a4f87439eaac080699ed9bbcc726ffe44e860c0424ccb7e3e2ead7b",
+    "key_schedule_context": "004ce5472ecdd5093ba0aecb8f871ff13f1fbc90ee76f0e18ace1a1b7e565bafa306f6ef962c9ee7cea40407b5d60f0f26990472faae3ac44c78366f1cac1ecde1",
+    "secret": "2058ac9b02c1f52c1aaf08bedbec9198219751a94ef67b7d5f0c8b6e2b54ebfb",
+    "key": "f50b0609186798729ed0564b36ef2ef8044f1f9d05636874d1f46c819c7a669f",
+    "base_nonce": "151d9929e2449747889bc923",
+    "encryption": {
+      "aad": "436f756e742d30",
+      "ct": "e5d84cd531cfb583096e7cfa9641bd3079cf3a91cda813c52deb5f512be9931980a41de125a925cdad859d5b7a",
+      "nonce": "151d9929e2449747889bc923",
+      "pt": "4265617574792069732074727574682c20747275746820626561757479"
+    }
+  },
+  "sha256": "2811f0511eada7c2b345628a6cbe7a81bbbc7abe1fbe4d3e541c2fc02bd3aea0"
+}
