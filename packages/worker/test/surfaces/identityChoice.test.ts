@@ -1036,6 +1036,13 @@ describe("the step-up mark (I-43.1, §12.11.4)", () => {
   const fresh = (device = DEVICE) =>
     getArtefact(env, artefactRef("signin-fresh", `${SLUG}:${device}`));
 
+  async function pending(): Promise<string> {
+    const s0 = await signedIn();
+    await ownLicense(s0.id, "lic_a");
+    const { res } = await chooseGrant();
+    return ((await res.json()) as { grant: string }).grant;
+  }
+
   it("a same-device token writes it for that device only, for 300 s", async () => {
     const { code } = await codeFor();
     expect(await fresh()).toBeNull();
@@ -1053,10 +1060,7 @@ describe("the step-up mark (I-43.1, §12.11.4)", () => {
   });
 
   it("a grant earns it only at complete, not at issue or cancel", async () => {
-    const s0 = await signedIn();
-    await ownLicense(s0.id, "lic_a");
-    const { res } = await chooseGrant();
-    const { grant } = (await res.json()) as { grant: string };
+    const grant = await pending();
     expect(await fresh()).toBeNull();
     const done = await grantReq("complete", {
       grant,
@@ -1067,10 +1071,7 @@ describe("the step-up mark (I-43.1, §12.11.4)", () => {
   });
 
   it("a cancelled grant leaves no mark", async () => {
-    const s0 = await signedIn();
-    await ownLicense(s0.id, "lic_a");
-    const { res } = await chooseGrant();
-    const { grant } = (await res.json()) as { grant: string };
+    const grant = await pending();
     expect((await grantReq("cancel", { grant })).status).toBe(204);
     expect(await fresh()).toBeNull();
   });
