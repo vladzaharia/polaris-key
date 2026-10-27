@@ -2598,6 +2598,8 @@ reveal rows.
   - A type not allowed in the session's mode closes it with `peer_not_allowed`.
   - **Order of checks (`peer-matrix.json` `records`).** Per record: the flag bits, then a record of another type while a `MORE` chain is open (`peer_bad_frame`), then the type (unknown critical, then the mode), then the running size over 1 MiB (`peer_bad_frame`), and on a chain's last record a fixed body length (`PING` and `PONG` 8 bytes, `REKEY` empty; `peer_bad_frame`). An unknown non-critical type is dropped with its whole chain. A frame whose length is zero closes with `peer_bad_frame`.
 
+  - **Session rules (client-core `peer/session.ts`).** The first record each way is `HELLO`; a first record of any other type, and a second `HELLO`, close the session with `peer_bad_frame`. A failure before the transport exists (a bad tag, payload or certificate) ends the connection without sending anything; after it, the closing side sends `CLOSE` with its code. In modes `v` and `p` a record other than `HELLO`, `SAS_*`, `PING`, `PONG`, `REKEY` and `CLOSE` closes with `peer_not_allowed` until the code is computed, and `SAS_*` out of order (a commit to the initiator, a reveal before a nonce, a repeat) or a reveal that does not match its commit closes with `peer_bad_frame`. In mode `a` a certificate that fails admission ends the handshake, and a revoked one reports `peer_revoked`.
+
 | Type                         | Name                                    | Modes | Body                                                                                                                                                               |
 | ---------------------------- | --------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 0x8001                       | HELLO (first record each way)           | all   | `{label?, platform, app, maxMessage}`. The label is display data (§5.4)                                                                                            |
@@ -2646,6 +2648,8 @@ from the client.
 | DO to client | 0x86 | LIMIT: `u8` 1 rate · 2 person · 3 product · 4 paused |
 
 **Byte-level choices (`peer-matrix.json` `relayEnvelopes`).** A device is its 24 decoded device-id bytes. `MEMBERS` carries its count `n` as one byte. `PONG` echoes the 8 bytes of the `PING` it answers. The limit of 65,564 bytes is the whole message: the op, 24, 4 and a Noise frame of at most 65,535 bytes. A message that does not match its layout exactly, an op in the wrong direction and a `LIMIT` outside 1 to 4 are refused.
+
+**Refused envelopes.** A message that fails its layout is never answered: the receiver closes the WebSocket (a client with 1002, the Room with 1008) and treats any frames after it as lost. The 4001 to 4009 codes above are the Room's own.
 
 **Close codes:** 4001 bad ticket · 4003 not a member · 4008 limit · 4009 replaced.
 

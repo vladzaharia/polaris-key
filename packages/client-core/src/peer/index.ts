@@ -36,3 +36,73 @@ export {
   type PeerMode,
   type X25519Port,
 } from "./noise.js";
+export {
+  ADVERT_EPOCH_SECONDS,
+  accountInstance,
+  advertEpoch,
+  base32Lower,
+  browseAccountInstance,
+  deviceIdBytes,
+  isInstanceName,
+  parseTxt,
+  productTag,
+  type BrowseHit,
+  type TxtResult,
+} from "./advert.js";
+export {
+  decodeSasValue,
+  encodeSasValue,
+  parseSasBody,
+  sasBody,
+  sasCommit,
+  sasDisplay,
+  sasRevealOk,
+  sasValue,
+  type SasMember,
+} from "./sas.js";
+export {
+  FrameReader,
+  MAX_FRAME,
+  decodeFrames,
+  encodeFrame,
+  type FrameDecode,
+} from "./frame.js";
+export {
+  MAX_PEER_MESSAGE_BYTES,
+  MAX_RECORD_BODY,
+  RECORD,
+  RECORD_TYPES,
+  RecordAssembler,
+  encodeRecord,
+  parseRecord,
+  splitMessage,
+  type AssembleResult,
+  type PeerCloseCode,
+  type PeerRecord,
+  type RecordMode,
+} from "./record.js";
+export {
+  RELAY_MAX_MESSAGE,
+  decodeRelay,
+  encodeRelay,
+  type RelayMessage,
+} from "./relay.js";
+export {
+  MAX_CAPS,
+  MAX_HANDSHAKE_PAYLOAD,
+  capsIntersection,
+  parseHandshakePayload,
+  parseStrictObject,
+  payload1,
+  payload23,
+  type PayloadVerdict,
+} from "./payload.js";
+export {
+  HandshakeLimiter,
+  PeerSession as PeerChannel,
+  type AccountContext,
+  type ClosedReason,
+  type PeerHello,
+  type PeerSessionOptions,
+  type SessionEvent,
+} from "./session.js";

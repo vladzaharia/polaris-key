@@ -460,8 +460,8 @@
       "note": "client-core's peer/noise.ts (NoiseHandshake, CipherState, peerPsk) over WebCrypto X25519 and AES-256-GCM, which the Node SDK consumes directly; the Node runner drives every noise-vectors.json row, the failures and the anchors (CC-05.2). The XXpsk0 anchor and the session machine follow."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-08"
+      "status": "implemented",
+      "note": "client-core's peer/ codecs (advert, sas, frame, record, relay, payload) and the PeerChannel session machine for modes a, v and p, which the Node SDK consumes directly; the Node runner drives every peer-matrix.json section (CC-05.4). LAN sockets, the relay client and the cloudConnect API follow in CC-08."
     },
     "connect.lan": {
       "status": "planned",
