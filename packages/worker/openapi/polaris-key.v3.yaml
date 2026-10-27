@@ -27781,10 +27781,21 @@ components:
         licenseId: { type: string }
     ChoiceCompleteRequest:
       type: object
-      required: [grant, choice]
+      description: >
+        `choice` is required except on a grant issued with `status: confirm` when no choice is
+        due. `consent` is required on a `confirm` grant (§12.11.3): its absence is
+        `400 bad_request` with the grant left open.
+      required: [grant]
       properties:
         grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
         choice: { $ref: "#/components/schemas/LicenseChoiceInput" }
+        consent:
+          type: object
+          required: [claims]
+          properties:
+            claims:
+              type: array
+              items: { type: string, enum: [profile, email, cloudSync] }
         deviceName: { type: string }
     SignInContinueRequest:
       type: object

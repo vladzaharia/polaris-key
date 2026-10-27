@@ -116,6 +116,52 @@ export function askedScopeHash(product: ProductPublic): Promise<string> {
   );
 }
 
+/**
+ * What an app consent covers for this account and product, and whether one stands: the one
+ * reading the card's consent view and the exchange's `confirm` (I-13.5) share. `scopeHash` is
+ * {@link askedScopeHash}; only a change of claims or services re-asks (§8 Q5), so a new anchor
+ * licence or new grants do not.
+ */
+export async function consentState(
+  env: Env,
+  db: Db,
+  product: ProductPublic,
+  accountId: string,
+  now: number,
+  settings?: SettingsRegistry,
+): Promise<{
+  items: ConsentItem[];
+  scopeHash: string;
+  firstTime: boolean;
+  changed: boolean;
+}> {
+  const license = product.services.license.enabled;
+  const cloudSync = cloudSyncOn(product);
+  const items: ConsentItem[] = [];
+  if (license)
+    items.push(
+      await licenseConsentItem(db, accountId, product, now, {
+        env,
+        registry: settings,
+      }),
+    );
+  if (cloudSync) items.push({ kind: "cloudSync" });
+  items.push({ kind: "profile", claims: [...CONSENT_PROFILE_CLAIMS] });
+  const scopeHash = await askedScopeHash(product);
+  const grant = await db.first<{ scope_hash: string | null }>(
+    "SELECT scope_hash FROM account_product_grants WHERE account_id = ? AND product = ?",
+    accountId,
+    product.slug,
+  );
+  return {
+    items,
+    scopeHash,
+    firstTime: grant === null,
+    // A consent recorded before scopes were (`scope_hash` NULL) asks once more, to record one.
+    changed: grant !== null && grant.scope_hash !== scopeHash,
+  };
+}
+
 /** `GET /api/signin/requests/:handle/consent`, for the signed-in `accountId`. */
 export async function signInConsentView(
   env: Env,
@@ -133,29 +179,13 @@ export async function signInConsentView(
   const account = await getPortalAccount(db, accountId, now);
   if (!account) return { status: 404 };
 
-  const license = product.services.license.enabled;
-  const cloudSync = cloudSyncOn(product);
-  const items: ConsentItem[] = [];
-  if (license)
-    items.push(
-      await licenseConsentItem(db, accountId, product, now, {
-        env,
-        registry: settings,
-      }),
-    );
-  if (cloudSync) items.push({ kind: "cloudSync" });
-  items.push({ kind: "profile", claims: [...CONSENT_PROFILE_CLAIMS] });
-
-  // §8 Q5: only a change of claims or services re-asks. A new anchor licence or new grants do
-  // not: licences already follow the signed-in account (S-19 decision 4), and the item says so.
-  const scopeHash = await consentScope(
-    CONSENT_PROFILE_CLAIMS,
-    consentServices(license, cloudSync),
-  );
-  const grant = await db.first<{ scope_hash: string | null }>(
-    "SELECT scope_hash FROM account_product_grants WHERE account_id = ? AND product = ?",
+  const { items, scopeHash, firstTime, changed } = await consentState(
+    env,
+    db,
+    product,
     account.id,
-    product.slug,
+    now,
+    settings,
   );
   const view: AppConsentView = {
     request: handle,
@@ -168,9 +198,8 @@ export async function signInConsentView(
     },
     items,
     scopeHash,
-    firstTime: grant === null,
-    // A consent recorded before scopes were (`scope_hash` NULL) asks once more, to record one.
-    changed: grant !== null && grant.scope_hash !== scopeHash,
+    firstTime,
+    changed,
   };
   return { status: 200, body: view };
 }
