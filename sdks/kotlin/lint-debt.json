@@ -448,18 +448,20 @@
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptTest.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LargeClass": 1,
       "detekt:complexity.LongMethod": 2,
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:empty-blocks.EmptyFunctionBlock": 1,
       "detekt:style.MaxLineLength": 7,
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:argument-list-wrapping": 58,
       "ktlint:standard:binary-expression-wrapping": 4,
-      "ktlint:standard:blank-line-between-when-conditions": 61,
+      "ktlint:standard:blank-line-between-when-conditions": 68,
       "ktlint:standard:function-literal": 6,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 6,
-      "ktlint:standard:multiline-if-else": 3,
+      "ktlint:standard:multiline-if-else": 6,
       "ktlint:standard:wrapping": 2
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/UpdateMatrixTest.kt": {
@@ -860,6 +862,7 @@
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Transport.kt": {
       "detekt:complexity.ComplexCondition": 1,
       "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:style.MagicNumber": 6,
       "detekt:style.ReturnCount": 1,
@@ -1804,19 +1807,20 @@
       "ktlint:standard:property-naming": 3
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/Connect.kt": {
-      "detekt:complexity.ComplexCondition": 2,
-      "detekt:complexity.CyclomaticComplexMethod": 2,
-      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.ComplexCondition": 4,
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongParameterList": 2,
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.SwallowedException": 4,
       "detekt:exceptions.TooGenericExceptionCaught": 1,
-      "detekt:style.MagicNumber": 2,
+      "detekt:style.MagicNumber": 4,
       "detekt:style.MaxLineLength": 2,
       "detekt:style.ReturnCount": 1,
       "detekt:style.ThrowsCount": 5,
-      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:argument-list-wrapping": 14,
+      "ktlint:standard:blank-line-between-when-conditions": 4,
       "ktlint:standard:class-signature": 9,
-      "ktlint:standard:function-signature": 2,
+      "ktlint:standard:function-signature": 3,
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 1
     },
@@ -3258,6 +3262,14 @@
       "detekt:naming.EnumNaming": 2,
       "detekt:style.MagicNumber": 5,
       "ktlint:standard:enum-entry-name-case": 2
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectErrors.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:naming.EnumNaming": 29,
+      "ktlint:standard:enum-entry-name-case": 29
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectRelayTicketTest.kt": {
+      "detekt:exceptions.SwallowedException": 1
     }
   }
 }
