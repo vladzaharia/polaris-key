@@ -17,7 +17,7 @@ import {
 } from "@polaris-key/ui-core";
 import { platformVariant } from "@polaris-key/ui-core/theme";
 
-import { KIT_GLYPHS } from "@polaris-key/brand";
+import { GOOGLE_G_GRID, GOOGLE_G_PATHS, KIT_GLYPHS } from "@polaris-key/brand";
 import { encodeQr } from "@polaris-key/node/qr";
 
 import { actionOf, OPENS, placeKeys } from "./contract.js";
@@ -480,6 +480,10 @@ export function button(
       : download !== null
         ? html`${download}`
         : text(c, key, extra.args);
+  // The provider's button is Google's when the view names Google: its mark and fills (UI-KITS §3.6).
+  const google =
+    key === "signin.provider.continue" &&
+    /^google$/i.test(String(c.view.args.provider ?? c.input.provider ?? ""));
   const part =
     variant === "primary"
       ? "primary"
@@ -495,6 +499,7 @@ export function button(
     data-part=${part}
     data-variant=${variant}
     data-key=${key}
+    data-provider=${ifDefined(google ? "google" : undefined)}
     aria-disabled=${ifDefined(
       extra.busy || extra.disabled ? "true" : undefined,
     )}
@@ -505,7 +510,16 @@ export function button(
   >
     ${extra.busy
       ? html`<span class="ring" aria-hidden="true"></span>`
-      : nothing}
+      : google
+        ? svg`<svg
+            class="mark"
+            viewBox="0 0 ${GOOGLE_G_GRID} ${GOOGLE_G_GRID}"
+            aria-hidden="true"
+            focusable="false"
+          >
+            ${GOOGLE_G_PATHS.map((p) => svg`<path fill=${p.fill} d=${p.d} />`)}
+          </svg>`
+        : nothing}
     <span>${label}</span>
     ${external
       ? html`${GLYPHS.external()}<span class="visually-hidden"

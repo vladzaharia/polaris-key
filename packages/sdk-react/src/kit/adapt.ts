@@ -172,6 +172,10 @@ export function adaptChoice(
 
 /** The automatic sign-in steps that end on their own button, so no Cancel beside it. */
 const OWN_EXIT: ReadonlySet<string> = new Set([
+  // The confirm ends on Continue and Use another account (ui-matrix v7, no Cancel); Escape is
+  // its way out. The device limit lists its own Cancel.
+  "confirm",
+  "device-limit",
   "link-offer",
   "link-done",
   "link-conflict",

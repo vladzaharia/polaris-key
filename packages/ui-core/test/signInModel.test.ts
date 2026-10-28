@@ -532,10 +532,38 @@ describe("SignInModel: automatic sign-in (I-46.8)", () => {
       base: { platform: MAC },
     });
     m.presentAuto({ kind: "deviceLimit", manageUrl: "https://key.plrs.im/m" });
-    expect(m.snapshot.activation).toMatchObject({
-      result: "device-limit",
+    // Its own step of the form, never the key screen.
+    expect(m.snapshot.autoSignIn).toMatchObject({
+      step: "device-limit",
       manageUrl: "https://key.plrs.im/m",
     });
+    expect(m.snapshot.activation).toBeUndefined();
+    expect(m.views().signIn.state).toBe("device-limit");
+    expect(m.manageUrl).toBe("https://key.plrs.im/m");
+  });
+
+  it("after Replace opened the browser, coming back runs the provider sign-in once more", async () => {
+    const sdk = fakeSdk([]);
+    let asked = 0;
+    sdk.primitives.autoSignIn = async () => {
+      asked++;
+      return asked === 1 ? { kind: "signedIn", issuedNow: false } : null;
+    };
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    m.presentAuto({ kind: "deviceLimit", manageUrl: "https://key.plrs.im/m" });
+    // Coming back without a Replace does nothing.
+    await m.returned();
+    expect(asked).toBe(0);
+    m.leftToReplace();
+    await m.returned();
+    expect(asked).toBe(1);
+    expect(m.snapshot.session.outcome).toBe("signedIn");
+    // Once per Replace.
+    await m.returned();
+    expect(asked).toBe(1);
   });
 
   it("the provider's button asks the provider, then falls back to the browser sign-in", async () => {
