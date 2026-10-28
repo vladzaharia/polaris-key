@@ -148,6 +148,8 @@ interface MemberRow {
   label: string | null;
   platform: string | null;
   last_seen: number;
+  created_at: number;
+  rotated_at: number | null;
 }
 
 export interface MemberOptions {
@@ -173,7 +175,7 @@ async function memberRows(
   opts: MemberOptions,
 ): Promise<MemberRow[]> {
   const rows = await db.all<MemberRow & { status: string; license_id: string }>(
-    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq, d.label, d.platform, d.last_seen,
+    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq, k.created_at, k.rotated_at, d.label, d.platform, d.last_seen,
             d.status, d.license_id
        FROM device_keys k
        JOIN devices d ON d.product = k.product AND d.device_id = k.device_id
@@ -227,6 +229,8 @@ export interface AccountDeviceListing {
   label: string | null;
   platform: string | null;
   lastSeen: number;
+  /** When the device's current keys took effect: its last rotation, else first registration. */
+  keysSince: number;
 }
 
 /** The listing for `accountDeviceKeys`' set (same rule), sorted by `device_id`. */
@@ -242,6 +246,7 @@ export async function accountDeviceListing(
     label: r.label,
     platform: r.platform,
     lastSeen: r.last_seen,
+    keysSince: r.rotated_at ?? r.created_at,
   }));
 }
 
