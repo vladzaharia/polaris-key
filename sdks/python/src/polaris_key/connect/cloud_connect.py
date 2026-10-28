@@ -31,6 +31,7 @@ Rules this module keeps:
 
 from __future__ import annotations
 
+import concurrent.futures
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
@@ -48,6 +49,8 @@ if TYPE_CHECKING:  # the transports import asyncio and sockets: only when Connec
 __all__ = ["CloudConnect", "CloudConnectStatus", "CloudPeer", "LAN_ATTEMPT_SECONDS"]
 
 LAN_ATTEMPT_SECONDS = 4.0
+#: How long ``stop()`` waits for the Connect loop to tear down.
+STOP_SECONDS = 15.0
 
 
 @dataclass(frozen=True)
@@ -233,7 +236,15 @@ class CloudConnect:
         with self._lock:
             if not self._touched:
                 return
-        self._run(self._stop())
+        if self._loop.in_loop():
+            raise RuntimeError("a Cloud Connect callback cannot call a blocking method; hand the work to a thread")
+        fut = self._loop.submit(self._stop())
+        try:
+            fut.result(STOP_SECONDS)
+        except (concurrent.futures.TimeoutError, TimeoutError):
+            # A host callback is holding the Connect loop. The teardown stays queued and runs when it
+            # lets go; the caller (sign-out) does not wait on the host's code (S6).
+            raise LanError("closed", "Cloud Connect did not stop in time: a callback is blocking its thread.") from None
 
     async def _stop(self) -> None:
         async with self._serial():

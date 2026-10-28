@@ -15,6 +15,7 @@ __all__ = [
     "BrowseHit",
     "account_instance",
     "advert_epoch",
+    "browse_table",
     "base32_lower",
     "browse_account_instance",
     "device_id_bytes",
@@ -118,3 +119,21 @@ def browse_account_instance(
                     hits.append(BrowseHit(device_id, epoch_back, i))
                     return hits[0]
     return None
+
+
+def browse_table(k_discs: Sequence[bytes], now_seconds: int, roster: Sequence[str]) -> Dict[str, BrowseHit]:
+    """Every instance name a roster device can be advertising now (the current and the previous epoch,
+    the at most two delivered keys, newest first), worked out once: a browse is then one dict lookup,
+    and a forged name costs nothing. At most 512 entries (128 devices x 2 epochs x 2 keys); on a
+    collision the first in ``browse_account_instance``'s order wins."""
+    epoch = advert_epoch(now_seconds)
+    table: Dict[str, BrowseHit] = {}
+    for epoch_back in (0, 1):
+        if epoch - epoch_back < 0:
+            continue
+        for i in range(min(len(k_discs), 2)):
+            for device_id in roster[:_MAX_BROWSE_ROSTER]:
+                table.setdefault(
+                    account_instance(k_discs[i], epoch - epoch_back, device_id), BrowseHit(device_id, epoch_back, i)
+                )
+    return table

@@ -566,3 +566,38 @@ def test_the_default_opener_refuses_an_oversize_message_and_an_unreachable_host(
     with pytest.raises(SocketClosed) as e:
         run(websockets_opener(2)("ws://127.0.0.1:1/x", ["pkey-relay.1", "pkeyrt_" + "A" * 32]))
     assert e.value.code is None
+
+
+@needs_ws
+def test_the_default_opener_never_follows_a_redirect_so_the_ticket_stays_on_one_host() -> None:
+    # G13: websockets 15+ follows a 3xx to another origin and re-sends Sec-WebSocket-Protocol (the ticket).
+    hits: List[str] = []
+
+    async def go() -> Any:
+        async def second(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
+            hits.append((await r.read(4096)).decode("latin-1"))
+            w.close()
+
+        s2 = await asyncio.start_server(second, "127.0.0.1", 0)
+        p2 = s2.sockets[0].getsockname()[1]
+
+        async def first(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
+            await r.readuntil(b"\r\n\r\n")
+            head = "HTTP/1.1 302 Found\r\nLocation: ws://127.0.0.1:%d/y\r\nContent-Length: 0\r\n" % p2
+            w.write((head + "Connection: close\r\n\r\n").encode())
+            await w.drain()
+            w.close()
+
+        s1 = await asyncio.start_server(first, "127.0.0.1", 0)
+        p1 = s1.sockets[0].getsockname()[1]
+        try:
+            with pytest.raises(SocketClosed) as e:
+                await websockets_opener(5)("ws://127.0.0.1:%d/x" % p1, ["pkey-relay.1", "pkeyrt_" + "A" * 32])
+            await asyncio.sleep(0.1)
+            return e.value.code
+        finally:
+            s1.close()
+            s2.close()
+
+    assert run(go()) is None
+    assert hits == []

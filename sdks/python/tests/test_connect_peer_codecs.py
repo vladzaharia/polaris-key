@@ -15,6 +15,7 @@ from polaris_key.core.peer_advert import (
     advert_epoch,
     base32_lower,
     browse_account_instance,
+    browse_table,
     device_id_bytes,
     is_instance_name,
     parse_txt,
@@ -110,6 +111,17 @@ def test_browse_is_bounded_to_two_keys_and_128_devices() -> None:
     assert browse_account_instance(inst, [k], 5 * 900, roster) is None  # the 130th is never tried
     third = account_instance(bytes([9]) * 32, 5, roster[0])
     assert browse_account_instance(third, [k, k, bytes([9]) * 32], 5 * 900, roster) is None
+
+
+def test_the_browse_table_agrees_with_the_browse_and_holds_at_most_512_names() -> None:
+    k1, k2 = bytes([7]) * 32, bytes([8]) * 32
+    roster = ["%032d" % i for i in range(130)]
+    table = browse_table([k1, k2, bytes([9]) * 32], 5 * 900 + 3, roster)
+    assert len(table) == 128 * 2 * 2
+    for inst, hit in list(table.items())[::37]:
+        assert browse_account_instance(inst, [k1, k2], 5 * 900 + 3, roster) == hit
+    assert account_instance(k1, 5, roster[129]) not in table
+    assert browse_table([k1], 0, roster[:2]).keys() == {account_instance(k1, 0, r) for r in roster[:2]}
 
 
 # -- SAS --------------------------------------------------------------------------------------------

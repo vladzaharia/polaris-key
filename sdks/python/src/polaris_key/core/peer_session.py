@@ -150,6 +150,9 @@ class AccountContext:
     def __repr__(self) -> str:
         return "AccountContext()"
 
+    def __reduce__(self) -> Any:
+        raise TypeError("AccountContext cannot be pickled")
+
 
 @dataclass(frozen=True)
 class Sas:

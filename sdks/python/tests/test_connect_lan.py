@@ -583,3 +583,50 @@ def test_a_pushed_roster_is_reported_as_a_notice() -> None:
         la._docs.ring(w.ring)
         until(lambda: notices)
         assert notices[0].type == "ring" and notices[0].outcome == "refused" and notices[0].reason == "unsupported"
+
+
+def test_forged_names_cost_nothing_after_the_expected_names_are_worked_out_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import polaris_key.core.peer_advert as adv
+
+    with World() as w:
+        la = w.start(w.a)
+        real = adv.account_instance
+        calls = {"n": 0}
+
+        def counting(*a: Any, **k: Any) -> str:
+            calls["n"] += 1
+            return real(*a, **k)
+
+        la._tab = None
+        monkeypatch.setattr(adv, "account_instance", counting)
+        for i in range(200):
+            name = account_instance(bytes([3]) * 32, advert_epoch(NOW), "%032d" % i)
+            w.net.inject(MdnsFound(name, "127.0.0.1", 4000, ["v=1", "m=a"]))
+        until(lambda: len(la._miss) >= 200)
+        first = calls["n"]
+        assert 0 < first <= 512  # one table, not 512 per name
+        la._miss.clear()
+        for i in range(200, 400):
+            name = account_instance(bytes([3]) * 32, advert_epoch(NOW), "%032d" % i)
+            w.net.inject(MdnsFound(name, "127.0.0.1", 4000, ["v=1", "m=a"]))
+        until(lambda: len(la._miss) >= 200)
+        assert calls["n"] == first  # the table is reused: a forged name is a dict miss
+
+
+def test_a_device_with_a_wrong_first_address_is_reached_by_falling_through_the_list() -> None:
+    with World() as w:
+        la = w.start(w.a)
+        lb = w.start(w.b, advertise=False, browse=False)
+        inbound: List[Any] = []
+        la.on_session(inbound.append)
+        # The first address answers nothing (a neighbour that spoofed it); the second is the device.
+        peer = LanPeer(ID_A, "127.0.0.1", la.port, ("127.0.0.1",))
+        dead = LanPeer(ID_A, "127.0.0.1", 1)
+        with pytest.raises(LanError) as e:
+            run(lb.connect(dead))
+        assert e.value.reason == "connect_failed"  # one address and nothing to fall through to
+        s = run(lb.connect(peer._replace(host="127.0.0.2", alt_hosts=("127.0.0.1",))))
+        assert s.peer_device_id == ID_A
+        until(lambda: inbound)

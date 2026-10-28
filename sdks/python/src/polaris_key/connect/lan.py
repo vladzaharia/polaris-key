@@ -29,7 +29,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
-from ..core.peer_advert import ADVERT_EPOCH_SECONDS, account_instance, advert_epoch, browse_account_instance, parse_txt
+from ..core.peer_advert import ADVERT_EPOCH_SECONDS, BrowseHit, account_instance, advert_epoch, browse_table, parse_txt
 from ..core.peer_link import SocketLink
 from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter, is_lan_address
 from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base
@@ -121,6 +121,8 @@ class LanPeer(NamedTuple):
     device_id: str
     host: str
     port: int
+    #: Other addresses seen for the device; tried in order when ``host`` does not answer.
+    alt_hosts: Tuple[str, ...] = ()
 
 
 def _bare(addr: str) -> str:
@@ -144,6 +146,7 @@ class LanService:
         self._id: Optional[Tuple[int, PeerSource]] = None
         self._peers: Dict[str, Tuple[LanPeer, str]] = {}
         self._miss: Dict[str, int] = {}
+        self._tab: Optional[Tuple[Tuple[int, Tuple[bytes, ...], Tuple[str, ...]], Dict[str, BrowseHit]]] = None
         self._pending: Set[Any] = set()
         self._per_address: Dict[str, int] = {}
         self._links: Set[SocketLink] = set()
@@ -269,21 +272,39 @@ class LanService:
         if peer is None or not self._dialable(peer.host):
             raise LanError("unknown_peer", "That device was not found on this network.")
         ident = await self._identity(False)
+        # A neighbour can answer first with its own address (S4): fall through the list on a refused
+        # connect or a failed handshake, so the real device is still reached.
+        hosts = [peer.host] + [h for h in peer.alt_hosts if h != peer.host and self._dialable(h)]
+        err: Optional[LanError] = None
+        session: Any = None
+        for host in hosts:
+            try:
+                session = await self._connect_one(peer._replace(host=host), ident)
+                break
+            except LanError as e:
+                if e.reason not in ("connect_failed", "handshake_failed"):
+                    raise
+                err = e
+        if session is None:
+            assert err is not None
+            raise err
+        if session.peer_device_id != want:
+            session.close()
+            raise LanError("wrong_peer", "The device that answered is not the one that advertised.")
+        return session
+
+    async def _connect_one(self, peer: LanPeer, ident: PeerSource) -> Any:
         reader, writer = await self._dial(peer)
         link = self._link(reader, writer, ident, "initiator")
         task = self._spawn(link.run())
         link.start()
         try:
-            session = await wait_opened(link, self._o.handshake_seconds + 5)
+            return await wait_opened(link, self._o.handshake_seconds + 5)
         except LanError:
             raise
         except Exception as e:
             task.cancel()
             raise LanError("handshake_failed", "The handshake failed.") from e
-        if session.peer_device_id != want:
-            session.close()
-            raise LanError("wrong_peer", "The device that answered is not the one that advertised.")
-        return session
 
     async def _dial(self, peer: LanPeer) -> Tuple[Any, Any]:
         try:
@@ -496,6 +517,15 @@ class LanService:
         for k in [k for k, (_, inst) in self._peers.items() if inst == instance]:
             del self._peers[k]
 
+    def _table(self, keys: List[bytes], roster: List[str]) -> Dict[str, BrowseHit]:
+        """The expected instance names, worked out once per (epoch, keys, roster): a forged name is an
+        O(1) miss (S3), not up to 512 HMACs on the loop."""
+        now = self._src.now()
+        sig = (advert_epoch(now), tuple(keys), tuple(roster))
+        if self._tab is None or self._tab[0] != sig:
+            self._tab = (sig, browse_table(keys, now, roster))
+        return self._tab[1]
+
     async def _found(self, f: MdnsFound) -> None:
         if self._stopped or not self._dialable(f.host):
             return
@@ -506,16 +536,14 @@ class LanService:
             return
         ident = await self._identity(False)
         keys = [ident.keys.current] + ([ident.keys.previous] if ident.keys.previous else [])
-        hit = browse_account_instance(
-            f.instance, keys, self._src.now(), [d for d in ident.roster if d != ident.device_id]
-        )
+        hit = self._table(keys, [d for d in ident.roster if d != ident.device_id]).get(f.instance)
         if hit is None:
             # Bounded negative cache: a forged instance is not worked out twice.
             if len(self._miss) >= MISS_CACHE:
                 del self._miss[next(iter(self._miss))]
             self._miss[f.instance] = self._src.now()
             return
-        peer = LanPeer(hit.device_id, f.host, f.port)
+        peer = LanPeer(hit.device_id, f.host, f.port, tuple(f.hosts))
         self._peers[hit.device_id] = (peer, f.instance)
         for fn in list(self._on_peer):
             try:

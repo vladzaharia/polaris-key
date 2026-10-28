@@ -15,6 +15,7 @@ from polaris_key.core.peer_mdns import (
     ENTRY_TTL_SECONDS,
     MAX_ADDRS,
     MAX_INSTANCES,
+    NEW_WINDOW_SECONDS,
     MdnsAdvert,
     MdnsFound,
     MdnsUnavailableError,
@@ -134,6 +135,7 @@ def full(inst: str = INST, ip: str = "192.168.1.20") -> List[Record]:
         ("8.8.8.8", False),
         ("127.0.0.1", False),
         ("010.0.0.1", False),
+        ("\uff11\uff10.0.0.1", False),  # full-width digits
         ("10.0.0.256", False),
         ("10.0.0", False),
         ("::1", False),
@@ -303,7 +305,7 @@ def test_a_complete_advert_is_reported_once_with_the_address_to_dial() -> None:
     rig = Rig()
     b = Browser(rig)
     b.push(full())
-    assert b.up == [MdnsFound(INST, "192.168.1.20", 4242, ["v=1", "m=a"])]
+    assert b.up == [MdnsFound(INST, "192.168.1.20", 4242, ["v=1", "m=a"], ("192.168.1.20",))]
     b.push(full())
     assert len(b.up) == 1  # same signature: not repeated
     b.push([srv(port=4243)])
@@ -360,11 +362,38 @@ def test_the_first_address_seen_is_dialled_and_at_most_four_are_kept() -> None:
     b.push([a(ip="192.168.1.30")], src="192.168.1.30")
     for n in range(31, 40):
         b.push([a(ip="192.168.1.%d" % n)], src="192.168.1.%d" % n)
-    assert [f.host for f in b.up] == ["192.168.1.30"]
-    # Only MAX_ADDRS addresses are kept: a later change of signature still dials the first one.
+    assert {f.host for f in b.up} == {"192.168.1.30"}
+    # Only MAX_ADDRS addresses are kept, in the order seen, all handed up so a dialler can fall through.
     assert MAX_ADDRS == 4
+    assert b.up[-1].hosts == ("192.168.1.30", "192.168.1.31", "192.168.1.32", "192.168.1.33")
     b.push([srv(port=5000)])
     assert b.up[-1].host == "192.168.1.30" and b.up[-1].port == 5000
+
+
+def test_one_source_cannot_flood_the_table_and_evict_real_devices() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push(full())  # the real device
+    alphabet = "abcdefghijklmnopqrstuvwxyz234567"
+    for i in range(MAX_INSTANCES * 2):
+        n = "p1-" + alphabet[i // 32] + alphabet[i % 32] + "d" * 14
+        b.push([ptr(n), srv(n), txt(n)], src="192.168.9.9")
+    assert b.down == []  # nothing real was evicted
+    b.push([srv(port=4243)])
+    assert b.up[-1].port == 4243 and b.up[-1].instance == INST
+    # The cap is per minute: the same source adds more once the window has passed.
+    rig.clock.t += NEW_WINDOW_SECONDS + 1
+    n = "p1-" + "zzzzzzzzzzzzzzzz"
+    b.push([ptr(n), srv(n), txt(n), a(n, "192.168.9.9")], src="192.168.9.9")
+    assert any(f.instance == n for f in b.up)
+
+
+def test_an_attacker_answering_first_does_not_hide_the_real_address() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push([ptr(), srv(), txt(), a(ip="10.0.0.66")], src="10.0.0.66")
+    b.push([a(ip="10.0.0.5")], src="10.0.0.5")
+    assert b.up[-1].host == "10.0.0.66" and b.up[-1].hosts == ("10.0.0.66", "10.0.0.5")
 
 
 def test_an_srv_to_a_foreign_target_never_reports() -> None:
@@ -394,8 +423,8 @@ def test_the_instance_table_is_bounded_and_evicts_the_least_recently_refreshed()
     alphabet = "abcdefghijklmnopqrstuvwxyz234567"
     names = [("p1-" + alphabet[i // 32] + alphabet[i % 32] + "a" * 14) for i in range(MAX_INSTANCES + 40)]
     assert len(set(names)) == len(names)
-    for n in names:
-        b.push([ptr(n), srv(n), txt(n)])
+    for i, n in enumerate(names):
+        b.push([ptr(n), srv(n), txt(n)], src="192.168.%d.%d" % (i // 200, i % 200 + 1))
     # Only the table's worth remain known; the first ones are gone and a re-announce still works.
     ip = "192.168.2.2"
     b.push([a(names[-1], ip)], src=ip)
@@ -413,7 +442,7 @@ def test_an_up_entry_that_is_evicted_reports_down_and_expiry_does_too() -> None:
     alphabet = "abcdefghijklmnopqrstuvwxyz234567"
     for i in range(MAX_INSTANCES + 2):
         n = "p1-" + alphabet[i // 32] + alphabet[i % 32] + "c" * 14
-        b.push([ptr(n)])
+        b.push([ptr(n)], src="192.168.%d.%d" % (i // 200, i % 200 + 1))
     assert b.down == [INST]
 
 

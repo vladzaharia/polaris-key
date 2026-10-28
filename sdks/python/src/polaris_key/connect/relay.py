@@ -176,11 +176,17 @@ def websockets_opener(open_seconds: float = 15.0) -> Opener:
             "logger": _Silent("polaris_key.relay"),
             "open_timeout": open_seconds,
             "ping_interval": None,
+            "compression": None,
         }
         if ctx is not None:
             kw["ssl"] = ctx
         try:
-            ws = await connect(url, **kw)
+            conn = connect(url, **kw)
+            # G13: the ticket goes only to the Worker's host. websockets follows 3xx redirects (and
+            # re-sends the subprotocol header, which carries the ticket); returning the exception makes
+            # the redirect a failed handshake. Present on 15.0.1, 16.1.1 and 17.2.
+            conn.process_redirect = lambda exc: exc  # type: ignore[method-assign]
+            ws = await conn
         except RelayDependencyMissing:
             raise
         except Exception:

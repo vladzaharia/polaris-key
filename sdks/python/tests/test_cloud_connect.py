@@ -427,7 +427,7 @@ def test_the_client_owns_a_facade_and_signing_out_stops_connect_before_leaving()
         assert isinstance(c.cloud_connect, CloudConnect)
         hooks = [h for h in c.identity._before_sign_out._hooks]
         names = [getattr(h, "__func__", h) for h in hooks]
-        stop_at = names.index(CloudConnect.stop)
+        stop_at = names.index(type(c)._stop_cloud_connect)
         leave_at = names.index(type(c.connect).leave)
         assert stop_at < leave_at
     finally:
@@ -477,3 +477,59 @@ def test_the_async_client_mirrors_the_facade_as_coroutines() -> None:
         peers = asyncio.run(flow())
         assert isinstance(peers, list)
         assert not cc.status().running
+
+
+def test_stop_does_not_wait_forever_on_a_host_callback_that_blocks_the_connect_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import time
+
+    from polaris_key.connect.errors import LanError
+    from polaris_key.connect.loop import connect_loop
+
+    monkeypatch.setattr(cc_mod, "STOP_SECONDS", 0.3)
+    with Rig() as r:
+        a = r.make(r.world.a)
+        a.start(r.options())
+
+        async def blocker() -> None:
+            time.sleep(1.5)  # a host callback holding the loop's thread
+
+        connect_loop().submit(blocker())
+        time.sleep(0.1)
+        t0 = time.monotonic()
+        with pytest.raises(LanError) as e:
+            a.stop()
+        assert time.monotonic() - t0 < 1.2 and e.value.reason == "closed"
+        # The teardown stayed queued and runs once the callback lets go.
+        for _ in range(100):
+            if not a.status().running:
+                break
+            time.sleep(0.05)
+        assert not a.status().running
+
+
+def test_signing_out_is_not_held_by_a_blocked_stop_and_a_stuck_session_close_is_quiet() -> None:
+    from helpers import make_client
+
+    from polaris_key.connect.errors import LanError
+    from polaris_key.connect.session import ConnectSession
+
+    c = make_client(_no_network)
+    try:
+
+        def stuck() -> None:
+            raise LanError("closed", "blocked")
+
+        c.cloud_connect.stop = stuck  # type: ignore[method-assign]
+        c._stop_cloud_connect()  # does not raise: leave() and the sign-out go on
+
+        class Link:
+            def close(self, code: str) -> None:
+                raise TimeoutError()
+
+        sess = ConnectSession.__new__(ConnectSession)
+        sess._link = Link()  # type: ignore[assignment]
+        sess.close()
+    finally:
+        c.close()

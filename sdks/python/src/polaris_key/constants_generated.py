@@ -366,7 +366,6 @@ class ErrorCode:
     STORE_FAILED: Final = "store-failed"
     CONNECT_UNAVAILABLE: Final = "connect-unavailable"
     PEER_CERT_INVALID: Final = "peer-cert-invalid"
-    NEARBY_PERMISSION_DENIED: Final = "nearby-permission-denied"
     PLATFORM_ERROR: Final = "platform-error"
     NO_TOKEN: Final = "no-token"
     MINT_UNAVAILABLE: Final = "mint-unavailable"
@@ -577,7 +576,6 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "store-failed",
     "connect-unavailable",
     "peer-cert-invalid",
-    "nearby-permission-denied",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -790,7 +788,6 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "store-failed": "client",
         "connect-unavailable": "client",
         "peer-cert-invalid": "client",
-        "nearby-permission-denied": "client",
         "platform-error": "client",
         "no-token": "client",
         "mint-unavailable": "client",
@@ -894,11 +891,6 @@ class Feature:
     SYNC_CONFLICT: Final = "sync.conflict"
     SYNC_SAVES: Final = "sync.saves"
     SYNC_KEYRING: Final = "sync.keyring"
-    SYNC_RECORDS: Final = "sync.records"
-    SYNC_FILES: Final = "sync.files"
-    SYNC_FILES_DELTA: Final = "sync.files.delta"
-    SYNC_E2E_RECOVERY: Final = "sync.e2e.recovery"
-    SYNC_TRANSFER_BACKGROUND: Final = "sync.transfer.background"
     SYNC_E2E: Final = "sync.e2e"
     CONNECT_IDENTITY: Final = "connect.identity"
     CONNECT_NOISE: Final = "connect.noise"
@@ -1032,11 +1024,6 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "sync.conflict",
     "sync.saves",
     "sync.keyring",
-    "sync.records",
-    "sync.files",
-    "sync.files.delta",
-    "sync.e2e.recovery",
-    "sync.transfer.background",
     "sync.e2e",
     "connect.identity",
     "connect.noise",
@@ -2431,20 +2418,15 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
-        "sync.records": CapabilityRow("planned", "sync", ()),
-        "sync.files": CapabilityRow("planned", "sync", ()),
-        "sync.files.delta": CapabilityRow("planned", "sync", ()),
-        "sync.e2e.recovery": CapabilityRow("planned", "sync", ()),
-        "sync.transfer.background": CapabilityRow("na", "sync", (CapabilityNa("python", "runtime"),)),
         "sync.e2e": CapabilityRow("planned", "sync", ()),
         "connect.identity": CapabilityRow("implemented", "connect", ()),
-        "connect.noise": CapabilityRow("planned", "connect", ()),
-        "connect.protocol": CapabilityRow("planned", "connect", ()),
-        "connect.lan": CapabilityRow("planned", "connect", ()),
-        "connect.relay": CapabilityRow("planned", "connect", ()),
+        "connect.noise": CapabilityRow("implemented", "connect", ()),
+        "connect.protocol": CapabilityRow("implemented", "connect", ()),
+        "connect.lan": CapabilityRow("implemented", "connect", ()),
+        "connect.relay": CapabilityRow("implemented", "connect", ()),
         "connect.links": CapabilityRow("planned", "connect", ()),
         "connect.transfer": CapabilityRow("planned", "connect", ()),
-        "connect.app": CapabilityRow("planned", "connect", ()),
+        "connect.app": CapabilityRow("implemented", "connect", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
         "devices.register": CapabilityRow("implemented", "core", ()),
@@ -2532,4 +2514,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "eb34fcab6e3684fc4df7b89eda72363da8c5661649aeb02f2cbf0e1dae50bb4d"
+CAPABILITY_DIGEST: Final[str] = "1cc5de436848ad0696044227dc22bbc90b3b0f1ee96d41d496ea5e90b1991de8"

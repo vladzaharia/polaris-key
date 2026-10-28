@@ -20,6 +20,7 @@ Rules this module keeps:
 
 from __future__ import annotations
 
+import concurrent.futures
 import threading
 import time
 from collections import deque
@@ -219,8 +220,8 @@ class ConnectSession:
             raise ValueError("close code")
         try:
             self._link.close(code)
-        except RuntimeError:
-            pass  # the loop is already gone: the session is over
+        except (RuntimeError, TimeoutError, concurrent.futures.TimeoutError):
+            pass  # the loop is gone or held by a host callback: the session is over or ends when it lets go
 
     # -- the link's calls (the Connect loop's thread) ---------------------------------------------
 
