@@ -33,7 +33,8 @@ export interface AddToAccountDriver {
   signIn(hints: AddToAccountHints): Promise<SignInSessionHandle>;
   /** Keep this device's license in the signed-in account (`{kind: "keep"}`). */
   complete(grant: string, choice: { kind: "keep" }): Promise<ChoiceComplete>;
-  attach(): Promise<AttachOutcome>;
+  /** `confirm: false` previews (nothing is written); the default writes. */
+  attach(confirm?: boolean): Promise<AttachOutcome>;
 }
 
 /** The driver over a form's primitives. A missing member is the typed `planned` failure. */
@@ -49,9 +50,9 @@ export function driverOf(p: SignInPrimitives): AddToAccountDriver {
       if (!p.choice) throw new Error("planned");
       return p.choice.complete(grant, choice);
     },
-    attach: async () => {
+    attach: async (confirm = true) => {
       if (!p.attach) throw new Error("planned");
-      return p.attach();
+      return p.attach(confirm);
     },
   };
 }
@@ -93,6 +94,8 @@ export class AddToAccountModel {
   private epoch = 0;
   /** The account sign-in finished: Try again then attaches again, with no second sign-in. */
   private signedIn = false;
+  /** The email of the account that signed in, when the sign-in named it. */
+  private signedEmail: string | undefined;
 
   constructor(options: AddToAccountOptions = {}) {
     this.driver = options.driver;
@@ -172,6 +175,7 @@ export class AddToAccountModel {
     const h = this.handle;
     this.end();
     this.signedIn = false;
+    this.signedEmail = undefined;
     this.store.set((s) => ({ ...s, step: "form", field: undefined }));
     if (h) await Promise.resolve(h.cancel()).catch(() => {});
   }
@@ -189,14 +193,35 @@ export class AddToAccountModel {
   private async run(name: string, email: string): Promise<void> {
     const d = this.driver;
     if (!d) throw new Error("ui-core AddToAccountModel: no driver");
+    // Try again lets the previous sign-in go before it starts another.
+    const prev = this.handle;
     this.end();
+    if (prev) void Promise.resolve(prev.cancel()).catch(() => {});
     const epoch = this.epoch;
     this.store.set((s) => ({ ...s, step: "busy", field: undefined }));
     try {
       if (!this.signedIn && !(await this.signIn(d, name, email, epoch))) return;
       if (epoch !== this.epoch) return;
       this.signedIn = true;
-      const r = await d.attach();
+      // Preview first: nothing is written until the account is the one the person typed.
+      const preview = await d.attach(false);
+      if (epoch !== this.epoch) return;
+      if (preview.kind === "refused") {
+        if (preview.code === "account_required") this.signedIn = false;
+        this.set(stepOf(preview), epoch);
+        return;
+      }
+      if (
+        this.signedEmail !== undefined &&
+        this.signedEmail.trim().toLowerCase() !== email.toLowerCase()
+      ) {
+        // A different account signed in: the license is not added; Verify goes back to the form.
+        this.signedIn = false;
+        this.set("email-bound", epoch);
+        return;
+      }
+      const r = await d.attach(true);
+      if (epoch !== this.epoch) return;
       // No account session after all: Try again signs in again.
       if (r.kind === "refused" && r.code === "account_required")
         this.signedIn = false;
@@ -230,11 +255,17 @@ export class AddToAccountModel {
         case "pending":
           continue;
         case "signedIn":
+          this.signedEmail = r.email;
+          // Settled: nothing left to cancel on Try again.
+          this.handle = null;
           return true;
         case "choose": {
           const c = await d.complete(r.grant, { kind: "keep" });
           if (epoch !== this.epoch) return false;
-          if (c.outcome === "signedIn") return true;
+          if (c.outcome === "signedIn") {
+            this.signedEmail = undefined;
+            return true;
+          }
           this.set("failed", epoch);
           return false;
         }

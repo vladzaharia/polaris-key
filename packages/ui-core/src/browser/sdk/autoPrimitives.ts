@@ -41,9 +41,10 @@ export function primitivesOf(
       leave(options.hints);
       return LEFT;
     },
-    attach: async () => {
-      const r = await adapter.attach({ confirm: true });
-      if (r.kind === "ok") return { kind: "ok" };
+    attach: async (confirm = true) => {
+      const r = await adapter.attach({ confirm });
+      // A preview (`confirm: false`) answers `confirm`: nothing was written, and it can attach.
+      if (r.kind === "ok" || r.kind === "confirm") return { kind: "ok" };
       return {
         kind: "refused",
         code: r.kind === "refused" ? r.code : "failed",

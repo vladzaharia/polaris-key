@@ -51,7 +51,12 @@ export type SignInWait =
       /** Seconds until the grant lapses (300 by default). */
       expiresIn?: number;
     }
-  | { outcome: "signedIn"; issuedNow?: boolean }
+  | {
+      outcome: "signedIn";
+      issuedNow?: boolean;
+      /** The email of the account that signed in, when the server named it. */
+      email?: string;
+    }
   | { outcome: "cancelled" }
   | { outcome: "expired"; deviceCode?: DeviceCodeInput };
 
@@ -134,7 +139,7 @@ export interface SignInPrimitives {
     hints?: SignInHintsInput;
   }): Promise<SignInSessionHandle>;
   /** Put this device's license in the signed-in account (`attach({confirm: true})`). */
-  attach?(): Promise<AttachOutcome>;
+  attach?(confirm?: boolean): Promise<AttachOutcome>;
   choice?: {
     licenses(grant: string): Promise<LicenseChoiceView>;
     devices(grant: string, licenseId: string): Promise<ReplaceView>;

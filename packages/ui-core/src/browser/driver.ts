@@ -9,7 +9,7 @@
 
 import { withManageKey, withManageReturn } from "@polaris-key/client-core";
 import { parsePortal, portalLink } from "@polaris-key/client-core/portal";
-import { ISSUER } from "@polaris-key/protocol/core";
+import { CUSTOMER_ORIGIN_DEFAULT, ISSUER } from "@polaris-key/protocol/core";
 
 import type { ReleaseNoteInput, UiInput } from "../input.js";
 import { BrowserAdapter } from "./sdk/browser/browserAdapter.js";
@@ -226,7 +226,10 @@ function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
             expiresIn: r.expiresIn,
           };
         case "signedIn":
-          return { outcome: "signedIn" };
+          return {
+            outcome: "signedIn",
+            ...(r.identity?.email ? { email: r.identity.email } : {}),
+          };
         case "cancelled":
           return { outcome: "cancelled" };
         case "expired":
@@ -287,6 +290,8 @@ export class GateDriver {
   private addModel: AddToAccountModel | null = null;
   private addUnsub: (() => void) | null = null;
   private addSession: SignInSessionHandle | null = null;
+  /** `ownedSignIn` is starting or running. */
+  private owning = false;
   /** Where AddToAccount opened from: ActivateDone, or a screen of the app (the settings row). */
   private addFrom: GateStep = "home";
 
@@ -561,14 +566,7 @@ export class GateDriver {
   /** Leave Done and AddToAccount: what they held is spent. */
   private dropHolder(): void {
     this.heldKey = null;
-    this.addUnsub?.();
-    this.addUnsub = null;
-    const m = this.addModel;
-    this.addModel = null;
-    const h = this.addSession;
-    this.addSession = null;
-    if (m) void m.cancel().catch(() => {});
-    if (h) void Promise.resolve(h.cancel()).catch(() => {});
+    this.dropAdd();
   }
 
   /** A key activated here: the gate shows ActivateDone with the key held in memory. */
@@ -616,8 +614,22 @@ export class GateDriver {
       baseUrl: this.options.baseUrl ?? `https://${ISSUER}`,
       product: this.options.product ?? "",
     });
-    if (link)
-      openManage(link, this.options.returnUrl, this.heldKey ?? undefined);
+    if (!link) return;
+    // The link comes from unsigned discovery: the key goes only to the configured API origin or
+    // the default customer origin; any other origin opens without it.
+    const base = this.options.baseUrl ?? `https://${ISSUER}`;
+    let trusted = false;
+    try {
+      const o = new URL(link).origin;
+      trusted = o === new URL(base).origin || o === CUSTOMER_ORIGIN_DEFAULT;
+    } catch {
+      trusted = false;
+    }
+    openManage(
+      link,
+      this.options.returnUrl,
+      trusted ? (this.heldKey ?? undefined) : undefined,
+    );
   }
 
   /** Add your name and email: with Identity on, AddToAccount; with it off, the portal. */
@@ -639,10 +651,16 @@ export class GateDriver {
     this.enter("add", "activate.recommend.action");
   }
 
+  /** Leave AddToAccount: its sign-in is cancelled, so approving it later attaches nothing. */
   private dropAdd(): void {
     this.addUnsub?.();
     this.addUnsub = null;
+    const m = this.addModel;
     this.addModel = null;
+    const h = this.addSession;
+    this.addSession = null;
+    if (m) void m.cancel().catch(() => {});
+    if (h) void Promise.resolve(h.cancel()).catch(() => {});
   }
 
   /** AddToAccount's three calls over the SDK. The primitives load with the form, never at boot;
@@ -656,7 +674,7 @@ export class GateDriver {
     return {
       signIn: async (hints) => (await ready).signIn(hints),
       complete: async (grant, choice) => (await ready).complete(grant, choice),
-      attach: async () => (await ready).attach(),
+      attach: async (confirm) => (await ready).attach(confirm),
     };
   }
 
@@ -692,6 +710,9 @@ export class GateDriver {
    *  joins the account and no list is shown. The key is held in memory for this call only. Where the
    *  page cannot run the sign-in itself (a cookie page), the gate's own sign-in runs as before. */
   private ownedSignIn(): void {
+    // One sign-in at a time: a second press while one is live does nothing.
+    if (this.owning || this.addSession) return;
+    this.owning = true;
     const key = this.key.trim();
     void (async () => {
       let p: SignInPrimitives;
@@ -700,6 +721,7 @@ export class GateDriver {
         p = await this.primitives();
         h = await p.start({ channel: "browser", licenseChoice: "app" });
       } catch {
+        this.owning = false;
         this.signIn();
         return;
       }
@@ -720,7 +742,10 @@ export class GateDriver {
       } catch {
         return;
       } finally {
+        // Whatever ended it, the sign-in is let go (a no-op once it settled).
+        this.owning = false;
         if (this.addSession === h) this.addSession = null;
+        void Promise.resolve(h.cancel()).catch(() => {});
       }
     })();
   }

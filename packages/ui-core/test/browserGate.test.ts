@@ -85,6 +85,8 @@ interface FakeOptions {
   attach?: Array<Record<string, unknown>>;
   activateFails?: boolean;
   portal?: Record<string, unknown>;
+  /** The sign-in's wait holds here until released, then answers signed in. */
+  hold?: Promise<void>;
 }
 
 /** A client double: just the calls the gate makes, recording what they were given. */
@@ -147,7 +149,14 @@ function fakeClient(o: FakeOptions = {}) {
         },
       },
     }),
-    attach: async (opts: unknown) => {
+    attach: async (opts: { confirm: boolean }) => {
+      if (!opts.confirm) {
+        calls.push(["preview", opts]);
+        return {
+          kind: "confirm",
+          license: { id: "lic_1", tierId: null, name: null },
+        };
+      }
       calls.push(["attach", opts]);
       return attach.shift() ?? { kind: "refused", code: "failed", status: 500 };
     },
@@ -170,7 +179,13 @@ function fakeClient(o: FakeOptions = {}) {
           cancel: () => {
             calls.push(["cancel", null]);
           },
-          wait: async () => waits.shift() ?? { kind: "cancelled" },
+          wait: async () => {
+            if (o.hold) {
+              await o.hold;
+              return { kind: "signedIn" };
+            }
+            return waits.shift() ?? { kind: "cancelled" };
+          },
         };
       },
     },
@@ -216,6 +231,13 @@ describe("GateDriver: a key with no account", () => {
     g.d.edit("key", KEY);
     g.d.act("activate.submit");
     await until(() => g.d.snapshot().step === "done");
+  }
+
+  function addAndContinue(g: ReturnType<typeof gate>) {
+    g.d.act("activate.recommend.action");
+    g.d.edit("name", "Ada");
+    g.d.edit("email", "ada@example.com");
+    g.d.act("common.continue");
   }
 
   it("lands on Done after the key, floating, with the key out of every input", async () => {
@@ -296,10 +318,7 @@ describe("GateDriver: a key with no account", () => {
       attach: [{ kind: "refused", code: "license_owned", status: 409 }],
     });
     await activate(g);
-    g.d.act("activate.recommend.action");
-    g.d.edit("name", "Ada");
-    g.d.edit("email", "ada@example.com");
-    g.d.act("common.continue");
+    addAndContinue(g);
     await until(() => g.d.snapshot().input.addToAccount?.step === "owned");
     g.d.act("common.cancel");
     expect(g.d.snapshot().step).toBe("done");
@@ -366,6 +385,65 @@ describe("GateDriver: a key with no account", () => {
       },
     });
     expect(g.d.snapshot().input.licenseHolder).toBeUndefined();
+    g.d.detach();
+  });
+  it("Cancel from AddToAccount ends the sign-in: approving it later attaches nothing", async () => {
+    let release!: () => void;
+    const hold = new Promise<void>((r) => (release = r));
+    const g = gate({ hold });
+    await activate(g);
+    addAndContinue(g);
+    await until(() => g.calls.some(([n]) => n === "signIn.start"));
+    g.d.act("common.cancel");
+    expect(g.calls).toContainEqual(["cancel", null]);
+    release();
+    await tick();
+    await tick();
+    expect(g.calls.some(([n]) => n === "attach")).toBe(false);
+    g.d.detach();
+  });
+
+  it("a second press of Sign in to that account starts nothing, and an empty key lets the sign-in go", async () => {
+    const g = gate({
+      waits: [{ kind: "choose", grant: "sg_z", expiresIn: 300, choices: {} }],
+    });
+    g.d.act("welcome.useKey");
+    g.d.act("signin.key.ownedSignIn");
+    g.d.act("signin.key.ownedSignIn");
+    await until(() => g.calls.some(([n]) => n === "cancel"));
+    expect(g.calls.filter(([n]) => n === "signIn.start")).toHaveLength(1);
+    expect(g.calls.some(([n]) => n === "complete")).toBe(false);
+    g.d.detach();
+  });
+
+  it("gives the key only to the configured portal origin", async () => {
+    const g = gate({
+      identity: false,
+      portal: {
+        enabled: true,
+        activate: "https://evil.example/activate?product=acme",
+      },
+    });
+    await activate(g);
+    g.d.act("activate.recommend.action");
+    await until(() => opened.length === 1);
+    expect(opened[0]).toContain("evil.example");
+    expect(opened[0]).not.toContain("#key=");
+    expect(opened[0]).not.toContain(KEY);
+    g.d.detach();
+  });
+
+  it("does not attach when a different account signed in than the email typed", async () => {
+    const g = gate({
+      waits: [{ kind: "signedIn", identity: { email: "other@example.com" } }],
+    });
+    await activate(g);
+    addAndContinue(g);
+    await until(
+      () => g.d.snapshot().input.addToAccount?.step === "email-bound",
+    );
+    expect(g.calls).toContainEqual(["preview", { confirm: false }]);
+    expect(g.calls.some(([n]) => n === "attach")).toBe(false);
     g.d.detach();
   });
 });

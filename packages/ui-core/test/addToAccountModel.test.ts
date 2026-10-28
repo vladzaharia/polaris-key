@@ -27,6 +27,7 @@ interface Fake extends AddToAccountDriver {
   calls: string[];
   hints: AddToAccountHints[];
   attachArgs: unknown[][];
+  previews: number;
 }
 
 function fake(opts: {
@@ -41,6 +42,7 @@ function fake(opts: {
     calls: [],
     hints: [],
     attachArgs: [],
+    previews: 0,
     async signIn(h) {
       f.calls.push("signIn");
       f.hints.push(h);
@@ -58,6 +60,11 @@ function fake(opts: {
       return opts.complete ?? { outcome: "signedIn", issuedNow: false };
     },
     async attach(...args: unknown[]) {
+      // The preview (`confirm: false`) writes nothing and is counted apart.
+      if (args[0] === false) {
+        f.previews++;
+        return { kind: "ok" as const };
+      }
       f.calls.push("attach");
       f.attachArgs.push(args);
       const r = attach.shift() ?? { kind: "ok" as const };
@@ -167,7 +174,7 @@ describe("AddToAccountModel", () => {
   it("sends no address on attach", async () => {
     const f = fake({});
     await model(f).submit();
-    expect(f.attachArgs).toEqual([[]]);
+    expect(f.attachArgs).toEqual([[true]]);
   });
 
   it.each([
