@@ -345,16 +345,17 @@ actor CloudSyncApi {
             await drainEvents()
         }
         subject = nil
-        if let failure = await forgetAndPurge() {
-            // D-13: a ring that cannot forget stops the sign-out and the person stays signed in, so
-            // Cloud Sync is signed in again for them (the data was purged and is pulled afresh).
+        do { try await forgetRing() } catch {
+            // D-13: a ring that cannot forget stops the sign-out and the person stays signed in: nothing
+            // is purged, and Cloud Sync is signed in again for them.
             if let who { await signIn(who) }
-            throw failure
+            throw error
         }
+        await purge()  // a purge failure is reported (`purgeFailed`) and never replaces anything
     }
 
-    /// Forget the ring, then purge. Each is tried whatever the other did; a forget failure is returned
-    /// (it stops the sign-out), a purge failure is reported and never replaces it.
+    /// The release hook's chain: forget the ring, then purge. Each is tried whatever the other did; a
+    /// forget failure is returned (it stops the release), a purge failure is reported and never replaces it.
     private func forgetAndPurge() async -> (any Error)? {
         var failure: (any Error)?
         do { try await forgetRing() } catch { failure = error }

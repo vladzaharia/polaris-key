@@ -185,7 +185,7 @@ final class CloudSyncSettingsTests: XCTestCase {
         XCTAssertEqual(status.state, .local)
     }
 
-    func testARingThatCannotForgetStopsTheSignOutAndTheDataIsStillPurged() async throws {
+    func testARingThatCannotForgetStopsTheSignOutAndKeepsTheDataAndTheSession() async throws {
         let r = try await rig(roots: RingRootStore(vault: LockedVault()))
         await signIn(r)
         try await r.client.config.set(VOL, .double(0.3))
@@ -195,8 +195,9 @@ final class CloudSyncSettingsTests: XCTestCase {
         } catch {}
         let log = await server.requests.map(\.url.path)
         XCTAssertFalse(log.contains("/djdl/identity/signout"))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: stateFile.path), "purge is tried whatever the forget did")
-        // N-4: the person is still signed in, so Cloud Sync is too (it was signed out and purged on the way).
+        // D-13: the sign-out did not happen, so nothing was purged.
+        XCTAssertTrue(FileManager.default.fileExists(atPath: stateFile.path), "a stopped sign-out keeps the data")
+        // N-4: the person is still signed in, so Cloud Sync is too.
         await eventually("the machine is signed in again") {
             ((try? await r.client.cloudSync.status().state) ?? .local) != .local
         }
@@ -278,7 +279,7 @@ final class CloudSyncSettingsTests: XCTestCase {
         await signIn(first)
         try await first.client.config.set(VOL, .double(0.4))
         await first.client.cloudSyncFlush()
-        XCTAssertTrue(FileManager.default.fileExists(atPath: stateFile.path))
+        await eventually("the journal is saved") { FileManager.default.fileExists(atPath: stateFile.path) }
         // A relaunch: nothing says who is signed in (no identity read yet, and discovery is down).
         server = StubServer()
         await server.drop("/djdl/.well-known/polaris.json")
