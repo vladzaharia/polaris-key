@@ -1147,10 +1147,7 @@ public final class PolarisKeyGateModel {
                 try Task.checkCancellation()
                 let outcome = try await client.identity.exchange(
                     kind: kind, subjectToken: subject.token, nonce: nonce.value)
-                switch outcome {
-                case .signedIn, .confirm, .choose: await provider.sessionStarted(subject)
-                default: break
-                }
+                await client.identity.platformSession(outcome, provider: provider, subject: subject)
                 self.pending = nil
                 await self.present(Self.result(outcome), kind: kind, personStarted: true)
             } catch is CancellationError {

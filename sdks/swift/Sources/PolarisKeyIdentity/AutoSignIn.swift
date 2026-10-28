@@ -38,7 +38,9 @@ import Foundation
 import PolarisKeyCore
 
 /// What a platform provider hands the exchange: an identity token bound to the nonce. A secret.
-public struct PlatformSubjectToken: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct PlatformSubjectToken: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
     /// The identity token. A secret.
     public let token: String
     /// The server nonce that was bound into the request.
@@ -52,6 +54,17 @@ public struct PlatformSubjectToken: Sendable, Equatable, CustomStringConvertible
     }
     public var description: String { "PlatformSubjectToken(<redacted>)" }
     public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(
+            self, children: ["token": redactedCredential, "nonce": redactedCredential, "userID": userID as Any],
+            displayStyle: .struct)
+    }
+}
+
+/// A platform token exchanged for a grant that still needs the person's consent or choice.
+struct PendingPlatformSession: Sendable {
+    let provider: any PlatformIdentityProvider
+    let subject: PlatformSubjectToken
 }
 
 /// The platform's identity (Sign in with Apple; Google where a native one exists) behind the
@@ -162,7 +175,8 @@ extension IdentityClient {
         }
         // Signed out on purpose: rungs 2-4 stay quiet.
         if await core.explicitSignOut() { return .needsSignIn(linkHandle: nil, reason: .signedOut) }
-        guard let provider else { return .unavailable(code: ErrorCode.platformIdentityUnavailable) }
+        // No platform identity here (no provider installed): the regular form is next.
+        guard let provider else { return .needsSignIn(linkHandle: nil, reason: .noCredential) }
 
         // Rung 3: silent.
         if provider.hasSilentRung {
@@ -217,10 +231,7 @@ extension IdentityClient {
             let outcome = try await exchange(
                 kind: provider.kind, subjectToken: subject.token, optionalNonce: nonce.value,
                 ladderGeneration: generation)
-            switch outcome {
-            case .signedIn, .confirm, .choose: await provider.sessionStarted(subject)
-            default: break
-            }
+            await platformSession(outcome, provider: provider, subject: subject)
             return .done(Self.result(outcome))
         } catch is SignedOutDuringLadder {
             return signedOut
@@ -239,6 +250,32 @@ extension IdentityClient {
             try Task.checkCancellation()
             return .done(.unavailable(code: IdentityClient.networkError))
         }
+    }
+
+    /// Hand the provider its session once one exists: now for `.signedIn`; for a `confirm` or a
+    /// `choose`, when `choice.complete` finishes that grant. Nothing is kept for any other way
+    /// of signing in, so a later non-Apple session never inherits an Apple user id.
+    public func platformSession(
+        _ outcome: ExchangeOutcome, provider: any PlatformIdentityProvider,
+        subject: PlatformSubjectToken
+    ) async {
+        let held = PendingPlatformSession(provider: provider, subject: subject)
+        switch outcome {
+        case .signedIn: await provider.sessionStarted(subject)
+        case .confirm(let p): pendingPlatformSessions.with { $0[p.grant] = held }
+        case .choose(let p): pendingPlatformSessions.with { $0[p.grant] = held }
+        default: break
+        }
+    }
+
+    /// `choice.complete` made a session from `grant`.
+    func platformSessionCompleted(grant: String) async {
+        let held = pendingPlatformSessions.with { $0.removeValue(forKey: grant) }
+        if let held { await held.provider.sessionStarted(held.subject) }
+    }
+
+    func platformSessionDropped(grant: String) {
+        pendingPlatformSessions.with { _ = $0.removeValue(forKey: grant) }
     }
 
     private static func result(_ outcome: ExchangeOutcome) -> AutoSignInResult {
