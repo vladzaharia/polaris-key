@@ -902,6 +902,7 @@
     "profile.removedMethod": "une méthode de connexion supprimée",
     "profile.error.invalidName": "Saisissez un nom.",
     "profile.error.invalidBirthdate": "Saisissez une date entre 1900 et aujourd’hui.",
+    "profile.error.incompleteBirthdate": "Saisissez la date complète ou effacez-la.",
     "profile.error.unknownSource": "Cette méthode de connexion n’est plus sur ce compte. Choisissez à nouveau.",
     "profile.error.noName": "Cette méthode de connexion n’a pas partagé de nom. Choisissez-en une autre ou saisissez-en un.",
     "profile.error.noPicture": "Cette méthode de connexion n’a pas partagé de photo. Choisissez-en une autre.",

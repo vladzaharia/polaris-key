@@ -32,6 +32,7 @@
   "profile.removedMethod": "um método de acesso que você removeu",
   "profile.error.invalidName": "Digite um nome.",
   "profile.error.invalidBirthdate": "Digite uma data de 1900 até hoje.",
+  "profile.error.incompleteBirthdate": "Digite a data completa ou apague-a.",
   "profile.error.unknownSource": "Esse método de acesso não está mais nesta conta. Escolha novamente.",
   "profile.error.noName": "Esse método de acesso não compartilhou um nome. Escolha outro ou digite um.",
   "profile.error.noPicture": "Esse método de acesso não compartilhou uma imagem. Escolha outra imagem.",

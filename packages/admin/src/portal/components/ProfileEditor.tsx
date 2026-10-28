@@ -211,7 +211,9 @@ export function ProfileEditor({
     if (birthRef.current && !birthRef.current.validity.valid) {
       setError({
         field: "birthdate",
-        text: C["profile.error.invalidBirthdate"],
+        text: birthRef.current.validity.badInput
+          ? C["profile.error.incompleteBirthdate"]
+          : C["profile.error.invalidBirthdate"],
       });
       birthRef.current.focus();
       return;
@@ -242,7 +244,21 @@ export function ProfileEditor({
     if (error?.field === "birthdate") setError(null);
   };
 
+  // A half-typed date has value "" and Chrome fires no change for it, so keys and input track it.
+  const [birthTyped, setBirthTyped] = React.useState(false);
+  const onBirthInput = (e: React.SyntheticEvent<HTMLInputElement>): void => {
+    const el = e.currentTarget;
+    setBirthTyped(el.value !== "" || el.validity.badInput);
+  };
+  // Editing a segment ends the old complaint; Enter, Tab and arrows don't.
+  const onBirthKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (/^\d$|^(Backspace|Delete)$/.test(e.key) && error?.field === "birthdate")
+      setError(null);
+  };
+
   const removeBirthdate = (): void => {
+    if (birthRef.current) birthRef.current.value = "";
+    setBirthTyped(false);
     setDraft((d) => ({ ...d, birthdate: { kind: "removed" } }));
     if (error?.field === "birthdate") setError(null);
     // The button leaves with the date: focus goes to the field it emptied.
@@ -511,11 +527,14 @@ export function ProfileEditor({
                     : birthHintId
                 }
                 onValueChange={typeBirthdate}
-                // The native calendar button inside takes focus without the input being
-                // :focus-visible, so the ring follows plain :focus here.
-                className="min-w-36 max-w-56 flex-1 max-sm:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                onInput={onBirthInput}
+                onKeyUp={onBirthInput}
+                onKeyDown={onBirthKeyDown}
+                // The native calendar button inside takes focus without the input matching
+                // :focus or :focus-visible, only :focus-within, so the ring follows that.
+                className="min-h-11 w-full min-w-36 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus sm:min-h-0 sm:w-auto sm:max-w-56 sm:flex-1"
               />
-              {birthdate ? (
+              {birthdate || birthTyped ? (
                 <Button
                   variant="ghost"
                   className="max-sm:min-h-11"

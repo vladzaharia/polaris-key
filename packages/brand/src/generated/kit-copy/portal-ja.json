@@ -32,6 +32,7 @@
   "profile.removedMethod": "削除したサインイン方法",
   "profile.error.invalidName": "名前を入力してください。",
   "profile.error.invalidBirthdate": "1900年から今日までの日付を入力してください。",
+  "profile.error.incompleteBirthdate": "日付をすべて入力するか、削除してください。",
   "profile.error.unknownSource": "このサインイン方法はもうこのアカウントにありません。選び直してください。",
   "profile.error.noName": "このサインイン方法は名前を共有していません。別の方法を選ぶか、名前を入力してください。",
   "profile.error.noPicture": "このサインイン方法は画像を共有していません。別の画像を選んでください。",

@@ -31,7 +31,6 @@ interface Item {
 }
 
 const NO_REVIEW_DEBT: Record<string, string> = {
-  "I-33": "closed with --no-ux-gate before the ledger guard; review owed",
   "HA-09": "closed with --no-ux-gate before the ledger guard; review owed",
   "UK-02b": "closed with --no-ux-gate before the ledger guard; review owed",
   "UK-03": "closed with --no-ux-gate before the ledger guard; review owed",

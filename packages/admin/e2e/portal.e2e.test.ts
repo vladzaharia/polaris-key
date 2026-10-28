@@ -596,7 +596,7 @@ describe("Account → Profile (PX-22, §4.30)", () => {
       await h1(o.page, "Account");
       const card = o.page.getByRole("region", { name: "Profile" });
       await card.getByRole("button", { name: "Edit profile" }).click();
-      const field = card.getByLabel("Birth date");
+      const field = card.getByRole("textbox", { name: /Birth date/ });
       await field.fill("1987-02-28");
       await card.getByRole("button", { name: "Save profile" }).click();
       await card.getByText("Born Feb 28, 1987").waitFor();
@@ -616,6 +616,45 @@ describe("Account → Profile (PX-22, §4.30)", () => {
         { birthdate: null },
       ]);
       expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("the birth date (I-33): the calendar button shows a focus ring, and a half-typed date can be cleared", async () => {
+    const patches: unknown[] = [];
+    const o = await open("three", "/#/account/profile", {
+      routes: profileRoutes(PROFILE_STEAM, patches),
+      width: 1440,
+      height: 900,
+    });
+    try {
+      await h1(o.page, "Account");
+      const card = o.page.getByRole("region", { name: "Profile" });
+      await card.getByRole("button", { name: "Edit profile" }).click();
+      const field = card.getByRole("textbox", { name: /Birth date/ });
+      await field.focus();
+      // Month, day, year, then the native calendar button.
+      for (let i = 0; i < 3; i++) await o.page.keyboard.press("Tab");
+      expect(
+        await field.evaluate((e) => getComputedStyle(e).outlineStyle),
+      ).not.toBe("none");
+      // Half a date: the message names the problem; typing on clears it; Remove clears the field.
+      await field.focus();
+      await o.page.keyboard.type("02");
+      const remove = card.getByRole("button", { name: "Remove birth date" });
+      await remove.waitFor();
+      await card.getByRole("button", { name: "Save profile" }).click();
+      expect(await card.getByRole("alert").textContent()).toBe(
+        "Enter the whole date, or clear it.",
+      );
+      await field.focus();
+      await o.page.keyboard.type("28");
+      await card.getByRole("alert").waitFor({ state: "detached" });
+      await remove.click();
+      expect(await field.inputValue()).toBe("");
+      expect(await remove.count()).toBe(0);
+      expect(patches).toEqual([]);
     } finally {
       await o.close();
     }

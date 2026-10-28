@@ -32,6 +32,7 @@
   "profile.removedMethod": "un método de inicio de sesión que quitaste",
   "profile.error.invalidName": "Escribe un nombre.",
   "profile.error.invalidBirthdate": "Escribe una fecha entre 1900 y hoy.",
+  "profile.error.incompleteBirthdate": "Escribe la fecha completa o bórrala.",
   "profile.error.unknownSource": "Ese método de inicio de sesión ya no está en esta cuenta. Vuelve a elegir.",
   "profile.error.noName": "Ese método de inicio de sesión no compartió un nombre. Elige otro o escribe uno.",
   "profile.error.noPicture": "Ese método de inicio de sesión no compartió una imagen. Elige otra imagen.",

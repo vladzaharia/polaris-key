@@ -47,6 +47,7 @@ export type PortalCopyKey =
   | "profile.removedMethod"
   | "profile.error.invalidName"
   | "profile.error.invalidBirthdate"
+  | "profile.error.incompleteBirthdate"
   | "profile.error.unknownSource"
   | "profile.error.noName"
   | "profile.error.noPicture"

@@ -1,6 +1,12 @@
 import type { Page } from "playwright";
 import { afterAll, beforeAll, describe, it } from "vitest";
-import { type Handler, type Reply, portalRoutes } from "./portalFixtures.js";
+import {
+  PROFILE_BORN,
+  type Handler,
+  type Reply,
+  portalRoutes,
+  profileRoutes,
+} from "./portalFixtures.js";
 import { SHIPPED } from "./portalStates.js";
 import {
   axe,
@@ -662,5 +668,46 @@ describe("the one-product Library and the flows lose no text at large text", () 
         }
       });
     }
+  }
+});
+
+describe("the profile editor's birth date (I-33)", () => {
+  for (const { label, width, height, text } of ROWS) {
+    it(`${label}: the whole date shows, Remove wraps under it`, async ({
+      expect,
+    }) => {
+      const o = await portal.open("three", "/#/account/profile", {
+        width,
+        height,
+        routes: profileRoutes(PROFILE_BORN),
+      });
+      try {
+        await h1(o.page, "Account");
+        const card = o.page.getByRole("region", { name: "Profile" });
+        await card.getByRole("button", { name: "Edit profile" }).click();
+        if (text !== 100)
+          await o.page.evaluate((pct) => {
+            document.documentElement.style.setProperty(
+              "font-size",
+              `${pct}%`,
+              "important",
+            );
+          }, text);
+        await o.page.waitForTimeout(400);
+        const field = card.getByRole("textbox", { name: /Birth date/ });
+        const remove = card.getByRole("button", { name: "Remove birth date" });
+        const f = (await field.boundingBox())!;
+        const r = (await remove.boundingBox())!;
+        // A narrow screen gives the field the whole row and Remove sits under it.
+        if (width < 640) expect(r.y).toBeGreaterThanOrEqual(f.y + f.height - 1);
+        // The date's text is not cut: the input's content fits its box.
+        expect(
+          await field.evaluate((e) => e.scrollWidth <= e.clientWidth + 1),
+        ).toBe(true);
+        expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
+      } finally {
+        await o.close();
+      }
+    });
   }
 });
