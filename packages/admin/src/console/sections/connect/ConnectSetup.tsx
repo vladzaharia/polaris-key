@@ -27,7 +27,6 @@ import {
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
-import { PageHeader } from "../../../ui/PageHeader.js";
 import { SourceBadge, type Source } from "../../../ui/SourceBadge.js";
 import { useWriteGate } from "../../access/useCan.js";
 import { ProductSettingsSection } from "../../components/ProductSettingsSection.js";
@@ -36,6 +35,7 @@ import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
 import { useSettingTarget } from "../../useSettingTarget.js";
+import { ConnectHeader } from "./ConnectHeader.js";
 import { CeilingDialog, type CeilingCopy } from "../sync/CeilingDialog.js";
 import { PlatformPill, WhoLine } from "../sync/SetupParts.js";
 import { formatBinaryBytes } from "../sync/pages/SyncData.js";
@@ -134,8 +134,9 @@ export function ConnectSetupPage({
 
   return (
     <div className="space-y-6" data-template="record">
-      <PageHeader
-        title="Cloud Connect"
+      <ConnectHeader
+        slug={slug}
+        tab="connect-setup"
         description="Link a person's devices and move data between them."
         refetching={platform.isFetching && !platform.isPending}
       />
