@@ -251,7 +251,7 @@
     },
     "license_owned": {
       "title": "別のアカウントのライセンス",
-      "message": "この{product}のライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。"
+      "message": "この{product}のライセンスを使うには、そのライセンスがあるPolaris Lockerアカウントにサインインしてください。"
     },
     "license_email_bound": {
       "title": "メールアドレスが確認されていません",
@@ -915,7 +915,7 @@
     },
     "license-owned": {
       "title": "別のアカウントのライセンス",
-      "message": "このライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。"
+      "message": "このライセンスを使うには、そのライセンスがあるPolaris Lockerアカウントにサインインしてください。"
     },
     "refused": {
       "title": "アクティベーションが拒否されました",

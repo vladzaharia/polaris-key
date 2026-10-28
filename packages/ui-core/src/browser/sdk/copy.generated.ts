@@ -302,7 +302,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   license_owned: {
     title: "License in another account",
     message:
-      "This {product} license is already in another Polaris Locker account. A license never moves by its key.",
+      "Sign in to the Polaris Locker account that has this {product} license to use it.",
   },
   license_email_bound: {
     title: "Email not verified",
@@ -1044,7 +1044,7 @@ export const COPY_ACTIVATION: Readonly<Record<string, CopyEntry>> = {
   "license-owned": {
     title: "License in another account",
     message:
-      "This license is already in another Polaris Locker account. A license never moves by its key.",
+      "Sign in to the Polaris Locker account that has this license to use it.",
   },
   refused: {
     title: "Activation refused",

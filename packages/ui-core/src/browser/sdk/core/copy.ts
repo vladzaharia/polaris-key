@@ -259,7 +259,7 @@ const FR: CopyBundle = {
       "Un autre compte Polaris Locker utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse.",
     terms_required: "Acceptez les conditions pour continuer.",
     license_owned:
-      "Cette licence {product} est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer.",
+      "Connectez-vous au compte Polaris Locker qui contient cette licence {product} pour l’utiliser.",
     // I-09 (WIRE-CONTRACT-V4 §12.3): the device attach's two account refusals.
     license_email_bound:
       "Cette licence est liée à une adresse e-mail que votre compte Polaris Locker n’a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez.",

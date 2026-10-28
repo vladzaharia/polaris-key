@@ -3063,6 +3063,31 @@ msgctxt "macos"
 msgid "signin.nearby.menu"
 msgstr "Aprobar un dispositivo cercano"
 
+#. Choose a license for {device}
+#. Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.chooseTitle"
+msgstr "Elige una licencia para {device}"
+
+#. {product} will use it.
+#. Nearby approval: choose a license. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.nearby.chooseLede"
+msgstr "{product} la usará."
+
+#. This license is on all its devices. Remove one to make room for {device}.
+#. Nearby approval: the license is on all its devices. Body under the Device limit reached title; the action opens the device list. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.deviceLimitBody"
+msgstr "Esta licencia está en todos sus dispositivos. Quita uno para dejar sitio a {device}."
+
+#. Wait a moment, then try again on {device}.
+#. Nearby approval: too many attempts. Body under the Too many attempts title; the action is Done, because the retry happens on the new device. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.rateLimitedBody"
+msgstr "Espera un momento y vuelve a intentarlo en {device}."
+
+#. Start again on {device}.
+#. Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.expiredBody"
+msgstr "Empieza de nuevo en {device}."
+
 #. Add it in Polaris Locker
 #. The key was refused and the person adds it to their account on the web (↗, opens the browser).
 msgid "signin.key.addInLocker"
@@ -5939,10 +5964,10 @@ msgstr "Acepta las condiciones para continuar."
 msgid "core.codes.license_owned.title"
 msgstr "Licencia en otra cuenta"
 
-#. This {product} license is already in another Polaris Locker account. A license never moves by its key.
+#. Sign in to the Polaris Locker account that has this {product} license to use it.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_owned.message"
-msgstr "Esta licencia de {product} ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave."
+msgstr "Inicia sesión en la cuenta de Polaris Locker que tiene esta licencia de {product} para usarla."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7589,10 +7614,10 @@ msgstr "Inicia sesión y añade esta clave a tu cuenta de Polaris Locker."
 msgid "core.activation.license-owned.title"
 msgstr "Licencia en otra cuenta"
 
-#. This license is already in another Polaris Locker account. A license never moves by its key.
+#. Sign in to the Polaris Locker account that has this license to use it.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-owned.message"
-msgstr "Esta licencia ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave."
+msgstr "Inicia sesión en la cuenta de Polaris Locker que tiene esta licencia para usarla."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

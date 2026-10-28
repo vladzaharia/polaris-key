@@ -34,11 +34,11 @@ static func nearby_approval_view(ctx: RefCounted) -> Dictionary:
 		"not-nearby": [["signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done"], "common.done", "neutral"],
 		"mismatch": [["signin.nearby.mismatch", "common.done"], "common.done", null],
 		"denied": [["signin.approve.deniedDone", "common.done"], "common.done", null],
-		"expired": [["core.codes.sign-in-expired.title", "core.codes.sign-in-expired.message", "common.done"], "common.done", "neutral"],
-		"device-limit": [["core.codes.device_limit.title", "core.codes.device_limit.message", "devices.manage"], "devices.manage", "neutral"],
-		"choose": [["signin.choice.title", "signin.choice.lede", "signin.choice.continue"], "signin.choice.continue", null],
+		"expired": [["core.codes.sign-in-expired.title", "signin.nearby.expiredBody", "common.done"], "common.done", "neutral"],
+		"device-limit": [["core.codes.device_limit.title", "signin.nearby.deviceLimitBody", "devices.manage"], "devices.manage", "neutral"],
+		"choose": [["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"], "signin.choice.continue", null],
 		"account-required": [["core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn"], "signin.key.signIn", "neutral"],
-		"rate-limited": [["core.codes.rate_limited.title", "core.codes.rate_limited.message", "common.tryAgain"], "common.tryAgain", "neutral"],
+		"rate-limited": [["core.codes.rate_limited.title", "signin.nearby.rateLimitedBody", "common.done"], "common.done", "neutral"],
 	}
 	if step is String and outcomes.has(step):
 		var o: Array = outcomes[step]

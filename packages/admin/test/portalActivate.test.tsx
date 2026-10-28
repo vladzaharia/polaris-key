@@ -147,7 +147,7 @@ describe("key verdicts (UX-05)", () => {
       code: "license_owned",
       tone: "info",
       message:
-        "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
+        "Sign in to the Polaris Locker account that has this Mossgarden license to use it.",
     });
     expect(
       previewVerdict(
@@ -748,7 +748,7 @@ describe("Activate license modal (PX-06)", () => {
     for (const [answer, copy] of [
       [
         { verdict: "license_owned", product: PREVIEW_PRODUCT },
-        "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
+        "Sign in to the Polaris Locker account that has this Mossgarden license to use it.",
       ],
       [
         {
@@ -1058,7 +1058,7 @@ describe("Activate license modal (PX-06)", () => {
     await pasteAndContinue(dialog);
     const alert = await within(dialog).findByRole("alert");
     expect(alert.textContent).toBe(
-      "This Mossgarden license is already in another Polaris Locker account. A license never moves by its key.",
+      "Sign in to the Polaris Locker account that has this Mossgarden license to use it.",
     );
     // The refusal's lead action is the footer primary, never a dead Continue; the portal has no
     // "sign in to that account" (it is signed in): it joins the two.

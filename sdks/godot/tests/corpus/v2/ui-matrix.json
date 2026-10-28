@@ -5382,8 +5382,8 @@
         "state": "expired",
         "copy": [
           "common.done",
-          "core.codes.sign-in-expired.message",
-          "core.codes.sign-in-expired.title"
+          "core.codes.sign-in-expired.title",
+          "signin.nearby.expiredBody"
         ]
       }
     },
@@ -5396,9 +5396,9 @@
         "component": "NearbyApproval",
         "state": "device-limit",
         "copy": [
-          "core.codes.device_limit.message",
           "core.codes.device_limit.title",
-          "devices.manage"
+          "devices.manage",
+          "signin.nearby.deviceLimitBody"
         ],
         "actions": ["open-manage-url"]
       }
@@ -5413,8 +5413,8 @@
         "state": "choose",
         "copy": [
           "signin.choice.continue",
-          "signin.choice.lede",
-          "signin.choice.title"
+          "signin.nearby.chooseLede",
+          "signin.nearby.chooseTitle"
         ]
       }
     },
@@ -5446,11 +5446,10 @@
         "component": "NearbyApproval",
         "state": "rate-limited",
         "copy": [
-          "common.tryAgain",
-          "core.codes.rate_limited.message",
-          "core.codes.rate_limited.title"
-        ],
-        "actions": ["retry"]
+          "common.done",
+          "core.codes.rate_limited.title",
+          "signin.nearby.rateLimitedBody"
+        ]
       }
     },
     {
@@ -12985,7 +12984,7 @@
       "locale": "ko",
       "key": "core.codes.license_owned.message",
       "args": { "product": "Tidewater Studio" },
-      "expect": "\uc774 Tidewater Studio \ub77c\uc774\uc120\uc2a4\ub294 \uc774\ubbf8 \ub2e4\ub978 Polaris Locker \uacc4\uc815\uc5d0 \uc788\uc5b4\uc694. \ub77c\uc774\uc120\uc2a4\ub294 \ud0a4\ub85c \uc62e\uaca8\uc9c0\uc9c0 \uc54a\uc544\uc694."
+      "expect": "\uc774 Tidewater Studio \ub77c\uc774\uc120\uc2a4\ub97c \uc0ac\uc6a9\ud558\ub824\uba74 \uc774 \ub77c\uc774\uc120\uc2a4\uac00 \uc788\ub294 Polaris Locker \uacc4\uc815\uc73c\ub85c \ub85c\uadf8\uc778\ud558\uc138\uc694."
     },
     {
       "name": "en: signin.handoff.url, the customer site address",

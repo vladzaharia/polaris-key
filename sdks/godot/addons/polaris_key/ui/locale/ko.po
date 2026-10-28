@@ -3045,6 +3045,31 @@ msgctxt "macos"
 msgid "signin.nearby.menu"
 msgstr "근처 기기 승인"
 
+#. Choose a license for {device}
+#. Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.chooseTitle"
+msgstr "{device}에서 사용할 라이선스 선택"
+
+#. {product} will use it.
+#. Nearby approval: choose a license. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.nearby.chooseLede"
+msgstr "{product}에서 이 라이선스를 사용해요."
+
+#. This license is on all its devices. Remove one to make room for {device}.
+#. Nearby approval: the license is on all its devices. Body under the Device limit reached title; the action opens the device list. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.deviceLimitBody"
+msgstr "이 라이선스는 모든 기기에서 사용 중이에요. {device}를 추가하려면 기기 하나를 제거하세요."
+
+#. Wait a moment, then try again on {device}.
+#. Nearby approval: too many attempts. Body under the Too many attempts title; the action is Done, because the retry happens on the new device. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.rateLimitedBody"
+msgstr "잠시 기다린 뒤 {device}에서 다시 시도하세요."
+
+#. Start again on {device}.
+#. Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.expiredBody"
+msgstr "{device}에서 처음부터 다시 시작하세요."
+
 #. Add it in Polaris Locker
 #. The key was refused and the person adds it to their account on the web (↗, opens the browser).
 msgid "signin.key.addInLocker"
@@ -5913,10 +5938,10 @@ msgstr "계속하려면 약관에 동의하세요."
 msgid "core.codes.license_owned.title"
 msgstr "다른 계정의 라이선스"
 
-#. This {product} license is already in another Polaris Locker account. A license never moves by its key.
+#. Sign in to the Polaris Locker account that has this {product} license to use it.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_owned.message"
-msgstr "이 {product} 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
+msgstr "이 {product} 라이선스를 사용하려면 이 라이선스가 있는 Polaris Locker 계정으로 로그인하세요."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7563,10 +7588,10 @@ msgstr "로그인한 뒤 이 키를 Polaris Locker 계정에 추가하세요."
 msgid "core.activation.license-owned.title"
 msgstr "다른 계정의 라이선스"
 
-#. This license is already in another Polaris Locker account. A license never moves by its key.
+#. Sign in to the Polaris Locker account that has this license to use it.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-owned.message"
-msgstr "이 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요."
+msgstr "이 라이선스를 사용하려면 이 라이선스가 있는 Polaris Locker 계정으로 로그인하세요."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

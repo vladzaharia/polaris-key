@@ -614,8 +614,8 @@ One component, three entries.
   Steam line for the 5×3 Steam shape); "This key is cut short. After <slug>\_ come 22 characters, and
   this has {n}. Copy the whole key again."; "We couldn't find that key. Capital letters matter, and
   l, 1, O and 0 are easy to mix up, so paste the key instead of typing it."
-- **`license_owned`:** "This <Product> license is already in another Polaris Locker account. A license
-  never moves by its key." Actions: **Sign in to that account** (primary in app contexts; the
+- **`license_owned`:** "Sign in to the Polaris Locker account that has this <Product> license to use
+  it." Actions: **Sign in to that account** (primary in app contexts; the
   `signInUrl` flow) and **Use a different key**. Signed in on the portal, the notice "If that
   account is yours too, sign in to it and join the two." and **Link an existing account** are added.
 - **Entries (on-ramp, Identity-on products):** the key card ("Key works"), h1 "Keep <Product> in an

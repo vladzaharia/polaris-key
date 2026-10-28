@@ -584,6 +584,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "That code didn't match, so {device} wasn't signed in.",
     "signin.nearby.menu": "Approve a nearby device",
+    "signin.nearby.chooseTitle": "Choose a license for {device}",
+    "signin.nearby.chooseLede": "{product} will use it.",
+    "signin.nearby.deviceLimitBody":
+      "This license is on all its devices. Remove one to make room for {device}.",
+    "signin.nearby.rateLimitedBody":
+      "Wait a moment, then try again on {device}.",
+    "signin.nearby.expiredBody": "Start again on {device}.",
     "signin.key.addInLocker": "Add it in Polaris Locker",
     "signin.key.scan": "Scan to add this key in Polaris Locker on your phone.",
     "signin.return.yours": "{product} is yours",
@@ -1241,7 +1248,7 @@ export const KIT_COPY: Readonly<
     "core.codes.terms_required.message": "Agree to the terms to continue.",
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
-      "This {product} license is already in another Polaris Locker account. A license never moves by its key.",
+      "Sign in to the Polaris Locker account that has this {product} license to use it.",
     "core.codes.license_email_bound.title": "Email not verified",
     "core.codes.license_email_bound.message":
       "This license belongs to an email address your Polaris Locker account hasn't verified. Verify that email in your account, then try again.",
@@ -1721,7 +1728,7 @@ export const KIT_COPY: Readonly<
       "Sign in and add this key to your Polaris Locker account instead.",
     "core.activation.license-owned.title": "License in another account",
     "core.activation.license-owned.message":
-      "This license is already in another Polaris Locker account. A license never moves by its key.",
+      "Sign in to the Polaris Locker account that has this license to use it.",
     "core.activation.refused.title": "Activation refused",
     "core.activation.refused.message": "Activation was refused ({code}).",
     "core.activation.error.title": "Activation failed",
@@ -2320,6 +2327,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "Dieser Code stimmte nicht überein, daher wurde {device} nicht angemeldet.",
     "signin.nearby.menu": "Gerät in der Nähe bestätigen",
+    "signin.nearby.chooseTitle": "Lizenz für {device} auswählen",
+    "signin.nearby.chooseLede": "{product} verwendet sie.",
+    "signin.nearby.deviceLimitBody":
+      "Diese Lizenz ist auf allen ihren Geräten aktiv. Entfernen Sie eines, um Platz für {device} zu schaffen.",
+    "signin.nearby.rateLimitedBody":
+      "Warten Sie einen Moment und versuchen Sie es dann auf {device} erneut.",
+    "signin.nearby.expiredBody": "Beginnen Sie auf {device} von vorn.",
     "signin.key.addInLocker": "In Polaris Locker hinzufügen",
     "signin.key.scan":
       "Scannen, um diesen Schlüssel auf Ihrem Telefon in Polaris Locker hinzuzufügen.",
@@ -3040,7 +3054,7 @@ export const KIT_COPY: Readonly<
       "Stimmen Sie den Bedingungen zu, um fortzufahren.",
     "core.codes.license_owned.title": "Lizenz in einem anderen Konto",
     "core.codes.license_owned.message":
-      "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
+      "Melden Sie sich im Polaris Locker-Konto an, das diese Lizenz für {product} enthält, um sie zu verwenden.",
     "core.codes.license_email_bound.title": "E-Mail-Adresse nicht bestätigt",
     "core.codes.license_email_bound.message":
       "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Polaris Locker-Konto nicht bestätigt hat. Bestätigen Sie diese E-Mail-Adresse in Ihrem Konto und versuchen Sie es dann erneut.",
@@ -3537,7 +3551,7 @@ export const KIT_COPY: Readonly<
       "Melden Sie sich an und fügen Sie diesen Schlüssel stattdessen Ihrem Polaris-Locker-Konto hinzu.",
     "core.activation.license-owned.title": "Lizenz in einem anderen Konto",
     "core.activation.license-owned.message":
-      "Diese Lizenz befindet sich bereits in einem anderen Polaris Locker-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
+      "Melden Sie sich im Polaris Locker-Konto an, das diese Lizenz enthält, um sie zu verwenden.",
     "core.activation.refused.title": "Aktivierung abgelehnt",
     "core.activation.refused.message":
       "Die Aktivierung wurde abgelehnt ({code}).",
@@ -4128,6 +4142,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "Ce code ne correspondait pas, donc {device} n’a pas été connecté.",
     "signin.nearby.menu": "Approuver un appareil à proximité",
+    "signin.nearby.chooseTitle": "Choisissez une licence pour {device}",
+    "signin.nearby.chooseLede": "{product} l’utilisera.",
+    "signin.nearby.deviceLimitBody":
+      "Cette licence est sur tous ses appareils. Retirez-en un pour faire de la place à {device}.",
+    "signin.nearby.rateLimitedBody":
+      "Patientez un instant, puis réessayez sur {device}.",
+    "signin.nearby.expiredBody": "Recommencez sur {device}.",
     "signin.key.addInLocker": "L’ajouter dans Polaris Locker",
     "signin.key.scan":
       "Scannez pour ajouter cette clé dans Polaris Locker sur votre téléphone.",
@@ -4840,7 +4861,7 @@ export const KIT_COPY: Readonly<
       "Acceptez les conditions pour continuer.",
     "core.codes.license_owned.title": "Licence dans un autre compte",
     "core.codes.license_owned.message":
-      "Cette licence {product} est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer.",
+      "Connectez-vous au compte Polaris Locker qui contient cette licence {product} pour l’utiliser.",
     "core.codes.license_email_bound.title": "E-mail non vérifié",
     "core.codes.license_email_bound.message":
       "Cette licence est liée à une adresse e-mail que votre compte Polaris Locker n’a pas vérifiée. Vérifiez cette adresse dans votre compte, puis réessayez.",
@@ -5338,7 +5359,7 @@ export const KIT_COPY: Readonly<
       "Connectez-vous et ajoutez plutôt cette clé à votre compte Polaris Locker.",
     "core.activation.license-owned.title": "Licence dans un autre compte",
     "core.activation.license-owned.message":
-      "Cette licence est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer.",
+      "Connectez-vous au compte Polaris Locker qui contient cette licence pour l’utiliser.",
     "core.activation.refused.title": "Activation refusée",
     "core.activation.refused.message": "L’activation a été refusée ({code}).",
     "core.activation.error.title": "Échec de l’activation",
@@ -5919,6 +5940,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "Ese código no coincidía, así que {device} no ha iniciado sesión.",
     "signin.nearby.menu": "Aprobar un dispositivo cercano",
+    "signin.nearby.chooseTitle": "Elige una licencia para {device}",
+    "signin.nearby.chooseLede": "{product} la usará.",
+    "signin.nearby.deviceLimitBody":
+      "Esta licencia está en todos sus dispositivos. Quita uno para dejar sitio a {device}.",
+    "signin.nearby.rateLimitedBody":
+      "Espera un momento y vuelve a intentarlo en {device}.",
+    "signin.nearby.expiredBody": "Empieza de nuevo en {device}.",
     "signin.key.addInLocker": "Añadirla en Polaris Locker",
     "signin.key.scan":
       "Escanea para añadir esta clave en Polaris Locker desde tu teléfono.",
@@ -6628,7 +6656,7 @@ export const KIT_COPY: Readonly<
       "Acepta las condiciones para continuar.",
     "core.codes.license_owned.title": "Licencia en otra cuenta",
     "core.codes.license_owned.message":
-      "Esta licencia de {product} ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.",
+      "Inicia sesión en la cuenta de Polaris Locker que tiene esta licencia de {product} para usarla.",
     "core.codes.license_email_bound.title": "Correo no verificado",
     "core.codes.license_email_bound.message":
       "Esta licencia pertenece a una dirección de correo que tu cuenta de Polaris Locker no ha verificado. Verifica ese correo en tu cuenta y vuelve a intentarlo.",
@@ -7126,7 +7154,7 @@ export const KIT_COPY: Readonly<
       "Inicia sesión y añade esta clave a tu cuenta de Polaris Locker.",
     "core.activation.license-owned.title": "Licencia en otra cuenta",
     "core.activation.license-owned.message":
-      "Esta licencia ya está en otra cuenta de Polaris Locker. Una licencia nunca se transfiere con su clave.",
+      "Inicia sesión en la cuenta de Polaris Locker que tiene esta licencia para usarla.",
     "core.activation.refused.title": "Activación rechazada",
     "core.activation.refused.message": "Se rechazó la activación ({code}).",
     "core.activation.error.title": "Error de activación",
@@ -7711,6 +7739,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "Esse código não correspondeu, então {device} não foi conectado.",
     "signin.nearby.menu": "Aprovar um dispositivo próximo",
+    "signin.nearby.chooseTitle": "Escolha uma licença para {device}",
+    "signin.nearby.chooseLede": "{product} vai usá-la.",
+    "signin.nearby.deviceLimitBody":
+      "Esta licença está em todos os seus dispositivos. Remova um para abrir espaço para {device}.",
+    "signin.nearby.rateLimitedBody":
+      "Aguarde um instante e tente de novo em {device}.",
+    "signin.nearby.expiredBody": "Comece de novo em {device}.",
     "signin.key.addInLocker": "Adicionar no Polaris Locker",
     "signin.key.scan":
       "Escaneie para adicionar esta chave no Polaris Locker pelo celular.",
@@ -8393,7 +8428,7 @@ export const KIT_COPY: Readonly<
     "core.codes.terms_required.message": "Aceite os termos para continuar.",
     "core.codes.license_owned.title": "Licença em outra conta",
     "core.codes.license_owned.message":
-      "Esta licença de {product} já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave.",
+      "Para usar esta licença de {product}, entre na conta do Polaris Locker que a contém.",
     "core.codes.license_email_bound.title": "E-mail não verificado",
     "core.codes.license_email_bound.message":
       "Esta licença pertence a um endereço de e-mail que sua conta do Polaris Locker não verificou. Verifique esse e-mail na sua conta e tente novamente.",
@@ -8880,7 +8915,7 @@ export const KIT_COPY: Readonly<
       "Entre e adicione esta chave à sua conta do Polaris Locker.",
     "core.activation.license-owned.title": "Licença em outra conta",
     "core.activation.license-owned.message":
-      "Esta licença já está em outra conta do Polaris Locker. Uma licença nunca é transferida pela chave.",
+      "Para usar esta licença, entre na conta do Polaris Locker que a contém.",
     "core.activation.refused.title": "Ativação recusada",
     "core.activation.refused.message": "A ativação foi recusada ({code}).",
     "core.activation.error.title": "Falha na ativação",
@@ -9460,6 +9495,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "Quel codice non corrispondeva, quindi {device} non ha effettuato l’accesso.",
     "signin.nearby.menu": "Approva un dispositivo vicino",
+    "signin.nearby.chooseTitle": "Scegli una licenza per {device}",
+    "signin.nearby.chooseLede": "{product} la userà.",
+    "signin.nearby.deviceLimitBody":
+      "Questa licenza è su tutti i suoi dispositivi. Rimuovine uno per fare posto a {device}.",
+    "signin.nearby.rateLimitedBody":
+      "Attendi un attimo, poi riprova su {device}.",
+    "signin.nearby.expiredBody": "Ricomincia su {device}.",
     "signin.key.addInLocker": "Aggiungila in Polaris Locker",
     "signin.key.scan":
       "Inquadra per aggiungere questa chiave in Polaris Locker dal telefono.",
@@ -10159,7 +10201,7 @@ export const KIT_COPY: Readonly<
     "core.codes.terms_required.message": "Accetta i termini per continuare.",
     "core.codes.license_owned.title": "Licenza in un altro account",
     "core.codes.license_owned.message":
-      "Questa licenza di {product} è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave.",
+      "Accedi all’account Polaris Locker che ha questa licenza di {product} per usarla.",
     "core.codes.license_email_bound.title": "Email non verificata",
     "core.codes.license_email_bound.message":
       "Questa licenza appartiene a un indirizzo email che il tuo account Polaris Locker non ha verificato. Verifica quell'email nel tuo account, poi riprova.",
@@ -10652,7 +10694,7 @@ export const KIT_COPY: Readonly<
       "Accedi e aggiungi invece questa chiave al tuo account Polaris Locker.",
     "core.activation.license-owned.title": "Licenza in un altro account",
     "core.activation.license-owned.message":
-      "Questa licenza è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave.",
+      "Accedi all’account Polaris Locker che ha questa licenza per usarla.",
     "core.activation.refused.title": "Attivazione rifiutata",
     "core.activation.refused.message":
       "L'attivazione è stata rifiutata ({code}).",
@@ -11236,6 +11278,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "コードが一致しなかったため、{device} はサインインしませんでした。",
     "signin.nearby.menu": "近くのデバイスを承認",
+    "signin.nearby.chooseTitle": "{device} のライセンスを選択",
+    "signin.nearby.chooseLede": "{product}がこのライセンスを使用します。",
+    "signin.nearby.deviceLimitBody":
+      "このライセンスはすべてのデバイスで使われています。{device} のために、デバイスを1台削除してください。",
+    "signin.nearby.rateLimitedBody":
+      "しばらく待ってから、{device} でもう一度お試しください。",
+    "signin.nearby.expiredBody": "{device} で最初からやり直してください。",
     "signin.key.addInLocker": "Polaris Locker で追加",
     "signin.key.scan":
       "スマートフォンでスキャンして、このキーを Polaris Locker で追加します。",
@@ -11943,7 +11992,7 @@ export const KIT_COPY: Readonly<
     "core.codes.terms_required.message": "続行するには規約に同意してください。",
     "core.codes.license_owned.title": "別のアカウントのライセンス",
     "core.codes.license_owned.message":
-      "この{product}のライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。",
+      "この{product}のライセンスを使うには、そのライセンスがあるPolaris Lockerアカウントにサインインしてください。",
     "core.codes.license_email_bound.title":
       "メールアドレスが確認されていません",
     "core.codes.license_email_bound.message":
@@ -12444,7 +12493,7 @@ export const KIT_COPY: Readonly<
       "代わりにサインインして、このキーを Polaris Locker アカウントに追加してください。",
     "core.activation.license-owned.title": "別のアカウントのライセンス",
     "core.activation.license-owned.message":
-      "このライセンスは、すでに別のPolaris Lockerアカウントにあります。ライセンスがキーによって移動することはありません。",
+      "このライセンスを使うには、そのライセンスがあるPolaris Lockerアカウントにサインインしてください。",
     "core.activation.refused.title": "アクティベーションが拒否されました",
     "core.activation.refused.message":
       "アクティベーションが拒否されました（{code}）。",
@@ -13009,6 +13058,13 @@ export const KIT_COPY: Readonly<
     "signin.nearby.mismatch":
       "코드가 일치하지 않아 {device}에 로그인하지 않았어요.",
     "signin.nearby.menu": "근처 기기 승인",
+    "signin.nearby.chooseTitle": "{device}에서 사용할 라이선스 선택",
+    "signin.nearby.chooseLede": "{product}에서 이 라이선스를 사용해요.",
+    "signin.nearby.deviceLimitBody":
+      "이 라이선스는 모든 기기에서 사용 중이에요. {device}를 추가하려면 기기 하나를 제거하세요.",
+    "signin.nearby.rateLimitedBody":
+      "잠시 기다린 뒤 {device}에서 다시 시도하세요.",
+    "signin.nearby.expiredBody": "{device}에서 처음부터 다시 시작하세요.",
     "signin.key.addInLocker": "Polaris Locker에서 추가",
     "signin.key.scan":
       "스캔해서 휴대폰의 Polaris Locker에서 이 키를 추가하세요.",
@@ -13673,7 +13729,7 @@ export const KIT_COPY: Readonly<
     "core.codes.terms_required.message": "계속하려면 약관에 동의하세요.",
     "core.codes.license_owned.title": "다른 계정의 라이선스",
     "core.codes.license_owned.message":
-      "이 {product} 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
+      "이 {product} 라이선스를 사용하려면 이 라이선스가 있는 Polaris Locker 계정으로 로그인하세요.",
     "core.codes.license_email_bound.title": "인증되지 않은 이메일",
     "core.codes.license_email_bound.message":
       "이 라이선스는 회원님의 Polaris Locker 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 계정에서 해당 이메일을 인증한 후 다시 시도하세요.",
@@ -14156,7 +14212,7 @@ export const KIT_COPY: Readonly<
       "로그인한 뒤 이 키를 Polaris Locker 계정에 추가하세요.",
     "core.activation.license-owned.title": "다른 계정의 라이선스",
     "core.activation.license-owned.message":
-      "이 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
+      "이 라이선스를 사용하려면 이 라이선스가 있는 Polaris Locker 계정으로 로그인하세요.",
     "core.activation.refused.title": "활성화 거부됨",
     "core.activation.refused.message": "활성화가 거부됐어요({code}).",
     "core.activation.error.title": "활성화 실패",
@@ -14686,6 +14742,12 @@ export const KIT_COPY: Readonly<
       "请将两台设备连接到同一 Wi-Fi，或在 {device} 上用代码登录。",
     "signin.nearby.mismatch": "代码不匹配，因此 {device} 未登录。",
     "signin.nearby.menu": "批准附近的设备",
+    "signin.nearby.chooseTitle": "为 {device} 选择许可证",
+    "signin.nearby.chooseLede": "{product}将使用它。",
+    "signin.nearby.deviceLimitBody":
+      "此许可证已用于全部设备。请移除一台设备，为 {device} 腾出位置。",
+    "signin.nearby.rateLimitedBody": "请稍候，然后在 {device} 上重试。",
+    "signin.nearby.expiredBody": "请在 {device} 上重新开始。",
     "signin.key.addInLocker": "在 Polaris Locker 中添加",
     "signin.key.scan": "扫描后在手机上的 Polaris Locker 中添加此密钥。",
     "signin.return.yours": "{product}已归你所有",
@@ -15297,7 +15359,7 @@ export const KIT_COPY: Readonly<
     "core.codes.terms_required.message": "请同意条款以继续。",
     "core.codes.license_owned.title": "许可证在另一个账户中",
     "core.codes.license_owned.message":
-      "此{product}许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。",
+      "要使用此{product}许可证，请登录持有它的Polaris Locker账户。",
     "core.codes.license_email_bound.title": "电子邮件未验证",
     "core.codes.license_email_bound.message":
       "此许可证属于你的Polaris Locker账户尚未验证的电子邮件地址。请在账户中验证该电子邮件，然后重试。",
@@ -15731,7 +15793,7 @@ export const KIT_COPY: Readonly<
       "请登录，并将此密钥添加到你的 Polaris Locker 账户。",
     "core.activation.license-owned.title": "许可证在另一个账户中",
     "core.activation.license-owned.message":
-      "此许可证已在另一个Polaris Locker账户中。许可证不会通过密钥转移。",
+      "要使用此许可证，请登录持有它的Polaris Locker账户。",
     "core.activation.refused.title": "激活被拒绝",
     "core.activation.refused.message": "激活被拒绝（{code}）。",
     "core.activation.error.title": "激活失败",

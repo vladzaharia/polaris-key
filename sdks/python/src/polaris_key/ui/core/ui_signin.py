@@ -210,20 +210,20 @@ def nearby_approval_view(ctx: Context) -> View:
     if step == "expired":
         return outcome(
             "expired",
-            ["core.codes.sign-in-expired.title", "core.codes.sign-in-expired.message", "common.done"],
+            ["core.codes.sign-in-expired.title", "signin.nearby.expiredBody", "common.done"],
             "common.done",
             "neutral",
         )
     if step == "device-limit":
         return outcome(
             "device-limit",
-            ["core.codes.device_limit.title", "core.codes.device_limit.message", "devices.manage"],
+            ["core.codes.device_limit.title", "signin.nearby.deviceLimitBody", "devices.manage"],
             "devices.manage",
             "neutral",
         )
     if step == "choose":
         return outcome(
-            "choose", ["signin.choice.title", "signin.choice.lede", "signin.choice.continue"], "signin.choice.continue"
+            "choose", ["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"], "signin.choice.continue"
         )
     if step == "account-required":
         return outcome(
@@ -235,8 +235,8 @@ def nearby_approval_view(ctx: Context) -> View:
     if step == "rate-limited":
         return outcome(
             "rate-limited",
-            ["core.codes.rate_limited.title", "core.codes.rate_limited.message", "common.tryAgain"],
-            "common.tryAgain",
+            ["core.codes.rate_limited.title", "signin.nearby.rateLimitedBody", "common.done"],
+            "common.done",
             "neutral",
         )
     return make_view(ctx, "NearbyApproval", "entry", ["signin.nearby.menu"], args=args, focus=None)

@@ -1118,6 +1118,16 @@
     <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
     <string name="signin_nearby_menu">근처 기기 승인</string>
     <string name="signin_nearby_menu__macos">근처 기기 승인</string>
+    <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_chooseTitle">%1$s에서 사용할 라이선스 선택</string>
+    <!-- Nearby approval: choose a license. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_nearby_chooseLede">%1$s에서 이 라이선스를 사용해요.</string>
+    <!-- Nearby approval: the license is on all its devices. Body under the Device limit reached title; the action opens the device list. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_deviceLimitBody">이 라이선스는 모든 기기에서 사용 중이에요. %1$s를 추가하려면 기기 하나를 제거하세요.</string>
+    <!-- Nearby approval: too many attempts. Body under the Too many attempts title; the action is Done, because the retry happens on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_rateLimitedBody">잠시 기다린 뒤 %1$s에서 다시 시도하세요.</string>
+    <!-- Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_expiredBody">%1$s에서 처음부터 다시 시작하세요.</string>
     <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
     <string name="signin_key_addInLocker">Polaris Locker에서 추가</string>
     <string name="signin_key_addInLocker__macos">Polaris Locker에서 추가</string>
@@ -2232,7 +2242,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">다른 계정의 라이선스</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
-    <string name="core_codes_license_owned_message">이 %1$s 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.</string>
+    <string name="core_codes_license_owned_message">이 %1$s 라이선스를 사용하려면 이 라이선스가 있는 Polaris Locker 계정으로 로그인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_email_bound_title">인증되지 않은 이메일</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2892,7 +2902,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">다른 계정의 라이선스</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_license_owned_message">이 라이선스는 이미 다른 Polaris Locker 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.</string>
+    <string name="core_activation_license_owned_message">이 라이선스를 사용하려면 이 라이선스가 있는 Polaris Locker 계정으로 로그인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">활성화 거부됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

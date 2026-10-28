@@ -251,7 +251,7 @@
     },
     "license_owned": {
       "title": "Licence dans un autre compte",
-      "message": "Cette licence {product} est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer."
+      "message": "Connectez-vous au compte Polaris Locker qui contient cette licence {product} pour l’utiliser."
     },
     "license_email_bound": {
       "title": "E-mail non vérifié",
@@ -915,7 +915,7 @@
     },
     "license-owned": {
       "title": "Licence dans un autre compte",
-      "message": "Cette licence est déjà dans un autre compte Polaris Locker. Sa clé ne permet pas de la transférer."
+      "message": "Connectez-vous au compte Polaris Locker qui contient cette licence pour l’utiliser."
     },
     "refused": {
       "title": "Activation refusée",

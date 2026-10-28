@@ -265,18 +265,18 @@ extension KitStates {
             return KitScreen(
                 .expired,
                 lines(
-                    "core.codes.sign-in-expired.title", "core.codes.sign-in-expired.message",
+                    "core.codes.sign-in-expired.title", "signin.nearby.expiredBody",
                     "common.done"))
         case .deviceLimit:
             return KitScreen(
                 .deviceLimit,
                 lines(
-                    "core.codes.device_limit.title", "core.codes.device_limit.message",
+                    "core.codes.device_limit.title", "signin.nearby.deviceLimitBody",
                     "devices.manage"))
         case .choose:
             return KitScreen(
                 .choose,
-                lines("signin.choice.title", "signin.choice.lede", "signin.choice.continue"))
+                lines("signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"))
         case .accountRequired:
             return KitScreen(
                 .accountRequired,
@@ -287,8 +287,8 @@ extension KitStates {
             return KitScreen(
                 .rateLimited,
                 lines(
-                    "core.codes.rate_limited.title", "core.codes.rate_limited.message",
-                    "common.tryAgain"))
+                    "core.codes.rate_limited.title", "signin.nearby.rateLimitedBody",
+                    "common.done"))
         case .entry: return KitScreen(.entry, lines("signin.nearby.menu"))
         }
     }

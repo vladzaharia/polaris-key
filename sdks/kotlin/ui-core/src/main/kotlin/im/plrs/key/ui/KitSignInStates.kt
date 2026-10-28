@@ -183,11 +183,11 @@ internal fun nearbyApprovalScreen(inputs: KitInputs): KitScreen {
         "not-nearby" -> step("not-nearby", "signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done")
         "mismatch" -> step("mismatch", "signin.nearby.mismatch", "common.done")
         "denied" -> step("denied", "signin.approve.deniedDone", "common.done")
-        "expired" -> step("expired", "core.codes.sign-in-expired.title", "core.codes.sign-in-expired.message", "common.done")
-        "device-limit" -> step("device-limit", "core.codes.device_limit.title", "core.codes.device_limit.message", "devices.manage")
-        "choose" -> step("choose", "signin.choice.title", "signin.choice.lede", "signin.choice.continue")
+        "expired" -> step("expired", "core.codes.sign-in-expired.title", "signin.nearby.expiredBody", "common.done")
+        "device-limit" -> step("device-limit", "core.codes.device_limit.title", "signin.nearby.deviceLimitBody", "devices.manage")
+        "choose" -> step("choose", "signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue")
         "account-required" -> step("account-required", "core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn")
-        "rate-limited" -> step("rate-limited", "core.codes.rate_limited.title", "core.codes.rate_limited.message", "common.tryAgain")
+        "rate-limited" -> step("rate-limited", "core.codes.rate_limited.title", "signin.nearby.rateLimitedBody", "common.done")
         else -> step("entry", "signin.nearby.menu")
     }
 }
