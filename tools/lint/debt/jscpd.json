@@ -2729,6 +2729,12 @@
     "packages/worker/src/services/identity/passthrough/grant.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/worker/src/services/identity/passthrough/link.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/identity/passthrough/nonce.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/src/services/identity/passthrough/routes.ts": {
       "jscpd:duplicate": 1
     },
@@ -3404,6 +3410,9 @@
     "packages/worker/test/services/identity/erasureLedger.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/worker/test/services/identity/exchange.test.ts": {
+      "jscpd:duplicate": 2
+    },
     "packages/worker/test/services/identity/identityCardEmail.test.ts": {
       "jscpd:duplicate": 2
     },
@@ -3424,6 +3433,9 @@
     },
     "packages/worker/test/services/identity/identityProductTerms.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/identity/link.test.ts": {
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/services/identity/obtainPaths.test.ts": {
       "jscpd:duplicate": 10

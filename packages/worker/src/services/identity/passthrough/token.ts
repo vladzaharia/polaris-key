@@ -439,7 +439,7 @@ export async function bindAndAnswer(
     }
   }
 
-  if (p.fresh) await markFresh(env, product.slug, deviceId);
+  if (p.fresh) await markFresh(env, product.slug, deviceId, p.subject);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),

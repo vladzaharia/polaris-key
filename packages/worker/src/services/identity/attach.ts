@@ -94,7 +94,7 @@ export const ACCOUNT_RATE = {
 };
 
 /** The device whose own token made the request, or the refusal to answer. */
-async function deviceOf(
+export async function deviceOf(
   req: Request,
   env: Env,
   db: Db,
@@ -117,7 +117,7 @@ async function deviceOf(
  * back as `active`, bound devices included). `null` when there is none, `unavailable` when the
  * ledger could not be read.
  */
-async function deviceHolder(
+export async function deviceHolder(
   env: Env,
   db: Db,
   product: string,

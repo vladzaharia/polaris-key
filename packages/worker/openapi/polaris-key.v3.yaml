@@ -9029,6 +9029,131 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/link:
+    get:
+      operationId: identityLinkOffer
+      tags: [identity]
+      summary: What the app may offer to link (I-43.2)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.4. The device bearer with its `X-PKey-Device`. Lists the product's
+        declared platform kinds (Google, Apple) that have no link on the signed-in account in their
+        scope. `reach` is `null`: what a link would cover is not known before a token. The list is
+        empty unless a same-device sign-in at most 300 seconds old is live on this device. Reading
+        the list does not spend that step-up. `launch.identityExchange` off, or Identity off,
+        answers `404 not_found`. NESTED errors. 30 calls a minute per client network and 10 per
+        device.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      responses:
+        "200":
+          description: "The offer, possibly empty. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkOfferResponse" }
+              examples:
+                offered:
+                  value: { offer: [{ kind: google, reach: null }] }
+                none:
+                  value: { offer: [] }
+        "400":
+          description: No or malformed `X-PKey-Device` (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401":
+          description: The device token is missing or not valid for this device (`unauthorized`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Over the network or device limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    post:
+      operationId: identityLink
+      tags: [identity]
+      summary: Add a Google or Apple identity to the signed-in account (I-43.2)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.4. The device bearer with its `X-PKey-Device`. The body is a
+        `linkHandle` from a token exchange that found no link, or a token of its own with a nonce
+        (§12.11.2) and the device's keys. `proof` is a `pkey-proof/1` signature of purpose `link`
+        (§12.11.1) by the device's key. The request spends the same-device step-up (`signin-fresh`)
+        and links in the same press. A handle is taken only when its record names this product,
+        this device and the proving key; a handle alone does nothing. A Google link is global only
+        when the provider vouches for the token's address and the account has already verified it;
+        otherwise it is scoped to the developer. An Apple link is always scoped to the team. The
+        account's verified addresses, and the linked address, receive the "sign-in method added"
+        email. Every proof, key, nonce and token failure is the same `400 invalid_grant`. NESTED
+        errors. `launch.identityExchange` off, or Identity off, answers `404 not_found`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkRequest" }
+      responses:
+        "200":
+          description: "The link, new or already on this account. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkResponse" }
+              examples:
+                linked:
+                  { value: { linked: { kind: google, reach: developer } } }
+        "400":
+          description: >
+            `invalid_grant` for any proof, key, nonce, token or handle-binding failure, or
+            `bad_request` for a malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                refused: { value: { error: { code: invalid_grant } } }
+        "401":
+          description: >
+            `step_up_required` (no live same-device sign-in on this device, or none bound to an
+            account), or `unauthorized` (the device token).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                stepUp: { value: { error: { code: step_up_required } } }
+        "404":
+          description: An unknown or spent handle, or the gate or Identity is off (`not_found`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "409":
+          description: The identity is already linked to another account (`link_conflict`). Nothing moves.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                conflict: { value: { error: { code: link_conflict } } }
+        "429":
+          description: Over the network or device limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityLink
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/choice/licenses:
     post:
       operationId: identityChoiceLicenses
@@ -28120,6 +28245,51 @@ components:
       properties:
         nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         expiresIn: { type: integer, enum: [300] }
+    LinkOfferResponse:
+      type: object
+      required: [offer]
+      properties:
+        offer:
+          type: array
+          items:
+            type: object
+            required: [kind, reach]
+            properties:
+              kind: { type: string, enum: [google, apple] }
+              reach:
+                type: [string, "null"]
+                enum: [global, developer, null]
+                description: What a link would cover; `null` while that is not known before a token.
+    LinkRequest:
+      description: >
+        A `linkHandle` (`lh_` and 43 base64url characters), or a token of the app's own with the
+        nonce and keys of §12.11.2. `proof` is a `pkey-proof/1` signature of purpose `link`.
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [linkHandle, proof]
+          properties:
+            linkHandle: { type: string, pattern: "^lh_[A-Za-z0-9_-]{43}$" }
+            proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+        - type: object
+          additionalProperties: false
+          required: [subjectToken, nonce, signKey, agreeKey, proof]
+          properties:
+            subjectToken: { type: string, maxLength: 4096 }
+            nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+            signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+            agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+            proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+    LinkResponse:
+      type: object
+      required: [linked]
+      properties:
+        linked:
+          type: object
+          required: [kind, reach]
+          properties:
+            kind: { type: string, enum: [google, apple] }
+            reach: { type: string, enum: [global, developer] }
     DeviceKeysResult:
       type: object
       required: [keySeq]

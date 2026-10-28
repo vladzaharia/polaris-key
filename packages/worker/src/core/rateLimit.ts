@@ -98,6 +98,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // I-13.2: the exchange nonce route writes one single-use record per call (per network, per device).
   identityNonce: "closed",
   identityNonceDevice: "closed",
+  identityLink: "closed",
+  identityLinkDevice: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   // ST-30c.5: the console's passkey sign-in (challenge and assertion, per client network). The
