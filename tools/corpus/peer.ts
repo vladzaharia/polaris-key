@@ -956,6 +956,32 @@ export async function buildRingCases(): Promise<RingCase[]> {
     expect: "integer",
   });
 
+  // lifetime: 1 to RING_SECONDS
+  await mkVerify("ring-valid-span-max", "expiresAt − issuedAt = 604800.", {
+    doc: ringDoc(d3, { expiresAt: ISSUED + WEEK }),
+    expect: "ok",
+  });
+  await mkVerify("ring-valid-span-min", "expiresAt − issuedAt = 1.", {
+    doc: ringDoc(d3, { expiresAt: ISSUED + 1 }),
+    expect: "ok",
+  });
+  await mkVerify("ring-lifetime-over-max", "expiresAt − issuedAt = 604801.", {
+    doc: ringDoc(d3, { expiresAt: ISSUED + WEEK + 1 }),
+    expect: "lifetime",
+  });
+  await mkVerify("ring-lifetime-zero", "expiresAt = issuedAt.", {
+    doc: ringDoc(d3, { expiresAt: ISSUED }),
+    expect: "lifetime",
+  });
+  await mkVerify("ring-lifetime-negative", "expiresAt before issuedAt.", {
+    doc: ringDoc(d3, { expiresAt: ISSUED - 1 }),
+    expect: "lifetime",
+  });
+  await mkVerify("ring-lifetime-huge", "A thirty-day span.", {
+    doc: ringDoc(d3, { expiresAt: ISSUED + 30 * DAY }),
+    expect: "lifetime",
+  });
+
   // typ and signer
   for (const typ of [
     "pkey-peer+jws",

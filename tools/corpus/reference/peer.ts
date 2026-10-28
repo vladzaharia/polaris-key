@@ -14,6 +14,7 @@ import { PLAIN_INTEGER_REF, refNumberTokens } from "./tokens.js";
 
 export const REF_MAX_PEER_CERT_SECONDS = 604800;
 export const REF_MAX_RING_DEVICES = 128;
+export const REF_RING_SECONDS = 604800;
 export const REF_PEER_SUB_RE = /^ps_[A-Za-z0-9_-]{22}$/;
 export const REF_PEER_DEVICE_RE = /^[A-Za-z0-9_-]{32}$/;
 const REF_PEER_KEY_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -162,6 +163,7 @@ export type RingReason =
   | "issuer-or-audience"
   | "integer"
   | "subject"
+  | "lifetime"
   | "devices-size"
   | "device"
   | "keys"
@@ -203,6 +205,8 @@ export function refRing(
     return ringFail("integer");
   if (typeof d.sub !== "string" || !REF_PEER_SUB_RE.test(d.sub))
     return ringFail("subject");
+  const span = (d.expiresAt as number) - (d.issuedAt as number);
+  if (span < 1 || span > REF_RING_SECONDS) return ringFail("lifetime");
   const devices = d.devices;
   if (
     !Array.isArray(devices) ||
