@@ -66,8 +66,21 @@ function contentFor(c: KitCtx): ReactNode {
   const keys = new Set(view.copy);
   switch (view.component) {
     case "Activate": {
-      // A refusal no other key can fix is a focused step: no field (refusal.ts).
-      if (isRefusalStep(view)) return null;
+      // A refusal no other key can fix is a focused step: no field (refusal.ts); a TV scans the
+      // add-key page instead.
+      if (isRefusalStep(view)) {
+        const link = view.decisions.link;
+        return (
+          <>
+            {qrCode(c, link?.qr ? link.url : null, "a11y.qrAddKey")}
+            {keys.has("signin.key.scan") ? (
+              <p className="body" data-key="signin.key.scan">
+                {text(c, "signin.key.scan")}
+              </p>
+            ) : null}
+          </>
+        );
+      }
       const verdict = [
         "part.keyField.verdict",
         "part.keyField.cutShort",

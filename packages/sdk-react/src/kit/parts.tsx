@@ -509,13 +509,15 @@ export function button(
 ): ReactNode {
   // The refusal step's manage link leaves the app too (refusal.ts): the key step's title as its
   // label, and where it goes as its description (outside the button, so the name stays the label).
-  if (
-    key === MANAGE_KEY &&
-    isRefusalStep(c.view) &&
-    c.copy.has(OPENS_BROWSER_KEY)
-  )
+  if (key === MANAGE_KEY && isRefusalStep(c.view) && hintKey(c) !== null)
     return <ManageLink key={key} c={c} variant={variant} extra={extra} />;
   return plainButton(c, key, variant, extra);
+}
+
+/** Where the manage link goes: ui-core's `a11y.externalLink` when the view carries it. */
+function hintKey(c: KitCtx): string | null {
+  if (c.view.copy.includes("a11y.externalLink")) return "a11y.externalLink";
+  return c.copy.has(OPENS_BROWSER_KEY) ? OPENS_BROWSER_KEY : null;
 }
 
 function ManageLink(props: {
@@ -528,7 +530,7 @@ function ManageLink(props: {
     <>
       {plainButton(props.c, MANAGE_KEY, props.variant, props.extra, id)}
       <span id={id} className="visually-hidden">
-        {plain(props.c, OPENS_BROWSER_KEY)}
+        {plain(props.c, hintKey(props.c)!)}
       </span>
     </>
   );

@@ -533,17 +533,17 @@ describe("the key refusals no other key can fix", () => {
     expect(container.querySelector('[data-key="activate.lede"]')).toBeNull();
     expect(container.textContent).toContain("No key entries left");
     expect(container.querySelector(".callout")).toBeNull();
-    expect(control(container, "welcome.signIn")?.dataset.variant).toBe(
+    expect(control(container, "signin.key.signIn")?.dataset.variant).toBe(
       "primary",
     );
-    const manage = control(container, "signin.key.addTitle")!;
+    const manage = control(container, "signin.key.addInLocker")!;
     expect(manage.dataset.variant).toBe("secondary");
     expect(manage.querySelector("svg")).not.toBeNull();
     const hint = document.getElementById(
       manage.getAttribute("aria-describedby")!,
     );
     expect(manage.contains(hint)).toBe(false);
-    expect(hint?.textContent).toBe("Opens Polaris Locker in your browser");
+    expect(hint?.textContent).toBe("Opens in your browser");
     expect(control(container, "signin.key.differentKey")?.dataset.variant).toBe(
       "link",
     );
@@ -553,7 +553,7 @@ describe("the key refusals no other key can fix", () => {
     expect(opened.startsWith(ADD_KEY)).toBe(true);
     expect(opened).toContain("#key=");
     // The name is the label alone (the hint is a description, outside the button).
-    expect(manage.textContent).toContain("Add Acme Studio to your account");
+    expect(manage.textContent).toContain("Add it in Polaris Locker");
     expect(manage.textContent).not.toContain("Opens Polaris Locker");
     // Use a different key goes back to an empty field.
     fireEvent.click(control(container, "signin.key.differentKey")!);
@@ -563,6 +563,31 @@ describe("the key refusals no other key can fix", () => {
       ),
     );
     adapter.dispose();
+  });
+
+  it("a sign-in that fails to start is said on the refusal step, Sign in stays the primary", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const m = await refused(() => ({
+      kind: "key-entry-limit",
+      manageUrl: ADD_KEY,
+      keyEntries: { used: 3, limit: 3 },
+    }));
+    m.bridge.beginSignIn = vi.fn(async () => {
+      throw new Error("network");
+    });
+    fireEvent.click(control(m.container, "signin.key.signIn")!);
+    await waitFor(() =>
+      expect(
+        m.container.querySelector(
+          '[data-key="core.codes.sign-in-failed.message"]',
+        ),
+      ).not.toBeNull(),
+    );
+    expect(control(m.container, "signin.key.signIn")?.dataset.variant).toBe(
+      "primary",
+    );
+    expect(open).not.toHaveBeenCalled();
+    m.adapter.dispose();
   });
 
   it("license-owned says the product-named sentence and offers Sign in, with no manage link", async () => {
@@ -582,7 +607,7 @@ describe("the key refusals no other key can fix", () => {
     expect(control(container, "signin.key.ownedSignIn")?.textContent).toContain(
       "Sign in to that account",
     );
-    expect(control(container, "signin.key.addTitle")).toBeNull();
+    expect(control(container, "signin.key.addInLocker")).toBeNull();
     adapter.dispose();
   });
 });

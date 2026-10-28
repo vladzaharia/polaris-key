@@ -40,6 +40,7 @@ import zhHans from "../../../brand/kit-copy/zh-Hans.json" with { type: "json" };
 
 import { PolarisKeyProvider } from "@polaris-key/react";
 import * as Kit from "@polaris-key/react/kit";
+import { kitComponent } from "../../src/kit/kitComponent.js";
 import { desktopAdapter } from "../../src/desktop/desktopAdapter.js";
 import {
   NOW_SEC,
@@ -148,10 +149,12 @@ const SCENES: Scene[] = [
     fixture: {
       id: "Activate.key-entry-limit",
       component: "Activate",
-      state: "rejected",
-      row: "Activate/rejected: the key-entry limit",
+      state: "key-entry-limit",
+      row: "Activate/key-entry-limit: a link to add the key in Polaris Locker",
       input: {
-        ...(ROWS["Activate/rejected: the key-entry limit"]!.input as UiInput),
+        ...(ROWS[
+          "Activate/key-entry-limit: a link to add the key in Polaris Locker"
+        ]!.input as UiInput),
         activation: {
           result: "key-entry-limit",
           manageUrl: "https://key.plrs.im/activate?product=tidewater",
@@ -161,11 +164,11 @@ const SCENES: Scene[] = [
   },
   {
     id: "Activate.license-owned",
-    row: "Activate/rejected: another account holds the license",
+    row: "Activate/license-owned: another account holds the license",
   },
   {
     id: "SignIn.key-license-owned",
-    row: "SignIn/key: another account holds the key's license",
+    row: "SignIn/key-refused: another account holds the key's license",
   },
   { id: "SignIn.methods-web", row: "SignIn/methods: web" },
   { id: "SignIn.error-kept", row: "SignIn/error: a sign-in method failed" },
@@ -269,7 +272,11 @@ afterEach(() => {
 const frame = (): Promise<void> =>
   new Promise((r) => requestAnimationFrame(() => r()));
 
-const COMPONENTS = Kit as unknown as Record<
+// NearbyApproval is not a public export (UXR-kits-v7 B4): the suite draws the internal component.
+const COMPONENTS = {
+  ...Kit,
+  NearbyApproval: kitComponent("NearbyApproval"),
+} as unknown as Record<
   string,
   (p: Kit.KitProps & { children?: ReactNode }) => ReactNode
 >;
@@ -531,6 +538,8 @@ async function check(
 /** The gate over the app, after a key activation that leaves entries and after a sign-in that
  *  lands: the toast each leaves (shots: react.Gate.toast-entries, react.Gate.toast-signed-in). */
 type GateKind = "entries" | "signed-in" | "key-entry-limit" | "license-owned";
+/** Set by a test that wants the refusal's Sign in to fail to start (UXR-kits-v7 M1). */
+let signInFails = false;
 async function gateToast(
   kind: GateKind,
   scheme: Scheme = "dark",
@@ -607,12 +616,28 @@ async function gateToast(
       }),
     );
   }
-  if (kind === "key-entry-limit" || kind === "license-owned")
+  if (kind === "key-entry-limit" || kind === "license-owned") {
     await until(
       () =>
         host!.querySelector('[data-key="signin.key.differentKey"]') !== null,
     );
-  else await until(() => host!.querySelector('[data-part="toast"]') !== null);
+    if (signInFails) {
+      bridge.beginSignIn = async () => {
+        throw new Error("network");
+      };
+      press(
+        kind === "license-owned"
+          ? "signin.key.ownedSignIn"
+          : "signin.key.signIn",
+      );
+      await until(
+        () =>
+          host!.querySelector(
+            '[data-key="core.codes.sign-in-failed.message"]',
+          ) !== null,
+      );
+    }
+  } else await until(() => host!.querySelector('[data-part="toast"]') !== null);
   await document.fonts.ready;
   await frame();
   await Promise.all(
@@ -670,6 +695,28 @@ describe("the live gate's two key refusals, with its chrome", () => {
         });
 });
 
+describe("a refusal's Sign in that fails to start", () => {
+  for (const kind of ["key-entry-limit", "license-owned"] as const)
+    it(`${kind} says so on the step`, async () => {
+      await page.viewport(1440, 900);
+      signInFails = true;
+      try {
+        await gateToast(kind);
+        if (__PKEY_KIT_SHOTS__)
+          await commands.kitShot(
+            `${__PKEY_KIT_SHOTS__}/react.Gate.refusal-${kind}-signin-fails/1440-dark.png`,
+          );
+        expect(
+          document.querySelector(
+            '[data-key="core.codes.sign-in-failed.message"]',
+          ),
+        ).not.toBeNull();
+      } finally {
+        signInFails = false;
+      }
+    });
+});
+
 describe("the React kit at every size", () => {
   for (const scene of SCENES)
     describe(scene.id, () => {
@@ -686,12 +733,12 @@ describe("the React kit at every size", () => {
 });
 
 describe("the complete fixture baseline matrix", () => {
-  it("selects all 134 registered non-hidden component states exactly once", () => {
+  it("selects all 155 registered non-hidden component states exactly once", () => {
     const expected = [...REGISTERED_COMPONENT_STATE_IDS].sort();
     const actual = BASELINE_SCENES.map((scene) => scene.id).sort();
-    expect(expected).toHaveLength(134);
-    expect(actual).toHaveLength(134);
-    expect(new Set(actual).size).toBe(134);
+    expect(expected).toHaveLength(155);
+    expect(actual).toHaveLength(155);
+    expect(new Set(actual).size).toBe(155);
     expect(actual).toEqual(expected);
   });
 

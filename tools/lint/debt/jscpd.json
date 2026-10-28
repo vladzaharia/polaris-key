@@ -1845,13 +1845,13 @@
       "jscpd:duplicate": 13
     },
     "packages/sdk-react/test/browser/chrome.sizes.browser.test.tsx": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 13
     },
     "packages/sdk-react/test/browser/chrome.themes.browser.test.tsx": {
       "jscpd:duplicate": 8
     },
     "packages/sdk-react/test/browser/kit.browser.test.tsx": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 6
     },
     "packages/sdk-react/test/browser/motion.browser.test.tsx": {
       "jscpd:duplicate": 1
