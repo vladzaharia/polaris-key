@@ -7,7 +7,12 @@
 // This file holds what both transports share: the option and session shapes, the discovery
 // reading, and the stash. The transports are `bearer/signInSessions.ts` and the desktop adapter.
 
-import type { AuthorizePurpose } from "@polaris-key/protocol/identity";
+import type {
+  AuthorizePurpose,
+  ExchangeConsentView,
+  ExchangeKind,
+} from "@polaris-key/protocol/identity";
+import type { LicenseChoiceView } from "./choice.js";
 import type { RedirectPending } from "@polaris-key/client-core";
 import { isSecureTransportUrl } from "./types.js";
 
@@ -254,4 +259,96 @@ export function openUrl(url: string): Promise<boolean> {
     return Promise.resolve(false);
   window.open(url, "_blank", "noopener,noreferrer");
   return Promise.resolve(true);
+}
+
+// ── Automatic sign-in (identity.autosignin; plan-auto-sign-in §1, I-46.4) ─────────────────────
+
+/** `prompt: "optional"` lets the ladder show the browser's own account chooser (rung 4) after the
+ *  silent attempt found nothing. The default is `"none"`: a page never prompts by itself (D-A12). */
+export type AutoSignInPrompt = "none" | "optional";
+
+/** `identity.autoSignIn(opts?)`. */
+export interface AutoSignInOptions {
+  prompt?: AutoSignInPrompt;
+  /** `app` (default) returns a licence choice to the app; `card` leaves it to the card. */
+  licenseChoice?: "app" | "card";
+  /** The device label the sign-in page shows (§12.7.1). */
+  deviceName?: string;
+}
+
+/** Whether this device holds the Cloud Sync root key: `present`, or `needed` (unlock it with the
+ *  recovery code). Absent where no E2E client runs (Q-8). */
+export type AutoSyncKey = "present" | "needed";
+
+/** Why the ladder cannot run at all here. */
+export type AutoSignInUnavailable =
+  /** The product serves no platform sign-in (identity off, no `exchange`, or a `404`). */
+  | "product"
+  /** The product does not accept this provider's kind. */
+  | "kind"
+  /** This browser's device keys cannot sign, or die with the page. */
+  | "device-keys"
+  /** Discovery named a sign-in endpoint off the product's origin (or not https). */
+  | "endpoint"
+  /** The transport has no ladder: the desktop renderer, a cookie page, the local adapter. */
+  | "runtime";
+
+/** How the ladder ended. A grant and a link handle are not enumerable, so a logged or stringified
+ *  result leaves them out. */
+export type AutoSignInResult =
+  | {
+      kind: "signedIn";
+      /** `stored`: this device already held a token (rung 1). `platform`: the exchange (3, 4). */
+      via: "stored" | "platform";
+      /** The pairwise account subject (`ps_…`), or null when this page has not read it. */
+      subject: string | null;
+      scope?: string;
+      activation?: { licenseId: string | null };
+      syncKey?: AutoSyncKey;
+      /** The sync after the sign-in failed; the device token is stored all the same. */
+      syncError?: Error;
+    }
+  | {
+      kind: "confirm";
+      readonly grant: string;
+      expiresIn: number;
+      consent: ExchangeConsentView;
+    }
+  | {
+      kind: "choose";
+      readonly grant: string;
+      expiresIn: number;
+      choices: Record<string, unknown>;
+    }
+  | {
+      kind: "needsSignIn";
+      /** `noLink`: the provider's account is linked to no account; `terms`: the terms are
+       *  unaccepted; `signedOut`: the person signed out on this device; `noCredential`: no rung
+       *  found a credential. Each shows the form. */
+      reason: "noLink" | "terms" | "signedOut" | "noCredential";
+      url?: string;
+      expiresIn?: number;
+      readonly linkHandle?: string;
+    }
+  | {
+      kind: "deviceLimit";
+      manageUrl?: string;
+      /** The licences and their seats, when the refusal came with the choice view. */
+      choices?: LicenseChoiceView;
+    }
+  | { kind: "unavailable"; code: AutoSignInUnavailable };
+
+/** How the provider may ask: `silent` shows nothing, `optional` may show the chooser. */
+export type PlatformMediation = "silent" | "optional";
+
+/** A platform identity provider the ladder asks for a token (FedCM for Google on the web). */
+export interface PlatformIdentityProvider {
+  readonly kind: ExchangeKind;
+  /** False where this runtime cannot ask (no `IdentityCredential`, no client id). */
+  available(): boolean;
+  /** The provider's ID token for `nonce` (signed in as is), or `null` when it offers none: no
+   *  account, a dismissed prompt, a timeout. It never throws for those. */
+  token(nonce: string, mediation: PlatformMediation): Promise<string | null>;
+  /** On sign-out: stop the provider choosing the account again by itself. Best effort. */
+  signOutCleanup(): Promise<void>;
 }

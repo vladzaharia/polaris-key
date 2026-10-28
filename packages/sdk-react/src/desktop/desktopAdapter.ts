@@ -41,6 +41,7 @@ import { createStore, type Store } from "../core/store.js";
 import { BeforeSignOutHooks } from "../core/account.js";
 import { BridgeDeviceCodeSession } from "./bridgeSignIn.js";
 import type {
+  AutoSignInResult,
   DeviceCodeSignInSession,
   RedirectSignInSession,
   SignInNamespace,
@@ -914,6 +915,11 @@ export class DesktopAdapter implements PolarisAdapter {
     complete: () => this.noChoice(),
     cancel: () => this.noChoice(),
   };
+
+  /** The desktop bridge has no platform sign-in verb (D-12): the ladder is unavailable here. */
+  async autoSignIn(): Promise<AutoSignInResult> {
+    return { kind: "unavailable", code: "runtime" };
+  }
 
   private noChoice(): Promise<never> {
     return Promise.reject(
