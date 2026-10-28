@@ -141,6 +141,32 @@ export interface SignInSession {
   grantExpired?: boolean;
 }
 
+/** Automatic sign-in's own steps (plans/auto-sign-in.md §3), drawn in the sign-in form's body. */
+export type AutoSignInStep =
+  | "confirm"
+  | "link-offer"
+  | "link-done"
+  | "link-conflict"
+  | "nearby-prompt"
+  | "nearby-wait"
+  | "nearby-done";
+
+export interface AutoSignInInput {
+  step: AutoSignInStep;
+  /** The account's email; absent when the provider shared none (Sign in with Apple, private). */
+  email?: string;
+  /** Whom the provider's identity is shared with: `global` across apps, `developer` per
+   *  developer. Apple is always per developer; absent is treated as `unknown` (per developer). */
+  reach?: "global" | "developer" | "unknown";
+}
+
+/** The approving device's side of nearby sign-in. Absent: the account-menu entry. */
+export interface NearbyApprovalInput {
+  step: "entry" | "ask" | "approved" | "not-nearby";
+  /** The new device's friendly name. */
+  device?: string;
+}
+
 export interface DeviceCodeInput {
   phase: DeviceCodePhase;
   secondsLeft?: number;
@@ -310,6 +336,10 @@ export interface UiInput {
    *  failed sign-in names. Absent: "Polaris Locker", the sign-in the generic row opens. */
   provider?: string;
   deviceCode?: DeviceCodeInput;
+  /** Automatic sign-in's step, shown in the sign-in form (needs `signIn`). */
+  autoSignIn?: AutoSignInInput;
+  /** Nearby approval on the device that is already signed in. */
+  nearbyApproval?: NearbyApprovalInput;
   choices?: LicenseChoiceView;
   replaceView?: ReplaceView;
   /** The row the person picked in LicenseChoice (a license id, `keep` or `create`). */

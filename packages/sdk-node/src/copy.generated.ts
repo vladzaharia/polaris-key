@@ -1013,8 +1013,7 @@ export const COPY_ACTIVATION: Readonly<Record<string, CopyEntry>> = {
   },
   "key-entry-limit": {
     title: "No key entries left",
-    message:
-      "This key has no entries left. Add it to your account and sign in instead.",
+    message: "Add it to your account and sign in instead.",
   },
   "license-owned": {
     title: "License in another account",

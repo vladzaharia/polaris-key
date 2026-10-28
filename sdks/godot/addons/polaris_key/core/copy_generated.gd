@@ -244,7 +244,7 @@ const COPY_ACTIVATION := {
 	"rate-limited": {"title": "Too many attempts", "message": "Too many attempts. Wait a moment and try again."},
 	"unauthorized": {"title": "Key not accepted", "message": "That license key wasn't accepted. Check it and try again."},
 	"enroll-disabled": {"title": "No free license", "message": "This app doesn't offer a free license. Enter a license key or sign in."},
-	"key-entry-limit": {"title": "No key entries left", "message": "This key has no entries left. Add it to your account and sign in instead."},
+	"key-entry-limit": {"title": "No key entries left", "message": "Add it to your account and sign in instead."},
 	"license-owned": {"title": "License in another account", "message": "This license is already in another Polaris Locker account. A license never moves by its key."},
 	"refused": {"title": "Activation refused", "message": "Activation was refused ({code})."},
 	"error": {"title": "Activation failed", "message": "Activation didn't finish. Check your connection and try again."},

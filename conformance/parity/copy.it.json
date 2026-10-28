@@ -887,7 +887,7 @@
     },
     "key-entry-limit": {
       "title": "Nessun inserimento rimasto",
-      "message": "Questa chiave non ha più inserimenti disponibili. Aggiungila al tuo account e accedi invece."
+      "message": "Aggiungila al tuo account e accedi invece."
     },
     "license-owned": {
       "title": "Licenza in un altro account",

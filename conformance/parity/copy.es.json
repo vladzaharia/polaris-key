@@ -887,7 +887,7 @@
     },
     "key-entry-limit": {
       "title": "No quedan usos de la clave",
-      "message": "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar."
+      "message": "Añádela a tu cuenta e inicia sesión en su lugar."
     },
     "license-owned": {
       "title": "Licencia en otra cuenta",

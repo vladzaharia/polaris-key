@@ -319,6 +319,11 @@
       "role": "a11y",
       "note": "Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page."
     },
+    "a11y.qrAddKey": {
+      "value": "QR code that opens the add-key page",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page."
+    },
     "a11y.code": {
       "value": "Sign-in code {code}",
       "role": "a11y",
@@ -2295,6 +2300,136 @@
       "role": "button",
       "note": "License key step (SIGN-IN.md §3.9)."
     },
+    "signin.auto.confirm.title": {
+      "value": "Continue to {app}",
+      "role": "title",
+      "note": "Automatic sign-in (I-46.1): the confirm step. Arguments: {app} = the app's name (never translated)."
+    },
+    "signin.auto.confirm.as": {
+      "value": "as {email}",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated)."
+    },
+    "signin.auto.confirm.asApple": {
+      "value": "with your Apple ID",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private)."
+    },
+    "signin.auto.confirm.primary": {
+      "value": "Continue",
+      "role": "button",
+      "note": "Automatic sign-in: the confirm step's main button."
+    },
+    "signin.auto.confirm.other": {
+      "value": "Use another account",
+      "role": "button",
+      "note": "Automatic sign-in: the confirm step's secondary button; opens the regular sign-in."
+    },
+    "signin.linkOffer.title": {
+      "value": "Sign in with {provider} next time?",
+      "role": "title",
+      "note": "Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated)."
+    },
+    "signin.linkOffer.bodyGlobal": {
+      "value": "{app} and other apps that use Polaris Locker sign you in by themselves.",
+      "role": "body",
+      "note": "Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated)."
+    },
+    "signin.linkOffer.bodyDeveloper": {
+      "value": "Apps from {developer} sign you in by themselves.",
+      "role": "body",
+      "note": "Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated)."
+    },
+    "signin.linkOffer.primary": {
+      "value": "Link {provider}",
+      "role": "button",
+      "note": "Link offer: the main button. Arguments: {provider} = the provider's name (never translated)."
+    },
+    "signin.linkOffer.decline": {
+      "value": "No thanks",
+      "role": "button",
+      "note": "Link offer: declines; the device remembers it."
+    },
+    "signin.linkOffer.done": {
+      "value": "{provider} linked.",
+      "role": "body",
+      "note": "Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated)."
+    },
+    "signin.linkOffer.conflict": {
+      "value": "This {provider} account is linked to another Polaris Locker account.",
+      "role": "body",
+      "note": "Link offer: the provider account is already linked to another Polaris Locker account. Arguments: {provider} = the provider's name (never translated)."
+    },
+    "signin.nearby.title": {
+      "value": "Approve on your other device",
+      "role": "title",
+      "note": "Nearby sign-in, on the device that signs in: waits for approval on another device."
+    },
+    "signin.nearby.body": {
+      "value": "Open {app} on a phone or computer where you're signed in.",
+      "role": "body",
+      "note": "Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated)."
+    },
+    "signin.nearby.code": {
+      "value": "Use a code instead",
+      "role": "button",
+      "note": "Nearby sign-in, waiting: switches to the device code."
+    },
+    "signin.nearby.done": {
+      "value": "Signed in as {email}",
+      "role": "body",
+      "note": "Nearby sign-in, done. Arguments: {email} = the account's email address (never translated)."
+    },
+    "signin.nearby.notYou": {
+      "value": "Not you?",
+      "role": "button",
+      "note": "Nearby sign-in, done: opens the sign-out and review step when the account is not the person's."
+    },
+    "signin.nearby.prePrompt": {
+      "value": "Allow access to devices on your network next, so your phone can sign you in.",
+      "role": "body",
+      "note": "Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). The system prompt follows."
+    },
+    "signin.nearby.ask": {
+      "value": "Sign in {device}?",
+      "role": "title",
+      "note": "Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated)."
+    },
+    "signin.nearby.askBody": {
+      "value": "Tap the code {device} shows",
+      "role": "body",
+      "note": "Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated)."
+    },
+    "signin.nearby.deny": {
+      "value": "Not now",
+      "role": "button",
+      "note": "Nearby approval: declines."
+    },
+    "signin.nearby.approved": {
+      "value": "{device} is signed in.",
+      "role": "body",
+      "note": "Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated)."
+    },
+    "signin.nearby.notNearby": {
+      "value": "{device} isn't on your network.",
+      "role": "body",
+      "note": "Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated)."
+    },
+    "signin.nearby.menu": {
+      "value": "Approve a nearby device",
+      "role": "menu",
+      "note": "Account menu entry: opens the nearby approval list on the signed-in device."
+    },
+    "signin.key.addInLocker": {
+      "value": "Add it in Polaris Locker",
+      "role": "button",
+      "note": "The key was refused and the person adds it to their account on the web (↗, opens the browser)."
+    },
+    "signin.key.scan": {
+      "value": "Scan to add it in Polaris Locker on your phone.",
+      "role": "body",
+      "note": "The key-refusal step on TV and console: caption of the QR that opens the add-key page."
+    },
     "signin.return.yours": {
       "value": "{product} is yours",
       "role": "body",
@@ -2494,6 +2629,11 @@
       "value": "You're signed in",
       "role": "title",
       "note": "Return step, short form (SIGN-IN.md §3.10)."
+    },
+    "signin.return.signedInTier": {
+      "value": "You're signed in · {tier} license",
+      "role": "body",
+      "note": "Done step: signed in, with the license's tier. Arguments: {tier} = the tier's name (never translated)."
     },
     "signin.return.cancelled": {
       "value": "Sign-in was canceled in {app}. Start again from {app}.",

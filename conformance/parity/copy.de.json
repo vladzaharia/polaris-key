@@ -887,7 +887,7 @@
     },
     "key-entry-limit": {
       "title": "Keine Schlüsseleingaben mehr",
-      "message": "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
+      "message": "Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an."
     },
     "license-owned": {
       "title": "Lizenz in einem anderen Konto",

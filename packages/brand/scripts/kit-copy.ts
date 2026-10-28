@@ -163,6 +163,7 @@ export const COMPONENTS = [
   "Welcome",
   "SignIn",
   "SignInHandoff",
+  "NearbyApproval",
   "Activate",
   "OfflineActivation",
   "DeviceLimit",

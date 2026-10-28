@@ -161,6 +161,8 @@
     <string name="a11y_qrRequest">Code QR contenant le code de demande</string>
     <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
     <string name="a11y_qrManage">Code QR qui ouvre la page de gestion des appareils</string>
+    <!-- Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page. -->
+    <string name="a11y_qrAddKey">Code QR qui ouvre la page d’ajout de clé</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">Code de connexion %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -1059,6 +1061,65 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_differentKey">Utiliser une autre clé</string>
     <string name="signin_key_differentKey__macos">Utiliser une autre clé</string>
+    <!-- Automatic sign-in (I-46.1): the confirm step. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_auto_confirm_title">Continuer vers %1$s</string>
+    <!-- Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_auto_confirm_as">en tant que %1$s</string>
+    <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
+    <string name="signin_auto_confirm_asApple">avec votre identifiant Apple</string>
+    <!-- Automatic sign-in: the confirm step's main button. -->
+    <string name="signin_auto_confirm_primary">Continuer</string>
+    <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
+    <string name="signin_auto_confirm_other">Utiliser un autre compte</string>
+    <string name="signin_auto_confirm_other__macos">Utiliser un autre compte</string>
+    <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_title">Se connecter avec %1$s la prochaine fois ?</string>
+    <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyGlobal">%1$s et les autres apps qui utilisent Polaris Locker vous connectent d’elles-mêmes.</string>
+    <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_linkOffer_bodyDeveloper">Les apps de %1$s vous connectent d’elles-mêmes.</string>
+    <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_primary">Associer %1$s</string>
+    <!-- Link offer: declines; the device remembers it. -->
+    <string name="signin_linkOffer_decline">Non merci</string>
+    <string name="signin_linkOffer_decline__macos">Non merci</string>
+    <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_done">%1$s associé.</string>
+    <!-- Link offer: the provider account is already linked to another Polaris Locker account. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflict">Ce compte %1$s est associé à un autre compte Polaris Locker.</string>
+    <!-- Nearby sign-in, on the device that signs in: waits for approval on another device. -->
+    <string name="signin_nearby_title">Approuvez sur votre autre appareil</string>
+    <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_body">Ouvrez %1$s sur un téléphone ou un ordinateur où vous êtes connecté.</string>
+    <!-- Nearby sign-in, waiting: switches to the device code. -->
+    <string name="signin_nearby_code">Utiliser un code à la place</string>
+    <string name="signin_nearby_code__macos">Utiliser un code à la place</string>
+    <!-- Nearby sign-in, done. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_nearby_done">Connecté en tant que %1$s</string>
+    <!-- Nearby sign-in, done: opens the sign-out and review step when the account is not the person's. -->
+    <string name="signin_nearby_notYou">Ce n’est pas vous ?</string>
+    <string name="signin_nearby_notYou__macos">Ce n’est pas vous ?</string>
+    <!-- Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). The system prompt follows. -->
+    <string name="signin_nearby_prePrompt">Autorisez ensuite l’accès aux appareils de votre réseau pour que votre téléphone puisse vous connecter.</string>
+    <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_ask">Connecter %1$s ?</string>
+    <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_askBody">Touchez le code affiché sur %1$s</string>
+    <!-- Nearby approval: declines. -->
+    <string name="signin_nearby_deny">Pas maintenant</string>
+    <string name="signin_nearby_deny__macos">Pas maintenant</string>
+    <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_approved">%1$s est connecté.</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearby">%1$s n’est pas sur votre réseau.</string>
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <string name="signin_nearby_menu">Approuver un appareil à proximité</string>
+    <string name="signin_nearby_menu__macos">Approuver un appareil à proximité</string>
+    <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
+    <string name="signin_key_addInLocker">L’ajouter dans Polaris Locker</string>
+    <string name="signin_key_addInLocker__macos">L’ajouter dans Polaris Locker</string>
+    <!-- The key-refusal step on TV and console: caption of the QR that opens the add-key page. -->
+    <string name="signin_key_scan">Scannez pour l’ajouter dans Polaris Locker sur votre téléphone.</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">%1$s est à vous</string>
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -1149,6 +1210,8 @@
     <string name="signin_return_chooseInApp">Revenez dans %1$s pour choisir une licence. Vous pouvez fermer cet onglet.</string>
     <!-- Return step, short form (SIGN-IN.md §3.10). -->
     <string name="signin_return_signedInShort">Vous êtes connecté</string>
+    <!-- Done step: signed in, with the license's tier. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_signedInTier">Vous êtes connecté · licence %1$s</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">La connexion a été annulée dans %1$s. Recommencez depuis %1$s.</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -2806,7 +2869,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">Aucune saisie restante</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.</string>
+    <string name="core_activation_key_entry_limit_message">Ajoutez-la à votre compte et connectez-vous à la place.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">Licence dans un autre compte</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->

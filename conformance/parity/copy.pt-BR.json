@@ -887,7 +887,7 @@
     },
     "key-entry-limit": {
       "title": "Nenhum uso restante da chave",
-      "message": "Esta chave não tem mais usos. Adicione-a à sua conta e entre em vez disso."
+      "message": "Adicione-a à sua conta e entre em vez disso."
     },
     "license-owned": {
       "title": "Licença em outra conta",

@@ -7,7 +7,8 @@
 //
 // Precedence, where several states could hold (ui-matrix.json `vocabulary.precedence`):
 //
-//   SignIn          error, expired, done, key, replace, choose, finishing, code, handoff, methods
+//   SignIn          error, auto (an automatic sign-in step), expired, done, key, replace, choose,
+//                   finishing, code, handoff, methods
 //   LicenseChoice   loading, grant-expired, raced, replace-open, none-keys | none-no-keys, new,
 //                   create, all-full, keep, current, mixed, one, many
 //
@@ -19,6 +20,7 @@ import { activationCopy } from "../errors.js";
 import {
   platformClass,
   systemConfirm,
+  type AutoSignInInput,
   type Context,
   type LicenseChoiceRow,
 } from "../input.js";
@@ -29,6 +31,7 @@ import {
 } from "@polaris-key/protocol/core";
 import { codeExpired, countdown, linkVerdict, validLink } from "../link.js";
 import { loadingVisible } from "../loading.js";
+import { keyRefusalOf, keyRefusalSpec } from "./keyRefusal.js";
 import { hiddenView, identityText, makeView, type View } from "../view.js";
 
 const DEFAULT_DEVICE_URL = DEVICE_CODE_PAGE;
@@ -82,6 +85,14 @@ export type SignInState =
   | "choose"
   | "replace"
   | "key"
+  | "key-refused"
+  | "confirm"
+  | "link-offer"
+  | "link-done"
+  | "link-conflict"
+  | "nearby-prompt"
+  | "nearby-wait"
+  | "nearby-done"
   | "done"
   | "error"
   | "expired"
@@ -149,6 +160,12 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
       errorSlot: primary,
     });
   }
+  if (ctx.input.autoSignIn)
+    return autoStepView(ctx, ctx.input.autoSignIn, {
+      ...args,
+      developer: id.developer ?? undefined,
+      email: ctx.input.autoSignIn.email,
+    });
   if (
     s.outcome === "expired" ||
     (dc && (dc.phase === "expired" || codeExpired(dc.secondsLeft)))
@@ -173,7 +190,13 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
     const copy = !license
       ? ["signin.return.signedInShort"]
       : s.issuedNow
-        ? ["signin.done.start", "signin.return.signedInShort"]
+        ? [
+            "signin.done.start",
+            // One key for "You're signed in · Pro license", so no kit joins two with a separator.
+            ctx.input.account?.tier
+              ? "signin.return.signedInTier"
+              : "signin.return.signedInShort",
+          ]
         : ["signin.desktop.toast"];
     return makeView(ctx, "SignIn", {
       state: "done",
@@ -192,6 +215,20 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
     // Use a license key instead keeps the account: the key step is in the same form (Must not).
     if (s.event === "have-key" && license && ctx.caps.keyEntry) {
       const a = ctx.input.activation;
+      const refusal = keyRefusalOf(a);
+      // The refusals a different key cannot fix leave the field behind (DL6).
+      if (a && refusal !== null) {
+        const spec = keyRefusalSpec(ctx, refusal, a);
+        return makeView(ctx, "SignIn", {
+          state: "key-refused",
+          copy: spec.copy,
+          args,
+          primary: spec.primary,
+          tone: "neutral",
+          link: spec.link,
+          qr: spec.qr,
+        });
+      }
       return makeView(ctx, "SignIn", {
         state: "key",
         copy: [
@@ -270,6 +307,89 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
     });
   // Cancel returns to step 1, with nothing else lost.
   return methodsView(ctx, args);
+}
+
+/** The provider's identity is per developer: Apple always, Google unless it is shared across apps. */
+function perDeveloper(
+  provider: string,
+  reach: AutoSignInInput["reach"],
+): boolean {
+  return provider === "Apple" || reach !== "global";
+}
+
+/** Automatic sign-in's steps, drawn in the form's body (plans/auto-sign-in.md §3): confirm the
+ *  account, offer to link the provider, and the nearby wait. */
+function autoStepView(
+  ctx: Context,
+  auto: AutoSignInInput,
+  args: Record<string, string | undefined>,
+): View<"SignIn", SignInState> {
+  const provider = ctx.input.provider ?? DEFAULT_PROVIDER;
+  const view = (
+    state: SignInState,
+    copy: (string | false)[],
+    o: { primary?: string | null; tone?: "neutral" } = {},
+  ) =>
+    makeView(ctx, "SignIn", {
+      state,
+      copy,
+      args: { ...args, provider },
+      primary: o.primary ?? null,
+      tone: o.tone ?? null,
+    });
+  switch (auto.step) {
+    case "confirm":
+      return view(
+        "confirm",
+        [
+          "signin.auto.confirm.title",
+          auto.email ? "signin.auto.confirm.as" : "signin.auto.confirm.asApple",
+          "signin.auto.confirm.primary",
+          "signin.auto.confirm.other",
+        ],
+        { primary: "signin.auto.confirm.primary" },
+      );
+    case "link-offer":
+      return view(
+        "link-offer",
+        [
+          "signin.linkOffer.title",
+          perDeveloper(provider, auto.reach)
+            ? "signin.linkOffer.bodyDeveloper"
+            : "signin.linkOffer.bodyGlobal",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.decline",
+        ],
+        { primary: "signin.linkOffer.primary" },
+      );
+    case "link-done":
+      return view("link-done", ["signin.linkOffer.done"]);
+    case "link-conflict":
+      return view("link-conflict", ["signin.linkOffer.conflict"], {
+        tone: "neutral",
+      });
+    case "nearby-prompt":
+      return view(
+        "nearby-prompt",
+        [
+          "signin.nearby.prePrompt",
+          "signin.auto.confirm.primary",
+          "common.notNow",
+        ],
+        { primary: "signin.auto.confirm.primary" },
+      );
+    case "nearby-wait":
+      return view("nearby-wait", [
+        "signin.nearby.title",
+        "signin.nearby.body",
+        "signin.nearby.code",
+      ]);
+    case "nearby-done":
+      return view("nearby-done", [
+        "signin.nearby.done",
+        "signin.nearby.notYou",
+      ]);
+  }
 }
 
 function methodsView(

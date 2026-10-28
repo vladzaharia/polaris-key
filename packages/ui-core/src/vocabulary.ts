@@ -4,7 +4,7 @@
 
 /** The UI matrix version these models implement (`uiMatrixVersion`, the generated
  *  `UI_MATRIX_VERSION` of every SDK's constants). The runner refuses a file of another version. */
-export const UI_MATRIX_VERSION = 6;
+export const UI_MATRIX_VERSION = 7;
 
 /** UI-KITS.md §4.1: every component, must and should. */
 export const COMPONENTS = [
@@ -13,6 +13,7 @@ export const COMPONENTS = [
   "Welcome",
   "SignIn",
   "SignInHandoff",
+  "NearbyApproval",
   "Activate",
   "OfflineActivation",
   "DeviceLimit",
@@ -44,6 +45,7 @@ export const ACTIONS = [
   "open-browser",
   "replace-in-browser",
   "open-manage-url",
+  "start-sign-in",
   "copy-link",
   "retry",
   "cancel",
@@ -56,7 +58,12 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
   "open-card": ["signin.desktop.continue", "signin.email.continue"],
   "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
   "replace-in-browser": [],
-  "open-manage-url": ["deviceLimit.openBrowser", "devices.manage"],
+  "open-manage-url": [
+    "deviceLimit.openBrowser",
+    "devices.manage",
+    "signin.key.addInLocker",
+  ],
+  "start-sign-in": ["signin.key.ownedSignIn"],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [
     "common.tryAgain",

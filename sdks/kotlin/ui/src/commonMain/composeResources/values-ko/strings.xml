@@ -159,6 +159,8 @@
     <string name="a11y_qrRequest">요청 코드가 담긴 QR 코드</string>
     <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
     <string name="a11y_qrManage">기기 관리 페이지를 여는 QR 코드</string>
+    <!-- Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page. -->
+    <string name="a11y_qrAddKey">키 추가 페이지를 여는 QR 코드</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">로그인 코드 %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -1041,6 +1043,65 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_differentKey">다른 키 사용</string>
     <string name="signin_key_differentKey__macos">다른 키 사용</string>
+    <!-- Automatic sign-in (I-46.1): the confirm step. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_auto_confirm_title">%1$s(으)로 계속</string>
+    <!-- Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_auto_confirm_as">%1$s 계정으로</string>
+    <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
+    <string name="signin_auto_confirm_asApple">Apple ID로</string>
+    <!-- Automatic sign-in: the confirm step's main button. -->
+    <string name="signin_auto_confirm_primary">계속</string>
+    <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
+    <string name="signin_auto_confirm_other">다른 계정 사용</string>
+    <string name="signin_auto_confirm_other__macos">다른 계정 사용</string>
+    <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_title">다음부터 %1$s(으)로 로그인할까요?</string>
+    <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyGlobal">%1$s 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요.</string>
+    <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_linkOffer_bodyDeveloper">%1$s의 앱이 자동으로 로그인해 줘요.</string>
+    <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_primary">%1$s 연결</string>
+    <!-- Link offer: declines; the device remembers it. -->
+    <string name="signin_linkOffer_decline">괜찮아요</string>
+    <string name="signin_linkOffer_decline__macos">괜찮아요</string>
+    <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_done">%1$s을(를) 연결했어요.</string>
+    <!-- Link offer: the provider account is already linked to another Polaris Locker account. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflict">이 %1$s 계정은 다른 Polaris Locker 계정에 연결되어 있어요.</string>
+    <!-- Nearby sign-in, on the device that signs in: waits for approval on another device. -->
+    <string name="signin_nearby_title">다른 기기에서 승인하세요</string>
+    <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_body">로그인된 휴대폰이나 컴퓨터에서 %1$s을(를) 여세요.</string>
+    <!-- Nearby sign-in, waiting: switches to the device code. -->
+    <string name="signin_nearby_code">코드로 대신하기</string>
+    <string name="signin_nearby_code__macos">코드로 대신하기</string>
+    <!-- Nearby sign-in, done. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
+    <string name="signin_nearby_done">%1$s 계정으로 로그인됨</string>
+    <!-- Nearby sign-in, done: opens the sign-out and review step when the account is not the person's. -->
+    <string name="signin_nearby_notYou">본인이 아닌가요?</string>
+    <string name="signin_nearby_notYou__macos">본인이 아닌가요?</string>
+    <!-- Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). The system prompt follows. -->
+    <string name="signin_nearby_prePrompt">다음 화면에서 네트워크의 기기 접근을 허용하면 휴대폰으로 로그인할 수 있어요.</string>
+    <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_ask">%1$s에 로그인할까요?</string>
+    <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_askBody">%1$s에 표시된 코드를 탭하세요</string>
+    <!-- Nearby approval: declines. -->
+    <string name="signin_nearby_deny">나중에</string>
+    <string name="signin_nearby_deny__macos">나중에</string>
+    <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_approved">%1$s에 로그인했어요.</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearby">%1$s이(가) 같은 네트워크에 없어요.</string>
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <string name="signin_nearby_menu">근처 기기 승인</string>
+    <string name="signin_nearby_menu__macos">근처 기기 승인</string>
+    <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
+    <string name="signin_key_addInLocker">Polaris Locker에서 추가</string>
+    <string name="signin_key_addInLocker__macos">Polaris Locker에서 추가</string>
+    <!-- The key-refusal step on TV and console: caption of the QR that opens the add-key page. -->
+    <string name="signin_key_scan">스캔해서 휴대폰의 Polaris Locker에서 추가하세요.</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">이제 %1$s을(를) 이용할 수 있어요</string>
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -1131,6 +1192,8 @@
     <string name="signin_return_chooseInApp">%1$s(으)로 돌아가 라이선스를 선택하세요. 이 탭은 닫아도 돼요.</string>
     <!-- Return step, short form (SIGN-IN.md §3.10). -->
     <string name="signin_return_signedInShort">로그인했어요</string>
+    <!-- Done step: signed in, with the license's tier. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_return_signedInTier">로그인됨 · %1$s 라이선스</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">%1$s에서 로그인이 취소됐어요. %1$s에서 다시 시작하세요.</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -2780,7 +2843,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">남은 키 등록 횟수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">이 키는 남은 등록 횟수가 없어요. 계정에 추가하고 대신 로그인하세요.</string>
+    <string name="core_activation_key_entry_limit_message">계정에 추가하고 대신 로그인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">다른 계정의 라이선스</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->

@@ -272,7 +272,7 @@ COPY_ACTIVATION: Mapping[str, CopyEntry] = MappingProxyType(
         "rate-limited": CopyEntry("Too many attempts", "Too many attempts. Wait a moment and try again."),
         "unauthorized": CopyEntry("Key not accepted", "That license key wasn't accepted. Check it and try again."),
         "enroll-disabled": CopyEntry("No free license", "This app doesn't offer a free license. Enter a license key or sign in."),
-        "key-entry-limit": CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),
+        "key-entry-limit": CopyEntry("No key entries left", "Add it to your account and sign in instead."),
         "license-owned": CopyEntry("License in another account", "This license is already in another Polaris Locker account. A license never moves by its key."),
         "refused": CopyEntry("Activation refused", "Activation was refused ({code})."),
         "error": CopyEntry("Activation failed", "Activation didn't finish. Check your connection and try again."),

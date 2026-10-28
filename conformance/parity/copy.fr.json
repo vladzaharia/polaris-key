@@ -887,7 +887,7 @@
     },
     "key-entry-limit": {
       "title": "Aucune saisie restante",
-      "message": "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place."
+      "message": "Ajoutez-la à votre compte et connectez-vous à la place."
     },
     "license-owned": {
       "title": "Licence dans un autre compte",

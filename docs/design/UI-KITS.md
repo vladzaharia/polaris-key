@@ -207,9 +207,13 @@ covers device limit, revoked, expired, version too old or too new, and channel n
 - Every blocking state has an action that can change its outcome: revoked shows the sign-in
   methods, expired offers another license. A fix the kit cannot reach is named in words, and Try
   again stays.
-- Activate follows the same split: a refusal of a well-formed key (license disabled, expired,
-  key-entry limit, owned by another account) is this neutral callout, linked to the field with no
-  `aria-invalid`. A key the service does not know, a key's own shape (empty, cut short, not a key)
+- Activate follows the same split. A refusal a different key can fix (license disabled, expired) is
+  this neutral callout, linked to the field with no `aria-invalid`. The two a different key cannot
+  fix, the key-entry limit and a license another account holds, are a focused step: the product
+  header, the refusal's title and one sentence, no field, lede or Paste. **Sign in** (the kit's
+  own sign-in) is the primary; for the limit, **Add it in Polaris Locker ↗** follows (a QR with its
+  caption on a TV), then the text action **Use a different key**, which returns to the field.
+  `license_owned` uses the product-named `core.codes.license_owned` copy. A key the service does not know, a key's own shape (empty, cut short, not a key)
   and a failed check (`error`) are the input being wrong (DL7), in danger. ui-core decides it; no
   kit overrides the tone.
 - In a terminal a refusal is ▲ with its fix, never ✗. A refused gate in a host CLI exits 4 and
@@ -986,6 +990,7 @@ React exports bare names from `@polaris-key/react`. Headless names follow each l
 | **Welcome**           | The gate's first screen: product hero, Sign in, Use a license key, and the extras the product supports (trial, restore purchase, activate offline)                                                                                                                                                                                                                                                                | default · busy · capability-limited (only the paths the build supports, GO)                                                                   | must     |
 | **SignIn**            | **The one sign-in form** (SIGN-IN.md §3.17): its body morphs through Sign in (the logo-only provider row with native Apple and Google behind it, Continue in browser on desktop, Sign in on your phone or computer on TV) → SignInHandoff → LicenseChoice (→ ReplaceDevice) → Done, with `presentation` `inline` (default), `sheet` or `browser`                                                                  | methods · handoff · code · finishing · choose · replace · key · done · error · expired                                                        | must     |
 | **SignInHandoff**     | Step 2 of the form, in place: "Finish in your browser" with Open browser again, Cancel and Use a code instead; the code view (the RFC 8628 user code, the countdown; a QR only on TV and console); moves on by itself                                                                                                                                                                                             | starting · waiting · no browser · code · link copied · finishing · denied · expired · cancelled                                               | must     |
+| **NearbyApproval**    | The approving device's side of nearby sign-in (plans/auto-sign-in.md §3, D-A9): "Sign in {device}?" over three 6-digit codes, one the code the new device shows; tapping it approves, tapping another or Not now denies; then the outcome ("{device} is signed in.", "{device} isn't on your network."). Also the account menu's "Approve a nearby device" entry                                                  | entry · ask · approved · not-nearby                                                                                                           | must     |
 | **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits                                                                                                                                                                                                                                          | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                                            | must     |
 | **OfflineActivation** | Two numbered actions: 1 send the request (the code with Copy, and a QR wherever it fits), 2 load the response (file, drop or paste), then the verdict. Every state but done keeps both steps; rejected adds its error under step 2, and done is a titled confirmation with **Done**. A loaded file is not an activation until its signature verifies                                                              | default · loaded · rejected signature · done                                                                                                  | must     |
 | **DeviceLimit**       | The focused **Replace a device** flow (PORTAL §4.25; SIGN-IN.md §3.7, D-08): seat meter, devices as radio rows, least recent preselected, the "Replace <device>?" confirm, **Replace and continue**                                                                                                                                                                                                               | default · busy · removed · failed · browser mode (opens `manageUrl`)                                                                          | must     |
@@ -1014,6 +1019,7 @@ fixture:
 | Boot              | animate invented progress, or trap metered consent off-screen   |
 | SignIn            | restart the flow or erase account context on a step change      |
 | SignInHandoff     | use the public user code as the polling handle                  |
+| NearbyApproval    | approve on any code but the one the other device shows          |
 | Activate          | require an account for a floating key                           |
 | OfflineActivation | treat a loaded file as a verified activation                    |
 | DeviceLimit       | delete local files when access is removed                       |

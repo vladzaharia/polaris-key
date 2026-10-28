@@ -179,18 +179,69 @@
           ]
         },
         "key": {
+          "copy": ["signin.key.addTitle", "part.keyField.label"]
+        },
+        "key-refused": {
           "copy": [
-            "signin.key.addTitle",
-            "part.keyField.label",
+            "core.activation.key-entry-limit.title",
+            "core.activation.key-entry-limit.message",
             "core.codes.license_owned.title",
-            "core.codes.license_owned.message"
+            "core.codes.license_owned.message",
+            "signin.key.ownedSignIn",
+            "signin.key.addInLocker",
+            "a11y.externalLink",
+            "signin.key.scan",
+            "a11y.qrAddKey",
+            "signin.key.differentKey"
           ]
+        },
+        "confirm": {
+          "copy": [
+            "signin.auto.confirm.title",
+            "signin.auto.confirm.as",
+            "signin.auto.confirm.asApple",
+            "signin.auto.confirm.primary",
+            "signin.auto.confirm.other"
+          ]
+        },
+        "link-offer": {
+          "copy": [
+            "signin.linkOffer.title",
+            "signin.linkOffer.bodyGlobal",
+            "signin.linkOffer.bodyDeveloper",
+            "signin.linkOffer.primary",
+            "signin.linkOffer.decline"
+          ]
+        },
+        "link-done": {
+          "copy": ["signin.linkOffer.done"]
+        },
+        "link-conflict": {
+          "copy": ["signin.linkOffer.conflict"]
+        },
+        "nearby-prompt": {
+          "copy": [
+            "signin.nearby.prePrompt",
+            "signin.auto.confirm.primary",
+            "common.notNow"
+          ]
+        },
+        "nearby-wait": {
+          "copy": [
+            "signin.nearby.title",
+            "signin.nearby.body",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-done": {
+          "copy": ["signin.nearby.done", "signin.nearby.notYou"]
         },
         "done": {
           "copy": [
             "signin.done.start",
             "signin.return.signedInShort",
-            "signin.desktop.toast"
+            "signin.desktop.toast",
+            "signin.return.signedInTier"
           ]
         },
         "error": {
@@ -284,6 +335,28 @@
         }
       }
     },
+    "NearbyApproval": {
+      "priority": "must",
+      "family": "signIn",
+      "states": {
+        "entry": {
+          "copy": ["signin.nearby.menu"]
+        },
+        "ask": {
+          "copy": [
+            "signin.nearby.ask",
+            "signin.nearby.askBody",
+            "signin.nearby.deny"
+          ]
+        },
+        "approved": {
+          "copy": ["signin.nearby.approved"]
+        },
+        "not-nearby": {
+          "copy": ["signin.nearby.notNearby"]
+        }
+      }
+    },
     "Activate": {
       "priority": "must",
       "family": "activate",
@@ -349,6 +422,26 @@
             "common.paste",
             "part.keyField.malformed",
             "part.keyField.empty"
+          ]
+        },
+        "key-entry-limit": {
+          "copy": [
+            "core.activation.key-entry-limit.title",
+            "core.activation.key-entry-limit.message",
+            "signin.key.ownedSignIn",
+            "signin.key.addInLocker",
+            "a11y.externalLink",
+            "signin.key.scan",
+            "a11y.qrAddKey",
+            "signin.key.differentKey"
+          ]
+        },
+        "license-owned": {
+          "copy": [
+            "core.codes.license_owned.title",
+            "core.codes.license_owned.message",
+            "signin.key.ownedSignIn",
+            "signin.key.differentKey"
           ]
         },
         "device-limit": {
