@@ -727,7 +727,7 @@
     <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
     <string name="unlockSync_startOverFailed">やり直せませんでした。接続を確認して、もう一度お試しください。</string>
     <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
-    <string name="unlockSync_noCode">このアカウントにはリカバリーコードがありません。同期を続けるには、最初からやり直してください。</string>
+    <string name="unlockSync_noCode">このアカウントにはリカバリーコードがありません。サインインしたままロック解除されている端末で「新しいリカバリーコード」を選ぶか、そうでなければ最初からやり直してください。</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
     <string name="unlockSync_startOverTitle">最初からやり直しますか？</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->

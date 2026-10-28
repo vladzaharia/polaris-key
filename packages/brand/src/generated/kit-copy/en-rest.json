@@ -98,7 +98,7 @@
   "unlockSync.invalid": "That code isn't right. Check it and try again.",
   "unlockSync.failed": "Couldn't unlock. Check your connection and try again.",
   "unlockSync.startOverFailed": "Couldn't start over. Check your connection and try again.",
-  "unlockSync.noCode": "This account has no recovery code. Start over to keep syncing.",
+  "unlockSync.noCode": "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.",
   "unlockSync.startOverTitle": "Start over?",
   "unlockSync.startOverWarning": "Your current synced data will be lost. Start over only if you can't find your recovery code.",
   "unlockSync.startOverConfirm": "Start over",

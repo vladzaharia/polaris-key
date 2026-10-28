@@ -1982,10 +1982,10 @@ msgstr "잠금을 해제할 수 없습니다. 연결을 확인하고 다시 시�
 msgid "unlockSync.startOverFailed"
 msgstr "처음부터 다시 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요."
 
-#. This account has no recovery code. Start over to keep syncing.
+#. This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
-msgstr "이 계정에는 복구 코드가 없습니다. 계속 동기화하려면 처음부터 다시 시작하세요."
+msgstr "이 계정에는 복구 코드가 없습니다. 아직 로그인되어 있고 잠금이 해제된 기기에서 ‘새 복구 코드’를 선택하세요. 그렇지 않으면 처음부터 다시 시작하세요."
 
 #. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.

@@ -1986,7 +1986,7 @@ msgstr ""
 msgid "unlockSync.startOverFailed"
 msgstr ""
 
-#. This account has no recovery code. Start over to keep syncing.
+#. This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.
 #. UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on.
 msgid "unlockSync.noCode"
 msgstr ""

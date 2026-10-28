@@ -378,7 +378,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "Couldn't start over. Check your connection and try again.",
     "unlockSync.noCode":
-      "This account has no recovery code. Start over to keep syncing.",
+      "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.",
     "unlockSync.startOverTitle": "Start over?",
     "unlockSync.startOverWarning":
       "Your current synced data will be lost. Start over only if you can't find your recovery code.",
@@ -2161,7 +2161,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "Neu beginnen fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "unlockSync.noCode":
-      "Dieses Konto hat keinen Wiederherstellungscode. Beginnen Sie neu, um weiter zu synchronisieren.",
+      "Dieses Konto hat keinen Wiederherstellungscode. Wählen Sie auf einem Gerät, das noch angemeldet und entsperrt ist, „Neuer Wiederherstellungscode“. Andernfalls beginnen Sie neu.",
     "unlockSync.startOverTitle": "Neu beginnen?",
     "unlockSync.startOverWarning":
       "Ihre bisher synchronisierten Daten gehen verloren. Beginnen Sie nur neu, wenn Sie Ihren Wiederherstellungscode nicht finden.",
@@ -4032,7 +4032,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "Impossible de recommencer. Vérifiez votre connexion et réessayez.",
     "unlockSync.noCode":
-      "Ce compte n’a pas de code de récupération. Recommencez pour continuer à synchroniser.",
+      "Ce compte n’a pas de code de récupération. Sur un appareil encore connecté et déverrouillé, choisissez « Nouveau code de récupération ». Sinon, recommencez.",
     "unlockSync.startOverTitle": "Tout recommencer ?",
     "unlockSync.startOverWarning":
       "Vos données synchronisées actuelles seront perdues. Ne recommencez que si vous ne retrouvez pas votre code de récupération.",
@@ -5889,7 +5889,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "No se pudo empezar de nuevo. Comprueba tu conexión e inténtalo de nuevo.",
     "unlockSync.noCode":
-      "Esta cuenta no tiene código de recuperación. Empieza de nuevo para seguir sincronizando.",
+      "Esta cuenta no tiene código de recuperación. En un dispositivo que siga con la sesión iniciada y desbloqueado, elige «Nuevo código de recuperación». Si no, empieza de nuevo.",
     "unlockSync.startOverTitle": "¿Empezar de cero?",
     "unlockSync.startOverWarning":
       "Se perderán tus datos sincronizados actuales. Empieza de cero solo si no encuentras tu código de recuperación.",
@@ -7745,7 +7745,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "Não foi possível começar de novo. Verifique sua conexão e tente novamente.",
     "unlockSync.noCode":
-      "Esta conta não tem código de recuperação. Comece de novo para continuar sincronizando.",
+      "Esta conta não tem código de recuperação. Em um dispositivo ainda conectado e desbloqueado, escolha “Novo código de recuperação”. Caso contrário, comece de novo.",
     "unlockSync.startOverTitle": "Começar do zero?",
     "unlockSync.startOverWarning":
       "Seus dados sincronizados atuais serão perdidos. Só comece do zero se não encontrar seu código de recuperação.",
@@ -9554,7 +9554,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "Impossibile ricominciare. Controlla la connessione e riprova.",
     "unlockSync.noCode":
-      "Questo account non ha un codice di recupero. Ricomincia per continuare a sincronizzare.",
+      "Questo account non ha un codice di recupero. Su un dispositivo ancora connesso e sbloccato, scegli «Nuovo codice di recupero». Altrimenti, ricomincia.",
     "unlockSync.startOverTitle": "Ricominciare da capo?",
     "unlockSync.startOverWarning":
       "I tuoi dati sincronizzati attuali andranno persi. Ricomincia da capo solo se non trovi il codice di recupero.",
@@ -11393,7 +11393,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "やり直せませんでした。接続を確認して、もう一度お試しください。",
     "unlockSync.noCode":
-      "このアカウントにはリカバリーコードがありません。同期を続けるには、最初からやり直してください。",
+      "このアカウントにはリカバリーコードがありません。サインインしたままロック解除されている端末で「新しいリカバリーコード」を選ぶか、そうでなければ最初からやり直してください。",
     "unlockSync.startOverTitle": "最初からやり直しますか？",
     "unlockSync.startOverWarning":
       "現在同期されているデータは失われます。リカバリーコードが見つからない場合にのみ、やり直してください。",
@@ -13239,7 +13239,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOverFailed":
       "처음부터 다시 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
     "unlockSync.noCode":
-      "이 계정에는 복구 코드가 없습니다. 계속 동기화하려면 처음부터 다시 시작하세요.",
+      "이 계정에는 복구 코드가 없습니다. 아직 로그인되어 있고 잠금이 해제된 기기에서 ‘새 복구 코드’를 선택하세요. 그렇지 않으면 처음부터 다시 시작하세요.",
     "unlockSync.startOverTitle": "처음부터 다시 시작할까요?",
     "unlockSync.startOverWarning":
       "현재 동기화된 데이터가 사라집니다. 복구 코드를 찾을 수 없을 때만 다시 시작하세요.",
@@ -14983,7 +14983,8 @@ export const KIT_COPY: Readonly<
     "unlockSync.invalid": "恢复码不正确。请检查后重试。",
     "unlockSync.failed": "无法解锁。请检查网络连接后重试。",
     "unlockSync.startOverFailed": "无法重新开始。请检查网络连接后重试。",
-    "unlockSync.noCode": "此账户没有恢复码。请重新开始以继续同步。",
+    "unlockSync.noCode":
+      "此账户没有恢复码。请在仍已登录且已解锁的设备上选择“新恢复码”。否则请重新开始。",
     "unlockSync.startOverTitle": "重新开始？",
     "unlockSync.startOverWarning":
       "当前已同步的数据将丢失。仅在找不到恢复码时才重新开始。",
