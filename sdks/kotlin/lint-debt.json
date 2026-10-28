@@ -1828,6 +1828,10 @@
       "detekt:naming.EnumNaming": 5,
       "ktlint:standard:enum-entry-name-case": 5
     },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectRelay.kt": {
+      "detekt:naming.EnumNaming": 8,
+      "ktlint:standard:enum-entry-name-case": 8
+    },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt": {
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 8,
