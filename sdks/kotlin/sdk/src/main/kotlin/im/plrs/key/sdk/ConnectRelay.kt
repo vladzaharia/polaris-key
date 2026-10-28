@@ -71,7 +71,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 internal const val ENDED_MEMORY: Int = 256
 private const val MAX_SESSION_ID = 0xFFFFFFFFL
 private const val DRAIN_MILLIS = 1000L
-private const val ID_BYTES = 4
 
 /** The only mode that may cross the relay (G16). */
 internal val RELAY_MODES: List<String> = listOf("a")
