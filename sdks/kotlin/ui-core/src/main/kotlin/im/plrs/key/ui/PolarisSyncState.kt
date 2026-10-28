@@ -19,20 +19,32 @@ import im.plrs.key.sdk.SyncUnlockResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** A recovery code the screen shows once. It prints as redacted and is never part of an equality or a log. */
-public class PolarisRecoveryCode(private val text: String) {
-    /** The code, for the screen that draws it and the clipboard copy. */
-    public fun reveal(): String = text
+public class PolarisRecoveryCode(text: String) {
+    // Spaces and hyphens are not part of the code: it is regrouped in fours, however it arrived.
+    private val groups: List<String> = text.filterNot { it == '-' || it.isWhitespace() }.chunked(GROUP).ifEmpty { listOf("") }
+
+    /** The groups of four, for the grid. */
+    public fun groups(): List<String> = groups
+
+    /** The code in its hyphenated form (`ABCD-EFGH-…`), for the clipboard. */
+    public fun reveal(): String = groups.joinToString("-")
 
     override fun toString(): String = "PolarisRecoveryCode(redacted)"
+
+    private companion object {
+        const val GROUP = 4
+    }
 }
 
 /** The Cloud Sync key ring calls the unlock screens make: `client.keyring`'s verbs, as [asSyncActions] adapts them. */
@@ -82,6 +94,7 @@ public enum class PolarisUnlockStep(public val id: String) {
     Invalid("invalid"),
     Working("working"),
     Failed("failed"),
+    NoCode("no-code"),
     StartOver("start-over"),
 }
 
@@ -94,7 +107,7 @@ public sealed interface PolarisSyncUi {
     public data class Unlock(val step: PolarisUnlockStep = PolarisUnlockStep.Code) : PolarisSyncUi
 
     /** A different ring is served. [by] names the device that set it up; [served] is what Accept confirms. */
-    public data class RingChange(val by: String?, val served: SyncRingPin?) : PolarisSyncUi
+    public data class RingChange(val by: String?, val served: SyncRingPin?, val failed: Boolean = false) : PolarisSyncUi
 
     /** A new recovery code, shown once; [saved] is the person's confirmation that they kept it. */
     public data class RecoveryCode(val code: PolarisRecoveryCode, val saved: Boolean = false) : PolarisSyncUi
@@ -118,6 +131,7 @@ public sealed interface PolarisSyncUi {
                 JsonObject(
                     buildMap {
                         if (by != null) put("by", JsonPrimitive(by))
+                        if (failed) put("failed", JsonPrimitive(true))
                         if (served != null) {
                             put(
                                 "served",
@@ -141,7 +155,11 @@ public sealed interface PolarisSyncUi {
  * The unlock flow's state holder. [open] starts from "Unlock sync" or "Review"; the other verbs are
  * the screens' controls. One request runs at a time: a control pressed meanwhile is ignored.
  */
-public class PolarisSyncState(private val actions: PolarisSyncActions, private val scope: CoroutineScope) {
+public class PolarisSyncState(
+    private val actions: PolarisSyncActions,
+    private val scope: CoroutineScope,
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
     private val _ui = MutableStateFlow<PolarisSyncUi>(PolarisSyncUi.Idle)
     public val ui: StateFlow<PolarisSyncUi> = _ui.asStateFlow()
 
@@ -150,9 +168,18 @@ public class PolarisSyncState(private val actions: PolarisSyncActions, private v
     private var job: Job? = null
     private val running: Boolean get() = job?.isActive == true
 
+    // A call that makes a key or a code (Start over, create, a new code) is never cancelled: the server may
+    // already hold the result, and the code is shown only once (B3). Back and cancel() are ignored meanwhile.
+    private var minting = false
+
+    // When Start over's warning appeared, and the step Cancel returns to. The confirm arms ARMING_MS later,
+    // so a double tap on the opener cannot pass straight through the warning (B2, T22).
+    private var armedAt = 0L
+    private var warningFrom = PolarisUnlockStep.Code
+
     /** Unlock this device with its own wrap, then show what is needed: nothing, the code step, or the changed ring. */
     public fun open() {
-        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working)) { next(actions.unlock()) }
+        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working)) { settle(actions.unlock()) }
     }
 
     /** Submit the typed recovery code. A blank code is not sent. */
@@ -169,8 +196,8 @@ public class PolarisSyncState(private val actions: PolarisSyncActions, private v
                 when (e.code) {
                     ErrorCode.recoveryCodeInvalid -> PolarisSyncUi.Unlock(PolarisUnlockStep.Invalid).also { retryOp = null }
 
-                    // No recovery code on the account: trying again cannot help, so show the way out (Start over's warning).
-                    ErrorCode.notFound -> PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver).also { retryOp = null }
+                    // No recovery code on the account: trying again cannot help, so say so and offer Start over.
+                    ErrorCode.notFound -> PolarisSyncUi.Unlock(PolarisUnlockStep.NoCode).also { retryOp = null }
 
                     else -> throw e
                 }
@@ -185,41 +212,55 @@ public class PolarisSyncState(private val actions: PolarisSyncActions, private v
 
     /** Show Start over's warning. Nothing is replaced yet. */
     public fun startOver() {
-        if (_ui.value is PolarisSyncUi.Unlock && !running) _ui.value = PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver)
+        val step = (_ui.value as? PolarisSyncUi.Unlock)?.step ?: return
+        if (running || step == PolarisUnlockStep.Working || step == PolarisUnlockStep.StartOver) return
+        warningFrom = if (step == PolarisUnlockStep.NoCode) step else PolarisUnlockStep.Code
+        armedAt = clock()
+        _ui.value = PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver)
     }
 
     /** Replace the sync key. Only from the warning step (T22). */
     public fun confirmStartOver() {
-        if (_ui.value != PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver)) return
+        if (_ui.value != PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver) || clock() - armedAt < ARMING_MS) return
         replaceKey()
     }
 
     private fun replaceKey() {
         if (running) return
         retryOp = ::replaceKey
-        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working)) { shown(actions.startOver()) }
+        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working), mints = true) { shown(mint { actions.startOver() }) }
     }
 
     /** A first ring for this account: shows its recovery code. */
     public fun create() {
-        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working)) { shown(actions.create()) }
+        retryOp = ::create
+        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working), mints = true) { shown(mint { actions.create() }) }
     }
 
     /** A new recovery code for the ring this device holds. */
     public fun newRecoveryCode() {
-        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working)) { shown(actions.newRecoveryCode()) }
+        retryOp = ::newRecoveryCode
+        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working), mints = true) { shown(mint { actions.newRecoveryCode() }) }
     }
 
     /** Accept the ring that was shown (never a fresh read). */
     public fun acceptRingChange() {
         val change = _ui.value as? PolarisSyncUi.RingChange ?: return
-        accept(change.served ?: return)
+        accept(change.by, change.served ?: return)
     }
 
-    private fun accept(served: SyncRingPin) {
+    private fun accept(by: String?, served: SyncRingPin) {
         if (running) return
-        retryOp = { accept(served) }
-        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working)) { next(actions.acceptRingChange(served)) }
+        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working)) {
+            try {
+                settle(actions.acceptRingChange(served))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Accept stays available on the same screen, with the reason (ringChange.failed).
+                PolarisSyncUi.RingChange(by, served, failed = true)
+            }
+        }
     }
 
     /** From the ring confirmation to the recovery code step. */
@@ -246,9 +287,17 @@ public class PolarisSyncState(private val actions: PolarisSyncActions, private v
         if (shown.saved) _ui.value = PolarisSyncUi.Done
     }
 
-    /** Leave the flow. Nothing typed is kept. */
+    /**
+     * Cancel, or Back. From Start over's warning it returns to the step it came from (the typed code stays in
+     * the field); anywhere else it leaves the flow. A recovery code screen is left only through Done, and
+     * nothing is cancelled while a key or code is being made.
+     */
     public fun cancel() {
-        if (_ui.value is PolarisSyncUi.RecoveryCode) return
+        if (_ui.value is PolarisSyncUi.RecoveryCode || minting) return
+        if (_ui.value == PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver)) {
+            _ui.value = PolarisSyncUi.Unlock(warningFrom)
+            return
+        }
         job?.cancel()
         retryOp = null
         _ui.value = PolarisSyncUi.Idle
@@ -260,14 +309,28 @@ public class PolarisSyncState(private val actions: PolarisSyncActions, private v
         is SyncUnlockResult.RingChanged -> PolarisSyncUi.RingChange(result.by, result.served)
     }.also { retryOp = null }
 
+    // A first ring (no ring yet) is made here, not asked for with a code nobody ever had.
+    private suspend fun settle(result: SyncUnlockResult): PolarisSyncUi =
+        if (result is SyncUnlockResult.Locked && result.reason == SyncUnlockResult.LockReason.NoRing) {
+            shown(mint { actions.create() })
+        } else {
+            next(result)
+        }
+
+    private suspend fun <T> mint(call: suspend () -> T): T {
+        minting = true
+        return withContext(NonCancellable) { call() }
+    }
+
     private fun shown(code: String?): PolarisSyncUi {
         retryOp = null
         return if (code != null) PolarisSyncUi.RecoveryCode(PolarisRecoveryCode(code)) else PolarisSyncUi.Done
     }
 
-    private fun run(working: PolarisSyncUi, step: suspend () -> PolarisSyncUi) {
+    private fun run(working: PolarisSyncUi, mints: Boolean = false, step: suspend () -> PolarisSyncUi) {
         if (running) return
         _ui.value = working
+        minting = mints
         job = scope.launch {
             try {
                 _ui.value = step()
@@ -276,7 +339,14 @@ public class PolarisSyncState(private val actions: PolarisSyncActions, private v
             } catch (_: Exception) {
                 // The screen says "Couldn't unlock"; the cause is not shown (it could name a ring or a device).
                 _ui.value = PolarisSyncUi.Unlock(PolarisUnlockStep.Failed)
+            } finally {
+                minting = false
             }
         }
+    }
+
+    private companion object {
+        /** How long Start over's warning is up before its confirm takes a tap. */
+        const val ARMING_MS = 500L
     }
 }

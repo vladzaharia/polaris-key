@@ -235,7 +235,11 @@ public fun PolarisKitScreen(
         screen.component == KitComponent.unlockSync ->
             PolarisUnlockSync(
                 screen, modifier,
-                onUnlock = { onAction(KitAction.unlock) },
+                // The typed recovery code goes to onContinue, then the matrix action: the host passes it to `recover` only.
+                onUnlock = { typed ->
+                    onContinue(typed)
+                    onAction(KitAction.unlock)
+                },
                 onStartOver = { onAction(KitAction.startOver) },
                 onConfirmStartOver = { onAction(KitAction.confirmStartOver) },
                 onRetry = { onAction(KitAction.retry) },
@@ -254,7 +258,12 @@ public fun PolarisKitScreen(
 
         screen.component == KitComponent.recoveryCode ->
             if (recoveryCode != null) {
-                PolarisRecoveryCodeScreen(screen, recoveryCode, modifier, onDone = { onAction(null) }, catalog = catalog, locale = locale)
+                // The tick is the screen's own state here; Done follows it (the host gets onAction(null) on Done).
+                var saved by remember(screen) { mutableStateOf(screen.state == "saved") }
+                PolarisRecoveryCodeScreen(
+                    screen, recoveryCode, modifier, onSavedChange = { saved = it }, onDone = { onAction(null) },
+                    catalog = catalog, locale = locale, saved = saved,
+                )
             }
 
         screen.component == KitComponent.cloudSyncStatus && (screen.state == "locked" || screen.state == "ring-changed") ->

@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -540,9 +541,11 @@ public fun PolarisCloudSyncStatus(
             (if (onOpen != null) row.clickable(role = Role.Button, onClick = onOpen) else row)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
-            Icon(glyph, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            // The glyph sits on the first line of the label, not centred on a wrapped one (large fonts).
+            val line = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }
+            Icon(glyph, contentDescription = null, tint = tint, modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp))
             Spacer(Modifier.width(12.dp))
             Text(text, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
         }
@@ -550,14 +553,24 @@ public fun PolarisCloudSyncStatus(
             status == PolarisCloudSync.Error && onRetry != null -> catalog.format("common.tryAgain", locale) to onRetry
             status == PolarisCloudSync.SignedOut && onSignIn != null -> catalog.format("cloudSync.signIn", locale) to onSignIn
             status == PolarisCloudSync.Locked && onUnlock != null -> catalog.format("cloudSync.unlock", locale) to onUnlock
-            // Review always shows for a changed ring (the matrix row); without a handler it does nothing yet (host binding, Q-7).
-            status == PolarisCloudSync.RingChanged -> catalog.format("common.review", locale) to (onReview ?: {})
+            status == PolarisCloudSync.RingChanged && onReview != null -> catalog.format("common.review", locale) to onReview
             else -> null
         }
         if (action != null) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) { PolarisTextButton(action.first, action.second) }
         }
     }
+}
+
+/**
+ * The locked and changed-ring statuses bound to the kit's own unlock flow: Unlock sync and Review both
+ * call [PolarisSyncState.open], which unlocks this device or shows the ring to confirm, and
+ * [PolarisSyncFlow] draws the screens. Use this where the host has no handler of its own (the status
+ * source itself binds with the host settings, Q-7).
+ */
+@Composable
+public fun PolarisCloudSyncStatus(status: PolarisCloudSync, syncState: PolarisSyncState, modifier: Modifier = Modifier) {
+    PolarisCloudSyncStatus(status, modifier, onUnlock = syncState::open, onReview = syncState::open)
 }
 
 // ── About ────────────────────────────────────────────────────────────────────────────────────

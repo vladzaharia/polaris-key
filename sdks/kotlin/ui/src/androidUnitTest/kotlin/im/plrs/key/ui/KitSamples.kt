@@ -244,12 +244,16 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     },
     "unlockSync-code" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "code")) },
     "unlockSync-invalid" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "invalid")) },
+    "unlockSync-no-code" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "no-code")) },
     "unlockSync-working" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "working")) },
     "unlockSync-failed" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "failed")) },
     "unlockSync-start-over" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "start-over")) },
     "recoveryCode-show" to { PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode"), sampleRecoveryCode) },
     "recoveryCode-saved" to {
         PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode", "saved" to true), sampleRecoveryCode)
+    },
+    "ringChange-failed" to {
+        PolarisRingChange(syncScreen(KitComponent.ringChange, "ringChange", "by" to "Maya's MacBook", "served" to true, "failed" to true))
     },
     "ringChange-confirm" to {
         PolarisRingChange(syncScreen(KitComponent.ringChange, "ringChange", "by" to "Maya's MacBook", "served" to true))

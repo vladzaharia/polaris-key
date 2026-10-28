@@ -26,6 +26,7 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -130,7 +131,7 @@ class SyncScreensTest {
         var retried = 0
         var cancelled = 0
         show { PolarisUnlockSync(unlock("failed"), onRetry = { retried++ }, onCancel = { cancelled++ }) }
-        rule.onNodeWithText("Couldn't unlock. Try again later.").assertIsDisplayed()
+        rule.onNodeWithText("Couldn't unlock. Check your connection and try again.").assertIsDisplayed()
         rule.onNodeWithText("Try again").performClick()
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(1, retried)
@@ -152,6 +153,11 @@ class SyncScreensTest {
             }
         }
         rule.mainClock.advanceTimeBy(300)
+        // A double tap on the opener lands here before the confirm is armed: it must not confirm.
+        rule.onNodeWithText("Start over").performClick()
+        rule.onNodeWithText("Start over").performClick()
+        assertEquals(0, confirmed)
+        rule.mainClock.advanceTimeBy(600)
         rule.onNodeWithText("Start over?").assertIsDisplayed()
         rule.onNodeWithText("Your current synced data will be lost. Start over only if you can't find your recovery code.").assertIsDisplayed()
         rule.onNodeWithText("Unlock").assertDoesNotExist()
@@ -182,8 +188,8 @@ class SyncScreensTest {
                 },
             )
         }
-        rule.onNodeWithText("K7QM").assertIsDisplayed()
-        rule.onNodeWithText("8YGK").assertIsDisplayed()
+        rule.onNodeWithText("K7QM", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("8YGK", useUnmergedTree = true).assertIsDisplayed()
         rule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
         rule.onNodeWithText("No one will ever ask for this code. Enter it only in the app.").assertIsDisplayed()
         rule.onNodeWithText("Done").assertDoesNotExist()
@@ -230,9 +236,85 @@ class SyncScreensTest {
     }
 
     @Test
-    fun reviewShowsForAChangedRingEvenWithoutAHandler() {
+    fun theStatusOffersNothingTheHostCannotDoUnlessItIsBoundToTheKitsFlow() {
         show { PolarisCloudSyncStatus(PolarisCloudSync.RingChanged) }
-        rule.onNodeWithText("Review").assertIsDisplayed()
+        rule.onNodeWithText("Review").assertDoesNotExist()
+    }
+
+    @Test
+    fun boundToTheFlowReviewAndUnlockOpenIt() {
+        var opened = 0
+        val actions = object : PolarisSyncActions {
+            override suspend fun unlock(): SyncUnlockResult {
+                opened++
+                return SyncUnlockResult.Unlocked("r", 1)
+            }
+            override suspend fun recover(code: String) = Unit
+            override suspend fun startOver(): String? = null
+            override suspend fun create(): String? = null
+            override suspend fun newRecoveryCode(): String = "X"
+            override suspend fun acceptRingChange(served: SyncRingPin) = SyncUnlockResult.Unlocked("r", 1)
+        }
+        val state = PolarisSyncState(actions, CoroutineScope(Dispatchers.Unconfined))
+        show { PolarisCloudSyncStatus(PolarisCloudSync.RingChanged, state) }
+        rule.onNodeWithText("Review").performClick()
+        assertEquals(1, opened)
+    }
+
+    @Test
+    fun noCodeSaysSoAndOffersStartOverWhichOnlyOpensTheWarning() {
+        var startOver = 0
+        var confirmed = 0
+        show { PolarisUnlockSync(unlock("no-code"), onStartOver = { startOver++ }, onConfirmStartOver = { confirmed++ }) }
+        rule.onNodeWithText("This account has no recovery code. Start over to keep syncing.").assertIsDisplayed()
+        rule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        rule.onNodeWithText("Start over").performClick()
+        assertEquals(1, startOver)
+        assertEquals(0, confirmed)
+    }
+
+    @Test
+    fun aFailedAcceptSaysSoAndKeepsAccept() {
+        show { PolarisRingChange(syncScreen(KitComponent.ringChange, "ringChange", "by" to "Maya", "served" to true, "failed" to true)) }
+        rule.onNodeWithText("Couldn't confirm the new key. Try again, or use your recovery code.").assertIsDisplayed()
+        rule.onNodeWithText("That was me").assertIsDisplayed()
+    }
+
+    @Test
+    fun theCodeGridIsReadAsOneCodeWithTheGroupsApart() {
+        show { PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode"), sampleRecoveryCode) }
+        rule.onNodeWithContentDescription("Recovery code K7QM 2XRD 9TBA WF4N HC6P VJ3E M4TS 8YGK").assertExists()
+    }
+
+    @Test
+    fun theKitScreenRouteCarriesTheTypedCodeAndTheSavedTick() {
+        val typed = mutableListOf<String>()
+        val actions = mutableListOf<KitAction?>()
+        show {
+            Column {
+                PolarisKitScreen(unlock("code"), onContinue = { typed += it }, onAction = { actions += it })
+            }
+        }
+        rule.onNode(hasSetTextAction()).performTextInput("AAAA-BBBB")
+        rule.onNodeWithText("Unlock").performClick()
+        assertEquals(listOf("AAAA-BBBB"), typed)
+        assertEquals(listOf<KitAction?>(KitAction.unlock), actions)
+    }
+
+    @Test
+    fun theKitScreenRouteLetsThePersonTickSavedAndFinish() {
+        val actions = mutableListOf<KitAction?>()
+        show {
+            PolarisKitScreen(
+                syncScreen(KitComponent.recoveryCode, "recoveryCode"),
+                recoveryCode = sampleRecoveryCode,
+                onAction = { actions += it },
+            )
+        }
+        rule.onNodeWithText("Done").assertDoesNotExist()
+        rule.onNodeWithText("I've saved my recovery code").performClick()
+        rule.onNodeWithText("Done").performClick()
+        assertEquals(listOf<KitAction?>(null), actions)
     }
 
     @Test

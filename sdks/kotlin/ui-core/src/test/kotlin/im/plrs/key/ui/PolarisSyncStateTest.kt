@@ -23,7 +23,7 @@ class PolarisSyncStateTest {
     private class Fake : PolarisSyncActions {
         var unlock: () -> SyncUnlockResult = { SyncUnlockResult.Unlocked("r", 1) }
         var recover: (String) -> Unit = {}
-        var startOver: () -> String? = { "NEW-CODE" }
+        var startOver: () -> String? = { "ABCD-EFGH" }
         var accepted = mutableListOf<SyncRingPin>()
         var accept: (SyncRingPin) -> SyncUnlockResult = { SyncUnlockResult.Unlocked("r", 1) }
         val recovered = mutableListOf<String>()
@@ -40,7 +40,7 @@ class PolarisSyncStateTest {
             return startOver.invoke()
         }
 
-        override suspend fun create(): String? = "FIRST-CODE"
+        override suspend fun create(): String? = "WXYZ-2345"
         override suspend fun newRecoveryCode(): String = "FRESH-CODE"
         override suspend fun acceptRingChange(served: SyncRingPin): SyncUnlockResult {
             accepted += served
@@ -48,7 +48,9 @@ class PolarisSyncStateTest {
         }
     }
 
-    private fun TestScope.state(fake: Fake) = PolarisSyncState(fake, backgroundScope)
+    private var now = 0L
+
+    private fun TestScope.state(fake: Fake) = PolarisSyncState(fake, backgroundScope) { now }
 
     @Test
     fun anOwnWrapUnlocksAndALockedDeviceAsksForTheCode() = runTest {
@@ -146,7 +148,7 @@ class PolarisSyncStateTest {
         runCurrent()
         state.submitCode("AAAA")
         runCurrent()
-        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver), state.ui.value)
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.NoCode), state.ui.value)
     }
 
     @Test
@@ -192,14 +194,20 @@ class PolarisSyncStateTest {
         state.startOver()
         assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver), state.ui.value)
         assertEquals(0, fake.resets)
+        // A tap on the confirm right behind the opener (a double tap) is not a confirmation.
+        now += 100
+        state.confirmStartOver()
+        runCurrent()
+        assertEquals(0, fake.resets)
+        now += 500
         state.confirmStartOver()
         runCurrent()
         assertEquals(1, fake.resets)
         val shown = state.ui.value as PolarisSyncUi.RecoveryCode
-        assertEquals("NEW-CODE", shown.code.reveal())
+        assertEquals("ABCD-EFGH", shown.code.reveal())
         assertFalse(shown.saved)
         assertEquals("PolarisRecoveryCode(redacted)", shown.code.toString())
-        assertFalse(shown.toString().contains("NEW-CODE"))
+        assertFalse(shown.toString().contains("ABCD-EFGH"))
     }
 
     @Test
@@ -232,6 +240,79 @@ class PolarisSyncStateTest {
     }
 
     @Test
+    fun cancelOnTheWarningReturnsToTheCodeStep() = runTest {
+        val fake = Fake()
+        fake.unlock = { SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) }
+        val state = state(fake)
+        state.open()
+        runCurrent()
+        state.startOver()
+        state.cancel()
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.Code), state.ui.value)
+        // From no-code, Cancel returns to no-code.
+        fake.recover = { throw PolarisException(ErrorCode.notFound, "none") }
+        state.submitCode("AAAA")
+        runCurrent()
+        state.startOver()
+        state.cancel()
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.NoCode), state.ui.value)
+        state.cancel()
+        assertEquals(PolarisSyncUi.Idle, state.ui.value)
+    }
+
+    @Test
+    fun aKeyOrCodeBeingMadeIsNeverCancelledAndAlwaysLands() = runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val fake = Fake()
+        fake.unlock = { SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) }
+        val actions = object : PolarisSyncActions by fake {
+            override suspend fun startOver(): String? {
+                gate.await()
+                return "ABCD-EFGH"
+            }
+        }
+        val state = PolarisSyncState(actions, backgroundScope) { now }
+        state.open()
+        runCurrent()
+        state.startOver()
+        now += 600
+        state.confirmStartOver()
+        runCurrent()
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.Working), state.ui.value)
+        state.cancel()
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals("ABCD-EFGH", (state.ui.value as PolarisSyncUi.RecoveryCode).code.reveal())
+    }
+
+    @Test
+    fun aFirstRingIsCreatedNotAskedForACode() = runTest {
+        val fake = Fake()
+        fake.unlock = { SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoRing) }
+        val state = state(fake)
+        state.open()
+        runCurrent()
+        assertEquals("WXYZ-2345", (state.ui.value as PolarisSyncUi.RecoveryCode).code.reveal())
+    }
+
+    @Test
+    fun aFailedAcceptStaysOnTheRingScreenWithTheReason() = runTest {
+        val fake = Fake()
+        fake.unlock = { SyncUnlockResult.RingChanged(SyncRingPin("old", 1, "k"), served, 5, "Maya") }
+        fake.accept = { throw IllegalStateException("net") }
+        val state = state(fake)
+        state.open()
+        runCurrent()
+        state.acceptRingChange()
+        runCurrent()
+        assertEquals(PolarisSyncUi.RingChange("Maya", served, failed = true), state.ui.value)
+        fake.accept = { SyncUnlockResult.Unlocked("r", 2) }
+        state.acceptRingChange()
+        runCurrent()
+        assertEquals(PolarisSyncUi.Done, state.ui.value)
+    }
+
+    @Test
     fun cancelWhileARequestRunsLeavesNothingToLandLater() = runTest {
         val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
         val fake = Fake()
@@ -251,6 +332,17 @@ class PolarisSyncStateTest {
         gate.complete(Unit)
         runCurrent()
         assertEquals(PolarisSyncUi.Idle, state.ui.value)
+    }
+
+    @Test
+    fun aRecoveryCodeIsRegroupedInFoursAndCopiedHyphenated() {
+        val plain = PolarisRecoveryCode("k7qm 2xrd9tba-wf4n")
+        assertEquals(listOf("k7qm", "2xrd", "9tba", "wf4n"), plain.groups())
+        assertEquals("k7qm-2xrd-9tba-wf4n", plain.reveal())
+        assertEquals(
+            listOf("K7QM", "2XRD", "9TBA", "WF4N", "HC6P", "VJ3E", "M4TS", "8YGK"),
+            PolarisRecoveryCode("K7QM-2XRD-9TBA-WF4N-HC6P-VJ3E-M4TS-8YGK").groups(),
+        )
     }
 
     @Test

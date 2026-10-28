@@ -50,6 +50,14 @@ internal fun unlockSyncScreen(inputs: KitInputs): KitScreen {
             listOf(title, context.line("unlockSync.failed"), context.line("common.tryAgain"), context.line("common.cancel")),
         )
 
+        "no-code" -> screen(
+            KitComponent.unlockSync,
+            "no-code",
+            listOf(title, context.line("unlockSync.noCode"), context.line("unlockSync.startOver"), context.line("common.cancel")),
+        )
+
+        // `tone` in the matrix is the message's tone (nothing failed here, so it is neutral); the destructive
+        // confirm still takes the danger fill (BRAND.md: danger buttons stay danger red).
         "start-over" -> screen(
             KitComponent.unlockSync,
             "start-over",
@@ -97,10 +105,6 @@ internal fun recoveryCodeScreen(inputs: KitInputs): KitScreen {
     return screen(KitComponent.recoveryCode, if (saved) "saved" else "show", lines)
 }
 
-// TODO(U-42 swift fix round): the ui-matrix gains a `failed` row for RingChange (an accept that could not
-// run) and the catalog `a11y.recoveryCode` ("Recovery code {code}", the shown code's spoken label). Plug
-// both in when they reach this branch: `ringChangeScreen` gets its failed state, and the recovery code
-// block takes `a11y.recoveryCode` as its content description in place of the merged group text.
 internal fun ringChangeScreen(inputs: KitInputs): KitScreen {
     val context = KitContext(inputs)
     val change = inputs.obj("ringChange")
@@ -112,14 +116,16 @@ internal fun ringChangeScreen(inputs: KitInputs): KitScreen {
     } else {
         context.line("ringChange.bodyUnknown")
     }
+    val failed = change.boolean("failed") == true
     // Nothing was served to confirm: no Accept, only the recovery code.
     val lines = listOfNotNull(
         context.line("ringChange.title"),
         body,
-        context.line("ringChange.warning"),
+        context.line(if (served) "ringChange.warning" else "ringChange.warningNoServed"),
+        if (failed) context.line("ringChange.failed") else null,
         if (served) context.line("ringChange.accept") else null,
         context.line("ringChange.useCode"),
         context.line("common.cancel"),
     )
-    return screen(KitComponent.ringChange, "confirm", lines)
+    return screen(KitComponent.ringChange, if (failed) "failed" else "confirm", lines)
 }
