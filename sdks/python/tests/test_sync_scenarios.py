@@ -94,6 +94,9 @@ PORTED = frozenset(
         "e2e-downgrade-refused",
         "e2e-legacy-plain-below-since",
         "server-mode-unchanged",
+        "e2e-forged-plain-change-at-or-below-cursor",
+        "e2e-forged-plain-needs-cursor-below-since",
+        "e2e-forged-plain-sealed-key-latched",
     )
 )
 _SKIP = "not on the PORTED allow-list"

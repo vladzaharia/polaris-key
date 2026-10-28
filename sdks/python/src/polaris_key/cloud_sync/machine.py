@@ -52,6 +52,9 @@ LOCAL_PARTITION = "local"
 
 _DAY_MS = 86_400_000
 
+#: The most keys a partition's "ever sealed" latch holds (E2E); the oldest go first.
+SEALED_LATCH_MAX = 4096
+
 Json = Any
 Obj = Dict[str, Any]
 CallResult = Dict[str, Any]
@@ -1346,8 +1349,18 @@ class CloudSyncMachine:
         for i, c in enumerate(changes):
             if not _is_object(c) or not _is_number(c.get("version")):
                 continue
+            # E2E guard (a): inside one partition a served change is newer than the cursor the request
+            # carried, so an older one is a replay or a forgery. Only a snapshot (cursor 0) has no floor.
+            if self._requires_e2e() and req["cursor"] > 0 and c["version"] <= req["cursor"]:
+                continue
             open_row = opened_changes[i] if i < len(opened_changes) else None
-            bad = self._row_bad(p, c["version"], open_row)
+            if isinstance(c.get("setting"), str):
+                latch_key = f"s:{c['setting']}"
+            elif isinstance(c.get("record"), list) and len(c["record"]) == 2:
+                latch_key = "r:" + _record_key(str(c["record"][0]), str(c["record"][1]))
+            else:
+                latch_key = ""
+            bad = self._row_bad(p, latch_key, c["version"], open_row, req["cursor"])
             if isinstance(c.get("setting"), str):
                 p["settings"][c["setting"]] = {"value": _clone(c.get("value")), "version": c["version"], **bad}
                 self._drop_parked_by_remote(p, c["setting"], c.get("editedHlc"))
@@ -1381,7 +1394,9 @@ class CloudSyncMachine:
         self._pull_wanted = body.get("more") is True
         self._emit_changes(before, overrides, "remote")
 
-    def _row_bad(self, p: Obj, version: Any, open_row: Optional[Obj]) -> Obj:
+    def _row_bad(
+        self, p: Obj, latch_key: str, version: Any, open_row: Optional[Obj], cursor: Optional[int] = None
+    ) -> Obj:
         """E2E ``encryptionSince``: only the host's open result counts. A row it opened from a ``ct`` is
         good (and lowers the clamp); one it could not open is bad; a plaintext row is legacy data only
         while its host-mapped ``seq`` stays below the partition's ``encryptionSince``, judged on every
@@ -1392,17 +1407,25 @@ class CloudSyncMachine:
         if open_row.get("invalid") is True:
             return {"bad": True}
         if open_row.get("sealed") is True:
-            self._note_sealed(p, version)
+            self._note_sealed(p, version, latch_key)
             return {}
         seq: Any = open_row.get("seq")
-        if _is_number(seq) and math.isfinite(seq):
-            return {"plain": seq}
-        return {"bad": True}
+        if not _is_number(seq) or not math.isfinite(seq):
+            return {"bad": True}
+        # Guard (c): a key this machine has seen sealed never reads as legacy plaintext.
+        if latch_key != "" and (p.get("sealedKeys") or {}).get(latch_key) is True:
+            return {"bad": True}
+        # Guard (b): legacy only if the request's cursor was still below the boundary.
+        since = p.get("encryptionSince")
+        if cursor is not None and (since is None or cursor >= since):
+            return {"bad": True}
+        return {"plain": seq}
 
-    def _copy_row(self, p: Obj, server: Obj, open_row: Optional[Obj]) -> Obj:
+    def _copy_row(self, p: Obj, latch_key: str, server: Obj, open_row: Optional[Obj]) -> Obj:
         """A conflict's ``server`` copy as a held row."""
         version = server["version"]
-        return {"value": _clone(server.get("value")), "version": version, **self._row_bad(p, version, open_row)}
+        bad = self._row_bad(p, latch_key, version, open_row)
+        return {"value": _clone(server.get("value")), "version": version, **bad}
 
     def _lower_since(self, p: Obj, served: Any) -> None:
         """Take a served boundary: the least ever served, held at or below the sealed floor."""
@@ -1413,11 +1436,17 @@ class CloudSyncMachine:
             since = min(since, p["sealedFloor"])
         p["encryptionSince"] = since
 
-    def _note_sealed(self, p: Obj, version: Any) -> None:
+    def _note_sealed(self, p: Obj, version: Any, latch_key: str = "") -> None:
         """This machine pushed, or opened, a sealed row at ``version``: no plaintext at or above it is
         legacy, whatever a Worker serves."""
         if not self._requires_e2e() or not _is_number(version) or not math.isfinite(version):
             return
+        if latch_key != "":
+            keys = p.setdefault("sealedKeys", {})
+            if keys.get(latch_key) is not True:
+                keys[latch_key] = True
+                for old in list(keys)[: max(0, len(keys) - SEALED_LATCH_MAX)]:
+                    del keys[old]
         p["sealedFloor"] = min(p.get("sealedFloor", version), version)
         if p.get("encryptionSince") is not None:
             p["encryptionSince"] = min(p["encryptionSince"], p["sealedFloor"])
@@ -1453,7 +1482,7 @@ class CloudSyncMachine:
             if op.get("moved"):
                 overrides[key] = "merge"
             if status == "ok" and _is_number(r.get("version")):
-                self._note_sealed(p, r["version"])
+                self._note_sealed(p, r["version"], f"s:{server_key}")
             if status == "ok":
                 if r.get("dropped") is True:
                     overrides[key] = "migration"
@@ -1471,7 +1500,7 @@ class CloudSyncMachine:
                 # A stale write loses to the server copy, and nothing is enqueued.
                 server = r["server"]
                 if _is_number(server.get("version")):
-                    sbad = self._copy_row(p, server, opened_conflict())
+                    sbad = self._copy_row(p, f"s:{server_key}", server, opened_conflict())
                     p["settings"][server_key] = sbad
                     # E2E max/min: keep the better value and re-push it on the server's version.
                     if (
@@ -1500,7 +1529,7 @@ class CloudSyncMachine:
         has_rebase = False
         rebase_value: Any = None
         if status == "ok" and _is_number(r.get("version")):
-            self._note_sealed(p, r["version"])
+            self._note_sealed(p, r["version"], f"r:{rk}")
             prior = p["records"].get(rk)
             value = _apply_record_op(prior["value"] if prior else _ABSENT, op)
             if value is not _ABSENT:
@@ -1510,7 +1539,7 @@ class CloudSyncMachine:
         elif status == "conflict" and _is_object(r.get("server")):
             server = r["server"]
             if _is_number(server.get("version")):
-                sbad = self._copy_row(p, server, opened_conflict())
+                sbad = self._copy_row(p, f"r:{rk}", server, opened_conflict())
                 p["records"][rk] = sbad
                 # The resolution is a NEW mutation on the server's version; N is never resent. Only
                 # ``revision`` resolves on the device; every other policy took the server's copy.
