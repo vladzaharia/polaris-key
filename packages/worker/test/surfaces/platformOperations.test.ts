@@ -26,6 +26,7 @@ import {
   recordTick,
   runScheduledMaintenance,
 } from "../../src/scheduled.js";
+import { SERVICE_SLUGS } from "../../src/core/services.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { makeEnv, NOW, seedProduct } from "../seed.js";
@@ -632,6 +633,20 @@ describe("GET /manage/api/platform/operations", () => {
         error: "asc: 401",
       },
     ]);
+    expect(body.services).toHaveLength(SERVICE_SLUGS.length);
+    expect(body.services.map((x: { slug: string }) => x.slug)).toEqual([
+      ...SERVICE_SLUGS,
+    ]);
+    expect(
+      body.services.find((x: { slug: string }) => x.slug === "distribution"),
+    ).toMatchObject({
+      productsEnabled: expect.any(Number),
+      lastError: { step: "poll:acme:distribution", error: "asc: 401" },
+    });
+    expect(
+      body.services.find((x: { slug: string }) => x.slug === "license")
+        .lastError,
+    ).toBeNull();
     expect(body.heartbeats).toEqual([
       expect.objectContaining({ script: "main", at: NOW, outcome: "ok" }),
     ]);

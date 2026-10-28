@@ -251,12 +251,13 @@ describe("Status", () => {
       within(page)
         .getAllByRole("heading", { level: 2 })
         .map((h) => h.textContent)
-        .slice(0, 6),
+        .slice(0, 7),
     ).toEqual([
       "Checks",
       "Health by area",
       "Scheduled jobs",
       "Queues",
+      "Services",
       "Storage and schema",
       "Deploys",
     ]);
@@ -289,6 +290,34 @@ describe("Status", () => {
     expect(
       within(page).queryByRole("button", { name: /retry|purge/i }),
     ).toBeNull();
+  });
+
+  it("draws one row per service with its products and last error", async () => {
+    boot("#/platform/status", {
+      extra: route({
+        services: [
+          { slug: "license", productsEnabled: 2, lastError: null },
+          {
+            slug: "release",
+            productsEnabled: 1,
+            lastError: {
+              step: "release:acme",
+              at: 1_700_000_000_000,
+              error: "boom",
+            },
+          },
+          { slug: "sync", productsEnabled: 0, lastError: null },
+        ],
+      }),
+    });
+    const page = await statusPage();
+    const list = await within(page).findByRole("list", { name: "Services" });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]!).getByText("2 products")).toBeTruthy();
+    expect(within(rows[1]!).getByText("Failed")).toBeTruthy();
+    expect(within(rows[1]!).getByText(/1 product · boom/)).toBeTruthy();
+    expect(within(rows[2]!).getByText("No products")).toBeTruthy();
   });
 
   it("flags migrations behind, missing indexes, absent bindings and a failed smoke check", async () => {
@@ -671,6 +700,11 @@ function operations(over: Record<string, unknown> = {}) {
       },
     },
     indexes: { missing: [] },
+    services: [
+      { slug: "license", productsEnabled: 2, lastError: null },
+      { slug: "release", productsEnabled: 1, lastError: null },
+      { slug: "sync", productsEnabled: 0, lastError: null },
+    ],
     connectors: {
       items: [
         {
