@@ -102,6 +102,8 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 			" and ".join(PackedStringArray(Array(removed).map(func(n): return "`%s`" % n))), "was" if removed.size() == 1 else "were", " and ".join(now_names)])
 	if not RegEx.create_from_string("\\A[a-z0-9][a-z0-9_-]*\\z").search(opts.product_slug):
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "product_slug must be a lower-case slug, got '%s'." % opts.product_slug)
+	if opts.cloud_sync_encryption != "e2e" and opts.cloud_sync_encryption != "server":
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "cloud_sync_encryption must be \"e2e\" or \"server\", got '%s'." % opts.cloud_sync_encryption)
 	var base := PKeyTransport.check_base_url(opts.base_url if opts.base_url != "" else DEFAULT_BASE)
 	if not base.ok:
 		return base

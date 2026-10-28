@@ -535,6 +535,12 @@ func _add_open_key(name: String) -> void:
 # ── events and state ──────────────────────────────────────────────────────────────────────────
 
 
+## Deliver the machine's queued events now (a call from the API layer, between exchanges).
+func deliver_events() -> void:
+	if _machine != null:
+		_emit(_machine)
+
+
 func _emit(m: Machine) -> void:
 	var batch: Array = m.take_events()
 	if not batch.is_empty():
@@ -576,6 +582,26 @@ func _on_timer() -> void:
 
 
 # ── calls the API layer makes ─────────────────────────────────────────────────────────────────
+
+
+## Offer the legacy local settings to the machine, once per install. True when the install's marker
+## still has to be written: the caller writes it with `mark_imported` once the sign-in succeeded (A-6).
+func import_pending(values: Dictionary) -> bool:
+	if _machine == null:
+		return false
+	var done := _file.imported()
+	_machine.import_local({} if done else values)
+	return not done
+
+
+func mark_imported() -> void:
+	_file.mark_imported()
+
+
+## A document refresh asked for a rebuild: do it now, so the locked list a `set` consults is current (A-6).
+func ensure_current() -> void:
+	if _rebuild_wanted and _machine != null:
+		_rebuild()
 
 
 ## Forget the person's synced data (S6, H-7). In this order: mark purged and bump the generation
