@@ -35,6 +35,7 @@ import httpx
 from .backend import BackendClient
 from .core.device_keys import DeviceKeyPort
 from .connect import CloudConnect, ConnectClient
+from .connect.errors import LanError
 from .keyring import KeyringClient
 from .commerce import CommerceClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
@@ -341,7 +342,7 @@ class PolarisKeyClient:
         # person's devices' business), then forgets the held roster, certificate and K_disc (the device
         # keys stay). Hooks run in this order. A state that cannot be deleted raises, and the sign-out
         # stops (fail closed).
-        self.identity.on_before_sign_out(self.cloud_connect.stop)
+        self.identity.on_before_sign_out(self._stop_cloud_connect)
         self.identity.on_before_sign_out(self.connect.leave)
 
         #: The Cloud Sync host (WIRE-CONTRACT-V5 §13): the machine, its transport and the state file.
@@ -528,6 +529,14 @@ class PolarisKeyClient:
                 patch["pin_revocations"] = evidence
             self._cache.patch(**patch)
         return r
+
+    def _stop_cloud_connect(self) -> None:
+        """The sign-out hook: stop Cloud Connect, but never let a host callback that holds the Connect
+        thread hold the sign-out (the teardown stays queued and runs when it lets go)."""
+        try:
+            self.cloud_connect.stop()
+        except LanError:
+            pass
 
     def close(self) -> None:
         """Stop Cloud Connect, the refresh thread and release the HTTP client. Safe to call twice."""

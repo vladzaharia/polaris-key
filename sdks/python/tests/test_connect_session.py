@@ -690,3 +690,27 @@ def test_nothing_runs_or_is_stored_after_close() -> None:
     assert not held
     d2._defer(5)
     assert d2._retry is None
+
+
+def test_a_peer_that_never_reads_is_closed_busy_not_buffered_without_bound() -> None:
+    from polaris_key.core import peer_link
+
+    with Rig() as rig:
+        mine = rig.dial()
+        assert rig.got_session.wait(5)
+        theirs = rig.responder_sessions[0]
+        closed: List[Any] = []
+        theirs.on_close(closed.append)
+        link = rig.inbound_links[0]
+        t = link._writer.transport
+        aborted: List[bool] = []
+        real_abort = t.abort
+        t.abort = lambda: (aborted.append(True), real_abort())  # type: ignore[method-assign]
+        t.get_write_buffer_size = lambda: peer_link.WRITE_BUFFER_MAX + 1  # type: ignore[method-assign]
+        theirs.send(b"x" * 100, 0x0100)
+        for _ in range(250):
+            if closed:
+                break
+            threading.Event().wait(0.02)
+        assert closed and closed[0].code == "peer_busy"
+        del mine

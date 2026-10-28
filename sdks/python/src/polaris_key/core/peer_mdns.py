@@ -60,10 +60,15 @@ MAX_INSTANCES = 256
 MAX_ADDRS = 4
 ENTRY_TTL_SECONDS = 5 * 60.0
 REPLY_GAP_SECONDS = 1.0
+#: New table entries one source address may add in ``NEW_WINDOW_SECONDS`` (S4): a flood from one host
+#: cannot evict the table. At most ``MAX_SOURCES`` sources are tracked.
+MAX_NEW_PER_SOURCE = 16
+NEW_WINDOW_SECONDS = 60.0
+MAX_SOURCES = 256
 TTL = 120
 _TXT_TTL = 4500
 _ASK_QUESTIONS = 32
-_IPV4 = re.compile(r"(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\Z")
+_IPV4 = re.compile(r"(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\Z", re.ASCII)
 _INSTANCE_FQDN = re.compile(r"(p1-[a-z2-7]{16})\._pkeypeer\._tcp\.local\Z")
 
 
@@ -81,6 +86,8 @@ class MdnsFound(NamedTuple):
     host: str
     port: int
     txt: List[str]
+    #: Every address learned for the device, ``host`` first; a dialler falls through on a refused connect.
+    hosts: Tuple[str, ...] = ()
 
 
 class MdnsHandle:
@@ -414,12 +421,28 @@ class MulticastDnsAdapter:
             while len(addr) >= MAX_INSTANCES:
                 addr.popitem(last=False)
 
+        fresh: "OrderedDict[str, List[float]]" = OrderedDict()
+
+        def admit(src: str, now: float) -> bool:
+            """May ``src`` add one more new entry? 16 a minute each."""
+            ts = fresh.pop(src, None)
+            ts = [t for t in (ts or []) if now - t < NEW_WINDOW_SECONDS]
+            ok = len(ts) < MAX_NEW_PER_SOURCE
+            if ok:
+                ts.append(now)
+            fresh[src] = ts
+            while len(fresh) > MAX_SOURCES:
+                fresh.popitem(last=False)
+            return ok
+
         def learn_a(r: Record, src: str, now: float) -> None:
             # Only the sender's own address, and only a LAN one.
             if not isinstance(r.data, str) or r.data != src or not is_lan_address(r.data, loop_ok):
                 return
             e = addr.pop(r.name, None)
             if e is None:
+                if not admit(src, now):
+                    return
                 if len(addr) >= MAX_INSTANCES:
                     trim_addr(now)
                 e = _Addrs(now)
@@ -445,6 +468,8 @@ class MulticastDnsAdapter:
                     continue
                 e = seen.pop(inst, None)
                 if e is None:
+                    if not admit(src, now):
+                        continue
                     if len(seen) >= MAX_INSTANCES:
                         trim_seen(now)
                     e = _Entry(now)
@@ -465,12 +490,12 @@ class MulticastDnsAdapter:
                 if e.port is None or e.txt is None or not ips:
                     continue
                 host = ips[0]
-                sig = "%s|%d|%s" % (host, e.port, "\n".join(e.txt))
+                sig = "%s|%d|%s" % (",".join(ips), e.port, "\n".join(e.txt))
                 if e.up == sig:
                     continue
                 e.up = sig
                 try:
-                    on_up(MdnsFound(inst, host, e.port, list(e.txt)))
+                    on_up(MdnsFound(inst, host, e.port, list(e.txt), tuple(ips)))
                 except Exception:
                     pass  # a host callback never stops discovery
 

@@ -37,6 +37,10 @@ __all__ = [
 HANDSHAKE_FRAME_MAX = 16_384
 HANDSHAKE_SECONDS = 30.0
 _READ_CHUNK = 65_536
+#: What may sit unsent in the socket's write buffer (G10, S5): a peer that never reads (and keeps
+#: sending PINGs, each answered with a PONG) is closed ``peer_busy`` rather than growing it forever.
+WRITE_BUFFER_MAX = 8 * 1024 * 1024
+_ABORT_AFTER = 2.0
 #: The least a deadline timer waits, so a deadline that is due now cannot spin the loop.
 _MIN_WAKE = 0.05
 
@@ -95,6 +99,8 @@ class SocketLink:
         self._ended = False
         self._lost = False
         self._open = False
+        self._flooded = False
+        self._final = False
         self._gate = asyncio.Event()
         self._gate.set()
         self._wake: Optional[asyncio.TimerHandle] = None
@@ -103,7 +109,7 @@ class SocketLink:
         self.opened.add_done_callback(lambda f: f.cancelled() or f.exception())
         self.channel = PeerSession(send=self._send, on_event=self._event, **session_options)
         self._deadline: Optional[asyncio.TimerHandle] = self._loop.call_later(
-            handshake_seconds, self._fail, "handshake_failed"
+            handshake_seconds, self._fail, "peer_timeout"
         )
 
     def __repr__(self) -> str:
@@ -193,8 +199,33 @@ class SocketLink:
     # -- internals --------------------------------------------------------------------------------
 
     def _send(self, noise: bytes) -> None:
-        if not self._writer.is_closing():
-            self._writer.write(encode_frame(noise))
+        if self._writer.is_closing():
+            return
+        if self._flooded and not self._final:
+            return
+        if not self._flooded and self._buffered() > WRITE_BUFFER_MAX:
+            # Not inline: closing sends a record, which comes back here.
+            self._flooded = True
+            self._loop.call_soon(self._flood_close)
+            return
+        self._writer.write(encode_frame(noise))
+
+    def _buffered(self) -> int:
+        t = getattr(self._writer, "transport", None)
+        try:
+            return int(t.get_write_buffer_size()) if t is not None else 0
+        except Exception:
+            return 0
+
+    def _flood_close(self) -> None:
+        self._final = True  # the CLOSE record is the one last write
+        try:
+            self._fail("peer_busy")
+        finally:
+            self._final = False
+        t = getattr(self._writer, "transport", None)
+        if t is not None:
+            self._loop.call_later(_ABORT_AFTER, t.abort)
 
     def _data(self, chunk: bytes) -> None:
         if self._ended:
@@ -206,7 +237,7 @@ class SocketLink:
             if self._ended:
                 return
             if not self._open and len(f) > HANDSHAKE_FRAME_MAX:
-                return self._fail("handshake_failed")
+                return self._fail("peer_bad_frame")
             self.channel.receive(f)
         self._arm()
 
@@ -231,7 +262,8 @@ class SocketLink:
         if not self._open:
             # Not a live session: the engine has nothing to send.
             self._finish(Closed(code, False))
-        self.channel.close("peer_bye")
+        # The closing side names its reason (V5 15.6); a CLOSE goes out only when the transport exists.
+        self.channel.close(code)
 
     def _event(self, e: Any) -> None:
         h = self._h

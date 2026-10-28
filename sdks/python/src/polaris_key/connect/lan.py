@@ -121,6 +121,8 @@ class LanPeer(NamedTuple):
     device_id: str
     host: str
     port: int
+    #: Other addresses seen for the device; tried in order when ``host`` does not answer.
+    alt_hosts: Tuple[str, ...] = ()
 
 
 def _bare(addr: str) -> str:
@@ -270,21 +272,39 @@ class LanService:
         if peer is None or not self._dialable(peer.host):
             raise LanError("unknown_peer", "That device was not found on this network.")
         ident = await self._identity(False)
+        # A neighbour can answer first with its own address (S4): fall through the list on a refused
+        # connect or a failed handshake, so the real device is still reached.
+        hosts = [peer.host] + [h for h in peer.alt_hosts if h != peer.host and self._dialable(h)]
+        err: Optional[LanError] = None
+        session: Any = None
+        for host in hosts:
+            try:
+                session = await self._connect_one(peer._replace(host=host), ident)
+                break
+            except LanError as e:
+                if e.reason not in ("connect_failed", "handshake_failed"):
+                    raise
+                err = e
+        if session is None:
+            assert err is not None
+            raise err
+        if session.peer_device_id != want:
+            session.close()
+            raise LanError("wrong_peer", "The device that answered is not the one that advertised.")
+        return session
+
+    async def _connect_one(self, peer: LanPeer, ident: PeerSource) -> Any:
         reader, writer = await self._dial(peer)
         link = self._link(reader, writer, ident, "initiator")
         task = self._spawn(link.run())
         link.start()
         try:
-            session = await wait_opened(link, self._o.handshake_seconds + 5)
+            return await wait_opened(link, self._o.handshake_seconds + 5)
         except LanError:
             raise
         except Exception as e:
             task.cancel()
             raise LanError("handshake_failed", "The handshake failed.") from e
-        if session.peer_device_id != want:
-            session.close()
-            raise LanError("wrong_peer", "The device that answered is not the one that advertised.")
-        return session
 
     async def _dial(self, peer: LanPeer) -> Tuple[Any, Any]:
         try:
@@ -523,7 +543,7 @@ class LanService:
                 del self._miss[next(iter(self._miss))]
             self._miss[f.instance] = self._src.now()
             return
-        peer = LanPeer(hit.device_id, f.host, f.port)
+        peer = LanPeer(hit.device_id, f.host, f.port, tuple(f.hosts))
         self._peers[hit.device_id] = (peer, f.instance)
         for fn in list(self._on_peer):
             try:

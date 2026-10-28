@@ -501,3 +501,11 @@ def test_matrix_session_rows_through_a_session(s: Dict[str, Any]) -> None:
             for e in b.of(Record)
         ]
         assert {"delivered": got} == want and not b.of(Closed)
+
+
+def test_an_account_context_cannot_be_pickled() -> None:
+    import pickle
+
+    ctx = AccountContext(TRUST, "djdl", "x", SUB, ID_A, lambda: None, (_rnd(),))
+    with pytest.raises(TypeError):
+        pickle.dumps(ctx)
