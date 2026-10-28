@@ -8485,7 +8485,11 @@ ring for the product. The routes are recorded in the `keyring-*` transcripts.
   and it is useful only with that code. The fetch (`GET .../recovery`) is open to any signed-in
   device of the account, with no wrap, because the device that needs it holds none. Its brakes are
   5 fetches a day per device and 5 a day per subject, both failing closed (a sixth is `429
-rate_limited`; a fetch with nothing to return counts), an audit row written before the blob is served, and a notice to the account's verified addresses
+rate_limited`). The device count includes a fetch with nothing to return; the subject count
+  includes only a fetch that returned a blob, so a stolen session probing an account with nothing set
+  cannot spend the owner's quota. Residual: one live device token can still use up the day's real
+  fetches and lock the owner out of recovery until the window passes; the audit row and the notice
+  fire for each. Other brakes: an audit row written before the blob is served, and a notice to the account's verified addresses
   that says no one will ask for the code. If no address can be delivered to, only a count-only audit
   row remains. The copy in the apps says the code is entered only in the app and never on a web
   page. Residual: a person who gives the code to a caller, with a stolen device token, gives the
@@ -8520,6 +8524,9 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
   the served value once, at the first sealed push, and never moves it, but the client does not take
   it on trust: it keeps one value per partition in its persisted state, only ever lowers it, and
   holds it at or below the lowest version the client has itself pushed sealed or opened sealed.
+  Residual: until this device first sees or pushes a sealed row, the legacy boundary is the
+  server's word, and `sealedFloor` derives from server-assigned versions; a hostile Worker can
+  raise the boundary within that window and have newer plaintext rows honoured as legacy.
   Whether a row was opened from a `ct` comes from the host's typed open result, never from a
   field of the body the Worker wrote, and a host that does not map `seq` from `version` leaves
   every plaintext row invalid. The app's mode is app code or a signed document; an omitted option

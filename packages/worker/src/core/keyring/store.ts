@@ -547,6 +547,12 @@ export const keyringStore: SubjectStore = {
       from,
     );
     const stmts: DbStatement[] = [];
+    // Only the wraps of the absorbed current ring move over; a wrap for its previous ring (or an
+    // older one) opens a root the survivor has no use for, so it goes with the subject.
+    stmts.push({
+      sql: `DELETE FROM keyring_wraps WHERE product = ? AND subject = ? AND ring_id <> ?`,
+      params: [product, from, ring ? ring.ring_id : ""],
+    });
     if (ring) {
       const survivor = await db.first<{ one: number }>(
         "SELECT 1 AS one FROM keyrings WHERE product = ? AND subject = ?",
