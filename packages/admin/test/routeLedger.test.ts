@@ -33,7 +33,8 @@ const ADDED_PAGE_IDS = [
   "connect-setup",
   "connect-devices",
   "connect-usage",
-]; // ST-51, A-27.11, ST-31.11, ST-30c.4, CC-02.3
+  "channel",
+]; // ST-51, A-27.11, ST-31.11, ST-30c.4, CC-02.3, A-22.1
 
 const inNav = (id: string): boolean =>
   [...GLOBAL_PAGES, ...PRODUCT_PAGES].some((p) => p.page === id);

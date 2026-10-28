@@ -547,6 +547,9 @@ export const r = {
     productPage(slug, "presentation-listing", { query }),
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
+  /** A-22: one channel's page, on a tab (the first, Status, by default). */
+  channel: (slug: string, id: string, tab?: string) =>
+    productPage(slug, "channel", { id, tab }),
   commerce: (slug: string) => productPage(slug, "commerce"),
   commerceOverview: (slug: string) => productPage(slug, "commerce-overview"),
   access: (slug: string) => productPage(slug, "access"),

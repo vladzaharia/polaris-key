@@ -13,6 +13,7 @@ import {
 } from "@tanstack/react-query";
 import {
   api,
+  type ChannelsView,
   type ConnectorsResponse,
   type DeliveryAccess,
   type DistributionKeysResponse,
@@ -107,6 +108,19 @@ export function useMatrix(
   limit: number,
 ): UseQueryResult<DistributionMatrix> {
   return useQuery(matrixQuery(slug, deliverable, limit));
+}
+
+export const channelsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: qk.channelPage(slug),
+    queryFn: () => api.channels(slug),
+  });
+
+export function useChannels(
+  slug: string,
+  enabled = true,
+): UseQueryResult<ChannelsView> {
+  return useQuery({ ...channelsQuery(slug), enabled });
 }
 
 export const rolloutsQuery = (slug: string) =>

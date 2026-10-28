@@ -157,6 +157,7 @@ export type ProductPageId =
   | "storefronts"
   | "presentation-listing"
   | "app-store"
+  | "channel"
   | "commerce"
   | "access"
   | "package-feeds"
@@ -335,6 +336,18 @@ export const CONNECT_PAGES: readonly ProductPageId[] = [
   "connect-usage",
   "connect-devices",
 ];
+
+/**
+ * A channel page's route tabs (A-22), the first the default. The URL knows every tab the page will
+ * have; the page shows the ones that are built (`channelTabs.ts`).
+ */
+export const CHANNEL_TAB_IDS = [
+  "status",
+  "releases",
+  "listing",
+  "sales",
+  "setup",
+] as const;
 
 /** A feed page's route tabs (F-11), the first the default. */
 export const FEED_TABS = ["packages", "setup", "settings", "activity"] as const;
@@ -721,6 +734,18 @@ export const SECTIONS: NavSection[] = [
         docs: "/docs/features/ship-builds/channels/app-store/",
         inNav: true,
         requires: "channel:app-store",
+      },
+      {
+        // A-22: one page per channel, `distribution/channels/<id>/<tab>`. No sidebar item: the
+        // channel list is the Outlets and Storefronts pages (A-21 owns the IA).
+        page: "channel",
+        accent: "distribution",
+        label: "Channel",
+        path: "distribution/channels",
+        icon: Store,
+        docs: "/docs/features/ship-builds/channels/",
+        inNav: false,
+        record: { noun: "Channel", tabs: CHANNEL_TAB_IDS },
       },
       {
         page: "access",

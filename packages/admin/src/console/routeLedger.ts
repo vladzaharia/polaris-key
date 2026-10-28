@@ -152,6 +152,12 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     from: "distribution/app-store",
     fate: "live",
   },
+  {
+    id: "channel",
+    scope: "product",
+    from: "distribution/channels",
+    fate: "live",
+  },
   { id: "access", scope: "product", from: "distribution/access", fate: "live" },
   {
     id: "package-feeds",

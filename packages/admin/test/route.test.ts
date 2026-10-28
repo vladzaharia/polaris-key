@@ -547,6 +547,7 @@ describe("the nav model (nav.ts)", () => {
       "storefronts",
       "presentation-listing",
       "app-store",
+      "channel",
       "commerce",
       "commerce-overview",
       "access",

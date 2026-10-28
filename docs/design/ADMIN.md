@@ -126,6 +126,7 @@ the table.
 | `storefronts`                 | `#/p/<slug>/distribution/storefronts`        | Distribution → Storefronts (`#/p/<slug>/distribution/storefronts`)         | live             |
 | `listing`                     | `#/p/<slug>/distribution/listing`            | Core → Listing (`#/p/<slug>/settings/presentation/listing`)                | moved (A-27)     |
 | `app-store`                   | `#/p/<slug>/distribution/app-store`          | Distribution → App Store (`#/p/<slug>/distribution/app-store`)             | live             |
+| `channel`                     | `#/p/<slug>/distribution/channels`           | Distribution → Channel (`#/p/<slug>/distribution/channels`)                | live             |
 | `access`                      | `#/p/<slug>/distribution/access`             | Distribution → Access (`#/p/<slug>/distribution/access`)                   | live             |
 | `package-feeds`               | `#/p/<slug>/distribution/feeds`              | Distribution → Packages (`#/p/<slug>/distribution/feeds`)                  | live             |
 | `health`                      | `#/p/<slug>/distribution/health`             | Distribution → Health (`#/p/<slug>/distribution/health`)                   | live             |

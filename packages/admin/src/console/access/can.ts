@@ -74,6 +74,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   storefronts: "ship",
   "presentation-listing": "ship",
   "app-store": "ship",
+  channel: "ship",
   access: "ship",
   "package-feeds": "ship",
   health: "ship",
