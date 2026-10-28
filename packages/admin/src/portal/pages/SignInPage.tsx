@@ -808,7 +808,9 @@ function MethodsStep({
     : carriedName
       ? t("signin.key.carriedTitle", { product: carriedName })
       : storefront && !context
-        ? t("signin.key.carriedTitle", { product: storefront })
+        ? t("signin.key.carriedTitle", {
+            product: productLabel(storefront),
+          })
         : context
           ? t("signin.methods.titleApp")
           : t("signin.methods.title");

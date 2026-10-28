@@ -34,7 +34,7 @@ describe("signed-out storefront link", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Sign in to add pixel-pals",
+        name: "Sign in to add Pixel Pals",
       }),
     ).toBeTruthy();
     expect(window.location.hash).toBe("#/discover/pixel-pals");
