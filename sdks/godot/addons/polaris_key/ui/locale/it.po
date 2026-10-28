@@ -6784,6 +6784,26 @@ msgstr "Problema di archiviazione"
 msgid "core.codes.store-failed.message"
 msgstr "L'app non è riuscita a leggere o salvare la licenza su questo dispositivo. Verifica che l'app possa scrivere nella sua cartella dati."
 
+#. Connect unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.title"
+msgstr "Connessione non disponibile"
+
+#. Nearby connection isn't available for this app on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.message"
+msgstr "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo."
+
+#. Device not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.title"
+msgstr "Dispositivo non verificato"
+
+#. This device couldn't be verified. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.message"
+msgstr "Impossibile verificare questo dispositivo. Riprova."
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

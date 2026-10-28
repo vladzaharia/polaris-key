@@ -6770,6 +6770,26 @@ msgstr ""
 msgid "core.codes.store-failed.message"
 msgstr ""
 
+#. Connect unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.title"
+msgstr ""
+
+#. Nearby connection isn't available for this app on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect-unavailable.message"
+msgstr ""
+
+#. Device not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.title"
+msgstr ""
+
+#. This device couldn't be verified. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-cert-invalid.message"
+msgstr ""
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

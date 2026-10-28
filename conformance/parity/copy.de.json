@@ -589,6 +589,14 @@
       "title": "Speicherproblem",
       "message": "Die App konnte ihre Lizenz auf diesem Gerät nicht lesen oder speichern. Prüfen Sie, ob die App in ihren Datenordner schreiben kann."
     },
+    "connect-unavailable": {
+      "title": "Verbindung nicht verfügbar",
+      "message": "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar."
+    },
+    "peer-cert-invalid": {
+      "title": "Gerät nicht bestätigt",
+      "message": "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut."
+    },
     "platform-error": {
       "title": "Plattformproblem",
       "message": "Die Plattform hat einen Fehler gemeldet. Versuchen Sie es erneut."

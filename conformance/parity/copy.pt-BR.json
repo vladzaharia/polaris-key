@@ -589,6 +589,14 @@
       "title": "Erro de armazenamento",
       "message": "O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele."
     },
+    "connect-unavailable": {
+      "title": "Conexão indisponível",
+      "message": "A conexão com dispositivos próximos não está disponível para este app neste dispositivo."
+    },
+    "peer-cert-invalid": {
+      "title": "Dispositivo não verificado",
+      "message": "Não foi possível verificar este dispositivo. Tente novamente."
+    },
     "platform-error": {
       "title": "Problema na plataforma",
       "message": "A plataforma informou um erro. Tente novamente."
