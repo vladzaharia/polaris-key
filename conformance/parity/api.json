@@ -2403,6 +2403,11 @@
       "sdk": "python",
       "path": "config.note_sync_change",
       "reason": "internal wiring seam: the Cloud Sync host reports applied changes; no host calls it"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.cloudConnect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     }
   ],
   "concepts": [
@@ -6210,9 +6215,7 @@
           "reason": "a hook returns a render value"
         },
         "python": {},
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6240,9 +6243,7 @@
           "reason": "a hook returns a render value"
         },
         "python": {},
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6264,9 +6265,7 @@
           "reason": "a hook returns a render value"
         },
         "python": {},
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6288,9 +6287,7 @@
           "reason": "a hook returns a render value"
         },
         "python": {},
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6312,9 +6309,7 @@
           "reason": "a hook returns a render value"
         },
         "python": {},
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6342,9 +6337,7 @@
           "reason": "a hook returns a render value"
         },
         "python": {},
-        "swift": {
-          "planned": "CC-11"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "CC-12"
         },
@@ -6378,6 +6371,10 @@
         "python": {
           "sdkOnly": true,
           "reason": "Node-first helper; Python carries it too"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Swift carries it too"
         }
       },
       "layer": "client"
@@ -6400,6 +6397,10 @@
         "python": {
           "sdkOnly": true,
           "reason": "Node-first helper; Python carries it too"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Swift carries it too"
         }
       },
       "layer": "client"
@@ -6422,6 +6423,10 @@
         "python": {
           "sdkOnly": true,
           "reason": "Node-first helper; Python carries it too"
+        },
+        "swift": {
+          "sdkOnly": true,
+          "reason": "Node-first helper; Swift carries it too"
         }
       },
       "layer": "client"

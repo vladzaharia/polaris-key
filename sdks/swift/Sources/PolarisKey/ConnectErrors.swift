@@ -27,6 +27,8 @@ public enum ConnectLanReason: String, Sendable, CaseIterable {
     case permissionDenied = "permission_denied"
     /// The app's Info.plist lacks `NSBonjourServices` or `NSLocalNetworkUsageDescription`.
     case notConfigured = "not_configured"
+    /// The OS registered the advert under another name, so it was withdrawn; the next rotation retries.
+    case registrationRenamed = "registration_renamed"
 
     /// The registered client code.
     public var code: String {
@@ -34,7 +36,7 @@ public enum ConnectLanReason: String, Sendable, CaseIterable {
         case .noIdentity, .noKeys, .notStarted, .notConfigured: return ErrorCode.notConfigured
         case .permissionDenied: return ErrorCode.nearbyPermissionDenied
         case .unknownPeer, .tooLarge, .badType: return ErrorCode.invalidArgument
-        case .notListening: return ErrorCode.connectUnavailable
+        case .notListening, .registrationRenamed: return ErrorCode.connectUnavailable
         case .connectFailed, .closed: return ErrorCode.networkError
         case .handshakeFailed, .wrongPeer: return ErrorCode.peerCertInvalid
         case .queueFull: return ErrorCode.rateLimited

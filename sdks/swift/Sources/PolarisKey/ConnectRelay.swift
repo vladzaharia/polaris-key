@@ -138,6 +138,16 @@ final class URLSessionRelaySocket: NSObject, ConnectRelaySocket, URLSessionWebSo
         finishOpen(.failure(RelaySocketClosed(code: closeCode.rawValue)))
     }
 
+    /// Never follow a redirect (B1, G13): the upgrade request carries the single-use ticket as a
+    /// subprotocol, and a redirect would send it to whatever host the answer names. Completing with nil
+    /// makes the 3xx the task's answer, so the open fails and nothing is sent to the new origin.
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         lock.withLock { ended = true }
         // No cause: a handshake error could carry the request.
@@ -521,8 +531,10 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         do {
             sock = try await openSocket(grant.url, [connectRelayProtocol, grant.ticket])
         } catch let e as RelaySocketClosed {
+            error = ConnectRelayError(.unavailable, "The relay could not be reached.", closeCode: e.code)
             return e.code
         } catch {
+            self.error = ConnectRelayError(.unavailable, "The relay could not be reached.")
             return nil
         }
         if stopped {

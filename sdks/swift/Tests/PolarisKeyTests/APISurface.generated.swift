@@ -148,4 +148,13 @@ func apiSurface() async {
     _ = PacksClient.progress  // packs.progress
     _ = \ConfigSetting.changes  // config.setting.changes
     _ = ConfigSetting.current  // config.setting.current
+    _ = CloudConnect.start  // cloudConnect.start
+    _ = CloudConnect.stop  // cloudConnect.stop
+    _ = CloudConnect.peers  // cloudConnect.peers
+    _ = CloudConnect.devices  // cloudConnect.devices
+    _ = CloudConnect.open  // cloudConnect.open
+    _ = CloudConnect.onChannel  // cloudConnect.onChannel
+    _ = CloudConnect.refreshPeers  // cloudConnect.refreshPeers
+    _ = CloudConnect.status  // cloudConnect.status
+    _ = CloudConnect.onNotice  // cloudConnect.onNotice
 }

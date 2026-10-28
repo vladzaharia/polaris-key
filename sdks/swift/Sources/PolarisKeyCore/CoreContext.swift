@@ -680,6 +680,22 @@ public actor CoreContext {
         return PeerTrustResult(applied: true, reason: nil)
     }
 
+    /// The trust custodian for a manifest a peer pushed (CC-11.15): only when trust refresh is on, then
+    /// `acceptPeer`, then the signed manifest persisted with the evidence for any pin it tombstoned, as
+    /// `refreshTrust()` does.
+    public func applyPeerTrust(_ jws: String) async -> PeerTrustResult {
+        guard trustRefreshEnabled else { return PeerTrustResult(applied: false, reason: "disabled") }
+        let r = acceptPeer(jws)
+        if r.applied {
+            let evidenceNow = evidence
+            await patchCache {
+                $0.trustJws = jws
+                $0.pinRevocations = evidenceNow
+            }
+        }
+        return r
+    }
+
     private func verifyManifest(_ jws: String, checkFreshness: Bool) -> TrustManifestResult {
         verifyTrustManifest(
             jws,

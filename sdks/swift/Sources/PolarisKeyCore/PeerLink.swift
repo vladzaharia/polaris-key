@@ -99,6 +99,10 @@ public struct PeerChannelOptions: Sendable {
     }
 }
 
+/// Bytes the link may hold for a pipe that is not taking them (S5): beyond this the peer is closed with
+/// `peer_busy`. A roster device that sends PINGs and never reads would otherwise grow the buffer forever.
+public let peerLinkWriteMaxBytes = 8 * 1024 * 1024
+
 public actor PeerLink: CustomStringConvertible, CustomReflectable {
     public static let handshakeFrameMax = 16_384
     public static let handshakeSeconds: TimeInterval = 30
@@ -119,6 +123,9 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
     private var open = false
     private var paused = false
     private var pauseWaiters: [CheckedContinuation<Void, Never>] = []
+    private let backlog: LockedValue<Int>
+    private let overflowHook: LockedValue<(@Sendable () -> Void)?>
+    private var overflowed = false
     private var openedResult: Result<PeerEstablished, PeerLinkRefused>?
     private var openedWaiters: [CheckedContinuation<Result<PeerEstablished, PeerLinkRefused>, Never>] = []
 
@@ -141,19 +148,28 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
     ) throws {
         let (ostream, ocont) = AsyncStream<Data>.makeStream()
         let (estream, econt) = AsyncStream<PeerSessionEvent>.makeStream()
+        let bl = LockedValue(0)
+        let oh = LockedValue<(@Sendable () -> Void)?>(nil)
+        backlog = bl
+        overflowHook = oh
         self.pipe = pipe
         self.handlers = handlers
         self.outbound = ocont
         self.inbound = econt
         channel = try PeerChannel(
             role: o.role, slug: o.slug, staticKey: o.staticKey, account: o.account, admission: o.admission,
-            caps: o.caps, hello: o.hello, send: { ocont.yield($0) }, onEvent: { econt.yield($0) }, mode: o.mode,
+            caps: o.caps, hello: o.hello,
+            send: { d in
+                ocont.yield(d)
+                if bl.with({ $0 += d.count + 2; return $0 }) > peerLinkWriteMaxBytes { oh.current?() }
+            }, onEvent: { econt.yield($0) }, mode: o.mode,
             now: o.now, mono: o.mono, rekeyMessages: o.rekeyMessages, rekeySeconds: o.rekeySeconds)
         // The writer drains in order and closes the pipe once the link ends, so a CLOSE record is
         // flushed before the pipe goes.
         let p = pipe
         Task {
             for await d in ostream {
+                bl.with { $0 = max(0, $0 - d.count - 2) }
                 guard let f = try? PeerFrame.encode(d) else { continue }
                 try? await p.write(f)
             }
@@ -164,6 +180,10 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
     }
 
     private func begin() {
+        overflowHook.set { [weak self] in
+            guard let self else { return }
+            Task { await self.writeOverflow() }
+        }
         let estream = events
         let limit = handshakeLimit
         eventTask = Task { [weak self] in
@@ -173,6 +193,14 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
             try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
             if !Task.isCancelled { await self?.fail("handshake_failed") }
         }
+    }
+
+    /// The pipe is not taking what we write: close the pipe (which also unblocks the writer) and end the
+    /// link with `peer_busy`.
+    private func writeOverflow() async {
+        if ended || overflowed { return }
+        overflowed = true
+        await pipe.close()
     }
 
     public nonisolated var description: String { "PeerLink()" }
@@ -192,10 +220,10 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         }
         lost = true
         // Frames that arrived before the FIN were handled above; now end the session.
-        await channel.close(.peerBye)
+        await channel.close(overflowed ? .peerBusy : .peerBye)
         inbound.finish()
         await eventTask?.value
-        finish(PeerLinkClosed(code: "connection_lost", byPeer: false))
+        finish(PeerLinkClosed(code: overflowed ? "peer_busy" : "connection_lost", byPeer: false))
     }
 
     /// Initiator: write message 1.
@@ -304,7 +332,7 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         case .sas:
             break
         case .closed(let reason, let byPeer):
-            finish(PeerLinkClosed(code: lost && !byPeer ? "connection_lost" : reason.rawValue, byPeer: byPeer))
+            finish(PeerLinkClosed(code: lost && !byPeer && !overflowed ? "connection_lost" : reason.rawValue, byPeer: byPeer))
         }
     }
 

@@ -112,13 +112,23 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
         var nextId = 0
         /// The newest roster a session handed up, held until an identity load catches up.
         var pushed: (jws: String, epoch: Int)?
+        /// `close()` ran: nothing queued or armed runs any more (G18, the sign-out order).
+        var closed = false
+        /// The last second a `busy` notice was emitted, by kind: the rest are dropped, not reported.
+        var lastBusy: [String: Int] = [:]
+    }
+
+    /// A queued job. `always` jobs (the drain marker) run even after `close()`.
+    private struct Job: Sendable {
+        let always: Bool
+        let fn: @Sendable () async -> Void
     }
 
     private let src: ConnectPeerDocsSource
     private let onStored: @Sendable () -> Void
     private let timer: Timer
     private let state = LockedValue(State())
-    private let jobs: AsyncStream<@Sendable () async -> Void>.Continuation
+    private let jobs: AsyncStream<Job>.Continuation
     private let worker: Task<Void, Never>
 
     public init(
@@ -134,9 +144,15 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
                 }
                 return { t.cancel() }
             }
-        let (stream, cont) = AsyncStream<@Sendable () async -> Void>.makeStream()
+        let (stream, cont) = AsyncStream<Job>.makeStream()
         jobs = cont
-        worker = Task { for await j in stream { await j() } }
+        let st = state
+        worker = Task {
+            for await j in stream {
+                if !j.always && st.with({ $0.closed }) { continue }
+                await j.fn()
+            }
+        }
     }
 
     public var description: String { "ConnectPeerDocs()" }
@@ -158,6 +174,7 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
     /// Stop a pending retry and the worker.
     public func close() {
         let cancel = state.with { s -> (@Sendable () -> Void)? in
+            s.closed = true
             let r = s.retry
             s.retry = nil
             return r
@@ -169,7 +186,7 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
     /// Resolves once every job queued before this call has run (for tests and orderly shutdown).
     public func drain() async {
         await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-            let r = jobs.yield({ c.resume() })
+            let r = jobs.yield(Job(always: true, fn: { c.resume() }))
             if case .terminated = r { c.resume() }
         }
     }
@@ -222,12 +239,13 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
     /// A peer is on a newer roster, or the relay said the roster changed: fetch it (a fresh
     /// `identity(refresh:)`, verified under the normal replacement rules). At most one a minute.
     public func wantRing() {
-        jobs.yield({ [self] in _ = await want(retry: false) })
+        if isClosed { return }
+        jobs.yield(Job(always: false, fn: { [self] in _ = await want(retry: false) }))
     }
 
     /// True when a fetch started.
     func want(retry: Bool) async -> Bool {
-        guard let refresh = src.refresh else { return false }
+        guard let refresh = src.refresh, !isClosed else { return false }
         let t = src.now()
         enum Gate {
             case go
@@ -246,6 +264,7 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
         }
         do {
             try await refresh()
+            if isClosed { return true }  // a sign-out ran meanwhile: nothing is stored or retried
             state.with { $0.tries = 0 }
             onStored()
         } catch {
@@ -253,38 +272,61 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
                 s.tries += 1
                 return s.tries
             }
-            if retry && n <= maxRetries { defer_(TimeInterval(connectRefreshGapSeconds)) }
+            if retry && n <= maxRetries && !isClosed { defer_(TimeInterval(connectRefreshGapSeconds)) }
         }
         return true
     }
 
+    private var isClosed: Bool { state.with { $0.closed } }
+
     private func defer_(_ seconds: TimeInterval) {
         let armed = state.with { s -> Bool in
-            if s.retry != nil { return false }
+            if s.retry != nil || s.closed { return false }
             return true
         }
         guard armed else { return }
         let cancel = timer(max(1, seconds)) { [self] in
             state.with { $0.retry = nil }
-            jobs.yield({ [self] in _ = await want(retry: true) })
+            jobs.yield(Job(always: false, fn: { [self] in _ = await want(retry: true) }))
         }
-        state.with { $0.retry = cancel }
+        state.with { s in
+            if s.closed { cancel() } else { s.retry = cancel }
+        }
     }
 
     /// One at a time, at most `connectMaxDocsQueued` waiting, and a document already waiting is not
     /// queued twice: the excess is refused visibly, not worked on.
     private func run(_ kind: String, _ jws: String, _ job: @escaping @Sendable () async -> Void) {
         let key = kind + ":" + jws
-        let busy = state.with { s -> Bool in
-            if s.queued.contains(key) || s.queued.count >= connectMaxDocsQueued { return true }
+        let now = src.now()
+        enum Gate { case run, busy(notify: Bool), closed }
+        let gate: Gate = state.with { s in
+            if s.closed { return .closed }
+            // One slot is kept for RING: a flood of TRUST documents cannot starve a roster (G11).
+            let nonRing = s.queued.filter { !$0.hasPrefix("ring:") }.count
+            let full = kind == "ring" ? s.queued.count >= connectMaxDocsQueued : nonRing >= connectMaxDocsQueued - 1
+            if s.queued.contains(key) || full {
+                // At most one busy notice per kind per second; the rest are dropped, not reported.
+                let notify = s.lastBusy[kind] != now
+                s.lastBusy[kind] = now
+                return .busy(notify: notify)
+            }
             s.queued.insert(key)
-            return false
+            return .run
         }
-        if busy { return emit(ConnectNotice(type: kind, outcome: "refused", reason: "busy")) }
-        jobs.yield({ [self] in
-            await job()
-            _ = state.with { $0.queued.remove(key) }
-        })
+        switch gate {
+        case .closed: return
+        case .busy(let notify):
+            if notify { emit(ConnectNotice(type: kind, outcome: "refused", reason: "busy")) }
+        case .run:
+            jobs.yield(
+                Job(
+                    always: false,
+                    fn: { [self] in
+                        await job()
+                        _ = state.with { $0.queued.remove(key) }
+                    }))
+        }
     }
 
     private func emit(_ n: ConnectNotice) {

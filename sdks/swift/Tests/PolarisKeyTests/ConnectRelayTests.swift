@@ -419,8 +419,82 @@ final class ConnectRelayTests: XCTestCase {
         let s = try await open(big.url, ["pkey-relay.1", "t"])
         do { _ = try await s.receive(); XCTFail("oversize") } catch { XCTAssertTrue(error is RelaySocketClosed) }
     }
+
+    /// B1: a redirect on the upgrade never carries the ticket to another origin.
+    func testARedirectOnTheUpgradeIsNotFollowedAndTheRelayReportsATypedFailure() async throws {
+        let target = try await HTTPStub.start(reply: nil)
+        defer { target.stop() }
+        let first = try await HTTPStub.start(
+            reply: "HTTP/1.1 302 Found\r\nLocation: ws://127.0.0.1:\(target.port)/elsewhere\r\nContent-Length: 0\r\n\r\n")
+        defer { first.stop() }
+        let url = URL(string: "ws://127.0.0.1:\(first.port)/relay")!
+        let open = urlSessionRelayOpener(openSeconds: 5, allowInsecureLoopback: true)
+        do { _ = try await open(url, ["pkey-relay.1", "pkeyrt_" + String(repeating: "B", count: 32)]); XCTFail("redirect") } catch {
+            XCTAssertTrue(error is RelaySocketClosed)
+        }
+        XCTAssertEqual(first.requests.count, 1)
+        XCTAssertTrue(first.requests[0].contains("pkeyrt_"), "the origin it was meant for saw the offer")
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(target.requests.count, 0, "no second request reached the other origin")
+        // Through the service: a typed failure and a backoff, not a hang.
+        let src = try await heldSource(epoch: 1, refreshes: Box(0), now: { 1_000_000 })
+        let svc = ConnectRelayService(
+            source: src,
+            ticket: { .granted(RelayGrant(ticket: "pkeyrt_" + String(repeating: "C", count: 32), url: url, protocolName: "pkey-relay.1", expiresAt: 2_000_000_000)) },
+            options: ConnectRelayOptions(opener: open, sleep: { _ in try await Task.sleep(nanoseconds: 60_000_000_000) }))
+        await svc.start()
+        await until("backoff with a typed error") { let st = await svc.status; return st.state == .backoff && st.error?.reason == .unavailable }
+        XCTAssertEqual(target.requests.count, 0)
+        await svc.stop()
+    }
     #endif
 }
+
+#if canImport(Network)
+/// A bare HTTP responder on loopback: records each request's text and answers `reply` (nothing when nil).
+private final class HTTPStub: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _requests: [String] = []
+    private var conns: [NWConnection] = []
+    private var listener: NWListener!
+    private(set) var port: UInt16 = 0
+    var requests: [String] { lock.withLock { _requests } }
+
+    static func start(reply: String?) async throws -> HTTPStub {
+        let s = HTTPStub()
+        let l = try NWListener(using: .tcp)
+        s.listener = l
+        let q = DispatchQueue(label: "http-stub")
+        l.newConnectionHandler = { c in
+            s.lock.withLock { s.conns.append(c) }
+            c.start(queue: q)
+            c.receive(minimumIncompleteLength: 1, maximumLength: 65536) { data, _, _, _ in
+                if let data { s.lock.withLock { s._requests.append(String(decoding: data, as: UTF8.self)) } }
+                if let reply { c.send(content: Data(reply.utf8), completion: .contentProcessed { _ in }) }
+            }
+        }
+        try await withCheckedThrowingContinuation { (k: CheckedContinuation<Void, Error>) in
+            let once = Box(false)
+            l.stateUpdateHandler = { st in
+                switch st {
+                case .ready:
+                    if !once.mutate2({ let w = $0; $0 = true; return w }) { s.port = l.port!.rawValue; k.resume() }
+                case .failed(let e):
+                    if !once.mutate2({ let w = $0; $0 = true; return w }) { k.resume(throwing: e) }
+                default: break
+                }
+            }
+            l.start(queue: q)
+        }
+        return s
+    }
+
+    func stop() {
+        listener.cancel()
+        for c in lock.withLock({ conns }) { c.cancel() }
+    }
+}
+#endif
 
 extension Rig {
     /// A second device on the same room, for MEMBERS.
