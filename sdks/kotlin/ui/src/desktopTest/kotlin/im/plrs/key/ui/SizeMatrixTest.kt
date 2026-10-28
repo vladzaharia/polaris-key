@@ -99,7 +99,7 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
     MatrixScreen("link-offer", Regex("link google", RegexOption.IGNORE_CASE)) {
         PolarisKitScreen(autoStep("link-offer"))
     },
-    MatrixScreen("link-done", Regex("continue", RegexOption.IGNORE_CASE)) {
+    MatrixScreen("link-done", Regex("done", RegexOption.IGNORE_CASE)) {
         PolarisKitScreen(autoStep("link-done"))
     },
     MatrixScreen("link-conflict", Regex("join accounts", RegexOption.IGNORE_CASE)) {

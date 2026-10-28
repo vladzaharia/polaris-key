@@ -132,4 +132,26 @@ class AndroidDeviceKeysTest {
         assertEquals(a, store().publicKeys())
         assertNotNull(keys.keys[KeystoreSealer.aliasFor(product)])
     }
+
+    @Test
+    fun theNoBackupDirectoryIsNotLookedUpOnTheBuildingThread() = runBlocking {
+        val builder = Thread.currentThread()
+        val lookups = java.util.concurrent.CopyOnWriteArrayList<Thread>()
+        val ctx = object : android.content.ContextWrapper(org.robolectric.RuntimeEnvironment.getApplication()) {
+            override fun getNoBackupFilesDir(): File {
+                lookups.add(Thread.currentThread())
+                return tmp.root
+            }
+        }
+        // StrictMode flags this lookup on the main thread; building a client there must not make it.
+        val device = androidDeviceKeyStore(ctx, product, keys)
+        val root = androidSyncRootStorage(ctx, product, keys)
+        assertTrue("no lookup while building", lookups.isEmpty())
+        device.ensure()
+        root.put(ByteArray(32) { 1 })
+        assertTrue(lookups.isNotEmpty())
+        assertTrue("the lookup ran off the building thread", lookups.none { it === builder })
+        assertTrue(File(tmp.root, "pkey/$product/device-keys.bin").exists())
+        assertTrue(File(tmp.root, "pkey/$product/sync-root.bin").exists())
+    }
 }

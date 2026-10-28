@@ -415,11 +415,8 @@ class ConnectLanTest {
             val inner = Network()
             override suspend fun advertise(advert: MdnsAdvert) = inner.advertise(advert)
 
-            override suspend fun browse(
-                onUp: (MdnsFound) -> Unit,
-                onDown: (String) -> Unit,
-                accept: (String) -> Boolean,
-            ): MdnsHandle = error("no socket")
+            override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle =
+                error("no socket")
         }
         try {
             w.start(w.a, mdns = net)

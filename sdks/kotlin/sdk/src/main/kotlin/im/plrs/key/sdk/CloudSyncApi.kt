@@ -472,7 +472,9 @@ internal class CloudSyncApi(
                 forgetPending = false
                 forgetAttempts = 0
             } else {
-                java.util.logging.Logger.getLogger("im.plrs.key.sdk").warning("Cloud Sync: the key ring root could not be removed; it will be retried.")
+                java.util.logging.Logger.getLogger(
+                    "im.plrs.key.sdk",
+                ).warning("Cloud Sync: the key ring root could not be removed; it will be retried.")
                 if (forgetAttempts < RETRY_DELAYS_MS.size) {
                     val wait = RETRY_DELAYS_MS[forgetAttempts++]
                     scope.launch {
@@ -542,30 +544,26 @@ internal class CloudSyncApi(
 }
 
 /** The client's own wiring of a host: its transport, state directory, discovery document and key ring. */
-internal fun liveCloudSyncDeps(
-    core: CoreContext,
-    keyring: SyncKeyring,
-    config: ConfigClient,
-    stateDir: java.io.File,
-): CloudSyncHostDeps = CloudSyncHostDeps(
-    core.product,
-    stateDir,
-    { req -> CloudSyncTransport.send(core, req) },
-    keyring.codec,
-    { config.syncDocument() },
-).also { d ->
-    d.sendFor = { req, bound -> CloudSyncTransport.send(core, req, bound) }
-    d.keyringUnlocked = { keyring.unlocked }
-    d.attachKeyring = { keyring.attach(it) }
-    d.syncEnabled = { core.enabled(ServiceSlug.sync) }
-    d.discovery = {
-        val f = core.discoveryDocument()?.services?.get(ServiceSlug.sync)?.takeIf { it.enabled }
-        val said = (f?.extras?.get("encryption") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
-        f?.let { SyncDiscovery(said?.takeIf { it == "e2e" || it == "server" }) }
+internal fun liveCloudSyncDeps(core: CoreContext, keyring: SyncKeyring, config: ConfigClient, stateDir: java.io.File): CloudSyncHostDeps =
+    CloudSyncHostDeps(
+        core.product,
+        stateDir,
+        { req -> CloudSyncTransport.send(core, req) },
+        keyring.codec,
+        { config.syncDocument() },
+    ).also { d ->
+        d.sendFor = { req, bound -> CloudSyncTransport.send(core, req, bound) }
+        d.keyringUnlocked = { keyring.unlocked }
+        d.attachKeyring = { keyring.attach(it) }
+        d.syncEnabled = { core.enabled(ServiceSlug.sync) }
+        d.discovery = {
+            val f = core.discoveryDocument()?.services?.get(ServiceSlug.sync)?.takeIf { it.enabled }
+            val said = (f?.extras?.get("encryption") as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { it.isString }?.content
+            f?.let { SyncDiscovery(said?.takeIf { it == "e2e" || it == "server" }) }
+        }
+        d.fetchSchema = { config.schemaJson() }
+        d.subject = { core.storedSubject() }
     }
-    d.fetchSchema = { config.schemaJson() }
-    d.subject = { core.storedSubject() }
-}
 
 /**
  * A state directory for a store without one (memory): private to the process. The client's close deletes the tree,

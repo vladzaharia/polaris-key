@@ -122,10 +122,15 @@ public class PolarisCloudSyncHost(
         signedOut = false
         when (status.state) {
             SyncState.Local, SyncState.Unsupported -> setRow(null)
+
             SyncState.Locked -> locked(mine)
+
             SyncState.Idle, SyncState.Pending -> setRow(PolarisCloudSyncRow.Synced)
+
             SyncState.Syncing -> setRow(PolarisCloudSyncRow.Syncing)
+
             SyncState.Offline, SyncState.Paused -> setRow(PolarisCloudSyncRow.Offline)
+
             SyncState.Blocked -> {
                 signedOut = status.reason == "accountRequired" || status.reason == "unauthorized"
                 setRow(if (signedOut) PolarisCloudSyncRow.SignedOut else PolarisCloudSyncRow.Error)
@@ -145,6 +150,7 @@ public class PolarisCloudSyncHost(
         if (mine != generation) return
         when (result) {
             is SyncUnlockResult.RingChanged -> setRow(PolarisCloudSyncRow.RingChanged)
+
             is SyncUnlockResult.Unlocked -> {
                 val next = try {
                     source.status()
@@ -156,6 +162,7 @@ public class PolarisCloudSyncHost(
                 if (mine != generation) return
                 if (next != null && next.state != SyncState.Locked) refresh() else setRow(PolarisCloudSyncRow.Locked)
             }
+
             else -> setRow(PolarisCloudSyncRow.Locked)
         }
     }
@@ -168,10 +175,12 @@ public class PolarisCloudSyncHost(
                 signedOut = true
                 setRow(PolarisCloudSyncRow.SignedOut)
             }
+
             is CloudSyncEvent.Change -> {
                 lastSynced = clock()
                 refresh()
             }
+
             is CloudSyncEvent.Rejected, is CloudSyncEvent.UnsyncedData, CloudSyncEvent.PurgeFailed -> refresh()
         }
     }
@@ -226,10 +235,12 @@ public class PolarisCloudSyncHost(
                         finish(true)
                         return@collect
                     }
+
                     ui == PolarisSyncUi.Idle && active -> {
                         finish(false)
                         return@collect
                     }
+
                     ui != PolarisSyncUi.Idle -> active = true
                 }
             }

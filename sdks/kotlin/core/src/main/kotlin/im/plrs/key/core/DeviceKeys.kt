@@ -161,17 +161,34 @@ public interface DeviceKeySealer {
  * [sealer] to destroy its key. Overwriting is best effort (a log-structured disk may keep old
  * blocks); with a sealer the destroyed key is what makes a stale copy unreadable.
  */
-public class FileDeviceKeyStorage(
-    private val file: File,
-    private val sealer: DeviceKeySealer? = null,
-    /** Binds a sealed blob to this use (the AAD): a blob moved to another product or purpose fails to open. */
-    private val sealContext: ByteArray = "pkey-device-keys/1".toByteArray(Charsets.UTF_8),
+public class FileDeviceKeyStorage private constructor(
+    private val fileSource: Lazy<File>,
+    private val sealer: DeviceKeySealer?,
+    private val sealContext: ByteArray,
 ) : DeviceKeyStorage {
+    public constructor(
+        file: File,
+        sealer: DeviceKeySealer? = null,
+        /** Binds a sealed blob to this use (the AAD): a blob moved to another product or purpose fails to open. */
+        sealContext: ByteArray = "pkey-device-keys/1".toByteArray(Charsets.UTF_8),
+    ) : this(lazyOf(file), sealer, sealContext)
+
+    /**
+     * A file resolved on first use, which is always on [Dispatchers.IO]: a platform directory lookup
+     * (Android's `noBackupFilesDir` touches the disk) never runs on the thread that builds the storage.
+     */
+    public constructor(
+        file: () -> File,
+        sealer: DeviceKeySealer? = null,
+        sealContext: ByteArray = "pkey-device-keys/1".toByteArray(Charsets.UTF_8),
+    ) : this(lazy(LazyThreadSafetyMode.SYNCHRONIZED, file), sealer, sealContext)
+
     override val persistence: DeviceKeyPersistence = DeviceKeyPersistence.durable
 
+    private val file: File get() = fileSource.value
     private val dir: File get() = file.absoluteFile.parentFile ?: File(".")
     private val lockFile: File get() = File(dir, ".${file.name}.lock")
-    private val mutex: Mutex = MUTEXES.computeIfAbsent(File(dir.canonicalFile, file.name).path) { Mutex() }
+    private val mutex: Mutex by lazy { MUTEXES.computeIfAbsent(File(dir.canonicalFile, file.name).path) { Mutex() } }
     private val nio: Boolean = !RuntimeFamily.isAndroid && NioFiles.available
 
     private suspend inline fun <T> locked(crossinline block: () -> T): T =

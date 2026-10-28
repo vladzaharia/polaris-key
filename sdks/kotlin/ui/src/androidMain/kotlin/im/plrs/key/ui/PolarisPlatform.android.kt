@@ -15,14 +15,12 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -32,10 +30,12 @@ import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
-import androidx.compose.runtime.SideEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 private class AndroidClipboard(private val clipboard: Clipboard) : PolarisClipboard {
     override suspend fun setText(label: String, text: String, sensitive: Boolean): Boolean = runCatching {
@@ -92,8 +92,7 @@ internal actual fun decodeIcon(bytes: ByteArray, targetPx: Int, maxSide: Int): I
 }
 
 @Composable
-internal actual fun PolarisQr(content: String, contentDescription: String, modifier: Modifier) =
-    PolarisQrCode(content, contentDescription, modifier)
+internal actual fun PolarisQr(content: String, contentDescription: String, modifier: Modifier) = PolarisQrCode(content, contentDescription, modifier)
 
 @Composable
 internal actual fun systemLocaleTag(): String {
@@ -172,8 +171,11 @@ internal actual fun polarisPromptDialogProperties(
     dismissible: Boolean,
     scrim: Boolean,
     dismissOnClickOutside: Boolean,
-): androidx.compose.ui.window.DialogProperties =
-    androidx.compose.ui.window.DialogProperties(dismissOnBackPress = dismissible, dismissOnClickOutside = dismissOnClickOutside, usePlatformDefaultWidth = false)
+): androidx.compose.ui.window.DialogProperties = androidx.compose.ui.window.DialogProperties(
+    dismissOnBackPress = dismissible,
+    dismissOnClickOutside = dismissOnClickOutside,
+    usePlatformDefaultWidth = false,
+)
 
 @Composable
 internal actual fun PolarisDialogDim(amount: Float) {
@@ -204,10 +206,12 @@ internal actual fun PolarisReturnEffect(awaiting: Boolean, onReturn: () -> Unit)
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> left = true
+
                 Lifecycle.Event.ON_RESUME -> if (left) {
                     left = false
                     current()
                 }
+
                 else -> Unit
             }
         }

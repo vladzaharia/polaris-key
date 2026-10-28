@@ -6,8 +6,8 @@
 
 package im.plrs.key.config
 
-import im.plrs.key.core.ManagementState
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.ManagementState
 import im.plrs.key.core.sync.CallResult
 import im.plrs.key.core.sync.ReadResult
 import kotlinx.serialization.json.JsonArray
@@ -60,7 +60,9 @@ public suspend fun ConfigClient.syncDocument(): JsonObject {
         mapOf(
             "values" to JsonObject(entries.mapValues { it.value.value }),
             "locked" to JsonArray(
-                entries.filter { it.value.state == ManagementState.enforced || it.value.state == ManagementState.hidden }.keys.sorted().map { JsonPrimitive(it) },
+                entries.filter {
+                    it.value.state == ManagementState.enforced || it.value.state == ManagementState.hidden
+                }.keys.sorted().map { JsonPrimitive(it) },
             ),
         ),
     )

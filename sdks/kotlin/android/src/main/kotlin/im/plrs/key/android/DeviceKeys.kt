@@ -40,15 +40,25 @@ public class AndroidDeviceKeySealer(private val sealer: KeystoreSealer) : Device
     }
 }
 
+/**
+ * [file], or `noBackupFilesDir/pkey/<product>/<name>` looked up on first use. The lookup touches the disk,
+ * so it is deferred to the storage's first (IO-dispatched) operation: building a client on the main thread
+ * trips no StrictMode disk-read violation. The product name is still checked now.
+ */
+private fun fileOrNoBackup(context: Context, productSlug: String, file: File?, name: String): () -> File {
+    val slug = SecureStore.checkProductName(productSlug)
+    return { file ?: File(context.noBackupFilesDir, "pkey/$slug/$name") }
+}
+
 /** The Android device key store for [productSlug]: Keystore-wrapped keys in `noBackupFilesDir`. */
 public fun androidDeviceKeyStore(
     context: Context,
     productSlug: String,
     keys: KeyProvider = AndroidKeyStoreProvider(context),
-    file: File = File(context.noBackupFilesDir, "pkey/${SecureStore.checkProductName(productSlug)}/device-keys.bin"),
+    file: File? = null,
 ): DeviceKeyStore = DeviceKeyStore(
     FileDeviceKeyStorage(
-        file,
+        fileOrNoBackup(context, productSlug, file, "device-keys.bin"),
         AndroidDeviceKeySealer(KeystoreSealer(keys, KeystoreSealer.aliasFor(productSlug))),
         "pkey-device-keys/1/$productSlug".toByteArray(Charsets.UTF_8),
     ),
@@ -63,9 +73,9 @@ public fun androidSyncRootStorage(
     context: Context,
     productSlug: String,
     keys: KeyProvider = AndroidKeyStoreProvider(context),
-    file: File = File(context.noBackupFilesDir, "pkey/${SecureStore.checkProductName(productSlug)}/sync-root.bin"),
+    file: File? = null,
 ): FileDeviceKeyStorage = FileDeviceKeyStorage(
-    file,
+    fileOrNoBackup(context, productSlug, file, "sync-root.bin"),
     AndroidDeviceKeySealer(KeystoreSealer(keys, KeystoreSealer.rootAliasFor(productSlug))),
     "pkey-sync-root/1/$productSlug".toByteArray(Charsets.UTF_8),
 )

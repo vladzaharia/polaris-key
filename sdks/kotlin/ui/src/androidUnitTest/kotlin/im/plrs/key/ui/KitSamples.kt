@@ -4,12 +4,12 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -65,22 +65,71 @@ internal val samplePrompt = PolarisSignInCode(
 )
 
 internal val sampleDevices = listOf(
-    DeviceInfo(id = "dev_1", current = true, status = LicenseStatus.ok, lastVerifiedAt = NOW * 1000 - 120_000, label = "Pixel 9 Pro", platform = "android", lastSeenAt = NOW * 1000 - 120_000),
-    DeviceInfo(id = "dev_2", current = false, status = LicenseStatus.ok, label = "Ada's tablet", platform = "android", lastSeenAt = NOW * 1000 - 3 * 86_400_000L),
-    DeviceInfo(id = "dev_3", current = false, status = LicenseStatus.ok, lastVerifiedAt = null, label = null, platform = "macos", lastSeenAt = NOW * 1000 - 9 * 86_400_000L),
+    DeviceInfo(
+        id = "dev_1",
+        current = true,
+        status = LicenseStatus.ok,
+        lastVerifiedAt = NOW * 1000 - 120_000,
+        label = "Pixel 9 Pro",
+        platform = "android",
+        lastSeenAt =
+        NOW * 1000 - 120_000,
+    ),
+    DeviceInfo(
+        id = "dev_2",
+        current = false,
+        status = LicenseStatus.ok,
+        label = "Ada's tablet",
+        platform = "android",
+        lastSeenAt =
+        NOW * 1000 - 3 * 86_400_000L,
+    ),
+    DeviceInfo(
+        id = "dev_3",
+        current = false,
+        status = LicenseStatus.ok,
+        lastVerifiedAt = null,
+        label = null,
+        platform = "macos",
+        lastSeenAt =
+        NOW * 1000 - 9 * 86_400_000L,
+    ),
 )
 
 internal val sampleSettings = PolarisSettingsUi(
     loading = false,
     license = PolarisLicenseSummary(LicenseStatus.ok, holder = "Ada Lovelace", entitlements = listOf("dlc.frost", "multiplayer", "soundtrack")),
     entries = listOf(
-        PolarisSettingEntry("audio.volume", "Music volume", "80", ConfigSource.remoteDefault, editor = PolarisSettingEditor.Number("80", integer = true, min = 0.0, max = 100.0)),
         PolarisSettingEntry(
-            "graphics.quality", "Graphics quality", "high", ConfigSource.local,
-            editor = PolarisSettingEditor.Choice(listOf("Low" to JsonPrimitive("low"), "Medium" to JsonPrimitive("medium"), "High" to JsonPrimitive("high")), selected = 2),
+            "audio.volume",
+            "Music volume",
+            "80",
+            ConfigSource.remoteDefault,
+            editor = PolarisSettingEditor.Number("80", integer = true, min = 0.0, max = 100.0),
+        ),
+        PolarisSettingEntry(
+            "graphics.quality",
+            "Graphics quality",
+            "high",
+            ConfigSource.local,
+            editor = PolarisSettingEditor.Choice(
+                listOf(
+                    "Low" to JsonPrimitive("low"),
+                    "Medium" to JsonPrimitive("medium"),
+                    "High" to JsonPrimitive("high"),
+                ),
+                selected = 2,
+            ),
         ),
         PolarisSettingEntry("hints.enabled", "Show hints", "true", ConfigSource.remoteDefault, editor = PolarisSettingEditor.Toggle(true)),
-        PolarisSettingEntry("player.name", "Display name", "Ada", ConfigSource.fallback, editor = PolarisSettingEditor.Text("Ada", maxLength = 24), description = "Shown on the leaderboard."),
+        PolarisSettingEntry(
+            "player.name",
+            "Display name",
+            "Ada",
+            ConfigSource.fallback,
+            editor = PolarisSettingEditor.Text("Ada", maxLength = 24),
+            description = "Shown on the leaderboard.",
+        ),
         PolarisSettingEntry("telemetry.enabled", "Share diagnostics", "false", ConfigSource.enforced),
         PolarisSettingEntry("server.region", "Server region", "eu-west", ConfigSource.fallback),
     ),
@@ -120,13 +169,13 @@ internal val updateDialog: @Composable () -> Unit = {
     SampleProduct()
     PolarisUpdatePromptDialog(
         PolarisUpdateUi(
-        "2.5.0",
-        currentVersion = "2.4.1",
-        size = 61_000_000L,
-        notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
-        notesUrl = "https://example.com/releases/2.5.0",
-        outlet = "play",
-    ),
+            "2.5.0",
+            currentVersion = "2.4.1",
+            size = 61_000_000L,
+            notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
+            notesUrl = "https://example.com/releases/2.5.0",
+            outlet = "play",
+        ),
         onUpdate = {},
         onLater = {},
         onSkip = {},
@@ -182,7 +231,8 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "settings-list" to { PolarisSettingsScreen(sampleSettings, onSet = { _, _ -> }, onReset = {}) },
     "devices-list" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
     "account-list-detail" to {
-        PolarisAccountScreen(sampleSettings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ -> }, onReset = {})
+        PolarisAccountScreen(sampleSettings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ ->
+        }, onReset = {})
     },
     "updatePrompt-ready" to {
         Column(Modifier.fillMaxSize()) {
@@ -296,7 +346,9 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "about-default" to {
         PolarisAbout(
             PolarisAboutInfo(version = "2.4.1", build = "build 241", diagnostics = "Diceroll 2.4.1 (241)\nAndroid 15"),
-            onPrivacy = {}, onSupport = {}, onLicenses = {},
+            onPrivacy = {},
+            onSupport = {},
+            onLicenses = {},
         )
     },
 )
@@ -339,7 +391,9 @@ internal fun syncScreen(component: KitComponent, member: String, vararg fields: 
                         put("rootKid", JsonPrimitive("kid_b21c"))
                     },
                 )
+
                 value is Boolean -> put(key, JsonPrimitive(value))
+
                 else -> put(key, JsonPrimitive(value.toString()))
             }
         }

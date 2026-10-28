@@ -249,11 +249,13 @@ public fun PolarisKitScreen(
 
         screen.component == KitComponent.ringChange ->
             PolarisRingChange(
-                screen, modifier,
+                screen,
+                modifier,
                 onAccept = { onAction(KitAction.acceptRingChange) },
                 onUseCode = { onAction(KitAction.useRecoveryCode) },
                 onCancel = { onAction(KitAction.cancel) },
-                catalog = catalog, locale = locale,
+                catalog = catalog,
+                locale = locale,
             )
 
         screen.component == KitComponent.recoveryCode ->
@@ -261,8 +263,14 @@ public fun PolarisKitScreen(
                 // The tick is the screen's own state here; Done follows it (the host gets onAction(null) on Done).
                 var saved by remember(screen) { mutableStateOf(screen.state == "saved") }
                 PolarisRecoveryCodeScreen(
-                    screen, recoveryCode, modifier, onSavedChange = { saved = it }, onDone = { onAction(null) },
-                    catalog = catalog, locale = locale, saved = saved,
+                    screen,
+                    recoveryCode,
+                    modifier,
+                    onSavedChange = { saved = it },
+                    onDone = { onAction(null) },
+                    catalog = catalog,
+                    locale = locale,
+                    saved = saved,
                 )
             }
 
