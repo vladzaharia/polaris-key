@@ -86,7 +86,13 @@ extension KitStates {
                         c.line("signin.done.start", c.productArg),
                     ])
             }
-            return KitScreen(.done, [c.line("signin.desktop.toast", ["name": "", "tier": ""])])
+            return KitScreen(
+                .done,
+                [
+                    c.line(
+                        "signin.desktop.toast",
+                        ["name": .text(s.name ?? ""), "tier": .text(s.tier ?? "")])
+                ])
         }
         if s.outcome == .choose, s.channel == .browser {
             if s.event == .haveKey, keyPath {

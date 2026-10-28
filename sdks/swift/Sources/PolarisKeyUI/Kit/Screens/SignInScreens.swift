@@ -152,7 +152,10 @@ public struct SignInView: View {
             }
             .accessibilityElement(children: .combine)
         case .choose:
-            LicenseChoiceView(screen: model.licenseChoice, choices: model.inputs.choices)
+            LicenseChoiceView(
+                screen: model.licenseChoice, choices: model.inputs.choices,
+                selectedId: model.choice == nil ? nil : model.inputs.selected,
+                onSelect: model.choice == nil ? nil : { model.selectLicense($0) })
         case .replace:
             VStack(alignment: .leading, spacing: style.space(.md)) {
                 if let lede = screen.line("signin.replace.lede") {
@@ -161,11 +164,7 @@ public struct SignInView: View {
                 ReplaceDeviceView(
                     screen: model.licenseChoice, view: model.inputs.replaceView,
                     confirmInSystem: true,
-                    onReplaceDevice: model.handlers.replaceDevice.map { handler in
-                        { (id: String?) in
-                            if let id { handler(id) }
-                        }
-                    },
+                    onReplaceDevice: replaceDevice,
                     onBrowser: replaceInBrowser,
                     cancel: Self.isMac ? { cancelSignInStep() } : nil)
             }
@@ -175,11 +174,17 @@ public struct SignInView: View {
                 onSubmit: { Task { await model.submitKey() } }, onReplaceDevice: nil)
         case .done:
             if screen.shows("signin.desktop.toast") {
-                KitText(
-                    CopyLine(
-                        "signin.desktop.toast",
-                        ["name": .text(model.signedInName ?? ""), "tier": ""]), .body,
-                    color: .default)
+                // "Signed in as <name> · <Tier> license"; without both, the plain sentence.
+                if let name = model.inputs.signIn?.name, !name.isEmpty,
+                    let tier = model.inputs.signIn?.tier, !tier.isEmpty
+                {
+                    KitText(
+                        CopyLine(
+                            "signin.desktop.toast", ["name": .text(name), "tier": .text(tier)]),
+                        .body, color: .default)
+                } else {
+                    KitText(CopyLine("signin.return.signedInShort"), .body, color: .default)
+                }
             }
         case .expired:
             // The title already says the sign-in took too long; only a code's sentence follows.
@@ -241,9 +246,20 @@ public struct SignInView: View {
                     .keyboardShortcut(.defaultAction)
                 cancelButton
             case .choose:
-                // Every license full: Replace a device on the card, which comes back to this form
-                // (SIGN-IN.md §3.7), until the in-app device list arrives with I-04's choice API.
-                if model.licenseChoice.state == .allFull,
+                // Every license full: Replace a device in the app when the choice runs in it and a
+                // license allows it, else on the card, which comes back to this form (SIGN-IN.md
+                // §3.7).
+                if model.licenseChoice.state == .allFull, model.choice != nil,
+                    model.options.replace == .inline,
+                    let full = model.inputs.choices?.choices.first(where: {
+                        $0.isFull && $0.replace?.allowed != false
+                    })
+                {
+                    KitButton(line: CopyLine("signin.replace.open"), kind: .primary) {
+                        Task { await model.openChoiceReplace(licenseId: full.id) }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                } else if model.licenseChoice.state == .allFull,
                     let link = model.inputs.choices?.choices.lazy
                         .compactMap({ KitLinks.valid($0.freeDeviceUrl) }).first
                 {
@@ -254,8 +270,13 @@ public struct SignInView: View {
                     .keyboardShortcut(.defaultAction)
                 }
                 if model.licenseChoice.shows("signin.choice.continue") {
-                    KitButton(line: CopyLine("signin.choice.continue"), kind: .primary) {}
-                        .keyboardShortcut(.defaultAction)
+                    KitButton(
+                        line: CopyLine("signin.choice.continue"), kind: .primary,
+                        busy: model.choice?.phase == .working
+                    ) {
+                        Task { await model.confirmLicenseChoice() }
+                    }
+                    .keyboardShortcut(.defaultAction)
                 }
                 if model.licenseChoice.shows("signin.choice.keyInstead") {
                     KitButton(line: CopyLine("signin.choice.keyInstead"), kind: .quiet) {
@@ -273,6 +294,20 @@ public struct SignInView: View {
             case .replace:
                 // On a Mac Cancel sits in the same row as Replace… (inside the list's view).
                 if !Self.isMac { cancelButton }
+            }
+        }
+    }
+
+    /// Replace in the app: the choice's own call when it runs here, else the host's handler.
+    private var replaceDevice: ((String?) -> Void)? {
+        if model.choice != nil {
+            return { id in
+                if let id { Task { await model.replaceChoiceDevice(id) } }
+            }
+        }
+        return model.handlers.replaceDevice.map { handler in
+            { (id: String?) in
+                if let id { handler(id) }
             }
         }
     }
@@ -586,12 +621,21 @@ public struct SignInHandoffView: View {
 public struct LicenseChoiceView: View {
     let screen: KitScreen<LicenseChoiceState>
     let choices: KitLicenseChoices?
+    /// The pick the model holds (a live choice); nil lets the view keep its own.
+    let selectedId: String?
+    /// Told on every pick, so a live model follows the view.
+    let onSelect: ((String) -> Void)?
     @State private var selected: String?
     @Environment(\.polarisKeyStrings) private var strings
 
-    public init(screen: KitScreen<LicenseChoiceState>, choices: KitLicenseChoices?) {
+    public init(
+        screen: KitScreen<LicenseChoiceState>, choices: KitLicenseChoices?,
+        selectedId: String? = nil, onSelect: ((String) -> Void)? = nil
+    ) {
         self.screen = screen
         self.choices = choices
+        self.selectedId = selectedId
+        self.onSelect = onSelect
     }
 
     public var body: some View {
@@ -667,9 +711,13 @@ public struct LicenseChoiceView: View {
     @ViewBuilder private func row(_ choice: KitLicenseChoice, _ style: KitResolvedStyle)
         -> some View
     {
-        let isSelected = (selected ?? choices?.preselected) == choice.id && !choice.isFull
+        let isSelected =
+            (selectedId ?? selected ?? choices?.preselected) == choice.id && !choice.isFull
         Button {
-            if !choice.isFull { selected = choice.id }
+            if !choice.isFull {
+                selected = choice.id
+                onSelect?(choice.id)
+            }
         } label: {
             HStack(alignment: .top, spacing: style.space(.sm)) {
                 VStack(alignment: .leading, spacing: 4) {

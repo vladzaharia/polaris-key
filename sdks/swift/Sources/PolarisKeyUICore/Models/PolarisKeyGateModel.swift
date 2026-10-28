@@ -202,6 +202,13 @@ public final class PolarisKeyGateModel {
     public private(set) var hasLoaded = false
     /// The name a finished sign-in names in its toast.
     public private(set) var signedInName: String?
+    /// The tier's display name a finished sign-in names beside it ("Signed in as Mara · Pro
+    /// license"); nil while unknown, when the line drops its tier.
+    public private(set) var signedInTier: String?
+    /// The in-app licence choice a redirect sign-in settled with (`.chooseLicense`), or nil. The
+    /// LicenseChoice screen is drawn from it; `selectLicense`, `confirmLicenseChoice`,
+    /// `openChoiceReplace`, `replaceChoiceDevice` and `cancelLicenseChoice` drive it.
+    public private(set) var choice: LicenseChoiceModel?
     /// What the host can act on; Trial, Restore and Continue free draw only with a handler.
     public var handlers: KitGateHandlers {
         didSet { rebuild() }
@@ -557,9 +564,11 @@ public final class PolarisKeyGateModel {
                 result: result.kind, limit: limit, deviceCount: count, manageUrl: manageURL)
         case .refused(let code, _, _):
             return KitActivation(result: "refused", code: code)
-        case .keyEntryLimit, .licenseOwned:
-            // The kit shows them as the refusals they were until I-10b.13 gives them states.
-            return KitActivation(result: "refused", code: result.code)
+        case .keyEntryLimit(let manageUrl, _):
+            // The matrix's `key-entry-limit` result: a neutral refusal whose fix is the account.
+            return KitActivation(result: "key-entry-limit", manageUrl: manageUrl)
+        case .licenseOwned(let signInUrl):
+            return KitActivation(result: "refused", code: result.code, signInUrl: signInUrl)
         case .error(let code, _, _):
             return KitActivation(result: "error", code: code)
         default:
@@ -647,6 +656,11 @@ public final class PolarisKeyGateModel {
 
     /// Cancel the sign-in: the form returns to its first step; nothing binds.
     public func cancelSignIn() {
+        if let held = choice {
+            // Backing out of the choice abandons the grant; nothing was bound.
+            choice = nil
+            Task { await held.cancel() }
+        }
         signInTask?.cancel()
         signInTask = nil
         activeBrowser?.close()
@@ -703,14 +717,14 @@ public final class PolarisKeyGateModel {
                 rebuild()
                 if let name = ready.identity?.name ?? ready.identity?.email { signedInName = name }
                 await reload()
+                await readSignedInTier()
                 signIn?.redeeming = nil
-                signIn?.outcome = .signedIn
+                signIn?.outcome = Self.kitOutcome(outcome)
                 signIn?.issuedNow = false
                 rebuild()
                 announce(signInScreen.copy.first)
-                if let name = signedInName, let client {
-                    let info = await client.licenseInfo()
-                    toastSignedIn(name: name, tier: info?.tierLabel ?? info?.tier)
+                if let name = signedInName {
+                    toastSignedIn(name: name, tier: signedInTier)
                 }
             case .expired:
                 if signIn?.channel == .deviceCode {
@@ -722,9 +736,12 @@ public final class PolarisKeyGateModel {
                 announce(signInScreen.copy.first)
             case .cancelled:
                 return
-            case .pending, .choose, .chooseLicense:
-                // The gate's sign-in runs the device code, which never issues a licence-choice
-                // grant (D4); the in-app choice (`LicenseChoiceModel`) is wired by I-10b.13.
+            case .chooseLicense(let grant):
+                // A redirect session with `licenseChoice: .app`: the kit draws the choice itself.
+                presentLicenseChoice(grant)
+            case .pending, .choose:
+                // The gate's sign-in runs the device code, which never holds the flow at a choice
+                // (D4); a session that does is a failure here.
                 signInError = KitError(code: "sign-in-failed")
                 rebuild()
             }
@@ -734,6 +751,110 @@ public final class PolarisKeyGateModel {
             signInError = KitError(code: "sign-in-failed")
             rebuild()
             announce(signInScreen.copy.first)
+        }
+    }
+
+    /// UK-02b D3: a session outcome in the kit's `signIn.outcome` vocabulary. A licence choice the
+    /// app draws (`chooseLicense`) is the matrix's `choose`.
+    public static func kitOutcome(_ outcome: SignInOutcome) -> KitSignInOutcome {
+        switch outcome {
+        case .pending: return .pending
+        case .choose, .chooseLicense: return .choose
+        case .signedIn: return .signedIn
+        case .cancelled: return .cancelled
+        case .expired: return .expired
+        }
+    }
+
+    private func readSignedInTier() async {
+        guard let client else { return }
+        let info = await client.licenseInfo()
+        signedInTier = info?.tierLabel ?? info?.tier
+    }
+
+    // MARK: Licence choice (the redirect channel with `licenseChoice: .app`)
+
+    /// Draw the LicenseChoice screen for a grant the sign-in session settled with. Nothing is
+    /// bound until the person confirms.
+    public func presentLicenseChoice(_ grant: PendingSignIn) {
+        guard let client else { return }
+        choice = LicenseChoiceModel(identity: client.identity, pending: grant)
+        route = .signIn
+        signInError = nil
+        pending = nil
+        if signIn == nil {
+            signIn = KitSignIn(
+                presentation: options.signInPresentation, replace: options.replace,
+                channel: .browser)
+        }
+        rebuild()
+        announce(licenseChoice.copy.first)
+    }
+
+    /// Pick a licence row, "keep" or "create".
+    public func selectLicense(_ id: String) {
+        choice?.select(id)
+        rebuild()
+    }
+
+    /// "Use this license": finish with the picked row.
+    public func confirmLicenseChoice() async {
+        guard let choice else { return }
+        await choice.confirm()
+        await settleChoice()
+    }
+
+    /// Open Replace a device for a full licence: list its devices.
+    public func openChoiceReplace(licenseId: String) async {
+        guard let choice else { return }
+        await choice.openReplace(licenseId: licenseId)
+        await settleChoice()
+    }
+
+    /// Back from Replace to the list.
+    public func closeChoiceReplace() {
+        choice?.closeReplace()
+        rebuild()
+    }
+
+    /// Replace `deviceId` with this device and sign in.
+    public func replaceChoiceDevice(_ deviceId: String) async {
+        guard let choice else { return }
+        await choice.replace(deviceId: deviceId)
+        await settleChoice()
+    }
+
+    /// Abandon the grant: nothing is bound and the form returns to its first step.
+    public func cancelLicenseChoice() async {
+        if let choice { await choice.cancel() }
+        choice = nil
+        cancelSignIn()
+    }
+
+    /// Fold the choice model's phase back into the gate: a finished choice is a sign-in.
+    private func settleChoice() async {
+        guard let choice else { return }
+        rebuild()
+        switch choice.phase {
+        case .done:
+            if let ready = choice.completion?.ready,
+                let name = ready.identity?.name ?? ready.identity?.email
+            {
+                signedInName = name
+            }
+            self.choice = nil
+            await reload()
+            await readSignedInTier()
+            signIn?.outcome = .signedIn
+            signIn?.issuedNow = false
+            rebuild()
+            announce(signInScreen.copy.first)
+            if let name = signedInName { toastSignedIn(name: name, tier: signedInTier) }
+        case .cancelled:
+            self.choice = nil
+            cancelSignIn()
+        default:
+            announce(licenseChoice.copy.first)
         }
     }
 
@@ -826,8 +947,13 @@ public final class PolarisKeyGateModel {
                 verified: offlineVerified)
         }
         i.signIn = signIn
+        if i.signIn?.outcome == .signedIn {
+            i.signIn?.name = signedInName
+            i.signIn?.tier = signedInTier
+        }
         i.deviceCode = signIn?.channel == .deviceCode ? deviceCode : nil
         if route == .signIn { i.error = signInError }
+        if let choice { i = choice.inputs(base: i) }
         i.update = update
         i.account = KitAccount(signedIn: accountSignedIn, holder: accountSignedIn ? "account" : nil)
         inputs = i

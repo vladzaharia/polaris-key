@@ -359,12 +359,12 @@
       "note": "PX-W8: PolarisKeyGate shows Replace a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
     },
     "ui.kit.account": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.13: License in another account (a refusal with Sign in to that account when the server gave a valid signInUrl, a QR on tvOS), the gate model's D3 mapping (PolarisKeyGateModel.kitOutcome: chooseLicense is the matrix's choose) with LicenseChoiceModel wired into the gate (presentLicenseChoice, selectLicense, confirmLicenseChoice, openChoiceReplace, replaceChoiceDevice, cancelLicenseChoice), and the signed-in line \"Signed in as {name} · {tier} license\"."
     },
     "ui.kit.keyentry": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.13: the key-entry-limit refusal (the matrix's key-entry-limit result) with Add {product} to your account opening the server's manageUrl (a QR on tvOS), shown only for a valid link; Use a different key stays beside it. The entries-left line after a successful activation is not drawn (copy exists; no matrix row yet)."
     },
     "ui.cli": {
       "status": "na",
