@@ -19,11 +19,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 90 | 10 | 26 | 0 |
-| React | `web`, `desktop-bridge` | 91 | 21 | 14 | 0 |
+| Node | `node` | 91 | 10 | 25 | 0 |
+| React | `web`, `desktop-bridge` | 92 | 21 | 13 | 0 |
 | Python | `python` | 88 | 10 | 28 | 0 |
 | Swift | `macos`, `ios` | 96 | 9 | 20 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 96 | 9 | 21 | 0 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 97 | 9 | 20 | 0 |
 | Kotlin | `android`, `jvm` | 98 | 8 | 19 | 1 |
 
 ## Core
@@ -43,7 +43,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | ✓; N/A (desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | ✓ | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
 | `core.copy` | Error, gate and activation copy: copy.message(code), copy.title(code) | `pnpm gen constants --check` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.backend` | The client half: X-PKey-License to the app's own backend, refresh first and retry once (client.backend) | `backend-matrix.json` `client` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.devicekeys` | Device key store (Ed25519 signing + X25519 agreement keys) and the pkey-proof/1 signer | `device-proof.json` + unit | ✓ | planned (CC-26) | ✓ | ✓ | planned (CC-26) | ✓ | — |
+| `core.devicekeys` | Device key store (Ed25519 signing + X25519 agreement keys) and the pkey-proof/1 signer | `device-proof.json` + unit | ✓ | planned (CC-26) | ✓ | ✓ | ✓ | ✓ | — |
 
 ## License
 
@@ -81,7 +81,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | planned (U-06) | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
-| `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | planned (U-38) | planned (U-38) | ✓ | planned (U-39) | planned (U-40) | planned (U-39) | — |
+| `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | planned (U-39) | planned (U-40) | planned (U-39) | — |
 
 ## Cloud Connect
 
@@ -91,7 +91,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit | planned (CC-08) | N/A (web, desktop-bridge: runtime) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | web, desktop-bridge: runtime |
-| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts (CC-07) + unit | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
+| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | unit | planned (CC-19) | N/A (web, desktop-bridge: runtime) | planned (CC-19) | planned (CC-19) | planned (CC-19) | planned (CC-19) | web, desktop-bridge: runtime |
 | `connect.transfer` | Direct Transfer: data between Cloud Connect peers | unit | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | — |
 | `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
