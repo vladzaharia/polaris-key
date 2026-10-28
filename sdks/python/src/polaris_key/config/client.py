@@ -17,6 +17,7 @@ import threading
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from ..constants_generated import SettingVisibility
+from ..core.bounded_body import read_capped_text
 from ..core.cache import CacheManager
 from ..core.context import CoreContext
 from ..core.errors import PolarisError
@@ -130,14 +131,20 @@ class ConfigClient:
         if not self._ctx.enabled("config"):
             return None
         try:
-            res = self._ctx.request(
+            # Streamed under a byte cap (SEC-SYNC-HOST 5): a hostile server cannot make the client
+            # buffer more than MAX_BODY_BYTES of a diagnostic document.
+            with self._ctx.http().stream(
                 "GET",
                 self._ctx.url("config/schema"),
                 headers=self._ctx.headers({"accept": "application/json"}),
-            )
-            if not res.is_success:
+                timeout=self._ctx.timeout,
+            ) as res:
+                if not res.is_success:
+                    return None
+                text = read_capped_text(res)
+            if text is None:
                 return None
-            body = res.json()
+            body = json.loads(text)
         except Exception:  # noqa: BLE001 - diagnostic: any failure is "no catalog"
             return None
         if _is_catalog(body):

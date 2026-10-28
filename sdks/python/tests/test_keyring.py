@@ -588,3 +588,23 @@ def test_an_in_memory_client_pins_in_memory() -> None:
     c, _ = device(s)
     made = c.keyring.create()
     assert c.keyring.pin().ring_id == made.ring_id
+
+
+def test_open_any_reads_the_name_inside_and_tries_adopted_roots() -> None:
+    """U-06.9: the host codec opens a blinded open key or merge member without knowing its name; the
+    caller checks the name it gets back. The same root search as ``open`` applies."""
+    s = FakeServer()
+    a, _ = device(s)
+    first = a.keyring.create()
+    old = a.keyring.codec.seal("$settings", "notes", "n")
+    a.keyring.reset()
+    a.keyring.adopt(first.ring_id)
+    r = a.keyring.codec.open_any("$settings", old)
+    assert r.ok and r.name == "notes" and r.value == "n"
+    # A different collection never opens, and a name check stays the caller's.
+    assert a.keyring.codec.open_any("other", old).reason == "auth"
+    assert a.keyring.codec.open("$settings", "theme", old).reason == "name"
+    a.keyring.lock()
+    with pytest.raises(KeyringError) as e:
+        a.keyring.codec.open_any("$settings", old)
+    assert e.value.code == "sync-locked"
