@@ -65,9 +65,11 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
   };
   const license = ctx.on("license");
   const error = ctx.input.error?.code;
-  // A failed Continue keeps the confirm on screen (autoStepView draws the network line).
+  // A failed Continue (or Link) keeps its step on screen (autoStepView draws the network line).
   const confirmRetry =
-    error === "network" && ctx.input.autoSignIn?.step === "confirm";
+    error === "network" &&
+    (ctx.input.autoSignIn?.step === "confirm" ||
+      ctx.input.autoSignIn?.step === "link-offer");
   if (error && !confirmRetry) {
     const primary = methodsPrimary(ctx);
     // Sign-in errors sit under Sign in (DL7); the methods stay.
@@ -323,8 +325,15 @@ function autoStepView(
           body,
           "signin.linkOffer.primary",
           "signin.linkOffer.decline",
+          // Link failed on the network: the offer stays, Link tries again.
+          ctx.input.error?.code === "network" && "core.codes.network.message",
         ],
-        { primary: "signin.linkOffer.primary" },
+        {
+          primary: "signin.linkOffer.primary",
+          ...(ctx.input.error?.code === "network"
+            ? { tone: "danger" as const }
+            : {}),
+        },
       );
     }
     case "link-done":

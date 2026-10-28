@@ -6,7 +6,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import type { AutoOutcome } from "@polaris-key/ui-core";
-import { primitivesOf } from "@polaris-key/ui-core/browser/sdk/autoSignIn.js";
+import { primitivesOf } from "@polaris-key/ui-core/browser/sdk/autoPrimitives.js";
 
 import type { PolarisAdapter } from "../core/index.js";
 import { SignIn } from "./signin.js";
@@ -24,6 +24,8 @@ export interface AutoFormProps {
   onBack: () => void;
   /** Leave the form for the gate's own sign-in (the browser hand-off). */
   onFallback?: () => void;
+  /** The link offer: a sheet over the app, not the gate's own screen. */
+  sheet?: boolean;
 }
 
 export default function AutoForm(props: AutoFormProps): ReactNode {
@@ -41,9 +43,9 @@ export default function AutoForm(props: AutoFormProps): ReactNode {
       primitives={primitives}
       // The platform provider on the web is Google: the button names it.
       input={GOOGLE}
-      presentation="inline"
+      presentation={props.sheet ? "sheet" : "inline"}
       replace="inline"
-      fill
+      {...(props.sheet ? { open: true } : { fill: true })}
       {...(seed ? { seed } : {})}
       {...(props.theme ? { theme: props.theme } : {})}
       {...(props.className ? { className: props.className } : {})}

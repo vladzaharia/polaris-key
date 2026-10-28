@@ -7,3 +7,4 @@ export {
   outcomeOf,
   runAuto,
 } from "@polaris-key/ui-core/browser/sdk/autoSignIn.js";
+export { linkOfferOutcome } from "@polaris-key/ui-core/browser/sdk/linkOffer.js";

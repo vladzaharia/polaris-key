@@ -62,7 +62,11 @@ import {
 import { reloadBundle, type CachedBundle } from "../offline.js";
 import type { ExchangeDiscovery } from "../discovery.js";
 import type { BrowserStore, TokenProvenance } from "./store.js";
-import type { ExchangeOptions, ExchangeOutcome } from "./exchange.js";
+import type {
+  ExchangeContext,
+  ExchangeOptions,
+  ExchangeOutcome,
+} from "./exchange.js";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import {
   HEADER_ARCH,
@@ -1284,14 +1288,8 @@ export class BearerSession {
     const { runExchange } = await import("./exchange.js");
     return runExchange(
       {
-        product: this.opts.product,
-        deviceId: this.deviceIdValue,
-        endpoints: this.opts.exchangeEndpoints?.() ?? null,
+        ...this.wire(),
         identityEnabled: this.opts.enabled("identity"),
-        headers: (extra) => this.headers(extra),
-        baseUrl: this.opts.baseUrl,
-        send: (url, init) => this.sendTo(url, init),
-        now: () => this.now(),
         accept: async (token, subject) => {
           if (opts.mayStore && !(await opts.mayStore()))
             throw Object.assign(new Error("the sign-in was abandoned."), {
@@ -1313,6 +1311,22 @@ export class BearerSession {
       port,
       opts,
     );
+  }
+
+  // ── The link offer (identity.link, WIRE-CONTRACT-V5 §12.11.4) ──────────────────────────────
+
+  /** What the exchange and the link calls (`link.ts`) share: the device, the product's endpoints and the
+   *  transport (no ambient credential, the request deadline). */
+  wire(): Omit<ExchangeContext, "identityEnabled" | "accept"> {
+    return {
+      product: this.opts.product,
+      deviceId: this.deviceIdValue,
+      endpoints: this.opts.exchangeEndpoints?.() ?? null,
+      baseUrl: this.opts.baseUrl,
+      headers: (extra) => this.headers(extra),
+      send: (url, init) => this.sendTo(url, init),
+      now: () => this.now(),
+    };
   }
 
   // ── The §5 single re-acquire ─────────────────────────────────────────────────────────────
@@ -2309,7 +2323,15 @@ export class BearerSession {
       res = await this.opts.fetchImpl(pending.tokenEndpoint, {
         method: "POST",
         credentials: "omit",
-        headers: this.headers({ "content-type": TOKEN_CONTENT_TYPE }),
+        // A device that holds its token presents it (V4 §12.5), so the sign-in keeps its licence
+        // and refreshes the step-up the link offer needs; only to the Worker that issued it.
+        headers: this.headers({
+          "content-type": TOKEN_CONTENT_TYPE,
+          ...(this.token &&
+          pending.tokenEndpoint.startsWith(`${this.opts.baseUrl}/`)
+            ? { authorization: `Bearer ${this.token}` }
+            : {}),
+        }),
         body: tokenForm(pending, checked.code, deviceName ?? undefined),
       });
     } catch (e) {

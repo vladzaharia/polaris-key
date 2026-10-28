@@ -20,6 +20,8 @@ import {
   type GateSnapshot,
   type GateStep,
 } from "./drive.js";
+import type { AutoOutcome, SignInPrimitives } from "@polaris-key/ui-core";
+import { linkOfferOutcome, primitivesOf } from "./auto.js";
 import { PkElement, type PkActionDetail } from "./element.js";
 import { TAGS } from "./layout.js";
 import { actionOf, text, type RenderCtx } from "./render.js";
@@ -82,6 +84,10 @@ export class PkGate extends PkElement {
       .toLowerCase();
     return v !== "off" && v !== "false";
   }
+  /** The link offer after a redirect sign-in (identity.link): what to show, once per page. */
+  private linkSeed: AutoOutcome | null = null;
+  private linkChecked = false;
+  private linkPrims: SignInPrimitives | null = null;
   private reported: string | null = null;
   private lastStep: GateStep = "home";
 
@@ -154,6 +160,7 @@ export class PkGate extends PkElement {
     if (this.binding.driver !== before) this.restartIdentity();
     this.auto.follow(this.driven ? this.binding.driver : null);
     this.auto.tick(this.autoOn);
+    this.checkLink();
     const error = this.binding.error;
     const code = error ? `${error.code}:${error.message}` : null;
     if (code !== this.reported) {
@@ -171,6 +178,30 @@ export class PkGate extends PkElement {
     }
     super.willUpdate(changed);
   }
+
+  /** After a redirect sign-in landed and the app runs: ask for the link offer, once. */
+  private checkLink(): void {
+    const a = this.driven ? this.binding.driver?.adapter : null;
+    if (!a || this.linkChecked || !a.link?.pending()) return;
+    const state = this.view.state;
+    if (state !== "licensed" && state !== "grace") return;
+    this.linkChecked = true;
+    void linkOfferOutcome(a).then((seed) => {
+      if (!seed || !this.isConnected) return;
+      this.linkPrims = primitivesOf(
+        a,
+        () => {},
+        () => false,
+      );
+      this.linkSeed = seed;
+      this.requestUpdate();
+    });
+  }
+
+  private onLinkClose = (): void => {
+    this.linkSeed = null;
+    this.requestUpdate();
+  };
 
   /** The in-app form's own controls and fields belong to the form, not to the gate's driver. */
   private fromForm(e: Event): boolean {
@@ -278,7 +309,20 @@ export class PkGate extends PkElement {
   protected override renderProjected(view: View): unknown {
     if (view.state !== "licensed" && view.state !== "grace") return nothing;
     const offer = this.driven ? this.snapshot?.updateInput : null;
-    return html`<slot></slot>${offer
+    const link =
+      this.linkSeed && this.linkPrims
+        ? html`<pk-sign-in
+            presentation="sheet"
+            replace="inline"
+            .open=${true}
+            .primitives=${this.linkPrims}
+            .seed=${this.linkSeed}
+            .input=${{ provider: "Google" }}
+            .theme=${this.options}
+            @pk-close=${this.onLinkClose}
+          ></pk-sign-in>`
+        : nothing;
+    return html`<slot></slot>${link}${offer
         ? html`<pk-update-prompt
             .input=${offer}
             .theme=${this.options}

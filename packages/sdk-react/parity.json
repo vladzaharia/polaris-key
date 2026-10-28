@@ -247,15 +247,15 @@
       "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-46)."
     },
     "identity.link": {
-      "status": "planned",
-      "wp": "I-46",
+      "status": "implemented",
       "except": [
         {
           "runtime": "desktop-bridge",
-          "reason": "runtime"
+          "reason": "runtime",
+          "note": "The desktop renderer holds no device key; the adapter has no `link`, and the kit shows no offer."
         }
       ],
-      "note": "Link offer (I-43.3 transcripts, I-46)."
+      "note": "I-46.13: `link.offer()`, `accept()` (the held handle, else one provider prompt), `decline()` (sha256(issuer ‖ sub) in IndexedDB), lazy after a redirect sign-in; the kit's link-offer, link-done and link-conflict steps over the app. Replays I-43.3's link-* transcripts."
     },
     "identity.keyentry": {
       "status": "implemented",

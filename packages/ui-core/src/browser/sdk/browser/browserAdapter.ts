@@ -249,6 +249,7 @@ import type { InstallOptions, InstallOutcome } from "../core/install.js";
 import type { BrowserBootGuard } from "./bootGuard.js";
 import type { SwContainer } from "./serviceWorkerUpdate.js";
 import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
+import type { LinkClient } from "../core/link.js";
 import { classifyActivation, readKeyEntries } from "../core/activation.js";
 import {
   AccountFeature,
@@ -2125,6 +2126,9 @@ export class BrowserAdapter implements PolarisAdapter {
       );
       if (result.kind === "signedIn" && result.via === "platform")
         this.applyBearer({ busy: noBusy(), error: noErrors() });
+      // `no_link` carries a handle for the link offer: held across the sign-in redirect.
+      if (result.kind === "needsSignIn" && result.linkHandle !== undefined)
+        this.markLink(result.linkHandle);
       return result;
     } catch (e) {
       // Only a cancellation leaves the ladder as a throw.
@@ -2132,6 +2136,45 @@ export class BrowserAdapter implements PolarisAdapter {
       return { kind: "unavailable", code: "refused" };
     }
   }
+
+  // ── The link offer (identity.link, I-46.13) ───────────────────────────────────────────────
+
+  private link_: Promise<LinkClient> | null = null;
+
+  /** The engine behind `link`: loaded on first use, after a redirect sign-in. It reads this
+   *  adapter's own state by name (`LinkHost`), so no accessor table is carried here. */
+  private linkEngine(): Promise<LinkClient> {
+    return (this.link_ ??= import("./bearer/link.js").then((m) =>
+      m.createLinkClient(this as never),
+    ));
+  }
+
+  /** Leave the marker `link.pending()` reads (see `LinkClient.mark`). */
+  private markLink(handle?: string): void {
+    void this.linkEngine().then((l) => l.mark?.(handle));
+  }
+
+  /** `identity.link`: bearer mode; elsewhere typed `unavailable`. `pending` is the only call that
+   *  runs before the engine loads: the marker a redirect sign-in (or a `no_link` handle) left in
+   *  sessionStorage. */
+  readonly link: LinkClient = {
+    pending: () => {
+      try {
+        return (
+          this.bearer !== null &&
+          sessionStorage.getItem(`pkey-link:${this.product}`) !== null
+        );
+      } catch {
+        return false;
+      }
+    },
+    ...(Object.fromEntries(
+      (["offer", "declined", "accept", "decline"] as const).map((k) => [
+        k,
+        async () => (await this.linkEngine())[k](),
+      ]),
+    ) as Pick<LinkClient, "offer" | "declined" | "accept" | "decline">),
+  };
 
   private readonly connectOptions: BrowserAdapterOptions["connect"];
   private connect_: ConnectClient | null = null;
@@ -2317,13 +2360,16 @@ export class BrowserAdapter implements PolarisAdapter {
         ),
       );
     this.setBusy("identity", true);
-    return completeRedirect(
+    const out = await completeRedirect(
       b,
       pending,
       callbackUrl,
       pending.deviceName,
       this.signInHooks(),
     );
+    // A redirect sign-in landed: the link offer may follow (the kit asks `link.pending()`).
+    if (out.kind === "signedIn") this.markLink();
+    return out;
   }
 
   async mintToken(recipeId: string): Promise<MintedToken> {
