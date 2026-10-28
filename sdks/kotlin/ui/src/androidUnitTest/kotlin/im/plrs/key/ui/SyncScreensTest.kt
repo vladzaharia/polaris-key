@@ -35,6 +35,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
+import im.plrs.key.core.sync.SyncState
+import im.plrs.key.core.sync.SyncStatus
 import im.plrs.key.sdk.SyncRingPin
 import im.plrs.key.sdk.SyncUnlockResult
 import kotlinx.coroutines.CoroutineScope
@@ -380,5 +382,56 @@ class SyncScreensTest {
         rule.waitForIdle()
         assertEquals(listOf("BAD", "BAD2"), recovered)
         assertEquals(1, done)
+    }
+
+    private class FakeSource : PolarisCloudSyncSource {
+        var status = SyncStatus(SyncState.Locked, 0)
+        var flushes = 0
+        override suspend fun status() = status
+        override suspend fun flush(): SyncStatus {
+            flushes++
+            return status
+        }
+        override suspend fun probe(): SyncUnlockResult = SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap)
+        override val events: kotlinx.coroutines.flow.Flow<im.plrs.key.sdk.CloudSyncEvent> = kotlinx.coroutines.flow.emptyFlow()
+        override val actions = object : PolarisSyncActions {
+            override suspend fun unlock(): SyncUnlockResult = SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap)
+            override suspend fun recover(code: String) = Unit
+            override suspend fun startOver(): String? = null
+            override suspend fun create(): String? = null
+            override suspend fun newRecoveryCode(): String = "ABCD-EFGH"
+            override suspend fun acceptRingChange(served: SyncRingPin) = SyncUnlockResult.Unlocked("r", 1)
+        }
+    }
+
+    @Test
+    fun theKitHostDrawsTheRowThenTheScreensAndBackToTheRow() {
+        val source = FakeSource()
+        val host = PolarisCloudSyncHost(source, CoroutineScope(Dispatchers.Unconfined))
+        show { PolarisCloudSyncKit(host) }
+        rule.onNodeWithText("Sync is locked.").assertIsDisplayed()
+        rule.onNodeWithText("Unlock sync").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Unlock your synced data").assertIsDisplayed()
+        rule.onNodeWithText("Sync is locked.").assertDoesNotExist()
+        source.status = SyncStatus(SyncState.Idle, 0)
+        host.dismiss()
+        rule.waitForIdle()
+        rule.onNodeWithText("Sync is locked.").assertIsDisplayed()
+    }
+
+    @Test
+    fun theKitHostShowsTheNewRecoveryCodeUntilItIsSaved() {
+        val source = FakeSource()
+        source.status = SyncStatus(SyncState.Idle, 0)
+        val host = PolarisCloudSyncHost(source, CoroutineScope(Dispatchers.Unconfined))
+        show { PolarisCloudSyncKit(host) }
+        host.requestNewRecoveryCode()
+        rule.waitForIdle()
+        rule.onNodeWithText("I've saved my recovery code").performClick()
+        rule.onNodeWithText("Done").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Done").assertDoesNotExist()
+        assertEquals(1, source.flushes)
     }
 }
