@@ -463,9 +463,18 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * Cloud Connect (WIRE-CONTRACT-V5 section 15): this device's keys, roster, certificate and discovery
      * key. Refuses with `service-unavailable` while the product has Connect off.
      */
-    public val connect: ConnectClient = ConnectClient(core, options.connect).also { c ->
-        // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
-        identity.onBeforeSignOut { c.leave() }
+    public val connect: ConnectClient = ConnectClient(core, options.connect)
+
+    /**
+     * Cloud Connect's API (CC-12.15): start, peers, open, onChannel, stop. Signing out stops it first, then
+     * leaves the person's devices (the roster and K_disc are not this device's to keep): Connect closes
+     * before the credential goes, and a stop that times out does not hold the sign-out.
+     */
+    public val cloudConnect: CloudConnect = CloudConnect(connect, core, options.core.clock ?: { System.currentTimeMillis() / 1000 }).also { cc ->
+        identity.onBeforeSignOut {
+            cc.stopForSignOut()
+            connect.leave()
+        }
     }
 
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
@@ -880,6 +889,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public fun close() {
         refreshJob?.cancel()
         refreshJob = null
+        cloudConnect.shutdown()
         // SP-51: the client's own scope (event fan-out, the refresh loop, the launch confirmation) and
         // the HTTP stack's threads go too, so a JVM `main` can exit.
         scope.cancel()

@@ -605,6 +605,11 @@ public class CoreContext(options: CoreOptions) {
         PeerTrustResult(true)
     }
 
+    /** Write a manifest [acceptPeer] applied into the cache, with the pin revocations it carries (the same slices a sync writes). */
+    public suspend fun persistPeerTrust(jws: String) {
+        patchCache { it.copy(trustJws = jws) }
+    }
+
     /** The `pinRevocations` slice as it should be written: kid to the revoking manifest. */
     public suspend fun pinRevocations(): Map<String, String> = locked { evidence }
 

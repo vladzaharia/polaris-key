@@ -16,6 +16,7 @@ import im.plrs.key.packs.PacksClient
 import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
 import im.plrs.key.sdk.BackendClient
+import im.plrs.key.sdk.CloudConnect
 import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.boot
@@ -158,4 +159,13 @@ internal suspend fun apiSurface() {
     UpdateClient::reportedOutlet  // update.reportedOutlet
     PacksClient::estimate  // packs.estimate
     PolarisKeyClient::bootHost  // client.bootHost
+    CloudConnect::start  // cloudConnect.start
+    CloudConnect::stop  // cloudConnect.stop
+    CloudConnect::peers  // cloudConnect.peers
+    CloudConnect::devices  // cloudConnect.devices
+    CloudConnect::open  // cloudConnect.open
+    CloudConnect::onChannel  // cloudConnect.onChannel
+    CloudConnect::refreshPeers  // cloudConnect.refreshPeers
+    CloudConnect::status  // cloudConnect.status
+    CloudConnect::onNotice  // cloudConnect.onNotice
 }

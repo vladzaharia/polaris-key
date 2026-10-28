@@ -462,6 +462,7 @@ const KOTLIN_TYPE: Record<string, string> = {
   backend: "BackendClient",
   packs: "PacksClient",
   presentation: "PresentationSource",
+  cloudConnect: "CloudConnect",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
 const KOTLIN_UNASSERTED = new Set([
@@ -521,6 +522,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.DistributionClient`,
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
+    `import im.plrs.key.sdk.CloudConnect`,
     `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
     ...[
