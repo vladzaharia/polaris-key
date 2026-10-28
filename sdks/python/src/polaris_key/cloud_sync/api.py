@@ -43,6 +43,9 @@ FORGETTING = frozenset({"signOut", "accountRequired", "subjectChanged"})
 #: The longest a caller waits for a forget that is still waiting on a pump (seconds).
 _CHAIN_WAIT = 30.0
 
+#: The longest a sign-out waits for the purge to finish after the flush (seconds).
+_FORGET_WAIT = 5.0
+
 
 class CloudSyncClient:
     """``client.cloud_sync``: the two verbs. A product without the Sync service gets the typed N/A."""
@@ -225,8 +228,9 @@ class CloudSyncApi:
         host = self._host
         with host.locked() as m:
             m.sign_out()
+        # No `touch()` here: the flush's own pump reported the events, and a trailing one would wait
+        # for a pump the flush already gave up on.
         host.flush(SYNC_SIGNOUT_FLUSH_MS)
-        host.touch()
         self._join_chain()
 
     def before_sign_out(self) -> None:
@@ -240,12 +244,11 @@ class CloudSyncApi:
             with host.locked() as m:
                 m.sign_out()
             host.flush(SYNC_SIGNOUT_FLUSH_MS)
-            host.touch()
         finally:
             # The machine's own ``signedOut`` event forgets; if it never came (a failure above), forget now.
             self._join_chain()
             if not self._forgot:
-                self._forget()
+                self._forget_bounded()
             self._subject = None
 
     def _leave(self) -> None:
@@ -265,7 +268,7 @@ class CloudSyncApi:
             self._leave()
         self._join_chain()
         # Deactivation drops the synced data whether or not a principal was held.
-        self._forget()
+        self._forget_bounded()
         self._subject = None
 
     # ── The machine's events ─────────────────────────────────────────────────────────────────
@@ -336,6 +339,11 @@ class CloudSyncApi:
             self._host.purge()
         except Exception:  # noqa: BLE001
             self._log("cloud sync: the synced data could not be deleted")
+            # The app hears of it too (no values, no path): it may warn the person.
+            try:
+                self._emit({"type": "purgeFailed"})
+            except Exception:  # noqa: BLE001
+                pass
         finally:
             self._tl.purging = False
 
@@ -345,6 +353,16 @@ class CloudSyncApi:
         self._forgot = True
         self._forget_ring()
         self._purge()
+
+    def _forget_bounded(self) -> None:
+        """:meth:`_forget` that a slow pump cannot hold up: the ring now, the purge on its own thread
+        and waited for at most ``_FORGET_WAIT`` (the file is already gone by then; see ``purge``)."""
+        self._forgot = True
+        self._forget_ring()
+        t = self._spawn(self._purge)
+        t.join(_FORGET_WAIT)
+        if t.is_alive():
+            self._log("cloud sync: the purge is still waiting on a request")
 
     def _forget_async(self) -> threading.Thread:
         """:meth:`_forget` for a caller inside a pump: the ring now, the purge on its own thread (it
