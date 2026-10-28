@@ -203,7 +203,9 @@ describe("Library on today's data (PX-02)", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /^Download for macOS/ }),
     );
-    await waitFor(() => expect(go).toHaveBeenCalledWith("/download/tok"));
+    await waitFor(() =>
+      expect(go).toHaveBeenCalledWith("/download/tok?p=nightfall"),
+    );
   });
 
   it("2–7 products: large tiles with outlined quick actions, reasons as text", async () => {

@@ -37,7 +37,10 @@ import {
   REGISTRY_TOKEN_RETENTION_SECONDS,
 } from "./core/registry/registryVocabulary.js";
 import { BREAK_GLASS_MAX_SECONDS } from "./core/settings/authority.js";
-import { DOWNLOAD_TICKET_TTL_SECONDS } from "./core/downloadTicket.js";
+import {
+  DOWNLOAD_TICKET_RESUME_SECONDS,
+  DOWNLOAD_TICKET_TTL_SECONDS,
+} from "./core/downloadTicket.js";
 import {
   EMAIL_CODE_MAX_ATTEMPTS,
   EMAIL_CODE_TTL_SECONDS,
@@ -259,6 +262,15 @@ export const LIMITS: readonly Limit[] = [
     "How long a signed download link works.",
     "seconds",
     DOWNLOAD_TICKET_TTL_SECONDS,
+  ),
+  row(
+    "DOWNLOAD_TICKET_RESUME_SECONDS",
+    "core/downloadTicket.ts",
+    "Access",
+    "Download resume window",
+    "How long after a download link expires a browser's resume of that file still works.",
+    "seconds",
+    DOWNLOAD_TICKET_RESUME_SECONDS,
   ),
   // Email
   row(
