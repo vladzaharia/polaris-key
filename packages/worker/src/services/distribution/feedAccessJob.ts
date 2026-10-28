@@ -415,6 +415,14 @@ async function applyUnit(
  * `entitled` row under another feed mode is narrower, never wider, than the state before the
  * apply, and restoring them could widen past what the operator now has.
  */
+/**
+ * Phase 2 re-checks the feed when its batch runs, not only when it was read: an operator who sets
+ * the feed to Public between the two would otherwise lose the job's `entitled` row with nothing
+ * left gating the package. When the check fails the row stays, which is narrower.
+ */
+const FEED_STILL_ENTITLED = `EXISTS (SELECT 1 FROM dist_registry_feeds
+                                     WHERE product = ? AND ecosystem = ? AND access_mode = 'entitled')`;
+
 async function downUnit(
   ctx: MigrationContext,
   unit: string,
@@ -473,15 +481,24 @@ async function downUnit(
                 // A row that existed goes back to its prior mode and source (the flag was never
                 // changed), only while it still reads what the apply wrote.
                 sql: `UPDATE dist_access SET mode = ?, source = ?
-                       WHERE product = ? AND deliverable_id = ? AND mode = 'entitled' AND source = 'admin'`,
-                params: [m.prior_mode, m.prior_source, unit, m.deliverable_id],
+                       WHERE product = ? AND deliverable_id = ? AND mode = 'entitled' AND source = 'admin'
+                         AND ${FEED_STILL_ENTITLED}`,
+                params: [
+                  m.prior_mode,
+                  m.prior_source,
+                  unit,
+                  m.deliverable_id,
+                  unit,
+                  eco,
+                ],
               }
             : {
                 // A row the job created goes, unless an operator has since given it a flag.
                 sql: `DELETE FROM dist_access
                        WHERE product = ? AND deliverable_id = ? AND mode = 'entitled'
-                         AND source = 'admin' AND entitlement IS NULL`,
-                params: [unit, m.deliverable_id],
+                         AND source = 'admin' AND entitlement IS NULL
+                         AND ${FEED_STILL_ENTITLED}`,
+                params: [unit, m.deliverable_id, unit, eco],
               },
         );
       restored.push(eco);
