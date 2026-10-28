@@ -275,6 +275,7 @@ final class ExchangeTests: XCTestCase {
             kind: .google, subjectToken: providerToken, nonce: nonce)
         else { return XCTFail("not needsSignIn") }
         XCTAssertEqual(m.reason, .noLink)
+        XCTAssertNil(m.linkHandle, "only a literal no_link carries a handle")
 
         // no_link without a handle is still needsSignIn(noLink).
         await server.reply(

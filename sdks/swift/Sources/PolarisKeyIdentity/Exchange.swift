@@ -400,14 +400,16 @@ extension IdentityClient {
         s.hasPrefix("sg_") && urlSafe(String(s.dropFirst(3)), count: 43)
     }
 
-    /// An unknown `reason` reads as `no_link`; a `no_link` without a usable handle carries none.
+    /// An unknown `reason` reads as `no_link` and carries no handle; a literal `no_link` without a usable handle carries none.
     private func needsSignIn(_ o: [String: JSONValue]) async throws -> ExchangeOutcome {
         guard let url = o["url"]?.stringValue, Self.cardUrlOK(url) else { throw Self.badAnswer }
-        let reason = o["reason"]?.stringValue == NeedsSignInReason.terms.rawValue ? NeedsSignInReason.terms : .noLink
+        let raw = o["reason"]?.stringValue
+        let reason = raw == NeedsSignInReason.terms.rawValue ? NeedsSignInReason.terms : .noLink
+        let carriesHandle = raw == NeedsSignInReason.noLink.rawValue
         var handle: String?
         var expiresIn: Int?
         var expiresAt: Int?
-        if reason == .noLink, let h = o["linkHandle"]?.stringValue, h.hasPrefix("lh_"),
+        if carriesHandle, let h = o["linkHandle"]?.stringValue, h.hasPrefix("lh_"),
             Self.urlSafe(String(h.dropFirst(3)), count: 43),
             let seconds = wholeSeconds(o["expiresIn"]?.doubleValue)
         {
