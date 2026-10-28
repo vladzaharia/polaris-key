@@ -85,6 +85,10 @@ const refuse = (why: string): PolarisError =>
 const isObj = (v: unknown): v is { [k: string]: Json } =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 
+/** The blind input has no length prefix (`kind\0ctx\0name`), so a name with a NUL could collide
+ *  with another (setting, member) pair; no name may hold one. */
+const hasNul = (s: string): boolean => s.includes("\0");
+
 const toCt = (env: Uint8Array): string => base64UrlEncodeBytes(env);
 
 /** The envelope of a served `ct`, or null for anything but canonical base64url. */
@@ -138,6 +142,8 @@ async function sealMutation(
   if ("ct" in m || "field" in m || "element" in m)
     throw refuse("mutation carries a member this codec does not seal");
   const setting = target.setting;
+  if (hasNul(setting) || (typeof m.member === "string" && hasNul(m.member)))
+    throw refuse("a name holds U+0000");
   const open = !declared.has(setting);
   const out: { [k: string]: Json } = { ...m };
   if (open)
@@ -243,14 +249,32 @@ export async function openPull(
     );
   }
 
+  // Renames come from the app only; a served map or `renamedTo` could swap values between keys.
+  if ("aliases" in body) out.aliases = { ...(ctx.aliases ?? {}) };
+
   if (Array.isArray(body.results)) {
     const results: Json[] = [];
+    const seen = new Set<Json>();
     for (const r of body.results) {
       if (!isObj(r)) {
         results.push(r);
         continue;
       }
+      // One verdict per mutation. A second result for an id would overwrite the first verdict in
+      // `opened.conflicts` while the machine reads the first body entry: fail closed.
+      const dup = seen.has(r.mutationId as Json);
+      seen.add(r.mutationId as Json);
+      if (dup)
+        throw new PolarisError(
+          "sync-failed",
+          "Cloud Sync answer repeats a mutationId",
+        );
       const clean: Entry = stripped(r);
+      if ("renamedTo" in clean) {
+        const from = conflictSetting(ctx.mutations, r.mutationId);
+        if (from === null || ctx.aliases?.[from] !== clean.renamedTo)
+          delete clean.renamedTo;
+      }
       if (r.status === "conflict" && isObj(r.server)) {
         const id = r.mutationId;
         const expect = conflictSetting(ctx.mutations, id);
@@ -327,6 +351,7 @@ async function openSettingChange(
   ctx: OpenPullContext,
 ): Promise<Opened> {
   const served = c.setting as string;
+  if (hasNul(served)) return invalidRow(c);
   if (!("ct" in c) && !Array.isArray(c.members)) return plainRow(c);
   if (isBlindedName(served)) {
     // An open key: the name is inside the envelope and must re-blind to the served name.
@@ -334,7 +359,7 @@ async function openSettingChange(
     const env = fromCt(c.ct);
     if (env === null) return invalidRow(c);
     const r = await codec.openAny(SETTINGS_COLLECTION, env);
-    if (!r.ok) return invalidRow(c);
+    if (!r.ok || hasNul(r.name)) return invalidRow(c);
     if ((await codec.blind("setting", SETTINGS_COLLECTION, r.name)) !== served)
       return invalidRow(c);
     const entry = stripped(c);
@@ -361,7 +386,7 @@ async function openCopy(
     // Plaintext: legacy only if the machine finds its `seq` below `encryptionSince`.
     return plainRow(e);
   }
-  if (name === null) return invalidRow(e);
+  if (name === null || hasNul(name)) return invalidRow(e);
   if (hasCt) {
     const env = fromCt(e.ct);
     if (env === null) return invalidRow(e);
@@ -387,6 +412,7 @@ async function openCopy(
     const prefix = `${name}\0`;
     if (!r.name.startsWith(prefix)) return invalidRow(e);
     const member = r.name.slice(prefix.length);
+    if (hasNul(member)) return invalidRow(e);
     if ((await codec.blind("member", name, member)) !== m.member)
       return invalidRow(e);
     if (Object.hasOwn(value, member)) return invalidRow(e);
