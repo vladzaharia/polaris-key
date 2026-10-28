@@ -64,6 +64,16 @@ public final class LicenseChoiceModel {
         apply(pending.view)
     }
 
+    /// Draw a refusal's fresh view over the grant (`device_limit`, `license_choice_required`): the
+    /// list is marked `raced` and the person picks again.
+    public init(identity: IdentityClient, grant: String, view: LicenseChoiceView) {
+        self.identity = identity
+        self.grant = grant
+        self.phase = .choosing
+        self.raced = true
+        apply(view)
+    }
+
     /// Start from the grant alone: `start()` reads the licences.
     public init(identity: IdentityClient, grant: String) {
         self.identity = identity
@@ -223,7 +233,14 @@ public final class LicenseChoiceModel {
     }
 
     private func apply(_ view: LicenseChoiceView) {
-        choices = KitLicenseChoices(
+        choices = Self.choices(from: view)
+        // The preselection stands until the person picks; a fresh view re-offers it.
+        if selected == nil || raced { selected = view.preselected }
+    }
+
+    /// The Worker's choice view in the kit's own shape.
+    public static func choices(from view: LicenseChoiceView) -> KitLicenseChoices {
+        KitLicenseChoices(
             state: view.state,
             choices: view.choices.map { row in
                 KitLicenseChoice(
@@ -240,7 +257,5 @@ public final class LicenseChoiceModel {
                 KitGetLicense(
                     activateUrl: $0.activateUrl, purchaseUrl: $0.purchaseUrl, keyEntry: $0.keyEntry)
             })
-        // The preselection stands until the person picks; a fresh view re-offers it.
-        if selected == nil || raced { selected = view.preselected }
     }
 }
