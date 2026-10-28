@@ -101,7 +101,10 @@ export interface ConfirmDialogProps {
   loading?: boolean;
   /** Legacy: keeps confirm disabled (an input in `children` is not valid yet). */
   confirmDisabled?: boolean;
-  /** Why `confirmDisabled` holds (a soft-disabled button names it: "Loading"). */
+  /**
+   * Why `confirmDisabled` holds ("Add a reason to continue"): the confirm button stays focusable
+   * and says so in a tooltip, like the typed-word gate does.
+   */
   confirmDisabledReason?: string;
 }
 
@@ -223,6 +226,8 @@ export function ConfirmDialog({
   };
 
   const err = shown && !stepUp ? describeError(shown) : null;
+  // The caller's own words for the refusal ("… Nothing was saved."), under the fixed title.
+  const stepUpDescription = stepUp ? describeError(shown)?.description : null;
 
   return (
     <Dialog
@@ -258,7 +263,9 @@ export function ConfirmDialog({
       stepUp ||
       typedConfirmation ? (
         <DialogBody
-          className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible"
+          // A short window (a phone on its side) closes the gaps and shrinks a reason box; the body
+          // scrolls and the footer stays pinned, so the typed field is always one scroll away.
+          className="space-y-4 text-sm short:space-y-2 short:[&_textarea]:min-h-12 max-sm:flex-none max-sm:overflow-y-visible"
           onKeyDown={
             submitOnEnter
               ? (e) => {
@@ -275,8 +282,8 @@ export function ConfirmDialog({
         >
           {lead}
           {consequences?.length && lead ? (
-            // After a lead, the lines are plain text, not a list of one.
-            <div className="space-y-1 text-fg-muted">
+            // After a lead, the lines are plain text, not a list of one. They carry the facts: body weight.
+            <div className="space-y-1 text-fg">
               {consequences.map((c, i) => (
                 <p key={i}>{c}</p>
               ))}
@@ -321,6 +328,9 @@ export function ConfirmDialog({
                 <p className="font-semibold text-fg-strong">
                   Sign in again to confirm it&apos;s you
                 </p>
+                {stepUpDescription ? (
+                  <p className="text-fg">{stepUpDescription}</p>
+                ) : null}
                 {typeof signedInAt === "number" ? (
                   <p className="text-fg">
                     You signed in {formatRelative(signedInAt * 1000)}.

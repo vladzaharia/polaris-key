@@ -543,6 +543,7 @@ function PolicyDrawer({
                 : "Tighten policy"
           }
           confirmDisabled={relax && reason.trim() === ""}
+          confirmDisabledReason="Add a reason to continue"
           typedConfirmation={
             relax
               ? {

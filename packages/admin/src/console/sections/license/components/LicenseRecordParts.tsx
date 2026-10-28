@@ -31,6 +31,8 @@ import {
   useInvitations,
   type seatLimitOf,
 } from "./shared.js";
+import type { PageAction } from "../../../../ui/PageHeader.js";
+import { deletionBlockedReason } from "../pages/LicenseDelete.js";
 
 /**
  * ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
@@ -274,4 +276,57 @@ export function ToggleLicenseDialogs({
       />
     </>
   );
+}
+
+/**
+ * The record's "More actions": the writes (the page puts the view-only reason on each) and the
+ * danger part. Which ones show follows the holder variant (LX-30) and the state.
+ */
+export function recordMenu({
+  license,
+  active,
+  floating,
+  resendable,
+  expired,
+  onDialog,
+}: {
+  license: LicenseDetail;
+  active: boolean;
+  floating: boolean;
+  resendable: boolean;
+  expired: boolean;
+  onDialog: (d: RecordDialog) => void;
+}): { secondary: PageAction[]; danger: PageAction[] } {
+  const item = (label: string, d: RecordDialog): PageAction => ({
+    label,
+    onSelect: () => onDialog(d),
+  });
+  return {
+    secondary: [
+      item("Change tier…", "tier"),
+      ...(floating
+        ? active
+          ? []
+          : [item("Assign…", "assign")]
+        : [item("Edit holder…", "holder")]),
+      ...(active && !floating && !resendable ? [] : [item("Add key…", "mint")]),
+      item("Edit profiles…", "profiles"),
+      item("Mint offline bundle…", "bundle"),
+      item("Device limit…", "deviceLimit"),
+      // LX-27: an assigned licence's key can be emailed anew (a floating one has no address).
+      ...(floating || !active || expired || !license.email?.trim()
+        ? []
+        : [item("Send a new key…", "send")]),
+      // S-24 §8.8: Reassign lives in the overflow, beside Make floating in its danger part.
+      ...(floating ? [] : [item("Reassign…", "reassign")]),
+    ],
+    danger: [
+      ...(floating ? [] : [item("Make floating…", "floating")]),
+      ...(active ? [item("Disable license…", "disable")] : []),
+      {
+        ...item("Delete license…", "delete"),
+        disabledReason: deletionBlockedReason(license.deletion),
+      },
+    ],
+  };
 }
