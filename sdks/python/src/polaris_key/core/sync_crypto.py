@@ -24,6 +24,7 @@ import json
 import math
 import os
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Callable, List, Optional, Union
 
 from cryptography.exceptions import InvalidTag
@@ -213,26 +214,65 @@ def _utf16_key(s: str) -> bytes:
     return s.encode("utf-16-be", "surrogatepass")
 
 
+_MAX_SAFE_INT = 2**53
+
+
+def _js_number(v: float) -> str:
+    """ECMAScript ``Number::toString(v)`` for a finite float: the shortest round-trip digits
+    (Python's ``repr`` has them), then decimal for 1e-6 <= |v| < 1e21 and ``e+N`` / ``e-N``
+    otherwise, integral values included."""
+    if v == 0:
+        return "0"
+    _, digits, exp = Decimal(repr(abs(v))).as_tuple()
+    ds = "".join(str(d) for d in digits).rstrip("0")
+    k = len(ds)
+    n = len(digits) + exp  # the decimal point sits n digits in: value = 0.ds * 10**n
+    if k <= n <= 21:
+        out = ds + "0" * (n - k)
+    elif 0 < n <= 21:
+        out = ds[:n] + "." + ds[n:]
+    elif -6 < n <= 0:
+        out = "0." + "0" * (-n) + ds
+    else:
+        e = n - 1
+        mant = ds[0] + ("." + ds[1:] if k > 1 else "")
+        out = mant + "e" + ("+" if e >= 0 else "-") + str(abs(e))
+    return "-" + out if v < 0 else out
+
+
+def _json_string(s: str) -> str:
+    try:
+        s.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError("canonical json: lone surrogate") from None
+    return json.dumps(s, ensure_ascii=False)
+
+
 def canonical_json(v: Any) -> str:
-    """Sorted keys at every level (by UTF-16 code unit, like the other SDKs), no whitespace,
-    non-ASCII text as itself. A float with an integral value is written as an integer."""
-    if isinstance(v, bool) or v is None:
-        return "true" if v is True else "false" if v is False else "null"
+    """Canonical JSON (WIRE-CONTRACT-V5 §13.10.3), byte for byte what client-core writes: keys
+    sorted by UTF-16 code unit at every level, no whitespace, non-ASCII text as itself, a number
+    as ECMAScript ``Number::toString`` (an integral float too). Refused with ``ValueError``: a
+    float that is not finite, an int beyond +-2**53 (no JavaScript number holds it), and a string
+    or key with a lone surrogate."""
+    if v is None:
+        return "null"
+    if isinstance(v, bool):
+        return "true" if v else "false"
     if isinstance(v, int):
+        if abs(v) > _MAX_SAFE_INT:
+            raise ValueError("canonical json: integer beyond 2**53")
         return str(v)
     if isinstance(v, float):
         if not math.isfinite(v):
             raise ValueError("canonical json: not a finite number")
-        if v.is_integer() and abs(v) < 1e21:
-            return str(int(v))
-        return repr(v)
+        return _js_number(v)
     if isinstance(v, str):
-        return json.dumps(v, ensure_ascii=False)
+        return _json_string(v)
     if isinstance(v, (list, tuple)):
         return "[" + ",".join(canonical_json(x) for x in v) + "]"
     if isinstance(v, dict):
         keys = sorted(v.keys(), key=_utf16_key)
-        return "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":" + canonical_json(v[k]) for k in keys) + "}"
+        return "{" + ",".join(_json_string(k) + ":" + canonical_json(v[k]) for k in keys) + "}"
     raise TypeError("canonical json: unsupported type")
 
 

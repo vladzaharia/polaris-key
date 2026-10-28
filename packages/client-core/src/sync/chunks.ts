@@ -2,10 +2,13 @@
 //
 //   id      E2E: HMAC-SHA256(K_cid(c), plainChunk); server mode: SHA-256(plainChunk). Hex on the
 //           wire (`SYNC_CHUNK_ID_PATTERN`), 32 raw bytes as a key salt and in the aad.
-//   object  `pkey-sync-chunk/1`: 0x01 | codec | AES-256-GCM(K_chunk(id), nonce 0x00*12,
+//   object  `pkey-sync-chunk/1`: 0x01 | codec | nonce(12) | AES-256-GCM(K_chunk(id), nonce,
 //           aad = 0x01 | codec | id, body). codec 0 is the chunk as is, codec 1 is one zstd frame
 //           that declares its content size. A writer may compress; a reader decodes both.
-//           K_chunk is per chunk id, so each key seals one plaintext and the zero nonce is safe.
+//           K_chunk is per chunk id, but one id can be sealed with different bodies (raw or
+//           zstd, or two encoders), so the nonce is synthetic: HMAC-SHA256(K_chunk,
+//           0x01 | codec | body)[0:12]. The same key and nonce then imply the same body. The
+//           reader takes the nonce from the object and recomputes it after the tag opens.
 
 import { SYNC_CDC_MAX_BYTES } from "@polaris-key/protocol/sync";
 import {
@@ -18,10 +21,22 @@ import {
 export const CHUNK_OBJECT_VERSION = 0x01;
 export const CHUNK_CODEC_RAW = 0;
 export const CHUNK_CODEC_ZSTD = 1;
-/** Version, codec and the tag: the smallest object (an empty body). */
-export const CHUNK_OBJECT_MIN_BYTES = 2 + 16;
+/** Version, codec, nonce and the tag: the smallest object (an empty body). */
+export const CHUNK_OBJECT_MIN_BYTES = 2 + 12 + 16;
+const NONCE_BYTES = 12;
 
-const NONCE = new Uint8Array(12);
+async function syntheticNonce(
+  port: SyncCryptoPort,
+  key: Uint8Array,
+  codec: number,
+  body: Uint8Array,
+): Promise<Uint8Array> {
+  const msg = new Uint8Array(2 + body.length);
+  msg[0] = CHUNK_OBJECT_VERSION;
+  msg[1] = codec;
+  msg.set(body, 2);
+  return (await port.hmac(key, msg)).subarray(0, NONCE_BYTES);
+}
 
 const toHex = (b: Uint8Array): string =>
   Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -80,10 +95,12 @@ export async function sealChunk(
     await deriveCollKey(port, root, collection),
     id,
   );
-  const ct = await port.aesGcmSeal(key, NONCE, aad, body);
-  const out = new Uint8Array(2 + ct.length);
+  const nonce = await syntheticNonce(port, key, codec, body);
+  const ct = await port.aesGcmSeal(key, nonce, aad, body);
+  const out = new Uint8Array(2 + NONCE_BYTES + ct.length);
   out.set(aad.subarray(0, 2));
-  out.set(ct, 2);
+  out.set(nonce, 2);
+  out.set(ct, 2 + NONCE_BYTES);
   return out;
 }
 
@@ -93,6 +110,7 @@ export type ChunkInvalid =
   | "version"
   | "codec"
   | "auth"
+  | "nonce"
   | "decode"
   | "size"
   | "id";
@@ -162,8 +180,18 @@ export async function openChunk(
     await deriveCollKey(port, root, collection),
     id,
   );
-  const body = await port.aesGcmOpen(key, NONCE, aad, object.subarray(2));
+  const nonce = object.subarray(2, 2 + NONCE_BYTES);
+  const body = await port.aesGcmOpen(
+    key,
+    nonce,
+    aad,
+    object.subarray(2 + NONCE_BYTES),
+  );
   if (body === null) return { ok: false, reason: "auth" };
+  const want = await syntheticNonce(port, key, codec, body);
+  let nd = 0;
+  for (let i = 0; i < NONCE_BYTES; i++) nd |= want[i]! ^ nonce[i]!;
+  if (nd !== 0) return { ok: false, reason: "nonce" };
 
   let plain: Uint8Array;
   if (codec === CHUNK_CODEC_RAW) {
