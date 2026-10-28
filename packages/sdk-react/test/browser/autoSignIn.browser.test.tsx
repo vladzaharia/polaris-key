@@ -8,7 +8,6 @@
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { commands, page } from "vitest/browser";
-import { createRoot, type Root } from "react-dom/client";
 
 import { PolarisKeyProvider } from "@polaris-key/react";
 import * as Kit from "@polaris-key/react/kit";
@@ -16,6 +15,15 @@ import { KIT_COPY_EN_LEAN } from "@polaris-key/brand/kit-copy/lean";
 import enRest from "../../../brand/src/generated/kit-copy/en-rest.json" with { type: "json" };
 import type { AutoSignInResult } from "../../src/core/index.js";
 import { desktopAdapter } from "../../src/desktop/desktopAdapter.js";
+import {
+  CONSENT,
+  VIEW_FULL,
+  fakeAdapter,
+  frame,
+  hostCleanup,
+  loadFonts,
+  renderInto,
+} from "../autoFixtures.js";
 import { NOW_SEC, emptyBridgeState, makeFakeBridge } from "../fixtures.js";
 
 declare module "vitest/browser" {
@@ -25,76 +33,22 @@ declare module "vitest/browser" {
 }
 declare const __PKEY_KIT_SHOTS__: string;
 
-const CONSENT = {
-  client: {
-    appName: "Tidewater Studio",
-    developerName: null,
-    iconUrl: null,
-    nameVerified: true,
-  },
-  as: { provider: "google", email: "maya@example.com" },
-  items: [
-    {
-      kind: "license",
-      anchor: {
-        name: "Pro",
-        tierName: "Pro",
-        term: "perpetual",
-        seat: { position: 2, limit: 3 },
-      },
-      more: 0,
-    },
-    { kind: "profile", claims: ["email", "name"] },
-  ],
-  scopeHash: "0".repeat(64),
-  firstTime: true,
-  changed: false,
-} as never;
-
-const VIEW = {
-  state: "all-full",
-  preselected: null,
-  choices: [
-    {
-      id: "lic_pro",
-      tierName: "Pro",
-      origin: "signin",
-      state: "full",
-      expiresAt: null,
-      seats: { used: 3, limit: 3 },
-    },
-  ],
-} as never;
-
 beforeAll(async () => {
   await Kit.preloadKitParts();
   // English's second copy table loads on demand; the scenes start with the whole table.
   Kit.provideKitCopy("en", { ...KIT_COPY_EN_LEAN, ...enRest });
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
-  document.head.append(link);
-  await new Promise<void>((resolve) => {
-    link.addEventListener("load", () => resolve(), { once: true });
-    link.addEventListener("error", () => resolve(), { once: true });
-  });
+  await loadFonts();
 });
 
-let root: Root | null = null;
 let host: HTMLElement | null = null;
+const cleanup = hostCleanup();
 afterEach(() => {
-  root?.unmount();
-  host?.remove();
-  root = null;
+  cleanup();
   host = null;
 });
 
-const frame = (): Promise<void> =>
-  new Promise((r) => requestAnimationFrame(() => r()));
-const until = async (f: () => boolean): Promise<void> => {
-  for (let i = 0; i < 150 && !f(); i++)
-    await new Promise((r) => setTimeout(r, 20));
-};
+const until = (f: () => boolean): Promise<void> =>
+  vi.waitFor(() => expect(f()).toBe(true), { timeout: 3000 });
 
 async function scene(
   name: string,
@@ -108,23 +62,8 @@ async function scene(
   await page.viewport(w, h);
   document.body.style.margin = "0";
   document.body.style.background = scheme === "dark" ? "#060912" : "#f6f8ff";
-  const adapter = desktopAdapter({
-    bridge: makeFakeBridge(emptyBridgeState()),
-    now: () => NOW_SEC,
-  });
-  Object.assign(adapter, {
-    autoSignIn: vi.fn(async () => result),
-    choice: {
-      licenses: async () => ({ kind: "ok", view: VIEW }),
-      devices: async () => ({ kind: "ok", view: {} }),
-      complete: async () => ({ kind: "ok", licenseId: null }),
-      cancel: async () => ({ kind: "ok" }),
-    },
-  });
-  host = document.createElement("div");
-  document.body.append(host);
-  root = createRoot(host);
-  root.render(
+  const adapter = fakeAdapter(result);
+  host = renderInto(
     <PolarisKeyProvider config={{ productSlug: "tidewater", adapter }}>
       <Kit.PolarisKeyGate
         theme={{
@@ -231,7 +170,7 @@ describe("automatic sign-in in the React gate (real Chromium)", () => {
           "device-limit",
           {
             kind: "deviceLimit",
-            view: VIEW,
+            view: VIEW_FULL,
             manageUrl: "https://key.plrs.im/m",
           },
           w,

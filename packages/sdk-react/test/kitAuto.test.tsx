@@ -12,51 +12,14 @@ import { PolarisKeyProvider } from "@polaris-key/react";
 import { PolarisKeyGate } from "@polaris-key/react/kit";
 import type { AutoSignInResult } from "../src/core/index.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
+import { CONSENT, VIEW_FREE, stubResizeObserver } from "./autoFixtures.js";
 import { NOW_SEC, emptyBridgeState, makeFakeBridge } from "./fixtures.js";
 
-beforeAll(() => {
-  globalThis.ResizeObserver ??= class {
-    observe() {}
-    disconnect() {}
-    unobserve() {}
-  } as unknown as typeof ResizeObserver;
-});
+beforeAll(stubResizeObserver);
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
-
-const CONSENT = {
-  client: {
-    appName: "Acme Studio",
-    developerName: null,
-    iconUrl: null,
-    nameVerified: true,
-  },
-  as: { provider: "google", email: "maya@example.com" },
-  items: [
-    { kind: "license", anchor: null, more: 0 },
-    { kind: "profile", claims: ["email", "name"] },
-  ],
-  scopeHash: "0".repeat(64),
-  firstTime: true,
-  changed: false,
-} as never;
-
-const VIEW = {
-  state: "many",
-  preselected: "lic_pro",
-  choices: [
-    {
-      id: "lic_pro",
-      tierName: "Pro",
-      origin: "signin",
-      state: "free",
-      expiresAt: null,
-      seats: { used: 1, limit: 3 },
-    },
-  ],
-} as never;
 
 function mount(
   result: AutoSignInResult | null,
@@ -77,7 +40,7 @@ function mount(
   Object.assign(adapter, {
     autoSignIn,
     choice: {
-      licenses: async () => ({ kind: "ok", view: VIEW }),
+      licenses: async () => ({ kind: "ok", view: VIEW_FREE }),
       devices: async () => ({ kind: "ok", view: {} }),
       complete,
       cancel,
@@ -143,7 +106,7 @@ describe("automatic sign-in in the gate", () => {
       kind: "choose",
       grant: "sg_3",
       expiresIn: 300,
-      choices: VIEW,
+      choices: VIEW_FREE,
     });
     await waitFor(() =>
       expect(control(m.container, "signin.choice.continue")).not.toBeNull(),
@@ -157,32 +120,22 @@ describe("automatic sign-in in the gate", () => {
     );
   });
 
-  it("signed out: Welcome, then Sign in shows the methods with the Google button", async () => {
-    const m = mount({ kind: "needsSignIn", reason: "signedOut" });
-    await waitFor(() =>
-      expect(control(m.container, "welcome.signIn")).not.toBeNull(),
-    );
-    // Not the form at boot...
-    expect(control(m.container, "signin.provider.continue")).toBeNull();
-    fireEvent.click(control(m.container, "welcome.signIn")!);
-    await waitFor(() =>
-      expect(control(m.container, "signin.provider.continue")).not.toBeNull(),
-    );
-    expect(
-      control(m.container, "signin.provider.continue")!.textContent,
-    ).toContain("Google");
-  });
-
-  it("no credential: Sign in reaches the Google button too", async () => {
-    const m = mount({ kind: "needsSignIn", reason: "noCredential" });
-    await waitFor(() =>
-      expect(control(m.container, "welcome.signIn")).not.toBeNull(),
-    );
-    fireEvent.click(control(m.container, "welcome.signIn")!);
-    await waitFor(() =>
-      expect(control(m.container, "signin.provider.continue")).not.toBeNull(),
-    );
-  });
+  for (const reason of ["signedOut", "noCredential"] as const)
+    it(`${reason}: Welcome, then Sign in shows the methods with the Google button`, async () => {
+      const m = mount({ kind: "needsSignIn", reason });
+      await waitFor(() =>
+        expect(control(m.container, "welcome.signIn")).not.toBeNull(),
+      );
+      // Not the form at boot...
+      expect(control(m.container, "signin.provider.continue")).toBeNull();
+      fireEvent.click(control(m.container, "welcome.signIn")!);
+      await waitFor(() =>
+        expect(control(m.container, "signin.provider.continue")).not.toBeNull(),
+      );
+      expect(
+        control(m.container, "signin.provider.continue")!.textContent,
+      ).toContain("Google");
+    });
 
   it("the provider's button asks with the chooser and lifts a sign-out", async () => {
     const m = mount({ kind: "needsSignIn", reason: "noLink" });

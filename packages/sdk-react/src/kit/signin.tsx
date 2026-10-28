@@ -46,7 +46,7 @@ import {
   formStep,
   type FormInput,
   type FormStep,
-} from "./contract.js";
+} from "./contractForm.js";
 import { GLYPHS, text, type Chrome } from "./parts.js";
 import { platformLabel } from "./contract.js";
 import { patched } from "./adaptBase.js";
@@ -56,7 +56,7 @@ import { refusalOf } from "./refusal.js";
 import { openLink, safeLink } from "./links.js";
 import { openManage } from "@polaris-key/ui-core/browser";
 
-export type { FormInput, FormStep } from "./contract.js";
+export type { FormInput, FormStep } from "./contractForm.js";
 
 const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;

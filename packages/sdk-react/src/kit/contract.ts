@@ -9,8 +9,6 @@ export {
   actionOf,
   copyFor,
   decodeIcon,
-  FORM_ORDER,
-  formStep,
   groundPrefersDark,
   inputWithIdentity,
   LAYOUTS,
@@ -38,8 +36,6 @@ export {
   themeVars,
   watchGround,
   watchProductIdentity,
-  type FormInput,
-  type FormStep,
   type Layout,
   type Resolved,
 } from "@polaris-key/elements/contract";
