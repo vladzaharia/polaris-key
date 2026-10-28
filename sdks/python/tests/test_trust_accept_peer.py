@@ -89,8 +89,10 @@ def test_concurrent_pushes_apply_at_most_once_per_issued_at() -> None:
         results.append(c._trust.accept_peer(_newer(NOW + 1)).applied)
 
     threads = [threading.Thread(target=push) for _ in range(8)]
-    [t.start() for t in threads]
-    [t.join() for t in threads]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
     assert results.count(True) == 1
 
 
