@@ -33,11 +33,15 @@ function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
       {
         slug: "telemetry",
         label: "Telemetry",
-        summary: "A hypothetical ninth service.",
+        summary: "A hypothetical tenth service.",
         defaultEnabled: false,
         requires: [],
         legacyModules: [],
-        console: { accent: "telemetry", icon: "Activity", group: "commerce" },
+        console: {
+          accent: "telemetry",
+          icon: "Activity",
+          group: "cloud-connect",
+        },
         docs: "/docs/features/telemetry/",
         ...extra,
       },
@@ -46,7 +50,7 @@ function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
 }
 
 describe("tools/services.json", () => {
-  it("is valid and lists the eight services in canonical order", () => {
+  it("is valid and lists the nine services in canonical order", () => {
     expect(validateTable(TABLE)).toEqual([]);
     expect(TABLE.services.map((r) => r.slug)).toEqual([
       "license",
@@ -57,6 +61,7 @@ describe("tools/services.json", () => {
       "identity",
       "sync",
       "commerce",
+      "connect",
     ]);
   });
 
@@ -72,7 +77,7 @@ describe("tools/services.json", () => {
 });
 
 describe("validateTable", () => {
-  it("accepts a ninth row", () => {
+  it("accepts a tenth row", () => {
     expect(validateTable(withRow())).toEqual([]);
   });
 
@@ -199,25 +204,25 @@ describe("renderers", () => {
     }
   });
 
-  it("a ninth row reaches every language", async () => {
+  it("a tenth row reaches every language", async () => {
     const table = withRow({
       requires: ["release"],
       legacyModules: ["beacons"],
     });
     const manifest = renderManifestTs(table);
-    expect(manifest).toContain('"commerce" | "telemetry"');
+    expect(manifest).toContain('"connect" | "telemetry"');
     expect(manifest).toContain('"telemetry": ["release"]');
     expect(manifest).toContain('beacons: ["telemetry"]');
     expect(renderAdminTs(table)).toContain('accent: "telemetry"');
     expect(renderPython(table)).toContain(
-      '("license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "telemetry")',
+      '("license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "connect", "telemetry")',
     );
     expect(renderSwift(table)).toContain("    case telemetry\n");
     expect(renderSwift(table)).toContain(
-      "case .release, .distribution, .update, .identity, .sync, .commerce, .telemetry: return false",
+      "case .release, .distribution, .update, .identity, .sync, .commerce, .connect, .telemetry: return false",
     );
     expect(renderGdscript(table)).toContain(
-      'const SLUGS := ["license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "telemetry"]',
+      'const SLUGS := ["license", "config", "release", "distribution", "update", "identity", "sync", "commerce", "connect", "telemetry"]',
     );
     expect(renderKotlin(table)).toContain(
       '    telemetry("telemetry", false),\n',

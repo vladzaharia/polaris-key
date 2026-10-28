@@ -71,25 +71,6 @@ export const TARGETS: Target[] = [
     ],
   },
   {
-    dir: "packages/elements",
-    packages: [
-      {
-        dir: "packages/elements",
-        scripts: [
-          ["build", "Build the elements and their stylesheet."],
-          ["typecheck", "Typecheck."],
-          ["test", "Run the unit tests."],
-          [
-            "test:browser",
-            "Run the component tests in a browser (Playwright).",
-          ],
-          ["test:visual", "Run the visual baselines."],
-        ],
-        oneTest: true,
-      },
-    ],
-  },
-  {
     dir: "packages/ui-qa",
     packages: [
       {
