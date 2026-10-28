@@ -9,7 +9,9 @@ package im.plrs.key.identity
 
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.DeviceKeyPersistence
 import im.plrs.key.core.DeviceKeyPort
+import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.core.DeviceProof
 import im.plrs.key.core.DeviceProofFields
@@ -32,7 +34,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
+@OptIn(ConformanceReplayOnly::class)
 class IdentityExchangeTest {
+    /** A durable-looking in-memory storage, so the happy paths pass the memory-only refusal. */
+    private class DurableMem(private val inner: InMemoryDeviceKeyStorage = InMemoryDeviceKeyStorage()) : DeviceKeyStorage by inner {
+        override val persistence: DeviceKeyPersistence = DeviceKeyPersistence.durable
+    }
+
     private val nonce1 = "-ajcZR-muye01GgH7qFEoDrU4G1DAv5L3MquJLU7_8Q"
     private val subjectToken = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJnLXN1Yi0xIn0.c2ln"
     private val grant = "sg_" + "B".repeat(43)
@@ -61,6 +69,7 @@ class IdentityExchangeTest {
         tokenBody: String = tokenOk,
         tokenHeaders: Map<String, String> = emptyMap(),
         keys: Boolean = true,
+        memory: Boolean = false,
     ): World {
         val store = InMemoryStore("djdl", "DEVICE00000000000000000000000001")
         runBlocking { store.setToken("pkeyt_old") }
@@ -81,7 +90,7 @@ class IdentityExchangeTest {
             ),
         )
         runBlocking { core.start() }
-        val port = DeviceKeyStore(InMemoryDeviceKeyStorage())
+        val port = DeviceKeyStore(if (memory) InMemoryDeviceKeyStorage() else DurableMem())
         return World(IdentityClient(core, deviceKeys = if (keys) port else null), transport, store, port, core)
     }
 
@@ -130,7 +139,7 @@ class IdentityExchangeTest {
     @Test
     fun confirmIsPendingConsentAndStoresNothing() = runBlocking {
         val w = world(tokenBody = consentBody)
-        val out = w.client.exchange(ExchangeKind.google, subjectToken) as ExchangeOutcome.PendingConsent
+        val out = w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.PendingConsent
         assertEquals(grant, out.grant)
         assertEquals(300.0, out.expiresInSeconds, 0.0)
         assertTrue(out.consent.firstTime)
@@ -146,7 +155,7 @@ class IdentityExchangeTest {
     @Test
     fun chooseIsPendingSignInAndStoresNothing() = runBlocking {
         val w = world(tokenBody = chooseBody)
-        val out = w.client.exchange(ExchangeKind.google, subjectToken) as ExchangeOutcome.PendingSignIn
+        val out = w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.PendingSignIn
         assertEquals(grant, out.grant)
         assertEquals(listOf("lic_1"), out.choices.licenseIds)
         assertEquals("pkeyt_old", w.store.getToken())
@@ -156,7 +165,7 @@ class IdentityExchangeTest {
     @Test
     fun interstitialRequiredIsNeedsSignInWithTheLinkHandle() = runBlocking {
         val w = world(tokenStatus = 403, tokenBody = """{"error":"interstitial_required","reason":"no_link","url":"$base/authorize","linkHandle":"$handle","expiresIn":600}""")
-        val out = w.client.exchange(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn
+        val out = w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn
         assertEquals("no_link", out.reason)
         assertEquals("$base/authorize", out.url)
         assertEquals(handle, out.linkHandle)
@@ -164,44 +173,111 @@ class IdentityExchangeTest {
         assertFalse(out.toString().contains(handle))
         assertEquals("pkeyt_old", w.store.getToken())
         val terms = world(tokenStatus = 403, tokenBody = """{"error":"interstitial_required","reason":"terms","url":"$base/authorize"}""")
-        val t = terms.client.exchange(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn
+        val t = terms.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn
         assertEquals("terms", t.reason)
         assertNull(t.linkHandle)
         val odd = world(tokenStatus = 403, tokenBody = """{"error":"interstitial_required","reason":"surprise","url":"$base/authorize"}""")
-        assertEquals("no_link", (odd.client.exchange(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn).reason)
+        assertEquals("no_link", (odd.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn).reason)
+    }
+
+    private suspend fun refusal(w: World): PolarisException {
+        try {
+            w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken)
+        } catch (e: PolarisException) {
+            assertFalse(e.message!!.contains(subjectToken))
+            assertEquals("pkeyt_old", w.store.getToken())
+            return e
+        }
+        fail("expected a PolarisException")
+        throw IllegalStateException()
     }
 
     @Test
-    fun refusalsAreTypedResults() = runBlocking {
-        val grantRefused = world(tokenStatus = 400, tokenBody = """{"error":"invalid_grant"}""")
-        assertEquals(ExchangeOutcome.Refused("invalid_grant", 400), grantRefused.client.exchange(ExchangeKind.google, subjectToken))
-        assertEquals("pkeyt_old", grantRefused.store.getToken())
-        val limited = world(tokenStatus = 429, tokenBody = """{"error":"rate_limited","retryAfter":4.2}""")
-        assertEquals(ExchangeOutcome.Refused("rate_limited", 429, 5), limited.client.exchange(ExchangeKind.google, subjectToken))
-        val header = world(tokenStatus = 429, tokenBody = """{"error":"rate_limited"}""", tokenHeaders = mapOf("retry-after" to "7"))
-        assertEquals(7, (header.client.exchange(ExchangeKind.google, subjectToken) as ExchangeOutcome.Refused).retryAfterSeconds)
-        val nested = world(tokenStatus = 403, tokenBody = """{"error":{"code":"device_limit"}}""")
-        assertEquals(ExchangeOutcome.Refused("device_limit", 403), nested.client.exchange(ExchangeKind.google, subjectToken))
-        val gate = world(tokenStatus = 400, tokenBody = """{"error":"unsupported_grant_type"}""")
-        assertEquals("unsupported_grant_type", (gate.client.exchange(ExchangeKind.google, subjectToken) as ExchangeOutcome.Refused).code)
+    fun refusalsThrowATypedExceptionWithTheWireCodeStatusAndRetry() = runBlocking {
+        val g = refusal(world(tokenStatus = 400, tokenBody = """{"error":"invalid_grant"}"""))
+        assertEquals("invalid_grant", g.code)
+        assertEquals(400, g.httpStatus)
+        assertNull(g.retryAfterSeconds)
+        val l = refusal(world(tokenStatus = 429, tokenBody = """{"error":"rate_limited","retryAfter":4.2}"""))
+        assertEquals("rate_limited", l.code)
+        assertEquals(5, l.retryAfterSeconds)
+        val h = refusal(world(tokenStatus = 429, tokenBody = """{"error":"rate_limited"}""", tokenHeaders = mapOf("retry-after" to "7")))
+        assertEquals(7, h.retryAfterSeconds)
+        val n = refusal(world(tokenStatus = 403, tokenBody = """{"error":{"code":"device_limit"}}"""))
+        assertEquals("device_limit", n.code)
+        assertEquals(403, n.httpStatus)
+        assertEquals("unsupported_grant_type", refusal(world(tokenStatus = 400, tokenBody = """{"error":"unsupported_grant_type"}""")).code)
+        // A nonce-route refusal throws too.
+        val w = world(nonceStatus = 429, nonceBody = """{"error":"rate_limited"}""")
+        try {
+            w.client.exchangeNonce(ExchangeKind.google)
+            fail("expected rate_limited")
+        } catch (e: PolarisException) {
+            assertEquals("rate_limited", e.code)
+        }
+    }
+
+    @Test
+    fun memoryOnlyKeysAreRefusedBeforeAnyRequest() = runBlocking {
+        val w = world(memory = true)
+        assertEquals(ExchangeNonceResult.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys)), w.client.exchangeNonce(ExchangeKind.google))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys),
+            w.client.exchange(ExchangeKind.google, subjectToken, ExchangeNonce(nonce1)),
+        )
+        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys), w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
+        assertTrue(w.reqs("/djdl/identity/nonce").isEmpty() && w.reqs("/djdl/identity/token").isEmpty())
+        assertEquals("pkeyt_old", w.store.getToken())
+    }
+
+    @Test
+    fun theInterstitialUrlMustBeHttpsOrLoopbackAndAnUnknownReasonCarriesNoHandle() = runBlocking {
+        fun body(url: String, reason: String = "no_link") =
+            """{"error":"interstitial_required","reason":"$reason","url":"$url","linkHandle":"$handle","expiresIn":600}"""
+        for (bad in listOf("http://key.plrs.im/x", "javascript:alert(1)", "//evil", "")) {
+            val w = world(tokenStatus = 403, tokenBody = body(bad))
+            try {
+                w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken)
+                fail("expected bad-response for $bad")
+            } catch (e: PolarisException) {
+                assertEquals(ErrorCode.badResponse, e.code)
+            }
+        }
+        val loop = world(tokenStatus = 403, tokenBody = body("http://localhost:8787/x"))
+        assertEquals(handle, (loop.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn).linkHandle)
+        val odd = world(tokenStatus = 403, tokenBody = body("https://key.plrs.im/x", "surprise"))
+        val o = odd.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn
+        assertEquals("no_link", o.reason)
+        assertNull(o.linkHandle)
+    }
+
+    @Test
+    fun aShortOrOddNonceIsRefused() = runBlocking {
+        val w = world(nonceBody = """{"nonce":"short","expiresIn":300}""")
+        try {
+            w.client.exchangeNonce(ExchangeKind.google)
+            fail("expected bad-response")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.badResponse, e.code)
+        }
     }
 
     @Test
     fun unavailableOnA404OrNoMemberOrAnUndeclaredKindOrNoKeys() = runBlocking {
         val notFound = world(nonceStatus = 404, nonceBody = """{"error":{"code":"not_found"}}""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed), notFound.client.exchange(ExchangeKind.google, subjectToken))
+        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed), notFound.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
         assertTrue(notFound.reqs("/djdl/identity/token").isEmpty())
         assertEquals(ExchangeNonceResult.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed)), notFound.client.exchangeNonce(ExchangeKind.google))
         val tokenGone = world(tokenStatus = 404, tokenBody = """{"error":"not_found"}""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed), tokenGone.client.exchange(ExchangeKind.google, subjectToken))
+        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed), tokenGone.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
         val noMember = world(member = "")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noMember), noMember.client.exchange(ExchangeKind.google, subjectToken))
+        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noMember), noMember.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
         val googleOnly = world(member = """"exchange":{"kinds":["google"]},""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.kindNotDeclared), googleOnly.client.exchange(ExchangeKind.apple, subjectToken))
+        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.kindNotDeclared), googleOnly.client.exchangeWithFreshNonce(ExchangeKind.apple, subjectToken))
         val noNonce = world(endpoints = """"token":"$base/token"""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noEndpoint), noNonce.client.exchange(ExchangeKind.google, subjectToken))
+        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noEndpoint), noNonce.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
         val noKeys = world(keys = false)
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys), noKeys.client.exchange(ExchangeKind.google, subjectToken))
+        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys), noKeys.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
         for (w in listOf(noMember, googleOnly, noNonce, noKeys)) {
             assertTrue(w.reqs("/djdl/identity/nonce").isEmpty() && w.reqs("/djdl/identity/token").isEmpty())
             assertEquals("pkeyt_old", w.store.getToken())
@@ -223,8 +299,8 @@ class IdentityExchangeTest {
         }
         assertEquals(1, w.reqs("/djdl/identity/token").size)
         // Without one, each exchange asks for its own.
-        w.client.exchange(ExchangeKind.google, subjectToken)
-        w.client.exchange(ExchangeKind.google, subjectToken)
+        w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken)
+        w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken)
         val sent = w.reqs("/djdl/identity/token").map { form(it.body!!)["nonce"] }
         assertEquals(sent.size, sent.toSet().size)
         assertFalse(a.toString().contains(a.value))
@@ -234,7 +310,7 @@ class IdentityExchangeTest {
     fun aServerErrorThrowsWithoutTheTokenAndNothingIsStored() = runBlocking {
         val w = world(tokenStatus = 503, tokenBody = "down $subjectToken")
         try {
-            w.client.exchange(ExchangeKind.google, subjectToken)
+            w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken)
             fail("expected server-error")
         } catch (e: PolarisException) {
             assertEquals(ErrorCode.serverError, e.code)
@@ -247,7 +323,7 @@ class IdentityExchangeTest {
     fun aMalformedSignInThrowsAndStoresNothing() = runBlocking {
         val w = world(tokenBody = """{"access_token":"pkeyt_x"}""")
         try {
-            w.client.exchange(ExchangeKind.google, subjectToken)
+            w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken)
             fail("expected bad-response")
         } catch (e: PolarisException) {
             assertEquals(ErrorCode.badResponse, e.code)

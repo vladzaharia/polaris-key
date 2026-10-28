@@ -2296,6 +2296,11 @@
     },
     {
       "sdk": "kotlin",
+      "path": "identity.exchangeWithFreshNonce",
+      "reason": "conformance replay only (ConformanceReplayOnly): the recorded exchanges ask for their own nonce; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
       "path": "identity.useDeviceKeys",
       "reason": "wiring: hands the exchange proof its device key store; not an app verb"
     },

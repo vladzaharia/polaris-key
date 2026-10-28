@@ -162,13 +162,19 @@ public class IdentityClient(
 
     /**
      * `POST token` with the token-exchange grant (V5 section 12.11.3): the platform's ID token for a device
-     * token. [nonce] is the one the provider signed into [subjectToken]; null asks for a nonce first (the
-     * token then cannot carry it, so only a recorded conversation does this). A token is stored only for
-     * [ExchangeOutcome.SignedIn]. Throws on a network failure or a 5xx; the Worker's answers are results.
+     * token. [nonce] is the one the provider signed into [subjectToken]. A token is stored only for
+     * [ExchangeOutcome.SignedIn]. Throws on a network failure, a 5xx, or a Worker refusal (a [PolarisException] with the wire `code`, `httpStatus`, `retryAfterSeconds`).
      */
-    public suspend fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce? = null): ExchangeOutcome {
+    public suspend fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce): ExchangeOutcome {
         val port = deviceKeys ?: return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys)
         return exchangeTokens(kind, subjectToken, nonce, port)
+    }
+
+    /** Conformance replay only: an exchange that asks for its own nonce, as the recorded conversations do. */
+    @ConformanceReplayOnly
+    public suspend fun exchangeWithFreshNonce(kind: ExchangeKind, subjectToken: String): ExchangeOutcome {
+        val port = deviceKeys ?: return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys)
+        return exchangeTokens(kind, subjectToken, null, port)
     }
 
     internal var redirectEntropyValue: RedirectEntropy? = null

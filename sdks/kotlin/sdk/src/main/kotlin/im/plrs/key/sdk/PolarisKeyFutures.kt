@@ -108,9 +108,8 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** `identity.exchangeNonce(kind)`: a single-use nonce for the platform provider to sign into its token. */
     public fun exchangeNonce(kind: ExchangeKind): CompletableFuture<ExchangeNonceResult> = call { client.identity.exchangeNonce(kind) }
 
-    /** `identity.exchange(kind, subjectToken, nonce)`: the platform's ID token for a device token; every Worker answer is an [ExchangeOutcome]. */
-    @JvmOverloads
-    public fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce? = null): CompletableFuture<ExchangeOutcome> =
+    /** `identity.exchange(kind, subjectToken, nonce)`: the platform's ID token for a device token; a Worker refusal fails the future with a PolarisException. */
+    public fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce): CompletableFuture<ExchangeOutcome> =
         call { client.identity.exchange(kind, subjectToken, nonce) }
 
     /** `identity.choice.cancel(grant)`: give the grant up. */

@@ -11,6 +11,8 @@
 // [ExchangeNonce] object is taken once, and `exchange` without a nonce asks for its own. The Worker spends a nonce on the first attempt that
 // reaches it, so a refused exchange is never retried with the same nonce or the same token.
 //
+// A refusal the Worker answers (`invalid_grant`, `rate_limited`, `device_limit`, ...) throws a
+// [PolarisException] whose `code` is the wire code, with `httpStatus` and `retryAfterSeconds`.
 // Each call dials the endpoint discovery names, never one it builds. A product with no `exchange`
 // member, a kind it does not declare, no `nonce` or `token` endpoint, a 404, or no key store here is
 // [ExchangeOutcome.Unavailable]: a result, with no token stored. The subject token, the grant, the
@@ -20,6 +22,7 @@ package im.plrs.key.identity
 
 import im.plrs.key.core.Base64Url
 import im.plrs.key.core.CoreContext
+import im.plrs.key.core.DeviceKeyPersistence
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceProofException
 import im.plrs.key.core.DeviceProofPurpose
@@ -65,6 +68,9 @@ public enum class ExchangeUnavailableReason(public val wire: String) {
 
     /** The host gave this client no device key store. */
     noDeviceKeys("no-device-keys"),
+
+    /** The device keys live in memory only, so a restart would lose the proof's key. Nothing was dialled. */
+    memoryOnlyKeys("memory-only-keys"),
 }
 
 /** The consent view of a `confirm` answer (`ExchangeConsentView`). [raw] is the Worker's object as served. */
@@ -159,9 +165,6 @@ public sealed interface ExchangeOutcome {
         override fun toString(): String = "NeedsSignIn(reason=$reason, url=$url, linkHandle=[redacted])"
     }
 
-    /** The Worker refused. [code] is its flat or nested code: `invalid_grant`, `rate_limited`, `device_limit`, `not_entitled`, ... Nothing is stored. */
-    public data class Refused(val code: String, val httpStatus: Int, val retryAfterSeconds: Int? = null) : ExchangeOutcome
-
     /** Not served here; nothing was stored. */
     public data class Unavailable(val reason: ExchangeUnavailableReason) : ExchangeOutcome
 }
@@ -171,7 +174,7 @@ internal object IdentityExchange {
     const val ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token"
     private val GRANT = Regex("sg_[A-Za-z0-9_-]{43}")
     private val HANDLE = Regex("lh_[A-Za-z0-9_-]{43}")
-    private val NONCE = Regex("[A-Za-z0-9_-]{16,128}")
+    private val NONCE = Regex("[A-Za-z0-9_-]{43}")
 
     fun tokenHash(subjectToken: String): String =
         Base64Url.encode(MessageDigest.getInstance("SHA-256").digest(subjectToken.toByteArray(Charsets.UTF_8)))
@@ -200,6 +203,13 @@ internal object IdentityExchange {
         val n = body?.get("nonce").stringValue ?: return null
         if (!NONCE.matches(n)) return null
         return ExchangeNonce(n, wholeSeconds(body?.get("expiresIn")) ?: 0L)
+    }
+
+    /** The sign-in card URL: https, or http on a loopback host. */
+    fun safeUrl(u: String?): Boolean {
+        val uri = try { java.net.URI(u ?: return false) } catch (e: Exception) { return false }
+        val host = uri.host ?: return false
+        return uri.scheme == "https" || (uri.scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "[::1]" || host == "::1"))
     }
 
     fun grantOf(o: JsonObject): String? = o["grant"].stringValue?.takeIf { GRANT.matches(it) }
@@ -260,6 +270,7 @@ internal sealed interface NonceStep {
 }
 
 internal suspend fun IdentityClient.requestExchangeNonce(kind: ExchangeKind, port: DeviceKeyPort): NonceStep {
+    if (port.persistence() == DeviceKeyPersistence.memory) return NonceStep.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys))
     val (url, why) = exchangeEndpoint(kind, "nonce")
     if (url == null) return NonceStep.Ended(ExchangeOutcome.Unavailable(why!!))
     val keys = try {
@@ -279,22 +290,31 @@ internal suspend fun IdentityClient.requestExchangeNonce(kind: ExchangeKind, por
     return NonceStep.Ended(refusalOf(res))
 }
 
-/** A non-200 answer as an outcome; a 5xx throws. */
+/** A non-200 answer as an outcome; a 5xx or a refusal throws. */
 private fun refusalOf(res: PolarisResponse): ExchangeOutcome {
     if (res.status >= 500) throw PolarisException(ErrorCode.serverError, "the exchange failed with status ${res.status}.")
     if (res.status == 404) return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed)
     val b = JsonText.parseOrNull(res.text).objectValue
     if (res.status == 403 && b?.get("error").stringValue == "interstitial_required") {
-        val reason = b?.get("reason").stringValue?.takeIf { it == "terms" } ?: "no_link"
+        val url = b?.get("url").stringValue
+        if (!IdentityExchange.safeUrl(url)) throw PolarisException(ErrorCode.badResponse, "the exchange named a sign-in URL that is not https.")
+        // `terms` takes no handle; an unknown reason reads as `no_link` and carries none.
+        val terms = b?.get("reason").stringValue == "terms"
+        val known = terms || b?.get("reason").stringValue == "no_link"
         return ExchangeOutcome.NeedsSignIn(
-            reason = reason, url = b?.get("url").stringValue,
-            linkHandle = b?.let { IdentityExchange.handleOf(it) }, expiresInSeconds = b?.get("expiresIn").longValue,
+            reason = if (terms) "terms" else "no_link", url = url,
+            linkHandle = if (known) IdentityExchange.handleOf(b!!) else null, expiresInSeconds = b?.get("expiresIn").longValue,
         )
     }
-    return ExchangeOutcome.Refused(IdentityExchange.errorCode(b, res.status), res.status, IdentityExchange.retryAfter(res, b))
+    val code = IdentityExchange.errorCode(b, res.status)
+    throw PolarisException(
+        code, "the exchange was refused ($code).", httpStatus = res.status,
+        retryAfterSeconds = IdentityExchange.retryAfter(res, b),
+    )
 }
 
 internal suspend fun IdentityClient.exchangeTokens(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce?, port: DeviceKeyPort): ExchangeOutcome {
+    if (port.persistence() == DeviceKeyPersistence.memory) return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys)
     val (url, why) = exchangeEndpoint(kind, "token")
     if (url == null) return ExchangeOutcome.Unavailable(why!!)
     val spent = nonce?.take() ?: when (val step = requestExchangeNonce(kind, port)) {
