@@ -1,6 +1,6 @@
 // The settings and paywall families (ui-matrix.json `settings`, `paywall`): AccountAndLicense,
-// Settings, Paywall and EntitlementGate, and the should-tier CloudSyncStatus, About and
-// ChannelPicker. A floating license is never silently attached to an account; a theme never
+// Settings, Paywall and EntitlementGate, and the should-tier About and
+// ChannelPicker (CloudSyncStatus is in cloudSync.ts). A floating license is never silently attached to an account; a theme never
 // reveals a hidden value; the paywall never invents checkout; a style override is never
 // authorization.
 
@@ -298,38 +298,7 @@ export function entitlementGateView(
   });
 }
 
-// ── The should tier: CloudSyncStatus, About, ChannelPicker ─────────────────────────────────────
-
-export type CloudSyncState =
-  | "synced"
-  | "syncing"
-  | "offline"
-  | "conflict"
-  | "error"
-  | "hidden";
-
-/** A small Cloud Sync status. It never implies universal backup. */
-export function cloudSyncStatusView(
-  ctx: Context,
-): View<"CloudSyncStatus", CloudSyncState> {
-  const sync = ctx.input.cloudSync;
-  if (!ctx.on("sync") || !sync) return hiddenView(ctx, "CloudSyncStatus");
-  const error = sync.state === "error";
-  // A sync that failed because nobody is signed in is not a fault: it says so and offers Sign in
-  // to sync, in a neutral tone (DL6). Review shows only when the host handles it.
-  const signedOut = error && sync.signedIn === false;
-  const review = sync.state === "conflict" && sync.canReview === true;
-  return makeView(ctx, "CloudSyncStatus", {
-    state: sync.state,
-    copy: signedOut
-      ? ["cloudSync.signedOut", "cloudSync.signIn"]
-      : [`cloudSync.${sync.state}`, review && "common.review"],
-    args: { time: sync.lastSynced },
-    primary: signedOut ? "cloudSync.signIn" : review ? "common.review" : null,
-    tone: signedOut ? "neutral" : error ? "danger" : null,
-    focus: null,
-  });
-}
+// ── The should tier: About, ChannelPicker ─────────────────────────────────────
 
 /** Product, version, build, notices and Copy diagnostics (always redacted). */
 export function aboutView(ctx: Context): View<"About", "default"> {
