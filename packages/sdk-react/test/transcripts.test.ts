@@ -10,6 +10,12 @@
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
 // @pkey-feature sync.keyring identity.exchange
 //
+// `cloudSyncPull` / `cloudSyncPush` (U-20.4, sync.settings, WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10):
+// the request goes through the browser host's own transport (`sendSync`, over `session.ringRequest`:
+// the bearer and the X-PKey headers). The end-to-end transcript is sealed by `sealPush` and opened by
+// `openPull` over a fixture root, so every recorded `ct` reads `invalid`. The `cloudsync-cors`
+// exchanges are the browser's own `browser` steps, played as recorded with the SDK's headers.
+//
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
 // device token run through the browser's bearer engine, `BearerSession`
 // (src/browser/bearer/session.ts) — the code `browserAdapter({ auth: "bearer" })` drives —
@@ -97,7 +103,23 @@ import {
   recordHash,
   type DeviceKeyPort,
 } from "@polaris-key/client-core";
-import { webCryptoSyncPort } from "@polaris-key/client-core/sync";
+import {
+  blind,
+  openPull,
+  openValue,
+  openValueAnyName,
+  sealPush,
+  sealValue,
+  webCryptoSyncPort,
+  type HostCodec,
+} from "@polaris-key/client-core/sync";
+import type {
+  Json,
+  SettingRoute,
+  SyncResponse,
+  WireMutation,
+} from "@polaris-key/client-core/cloud-sync";
+import { sendSync } from "../src/browser/cloudSync/transport.js";
 import { RingEngine } from "../src/browser/ring/engine.js";
 import { memoryRootVault } from "../src/browser/ring/rootVault.js";
 import {
@@ -403,6 +425,159 @@ function claimObserved(r: CommerceClaimResult): Record<string, JsonValue> {
  * request. Every other request is the card's own and is played as recorded. The observation is
  * where the browser ended up.
  */
+// ── Cloud Sync settings (U-20.4, `sync.settings`) ─────────────────────────────────────────────
+
+const SYNC_DECLARED = ["ui.theme", "audio.volume"];
+const SYNC_E2E_NAMES = ["ui.theme", "my.open.key", "game.best"];
+const SYNC_E2E_ROUTES: SettingRoute[] = [
+  { key: "ui.theme", route: "synced", scope: "user", policy: "lastWrite" },
+  { key: "game.best", route: "synced", scope: "user", policy: "max" },
+];
+const SYNC_CLIENT_ID = "c_AAAAAAAAAAAAAAAAAAAAAA";
+const SYNC_HLC = "018bcfe56418:0000";
+
+/** A fixture root: the replay's ring is not a real one, so every recorded `ct` is `invalid`. */
+const FIXTURE_ROOT = Uint8Array.from({ length: 32 }, (_, i) => 3 * i + 7);
+const SYNC_PORT = webCryptoSyncPort;
+const fixtureCodec: HostCodec = {
+  locked: false,
+  seal: (c, n, v) => sealValue(SYNC_PORT, FIXTURE_ROOT, c, n, v),
+  open: (c, n, e, a) => openValue(SYNC_PORT, FIXTURE_ROOT, c, n, e, a),
+  openAny: (c, e) => openValueAnyName(SYNC_PORT, FIXTURE_ROOT, c, e),
+  blind: (k, ctx, n) => blind(SYNC_PORT, FIXTURE_ROOT, k, ctx, n),
+};
+
+/** The replay's memory between sync steps: the last ETag, Retry-After and next mutation id. */
+interface SyncMemory {
+  etag: string | null;
+  retryAfter: string | null;
+  nextId: number;
+}
+
+/** `count` generated set mutations, ids from `first`, cycling through `names`. */
+function generatedMutations(
+  count: number,
+  first: number,
+  names: readonly string[],
+): WireMutation[] {
+  return Array.from({ length: count }, (_, i) => ({
+    mutationId: first + i,
+    target: { setting: names[i % names.length]!, scope: "user" as const },
+    op: "set" as const,
+    value: `generated-${first + i}`,
+    editedHlc: SYNC_HLC,
+  }));
+}
+
+const isRec = (v: unknown): v is Record<string, Json> =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
+
+/** One label per mutation result, in the transcript format's words. */
+function resultLabel(r: Record<string, Json>): string {
+  switch (r.status) {
+    case "ok":
+      if (typeof r.renamedTo === "string") return `ok:renamedTo:${r.renamedTo}`;
+      return r.dropped === true ? "ok:dropped" : "ok";
+    case "rejected":
+      return typeof r.scope === "string"
+        ? `rejected:${String(r.code)}:${r.scope}`
+        : `rejected:${String(r.code)}`;
+    default:
+      return String(r.status);
+  }
+}
+
+async function cloudSyncStep(
+  session: BearerSession,
+  step: Step,
+  t: Transcript,
+  mem: SyncMemory,
+  out: Record<string, JsonValue>,
+): Promise<void> {
+  const e2e = t.id === "cloudsync-e2e-settings";
+  const cursor = Number(step.args.cursor);
+  mem.retryAfter = null;
+  let mutations: WireMutation[] = [];
+  let req: Parameters<typeof sendSync>[2];
+  if (step.action === "cloudSyncPull") {
+    req = { method: "GET", path: `/${t.product}/sync?cursor=${cursor}` };
+  } else {
+    mutations = generatedMutations(
+      Number(step.args.mutations),
+      mem.nextId,
+      e2e ? SYNC_E2E_NAMES : SYNC_DECLARED,
+    );
+    const body: Json = {
+      clientId: SYNC_CLIENT_ID,
+      cursor,
+      ...(step.args.atomic === true ? { atomic: true } : {}),
+      mutations: mutations as unknown as Json,
+    };
+    req = {
+      method: "POST",
+      path: `/${t.product}/sync/ops`,
+      body: e2e ? await sealPush(body, fixtureCodec, SYNC_E2E_ROUTES) : body,
+    };
+  }
+  const res: SyncResponse = await sendSync(
+    t.product,
+    (path, init) => session.ringRequest(path, init),
+    req,
+  );
+  if ("error" in res) {
+    out.result = res.error;
+    return;
+  }
+  if (res.status === 304) {
+    out.result = "not-modified";
+    return;
+  }
+  if (res.status < 200 || res.status >= 300) {
+    out.result = "refused";
+    out.status = res.status;
+    const err = isRec(res.body) ? res.body.error : undefined;
+    if (isRec(err) && typeof err.code === "string") out.code = err.code;
+    if (mem.retryAfter !== null) out.retryAfter = Number(mem.retryAfter);
+    return;
+  }
+  let body: Json | undefined = res.body;
+  if (e2e && body !== undefined) {
+    const opened = await openPull(body, fixtureCodec, { mutations });
+    body = opened.body;
+    for (const row of [
+      ...(opened.opened.changes ?? []),
+      ...Object.values(opened.opened.conflicts ?? {}),
+    ])
+      expect(row, `${t.id}: a fixture ct opens`).toEqual({ invalid: true });
+  }
+  out.result = "ok";
+  if (!isRec(body)) return;
+  if (typeof body.cursor === "number") out.cursor = body.cursor;
+  if (typeof body.more === "boolean") out.more = body.more;
+  out.empty = body.empty === true;
+  out.settings = (Array.isArray(body.changes) ? body.changes : [])
+    .map((c) => (isRec(c) ? c.setting : undefined))
+    .filter((n): n is string => typeof n === "string")
+    .sort();
+  if (isRec(body.quota)) {
+    if (typeof body.quota.bytes === "number") out.quotaBytes = body.quota.bytes;
+    if (typeof body.quota.files === "boolean") out.files = body.quota.files;
+  }
+  if (typeof body.encryption === "string") out.encryption = body.encryption;
+  if (typeof body.encryptionSince === "number")
+    out.encryptionSince = body.encryptionSince;
+  if (isRec(body.aliases)) out.aliases = body.aliases as JsonValue;
+  if (step.action === "cloudSyncPush") {
+    if (typeof body.lastMutationId === "number") {
+      out.lastMutationId = body.lastMutationId;
+      mem.nextId = body.lastMutationId + 1;
+    }
+    out.results = (Array.isArray(body.results) ? body.results : []).map((r) =>
+      isRec(r) ? resultLabel(r) : "?",
+    );
+  }
+}
+
 async function browserStep(
   session: BearerSession,
   server: ReplayServer,
@@ -450,6 +625,21 @@ async function browserStep(
     if (req.body !== null) {
       init.body = JSON.stringify(req.body.json);
       init.headers = { "content-type": "application/json" };
+    }
+    // A CORS exchange (`cloudsync-cors`) is the browser's own: the preflight is played as
+    // recorded, and the request carries the SDK's own headers and the device bearer under the
+    // recorded origin. The SDK asserts nothing about the CORS headers (Chromium's job does).
+    if (req.headers.origin !== undefined) {
+      init.headers =
+        req.method === "OPTIONS"
+          ? { ...req.headers }
+          : {
+              ...session.headers({
+                authorization: `Bearer ${String(t.initial.token)}`,
+              }),
+              "content-type": "application/json",
+              origin: req.headers.origin,
+            };
     }
     const res = await server.fetch(`${t.baseUrl}${path}`, init);
     last = {
@@ -522,6 +712,7 @@ async function replay(t: Transcript): Promise<void> {
   // request is answered here and never reaches the recording), and the token route's
   // `issued_token_type` is read off the Worker's answer, which the typed outcome does not carry.
   let suppliedNonce: string | null = null;
+  const syncMem: SyncMemory = { etag: null, retryAfter: null, nextId: 1 };
   let issuedTokenType: string | undefined;
   const tapped = (async (input, init) => {
     const url = String(input instanceof Request ? input.url : input);
@@ -530,7 +721,19 @@ async function replay(t: Transcript): Promise<void> {
         status: 200,
         headers: { "content-type": "application/json" },
       });
+    // Cloud Sync: a pull sends back the last ETag it saw, as a cache would (the transport has none).
+    const u = new URL(url);
+    if (u.pathname === `/${t.product}/sync`) {
+      const headers = { ...(init?.headers as Record<string, string>) };
+      if (syncMem.etag !== null) headers["if-none-match"] = syncMem.etag;
+      const r = await server.fetch(input, { ...init, headers });
+      syncMem.etag = r.headers.get("etag") ?? syncMem.etag;
+      syncMem.retryAfter = r.headers.get("retry-after");
+      return r;
+    }
     const res = await server.fetch(input, init);
+    if (u.pathname === `/${t.product}/sync/ops`)
+      syncMem.retryAfter = res.headers.get("retry-after");
     if (url.endsWith("/identity/token") && res.status === 200) {
       const body = (await res.clone().json()) as {
         issued_token_type?: string;
@@ -956,6 +1159,10 @@ async function replay(t: Transcript): Promise<void> {
         }
         break;
       }
+      case "cloudSyncPull":
+      case "cloudSyncPush":
+        await cloudSyncStep(session, step, t, syncMem, observed);
+        break;
       case "relayTicket": {
         // connect.relay (CC-09.2): the ticket route. A refusal reads as `result: "refused"` with
         // the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.

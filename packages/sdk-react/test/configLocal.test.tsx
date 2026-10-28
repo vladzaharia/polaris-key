@@ -213,12 +213,19 @@ describe("config.local — browser", () => {
     await theme.set("dark"); // no resolved change, no event
     await theme.clear();
     expect(keyed).toEqual([
-      { key: "ui.theme", value: "dark", previous: "light", source: "local" },
+      {
+        key: "ui.theme",
+        value: "dark",
+        previous: "light",
+        source: "local",
+        origin: "local",
+      },
       {
         key: "ui.theme",
         value: "light",
         previous: "dark",
         source: "remote-default",
+        origin: "local",
       },
     ]);
     expect(all).toEqual(["ui.theme", "ui.theme"]);

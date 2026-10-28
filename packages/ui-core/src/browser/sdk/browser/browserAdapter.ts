@@ -1173,6 +1173,7 @@ export class BrowserAdapter implements PolarisAdapter {
         await b.register();
       if (b.hasToken) await b.sync();
       this.applyBearer();
+      this.syncFollowsSession(false);
     } catch (e) {
       await capabilities;
       this.applyBearer({
@@ -1534,6 +1535,7 @@ export class BrowserAdapter implements PolarisAdapter {
         if (r.kind === "ok") {
           await this.setExplicitSignOut(false);
           this.applyBearer({ busy: noBusy(), error: noErrors() });
+          this.syncFollowsSession(true);
         }
         return r;
       }),
@@ -2144,6 +2146,7 @@ export class BrowserAdapter implements PolarisAdapter {
       );
       if (result.kind === "signedIn" && result.via === "platform")
         this.applyBearer({ busy: noBusy(), error: noErrors() });
+      if (result.kind === "signedIn") this.syncFollowsSession(true);
       return result;
     } catch (e) {
       // Only a cancellation leaves the ladder as a throw.
@@ -2186,6 +2189,8 @@ export class BrowserAdapter implements PolarisAdapter {
     if (!b)
       return (this.cloudSync_ = unsupportedCloudSync("runtime", COOKIE_DETAIL));
     const dbName = `pkey-sync-${storeNamespace(this.product, this.base)}`;
+    // Sign-out sends what is waiting first (bounded); nothing loaded means nothing to send.
+    b.onBeforeSignOut(() => this.cloudSync.beforeSignOut());
     return (this.cloudSync_ = lazyCloudSync({
       dbName,
       enabled: () => this.capabilities.sync.enabled,
@@ -2196,6 +2201,35 @@ export class BrowserAdapter implements PolarisAdapter {
           dbName,
         ),
     }));
+  }
+
+  /** The signed-in person for Cloud Sync: null for none, undefined when it could not be read (an
+   *  unreachable network is not a sign-out). */
+  private async syncSubject(): Promise<string | null | undefined> {
+    const b = this.bearer;
+    if (!b || !b.hasToken) return null;
+    // No discovery (an offline boot) cannot say who is signed in: that is not a sign-out.
+    if (this.discovery_ === null) return undefined;
+    if (!accountEndpointsOf(this.discovery_)?.subject) return null;
+    try {
+      return await b.subject();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Cloud Sync follows the session: start it (once the product runs Sync), or tell it who just
+   *  signed in. Never throws; a Sync failure is not a sign-in failure. */
+  private syncFollowsSession(signedIn: boolean): void {
+    if (!this.bearer || !this.capabilities.sync.enabled) return;
+    const run = signedIn
+      ? this.syncSubject().then((subject) =>
+          typeof subject === "string"
+            ? this.cloudSync.identity({ kind: "signedIn", subject })
+            : this.cloudSync.attach(),
+        )
+      : this.cloudSync.attach();
+    void run.catch(() => undefined);
   }
 
   /**
@@ -2255,6 +2289,11 @@ export class BrowserAdapter implements PolarisAdapter {
         // The person's synced settings go with the ring (a failure reaches the caller).
         await this.cloudSync.purge();
       } finally {
+        // Tell Cloud Sync the person is gone, so a tab that loaded mid-sign-out cannot bring
+        // the snapshot back (the pre-sign-out hook ran before the server's answer).
+        await this.cloudSync
+          .identity({ kind: "signedOut" })
+          .catch(() => undefined);
         // The relay stops first: a session must not outlive the roster it was admitted under.
         await this.cloudConnect.stop().catch(() => undefined);
         await this.connect.leave();
@@ -2275,12 +2314,16 @@ export class BrowserAdapter implements PolarisAdapter {
       onSettled: async (outcome) => {
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         if (outcome.kind === "signedIn") await this.setExplicitSignOut(false);
-        if (outcome.kind !== "signedIn" || outcome.subject !== null)
+        if (outcome.kind !== "signedIn") return outcome;
+        if (outcome.subject !== null) {
+          this.syncFollowsSession(true);
           return outcome;
+        }
         // Device code answers no subject: read it when discovery names the endpoint.
         const subject = accountEndpointsOf(this.discovery_)?.subject
           ? await this.bearer!.subject().catch(() => null)
           : null;
+        this.syncFollowsSession(true);
         return { ...outcome, subject };
       },
       onFailed: (error) => {

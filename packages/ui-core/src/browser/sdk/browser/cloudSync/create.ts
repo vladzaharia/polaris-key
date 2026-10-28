@@ -9,6 +9,8 @@ import { Feature } from "../../constants.generated.js";
 import { UnsupportedError } from "../../core/caps.js";
 import type { BearerSession } from "../bearer/session.js";
 import type { CloudSyncClient } from "../../core/cloudSync.js";
+import type { LocalConfigEngine } from "../../core/localConfig.js";
+import { BrowserCloudSyncApi, clientOf, importMarker } from "./api.js";
 import { BrowserCloudSyncHost, type CloudSyncHostOptions } from "./host.js";
 import { syncStateStore } from "./store.js";
 import { broadcastChannel, webLocks } from "./writer.js";
@@ -26,6 +28,11 @@ export interface CloudSyncOwner {
   fetchSchema(): Promise<ProductCatalog | null>;
   store: { get(): { configEntries: Record<string, ManagedEntry> } };
   capabilities: { sync: { enabled: boolean } };
+  config: LocalConfigEngine;
+  /** The Worker's base URL. */
+  base: string;
+  /** The signed-in person, null for none, undefined when it could not be read. */
+  syncSubject(): Promise<string | null | undefined>;
 }
 
 /** `pagehide` and `pageshow` on the window, or nothing where there is none. */
@@ -100,16 +107,13 @@ export async function createBrowserCloudSync(
     },
   );
   await host.start();
-  return {
-    unsupported: null,
-    host: async () => host,
-    status: () =>
-      host.started ? host.machine.status() : { state: "local", pending: 0 },
-    flush: async () => (
-      await host.flush(),
-      host.started ? host.machine.status() : { state: "local", pending: 0 }
-    ),
-    purge: () => host.purge(),
-    onEvents: (l) => host.onEvents(l),
-  };
+  const api = new BrowserCloudSyncApi({
+    host,
+    keyring: o.keyring,
+    config: o.config,
+    subject: () => o.syncSubject(),
+    marker: importMarker(`${dbName}:imported`),
+    signInOrigin: new URL(o.base).origin,
+  });
+  return clientOf(api, host);
 }

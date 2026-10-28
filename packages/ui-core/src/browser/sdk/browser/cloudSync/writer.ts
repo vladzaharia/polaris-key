@@ -43,6 +43,8 @@ export type TabMessage =
   /** A follower's edit, for the writer to apply to its machine. `id` lets the writer confirm it. */
   | { t: "edit"; id: number; op: "set"; key: string; value: Json }
   | { t: "edit"; id: number; op: "clear"; key: string }
+  /** A tab signed a person in or out: every other tab asks the session who it is now. */
+  | { t: "principal" }
   /** The writer took edit `id` (applied to its machine, so its own journal carries it). */
   | { t: "ack"; id: number };
 
@@ -81,6 +83,8 @@ export function parseTabMessage(v: unknown): TabMessage | null {
         : null;
     case "purge":
       return { t: "purge" };
+    case "principal":
+      return { t: "principal" };
     case "ack":
       return Number.isSafeInteger(v.id)
         ? { t: "ack", id: v.id as number }

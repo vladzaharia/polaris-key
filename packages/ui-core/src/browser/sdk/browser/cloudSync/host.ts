@@ -129,6 +129,28 @@ export const TICK_MS = 250;
 /** The most exchanges one pump makes, whatever the machine keeps asking for. */
 const MAX_EXCHANGES = 64;
 
+/** How long a purge waits for a running pump or save before it goes on. */
+export const PURGE_WAIT_MS = 2000;
+
+/** `p`, or nothing after `ms` (the promise itself keeps running). */
+async function within(
+  p: Promise<unknown> | undefined,
+  ms: number,
+): Promise<void> {
+  if (p === undefined) return;
+  let cut: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      p,
+      new Promise<void>((resolve) => {
+        cut = setTimeout(resolve, ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(cut);
+  }
+}
+
 const EMPTY_CATALOG: ProductCatalog = { schemaVersion: 0, entries: [] };
 const SYNC_KEY = new RegExp(SYNC_KEY_PATTERN);
 /** The most entries and bytes of a catalog the host will route by. */
@@ -227,6 +249,8 @@ export class BrowserCloudSyncHost {
   #queued: Array<TabMessage & { t: "edit" }> = [];
   #forgetting: Promise<void> = Promise.resolve();
   #offPage: Array<() => void> = [];
+  readonly #principal = new Set<() => void>();
+  readonly #statusListeners = new Set<() => void>();
 
   constructor(deps: BrowserSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
@@ -262,6 +286,43 @@ export class BrowserCloudSyncHost {
   onEvents(fn: (events: SyncEvent[]) => void): () => void {
     this.#listeners.add(fn);
     return () => this.#listeners.delete(fn);
+  }
+
+  /** The machine's status may have moved (a pump ended, a record was followed or dropped). */
+  onStatus(fn: () => void): () => void {
+    this.#statusListeners.add(fn);
+    return () => this.#statusListeners.delete(fn);
+  }
+
+  #noteStatus(): void {
+    for (const fn of this.#statusListeners) {
+      try {
+        fn();
+      } catch {
+        // A listener's failure is its own.
+      }
+    }
+  }
+
+  /** Settles when the forget a `signedOut` event started (the ring, then the record) is done. */
+  forgotten(): Promise<void> {
+    return this.#forgetting;
+  }
+
+  /** Another tab signed a person in or out. */
+  onPrincipal(fn: () => void): () => void {
+    this.#principal.add(fn);
+    return () => this.#principal.delete(fn);
+  }
+
+  /** Tell the other tabs the person changed here. */
+  notePrincipal(): void {
+    this.#deps.channel.post({ t: "principal" });
+  }
+
+  /** The keys the machine can hold a value for: the declared settings and the open ones. */
+  knownKeys(): string[] {
+    return [...new Set([...this.#routes.map((r) => r.key), ...this.#openKeys])];
   }
 
   /**
@@ -507,6 +568,7 @@ export class BrowserCloudSyncHost {
     } finally {
       this.#pumping = null;
       this.#arm();
+      this.#noteStatus();
     }
   }
 
@@ -735,6 +797,15 @@ export class BrowserCloudSyncHost {
       case "ack":
         this.#outbox.delete(m.id);
         return;
+      case "principal":
+        for (const fn of this.#principal) {
+          try {
+            fn();
+          } catch {
+            // A listener's failure is its own.
+          }
+        }
+        return;
       case "purge":
         // Synchronously, before anything awaits: a save the writer's running pump is about to
         // make must already find the record purged (SEC-HOST2 B-1).
@@ -745,6 +816,14 @@ export class BrowserCloudSyncHost {
         this.#queued = [];
         if (this.isWriter) await this.#pumping?.catch(() => undefined);
         this.#drop();
+        // The person is gone here too: the API asks the session who it is now.
+        for (const fn of this.#principal) {
+          try {
+            fn();
+          } catch {
+            // A listener's failure is its own.
+          }
+        }
         return;
       case "state":
         // The writer stored a newer record: follow it. A writer never follows (it wrote it).
@@ -766,6 +845,7 @@ export class BrowserCloudSyncHost {
   async #follow(): Promise<void> {
     const rec = await this.#readRecord();
     if (!this.#holdsLock) this.#adopt(rec);
+    this.#noteStatus();
   }
 
   /** Listeners only: a change another tab already announced is not announced again. */
@@ -788,6 +868,7 @@ export class BrowserCloudSyncHost {
     this.#build(null);
     this.machine.importLocal({});
     this.machine.takeEvents();
+    this.#noteStatus();
   }
 
   // ── Persistence ──────────────────────────────────────────────────────────────────────────
@@ -905,10 +986,15 @@ export class BrowserCloudSyncHost {
     this.#queued = [];
     this.#clearTimer();
     if (this.started) {
-      await this.#pumping?.catch(() => undefined);
+      // A hung request must not hold the purge: wait a short while, then go on. The pump's own
+      // save is skipped (`#purged`), so nothing is written back (SEC-HOST3 S-2).
+      await within(
+        this.#pumping?.catch(() => undefined),
+        PURGE_WAIT_MS,
+      );
       // A save already inside the lock lands before this resolves; only then is `#rev` zeroed, so
       // the next sign-in does not read its own first save as a purge (SEC-HOST2 S5).
-      await this.#write;
+      await within(this.#write, PURGE_WAIT_MS);
       this.#rev = 0;
       this.#openKeys = new Set();
       this.#emitFrom(this.machine);
@@ -921,6 +1007,7 @@ export class BrowserCloudSyncHost {
       await this.#withStateLock(() => removeSyncState(this.#deps.store));
     } finally {
       this.#deps.channel.post({ t: "purge" });
+      this.#noteStatus();
     }
   }
 
@@ -939,6 +1026,8 @@ export class BrowserCloudSyncHost {
     } finally {
       clearTimeout(cut);
     }
+    // A forget this pump started (the person left) is finished before the journal is saved again.
+    await this.#forgetting;
     await this.#save();
   }
 

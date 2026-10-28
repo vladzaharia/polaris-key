@@ -17,6 +17,11 @@ import { UnsupportedError } from "./caps.js";
 
 export type { SyncEvent, SyncStatus };
 
+/** What the adapter tells Cloud Sync about the person: who signed in, or that they left. */
+export type IdentityNote =
+  | { kind: "signedIn"; subject: string }
+  | { kind: "signedOut" };
+
 /** Cloud Sync for settings. The host's machine API (`set`, `get`, `settingState`, `signIn`, ...)
  *  is `host()`'s; app code reads status and flushes. */
 export interface CloudSyncClient {
@@ -38,6 +43,17 @@ export interface CloudSyncClient {
   purge(): Promise<void>;
   /** The machine's events, in order; subscribing before the host loads is fine. */
   onEvents(listener: (events: SyncEvent[]) => void): () => void;
+  /** The status may have moved (a send finished, a record was followed); read `status()`. */
+  onStatus(listener: () => void): () => void;
+  /**
+   * The adapter's wiring (not app code): load and start Cloud Sync, take the stored subject and
+   * route `config.set` through the machine. Idempotent; a no-op where Cloud Sync cannot run.
+   */
+  attach(): Promise<void>;
+  /** The adapter's wiring: the identity session's events drive the machine. */
+  identity(note: IdentityNote): Promise<void>;
+  /** The adapter's wiring, run before sign-out: send what is waiting (bounded), then leave. */
+  beforeSignOut(): Promise<void>;
 }
 
 /** A client for a transport that cannot run Cloud Sync: every verb throws the typed unsupported. */
@@ -62,6 +78,11 @@ export function unsupportedCloudSync(
     // Nothing can be held here, so there is nothing to delete.
     purge: async () => undefined,
     onEvents: () => () => undefined,
+    onStatus: () => () => undefined,
+    // Nothing runs here, so there is nothing to wire.
+    attach: async () => undefined,
+    identity: async () => undefined,
+    beforeSignOut: async () => undefined,
   };
 }
 
@@ -79,6 +100,7 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
   let real: CloudSyncClient | null = null;
   let loading: Promise<CloudSyncClient> | null = null;
   const listeners = new Set<(events: SyncEvent[]) => void>();
+  const statusListeners = new Set<() => void>();
   // A product that does not run the Sync service answers the typed N/A on every verb.
   const off = () =>
     unsupportedCloudSync(
@@ -90,6 +112,7 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       ? (loading ??= src.load().then(
           (c) => (
             c.onEvents((e) => listeners.forEach((l) => l(e))),
+            c.onStatus(() => statusListeners.forEach((l) => l())),
             (real = c)
           ),
           (err) => ((loading = null), Promise.reject(err)),
@@ -115,5 +138,21 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       ).purgeUnloaded(src.dbName);
     },
     onEvents: (l) => (listeners.add(l), () => listeners.delete(l)),
+    onStatus: (l) => (statusListeners.add(l), () => statusListeners.delete(l)),
+    attach: async () => {
+      if (src.enabled()) await (await ready()).attach();
+    },
+    identity: async (note) => {
+      if (!src.enabled()) return;
+      // Nothing loaded holds no person to leave.
+      if (note.kind === "signedOut" && real === null && loading === null)
+        return;
+      await (await ready()).identity(note);
+    },
+    // Nothing loaded means nothing waiting: a page that never synced pays nothing to sign out.
+    beforeSignOut: async () => {
+      const c = real ?? (await loading?.catch(() => null)) ?? null;
+      if (c) await c.beforeSignOut();
+    },
   };
 }
