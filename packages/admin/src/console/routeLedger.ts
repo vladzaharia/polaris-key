@@ -190,6 +190,18 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     from: "connect/setup",
     fate: "live",
   },
+  {
+    id: "connect-devices",
+    scope: "product",
+    from: "connect/devices",
+    fate: "live",
+  },
+  {
+    id: "connect-usage",
+    scope: "product",
+    from: "connect/usage",
+    fate: "live",
+  },
   { id: "commerce-overview", scope: "product", from: "commerce", fate: "live" },
   {
     id: "commerce",

@@ -172,6 +172,8 @@ export type ProductPageId =
   | "sync-data"
   // connect
   | "connect-setup"
+  | "connect-devices"
+  | "connect-usage"
   // commerce
   | "commerce-overview";
 
@@ -325,6 +327,13 @@ export const SYNC_PAGES: readonly ProductPageId[] = [
   "sync-setup",
   "sync-usage",
   "sync-data",
+];
+
+/** Cloud Connect's route tabs, the first the default; one sidebar row, `connect-setup`. */
+export const CONNECT_PAGES: readonly ProductPageId[] = [
+  "connect-setup",
+  "connect-devices",
+  "connect-usage",
 ];
 
 /** A feed page's route tabs (F-11), the first the default. */
@@ -881,7 +890,7 @@ export const SECTIONS: NavSection[] = [
     docs: "/docs/features/cloud-connect/",
     items: [
       {
-        // The section's one page until CC-16 adds Usage and Linked devices.
+        // One row for the feature: Setup is the page, Linked devices and Usage its route tabs.
         page: "connect-setup",
         tile: "service",
         label: "Cloud Connect",
@@ -889,6 +898,26 @@ export const SECTIONS: NavSection[] = [
         icon: Radar,
         docs: "/docs/features/cloud-connect/",
         inNav: true,
+      },
+      {
+        // A tab of Cloud Connect, not a sidebar item.
+        page: "connect-devices",
+        tile: "service",
+        label: "Linked devices",
+        path: "connect/devices",
+        icon: Radar,
+        docs: "/docs/features/cloud-connect/",
+        inNav: false,
+      },
+      {
+        // A tab of Cloud Connect, not a sidebar item.
+        page: "connect-usage",
+        tile: "service",
+        label: "Usage",
+        path: "connect/usage",
+        icon: Radar,
+        docs: "/docs/features/cloud-connect/",
+        inNav: false,
       },
     ],
   },

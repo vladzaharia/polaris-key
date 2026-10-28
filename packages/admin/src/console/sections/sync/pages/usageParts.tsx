@@ -14,6 +14,8 @@ import {
   fromSeconds,
 } from "../../../../lib/format.js";
 import { platformName } from "../../../../lib/vocab/platforms.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
+import { StatTile } from "../../../../ui/charts/StatTile.js";
 import { useOverflows } from "../../../../ui/data-table/DataTable.js";
 import { useCan } from "../../../access/useCan.js";
 import { Link } from "../../../router.js";
@@ -25,6 +27,30 @@ export type Usage = Extract<SyncUsageResponse, { enabled: true }>;
 export type Nouns = { one: string; many: string };
 
 const NBSP = "\u00a0";
+
+export const TILES =
+  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 xl:grid-cols-4";
+
+/** Stat tiles and a table card while a usage read loads: the page's own shape, no second header. */
+export function UsageSkeleton({
+  tiles,
+}: {
+  tiles: number;
+}): React.ReactElement {
+  return (
+    <div className="space-y-6" aria-busy="true">
+      <p role="status" className="sr-only">
+        Loading usage
+      </p>
+      <div aria-hidden className={TILES}>
+        {Array.from({ length: tiles }, (_, k) => (
+          <StatTile key={k} label="Loading" loading />
+        ))}
+      </div>
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  );
+}
 
 /** The one Cloud Sync byte formatter (Setup's), with the unit kept to its number. */
 export function formatStorage(bytes: number): string {
