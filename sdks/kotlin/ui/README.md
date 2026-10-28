@@ -219,6 +219,18 @@ rather than asking for a new one. `PolarisKeyGate(client, signIn = true)` (or `P
 signIn = ...)`) runs sign-in inside the gate instead, and its "Use a license key instead" comes
 back to the key field.
 
+### Automatic sign-in
+
+The gate runs `identity.autoSignIn()` once at boot and draws what it answers before the activation
+screen: the consent (Continue; "Use another account"), the license choice, the device limit (Replace
+a device, or the web page that frees a seat) and the sign-in form. A refusal, a person who signed out
+and a desktop with no provider fall back to the gate's own screens without a word. Turn it off with
+`PolarisKeyGate(client, autoSignIn = false)`, `PolarisGate(state, autoSignIn = false)` or
+`PolarisGateState(..., autoSignIn = false)`. On Android, install the provider once
+(`client.identity.installPlatformIdentity(PlatformSignIn { activity }.asProvider())`, from `:android`)
+and the form's row reads "Continue with Google" and runs Credential Manager's sheet, then the exchange
+with `personInitiated = true`. The JVM desktop has no provider row.
+
 ## Routes and deep links
 
 The kit owns no navigation; the host keeps its own and the kit names the places and parses the link.

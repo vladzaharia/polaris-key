@@ -67,6 +67,12 @@ public fun PlatformSignIn.asProvider(fallbackClientId: String? = null): Platform
         return token(nonce, this@asProvider.sheet(audience, nonce))
     }
 
+    /** The sign-in form's Google row: the explicit "Sign in with Google" flow (`GetSignInWithGoogleOption`). */
+    override suspend fun providerSheet(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+        val audience = serverClientId ?: fallbackClientId ?: return null
+        return token(nonce, this@asProvider.provider(audience, nonce))
+    }
+
     override suspend fun signOutCleanup() {
         this@asProvider.signOutCleanup()
     }

@@ -107,6 +107,7 @@ public fun PolarisBoot(
         onConsent = state::answerConsent,
         onUpdate = onUpdate,
         signIn = signIn,
+        auto = gate?.auto,
         content = content,
     )
 }
@@ -144,6 +145,7 @@ public fun PolarisBootScreen(
     onConsent: (Boolean) -> Unit = {},
     onUpdate: (() -> Unit)? = null,
     signIn: PolarisSignInState? = null,
+    auto: PolarisAutoSignInState? = null,
     content: @Composable () -> Unit = {},
 ) {
     val copy = PolarisTheme.copy
@@ -165,6 +167,7 @@ public fun PolarisBootScreen(
                     onRetry = onRetry,
                     manageAsQr = isTelevision(),
                     signIn = signIn,
+                    auto = auto,
                     onUpdate = onUpdate,
                 )
             }

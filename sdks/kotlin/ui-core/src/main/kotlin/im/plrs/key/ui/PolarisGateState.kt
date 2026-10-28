@@ -90,6 +90,9 @@ public interface PolarisGateActions {
     /** Keyless enrolment ("Continue free"); answers `EnrollDisabled` unless the host offers it. */
     public suspend fun enroll(): ActivationResult = ActivationResult.EnrollDisabled
 
+    /** Automatic sign-in (I-45.6); null runs none. The umbrella client's runs `identity.autoSignIn()`. */
+    public val autoSignIn: PolarisAutoSignInActions? get() = null
+
     /** Licence-state changes the SDK pushes (a sync that changed the document). */
     public val changes: Flow<LicenseState> get() = emptyFlow()
 }
@@ -104,6 +107,8 @@ public fun PolarisKeyClient.gateActions(): PolarisGateActions {
         override suspend fun sync() {
             client.sync()
         }
+
+        override val autoSignIn: PolarisAutoSignInActions by lazy { client.autoSignInActions() }
 
         override val changes: Flow<LicenseState> get() = client.events.filterIsInstance<PolarisEvent.License>().map { it.state }
     }
@@ -121,7 +126,17 @@ public class PolarisGateState(
     initial: LicenseState? = null,
     /** Where the portal sends the person back once a seat is free (a declared return target). */
     private val returnUrl: String? = null,
+    /** Run `autoSignIn()` once at [start]. False is the opt-out (`PolarisGate(autoSignIn = false)`). */
+    autoSignIn: Boolean = true,
 ) {
+    /**
+     * Automatic sign-in: its steps are drawn over the gate until the person is in or it falls back
+     * (a refusal, a desktop with no provider, a person who signed out). Null when the actions have none.
+     */
+    public val auto: PolarisAutoSignInState? = actions.autoSignIn?.let { auto ->
+        PolarisAutoSignInState(auto, scope, enabled = autoSignIn, onSignedIn = { scope.launch { reload() } })
+    }
+
     private val _gate = MutableStateFlow(PolarisGateUi(license = initial, nowSeconds = clock()))
     private val _activation = MutableStateFlow(PolarisActivationUi())
 
@@ -140,6 +155,7 @@ public class PolarisGateState(
 
     /** Read the status now and follow the SDK's changes. */
     public fun start() {
+        auto?.start()
         scope.launch { reload() }
         scope.launch { actions.changes.collect { show(it) } }
     }
