@@ -2067,6 +2067,7 @@ export class BrowserAdapter implements PolarisAdapter {
     return (this.connect_ = createConnect({
       product: this.product,
       baseUrl: this.base,
+      lockName: `pkey-connect:${name}`,
       applyTrust: (jws) => b.acceptPeerTrust(jws),
       device: async () => {
         await b.init();

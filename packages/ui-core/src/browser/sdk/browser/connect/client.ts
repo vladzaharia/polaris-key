@@ -117,6 +117,8 @@ export interface ConnectEnv {
   discovery(): Promise<unknown>;
   /** The control-plane base URL; a relay ticket is accepted only for its host. */
   baseUrl: string;
+  /** The name of the record's Web Lock (`pkey-connect:` + the database name). */
+  lockName?: string;
   /** Verify against the usable pins and apply a trust manifest a peer pushed (the trust lock). */
   applyTrust?: (jws: string) => Promise<TrustApplication>;
   /** The device keys: the host's, else the page's key store. */
@@ -237,11 +239,7 @@ export class ConnectEngine {
       held,
       now,
     );
-    try {
-      await store.put(JSON.stringify(record.rec));
-    } catch (e) {
-      throw this.#storeError(e);
-    }
+    await this.#write(store, record.rec, dev.deviceId, true);
     return record.view;
   }
 
@@ -482,11 +480,7 @@ export class ConnectEngine {
       prevUntil: keys.length === 2 ? held.prevUntil : null,
       storedAt: now,
     };
-    try {
-      await store.put(JSON.stringify(rec));
-    } catch (e) {
-      throw this.#storeError(e);
-    }
+    await this.#write(store, rec, dev.deviceId, false);
     return { stored: true, epoch: ring.epoch };
   }
 
@@ -701,6 +695,36 @@ export class ConnectEngine {
     const res = await this.#env.request(path, { method: "GET" });
     if (!res.ok) throw await refusal(res);
     return res;
+  }
+
+  /**
+   * The one place the record is written (R-6w). Read again just before the write: a record with a
+   * lower epoch than the stored one is refused (a lost update would roll the roster back), and a
+   * stored `keysStale` is cleared only by a record from an identity fetch at the same or a higher
+   * epoch.
+   */
+  async #write(
+    store: ConnectStateStore,
+    rec: ConnectStateRecord,
+    deviceId: string,
+    fromIdentity: boolean,
+  ): Promise<void> {
+    try {
+      const cur = await this.#load(store, deviceId);
+      let next = rec;
+      if (cur !== null) {
+        if (cur.epoch > rec.epoch)
+          throw new PolarisError(
+            ErrorCode.storeFailed,
+            "A newer Cloud Connect roster is already stored.",
+          );
+        if (cur.keysStale === true && rec.keysStale !== true && !fromIdentity)
+          next = { ...rec, keysStale: true };
+      }
+      await store.put(JSON.stringify(next));
+    } catch (e) {
+      throw this.#storeError(e);
+    }
   }
 
   async #store(): Promise<ConnectStateStore> {

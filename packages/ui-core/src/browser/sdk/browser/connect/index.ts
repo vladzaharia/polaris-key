@@ -24,6 +24,7 @@ import type {
 import type { ConnectNotice } from "./channel.js";
 import type { ConnectSession } from "./session.js";
 import { LanError } from "./errors.js";
+import { withLock } from "./lock.js";
 import type { Unsupported } from "@polaris-key/client-core";
 
 export type {
@@ -55,6 +56,8 @@ export interface ConnectClient {
   relaySource(): RelaySource;
   /** `POST /<p>/connect/relay/ticket`. @internal */
   relayTicket(): Promise<RelayGrant>;
+  /** The record's Web Lock name; the relay lock is derived from it. @internal */
+  readonly lockName: string;
 }
 
 /** A cookie page holds no device token, so it has no Connect identity. */
@@ -76,6 +79,7 @@ export function unsupportedConnect(detail: string): ConnectClient {
     listDevices: async () => no(),
     discoveryKeys: async () => null,
     leave: async () => undefined,
+    lockName: "pkey-connect:unsupported",
     relaySource: () => no(),
     relayTicket: async () => no(),
   };
@@ -91,9 +95,14 @@ export function createConnect(env: ConnectEnv): ConnectClient {
   let engine: Promise<import("./client.js").ConnectEngine> | null = null;
   const load = (): Promise<import("./client.js").ConnectEngine> =>
     (engine ??= import("./client.js").then((m) => new m.ConnectEngine(env)));
+  const lockName = env.lockName ?? `pkey-connect:${env.product}`;
+  /** One call at a time in this tab, and one at a time across tabs for the record. */
+  const locked = <T>(f: () => Promise<T>): Promise<T> =>
+    serial(() => withLock(lockName, f));
   return {
+    lockName,
     identity: (opts = {}) =>
-      serial(async () => (await load()).identity(opts.refresh === true)),
+      locked(async () => (await load()).identity(opts.refresh === true)),
     current: () => serial(async () => (await load()).current()),
     listDevices: () => serial(async () => (await load()).listDevices()),
     discoveryKeys: () => serial(async () => (await load()).discoveryKeys()),
@@ -102,16 +111,16 @@ export function createConnect(env: ConnectEnv): ConnectClient {
       now: () => env.now(),
       load: () => serial(async () => (await load()).peerIdentity()),
       refresh: async () => {
-        await serial(async () => (await load()).identity(true));
+        await locked(async () => (await load()).identity(true));
       },
       adoptRing: (jws: string): Promise<RingAdoption> =>
-        serial(async () => (await load()).adoptRing(jws)),
+        locked(async () => (await load()).adoptRing(jws)),
       applyTrust: (jws: string): Promise<TrustApplication> =>
         serial(async () => (await load()).applyTrust(jws)),
       ticket: () => serial(async () => (await load()).relayTicket()),
     }),
     leave: () =>
-      serial(async () => {
+      locked(async () => {
         try {
           for (const store of [env.stores.memory, env.stores.durable()]) {
             // Nothing held means nothing to forget; an unreadable record is cleared too. A store
@@ -234,6 +243,7 @@ export function createCloudConnect(connect: ConnectClient): CloudConnectClient {
         (engine = new m.CloudConnect(connect, {
           channel: (s) => {
             for (const f of [...channel]) f(s);
+            return channel.size > 0;
           },
           notice: (n) => {
             for (const f of [...notice]) f(n);

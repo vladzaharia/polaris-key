@@ -24,8 +24,27 @@ export { LanError, type SessionCloseCode } from "./errors.js";
 /** The first APP record type; `send` defaults to it. */
 export const APP_DEFAULT_TYPE = 0x0100;
 const MAX_QUEUED_MESSAGES = 256;
-/** Queued bytes at which an unread session is closed with `peer_busy`. */
-export const QUEUE_MAX_BYTES = 8 * 1024 * 1024;
+/** Queued bytes at which one unread session is closed with `peer_busy`. */
+export const QUEUE_MAX_BYTES = 2 * 1024 * 1024;
+/** Queued bytes across every session of one relay (R-6w). */
+export const QUEUE_BUDGET_BYTES = 32 * 1024 * 1024;
+
+/** A shared byte budget: sessions take from it as they queue and give back as the host reads. */
+export class QueueBudget {
+  #used = 0;
+  readonly #max: number;
+  constructor(max: number = QUEUE_BUDGET_BYTES) {
+    this.#max = max;
+  }
+  take(n: number): boolean {
+    if (this.#used + n > this.#max) return false;
+    this.#used += n;
+    return true;
+  }
+  give(n: number): void {
+    this.#used = Math.max(0, this.#used - n);
+  }
+}
 
 export interface SessionMessage {
   type: number;
@@ -62,6 +81,7 @@ export class ConnectSession {
   #onClose = new Set<(c: SessionClosed) => void>();
   #closed: SessionClosed | null = null;
   #bytes = 0;
+  readonly #budget: QueueBudget;
 
   /** @internal */
   constructor(
@@ -70,8 +90,10 @@ export class ConnectSession {
     caps: readonly string[],
     hello: PeerHello,
     role: "initiator" | "responder",
+    budget: QueueBudget = new QueueBudget(),
   ) {
     links.set(this, link);
+    this.#budget = budget;
     this.peerDeviceId = peerDeviceId;
     this.caps = caps;
     this.hello = hello;
@@ -121,6 +143,7 @@ export class ConnectSession {
     const m = this.#queue.shift();
     if (m !== undefined) {
       this.#bytes -= m.body.length;
+      this.#budget.give(m.body.length);
       return Promise.resolve(m);
     }
     if (this.#closed !== null)
@@ -158,7 +181,8 @@ export class ConnectSession {
     if (w !== undefined) return w.resolve(m);
     if (
       this.#queue.length >= MAX_QUEUED_MESSAGES ||
-      this.#bytes + m.body.length > QUEUE_MAX_BYTES
+      this.#bytes + m.body.length > QUEUE_MAX_BYTES ||
+      !this.#budget.take(m.body.length)
     ) {
       void this.#channel.close("peer_busy");
       return;
@@ -171,6 +195,9 @@ export class ConnectSession {
   ended(c: SessionClosed): void {
     if (this.#closed !== null) return;
     this.#closed = c;
+    this.#budget.give(this.#bytes);
+    this.#bytes = 0;
+    this.#queue = [];
     for (const w of this.#waiters.splice(0))
       w.reject(new LanError("closed", "The session is closed."));
     for (const f of [...this.#onClose]) f(c);
