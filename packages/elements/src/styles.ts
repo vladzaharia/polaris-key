@@ -1720,10 +1720,10 @@ dialog.sheet .identity {
 
 /* ── Forced colours: system colours, borders where fills carried the shape ───────────────── */
 @media (forced-colors: active) {
-  /* The card carries no padding when it is split or full-bleed: its frame would touch the title
-     and buttons and sit on the viewport edge. Those frame their panes instead. */
-  .pk-root:not([data-fill]) .stage:not([data-split]) .card,
-  .stage[data-split] .passport,
+  /* The card is framed, split or not (its inset shadow is dropped here). A full-bleed card sits
+     on the viewport edge: a split one frames its identity pane instead. */
+  .pk-root:not([data-fill]) .stage .card,
+  .pk-root[data-fill] .stage[data-split] .passport,
   .pane,
   .list,
   .banner,
