@@ -9744,8 +9744,8 @@ paths:
                 required: { value: { error: { code: device_keys_required } } }
         "429":
           description: >
-            `relay_quota_exceeded`. `scope` is `person` or `product`. The local network is never
-            metered.
+            `relay_quota_exceeded` (`scope` is `person` or `product`; the local network is never
+            metered), or `rate_limited` (12 tickets a minute per device; `Retry-After`).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ConnectRelayQuotaExceeded" }
@@ -9826,7 +9826,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
         "429":
-          description: "`relay_quota_exceeded`. `scope` is `person` or `product`."
+          description: "`relay_quota_exceeded` (`scope` is `person` or `product`), or `rate_limited` (per network; `Retry-After`)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ConnectRelayQuotaExceeded" }

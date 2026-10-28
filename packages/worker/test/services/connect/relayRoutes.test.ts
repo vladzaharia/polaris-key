@@ -292,6 +292,22 @@ describe("the relay routes", () => {
     expect((await upgrade(w, `pkey-relay.1, ${ticket}`)).status).toBe(200);
   });
 
+  it("limits tickets to 12 a minute per device and upgrades per network, before the ticket is consumed", async () => {
+    for (let i = 0; i < 12; i++)
+      expect((await post(w, A, w.tokens[A]!)).status).toBe(200);
+    const over = await post(w, A, w.tokens[A]!);
+    expect(over.status).toBe(429);
+    expect(over.headers.get("retry-after")).toBe("60");
+    // Another device has its own budget.
+    expect((await post(w, B, w.tokens[B]!)).status).toBe(200);
+    const ticket = await ticketOf(w, B);
+    for (let i = 0; i < 60; i++)
+      await upgrade(w, "pkey-relay.1, pkeyrt_" + "x".repeat(32));
+    // Over the network budget: refused without touching the (valid, unspent) ticket.
+    expect((await upgrade(w, `pkey-relay.1, ${ticket}`)).status).toBe(429);
+    expect(room.requests).toHaveLength(0);
+  });
+
   it("stores only a hash of the ticket", async () => {
     const ticket = await ticketOf(w);
     const ns = w.env.SINGLE_USE as unknown as { dump?: () => string };

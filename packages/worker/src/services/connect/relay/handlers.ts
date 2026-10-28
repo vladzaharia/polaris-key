@@ -31,13 +31,13 @@ import {
   isRelayTicket,
   mintRelayTicket,
 } from "../../../platform/crypto.js";
-import { b64urlDecodeStrict } from "../../../platform/bytes.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { resolveSyncPrincipal } from "../../../core/accounts/accountSubjects.js";
 import { accountDeviceKeys } from "../../../core/devices/keys.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { ErrorCode, json, notFound, wireError } from "../../../core/errors.js";
 import type { ServiceContext } from "../../../core/registry.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { launchGateOn } from "../../../core/settings/platformRead.js";
 import {
   artefactRef,
@@ -45,7 +45,11 @@ import {
   putArtefact,
 } from "../../../core/singleUse.js";
 import { authenticate } from "../identity.js";
-import { RELAY_PROTOCOL, type Admission } from "../do/admission.js";
+import {
+  deviceIdBytes,
+  RELAY_PROTOCOL,
+  type Admission,
+} from "../do/admission.js";
 import { forwardToRelay } from "../do/client.js";
 import {
   RELAY_PAUSED_RETRY_AFTER_SECONDS,
@@ -56,7 +60,25 @@ import {
 } from "./access.js";
 
 const NO_STORE = { "cache-control": "no-store" } as const;
-const DEVICE_ID_BYTES = 24;
+
+/** Tickets per device per minute (V5 §15.7); the bucket fails closed (`FAIL_MODE`). */
+export const RELAY_TICKET_LIMIT = {
+  bucket: "connectRelayTicket",
+  limit: 12,
+  windowSec: 60,
+} as const;
+/** Upgrades per network per minute, counted before the ticket is hashed or consumed. */
+export const RELAY_UPGRADE_LIMIT = {
+  bucket: "connectRelayUpgrade",
+  limit: 60,
+  windowSec: 60,
+} as const;
+
+const tooMany = (): Response => {
+  const res = wireError(429, "rate_limited");
+  res.headers.set("retry-after", "60");
+  return res;
+};
 
 /** What the single-use store holds for a ticket. */
 interface TicketRecord {
@@ -71,11 +93,7 @@ interface TicketRecord {
 const relayBound = (ctx: ServiceContext): boolean =>
   ctx.env.CONNECT_RELAY !== undefined;
 
-/** A device id as the room names it: its 24 decoded bytes, or null when it is not one. */
-function deviceBytes(id: string): Uint8Array | null {
-  const b = b64urlDecodeStrict(id);
-  return b !== null && b.length === DEVICE_ID_BYTES ? b : null;
-}
+const deviceBytes = deviceIdBytes;
 
 /** The refusals both routes share, in order; `refused` is null when the relay may admit the caller. */
 async function check(
@@ -121,6 +139,15 @@ export async function handleRelayTicket(
   if (caller instanceof Response) return caller;
   if (deviceBytes(caller.deviceId) === null)
     return wireError(409, ErrorCode.DeviceKeysRequired);
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { ...RELAY_TICKET_LIMIT, id: caller.deviceId },
+      now,
+    ))
+  )
+    return tooMany();
   // The caller must be in its own person's roster: a device whose seat was released has no room.
   const roster = await accountDeviceKeys(db, product.slug, caller.subject, {
     seatsHeld: caller.seatsHeld,
@@ -181,6 +208,16 @@ export async function handleRelayUpgrade(
     return wireError(426, ErrorCode.BadRequest);
   const ticket = ticketFromProtocols(req.headers.get("sec-websocket-protocol"));
   if (ticket === null) return badTicket();
+  // Coarse and first: before the ticket is hashed or the single-use store is touched.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      { ...RELAY_UPGRADE_LIMIT, id: clientNetwork(req) },
+      now,
+    ))
+  )
+    return tooMany();
 
   // Single use: the first caller takes the record, every other (and every replay) gets none.
   const raw = await consumeArtefact(env, await ticketAddress(ctx, ticket));
@@ -217,6 +254,7 @@ export async function handleRelayUpgrade(
     product: product.slug,
     subject: rec.subject,
     monthCeiling: state.monthCeiling,
+    seatsHeld,
     ticket: {
       device: self,
       members,

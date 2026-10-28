@@ -5,8 +5,9 @@
 import { decodeRelay, encodeRelay } from "@polaris-key/client-core/peer";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "../../helpers.js";
+import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
 import { KvMock } from "../../kvMock.js";
-import { makeEnv } from "../../seed.js";
+import { makeEnv, seedProduct } from "../../seed.js";
 import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
 import {
@@ -105,14 +106,58 @@ function world(env: Env = makeEnv(new KvMock())) {
   };
 }
 
+const idOf = (d: Uint8Array): string => Buffer.from(d).toString("base64url");
+
+/** Seed the person's roster (subject ps_AAAAAAAAAAAAAAAAAAAAAA on djdl) the alarm re-reads: the given devices. */
+async function seedRoster(
+  w: ReturnType<typeof world>,
+  devices: Uint8Array[] = [A, B],
+): Promise<void> {
+  await seedProduct(w.db, "djdl");
+  await w.db.run(
+    "INSERT OR IGNORE INTO accounts (id, created_at, modified_at) VALUES ('acc1', 1, 1)",
+  );
+  await w.db.run(
+    "INSERT OR IGNORE INTO account_product_subjects (account_id, product, subject, created_at) VALUES ('acc1', 'djdl', 'ps_AAAAAAAAAAAAAAAAAAAAAA', 1)",
+  );
+  for (const [i, d] of devices.entries()) {
+    await w.db.run(
+      `INSERT OR REPLACE INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject)
+       VALUES ('djdl', ?, '', 'authorized', 1, 1, 'ps_AAAAAAAAAAAAAAAAAAAAAA')`,
+      idOf(d),
+    );
+    await w.db.run(
+      `INSERT OR REPLACE INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at)
+       VALUES ('djdl', ?, ?, ?, 1, 1)`,
+      idOf(d),
+      `sign${i}${idOf(d)}`,
+      `agree${i}${idOf(d)}`,
+    );
+  }
+}
+
+const seeded = new WeakSet<object>();
+/** Run the room's alarm with the default roster (A and B) seeded once. */
+async function alarmOf(
+  w: ReturnType<typeof world>,
+  room: ConnectRelayDO,
+): Promise<void> {
+  if (!seeded.has(w.db)) {
+    seeded.add(w.db);
+    await seedRoster(w);
+  }
+  await room.alarm();
+}
+
 const adm = (
   device: Uint8Array,
   over: Partial<Admission["ticket"]> = {},
   top: Partial<Admission> = {},
 ): Admission => ({
   product: "djdl",
-  subject: "ps_abc",
+  subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
   monthCeiling: 500 * GiB,
+  seatsHeld: false,
   ticket: {
     device,
     members: [A, B],
@@ -259,7 +304,7 @@ describe("ConnectRelayDO", () => {
     await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 10));
     w.tick(60_000);
     w.state.alarmAt = null;
-    await room.alarm();
+    await alarmOf(w, room);
     const rows = await w.db.all<{
       product: string;
       day: string;
@@ -271,7 +316,7 @@ describe("ConnectRelayDO", () => {
     expect(rows[0]!.bytes).toBe(10 + 24 + 4 + 1);
     expect(w.state.store.has("pending")).toBe(false);
     // Another alarm adds nothing.
-    await room.alarm();
+    await alarmOf(w, room);
     expect(
       (await w.db.first<{ bytes: number }>(
         "SELECT bytes FROM connect_relay_daily",
@@ -295,10 +340,10 @@ describe("ConnectRelayDO", () => {
     await room.fetch(upgrade(adm(B)));
     await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 10));
     w.state.alarmAt = null;
-    await expect(room.alarm()).rejects.toThrow();
+    await expect(alarmOf(w, room)).rejects.toThrow();
     expect(w.state.store.has("pending")).toBe(true);
     down = false;
-    await room.alarm();
+    await alarmOf(w, room);
     expect(w.state.store.has("pending")).toBe(false);
     expect(
       (await real.first<{ bytes: number }>(
@@ -320,7 +365,7 @@ describe("ConnectRelayDO", () => {
       day,
     );
     w.state.alarmAt = null;
-    await room.alarm();
+    await alarmOf(w, room);
     const before = b.sent.length;
     await room.webSocketMessage(a as never, send(B, 5));
     expect(b.sent.length).toBe(before);
@@ -350,8 +395,97 @@ describe("ConnectRelayDO", () => {
     await room.fetch(upgrade(adm(A)));
     (w.env as unknown as Record<string, string>).LAUNCH_RELAY = "off";
     w.state.alarmAt = null;
-    await room.alarm();
+    await alarmOf(w, room);
     expect(w.pairs[0]!.server.closed).toBe(4008);
+  });
+
+  it("closes open sockets with LIMIT 4 when the pause turns on during a session, and recovers when it ends", async () => {
+    const w = world();
+    const room = await joined(w);
+    await seedRoster(w);
+    await w.db.run(
+      `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
+       VALUES ('cloudConnect.relayPaused', '"on"', 1, 1, 'test')`,
+    );
+    invalidatePlatformSettings(w.env, w.db);
+    w.state.alarmAt = null;
+    await room.alarm();
+    expect(frames(w.pairs[0]!.server)).toContain("limit");
+    expect(w.pairs[0]!.server.closed).toBe(4008);
+    expect(w.pairs[1]!.server.closed).toBe(4008);
+    // The pause ends: the room admits again, and a new session is not told paused.
+    await w.db.run("DELETE FROM platform_settings");
+    invalidatePlatformSettings(w.env, w.db);
+    await room.alarm();
+    const before = w.pairs.length;
+    await room.fetch(upgrade(adm(A)));
+    expect(w.pairs[before]!.server.closed).toBeNull();
+  });
+
+  it("closes the socket of a device that left the roster at the next alarm, and announces it gone", async () => {
+    const w = world();
+    const room = await joined(w);
+    await seedRoster(w);
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized' WHERE product = 'djdl' AND device_id = ?",
+      idOf(B),
+    );
+    w.state.alarmAt = null;
+    await room.alarm();
+    expect(w.pairs[1]!.server.closed).toBe(4003);
+    expect(w.pairs[0]!.server.closed).toBeNull();
+    expect(frames(w.pairs[0]!.server)).toContain("gone");
+    // And B can no longer be written to.
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B));
+    expect(w.pairs[0]!.server.closed).toBe(4003);
+  });
+
+  it("deletes the room when the person has no device left", async () => {
+    const w = world();
+    const room = await joined(w);
+    await seedRoster(w, []);
+    w.state.alarmAt = null;
+    await room.alarm();
+    expect(w.pairs[0]!.server.closed).toBe(4003);
+    expect(w.state.store.has("room")).toBe(false);
+    expect(w.state.alarmAt).toBeNull();
+  });
+
+  it("keeps the room open on an unreadable read and enforces the close at the third in a row", async () => {
+    const w = world();
+    const room = await joined(w);
+    let broken = true;
+    const flaky = w.make({
+      db: () => {
+        if (broken) throw new Error("down");
+        return w.db;
+      },
+    });
+    void room;
+    w.state.alarmAt = null;
+    await flaky.alarm().catch(() => undefined);
+    await flaky.alarm().catch(() => undefined);
+    expect(w.pairs[0]!.server.closed).toBeNull();
+    await flaky.alarm().catch(() => undefined);
+    expect(w.pairs[0]!.server.closed).toBe(4008);
+    broken = false;
+  });
+
+  it("refuses an admission for ten minutes after a purge", async () => {
+    const w = world();
+    const room = await joined(w);
+    await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "POST",
+        body: JSON.stringify({
+          product: "djdl",
+          subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+        }),
+      }),
+    );
+    expect((await room.fetch(upgrade(adm(A)))).status).toBe(403);
+    w.tick(600_001);
+    expect((await room.fetch(upgrade(adm(A)))).status).toBe(200);
   });
 
   it("drops a closed socket and tells the others", async () => {
@@ -386,7 +520,7 @@ describe("ConnectRelayDO", () => {
     const forged = upgrade(adm(dev(9)));
     const res = await forwardToRelay({ CONNECT_RELAY: ns }, adm(A), forged);
     expect(res?.status).toBe(200);
-    expect(seen.name).toBe("djdl:ps_abc");
+    expect(seen.name).toBe("djdl:ps_AAAAAAAAAAAAAAAAAAAAAA");
     expect(seen.req?.headers.get(ADMISSION_HEADER)).toBe(
       encodeAdmission(adm(A)),
     );
@@ -411,10 +545,15 @@ describe("ConnectRelayDO", () => {
     await expect(
       purgeRelay({ CONNECT_RELAY: ns }, "djdl", "ps_other"),
     ).rejects.toThrow();
-    await purgeRelay({ CONNECT_RELAY: ns }, "djdl", "ps_abc");
+    await purgeRelay(
+      { CONNECT_RELAY: ns },
+      "djdl",
+      "ps_AAAAAAAAAAAAAAAAAAAAAA",
+    );
     expect(w.pairs.map((p) => p.server.closed)).toEqual([4003, 4003]);
-    expect(w.state.store.size).toBe(0);
+    // Only the tombstone is left: no roster, no usage.
+    expect([...w.state.store.keys()]).toEqual(["erasedAt"]);
     expect(w.state.alarmAt).toBeNull();
-    await purgeRelay({}, "djdl", "ps_abc");
+    await purgeRelay({}, "djdl", "ps_AAAAAAAAAAAAAAAAAAAAAA");
   });
 });

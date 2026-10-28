@@ -4,7 +4,8 @@ import { D1Db } from "../../../db/d1.js";
 import { hexDecode, hexEncode } from "../../../platform/bytes.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
-import { launchGateOn } from "../../../core/settings/platformRead.js";
+import { accountDeviceKeys } from "../../../core/devices/keys.js";
+import { platformSetting } from "../../../core/settings/platformRead.js";
 import {
   RELAY_CLOSE,
   RelayEngine,
@@ -15,6 +16,7 @@ import {
   ADMISSION_HEADER,
   RELAY_PROTOCOL,
   decodeAdmission,
+  deviceIdBytes,
 } from "./admission.js";
 
 // One person's relay room for one product (CC-07.2; plans/CC-01-cloud-connect.md §2.7, §2.9).
@@ -47,6 +49,10 @@ import {
 const ALARM_MS = 60_000;
 const DAY_MS = 86_400_000;
 const FLUSH_TIMEOUT_MS = 10_000;
+/** After a purge, no admission for this long: a reconnect racing the erasure cannot re-create the room. */
+const ERASED_MS = 600_000;
+/** Consecutive unreadable gate, pause or roster reads the alarm tolerates before it enforces a close. */
+const READ_FAILS_MAX = 3;
 
 interface Attachment {
   id: string;
@@ -62,6 +68,7 @@ interface Room {
   paused: boolean;
   productOver: boolean;
   monthCeiling: number;
+  seatsHeld?: boolean;
   day: number;
   dayUsed: number;
   seq: number;
@@ -156,6 +163,9 @@ export class ConnectRelayDO implements DurableObject {
       (pinned.product !== adm.product || pinned.subject !== adm.subject)
     )
       return new Response(null, { status: 403 });
+    const erasedAt = await this.ctx.storage.get<number>("erasedAt");
+    if (erasedAt !== undefined && this.now() - erasedAt < ERASED_MS)
+      return new Response(null, { status: 403 });
 
     const now = this.now();
     this.wake(now);
@@ -178,7 +188,12 @@ export class ConnectRelayDO implements DurableObject {
     } satisfies Attachment);
 
     if (!refused) {
-      await this.persist(adm.product, adm.subject, adm.monthCeiling);
+      await this.persist(
+        adm.product,
+        adm.subject,
+        adm.monthCeiling,
+        adm.seatsHeld,
+      );
       await this.addSession(now);
     }
     await this.carryOut(outs);
@@ -215,6 +230,7 @@ export class ConnectRelayDO implements DurableObject {
     }
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
+    await this.ctx.storage.put("erasedAt", this.now());
     this.cached = undefined;
     this.engine.restore(
       {
@@ -290,12 +306,72 @@ export class ConnectRelayDO implements DurableObject {
       const now = this.now();
       this.wake(now);
 
-      // The gate first: off closes every socket, nothing is carried over.
-      if (!(await this.gateOn())) {
-        for (const ws of this.ctx.getWebSockets())
-          ws.close(RELAY_CLOSE.limit, "paused");
+      // What the room must still be true to: the launch gate, the deployment pause and the
+      // person's roster, each read fresh. An unreadable read keeps the room open and is retried
+      // on the next alarm; the third in a row enforces the close (fail closed).
+      let closeAll = false;
+      let paused = false;
+      let roster: Uint8Array[] | null = null;
+      let readFailed = false;
+      try {
+        const gate = await platformSetting(this.env, this.db(), "launch.relay");
+        paused =
+          (await platformSetting(
+            this.env,
+            this.db(),
+            "cloudConnect.relayPaused",
+          )) === "on";
+        closeAll = gate !== "on";
+      } catch {
+        readFailed = true;
+      }
+      try {
+        const keys = await accountDeviceKeys(
+          this.db(),
+          room.product,
+          room.subject,
+          { seatsHeld: room.seatsHeld ?? true, now: Math.floor(now / 1000) },
+        );
+        roster = keys
+          .map((k) => deviceIdBytes(k.deviceId))
+          .filter((b): b is Uint8Array => b !== null);
+      } catch {
+        readFailed = true;
+      }
+      const fails = readFailed
+        ? ((await this.ctx.storage.get<number>("readFails")) ?? 0) + 1
+        : 0;
+      if (readFailed) await this.ctx.storage.put("readFails", fails);
+      else await this.ctx.storage.delete("readFails");
+      if (fails >= READ_FAILS_MAX) closeAll = true;
+
+      if (closeAll || paused) {
+        // Off, paused or unverifiable: LIMIT 4, then every socket closes with 4008.
         await this.carryOut(
           this.engine.step({ kind: "tick", now, paused: true }),
+        );
+        for (const ws of this.ctx.getWebSockets()) {
+          try {
+            ws.close(RELAY_CLOSE.limit, "paused");
+          } catch {
+            // Already closed.
+          }
+        }
+      } else if (!readFailed) {
+        // Recovery: the pause is over, new admissions are allowed again.
+        await this.carryOut(
+          this.engine.step({ kind: "tick", now, paused: false }),
+        );
+      }
+      if (roster !== null && !closeAll) {
+        if (roster.length === 0) {
+          // The person has no device left: nothing can reconnect, so the room goes.
+          await this.eraseRoom(RELAY_CLOSE.notMember);
+          return;
+        }
+        // Devices that left the roster lose their sockets (4003) and are announced gone.
+        await this.carryOut(
+          this.engine.step({ kind: "members", members: roster }),
         );
       }
       // Flush the meter. A failure throws: the runtime retries, and `pending` stays owed.
@@ -345,10 +421,26 @@ export class ConnectRelayDO implements DurableObject {
 
   private async gateOn(): Promise<boolean> {
     try {
-      return await launchGateOn(this.env, this.db(), "launch.relay");
+      return (
+        (await platformSetting(this.env, this.db(), "launch.relay")) === "on"
+      );
     } catch {
       return false;
     }
+  }
+
+  /** Close every socket and drop the room, the usage and the alarm (no tombstone). */
+  private async eraseRoom(code: number): Promise<void> {
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.close(code, "closed");
+      } catch {
+        // Already closed.
+      }
+    }
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.cached = undefined;
   }
 
   /** Rebuild the engine after hibernation or eviction (once per wake). */
@@ -385,9 +477,11 @@ export class ConnectRelayDO implements DurableObject {
     product: string,
     subject: string,
     monthCeiling: number,
+    seatsHeld: boolean = this.cached?.seatsHeld ?? true,
   ): Promise<void> {
     const s = this.engine.snapshot();
     const room: Room = {
+      seatsHeld,
       product,
       subject,
       members: s.members.map((m) => hexEncode(m)),
