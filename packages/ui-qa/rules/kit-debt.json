@@ -257,7 +257,7 @@
       "kit": "swiftui",
       "rule": "swiftui-link-validation",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyGate.swift",
-      "count": 2
+      "count": 1
     },
     {
       "kit": "swiftui",

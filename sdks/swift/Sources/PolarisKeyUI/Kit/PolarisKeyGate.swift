@@ -204,7 +204,7 @@ public struct PolarisKeyGate<Content: View>: View {
             hasHandler: model.handlers.update != nil, update: model.inputs.update)
         {
         case .handler: return { model.handlers.update?() }
-        case .open(let link): return { openURL(link) }
+        case .open(let link): return { open(link) }
         case .none: return nil
         }
     }
@@ -267,7 +267,7 @@ public struct PolarisKeyGate<Content: View>: View {
         guard let link = KitLinks.valid(model.inputs.activation?.manageUrl) else { return nil }
         return {
             manageOpened = true
-            openURL(link)
+            open(link)
         }
     }
 
@@ -292,9 +292,12 @@ public struct PolarisKeyGate<Content: View>: View {
             return nil
         #else
             guard let link = refusalLink else { return nil }
-            return { openURL(link) }
+            return { open(link) }
         #endif
     }
+
+    /// The gate's one link opener; every caller passes a link `KitLinks` already validated.
+    private func open(_ link: URL) { openURL(link) }
 
     private func fix(_ key: String) {
         switch key {
