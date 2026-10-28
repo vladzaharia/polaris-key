@@ -53,7 +53,8 @@
 // expect `link: "contact"`, and the vocabulary's `contact` is where the kit resolves no page.
 // Version 7 (I-46.1, automatic sign-in): the `autoSignIn` and `nearbyApproval` input members; the
 // SignIn states confirm, link-offer, link-done, link-conflict, nearby-prompt, nearby-wait and
-// nearby-done; the NearbyApproval component; the `start-sign-in` action; the focused refusal step
+// nearby-done (and, from KFA-0, device-limit: a device limit with no license rows, a row that keeps
+// the version); the NearbyApproval component; the `start-sign-in` action; the focused refusal step
 // for the key-entry limit and a license another account holds (Activate states `key-entry-limit`
 // and `license-owned`, SignIn `key-refused`, which replace the stacked `rejected` rows: no field,
 // lede or paste; Sign in, then the add-key page); and the done step's `signin.return.signedInTier`.
@@ -268,6 +269,7 @@ export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
     "deviceLimit.openBrowser",
     "devices.manage",
     "signin.key.addInLocker",
+    "signin.deviceLimit.replace",
   ],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [
@@ -641,7 +643,7 @@ const INPUTS: Record<string, string> = {
   provider:
     "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
   autoSignIn:
-    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done, email?, reach?: global | developer | unknown}. No email: the provider shared none. The provider is `provider`.",
+    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
   nearbyApproval:
     "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
   signIn:
@@ -2267,6 +2269,51 @@ function signInFamily(a: A): Draft[] {
       "SignIn",
       "link-conflict",
       "all",
+    ),
+    // A device limit with no license rows (KFA-0, decision b): its own step, never the key screen.
+    row(
+      "SignIn/device-limit: no license rows, with a link to replace a device",
+      {
+        provider: "Google",
+        signIn: si(),
+        autoSignIn: { step: "device-limit", manageUrl: MANAGE_URL },
+      },
+      "SignIn",
+      "device-limit",
+      [
+        "core.codes.device_limit.title",
+        "core.codes.device_limit.message",
+        "signin.deviceLimit.replace",
+        "a11y.externalLink",
+        "signin.auto.confirm.other",
+        "common.cancel",
+      ],
+      {
+        mustNot: {
+          states: ["key", "confirm"],
+          copy: ["part.keyField.label", "signin.key.differentKey"],
+        },
+      },
+    ),
+    row(
+      "SignIn/device-limit: no license rows, no link",
+      {
+        provider: "Google",
+        signIn: si(),
+        autoSignIn: { step: "device-limit" },
+      },
+      "SignIn",
+      "device-limit",
+      [
+        "core.codes.device_limit.title",
+        "core.codes.device_limit.message",
+        "deviceLimit.noManage",
+        "signin.auto.confirm.other",
+        "common.cancel",
+      ],
+      {
+        mustNot: { copy: ["signin.deviceLimit.replace", "a11y.externalLink"] },
+      },
     ),
     row(
       "SignIn/nearby-prompt: before the system asks for the local network",

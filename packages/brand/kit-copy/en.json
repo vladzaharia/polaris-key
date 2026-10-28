@@ -2117,6 +2117,14 @@
       "role": "button",
       "note": "No license in this account (SIGN-IN.md §3.6)."
     },
+    "signin.deviceLimit.replace": {
+      "value": "Replace a device",
+      "role": "button",
+      "note": "Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink.",
+      "variants": {
+        "macos": "Replace a Device"
+      }
+    },
     "signin.replace.open": {
       "value": "Replace a device",
       "role": "button",
@@ -2223,7 +2231,7 @@
     "signin.consent.licenseLine": {
       "value": "{license} · {term} · {device} becomes device {position} of {limit}",
       "role": "body",
-      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number."
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number."
     },
     "signin.consent.replaces": {
       "value": "{license} · replaces {device}",
@@ -2256,7 +2264,7 @@
       "note": "Consent step before returning to the app (SIGN-IN.md §3.8)."
     },
     "signin.consent.pairwise": {
-      "value": "It gets its own id for you, and won't see your other products or how you sign in.",
+      "value": "It gets its own id for you, and won't see your other apps or how you sign in.",
       "role": "body",
       "note": "Consent step before returning to the app (SIGN-IN.md §3.8)."
     },

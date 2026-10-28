@@ -62,6 +62,7 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
     "deviceLimit.openBrowser",
     "devices.manage",
     "signin.key.addInLocker",
+    "signin.deviceLimit.replace",
   ],
   "start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn"],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],

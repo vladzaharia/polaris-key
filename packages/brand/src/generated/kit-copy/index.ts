@@ -429,6 +429,7 @@ export type KitCopyKey =
   | "signin.none.body"
   | "signin.none.get"
   | "signin.none.otherAccount"
+  | "signin.deviceLimit.replace"
   | "signin.replace.open"
   | "signin.replace.lede"
   | "signin.replace.heading"

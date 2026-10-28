@@ -497,6 +497,7 @@ export const KIT_COPY: Readonly<
       "Bought it with another email? Sign in with that account instead.",
     "signin.none.get": "Get {product}",
     "signin.none.otherAccount": "Use another account",
+    "signin.deviceLimit.replace": "Replace a device",
     "signin.replace.open": "Replace a device",
     "signin.replace.lede":
       "Choose a device to sign out. {thisDevice} takes its place.",
@@ -530,7 +531,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app} will also get",
     "signin.consent.profile": "Your profile and email",
     "signin.consent.pairwise":
-      "It gets its own id for you, and won't see your other products or how you sign in.",
+      "It gets its own id for you, and won't see your other apps or how you sign in.",
     "signin.notYou": "Not you?",
     "signin.cancel": "Cancel",
     "signin.key.addTitle": "Add {product} to your account",
@@ -2244,6 +2245,7 @@ export const KIT_COPY: Readonly<
       "Mit einer anderen E-Mail-Adresse gekauft? Melden Sie sich stattdessen mit diesem Konto an.",
     "signin.none.get": "{product} erwerben",
     "signin.none.otherAccount": "Anderes Konto verwenden",
+    "signin.deviceLimit.replace": "Gerät ersetzen",
     "signin.replace.open": "Gerät ersetzen",
     "signin.replace.lede":
       "Wählen Sie ein Gerät zum Abmelden. Es wird durch {thisDevice} ersetzt.",
@@ -2279,7 +2281,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app} erhält außerdem",
     "signin.consent.profile": "Ihr Profil und Ihre E-Mail-Adresse",
     "signin.consent.pairwise":
-      "Die App erhält eine eigene ID für Sie und sieht weder Ihre anderen Produkte noch, wie Sie sich anmelden.",
+      "Die App erhält eine eigene ID für Sie und sieht weder Ihre anderen Apps noch, wie Sie sich anmelden.",
     "signin.notYou": "Nicht Sie?",
     "signin.cancel": "Abbrechen",
     "signin.key.addTitle": "{product} zu Ihrem Konto hinzufügen",
@@ -4064,6 +4066,7 @@ export const KIT_COPY: Readonly<
       "Vous l’avez acheté avec une autre adresse e-mail ? Connectez-vous plutôt avec ce compte.",
     "signin.none.get": "Obtenir {product}",
     "signin.none.otherAccount": "Utiliser un autre compte",
+    "signin.deviceLimit.replace": "Remplacer un appareil",
     "signin.replace.open": "Remplacer un appareil",
     "signin.replace.lede":
       "Choisissez un appareil à déconnecter : {thisDevice} prendra sa place.",
@@ -4099,7 +4102,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app} recevra également",
     "signin.consent.profile": "Votre profil et votre adresse e-mail",
     "signin.consent.pairwise":
-      "L’app reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion.",
+      "L’app reçoit un identifiant qui lui est propre et ne verra ni vos autres apps ni votre mode de connexion.",
     "signin.notYou": "Ce n’est pas vous ?",
     "signin.cancel": "Annuler",
     "signin.key.addTitle": "Ajouter {product} à votre compte",
@@ -5870,6 +5873,7 @@ export const KIT_COPY: Readonly<
       "¿Lo compraste con otro correo? Inicia sesión con esa cuenta.",
     "signin.none.get": "Obtener {product}",
     "signin.none.otherAccount": "Usar otra cuenta",
+    "signin.deviceLimit.replace": "Reemplazar un dispositivo",
     "signin.replace.open": "Reemplazar un dispositivo",
     "signin.replace.lede":
       "Elige un dispositivo para cerrar su sesión. {thisDevice} ocupará su lugar.",
@@ -5904,7 +5908,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app} también recibirá",
     "signin.consent.profile": "Tu perfil y correo",
     "signin.consent.pairwise":
-      "Recibe su propio identificador para ti y no verá tus otros productos ni cómo inicias sesión.",
+      "Recibe su propio identificador para ti y no verá tus otras apps ni cómo inicias sesión.",
     "signin.notYou": "¿No eres tú?",
     "signin.cancel": "Cancelar",
     "signin.key.addTitle": "Añade {product} a tu cuenta",
@@ -7674,6 +7678,7 @@ export const KIT_COPY: Readonly<
     "signin.none.body": "Comprou com outro e-mail? Entre com essa conta.",
     "signin.none.get": "Obter {product}",
     "signin.none.otherAccount": "Usar outra conta",
+    "signin.deviceLimit.replace": "Substituir um dispositivo",
     "signin.replace.open": "Substituir um dispositivo",
     "signin.replace.lede":
       "Escolha um dispositivo para desconectar. {thisDevice} entra no lugar dele.",
@@ -7709,7 +7714,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app} também vai receber",
     "signin.consent.profile": "Seu perfil e e-mail",
     "signin.consent.pairwise":
-      "Ele recebe um ID próprio para você e não verá seus outros produtos nem como você entra.",
+      "Ele recebe um ID próprio para você e não verá seus outros apps nem como você entra.",
     "signin.notYou": "Não é você?",
     "signin.cancel": "Cancelar",
     "signin.key.addTitle": "Adicionar {product} à sua conta",
@@ -9436,6 +9441,7 @@ export const KIT_COPY: Readonly<
       "L'hai acquistato con un'altra email? Accedi invece con quell'account.",
     "signin.none.get": "Ottieni {product}",
     "signin.none.otherAccount": "Usa un altro account",
+    "signin.deviceLimit.replace": "Sostituisci un dispositivo",
     "signin.replace.open": "Sostituisci un dispositivo",
     "signin.replace.lede":
       "Scegli un dispositivo da disconnettere. {thisDevice} lo sostituisce.",
@@ -9471,7 +9477,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app} riceverà anche",
     "signin.consent.profile": "Il tuo profilo e la tua email",
     "signin.consent.pairwise":
-      "Riceve un identificativo dedicato per te e non vedrà gli altri tuoi prodotti né come accedi.",
+      "Riceve un identificativo dedicato per te e non vedrà le tue altre app né come accedi.",
     "signin.notYou": "Non sei tu?",
     "signin.cancel": "Annulla",
     "signin.key.addTitle": "Aggiungi {product} al tuo account",
@@ -11226,6 +11232,7 @@ export const KIT_COPY: Readonly<
       "別のメールアドレスで購入しましたか？そのアカウントでサインインしてください。",
     "signin.none.get": "{product}を入手",
     "signin.none.otherAccount": "別のアカウントを使う",
+    "signin.deviceLimit.replace": "デバイスを置き換える",
     "signin.replace.open": "デバイスを置き換える",
     "signin.replace.lede":
       "サインアウトするデバイスを選んでください。代わりに{thisDevice}が使われます。",
@@ -11261,7 +11268,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app}は次の情報も取得します",
     "signin.consent.profile": "プロフィールとメールアドレス",
     "signin.consent.pairwise":
-      "アプリにはこのアプリ専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。",
+      "アプリにはこのアプリ専用のIDが渡され、あなたのほかのアプリやサインイン方法が知られることはありません。",
     "signin.notYou": "別のユーザーですか？",
     "signin.cancel": "キャンセル",
     "signin.key.addTitle": "{product}をアカウントに追加",
@@ -13013,6 +13020,7 @@ export const KIT_COPY: Readonly<
     "signin.none.body": "다른 이메일로 구매했나요? 그 계정으로 로그인하세요.",
     "signin.none.get": "{product} 받기",
     "signin.none.otherAccount": "다른 계정 사용",
+    "signin.deviceLimit.replace": "기기 교체",
     "signin.replace.open": "기기 교체",
     "signin.replace.lede":
       "로그아웃할 기기를 선택하세요. {thisDevice}이(가) 대신 사용돼요.",
@@ -13047,7 +13055,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app}에서 다음 정보도 받아요",
     "signin.consent.profile": "프로필 및 이메일",
     "signin.consent.pairwise":
-      "앱에는 회원님 전용 ID가 제공되며, 다른 제품이나 로그인 방법은 공개되지 않아요.",
+      "앱에는 회원님 전용 ID가 제공되며, 다른 앱이나 로그인 방법은 공개되지 않아요.",
     "signin.notYou": "본인이 아닌가요?",
     "signin.cancel": "취소",
     "signin.key.addTitle": "내 계정에 {product} 추가",
@@ -14707,6 +14715,7 @@ export const KIT_COPY: Readonly<
     "signin.none.body": "用其他电子邮件购买的？请改用那个账户登录。",
     "signin.none.get": "获取{product}",
     "signin.none.otherAccount": "使用其他账户",
+    "signin.deviceLimit.replace": "替换设备",
     "signin.replace.open": "替换设备",
     "signin.replace.lede": "选择要退出登录的设备。由{thisDevice}取代。",
     "signin.replace.heading": "替换设备",
@@ -14739,7 +14748,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app}还将获得",
     "signin.consent.profile": "你的个人资料和电子邮件",
     "signin.consent.pairwise":
-      "它会获得一个专属于你的独立ID，且无法看到你的其他产品或你的登录方式。",
+      "它会获得一个专属于你的独立ID，且无法看到你的其他应用或你的登录方式。",
     "signin.notYou": "不是你？",
     "signin.cancel": "取消",
     "signin.key.addTitle": "将{product}添加到你的账户",
@@ -15932,6 +15941,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.choice.freeDevice": { macos: "Free a Device" },
   "signin.choice.continue": { macos: "Use This License" },
   "signin.none.otherAccount": { macos: "Use Another Account" },
+  "signin.deviceLimit.replace": { macos: "Replace a Device" },
   "signin.replace.open": { macos: "Replace a Device" },
   "signin.replace.confirm": { macos: "Replace and Continue" },
   "signin.notYou": { macos: "Not You?" },

@@ -256,6 +256,17 @@
             "signin.nearby.notYou"
           ]
         },
+        "device-limit": {
+          "copy": [
+            "core.codes.device_limit.title",
+            "core.codes.device_limit.message",
+            "signin.deviceLimit.replace",
+            "a11y.externalLink",
+            "deviceLimit.noManage",
+            "signin.auto.confirm.other",
+            "common.cancel"
+          ]
+        },
         "done": {
           "copy": [
             "signin.done.start",

@@ -150,6 +150,7 @@ import {
   csharpBrand,
   gdIcons,
   kotlinGlyphs,
+  kotlinProviderMarks,
   gdKit,
   godotVariableFontTres,
   kitCss,
@@ -164,6 +165,7 @@ import {
   qtQmldir,
   qtQss,
   swiftKit,
+  swiftProviderMarks,
   swiftVectors,
   type KitGenContext,
 } from "./gen-kit.js";
@@ -2052,6 +2054,10 @@ const TARGETS: Target[] = [
     render: () => swiftKit(KIT_CTX),
   },
   {
+    path: "sdks/swift/Sources/PolarisKeyUI/ProviderMarks.generated.swift",
+    render: () => swiftProviderMarks(KIT_CTX),
+  },
+  {
     path: "sdks/swift/Tests/PolarisKeyTests/AccentVectors.generated.swift",
     render: () => swiftVectors(KIT_CTX),
   },
@@ -2062,6 +2068,10 @@ const TARGETS: Target[] = [
   {
     path: `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitGlyphs.generated.kt`,
     render: () => kotlinGlyphs(KIT_CTX),
+  },
+  {
+    path: `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisProviderMarks.generated.kt`,
+    render: () => kotlinProviderMarks(KIT_CTX),
   },
   {
     path: "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/brand/AccentVectors.generated.kt",
