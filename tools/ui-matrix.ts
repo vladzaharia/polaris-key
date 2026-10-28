@@ -51,6 +51,11 @@
 // discovery's `core.portal`; the `cli` outcomes `status-version-too-new-no-page` and
 // `status-channel-not-entitled-no-page` set up a stub whose discovery says the portal is off and
 // expect `link: "contact"`, and the vocabulary's `contact` is where the kit resolves no page.
+// The `cloudSync` family (U-42.0, additive within version 7): the Cloud Sync screens, named by
+// `SYNC_SCREENS` in ui-core. CloudSyncStatus's `locked` and `ring-changed` states, UnlockSync (the
+// recovery code, start over; no nearby option in v0.10.0), RecoveryCode (shown once) and RingChange
+// (names `changed.by`, hands `changed.served` to `acceptRingChange`). Only ui-core runs it; Swift,
+// Kotlin, Godot and Python read the families they name and learn this one with U-42.3 to U-42.5.
 // Version 7 (I-46.1, automatic sign-in): the `autoSignIn` and `nearbyApproval` input members; the
 // SignIn states confirm, link-offer, link-done, link-conflict, nearby-prompt, nearby-wait and
 // nearby-done (and, from KFA-0, device-limit: a device limit with no license rows, a row that keeps
@@ -135,6 +140,7 @@ export interface UiMatrix {
   update: Row[];
   settings: Row[];
   paywall: Row[];
+  cloudSync: Row[];
   theme: ThemeRow[];
   i18n: I18nRow[];
   cli: CliFamily;
@@ -258,12 +264,30 @@ export const ACTIONS: Readonly<Record<string, string>> = {
   retry:
     "Repeat the step that failed or lapsed (Try again, Reconnect, Sign in again, Get a new code).",
   cancel: "Leave the step or the flow (Cancel).",
+  unlock:
+    "Unlock the synced data: submit the recovery code, or open its screen (Unlock, Unlock sync).",
+  "start-over":
+    "Open the confirmation that replaces the sync key (Start over).",
+  "confirm-start-over":
+    "Replace the sync key after the warning that synced data will be lost (T22).",
+  "accept-ring-change":
+    "Confirm the changed ring that was shown: hand `served` to `acceptRingChange`, never a fresh read.",
+  "use-recovery-code":
+    "Open the recovery code screen from the ring confirmation.",
+  "copy-code": "Copy the recovery code to the clipboard.",
 };
 
 /** The copy keys whose control is each action (UI-KITS §4.1: copy matches controls). */
 export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
   "open-card": ["signin.desktop.continue", "signin.email.continue"],
   "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
+  // The Cloud Sync screens' controls (U-42.0).
+  unlock: ["unlockSync.unlock", "cloudSync.unlock"],
+  "start-over": ["unlockSync.startOver"],
+  "confirm-start-over": ["unlockSync.startOverConfirm"],
+  "accept-ring-change": ["ringChange.accept"],
+  "use-recovery-code": ["ringChange.useCode"],
+  "copy-code": ["recoveryCode.copy"],
   "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
   "open-manage-url": [
     "deviceLimit.openBrowser",
@@ -673,6 +697,14 @@ const INPUTS: Record<string, string> = {
     "{available, purchased?, url?}: url is the https page that sells the offer outside the app (a store page or the product's Polaris Locker page), from the integrator or the server; the hand-off shows only when the opener accepts it (DL14).",
   toast: "{kind}: the toast being shown.",
   error: "{code}: a core.codes code the step failed with.",
+  cloudSync:
+    "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
+  unlockSync:
+    "UnlockSync's step: {step: code | invalid | working | failed | start-over, nearby?}. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
+  recoveryCode:
+    "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
+  ringChange:
+    "RingChange: {by?, served?: {ringId, epoch, rootKid}}. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code.",
 };
 
 /** The precedence a model applies where several states could hold (authoring notes, pinned by
@@ -3716,6 +3748,180 @@ function finish(d: Draft): Row {
   return out;
 }
 
+// ── cloudSync (U-42.0) ──────────────────────────────────────────────────────────────────────
+
+function cloudSyncFamily(a: A): Draft[] {
+  const { row, off } = a;
+  const SYNC_OFF = off("sync");
+  const SERVED = { ringId: "ring_9f3a", epoch: 2, rootKid: "kid_b21c" };
+  const inv = (invariant: string, m: Omit<MustNot, "invariant">) => ({
+    mustNot: { invariant, ...m },
+  });
+  const US = (step: string, extra: Obj = {}): Obj => ({
+    unlockSync: { step, ...extra },
+  });
+  const hidden = (name: string, input: Obj, component: string): Draft =>
+    row(name, { services: SYNC_OFF, ...input }, component, "hidden", []);
+  return [
+    row(
+      "CloudSyncStatus/locked: this device has no key",
+      { cloudSync: { state: "locked" } },
+      "CloudSyncStatus",
+      "locked",
+      "all",
+    ),
+    row(
+      "CloudSyncStatus/locked: never pulls or says synced",
+      { cloudSync: { state: "locked", lastSynced: "2 min ago" } },
+      "CloudSyncStatus",
+      "locked",
+      "all",
+      inv("A locked device never shows a sync time or an error.", {
+        copy: ["cloudSync.synced", "cloudSync.error"],
+      }),
+    ),
+    row(
+      "CloudSyncStatus/ring-changed: Review without the host's handler",
+      { cloudSync: { state: "ring-changed" } },
+      "CloudSyncStatus",
+      "ring-changed",
+      "all",
+    ),
+    row(
+      "CloudSyncStatus/ring-changed: never offers Unlock sync in its place",
+      { cloudSync: { state: "ring-changed", canReview: true } },
+      "CloudSyncStatus",
+      "ring-changed",
+      "all",
+      inv("A changed ring is confirmed first; it is never unlocked past.", {
+        copy: ["cloudSync.unlock"],
+        actions: ["unlock"],
+      }),
+    ),
+    hidden(
+      "CloudSyncStatus/hidden: Cloud Sync off",
+      { cloudSync: { state: "locked" } },
+      "CloudSyncStatus",
+    ),
+
+    row(
+      "UnlockSync/code: the recovery code and start over",
+      US("code"),
+      "UnlockSync",
+      "code",
+      "all",
+    ),
+    row(
+      "UnlockSync/code: the nearby option stays hidden in v0.10.0",
+      US("code", { nearby: true }),
+      "UnlockSync",
+      "code",
+      "all",
+      inv("v0.10.0 offers the recovery code and start over only.", {
+        copy: ["unlockSync.nearby"],
+        actions: ["use-nearby"],
+      }),
+    ),
+    row(
+      "UnlockSync/invalid: the code failed its check",
+      US("invalid"),
+      "UnlockSync",
+      "invalid",
+      "all",
+    ),
+    row(
+      "UnlockSync/working: the code is being checked",
+      US("working"),
+      "UnlockSync",
+      "working",
+      "all",
+    ),
+    row(
+      "UnlockSync/failed: the request failed",
+      US("failed"),
+      "UnlockSync",
+      "failed",
+      "all",
+    ),
+    row(
+      "UnlockSync/start-over: warns that synced data will be lost",
+      US("start-over"),
+      "UnlockSync",
+      "start-over",
+      "all",
+      inv(
+        "Start over never runs without the warning that synced data will be lost (T22).",
+        {
+          actions: ["unlock"],
+        },
+      ),
+    ),
+    hidden("UnlockSync/hidden: Cloud Sync off", US("code"), "UnlockSync"),
+
+    row(
+      "RecoveryCode/show: shown once, saved before Done",
+      { recoveryCode: {} },
+      "RecoveryCode",
+      "show",
+      "all",
+      inv("Done waits for the person to confirm they saved the code.", {
+        copy: ["common.done"],
+      }),
+    ),
+    row(
+      "RecoveryCode/saved: Done",
+      { recoveryCode: { saved: true } },
+      "RecoveryCode",
+      "saved",
+      "all",
+    ),
+    hidden(
+      "RecoveryCode/hidden: Cloud Sync off",
+      { recoveryCode: {} },
+      "RecoveryCode",
+    ),
+
+    row(
+      "RingChange/confirm: names the device and accepts the ring shown",
+      { ringChange: { by: "Maya's MacBook", served: SERVED } },
+      "RingChange",
+      "confirm",
+      a.but("RingChange", "confirm", "ringChange.bodyUnknown"),
+    ),
+    row(
+      "RingChange/confirm: no device named",
+      { ringChange: { served: SERVED } },
+      "RingChange",
+      "confirm",
+      a.but("RingChange", "confirm", "ringChange.body"),
+    ),
+    row(
+      "RingChange/confirm: nothing served, nothing to accept",
+      { ringChange: { by: "Maya's MacBook" } },
+      "RingChange",
+      "confirm",
+      a.but(
+        "RingChange",
+        "confirm",
+        "ringChange.bodyUnknown",
+        "ringChange.accept",
+      ),
+      inv(
+        "Accept hands over the ring that was shown; without one it is not offered.",
+        {
+          copy: ["ringChange.accept"],
+          actions: ["accept-ring-change"],
+        },
+      ),
+    ),
+    hidden(
+      "RingChange/hidden: Cloud Sync off",
+      { ringChange: { served: SERVED } },
+      "RingChange",
+    ),
+  ];
+}
+
 // ── theme ───────────────────────────────────────────────────────────────────────────────────
 
 /** UI-KITS §1.2 and §3.4: the theme a kit resolves for an input. Checks every authored row. */
@@ -5232,6 +5438,62 @@ export function checkCli(
 const isObj = (v: unknown): v is Obj =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
+/** The cloudSync family's components (ui-core `SYNC_SCREENS` plus CloudSyncStatus). */
+export const SYNC_FAMILY_COMPONENTS = [
+  "CloudSyncStatus",
+  "UnlockSync",
+  "RecoveryCode",
+  "RingChange",
+] as const;
+
+/** The cloudSync family's structure: components, states, and the keys each state lists. */
+function checkCloudSync(doc: UiMatrix, S: UiMatrixSources): string[] {
+  const errors: string[] = [];
+  const rows = doc.cloudSync;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return ["cloudSync: the family is empty"];
+  const names = new Set<string>();
+  const states = new Set<string>();
+  for (const r of rows) {
+    const where = `cloudSync "${r.name}"`;
+    if (names.has(r.name)) errors.push(`${where}: duplicate name`);
+    names.add(r.name);
+    const { component, state, copy } = r.expect;
+    if (!(SYNC_FAMILY_COMPONENTS as readonly string[]).includes(component)) {
+      errors.push(`${where}: ${component} is not a cloudSync component`);
+      continue;
+    }
+    states.add(`${component}.${state}`);
+    const services = r.input.services as string[] | undefined;
+    if (state === "hidden") {
+      if (!services || services.includes("sync"))
+        errors.push(`${where}: hidden needs Cloud Sync off`);
+      if (copy.length > 0) errors.push(`${where}: hidden shows no copy`);
+      continue;
+    }
+    const listed = S.components[component]?.states[state]?.copy;
+    if (!listed) {
+      errors.push(
+        `${where}: ${component}.${state} is not a components.json state`,
+      );
+      continue;
+    }
+    for (const k of copy)
+      if (!listed.includes(k))
+        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+    for (const k of r.mustNot?.copy ?? [])
+      if (copy.includes(k)) errors.push(`${where}: expects ${k} it forbids`);
+  }
+  for (const c of SYNC_FAMILY_COMPONENTS)
+    for (const st of Object.keys(S.components[c]?.states ?? {}))
+      if (
+        !states.has(`${c}.${st}`) &&
+        (c !== "CloudSyncStatus" || ["locked", "ring-changed"].includes(st))
+      )
+        errors.push(`cloudSync: no row for ${c}.${st}`);
+  return errors;
+}
+
 /** Every check of §4.7 over a built matrix. Empty = valid. */
 export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   const errors: string[] = [];
@@ -5807,6 +6069,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   };
   walk(doc, "ui-matrix.json");
   errors.push(...checkCli(doc.cli, S));
+  errors.push(...checkCloudSync(doc, S));
   return errors;
 }
 
@@ -5942,6 +6205,7 @@ export function buildUiMatrix(
       cli: CLI_VOCABULARY as unknown as Obj,
     },
     ...out,
+    cloudSync: cloudSyncFamily(a).map(finish),
     theme: themeRows(),
     i18n: i18nRows(S),
     cli: cliFamily(),

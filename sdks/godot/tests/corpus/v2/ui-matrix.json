@@ -10,11 +10,23 @@
       "start-sign-in": "Start the kit's own sign-in, from a refusal that only a sign-in fixes (Sign in to that account).",
       "copy-link": "Copy the sign-in link or the address to the clipboard.",
       "retry": "Repeat the step that failed or lapsed (Try again, Reconnect, Sign in again, Get a new code).",
-      "cancel": "Leave the step or the flow (Cancel)."
+      "cancel": "Leave the step or the flow (Cancel).",
+      "unlock": "Unlock the synced data: submit the recovery code, or open its screen (Unlock, Unlock sync).",
+      "start-over": "Open the confirmation that replaces the sync key (Start over).",
+      "confirm-start-over": "Replace the sync key after the warning that synced data will be lost (T22).",
+      "accept-ring-change": "Confirm the changed ring that was shown: hand `served` to `acceptRingChange`, never a fresh read.",
+      "use-recovery-code": "Open the recovery code screen from the ring confirmation.",
+      "copy-code": "Copy the recovery code to the clipboard."
     },
     "actionKeys": {
       "open-card": ["signin.desktop.continue", "signin.email.continue"],
       "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
+      "unlock": ["unlockSync.unlock", "cloudSync.unlock"],
+      "start-over": ["unlockSync.startOver"],
+      "confirm-start-over": ["unlockSync.startOverConfirm"],
+      "accept-ring-change": ["ringChange.accept"],
+      "use-recovery-code": ["ringChange.useCode"],
+      "copy-code": ["recoveryCode.copy"],
       "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
       "open-manage-url": [
         "deviceLimit.openBrowser",
@@ -67,7 +79,11 @@
       "entitlement": "{name, entitled}.",
       "offers": "{available, purchased?, url?}: url is the https page that sells the offer outside the app (a store page or the product's Polaris Locker page), from the integrator or the server; the hand-off shows only when the opener accepts it (DL14).",
       "toast": "{kind}: the toast being shown.",
-      "error": "{code}: a core.codes code the step failed with."
+      "error": "{code}: a core.codes code the step failed with.",
+      "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
+      "unlockSync": "UnlockSync's step: {step: code | invalid | working | failed | start-over, nearby?}. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
+      "recoveryCode": "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
+      "ringChange": "RingChange: {by?, served?: {ringId, epoch, rootKid}}. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code."
     },
     "defaults": {
       "presentation": {
@@ -12229,6 +12245,335 @@
         "state": "not-entitled",
         "copy": ["entitlement.locked"]
       }
+    }
+  ],
+  "cloudSync": [
+    {
+      "name": "CloudSyncStatus/locked: this device has no key",
+      "input": { "cloudSync": { "state": "locked" } },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "locked",
+        "copy": ["cloudSync.locked", "cloudSync.unlock"],
+        "actions": ["unlock"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/locked: never pulls or says synced",
+      "input": {
+        "cloudSync": { "state": "locked", "lastSynced": "2 min ago" }
+      },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "locked",
+        "copy": ["cloudSync.locked", "cloudSync.unlock"],
+        "actions": ["unlock"]
+      },
+      "mustNot": {
+        "invariant": "A locked device never shows a sync time or an error.",
+        "copy": ["cloudSync.error", "cloudSync.synced"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/ring-changed: Review without the host's handler",
+      "input": { "cloudSync": { "state": "ring-changed" } },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "ring-changed",
+        "copy": ["cloudSync.ringChanged", "common.review"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/ring-changed: never offers Unlock sync in its place",
+      "input": { "cloudSync": { "state": "ring-changed", "canReview": true } },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "ring-changed",
+        "copy": ["cloudSync.ringChanged", "common.review"]
+      },
+      "mustNot": {
+        "invariant": "A changed ring is confirmed first; it is never unlocked past.",
+        "copy": ["cloudSync.unlock"],
+        "actions": ["unlock"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/hidden: Cloud Sync off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ],
+        "cloudSync": { "state": "locked" }
+      },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "hidden",
+        "copy": []
+      }
+    },
+    {
+      "name": "UnlockSync/code: the recovery code and start over",
+      "input": { "unlockSync": { "step": "code" } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "code",
+        "copy": [
+          "common.cancel",
+          "recoveryCode.noAsk",
+          "unlockSync.field",
+          "unlockSync.lede",
+          "unlockSync.startOver",
+          "unlockSync.title",
+          "unlockSync.unlock"
+        ],
+        "actions": ["cancel", "start-over", "unlock"]
+      }
+    },
+    {
+      "name": "UnlockSync/code: the nearby option stays hidden in v0.10.0",
+      "input": { "unlockSync": { "step": "code", "nearby": true } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "code",
+        "copy": [
+          "common.cancel",
+          "recoveryCode.noAsk",
+          "unlockSync.field",
+          "unlockSync.lede",
+          "unlockSync.startOver",
+          "unlockSync.title",
+          "unlockSync.unlock"
+        ],
+        "actions": ["cancel", "start-over", "unlock"]
+      },
+      "mustNot": {
+        "invariant": "v0.10.0 offers the recovery code and start over only.",
+        "copy": ["unlockSync.nearby"],
+        "actions": ["use-nearby"]
+      }
+    },
+    {
+      "name": "UnlockSync/invalid: the code failed its check",
+      "input": { "unlockSync": { "step": "invalid" } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "invalid",
+        "copy": [
+          "common.cancel",
+          "recoveryCode.noAsk",
+          "unlockSync.field",
+          "unlockSync.invalid",
+          "unlockSync.lede",
+          "unlockSync.startOver",
+          "unlockSync.title",
+          "unlockSync.unlock"
+        ],
+        "actions": ["cancel", "start-over", "unlock"]
+      }
+    },
+    {
+      "name": "UnlockSync/working: the code is being checked",
+      "input": { "unlockSync": { "step": "working" } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "working",
+        "copy": ["common.working", "unlockSync.title"]
+      }
+    },
+    {
+      "name": "UnlockSync/failed: the request failed",
+      "input": { "unlockSync": { "step": "failed" } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "failed",
+        "copy": [
+          "common.cancel",
+          "common.tryAgain",
+          "unlockSync.failed",
+          "unlockSync.title"
+        ],
+        "actions": ["cancel", "retry"]
+      }
+    },
+    {
+      "name": "UnlockSync/start-over: warns that synced data will be lost",
+      "input": { "unlockSync": { "step": "start-over" } },
+      "expect": {
+        "component": "UnlockSync",
+        "state": "start-over",
+        "copy": [
+          "common.cancel",
+          "unlockSync.startOverConfirm",
+          "unlockSync.startOverTitle",
+          "unlockSync.startOverWarning"
+        ],
+        "actions": ["cancel", "confirm-start-over"]
+      },
+      "mustNot": {
+        "invariant": "Start over never runs without the warning that synced data will be lost (T22).",
+        "actions": ["unlock"]
+      }
+    },
+    {
+      "name": "UnlockSync/hidden: Cloud Sync off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ],
+        "unlockSync": { "step": "code" }
+      },
+      "expect": { "component": "UnlockSync", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "RecoveryCode/show: shown once, saved before Done",
+      "input": { "recoveryCode": {} },
+      "expect": {
+        "component": "RecoveryCode",
+        "state": "show",
+        "copy": [
+          "recoveryCode.copy",
+          "recoveryCode.lede",
+          "recoveryCode.noAsk",
+          "recoveryCode.saved",
+          "recoveryCode.title"
+        ],
+        "actions": ["copy-code"]
+      },
+      "mustNot": {
+        "invariant": "Done waits for the person to confirm they saved the code.",
+        "copy": ["common.done"]
+      }
+    },
+    {
+      "name": "RecoveryCode/saved: Done",
+      "input": { "recoveryCode": { "saved": true } },
+      "expect": {
+        "component": "RecoveryCode",
+        "state": "saved",
+        "copy": [
+          "common.done",
+          "recoveryCode.copy",
+          "recoveryCode.lede",
+          "recoveryCode.noAsk",
+          "recoveryCode.saved",
+          "recoveryCode.title"
+        ],
+        "actions": ["copy-code"]
+      }
+    },
+    {
+      "name": "RecoveryCode/hidden: Cloud Sync off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ],
+        "recoveryCode": {}
+      },
+      "expect": { "component": "RecoveryCode", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "RingChange/confirm: names the device and accepts the ring shown",
+      "input": {
+        "ringChange": {
+          "by": "Maya's MacBook",
+          "served": { "ringId": "ring_9f3a", "epoch": 2, "rootKid": "kid_b21c" }
+        }
+      },
+      "expect": {
+        "component": "RingChange",
+        "state": "confirm",
+        "copy": [
+          "common.cancel",
+          "ringChange.accept",
+          "ringChange.body",
+          "ringChange.title",
+          "ringChange.useCode",
+          "ringChange.warning"
+        ],
+        "actions": ["accept-ring-change", "cancel", "use-recovery-code"]
+      }
+    },
+    {
+      "name": "RingChange/confirm: no device named",
+      "input": {
+        "ringChange": {
+          "served": { "ringId": "ring_9f3a", "epoch": 2, "rootKid": "kid_b21c" }
+        }
+      },
+      "expect": {
+        "component": "RingChange",
+        "state": "confirm",
+        "copy": [
+          "common.cancel",
+          "ringChange.accept",
+          "ringChange.bodyUnknown",
+          "ringChange.title",
+          "ringChange.useCode",
+          "ringChange.warning"
+        ],
+        "actions": ["accept-ring-change", "cancel", "use-recovery-code"]
+      }
+    },
+    {
+      "name": "RingChange/confirm: nothing served, nothing to accept",
+      "input": { "ringChange": { "by": "Maya's MacBook" } },
+      "expect": {
+        "component": "RingChange",
+        "state": "confirm",
+        "copy": [
+          "common.cancel",
+          "ringChange.body",
+          "ringChange.title",
+          "ringChange.useCode",
+          "ringChange.warning"
+        ],
+        "actions": ["cancel", "use-recovery-code"]
+      },
+      "mustNot": {
+        "invariant": "Accept hands over the ring that was shown; without one it is not offered.",
+        "copy": ["ringChange.accept"],
+        "actions": ["accept-ring-change"]
+      }
+    },
+    {
+      "name": "RingChange/hidden: Cloud Sync off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ],
+        "ringChange": {
+          "served": { "ringId": "ring_9f3a", "epoch": 2, "rootKid": "kid_b21c" }
+        }
+      },
+      "expect": { "component": "RingChange", "state": "hidden", "copy": [] }
     }
   ],
   "theme": [
