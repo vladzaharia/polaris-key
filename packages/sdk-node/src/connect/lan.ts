@@ -21,17 +21,21 @@ import {
 } from "node:net";
 import type { TrustSet } from "@polaris-key/jws";
 import {
-  PeerChannel,
   accountInstance,
   advertEpoch,
   ADVERT_EPOCH_SECONDS,
   browseAccountInstance,
   parseTxt,
-  webCryptoNoisePorts,
-  webCryptoX25519,
-  type AccountContext,
-  type NoisePorts,
 } from "@polaris-key/client-core/peer";
+import {
+  PeerDocs,
+  defaultTimer,
+  peerAccount,
+  peerPorts,
+  type ConnectNotice,
+  type RingAdoption,
+  type TrustApplication,
+} from "./channel.js";
 import {
   MulticastDnsAdapter,
   isLanAddress,
@@ -67,6 +71,10 @@ export interface LanSource {
   now(): number;
   /** Ask the Worker for a newer roster (a peer is on a newer one). Best effort. */
   refresh?(): Promise<void>;
+  /** Verify and store a roster a peer pushed (the same replacement rules as the identity fetch). */
+  adoptRing?(jws: string): Promise<RingAdoption>;
+  /** Verify against the usable pins and apply a trust manifest a peer pushed. */
+  applyTrust?(jws: string): Promise<TrustApplication>;
 }
 
 export interface LanOptions {
@@ -105,12 +113,6 @@ const IDENTITY_TTL_S = 30;
 const CERT_MARGIN_S = 60;
 const MISS_CACHE = 1024;
 
-const defaultTimer = (fn: () => void, ms: number): (() => void) => {
-  const h = setTimeout(fn, ms);
-  h.unref();
-  return () => clearTimeout(h);
-};
-
 export class LanService {
   #server: Server | null = null;
   #port = 0;
@@ -130,13 +132,16 @@ export class LanService {
   #onSession = new Set<(s: ConnectSession) => void>();
   #onPeer = new Set<(p: LanPeer) => void>();
   #stopped = false;
-  #lastRefresh = 0;
+  #docs: PeerDocs;
   #queue: Promise<unknown> = Promise.resolve();
 
   private constructor(
     private readonly src: LanSource,
     private readonly o: LanOptions,
   ) {
+    this.#docs = new PeerDocs(src, () => {
+      this.#id = null;
+    });
     this.#mdns =
       o.mdns ?? new MulticastDnsAdapter({ allowLoopback: o.allowLoopback });
   }
@@ -168,6 +173,11 @@ export class LanService {
       host,
       port,
     }));
+  }
+
+  /** Called for each pushed `RING` or `TRUST` once it is stored, applied or refused. */
+  onNotice(fn: (n: ConnectNotice) => void): () => void {
+    return this.#docs.onNotice(fn);
   }
 
   onPeer(fn: (p: LanPeer) => void): () => void {
@@ -254,31 +264,6 @@ export class LanService {
     return v;
   }
 
-  #account(id: LanIdentity): AccountContext {
-    return {
-      trust: id.trust,
-      expectedAud: id.slug,
-      certJws: id.certJws,
-      ownSub: id.sub,
-      ownDeviceId: id.deviceId,
-      heldRing: () => this.#ring ?? { jws: id.ringJws, epoch: id.ringEpoch },
-      discKeys: [id.keys.current, id.keys.previous],
-    };
-  }
-
-  /** The static key is a handle: Noise asks for `publicKey` and `dh` on it and gets the device's. */
-  #ports(id: LanIdentity, handle: Uint8Array): NoisePorts {
-    return {
-      ...webCryptoNoisePorts,
-      x25519: {
-        publicKey: async (k) =>
-          k === handle ? id.agreePublic : webCryptoX25519.publicKey(k),
-        dh: async (k, p) =>
-          k === handle ? id.dh(p) : webCryptoX25519.dh(k, p),
-      },
-    };
-  }
-
   #link(
     socket: Socket,
     id: LanIdentity,
@@ -293,14 +278,14 @@ export class LanService {
         role,
         slug: id.slug,
         staticKey: handle,
-        account: this.#account(id),
+        account: peerAccount(id, () => this.#ring),
         caps: this.o.caps ?? ["app/1"],
         hello: {
           label: this.o.label,
           platform: process.platform,
           app: id.slug,
         },
-        ports: this.#ports(id, handle),
+        ports: peerPorts(id, handle),
         now: () => this.src.now(),
         timer: this.o.timer,
         rekeyMessages: this.o.rekeyMessages,
@@ -309,8 +294,10 @@ export class LanService {
       onRing: (jws, epoch) => {
         if (this.#ring === null || epoch > this.#ring.epoch)
           this.#ring = { jws, epoch };
+        this.#docs.ring(jws);
       },
-      onRingWanted: () => this.#wantRing(),
+      onTrust: (jws) => this.#docs.trust(jws),
+      onRingWanted: () => this.#docs.wantRing(),
       onEstablished: (s) => {
         this.#sessions.add(s);
         s.onClose(() => this.#sessions.delete(s));
@@ -319,19 +306,6 @@ export class LanService {
     });
     this.#links.add(link);
     return link;
-  }
-
-  #wantRing(): void {
-    const t = this.src.now();
-    if (this.src.refresh === undefined || t - this.#lastRefresh < 60) return;
-    this.#lastRefresh = t;
-    void this.src
-      .refresh()
-      .then(
-        () => this.#identity(true),
-        () => undefined,
-      )
-      .catch(() => undefined);
   }
 
   // ── TCP ─────────────────────────────────────────────────────────────────────────────────────

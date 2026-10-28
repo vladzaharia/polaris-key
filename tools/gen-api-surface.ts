@@ -112,6 +112,7 @@ const NODE_CLASS: Record<string, string> = {
   license: "LicenseClient",
   entitlements: "EntitlementsClient",
   identity: "IdentityClient",
+  cloudConnect: "CloudConnect",
 };
 
 function typePath(root: string, path: string): string {
@@ -177,6 +178,7 @@ function renderNode(api: Api): string {
     `import { expect, it } from "vitest";`,
     `import {`,
     `  ChoiceClient,`,
+    `  CloudConnect,`,
     `  ConfigClient,`,
     `  DeviceCodeSession,`,
     `  EntitlementsClient,`,

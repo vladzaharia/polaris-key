@@ -152,8 +152,6 @@ export const ErrorCode = {
   httpError: "http-error",
   invalidResponse: "invalid-response",
   storeFailed: "store-failed",
-  connectUnavailable: "connect-unavailable",
-  peerCertInvalid: "peer-cert-invalid",
   platformError: "platform-error",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
@@ -363,8 +361,6 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "http-error",
   "invalid-response",
   "store-failed",
-  "connect-unavailable",
-  "peer-cert-invalid",
   "platform-error",
   "no-token",
   "mint-unavailable",
@@ -576,8 +572,6 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "http-error": "client",
   "invalid-response": "client",
   "store-failed": "client",
-  "connect-unavailable": "client",
-  "peer-cert-invalid": "client",
   "platform-error": "client",
   "no-token": "client",
   "mint-unavailable": "client",
@@ -704,8 +698,6 @@ export const Feature = {
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
   identityExchange: "identity.exchange",
-  identityAutosignin: "identity.autosignin",
-  identityLink: "identity.link",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -837,8 +829,6 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.choice",
   "identity.signin.hints",
   "identity.exchange",
-  "identity.autosignin",
-  "identity.link",
   "release.changelog",
   "release.download",
   "release.record",
@@ -1578,7 +1568,7 @@ export const OUTLET_MATRIX_VERSION = 1;
 export const PLAN_MATRIX_VERSION = 2;
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-export const SYNC_SCENARIOS_VERSION = 3;
+export const SYNC_SCENARIOS_VERSION = 2;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 1;
@@ -2041,10 +2031,10 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
   "connect.lan": { status: "implemented", service: "connect", na: [] },
-  "connect.relay": { status: "planned", service: "connect", na: [] },
+  "connect.relay": { status: "implemented", service: "connect", na: [] },
   "connect.links": { status: "planned", service: "connect", na: [] },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
-  "connect.app": { status: "planned", service: "connect", na: [] },
+  "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": { status: "implemented", service: "core", na: [] },
   "devices.facts": { status: "implemented", service: "core", na: [] },
   "devices.register": { status: "implemented", service: "core", na: [] },
@@ -2079,12 +2069,6 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.exchange": {
-    status: "na",
-    service: "identity",
-    na: [{ runtime: "node", reason: "runtime" }],
-  },
-  "identity.autosignin": { status: "planned", service: "identity", na: [] },
-  "identity.link": {
     status: "na",
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
@@ -2208,4 +2192,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "548faa6a29ab7237d50ab7bf498777ae74418dc0ed24e0aa848c9b359d85cede";
+  "cd146f8910d27c0f8c26e005485850a439dc0f25fb826e5d775b0e2d26dc7ccb";

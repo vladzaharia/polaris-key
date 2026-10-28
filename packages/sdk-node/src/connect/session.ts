@@ -41,7 +41,8 @@ export type LanErrorReason =
   | "closed"
   | "too_large"
   | "bad_type"
-  | "queue_full";
+  | "queue_full"
+  | "not_started";
 
 export class LanError extends Error {
   constructor(
@@ -69,6 +70,14 @@ export interface SessionClosed {
   byPeer: boolean;
 }
 
+/** Anything that owns a `PeerChannel`: a TCP socket or a relay session. */
+export interface ChannelLink {
+  readonly channel: PeerChannel;
+}
+
+/** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
+export type SessionPath = "lan" | "relay";
+
 export class ConnectSession {
   #queue: SessionMessage[] = [];
   #waiters: {
@@ -81,12 +90,13 @@ export class ConnectSession {
 
   /** @internal */
   constructor(
-    private readonly link: SocketLink,
+    private readonly link: ChannelLink,
     readonly peerDeviceId: string,
     readonly caps: readonly string[],
     readonly hello: PeerHello,
     readonly role: "initiator" | "responder",
     readonly remoteAddress: string,
+    readonly path: SessionPath = "lan",
   ) {}
 
   get closed(): SessionClosed | null {
@@ -165,10 +175,26 @@ export class ConnectSession {
   }
 }
 
+/**
+ * A record the channel hands up: the APP range goes to the host's session; an APP-critical type
+ * (0x8100 to 0xFFFD) the host cannot understand closes the session; the rest is ignored.
+ */
+export function routeRecord(
+  link: ChannelLink,
+  session: ConnectSession | null,
+  type: number,
+  body: Uint8Array,
+): void {
+  if (type >= 0x0100 && type <= 0x7fff) session?.deliver({ type, body });
+  else if (type >= 0x8100 && type <= 0xfffd)
+    void link.channel.close("peer_unknown_critical");
+}
+
 export interface SocketLinkOptions {
   socket: Socket;
   channel: Omit<PeerSessionOptions, "send" | "onEvent">;
   onRing?: (jws: string, epoch: number) => void;
+  onTrust?: (jws: string) => void;
   onRingWanted?: () => void;
   onEstablished?: (s: ConnectSession) => void;
   onEnded?: () => void;
@@ -247,16 +273,14 @@ export class SocketLink {
         this.#settle.resolve(this.#session);
         break;
       }
-      case "record": {
-        const t = e.recordType;
-        if (t >= 0x0100 && t <= 0x7fff)
-          this.#session?.deliver({ type: t, body: e.body });
-        else if (t >= 0x8100 && t <= 0xfffd)
-          void this.channel.close("peer_unknown_critical");
+      case "record":
+        routeRecord(this, this.#session, e.recordType, e.body);
         break;
-      }
       case "ring":
         this.o.onRing?.(e.jws, e.epoch);
+        break;
+      case "trust-unverified":
+        this.o.onTrust?.(e.jws);
         break;
       case "ring-wanted":
         this.o.onRingWanted?.();

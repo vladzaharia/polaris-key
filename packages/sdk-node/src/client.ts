@@ -75,6 +75,7 @@ import { PolarisEventEmitter } from "./core/events.js";
 import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
+import { CloudConnect } from "./connect/cloudConnect.js";
 import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
@@ -201,6 +202,8 @@ export class PolarisKeyClient {
   /** Cloud Connect: the device's identity among the person's devices (WIRE-CONTRACT-V5 §15):
    *  keys, roster, certificate and discovery key. */
   readonly connect: ConnectClient;
+  /** Cloud Connect for the app: start, stop, peers, devices, open and onChannel (CC-08.3). */
+  readonly cloudConnect: CloudConnect;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -312,6 +315,7 @@ export class PolarisKeyClient {
       {
         devices: this.devices,
         trust: () => this.trust.effective,
+        applyTrust: (jws) => this.applyPeerTrust(jws),
         defaultKeys: () =>
           createNodeDeviceKeyStore({
             product: this.product,
@@ -329,6 +333,7 @@ export class PolarisKeyClient {
         ...opts.connect,
       },
     );
+    this.cloudConnect = new CloudConnect(this.connect);
     // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
     this.identity.onBeforeSignOut(() => this.connect.leave());
     this.commerce = new CommerceClient(this.core, this.tokens, () =>
@@ -858,8 +863,27 @@ export class PolarisKeyClient {
     schedule(interval);
   }
 
-  /** Stop the refresh timers. Safe to call more than once. */
+  /** A trust manifest a connected peer pushed: verified and installed by the trust custodian,
+   *  then persisted in the same slices a sync writes. Refused (with the reason) when the host
+   *  turned trust refresh off, or the manifest is invalid or not newer. */
+  private async applyPeerTrust(
+    jws: string,
+  ): Promise<{ applied: true } | { applied: false; reason: string }> {
+    if (!this.core.trustRefreshEnabled)
+      return { applied: false, reason: "trust_refresh_off" };
+    const r = await this.trust.acceptPeer(jws);
+    if (!r.applied) return r;
+    const evidence = this.trust.pinRevocations;
+    await this.cache.patch({
+      trustJws: jws,
+      ...(Object.keys(evidence).length > 0 ? { pinRevocations: evidence } : {}),
+    });
+    return r;
+  }
+
+  /** Stop the refresh timers and Cloud Connect. Safe to call more than once. */
   close(): void {
+    void this.cloudConnect.stop().catch(() => undefined);
     if (this.refreshTimer !== null) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;

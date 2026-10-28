@@ -184,6 +184,30 @@ export class TrustManager {
     return jws;
   }
 
+  /**
+   * Verify a manifest a peer pushed and install it, under the rules the Worker's own manifest
+   * meets: signed by a usable pin, bound to this product, fresh, and newer than the one held
+   * (anti-rollback). Returns the reason when it is refused; the caller persists `jws` and
+   * `pinRevocations` when it is applied.
+   */
+  async acceptPeer(
+    jws: string,
+  ): Promise<{ applied: true } | { applied: false; reason: string }> {
+    const base = {
+      pinned: this.ctx.pinnedTrust,
+      tombstones: this.tombstones,
+      expectedAud: this.ctx.product,
+      now: this.ctx.now(),
+    };
+    const probe = await verifyTrustManifest(jws, base);
+    if (!probe.doc) return { applied: false, reason: "invalid" };
+    const held = this.manifest?.issuedAt;
+    if (held !== undefined && probe.doc.issuedAt <= held)
+      return { applied: false, reason: "not_newer" };
+    this.install(jws, probe);
+    return { applied: true };
+  }
+
   private install(jws: string, result: TrustManifestResult): void {
     this.noteRevocations(jws, result.revokedPins);
     this.manifest = result.doc;

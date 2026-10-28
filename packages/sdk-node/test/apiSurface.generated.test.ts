@@ -2,6 +2,7 @@
 import { expect, it } from "vitest";
 import {
   ChoiceClient,
+  CloudConnect,
   ConfigClient,
   DeviceCodeSession,
   EntitlementsClient,
@@ -172,6 +173,24 @@ it("license.status", () =>
   expect("status" in LicenseClient.prototype).toBe(true));
 it("license.isLicensed", () =>
   expect("isLicensed" in LicenseClient.prototype).toBe(true));
+it("cloudConnect.start", () =>
+  expect("start" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.stop", () =>
+  expect("stop" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.peers", () =>
+  expect("peers" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.devices", () =>
+  expect("devices" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.open", () =>
+  expect("open" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.onChannel", () =>
+  expect("onChannel" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.refreshPeers", () =>
+  expect("refreshPeers" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.status", () =>
+  expect("status" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.onNotice", () =>
+  expect("onNotice" in CloudConnect.prototype).toBe(true));
 it("removed: config.getConfig", () =>
   expect("getConfig" in ConfigClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getConfig", () =>
