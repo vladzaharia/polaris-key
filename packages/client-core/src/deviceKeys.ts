@@ -42,6 +42,12 @@ export interface DeviceKeyPort {
   dh(peerPublic: Uint8Array): Promise<Uint8Array | null>;
   /** Replaces both keys with a new pair and returns it (`generation` + 1). */
   rotate(): Promise<DevicePublicKeys>;
+  /**
+   * Where the keys live: "durable" survives a reload, "memory" dies with the page. Optional; a
+   * port without it is taken to be durable. A memory port must not register keys (every reload
+   * would be a key change, and the server allows 4 a day).
+   */
+  persistence?(): "durable" | "memory" | Promise<"durable" | "memory">;
   /** Deletes both keys. The next `ensure()` makes a new pair, with `generation` starting again. */
   wipe(): Promise<void>;
 }
@@ -72,10 +78,24 @@ export interface SignDeviceProofOptions {
   value: string;
   /** Base64url SHA-256 of the presented provider token; default `-` (none). */
   tokenHash?: string;
-  /** Verifies the result before it is returned; default WebCrypto. Test seam. */
-  verify?: Ed25519VerifyPort;
   /** Epoch seconds for the `keys` skew check; default the clock. */
   now?: number;
+}
+
+/** @internal Test seam: the verifier the signer checks its own result with. */
+export interface SignDeviceProofInternal extends SignDeviceProofOptions {
+  verify?: Ed25519VerifyPort;
+}
+
+const PRODUCT_SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+async function refuseMemoryOnly(
+  port: DeviceKeyPort,
+  allowEphemeral: boolean | undefined,
+): Promise<void> {
+  if (allowEphemeral) return;
+  if ((await port.persistence?.()) === "memory")
+    throw new DeviceKeyUnsupportedError("memory-only");
 }
 
 /**
@@ -83,9 +103,26 @@ export interface SignDeviceProofOptions {
  * proof. Throws `DeviceProofError` when a field breaks the line format, when the keys changed
  * while signing, or when the result would not verify.
  */
-export async function signDeviceProof(
+export function signDeviceProof(
   port: DeviceKeyPort,
   o: SignDeviceProofOptions,
+): Promise<DeviceProof> {
+  return signDeviceProofInternal(port, o);
+}
+
+/** @internal Same as `signDeviceProof`, with the test seam. Not exported from the package. */
+export async function signDeviceProofInternal(
+  port: DeviceKeyPort,
+  o: SignDeviceProofInternal,
+): Promise<DeviceProof> {
+  if (o.purpose === "keys")
+    throw new DeviceProofError("device proof: use signKeysProof for keys");
+  return signAny(port, o);
+}
+
+async function signAny(
+  port: DeviceKeyPort,
+  o: SignDeviceProofInternal,
 ): Promise<DeviceProof> {
   const before = await port.ensure();
   const fields = {
@@ -122,12 +159,18 @@ export async function signKeysProof(
     deviceId: string;
     /** Epoch seconds; default the clock. */
     issuedAt?: number;
+    /** Sign although the keys die with the page (a flow that registers nothing). */
+    allowEphemeral?: boolean;
+    /** @internal Test seam. */
     verify?: Ed25519VerifyPort;
   },
 ): Promise<{ proof: DeviceProof; keys: DevicePublicKeys; issuedAt: number }> {
+  if (!PRODUCT_SLUG.test(o.product))
+    throw new DeviceProofError("device proof: bad product");
+  await refuseMemoryOnly(port, o.allowEphemeral);
   const issuedAt = o.issuedAt ?? Math.floor(Date.now() / 1000);
   const keys = await port.ensure();
-  const proof = await signDeviceProof(port, {
+  const proof = await signAny(port, {
     purpose: "keys",
     product: o.product,
     deviceId: o.deviceId,
@@ -164,6 +207,8 @@ export async function buildDeviceKeysRequest(
     product: string;
     deviceId: string;
     issuedAt?: number;
+    allowEphemeral?: boolean;
+    /** @internal Test seam. */
     verify?: Ed25519VerifyPort;
   },
 ): Promise<{ path: string; body: DeviceKeysRequest }> {

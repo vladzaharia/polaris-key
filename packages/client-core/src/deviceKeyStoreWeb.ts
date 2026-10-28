@@ -79,15 +79,28 @@ export function indexedDbDeviceKeyStorage(
   let db: Promise<IDBDatabase> | null = null;
   const open = (): Promise<IDBDatabase> => {
     if (!idb) return Promise.reject(new Error("indexeddb unavailable"));
-    db ??= new Promise<IDBDatabase>((res, rej) => {
+    const p = (db ??= new Promise<IDBDatabase>((res, rej) => {
       const r = idb.open(name, 1);
       r.onupgradeneeded = () => r.result.createObjectStore(STORE);
-      r.onsuccess = () => res(r.result);
+      r.onsuccess = () => {
+        const d = r.result;
+        // The browser closed the connection, or another tab upgrades the database: reopen.
+        d.onclose = () => {
+          if (db === p) db = null;
+        };
+        d.onversionchange = () => {
+          d.close();
+          if (db === p) db = null;
+        };
+        res(d);
+      };
       r.onerror = () => rej(r.error ?? new Error("indexeddb"));
       r.onblocked = () => rej(new Error("indexeddb blocked"));
+    }));
+    p.catch(() => {
+      if (db === p) db = null;
     });
-    db.catch(() => (db = null));
-    return db;
+    return p;
   };
   // An engine may accept a write of a CryptoKey and keep nothing (WebKit does so for X25519 keys,
   // Playwright WebKit 2359): read every write back, or the keys would look stored and be gone
@@ -126,6 +139,7 @@ export function indexedDbDeviceKeyStorage(
       if (!(await kept())) throw new Error("indexeddb dropped the keys");
     },
     async clear() {
+      if (!idb) return; // no IndexedDB here, so nothing stored there
       const d = await open();
       const t = d.transaction(STORE, "readwrite");
       t.objectStore(STORE).delete(RECORD_KEY);
@@ -142,6 +156,11 @@ export interface WebDeviceKeyPort extends DeviceKeyPort {
 export interface WebDeviceKeyOptions {
   /** Default IndexedDB `pkey-device-keys`, falling back to memory. */
   storage?: DeviceKeyStorage;
+  /**
+   * With an explicit `storage`, still fall back to memory if its first open or write fails
+   * before any durable record was read (the default storage always does). Never after.
+   */
+  fallbackToMemory?: boolean;
   /** The WebCrypto to use; default `globalThis.crypto.subtle`. */
   subtle?: SubtleCrypto;
 }
@@ -149,20 +168,34 @@ export interface WebDeviceKeyOptions {
 const isCryptoKey = (k: unknown): k is CryptoKey =>
   !!k && typeof k === "object" && "algorithm" in k && "extractable" in k;
 
+function keyOk(
+  k: unknown,
+  type: "private" | "public",
+  alg: string,
+  usage: KeyUsage,
+): boolean {
+  if (!isCryptoKey(k)) return false;
+  return (
+    k.type === type &&
+    k.algorithm?.name === alg &&
+    Array.isArray(k.usages) &&
+    k.usages.includes(usage)
+  );
+}
+
 function validShape(rec: StoredDeviceKeys | null): rec is StoredDeviceKeys {
   return (
     !!rec &&
     rec.v === 1 &&
     Number.isSafeInteger(rec.generation) &&
     rec.generation >= 1 &&
-    isCryptoKey(rec.sign?.privateKey) &&
-    isCryptoKey(rec.sign?.publicKey) &&
-    isCryptoKey(rec.agree?.privateKey) &&
-    isCryptoKey(rec.agree?.publicKey) &&
+    keyOk(rec.sign?.privateKey, "private", "Ed25519", "sign") &&
+    keyOk(rec.sign?.publicKey, "public", "Ed25519", "verify") &&
+    keyOk(rec.agree?.privateKey, "private", "X25519", "deriveBits") &&
+    rec.agree?.publicKey?.type === "public" &&
+    rec.agree.publicKey.algorithm?.name === "X25519" &&
     !rec.sign.privateKey.extractable &&
-    !rec.agree.privateKey.extractable &&
-    rec.sign.privateKey.algorithm.name === "Ed25519" &&
-    rec.agree.privateKey.algorithm.name === "X25519"
+    !rec.agree.privateKey.extractable
   );
 }
 
@@ -171,32 +204,59 @@ export function createWebDeviceKeyStore(
   o: WebDeviceKeyOptions = {},
 ): WebDeviceKeyPort {
   const subtle = o.subtle ?? globalThis.crypto?.subtle;
-  // The explicit storage is the host's; only the default may fall back to memory.
-  const mayFallBack = !o.storage;
-  let storage: DeviceKeyStorage = o.storage ?? indexedDbDeviceKeyStorage();
-  let durable = true;
+  // The durable store, kept by its own reference so `wipe` always reaches it. Only the default
+  // may fall back to memory; an explicit storage is the host's.
+  const durableStorage: DeviceKeyStorage =
+    o.storage ?? indexedDbDeviceKeyStorage();
+  const mayFallBack = !o.storage || o.fallbackToMemory === true;
+  let memory: DeviceKeyStorage | null = null;
+  // True once the durable store has returned a usable record or kept a write. From then on its
+  // errors are rethrown: swapping to a fresh memory identity would hide the device's real one.
+  let durableSeen = false;
   let chain: Promise<unknown> = Promise.resolve();
   const serial = <T>(f: () => Promise<T>): Promise<T> => {
     const r = chain.then(f, f);
     chain = r.catch(() => undefined);
     return r;
   };
+  // Across tabs: one creator, rotator or wiper at a time where the Locks API exists.
+  const locked = <T>(f: () => Promise<T>): Promise<T> => {
+    const locks = (
+      globalThis as {
+        navigator?: {
+          locks?: {
+            request<R>(name: string, cb: () => Promise<R>): Promise<R>;
+          };
+        };
+      }
+    ).navigator?.locks;
+    return locks ? locks.request("pkey-device-keys", f) : f();
+  };
+  const needSubtle = (): SubtleCrypto => {
+    if (!subtle)
+      throw new DeviceKeyUnsupportedError("device keys: no WebCrypto");
+    return subtle;
+  };
 
-  async function run<T>(f: (s: DeviceKeyStorage) => Promise<T>): Promise<T> {
+  async function run<T>(
+    f: (s: DeviceKeyStorage) => Promise<T>,
+    kept: (r: T) => boolean = () => true,
+  ): Promise<T> {
+    if (memory) return f(memory);
     try {
-      return await f(storage);
+      const r = await f(durableStorage);
+      if (kept(r)) durableSeen = true;
+      return r;
     } catch (e) {
-      if (!mayFallBack || !durable || e instanceof DeviceKeyUnsupportedError)
+      if (!mayFallBack || durableSeen || e instanceof DeviceKeyUnsupportedError)
         throw e;
-      durable = false;
-      storage = memoryDeviceKeyStorage();
-      return f(storage);
+      memory = memoryDeviceKeyStorage();
+      return f(memory);
     }
   }
 
   async function generate(generation: number): Promise<StoredDeviceKeys> {
-    if (!subtle)
-      throw new DeviceKeyUnsupportedError("device keys: no WebCrypto");
+    const subtle = needSubtle();
     let sign: CryptoKeyPair, agree: CryptoKeyPair;
     try {
       sign = (await subtle.generateKey({ name: "Ed25519" }, false, [
@@ -219,6 +279,7 @@ export function createWebDeviceKeyStore(
   }
 
   async function publicOf(r: StoredDeviceKeys): Promise<DevicePublicKeys> {
+    const subtle = needSubtle();
     const s = new Uint8Array(await subtle.exportKey("raw", r.sign.publicKey));
     const a = new Uint8Array(await subtle.exportKey("raw", r.agree.publicKey));
     return {
@@ -229,7 +290,10 @@ export function createWebDeviceKeyStore(
   }
 
   const load = async (): Promise<StoredDeviceKeys | null> => {
-    const rec = await run((s) => s.get());
+    const rec = await run(
+      (s) => s.get(),
+      (r) => validShape(r),
+    );
     return validShape(rec) ? rec : null;
   };
 
@@ -238,11 +302,18 @@ export function createWebDeviceKeyStore(
       serial(async () => {
         const cur = await load();
         if (cur) return publicOf(cur);
-        const made = await generate(1);
-        const won = await run((s) => s.putIfAbsent(made));
-        if (validShape(won)) return publicOf(won);
-        await run((s) => s.put(made)); // a record this code cannot use is replaced
-        return publicOf(made);
+        return locked(async () => {
+          const again = await load(); // another tab may have made the pair
+          if (again) return publicOf(again);
+          const made = await generate(1);
+          const won = await run(
+            (s) => s.putIfAbsent(made),
+            (r) => validShape(r),
+          );
+          if (validShape(won)) return publicOf(won);
+          await run((s) => s.put(made)); // a record this code cannot use is replaced
+          return publicOf(made);
+        });
       }),
     publicKeys: () =>
       serial(async () => {
@@ -254,7 +325,7 @@ export function createWebDeviceKeyStore(
         const cur = await load();
         if (!cur) throw new Error("device keys: none; call ensure() first");
         return new Uint8Array(
-          await subtle.sign(
+          await needSubtle().sign(
             { name: "Ed25519" },
             cur.sign.privateKey,
             message as BufferSource,
@@ -268,6 +339,7 @@ export function createWebDeviceKeyStore(
         const cur = await load();
         if (!cur) return null;
         try {
+          const subtle = needSubtle();
           const peer = await subtle.importKey(
             "raw",
             peerPublic as BufferSource,
@@ -289,16 +361,24 @@ export function createWebDeviceKeyStore(
       }),
     rotate: () =>
       serial(async () => {
-        const cur = await load();
-        const next = await generate((cur?.generation ?? 0) + 1);
-        await run((s) => s.put(next));
-        return publicOf(next);
+        return locked(async () => {
+          const cur = await load(); // read under the lock: the generation is compare-and-set
+          const next = await generate((cur?.generation ?? 0) + 1);
+          // A failed durable write rethrows once a durable record was seen, so a rotate never
+          // answers with a memory key while the durable record keeps the old one.
+          await run((s) => s.put(next));
+          return publicOf(next);
+        });
       }),
     wipe: () =>
-      serial(async () => {
-        await run((s) => s.clear());
-      }),
-    persistence: async () => (durable ? "durable" : "memory"),
+      serial(() =>
+        locked(async () => {
+          // Both stores, never a fallback: an IndexedDB error is the caller's to see.
+          if (memory) await memory.clear();
+          await durableStorage.clear();
+        }),
+      ),
+    persistence: async () => (memory ? "memory" : "durable"),
   };
   return port;
 }

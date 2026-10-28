@@ -355,3 +355,168 @@ describe("proof signer", () => {
     );
   });
 });
+
+describe("review round: persistence, wipe, fallback rules", () => {
+  const failing = (over: Partial<DeviceKeyStorage>): DeviceKeyStorage => ({
+    ...memoryDeviceKeyStorage(),
+    ...over,
+  });
+
+  it("refuses to register keys that live in memory only", async () => {
+    const s = createWebDeviceKeyStore(); // no IndexedDB in Node: memory
+    await s.ensure();
+    expect(await s.persistence()).toBe("memory");
+    const o = { product: "djdl", deviceId: DEVICE, issuedAt: NOW };
+    await expect(buildDeviceKeysRequest(s, o)).rejects.toThrow("memory-only");
+    await expect(signKeysProof(s, o)).rejects.toBeInstanceOf(
+      DeviceKeyUnsupportedError,
+    );
+    const ok = await buildDeviceKeysRequest(s, { ...o, allowEphemeral: true });
+    expect(ok.body.signKey).toBeTruthy();
+    // Other proofs need no registration.
+    expect(
+      await signDeviceProof(s, {
+        purpose: "nonce",
+        product: "djdl",
+        deviceId: DEVICE,
+        value: "x",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("treats a port without persistence() as durable", async () => {
+    const s = newStore();
+    const bare: DeviceKeyPort = {
+      ensure: () => s.ensure(),
+      publicKeys: () => s.publicKeys(),
+      sign: (m) => s.sign(m),
+      dh: (p) => s.dh(p),
+      rotate: () => s.rotate(),
+      wipe: () => s.wipe(),
+    };
+    await buildDeviceKeysRequest(bare, {
+      product: "djdl",
+      deviceId: DEVICE,
+      issuedAt: NOW,
+    });
+  });
+
+  it("wipe reaches the durable store after a fallback and rethrows its error", async () => {
+    let cleared = 0;
+    const durable = failing({
+      get: async () => {
+        throw new Error("open failed");
+      },
+      clear: async () => {
+        cleared++;
+        throw new Error("clear failed");
+      },
+    });
+    const s = createWebDeviceKeyStore({
+      storage: durable,
+      fallbackToMemory: true,
+    });
+    await s.ensure();
+    expect(await s.persistence()).toBe("memory");
+    await expect(s.wipe()).rejects.toThrow("clear failed");
+    expect(cleared).toBe(1);
+    // The memory copy is gone even though the durable clear failed.
+    expect(await s.publicKeys()).toBeNull();
+  });
+
+  it("wipe clears the durable store and memory when both work", async () => {
+    const storage = memoryDeviceKeyStorage();
+    const s = newStore(storage);
+    await s.ensure();
+    await s.wipe();
+    expect(await storage.get()).toBeNull();
+  });
+
+  it("falls back only before a durable record was read; after, it rethrows", async () => {
+    const inner = memoryDeviceKeyStorage();
+    let broken = false;
+    const durable = failing({
+      get: async () => {
+        if (broken) throw new Error("idb gone");
+        return inner.get();
+      },
+      putIfAbsent: (r) => inner.putIfAbsent(r),
+      put: async (r) => {
+        if (broken) throw new Error("idb gone");
+        return inner.put(r);
+      },
+    });
+    const s = createWebDeviceKeyStore({
+      storage: durable,
+      fallbackToMemory: true,
+    });
+    const k = await s.ensure();
+    expect(await s.persistence()).toBe("durable");
+    broken = true;
+    await expect(s.publicKeys()).rejects.toThrow("idb gone");
+    await expect(s.rotate()).rejects.toThrow("idb gone");
+    broken = false;
+    expect(await s.publicKeys()).toEqual(k); // still the durable identity
+  });
+
+  it("ignores a stored record whose keys have the wrong type or usage", async () => {
+    const storage = memoryDeviceKeyStorage();
+    const s = newStore(storage);
+    await s.ensure();
+    const rec = (await storage.get())!;
+    await storage.put({
+      ...rec,
+      sign: { privateKey: rec.sign.publicKey, publicKey: rec.sign.publicKey },
+    });
+    expect(await s.publicKeys()).toBeNull();
+    await storage.put({
+      ...rec,
+      agree: {
+        privateKey: rec.agree.publicKey,
+        publicKey: rec.agree.publicKey,
+      },
+    });
+    expect(await s.publicKeys()).toBeNull();
+  });
+
+  it("takes the Web Lock around creation, rotate and wipe", async () => {
+    const names: string[] = [];
+    const prev = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: {
+        locks: {
+          request: async (n: string, cb: () => Promise<unknown>) => {
+            names.push(n);
+            return cb();
+          },
+        },
+      },
+    });
+    try {
+      const s = newStore();
+      await s.ensure();
+      await s.rotate();
+      await s.wipe();
+    } finally {
+      if (prev) Object.defineProperty(globalThis, "navigator", prev);
+    }
+    expect(names).toEqual(Array(3).fill("pkey-device-keys"));
+  });
+
+  it("refuses keys through signDeviceProof and a bad product slug", async () => {
+    const s = newStore();
+    await expect(
+      signDeviceProof(s, {
+        purpose: "keys",
+        product: "djdl",
+        deviceId: DEVICE,
+        value: "x",
+      }),
+    ).rejects.toBeInstanceOf(DeviceProofError);
+    for (const product of ["", "Djdl", "a\nb", "-x", "a".repeat(65)])
+      await expect(
+        buildDeviceKeysRequest(s, { product, deviceId: DEVICE }),
+      ).rejects.toBeInstanceOf(DeviceProofError);
+  });
+});
