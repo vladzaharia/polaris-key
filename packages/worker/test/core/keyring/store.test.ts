@@ -182,6 +182,26 @@ describe("core.keyring subject store", () => {
     expect(await count(db, "keyrings")).toBe(1);
   });
 
+  it("merge drops the absorbed subject's wraps for its previous ring", async () => {
+    const { db } = await create();
+    await resetRing(db, {
+      product: P,
+      subject: S,
+      expectedRingId: RING,
+      ringId: RING2,
+      epoch: 2,
+      rootKid: "k2",
+      wrap: wrap("d1", { ringId: RING2, epoch: 2, kid: "k2" }),
+      now: NOW + 10,
+    });
+    expect(await count(db, "keyring_wraps")).toBe(2);
+    await keyringStore.merge(ctx(db), { product: P, from: S, to: "sub-b" });
+    const left = await db.all<{ ring_id: string; subject: string }>(
+      "SELECT ring_id, subject FROM keyring_wraps",
+    );
+    expect(left).toEqual([{ ring_id: RING2, subject: "sub-b" }]);
+  });
+
   it("merge makes the absorbed ring an unsealed candidate when both have one", async () => {
     const { db } = await create();
     await createRing(db, {

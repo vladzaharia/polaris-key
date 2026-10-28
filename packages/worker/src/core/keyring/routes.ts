@@ -116,7 +116,11 @@ export const RECOVERY_FETCH_LIMIT = {
   windowSec: 86_400,
 } as const;
 
-/** The same budget per subject, so a rotation of device ids does not reset it. Fails closed. */
+/**
+ * The same budget per subject, so a rotation of device ids does not reset it. Fails closed. It
+ * counts only fetches that return a blob (T23): a probe that finds nothing is checked, not
+ * counted, so it cannot spend the owner's quota.
+ */
 export const RECOVERY_FETCH_SUBJECT_LIMIT = {
   bucket: "keyringRecoverySubject",
   limit: 5,
@@ -563,7 +567,9 @@ async function requireRoot(c: Ctx): Promise<Response | null> {
 }
 
 async function getRecoveryBlob(c: Ctx): Promise<Response> {
-  // Counted before anything is read, so a device cannot probe for a blob past its budget.
+  // The device budget is counted before anything is read, so a device cannot probe past it. The
+  // subject budget is only checked here and is counted once a blob is found.
+  const subjectLimit = { ...RECOVERY_FETCH_SUBJECT_LIMIT, id: c.subject };
   if (
     !(await rateLimitOk(
       c.env,
@@ -571,16 +577,13 @@ async function getRecoveryBlob(c: Ctx): Promise<Response> {
       { ...RECOVERY_FETCH_LIMIT, id: c.device.device_id },
       c.now,
     )) ||
-    !(await rateLimitOk(
-      c.env,
-      c.product.slug,
-      { ...RECOVERY_FETCH_SUBJECT_LIMIT, id: c.subject },
-      c.now,
-    ))
+    !(await rateLimitOk(c.env, c.product.slug, subjectLimit, c.now, true))
   )
     return wireError(429, "rate_limited");
   const blob = await getRecovery(c.db, c.product.slug, c.subject);
   if (!blob) return notFound();
+  if (!(await rateLimitOk(c.env, c.product.slug, subjectLimit, c.now)))
+    return wireError(429, "rate_limited");
   // The audit row comes first: a fetch that cannot be recorded is not served.
   await auditRing(c, "keyring.recovery.fetch", "Recovery data fetched");
   await emailAccount(c, recoveryStartedNotice);

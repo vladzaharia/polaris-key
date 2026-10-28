@@ -487,7 +487,7 @@ describe("recovery", () => {
     ).toBe(D2);
   });
 
-  it("limits the fetch to 5 a day per device and 5 per subject, and counts a not-set answer", async () => {
+  it("limits the fetch to 5 a day per device and 5 per subject, and the device count includes a not-set answer", async () => {
     await create(w);
     await call(w, D1, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID });
     const limited: string[] = [];
@@ -500,6 +500,19 @@ describe("recovery", () => {
     expect(
       (await call(w, D2, "GET", "/recovery", undefined, NOW + 86_401)).status,
     ).toBe(200);
+  });
+
+  it("counts the subject budget only for a fetch that returns a blob", async () => {
+    await create(w, D1, { recovery: undefined });
+    // Nothing is set: four probes find nothing and spend none of the subject budget.
+    for (let i = 0; i < 4; i++)
+      expect((await call(w, D1, "GET", "/recovery")).status).toBe(404);
+    await call(w, D1, "PUT", "/recovery", { ct: REC, epoch: 1, kid: KID });
+    // Under a count-everything rule the subject would have 1 left; here all 5 real fetches work.
+    const got: string[] = [];
+    for (let i = 0; i < 6; i++)
+      got.push(String((await call(w, D2, "GET", "/recovery")).status));
+    expect(got).toEqual(["200", "200", "200", "200", "200", "429"]);
   });
 
   it("emails the account on a fetch, a write and a reset, saying no one asks for the code", async () => {
