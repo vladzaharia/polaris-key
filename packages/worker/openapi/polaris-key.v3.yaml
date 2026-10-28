@@ -28496,7 +28496,8 @@ components:
       description: A `pkey-sync-wrap/1` (V5 §13.11.1). `enc` and `ct` are unpadded base64url.
       required: [kem, enc, ct]
       properties:
-        kem: { type: integer, enum: [32], description: "DHKEM X25519 (0x0020)." }
+        kem:
+          { type: integer, enum: [32], description: "DHKEM X25519 (0x0020)." }
         enc: { type: string, pattern: "^[A-Za-z0-9_-]+$", maxLength: 128 }
         ct: { type: string, pattern: "^[A-Za-z0-9_-]+$", maxLength: 512 }
     KeyringWrapRequest:

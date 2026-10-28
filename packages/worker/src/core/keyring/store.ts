@@ -90,8 +90,7 @@ const WRAP_COLS =
   "device_id, ring_id, epoch, kid, kem, enc, ct, by_device, created_at";
 
 /** Rows written before the integer form hold "x25519"; the column is TEXT, so 32 reads back "32". */
-const kemOf = (v: string | number): number =>
-  v === "x25519" ? 32 : Number(v);
+const kemOf = (v: string | number): number => (v === "x25519" ? 32 : Number(v));
 
 const toWrap = (r: WrapDb): WrapRow => ({
   deviceId: r.device_id,
