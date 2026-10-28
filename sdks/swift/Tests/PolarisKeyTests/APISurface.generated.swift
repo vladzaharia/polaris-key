@@ -44,6 +44,7 @@ func apiSurface() async {
     _ = ChoiceNamespace.devices(grant:licenseId:)  // identity.choice.devices
     _ = ChoiceNamespace.complete(grant:choice:)  // identity.choice.complete
     _ = ChoiceNamespace.cancel(grant:)  // identity.choice.cancel
+    _ = IdentityClient.autoSignIn(_:)  // identity.autoSignIn
     _ = IdentityClient.attach  // identity.attachLicense
     _ = IdentityClient.openAccount  // identity.openAccount
     _ = \PolarisKeyClient.events  // events

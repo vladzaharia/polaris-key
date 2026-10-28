@@ -3404,14 +3404,10 @@
         },
         "swift": {
           "spelling": "ChoiceNamespace.complete",
-          "labels": ["grant", "choice"],
-          "planned": "I-44",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "labels": ["grant", "choice"]
         },
         "kotlin": {
-          "spelling": "ChoiceClient.complete",
-          "planned": "I-45",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "spelling": "ChoiceClient.complete"
         },
         "godot": {
           "spelling": "PKeyIdentityChoice.complete",
@@ -3479,15 +3475,9 @@
           "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
         },
         "swift": {
-          "spelling": "IdentityNamespace.autoSignIn",
-          "planned": "I-44",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+          "labels": ["_"]
         },
-        "kotlin": {
-          "spelling": "IdentityClient.autoSignIn",
-          "planned": "I-45",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "PKeyIdentity.auto_sign_in",
           "planned": "I-48",

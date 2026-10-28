@@ -218,9 +218,8 @@
       "note": "I-45.1/I-45.3: identity.exchangeNonce/exchange over the endpoints discovery names (Unavailable otherwise; a Worker refusal throws PolarisException); the nine exchange transcripts are replayed. The Credential Manager provider is I-45.4; JVM desktop has no platform identity."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-45",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-45)."
+      "status": "implemented",
+      "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-45): a stored sign-in, the platform provider silently, then its one sheet; every refusal is a result."
     },
     "identity.link": {
       "status": "planned",
