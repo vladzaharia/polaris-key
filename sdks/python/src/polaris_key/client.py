@@ -323,6 +323,9 @@ class PolarisKeyClient:
             device_keys=device_keys,
             allow_ephemeral_keys=allow_ephemeral_keys,
         )
+        # Signing out forgets the held roster, certificate and K_disc (the device keys stay). A
+        # state that cannot be deleted raises, and the sign-out stops (fail closed).
+        self.identity.on_before_sign_out(self.connect.leave)
 
         # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
         self.commerce = CommerceClient(

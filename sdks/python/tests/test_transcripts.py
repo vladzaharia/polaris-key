@@ -57,7 +57,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints
-# @pkey-feature sync.keyring
+# @pkey-feature sync.keyring connect.identity
 
 from __future__ import annotations
 
@@ -80,6 +80,9 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
 from polaris_key.constants_generated import ERROR_CODE_VALUES
+from polaris_key.core.b64url import b64url_encode
+from polaris_key.core.caps import UnsupportedError
+from polaris_key.core.device_keys import DevicePublicKeys
 from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.core.store import CacheRecord
 from polaris_key.devices.keys import create_device_key_store
@@ -134,6 +137,82 @@ class TranscriptStore:
         self._cache = None
 
 
+class _FixtureKeys:
+    """The fixture device keys of a label (format.ts, connectIdentity), as a key port: the Ed25519 seed is
+    SHA-256(label), the agreement key's 32 bytes are SHA-256(label + ":agree") with the top bit of the
+    last byte clear. The agreement key has no private half here (identity needs none), so ``dh`` answers
+    ``None``. A test-only port; the SDK ships no label-derived keys."""
+
+    def __init__(self, label: str) -> None:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        self._priv = Ed25519PrivateKey.from_private_bytes(hashlib.sha256(label.encode()).digest())
+        agree = bytearray(hashlib.sha256(f"{label}:agree".encode()).digest())
+        agree[31] &= 0x7F
+        sign = self._priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+        self._keys = DevicePublicKeys(
+            sign_key=b64url_encode(sign), agree_key=b64url_encode(bytes(agree)), generation=1
+        )
+
+    def ensure(self) -> DevicePublicKeys:
+        return self._keys
+
+    def public_keys(self) -> DevicePublicKeys:
+        return self._keys
+
+    def sign(self, message: bytes) -> bytes:
+        return self._priv.sign(message)
+
+    def dh(self, peer_public: bytes) -> None:
+        return None
+
+    def rotate(self) -> DevicePublicKeys:
+        return self._keys
+
+    def persistence(self) -> str:
+        return "durable"
+
+    def wipe(self) -> None:
+        return None
+
+
+def _connect_step(client: PolarisKeyClient, step: Dict[str, Any], session: Dict[str, Any]) -> Dict[str, Any]:
+    """``client.connect`` (CC-06.4, ``connect.identity``): the identity and the device list."""
+    out: Dict[str, Any] = {}
+    label = str(step["args"]["keyLabel"])
+    if session.get("keyLabel") != label:
+        # A different label is a different key pair: the next call registers it.
+        client.connect.use_device_keys(_FixtureKeys(label))  # type: ignore[arg-type]
+        session["keyLabel"] = label
+    try:
+        if step["action"] == "connectIdentity":
+            ident = client.connect.identity(refresh=step["args"].get("refresh") is True)
+            disc = client.connect.discovery_keys()
+            out["result"] = "ok"
+            out["epoch"] = ident.epoch
+            out["devices"] = [d.device_id for d in ident.devices]
+            out["deviceId"] = ident.device_id
+            out["discKeys"] = 2 if disc is not None and disc.previous is not None else 1
+        else:
+            out["result"] = "ok"
+            out["devices"] = [
+                {
+                    "deviceId": d.device_id,
+                    "label": d.label,
+                    "platform": d.platform,
+                    "lastSeen": d.last_seen,
+                    "self": d.self,
+                }
+                for d in client.connect.list_devices()
+            ]
+    except UnsupportedError:
+        out["result"] = "unavailable"
+    except PolarisError as e:
+        out["result"] = "refused"
+        out["code"] = e.code
+    return out
+
+
 def _act(
     client: PolarisKeyClient,
     store: TranscriptStore,
@@ -148,6 +227,8 @@ def _act(
     args = step["args"]
     if action.startswith("keyring"):
         return _keyring_step(client, step, session)
+    if action in ("connectIdentity", "connectDevices"):
+        return _connect_step(client, step, session)
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
@@ -742,6 +823,11 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     store = TranscriptStore(t["initial"]["deviceId"], t["initial"].get("token"))
     u = t["initial"].get("update")
     kwargs: Dict[str, Any] = {}
+    connect_dir: Optional[str] = None
+    if "connect.identity" in t["features"]:
+        # The held identity lives under the state directory: a fresh one per replay.
+        connect_dir = tempfile.mkdtemp(prefix="pkey-connect-")
+        kwargs["state_dir"] = connect_dir
     services = t["initial"].get("services")
     if services is None and u is not None:
         services = ["release", "distribution", "update"]
@@ -822,6 +908,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
                 )
     finally:
         client.close()
+        if connect_dir is not None:
+            shutil.rmtree(connect_dir, ignore_errors=True)
         for d in session.get("dirs", []):
             shutil.rmtree(d, ignore_errors=True)
 

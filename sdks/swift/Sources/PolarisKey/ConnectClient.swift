@@ -357,8 +357,10 @@ public actor ConnectClient {
         let request: (path: String, body: DeviceKeysRequest)
         do {
             let deviceId = await core.deviceId
+            // The client's clock, so a host that pins `CoreOptions.clock` pins the proof's `issuedAt` too.
             request = try await DeviceProofs.keysRequest(
-                port, product: core.product, deviceId: deviceId, allowEphemeral: options.allowEphemeralKeys)
+                port, product: core.product, deviceId: deviceId, issuedAt: await core.now(),
+                allowEphemeral: options.allowEphemeralKeys)
         } catch DeviceKeyError.unsupported {
             return .failure(
                 Failure(

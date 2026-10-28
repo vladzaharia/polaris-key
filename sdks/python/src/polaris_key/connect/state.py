@@ -62,6 +62,9 @@ class ConnectStateRecord:
     registered: Optional[Tuple[str, str]]
     stored_at: int
 
+    def __reduce__(self) -> Any:
+        raise TypeError("a Cloud Connect state record cannot be pickled")
+
     def to_bytes(self) -> bytes:
         reg = None if self.registered is None else {"signKey": self.registered[0], "agreeKey": self.registered[1]}
         return json.dumps(
