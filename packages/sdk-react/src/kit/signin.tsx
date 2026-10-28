@@ -48,7 +48,6 @@ import {
   type FormStep,
 } from "./contractForm.js";
 import { GLYPHS, text, type Chrome } from "./parts.js";
-import { platformLabel } from "./contract.js";
 import { patched } from "./adaptBase.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
@@ -91,7 +90,9 @@ function formInput(o: UseSignInOptions, model: SignInModel | null): FormInput {
   const base: FormInput = model
     ? { ...(o.input ?? {}), ...model.input() }
     : { ...(o.input ?? {}) };
-  if (base.signIn && (o.presentation || o.replace))
+  // With a model, its session already carries both (and a device limit turns Replace to the
+  // browser): the options only complete a snapshot.
+  if (!model && base.signIn && (o.presentation || o.replace))
     base.signIn = {
       ...base.signIn,
       ...(o.presentation ? { presentation: o.presentation } : {}),
@@ -189,9 +190,15 @@ function confirmWords(
     args: {
       ...view.args,
       term: copy.has(key) ? copy.format(key, { date }) : "",
+      // The line reads on after a separator: the lower-case phrase ("this Mac"), never the
+      // capitalised one.
       device:
         view.args.device ??
-        (platformLabel(input.platform?.os, copy as never) || "This device"),
+        (copy.has("part.thisDevice")
+          ? copy.format("part.thisDevice", {
+              formFactor: input.platform?.formFactor ?? "other",
+            })
+          : "this device"),
     },
   });
 }
@@ -362,6 +369,9 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "common.cancel":
         // In a sheet, Cancel leaves it (and drops a sign-in in flight); in the page, it backs out.
         if (sheet) return close();
+        // An automatic sign-in's step (the confirm, the device limit) leaves the form for the
+        // gate's Welcome, Escape included.
+        if (s.autoSignIn) return close();
         // Cancel on the methods step leaves the form when the host gave it somewhere to go.
         if (props.onClose && kit.view.state === "methods") return close();
         return model.cancel();
@@ -403,6 +413,16 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       }
       case "activate.submit":
         return model.submitKey(s.keyField?.text ?? "");
+      case "signin.deviceLimit.replace": {
+        // The device limit with no license rows: the refusal's link, then back to the provider
+        // sign-in once the person returns (resumes below).
+        const url = s.autoSignIn?.manageUrl ?? model.manageUrl;
+        if (url) {
+          model.leftToReplace();
+          openManage(url, window.location.href);
+        }
+        return;
+      }
       case "signin.replace.open":
       case "signin.replace.openSystem": {
         // A full license names itself; else the pick, the preselected, or the only full one.
@@ -416,7 +436,20 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
           s.selected ??
           s.choices?.preselected ??
           (full.length === 1 ? full[0]!.id : undefined);
-        return id ? model.openReplace(id) : undefined;
+        if (!id) return undefined;
+        // Replace runs in the browser (no grant to replace with here): the row's own link, else
+        // the refusal's, and the provider sign-in runs again on return.
+        if (s.session.replace === "browser") {
+          const url =
+            safeLink(
+              s.choices?.choices.find((r) => r.id === id)?.freeDeviceUrl,
+            ) ?? model.manageUrl;
+          if (url) {
+            model.leftToReplace();
+            openManage(url, window.location.href);
+          }
+        }
+        return model.openReplace(id);
       }
       case "signin.replace.confirm":
         if (s.session.redeeming) return;
@@ -429,6 +462,20 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         return model.back();
     }
   };
+
+  // Back from the browser after Replace a device: the model runs the provider sign-in once more.
+  useEffect(() => {
+    if (!model) return;
+    const back = (): void => {
+      if (document.visibilityState !== "hidden") void model.returned();
+    };
+    window.addEventListener("focus", back);
+    document.addEventListener("visibilitychange", back);
+    return () => {
+      window.removeEventListener("focus", back);
+      document.removeEventListener("visibilitychange", back);
+    };
+  }, [model]);
 
   const kit = useKit(
     "SignIn",

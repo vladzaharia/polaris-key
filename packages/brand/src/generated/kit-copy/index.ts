@@ -1211,6 +1211,8 @@ export type KitCopyKey =
   | "core.codes.connect-unavailable.message"
   | "core.codes.peer-cert-invalid.title"
   | "core.codes.peer-cert-invalid.message"
+  | "core.codes.nearby-permission-denied.title"
+  | "core.codes.nearby-permission-denied.message"
   | "core.codes.platform-error.title"
   | "core.codes.platform-error.message"
   | "core.codes.no-token.title"

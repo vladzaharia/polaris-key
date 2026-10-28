@@ -61,6 +61,18 @@ import {
   seedProduct,
 } from "./seed.js";
 
+const off = () => null;
+const offAsync = async () => null;
+const NO_HOOKS: ServiceHooks = {
+  releaseCatalog: off,
+  delivery: off,
+  outletCapabilities: offAsync,
+  licenseProvenance: off,
+  storeProducts: off,
+  discoverVisibility: offAsync,
+  githubPrToken: off,
+};
+
 const SLUG = "djdl";
 const TRUST = { [TEST_KID]: TEST_PUB };
 
@@ -486,14 +498,7 @@ describe("Google Play connector on workerd (P5-03)", () => {
       pair.publicKey,
       email,
     );
-    const hooks: ServiceHooks = {
-      releaseCatalog: () => null,
-      delivery: () => null,
-      outletCapabilities: async () => null,
-      licenseProvenance: () => null,
-      storeProducts: () => null,
-      githubPrToken: () => null,
-    };
+    const hooks: ServiceHooks = NO_HOOKS;
     const run = playRun({
       env: workerEnv,
       db,
@@ -562,14 +567,7 @@ describe("Microsoft Store connector on workerd (P5-04)", () => {
     const { setup } = await resolveMsStoreSetup(workerEnv, db, "djdl7");
     expect(setup?.productId).toBe(STORE_ID);
     const fake = new MsStoreFake(msStoreFixtures as unknown as StoreFixtures);
-    const hooks: ServiceHooks = {
-      releaseCatalog: () => null,
-      delivery: () => null,
-      outletCapabilities: async () => null,
-      licenseProvenance: () => null,
-      storeProducts: () => null,
-      githubPrToken: () => null,
-    };
+    const hooks: ServiceHooks = NO_HOOKS;
     const run = () =>
       msStoreRun({
         env: workerEnv,

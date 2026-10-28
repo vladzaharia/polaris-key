@@ -59,6 +59,7 @@ import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DevicePublicKeys
 import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.sdk.ConnectOptions
+import im.plrs.key.sdk.RelayException
 import im.plrs.key.core.DiscoveryResult
 import im.plrs.key.core.DocOutcome
 import im.plrs.key.core.FingerprintSource
@@ -182,6 +183,9 @@ class ReplaySession(val platform: String? = null) {
     val keys = FixtureKeyPort()
     var keyLabel: String? = null
     var prompt: SignInSession? = null
+
+    /** The SDK clock of the step being replayed (seconds), for an action that reports a time left. */
+    var now: Long = 0
     var payload: ByteArray? = null
     val dirs = ArrayList<java.io.File>()
 }
@@ -458,6 +462,23 @@ object KotlinReplay {
                         out["result"] = JsonPrimitive("refused")
                         out["code"] = JsonPrimitive(e.code)
                     }
+                }
+            }
+            // `client.connect.relayTicket()` (CC-12.4, `connect.relay`). A refusal reads as `result: "refused"`
+            // with the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
+            "relayTicket" -> {
+                try {
+                    val g = client.connect.relayTicket()
+                    out["result"] = JsonPrimitive("ok")
+                    out["protocol"] = JsonPrimitive(g.protocol)
+                    out["url"] = JsonPrimitive(g.url)
+                    out["expiresIn"] = jsonInt(g.expiresAt - session.now)
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("refused")
+                    out["status"] = e.httpStatus?.let { jsonInt(it.toLong()) } ?: JsonNull
+                    out["code"] = JsonPrimitive(e.code)
+                    e.retryAfterSeconds?.let { out["retryAfter"] = jsonInt(it.toLong()) }
+                    (e as? RelayException)?.scope?.let { out["scope"] = JsonPrimitive(it.name) }
                 }
             }
             "sync" -> {
@@ -863,6 +884,7 @@ object KotlinReplay {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
                 clock = step["now"].longValue ?: t.now
+                session.now = clock
                 val observed = act(client, store, step, session, ReplayPackObjectTransport(server), server)
                 server.endStep()
                 for ((key, want) in step["expect"]!!.obj.entries.sortedBy { it.key }) {

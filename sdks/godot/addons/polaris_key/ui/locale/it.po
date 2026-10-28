@@ -6839,6 +6839,16 @@ msgstr "Dispositivo non verificato"
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "Impossibile verificare questo dispositivo. Riprova."
 
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "Rete locale bloccata"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "Questa app non può raggiungere i dispositivi sulla tua rete locale. Consentilo nelle impostazioni di sistema."
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

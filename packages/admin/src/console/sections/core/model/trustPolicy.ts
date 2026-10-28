@@ -15,8 +15,38 @@ export const TRUST_OPERATIONS = [
   { id: "cloudSyncWrite", label: "Cloud Sync writes" },
 ] as const;
 
-/** Shown only while Cloud Sync is on (U-05 L11). */
-export const SYNC_OPERATION = "cloudSyncWrite";
+type OperationId = (typeof TRUST_OPERATIONS)[number]["id"];
+
+/** The services an operation depends on (any one on is enough); `mint` depends on none. */
+const OPERATION_SERVICES: Partial<
+  Record<OperationId, { slugs: string[]; name: string }>
+> = {
+  gatedDelivery: {
+    slugs: ["distribution", "update"],
+    name: "Distribution and Update are",
+  },
+  commerceClaim: { slugs: ["commerce"], name: "Commerce is" },
+  cloudSyncWrite: { slugs: ["sync"], name: "Cloud Sync is" },
+};
+
+/**
+ * One visibility rule for every service-tied row: hidden while its service is off, unless its
+ * stored level is attested; then it shows, labelled with the service that is off, so an attested
+ * level is never invisible. `services` undefined means every service is on.
+ */
+export function operationRow(
+  id: OperationId,
+  policy: TrustPolicyDto,
+  services: Record<string, { enabled: boolean } | undefined> | undefined,
+): { show: boolean; off: string | null } {
+  const dep = OPERATION_SERVICES[id];
+  if (!dep || !services) return { show: true, off: null };
+  if (dep.slugs.some((s) => services[s]?.enabled))
+    return { show: true, off: null };
+  return level(policy, id) === "attested"
+    ? { show: true, off: dep.name }
+    : { show: false, off: null };
+}
 
 export const DEFAULT_POLICY: TrustPolicyDto = {
   mint: "basic",
@@ -97,11 +127,6 @@ export function relaxesTrustPolicy(
   return false;
 }
 
-const LEVEL: Record<TrustLevelDto, string> = {
-  basic: "any device",
-  attested: "an attested device",
-};
-
 /** One line per change, in the operator's words: what a device now has to prove. */
 export function changeLines(
   before: TrustPolicyDto,
@@ -111,13 +136,27 @@ export function changeLines(
   for (const op of TRUST_OPERATIONS)
     if (level(before, op.id) !== level(after, op.id))
       out.push(
-        `${op.label} now accepts ${LEVEL[level(after, op.id)]} (was ${LEVEL[level(before, op.id)]}).`,
+        level(after, op.id) === "attested"
+          ? `${op.label} now need an attested device (was any device).`
+          : `${op.label} now accept any device (was attested only).`,
       );
   if (before.enforce !== after.enforce)
     out.push(
       after.enforce
         ? "Devices that fall short are refused."
         : "Devices that fall short are logged and let through.",
+    );
+  const refused = (p: TrustPolicyDto) =>
+    p.enforce
+      ? TRUST_OPERATIONS.filter((op) => level(p, op.id) === "attested")
+      : [];
+  const now = refused(after);
+  if (
+    now.length > 0 &&
+    now.some((op) => !refused(before).some((b) => b.id === op.id))
+  )
+    out.push(
+      `Web, desktop and sideloaded builds can't attest, so they're refused: ${now.map((op) => op.label).join(", ")}.`,
     );
   if (JSON.stringify(before.appAttest) !== JSON.stringify(after.appAttest))
     out.push(

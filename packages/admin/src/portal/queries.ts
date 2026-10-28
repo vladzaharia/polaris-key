@@ -29,6 +29,8 @@ export const qk = {
   library: () => ["portal", "library"] as const,
   discover: () => ["portal", "discover"] as const,
   storefront: (product: string) => ["portal", "storefront", product] as const,
+  storefrontName: (product: string) =>
+    ["portal", "storefrontName", product] as const,
   downloads: (product: string) => ["portal", "downloads", product] as const,
   product: (product: string) => ["portal", "product", product] as const,
   registryTokens: (product: string, license: string) =>
@@ -103,6 +105,16 @@ export const pq = {
     queryOptions({
       queryKey: qk.capabilities(product),
       queryFn: () => portalApi.capabilities(product),
+      staleTime: 5 * 60_000,
+    }),
+
+  /** LK-12d: the signed-out card's product name and icon; a refusal is no answer, never retried. */
+  storefrontName: (slug: string | null) =>
+    queryOptions({
+      queryKey: qk.storefrontName(slug ?? ""),
+      queryFn: () => portalApi.storefrontName(slug!),
+      enabled: slug !== null,
+      retry: false,
       staleTime: 5 * 60_000,
     }),
 

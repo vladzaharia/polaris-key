@@ -66,6 +66,7 @@ function OverrideDialog({
       ]}
       confirmLabel="Save the override"
       confirmDisabled={value.trim() === ""}
+      confirmDisabledReason="Enter the override to continue"
       describeError={(e) =>
         errorCopy(e, { area: "distribution", thing: "Override" })
       }

@@ -2591,6 +2591,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_message">无法验证此设备。请重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_title">本地网络已被阻止</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_message">此应用无法访问本地网络上的设备。请在系统设置中允许。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">平台出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_message">平台报告了一个错误。请重试。</string>

@@ -6813,6 +6813,16 @@ msgstr "기기를 확인할 수 없음"
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "이 기기를 확인할 수 없습니다. 다시 시도하세요."
 
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "로컬 네트워크 차단됨"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "이 앱이 로컬 네트워크의 기기에 접근할 수 없습니다. 시스템 설정에서 허용해 주세요."
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

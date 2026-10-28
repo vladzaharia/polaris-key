@@ -21,6 +21,7 @@ import { useAdminForm } from "./ui/form.js";
 import { Input } from "./ui/Input.js";
 import { SaveBar } from "./ui/SaveBar.js";
 import { StatusPill } from "./ui/StatusPill.js";
+import { Unlocked } from "./ui/WriteLock.js";
 import {
   ManagedField,
   UNCATEGORISED,
@@ -635,14 +636,17 @@ export function ManagedPayloadEditor({
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-56 flex-1">
-          <Input
-            type="search"
-            value={query}
-            aria-label="Search keys and values"
-            placeholder="Search key, label, category or value…"
-            prefix={<Search aria-hidden className="size-4" />}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          {/* Searching is reading: it works under a view-only member's lock. */}
+          <Unlocked>
+            <Input
+              type="search"
+              value={query}
+              aria-label="Search keys and values"
+              placeholder="Search key, label, category or value…"
+              prefix={<Search aria-hidden className="size-4" />}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </Unlocked>
         </div>
         <p className="text-sm text-fg-muted" aria-live="polite">
           {needle

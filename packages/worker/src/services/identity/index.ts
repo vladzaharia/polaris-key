@@ -59,6 +59,7 @@ import {
   recordFirstActivation,
 } from "./portal/store/analytics.js";
 import { identityIntegration } from "./integration.js";
+import { discoverVisibility } from "./portal/store/visibility.js";
 import { identityMaintenance } from "./maintenance.js";
 import { platformConnectionSeedJob } from "./connections/seed.js";
 
@@ -89,6 +90,8 @@ export const identityService: ServiceDescriptor = {
    * paths are not here: they are platform routes, not this service's namespace.
    */
   surface: IDENTITY_ROUTES.surface,
+  /** LK-12b: Discover visibility for a new account (`core/hooks.ts`), read by Distribution's page. */
+  discoverVisibility,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
   authorizeRegistration: (ctx: RegistrationAuthContext) =>

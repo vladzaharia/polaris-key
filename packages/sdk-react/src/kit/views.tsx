@@ -456,6 +456,70 @@ export function withBase(c: KitCtx): View {
   return view;
 }
 
+const DEVICE_LIMIT_ACTIONS = [
+  "signin.deviceLimit.replace",
+  "signin.auto.confirm.other",
+];
+
+/** The confirm step's body (SIGN-IN §3.19): "as {email}" under the title, then each group as a
+ *  small muted label over its value, the license line strong. */
+function consentBody(c: KitCtx, keys: string[]): ReactNode {
+  const has = (k: string) => keys.includes(k);
+  const sub = keys.find((k) => k.startsWith("signin.auto.confirm.as"));
+  const used = new Set<string>();
+  const label = (k: string) => {
+    used.add(k);
+    return has(k) ? (
+      <p
+        key={k}
+        className="consent-label"
+        data-part="consent-label"
+        data-key={k}
+      >
+        {text(c, k)}
+      </p>
+    ) : null;
+  };
+  const line = (k: string, cls: string) => {
+    used.add(k);
+    return has(k) ? (
+      <p key={k} className={cls} data-part={cls} data-key={k}>
+        {text(c, k)}
+      </p>
+    ) : null;
+  };
+  if (sub) used.add(sub);
+  const license = [
+    label("signin.consent.license"),
+    line("signin.consent.newLicense", "consent-line"),
+    line("signin.consent.licenseLine", "consent-line"),
+  ];
+  const also = [
+    label("signin.consent.alsoGets"),
+    line("signin.consent.profile", "consent-value"),
+    line("signin.consent.pairwise", "consent-note"),
+  ];
+  const rest = keys.filter((k) => !used.has(k));
+  return (
+    <>
+      {sub ? (
+        <p className="subtitle" data-part="subtitle" data-key={sub}>
+          {text(c, sub)}
+        </p>
+      ) : null}
+      <div className="consent" data-part="consent">
+        {license.some(Boolean) ? (
+          <div className="consent-group">{license}</div>
+        ) : null}
+        {also.some(Boolean) ? (
+          <div className="consent-group">{also}</div>
+        ) : null}
+        {rest.length ? paragraphs(c, rest, "body") : null}
+      </div>
+    </>
+  );
+}
+
 /** `placeKeys`, then the drop-in's chrome: controls and links the state lacks, keys it drops. */
 function place(c: KitCtx, layout: Layout) {
   const placed = ownFiltered(c.view, placeKeys(c.view, layout));
@@ -468,6 +532,12 @@ function place(c: KitCtx, layout: Layout) {
     meta: placed.meta.filter(whole),
     footnote: placed.footnote.filter(whole),
   };
+  // The device limit with no license rows (SIGN-IN §3.19): Replace a device, Use another account,
+  // then Cancel as the quiet exit.
+  if (c.view.component === "SignIn" && c.view.state === "device-limit") {
+    p.controls = DEVICE_LIMIT_ACTIONS.filter((k) => c.view.copy.includes(k));
+    p.links = c.view.copy.includes("common.cancel") ? ["common.cancel"] : [];
+  }
   const x = c.chrome;
   if (!x) return p;
   if (x.meta?.length) p.meta = [...new Set([...p.meta, ...x.meta])];
@@ -488,7 +558,9 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
   const split = layout.split === true || c.form === true;
   const p = place(c, layout);
   // The refusal step says its sentence in the body, not in a callout.
-  const plainBody = isRefusalStep(view);
+  const plainBody =
+    isRefusalStep(view) ||
+    (view.component === "SignIn" && view.state === "device-limit");
   const errorKeys = plainBody
     ? p.body.filter((k) => k === REFUSAL_ERROR_KEY)
     : p.body.filter(isErrorKey);
@@ -563,10 +635,12 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
               {text(c, "common.byDeveloper")}
             </p>
           ) : null}
-          {paragraphs(
-            c,
-            body.filter((k) => k !== "common.byDeveloper"),
-          )}
+          {view.component === "SignIn" && view.state === "confirm"
+            ? consentBody(c, body)
+            : paragraphs(
+                c,
+                body.filter((k) => k !== "common.byDeveloper"),
+              )}
           {statusLine(c, p.meta)}
         </div>
         {contentFor(c)}

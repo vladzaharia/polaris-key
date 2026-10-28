@@ -3,6 +3,7 @@ import { Select as SelectPrimitive } from "radix-ui";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { useWriteLock } from "./WriteLock.js";
+import { useInertOutside } from "./useInertOutside.js";
 
 /**
  * Select (components.md §3.3), on Radix.
@@ -58,10 +59,11 @@ export function SelectContent({
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
   ref?: React.Ref<React.ComponentRef<typeof SelectPrimitive.Content>>;
 }): React.ReactElement {
+  const inertRef = useInertOutside<HTMLDivElement>(ref);
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
-        ref={ref}
+        ref={inertRef}
         position={position}
         className={cn(
           "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-border bg-surface-overlay text-fg shadow-elevation-3 animate-pk-in",

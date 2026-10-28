@@ -1197,6 +1197,8 @@
   "core.codes.connect-unavailable.message": "Nearby connection isn't available for this app on this device.",
   "core.codes.peer-cert-invalid.title": "Device not verified",
   "core.codes.peer-cert-invalid.message": "This device couldn't be verified. Try again.",
+  "core.codes.nearby-permission-denied.title": "Local network blocked",
+  "core.codes.nearby-permission-denied.message": "This app can't reach devices on your local network. Allow it in system settings.",
   "core.codes.platform-error.title": "Platform problem",
   "core.codes.platform-error.message": "The platform reported an error. Try again.",
   "core.codes.no-token.title": "Not activated",

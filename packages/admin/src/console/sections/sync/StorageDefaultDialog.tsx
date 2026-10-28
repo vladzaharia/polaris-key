@@ -5,6 +5,7 @@
  * count has resolved. It is L2: a stale sign-in turns the dialog into its step-up state (D11).
  */
 
+import { blocker } from "../../../ui/confirmReasons.js";
 import * as React from "react";
 import { type PlatformIntegerSetting } from "../../../api.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
@@ -99,6 +100,14 @@ export function StorageDefaultDialog({
       }
       confirmLabel={plan?.confirmLabel ?? "Change the default"}
       confirmDisabled={!changed || plan?.hold === true}
+      confirmDisabledReason={blocker(
+        [
+          plan?.hold === true,
+          plan?.holdReason ?? "Wait for the check to finish",
+        ],
+        [!valid, "Enter a size within the limits to continue"],
+        [!changed, "Change the value to continue"],
+      )}
       signedInAt={me.data?.authAt}
       stepUpKey={setting.key}
       describeError={(e) => errorCopy(e, { thing: "Setting" })}

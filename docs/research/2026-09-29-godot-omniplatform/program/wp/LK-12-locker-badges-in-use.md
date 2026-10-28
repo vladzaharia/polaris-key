@@ -36,3 +36,22 @@ Deferred until: LK-11 is live.
 ## Hand-off
 
 The role agent sets `--set LK-12 in-review` when it hands off; the lead sets `done` after review.
+
+## Progress and continuation (2026-10-28)
+
+Built: the customer-host route. `/<slug>` is not a new route kind: it is the existing bare-slug alias
+(`/{product}` in the spec); on the customer host `GET`/`HEAD` of `/<slug>` (also `/<slug>/` and any
+case) answers `302 /#/discover/<slug>` with no database read (no oracle).
+
+Dropped after UX review: the download page's "Available on Polaris Locker" badge. It would send
+visitors of unlisted or purchase-only products to the storefront's not-found, and the page already
+names Polaris Locker.
+
+Follow-ups:
+
+- LK-12b: an "Add to your Polaris Locker library" row in the page's "Every way to get", shown only
+  when the product is visible in Discover to a new account. It needs a read-only Core hook
+  (`src/core/hooks.ts`) because the settings sit in Identity's table (AGENTS.md rule 6).
+- LK-12c: a signed-out visitor at `/#/discover/<slug>` sees a sign-in card that names the product
+  (review J2).
+- The other 14 badge labels stay with LK-10; the plrs.im website part is owner step OS-25.

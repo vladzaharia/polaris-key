@@ -71,7 +71,7 @@ const PRODUCT: ProductDetail = {
     identity: { enabled: true },
     sync: { enabled: true },
     commerce: { enabled: true },
-    connect: { enabled: false },
+    connect: { enabled: true },
   },
 };
 

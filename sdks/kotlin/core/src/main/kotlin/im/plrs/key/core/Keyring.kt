@@ -218,6 +218,9 @@ public class KeyringStore(
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { lock.withLock { block() } }
     private val files = FileStore(productSlug, directory)
 
+    /** The unsigned state files (token provenance, the sign-out flag, the update events) live beside the cache: they must survive a restart. */
+    override val stateDirectory: File get() = directory
+
     /** The keyring service tag, `pkey:<product>` (§8). */
     public val service: String = "$KEYRING_SERVICE_PREFIX$productSlug"
 

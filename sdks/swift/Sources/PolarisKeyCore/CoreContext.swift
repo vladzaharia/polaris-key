@@ -298,6 +298,8 @@ public actor CoreContext {
     // explicit ACROSS MODULES — a `let` could become a `var` in a later version of this package,
     // and the compiler will not assume otherwise on our behalf.
     public nonisolated let product: String
+    /// The keychain access group the credential and the device keys share (nil: the default).
+    public nonisolated let keychainAccessGroup: String?
     /// The product identity used for durable state. Non-production hosts append a safe host suffix.
     public nonisolated let storageNamespace: String
     public nonisolated let endpoints: Endpoints
@@ -400,6 +402,7 @@ public actor CoreContext {
 
     public init(options: CoreOptions) throws {
         self.product = options.productSlug
+        self.keychainAccessGroup = options.keychainAccessGroup
         // Throws BEFORE anything else happens — no directory created, no keychain touched — so
         // a client that failed the scheme guard has taken no other action (§5).
         self.endpoints = try Endpoints(baseUrl: options.baseUrl, product: options.productSlug)
@@ -509,9 +512,23 @@ public actor CoreContext {
     /// signed-out flag is clear. False stores nothing. Never ends the signed-out state.
     public func setTokenUnlessSignedOut(_ token: String, generation: Int) async throws -> Bool {
         if await explicitSignOut() || signOutGenerationValue != generation { return false }
+        await beforeLadderStore?()
         try await setToken(token, source: .signin)
+        // `setToken` suspends, so a sign-out may have run in between (it bumped the generation
+        // and saw no token, or the old one). Its work must stand: undo the store.
+        if signOutGenerationValue != generation {
+            tokenValue = nil
+            tokenSourceValue = nil
+            await writeProvenance(nil)
+            try? await store.clearToken()
+            return false
+        }
         return true
     }
+
+    /// Test seam: runs between the ladder's sign-out check and its store.
+    var beforeLadderStore: (@Sendable () async -> Void)?
+    func setBeforeLadderStore(_ hook: (@Sendable () async -> Void)?) { beforeLadderStore = hook }
 
     // ── Signed-out flag and token provenance ──────────────────────────────────────────
 

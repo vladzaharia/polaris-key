@@ -586,6 +586,13 @@ export interface PolarisAdapter {
    */
   readonly keyring: import("./keyring.js").KeyringClient;
   /**
+   * Cloud Sync for settings (sync.settings, WIRE-CONTRACT-V5 section 13.10): the host that runs the
+   * sync machine, its state in IndexedDB with one writer tab. Browser bearer mode runs it. A cookie
+   * page, the desktop bridge (until bridge v4 carries the verbs) and the local adapter answer the
+   * typed `UnsupportedError`; `unsupported` says which.
+   */
+  readonly cloudSync: import("./cloudSync.js").CloudSyncClient;
+  /**
    * Cloud Connect over the relay (connect.app, WIRE-CONTRACT-V5 §15.7): start, stop, peers,
    * open a session to another device of the person, and the channels and notices that arrive.
    * Browser bearer mode runs it (the relay is a page's only path). A cookie page and the local

@@ -6813,6 +6813,16 @@ msgstr "无法验证设备"
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "无法验证此设备。请重试。"
 
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "本地网络已被阻止"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "此应用无法访问本地网络上的设备。请在系统设置中允许。"
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

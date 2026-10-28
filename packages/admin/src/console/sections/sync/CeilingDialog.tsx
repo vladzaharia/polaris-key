@@ -19,6 +19,7 @@ import { errorCopy } from "../../../lib/errorCopy.js";
 import { formatCount } from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
+import { blocker, NEEDS_REASON } from "../../../ui/confirmReasons.js";
 import { Input } from "../../../ui/Input.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { toast } from "../../../ui/toast.js";
@@ -176,6 +177,15 @@ export function CeilingDialog({
       }
       confirmVariant={changed && raising ? "danger" : "primary"}
       confirmDisabled={useDefault ? reason.trim() === "" : !changed || !valid}
+      confirmDisabledReason={
+        useDefault
+          ? blocker([reason.trim() === "", NEEDS_REASON])
+          : blocker(
+              [!inRange, "Enter a size within the limits to continue"],
+              [!changed, "Change the ceiling to continue"],
+              [reason.trim() === "", NEEDS_REASON],
+            )
+      }
       initialFocusRef={fieldRef}
       submitOnEnter
       stepUpKey={`${slug}:${setting.key}`}

@@ -1125,7 +1125,8 @@ export const SHIPPED: ShippedState[] = [
     scenario: "three",
     path: `/#/?activate=${KEY}`,
     routes: previewSays({ verdict: "license_owned" }),
-    ready: (p) => continueTo(p, /already in another Polaris Locker account/),
+    ready: (p) =>
+      continueTo(p, /Sign in to the Polaris Locker account that has this/),
   },
   {
     section: "4.19",

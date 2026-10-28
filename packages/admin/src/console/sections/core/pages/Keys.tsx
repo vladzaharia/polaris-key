@@ -90,7 +90,7 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
       <VerificationSection product={p} />
       <SigningKeysSection slug={slug} product={p} />
       <SecretsSection slug={slug} />
-      <TrustPolicySection slug={slug} syncOn={!!p.services?.sync?.enabled} />
+      <TrustPolicySection slug={slug} services={p.services} />
       <CiPublishingSection slug={slug} />
       {p.services?.release?.enabled ? <ContentKeysSection slug={slug} /> : null}
     </div>

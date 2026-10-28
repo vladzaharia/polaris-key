@@ -86,7 +86,17 @@ export interface PortalSession {
   current: boolean;
 }
 
+/** `GET /api/storefront/<slug>` (LK-12d): a Discover-visible product's name and icon. */
+export interface PortalStorefrontName {
+  name: string;
+  iconUrl: string | null;
+}
+
 export const sessionApi = {
+  /** Signed out; a product Discover would not offer is a 404, the same as an unknown one. */
+  storefrontName: (slug: string) =>
+    call<PortalStorefrontName>(`/api/storefront/${enc(slug)}`),
+
   capabilities: (product?: string | null) =>
     call<PortalCapabilities>(
       product

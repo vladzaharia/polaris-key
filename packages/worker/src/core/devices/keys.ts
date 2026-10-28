@@ -341,8 +341,9 @@ export async function upsertDeviceKeys(
           now,
         ],
       };
+  let wrote = true;
   try {
-    await db.batch([
+    const stmts: DbStatement[] = [
       write,
       {
         sql: `INSERT INTO device_key_floor (product, device_id, key_seq, pop_at)
@@ -351,7 +352,9 @@ export async function upsertDeviceKeys(
                 pop_at = COALESCE(excluded.pop_at, device_key_floor.pop_at)`,
         params: [popAt ?? null, product, deviceId],
       },
-    ]);
+    ];
+    if (db.batchChanges) wrote = (await db.batchChanges(stmts))[0]! > 0;
+    else await db.batch(stmts);
   } catch (e) {
     // A concurrent registration took the `agreeKey` between the read above and this write.
     if (e instanceof Error && /UNIQUE constraint failed/i.test(e.message)) {
@@ -363,6 +366,15 @@ export async function upsertDeviceKeys(
   // The guarded rotation matched nothing: another write changed the key since the read above.
   if (heldSignKey !== undefined && after?.sign_key !== keys.signKey) {
     throw new DeviceKeysInvalidError();
+  }
+  // The guarded UPDATE matched nothing (a concurrent change moved the key): nothing was written,
+  // so nothing changed and no `keys` event is due.
+  if (!wrote) {
+    return {
+      keySeq: after?.key_seq ?? current?.key_seq ?? 0,
+      changed: false,
+      rotated: false,
+    };
   }
   return {
     keySeq: after?.key_seq ?? (current?.key_seq ?? 0) + 1,

@@ -476,6 +476,27 @@
       "status": "implemented",
       "note": "client.keyring (packages/sdk-node/src/keyring/client.ts; the plan's client.sync.keyring, named keyring because sync() is the licence sync) over client-core's sync crypto on WebCrypto/node:crypto: create(), unlock() (opens this device's wrap through the DeviceKeyPort's dh, so the agreement key never leaves the store), wrapTo()/removeWrap(), setRecoveryCode()/recover(), reset()/adopt()/openAdopted(), attach(machine) feeding setRoot, and the codec. The root is held in memory only, never written, returned or printed; the host decides how a wrap travels (R-9). test/keyring.test.ts; the keyring-* transcripts replay in the Node transcript runner."
     },
+    "sync.records": {
+      "status": "planned",
+      "wp": "U-22"
+    },
+    "sync.files": {
+      "status": "planned",
+      "wp": "U-22"
+    },
+    "sync.files.delta": {
+      "status": "planned",
+      "wp": "U-22"
+    },
+    "sync.e2e.recovery": {
+      "status": "planned",
+      "wp": "U-38"
+    },
+    "sync.transfer.background": {
+      "status": "na",
+      "runtime": "node",
+      "reason": "runtime"
+    },
     "sync.e2e": {
       "status": "implemented",
       "note": "The Node settings host seals and opens every synced value through client-core's sync crypto (encryption defaults to e2e; PolarisKeyClientOptions.cloudSync.encryption, app code only, never read from the Worker) over client.keyring. syncVectors.test.ts and syncScenarios.test.ts cover the vectors and the e2e scenarios."

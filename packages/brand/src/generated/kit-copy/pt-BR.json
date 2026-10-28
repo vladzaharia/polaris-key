@@ -1197,6 +1197,8 @@
   "core.codes.connect-unavailable.message": "A conexão com dispositivos próximos não está disponível para este app neste dispositivo.",
   "core.codes.peer-cert-invalid.title": "Dispositivo não verificado",
   "core.codes.peer-cert-invalid.message": "Não foi possível verificar este dispositivo. Tente novamente.",
+  "core.codes.nearby-permission-denied.title": "Rede local bloqueada",
+  "core.codes.nearby-permission-denied.message": "Este app não consegue acessar dispositivos da sua rede local. Permita nas configurações do sistema.",
   "core.codes.platform-error.title": "Problema na plataforma",
   "core.codes.platform-error.message": "A plataforma informou um erro. Tente novamente.",
   "core.codes.no-token.title": "Não ativado",

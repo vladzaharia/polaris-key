@@ -444,8 +444,23 @@ const KIT_CSS = String.raw`
   object-fit: cover;
   flex: none;
 }
+/* LOGO-2: a 28 px tile beside a 17 px semibold name (tile-to-cap about 2.3); 24 over 16 where
+   space is tight. The tile is no control, so no target size binds it (a row that becomes one
+   carries the target in its own min-height). */
 .identity[data-size="compact"] .icon {
-  --pk-icon-size: 2rem;
+  --pk-icon-size: 1.75rem;
+}
+.identity[data-size="compact"] .name {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+@media (max-width: 22.5rem) {
+  .identity[data-size="compact"] .icon {
+    --pk-icon-size: 1.5rem;
+  }
+  .identity[data-size="compact"] .name {
+    font-size: 1rem;
+  }
 }
 /* A hero icon never takes more than a fifth of the window, so large text still shows the lede. */
 .identity[data-size="hero"] .icon {
@@ -520,6 +535,43 @@ p {
 .body {
   color: var(--pk-text-muted);
   text-wrap: pretty;
+}
+/* The confirm step (SIGN-IN §3.19): the "as" line under the title; small muted labels over their
+   values (4 px inside a group, 16 px between groups); the license line strong. */
+.subtitle {
+  margin: 0;
+  color: var(--pk-text-muted);
+  text-wrap: pretty;
+}
+.consent {
+  display: grid;
+  gap: var(--pk-space-4);
+  margin-block-start: var(--pk-space-2);
+}
+.consent-group {
+  display: grid;
+  gap: var(--pk-space-1);
+}
+.consent-group > p {
+  margin: 0;
+}
+.consent-label {
+  color: var(--pk-text-muted);
+  font-size: var(--pk-kit-type-meta-size);
+  line-height: var(--pk-kit-type-meta-line-height);
+}
+.consent-line {
+  color: var(--pk-text-strong);
+  font-weight: 500;
+  text-wrap: pretty;
+}
+.consent-value {
+  color: var(--pk-text-default);
+}
+.consent-note {
+  color: var(--pk-text-muted);
+  font-size: var(--pk-kit-type-meta-size);
+  line-height: var(--pk-kit-type-meta-line-height);
 }
 .texts {
   display: grid;
@@ -688,6 +740,19 @@ bdi {
   background: color-mix(in oklab, var(--pk-text-strong) 8%, var(--pk-surface-raised));
   color: var(--pk-text-strong);
 }
+/* A provider's button keeps its own fill, mark and label colours (UI-KITS §3.6, brand's
+   providerMarks): Google's, per colour scheme, never the product accent. */
+.btn[data-provider="google"] {
+  gap: 10px;
+  background: var(--pk-google-fill);
+  color: var(--pk-google-label);
+  border-color: var(--pk-google-border);
+}
+.btn[data-provider="google"] .mark {
+  inline-size: calc(var(--pk-kit-control-height) * 0.5);
+  block-size: calc(var(--pk-kit-control-height) * 0.5);
+  flex: none;
+}
 .btn[data-variant="danger"] {
   background: var(--pk-kit-danger-solid);
   color: var(--pk-kit-danger-on);
@@ -695,7 +760,7 @@ bdi {
 .btn[data-variant="link"] {
   min-inline-size: 0;
   min-block-size: 2.75rem;
-  padding-inline: var(--pk-space-1);
+  padding-inline: 0;
   background: none;
   color: var(--pk-text-default);
   font-weight: 400;
@@ -710,6 +775,9 @@ bdi {
       var(--pk-primary) 86%,
       oklch(from var(--pk-primary-on) calc(1 - l) 0 0)
     );
+  }
+  .btn[data-provider="google"]:hover {
+    background: color-mix(in srgb, var(--pk-google-label) 8%, var(--pk-google-fill));
   }
   .btn[data-variant="secondary"]:hover {
     background: color-mix(in oklab, var(--pk-text-strong) 13%, var(--pk-surface-raised));
@@ -999,6 +1067,34 @@ bdi {
   .row[role="group"][data-part="license-row"] {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+/* A full license row (SIGN-IN §3.19): its name, the pill + count + tag on one line, the meter,
+   the meta, then Replace. One column that grows with its content. */
+.row[role="group"][data-part="license-row"][data-layout="full"] {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--pk-space-1_5);
+}
+.row-name {
+  color: var(--pk-text-strong);
+  font-weight: 500;
+}
+.row-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pk-space-1) var(--pk-space-2);
+}
+/* The row is already a sunken ground: its pill and tag take a text tint, so they read on it. */
+.row[data-layout="full"] .pill {
+  background: color-mix(in srgb, var(--pk-text-strong) 9%, transparent);
+  color: var(--pk-text-strong);
+}
+.row[data-layout="full"] .seats {
+  margin-block: 0;
+}
+.row[data-layout="full"] > .btn {
+  margin-block-start: var(--pk-space-1_5);
 }
 .meta-line {
   display: flex;
@@ -1364,7 +1460,7 @@ dialog.sheet .card,
   text-align: start;
 }
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .icon {
-  --pk-icon-size: 2rem;
+  --pk-icon-size: 1.75rem;
 }
 /* Under 35rem the sheet docks to the bottom edge, past the home indicator (DL2, DL17). */
 @media (max-width: 35rem) {
