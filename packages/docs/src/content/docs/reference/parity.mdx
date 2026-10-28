@@ -19,7 +19,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 98 | 12 | 24 | 0 |
+| Node | `node` | 108 | 12 | 14 | 0 |
 | React | `web`, `desktop-bridge` | 101 | 22 | 11 | 0 |
 | Python | `python` | 94 | 12 | 28 | 0 |
 | Swift | `macos`, `ios` | 108 | 9 | 16 | 1 |
@@ -189,16 +189,16 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.cli.mount` | Terminal drop-ins: the license verbs mounted into the host's CLI framework (namespace, collisions, exit 4) | `ui-matrix.json` `cli` + unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (UK-54); N/A (android: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.contract` | Terminal kit contract: exit codes, refusal marks, piped stdin and the capability table | `ui-matrix.json` `cli` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.portal` | The terminal kits' product page link from discovery (core.portal), left out while the portal is off | `portal-matrix.json` + transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
-| `ui.gate` | Kit states: gate, boot, status screen, grace banner and toasts | `ui-matrix.json` `gate` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.activate` | Kit states: welcome, license key activation and offline activation | `ui-matrix.json` `activate` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | ios, android: outlet |
-| `ui.signin` | Kit states: the one sign-in form, with its license choice and Replace a device | `ui-matrix.json` `signIn` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.devicelimit` | Kit states: the device-limit screen, in the app or in the browser | `ui-matrix.json` `deviceLimit` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.devices` | Kit states: the device list, rename and remove | `ui-matrix.json` `devices` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.update` | Kit states: update prompt, update progress and release notes | `ui-matrix.json` `update` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.settings` | Kit states: the account and license pane and settings | `ui-matrix.json` `settings` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.paywall` | Kit states: paywall and entitlement gate | `ui-matrix.json` `paywall` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.theme` | Theme resolution: name, accent source, colour scheme, icon and preset | `ui-matrix.json` `theme` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
-| `ui.i18n` | Catalog lookup and the ICU-subset formatter in the launch locales | `ui-matrix.json` `i18n` + snapshot tests + `pnpm gen brand --check` | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.gate` | Kit states: gate, boot, status screen, grace banner and toasts | `ui-matrix.json` `gate` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.activate` | Kit states: welcome, license key activation and offline activation | `ui-matrix.json` `activate` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | ios, android: outlet |
+| `ui.signin` | Kit states: the one sign-in form, with its license choice and Replace a device | `ui-matrix.json` `signIn` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.devicelimit` | Kit states: the device-limit screen, in the app or in the browser | `ui-matrix.json` `deviceLimit` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.devices` | Kit states: the device list, rename and remove | `ui-matrix.json` `devices` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.update` | Kit states: update prompt, update progress and release notes | `ui-matrix.json` `update` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.settings` | Kit states: the account and license pane and settings | `ui-matrix.json` `settings` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.paywall` | Kit states: paywall and entitlement gate | `ui-matrix.json` `paywall` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.theme` | Theme resolution: name, accent source, colour scheme, icon and preset | `ui-matrix.json` `theme` + snapshot tests | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
+| `ui.i18n` | Catalog lookup and the ICU-subset formatter in the launch locales | `ui-matrix.json` `i18n` + snapshot tests + `pnpm gen brand --check` | ✓ | ✓ | planned (UK-12) | ✓ | ✓ | ✓ | — |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Servers
