@@ -6,9 +6,10 @@ import { Feature } from "@polaris-key/ui-core/browser/sdk/constants.generated.js
 
 export {
   AUTO_WAIT_MS,
-  primitivesOf,
   runAuto,
 } from "@polaris-key/ui-core/browser/sdk/autoSignIn.js";
+export { primitivesOf } from "@polaris-key/ui-core/browser/sdk/autoPrimitives.js";
+export { linkOfferOutcome } from "@polaris-key/ui-core/browser/sdk/linkOffer.js";
 
 /** True where the build has a ladder to run. */
 export function autoSupported(a: PolarisAdapter): boolean {

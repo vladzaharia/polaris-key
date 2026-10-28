@@ -53,6 +53,7 @@ import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
 import { refusalOf } from "./refusal.js";
 import { currentPageUrl, openLink, safeLink } from "./links.js";
+import { JOIN_ACCOUNTS_URL } from "@polaris-key/ui-core/browser/sdk/linkOffer.js";
 import { openManage } from "@polaris-key/ui-core/browser";
 
 export type { FormInput, FormStep } from "./contractForm.js";
@@ -351,6 +352,21 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         return model.confirm();
       case "signin.auto.confirm.other":
         return model.useAnother();
+      case "signin.linkOffer.primary":
+        return model.linkAccept();
+      case "signin.linkOffer.decline":
+        return model.linkDecline().then(close);
+      case "signin.linkOffer.join":
+        openLink(JOIN_ACCOUNTS_URL);
+        return;
+      case "common.continue":
+        // The link offer's Done and its conflict end the form.
+        if (
+          s.autoSignIn?.step === "link-done" ||
+          s.autoSignIn?.step === "link-conflict"
+        )
+          return close();
+        return;
       case "signin.desktop.continue":
       case "signin.email.continue":
       case "signin.passkey":
@@ -364,6 +380,10 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "signin.handoff.copyLink":
         return model.copyLink();
       case "signin.again":
+        // On the link offer: Sign in again, the regular sign-in.
+        if (s.autoSignIn?.step === "link-offer")
+          return model.start({ channel: "browser" });
+        return model.retry();
       case "signInHandoff.newCode":
         return model.retry();
       case "common.cancel":

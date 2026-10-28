@@ -8,6 +8,7 @@
 // `client-core` `GateInput` and run the same `licenseState`.
 
 import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
+import type { LinkClient } from "./link.js";
 import type {
   ActivationSource,
   DocProfile,
@@ -470,6 +471,10 @@ export interface PolarisAdapter {
   /** The licence choice an app shows itself after `signIn` answered `choose` (identity.choice).
    *  Bearer mode; a cookie page and the desktop renderer throw the typed `UnsupportedError`. */
   readonly choice: ChoiceNamespace;
+  /** The link offer after a redirect sign-in (identity.link). Present on the browser adapter
+   *  (typed `unavailable` where the page has no bearer session); absent elsewhere, which the kit
+   *  reads as no offer. */
+  readonly link?: LinkClient;
   /** The automatic sign-in ladder (identity.autosignin): a stored token, then the platform
    *  provider silently, then (only with `prompt: "optional"`) its chooser. Bearer mode runs it;
    *  the desktop renderer, a cookie page and the local adapter answer `unavailable`. */

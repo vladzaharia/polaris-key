@@ -1696,6 +1696,18 @@ dialog.sheet .identity {
   block-size: 3.5rem;
   color: var(--pk-success);
 }
+.provider-mark {
+  justify-self: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+}
+.card[data-align="start"] .provider-mark {
+  justify-self: start;
+}
+.provider-mark svg {
+  inline-size: 100%;
+  block-size: 100%;
+}
 .card[data-align="start"] .success {
   justify-self: start;
 }

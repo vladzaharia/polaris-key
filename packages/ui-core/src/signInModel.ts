@@ -104,6 +104,8 @@ export type AutoOutcome =
     }
   | { kind: "deviceLimit"; view?: LicenseChoiceView; manageUrl?: string }
   | { kind: "signedIn"; issuedNow?: boolean }
+  /** After a redirect sign-in: offer to link the platform account (identity.link). */
+  | { kind: "linkOffer"; input: Omit<AutoSignInInput, "step"> }
   /** The ladder found no account to continue with: the methods step stays. */
   | { kind: "needsSignIn" };
 
@@ -132,6 +134,16 @@ export interface SignInPrimitives {
    * button starts the browser sign-in as before.
    */
   autoSignIn?(): Promise<AutoOutcome | null>;
+  /** The link offer's two answers (identity.link). `stale`: the sign-in is too old to link (sign
+   *  in again); `failed`: this device or the proof was refused (retrying cannot help); `network`:
+   *  the connection (Link tries again); `none`: nothing happened (the person dismissed the
+   *  provider's chooser), and the offer stays as it was. */
+  link?: {
+    accept(): Promise<
+      "linked" | "conflict" | "stale" | "failed" | "network" | "none"
+    >;
+    decline(): Promise<void>;
+  };
 }
 
 /** The form's state: the inputs of the three step views. */
@@ -710,9 +722,61 @@ export class SignInModel {
       case "signedIn":
         this.finish(o.issuedNow === true);
         return;
+      case "linkOffer":
+        this.patch(
+          { autoSignIn: { ...o.input, step: "link-offer" } },
+          { outcome: undefined, event: undefined, grantExpired: false },
+        );
+        return;
       case "needsSignIn":
         return;
     }
+  }
+
+  /** Link on the offer step: one request (the handle, or one provider prompt), then Done or the
+   *  conflict. The offer stays, with its network line, when the answer is not one of those. */
+  async linkAccept(): Promise<void> {
+    const link = this.primitives?.link;
+    const auto = this.store.get().autoSignIn;
+    if (!link || auto?.step !== "link-offer") return;
+    if (this.store.get().session.redeeming) return;
+    const epoch = this.epoch;
+    this.patch({ error: undefined }, { redeeming: true });
+    let r: Awaited<ReturnType<typeof link.accept>>;
+    try {
+      r = await link.accept();
+    } catch {
+      r = "network";
+    }
+    if (epoch !== this.epoch) return;
+    this.patch({}, { redeeming: false });
+    if (r === "linked" || r === "conflict")
+      this.patch({
+        error: undefined,
+        autoSignIn: {
+          ...auto,
+          step: r === "linked" ? "link-done" : "link-conflict",
+        },
+      });
+    else if (r !== "none")
+      this.patch({
+        error: {
+          code:
+            r === "stale"
+              ? "link-stale"
+              : r === "failed"
+                ? "link-failed"
+                : "network",
+        },
+      });
+  }
+
+  /** No thanks: remembered on this device, so the offer is not made again for this account. */
+  async linkDecline(): Promise<void> {
+    // Link is in flight: a decline now could be stored beside a link that goes through.
+    if (this.store.get().session.redeeming) return;
+    await this.primitives?.link?.decline().catch(() => undefined);
+    this.patch({ autoSignIn: undefined, error: undefined });
   }
 
   /** Every seat is taken. With the list, the license step opens with the card's Replace (there
