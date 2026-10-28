@@ -185,8 +185,9 @@ export async function runAutoSignIn(
   const b = ctx.bearer;
   await b.init();
 
-  // Rung 1. A token from this page's anonymous registration is a device, not a sign-in.
-  if (b.hasToken && b.source !== "register") {
+  // Rung 1. Only a token a sign-in produced counts: an anonymous registration, a key activation
+  // and a token stored before provenance was kept are devices, not a sign-in.
+  if (b.hasToken && b.provenance === "signin") {
     const syncKey = await ctx.syncKey();
     return {
       kind: "signedIn",

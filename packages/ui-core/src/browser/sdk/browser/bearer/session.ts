@@ -61,6 +61,7 @@ import {
 } from "@polaris-key/client-core";
 import { reloadBundle, type CachedBundle } from "../offline.js";
 import type { ExchangeDiscovery } from "../discovery.js";
+import type { BrowserStore, TokenProvenance } from "./store.js";
 import type { ExchangeOptions, ExchangeOutcome } from "./exchange.js";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import {
@@ -423,6 +424,8 @@ export class BearerSession {
   private deviceIdValue = "";
   private token: string | null = null;
   private tokenSource: TokenSource | null = null;
+  /** Persisted beside the token: only "signin" is a signed-in account (rung 1). */
+  private provenanceValue: TokenProvenance | null = null;
   private record: CacheRecordV3 | null = null;
   private license: Held<LicenseDoc> | null = null;
   private config: Held<ConfigDoc> | null = null;
@@ -472,6 +475,10 @@ export class BearerSession {
   }
 
   /** How the current token was obtained in this page; null after a reload. */
+  get provenance(): TokenProvenance | null {
+    return this.token === null ? null : this.provenanceValue;
+  }
+
   get source(): TokenSource | null {
     return this.tokenSource;
   }
@@ -573,6 +580,12 @@ export class BearerSession {
     this.deviceIdValue = await s.getDeviceId();
     this.token = await s.getToken();
     this.tokenSource = null;
+    this.provenanceValue =
+      this.token === null
+        ? null
+        : ((await this.store()
+            .provenance?.get()
+            .catch(() => null)) ?? null);
     this.discovered = {};
     this.manifestIssuedAt = undefined;
     this.license = null;
@@ -712,7 +725,21 @@ export class BearerSession {
     });
   }
 
+  private store(): Partial<BrowserStore> {
+    return this.opts.store as Partial<BrowserStore>;
+  }
+
   private async setToken(token: string, source: TokenSource): Promise<void> {
+    // A rotation keeps what the token already was; every other source says what it is now.
+    const next: TokenProvenance | null =
+      source === "signin"
+        ? "signin"
+        : source === "register"
+          ? "register"
+          : source === "reacquire"
+            ? this.provenanceValue
+            : "key";
+    if (source !== "reacquire") this.provenanceValue = null;
     // A token just arrived from the server, so it is reachable: drop any sync backoff.
     this.syncFailures = 0;
     this.syncNotBefore = 0;
@@ -720,7 +747,11 @@ export class BearerSession {
     this.token = token;
     this.tokenSource = source;
     try {
+      // Cleared first and written last: a crash between leaves "not signed in", never a stale yes.
+      if (source !== "reacquire") await this.store().provenance?.set(null);
       await this.opts.store.setToken(token);
+      if (source !== "reacquire") await this.store().provenance?.set(next);
+      this.provenanceValue = next;
     } catch (e) {
       throw new PolarisError(
         "store-failed",
@@ -889,6 +920,7 @@ export class BearerSession {
     this.subjectValue = null;
     this.token = null;
     this.tokenSource = null;
+    this.provenanceValue = null;
     this.mints.clear();
     await this.opts.store.clearToken().catch(() => undefined);
     const carried: Partial<CacheRecordV3> = {};
@@ -1037,6 +1069,11 @@ export class BearerSession {
         "attach answered without a token.",
       );
     await this.setToken(b.token, "activate");
+    // The device is now in a signed-in account.
+    this.provenanceValue = "signin";
+    await this.store()
+      .provenance?.set("signin")
+      .catch(() => undefined);
     this.subjectValue = isString(b.subject) ? b.subject : null;
     return {
       kind: "ok",

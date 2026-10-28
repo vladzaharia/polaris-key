@@ -63,7 +63,10 @@ type Respond = (n: number) => Response;
 
 function rig(
   token: Respond = () => json(TOKEN_BODY),
-  o: { discovery?: Record<string, unknown> | null } = {},
+  o: {
+    discovery?: Record<string, unknown> | null;
+    store?: ReturnType<typeof memoryStore>;
+  } = {},
 ) {
   const calls: string[] = [];
   let nonces = 0;
@@ -75,10 +78,12 @@ function rig(
       return json({ nonce: nonceOf(nonces), expiresIn: 300 });
     }
     if (url === ENDPOINTS.token) return token(nonces);
+    if (url.endsWith("/devices/register"))
+      return json({ token: "pkeyt_anon", deviceId: DEVICE });
     return new Response("", { status: 404 });
   }) as typeof fetch;
   const discovery = o.discovery === undefined ? discoveryOf() : o.discovery;
-  const store = memoryStore("acme");
+  const store = o.store ?? memoryStore("acme");
   const session = exchangeSession({
     fetchImpl,
     store,
@@ -136,6 +141,7 @@ describe("rung 1: a stored token", () => {
   it("is signedIn with no provider asked and no request made", async () => {
     const r = rig();
     await r.store.setToken("pkeyt_stored");
+    await r.store.provenance!.set("signin");
     const s = stub({ silent: SUBJECT_TOKEN });
     const out = await runAutoSignIn(ctxOf(r, s.provider));
     expect(out).toMatchObject({ kind: "signedIn", via: "stored" });
@@ -143,9 +149,59 @@ describe("rung 1: a stored token", () => {
     expect(r.calls).toEqual([]);
   });
 
+  it("does not count a token with no provenance, or an anonymous or key one", async () => {
+    for (const p of [null, "register", "key"] as const) {
+      const r = rig();
+      await r.store.setToken("pkeyt_stored");
+      await r.store.provenance!.set(p);
+      const s = stub({ silent: SUBJECT_TOKEN });
+      const out = await runAutoSignIn(ctxOf(r, s.provider));
+      // It falls through to rung 3, which signs in.
+      expect(out).toMatchObject({ kind: "signedIn", via: "platform" });
+      expect(s.asked).toEqual(["silent"]);
+    }
+  });
+
+  it("survives a reload: open registration is not a sign-in, a real sign-in is", async () => {
+    const factory = new IDBFactory();
+    const mk = () => {
+      const store = indexedDbStore("acme", { factory })!;
+      const r = rig(undefined, { store });
+      return { ...r, store };
+    };
+    // Open registration, then a reload.
+    const reg = mk();
+    await reg.session.init();
+    expect((await reg.session.register()).kind).toBe("ok");
+    expect(reg.session.provenance).toBe("register");
+    const afterReg = mk();
+    const s = stub();
+    expect(await runAutoSignIn(ctxOf(afterReg, s.provider))).toEqual({
+      kind: "needsSignIn",
+      reason: "noCredential",
+    });
+    expect(afterReg.session.hasToken).toBe(true);
+    // A real sign-in replaces the token and its provenance; a reload keeps both.
+    const sign = mk();
+    const out = await runAutoSignIn(
+      ctxOf(sign, stub({ silent: SUBJECT_TOKEN }).provider),
+    );
+    expect(out).toMatchObject({ kind: "signedIn", via: "platform" });
+    const afterSign = mk();
+    const quiet = stub({ silent: SUBJECT_TOKEN });
+    expect(await runAutoSignIn(ctxOf(afterSign, quiet.provider))).toMatchObject(
+      {
+        kind: "signedIn",
+        via: "stored",
+      },
+    );
+    expect(quiet.asked).toEqual([]);
+  });
+
   it("wins over an explicit sign-out flag (a token is a session)", async () => {
     const r = rig();
     await r.store.setToken("pkeyt_stored");
+    await r.store.provenance!.set("signin");
     await r.store.explicitSignOut!.set(true);
     expect(await runAutoSignIn(ctxOf(r, stub().provider))).toMatchObject({
       kind: "signedIn",
@@ -393,6 +449,7 @@ describe("syncKey (Q-8)", () => {
     }
     const r = rig();
     await r.store.setToken("pkeyt_stored");
+    await r.store.provenance!.set("signin");
     const stored = await runAutoSignIn(
       ctxOf(r, null, { syncKey: async () => "needed" }),
     );
