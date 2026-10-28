@@ -465,6 +465,15 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // A-22: the channel page's Status (attention rows, a long identity) and Releases tabs.
+    {
+      name: "djdl:channel/status",
+      hash: "#/p/djdl/distribution/channels/google-play",
+    },
+    {
+      name: "djdl:channel/releases",
+      hash: "#/p/djdl/distribution/channels/google-play/releases",
+    },
     // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
     {
       name: "waiting:package-feeds",

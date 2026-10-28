@@ -61,6 +61,8 @@ export function RolloutList({
   startInitial,
   emptyDescription,
   loading = false,
+  onlyOutlets,
+  emptyAction,
 }: {
   slug: string;
   rollouts: UseQueryResult<RolloutsResponse>;
@@ -76,11 +78,15 @@ export function RolloutList({
   emptyDescription?: string;
   /** Something the caller waits on (a channel's outlets) besides the rollouts. */
   loading?: boolean;
+  /** One channel's page: its outlets only, and no outlet column or facet. */
+  onlyOutlets?: ReadonlySet<string>;
+  /** The empty state's one action, when it is not "Start rollout…" (null for none). */
+  emptyAction?: React.ReactNode;
 }): React.ReactElement {
   const gate = useWriteGate("ship", slug);
   const store = useReleaseStore(slug);
   const [state, setState] = useTableUrlState(tableId, {
-    facets: ["state", "outlet"],
+    facets: onlyOutlets ? ["state"] : ["state", "outlet"],
   });
   const [verb, setVerb] = React.useState<{
     rollout: Rollout;
@@ -109,17 +115,26 @@ export function RolloutList({
         ),
     [rollouts.data, keep],
   );
+  const where = (r: Rollout) =>
+    onlyOutlets ? r.channel : `${r.outletId} / ${r.channel}`;
   const outlets = [...new Set(rows.map((r) => r.outletId))].sort();
 
-  const columns: DataColumn<Rollout>[] = [
+  const allColumns: DataColumn<Rollout>[] = [
     {
       id: "release",
       header: "Release",
       accessorFn: (r) => versionOf(r.releaseId),
       meta: { priority: 1, primary: true },
       cell: ({ row }) => (
-        <span className="font-mono text-xs whitespace-nowrap">
-          {versionOf(row.original.releaseId)}
+        <span className="flex flex-col">
+          <span className="font-mono text-xs whitespace-nowrap">
+            {versionOf(row.original.releaseId)}
+          </span>
+          {onlyOutlets && row.original.deliverableId !== "app" ? (
+            <span className="text-xs text-fg-muted">
+              {row.original.deliverableId}
+            </span>
+          ) : null}
         </span>
       ),
     },
@@ -156,7 +171,7 @@ export function RolloutList({
       },
       cell: ({ row }) => (
         <Meter
-          label={`Rollout of ${versionOf(row.original.releaseId)} on ${row.original.outletId} / ${row.original.channel}`}
+          label={`Rollout of ${versionOf(row.original.releaseId)} on ${where(row.original)}`}
           hideLabel
           value={
             row.original.state === "complete" ? 10_000 : row.original.rolloutBp
@@ -224,6 +239,11 @@ export function RolloutList({
     },
   ];
 
+  // A channel page is one channel: its outlet is neither a column nor a facet.
+  const columns = onlyOutlets
+    ? allColumns.filter((c) => c.id !== "outlet")
+    : allColumns;
+
   const rowActions = (r: Rollout): RowActionItem[] => {
     const openCell: RowActionItem = {
       label: "Open rollout",
@@ -275,9 +295,7 @@ export function RolloutList({
         data={rows}
         columns={columns}
         getRowId={rowId}
-        rowLabel={(r) =>
-          `${versionOf(r.releaseId)} on ${r.outletId} / ${r.channel}`
-        }
+        rowLabel={(r) => `${versionOf(r.releaseId)} on ${where(r)}`}
         rowHref={hrefFor}
         rowActions={rowActions}
         linkComponent={Link}
@@ -285,7 +303,9 @@ export function RolloutList({
         onStateChange={setState}
         search={{
           placeholder: "Search rollouts",
-          columns: ["release", "outlet", "channel"],
+          columns: onlyOutlets
+            ? ["release", "channel"]
+            : ["release", "outlet", "channel"],
         }}
         facets={[
           {
@@ -296,11 +316,15 @@ export function RolloutList({
               label: statusOf("rollout", s).label,
             })),
           },
-          {
-            id: "outlet",
-            label: "Channel",
-            options: outlets.map((o) => ({ value: o, label: o })),
-          },
+          ...(onlyOutlets
+            ? []
+            : [
+                {
+                  id: "outlet",
+                  label: "Channel",
+                  options: outlets.map((o) => ({ value: o, label: o })),
+                },
+              ]),
         ]}
         loading={rollouts.isPending || loading}
         error={rollouts.isError && !rollouts.data ? rollouts.error : undefined}
@@ -315,12 +339,16 @@ export function RolloutList({
               "A rollout offers a release to a share of the devices on one channel's release track, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone."
             }
             primaryAction={
-              <Button
-                disabledReason={gate.disabledReason}
-                onClick={() => onStartingChange(true)}
-              >
-                Start rollout…
-              </Button>
+              emptyAction !== undefined ? (
+                emptyAction
+              ) : (
+                <Button
+                  disabledReason={gate.disabledReason}
+                  onClick={() => onStartingChange(true)}
+                >
+                  Start rollout…
+                </Button>
+              )
             }
             docs={docsUrl("rollouts")}
           />
@@ -343,6 +371,7 @@ export function RolloutList({
         slug={slug}
         open={starting}
         initial={startInitial}
+        onlyOutlets={onlyOutlets}
         onClose={() => onStartingChange(false)}
       />
     </>

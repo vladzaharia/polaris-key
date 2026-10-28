@@ -11,7 +11,8 @@ import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { PageSkeleton } from "../../../../ui/Skeleton.js";
+import { LiveRegion } from "../../../../ui/LiveRegion.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { PageTabs, TabPanel } from "../../../components/PageTabs.js";
@@ -20,7 +21,7 @@ import { Link, navigate } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CHANNEL_TABS } from "../components/channelTabs.js";
 import { useChannels } from "../data.js";
-import { channelPill } from "../model/channelCopy.js";
+import { channelPill, platformsLine } from "../model/channelCopy.js";
 
 const TAB_PREFIX = "channel";
 
@@ -38,7 +39,9 @@ export function ChannelPage({
   const known = id !== undefined && CHANNEL_IDS.some((c) => c === id);
   const channels = useChannels(slug, known);
   const row = channels.data?.channels.find((c) => c.id === id);
-  const current = CHANNEL_TABS.find((t) => t.value === tab) ?? CHANNEL_TABS[0]!;
+  // An out-of-scope channel can hold nothing: Status only.
+  const tabs = row && !row.inScope ? CHANNEL_TABS.slice(0, 1) : CHANNEL_TABS;
+  const current = tabs.find((t) => t.value === tab) ?? tabs[0]!;
   // A tab that is in the address but not built yet opens Status, and the address says so.
   const unbuilt = tab !== undefined && current.value !== tab;
   React.useEffect(() => {
@@ -70,7 +73,27 @@ export function ChannelPage({
       </div>
     );
   if (channels.isPending)
-    return <PageSkeleton template="record" label="channel" />;
+    return (
+      <div className="space-y-6" data-state="loading">
+        <PageHeader
+          eyebrow={crumbs}
+          title={label}
+          tabs={
+            <PageTabs
+              label={`${label} tabs`}
+              idPrefix={TAB_PREFIX}
+              value={current.value}
+              items={tabs.map((t) => ({ value: t.value, label: t.label }))}
+            />
+          }
+        />
+        <LiveRegion message="Loading channel…" />
+        <div className="flex flex-wrap items-start gap-6" aria-hidden>
+          <Skeleton className="h-40 min-w-0 grow-[999] basis-[32rem]" />
+          <Skeleton className="h-28 grow basis-80" />
+        </div>
+      </div>
+    );
   if (channels.error && !channels.data)
     return (
       <div className="space-y-6">
@@ -79,6 +102,7 @@ export function ChannelPage({
           error={channels.error}
           onRetry={() => void channels.refetch()}
           thing="Channel"
+          context={{ area: "distribution", thing: "Channel", read: true }}
         />
       </div>
     );
@@ -111,22 +135,23 @@ export function ChannelPage({
         eyebrow={crumbs}
         title={row.label}
         titleAside={<StatusPill tone={pill.tone}>{pill.label}</StatusPill>}
+        meta={
+          row.inScope && row.delivery.platforms.length ? (
+            <span>{platformsLine(row.delivery.platforms)}</span>
+          ) : undefined
+        }
         tabs={
           <PageTabs
             label={`${row.label} tabs`}
             idPrefix={TAB_PREFIX}
             value={current.value}
-            items={CHANNEL_TABS.map((t) => ({
+            items={tabs.map((t) => ({
               value: t.value,
               label: t.label,
             }))}
             onChange={(v) =>
               navigate(
-                r.channel(
-                  slug,
-                  row.id,
-                  v === CHANNEL_TABS[0]!.value ? undefined : v,
-                ),
+                r.channel(slug, row.id, v === tabs[0]!.value ? undefined : v),
               )
             }
           />

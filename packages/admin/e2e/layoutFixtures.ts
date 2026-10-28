@@ -331,6 +331,40 @@ const ROUTES: Record<string, unknown> = {
   ...DISTRIBUTION_ROUTES,
   ...DATA_ROUTES,
   ...SETTINGS_ROUTES,
+  // A-22: the channel page: attention rows and a long identity value (a clipped card, a rail at 200 %).
+  [`${P}/distribution/channels`]: {
+    product: "djdl",
+    now: NOW,
+    platforms: [],
+    kinds: [],
+    channels: [
+      {
+        id: "google-play",
+        label: "Google Play",
+        inScope: true,
+        declared: true,
+        oneClick: false,
+        notUsing: false,
+        delivery: {
+          state: "attention",
+          attention: [
+            { code: "credential_expiring" },
+            { code: "no_fitting_build", reasons: ["format", "arch"] },
+            { code: "identity_mismatch", field: "packageName" },
+          ],
+          platforms: [{ platform: "android", arches: ["arm64", "x64"] }],
+        },
+        commerce: null,
+        identity: {
+          fields: {
+            packageName:
+              "com.example.djdl.with.a.very.long.package.name.that.keeps.going",
+          },
+          source: "typed",
+        },
+      },
+    ],
+  },
   // F-34.8: the owner row of the switch (feeds on); `feedsoff` answers the off row below.
   [`${P}/distribution/package-feeds`]: {
     packageFeeds: {

@@ -745,6 +745,7 @@ export const SECTIONS: NavSection[] = [
         icon: Store,
         docs: "/docs/features/ship-builds/channels/",
         inNav: false,
+        tile: "service",
         record: { noun: "Channel", tabs: CHANNEL_TAB_IDS },
       },
       {

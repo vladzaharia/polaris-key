@@ -323,10 +323,13 @@ export function StartRolloutDialog({
   slug,
   open,
   initial,
+  onlyOutlets,
   onClose,
 }: {
   slug: string;
   open: boolean;
+  /** Offer only these outlets (a channel page's own). */
+  onlyOutlets?: ReadonlySet<string>;
   initial: {
     deliverable: string;
     outlet?: string;
@@ -336,15 +339,24 @@ export function StartRolloutDialog({
   onClose: () => void;
 }): React.ReactElement | null {
   if (!open) return null;
-  return <StartRolloutForm slug={slug} initial={initial} onClose={onClose} />;
+  return (
+    <StartRolloutForm
+      slug={slug}
+      initial={initial}
+      onlyOutlets={onlyOutlets}
+      onClose={onClose}
+    />
+  );
 }
 
 function StartRolloutForm({
   slug,
   initial,
+  onlyOutlets,
   onClose,
 }: {
   slug: string;
+  onlyOutlets?: ReadonlySet<string>;
   initial: {
     deliverable: string;
     outlet?: string;
@@ -479,7 +491,11 @@ function StartRolloutForm({
                   outlets.isPending ? "Loading…" : "Choose a channel"
                 }
                 options={(outlets.data?.outlets ?? [])
-                  .filter((o) => o.removedAt === null)
+                  .filter(
+                    (o) =>
+                      o.removedAt === null &&
+                      (!onlyOutlets || onlyOutlets.has(o.outletId)),
+                  )
                   .map((o) => ({
                     value: o.outletId,
                     label: o.outletId,

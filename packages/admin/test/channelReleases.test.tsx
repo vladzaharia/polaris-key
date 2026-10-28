@@ -59,6 +59,11 @@ describe("Distribution → a channel: Releases", () => {
     const t = await loaded();
     // direct has two rollouts (stable, beta); play and altstore are other channels.
     expect(within(t).getAllByRole("row")).toHaveLength(3);
+    // One channel: the raw outlet id is neither a column nor a facet.
+    expect(
+      within(t).queryByRole("columnheader", { name: /^Channel/ }),
+    ).toBeNull();
+    expect(within(t).queryByText("direct")).toBeNull();
     expect(within(t).queryByText("play")).toBeNull();
     expect(within(t).queryByText("altstore")).toBeNull();
   });
@@ -94,7 +99,11 @@ describe("Distribution → a channel: Releases", () => {
       },
     });
     expect(await screen.findByText("No rollouts yet")).toBeTruthy();
-    expect(screen.getByText(/No rollout on Polaris Locker yet/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Without one, Polaris Locker offers its release to everyone/,
+      ),
+    ).toBeTruthy();
   });
 
   it("opens the Start rollout and row dialogs from the tab", async () => {
@@ -119,6 +128,17 @@ describe("Distribution → a channel: Releases", () => {
       await screen.findByRole("menuitem", { name: "Resume…" }),
     );
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
+  });
+});
+
+describe("Distribution → a channel: Releases without an outlet", () => {
+  it("says to set the channel up, and never starts a rollout elsewhere", async () => {
+    boot("itch", channel({ id: "itch", label: "itch.io" }));
+    expect(await screen.findByText("No rollouts yet")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Set up itch.io first" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start rollout…" })).toBeNull();
   });
 });
 

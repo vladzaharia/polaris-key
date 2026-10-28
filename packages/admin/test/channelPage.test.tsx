@@ -73,8 +73,8 @@ describe("Distribution → a channel: Status", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "App Store" }),
     ).toBeTruthy();
-    expect(screen.getAllByText("Live").length).toBeGreaterThan(0);
-    expect(screen.getByText("arm64")).toBeTruthy();
+    expect((await screen.findAllByText("Live")).length).toBeGreaterThan(0);
+    expect(screen.getByText("iOS arm64")).toBeTruthy();
     expect(screen.getByText("Bundle id")).toBeTruthy();
     expect(screen.getByText("com.example.djdl")).toBeTruthy();
     expect(screen.queryByRole("list", { name: "Needs attention" })).toBeNull();
@@ -106,12 +106,12 @@ describe("Distribution → a channel: Status", () => {
     );
     expect(
       within(items[1]!)
-        .getByRole("link", { name: "Releases" })
+        .getByRole("link", { name: "See what fits" })
         .getAttribute("href"),
-    ).toBe(`${H}/app-store/releases`);
+    ).toContain("/matrix");
     expect(items[2]!.textContent).toContain("bundle id");
     expect(screen.getAllByText("Attention").length).toBeGreaterThan(0);
-    expect(screen.getByText(/No platform of DJDL is sent here/)).toBeTruthy();
+    expect(screen.queryByText(/No platform of DJDL/)).toBeNull();
   });
 
   it("draws a declared but out-of-scope channel as Out of scope, neutral, with its reason", async () => {
@@ -128,11 +128,17 @@ describe("Distribution → a channel: Status", () => {
       }),
     ]);
     await screen.findByRole("heading", { level: 1, name: "Steam" });
+    await screen.findByText(/None of DJDL's platforms fit this channel/);
     const pills = screen.getAllByText("Out of scope");
     expect(pills.length).toBeGreaterThan(1);
     expect(
       screen.getByText(/None of DJDL's platforms fit this channel/),
     ).toBeTruthy();
+    // It holds nothing, so there is only Status, and no platform card repeats the reason.
+    expect(
+      within(screen.getByRole("tablist")).getAllByRole("tab"),
+    ).toHaveLength(1);
+    expect(screen.queryByText(/No platform of DJDL/)).toBeNull();
   });
 
   it("shows Not set up and Ready", async () => {
@@ -159,7 +165,7 @@ describe("Distribution → a channel: the tablist", () => {
     expect(tabs.map((t) => t.textContent)).toEqual(["Status", "Releases"]);
     expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
     expect(tabs[0]!.tabIndex).toBe(0);
-    expect(screen.getByRole("tabpanel")).toBeTruthy();
+    expect(await screen.findByRole("tabpanel")).toBeTruthy();
   });
 
   it("an address on a tab that is not built opens Status and says so", async () => {

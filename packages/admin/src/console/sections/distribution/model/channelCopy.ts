@@ -8,6 +8,7 @@ import type {
   ChannelDeliveryState,
 } from "../../../../api.js";
 import type { Tone } from "../../../../lib/status.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 import { r } from "../../../routes.js";
 
 export interface ChannelPill {
@@ -46,7 +47,7 @@ export const DELIVERY_LINE: Record<ChannelDeliveryState, string> = {
 const FIT: Record<string, string> = {
   format: "the file format",
   arch: "the architecture",
-  "unknown-format": "an unrecognised file format",
+  "unknown-format": "an unrecognized file format",
 };
 
 export interface AttentionLine {
@@ -73,13 +74,7 @@ export function attentionLine(
         detail: `Builds exist, but none match ${
           a.reasons.map((x) => FIT[x] ?? x).join(" or ") || "this channel"
         }.`,
-        // The builds that exist, and what each rollout offers, are on Releases.
-        action: channelId
-          ? {
-              label: "Releases",
-              to: r.channel(slug, channelId, "releases"),
-            }
-          : undefined,
+        action: { label: "See what fits", to: r.matrix(slug) },
       };
     case "credential_expiring":
       return {
@@ -105,5 +100,19 @@ export function attentionLine(
 /** `bundleId` to "Bundle id". */
 export function humanField(field: string): string {
   const words = field.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  return (words.charAt(0).toUpperCase() + words.slice(1)).replace(
+    /^Apple id$/,
+    "Apple ID",
+  );
+}
+
+/** "iOS arm64 · macOS arm64, x64": the platforms a channel serves, for the header's meta line. */
+export function platformsLine(
+  platforms: readonly { platform: string; arches: readonly string[] }[],
+): string {
+  return platforms
+    .map((p) =>
+      [platformName(p.platform), p.arches.join(", ")].filter(Boolean).join(" "),
+    )
+    .join(" · ");
 }

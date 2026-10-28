@@ -5,9 +5,9 @@
  */
 
 import * as React from "react";
+import { TriangleAlert } from "lucide-react";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { Section } from "../../../../ui/Section.js";
-import { platformName } from "../../../../lib/vocab/platforms.js";
 import { Link } from "../../../router.js";
 import {
   attentionLine,
@@ -26,53 +26,58 @@ export function ChannelStatus({
     attentionLine(a, slug, name, channel.id),
   );
   const fields = identity ? Object.entries(identity.fields) : [];
+  // Out of scope is said once, by its reason line: no state sentence, no rail.
+  const scoped = channel.inScope;
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="space-y-6">
+    // Wraps instead of switching at a breakpoint, so the rail drops under the main column whenever
+    // both do not fit, at any text size.
+    <div className="flex flex-wrap items-start gap-6">
+      <div className="min-w-0 grow-[999] basis-[32rem]">
         <Section title="Delivery">
-          <p className="text-sm text-fg-muted">
-            {DELIVERY_LINE[delivery.state]}
-          </p>
+          {scoped ? (
+            <p className="text-sm font-medium text-fg-strong">
+              {DELIVERY_LINE[delivery.state]}
+            </p>
+          ) : null}
           {lines.length ? (
-            <ul aria-label="Needs attention" className="mt-4 space-y-3">
+            <ul
+              aria-label="Needs attention"
+              className={scoped ? "mt-4 space-y-3" : "space-y-3"}
+            >
               {lines.map((l) => (
-                <li key={l.title} className="text-sm">
-                  <span className="font-medium text-fg-strong">{l.title}</span>
-                  <span className="text-fg-muted"> · {l.detail}</span>
+                <li
+                  key={l.title}
+                  className="flex flex-wrap items-start gap-x-3 gap-y-1 text-sm"
+                >
+                  {scoped ? (
+                    <TriangleAlert
+                      aria-hidden
+                      className="mt-0.5 size-4 shrink-0 text-warning"
+                    />
+                  ) : null}
+                  <span className="min-w-0 flex-1 basis-56">
+                    <span className="font-medium text-fg-strong">
+                      {l.title}
+                    </span>
+                    <span className="text-fg-muted"> · {l.detail}</span>
+                  </span>
                   {l.action ? (
-                    <>
-                      {" "}
-                      <Link
-                        to={l.action.to}
-                        className="text-accent-fg underline-offset-4 hover:underline"
-                      >
-                        {l.action.label}
-                      </Link>
-                    </>
+                    <Link
+                      to={l.action.to}
+                      className="inline-flex min-h-6 items-center text-accent-fg underline underline-offset-4"
+                    >
+                      {l.action.label}
+                    </Link>
                   ) : null}
                 </li>
               ))}
             </ul>
           ) : null}
         </Section>
-        <Section title="Platforms">
-          {delivery.platforms.length ? (
-            <DescriptionList
-              rows
-              items={delivery.platforms.map((p) => ({
-                term: platformName(p.platform),
-                detail: p.arches.length ? p.arches.join(", ") : "Any",
-              }))}
-            />
-          ) : (
-            <p className="text-sm text-fg-muted">
-              No platform of {name} is sent here.
-            </p>
-          )}
-        </Section>
       </div>
       {fields.length ? (
         <Section
+          className="sticky top-4 min-w-0 grow basis-80"
           title="App"
           description={
             identity?.source === "assigned"
@@ -84,7 +89,7 @@ export function ChannelStatus({
             rows
             items={fields.map(([k, v]) => ({
               term: humanField(k),
-              detail: <span className="font-mono text-xs">{v}</span>,
+              detail: <span className="font-mono text-xs break-all">{v}</span>,
             }))}
           />
         </Section>

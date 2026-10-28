@@ -11,6 +11,7 @@ import type { OutletDto } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useWriteGate } from "../../../access/useCan.js";
+import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { useOutlets, useRollouts } from "../data.js";
 import { cellKey } from "../pages/MatrixPage.js";
@@ -69,9 +70,16 @@ export function ChannelReleases({
       <ErrorState
         error={outlets.error}
         onRetry={() => void outlets.refetch()}
-        thing="Channels"
+        thing="Rollouts"
+        context={{ area: "distribution", thing: "Rollouts", read: true }}
       />
     );
+  // A store with no outlet has nothing to roll out on: set it up first, never start elsewhere.
+  const noOutlet = outlets.data !== undefined && ids.size === 0;
+  const empty =
+    outlets.data !== undefined &&
+    rollouts.data !== undefined &&
+    !rollouts.data.rollouts.some(keep);
   return (
     <section aria-labelledby="channel-rollouts-heading" className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -81,13 +89,15 @@ export function ChannelReleases({
         >
           Rollouts
         </h2>
-        <Button
-          variant="outline"
-          disabledReason={gate.disabledReason}
-          onClick={() => setStarting(true)}
-        >
-          Start rollout…
-        </Button>
+        {empty || noOutlet ? null : (
+          <Button
+            variant="outline"
+            disabledReason={gate.disabledReason}
+            onClick={() => setStarting(true)}
+          >
+            Start rollout…
+          </Button>
+        )}
       </div>
       <RolloutList
         slug={slug}
@@ -99,7 +109,19 @@ export function ChannelReleases({
         starting={starting}
         onStartingChange={setStarting}
         startInitial={{ deliverable: "app", outlet: first }}
-        emptyDescription={`No rollout on ${channel.label} yet. Without one, it offers its release to everyone.`}
+        onlyOutlets={ids}
+        emptyDescription={
+          noOutlet
+            ? `${channel.label} has no channel set up yet.`
+            : `Without one, ${channel.label} offers its release to everyone.`
+        }
+        emptyAction={
+          noOutlet ? (
+            <Button asChild>
+              <Link to={r.outlets(slug)}>Set up {channel.label} first</Link>
+            </Button>
+          ) : undefined
+        }
       />
     </section>
   );

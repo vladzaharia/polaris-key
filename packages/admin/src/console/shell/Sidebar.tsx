@@ -390,6 +390,8 @@ function isActivePage(activePage: PageId | null, page: string): boolean {
   return (
     activePage === page ||
     (activePage === "product-new" && page === "home") ||
+    // A channel's page is reached from Channel setup (A-22).
+    (page === "outlets" && activePage === "channel") ||
     // The settings hub's tabs are Settings (ST-08).
     (page === "settings" &&
       activePage !== null &&
