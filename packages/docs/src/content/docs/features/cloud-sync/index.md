@@ -155,7 +155,7 @@ The **Usage** page shows how many people have data, the storage they use against
 
 ## Next steps
 
-- In your app: [Node](/docs/build/sdks/node/your-own-ui/#synced-settings) and [Python](/docs/build/sdks/python/your-own-ui/#synced-settings), the calls, states and events.
+- In your app: [Node](/docs/build/sdks/node/your-own-ui/#synced-settings) and [Python](/docs/build/sdks/python/your-own-ui/#synced-settings), the calls, states and events. Planned for [Swift](/docs/build/sdks/swift/#cloud-sync-settings), [Kotlin](/docs/build/sdks/kotlin/#cloud-sync-settings) and [Godot](/docs/build/sdks/godot/#cloud-sync-settings-polariskeycloud_sync).
 - [The catalog](/docs/features/managed-config/catalog/): declare the keys that sync.
 - [Management states](/docs/features/managed-config/management-states/): which keys are locked.
 - [Sign-in](/docs/features/sign-in/): the principal Cloud Sync needs.

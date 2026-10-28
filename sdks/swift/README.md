@@ -381,7 +381,7 @@ the launch attempt off.
 
 `client.keyring` holds the person's end-to-end key: one root per ring, shared by their devices and
 never sent to the Worker in the clear. The Worker stores only wraps of it, one per device, and a
-blob sealed under the recovery code. The Cloud Sync client that seals settings with it is planned;
+blob sealed under the recovery code. [Cloud Sync settings](#cloud-sync-settings) seal with it;
 the key ring itself is here. It uses the device keys `client.connect` uses (a `DeviceKeyPort`).
 
 | Call                              | What it does                                                                                                                            |
@@ -485,6 +485,107 @@ starts clean. A root that cannot be deleted throws and stops the release.
 (`AfterFirstUnlockThisDeviceOnly`), never synchronizable. A restart takes it back while it matches
 the pin. A Keychain write that fails leaves the root in memory only. An iCloud Keychain backup of
 the root is planned.
+
+### Cloud Sync settings
+
+Synced settings are planned: the calls below are in the SDK source, and the `sync.settings` parity
+row stays `planned` until the release flips it. With Cloud Sync on and a person signed in, the
+settings calls you already use go to the person's synced copy: `config.set` and `config.clear` send
+the edit, and `setting(key).value` reads what the person's other devices sent. The same code runs with
+Cloud Sync off. Which keys sync is the catalog's decision (see
+[Synced settings](/docs/features/cloud-sync/#synced-settings)); a locked key never does. Nothing syncs
+before sign-in: a device activated with a license key keeps its settings on the device and uploads
+them at the first sign-in.
+
+End-to-end encryption is on by default: `CloudSyncOptions(encryption: .e2e)`. `.server` opts the app
+out, and an app that says `.server` still refuses a Worker it has seen speak end-to-end. The mode is
+the app's choice and is never read from the Worker. Settings are sealed with the [key ring](#cloud-sync-key-ring)
+above, so edits wait on the device while the ring is locked. The end-to-end default is in review; the
+`sync.e2e` parity row is `planned`.
+
+```swift
+import PolarisKey
+import PolarisKeyConfig
+import PolarisKeyCore
+
+func startSyncing(core: CoreOptions) throws -> PolarisKeyClient {
+    // Optional: `catalog` (the `pkey mirror` output) and `aliases` (renamed keys) sit beside `encryption`.
+    let sync = CloudSyncOptions(encryption: .e2e)
+    return try PolarisKeyClient(options: PolarisKeyClientOptions(core: core, cloudSync: sync))
+}
+
+func changeTheme(_ client: PolarisKeyClient) async throws {
+    let theme = client.config.setting("ui.theme")
+    try await theme.set(.string("dark"))        // managed_by_admin when the operator locks the key
+    print(await theme.sync())                   // .pending: the edit waits to be sent
+    print(try await client.cloudSync.status())  // SyncStatus(state: .pending, pending: 1, ...)
+    _ = try await client.cloudSync.flush()      // send now
+}
+```
+
+`setting(key).sync()` answers for one key:
+
+| State      | Meaning                                                                            |
+| ---------- | ---------------------------------------------------------------------------------- |
+| `.local`   | Stays on this device: nobody is signed in, Cloud Sync is off or the key is `local` |
+| `.pending` | An edit waits to be sent                                                           |
+| `.synced`  | The synced copy and this device agree                                              |
+
+`client.cloudSync.status()` is the connection's state and reads no request. `flush()` sends what is
+waiting now, bounded to 5 seconds, saves the journal and answers the status. A product without the
+Sync service gets the typed `product` not-applicable error from both. `newRecoveryCode()` makes a new
+recovery code through the key ring and returns it once.
+
+| `state`        | Show                                                                                         |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| `.idle`        | Nothing                                                                                      |
+| `.pending`     | "Saving..." (`pending` counts the edits)                                                     |
+| `.syncing`     | "Saving..."                                                                                  |
+| `.offline`     | "Offline. Changes are saved on this device."                                                 |
+| `.local`       | Sign-in needed: nobody is signed in, so nothing syncs                                        |
+| `.locked`      | The key ring is locked: `unlock()`, or `recover(_:)`                                         |
+| `.paused`      | Polaris Key paused writes; edits wait and send later                                         |
+| `.blocked`     | `reason`: `.accountRequired`, `.unauthorized`, `.attestation` or `.forbidden`                |
+| `.unsupported` | The app requires end-to-end encryption and the server does not offer it; nothing leaves here |
+
+A `reason` of `.quota` on `.pending` means the person's storage is full; `.entitlement` means their
+tier does not include sync. Either way the edits stay on the device.
+
+Events are `.cloudSync(CloudSyncEvent)` on `client.events`: `change(keys:origin:)`,
+`rejected(mutationId:code:)`, `signedOut(reason:unsynced:)`, `unsyncedData(count:)`,
+`signInOffered(signInUrl:)` and `purgeFailed`. They name keys and codes and never carry a value.
+`origin` is `.local` (this device), `.remote` (another device), `.merge` (a conflict resolved) or
+`.migration` (the one-time import of this device's earlier settings); the config listeners
+(`onConfigChange`, `setting(key).on`) carry it on `ConfigChange.origin`.
+
+```swift
+import PolarisKey
+
+func watchSync(_ client: PolarisKeyClient) async {
+    for await event in client.events {
+        guard case .cloudSync(let e) = event else { continue }
+        switch e {
+        case .change(let keys, let origin) where origin != .local: print("\(keys) changed elsewhere")
+        case .rejected(_, let code): print("an edit was refused: \(code)")
+        case .unsyncedData(let count): print("\(count) edits not sent")
+        case .purgeFailed: print("the synced data could not be deleted from this device")
+        default: break
+        }
+    }
+}
+```
+
+**At sign-out.** `identity.signOut()` first sends what is waiting (for up to 5 seconds), then the key
+ring forgets its root, then the synced data is cleared from the device. The settings stay in the
+person's account. If the ring cannot forget its root, the sign-out stops with that error before the
+Worker is asked: nothing is cleared and the person stays signed in. A failure to delete the data is
+reported as `purgeFailed` and does not change the sign-out's result. Edits that could not be sent are
+reported once as `unsyncedData`. Deactivating the device and a different person signing in run the
+same clearing. Offline, `config.set` still succeeds and reads back at once; the edits are sent when
+the network returns.
+
+**Platforms.** Cloud Sync runs on Apple platforms. On Linux it is off: the
+licence, config, identity and key-ring calls are unaffected and `cloudSync.status()` answers `.local`.
 
 ### Edge-mint
 

@@ -187,6 +187,7 @@ fun keepFresh(client: PolarisKeyClient, scope: CoroutineScope) {
                 is PolarisEvent.UpdateAvailable -> println("an update is offered")
                 is PolarisEvent.Packs -> Unit
                 is PolarisEvent.Identity -> Unit
+                is PolarisEvent.CloudSync -> Unit
             }
         }
     }

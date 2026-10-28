@@ -834,8 +834,8 @@ await PolarisKey.identity.open_account()         # the product's account page, d
 
 The key ring is the root key behind end-to-end encrypted Cloud Sync. One ring per person and
 product; every device holds the same 32-byte root, wrapped to its own agreement key. The Worker
-stores wraps and a recovery blob it cannot open. Encrypted settings sync itself is planned; the
-ring and its codec ship now. A product with Cloud Sync or its E2E setting off answers `not_found`.
+stores wraps and a recovery blob it cannot open. [Cloud Sync settings](#cloud-sync-settings-polariskeycloud_sync)
+seal with it; the ring and its codec ship now. A product with Cloud Sync or its E2E setting off answers `not_found`.
 
 ```gdscript
 var ring := PolarisKey.keyring
@@ -894,6 +894,100 @@ store's `dh`. The root, the code and every key print as redacted.
   64 KiB per call (a setting is at most 8 KiB). Files stay native-only.
 - **Device keys.** The ring opens its wrap with the product's own device key store under
   `store_root`, or the one you give as `PKeyOptions.device_keys`.
+
+## Cloud Sync settings (`PolarisKey.cloud_sync`)
+
+Synced settings are planned: the calls below are in the addon source, and the `sync.settings` parity
+row stays `planned` until the release flips it. With Cloud Sync on and a person signed in, the
+settings calls you already use go to the person's synced copy: `config.set_value` and `config.clear`
+send the edit, and `config.get_value` reads what the person's other devices sent. The same code runs
+with Cloud Sync off. Which keys sync is the catalog's decision (see
+[Synced settings](/docs/features/cloud-sync/#synced-settings)); a locked key never does. Nothing syncs
+before sign-in: a device activated with a license key keeps its settings on the device and uploads
+them at the first sign-in.
+
+End-to-end encryption is on by default: `PKeyOptions.cloud_sync_encryption` is `"e2e"`. `"server"`
+opts the app out, and an app that says `"server"` still refuses a Worker it has seen speak
+end-to-end; `configure` refuses any other value. The mode is the app's choice and is never read from
+the Worker. Settings are sealed with the [key ring](#key-ring-polariskeykeyring), so edits wait on
+the device while the ring is locked. The end-to-end default is in review; the `sync.e2e` parity row is
+`planned`. `cloud_sync_aliases` (renamed keys) sits beside it.
+
+```gdscript
+func change_speed() -> void:
+	var speed := PolarisKey.config.setting("dice.animSpeed")
+	speed.set_value(2.0)                             # managed_by_admin when the operator locks the key
+	print(speed.sync())                              # "pending": the edit waits to be sent
+	var sync: PKeyCloudSync = PolarisKey.cloud_sync
+	var status: PKeyResult = await sync.flush()      # send now; answers the machine's status
+	if status.ok:
+		print(status.detail.state, " ", status.detail.pending)
+```
+
+`setting(key).sync()` answers `"local"` (nobody is signed in, Cloud Sync is off or the key is
+`local`), `"pending"` (an edit waits to be sent) or `"synced"` (the synced copy and this device
+agree). `PolarisKey.cloud_sync.status()` answers the connection's state in `detail`, with no request.
+`flush()` is a coroutine: it sends what is waiting, bounded to 5 seconds, saves the journal and
+answers the status. A product without the Sync service gets the typed `product` not-applicable
+failure from both.
+
+| `detail.state` | Show                                                                                         |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| `idle`         | Nothing                                                                                      |
+| `pending`      | "Saving..." (`pending` counts the edits)                                                     |
+| `syncing`      | "Saving..."                                                                                  |
+| `offline`      | "Offline. Changes are saved on this device."                                                 |
+| `local`        | Sign-in needed: nobody is signed in, so nothing syncs                                        |
+| `locked`       | The key ring is locked: `unlock()`, or `recover(code)`                                       |
+| `paused`       | Polaris Key paused writes; edits wait and send later                                         |
+| `blocked`      | `reason`: `account_required`, `unauthorized`, `attestation` or `forbidden`                   |
+| `unsupported`  | The app requires end-to-end encryption and the server does not offer it; nothing leaves here |
+
+A `reason` of `quota` on `pending` means the person's storage is full; `entitlement` means their tier
+does not include sync. Either way the edits stay on the device.
+
+The `event` signal carries `"cloudSync"` events. `data.type` is `change` (with `keys` and `origin`),
+`rejected` (`mutation_id`, `code`), `signedOut` (`reason`, `unsynced`), `unsyncedData` (`count`),
+`signInOffered` (`sign_in_url`) or `purgeFailed`. They name keys and codes and never carry a value.
+`origin` is `local` (this device), `remote` (another device), `merge` (a conflict resolved) or
+`migration` (the one-time import of this device's earlier settings).
+
+```gdscript
+func watch_sync() -> void:
+	PolarisKey.event.connect(_on_pkey_event)
+
+
+func _on_pkey_event(kind: String, data: Dictionary) -> void:
+	if kind != "cloudSync":
+		return
+	match data.get("type"):
+		"change":
+			if data.get("origin") != "local":
+				print(data.get("keys"), " changed elsewhere")
+		"rejected":
+			print("an edit was refused: ", data.get("code"))
+		"unsyncedData":
+			print(data.get("count"), " edits not sent")
+		"purgeFailed":
+			print("the synced data could not be deleted from this device")
+```
+
+**At sign-out.** `PolarisKey.identity.sign_out()` first sends what is waiting (for up to 5 seconds),
+then the key ring forgets its root, then the synced data is cleared from the device. The settings
+stay in the person's account. If the ring cannot forget its root, the sign-out stops with that
+failure before the Worker is asked: nothing is cleared and the person stays signed in, and a retry
+forgets again. A failure to delete the data is reported as `purgeFailed` and does not change the
+sign-out's result. Edits that could not be sent are reported once as `unsyncedData`. Deactivating the
+device and a different person signing in run the same clearing. Offline, `set_value` still succeeds
+and reads back at once; the edits are sent when the network returns.
+
+**Where the journal lives.** Edits not yet sent, and the person's opened settings, are saved in one
+file under `store_root`. It is sealed: by the platform lane where one exists (the same Keychain,
+Keystore and DPAPI lanes as the key ring's root table above), else by the engine-encrypted file,
+keyed from the device id, which is weaker and keeps the file out of a casual copy only. A file without
+the platform seal is not read through the weaker path. On iOS with the `PolarisKeyApple` plugin its
+folder is marked out of backups. The journal never holds the root. The backup table above covers the
+key ring's files.
 
 ## License notes
 

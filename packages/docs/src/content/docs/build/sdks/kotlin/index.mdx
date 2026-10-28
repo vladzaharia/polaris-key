@@ -116,8 +116,8 @@ The step-by-step page is planned (Developers, Sign-in, platform setup).
 
 `client.keyring` holds the person's end-to-end key: one root per ring, shared by their devices and
 never sent to the Worker in the clear. The Worker stores only wraps of it, one per device, and a blob
-sealed under the recovery code. The Cloud Sync client that seals settings with it is planned; the key
-ring itself is here. It uses the device keys `client.connect` uses.
+sealed under the recovery code. [Cloud Sync settings](#cloud-sync-settings) seal with it; the key ring
+itself is here. It uses the device keys `client.connect` uses.
 
 | Call                             | What it does                                                                                                                            |
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -217,3 +217,106 @@ back while it matches the pin. Where depends on the platform:
 
 A write that fails leaves the root in memory only. Pass `KeyringOptions(rootStorage = ...)` to keep it
 anywhere else.
+
+## Cloud Sync settings
+
+Synced settings are planned: the calls below are in the SDK source, and the `sync.settings` parity
+row stays `planned` until the release flips it. With Cloud Sync on and a person signed in, the
+settings calls you already use go to the person's synced copy: `config.set` and `config.clear` send
+the edit, and `setting(key).value` reads what the person's other devices sent. The same code runs with
+Cloud Sync off. Which keys sync is the catalog's decision (see
+[Synced settings](/docs/features/cloud-sync/#synced-settings)); a locked key never does. Nothing syncs
+before sign-in: a device activated with a license key keeps its settings on the device and uploads
+them at the first sign-in.
+
+End-to-end encryption is on by default: `CloudSyncHostOptions.encryption` is `"e2e"`. `"server"` opts
+the app out, and an app that says `"server"` still refuses a Worker it has seen speak end-to-end. The
+mode is the app's choice and is never read from the Worker. Settings are sealed with the
+[key ring](#cloud-sync-key-ring) above, so edits wait on the device while the ring is locked. The
+end-to-end default is in review; the `sync.e2e` parity row is `planned`.
+
+Pass the options as `PolarisKeyClientOptions(cloudSync = ...)`. `catalog` (the `pkey mirror` output)
+and `aliases` (renamed keys) sit beside `encryption`.
+
+```kotlin
+import im.plrs.key.sdk.CloudSyncHostOptions
+import kotlinx.serialization.json.JsonPrimitive
+
+val syncOptions = CloudSyncHostOptions().apply { encryption = "e2e" }
+
+suspend fun changeTheme() {
+    val theme = client.config.setting("ui.theme")
+    theme.set(JsonPrimitive("dark"))            // managed_by_admin when the operator locks the key
+    println(theme.sync())                       // pending: the edit waits to be sent
+    println(client.cloudSync.status())          // SyncStatus(state=Pending, pending=1, ...)
+    client.cloudSync.flush()                    // send now
+}
+```
+
+`setting(key).sync()` answers for one key:
+
+| State     | Meaning                                                                            |
+| --------- | ---------------------------------------------------------------------------------- |
+| `local`   | Stays on this device: nobody is signed in, Cloud Sync is off or the key is `local` |
+| `pending` | An edit waits to be sent                                                           |
+| `synced`  | The synced copy and this device agree                                              |
+
+`client.cloudSync.status()` is the connection's state and sends no request. `flush()` sends what is
+waiting now, bounded to 5 seconds, saves the journal and answers the status. A product without the
+Sync service gets the typed `product` not-applicable error from both. `newRecoveryCode()` makes a new
+recovery code through the key ring and returns it once.
+
+| `state`       | Show                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------- |
+| `Idle`        | Nothing                                                                                      |
+| `Pending`     | "Saving..." (`pending` counts the edits)                                                     |
+| `Syncing`     | "Saving..."                                                                                  |
+| `Offline`     | "Offline. Changes are saved on this device."                                                 |
+| `Local`       | Sign-in needed: nobody is signed in, so nothing syncs                                        |
+| `Locked`      | The key ring is locked: `unlock()`, or `recover(code)`                                       |
+| `Paused`      | Polaris Key paused writes; edits wait and send later                                         |
+| `Blocked`     | `reason`: `account_required`, `unauthorized`, `attestation` or `forbidden`                   |
+| `Unsupported` | The app requires end-to-end encryption and the server does not offer it; nothing leaves here |
+
+A `reason` of `quota` on `Pending` means the person's storage is full; `entitlement` means their tier
+does not include sync. Either way the edits stay on the device.
+
+Events are `PolarisEvent.CloudSync` on `client.events`, carrying a `CloudSyncEvent`: `Change(keys,
+origin)`, `Rejected(mutationId, code)`, `SignedOut(reason, unsynced)`, `UnsyncedData(count)`,
+`SignInOffered(signInUrl)` and `PurgeFailed`. They name keys and codes and never carry a value.
+`origin` is `local` (this device), `remote` (another device), `merge` (a conflict resolved) or
+`migration` (the one-time import of this device's earlier settings); `ConfigChange.origin` carries it
+too.
+
+```kotlin
+import im.plrs.key.sdk.CloudSyncEvent
+import im.plrs.key.sdk.PolarisEvent
+
+suspend fun watchSync() {
+    client.events.collect { event ->
+        if (event !is PolarisEvent.CloudSync) return@collect
+        when (val e = event.event) {
+            is CloudSyncEvent.Change -> if (e.origin != "local") println("${e.keys} changed elsewhere")
+            is CloudSyncEvent.Rejected -> println("an edit was refused: ${e.code}")
+            is CloudSyncEvent.UnsyncedData -> println("${e.count} edits not sent")
+            CloudSyncEvent.PurgeFailed -> println("the synced data could not be deleted from this device")
+            else -> Unit
+        }
+    }
+}
+```
+
+**At sign-out.** `identity.signOut()` first sends what is waiting (for up to 5 seconds), then the key
+ring forgets its root, then the synced data is cleared from the device. The settings stay in the
+person's account. If the ring cannot forget its root, the sign-out stops with that error before the
+Worker is asked: nothing is cleared and the person stays signed in, and a retry forgets again. A
+failure to delete the data is reported as `PurgeFailed` and does not change the sign-out's result.
+Edits that could not be sent are reported once as `UnsyncedData`. Deactivating the device and a
+different person signing in run the same clearing. Offline, `config.set` still succeeds and reads back
+at once; the edits are sent when the network returns.
+
+**Platforms.** The journal of unsent edits is a file in the client's state directory. On Android that
+is the app's private no-backup directory, so it is not backed up. With no state directory the journal
+is kept in a private temporary directory. Edits send while the process runs; the SDK schedules no
+background work and ships no WorkManager dependency. An app that wants its last edits sent as it
+goes to the background calls `client.cloudSync.flush()` from its own lifecycle callback.
