@@ -21,7 +21,7 @@ Card/Scroll/Body/Words/Line1: Label "License for this device"
 Card/Scroll/Body/Words/Line2: Label "New:  license, created when you continue"
 Card/Scroll/Body/Words/Line3: Label "\u2068Polaris Key SDK\u2069 will also get"
 Card/Scroll/Body/Words/Line4: Label "Your profile and email"
-Card/Scroll/Body/Words/Line5: Label "It gets its own id for you, and won't see your other products or how you sign in."
+Card/Scroll/Body/Words/Line5: Label "It gets its own id for you, and won't see your other apps or how you sign in."
 Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
 == link offer, Google shared across apps ==

@@ -105,7 +105,8 @@ func _selection(t: PKeyTestContext) -> void:
 	t.check("selection: the macOS login keychain is not hardware, the iOS data-protection keychain is", not login.hardware_backed() and ios.hardware_backed())
 	var bad := PKeyDeviceKeyStore.new("Bad Slug", _dir("sel5"))
 	var br := bad.ensure()
-	t.check("selection: a non-slug product is refused up front as invalid-options", not br.ok and br.code == PKeyErrors.INVALID_OPTIONS and bad.public_keys().code == PKeyErrors.INVALID_OPTIONS and bad.sign(PackedByteArray()).code == PKeyErrors.INVALID_OPTIONS and bad.wipe().code == PKeyErrors.INVALID_OPTIONS)
+	t.check("selection: a non-slug product is refused up front as invalid-options", not br.ok and br.code == PKeyErrors.INVALID_OPTIONS
+			and bad.public_keys().code == PKeyErrors.INVALID_OPTIONS and bad.sign(PackedByteArray()).code == PKeyErrors.INVALID_OPTIONS and bad.wipe().code == PKeyErrors.INVALID_OPTIONS)
 	var dp := _store(_dir("sel3"), PKeyFakeSealer.new("dpapi"))
 	t.check("selection: dpapi is sealed but not claimed as hardware", dp.protection() == "dpapi-sealed" and not dp.hardware_backed() and not dp.best_effort())
 	var mem := PKeyDeviceKeyStore.new(PRODUCT, "user://pkey", true, true, fake)
@@ -119,8 +120,10 @@ func _selection(t: PKeyTestContext) -> void:
 			and PKeyRecordSealer.for_platform(PRODUCT, "") == null)
 	var fb := PKeyDeviceKeyStore.new(PRODUCT, _dir("fb"))
 	var e := fb.ensure()
-	t.check("fallback: the store is the CC-26.6 encrypted file", e.ok and fb.sealer == null and fb.protection() == "encrypted-file" and _bytes(_record(fb.dir.get_base_dir())).slice(0, 4).get_string_from_ascii() == "GDEC", str(e))
-	t.check("fallback: the base sealer is unavailable and answers unsupported", PKeyRecordSealer.new().unavailable() != "" and PKeyRecordSealer.new().seal(PackedByteArray(), PackedByteArray()).code == &"unsupported")
+	t.check("fallback: the store is the CC-26.6 encrypted file", e.ok and fb.sealer == null and fb.protection() == "encrypted-file"
+			and _bytes(_record(fb.dir.get_base_dir())).slice(0, 4).get_string_from_ascii() == "GDEC", str(e))
+	t.check("fallback: the base sealer is unavailable and answers unsupported", PKeyRecordSealer.new().unavailable() != ""
+			and PKeyRecordSealer.new().seal(PackedByteArray(), PackedByteArray()).code == &"unsupported")
 
 
 func _sealed_record(t: PKeyTestContext) -> void:
@@ -131,7 +134,8 @@ func _sealed_record(t: PKeyTestContext) -> void:
 	if not t.check("sealed: ensure ok", e.ok, str(e)):
 		return
 	var raw := _bytes(_record(root))
-	t.check("sealed: the file is PKSL v1 + the blob, not the record", raw.slice(0, 4).get_string_from_ascii() == "PKSL" and raw[4] == 1 and raw.size() > 5 and raw.slice(0, 4).get_string_from_ascii() != "PKDK")
+	t.check("sealed: the file is PKSL v1 + the blob, not the record", raw.slice(0, 4).get_string_from_ascii() == "PKSL" and raw[4] == 1 and raw.size() > 5
+			and raw.slice(0, 4).get_string_from_ascii() != "PKDK")
 	var salt := FileAccess.file_exists(root.path_join(PRODUCT).path_join(PKeyDeviceKeyStore.SALT_FILE))
 	t.check("sealed: no install salt is made (the sealer replaces the passphrase)", not salt)
 	t.check("sealed: one key made", fake.made == 1)
@@ -168,7 +172,9 @@ func _unreadable(t: PKeyTestContext) -> void:
 	var made := fake.made
 	# The platform key is gone (a new device, a restore, an invalidated key).
 	fake.key = PackedByteArray()
-	for pair in [["public_keys", s.public_keys()], ["ensure", s.ensure()], ["rotate", s.rotate()], ["sign", s.sign("x".to_utf8_buffer())], ["dh", s.dh(PKeyCurve25519.x25519_public(Crypto.new().generate_random_bytes(32)))]]:
+	var peer := PKeyCurve25519.x25519_public(Crypto.new().generate_random_bytes(32))
+	var calls := [["public_keys", s.public_keys()], ["ensure", s.ensure()], ["rotate", s.rotate()], ["sign", s.sign("x".to_utf8_buffer())], ["dh", s.dh(peer)]]
+	for pair in calls:
 		var r: PKeyResult = pair[1]
 		t.check("unreadable: %s with the platform key gone is KEYS_UNREADABLE" % pair[0], not r.ok and r.code == PKeyDeviceKeyStore.KEYS_UNREADABLE, str(r))
 	t.check("unreadable: the record is untouched and no key was made", _bytes(path) == before and fake.made == made and fake.key.is_empty())
@@ -221,7 +227,8 @@ func _unreadable(t: PKeyTestContext) -> void:
 	var lraw := _bytes(_record(t5))
 	var sealed_store := _store(t5, PKeyFakeSealer.new())
 	var lr := sealed_store.ensure()
-	t.check("unreadable: a record that is not sealed is not read through the weaker path or replaced", not lr.ok and lr.code == PKeyDeviceKeyStore.KEYS_UNREADABLE and _bytes(_record(t5)) == lraw, str(lr))
+	t.check("unreadable: a record that is not sealed is not read through the weaker path or replaced", not lr.ok and lr.code == PKeyDeviceKeyStore.KEYS_UNREADABLE
+			and _bytes(_record(t5)) == lraw, str(lr))
 	t.check("unreadable: wipe() clears it and the next ensure seals", sealed_store.wipe().ok and sealed_store.ensure().ok and _bytes(_record(t5)).slice(0, 4).get_string_from_ascii() == "PKSL")
 
 
@@ -309,7 +316,8 @@ func _lanes(t: PKeyTestContext) -> void:
 		t.check("apple %s: destroy" % flavor, sealer.destroy().ok and lane.inner.key.is_empty() and lane.requests.back()["op"] == "dk_destroy")
 		lane.force = {"ok": false, "error": "keychain", "status": -25308}
 		var fault := sealer.open(sealed.detail, ctx)
-		t.check("apple %s: an OSStatus fault is STORE_FAULT with the status only" % flavor, not fault.ok and fault.code == PKeyDeviceKeyStore.STORE_FAULT and fault.message.contains("-25308") and not fault.message.contains(Marshalls.raw_to_base64(plain)), str(fault))
+		t.check("apple %s: an OSStatus fault is STORE_FAULT with the status only" % flavor, not fault.ok and fault.code == PKeyDeviceKeyStore.STORE_FAULT
+				and fault.message.contains("-25308") and not fault.message.contains(Marshalls.raw_to_base64(plain)), str(fault))
 		lane.force = {"ok": false, "unsupported": true, "reason": "runtime", "detail": "no keychain"}
 		var un := sealer.seal(plain, ctx)
 		t.check("apple %s: unsupported stays unsupported" % flavor, not un.ok and un.code == &"unsupported", str(un))
@@ -326,7 +334,8 @@ func _lanes(t: PKeyTestContext) -> void:
 	var asl := PKeyAndroidSealer.new(PRODUCT, android)
 	var asealed := asl.seal(plain, ctx)
 	var aopen := asl.open(asealed.detail, ctx) if asealed.ok else asealed
-	t.check("android: available, round trip over ks_seal / ks_open", asl.unavailable() == "" and asl.id() == "keystore" and asealed.ok and aopen.ok and aopen.detail == plain and alane.requests[0]["op"] == "ks_seal" and alane.requests[0]["product"] == PRODUCT)
+	t.check("android: available, round trip over ks_seal / ks_open", asl.unavailable() == "" and asl.id() == "keystore" and asealed.ok and aopen.ok and aopen.detail == plain
+			and alane.requests[0]["op"] == "ks_seal" and alane.requests[0]["product"] == PRODUCT)
 	alane.force = {"ok": false, "error": "keystore", "reason": "keystore-provider", "message": "x"}
 	var af := asl.open(asealed.detail, ctx)
 	t.check("android: a Keystore provider fault is STORE_FAULT, not unreadable", not af.ok and af.code == PKeyDeviceKeyStore.STORE_FAULT and af.message.contains("keystore-provider"), str(af))

@@ -94,16 +94,21 @@ func _begin(t: PKeyTestContext, bed: PKeyDevLive) -> void:
 func _signed_out(t: PKeyTestContext, sdk: Node, out: PKeyResult, group: String) -> void:
 	var released: bool = out.ok and out.detail is Dictionary and out.detail.get("released") == true
 	var held: bool = sdk.core.tokens.has_token()
-	t.check("%s: sign_out() ends the sign-in and the SDK follows the Worker's `released`" % group, out.ok and out.detail is Dictionary and out.detail.get("released") is bool and held == not released and sdk.is_licensed() == not released and String(sdk.core.cache.subject) == "", "%s %s" % [out, out.detail])
+	var answered: bool = out.ok and out.detail is Dictionary and out.detail.get("released") is bool
+	var follows: bool = held != released and sdk.is_licensed() != released and String(sdk.core.cache.subject) == ""
+	t.check("%s: sign_out() ends the sign-in and the SDK follows the Worker's `released`" % group, answered and follows, "%s %s" % [out, out.detail])
 
 
 ## The prompt's shape: a code, both links on the server's own origin (a sign-in never leaves the
 ## server the SDK was configured for), a lifetime and a poll interval.
 func _shape(t: PKeyTestContext, bed: PKeyDevLive, prompt: PKeySignInSession, group: String) -> void:
-	t.check("%s: the prompt has a user code, both links on the server's origin and the code in the complete one" % group, prompt.user_code != "" and prompt.verification_uri.begins_with(bed.base_url + "/") \
-			and prompt.verification_uri_complete.begins_with(bed.base_url + "/") and prompt.verification_uri_complete.contains(prompt.user_code), str(prompt))
-	t.check("%s: the prompt has a lifetime and a poll interval" % group, prompt.expires_in > 0 and prompt.interval >= 1 and prompt.device_code != "" and not str(prompt).contains(prompt.device_code), "expires %d, interval %d" % [prompt.expires_in, prompt.interval])
-
+	var base: String = bed.base_url + "/"
+	var links: bool = prompt.user_code != "" and prompt.verification_uri.begins_with(base)
+	links = links and prompt.verification_uri_complete.begins_with(base) and prompt.verification_uri_complete.contains(prompt.user_code)
+	t.check("%s: the prompt has a user code, both links on the server's origin and the code in the complete one" % group, links, str(prompt))
+	var timed: bool = prompt.expires_in > 0 and prompt.interval >= 1 and prompt.device_code != ""
+	timed = timed and not str(prompt).contains(prompt.device_code)
+	t.check("%s: the prompt has a lifetime and a poll interval" % group, timed, "expires %d, interval %d" % [prompt.expires_in, prompt.interval])
 
 ## What a finished sign-in leaves: the person the fake provider approved (name and e-mail, which
 ## it vouches for), a token that opened the gate on a verified document, and the forced sync's
@@ -111,7 +116,9 @@ func _shape(t: PKeyTestContext, bed: PKeyDevLive, prompt: PKeySignInSession, gro
 func _signed_in(t: PKeyTestContext, bed: PKeyDevLive, sdk: Node, result: PKeySignInOutcome, group: String) -> void:
 	var person: Dictionary = bed.info.get("idp", {}).get("person", {})
 	var named := String(person.get("name", "")) != "" and String(person.get("email", "")) != ""
-	t.check("%s: the result names the person the provider approved, by name and e-mail" % group, named and result.identity.get("name") == person.get("name") and result.identity.get("email") == person.get("email"), "%s vs %s" % [result.identity, person])
+	var same: bool = named and result.identity.get("name") == person.get("name")
+	same = same and result.identity.get("email") == person.get("email")
+	t.check("%s: the result names the person the provider approved, by name and e-mail" % group, same, "%s vs %s" % [result.identity, person])
 	t.check("%s: the token is stored and the forced sync ran" % group, result.stored and result.sync != null and result.sync.ok and sdk.license.activation() == &"token", str(result.sync))
 	t.check("%s: the verified license document opens the gate" % group, sdk.is_licensed() and sdk.status().get("status") == "ok", str(sdk.status()))
 	var now: Variant = sdk.identity.current()

@@ -63,7 +63,10 @@ static func verification_target(ctx: RefCounted, shown: String) -> String:
 # ── SignIn ─────────────────────────────────────────────────────────────────────────────────────
 
 ## `SignInState`.
-const SIGN_IN_STATES := ["methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired", "confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit", "hidden"]
+const SIGN_IN_STATES := [
+	"methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired",
+	"confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit", "hidden",
+]
 
 
 ## The copy key of the first sign-in method, the methods step's primary (DL9).
