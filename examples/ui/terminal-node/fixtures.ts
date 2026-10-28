@@ -24,8 +24,6 @@ import type {
   DeviceInfo,
   LicenseInfo,
   PolarisKeyClient,
-  SignInPrompt,
-  SignInResult,
 } from "@polaris-key/node";
 import type { ProductPresentation } from "@polaris-key/node/cli";
 
@@ -266,27 +264,39 @@ export function createFixtureClient(o: FixtureOptions = {}): PolarisKeyClient {
       async current() {
         return saved.signedIn ? ACCOUNT : null;
       },
-      async beginSignIn(): Promise<SignInPrompt> {
-        await sleep(500);
-        return {
-          deviceCode: "fixture-device-code",
-          userCode: "WDJB-MJHT",
-          verificationUri: "https://polaris.locker/device",
-          verificationUriComplete:
-            "https://polaris.locker/device?user_code=WDJB-MJHT",
-          expiresIn: 600,
-          interval: 5,
-          expiresAt: now() + 600,
-          deviceName: "Work laptop",
-        };
-      },
-      async waitForSignIn(
-        _prompt: SignInPrompt,
-        opts: { signal?: AbortSignal } = {},
-      ): Promise<SignInResult> {
-        await sleep(4000, opts.signal);
-        save({ signedIn: true, license: saved.license ?? "account" });
-        return { status: "ready", identity: ACCOUNT };
+      signIn: {
+        async start() {
+          await sleep(500);
+          const stopped = new AbortController();
+          return {
+            channel: "device-code" as const,
+            userCode: "WDJB-MJHT",
+            verificationUri: "https://polaris.locker/device",
+            verificationUriComplete:
+              "https://polaris.locker/device?user_code=WDJB-MJHT",
+            expiresIn: 600,
+            interval: 5,
+            expiresAt: now() + 600,
+            deviceName: "Work laptop",
+            async reopen() {
+              return false;
+            },
+            cancel() {
+              stopped.abort();
+            },
+            async wait(opts: { signal?: AbortSignal } = {}) {
+              if (stopped.signal.aborted) return { kind: "cancelled" as const };
+              await sleep(4000, opts.signal);
+              save({ signedIn: true, license: saved.license ?? "account" });
+              return {
+                kind: "signedIn" as const,
+                subject: null,
+                activation: { licenseId: null },
+                identity: ACCOUNT,
+              };
+            },
+          };
+        },
       },
       async signOut() {
         await sleep(400);

@@ -16,16 +16,16 @@ states it can be in and the words to show. To take the finished screens instead,
 
 ## The hook for each task
 
-| Task                  | Hook (`@polaris-key/react`)                   | You read                                                                       |
-| --------------------- | --------------------------------------------- | ------------------------------------------------------------------------------ |
-| Gate the app          | `useLicenseGate()`                            | `screen`, `status`, `usable`, `error`, `retry()`                               |
-| License facts         | `useLicense()`                                | `gate` (`graceUntil`, `allowedRange`), `entitledChannels`, `refresh()`         |
-| Key entry and sign-in | `usePolarisAuth()`                            | `submitKey(key)`, `signInWithOidc()`, `profile`, `error`, `supportsKeyEntry`   |
-| Entitlements          | `useEntitlement(name)`                        | a boolean, false unless the gate is usable                                     |
-| Settings              | `useManagedConfig()`, `useConfigSetting(key)` | `get(key, fallback)`, `set`, `clear`, the source and whether the key is locked |
-| Updates               | `useUpdateDecision()`                         | `decision`, `undismissable`, `reason`, `decide()`                              |
-| What the product runs | `useCapabilities()`                           | `has("identity")`                                                              |
-| Release notes         | `useChangelog()`                              | `entries`                                                                      |
+| Task                  | Hook (`@polaris-key/react`)                   | You read                                                                               |
+| --------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Gate the app          | `useLicenseGate()`                            | `screen`, `status`, `usable`, `error`, `retry()`                                       |
+| License facts         | `useLicense()`                                | `gate` (`graceUntil`, `allowedRange`), `entitledChannels`, `refresh()`                 |
+| Key entry and sign-in | `usePolarisAuth()`                            | `submitKey(key)`, `signIn`, `signInWithOidc()`, `profile`, `error`, `supportsKeyEntry` |
+| Entitlements          | `useEntitlement(name)`                        | a boolean, false unless the gate is usable                                             |
+| Settings              | `useManagedConfig()`, `useConfigSetting(key)` | `get(key, fallback)`, `set`, `clear`, the source and whether the key is locked         |
+| Updates               | `useUpdateDecision()`                         | `decision`, `undismissable`, `reason`, `decide()`                                      |
+| What the product runs | `useCapabilities()`                           | `has("identity")`                                                                      |
+| Release notes         | `useChangelog()`                              | `entries`                                                                              |
 
 `busy` and `error` are per service: a config refresh does not grey out sign-out. `usePolarisKey()`
 returns the whole client at once and is deprecated; prefer the hooks above. It has no `getConfig` or `isEntitled`: use `useConfigSetting()` and `useEntitlement()`. The adapters take `expectedServices`, a list of service slugs.
@@ -161,11 +161,84 @@ fragment no server sees. Open the link from a click, and submit the same key aga
 comes back.
 
 The refusal's `activation.kind` says which one: `deviceLimit` (with `limit`, `deviceCount` and
-`manageUrl`), `unauthorized`, `licenseExpired`, `licenseDisabled`, `rateLimited` (with
+`manageUrl`), `unauthorized`, `licenseExpired`, `licenseDisabled`, `keyEntryLimit`, `licenseOwned`, `rateLimited` (with
 `retryAfterSeconds`), `hardwareMismatch`, `fingerprintRequired`, `enrollClaimed`, `enrollDisabled`,
 `attestationRequired`, `refused` (with the server's `code`) and `error`. After a successful
 sign-in, `profile` holds the `name` and `email` to show next to a way to sign out
 (`auth.signOut()`): anyone with the code can finish a sign-in elsewhere, so name the account.
+
+## Redirect sign-in and the license choice
+
+`usePolarisAuth().signIn.start` also takes `channel: "redirect"`. The verifier waits in `sessionStorage`
+across the navigation, so `signIn.complete(callbackUrl)` works on the page the browser returns to. With
+`licenseChoice: "app"`, a person who holds licenses settles `choose`, and `useLicenseChoice(grant)`
+runs the choice.
+
+```tsx
+import { useEffect, useState } from "react";
+import { useLicenseChoice, usePolarisAuth } from "@polaris-key/react";
+
+export function SignInButton() {
+  const auth = usePolarisAuth();
+  return (
+    <button
+      onClick={async () => {
+        const session = await auth.signIn.start({
+          channel: "redirect",
+          redirectUri: `${window.location.origin}/auth/callback`,
+          licenseChoice: "app",
+        });
+        window.location.assign(session.authorizeUrl);
+      }}
+    >
+      Sign in
+    </button>
+  );
+}
+
+export function Callback() {
+  const auth = usePolarisAuth();
+  const [grant, setGrant] = useState<string | null>(null);
+  useEffect(() => {
+    void auth.signIn.complete(window.location.href).then((outcome) => {
+      if (outcome.kind === "choose") setGrant(outcome.grant);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return grant ? <Choice grant={grant} /> : <p role="status">Signing in…</p>;
+}
+
+function Choice({ grant }: { grant: string }) {
+  const choice = useLicenseChoice(grant);
+  if (choice.status === "expired") return <p role="alert">Start again.</p>;
+  if (!choice.view) return <p role="status">Loading…</p>;
+  return (
+    <ul>
+      {choice.view.choices.map((row) => (
+        <li key={row.id}>
+          <button
+            onClick={() =>
+              void choice.complete({ kind: "license", licenseId: row.id })
+            }
+          >
+            {row.name ?? row.tierName}
+          </button>
+        </li>
+      ))}
+      {choice.refusal && <li role="alert">{choice.refusal.code}</li>}
+    </ul>
+  );
+}
+```
+
+A refusal is state, not a throw: `refusal` holds the last one, and `device_limit` swaps in the fresh
+`view`. A key entered with `{ kind: "key", key }` counts as one key entry. `status` is `loading`,
+`ready`, `working`, `done`, `cancelled` or `expired` (the grant lives 300 seconds).
+
+`usePolarisAuth()` also has the account calls: `subject()`, `attach({ confirm })`, `openAccount()` and
+`signOut()`. They need a browser bearer session or the desktop bridge; otherwise they throw the typed
+`UnsupportedError`. A key refused with `keyEntryLimit` (`manageUrl`, `keyEntries`) or `licenseOwned`
+(`signInUrl`) arrives as `error.activation`, and neither clears the device's token.
 
 ## Entitlements and settings
 

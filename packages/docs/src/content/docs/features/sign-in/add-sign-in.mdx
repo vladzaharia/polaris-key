@@ -26,18 +26,36 @@ Before you start:
 2. **CLI** Optional: link your own provider with the `oidc:` block of `.pkey/product`, then select **Resync from repo** on **App sign-in**. Without it the product uses the platform provider.
 3. **CLI** Optional: map groups to tiers with `groupRoleMap`, or set an `autoIssue` policy with mode `oidcDefault` so people in no group land on a default tier.
 4. **Console** Optional: open **App sign-in** and set what customers can do: adding a license by key, showing the product in libraries and key reissue. Email codes and passkeys are always on.
-5. **App** Start the sign-in from your SDK, per the table. A client with no browser shows the user code and a QR code, then polls. A browser app redirects.
-6. **App** On success, store the result the SDK hands back and refresh the license status. A device flow ends in a device token. A browser flow with a `return_to` ends in a session cookie.
+5. **App** Start the sign-in with the SDK's `signIn.start`, per the table. The `device-code` channel shows the user code and a QR code, then polls. The `redirect` channel gives you a URL to open and takes the callback URL back.
+6. **App** Read the outcome: `signedIn`, `choose` (the app shows the license choice), `cancelled` or `expired`. The SDK has stored the device token; refresh the license status.
 7. **Server** Optional: read the signed-in account on your backend, as [Your backend](#your-backend) shows. The license document carries `profile.user` with the account's pairwise subject (`ps_…`) while an account is signed in on that device.
 
-| SDK    | Sign-in                                                          | Where the code is                              |
-| ------ | ---------------------------------------------------------------- | ---------------------------------------------- |
-| Node   | Device flow: `signIn.start()`, `session.wait()`                  | [Node](/docs/build/sdks/node/your-own-ui/)     |
-| Python | Device flow: `begin_sign_in`, `wait_for_sign_in`, `poll_sign_in` | [Python](/docs/build/sdks/python/your-own-ui/) |
-| React  | Browser sign-in and the sign-in form                             | [React](/docs/build/sdks/react/your-own-ui/)   |
-| Swift  | Device flow, with a sign-in view in the kit                      | [Swift](/docs/build/sdks/swift/your-own-ui/)   |
-| Kotlin | Device flow                                                      | [Kotlin](/docs/build/sdks/kotlin/your-own-ui/) |
-| Godot  | Device flow, with a sign-in dialog in the kit                    | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
+| SDK    | Sign-in                                                 | Where the code is                              |
+| ------ | ------------------------------------------------------- | ---------------------------------------------- |
+| Node   | `identity.signIn.start()`: `device-code` or `redirect`  | [Node](/docs/build/sdks/node/your-own-ui/)     |
+| Python | `identity.sign_in.start()`: `device-code` or `redirect` | [Python](/docs/build/sdks/python/your-own-ui/) |
+| React  | `usePolarisAuth().signIn.start()`: both channels        | [React](/docs/build/sdks/react/your-own-ui/)   |
+| Swift  | Device flow, with a sign-in view in the kit             | [Swift](/docs/build/sdks/swift/your-own-ui/)   |
+| Kotlin | Device flow                                             | [Kotlin](/docs/build/sdks/kotlin/your-own-ui/) |
+| Godot  | Device flow, with a sign-in dialog in the kit           | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
+
+A session has `wait` (device code), `complete(callbackUrl)` (redirect), `reopen` and `cancel`. Use the [device flow](/docs/features/sign-in/device-flow/) where the host can't receive a redirect, and the [web redirect](/docs/features/sign-in/web-redirect/) where it can.
+
+## After sign-in
+
+With `licenseChoice: "app"`, a sign-in that needs a license choice settles `choose` with a short-lived `grant`. Run the choice with `identity.choice` (`licenses`, `devices`, `complete`, `cancel`), or `useLicenseChoice` in React. The calls on the signed-in account:
+
+| Node                           | Python            | Does                                                         |
+| ------------------------------ | ----------------- | ------------------------------------------------------------ |
+| `identity.subject()`           | `subject()`       | The account's pairwise subject (`ps_…`), or `null`           |
+| `identity.signOut()`           | `sign_out()`      | Signs out. `released` says whether the device lost its token |
+| `identity.attach({ confirm })` | `attach(confirm)` | Previews, then adds the device's license to the account      |
+| `identity.openAccount()`       | `open_account()`  | Opens the account page in Polaris Locker                     |
+
+A key activation can answer two typed outcomes. Neither wipes the device's token or cache.
+
+- `key-entry-limit`: the key has no entries left. It carries `manageUrl` and `keyEntries` (`used`, `limit`). Offer the link, or sign-in.
+- `license-owned`: the license is in an account and never moves by its key. It carries `signInUrl`. Offer sign-in.
 
 The kit's form is [SignIn](/docs/build/ui/components/sign-in/). Which SDK has each part is listed in [Parity](/docs/reference/parity/).
 

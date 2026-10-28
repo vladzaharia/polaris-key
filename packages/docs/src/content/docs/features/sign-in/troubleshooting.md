@@ -29,7 +29,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** A second poll arrived inside the 2-second `interval`. The answer is `429` with `interval`.
 
-**Fix** Wait the `interval` between polls. The Node session's `wait()` and Python's `wait_for_sign_in` do this and honor `slow_down`.
+**Fix** Wait the `interval` between polls. The session's `wait()` does this in Node, Python and React, and honors `slow_down`.
 
 **Check it works** The next poll returns `pending` or `ready`.
 
@@ -80,6 +80,22 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 **Fix** Make room for another device. See [Handle the device limit](/docs/features/licensing/device-limit/).
 
 **Check it works** The sign-in returns a token.
+
+## key_entry_limit
+
+**Cause** A key activation found the key has no entries left. The SDK answers the typed outcome `key-entry-limit` with `keyEntries` (`used`, `limit`) and, while the portal is on, `manageUrl`. It keeps the device's token and cache and doesn't retry.
+
+**Fix** Open `manageUrl` so the person adds the key to their account, or sign them in. Don't wipe local state.
+
+**Check it works** The next activation, or the sign-in, returns a token.
+
+## license_owned
+
+**Cause** The key's license is in an account and never moves by its key. The SDK answers `license-owned` with `signInUrl`, the product's sign-in page. It names no account.
+
+**Fix** Open `signInUrl` from a user action and sign in to the account that owns the license.
+
+**Check it works** The sign-in returns a token on that license.
 
 ## registration_closed
 

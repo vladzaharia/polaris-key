@@ -105,7 +105,7 @@ The user-code page budget is per network (an IPv4 address or an IPv6 /64). There
 
 ## From an SDK
 
-Node, Python, Swift, Kotlin and Godot drive this flow. In Node, `client.identity.signIn.start()` returns a session with the user code and both URLs, `wait()` polls at `interval`, honors `slow_down` and stops at `expiresIn`, and `wait({ once: true })` makes one poll for a host that paces itself. Python names them `begin_sign_in`, `wait_for_sign_in` and `poll_sign_in`. See [Node](/docs/build/sdks/node/), [Python](/docs/build/sdks/python/) and [Swift](/docs/build/sdks/swift/).
+Node, Python, React, Swift, Kotlin and Godot drive this flow with `signIn.start({ channel: "device-code" })` (Python: `sign_in.start()`). The session holds `userCode`, both URLs, `expiresIn`, `interval` and `deviceName`, and keeps the device code private. `reopen()` opens the complete URL, `cancel()` stops the wait, and `wait()` polls at `interval`, honors `slow_down` and stops at `expiresIn`. It settles `signedIn`, `expired` or `cancelled`. `wait({ once: true })` makes one poll for a host that paces itself. A refusal throws `sign-in-denied` or `sign-in-failed`. See [Node](/docs/build/sdks/node/your-own-ui/#sign-in-and-who-signed-in), [Python](/docs/build/sdks/python/your-own-ui/#sign-in-and-who-signed-in) and [Swift](/docs/build/sdks/swift/).
 
 ## Next steps
 
