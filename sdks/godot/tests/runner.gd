@@ -29,7 +29,7 @@ const Context := preload("res://tests/support/test_context.gd")
 ## (SP-41) is in `ci` and skips itself where no `pkey dev` variable is set; a lane that sets all
 ## three runs it against that server (tests/suite_dev_live.gd).
 const SETS := {
-	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_locales", "dev_live", "api_surface"],
+	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "presentation", "devices", "devicekeys", "devicekeys_native", "backup_exclusion", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "ui_components", "cloud_sync_ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "sync_vectors", "sync_scenarios", "cloud_sync_host", "cloud_sync_settings", "commerce", "backend", "transports", "parity", "ui_lint", "exit_leaks", "dropin", "ui_core", "ui_locales", "dev_live", "api_surface"],
 	## The brief spells the suite with a hyphen.
 	"stage-matrix": ["stage_matrix"],
 }

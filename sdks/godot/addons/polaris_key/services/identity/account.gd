@@ -38,7 +38,8 @@ var on_wiped: Callable = Callable()
 var on_change: Callable = Callable()
 
 var _core_ref: WeakRef = null
-## Shared with PKeyIdentity.add_before_sign_out: `func() -> void`, each awaited in order.
+## Shared with PKeyIdentity.add_before_sign_out: `func() -> void` (or `-> PKeyResult`), each awaited in
+## order. A hook that returns a failing PKeyResult stops the sign-out and that result is returned.
 var _hooks: Array[Callable]
 
 
@@ -150,7 +151,9 @@ func sign_out() -> PKeyResult:
 	if url == "" or not _own(url):
 		return _unavailable("sign-out")
 	for hook in _hooks.duplicate():
-		await hook.call()
+		var stopped: Variant = await hook.call()
+		if stopped is PKeyResult and not stopped.ok:
+			return stopped
 	var previous := core.cache.subject
 	var released := false
 	if core.tokens.has_token():

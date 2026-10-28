@@ -8,7 +8,7 @@
 // @pkey-feature ui.boot release.fetch release.distribution
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
-// @pkey-feature sync.keyring identity.exchange
+// @pkey-feature sync.keyring identity.exchange identity.link
 //
 // `cloudSyncPull` / `cloudSyncPush` (U-20.4, sync.settings, WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10):
 // the request goes through the browser host's own transport (`sendSync`, over `session.ringRequest`:
@@ -89,6 +89,11 @@
 // the replay holds the recording path to the recorded bytes. `updatesPending` is the length of
 // the session's journal.
 
+import {
+  linkContextOf,
+  runAccept,
+  runOffer,
+} from "../src/browser/bearer/link.js";
 import {
   createHash,
   createPrivateKey,
@@ -762,12 +767,14 @@ async function replay(t: Transcript): Promise<void> {
       now: () => clock,
       pinned: t.trust,
       store,
-      // identity.exchange: these recordings end at the sign-in, so the sync a sign-in starts
-      // (licence and config documents, the device report) has no recorded exchange to meet.
+      // identity.exchange, identity.link: these recordings end at the sign-in, so the sync a
+      // sign-in starts (licence and config documents, the device report) has no recorded
+      // exchange to meet.
       enabled: (slug) =>
         belief[slug].enabled &&
         !(
-          t.features.includes("identity.exchange") &&
+          (t.features.includes("identity.exchange") ||
+            t.features.includes("identity.link")) &&
           (slug === "license" || slug === "config")
         ),
       fingerprint: () => FINGERPRINT,
@@ -795,6 +802,7 @@ async function replay(t: Transcript): Promise<void> {
               kinds: ["google", "apple"],
               nonceEndpoint: `${t.baseUrl}/${t.product}/identity/nonce`,
               tokenEndpoint: `${t.baseUrl}/${t.product}/identity/token`,
+              linkEndpoint: `${t.baseUrl}/${t.product}/identity/link`,
             }
           : exchangeDiscoveryOf(discovered as Record<string, unknown>),
       // The account endpoints: the last discovery's, else the Worker's standard ones.
@@ -1377,6 +1385,33 @@ async function replay(t: Transcript): Promise<void> {
         }
         break;
       }
+      case "linkOffer": {
+        // identity.link: GET link with the device token the redirect sign-in stored.
+        const r = await runOffer(await linkContextOf(session));
+        observed.result = r.kind === "ok" ? "ok" : "unavailable";
+        if (r.kind === "ok") observed.offer = r.offer as unknown as JsonValue;
+        break;
+      }
+      case "link": {
+        // identity.link: POST link by the handle, proof signed by the fixture device key.
+        const port = await fixtureKeyPort(String(step.args.keyLabel));
+        const proofValue = stringArg(step, "proofValue");
+        const r = await runAccept(await linkContextOf(session), port, {
+          linkHandle: String(step.args.linkHandle),
+          ...(proofValue !== null && proofValue !== undefined
+            ? { proofValue }
+            : {}),
+        });
+        if (r.kind === "linked") {
+          observed.result = "ok";
+          observed.linked = r.linked as unknown as JsonValue;
+        } else if (r.kind === "refused") {
+          observed.result = "refused";
+          observed.status = r.status;
+          observed.code = r.code;
+        } else observed.result = "unavailable";
+        break;
+      }
       case "fetchSchema":
         observed.catalog = (await fetchCatalog(base)) as JsonValue;
         break;
@@ -1522,15 +1557,15 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // browser's `authorize` and Continue are `browser` steps the replayer plays as recorded,
     // I-10a.10). identity.choice (I-10a.11) is I-08b's redirect-web-choose*, choice-* transcripts (the
     // choice.* primitives). sync.settings is U-05's cloudsync-*
-    // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
+    // transcripts (the cloudSyncPull and cloudSyncPush steps), replayed here (U-20.4).
     // identity.exchange (I-46.5) is I-13.7's exchange-* transcripts, replayed through
     // `session.exchange` over a fixture key port. sync.keyring is
     // U-36.4's keyring-* transcripts are replayed here through the ring engine (U-38.2).
     // connect.relay is CC-07.3's connect-relay-* transcripts, replayed here (CC-09.2).
-    // identity.link is I-43.3's link-* transcripts (the link offer, I-46); the Node runner replays
-    // them with a reference client (linkTranscripts.test.ts).
+    // identity.link is I-43.3's link-* transcripts (I-46.13), replayed through `session.linkOffer`
+    // and `session.linkAccept`; the Node runner also replays them with a reference client.
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
-    const plannedHere = ["sync.settings", "identity.link"];
+    const plannedHere: string[] = [];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

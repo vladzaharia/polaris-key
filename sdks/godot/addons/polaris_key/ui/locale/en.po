@@ -3094,20 +3094,20 @@ msgstr "Use Another Account"
 msgid "signin.linkOffer.title"
 msgstr "Sign in with {provider} next time?"
 
-#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
+#. Then {app} and other apps that use Polaris Locker can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyGlobal"
-msgstr "Then {app} and other apps that use Polaris Locker can sign you in by themselves."
+msgstr "Then {app} and other apps that use Polaris Locker can sign you in automatically."
 
-#. Then apps from {developer} can sign you in by themselves.
+#. Then apps from {developer} can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.linkOffer.bodyDeveloper"
-msgstr "Then apps from {developer} can sign you in by themselves."
+msgstr "Then apps from {developer} can sign you in automatically."
 
-#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Then {app} and its developer's other apps can sign you in automatically.
 #. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyApp"
-msgstr "Then {app} and its developer's other apps can sign you in by themselves."
+msgstr "Then {app} and its developer's other apps can sign you in automatically."
 
 #. Link {provider}
 #. Link offer: the main button. Arguments: {provider} = the provider's name (never translated).
@@ -3123,6 +3123,16 @@ msgstr "No thanks"
 msgctxt "macos"
 msgid "signin.linkOffer.decline"
 msgstr "No Thanks"
+
+#. Sign in again to link {provider}.
+#. Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.stale"
+msgstr "Sign in again to link {provider}."
+
+#. Couldn't link {provider} on this device.
+#. Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.failed"
+msgstr "Couldn't link {provider} on this device."
 
 #. {provider} linked
 #. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).

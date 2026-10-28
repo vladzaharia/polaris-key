@@ -1143,6 +1143,10 @@
     <!-- Link offer: declines; the device remembers it. -->
     <string name="signin_linkOffer_decline">괜찮아요</string>
     <string name="signin_linkOffer_decline__macos">괜찮아요</string>
+    <!-- Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_stale">%1$s을(를) 연결하려면 다시 로그인하세요.</string>
+    <!-- Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_failed">이 기기에서 %1$s을(를) 연결하지 못했습니다.</string>
     <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_done">%1$s 연결됨</string>
     <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->

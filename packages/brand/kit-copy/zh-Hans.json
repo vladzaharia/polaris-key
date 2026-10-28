@@ -503,6 +503,8 @@
     "signin.linkOffer.bodyApp": "之后 {app} 及其开发者的其他应用可以自动为你登录。",
     "signin.linkOffer.primary": "关联 {provider}",
     "signin.linkOffer.decline": "不用了",
+    "signin.linkOffer.stale": "请重新登录以关联 {provider}。",
+    "signin.linkOffer.failed": "无法在此设备上关联 {provider}。",
     "signin.linkOffer.done": "已关联 {provider}",
     "signin.linkOffer.conflictTitle": "未关联 {provider}",
     "signin.linkOffer.conflict": "此 {provider} 账户属于另一个 Polaris Locker 账户。你仍保持登录。",

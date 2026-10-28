@@ -184,7 +184,9 @@ func sign_out() -> PKeyResult:
 	if r.ok or not (r.detail is Dictionary and r.detail.get("kind") == "unavailable"):
 		return r
 	for hook in _before_sign_out.duplicate():
-		await hook.call()
+		var stopped: Variant = await hook.call()
+		if stopped is PKeyResult and not stopped.ok:
+			return stopped
 	return await license.deactivate()
 
 

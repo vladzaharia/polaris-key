@@ -25,7 +25,13 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
-import { monogramOf, OPENS, spellOut, type Resolved } from "./contract.js";
+import {
+  monogramOf,
+  OPENS,
+  spellOut,
+  type Layout,
+  type Resolved,
+} from "./contract.js";
 import { encodeQr } from "./lazy.js";
 import {
   isRefusalStep,
@@ -73,6 +79,9 @@ export interface KitCtx {
   /** The window is wider than a docked sheet (35 rem). */
   wide?: boolean;
   chrome?: Chrome;
+  /** A component whose layout and content load on demand (the Cloud Sync screens) hands both. */
+  layout?: Layout;
+  content?: ReactNode;
   view: View;
   copy: Copy;
   resolved: Resolved;
@@ -531,6 +540,8 @@ export function button(
   variant: Variant,
   extra: {
     busy?: boolean;
+    /** Not pressable now, with no spinner (the link offer's No thanks while Link runs). */
+    disabled?: boolean;
     label?: string;
     args?: Record<string, string | number>;
     /** Extra members of the `onAction` this control reports (a row's index). */
@@ -596,11 +607,11 @@ function plainButton(
       data-variant={variant}
       data-key={key}
       data-provider={google ? "google" : undefined}
-      aria-disabled={extra.busy ? "true" : undefined}
+      aria-disabled={extra.busy || extra.disabled ? "true" : undefined}
       aria-label={extra.label}
       aria-describedby={hintId}
       onClick={() => {
-        if (!extra.busy) c.act(key, extra.detail);
+        if (!extra.busy && !extra.disabled) c.act(key, extra.detail);
       }}
     >
       {extra.busy ? <span className="ring" aria-hidden="true" /> : null}
@@ -731,6 +742,16 @@ export function successMark(): ReactNode {
         <circle cx="24" cy="24" r="22" />
         <path d="m14 25 7 7 13-15" />
       </svg>
+    </div>
+  );
+}
+
+/** Google's own "G", unmodified, above the link offer's title: the offer is about Google, so the
+ *  step names it before the words do. Decorative: the title says it. */
+export function providerMark(): ReactNode {
+  return (
+    <div className="provider-mark" aria-hidden="true">
+      <GoogleMark />
     </div>
   );
 }
@@ -999,7 +1020,13 @@ export function links(c: KitCtx, keys: string[]): ReactNode {
   if (keys.length === 0) return null;
   return (
     <div className="links" data-part="links">
-      {keys.map((k) => button(c, k, "link"))}
+      {keys.map((k) =>
+        button(c, k, "link", {
+          disabled:
+            k === "signin.linkOffer.decline" &&
+            c.input.signIn?.redeeming === true,
+        }),
+      )}
     </div>
   );
 }

@@ -231,13 +231,13 @@ extension KitStates {
                     "signin.linkOffer.title", body, "signin.linkOffer.primary",
                     "signin.linkOffer.decline"))
         case .linkDone:
-            return KitScreen(.linkDone, lines("signin.linkOffer.done", "common.continue"))
+            return KitScreen(.linkDone, lines("signin.linkOffer.done", "common.done"))
         case .linkConflict:
             return KitScreen(
                 .linkConflict,
                 lines(
                     "signin.linkOffer.conflictTitle", "signin.linkOffer.conflict",
-                    "signin.linkOffer.join", "common.continue"))
+                    "signin.linkOffer.join", "common.done"))
         case .nearbyPrompt:
             return KitScreen(
                 .nearbyPrompt,

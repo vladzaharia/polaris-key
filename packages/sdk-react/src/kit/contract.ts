@@ -11,7 +11,8 @@ export {
   decodeIcon,
   groundPrefersDark,
   inputWithIdentity,
-  LAYOUTS,
+  // The kit's own table leaves the Cloud Sync screens' layouts out: they load with the screens.
+  KIT_LAYOUTS as LAYOUTS,
   lightDomWebCss,
   canMorph,
   morph,

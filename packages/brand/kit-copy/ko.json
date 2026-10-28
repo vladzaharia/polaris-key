@@ -503,6 +503,8 @@
     "signin.linkOffer.bodyApp": "그러면 {app}과 개발자의 다른 앱이 자동으로 로그인해 줘요.",
     "signin.linkOffer.primary": "{provider} 연결",
     "signin.linkOffer.decline": "괜찮아요",
+    "signin.linkOffer.stale": "{provider}을(를) 연결하려면 다시 로그인하세요.",
+    "signin.linkOffer.failed": "이 기기에서 {provider}을(를) 연결하지 못했습니다.",
     "signin.linkOffer.done": "{provider} 연결됨",
     "signin.linkOffer.conflictTitle": "{provider} 연결 안 됨",
     "signin.linkOffer.conflict": "이 {provider} 계정은 다른 Polaris Locker 계정에 속해 있어요. 로그인은 그대로 유지돼요.",

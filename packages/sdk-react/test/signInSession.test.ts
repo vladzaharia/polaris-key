@@ -533,3 +533,59 @@ describe("desktop: device code over the bridge, no new verb", () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe("bearer: the link offer's marker and handle (I-46.13)", () => {
+  const HANDLE_KEY = "pkey-link-handle:acme";
+  const handle = `${NOW} lh_Vi3oKcGS3HqS09Aj2lrrjYKeGlmwdbt8oEqR6x1M_zg`;
+
+  /** A device-code sign-in as `ps_device`, answered ready on the first poll. */
+  async function landByCode(
+    s: Server,
+    adapter: Awaited<ReturnType<typeof bearer>>,
+  ) {
+    const session = await adapter.signIn.start({ channel: "device-code" });
+    s.poll.push({ status: 200, body: { status: "ready", token: "pkeyt_d" } });
+    await session.wait({ once: true });
+  }
+
+  async function land(adapter: Awaited<ReturnType<typeof bearer>>) {
+    const session = await adapter.signIn.start({
+      channel: "redirect",
+      redirectUri: REDIRECT,
+    });
+    const state = new URL(session.authorizeUrl).searchParams.get("state")!;
+    return adapter.signIn.complete(callback(state));
+  }
+
+  it("a redirect sign-in leaves the offer pending; a device-code one does not", async () => {
+    const s = await server();
+    const adapter = await bearer(s);
+    expect(adapter.link!.pending()).toBe(false);
+    await landByCode(s, adapter);
+    expect(adapter.link!.pending()).toBe(false);
+    await land(adapter);
+    expect(adapter.link!.pending()).toBe(true);
+  });
+
+  it("a handle stays for the same account that lands again, and goes when another lands", async () => {
+    const s = await server();
+    const adapter = await bearer(s);
+    await land(adapter);
+    storage.setItem(HANDLE_KEY, handle);
+    await land(adapter);
+    expect(storage.getItem(HANDLE_KEY)).toBe(handle);
+    // Another account signs in (the device-code answer names ps_device): the handle was not its.
+    await landByCode(s, adapter);
+    expect(storage.getItem(HANDLE_KEY)).toBeNull();
+  });
+
+  it("sign-out drops the marker and the handle", async () => {
+    const s = await server();
+    const adapter = await bearer(s);
+    await land(adapter);
+    storage.setItem(HANDLE_KEY, handle);
+    await adapter.signOut().catch(() => undefined);
+    expect(adapter.link!.pending()).toBe(false);
+    expect(storage.getItem(HANDLE_KEY)).toBeNull();
+  });
+});

@@ -847,7 +847,11 @@ export function accountRows(c: KitCtx): ReactNode {
   }
   if (has("account.cloudSync")) {
     const state = input.cloudSync?.state;
-    const k = state ? `cloudSync.${state}` : "";
+    const k = state
+      ? state === "ring-changed"
+        ? "cloudSync.ringChanged"
+        : `cloudSync.${state}`
+      : "";
     pre.push(
       accountRow(
         "account.cloudSync",

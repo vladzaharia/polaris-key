@@ -1161,6 +1161,10 @@
     <!-- Link offer: declines; the device remembers it. -->
     <string name="signin_linkOffer_decline">No, grazie</string>
     <string name="signin_linkOffer_decline__macos">No, grazie</string>
+    <!-- Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_stale">Accedi di nuovo per collegare %1$s.</string>
+    <!-- Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_failed">Impossibile collegare %1$s su questo dispositivo.</string>
     <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_done">%1$s collegato</string>
     <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->

@@ -593,13 +593,15 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.other": "Use another account",
     "signin.linkOffer.title": "Sign in with {provider} next time?",
     "signin.linkOffer.bodyGlobal":
-      "Then {app} and other apps that use Polaris Locker can sign you in by themselves.",
+      "Then {app} and other apps that use Polaris Locker can sign you in automatically.",
     "signin.linkOffer.bodyDeveloper":
-      "Then apps from {developer} can sign you in by themselves.",
+      "Then apps from {developer} can sign you in automatically.",
     "signin.linkOffer.bodyApp":
-      "Then {app} and its developer's other apps can sign you in by themselves.",
+      "Then {app} and its developer's other apps can sign you in automatically.",
     "signin.linkOffer.primary": "Link {provider}",
     "signin.linkOffer.decline": "No thanks",
+    "signin.linkOffer.stale": "Sign in again to link {provider}.",
+    "signin.linkOffer.failed": "Couldn't link {provider} on this device.",
     "signin.linkOffer.done": "{provider} linked",
     "signin.linkOffer.conflictTitle": "{provider} not linked",
     "signin.linkOffer.conflict":
@@ -2396,6 +2398,10 @@ export const KIT_COPY: Readonly<
       "Dann können {app} und die anderen Apps des Entwicklers Sie selbstständig anmelden.",
     "signin.linkOffer.primary": "{provider} verknüpfen",
     "signin.linkOffer.decline": "Nein, danke",
+    "signin.linkOffer.stale":
+      "Melde dich erneut an, um {provider} zu verknüpfen.",
+    "signin.linkOffer.failed":
+      "{provider} konnte auf diesem Gerät nicht verknüpft werden.",
     "signin.linkOffer.done": "{provider} verknüpft",
     "signin.linkOffer.conflictTitle": "{provider} nicht verknüpft",
     "signin.linkOffer.conflict":
@@ -4263,6 +4269,9 @@ export const KIT_COPY: Readonly<
       "{app} et les autres apps de son développeur pourront alors vous connecter d’elles-mêmes.",
     "signin.linkOffer.primary": "Associer {provider}",
     "signin.linkOffer.decline": "Non merci",
+    "signin.linkOffer.stale": "Reconnectez-vous pour lier {provider}.",
+    "signin.linkOffer.failed":
+      "Impossible de lier {provider} sur cet appareil.",
     "signin.linkOffer.done": "{provider} associé",
     "signin.linkOffer.conflictTitle": "{provider} non associé",
     "signin.linkOffer.conflict":
@@ -6113,6 +6122,10 @@ export const KIT_COPY: Readonly<
       "Entonces {app} y las demás apps de su desarrollador podrán iniciar tu sesión solas.",
     "signin.linkOffer.primary": "Vincular {provider}",
     "signin.linkOffer.decline": "No, gracias",
+    "signin.linkOffer.stale":
+      "Inicia sesión de nuevo para vincular {provider}.",
+    "signin.linkOffer.failed":
+      "No se pudo vincular {provider} en este dispositivo.",
     "signin.linkOffer.done": "{provider} vinculado",
     "signin.linkOffer.conflictTitle": "{provider} no vinculado",
     "signin.linkOffer.conflict":
@@ -7964,6 +7977,9 @@ export const KIT_COPY: Readonly<
       "Assim, {app} e os outros apps do desenvolvedor poderão entrar por você.",
     "signin.linkOffer.primary": "Vincular {provider}",
     "signin.linkOffer.decline": "Agora não",
+    "signin.linkOffer.stale": "Entre de novo para vincular {provider}.",
+    "signin.linkOffer.failed":
+      "Não foi possível vincular {provider} neste dispositivo.",
     "signin.linkOffer.done": "{provider} vinculado",
     "signin.linkOffer.conflictTitle": "{provider} não vinculado",
     "signin.linkOffer.conflict":
@@ -9771,6 +9787,9 @@ export const KIT_COPY: Readonly<
       "Così {app} e le altre app dello sviluppatore potranno farti accedere da sole.",
     "signin.linkOffer.primary": "Collega {provider}",
     "signin.linkOffer.decline": "No, grazie",
+    "signin.linkOffer.stale": "Accedi di nuovo per collegare {provider}.",
+    "signin.linkOffer.failed":
+      "Impossibile collegare {provider} su questo dispositivo.",
     "signin.linkOffer.done": "{provider} collegato",
     "signin.linkOffer.conflictTitle": "{provider} non collegato",
     "signin.linkOffer.conflict":
@@ -11605,6 +11624,10 @@ export const KIT_COPY: Readonly<
       "{app} と開発元の他のアプリが、自動でサインインできるようになります。",
     "signin.linkOffer.primary": "{provider} を連携",
     "signin.linkOffer.decline": "今はしない",
+    "signin.linkOffer.stale":
+      "{provider} をリンクするには、もう一度サインインしてください。",
+    "signin.linkOffer.failed":
+      "このデバイスでは {provider} をリンクできませんでした。",
     "signin.linkOffer.done": "{provider} を連携しました",
     "signin.linkOffer.conflictTitle": "{provider} は連携されていません",
     "signin.linkOffer.conflict":
@@ -13437,6 +13460,9 @@ export const KIT_COPY: Readonly<
       "그러면 {app}과 개발자의 다른 앱이 자동으로 로그인해 줘요.",
     "signin.linkOffer.primary": "{provider} 연결",
     "signin.linkOffer.decline": "괜찮아요",
+    "signin.linkOffer.stale": "{provider}을(를) 연결하려면 다시 로그인하세요.",
+    "signin.linkOffer.failed":
+      "이 기기에서 {provider}을(를) 연결하지 못했습니다.",
     "signin.linkOffer.done": "{provider} 연결됨",
     "signin.linkOffer.conflictTitle": "{provider} 연결 안 됨",
     "signin.linkOffer.conflict":
@@ -15164,6 +15190,8 @@ export const KIT_COPY: Readonly<
       "之后 {app} 及其开发者的其他应用可以自动为你登录。",
     "signin.linkOffer.primary": "关联 {provider}",
     "signin.linkOffer.decline": "不用了",
+    "signin.linkOffer.stale": "请重新登录以关联 {provider}。",
+    "signin.linkOffer.failed": "无法在此设备上关联 {provider}。",
     "signin.linkOffer.done": "已关联 {provider}",
     "signin.linkOffer.conflictTitle": "未关联 {provider}",
     "signin.linkOffer.conflict":

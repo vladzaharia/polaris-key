@@ -57,7 +57,11 @@ import {
 import { reloadBundle, type CachedBundle } from "../offline.js";
 import type { ExchangeDiscovery } from "../discovery.js";
 import type { BrowserStore, TokenProvenance } from "./store.js";
-import type { ExchangeOptions, ExchangeOutcome } from "./exchange.js";
+import type {
+  ExchangeContext,
+  ExchangeOptions,
+  ExchangeOutcome,
+} from "./exchange.js";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import {
   HEADER_ARCH,
@@ -1279,14 +1283,8 @@ export class BearerSession {
     const { runExchange } = await import("./exchange.js");
     return runExchange(
       {
-        product: this.opts.product,
-        deviceId: this.deviceIdValue,
-        endpoints: this.opts.exchangeEndpoints?.() ?? null,
+        ...this.wire(),
         identityEnabled: this.opts.enabled("identity"),
-        headers: (extra) => this.headers(extra),
-        baseUrl: this.opts.baseUrl,
-        send: (url, init) => this.sendTo(url, init),
-        now: () => this.now(),
         accept: async (token, subject) => {
           if (opts.mayStore && !(await opts.mayStore()))
             throw Object.assign(new Error("the sign-in was abandoned."), {
@@ -1308,6 +1306,22 @@ export class BearerSession {
       port,
       opts,
     );
+  }
+
+  // ── The link offer (identity.link, WIRE-CONTRACT-V5 §12.11.4) ──────────────────────────────
+
+  /** What the exchange and the link calls (`link.ts`) share: the device, the product's endpoints and the
+   *  transport (no ambient credential, the request deadline). */
+  wire(): Omit<ExchangeContext, "identityEnabled" | "accept"> {
+    return {
+      product: this.opts.product,
+      deviceId: this.deviceIdValue,
+      endpoints: this.opts.exchangeEndpoints?.() ?? null,
+      baseUrl: this.opts.baseUrl,
+      headers: (extra) => this.headers(extra),
+      send: (url, init) => this.sendTo(url, init),
+      now: () => this.now(),
+    };
   }
 
   // ── The §5 single re-acquire ─────────────────────────────────────────────────────────────
@@ -2284,6 +2298,7 @@ export class BearerSession {
       fetchImpl: this.opts.fetchImpl,
       headers: (extra) => this.headers(extra),
       now: this.now(),
+      held: { token: this.token, baseUrl: this.opts.baseUrl },
     });
     if (answer.kind !== "token") return answer;
     await this.setToken(answer.accessToken, "signin");

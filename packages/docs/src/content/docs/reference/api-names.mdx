@@ -128,7 +128,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
 | `config.setting.on` | `config.setting.on` | planned (U-20) | `config.setting.on` | `config.setting.on` | `config.setting.on` | `changed` | `config.resolve` |
-| `config.setting.sync` | `config.setting.sync` | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-07) | planned (U-21) | `config.sync` |
+| `config.setting.sync` | `config.setting.sync` | `useSetting().sync` | planned (U-06) | `config.setting.sync` | planned (U-07) | planned (U-21) | `config.sync` |
 | `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | `config.listUserConfig` | `config.list_user_config` | — |
 | `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | `config.schemaVersion` | `config.schema_version` | — |
 | `config.fetchSchema` | `config.fetchSchema` | — | `config.fetch_schema` | `config.fetchSchema` | `config.fetchSchema` | `config.fetch_schema` | — |
@@ -223,10 +223,10 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `cloudSync.status` | `cloudSync.status` | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-07) | planned (U-21) | `sync.settings` |
-| `cloudSync.flush` | `cloudSync.flush` | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-07) | planned (U-21) | `sync.settings` |
+| `cloudSync.status` | `cloudSync.status` | `useCloudSync().status` | planned (U-06) | `cloudSync.status` | planned (U-07) | planned (U-21) | `sync.settings` |
+| `cloudSync.flush` | `cloudSync.flush` | `useCloudSync().flush` | planned (U-06) | `cloudSync.flush` | planned (U-07) | planned (U-21) | `sync.settings` |
 | `cloudSync.encryption` | `cloudSync.encryption` | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-07) | planned (U-21) | `sync.e2e` |
-| `cloudSync.event` | `events.on("cloudSync")` | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-07) | planned (U-21) | `sync.settings` |
+| `cloudSync.event` | `events.on("cloudSync")` | `useCloudSync().status` | planned (U-06) | `events` | planned (U-07) | planned (U-21) | `sync.settings` |
 | `cloudSync.saves` | reserved for U-22 | | | | | | `sync.saves` |
 | `cloudSync.collection` | reserved for U-23 | | | | | | `sync.saves` |
 

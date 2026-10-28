@@ -434,24 +434,31 @@ public struct CloudSyncStatusView: View {
     let screen: KitScreen<CloudSyncStatusState>
     let onUnlock: () -> Void
     let onReview: () -> Void
+    let onSignIn: (() -> Void)?
     @Environment(\.dynamicTypeSize) private var dynamicType
 
     public init(
         screen: KitScreen<CloudSyncStatusState>, onUnlock: @escaping () -> Void,
-        onReview: @escaping () -> Void
+        onReview: @escaping () -> Void, onSignIn: (() -> Void)? = nil
     ) {
         self.screen = screen
         self.onUnlock = onUnlock
         self.onReview = onReview
+        self.onSignIn = onSignIn
     }
 
     @MainActor public init(model: CloudSyncStatusModel) {
-        self.init(screen: model.screen, onUnlock: model.onUnlock, onReview: model.onReview)
+        self.init(
+            screen: model.screen, onUnlock: model.onUnlock, onReview: model.onReview,
+            onSignIn: model.onSignIn)
     }
 
     public var body: some View {
         if let state = screen.state, let line = screen.copy.first {
             let action: (CopyLine, () -> Void)? = {
+                if signedOut(line) {
+                    return onSignIn.flatMap { run in screen.line("cloudSync.signIn").map { ($0, run) } }
+                }
                 switch state {
                 case .locked: return screen.line("cloudSync.unlock").map { ($0, onUnlock) }
                 case .ringChanged: return screen.line("common.review").map { ($0, onReview) }
@@ -476,26 +483,73 @@ public struct CloudSyncStatusView: View {
         }
     }
 
-    private func glyph(_ state: CloudSyncStatusState) -> (String, Bool) {
+    /// A failed sync with nobody signed in is not a fault (ui-core: neutral tone, Sign in to sync).
+    private func signedOut(_ line: CopyLine) -> Bool { line.key == "cloudSync.signedOut" }
+
+    private enum Tone { case neutral, warning, danger }
+
+    /// The glyph and tone per state, as ui-core assigns them: locked, ring-changed and signed-out are
+    /// neutral, an error is danger, a conflict is the one warning.
+    private func glyph(_ state: CloudSyncStatusState, signedOut: Bool) -> (String, Tone) {
         switch state {
-        case .locked: return ("lock.fill", false)
-        case .synced: return ("checkmark.circle", false)
-        case .syncing: return ("arrow.triangle.2.circlepath", false)
-        case .offline: return ("icloud.slash", false)
-        case .ringChanged, .conflict: return ("exclamationmark.triangle", true)
-        case .error: return ("exclamationmark.circle", true)
+        case .locked: return ("lock.fill", .neutral)
+        case .synced: return ("checkmark.circle", .neutral)
+        case .syncing: return ("arrow.triangle.2.circlepath", .neutral)
+        case .offline: return ("icloud.slash", .neutral)
+        case .ringChanged: return ("exclamationmark.triangle", .neutral)
+        case .conflict: return ("exclamationmark.triangle", .warning)
+        case .error: return signedOut ? ("person.crop.circle", .neutral) : ("exclamationmark.circle", .danger)
         }
     }
 
     private func text(_ style: KitResolvedStyle, _ state: CloudSyncStatusState, _ line: CopyLine)
         -> some View
     {
-        let (name, attention) = glyph(state)
+        let (name, tone) = glyph(state, signedOut: signedOut(line))
+        let color: Color
+        switch tone {
+        case .neutral: color = style.palette.textMuted
+        case .warning: color = style.palette.warning
+        case .danger: color = style.palette.danger
+        }
         return HStack(alignment: .firstTextBaseline, spacing: style.space(.xs)) {
             Image(systemName: name)
-                .foregroundStyle(attention ? style.palette.warning : style.palette.textMuted)
+                .foregroundStyle(color)
                 .accessibilityHidden(true)
             KitText(line, .body)
+        }
+    }
+}
+
+/// The settings host's Cloud Sync section (Q-7): the status row, and the screen in front of it. The
+/// row follows `client.cloudSync`; Unlock, Review and Start over switch screens, and "New recovery
+/// code" is `model.requestNewRecoveryCode()`.
+public struct CloudSyncKitView: View {
+    @Bindable var host: CloudSyncKitHostModel
+
+    public init(host: CloudSyncKitHostModel) { self.host = host }
+
+    public var body: some View {
+        Group {
+            if let row = host.status { CloudSyncStatusView(model: row) }
+        }
+        .task {
+            await host.start()
+        }
+        .onDisappear { host.stop() }
+        .sheet(
+            isPresented: Binding(
+                get: { host.screen != nil }, set: { if !$0 { host.dismiss() } })
+        ) {
+            Group {
+            switch host.screen {
+            case .unlock: if let m = host.unlockModel { UnlockSyncView(model: m) }
+            case .ringChange: if let m = host.ringModel { RingChangeView(model: m) }
+            case .recoveryCode: if let m = host.recoveryModel { RecoveryCodeView(model: m) }
+            case nil: EmptyView()
+            }
+            }
+            .interactiveDismissDisabled(host.unlockModel?.minting == true || host.screen == .recoveryCode)
         }
     }
 }

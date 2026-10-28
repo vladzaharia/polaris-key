@@ -3103,17 +3103,17 @@ msgstr "Utiliser un autre compte"
 msgid "signin.linkOffer.title"
 msgstr "Se connecter avec {provider} la prochaine fois ?"
 
-#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
+#. Then {app} and other apps that use Polaris Locker can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyGlobal"
 msgstr "{app} et les autres apps qui utilisent Polaris Locker pourront alors vous connecter d’elles-mêmes."
 
-#. Then apps from {developer} can sign you in by themselves.
+#. Then apps from {developer} can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.linkOffer.bodyDeveloper"
 msgstr "Les apps de {developer} pourront alors vous connecter d’elles-mêmes."
 
-#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Then {app} and its developer's other apps can sign you in automatically.
 #. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyApp"
 msgstr "{app} et les autres apps de son développeur pourront alors vous connecter d’elles-mêmes."
@@ -3132,6 +3132,16 @@ msgstr "Non merci"
 msgctxt "macos"
 msgid "signin.linkOffer.decline"
 msgstr "Non merci"
+
+#. Sign in again to link {provider}.
+#. Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.stale"
+msgstr "Reconnectez-vous pour lier {provider}."
+
+#. Couldn't link {provider} on this device.
+#. Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.failed"
+msgstr "Impossible de lier {provider} sur cet appareil."
 
 #. {provider} linked
 #. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).

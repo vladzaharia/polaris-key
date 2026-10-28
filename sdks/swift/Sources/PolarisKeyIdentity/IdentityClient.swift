@@ -266,6 +266,32 @@ public final class IdentityClient: Sendable {
         }
     }
 
+    /// Hold the incoming person's subject BEFORE their token is installed, so a Cloud Sync request bound
+    /// to the previous person is dropped by the host's person check instead of going out under the new
+    /// token (HOST-BIND). Quiet: the change is announced by `announceSubject` once the token is in.
+    /// Returns the subject held before.
+    func holdSubjectFirst(_ subject: String?) -> String? {
+        subjectValue.with { held -> String? in
+            let old = held
+            if let subject { held = subject }
+            return old
+        }
+    }
+
+    /// The token could not be installed: the previous subject is back, and nothing was announced.
+    func restoreSubject(_ previous: String?, ifHeld subject: String?) {
+        guard subject != nil else { return }
+        subjectValue.with { held in if held == subject { held = previous } }
+    }
+
+    /// Say the subject changed (the sign-in is complete) when it differs from the one held before.
+    func announceSubject(_ subject: String?, previous: String?) {
+        if previous != subject {
+            notifyIdentity(
+                IdentityChange(kind: IdentityChange.subjectChanged, subject: subject, previous: previous))
+        }
+    }
+
     /// `seconds` as `Task.sleep`'s nanoseconds, clamped first: `UInt64(seconds * 1e9)` traps on a
     /// negative, non-finite or huge value.
     static func sleepNanoseconds(_ seconds: Double) -> UInt64 {
@@ -378,10 +404,13 @@ public final class IdentityClient: Sendable {
             guard let token = body?.token, !token.isEmpty else {
                 return .error(message: "ready without a token.")
             }
-            try await core.setToken(token, source: .signin, person: true)
-            await onAcquired?()
             let subject = body?.subject.flatMap { $0.isEmpty ? nil : $0 }
-            if let subject { subjectValue.set(subject) }
+            let previous = holdSubjectFirst(subject)
+            do { try await core.setToken(token, source: .signin, person: true) } catch {
+                restoreSubject(previous, ifHeld: subject)
+                throw error
+            }
+            await onAcquired?()
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
             return .ready(
                 SignInReady(identity: body?.identity, attached: body?.attached, subject: subject))

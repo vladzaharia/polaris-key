@@ -503,6 +503,8 @@
     "signin.linkOffer.bodyApp": "{app} と開発元の他のアプリが、自動でサインインできるようになります。",
     "signin.linkOffer.primary": "{provider} を連携",
     "signin.linkOffer.decline": "今はしない",
+    "signin.linkOffer.stale": "{provider} をリンクするには、もう一度サインインしてください。",
+    "signin.linkOffer.failed": "このデバイスでは {provider} をリンクできませんでした。",
     "signin.linkOffer.done": "{provider} を連携しました",
     "signin.linkOffer.conflictTitle": "{provider} は連携されていません",
     "signin.linkOffer.conflict": "この {provider} アカウントは、別の Polaris Locker アカウントのものです。サインインはそのままです。",

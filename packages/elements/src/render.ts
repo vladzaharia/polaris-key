@@ -42,6 +42,18 @@ export interface RenderCtx {
   shape?: "landscape" | "portrait" | "short";
   /** The window is wider than a docked sheet (35 rem). */
   wide?: boolean;
+  /** The recovery code the host handed RecoveryCode: held by the element, in no input or view. */
+  code?: string;
+  /** RecoveryCode: Copy code was pressed in the last two seconds (the label says "Copied"). */
+  copied?: boolean;
+  /** RecoveryCode: the code was copied; the element shows "Copied" for two seconds. */
+  markCopied?: () => void;
+  /** UnlockSync's Start over confirm ignores presses until it has been on screen a moment, so a
+   *  double-click on Start over cannot also confirm it. `undefined` outside that step. */
+  armed?: boolean;
+  /** The host actions this page answers (`handles`): a control that only a host can act on
+   *  (Unlock sync, Review, Use recovery code) is drawn when it is named. */
+  handles?: readonly string[];
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */
@@ -615,6 +627,20 @@ export function successMark(): TemplateResult {
   </div>`;
 }
 
+/** Google's own "G", unmodified, above the link offer's title: the offer is about Google, so the
+ *  step names it before the words do. Decorative: the title says it. */
+export function providerMark(): TemplateResult {
+  return html`<div
+    class="provider-mark"
+    part="provider-mark"
+    aria-hidden="true"
+  >
+    <svg viewBox="0 0 ${GOOGLE_G_GRID} ${GOOGLE_G_GRID}" focusable="false">
+      ${GOOGLE_G_PATHS.map((p) => svg`<path fill=${p.fill} d=${p.d} />`)}
+    </svg>
+  </div>`;
+}
+
 /** LoadingIndicator: the 2 px shimmer along the container's top edge (§1.5 rule 4). */
 export function shimmer(): TemplateResult {
   return html`<div
@@ -897,7 +923,13 @@ export function links(
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   return html`<div class="links" part="links" data-part="links">
-    ${keys.map((k) => button(c, k, "link"))}
+    ${keys.map((k) =>
+      button(c, k, "link", {
+        disabled:
+          k === "signin.linkOffer.decline" &&
+          c.input.signIn?.redeeming === true,
+      }),
+    )}
   </div>`;
 }
 

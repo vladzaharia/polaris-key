@@ -1,4 +1,4 @@
-// @pkey-feature core.discover core.sync core.cache license.activate license.enroll
+// @pkey-feature core.discover core.sync sync.settings core.cache license.activate license.enroll
 // @pkey-feature core.presentation
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
@@ -10,7 +10,7 @@
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 // @pkey-feature connect.relay
-// @pkey-feature identity.exchange sync.keyring
+// @pkey-feature identity.exchange sync.keyring sync.settings
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -91,6 +91,12 @@ final class ReplaySession: @unchecked Sendable {
     var firstRingId: String?
     /// The key ring's own device keys and root store: memory only, nothing touches the Keychain.
     var ringKeys: DeviceKeyStore?
+    /// Cloud Sync's replay memory (U-07.9): the last pull's ETag and the next mutation id.
+    var syncEtag = ""
+    var syncNextId = 1
+    var tap: HeaderTap?
+    /// The host codec over a fixture root of its own (`cloudsync-e2e-settings`): not the recorder's.
+    var codec: FixtureCodec?
 }
 
 /// The fixture device keys of a label (format.ts, `connectIdentity`) as a key port: the Ed25519 seed is
@@ -142,6 +148,12 @@ enum SwiftReplay {
     ) async throws -> [String: JSONValue] {
         var out: [String: JSONValue] = [:]
         switch step.action {
+        case "cloudSyncPull", "cloudSyncPush":
+            guard let server else { throw ReplayError("cloudSync without a replay server") }
+            try await CloudSyncReplay.run(client, step: step, session: session, server: server, into: &out)
+        case "browser" where await server?.transcript.id == "cloudsync-cors":
+            guard let server else { throw ReplayError("browser without a replay server") }
+            await CloudSyncReplay.cors(client, step: step, server: server)
         case "browser":
             // The browser's half is the recording's; the SDK's half is the authorize URL it
             // builds for the request the Worker answered with a 303 to the card.
@@ -903,15 +915,19 @@ enum SwiftReplay {
                 CacheRecord(feeds: cache.feeds ?? [:], releaseRecords: cache.releaseRecords ?? [:]))
         }
         // The redirect conversations ride a product that runs Identity (their discovery names it).
-        let redirects = t.steps.contains { ["browser", "redirectComplete"].contains($0.action) }
+        // (`cloudsync-cors`' `browser` steps are plain requests, not a redirect sign-in.)
+        let redirects =
+            t.id != "cloudsync-cors"
+            && t.steps.contains { ["browser", "redirectComplete"].contains($0.action) }
         let services =
             t.initial.services
             ?? (u != nil
                 ? ["release", "distribution", "update"] : (redirects ? ["license", "config", "identity"] : nil))
+        let tap = HeaderTap(ReplayTransport(server: server))
         let core = CoreOptions(
             productSlug: t.product, baseUrl: t.baseUrl,
             version: u?.installed.version ?? t.initial.version,
-            pinnedKeys: t.trust, store: store, transport: ReplayTransport(server: server),
+            pinnedKeys: t.trust, store: store, transport: tap,
             requestTimeoutSeconds: 0,
             expectedServices: services?.compactMap(ServiceSlug.init(rawValue:)),
             clock: { clock.now },
@@ -942,6 +958,8 @@ enum SwiftReplay {
         }
         session.platform = t.initial.platform
         session.steps = t.steps
+        session.tap = tap
+        if t.id == "cloudsync-e2e-settings" { session.codec = FixtureCodec(CloudSyncReplay.root) }
         for i in t.steps.indices {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
@@ -982,6 +1000,11 @@ final class TranscriptTests: XCTestCase {
         // Printed so a run shows which conversations Swift is held to today.
         print("transcripts replayed by Swift: \(replayed.joined(separator: ", "))")
         XCTAssertFalse(replayed.isEmpty)
+        // The Cloud Sync conversations are required, not optional: a regression in the manifest or the
+        // replayer must not quietly drop them.
+        let cloud = try transcripts().filter { $0.id.hasPrefix("cloudsync-") }.map(\.id)
+        XCTAssertFalse(cloud.isEmpty)
+        for id in cloud { XCTAssertTrue(replayed.contains(id), "\(id) was not replayed") }
     }
 
     // ── The replayer fails on a doctored transcript ────────────────────────────────────

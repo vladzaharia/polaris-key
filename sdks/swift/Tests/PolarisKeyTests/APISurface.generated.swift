@@ -28,6 +28,7 @@ func apiSurface() async {
     _ = ConfigSetting.set  // config.setting.set
     _ = ConfigSetting.clear  // config.setting.clear
     _ = ConfigSetting.on  // config.setting.on
+    _ = ConfigSetting.sync  // config.setting.sync
     _ = LicenseClient.activateWithKey  // license.activateWithKey
     _ = EntitlementsClient.has  // entitlements.has
     _ = EntitlementsClient.value  // entitlements.value
@@ -48,6 +49,9 @@ func apiSurface() async {
     _ = IdentityClient.attach  // identity.attachLicense
     _ = IdentityClient.openAccount  // identity.openAccount
     _ = \PolarisKeyClient.events  // events
+    _ = CloudSyncClient.status  // cloudSync.status
+    _ = CloudSyncClient.flush  // cloudSync.flush
+    _ = \PolarisKeyClient.events  // cloudSync.event
     _ = PolarisKeyClient.discover  // client.discover
     _ = \PolarisKeyClient.presentation  // client.presentation
     _ = PolarisKeyClient.presentationIcon  // client.presentationIcon

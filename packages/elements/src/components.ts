@@ -20,6 +20,8 @@ import {
   type GateSnapshot,
   type GateStep,
 } from "./drive.js";
+import type { AutoOutcome, SignInPrimitives } from "@polaris-key/ui-core";
+import { linkOfferOutcome, primitivesOf } from "./auto.js";
 import { PkElement, type PkActionDetail } from "./element.js";
 import { TAGS } from "./layout.js";
 import { actionOf, text, type RenderCtx } from "./render.js";
@@ -67,7 +69,7 @@ export class PkGate extends PkElement {
   /** The one config object, as the attribute's JSON or an object (`product` is required). */
   config?: string | GateConfig;
   /** Host actions this page answers: `trial`, `restore`, `continue-free`, `renew`. */
-  handles?: string;
+  override handles?: string;
   /** Embedding and test seams: a built client, or the fetch and navigation the client uses. */
   seams?: GateSeams;
   /** `off` turns automatic sign-in off: no ladder at boot, Welcome opens the hosted sign-in. */
@@ -82,6 +84,12 @@ export class PkGate extends PkElement {
       .toLowerCase();
     return v !== "off" && v !== "false";
   }
+  /** The link offer after a redirect sign-in (identity.link): what to show, once per page. */
+  private linkSeed: AutoOutcome | null = null;
+  /** The link sheet is closed and only its toast shows. */
+  private linkClosing = false;
+  private linkChecked = false;
+  private linkPrims: SignInPrimitives | null = null;
   private reported: string | null = null;
   private lastStep: GateStep = "home";
 
@@ -171,6 +179,40 @@ export class PkGate extends PkElement {
     }
     super.willUpdate(changed);
   }
+
+  /** After a redirect sign-in landed and the app runs: ask for the link offer, once. */
+  private checkLink(): void {
+    const a = this.driven ? this.binding.driver?.adapter : null;
+    if (!a || this.linkChecked || !a.link?.pending()) return;
+    const state = this.view.state;
+    if (state !== "licensed" && state !== "grace") return;
+    this.linkChecked = true;
+    void linkOfferOutcome(a).then((seed) => {
+      if (!seed || !this.isConnected) return;
+      // "Sign in again" on a stale offer is the gate's own sign-in.
+      this.linkPrims = primitivesOf(
+        a,
+        () => void a.signInWithOidc().catch(() => undefined),
+        () => false,
+      );
+      this.linkSeed = seed;
+      this.requestUpdate();
+    });
+  }
+
+  private onLinkClose = (e?: Event): void => {
+    void this.binding.driver?.adapter.link?.dismiss();
+    // A line the sheet leaves behind ("Google linked") needs the element a few seconds more.
+    if ((e as CustomEvent<{ toast?: boolean }> | undefined)?.detail?.toast) {
+      this.linkClosing = true;
+      setTimeout(() => {
+        this.linkSeed = null;
+        this.linkClosing = false;
+        this.requestUpdate();
+      }, 6000);
+    } else this.linkSeed = null;
+    this.requestUpdate();
+  };
 
   /** The in-app form's own controls and fields belong to the form, not to the gate's driver. */
   private fromForm(e: Event): boolean {
@@ -278,7 +320,20 @@ export class PkGate extends PkElement {
   protected override renderProjected(view: View): unknown {
     if (view.state !== "licensed" && view.state !== "grace") return nothing;
     const offer = this.driven ? this.snapshot?.updateInput : null;
-    return html`<slot></slot>${offer
+    const link =
+      this.linkSeed && this.linkPrims
+        ? html`<pk-sign-in
+            presentation="sheet"
+            replace="inline"
+            .open=${!this.linkClosing}
+            .primitives=${this.linkPrims}
+            .seed=${this.linkSeed}
+            .input=${{ provider: "Google" }}
+            .theme=${this.options}
+            @pk-close=${this.onLinkClose}
+          ></pk-sign-in>`
+        : nothing;
+    return html`<slot></slot>${link}${offer
         ? html`<pk-update-prompt
             .input=${offer}
             .theme=${this.options}
@@ -347,6 +402,8 @@ export class PkGate extends PkElement {
    *  control that opened the step. */
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
+    // After the draw, so the view read is the one on screen (a phone's single update).
+    this.checkLink();
     this.focusApp();
     const step = this.driven ? this.step : "home";
     if (step === this.lastStep) return;

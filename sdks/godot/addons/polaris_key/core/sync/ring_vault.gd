@@ -41,7 +41,7 @@ var _mem_pin := PackedByteArray()
 var _mem_root := PackedByteArray()
 
 
-## `root_dir` must be under `user://`. `p_sealer` null picks the platform's when its lane is present
+## `root_dir` must be under `user://` or the no-backup directory (PKeyBackupExclusion). `p_sealer` null picks the platform's when its lane is present
 ## (not in a memory store, a plain-file store, or when PKEY_DESKTOP_KEYRING=0).
 func _init(p_product: String, root_dir := "user://pkey", memory := false, encrypted := true, p_sealer: PKeyRecordSealer = null) -> void:
 	product = p_product
@@ -49,7 +49,7 @@ func _init(p_product: String, root_dir := "user://pkey", memory := false, encryp
 	_memory = memory
 	_encrypted = encrypted
 	var name_ok := RegEx.create_from_string("\\A[A-Za-z0-9][A-Za-z0-9@._-]{0,127}\\z").search(p_product) != null
-	_root_ok = name_ok and not p_product.contains("..") and root_dir.begins_with("user://") and not root_dir.contains("..")
+	_root_ok = name_ok and not p_product.contains("..") and PKeyBackupExclusion.is_private_root(root_dir)
 	if not memory and encrypted and _root_ok:
 		sealer = p_sealer
 		if sealer == null and OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
@@ -230,6 +230,7 @@ func _write_file(file: String, bytes: PackedByteArray, encrypt: bool) -> PKeyRes
 	var unix := OS.has_feature("macos") or OS.has_feature("linuxbsd")
 	if unix:
 		FileAccess.set_unix_permissions(dir, _OWNER_RWX)
+	PKeyBackupExclusion.exclude(dir)
 	var tmp_name := "%s.tmp-%s" % [file, Crypto.new().generate_random_bytes(6).hex_encode()]
 	var tmp := dir.path_join(tmp_name)
 	var f: FileAccess

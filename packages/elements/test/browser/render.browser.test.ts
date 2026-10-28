@@ -47,6 +47,7 @@ const FAMILIES = [
   "update",
   "settings",
   "paywall",
+  "cloudSync",
 ] as const;
 
 const defaults = (
@@ -102,6 +103,9 @@ const SIZES = [
 ] as const;
 const SCHEMES = ["dark", "light"] as const;
 
+/** The recovery code the host hands RecoveryCode: a property, never in the input (U-42.2). */
+const RECOVERY_CODE = "K7QF-2M9D-XR4T-8WHB-3JNC-6PEZ-V5GD-HT0S";
+
 beforeAll(async () => {
   fixtureTheme(__PKEY_FONTS__);
 });
@@ -121,6 +125,9 @@ async function mount(
   el.colorScheme = scheme;
   // A screen that owns the window (the React kit's `fill`) takes focus on a cold start (DL9).
   el.fill = fill;
+  // The recovery code reaches RecoveryCode as a property, never in the input (U-42.2).
+  if (row.expect.component === "RecoveryCode") el.code = RECOVERY_CODE;
+  el.handles = "unlock review use-code";
   el.input = { elapsedMs: 60_000, ...withDefaults(row.input), ...extras(row) };
   el.style.minBlockSize = `${height}px`;
   el.style.display = "grid";
@@ -412,5 +419,103 @@ describe("the sign-in form (SIGN-IN.md §3.17, §3.18)", () => {
     const el = await stepChange();
     expect(el.view.state).toBe("handoff");
     expect(el.shadowRoot!.getAnimations()).toEqual([]);
+  });
+});
+
+describe("the recovery code (U-42.2)", () => {
+  afterEach(() => {
+    document.documentElement.style.fontSize = "";
+  });
+  const row = () =>
+    SCENES.find(
+      (r) => r.expect.component === "RecoveryCode" && r.expect.state === "show",
+    )!;
+  /** The code's groups, the number of rows they fall in, and whether any wraps inside itself. */
+  const layoutOf = (el: PkElement) => {
+    const g = [
+      ...el.shadowRoot!.querySelectorAll<HTMLElement>(".recovery-groups .g"),
+    ];
+    const rects = g.map((n) => n.getBoundingClientRect());
+    return {
+      count: g.length,
+      rows: new Set(rects.map((r) => Math.round(r.top))).size,
+      wrapped: g.some(
+        (n, i) =>
+          rects[i]!.height > parseFloat(getComputedStyle(n).lineHeight) * 1.5,
+      ),
+    };
+  };
+
+  it("is eight groups of four, four to a row on a phone, and never breaks inside a group", async () => {
+    await page.viewport(390, 844);
+    const el = await mount(row(), "dark", 844);
+    expect(layoutOf(el)).toEqual({ count: 8, rows: 2, wrapped: false });
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
+  });
+
+  it("goes two to a row at large text, with no group broken and no sideways scroll", async () => {
+    await page.viewport(390, 844);
+    document.documentElement.style.fontSize = "200%";
+    const el = await mount(row(), "light", 844);
+    expect(layoutOf(el)).toEqual({ count: 8, rows: 4, wrapped: false });
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
+  });
+
+  it("is an image with the code spelled out in Chromium's accessibility tree", async () => {
+    await page.viewport(390, 844);
+    await mount(row(), "dark", 844);
+    const image = page.getByRole("img", { name: /Recovery code/ });
+    await expect.element(image).toBeVisible();
+    const label = (await image.element().getAttribute("aria-label")) ?? "";
+    expect(label).toContain("K 7 Q F, 2 M 9 D, X R 4 T, 8 W H B");
+  });
+
+  it("every control on the three screens is at least 24 px", async () => {
+    await page.viewport(390, 844);
+    for (const [component, state] of [
+      ["UnlockSync", "code"],
+      ["UnlockSync", "no-code"],
+      ["UnlockSync", "start-over"],
+      ["RingChange", "failed"],
+      ["RecoveryCode", "saved"],
+      ["RingChange", "confirm"],
+    ] as const) {
+      const r = SCENES.find(
+        (x) => x.expect.component === component && x.expect.state === state,
+      )!;
+      const el = await mount(r, "dark", 844);
+      for (const c of el.shadowRoot!.querySelectorAll<HTMLElement>(
+        "button, input, label.check-row",
+      )) {
+        const b = c.getBoundingClientRect();
+        expect(
+          b.width,
+          `${component}.${state} ${c.tagName} width`,
+        ).toBeGreaterThanOrEqual(24);
+        expect(
+          b.height,
+          `${component}.${state} ${c.tagName} height`,
+        ).toBeGreaterThanOrEqual(24);
+      }
+    }
+  });
+
+  it("UnlockSync focuses its field, the Start over warning focuses Cancel, RecoveryCode the heading", async () => {
+    await page.viewport(1440, 900);
+    const focused = async (c: string, s: string) => {
+      const r = SCENES.find(
+        (x) => x.expect.component === c && x.expect.state === s,
+      )!;
+      const el = await mount(r, "dark", 900, true);
+      await new Promise((res) => setTimeout(res, 50));
+      return el.shadowRoot!.activeElement as HTMLElement | null;
+    };
+    expect((await focused("UnlockSync", "code"))?.dataset.key).toBe(
+      "unlockSync.field",
+    );
+    expect((await focused("UnlockSync", "start-over"))?.dataset.key).toBe(
+      "common.cancel",
+    );
+    expect((await focused("RecoveryCode", "show"))?.tagName).toBe("H1");
   });
 });

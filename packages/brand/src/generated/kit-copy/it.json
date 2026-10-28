@@ -496,6 +496,8 @@
   "signin.linkOffer.bodyApp": "Così {app} e le altre app dello sviluppatore potranno farti accedere da sole.",
   "signin.linkOffer.primary": "Collega {provider}",
   "signin.linkOffer.decline": "No, grazie",
+  "signin.linkOffer.stale": "Accedi di nuovo per collegare {provider}.",
+  "signin.linkOffer.failed": "Impossibile collegare {provider} su questo dispositivo.",
   "signin.linkOffer.done": "{provider} collegato",
   "signin.linkOffer.conflictTitle": "{provider} non collegato",
   "signin.linkOffer.conflict": "Questo account {provider} appartiene a un altro account Polaris Locker. Hai ancora effettuato l’accesso.",

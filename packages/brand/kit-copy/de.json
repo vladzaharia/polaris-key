@@ -503,6 +503,8 @@
     "signin.linkOffer.bodyApp": "Dann können {app} und die anderen Apps des Entwicklers Sie selbstständig anmelden.",
     "signin.linkOffer.primary": "{provider} verknüpfen",
     "signin.linkOffer.decline": "Nein, danke",
+    "signin.linkOffer.stale": "Melde dich erneut an, um {provider} zu verknüpfen.",
+    "signin.linkOffer.failed": "{provider} konnte auf diesem Gerät nicht verknüpft werden.",
     "signin.linkOffer.done": "{provider} verknüpft",
     "signin.linkOffer.conflictTitle": "{provider} nicht verknüpft",
     "signin.linkOffer.conflict": "Dieses {provider}-Konto gehört zu einem anderen Konto bei Polaris Locker. Sie bleiben angemeldet.",

@@ -147,12 +147,12 @@ def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, An
             "signin.linkOffer.primary",
         )
     if step == "link-done":
-        return view("link-done", ["signin.linkOffer.done", "common.continue"], "common.continue")
+        return view("link-done", ["signin.linkOffer.done", "common.done"], "common.done")
     if step == "link-conflict":
         return view(
             "link-conflict",
-            ["signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.continue"],
-            "common.continue",
+            ["signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.done"],
+            "common.done",
             "neutral",
         )
     if step == "nearby-prompt":

@@ -1142,16 +1142,20 @@
     <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_title">Sign in with %1$s next time?</string>
     <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_linkOffer_bodyGlobal">Then %1$s and other apps that use Polaris Locker can sign you in by themselves.</string>
+    <string name="signin_linkOffer_bodyGlobal">Then %1$s and other apps that use Polaris Locker can sign you in automatically.</string>
     <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_linkOffer_bodyDeveloper">Then apps from %1$s can sign you in by themselves.</string>
+    <string name="signin_linkOffer_bodyDeveloper">Then apps from %1$s can sign you in automatically.</string>
     <!-- Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_linkOffer_bodyApp">Then %1$s and its developer's other apps can sign you in by themselves.</string>
+    <string name="signin_linkOffer_bodyApp">Then %1$s and its developer's other apps can sign you in automatically.</string>
     <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_primary">Link %1$s</string>
     <!-- Link offer: declines; the device remembers it. -->
     <string name="signin_linkOffer_decline">No thanks</string>
     <string name="signin_linkOffer_decline__macos">No Thanks</string>
+    <!-- Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_stale">Sign in again to link %1$s.</string>
+    <!-- Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_failed">Couldn't link %1$s on this device.</string>
     <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_done">%1$s linked</string>
     <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->

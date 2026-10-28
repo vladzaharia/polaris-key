@@ -140,7 +140,7 @@ export interface ExchangeContext {
   now(): number;
 }
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
+export const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Define `value` on `target` as a member a spread, a JSON stringify or a console dump skips. */
@@ -159,12 +159,13 @@ export function hidden<T extends object>(
 }
 
 const b64u = (bytes: Uint8Array): string => {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 };
 
-async function sha256Base64Url(text: string): Promise<string> {
+export async function sha256Base64Url(text: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(text),
@@ -172,7 +173,7 @@ async function sha256Base64Url(text: string): Promise<string> {
   return b64u(new Uint8Array(digest));
 }
 
-async function readJson(res: Response): Promise<unknown> {
+export async function readJson(res: Response): Promise<unknown> {
   return res
     .text()
     .then((t) => JSON.parse(t) as unknown)
@@ -190,7 +191,7 @@ function retryAfterOf(res: Response, body: unknown): number | undefined {
 }
 
 /** A refusal as a typed error. The message names the step and the wire code, never a secret. */
-function refusal(
+export function refusal(
   step: string,
   res: Response,
   body: unknown,
@@ -219,8 +220,8 @@ function refusal(
   );
 }
 
-async function post(
-  ctx: ExchangeContext,
+export async function post(
+  ctx: Pick<ExchangeContext, "headers" | "send">,
   url: string,
   contentType: string,
   body: string,
@@ -238,7 +239,7 @@ async function post(
   }
 }
 
-function sameOrigin(base: string, endpoint: string): boolean {
+export function sameOrigin(base: string, endpoint: string): boolean {
   try {
     return (
       isSecureTransportUrl(endpoint) &&
@@ -274,6 +275,32 @@ function consentViewOf(v: unknown): ExchangeConsentView | null {
   return v as unknown as ExchangeConsentView;
 }
 
+/** `POST nonce` for this device's keys: the nonce, or `null` on 404 (the product without the
+ *  service). Any other refusal throws, naming `step`. Shared with the link offer. */
+export async function requestNonce(
+  ctx: Pick<ExchangeContext, "headers" | "send">,
+  endpoint: string,
+  keys: { signKey: string; agreeKey: string },
+  step: string,
+): Promise<string | null> {
+  const res = await post(
+    ctx,
+    endpoint,
+    "application/json",
+    JSON.stringify({ signKey: keys.signKey, agreeKey: keys.agreeKey }),
+  );
+  const body = await readJson(res);
+  if (res.status === 404) return null;
+  if (res.status !== 200) throw refusal(`${step} nonce request`, res, body);
+  const nonce = isRecord(body) ? body.nonce : undefined;
+  if (
+    typeof nonce !== "string" ||
+    !new RegExp(EXCHANGE_NONCE_PATTERN).test(nonce)
+  )
+    throw refusal(`${step} nonce request`, res, body, true);
+  return nonce;
+}
+
 /** Run one exchange attempt: one nonce, one provider token, one token request. */
 export async function runExchange(
   ctx: ExchangeContext,
@@ -305,22 +332,8 @@ export async function runExchange(
   }
 
   // The nonce. A 404 is the product without the service.
-  const nonceRes = await post(
-    ctx,
-    found.nonceEndpoint,
-    "application/json",
-    JSON.stringify({ signKey: keys.signKey, agreeKey: keys.agreeKey }),
-  );
-  const nonceBody = await readJson(nonceRes);
-  if (nonceRes.status === 404) return unavailable("product");
-  if (nonceRes.status !== 200)
-    throw refusal("sign-in nonce request", nonceRes, nonceBody);
-  const nonce = isRecord(nonceBody) ? nonceBody.nonce : undefined;
-  if (
-    typeof nonce !== "string" ||
-    !new RegExp(EXCHANGE_NONCE_PATTERN).test(nonce)
-  )
-    throw refusal("sign-in nonce request", nonceRes, nonceBody, true);
+  const nonce = await requestNonce(ctx, found.nonceEndpoint, keys, "sign-in");
+  if (nonce === null) return unavailable("product");
 
   // The provider signs the nonce into its token. This attempt's nonce goes nowhere else.
   const subjectToken = await opts.subjectToken(nonce);

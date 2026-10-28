@@ -3085,17 +3085,17 @@ msgstr "別のアカウントを使う"
 msgid "signin.linkOffer.title"
 msgstr "次回から {provider} でサインインしますか？"
 
-#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
+#. Then {app} and other apps that use Polaris Locker can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyGlobal"
 msgstr "{app} など Polaris Locker を使うアプリが、自動でサインインできるようになります。"
 
-#. Then apps from {developer} can sign you in by themselves.
+#. Then apps from {developer} can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.linkOffer.bodyDeveloper"
 msgstr "{developer} のアプリが、自動でサインインできるようになります。"
 
-#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Then {app} and its developer's other apps can sign you in automatically.
 #. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyApp"
 msgstr "{app} と開発元の他のアプリが、自動でサインインできるようになります。"
@@ -3114,6 +3114,16 @@ msgstr "今はしない"
 msgctxt "macos"
 msgid "signin.linkOffer.decline"
 msgstr "今はしない"
+
+#. Sign in again to link {provider}.
+#. Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.stale"
+msgstr "{provider} をリンクするには、もう一度サインインしてください。"
+
+#. Couldn't link {provider} on this device.
+#. Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.failed"
+msgstr "このデバイスでは {provider} をリンクできませんでした。"
 
 #. {provider} linked
 #. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).

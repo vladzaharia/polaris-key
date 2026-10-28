@@ -35,6 +35,7 @@ import im.plrs.key.core.PolarisException
 import im.plrs.key.core.ReacquireFn
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.stringValue
+import im.plrs.key.core.sync.CallResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -62,7 +63,13 @@ public data class ConfigClientOptions @JvmOverloads constructor(
 )
 
 /** One change to a key's effective value (`ConfigClient.changes`). */
-public data class ConfigChange(val key: String, val value: JsonElement?, val source: ConfigSource)
+public data class ConfigChange(
+    val key: String,
+    val value: JsonElement?,
+    val source: ConfigSource,
+    /** What moved it: `local` (this device's `set`/`clear`, a new document), or a Cloud Sync `remote`, `merge` or `migration`. */
+    val origin: String = "local",
+)
 
 /**
  * @param reacquire the §5 single re-acquire an edge-mint 401 gets: the facade's one closure, the
@@ -173,6 +180,9 @@ public class ConfigClient(
 
     private suspend fun doc(): ConfigDoc? = core.cache().config?.doc
 
+    /** The signed document's entries, for Cloud Sync's machine. */
+    internal suspend fun documentEntries(): Map<String, im.plrs.key.core.ManagedEntry> = doc()?.config ?: emptyMap()
+
     /** Whether the product runs Config at all: the config-side twin of the gate's `not-applicable`. */
     public suspend fun isEnabled(): Boolean = core.enabled(ServiceSlug.config)
 
@@ -194,6 +204,19 @@ public class ConfigClient(
      * (`invalid-options` when it does not fit). Emits on [changes] and the key's [setting].
      */
     public suspend fun set(key: String, value: JsonElement) {
+        syncPort?.takeIf { it.active() }?.let { port ->
+            syncKeys += key
+            val result = port.set(key, value)
+            publish()
+            if (result is CallResult.Failed) {
+                val locked = result.error == ErrorCode.managedByAdmin
+                throw PolarisException(
+                    if (locked) ErrorCode.managedByAdmin else ErrorCode.badRequest,
+                    if (locked) "$key is managed by the product's administrator and cannot be changed here." else "$key: the value is not accepted.",
+                )
+            }
+            return
+        }
         val entry = doc()?.config?.get(key)
         if (entry != null && (entry.state == ManagementState.enforced || entry.state == ManagementState.hidden)) {
             throw PolarisException(ErrorCode.managedByAdmin, "$key is managed by the product's administrator and cannot be changed here.")
@@ -207,6 +230,13 @@ public class ConfigClient(
 
     /** Remove the local override for [key] (the remote default, environment or fallback answer again). */
     public suspend fun clear(key: String) {
+        syncPort?.takeIf { it.active() }?.let { port ->
+            syncKeys += key
+            // A refused clear (a locked key) is a no-op.
+            port.clear(key)
+            publish()
+            return
+        }
         localLock.withLock {
             val current = loadedLocked()
             if (!current.containsKey(key)) return
@@ -241,7 +271,7 @@ public class ConfigClient(
     public suspend fun setting(key: String): ConfigSetting {
         val state = settings.getOrPut(key) { SettingState() }
         val ctx = context()
-        state.update(ConfigResolution.resolveValue(ctx, key), ConfigResolution.resolveSource(ctx, key))
+        state.update(effectiveValue(ctx, key), effectiveSource(ctx, key))
         return ConfigSetting(key, this, state)
     }
 
@@ -255,20 +285,51 @@ public class ConfigClient(
         doc()?.config?.keys?.let { keys += it }
         keys += localOverrides().keys
         keys += lastSeen.keys
+        keys += syncKeys
         for (key in keys) {
-            val now = ConfigResolution.resolveValue(ctx, key)
-            val source = ConfigResolution.resolveSource(ctx, key)
+            val now = effectiveValue(ctx, key)
+            val source = effectiveSource(ctx, key)
             val moved = emit && now != lastSeen[key]
-            if (moved) changeFlow.tryEmit(ConfigChange(key, now, source))
+            // The origin is named once, by the change that moved the value; `local` when nothing named one.
+            val origin = syncOrigins.remove(key) ?: "local"
+            if (moved) changeFlow.tryEmit(ConfigChange(key, now, source, origin))
             if (now == null) lastSeen.remove(key) else lastSeen[key] = now
             settings[key]?.let { st ->
                 st.update(now, source)
-                if (moved) st.listeners.forEach { it(ConfigChange(key, now, source)) }
+                if (moved) st.listeners.forEach { it(ConfigChange(key, now, source, origin)) }
             }
         }
     }
 
     private val lastSeen = java.util.concurrent.ConcurrentHashMap<String, JsonElement>()
+
+    // ── Cloud Sync (U-07.K9): the port the client installs, and what routes through it ──────────────
+
+    @Volatile internal var syncPort: ConfigSyncPort? = null
+
+    /** Every key the machine has touched; the publish pass includes them. */
+    internal val syncKeys: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    /** Where each synced key's last change came from, until the change is delivered. */
+    internal val syncOrigins = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** A synced value the machine holds for [key], or null (the signed document or `config.local` decides). */
+    private suspend fun syncedValue(key: String): JsonElement? {
+        val port = syncPort?.takeIf { it.active() } ?: return null
+        return port.get(key)?.takeIf { it.from != "document" }?.value
+    }
+
+    private suspend fun effectiveValue(ctx: ResolveContext, key: String): JsonElement? =
+        syncedValue(key) ?: ConfigResolution.resolveValue(ctx, key)
+
+    private suspend fun effectiveSource(ctx: ResolveContext, key: String): ConfigSource =
+        if (syncedValue(key) != null) ConfigSource.local else ConfigResolution.resolveSource(ctx, key)
+
+    /** The `sync()` of a handle: `local`, `pending` or `synced`. */
+    internal suspend fun settingSyncState(key: String): SettingSyncState {
+        val port = syncPort?.takeIf { it.active() } ?: return SettingSyncState.local
+        return port.state(key)
+    }
 
     private fun readPersisted(): Map<String, JsonElement> {
         val o = localSlot.read()?.let { JsonText.parseOrNull(it) }.objectValue ?: return emptyMap()
@@ -290,11 +351,10 @@ public class ConfigClient(
     private suspend fun context(): ResolveContext = ResolveContext(doc()?.config, localOverrides(), environment, envPrefix)
 
     /** The effective value for [key], honouring management state and the override layers. */
-    public suspend fun get(key: String, default: JsonElement): JsonElement =
-        ConfigResolution.resolveValue(context(), key) ?: default
+    public suspend fun get(key: String, default: JsonElement): JsonElement = effectiveValue(context(), key) ?: default
 
     /** Where `get(key, default)` would source its value from (provenance, for settings UIs). */
-    public suspend fun getConfigSource(key: String): ConfigSource = ConfigResolution.resolveSource(context(), key)
+    public suspend fun getConfigSource(key: String): ConfigSource = effectiveSource(context(), key)
 
     /** The user-visible catalog (§2.2.1 rule 4): every document entry minus the `hidden` ones. */
     public suspend fun listUserConfig(): List<UserConfigEntry> = ConfigResolution.listUserEntries(context())

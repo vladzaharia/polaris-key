@@ -1,3 +1,4 @@
+// @pkey-feature sync.e2e
 // The host codec boundary (U-07.5; WIRE-CONTRACT-V5 §13.10, §13.10.7): what `sealPush` sends, what
 // `openPull` proves, and that the machine only ever takes the host's own open result. The cases are
 // client-core's `hostCodec.test.ts`; the machine half (`openPull` into `receive`) belongs to the
@@ -10,7 +11,7 @@ import Testing
 @testable import PolarisKeyCore
 
 /// A codec over a fixture root, with a switch for "locked" and a count of seals.
-private final class FixtureCodec: SyncCodecPort, @unchecked Sendable {
+final class FixtureCodec: SyncCodecPort, @unchecked Sendable {
     let root: Data
     private let lock = NSLock()
     private var isLocked = false

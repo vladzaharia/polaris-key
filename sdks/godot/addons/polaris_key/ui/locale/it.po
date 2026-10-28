@@ -3103,17 +3103,17 @@ msgstr "Usa un altro account"
 msgid "signin.linkOffer.title"
 msgstr "Accedere con {provider} la prossima volta?"
 
-#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
+#. Then {app} and other apps that use Polaris Locker can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyGlobal"
 msgstr "Così {app} e le altre app che usano Polaris Locker potranno farti accedere da sole."
 
-#. Then apps from {developer} can sign you in by themselves.
+#. Then apps from {developer} can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.linkOffer.bodyDeveloper"
 msgstr "Così le app di {developer} potranno farti accedere da sole."
 
-#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Then {app} and its developer's other apps can sign you in automatically.
 #. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyApp"
 msgstr "Così {app} e le altre app dello sviluppatore potranno farti accedere da sole."
@@ -3132,6 +3132,16 @@ msgstr "No, grazie"
 msgctxt "macos"
 msgid "signin.linkOffer.decline"
 msgstr "No, grazie"
+
+#. Sign in again to link {provider}.
+#. Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.stale"
+msgstr "Accedi di nuovo per collegare {provider}."
+
+#. Couldn't link {provider} on this device.
+#. Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.failed"
+msgstr "Impossibile collegare {provider} su questo dispositivo."
 
 #. {provider} linked
 #. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).

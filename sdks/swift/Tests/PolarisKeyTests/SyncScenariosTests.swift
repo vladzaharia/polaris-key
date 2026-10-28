@@ -1,5 +1,6 @@
 // @pkey-feature sync.scenarios
 // @pkey-feature sync.settings
+// @pkey-feature config.sync
 //
 // The Swift runner for `conformance/corpus/v2/sync-scenarios.json` (U-07.1), read in place through
 // `CorpusLocator`. Mirrors Python's `test_sync_scenarios.py`.

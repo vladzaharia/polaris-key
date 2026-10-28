@@ -503,6 +503,8 @@
     "signin.linkOffer.bodyApp": "{app} et les autres apps de son développeur pourront alors vous connecter d’elles-mêmes.",
     "signin.linkOffer.primary": "Associer {provider}",
     "signin.linkOffer.decline": "Non merci",
+    "signin.linkOffer.stale": "Reconnectez-vous pour lier {provider}.",
+    "signin.linkOffer.failed": "Impossible de lier {provider} sur cet appareil.",
     "signin.linkOffer.done": "{provider} associé",
     "signin.linkOffer.conflictTitle": "{provider} non associé",
     "signin.linkOffer.conflict": "Ce compte {provider} appartient à un autre compte Polaris Locker. Vous restez connecté.",

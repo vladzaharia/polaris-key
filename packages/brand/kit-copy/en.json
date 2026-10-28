@@ -2504,17 +2504,17 @@
       "note": "Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated)."
     },
     "signin.linkOffer.bodyGlobal": {
-      "value": "Then {app} and other apps that use Polaris Locker can sign you in by themselves.",
+      "value": "Then {app} and other apps that use Polaris Locker can sign you in automatically.",
       "role": "body",
       "note": "Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated)."
     },
     "signin.linkOffer.bodyDeveloper": {
-      "value": "Then apps from {developer} can sign you in by themselves.",
+      "value": "Then apps from {developer} can sign you in automatically.",
       "role": "body",
       "note": "Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated)."
     },
     "signin.linkOffer.bodyApp": {
-      "value": "Then {app} and its developer's other apps can sign you in by themselves.",
+      "value": "Then {app} and its developer's other apps can sign you in automatically.",
       "role": "body",
       "note": "Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated)."
     },
@@ -2527,6 +2527,16 @@
       "value": "No thanks",
       "role": "button",
       "note": "Link offer: declines; the device remembers it."
+    },
+    "signin.linkOffer.stale": {
+      "value": "Sign in again to link {provider}.",
+      "role": "body",
+      "note": "Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated)."
+    },
+    "signin.linkOffer.failed": {
+      "value": "Couldn't link {provider} on this device.",
+      "role": "body",
+      "note": "Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated)."
     },
     "signin.linkOffer.done": {
       "value": "{provider} linked",

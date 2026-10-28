@@ -88,6 +88,16 @@ export {
   type RelayMessage,
 } from "./relay.js";
 export {
+  RELAY_BURST,
+  RELAY_HALVED_MS,
+  RELAY_MAX_QUEUED_BYTES,
+  RELAY_RATE,
+  RelayOutbox,
+  RelayPacer,
+  stopWithin,
+  type RelayOutboxOptions,
+} from "./pacer.js";
+export {
   MAX_CAPS,
   MAX_HANDSHAKE_PAYLOAD,
   capsIntersection,

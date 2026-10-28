@@ -107,11 +107,15 @@ public struct PolarisRequest: Sendable {
     /// Stop reading the response body after this many bytes, where the transport can (the
     /// release-record fetch, plans/P3-01.md §2.5 step 11). Nil reads it whole.
     public var maxBodyBytes: Int?
+    /// False: no redirect is followed and the 3xx is the answer (a bearer-bearing call that must
+    /// never be handed to another URL, Cloud Sync's `/sync`). The default follows the §5 policy.
+    public var followRedirects: Bool
 
     public init(
         url: URL, method: String = "GET", headers: [String: String] = [:], body: Data? = nil,
-        timeoutSeconds: Double = 15, maxBodyBytes: Int? = nil
+        timeoutSeconds: Double = 15, maxBodyBytes: Int? = nil, followRedirects: Bool = true
     ) {
+        self.followRedirects = followRedirects
         self.url = url
         self.method = method
         self.headers = headers
@@ -210,7 +214,7 @@ public struct URLSessionTransport: PolarisTransport {
 
         let data: Data
         let response: URLResponse
-        let policy = RedirectPolicy.Delegate()
+        let policy = RedirectPolicy.Delegate(follow: request.followRedirects)
         if let limit = request.maxBodyBytes {
             (data, response) = try await capped(req, limit: limit, delegate: policy)
         } else {
@@ -221,6 +225,16 @@ public struct URLSessionTransport: PolarisTransport {
             #endif
         }
         try policy.throwIfRefused()
+        #if canImport(FoundationNetworking)
+        // Linux: FoundationNetworking gives no per-request redirect hook, so a redirect is FOLLOWED by
+        // the session before this code sees the answer, and the request (bearer included, as the
+        // session's own cross-origin rules allow) has already reached the target. All this can do is
+        // refuse to treat that answer as the control plane's: a final URL that differs from the
+        // request's is no answer. It does not refuse the redirect and does not undo the exposure.
+        if !request.followRedirects, let final = response.url, final.absoluteString != request.url.absoluteString {
+            throw PolarisError(code: "transport", message: "A redirect was followed where none is allowed.")
+        }
+        #endif
         guard let http = response as? HTTPURLResponse else {
             throw PolarisError(code: "transport", message: "non-http response")
         }
@@ -240,7 +254,7 @@ public struct URLSessionTransport: PolarisTransport {
         if request.timeoutSeconds > 0 { req.timeoutInterval = request.timeoutSeconds }
         for (key, value) in request.headers { req.setValue(value, forHTTPHeaderField: key) }
         req.httpBody = request.body
-        let policy = RedirectPolicy.Delegate()
+        let policy = RedirectPolicy.Delegate(follow: request.followRedirects)
         let (bytes, response) = try await session.bytes(for: req, delegate: policy)
         if let refusal = policy.refusal {
             bytes.task.cancel()
@@ -363,8 +377,11 @@ enum RedirectPolicy {
 
     final class Delegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
         private let lock = NSLock()
+        private let follow: Bool
         private var hops = 0
         private var refusalValue: PolarisError?
+
+        init(follow: Bool = true) { self.follow = follow }
 
         var refusal: PolarisError? {
             lock.lock()
@@ -381,6 +398,8 @@ enum RedirectPolicy {
             willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
             completionHandler: @escaping (URLRequest?) -> Void
         ) {
+            // Not following: the 3xx itself is the answer, and nothing is sent to the new URL.
+            if !follow { return completionHandler(nil) }
             lock.lock()
             let count = hops
             hops += 1

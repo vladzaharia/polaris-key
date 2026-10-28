@@ -186,9 +186,9 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
   // Continue or Link is the one primary; a conflict is a neutral refusal.
   "SignIn.confirm": () => ({ ...heading("signin.auto.confirm.primary") }),
   "SignIn.link-offer": () => heading("signin.linkOffer.primary"),
-  "SignIn.link-done": () => heading("common.continue"),
+  "SignIn.link-done": () => heading("common.done"),
   "SignIn.link-conflict": () => ({
-    ...refusal("common.continue"),
+    ...refusal("common.done"),
     focus: "heading",
   }),
   // A device limit with no license rows (KFA-0): Replace a device when a link came, else none.

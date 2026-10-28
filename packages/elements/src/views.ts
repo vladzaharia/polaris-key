@@ -25,6 +25,7 @@ import {
 import { copyPending } from "./copy.js";
 import { LAYOUTS, dialogControls, type Layout } from "./layout.js";
 import { platformLabel } from "./platforms.js";
+import { syncContent } from "./syncViews.js";
 import {
   actions,
   button,
@@ -49,6 +50,7 @@ import {
   progressBar,
   seatMeter,
   shimmer,
+  providerMark,
   successMark,
   text,
   titles,
@@ -58,7 +60,7 @@ import {
 const ERROR_PREFIXES = ["core.codes.", "core.activation."];
 const isErrorKey = (k: string) =>
   ERROR_PREFIXES.some((p) => k.startsWith(p)) ||
-  /(Failed|\.failed|methodError|\.error)$/.test(k);
+  /(Failed|\.failed|\.stale|methodError|\.error)$/.test(k);
 
 /** Keys the content of a component draws itself. */
 /** What scanning the key refusal's QR does, under the QR. */
@@ -87,6 +89,10 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
   const { view, input } = c;
   const keys = new Set(view.copy);
   switch (view.component) {
+    case "UnlockSync":
+    case "RecoveryCode":
+    case "RingChange":
+      return syncContent(c);
     case "Activate": {
       const verdict = [
         "part.keyField.verdict",
@@ -354,9 +360,14 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
             developer: !heroTitle && view.copy.includes("common.byDeveloper"),
           })
         : nothing}
-      ${view.component === "SignIn" && view.state === "done"
+      ${view.component === "SignIn" &&
+      (view.state === "done" || view.state === "link-done")
         ? successMark()
-        : nothing}
+        : view.component === "SignIn" &&
+            view.state === "link-offer" &&
+            c.input.provider === "Google"
+          ? providerMark()
+          : nothing}
       <div class="texts" data-part="texts">
         ${titles(
           c,
@@ -556,7 +567,7 @@ function statusGlyph(view: View): TemplateResult | typeof nothing {
           : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
   if (view.component === "CloudSyncStatus")
-    return s === "error" && view.decisions.tone === "neutral"
+    return view.decisions.tone === "neutral"
       ? GLYPHS.info()
       : s === "offline"
         ? GLYPHS.offline()
@@ -579,7 +590,7 @@ function statusOf(view: View): string {
           : "neutral";
   if (view.component === "CloudSyncStatus")
     // A sync that failed for want of a sign-in is neutral, not a fault (DL6).
-    return view.state === "error" && view.decisions.tone === "neutral"
+    return view.decisions.tone === "neutral"
       ? "neutral"
       : view.state === "conflict" || view.state === "error"
         ? "warning"
@@ -907,8 +918,43 @@ const CHOICE_STATES: ReadonlySet<string> = new Set([
 
 /** Drop every key whose own arguments the input leaves unfilled: a missing fact is never drawn
  *  as `{name}`. */
+const warnedHandles = new Set<string>();
+
+const HOST_ONLY: Readonly<Record<string, string>> = {
+  "CloudSyncStatus/cloudSync.unlock": "unlock",
+  // A conflict's Review is the host's own (`canReview` says it handles it); a changed ring's opens
+  // the kit's RingChange.
+  "CloudSyncStatus.ring-changed/common.review": "review",
+};
+
 function fillable(c: RenderCtx): View {
-  const view = withRenew(withBase(c), c.input);
+  const base = withRenew(withBase(c), c.input);
+  // A control only a host can act on (it opens another screen) draws only when the host says it
+  // answers it (`handles`), so no press goes nowhere.
+  const gone = base.copy.filter((k) => {
+    const need =
+      HOST_ONLY[`${base.component}.${base.state}/${k}`] ??
+      HOST_ONLY[`${base.component}/${k}`];
+    return need !== undefined && !(c.handles ?? []).includes(need);
+  });
+  if (gone.length && !warnedHandles.has(base.state)) {
+    warnedHandles.add(base.state);
+    console.warn(
+      `[pk] <pk-cloud-sync-status> is ${base.state} but draws no ${gone.join(", ")}: set handles="unlock review" on the element to say the page answers them.`,
+    );
+  }
+  const view = gone.length
+    ? {
+        ...base,
+        copy: base.copy.filter((k) => !gone.includes(k)),
+        decisions: {
+          ...base.decisions,
+          primary: gone.includes(base.decisions.primary ?? "")
+            ? null
+            : base.decisions.primary,
+        },
+      }
+    : base;
   if (view.component === "ReleaseNotes") return view;
   // A content key is drawn by the component's own rows, which pass its arguments at the call.
   const content = new Set(LAYOUTS[view.component].content ?? []);
@@ -1949,7 +1995,11 @@ function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
   }
   if (keys.has("account.cloudSync")) {
     const state = i.cloudSync?.state;
-    const k = state ? `cloudSync.${state}` : "";
+    const k = state
+      ? state === "ring-changed"
+        ? "cloudSync.ringChanged"
+        : `cloudSync.${state}`
+      : "";
     rows.push(
       accountRow(
         "account.cloudSync",

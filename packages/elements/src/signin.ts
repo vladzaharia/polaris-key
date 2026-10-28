@@ -21,7 +21,8 @@ import {
   type SignInPrimitives,
   type View,
 } from "@polaris-key/ui-core";
-import { openManage, safeLink } from "@polaris-key/ui-core/browser";
+import { openLink, openManage, safeLink } from "@polaris-key/ui-core/browser";
+import { JOIN_ACCOUNTS_URL } from "@polaris-key/ui-core/browser/sdk/linkOffer.js";
 
 import { PkElement } from "./element.js";
 import { GLYPHS, text, type RenderCtx } from "./render.js";
@@ -156,6 +157,21 @@ export class PkSignIn extends PkElement {
         return m.confirm();
       case "signin.auto.confirm.other":
         return m.useAnother();
+      case "signin.linkOffer.primary":
+        return m.linkAccept();
+      case "signin.linkOffer.decline":
+        return m.linkDecline().then(() => this.endLink());
+      case "signin.linkOffer.join":
+        openLink(JOIN_ACCOUNTS_URL);
+        return;
+      case "common.done":
+        // The link offer's conflict ends the form (its done closes with a toast).
+        if (
+          s.autoSignIn?.step === "link-done" ||
+          s.autoSignIn?.step === "link-conflict"
+        )
+          return this.endLink();
+        return;
       case "signin.desktop.continue":
       case "signin.email.continue":
       case "signin.passkey":
@@ -169,6 +185,10 @@ export class PkSignIn extends PkElement {
       case "signin.handoff.copyLink":
         return m.copyLink();
       case "signin.again":
+        // On the link offer: Sign in again, the regular sign-in.
+        if (s.autoSignIn?.step === "link-offer")
+          return m.start({ channel: "browser" });
+        return m.retry();
       case "signInHandoff.newCode":
         return m.retry();
       case "common.cancel":
@@ -278,6 +298,12 @@ export class PkSignIn extends PkElement {
     this.dispatchEvent(
       new CustomEvent("pk-done", { bubbles: true, composed: true }),
     );
+  }
+
+  /** The link offer is answered: a sheet closes, the gate's own form hands back. */
+  private endLink(): void {
+    if (this.sheet) this.close();
+    else this.leave();
   }
 
   /** The gate's own form is done with: the host (the gate) draws its Welcome again. */
@@ -522,8 +548,14 @@ export class PkSignIn extends PkElement {
     if (this.formModel && this.formModel.snapshot.session.outcome !== undefined)
       void this.formModel.cancel();
     this.open = false;
+    // `toast`: a line stays on after the sheet, so the host keeps this element mounted for it.
+    const toast = this.toast !== null;
     this.dispatchEvent(
-      new CustomEvent("pk-close", { bubbles: true, composed: true }),
+      new CustomEvent("pk-close", {
+        bubbles: true,
+        composed: true,
+        detail: { toast },
+      }),
     );
     this.restoreFocus();
   }
@@ -585,6 +617,17 @@ export class PkSignIn extends PkElement {
       if (this.sheet && this.open && !this.baseInput().signIn?.issuedNow)
         this.closeWithToast();
     } else this.doneSent = false;
+    // A linked account closes the sheet with the toast, not a second tap.
+    if (
+      this.formModel &&
+      this.sheet &&
+      this.open &&
+      this.baseInput().autoSignIn?.step === "link-done"
+    )
+      this.closeWithToast({
+        key: "signin.linkOffer.done",
+        args: { provider: this.baseInput().provider ?? "Google" },
+      });
     this.syncDialog();
     if (this.countFrom !== null && this.countTimer === null)
       this.countTimer = setInterval(() => this.requestUpdate(), 1000);
@@ -596,14 +639,18 @@ export class PkSignIn extends PkElement {
   }
 
   /** Close the sheet and say who signed in, for a few seconds, in the page. */
-  private closeWithToast(): void {
+  private closeWithToast(line?: {
+    key: string;
+    args: Record<string, string>;
+  }): void {
     const input = this.baseInput();
     const holder = input.account?.holder?.trim();
     const tier = input.account?.tier ?? this.pickedTier;
     this.toast =
-      holder && tier
+      line ??
+      (holder && tier
         ? { key: "signin.desktop.toast", args: { name: holder, tier } }
-        : { key: "signin.return.signedInShort", args: {} };
+        : { key: "signin.return.signedInShort", args: {} });
     if (this.toastTimer !== null) clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => {
       this.toast = null;

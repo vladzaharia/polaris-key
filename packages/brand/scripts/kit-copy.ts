@@ -1100,6 +1100,23 @@ export const LAZY_EN_PREFIXES = [
   "signin.confirmLink.",
   "signin.mail.",
   "signin.return.",
+  // Cloud Sync's locked-state screens (U-42): drawn after a sync answer, so the table is in place.
+  "unlockSync.",
+  "recoveryCode.",
+  "ringChange.",
+  "cloudSync.locked",
+  "cloudSync.unlock",
+  "cloudSync.ringChanged",
+  // Screens a person opens after first paint (the menu's Settings, the device list, the offline
+  // steps, the update progress and notes, the channel picker, About, the account pane).
+  "settings.",
+  "devices.",
+  "offlineActivation.",
+  "updateProgress.",
+  "releaseNotes.",
+  "channel.",
+  "about.",
+  "account.",
 ] as const;
 export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   // The nearby approver's prompt (NearbyApproval) draws these.

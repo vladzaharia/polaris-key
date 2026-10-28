@@ -543,6 +543,11 @@
       "reason": "internal record seam: the signed-out flag and token provenance read and write fail-closed; no host calls it"
     },
     {
+      "sdk": "node",
+      "path": "cloudConnect.stopForSignOut",
+      "reason": "the client's own before-sign-out step (D-12): stop within 15 s, then force-cancel; a host calls stop()"
+    },
+    {
       "sdk": "swift",
       "path": "identity.installDeviceKeys",
       "reason": "an internal hand-over seam: the umbrella gives the identity client the Connect key port; no host calls it"
@@ -2375,6 +2380,11 @@
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
+      "sdk": "kotlin",
+      "path": "client.cloudSync",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
       "sdk": "node",
       "path": "client.cloudSyncHost",
       "reason": "internal: the Cloud Sync host the client owns; hosts use client.cloudSync and config"
@@ -2417,6 +2427,11 @@
     {
       "sdk": "kotlin",
       "path": "client.cloudConnect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "swift",
+      "path": "client.cloudSync",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     }
   ],
@@ -2922,11 +2937,11 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useSetting().sync",
+          "shape": "hook",
+          "reason": "a hook returns a render value; the sync state re-renders with the value"
         },
-        "swift": {
-          "planned": "U-07"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07"
         },
@@ -3699,11 +3714,11 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().status",
+          "shape": "hook",
+          "reason": "a hook returns a render value, following the machine"
         },
-        "swift": {
-          "planned": "U-07"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07"
         },
@@ -3723,11 +3738,11 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().flush",
+          "shape": "hook",
+          "reason": "the hook carries the method"
         },
-        "swift": {
-          "planned": "U-07"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07"
         },
@@ -3777,10 +3792,13 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().status",
+          "shape": "hook",
+          "reason": "the hook re-renders on each machine event, so no event listener is exposed"
         },
         "swift": {
-          "planned": "U-07"
+          "spelling": "events",
+          "reason": "one event stream on the client, case cloudSync"
         },
         "kotlin": {
           "planned": "U-07"

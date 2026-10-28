@@ -3085,17 +3085,17 @@ msgstr "다른 계정 사용"
 msgid "signin.linkOffer.title"
 msgstr "다음부터 {provider}(으)로 로그인할까요?"
 
-#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
+#. Then {app} and other apps that use Polaris Locker can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyGlobal"
 msgstr "그러면 {app} 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요."
 
-#. Then apps from {developer} can sign you in by themselves.
+#. Then apps from {developer} can sign you in automatically.
 #. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.linkOffer.bodyDeveloper"
 msgstr "그러면 {developer}의 앱이 자동으로 로그인해 줘요."
 
-#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Then {app} and its developer's other apps can sign you in automatically.
 #. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyApp"
 msgstr "그러면 {app}과 개발자의 다른 앱이 자동으로 로그인해 줘요."
@@ -3114,6 +3114,16 @@ msgstr "괜찮아요"
 msgctxt "macos"
 msgid "signin.linkOffer.decline"
 msgstr "괜찮아요"
+
+#. Sign in again to link {provider}.
+#. Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.stale"
+msgstr "{provider}을(를) 연결하려면 다시 로그인하세요."
+
+#. Couldn't link {provider} on this device.
+#. Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.failed"
+msgstr "이 기기에서 {provider}을(를) 연결하지 못했습니다."
 
 #. {provider} linked
 #. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).

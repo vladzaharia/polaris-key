@@ -32,23 +32,21 @@ export const COMPONENTS = [
   "About",
   "ChannelPicker",
   "Toast",
-] as const;
-export type ComponentName = (typeof COMPONENTS)[number];
-
-/**
- * The Cloud Sync screens (ui-matrix.json `cloudSync` family, U-42): their models run here and in
- * no native core yet. They join `COMPONENTS` with the kit slices that draw them (U-42.2 to .5),
- * which is also when the elements layout and the React kit learn them.
- */
-export const SYNC_SCREENS = [
+  // The Cloud Sync screens (ui-matrix.json `cloudSync`, U-42); see SyncScreenName.
   "UnlockSync",
   "RecoveryCode",
   "RingChange",
 ] as const;
-export type SyncScreenName = (typeof SYNC_SCREENS)[number];
+export type ComponentName = (typeof COMPONENTS)[number];
 
-/** Anything a view can be of: a kit component or a Cloud Sync screen. */
-export type ScreenName = ComponentName | SyncScreenName;
+/**
+ * The Cloud Sync screens (ui-matrix.json `cloudSync` family, U-42): components of the web kits that
+ * load on demand. A type only: no runtime list rides in a kit's first load.
+ */
+export type SyncScreenName = "UnlockSync" | "RecoveryCode" | "RingChange";
+
+/** Anything a view can be of (a Cloud Sync screen is a component). */
+export type ScreenName = ComponentName;
 
 /** The reserved state of a component its service turns off: the drop-in renders nothing and a
  *  styled part renders empty (plans/UK-02b.md §4.3). */
