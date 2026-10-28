@@ -225,6 +225,29 @@ def _connect_step(client: PolarisKeyClient, step: Dict[str, Any], session: Dict[
     return out
 
 
+def _relay_ticket_step(client: PolarisKeyClient) -> Dict[str, Any]:
+    """``client.connect.relay_ticket()`` (CC-10.4, ``connect.relay``). A refusal reads as ``result:
+    "refused"`` with the status, the Worker's code and, where it answers them, ``retryAfter`` and ``scope``."""
+    out: Dict[str, Any] = {}
+    try:
+        g = client.connect.relay_ticket()
+        out["result"] = "ok"
+        out["protocol"] = g.protocol
+        out["url"] = g.url
+        out["expiresIn"] = g.expires_at - int(time.time())
+    except PolarisError as e:
+        out["result"] = "refused"
+        out["status"] = e.status
+        out["code"] = e.code
+        retry = getattr(e, "retry_after_seconds", None)
+        if retry is not None:
+            out["retryAfter"] = retry
+        scope = getattr(e, "scope", None)
+        if scope is not None:
+            out["scope"] = scope
+    return out
+
+
 def _act(
     client: PolarisKeyClient,
     store: TranscriptStore,
@@ -243,6 +266,8 @@ def _act(
         return _cloud_sync_step(client, step, session)
     if action in ("connectIdentity", "connectDevices"):
         return _connect_step(client, step, session)
+    if action == "relayTicket":
+        return _relay_ticket_step(client)
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
