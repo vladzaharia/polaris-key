@@ -63,8 +63,8 @@ import {
   DeviceKeysInvalidError,
   agreeKeyHeldElsewhere,
   deviceSignKey,
-  upsertDeviceKeys,
 } from "../../../core/devices/keys.js";
+import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
 
 /** The grant routes: 60 a minute per client network (a guess at a grant or a key is not free). */
 export const CHOICE_RATE = {
@@ -374,12 +374,11 @@ export async function handleChoice(
 
   if (taken.keys) {
     try {
-      await upsertDeviceKeys(
-        db,
+      await registerDeviceKeys(
+        { db, env, now },
         product.slug,
         deviceId,
         taken.keys,
-        now,
         undefined,
         heldSignKey,
       );

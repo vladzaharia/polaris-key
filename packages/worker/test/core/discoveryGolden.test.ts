@@ -61,6 +61,7 @@
  * `signout` while the `launch.identityExchange` gate is on (it is, in this suite's env), and the
  * `exchange` member only for a product that declares a platform sign-in kind (none here). Additive;
  * the transcripts `discovery-identity-exchange` and `exchange-gate-off` pin both.
+ * I-13.9 added `endpoints.link` (`<base>/identity/link`) right after `nonce`, under the same gate.
  */
 
 import { readFileSync } from "node:fs";

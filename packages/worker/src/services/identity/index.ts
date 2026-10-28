@@ -194,7 +194,12 @@ export const identityService: ServiceDescriptor = {
         attach: `${base}/identity/attach`,
         subject: `${base}/identity/subject`,
         signout: `${base}/identity/signout`,
-        ...(exchangeOn ? { nonce: `${base}/identity/nonce` } : {}),
+        ...(exchangeOn
+          ? {
+              nonce: `${base}/identity/nonce`,
+              link: `${base}/identity/link`,
+            }
+          : {}),
         ...(accountPortal ? { accountPortal } : {}),
       },
     };

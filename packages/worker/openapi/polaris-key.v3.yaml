@@ -28537,15 +28537,15 @@ components:
       description: >
         I-13.5 (§12.11.3 rule 1): the exchange's `200` when the link exists but the person has
         not consented to this app, or what it asks changed. The grant is `PendingSignIn`'s
-        (300 s, bound to the redeeming device); `choice/complete` then requires `consent`.
-      required: [status, grant, expiresIn, consent, choices]
+        (300 s, bound to the redeeming device); `choice/complete` then requires `consent`. It
+        carries no licence view: a choice that is due comes back from `complete`.
+      required: [status, grant, expiresIn, consent]
       additionalProperties: false
       properties:
         status: { type: string, const: confirm }
         grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
         expiresIn: { type: integer, const: 300 }
         consent: { $ref: "#/components/schemas/ExchangeConsentView" }
-        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
     ExchangeConsentView:
       type: object
       description: >

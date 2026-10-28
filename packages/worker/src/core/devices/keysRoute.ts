@@ -28,10 +28,9 @@ import {
   DeviceKeysConflictError,
   DeviceKeysInvalidError,
   getDeviceKeys,
-  upsertDeviceKeys,
 } from "./keys.js";
 import { verifyKeyPop } from "./proof.js";
-import { notifyDeviceChange } from "./lifecycle.js";
+import { registerDeviceKeys } from "./registerKeys.js";
 
 /** A change a device may make to its keys, per day (a registration counts). */
 export const DEVICE_KEYS_LIMIT = {
@@ -115,19 +114,13 @@ export async function handleDeviceKeys(
     return wireError(429, "rate_limited");
 
   try {
-    const r = await upsertDeviceKeys(
-      db,
+    const r = await registerDeviceKeys(
+      { db, env, now },
       product.slug,
       deviceId,
       { signKey, agreeKey },
-      now,
       issuedAt,
     );
-    if (r.changed)
-      await notifyDeviceChange(
-        { db, env, now },
-        { product: product.slug, deviceId, kind: "keys", keySeq: r.keySeq },
-      );
     return json({ keySeq: r.keySeq });
   } catch (e) {
     if (

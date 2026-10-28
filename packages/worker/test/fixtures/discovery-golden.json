@@ -237,6 +237,7 @@
           "subject": "https://key.plrs.im/full/identity/subject",
           "signout": "https://key.plrs.im/full/identity/signout",
           "nonce": "https://key.plrs.im/full/identity/nonce",
+          "link": "https://key.plrs.im/full/identity/link",
           "accountPortal": "https://key.plrs.im/#/p/full"
         }
       },

@@ -129,6 +129,7 @@
                       "subject": "https://key.plrs.im/djdl/identity/subject",
                       "signout": "https://key.plrs.im/djdl/identity/signout",
                       "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
                       "accountPortal": "https://polaris.locker/#/p/djdl"
                     }
                   },

@@ -8,7 +8,8 @@
 //   - a foreign key, a bad proof and every verifier failure are ONE byte-identical refusal;
 //   - Identity off answers 404.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as lifecycle from "../../../src/core/devices/lifecycle.js";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import {
   appleClaims,
@@ -47,6 +48,13 @@ import {
   LINK_HANDLE_PATTERN,
   TOKEN_EXCHANGE_GRANT_TYPE,
 } from "@polaris-key/protocol/identity";
+
+// Wrapped, not replaced: the real listeners still run, and a test reads the events they were told.
+vi.mock("../../../src/core/devices/lifecycle.js", async (orig) => {
+  const m =
+    await orig<typeof import("../../../src/core/devices/lifecycle.js")>();
+  return { ...m, notifyDeviceChange: vi.fn(m.notifyDeviceChange) };
+});
 
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
@@ -737,5 +745,110 @@ describe("L-1: consent on the exchange", () => {
       accountId,
     );
     expect(lic!.n).toBe(1);
+  });
+});
+
+// I-13.9: the exchange and choice/complete register keys through the one Core operation, so the
+// `keys` device-change event follows a first registration and a rotation (V5 §15.8).
+describe("the keys event after the exchange", () => {
+  const keyEvents = () =>
+    vi
+      .mocked(lifecycle.notifyDeviceChange)
+      .mock.calls.map((c) => c[1])
+      .filter((e) => e.kind === "keys");
+
+  beforeEach(() => vi.mocked(lifecycle.notifyDeviceChange).mockClear());
+
+  it("a first registration raises keys after bound", async () => {
+    await link("https://accounts.google.com", "", GOOGLE_SUB, "google");
+    const r = await exchange(google());
+    expect(r.status).toBe(200);
+    const kinds = vi
+      .mocked(lifecycle.notifyDeviceChange)
+      .mock.calls.map((c) => c[1].kind);
+    expect(kinds.indexOf("keys")).toBeGreaterThan(kinds.indexOf("bound"));
+    expect(keyEvents()).toEqual([
+      { product: SLUG, deviceId: DEVICE, kind: "keys", keySeq: 1 },
+    ]);
+  });
+
+  it("a rotated agreement key drops the device's key-ring wraps", async () => {
+    await link("https://accounts.google.com", "", GOOGLE_SUB, "google");
+    // The person's subject, from a sign-in on another device.
+    const other = await exchange(google(), { device: DEVICE_2 });
+    const subject = other.body.subject as string;
+    const keys = await newKeys();
+    await upsertDeviceKeys(h.db, SLUG, DEVICE, keys, NOW);
+    await h.db.run(
+      `INSERT INTO keyring_wraps (product, subject, device_id, ring_id, epoch, kid, kem, enc, ct, by_device, created_at)
+       VALUES (?, ?, ?, 'ring', 1, 'k', 'kem', 'enc', 'ct', ?, ?)`,
+      SLUG,
+      subject,
+      DEVICE,
+      DEVICE,
+      NOW,
+    );
+    const rotated = { ...keys, agreeKey: (await newKeys()).agreeKey };
+    const second = await exchange(google(), { keys: rotated });
+    expect(second.text).toContain("access_token");
+    expect((await getDeviceKeys(h.db, SLUG, DEVICE))?.key_seq).toBe(2);
+    expect(await count("keyring_wraps")).toBe(0);
+    expect(keyEvents().map((e) => [e.deviceId, e.keySeq])).toEqual([
+      [DEVICE_2, 1],
+      [DEVICE, 2],
+    ]);
+  });
+
+  it("keys already registered raise nothing", async () => {
+    await link("https://accounts.google.com", "", GOOGLE_SUB, "google");
+    const first = await exchange(google());
+    await exchange(google(), { keys: first.keys });
+    expect(keyEvents()).toHaveLength(1);
+  });
+
+  it("choice/complete raises keys after the bind", async () => {
+    const { grant } = await confirmed();
+    vi.mocked(lifecycle.notifyDeviceChange).mockClear();
+    const res = await complete({
+      grant,
+      consent: { claims: ["profile", "email"] },
+    });
+    expect(res.status).toBe(200);
+    expect(keyEvents()).toEqual([
+      { product: SLUG, deviceId: DEVICE, kind: "keys", keySeq: 1 },
+    ]);
+  });
+});
+
+describe("a developer-scoped link through the exchange (I-13.9)", () => {
+  it("stays unverified: the exchange touches neither the address nor the flag", async () => {
+    await link(
+      "https://accounts.google.com",
+      `google-client:${WEB}`,
+      GOOGLE_SUB,
+      "google",
+      "ada@example.com",
+    );
+    await h.db.run(
+      "UPDATE account_links SET email_verified = 0, email = 'scoped@example.com' WHERE tenant_scope <> ''",
+    );
+    const r = await exchange(google());
+    expect(r.status).toBe(200);
+    const row = await h.db.first<{ email: string; email_verified: number }>(
+      "SELECT email, email_verified FROM account_links WHERE tenant_scope <> ''",
+    );
+    expect(row).toEqual({ email: "scoped@example.com", email_verified: 0 });
+  });
+});
+
+describe("confirm carries no licence view (I-13.9)", () => {
+  it("the answer names the consent and the grant only", async () => {
+    const { r } = await confirmed();
+    expect(Object.keys(r.body).sort()).toEqual([
+      "consent",
+      "expiresIn",
+      "grant",
+      "status",
+    ]);
   });
 });
