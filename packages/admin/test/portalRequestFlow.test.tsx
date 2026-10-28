@@ -746,7 +746,9 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
 
   it("a key in another account is refused under the field", async () => {
     await enter(false, preview({ verdict: "license_owned", license: null }));
-    expect(await screen.findByText(/already in another/i)).toBeTruthy();
+    expect(
+      await screen.findByText(/Sign in to the .* account that has this/i),
+    ).toBeTruthy();
   });
 });
 
