@@ -162,6 +162,8 @@ final class KitRenderTests: XCTestCase {
         "Activate.license-owned", "SignIn.key-refused", "SignIn.done.tier", "LicenseChoice.raced",
         // The automatic sign-in's consent and the all-full choice (I-44.6): AX and landscape too.
         "SignIn.confirm.apple", "LicenseChoice.all-full",
+        // The Cloud Sync screens (U-42.3).
+        "UnlockSync.code", "RecoveryCode.show", "RingChange.confirm", "CloudSyncStatus.locked",
     ]
 
     static let all = [
@@ -198,6 +200,10 @@ final class KitRenderTests: XCTestCase {
         "Devices.browser-mode", "Paywall.offers", "Paywall.not-available",
         "EntitlementGate.not-entitled", "Boot.progress", "Boot.consent", "Boot.fetching",
         "Boot.offline", "Boot.blocked", "Boot.declined", "Boot.rolled-back", "Boot.error",
+        "CloudSyncStatus.locked", "CloudSyncStatus.ring-changed", "UnlockSync.code",
+        "UnlockSync.invalid", "UnlockSync.working", "UnlockSync.failed", "UnlockSync.start-over",
+        "RecoveryCode.show", "RecoveryCode.saved", "RingChange.confirm",
+        "RingChange.confirm.nothing-served",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.

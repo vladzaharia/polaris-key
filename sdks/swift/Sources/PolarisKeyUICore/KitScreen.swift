@@ -28,6 +28,10 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case paywall = "Paywall"
     case entitlementGate = "EntitlementGate"
     case toast = "Toast"
+    case cloudSyncStatus = "CloudSyncStatus"
+    case unlockSync = "UnlockSync"
+    case recoveryCode = "RecoveryCode"
+    case ringChange = "RingChange"
 }
 
 /// What a control does, in the matrix's closed vocabulary (`vocabulary.actions`).
@@ -48,6 +52,18 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
     case retry
     /// Leave the step or the flow.
     case cancel
+    /// Unlock the synced data: submit the recovery code, or open its screen.
+    case unlock
+    /// Open the confirmation that replaces the sync key.
+    case startOver = "start-over"
+    /// Replace the sync key after the warning that synced data will be lost.
+    case confirmStartOver = "confirm-start-over"
+    /// Confirm the changed ring that was shown: hand `served` to `acceptRingChange`.
+    case acceptRingChange = "accept-ring-change"
+    /// Open the recovery code screen from the ring confirmation.
+    case useRecoveryCode = "use-recovery-code"
+    /// Copy the recovery code to the clipboard.
+    case copyCode = "copy-code"
 
     public static func < (a: KitAction, b: KitAction) -> Bool { a.rawValue < b.rawValue }
 
@@ -72,6 +88,13 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "signin.again": .retry,
         "signInHandoff.newCode": .retry,
         "common.cancel": .cancel,
+        "unlockSync.unlock": .unlock,
+        "cloudSync.unlock": .unlock,
+        "unlockSync.startOver": .startOver,
+        "unlockSync.startOverConfirm": .confirmStartOver,
+        "ringChange.accept": .acceptRingChange,
+        "ringChange.useCode": .useRecoveryCode,
+        "recoveryCode.copy": .copyCode,
     ]
 }
 
