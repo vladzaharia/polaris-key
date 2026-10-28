@@ -2378,6 +2378,21 @@
       "sdk": "node",
       "path": "config.noteSyncChange",
       "reason": "internal wiring seam: the Cloud Sync host reports applied changes; no host calls it"
+    },
+    {
+      "sdk": "python",
+      "path": "config.use_sync",
+      "reason": "internal wiring seam: the client hands the config client its Cloud Sync port; no host calls it"
+    },
+    {
+      "sdk": "python",
+      "path": "config.importable",
+      "reason": "internal wiring seam: the one-time local-config import reads it; no host calls it"
+    },
+    {
+      "sdk": "python",
+      "path": "config.note_sync_change",
+      "reason": "internal wiring seam: the Cloud Sync host reports applied changes; no host calls it"
     }
   ],
   "concepts": [
