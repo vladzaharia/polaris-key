@@ -1013,8 +1013,8 @@ func _emit_changes(before: Dictionary, overrides: Dictionary, origin: String) ->
 	for k: String in all:
 		# A key known on one side only read as the document's value on the other.
 		var was: Variant = before[k] if before.has(k) else _document["values"].get(k)
-		var is_: Variant = after[k] if after.has(k) else get_value(k)["value"]
-		if Types.json_equal(was, is_):
+		var current: Variant = after[k] if after.has(k) else get_value(k)["value"]
+		if Types.json_equal(was, current):
 			continue
 		var o: String = overrides.get(k, origin)
 		if not groups.has(o):

@@ -25,7 +25,11 @@ const META := ["syncVectorsVersion", "description", "constants", "ringId"]
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	var j := JSON.new()
-	if not t.check("vectors parse", j.parse(FileAccess.get_file_as_string(VECTORS)) == OK and j.data is Dictionary, VECTORS):
+	# 4.4's parser drops a U+0000 escape (newer engines read it as U+FFFD); spell it as U+FFFD
+	# so every engine hands _name_of the same text.
+	var nul_escape := RegEx.create_from_string("(?<!\\\\)((?:\\\\\\\\)*)\\\\u0000")
+	var text := nul_escape.sub(FileAccess.get_file_as_string(VECTORS), "$1\\uFFFD", true)
+	if not t.check("vectors parse", j.parse(text) == OK and j.data is Dictionary, VECTORS):
 		return true
 	var d: Dictionary = j.data
 	t.check("syncVectorsVersion is 1", d.get("syncVectorsVersion") == 1)
@@ -43,6 +47,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_canonical(t, d["canonicalJsonCases"])
 	_recovery(t, d["recoveryCodeCases"])
 	_extras(t)
+	_number_spelling(t)
 	_aes_gcm(t, d)
 	_envelope(t, d["envelopeCases"])
 	_hpke_anchor(t, d["hpkeAnchor"]["vector"])
@@ -210,6 +215,28 @@ func _extras(t: PKeyTestContext) -> void:
 	t.check("an astral character stays raw", PKeySyncCanonicalJson.canonicalize_value("\U0001F600").get("canonical") == "\"\U0001F600\"")
 	t.check("NaN value is refused", not PKeySyncCanonicalJson.canonicalize_value(NAN)["ok"])
 	t.check("a non-string key is refused", not PKeySyncCanonicalJson.canonicalize_value({1: 2})["ok"])
+
+
+## The ECMAScript spelling of doubles, pinned by bit pattern so it must not depend on how the
+## engine prints floats (4.4 prints six digits and no denormals).
+func _number_spelling(t: PKeyTestContext) -> void:
+	var rows := {
+		0x0000000000000001: "5e-324",
+		0x0000000000000002: "1e-323",
+		0x000FFFFFFFFFFFFF: "2.225073858507201e-308",
+		0x7FEFFFFFFFFFFFFF: "1.7976931348623157e+308",
+		0x3FB999999999999A: "0.1",
+		0x4340000000000000: "9007199254740992",
+		0x3CA0000000000000: "1.1102230246251565e-16",
+		0x419D6F34547DF3B6: "123456789.123",
+		0x40FE240000000000: "123456",
+	}
+	for bits in rows:
+		var b := PackedByteArray()
+		b.resize(8)
+		b.encode_u64(0, bits)
+		var got: Variant = PKeySyncCanonicalJson.format_number(b.decode_double(0))
+		t.check("number spelling %x" % bits, got == rows[bits], "%s != %s" % [got, rows[bits]])
 
 
 func _hex(s: String) -> PackedByteArray:

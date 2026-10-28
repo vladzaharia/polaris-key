@@ -47,7 +47,7 @@
       "gdlint:class-definitions-order": 1
     },
     "sdks/godot/addons/polaris_key/core/options.gd": {
-      "gdlint:class-definitions-order": 1,
+      "gdlint:class-definitions-order": 30,
       "gdlint:max-line-length": 1
     },
     "sdks/godot/addons/polaris_key/core/presentation.gd": {
@@ -63,6 +63,28 @@
     "sdks/godot/addons/polaris_key/core/store/keyring_store.gd": {
       "gdlint:class-definitions-order": 1,
       "gdlint:max-line-length": 1
+    },
+    "sdks/godot/addons/polaris_key/core/sync/cloud_sync_machine.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-public-methods": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/core/sync/cloud_sync_types.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:class-variable-name": 1
+    },
+    "sdks/godot/addons/polaris_key/core/sync/ring.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 2,
+      "gdlint:max-public-methods": 1,
+      "gdlint:max-returns": 2
+    },
+    "sdks/godot/addons/polaris_key/core/sync/ring_vault.gd": {
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/core/sync/wrap.gd": {
+      "gdlint:max-line-length": 2
     },
     "sdks/godot/addons/polaris_key/core/sync_result.gd": {
       "gdlint:class-definitions-order": 1
@@ -133,7 +155,7 @@
       "gdlint:max-line-length": 1
     },
     "sdks/godot/addons/polaris_key/native/pkey_android.gd": {
-      "gdlint:class-definitions-order": 6,
+      "gdlint:class-definitions-order": 9,
       "gdlint:max-public-methods": 1
     },
     "sdks/godot/addons/polaris_key/native/pkey_apple.gd": {
@@ -197,13 +219,23 @@
       "gdlint:class-definitions-order": 3
     },
     "sdks/godot/addons/polaris_key/polaris_key.gd": {
-      "gdlint:class-definitions-order": 11,
+      "gdlint:class-definitions-order": 28,
       "gdlint:max-public-methods": 1
     },
     "sdks/godot/addons/polaris_key/services/backend.gd": {
       "gdlint:class-definitions-order": 2,
       "gdlint:max-line-length": 1,
       "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/services/cloud_sync.gd": {
+      "gdlint:class-definitions-order": 1
+    },
+    "sdks/godot/addons/polaris_key/services/cloud_sync/host.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/services/cloud_sync/state.gd": {
+      "gdlint:max-returns": 2
     },
     "sdks/godot/addons/polaris_key/services/commerce.gd": {
       "gdlint:class-definitions-order": 3,
@@ -227,7 +259,7 @@
       "gdlint:max-returns": 4
     },
     "sdks/godot/addons/polaris_key/services/identity/account.gd": {
-      "gdlint:max-returns": 1
+      "gdlint:max-returns": 2
     },
     "sdks/godot/addons/polaris_key/services/identity/choice.gd": {
       "gdlint:max-returns": 1
@@ -433,6 +465,10 @@
     "sdks/godot/tests/core/test_caps.gd": {
       "gdlint:max-line-length": 1
     },
+    "sdks/godot/tests/core/test_cloud_sync_machine.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-line-length": 1
+    },
     "sdks/godot/tests/core/test_copy.gd": {
       "gdlint:max-line-length": 6
     },
@@ -596,6 +632,10 @@
     "sdks/godot/tests/suite_backend.gd": {
       "gdlint:max-line-length": 6
     },
+    "sdks/godot/tests/suite_backup_exclusion.gd": {
+      "gdlint:duplicated-load": 1,
+      "gdlint:max-line-length": 2
+    },
     "sdks/godot/tests/suite_boot.gd": {
       "gdlint:class-definitions-order": 2,
       "gdlint:function-variable-name": 3,
@@ -605,10 +645,20 @@
       "gdlint:class-definitions-order": 1,
       "gdlint:max-line-length": 13
     },
+    "sdks/godot/tests/suite_cloud_sync_host.gd": {
+      "gdlint:max-line-length": 8
+    },
+    "sdks/godot/tests/suite_cloud_sync_settings.gd": {
+      "gdlint:function-variable-name": 1,
+      "gdlint:max-line-length": 4
+    },
     "sdks/godot/tests/suite_conformance.gd": {
       "gdlint:class-definitions-order": 4,
       "gdlint:max-file-lines": 1,
       "gdlint:max-line-length": 11
+    },
+    "sdks/godot/tests/suite_core.gd": {
+      "gdlint:max-line-length": 1
     },
     "sdks/godot/tests/suite_dev_live.gd": {
       "gdlint:max-line-length": 1
@@ -646,9 +696,27 @@
     "sdks/godot/tests/suite_stage_matrix.gd": {
       "gdlint:max-line-length": 3
     },
-    "sdks/godot/tests/suite_transcripts.gd": {
+    "sdks/godot/tests/suite_sync_host_codec.gd": {
+      "gdlint:max-line-length": 16
+    },
+    "sdks/godot/tests/suite_sync_ring.gd": {
+      "gdlint:max-line-length": 16,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/tests/suite_sync_scenarios.gd": {
+      "gdlint:duplicated-load": 1,
+      "gdlint:max-line-length": 6,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/tests/suite_sync_vectors.gd": {
       "gdlint:class-definitions-order": 3,
-      "gdlint:function-variable-name": 1
+      "gdlint:max-line-length": 6
+    },
+    "sdks/godot/tests/suite_transcripts.gd": {
+      "gdlint:class-definitions-order": 8,
+      "gdlint:function-variable-name": 1,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 2
     },
     "sdks/godot/tests/suite_transports.gd": {
       "gdlint:max-line-length": 10

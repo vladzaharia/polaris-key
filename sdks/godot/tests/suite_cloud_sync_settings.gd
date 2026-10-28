@@ -121,13 +121,13 @@ func _sign_in(c: Dictionary, subject: String) -> void:
 
 func _urls_and_options(t: PKeyTestContext) -> void:
 	var base := "https://key.plrs.im"
-	var S := PKeyCloudSync
-	t.check("A-5: a path is resolved against the Worker origin", S.safe_sign_in_url("/signin?x=1", base) == "https://key.plrs.im/signin?x=1")
-	t.check("A-5: an https URL on the origin is kept", S.safe_sign_in_url("https://key.plrs.im/a", base) == "https://key.plrs.im/a")
-	t.check("A-5: another origin, http, a scheme-relative or backslash URL is refused", S.safe_sign_in_url("https://evil.example/a", base) == null and S.safe_sign_in_url("http://key.plrs.im/a", base) == null \
-			and S.safe_sign_in_url("//evil.example/a", base) == null and S.safe_sign_in_url("/\\evil.example", base) == null and S.safe_sign_in_url("javascript:alert(1)", base) == null)
-	t.check("A-5: control characters and whitespace are refused", S.safe_sign_in_url("/a b", base) == null and S.safe_sign_in_url("/a\n", base) == null and S.safe_sign_in_url("\thttps://key.plrs.im/", base) == null)
-	t.check("A-5: null and non-strings stay null", S.safe_sign_in_url(null, base) == null and S.safe_sign_in_url(5, base) == null and S.safe_sign_in_url("", base) == null)
+	var Sync := PKeyCloudSync
+	t.check("A-5: a path is resolved against the Worker origin", Sync.safe_sign_in_url("/signin?x=1", base) == "https://key.plrs.im/signin?x=1")
+	t.check("A-5: an https URL on the origin is kept", Sync.safe_sign_in_url("https://key.plrs.im/a", base) == "https://key.plrs.im/a")
+	t.check("A-5: another origin, http, a scheme-relative or backslash URL is refused", Sync.safe_sign_in_url("https://evil.example/a", base) == null and Sync.safe_sign_in_url("http://key.plrs.im/a", base) == null \
+			and Sync.safe_sign_in_url("//evil.example/a", base) == null and Sync.safe_sign_in_url("/\\evil.example", base) == null and Sync.safe_sign_in_url("javascript:alert(1)", base) == null)
+	t.check("A-5: control characters and whitespace are refused", Sync.safe_sign_in_url("/a b", base) == null and Sync.safe_sign_in_url("/a\n", base) == null and Sync.safe_sign_in_url("\thttps://key.plrs.im/", base) == null)
+	t.check("A-5: null and non-strings stay null", Sync.safe_sign_in_url(null, base) == null and Sync.safe_sign_in_url(5, base) == null and Sync.safe_sign_in_url("", base) == null)
 	var o := PKeyOptions.new()
 	o.product_slug = PRODUCT
 	o.cloud_sync_encryption = "plain"

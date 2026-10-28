@@ -238,9 +238,15 @@ static func format_number(x: float) -> Variant:
 	digits = digits.substr(0, end)
 	var k := digits.length()
 	var n := pos + exp10  # value = 0.<digits> * 10^n
-	# The engine's digits must read back to the same double, else do not pretend.
-	if _decimal_to_bits(digits, n - k) != _bits_of(x):
-		return null
+	# The engine's digits must read back to the same double. Some engines (4.4) print only six
+	# digits and cannot spell denormals; then the digits are derived from the exact value here.
+	if _engine_prints_short() or _decimal_to_bits(digits, n - k) != _bits_of(x):
+		var own := _shortest_digits(x)
+		if own.is_empty():
+			return null
+		digits = own[0]
+		n = own[1]
+		k = digits.length()
 	var s: String
 	if k <= n and n <= 21:
 		s = digits + "0".repeat(n - k)
@@ -253,6 +259,91 @@ static func format_number(x: float) -> Variant:
 		var es := ("+" if e >= 0 else "-") + str(absi(e))
 		s = digits[0] + ("" if k == 1 else "." + digits.substr(1)) + "e" + es
 	return sign + s
+
+
+## The shortest decimal digits that read back to `x` (> 0, finite), as [digits, n] with
+## value = 0.<digits> * 10^n, or [] when none does. Engine-free: the exact binary expansion is
+## rounded to 1..17 significant digits, nearest first.
+static func _shortest_digits(x: float) -> Array:
+	var bits := _bits_of(x)
+	var ex := (bits >> 52) & 0x7FF
+	var m := bits & 0xFFFFFFFFFFFFF
+	var q := -1074
+	if ex != 0:
+		m |= 0x10000000000000
+		q = ex - 1075
+	var big := _bn_of_int(m)
+	var e10 := 0
+	if q > 0:
+		_bn_shl(big, q)
+	else:
+		# m * 2^q = m * 5^-q * 10^q
+		var f := -q
+		while f >= 13:
+			_bn_mul_small(big, 1220703125)  # 5^13
+			f -= 13
+		if f > 0:
+			_bn_mul_small(big, int(5 ** f))
+		e10 = q
+	var exact := _bn_to_digits(big)
+	var total := exact.length()
+	for p in range(1, 18):
+		var d := exact
+		var carry := false
+		if total > p:
+			carry = exact.unicode_at(p) >= 53  # '5'
+			d = exact.substr(0, p)
+		var rounded_e10 := e10 + total - d.length()
+		if carry:
+			var arr := d.to_utf8_buffer()
+			var i := arr.size() - 1
+			while i >= 0:
+				if arr[i] == 57:
+					arr[i] = 48
+					i -= 1
+				else:
+					arr[i] += 1
+					break
+			d = arr.get_string_from_utf8()
+			if i < 0:
+				d = "1" + d
+		var end := d.length()
+		while end > 1 and d[end - 1] == "0":
+			end -= 1
+		var trimmed := d.substr(0, end)
+		var te10 := rounded_e10 + (d.length() - end)
+		if _decimal_to_bits(trimmed, te10) == bits:
+			return [trimmed, trimmed.length() + te10]
+	return []
+
+
+## Decimal digits of a big integer (no leading zeros; "0" for zero).
+static func _bn_to_digits(a: PackedInt64Array) -> String:
+	var limbs := a.duplicate()
+	var parts: Array[String] = []
+	while true:
+		var top := limbs.size()
+		while top > 0 and limbs[top - 1] == 0:
+			top -= 1
+		if top == 0:
+			break
+		var rem := 0
+		for i in range(top - 1, -1, -1):
+			var cur := (rem << 32) | limbs[i]
+			@warning_ignore("integer_division")
+			limbs[i] = cur / 1000000000
+			rem = cur % 1000000000
+		parts.append(str(rem).pad_zeros(9))
+	if parts.is_empty():
+		return "0"
+	parts.reverse()
+	return "".join(parts).lstrip("0")
+
+
+## True when the engine's `String.num_scientific` keeps too few digits to be the shortest
+## round-trip (4.4 keeps six), so its digits cannot be trusted even when they read back.
+static func _engine_prints_short() -> bool:
+	return String.num_scientific(0.1234567891234567).length() < 12
 
 
 static func _bits_of(x: float) -> int:

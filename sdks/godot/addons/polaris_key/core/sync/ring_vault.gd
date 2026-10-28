@@ -205,10 +205,10 @@ func _read_root_bytes() -> PKeyResult:
 			return _unreadable("the sync root")
 		return sealer.open(raw.slice(5), _seal_context())
 	if _encrypted:
-		var pass_ = _passphrase(false)
-		if pass_ == null or pass_ == "":
+		var passphrase = _passphrase(false)
+		if passphrase == null or passphrase == "":
 			return _unreadable("the sync root")
-		var f := FileAccess.open_encrypted_with_pass(path, FileAccess.READ, pass_)
+		var f := FileAccess.open_encrypted_with_pass(path, FileAccess.READ, passphrase)
 		if f == null:
 			return _unreadable("the sync root")
 		var raw := f.get_buffer(8192)
@@ -250,10 +250,10 @@ func _write_file(file: String, bytes: PackedByteArray, encrypt: bool) -> PKeyRes
 	var tmp := dir.path_join(tmp_name)
 	var f: FileAccess
 	if encrypt:
-		var pass_ = _passphrase(true)
-		if pass_ == null:
+		var passphrase = _passphrase(true)
+		if passphrase == null:
 			return _fault("write the salt of", ERR_FILE_CANT_WRITE)
-		f = FileAccess.open_encrypted_with_pass(tmp, FileAccess.WRITE, pass_)
+		f = FileAccess.open_encrypted_with_pass(tmp, FileAccess.WRITE, passphrase)
 	else:
 		f = FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:

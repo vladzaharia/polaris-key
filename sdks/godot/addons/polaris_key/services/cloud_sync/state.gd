@@ -118,10 +118,10 @@ func save(file: Dictionary) -> bool:
 			DirAccess.remove_absolute(tmp)
 			return false
 	else:
-		var pass_ = _passphrase(true)
-		if pass_ == null:
+		var passphrase = _passphrase(true)
+		if passphrase == null:
 			return false
-		var f := FileAccess.open_encrypted_with_pass(tmp, FileAccess.WRITE, pass_)
+		var f := FileAccess.open_encrypted_with_pass(tmp, FileAccess.WRITE, passphrase)
 		if f == null:
 			return false
 		f.store_buffer(plain)
@@ -188,10 +188,10 @@ func _read_plain() -> Variant:
 			return null
 		var opened: PKeyResult = sealer.open(bytes.slice(5), _context())
 		return opened.detail if opened.ok else null
-	var pass_ = _passphrase(false)
-	if pass_ == null:
+	var passphrase = _passphrase(false)
+	if passphrase == null:
 		return null
-	var f2 := FileAccess.open_encrypted_with_pass(p, FileAccess.READ, pass_)
+	var f2 := FileAccess.open_encrypted_with_pass(p, FileAccess.READ, passphrase)
 	if f2 == null or f2.get_length() > _MAX_BYTES:
 		return null
 	var out := f2.get_buffer(f2.get_length())

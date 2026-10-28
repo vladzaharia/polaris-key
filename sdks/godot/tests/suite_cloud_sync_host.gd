@@ -156,7 +156,7 @@ func _state(t: PKeyTestContext) -> void:
 
 
 ## A host on a loopback server. `answers` maps a path prefix to a handler result.
-func _make(t: PKeyTestContext, tag: String, handler: Callable, extra: Dictionary = {}, opts: Dictionary = {}) -> Dictionary:
+func _make(_t: PKeyTestContext, tag: String, handler: Callable, extra: Dictionary = {}, opts: Dictionary = {}) -> Dictionary:
 	var server := PKeyTestFixtures.new_server(handler)
 	var dir := PKeyTestFixtures.scratch_dir("cloud_sync_host_" + tag)
 	var clock := [1760000000000]
@@ -196,7 +196,7 @@ func _settle(host: Node) -> void:
 	await host.idle()
 
 
-func _pull(c: Dictionary, extra: Dictionary = {}) -> void:
+func _pull(c: Dictionary, _extra: Dictionary = {}) -> void:
 	# Force a fresh pull: the machine pulls when the network comes back.
 	await c["host"].idle()
 	var m: Variant = c["host"].machine()
