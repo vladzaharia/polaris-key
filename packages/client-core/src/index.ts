@@ -476,4 +476,26 @@ export {
   type Ed25519VerifyPort,
 } from "./deviceProof.js";
 
+export {
+  DeviceKeyUnsupportedError,
+  DeviceProofError,
+  buildDeviceKeysRequest,
+  signDeviceProof,
+  signKeysProof,
+  type DeviceKeyPort,
+  type DeviceKeysRequest,
+  type DeviceKeysResponse,
+  type DevicePublicKeys,
+  type SignDeviceProofOptions,
+} from "./deviceKeys.js";
+export {
+  createWebDeviceKeyStore,
+  indexedDbDeviceKeyStorage,
+  memoryDeviceKeyStorage,
+  type DeviceKeyStorage,
+  type StoredDeviceKeys,
+  type WebDeviceKeyOptions,
+  type WebDeviceKeyPort,
+} from "./deviceKeyStoreWeb.js";
+
 export * from "./peer/index.js";
