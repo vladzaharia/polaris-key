@@ -28,6 +28,7 @@ package im.plrs.key.identity
 
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
+import im.plrs.key.core.TokenProvenance
 import kotlinx.coroutines.CancellationException
 
 /** What a platform provider hands the exchange: an identity token bound to the nonce. A secret. */
@@ -108,8 +109,8 @@ public sealed interface AutoSignInResult {
             "AutoSignInResult.NeedsSignIn(linkHandle=${if (linkHandle == null) "null" else "[redacted]"}, reason=${reason.wire})"
     }
 
-    /** Every seat is taken; [view] is the choice view (with the replace rows) when the Worker sent it. */
-    public class DeviceLimit(public val view: LicenseChoiceView?) : AutoSignInResult {
+    /** Every seat is taken; [manageUrl] is the Worker's page for freeing one and [view] is the choice view (with the replace rows) when the Worker sent it. */
+    public class DeviceLimit(public val manageUrl: String?, public val view: LicenseChoiceView?) : AutoSignInResult {
         override fun toString(): String = "AutoSignInResult.DeviceLimit"
     }
 
@@ -121,8 +122,11 @@ internal suspend fun IdentityClient.runAutoSignIn(options: AutoSignInOptions): A
     val provider = options.provider ?: platformProvider.get()
     if (provider != null && safeRevoked(provider)) signOutAfterRevocation(provider)
 
+    // Captured after a revocation sign-out (which bumps it): a later sign-out stops this ladder storing a token.
+    val generation = core.signOutGeneration()
+
     // Rung 1: the stored session.
-    if (core.token() != null) {
+    if (core.token() != null && core.tokenProvenance() == TokenProvenance.signin) {
         val license = core.cache().license
         if (license != null) return AutoSignInResult.SignedIn(core.storedSubject(), license.doc.licenseId)
     }
@@ -131,8 +135,8 @@ internal suspend fun IdentityClient.runAutoSignIn(options: AutoSignInOptions): A
     // The JVM desktop has no provider: the regular form is next.
     if (provider == null) return AutoSignInResult.NeedsSignIn(null, AutoSignInReason.NoCredential)
 
-    attempt(provider, silent = true)?.let { return it }
-    if (options.prompt == AutoSignInPrompt.OPTIONAL) attempt(provider, silent = false)?.let { return it }
+    attempt(provider, silent = true, generation)?.let { return it }
+    if (options.prompt == AutoSignInPrompt.OPTIONAL) attempt(provider, silent = false, generation)?.let { return it }
     return AutoSignInResult.NeedsSignIn(null, AutoSignInReason.NoCredential)
 }
 
@@ -161,7 +165,7 @@ private suspend fun safeRevoked(provider: PlatformIdentityProvider): Boolean = t
 }
 
 /** One rung: a result that ends the ladder, or null to try the next rung. */
-private suspend fun IdentityClient.attempt(provider: PlatformIdentityProvider, silent: Boolean): AutoSignInResult? {
+private suspend fun IdentityClient.attempt(provider: PlatformIdentityProvider, silent: Boolean, generation: Long): AutoSignInResult? {
     try {
         val nonce = when (val n = exchangeNonce(provider.kind)) {
             is ExchangeNonceResult.Issued -> n.nonce
@@ -175,16 +179,24 @@ private suspend fun IdentityClient.attempt(provider: PlatformIdentityProvider, s
         } catch (e: Exception) {
             null
         } ?: return null
-        return result(exchange(provider.kind, subject.token, nonce))
+        if (core.signOutGeneration() != generation) return signedOutResult()
+        val port = deviceKeyPort() ?: return AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable)
+        return result(
+            exchangeTokens(provider.kind, subject.token, nonce, port) { core.signOutGeneration() == generation && !core.explicitSignOut() },
+        )
     } catch (e: CancellationException) {
         throw e
+    } catch (e: SignedOutDuringExchange) {
+        return signedOutResult()
     } catch (e: PolarisException) {
-        if (e.code == ErrorCode.deviceLimit) return AutoSignInResult.DeviceLimit(LicenseChoiceView.of(e.view))
+        if (e.code == ErrorCode.deviceLimit) return AutoSignInResult.DeviceLimit(e.manageUrl, LicenseChoiceView.of(e.view))
         return AutoSignInResult.Unavailable(e.code)
     } catch (e: Exception) {
         return AutoSignInResult.Unavailable(ErrorCode.networkError)
     }
 }
+
+private fun signedOutResult() = AutoSignInResult.NeedsSignIn(null, AutoSignInReason.SignedOut)
 
 private fun result(outcome: ExchangeOutcome): AutoSignInResult = when (outcome) {
     is ExchangeOutcome.SignedIn -> AutoSignInResult.SignedIn(outcome.subject, outcome.licenseId)

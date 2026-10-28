@@ -21,12 +21,15 @@ import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.InMemoryStore
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.Store
+import im.plrs.key.core.TokenProvenance
 import im.plrs.key.core.TokenSource
 import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
 import java.io.File
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -86,6 +89,7 @@ class AutoSignInTest {
         store: Store = InMemoryStore("djdl", deviceId),
         signOutBody: String = """{"released":true}""",
         revokedSignOutStatus: Int = 200,
+        provenance: TokenProvenance? = if (withLicense) TokenProvenance.signin else null,
     ): World {
         runBlocking { store.setToken("pkeyt_old") }
         if (withLicense) runBlocking {
@@ -113,6 +117,7 @@ class AutoSignInTest {
             ),
         )
         runBlocking { core.start() }
+        if (provenance != null) runBlocking { core.setToken("pkeyt_old", TokenSource.signin, provenance = provenance) }
         val client = IdentityClient(core, deviceKeys = DeviceKeyStore(DurableMem()))
         return World(client, transport, store, core)
     }
@@ -223,6 +228,10 @@ class AutoSignInTest {
         val without = world(tokenStatus = 403, tokenBody = """{"error":{"code":"device_limit"}}""")
             .client.autoSignIn(AutoSignInOptions(provider = FakeProvider())) as AutoSignInResult.DeviceLimit
         assertNull(without.view)
+        val manage = world(tokenStatus = 403, tokenBody = """{"error":{"code":"device_limit"},"manageUrl":"https://key.plrs.im/manage","view":$view}""")
+            .client.autoSignIn(AutoSignInOptions(provider = FakeProvider())) as AutoSignInResult.DeviceLimit
+        assertEquals("https://key.plrs.im/manage", manage.manageUrl)
+        assertFalse(withView.view.toString().contains("lic_1"))
     }
 
     @Test
@@ -278,7 +287,10 @@ class AutoSignInTest {
             // A token from an explicit sign-in ends it; an activation token does not.
             second.core.setToken("pkeyt_act", TokenSource.activate)
             assertTrue(second.core.explicitSignOut())
-            second.core.setToken("pkeyt_in", TokenSource.signin)
+            // A silent sign-in token does not clear it either; only the person's own does.
+            second.core.setToken("pkeyt_silent", TokenSource.signin)
+            assertTrue(second.core.explicitSignOut())
+            second.core.setToken("pkeyt_in", TokenSource.signin, personInitiated = true)
             assertFalse(second.core.explicitSignOut())
         } finally {
             dir.deleteRecursively()
@@ -315,6 +327,80 @@ class AutoSignInTest {
         assertEquals(AutoSignInReason.SignedOut, r.reason)
         assertTrue(fresh.explicitSignOut())
         assertFalse(w.paths().any { it == "/djdl/identity/signout" })
+    }
+
+    @Test
+    fun aSignOutWhileTheProviderIsSuspendedStopsTheLadderStoringAToken() = runBlocking {
+        val w = world()
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val entered = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val p = object : PlatformIdentityProvider by FakeProvider() {
+            override suspend fun silent(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+                entered.complete(Unit)
+                gate.await()
+                return PlatformSubjectToken("id-token", nonce)
+            }
+        }
+        val job = kotlinx.coroutines.GlobalScope.async { w.client.autoSignIn(AutoSignInOptions(provider = p)) }
+        entered.await()
+        w.client.signOut()
+        gate.complete(Unit)
+        val r = job.await() as AutoSignInResult.NeedsSignIn
+        assertEquals(AutoSignInReason.SignedOut, r.reason)
+        assertTrue(w.core.explicitSignOut())
+        assertFalse(w.paths().contains("/djdl/identity/token"))
+        assertNull(w.store.getToken())
+    }
+
+    @Test
+    fun aLadderExchangeNeverClearsTheFlagButAPersonInitiatedOneDoes() = runBlocking {
+        val w = world()
+        w.core.setExplicitSignOut(true)
+        val nonce = (w.client.exchangeNonce(ExchangeKind.google) as ExchangeNonceResult.Issued).nonce
+        w.client.exchange(ExchangeKind.google, "tok", nonce)
+        assertTrue(w.core.explicitSignOut())
+        val nonce2 = (w.client.exchangeNonce(ExchangeKind.google) as ExchangeNonceResult.Issued).nonce
+        w.client.exchange(ExchangeKind.google, "tok", nonce2, personInitiated = true)
+        assertFalse(w.core.explicitSignOut())
+    }
+
+    @Test
+    fun theFlagFailsClosedAndAFailedWriteNeverStopsSignOut() = runBlocking {
+        val dir = java.nio.file.Files.createTempDirectory("pkey-auto2").toFile()
+        try {
+            val w = world(store = FileStore("djdl", dir), withLicense = true)
+            val flag = File(dir, "explicit-sign-out")
+            // An unreadable slot (a directory where the file should be) reads as signed out.
+            flag.mkdirs()
+            assertTrue(w.core.explicitSignOut())
+            val warnings = mutableListOf<String>()
+            val collector = kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Unconfined) { w.core.stateWarnings.collect { warnings += it } }
+            // The write fails (the path is a directory) but the sign-out still clears everything.
+            assertEquals(SignOutResult.SignedOut(true), w.client.signOut())
+            assertNull(w.store.getToken())
+            assertTrue(w.core.explicitSignOut())
+            assertTrue(warnings.isNotEmpty())
+            collector.cancel()
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun onlyASigninTokenIsRungOne() = runBlocking {
+        // A key-only device (activation) with a cached licence is not signed in.
+        val keyOnly = world(withLicense = true, provenance = TokenProvenance.key)
+        val p = FakeProvider(silentToken = null)
+        assertTrue(keyOnly.client.autoSignIn(AutoSignInOptions(provider = p)) is AutoSignInResult.NeedsSignIn)
+        assertEquals(1, p.silentCalls)
+        // released:false keeps the token but demotes it.
+        val w = world(withLicense = true, signOutBody = """{"released":false}""")
+        assertTrue(w.client.autoSignIn() is AutoSignInResult.SignedIn)
+        w.client.signOut()
+        assertNotNull(w.store.getToken())
+        assertEquals(TokenProvenance.key, w.core.tokenProvenance())
+        w.core.setExplicitSignOut(false)
+        assertTrue(w.client.autoSignIn() is AutoSignInResult.NeedsSignIn)
     }
 
     @Test

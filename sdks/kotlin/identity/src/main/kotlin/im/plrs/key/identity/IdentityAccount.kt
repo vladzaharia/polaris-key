@@ -25,6 +25,7 @@ import im.plrs.key.core.IdentityDiscovery
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
+import im.plrs.key.core.TokenProvenance
 import im.plrs.key.core.TokenSource
 import im.plrs.key.core.boolValue
 import im.plrs.key.core.objectValue
@@ -153,6 +154,8 @@ internal class IdentityAccount(
 
     suspend fun signOut(): SignOutResult {
         val url = fragment()?.takeIf { it.account }?.signout ?: return SignOutResult.Unavailable
+        // A ladder already running must not store a token after this point.
+        core.bumpSignOutGeneration()
         // Nothing may be lost to a sign-out: each hook finishes, or throws and the sign-out stops.
         for (hook in hooks()) hook()
         val token = core.token()
@@ -174,6 +177,8 @@ internal class IdentityAccount(
             onSignedOut()
         } else {
             core.setSubject(null)
+            // The token stays, but it is no longer a signed-in person's: rung 1 must not count it.
+            core.setTokenProvenance(TokenProvenance.key)
         }
         if (had) onSubject(null)
         return SignOutResult.SignedOut(released)
@@ -209,7 +214,7 @@ internal class IdentityAccount(
         }
         val newToken = answer["token"].stringValue?.takeIf { it.isNotEmpty() }
             ?: throw PolarisException(ErrorCode.badResponse, "attach answered without a token.")
-        core.setToken(newToken, TokenSource.activate)
+        core.setToken(newToken, TokenSource.activate, provenance = TokenProvenance.signin)
         val subject = answer["subject"].stringValue?.takeIf { it.isNotEmpty() }
         if (core.setSubject(subject)) onSubject(subject)
         return AttachResult.Ok(subject, if (answer["attached"].stringValue == "claimed") "claimed" else null)

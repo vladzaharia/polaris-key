@@ -490,7 +490,7 @@ internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, cod
                 throw PolarisException(ErrorCode.badResponse, "the token endpoint asked for a licence choice this sign-in did not request.")
             }
         is TokenAnswer.Token -> {
-            core.setToken(answer.accessToken, TokenSource.signin)
+            core.setToken(answer.accessToken, TokenSource.signin, personInitiated = true)
             if (core.setSubject(answer.subject)) onSubject(answer.subject)
             if (redirectAcquisitionSyncValue) onAcquired?.invoke()
             SignInOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue)
