@@ -1,7 +1,7 @@
 // @pkey-feature ui.settings
 // The Cloud Sync screens' models (U-42.3): UnlockSync, RecoveryCode, RingChange and the
 // CloudSyncStatus row. Each holds a step and answers the state machines of
-// States/CloudSyncFamily.swift; the actions go through `CloudSyncHost`, whose live form is the
+// States/CloudSyncFamily.swift; the actions go through `CloudSyncScreenHost`, whose live form is the
 // client's `keyring` (`SyncKeyring`). A model built without a host is model-only: its actions
 // move the step and call the model's closures, and nothing reaches a keyring.
 //
@@ -16,7 +16,7 @@ import PolarisKey
 import PolarisKeyCore
 
 /// What the Cloud Sync screens ask of the keyring. `init(keyring:)` is the live form.
-public struct CloudSyncHost: Sendable {
+public struct CloudSyncScreenHost: Sendable {
     /// `keyring.recover(code)`: throws `recovery-code-invalid` for a bad code.
     public var recover: @Sendable (String) async throws -> Void
     /// `keyring.reset()`: a new ring and root; returns the new recovery code to show once.
@@ -38,7 +38,7 @@ public struct CloudSyncHost: Sendable {
         self.newRecoveryCode = newRecoveryCode
     }
 
-    /// The client's keyring: `CloudSyncHost(keyring: client.keyring)`.
+    /// The client's keyring: `CloudSyncScreenHost(keyring: client.keyring)`.
     public init(keyring: SyncKeyring) {
         self.init(
             recover: { _ = try await keyring.recover($0) },
@@ -57,7 +57,7 @@ public final class UnlockSyncModel: CustomStringConvertible {
     public private(set) var inputs: KitInputs
     /// The recovery code being typed or pasted. Never logged, never in `inputs`.
     public var code = ""
-    private let host: CloudSyncHost?
+    private let host: CloudSyncScreenHost?
     /// Told when the root is held (the code was right).
     public var onUnlocked: (@MainActor () -> Void)?
     /// Told when Start over made a new ring: the new recovery code, to show once.
@@ -72,7 +72,7 @@ public final class UnlockSyncModel: CustomStringConvertible {
     private var armTask: Task<Void, Never>?
 
     public init(
-        inputs: KitInputs = KitInputs(), host: CloudSyncHost? = nil,
+        inputs: KitInputs = KitInputs(), host: CloudSyncScreenHost? = nil,
         armDelay: Duration = .milliseconds(500)
     ) {
         self.inputs = inputs
@@ -188,10 +188,10 @@ public final class RecoveryCodeModel: CustomStringConvertible {
     public private(set) var code: String?
     /// A new code is being made: `clear()` is ignored until it is held.
     public private(set) var generating = false
-    private let host: CloudSyncHost?
+    private let host: CloudSyncScreenHost?
     public var onDone: (@MainActor () -> Void)?
 
-    public init(inputs: KitInputs = KitInputs(), host: CloudSyncHost? = nil) {
+    public init(inputs: KitInputs = KitInputs(), host: CloudSyncScreenHost? = nil) {
         self.inputs = inputs
         self.host = host
         if inputs.recoveryCode == nil { self.inputs.recoveryCode = KitRecoveryCode() }
@@ -246,7 +246,7 @@ public final class RecoveryCodeModel: CustomStringConvertible {
 public final class RingChangeModel: CustomStringConvertible {
     public private(set) var inputs: KitInputs
     public private(set) var busy = false
-    private let host: CloudSyncHost?
+    private let host: CloudSyncScreenHost?
     /// Told when the ring was accepted and the root is held.
     public var onAccepted: (@MainActor () -> Void)?
     /// Told when accepting did not open a root (no wrap, or the request failed).
@@ -255,14 +255,14 @@ public final class RingChangeModel: CustomStringConvertible {
     public var onUseRecoveryCode: (@MainActor () -> Void)?
     public var onCancel: (@MainActor () -> Void)?
 
-    public init(by: String? = nil, served: SyncRingPin? = nil, host: CloudSyncHost? = nil) {
+    public init(by: String? = nil, served: SyncRingPin? = nil, host: CloudSyncScreenHost? = nil) {
         var inputs = KitInputs()
         inputs.ringChange = KitRingChange(by: by, served: served.map(Self.ring))
         self.inputs = inputs
         self.host = host
     }
 
-    public init(inputs: KitInputs, host: CloudSyncHost? = nil) {
+    public init(inputs: KitInputs, host: CloudSyncScreenHost? = nil) {
         self.inputs = inputs
         self.host = host
     }
@@ -315,25 +315,29 @@ public final class CloudSyncStatusModel {
     public let onUnlock: @MainActor () -> Void
     /// Opens RingChange. Required for the same reason.
     public let onReview: @MainActor () -> Void
+    /// Sign in to sync, for the signed-out error row. nil draws no button.
+    public let onSignIn: (@MainActor () -> Void)?
 
     public init(
         _ state: KitCloudSync.State = .locked, onUnlock: @escaping @MainActor () -> Void,
-        onReview: @escaping @MainActor () -> Void
+        onReview: @escaping @MainActor () -> Void, onSignIn: (@MainActor () -> Void)? = nil
     ) {
         var inputs = KitInputs()
         inputs.cloudSync = KitCloudSync(state: state)
         self.inputs = inputs
         self.onUnlock = onUnlock
         self.onReview = onReview
+        self.onSignIn = onSignIn
     }
 
     public init(
         inputs: KitInputs, onUnlock: @escaping @MainActor () -> Void,
-        onReview: @escaping @MainActor () -> Void
+        onReview: @escaping @MainActor () -> Void, onSignIn: (@MainActor () -> Void)? = nil
     ) {
         self.inputs = inputs
         self.onUnlock = onUnlock
         self.onReview = onReview
+        self.onSignIn = onSignIn
     }
 
     public var screen: KitScreen<CloudSyncStatusState> { KitStates.cloudSyncStatus(inputs) }
