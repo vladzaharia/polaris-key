@@ -110,8 +110,7 @@
     },
     "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/AndroidDeviceKeysTest.kt": {
       "detekt:empty-blocks.EmptyCatchBlock": 2,
-      "detekt:exceptions.SwallowedException": 3,
-      "ktlint:standard:import-ordering": 1
+      "detekt:exceptions.SwallowedException": 3
     },
     "sdks/kotlin/android/src/test/kotlin/im/plrs/key/android/AndroidFingerprintTest.kt": {
       "ktlint:standard:import-ordering": 1
@@ -3323,6 +3322,9 @@
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/PeerChannelTest.kt": {
       "detekt:complexity.LongParameterList": 2
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/SyncKeyring.kt": {
+      "detekt:complexity.TooManyFunctions": 1
     }
   }
 }

@@ -134,7 +134,7 @@ public object PolarisKeyAndroid {
         val attestation = options.attestation ?: PlayIntegrityAttestation.create(ctx, android.playCloudProjectNumber)
         if (options.attestation == null) AttestationProviders.installed = attestation
         val built = PolarisKeyClient(
-            options.copy(
+            options.withAndroidKeyring(ctx, product).copy(
                 attestation = attestation,
                 core = core,
                 license = license,
