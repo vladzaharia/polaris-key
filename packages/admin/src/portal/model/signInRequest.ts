@@ -87,10 +87,9 @@ export function thisDeviceName(view: SignInRequestView): string {
   return view.deviceLabel ?? t("signin.thisBrowser");
 }
 
-/** `thisDeviceName` for the start of a sentence: "This browser", a device label as it is. */
+/** `thisDeviceName` for the start of a sentence: the catalog's "This browser", a label as it is. */
 export function thisDeviceTitle(view: SignInRequestView): string {
-  const n = thisDeviceName(view);
-  return n.charAt(0).toUpperCase() + n.slice(1);
+  return view.deviceLabel ?? t("signin.replace.thisBrowser");
 }
 
 // ── Licence rows ───────────────────────────────────────────────────────────────────────────

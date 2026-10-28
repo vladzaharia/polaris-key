@@ -66,7 +66,7 @@ import {
 import { sameOriginDecisionPost } from "./deviceFlow.js";
 import { hostOrigin } from "../../../core/hosts.js";
 import { redirectToApprove } from "./deviceApproval.js";
-import { isReplaceGroup } from "../licenseChoice.js";
+import { decodeReplacePick, isReplaceGroup } from "../licenseChoice.js";
 import { flowView, listingDeveloper } from "./pages.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 
@@ -388,16 +388,9 @@ export async function handleAuthChoose(
       // The all-full group: one press picks the device and replaces it (no second step).
       const raw = form.get("replaceDevice") ?? "";
       if (!raw) return notice({ kind: "pick_device" });
-      // Each half is percent-encoded (licenseChoice.ts), so an id holding "|" cannot collide.
-      const [a = "", b = ""] = raw.split("|");
-      let licenseId = "";
-      let deviceId = "";
-      try {
-        licenseId = decodeURIComponent(a);
-        deviceId = decodeURIComponent(b);
-      } catch {
-        return notice({ kind: "unavailable" });
-      }
+      const ids = decodeReplacePick(raw);
+      if (!ids) return notice({ kind: "unavailable" });
+      const { licenseId, deviceId } = ids;
       const picked = view.rows.find((r) => r.id === licenseId);
       if (!picked?.replace?.some((d) => d.id === deviceId))
         return notice({ kind: "unavailable" });

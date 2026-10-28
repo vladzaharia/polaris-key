@@ -44,7 +44,7 @@ import {
 } from "../model/key.js";
 import { formatDay, normalisePlatform, tierLabel } from "../model/library.js";
 import { allowedReturn, cardReturn } from "../model/returnUrl.js";
-import { href, navigate, type ActivateNext } from "../router.js";
+import { href, navigateFromModal, type ActivateNext } from "../router.js";
 import {
   PLATFORM_ORDER,
   PlatformGlyphs,
@@ -118,8 +118,11 @@ export function ActivateDialog({
   forDevice,
   returnTo,
   onOpenChange,
+  onDraft,
 }: {
   open: boolean;
+  /** Told the key as it is typed ("" once the add is done), so a dismissal keeps it. */
+  onDraft?: (key: string) => void;
   /** A key from `/activate#key=…`, filled in and checked. */
   prefill?: string;
   /** The product slug an app sent along (`&product=`). */
@@ -135,6 +138,11 @@ export function ActivateDialog({
   const [key, setKey] = React.useState(prefill ?? "");
   const [touched, setTouched] = React.useState(Boolean(prefill));
   const [step, setStep] = React.useState<Step>({ kind: "enter" });
+  React.useEffect(() => {
+    onDraft?.(step.kind === "done" ? "" : key);
+    // The callback is a ref write in the provider.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, step.kind]);
   const [serverVerdict, setServerVerdict] = React.useState<KeyVerdict | null>(
     null,
   );
@@ -265,7 +273,7 @@ export function ActivateDialog({
       if (returnTo) params.return = returnTo;
       requestHeadingFocus(done.slug);
       onOpenChange(false);
-      navigate(href.focused(done.slug, "free-device", params));
+      navigateFromModal(href.focused(done.slug, "free-device", params));
       return;
     }
     if (toCard) {
@@ -391,7 +399,7 @@ export function ActivateDialog({
   const openProduct = (s: string): void => {
     requestHeadingFocus(s);
     onOpenChange(false);
-    navigate(href.product(s));
+    navigateFromModal(href.product(s));
   };
 
   return (
@@ -497,7 +505,7 @@ export function ActivateDialog({
                                     // PX-13: Account → Sign-in methods with Add an email open. The
                                     // masked address can't be filled in; the person types theirs.
                                     onOpenChange(false);
-                                    navigate(
+                                    navigateFromModal(
                                       href.account("methods", { add: "email" }),
                                     );
                                   }
@@ -572,7 +580,7 @@ export function ActivateDialog({
                 className="font-medium max-sm:min-h-11"
                 onClick={() => {
                   onOpenChange(false);
-                  navigate("#/account/link");
+                  navigateFromModal("#/account/link");
                 }}
               >
                 {t("signin.join.title")}

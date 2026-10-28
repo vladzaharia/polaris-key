@@ -76,19 +76,31 @@ const STEP_UP_KEY = "pk.stepUpReturn";
  * top of the document. The sign-in link notes the leaving; {@link consumeStepUpReturn} reads it
  * once on the way back, and the shell puts focus on the page heading.
  */
-export function markStepUpLeave(): void {
+export function markStepUpLeave(e?: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}): void {
+  // A new-tab or new-window click leaves this page where it is.
+  if (e && (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey))
+    return;
   try {
-    window.sessionStorage.setItem(STEP_UP_KEY, "1");
+    window.sessionStorage.setItem(STEP_UP_KEY, String(Date.now()));
   } catch {
     /* private mode: focus starts at the top, as before */
   }
 }
 
-export function consumeStepUpReturn(): boolean {
+/** How long a note of leaving stays good: a provider sign-in is a minute or two, not ten. */
+const STEP_UP_WINDOW_MS = 10 * 60 * 1000;
+
+export function consumeStepUpReturn(now = Date.now()): boolean {
   try {
-    const was = window.sessionStorage.getItem(STEP_UP_KEY) === "1";
+    const at = Number(window.sessionStorage.getItem(STEP_UP_KEY));
     window.sessionStorage.removeItem(STEP_UP_KEY);
-    return was;
+    return Number.isFinite(at) && at > 0 && now - at <= STEP_UP_WINDOW_MS;
   } catch {
     return false;
   }

@@ -79,10 +79,19 @@ export function ActivateProvider({
       }, 0);
     };
   }, [state.open, state.session]);
+  /** What was typed and not added: a dismissed modal (Back, Escape) opens on it again. */
+  const draft = React.useRef("");
   const value = React.useMemo<ActivateContextValue>(
     () => ({
       open: (request = {}) =>
-        setState((s) => ({ open: true, request, session: s.session + 1 })),
+        setState((s) => ({
+          open: true,
+          request: {
+            ...request,
+            key: request.key || draft.current || undefined,
+          },
+          session: s.session + 1,
+        })),
     }),
     [],
   );
@@ -97,6 +106,9 @@ export function ActivateProvider({
         next={state.request.next}
         forDevice={state.request.forDevice}
         returnTo={state.request.returnTo}
+        onDraft={(k) => {
+          draft.current = k;
+        }}
         onOpenChange={(open) => setState((s) => ({ ...s, open }))}
       />
     </ActivateCtx.Provider>

@@ -125,6 +125,7 @@ export function SignInMethods({
                 variant="outline"
                 className="max-sm:min-h-11"
                 iconStart={<Plus aria-hidden />}
+                aria-label={t("locker.methods.addMethod")}
               >
                 {t("locker.methods.add")}
               </Button>

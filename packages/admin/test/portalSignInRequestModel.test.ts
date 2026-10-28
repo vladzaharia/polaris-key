@@ -272,10 +272,11 @@ describe("addresses", () => {
 });
 
 describe("this device at a sentence start", () => {
-  it("capitalises this browser and leaves a device label as it is", () => {
+  it("says This browser, and leaves a device label exactly as it is", () => {
     const v = (deviceLabel: string | null): SignInRequestView =>
       ({ deviceLabel }) as SignInRequestView;
     expect(thisDeviceTitle(v(null))).toBe("This browser");
     expect(thisDeviceTitle(v("Steam Deck"))).toBe("Steam Deck");
+    expect(thisDeviceTitle(v("iPhone 15 Pro"))).toBe("iPhone 15 Pro");
   });
 });

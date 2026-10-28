@@ -679,7 +679,7 @@ function replaceGroupBody(
         .map((t) => `<span class="tag">${t}</span>`)
         .join("");
       return (
-        `<li><label class="choice"><input type="radio" name="replaceDevice" value="${escapeHtml(`${encodeURIComponent(r.id)}|${encodeURIComponent(d.id)}`)}" aria-describedby="rg-err"${bad ? ' aria-invalid="true"' : ""}${bad && i === 0 ? " autofocus" : ""}>` +
+        `<li><label class="choice"><input type="radio" name="replaceDevice" value="${escapeHtml(encodeReplacePick(r.id, d.id))}" aria-describedby="rg-err"${bad ? ' aria-invalid="true"' : ""}${bad && i === 0 ? " autofocus" : ""}>` +
         `<span class="choice-body"><span class="choice-title"><bdi>${escapeHtml(d.label)}</bdi>${tags}</span>` +
         // "Active now" is said once: the tag, not the last-used line too.
         meta([
@@ -754,4 +754,25 @@ export function replaceConfirmBody(input: {
     `<button class="button secondary" type="submit" name="action" value="back">Back</button>` + // signin.replace.back
     `</div></form>`
   );
+}
+
+/** The replace-pick radio's value: each id percent-encoded, so a "|" inside one cannot collide. */
+export function encodeReplacePick(licenseId: string, deviceId: string): string {
+  return `${encodeURIComponent(licenseId)}|${encodeURIComponent(deviceId)}`;
+}
+
+/** The two ids back from {@link encodeReplacePick}; null for anything it could not have made. */
+export function decodeReplacePick(
+  raw: string,
+): { licenseId: string; deviceId: string } | null {
+  const parts = raw.split("|");
+  if (parts.length !== 2) return null;
+  try {
+    return {
+      licenseId: decodeURIComponent(parts[0]!),
+      deviceId: decodeURIComponent(parts[1]!),
+    };
+  } catch {
+    return null;
+  }
 }

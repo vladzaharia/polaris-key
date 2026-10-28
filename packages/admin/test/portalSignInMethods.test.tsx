@@ -225,7 +225,9 @@ afterEach(() => {
 });
 
 async function addVia(region: HTMLElement, name: string): Promise<void> {
-  await userEvent.click(within(region).getByRole("button", { name: "Add" }));
+  await userEvent.click(
+    within(region).getByRole("button", { name: "Add a sign-in method" }),
+  );
   await userEvent.click(await screen.findByRole("menuitem", { name }));
 }
 
@@ -249,7 +251,9 @@ describe("Sign-in methods (PX-13)", () => {
     expect(within(region).getByText("iCloud Keychain")).toBeTruthy();
     expect(within(region).getByText(/added on Safari on macOS/)).toBeTruthy();
     // Add is in the card's header menu: the one entry point while each group has a method (PX-31a).
-    expect(within(region).getByRole("button", { name: "Add" })).toBeTruthy();
+    expect(
+      within(region).getByRole("button", { name: "Add a sign-in method" }),
+    ).toBeTruthy();
     expect(
       within(region).queryByRole("button", { name: "Add an email" }),
     ).toBeNull();
