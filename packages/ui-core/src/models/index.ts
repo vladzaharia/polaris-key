@@ -4,11 +4,7 @@
 
 import { contextOf, type UiInput } from "../input.js";
 import type { View } from "../view.js";
-import type {
-  ComponentName,
-  ScreenName,
-  SyncScreenName,
-} from "../vocabulary.js";
+import type { ComponentName } from "../vocabulary.js";
 import {
   activateView,
   offlineActivationView,
@@ -66,23 +62,12 @@ export const MODELS: Readonly<Record<ComponentName, Model>> = {
   About: aboutView,
   ChannelPicker: channelPickerView,
   Toast: toastView,
+  ...SYNC_MODELS,
 };
 
 /** The view of `component` for `input`. */
-export function viewOf(component: ComponentName, input: UiInput): View;
-export function viewOf(
-  component: SyncScreenName,
-  input: UiInput,
-): View<SyncScreenName>;
-export function viewOf(component: ScreenName, input: UiInput): View<ScreenName>;
-export function viewOf(
-  component: ScreenName,
-  input: UiInput,
-): View<ScreenName> {
-  const ctx = contextOf(input);
-  return component in SYNC_MODELS
-    ? SYNC_MODELS[component as SyncScreenName](ctx)
-    : MODELS[component as ComponentName](ctx);
+export function viewOf(component: ComponentName, input: UiInput): View {
+  return MODELS[component](contextOf(input));
 }
 
 export * from "./activate.js";

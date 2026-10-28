@@ -42,6 +42,8 @@ export interface RenderCtx {
   shape?: "landscape" | "portrait" | "short";
   /** The window is wider than a docked sheet (35 rem). */
   wide?: boolean;
+  /** The recovery code the host handed RecoveryCode: held by the element, in no input or view. */
+  code?: string;
   /** A control was pressed: the element turns it into a `pk-action` event. */
   act(key: string, detail?: Record<string, unknown>): void;
   /** The person typed in a field, flipped a switch or chose an option. */

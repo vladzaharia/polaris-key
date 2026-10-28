@@ -40,6 +40,7 @@ import {
   type ThemeHost,
 } from "./theme.js";
 import { LAYOUTS } from "./layout.js";
+import { SYNC_LAYOUTS } from "./syncLayouts.js";
 import { renderView } from "./views.js";
 
 /** DL9: the ring shows only after a key was pressed since load (no ring at rest on a cold start). */
@@ -97,6 +98,7 @@ export abstract class PkElement extends LitElement {
     preset: {},
     bare: { type: Boolean, reflect: true },
     fill: { type: Boolean, reflect: true },
+    code: { attribute: false },
   };
 
   /** The headless input (ui-core `UiInput`): what the SDK adapter or the host knows now. */
@@ -110,6 +112,9 @@ export abstract class PkElement extends LitElement {
   bare = false;
   /** Own the window (DL2): the React kit's `fill`, for a screen the host mounts as the page. */
   fill = false;
+  /** RecoveryCode only: the new recovery code, handed over once by the host. It is held here, in
+   *  no input or view, and drawn as text; it is never an attribute or an input's value. */
+  code?: string;
 
   /** The component this element draws. */
   abstract readonly component: ComponentName;
@@ -390,6 +395,7 @@ export abstract class PkElement extends LitElement {
       shape: this.shape,
       wide: this.wide,
       input: this.modelInput(),
+      ...(this.code ? { code: this.code } : {}),
       act: (key, extra = {}) => {
         const detail: PkActionDetail = {
           key,
@@ -409,6 +415,14 @@ export abstract class PkElement extends LitElement {
             },
           };
         }
+        // The typed recovery code leaves only here, with the press that unlocks (S13).
+        if (key === "unlockSync.unlock")
+          detail.value =
+            this.renderRoot
+              .querySelector<HTMLInputElement>('[data-key="unlockSync.field"]')
+              ?.value.trim() ?? "";
+        if (key === "ringChange.accept" && this.input.ringChange?.served)
+          detail.served = this.input.ringChange.served;
         if (this.localAction(key, detail, view)) return;
         this.dispatchEvent(
           new CustomEvent<PkActionDetail>("pk-action", {
@@ -448,6 +462,13 @@ export abstract class PkElement extends LitElement {
           ...(stale ? { activation: undefined } : {}),
         };
       }
+      case "recoverySaved":
+        return { recoveryCode: { saved: value === true } };
+      case "recoveryEdited":
+        // Editing the code clears "That code isn't right".
+        return input.unlockSync?.step === "invalid"
+          ? { unlockSync: { ...input.unlockSync, step: "code" } }
+          : {};
       case "setting":
         return {
           config: (input.config ?? []).map((r) =>
@@ -647,10 +668,25 @@ export abstract class PkElement extends LitElement {
         data-pk-platform=${platformVariant(r.theme)}
         ?data-keyboard=${keyboard}
         lang=${c.copy.locale}
+        @keydown=${(e: KeyboardEvent) => this.escapes(e, c)}
       >
         ${this.renderBody(c)}
       </div>
       ${this.renderProjected(view)}`;
+  }
+
+  /** Escape leaves a Cloud Sync screen by its Cancel (DL9), where it has one. */
+  private escapes(e: KeyboardEvent, c: RenderCtx): void {
+    const v = c.view;
+    if (
+      e.key !== "Escape" ||
+      e.defaultPrevented ||
+      !(v.component in SYNC_LAYOUTS) ||
+      !v.copy.includes("common.cancel")
+    )
+      return;
+    e.preventDefault();
+    c.act("common.cancel");
   }
 
   private appliedVars = new Set<string>();

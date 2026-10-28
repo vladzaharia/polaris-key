@@ -95,6 +95,7 @@ const FAMILIES = [
   "update",
   "settings",
   "paywall",
+  "cloudSync",
 ] as const;
 const en = new Copy({ tables: { en: KIT_COPY_EN } });
 
@@ -148,9 +149,14 @@ vi.spyOn(console, "warn").mockImplementation((m: unknown) => {
 afterEach(cleanup);
 
 // NearbyApproval is not a public export (UXR-kits-v7 B4): the matrix draws the internal component.
+// The Cloud Sync screens' public exports load on demand (U-42.2): the matrix draws the plain part
+// they load, which draws at once.
 const COMPONENTS = {
   ...Kit,
   NearbyApproval: kitComponent("NearbyApproval"),
+  UnlockSync: kitComponent("UnlockSync"),
+  RecoveryCode: kitComponent("RecoveryCode"),
+  RingChange: kitComponent("RingChange"),
 } as unknown as Record<
   string,
   ((p: Kit.KitProps & { children?: ReactNode }) => ReactNode) | undefined

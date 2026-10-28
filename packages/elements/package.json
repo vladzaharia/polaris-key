@@ -40,6 +40,10 @@
       "types": "./dist/contract.d.ts",
       "default": "./dist/contract.js"
     },
+    "./sync": {
+      "types": "./dist/sync.d.ts",
+      "default": "./dist/sync.js"
+    },
     "./form": {
       "types": "./dist/form.d.ts",
       "default": "./dist/form.js"

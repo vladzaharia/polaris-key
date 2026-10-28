@@ -25,6 +25,7 @@ import {
 import { copyPending } from "./copy.js";
 import { LAYOUTS, dialogControls, type Layout } from "./layout.js";
 import { platformLabel } from "./platforms.js";
+import { syncContent } from "./syncViews.js";
 import {
   actions,
   button,
@@ -87,6 +88,10 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
   const { view, input } = c;
   const keys = new Set(view.copy);
   switch (view.component) {
+    case "UnlockSync":
+    case "RecoveryCode":
+    case "RingChange":
+      return syncContent(c);
     case "Activate": {
       const verdict = [
         "part.keyField.verdict",
@@ -556,7 +561,7 @@ function statusGlyph(view: View): TemplateResult | typeof nothing {
           : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
   if (view.component === "CloudSyncStatus")
-    return s === "error" && view.decisions.tone === "neutral"
+    return view.decisions.tone === "neutral"
       ? GLYPHS.info()
       : s === "offline"
         ? GLYPHS.offline()
@@ -579,7 +584,7 @@ function statusOf(view: View): string {
           : "neutral";
   if (view.component === "CloudSyncStatus")
     // A sync that failed for want of a sign-in is neutral, not a fault (DL6).
-    return view.state === "error" && view.decisions.tone === "neutral"
+    return view.decisions.tone === "neutral"
       ? "neutral"
       : view.state === "conflict" || view.state === "error"
         ? "warning"
