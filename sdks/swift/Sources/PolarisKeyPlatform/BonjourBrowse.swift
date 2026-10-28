@@ -56,6 +56,12 @@ public struct BonjourFound: Sendable, Hashable {
     public let instance: String
     public let txt: [String]
     public let endpoint: BonjourEndpoint
+
+    public init(instance: String, txt: [String], endpoint: BonjourEndpoint) {
+        self.instance = instance
+        self.txt = txt
+        self.endpoint = endpoint
+    }
 }
 
 public struct BonjourBrowseOptions: Sendable, Equatable {

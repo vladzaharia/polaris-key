@@ -23,11 +23,16 @@ public enum ConnectLanReason: String, Sendable, CaseIterable {
     case tooLarge = "too_large"
     case badType = "bad_type"
     case queueFull = "queue_full"
+    /// Local Network access was refused (D-8): hosts hide the nearby-device surface.
+    case permissionDenied = "permission_denied"
+    /// The app's Info.plist lacks `NSBonjourServices` or `NSLocalNetworkUsageDescription`.
+    case notConfigured = "not_configured"
 
     /// The registered client code.
     public var code: String {
         switch self {
-        case .noIdentity, .noKeys, .notStarted: return ErrorCode.notConfigured
+        case .noIdentity, .noKeys, .notStarted, .notConfigured: return ErrorCode.notConfigured
+        case .permissionDenied: return ErrorCode.nearbyPermissionDenied
         case .unknownPeer, .tooLarge, .badType: return ErrorCode.invalidArgument
         case .notListening: return ErrorCode.connectUnavailable
         case .connectFailed, .closed: return ErrorCode.networkError
