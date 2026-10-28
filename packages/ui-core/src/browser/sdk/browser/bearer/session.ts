@@ -525,6 +525,12 @@ export class BearerSession {
     );
   }
 
+  /** The effective trust set, for documents verified outside the session (Connect's roster and
+   *  certificate). */
+  effectiveTrust(): TrustSet {
+    return this.trust;
+  }
+
   /** Record a verified manifest's new tombstones, with the manifest as their evidence. */
   private noteRevocations(jws: string, revokedPins: readonly string[]): void {
     if (revokedPins.length === 0) return;

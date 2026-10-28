@@ -543,8 +543,8 @@
       "wp": "U-38"
     },
     "connect.identity": {
-      "status": "planned",
-      "wp": "CC-09"
+      "status": "implemented",
+      "note": "CC-09.1: adapter.connect (ui-core browser/connect, bearer mode): identity({refresh}), current(), listDevices(), discoveryKeys() and leave(), over the page's DeviceKeyPort (IndexedDB, non-extractable) and client-core peer/cert. The roster, certificate and K_disc are one pkey.connect.v1 record in the page's IndexedDB (memory with memory-only keys, which need allowEphemeralKeys); K_disc is non-enumerable and in no error. The previous K_disc goes 24 h after first seen, on roster loss or re-key and on leave; a 3.5-day short-circuit, which refresh bypasses; one call at a time; an unreadable record is an error that leave clears. Sign-out and deactivation call leave() and fail closed; a cookie page answers the typed runtime N/A. The connect-identity* transcripts replay in test/transcripts.test.ts; test/connectIdentity.test.ts pins the rest."
     },
     "connect.noise": {
       "status": "planned",
