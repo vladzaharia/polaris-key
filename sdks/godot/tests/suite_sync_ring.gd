@@ -100,6 +100,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _guards(t)
 	await _adopt(t)
 	_vault_files(t)
+	await _facade(t)
 	return true
 
 
@@ -484,3 +485,30 @@ func _quiet(t: PKeyTestContext, texts: Array, secrets: Array) -> bool:
 			if String(x).contains(String(s)):
 				return false
 	return true
+
+
+## PolarisKey.keyring: null until configure(), built by PKeySyncRing.for_core over the options' device
+## keys and vault, and forgotten by the sign-out hook.
+func _facade(t: PKeyTestContext) -> void:
+	var sdk := PKeyTestFixtures.new_sdk()
+	t.check("facade: keyring is null before configure", sdk.keyring == null)
+	var store := PKeyMemoryStore.new("TRANSCRIPTDEVICE0000000000000001", "pkeyt_L7Z_jTR0YsyzhMxHLBdEwKZ4yW2Uu4m6CANM1oHQiUA")
+	var opts := PKeyTestFixtures.options("http://127.0.0.1:1", store, [1700000000], PRODUCT, {}, "1.0.0")
+	opts.device_keys = PKeyDeviceKeyStore.new(PRODUCT, _dir("facade-keys"), false, false)
+	opts.ring_vault = PKeySyncRingVault.new(PRODUCT, "user://pkey", true)
+	t.check("facade: configure is ok", sdk.configure(opts).ok)
+	var ring: PKeySyncRing = sdk.keyring
+	t.check("facade: keyring is a PKeySyncRing for this product and device", ring != null and ring.product == PRODUCT and ring.device_id == sdk.core.device_id)
+	var root := Crypto.new().generate_random_bytes(32)
+	var kid := PKeySyncHkdf.derive_kid(root)
+	var vault: PKeySyncRingVault = opts.ring_vault
+	vault.write_pin({"ring_id": "rg_" + "A".repeat(22), "epoch": 1, "root_kid": kid.hex_encode()})
+	vault.write_root("rg_" + "A".repeat(22), 1, kid, root)
+	t.check("facade: a stored root is taken back offline", (await ring.status()).detail["unlocked"])
+	t.check("facade: the sign-out hook is registered once, even after a second configure", sdk.identity._before_sign_out.size() == 1)
+	sdk.configure(opts)
+	t.check("facade: and still once after a second configure", sdk.identity._before_sign_out.size() == 1 and sdk.keyring != null)
+	for hook in sdk.identity._before_sign_out:
+		await hook.call()
+	t.check("facade: sign-out forgets the root and the pin", not sdk.keyring.unlocked() and vault.read_pin().detail == null and vault.read_root().detail == null)
+	sdk.queue_free()
