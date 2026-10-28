@@ -42,6 +42,9 @@ import java.util.UUID
 
 public const val CLOUD_SYNC_FILE: String = "cloud-sync.json"
 
+/** Holds no data: it says the legacy `config.local` store was offered to the machine once (A-6). Purge leaves it. */
+public const val CLOUD_SYNC_IMPORTED_FILE: String = "cloud-sync-imported.json"
+
 /** Open-setting names kept for tombstone mapping; past this the oldest are dropped. */
 public const val OPEN_KEYS_MAX: Int = 4096
 
@@ -62,6 +65,20 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
         }
     }
 
+    /** Whether the legacy store was offered to the machine already. */
+    public fun imported(): Boolean = File(dir, CLOUD_SYNC_IMPORTED_FILE).isFile
+
+    public fun markImported() {
+        synchronized(lock) { writeAtomic("""{"v":1}""".toByteArray(Charsets.UTF_8), File(dir, CLOUD_SYNC_IMPORTED_FILE)) }
+    }
+
+    /** Delete every leftover temporary file of a write (a crash, or a purge racing a write). */
+    public fun sweepTemporaries() {
+        synchronized(lock) {
+            dir.listFiles { f -> f.name.startsWith("$CLOUD_SYNC_FILE.") && f.name.endsWith(".tmp") }?.forEach { it.delete() }
+        }
+    }
+
     /** The saved file, or an empty one when it is missing, corrupt, a symlink or another product's. */
     public fun load(): CloudSyncFileContents {
         val empty = CloudSyncFileContents(null, null, emptyList())
@@ -76,7 +93,7 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
         )
     }
 
-    public fun save(persisted: JsonObject, catalog: JsonObject?, openKeys: List<String>) {
+    public fun save(persisted: JsonObject, catalog: JsonObject?, openKeys: List<String>, allowed: () -> Boolean = { true }) {
         val body = buildJsonObject {
             put("v", 1)
             put("product", product)
@@ -84,7 +101,8 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
             put("catalog", catalog ?: JsonNull)
             put("openKeys", JsonArray(openKeys.map { JsonPrimitive(it) }))
         }
-        synchronized(lock) { writeAtomic(body.toString().toByteArray(Charsets.UTF_8)) }
+        // Checked under the same lock [remove] takes: after a purge removed the file, no save lands (H-7).
+        synchronized(lock) { if (allowed()) writeAtomic(body.toString().toByteArray(Charsets.UTF_8)) }
     }
 
     private fun readJson(): JsonElement? = runCatching {
@@ -93,11 +111,11 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
         if (plain) JsonText.parseOrNull(file.readText(Charsets.UTF_8)) else null
     }.getOrNull()
 
-    private fun writeAtomic(bytes: ByteArray) {
+    private fun writeAtomic(bytes: ByteArray, target: File = file) {
         if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) throw StoreException("could not create the state directory")
-        val tmp = File(dir, "${file.name}.${UUID.randomUUID()}.tmp")
+        val tmp = File(dir, "${target.name}.${UUID.randomUUID()}.tmp")
         try {
-            if (RuntimeFamily.isAndroid) writeAndroid(tmp, bytes) else writePosix(tmp, bytes)
+            if (RuntimeFamily.isAndroid) writeAndroid(tmp, bytes, target) else writePosix(tmp, bytes, target)
         } catch (e: IOException) {
             tmp.delete()
             throw StoreException("could not write the Cloud Sync state", e)
@@ -105,7 +123,7 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
     }
 
     /** Exclusive create, owner-only, fsync, then rename: a symlink at the target is replaced, never written through. */
-    private fun writePosix(tmp: File, bytes: ByteArray) {
+    private fun writePosix(tmp: File, bytes: ByteArray, target: File) {
         val perms = runCatching { PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")) }.getOrNull()
         val opts = setOf(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)
         val channel = if (perms != null) FileChannel.open(tmp.toPath(), opts, perms) else FileChannel.open(tmp.toPath(), opts)
@@ -113,13 +131,13 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
             it.write(ByteBuffer.wrap(bytes))
             it.force(true)
         }
-        runCatching { Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING) }
-            .recoverCatching { Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING) }
+        runCatching { Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING) }
+            .recoverCatching { Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING) }
             .getOrThrow()
     }
 
     /** java.nio.file arrives on API 26; the app-private directory is the protection, the create is exclusive. */
-    private fun writeAndroid(tmp: File, bytes: ByteArray) {
+    private fun writeAndroid(tmp: File, bytes: ByteArray, target: File) {
         if (!tmp.createNewFile()) throw IOException("temporary file exists")
         tmp.setReadable(false, false)
         tmp.setReadable(true, true)
@@ -129,6 +147,6 @@ public class CloudSyncStateFile(private val dir: File, private val product: Stri
             it.write(bytes)
             it.fd.sync()
         }
-        if (!tmp.renameTo(file)) throw IOException("could not replace the state file")
+        if (!tmp.renameTo(target)) throw IOException("could not replace the state file")
     }
 }

@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** How often the real-clock timer wakes the machine while it holds work, in milliseconds. */
 public const val SYNC_TICK_MS: Long = 250
@@ -29,6 +30,7 @@ internal class CloudSyncHostPump(
 
     suspend fun run() {
         st.used = 0
+        val generation = st.generation
         do {
             st.again = false
             if (st.rebuildWanted) rebuild()
@@ -39,21 +41,24 @@ internal class CloudSyncHostPump(
             }
             val dt = st.deps.clock() - m.now
             if (dt > 0) m.advance(dt)
-            drain(m)
+            drain(m, generation)
             emit(m)
-        } while (st.again && st.used < SYNC_MAX_EXCHANGES)
-        // Saving commits the debounced edits (`persist()`), so a pump that exchanged nothing leaves the file
-        // alone and an edit keeps its debounce window.
-        if (st.used > 0) save()
+            // Saving commits the debounced edits (`persist()`), so a pass that exchanged nothing leaves the file
+            // alone and an edit keeps its debounce window. The save is inside the loop: a touch that lands while
+            // it runs sets `again` and the pass repeats, so no wake-up is lost (H-9).
+            if (st.used > 0 && st.generation == generation) save()
+        } while (st.again && st.used < SYNC_MAX_EXCHANGES && st.generation == generation)
     }
 
-    private suspend fun drain(m: CloudSyncMachine) {
-        while (st.used < SYNC_MAX_EXCHANGES) {
+    private suspend fun drain(m: CloudSyncMachine, generation: Long) {
+        while (st.used < SYNC_MAX_EXCHANGES && st.generation == generation) {
             val reqs = m.takeRequests()
             if (reqs.isEmpty()) return
             for (req in reqs) {
                 st.used += 1
                 exchanges.exchange(m, req)
+                // A purge ran during the exchange: the rest of the batch belongs to a machine that is gone.
+                if (st.generation != generation) return
             }
         }
     }
@@ -68,10 +73,12 @@ internal class CloudSyncHostPump(
         save(persisted)
     }
 
-    private fun emit(m: CloudSyncMachine) {
+    /** Events are delivered on a worker context, never while holding the host's dispatcher: a listener may block on the host (H-8). */
+    suspend fun emit(m: CloudSyncMachine) {
         val events = m.takeEvents()
         if (events.isEmpty()) return
-        for (fn in st.listeners.toList()) runCatching { fn(events) }
+        val listeners = st.listeners.toList()
+        withContext(Dispatchers.Default) { for (fn in listeners) runCatching { fn(events) } }
     }
 
     /** Persist the journal. Committing the debounced edits is what `persist()` does by contract. The file never holds the root. */
@@ -79,8 +86,30 @@ internal class CloudSyncHostPump(
         val snapshot = MachineStateJson.encode(persisted ?: machine().persist())
         val served = st.served
         val keys = st.openKeys.toList()
-        // Failing to persist never fails the call that produced it.
-        withContext(Dispatchers.IO) { runCatching { st.file.save(snapshot, served, keys) } }
+        // Failing to persist never fails the call that produced it. After a purge nothing is saved (H-7).
+        if (!st.purged) withContext(Dispatchers.IO) { runCatching { st.file.save(snapshot, served, keys) { !st.purged } } }
+    }
+
+    private fun retryDue(): Boolean = !st.retryArmed && !st.closed && st.failures in 1..SYNC_MAX_RETRIES
+
+    /** Waits for the pump that is running (and the re-runs it owes), at most [maxMs]. */
+    suspend fun awaitDone(maxMs: Long) {
+        val running = withContext(st.dispatcher) { st.pumpDone }
+        if (running != null) withTimeoutOrNull(maxMs) { running.await() }
+    }
+
+    /** After a transport failure: re-kick the machine after a bounded, jittered delay, at most [SYNC_MAX_RETRIES] times. */
+    fun armRetry() {
+        if (!retryDue()) return
+        st.retryArmed = true
+        val wait = st.deps.retryDelayMs(st.failures)
+        scope.launch {
+            delay(wait)
+            st.retryArmed = false
+            val m = st.machine
+            if (st.live && m != null && m.networkState == "online") m.setNetwork("online")
+            touch()
+        }
     }
 
     /** The real-clock timer: wake while the machine holds work (an edit waiting out its debounce, a retry). */

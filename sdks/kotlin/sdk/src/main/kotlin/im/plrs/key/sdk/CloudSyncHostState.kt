@@ -7,6 +7,7 @@ import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.CloudSyncMachine
 import im.plrs.key.core.sync.OpenedBody
 import im.plrs.key.core.sync.SyncEvent
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -34,6 +35,20 @@ internal class CloudSyncHostState(val deps: CloudSyncHostDeps, val opts: CloudSy
     var pumping: Boolean = false
     var building: Boolean = false
     var rootPending: Boolean? = null
+
+    /** Bumped by every purge: an exchange or a pump that began under an older value drops its answer and never saves (H-7). */
+    var generation: Long = 0
+
+    /** After a purge the journal stays unsaved until a principal signs in again (H-7). */
+    @Volatile var purged: Boolean = false
+
+    /** Completes when the running pump (and every re-run it owes) ends; null while none runs (H-9). */
+    var pumpDone: CompletableDeferred<Unit>? = null
+
+    /** Consecutive transport failures, for the bounded retry; reset by any answer. */
+    var failures: Int = 0
+    var retryArmed: Boolean = false
+    var shutdownHook: Thread? = null
     var started: Boolean = false
     var closed: Boolean = false
     val listeners: MutableList<(List<SyncEvent>) -> Unit> = mutableListOf()

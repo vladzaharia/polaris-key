@@ -46,6 +46,27 @@ public class CloudSyncHostDeps(
     /** The person the session's token belongs to; null when unknown (offline, discovery not loaded). */
     public var subject: suspend () -> String? = { null }
 
+    /** How long to wait before retry number `attempt` (1-based) after a transport failure: bounded and jittered. */
+    public var retryDelayMs: (Int) -> Long = { attempt -> defaultRetryDelayMs(attempt) }
+
+    /** Whether to install the JVM shutdown hook that flushes (bounded); Android's lifecycle does that job there. */
+    public var shutdownHook: Boolean = true
+
     /** The clock, in epoch milliseconds. */
     public var clock: () -> Long = System::currentTimeMillis
 }
+
+/** The most retries after one outage; the next edit or timer tick with new work starts a fresh run. */
+public const val SYNC_MAX_RETRIES: Int = 8
+private const val RETRY_BASE_MS = 1_000L
+private const val RETRY_MAX_MS = 60_000L
+
+/** Exponential backoff from one second to one minute, with 50 to 100 percent jitter. */
+public fun defaultRetryDelayMs(attempt: Int): Long {
+    val capped = minOf(RETRY_MAX_MS, RETRY_BASE_MS shl minOf(attempt - 1, RETRY_SHIFT_CAP))
+    return (capped * (JITTER_FLOOR + java.util.concurrent.ThreadLocalRandom.current().nextDouble() * JITTER_SPAN)).toLong()
+}
+
+private const val RETRY_SHIFT_CAP = 10
+private const val JITTER_FLOOR = 0.5
+private const val JITTER_SPAN = 0.5

@@ -29,6 +29,7 @@ internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
     suspend fun exchange(m: CloudSyncMachine, req: JsonObject) {
         val e2e = m.encryptionMode() == "e2e"
         val bound = m.subject
+        val generation = st.generation
         // S3: a locked ring sends nothing, a pull included. A request bound to another person is never sent.
         val blocked = (e2e && deps.codec.locked) || otherPerson(bound)
         val mutations = ((req["body"] as? JsonObject)?.get("mutations")).arrayValue
@@ -37,7 +38,17 @@ internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
             m.receive(SyncResponse.TRANSPORT)
         } else {
             val res = deps.send(wire)
-            if (otherPerson(bound)) m.receive(SyncResponse.TRANSPORT) else answer(m, res, e2e, mutations ?: emptyList())
+            when {
+                // A purge ran while the request was out: the machine is gone, so the answer is never read (H-7).
+                st.generation != generation -> Unit
+
+                otherPerson(bound) -> m.receive(SyncResponse.TRANSPORT)
+
+                else -> {
+                    st.failures = if (res.transportError) st.failures + 1 else 0
+                    answer(m, res, e2e, mutations ?: emptyList())
+                }
+            }
         }
     }
 
