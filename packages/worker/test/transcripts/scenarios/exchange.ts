@@ -9,8 +9,10 @@
 //   exchange-no-link             a valid token with no link: interstitial_required + linkHandle
 //   exchange-errors              every verifier failure and a replayed nonce: one invalid_grant
 //   exchange-disabled            Identity off: the nonce route does not exist (404)
-//   exchange-gate-off            the launch gate off: no discovery members, the nonce 404s and
-//                                the grant is unsupported_grant_type
+//   exchange-gate-off            the launch gate off: no discovery members, so the client sends
+//                                nothing (exchange is unavailable)
+//   exchange-gate-off-stale      discovery fetched while the gate was on, then it goes off: the
+//                                nonce 404s (unavailable) and the grant is unsupported_grant_type
 //
 // The SDK's call is `exchange` (one call: the nonce, the platform's token for that nonce, the
 // grant). The provider token is the platform's, so a step carries it in `args.subjectToken` and
@@ -318,7 +320,7 @@ export const discoveryIdentityExchange: Scenario = {
         w,
         pin,
         "discovery-identity-exchange",
-        "Discovery of a product that declares Google and Apple platform sign-in (I-13, WIRE-CONTRACT-V5 §12.11.6). The identity fragment carries exchange {kinds, google.serverClientId} and the nonce endpoint beside the regular sign-in ones; the Apple bundle ids and team id are never published. An SDK uses the exchange rung only when both are present. A product that declares no kind keeps the fragment of discovery-identity.json, and one whose launch gate is off names neither (exchange-gate-off.json).",
+        "Discovery of a product that declares Google and Apple platform sign-in (I-13, WIRE-CONTRACT-V5 §12.11.6). The identity fragment carries exchange {kinds, google.serverClientId} and the nonce endpoint beside the regular sign-in ones; the Apple bundle ids and team id are never published. An SDK uses the exchange rung only when both are present. A product that declares no kind keeps the fragment of discovery-identity.json, and one whose launch gate is off names neither (exchange-gate-off.json; a client with an older discovery: exchange-gate-off-stale.json).",
         ["config", "identity"],
         ["core.discover", "identity.exchange"],
       );
@@ -621,10 +623,15 @@ export const exchangeDisabled: Scenario = {
           expect(a.nonce.status).toBe(404);
           expect(a.json).toEqual({ error: { code: "not_found" } });
         },
-        { result: "refused", code: "not_found", tokenHeld: false },
+        { result: "unavailable", tokenHeld: false },
       );
       return r.transcript();
     }),
+};
+
+const GATE_OFF = (w: World) => {
+  (w.env as unknown as Record<string, unknown>).LAUNCH_IDENTITY_EXCHANGE =
+    "off";
 };
 
 export const exchangeGateOff: Scenario = {
@@ -633,17 +640,14 @@ export const exchangeGateOff: Scenario = {
     pinned("exchange-gate-off", async (pin) => {
       const w = await exchangeWorld();
       await linkedGoogle(w, true);
+      GATE_OFF(w);
       const r = recorder(
         w,
         pin,
         "exchange-gate-off",
-        "A Worker whose platform sign-in launch gate is off (LG-1, launch.identityExchange). Discovery names neither the exchange member nor the nonce endpoint, so an SDK starts at the regular sign-in. A client that still reaches the routes (a Worker rolled back after it fetched a nonce) finds the nonce route absent (404 not_found) and the grant unsupported: 400 unsupported_grant_type, which the SDK treats as a failed rung. Nothing is bound.",
+        "A Worker whose platform sign-in launch gate is off (LG-1, launch.identityExchange). Discovery names neither the exchange member nor the nonce endpoint, so a client sends nothing to the nonce or token routes (WIRE-CONTRACT-V5 §12.11.6): exchange() reports unavailable, holds no token and makes no request, and the SDK starts at the regular sign-in. A client that fetched discovery before the gate went off is exchange-gate-off-stale.json.",
         ["config", "identity"],
       );
-      // The client holds a nonce from before the gate went off (issued on the live gate).
-      const early = await presetNonce(w, fixtureDeviceKeys(KEY_LABEL));
-      (w.env as unknown as Record<string, unknown>).LAUNCH_IDENTITY_EXCHANGE =
-        "off";
       await r.step(
         { action: "discover" },
         async (s) => {
@@ -658,16 +662,65 @@ export const exchangeGateOff: Scenario = {
           nonceEndpoint: false,
         },
       );
+      await r.step(
+        {
+          action: "exchange",
+          note: "Discovery has no exchange member: the client sends nothing.",
+          args: exchangeArgs("google"),
+        },
+        async () => {},
+        { result: "unavailable", tokenHeld: false },
+      );
+      return r.transcript();
+    }),
+};
+
+export const exchangeGateOffStale: Scenario = {
+  id: "exchange-gate-off-stale",
+  record: () =>
+    pinned("exchange-gate-off-stale", async (pin) => {
+      const w = await exchangeWorld();
+      await linkedGoogle(w, true);
+      const r = recorder(
+        w,
+        pin,
+        "exchange-gate-off-stale",
+        "A client whose discovery is from before the platform sign-in launch gate went off (LG-1, launch.identityExchange), so it still names the exchange member and the nonce endpoint. The nonce route now answers 404 not_found, which the client reads as unavailable. A nonce it fetched before the rollback, sent to the token route, gets 400 unsupported_grant_type, which the client reads as a refusal. Either way it holds no token and stores nothing.",
+        ["config", "identity"],
+      );
+      await r.step(
+        { action: "discover" },
+        async (s) => {
+          const f = await identityFragment(s);
+          expect(f.exchange).toBeDefined();
+          expect(f.nonce).toBeDefined();
+        },
+        {
+          result: "ok",
+          services: services({ config: true, identity: true }),
+          exchange: {
+            kinds: ["google", "apple"],
+            google: { serverClientId: PRODUCT_AUDIENCES.googleServer },
+          },
+          nonceEndpoint: true,
+        },
+      );
+      // The nonce the client fetched on the live gate, before the rollback.
+      const early = await presetNonce(w, fixtureDeviceKeys(KEY_LABEL));
+      GATE_OFF(w);
       await exchangeStep(
         r,
-        { note: "The nonce route is absent." },
-        (a) => expect(a.nonce.status).toBe(404),
-        { result: "refused", code: "not_found", tokenHeld: false },
+        { note: "The nonce route is gone: unavailable." },
+        (a) => {
+          expect(a.nonce.status).toBe(404);
+          expect(codeOf(a.json)).toBe("not_found");
+        },
+        { result: "unavailable", tokenHeld: false },
       );
       await exchangeStep(
         r,
         {
-          note: "A nonce fetched before the gate went off: the grant is unsupported.",
+          note: "A nonce fetched before the gate went off: the grant is unsupported, a refusal.",
           preset: early,
         },
         (a) => {
@@ -711,4 +764,5 @@ export const EXCHANGE_SCENARIOS: Scenario[] = [
   exchangeErrors,
   exchangeDisabled,
   exchangeGateOff,
+  exchangeGateOffStale,
 ];

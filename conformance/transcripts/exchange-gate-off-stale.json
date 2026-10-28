@@ -1,0 +1,283 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-gate-off-stale",
+  "description": "A client whose discovery is from before the platform sign-in launch gate went off (LG-1, launch.identityExchange), so it still names the exchange member and the nonce endpoint. The nonce route now answers 404 not_found, which the client reads as unavailable. A nonce it fetched before the rollback, sent to the token route, gets 400 unsupported_grant_type, which the client reads as a refusal. Either way it holds no token and stores nothing.",
+  "features": ["identity.exchange"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-identity",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys",
+                    "register": "https://key.plrs.im/djdl/devices/register"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": { "enabled": false },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "exchange": {
+                      "kinds": ["google", "apple"],
+                      "google": {
+                        "serverClientId": "1234-web.apps.googleusercontent.com"
+                      }
+                    },
+                    "endpoints": {
+                      "session": "https://key.plrs.im/djdl/identity/session",
+                      "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authLogout": "https://key.plrs.im/djdl/identity/auth/logout",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": false,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": true,
+          "sync": false,
+          "commerce": false,
+          "connect": false
+        },
+        "exchange": {
+          "kinds": ["google", "apple"],
+          "google": { "serverClientId": "1234-web.apps.googleusercontent.com" }
+        },
+        "nonceEndpoint": true
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "The nonce route is gone: unavailable.",
+      "args": { "kind": "google", "keyLabel": "transcript-device-key-1" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "unavailable", "tokenHeld": false }
+    },
+    {
+      "action": "exchange",
+      "note": "A nonce fetched before the gate went off: the grant is unsupported, a refusal.",
+      "args": {
+        "kind": "google",
+        "keyLabel": "transcript-device-key-1",
+        "nonce": "yNkyBVo_0DEyPqeAUtTRAkzWTNNlF7g25np0C6dHJOo",
+        "subjectToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoieU5reUJWb18wREV5UHFlQVV0VFJBa3pXVE5ObEY3ZzI1bnAwQzZkSEpPbyIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.JHKOM24zkFhFepBg1uaoEdFqgU4EdNwbSAW25dTWks5PnAO12shPz9emXc4CQjf1CfFg-UXK394CyJVOEqbYDu4IuT8ezfS8TlPNlUS13c0u_Iq94pEjZygrHMBCaec3LkYM4i_BaStTzkucyYkhIEBixgYm4WXdkggkmNv8-VAY3dRJan2mFxIs83MonPZQFwFq1OdFa6E2OPPd7SR1L_06SELsNP92yotx25ldXsYfskV3Oh0cAN_-sb5lo4A1IL3YXgD_zfRbpi3N5H_ZeLTqcZHPckdfPpmD-p4jjyi-GsZj8HFwa3-3T3-vEAayapLtr67JI8f7bcI_qUnIFA"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InRyYW5zY3JpcHQtcHJvdmlkZXIiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIxMjM0LWFuZC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsImF1ZCI6IjEyMzQtd2ViLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiZy1zdWItMSIsImVtYWlsIjoiYWRhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5vbmNlIjoieU5reUJWb18wREV5UHFlQVV0VFJBa3pXVE5ObEY3ZzI1bnAwQzZkSEpPbyIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.JHKOM24zkFhFepBg1uaoEdFqgU4EdNwbSAW25dTWks5PnAO12shPz9emXc4CQjf1CfFg-UXK394CyJVOEqbYDu4IuT8ezfS8TlPNlUS13c0u_Iq94pEjZygrHMBCaec3LkYM4i_BaStTzkucyYkhIEBixgYm4WXdkggkmNv8-VAY3dRJan2mFxIs83MonPZQFwFq1OdFa6E2OPPd7SR1L_06SELsNP92yotx25ldXsYfskV3Oh0cAN_-sb5lo4A1IL3YXgD_zfRbpi3N5H_ZeLTqcZHPckdfPpmD-p4jjyi-GsZj8HFwa3-3T3-vEAayapLtr67JI8f7bcI_qUnIFA",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+                  "nonce": "yNkyBVo_0DEyPqeAUtTRAkzWTNNlF7g25np0C6dHJOo",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "Pjj4xbmvBce1_zS2V1BC73otVanwY9LE_k4NOJg0eK5i9LuHKSOBSCDiSYbamPDpRMgfZNNWcRQaQR22zIerDQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "unsupported_grant_type" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "unsupported_grant_type",
+        "tokenHeld": false
+      }
+    }
+  ]
+}
