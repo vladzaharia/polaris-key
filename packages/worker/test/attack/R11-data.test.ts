@@ -769,6 +769,10 @@ describe("R11-05 product scoping", () => {
       // holds the operator to `can(product, core)` before it answers anything. UNIQUE (product,
       // subject) is the product-first index for the person's own lookups.
       "support_codes",
+      // 0148 (LK-FU-2) — an operator's own console preferences (today: the setup guide hidden),
+      // keyed by the session's `sub`. They belong to the operator, not to a product, and hold no
+      // tenant data; only `PUT /me/prefs` for that same session writes the row.
+      "operator_prefs",
     ]);
     const offenders: string[] = [];
     for (const t of tables.map((r) => r.name)) {
