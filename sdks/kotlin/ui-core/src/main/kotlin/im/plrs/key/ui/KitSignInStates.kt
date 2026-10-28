@@ -187,7 +187,7 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             step(
                 "device-limit",
                 "core.codes.device_limit.title",
-                "core.codes.device_limit.message",
+                "core.codes.device_limit.message".takeIf { replace },
                 if (replace) "signin.deviceLimit.replace" else "deviceLimit.noManage",
                 "a11y.externalLink".takeIf { replace },
                 "signin.auto.confirm.other",

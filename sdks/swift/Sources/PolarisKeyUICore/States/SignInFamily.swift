@@ -259,7 +259,8 @@ extension KitStates {
             return KitScreen(
                 .deviceLimit,
                 lines(
-                    "core.codes.device_limit.title", "core.codes.device_limit.message",
+                    "core.codes.device_limit.title",
+                    replace ? "core.codes.device_limit.message" : nil,
                     replace ? "signin.deviceLimit.replace" : "deviceLimit.noManage",
                     replace ? "a11y.externalLink" : nil, "signin.auto.confirm.other",
                     "common.cancel"))

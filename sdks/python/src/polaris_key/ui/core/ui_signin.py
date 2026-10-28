@@ -183,7 +183,7 @@ def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, An
             "device-limit",
             [
                 "core.codes.device_limit.title",
-                "core.codes.device_limit.message",
+                "core.codes.device_limit.message" if replace else None,
                 "signin.deviceLimit.replace" if replace else "deviceLimit.noManage",
                 "a11y.externalLink" if replace else None,
                 "signin.auto.confirm.other",

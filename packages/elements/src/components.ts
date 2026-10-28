@@ -179,8 +179,19 @@ export class PkGate extends PkElement {
 
   /** The form is done (Cancel, Done, Use of the gate's own sign-in): the gate draws its Welcome. */
   private onFormLeave = (e: Event): void => {
-    if (this.fromForm(e)) this.auto.close();
+    if (this.fromForm(e)) this.closeForm();
   };
+
+  /** The form closes for Welcome: its Sign in button, which opened it, takes focus back (the
+   *  gate's view stays Welcome underneath, so the step-change focus rule never fires). */
+  private closeForm(): void {
+    this.auto.close();
+    void this.updateComplete.then(() =>
+      (this.renderRoot as ShadowRoot)
+        .querySelector<HTMLElement>('[data-key="welcome.signIn"]')
+        ?.focus({ preventScroll: true }),
+    );
+  }
 
   private onAction = (e: Event): void => {
     if (this.fromForm(e)) return;
@@ -210,7 +221,7 @@ export class PkGate extends PkElement {
     const snap = this.snapshot;
     if (e.key === "Escape" && this.formShown) {
       e.preventDefault();
-      this.auto.close();
+      this.closeForm();
       return;
     }
     if (e.key !== "Escape" || !snap || snap.step === "home") return;

@@ -387,7 +387,7 @@
     "signin.term.lifetime": "평생",
     "signin.term.until": "{date}까지",
     "signin.term.yearlyUntil": "연간, {date}까지",
-    "signin.choice.origin.signIn": "자동 부여",
+    "signin.choice.origin.signIn": "로그인",
     "signin.choice.origin.key": "{last6}(으)로 끝나는 키",
     "signin.choice.origin.keyAdded": "키로 추가됨",
     "signin.choice.origin.storeKey": "{last6}(으)로 끝나는 {store} 키",

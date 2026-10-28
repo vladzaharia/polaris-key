@@ -387,7 +387,7 @@
     "signin.term.lifetime": "A vita",
     "signin.term.until": "Fino al {date}",
     "signin.term.yearlyUntil": "Annuale, fino al {date}",
-    "signin.choice.origin.signIn": "Assegnazione automatica",
+    "signin.choice.origin.signIn": "Accesso",
     "signin.choice.origin.key": "Chiave che termina con {last6}",
     "signin.choice.origin.keyAdded": "Aggiunta con una chiave",
     "signin.choice.origin.storeKey": "Chiave {store} che termina con {last6}",

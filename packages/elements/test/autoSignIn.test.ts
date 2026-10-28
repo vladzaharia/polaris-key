@@ -246,27 +246,7 @@ describe("the form over the SDK primitives", () => {
 
   it("a license list's Replace falls back to the refusal's manageUrl", async () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
-    const full = {
-      state: "full",
-      replace: { retryAfter: null, allowed: true },
-      freeDeviceUrl: null,
-      expiresAt: null,
-      current: false,
-      seats: { limit: 3, used: 3 },
-      access: "seats",
-      origin: "signin",
-      name: "Tidewater Pro",
-      tierName: "Pro",
-      id: "lic_pro",
-    };
-    const choices = {
-      getLicense: null,
-      create: null,
-      preselected: null,
-      keep: false,
-      choices: [full],
-      state: "choose",
-    } as unknown as LicenseChoiceView;
+    const choices = LIMIT_WITH_ROWS.view as unknown as LicenseChoiceView;
     const { p } = prims();
     const el = await draw({
       primitives: p,
@@ -387,5 +367,110 @@ describe("<pk-gate config> and automatic sign-in", () => {
       form.shadowRoot!.querySelector('[data-key="signin.deviceLimit.replace"]'),
     ).not.toBeNull();
     expect(form.shadowRoot!.querySelector("input")).toBeNull();
+  });
+});
+
+// ── the gate's fix round (UXR I-46.9) ───────────────────────────────────────────────────────
+
+const FULL_ROW = {
+  state: "full",
+  replace: { retryAfter: null, allowed: true },
+  freeDeviceUrl: null,
+  expiresAt: null,
+  current: false,
+  seats: { limit: 3, used: 3 },
+  access: "seats",
+  origin: "signin",
+  name: "Tidewater Pro",
+  tierName: "Pro",
+  id: "lic_pro",
+};
+const LIMIT_WITH_ROWS = {
+  kind: "deviceLimit",
+  manageUrl: "https://polaris.locker/#/p/acme/devices",
+  view: {
+    getLicense: null,
+    create: null,
+    preselected: null,
+    keep: false,
+    choices: [FULL_ROW],
+    state: "choose",
+  },
+};
+const active = (g: PkGate) => formOf(g)?.shadowRoot?.activeElement ?? null;
+const welcomeButton = (g: PkGate) =>
+  g.shadowRoot!.querySelector<HTMLElement>('[data-key="welcome.signIn"]');
+
+describe("the gate on a device limit with rows", () => {
+  it("the row's Replace carries the new-window glyph, and the h1 takes focus", async () => {
+    const { gate } = await mountGate(LIMIT_WITH_ROWS);
+    const form = formOf(gate)!;
+    const replace = form.shadowRoot!.querySelector<HTMLElement>(
+      '[data-part="license-row"] [data-key="signin.replace.open"]',
+    )!;
+    expect(replace.querySelector("svg")).not.toBeNull();
+    expect(replace.querySelector(".visually-hidden")).not.toBeNull();
+    expect(active(gate)?.tagName).toBe("H1");
+  });
+
+  it("Cancel and Escape both go to Welcome, with Sign in focused", async () => {
+    const { gate } = await mountGate(LIMIT_WITH_ROWS);
+    formOf(gate)!
+      .shadowRoot!.querySelector<HTMLElement>('[data-key="common.cancel"]')!
+      .click();
+    await settle(gate);
+    expect(formOf(gate)).toBeNull();
+    expect(gate.shadowRoot!.activeElement).toBe(welcomeButton(gate));
+  });
+
+  it("a row's Replace keeps focus on its button", async () => {
+    vi.spyOn(window, "open").mockReturnValue(null);
+    const { gate } = await mountGate(LIMIT_WITH_ROWS);
+    const form = formOf(gate)!;
+    const btn = form.shadowRoot!.querySelector<HTMLElement>(
+      '[data-part="license-row"] [data-key="signin.replace.open"]',
+    )!;
+    btn.focus();
+    btn.click();
+    await settle(gate);
+    expect(form.shadowRoot!.activeElement?.getAttribute("data-key")).toBe(
+      "signin.replace.open",
+    );
+  });
+
+  it("with no replaceable row it offers Use another account, not the key", async () => {
+    const { gate } = await mountGate({
+      ...LIMIT_WITH_ROWS,
+      view: {
+        ...LIMIT_WITH_ROWS.view,
+        choices: [
+          { ...FULL_ROW, replace: { retryAfter: null, allowed: false } },
+        ],
+      },
+    });
+    const k = keys(formOf(gate)!);
+    expect(k).toContain("signin.auto.confirm.other");
+    expect(k).not.toContain("signin.choice.keyInstead");
+  });
+});
+
+describe("the gate's form closes to Welcome", () => {
+  it("Escape on the confirm returns focus to Sign in", async () => {
+    const { gate } = await mountGate({
+      kind: "confirm",
+      grant: "sg_1",
+      expiresIn: 300,
+      consent: CONSENT,
+    });
+    gate.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await settle(gate);
+    expect(formOf(gate)).toBeNull();
+    expect(gate.shadowRoot!.activeElement).toBe(welcomeButton(gate));
   });
 });

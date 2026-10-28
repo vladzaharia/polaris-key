@@ -178,7 +178,9 @@ export class PkSignIn extends PkElement {
         // gate's Welcome, Escape included; so does Cancel on the methods step in the gate.
         if (
           s.autoSignIn ||
-          (this.embedded && this.step.form.state === "methods")
+          (this.embedded &&
+            (this.step.form.state === "methods" ||
+              s.session.outcome === "choose"))
         )
           return this.leave();
         return m.cancel();
@@ -227,7 +229,11 @@ export class PkSignIn extends PkElement {
             openManage(url, window.location.href);
           }
         }
-        return m.openReplace(id);
+        const opened = m.openReplace(id);
+        // In the browser the row redraws with its new-window glyph: the pressed button keeps focus.
+        if (this.formModel?.snapshot.session.replace === "browser")
+          void this.updateComplete.then(() => this.refocusRowReplace(id));
+        return opened;
       }
       case "signin.replace.confirm": {
         if (s.session.redeeming) return;
@@ -243,6 +249,19 @@ export class PkSignIn extends PkElement {
         else if (this.embedded) this.leave();
         return;
     }
+  }
+
+  /** The row's Replace button after a redraw of its row (focus fell to the page). */
+  private refocusRowReplace(id: string | undefined): void {
+    const root = this.renderRoot as ShadowRoot;
+    if (root.activeElement) return;
+    const rows = [
+      ...root.querySelectorAll<HTMLElement>('[data-part="license-row"]'),
+    ];
+    const row = rows.find((r) => r.dataset.id === id) ?? rows[0];
+    row
+      ?.querySelector<HTMLElement>('[data-key="signin.replace.open"]')
+      ?.focus({ preventScroll: true });
   }
 
   private tierOf(id: string | null): string | undefined {
@@ -330,7 +349,7 @@ export class PkSignIn extends PkElement {
     const base: FormInput = this.formModel
       ? { ...(this.input ?? {}), ...this.formModel.input() }
       : { ...(this.input ?? {}) };
-    if (base.signIn && (this.presentation || this.replace))
+    if (!this.formModel && base.signIn && (this.presentation || this.replace))
       base.signIn = {
         ...base.signIn,
         ...(this.presentation ? { presentation: this.presentation } : {}),
@@ -546,6 +565,16 @@ export class PkSignIn extends PkElement {
     const from = this.morphFrom;
     this.morphFrom = null;
     const moved = this.lastStep !== null && key !== this.lastStep;
+    // The gate opened straight on the license list (automatic sign-in): the step's h1 takes
+    // focus, as the confirm's and the device limit's do (the list has no radio to take it).
+    if (
+      this.lastStep === null &&
+      this.embedded &&
+      step.body.component === "LicenseChoice"
+    )
+      (this.renderRoot as ShadowRoot)
+        .querySelector<HTMLElement>("h1")
+        ?.focus({ preventScroll: true });
     this.lastStep = key;
     const out = this.baseInput().signIn?.outcome;
     // The sign-in finished: the host hears it once, and the person gets Done (their way out).

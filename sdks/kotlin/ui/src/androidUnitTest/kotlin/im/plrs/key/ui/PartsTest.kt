@@ -97,7 +97,7 @@ class PartsTest {
     fun theMatrixRendererDrawsTheRowsWhenGivenThem() {
         val case = MatrixCases.case("licenseChoice-mixed")
         show { PolarisKitScreen(case.screen, rows = case.rows) }
-        rule.onNodeWithText("Automatic grant · Lifetime").assertIsDisplayed()
+        rule.onNodeWithText("Sign-in · Lifetime").assertIsDisplayed()
     }
 
     // ── Paywall ──────────────────────────────────────────────────────────────────────────────

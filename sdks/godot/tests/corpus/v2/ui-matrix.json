@@ -5240,7 +5240,6 @@
         "state": "device-limit",
         "copy": [
           "common.cancel",
-          "core.codes.device_limit.message",
           "core.codes.device_limit.title",
           "deviceLimit.noManage",
           "signin.auto.confirm.other"
@@ -5268,7 +5267,6 @@
         "state": "device-limit",
         "copy": [
           "common.cancel",
-          "core.codes.device_limit.message",
           "core.codes.device_limit.title",
           "deviceLimit.noManage",
           "signin.auto.confirm.other"

@@ -146,7 +146,12 @@ export function adaptChoice(
       "signin.choice.tag.full",
       ...rowKeys,
       "common.cancel",
-      ...(keyInstead ? ["signin.choice.keyInstead"] : []),
+      // Every license full and none replaceable: Use another account (SIGN-IN §3.19).
+      ...(view.copy.includes("signin.choice.noneReplaceable")
+        ? ["signin.auto.confirm.other"]
+        : keyInstead
+          ? ["signin.choice.keyInstead"]
+          : []),
     ].filter(has),
   );
   const gone = new Set<string>([

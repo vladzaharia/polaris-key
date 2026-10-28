@@ -387,7 +387,7 @@
     "signin.term.lifetime": "無期限",
     "signin.term.until": "{date}まで",
     "signin.term.yearlyUntil": "年間、{date}まで",
-    "signin.choice.origin.signIn": "自動付与",
+    "signin.choice.origin.signIn": "サインイン",
     "signin.choice.origin.key": "末尾が{last6}のキー",
     "signin.choice.origin.keyAdded": "キーで追加",
     "signin.choice.origin.storeKey": "末尾が{last6}の{store}キー",

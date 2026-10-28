@@ -303,9 +303,6 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="landscape"] .stage[data-split] .links {
   justify-content: start;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .links {
-  margin-inline-start: calc(-1 * var(--pk-space-1));
-}
 .pk-root[data-shape="short"] .stage {
   padding-block: var(--pk-space-4);
 }
@@ -527,6 +524,7 @@ p {
   margin: 0;
   color: var(--pk-text-muted);
   text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
 .consent {
   display: grid;
@@ -1738,6 +1736,8 @@ dialog.sheet .identity {
   }
   .btn[data-variant="link"] {
     color: LinkText;
+    /* The border is drawn here: the text keeps clear of it. */
+    padding-inline: var(--pk-space-2);
   }
   .pk-root[data-keyboard] :focus-visible,
   .field input:focus-visible {

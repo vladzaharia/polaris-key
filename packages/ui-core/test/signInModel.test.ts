@@ -582,6 +582,108 @@ describe("SignInModel: automatic sign-in (I-46.8)", () => {
     expect(sdk.calls[0]).toBe("start browser app");
   });
 
+  it("an expired grant: Continue asks the provider again for a fresh one, busy meanwhile", async () => {
+    const sdk = fakeSdk([], [{ outcome: "expired" }]);
+    const fresh = { ...CONFIRM, grant: "sg_c2" };
+    let release: (() => void) | null = null;
+    let asked = 0;
+    sdk.primitives.autoSignIn = async () => {
+      asked++;
+      await new Promise<void>((r) => (release = r));
+      return fresh;
+    };
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC, provider: "Google" },
+    });
+    m.presentAuto(CONFIRM);
+    // complete answers invalid_grant: the confirm renews at once, never leaving a dead Continue.
+    const first = m.confirm();
+    await tick();
+    expect(asked).toBe(1);
+    expect(m.snapshot.session.redeeming).toBe(true);
+    release!();
+    await first;
+    expect(m.snapshot.session.redeeming).toBe(false);
+    expect(m.views().signIn.state).toBe("confirm");
+    await m.confirm();
+    expect(sdk.calls).toContain("complete sg_c2 undefined consent email,name");
+    // The 300 s timer reaches the same state.
+    let timer: (() => void) | null = null;
+    const t = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC, provider: "Google" },
+      schedule: (fn: () => void) => {
+        timer = fn;
+        return () => {};
+      },
+    });
+    t.presentAuto(CONFIRM);
+    timer!();
+    expect(t.snapshot.session.grantExpired).toBe(true);
+    const again = t.confirm();
+    await tick();
+    expect(asked).toBe(2);
+    release!();
+    await again;
+    expect(t.snapshot.session.grantExpired).toBe(false);
+  });
+
+  it("a network failure on Continue keeps the confirm and its grant; Continue retries", async () => {
+    const sdk = fakeSdk([]);
+    const real = sdk.primitives.choice!.complete;
+    let fail = true;
+    sdk.primitives.choice!.complete = async (g, c, o) => {
+      if (fail) {
+        fail = false;
+        throw new Error("offline");
+      }
+      return real(g, c, o);
+    };
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC, provider: "Google" },
+    });
+    m.presentAuto(CONFIRM);
+    await m.confirm();
+    const v = m.views().signIn;
+    expect(v.state).toBe("confirm");
+    expect(v.copy).toContain("core.codes.network.message");
+    expect(v.copy).toContain("signin.auto.confirm.primary");
+    expect(v.decisions.primary).toBe("signin.auto.confirm.primary");
+    expect(m.snapshot.session.redeeming).toBe(false);
+    await m.confirm();
+    expect(
+      sdk.calls.filter((c) => c.startsWith("complete sg_c1")),
+    ).toHaveLength(1);
+    expect(m.views().signIn.state).toBe("done");
+  });
+
+  it("back from Replace with no account found lands on the methods, without a sign-in of its own", async () => {
+    const sdk = fakeSdk([]);
+    sdk.primitives.autoSignIn = async () => ({ kind: "needsSignIn" });
+    const m = new SignInModel({
+      primitives: sdk.primitives,
+      base: { platform: MAC },
+    });
+    m.presentAuto({ kind: "deviceLimit", manageUrl: "https://key.plrs.im/m" });
+    m.leftToReplace();
+    await m.returned();
+    expect(sdk.calls).toEqual([]);
+    expect(m.views().signIn.state).toBe("methods");
+  });
+
+  it("the device limit with no link says one thing: sign out elsewhere", () => {
+    const m = new SignInModel({
+      primitives: fakeSdk([]).primitives,
+      base: { platform: MAC },
+    });
+    m.presentAuto({ kind: "deviceLimit" });
+    const copy = m.views().signIn.copy;
+    expect(copy).toContain("deviceLimit.noManage");
+    expect(copy).not.toContain("core.codes.device_limit.message");
+  });
+
   it("the provider's button shows what the provider found", async () => {
     const sdk = fakeSdk([]);
     sdk.primitives.autoSignIn = async () => CONFIRM;

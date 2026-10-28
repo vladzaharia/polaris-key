@@ -623,7 +623,7 @@ export class SignInModel {
     const grant = this.grant;
     if (!grant || !p.choice) return;
     const epoch = this.epoch;
-    this.patch({}, { redeeming: true });
+    this.patch({ error: undefined }, { redeeming: true });
     let r: ChoiceComplete;
     try {
       r = await p.choice.complete(
@@ -633,17 +633,24 @@ export class SignInModel {
       );
     } catch {
       if (epoch === this.epoch)
-        this.patch({ error: { code: "sign-in-failed" } }, { redeeming: false });
+        // The confirm stays, its grant is still good: the failure reads as a network one under
+        // Continue, which retries. Elsewhere the methods step shows the sign-in failure.
+        this.patch(
+          { error: { code: consent ? "network" : "sign-in-failed" } },
+          { redeeming: false },
+        );
       return;
     }
     if (epoch !== this.epoch) return;
-    this.patch({}, { redeeming: false });
+    this.patch({ error: undefined }, { redeeming: false });
     if (r.outcome === "signedIn") {
       this.finish(r.issuedNow || choice?.kind === "create");
       return;
     }
     if (r.outcome === "expired") {
       this.patch({}, { grantExpired: true });
+      // The confirm has no "try again" step: it asks the provider for a fresh grant itself.
+      if (consent) await this.renew();
       return;
     }
     if (r.outcome === "choose") {
@@ -766,13 +773,26 @@ export class SignInModel {
   async returned(): Promise<void> {
     if (!this.awaitingReturn) return;
     this.awaitingReturn = false;
-    await this.signInWithProvider();
+    await this.signInWithProvider(undefined, true);
   }
 
   /** Continue on the confirm step: the person consents to what it listed. */
   async confirm(): Promise<void> {
     if (this.store.get().session.redeeming) return;
+    if (this.store.get().session.grantExpired) return this.renew();
     await this.complete(undefined, { claims: this.claims });
+  }
+
+  /** The confirm's grant ran out: the provider's ladder runs again for a fresh one, with the
+   *  step's busy state meanwhile. A provider with no account to offer leaves the methods step. */
+  private async renew(): Promise<void> {
+    const epoch = this.epoch;
+    this.patch({ error: undefined }, { redeeming: true });
+    try {
+      await this.signInWithProvider(undefined, true);
+    } finally {
+      if (epoch === this.epoch) this.patch({}, { redeeming: false });
+    }
   }
 
   /** Use another account: the confirm's grant is given up and the methods step shows. */
@@ -789,12 +809,24 @@ export class SignInModel {
     if (grant) await this.primitives?.choice?.cancel(grant).catch(() => {});
   }
 
+  /** Back to the methods step, nothing else kept (the confirm's grant, if any, is given up). */
+  private async toMethods(): Promise<void> {
+    await this.useAnother();
+  }
+
   /** The provider's button: the platform provider with its chooser, then what the ladder found.
    *  Where there is none (or it found no account), the browser sign-in starts as before. */
-  async signInWithProvider(provider?: string): Promise<void> {
+  async signInWithProvider(
+    provider?: string,
+    noAccountShowsMethods = false,
+  ): Promise<void> {
     const p = this.requirePrimitives();
-    const browser = () =>
-      this.start({ channel: "browser", ...(provider ? { provider } : {}) });
+    // A return from the browser (or a renewed grant) is not the person's press: with no account
+    // found it lands on the methods step instead of opening the hosted sign-in by itself.
+    const browser = (): Promise<void> | void =>
+      noAccountShowsMethods
+        ? this.toMethods()
+        : this.start({ channel: "browser", ...(provider ? { provider } : {}) });
     if (!p.autoSignIn) return browser();
     const epoch = this.epoch;
     let o: AutoOutcome | null;

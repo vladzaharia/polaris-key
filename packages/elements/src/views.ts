@@ -718,7 +718,12 @@ function withBase(c: RenderCtx): View {
         "signin.choice.tag.full",
         ...rowKeys,
         "common.cancel",
-        ...(keyInstead ? ["signin.choice.keyInstead"] : []),
+        // Every license full and none replaceable: Use another account (SIGN-IN §3.19).
+        ...(view.copy.includes("signin.choice.noneReplaceable")
+          ? ["signin.auto.confirm.other"]
+          : keyInstead
+            ? ["signin.choice.keyInstead"]
+            : []),
       );
       // One lede: the browser's, where the form runs in one (the model's own names the desktop).
       const one = (v: View): View =>

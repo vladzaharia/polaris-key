@@ -132,7 +132,7 @@ Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Head/Titles/Title: Label "Choose a license for this device"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Pick: Button "Free" [pressed, focus 1]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Seats/Caption: Label "1 of 5 devices"
-Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Meta: Label "Automatic grant · Lifetime"
+Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Meta: Label "Sign-in · Lifetime"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Pick: Button "Standard" [focus 2]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Seats/Caption: Label "1 of 3 devices"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Meta: Label "Added with a key · Lifetime"
