@@ -5,6 +5,7 @@ import type {
   AutoOutcome,
   ChoiceComplete,
   LicenseChoiceInput,
+  SignInHintsInput,
   SignInPrimitives,
   SignInSessionHandle,
 } from "../../signInModel.js";
@@ -32,13 +33,22 @@ function unwrap<V>(r: { kind: "ok"; view: V } | ChoiceRefusal): V {
  *  hand-off), which the form's other methods start. */
 export function primitivesOf(
   adapter: PolarisAdapter,
-  leave: () => void,
+  leave: (hints?: SignInHintsInput) => void,
   newLicense: () => boolean,
 ): SignInPrimitives {
   return {
-    start: async () => {
-      leave();
+    start: async (options) => {
+      leave(options.hints);
       return LEFT;
+    },
+    attach: async (confirm = true) => {
+      const r = await adapter.attach({ confirm });
+      // A preview (`confirm: false`) answers `confirm`: nothing was written, and it can attach.
+      if (r.kind === "ok" || r.kind === "confirm") return { kind: "ok" };
+      return {
+        kind: "refused",
+        code: r.kind === "refused" ? r.code : "failed",
+      };
     },
     choice: {
       licenses: async (g) => unwrap(await adapter.choice.licenses(g)),
