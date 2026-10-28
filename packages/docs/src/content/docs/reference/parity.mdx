@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 92 | 11 | 25 | 0 |
-| React | `web`, `desktop-bridge` | 92 | 21 | 15 | 0 |
-| Python | `python` | 89 | 11 | 28 | 0 |
-| Swift | `macos`, `ios` | 97 | 9 | 21 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 97 | 9 | 22 | 0 |
-| Kotlin | `android`, `jvm` | 99 | 8 | 20 | 1 |
+| Node | `node` | 94 | 11 | 24 | 0 |
+| React | `web`, `desktop-bridge` | 93 | 21 | 15 | 0 |
+| Python | `python` | 89 | 11 | 29 | 0 |
+| Swift | `macos`, `ios` | 97 | 9 | 22 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 97 | 9 | 23 | 0 |
+| Kotlin | `android`, `jvm` | 99 | 8 | 21 | 1 |
 
 ## Core
 
@@ -82,19 +82,20 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | planned (U-39) | planned (U-40) | planned (U-39) | — |
+| `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | planned (U-38) | planned (U-38) | planned (U-38) | planned (U-39) | planned (U-40) | planned (U-39) | — |
 
 ## Cloud Connect
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts (CC-06) | ✓ | planned (CC-09) | ✓ | ✓ | planned (CC-14) | ✓ | — |
+| `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts | ✓ | planned (CC-09) | ✓ | ✓ | planned (CC-14) | ✓ | — |
 | `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit | ✓ | N/A (web, desktop-bridge: runtime) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | web, desktop-bridge: runtime |
-| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
+| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | unit | planned (CC-19) | N/A (web, desktop-bridge: runtime) | planned (CC-19) | planned (CC-19) | planned (CC-19) | planned (CC-19) | web, desktop-bridge: runtime |
 | `connect.transfer` | Direct Transfer: data between Cloud Connect peers | unit | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | — |
-| `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | planned (CC-08) | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
+| `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | planned (CC-09) | planned (CC-10) | planned (CC-11) | planned (CC-14) | planned (CC-12) | — |
 
 ## Devices and identity
 
@@ -117,9 +118,9 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | planned (I-46) | planned (I-47) | planned (I-44) | planned (I-48) | planned (I-45) | — |
-| `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts (I-43) | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | planned (I-46); N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 
 ## Release and update
 

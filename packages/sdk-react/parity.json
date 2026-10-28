@@ -231,15 +231,15 @@
       "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). The desktop bridge's beginSignIn carries only deviceName, so a hint there is a typed unsupported (runtime) rather than a silent drop."
     },
     "identity.exchange": {
-      "status": "planned",
-      "wp": "I-46",
+      "status": "implemented",
       "except": [
         {
           "runtime": "desktop-bridge",
-          "reason": "runtime"
+          "reason": "runtime",
+          "note": "The desktop renderer holds no device key; the host's Node SDK would sign in."
         }
       ],
-      "note": "FedCM and Google Identity Services on the web (I-46); the desktop renderer holds no device key."
+      "note": "I-46.3, I-46.5: bearer mode: session.exchange(port, {kind, subjectToken}) posts the device's keys for a nonce, takes the provider's token for it and the RFC 8693 grant with the exchange proof; an answer is an outcome (signedIn, pendingConsent, pendingSignIn, needsSignIn, unavailable) and a refusal a typed PolarisError. All eight exchange-* and discovery-identity-exchange transcripts replay through it over a fixture key port."
     },
     "identity.autosignin": {
       "status": "planned",
