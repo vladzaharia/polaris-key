@@ -376,7 +376,7 @@ public final class IdentityClient: Sendable {
             guard let token = body?.token, !token.isEmpty else {
                 return .error(message: "ready without a token.")
             }
-            try await core.setToken(token, source: .signin)
+            try await core.setToken(token, source: .signin, person: true)
             await onAcquired?()
             let subject = body?.subject.flatMap { $0.isEmpty ? nil : $0 }
             if let subject { subjectValue.set(subject) }

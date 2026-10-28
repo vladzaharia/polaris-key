@@ -94,6 +94,13 @@ extension IdentityClient {
     /// token and only the subject is forgotten.
     @discardableResult
     public func signOut() async throws -> SignOutResult {
+        try await signOut(cleaningUp: nil)
+    }
+
+    /// `provider` is the one a running ladder uses, when it is not the installed one.
+    func signOut(cleaningUp provider: (any PlatformIdentityProvider)?) async throws -> SignOutResult {
+        // A ladder already waiting on the platform or the Worker must not store a token now.
+        await core.bumpSignOutGeneration()
         let url = try await accountEndpoint("signout") { $0.signout }
         for hook in beforeSignOut.current.map(\.hook) { try await hook() }
         let response = try await withBearer(url, method: "POST")
@@ -106,7 +113,9 @@ extension IdentityClient {
                 code: ErrorCode.badResponse, message: "sign-out answered without `released`.")
         }
         // The Worker accepted it: nothing silent may sign this person back in.
-        await markSignedOut()
+        await markSignedOut(provider)
+        // An account sign-out that keeps the token leaves a device activated by key, not signed in.
+        if !released { await core.setTokenProvenance(.key) }
         let previous = subjectValue.with { held -> String? in
             let old = held
             held = nil
@@ -174,7 +183,7 @@ extension IdentityClient {
             throw PolarisError(
                 code: ErrorCode.badResponse, message: "attach answered without a token.")
         }
-        try await core.setToken(token, source: .activate)
+        try await core.setToken(token, source: .activate, provenance: .signin)
         let subject = object["subject"]?.stringValue
         updateSubject(subject)
         return .ok(subject: subject, attached: object["attached"]?.stringValue == "claimed" ? "claimed" : nil)
