@@ -2315,6 +2315,16 @@
       "reason": "wiring: hands the exchange proof its device key store; not an app verb"
     },
     {
+      "sdk": "kotlin",
+      "path": "client.useDeviceKeys",
+      "reason": "wiring: hands one device key store to the exchange (identity) and Cloud Connect; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.installPlatformIdentity",
+      "reason": "wiring: installs the platform provider the ladder uses and signOut cleans up after; not an app verb"
+    },
+    {
       "sdk": "swift",
       "path": "identity.installIdentityEvents",
       "reason": "wiring the client installs (the `identity` event's sink); not an app verb"

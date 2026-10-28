@@ -18,6 +18,8 @@ import im.plrs.key.core.LicenseState
 import im.plrs.key.core.SyncResult
 import im.plrs.key.core.UpdateCheck
 import im.plrs.key.identity.AttachResult
+import im.plrs.key.identity.AutoSignInOptions
+import im.plrs.key.identity.AutoSignInResult
 import im.plrs.key.identity.ChoiceCompleted
 import im.plrs.key.identity.ChoiceResult
 import im.plrs.key.identity.ConsentInput
@@ -111,6 +113,11 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** `identity.exchange(kind, subjectToken, nonce)`: the platform's ID token for a device token; a Worker refusal fails the future with a PolarisException. */
     public fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce): CompletableFuture<ExchangeOutcome> =
         call { client.identity.exchange(kind, subjectToken, nonce) }
+
+    /** `identity.autoSignIn(options)`: the automatic sign-in ladder; never fails except by cancellation. */
+    @JvmOverloads
+    public fun autoSignIn(options: AutoSignInOptions = AutoSignInOptions()): CompletableFuture<AutoSignInResult> =
+        call { client.identity.autoSignIn(options) }
 
     /** `identity.choice.cancel(grant)`: give the grant up. */
     public fun choiceCancel(grant: String): CompletableFuture<ChoiceResult<Unit>> = call { client.identity.choice.cancel(grant) }
