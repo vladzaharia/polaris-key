@@ -1,6 +1,6 @@
-// I-13.9: a Google web client id or an Apple team id names a native-link scope, so one owner holds
-// it at a time. Another owner's product that names it is refused at the settings write and at
-// manifest ingest (create, apply and resync run the same check); products of one owner may share.
+// I-13.9: a Google web client id or an Apple team id names a native-link scope, so one product holds
+// it at a time. Any other live product that names it is refused at the settings write and at
+// manifest ingest (create, apply and resync run the same check), whatever its GitHub owner says.
 
 import { describe, expect, it } from "vitest";
 import type { ParsedManifest } from "@polaris-key/manifest";
@@ -71,7 +71,7 @@ async function audienceCheck(db: Db, m: ParsedManifest, mode = "apply") {
 }
 
 describe("audience ownership across products (I-13.9)", () => {
-  it("refuses another owner's Google server client id and Apple team id at the settings write", async () => {
+  it("refuses another product's Google server client id and Apple team id at the settings write", async () => {
     const db = await world();
     await hold(db, "victim", SERVER, WEB);
     await hold(db, "victim", TEAM_KEY, TEAM);
@@ -90,7 +90,7 @@ describe("audience ownership across products (I-13.9)", () => {
     ).toBeNull();
   });
 
-  it("takes a value nobody else declares, and a value the same owner declares", async () => {
+  it("takes a value nobody else declares, and refuses one a product with the same GitHub owner declares", async () => {
     const db = await world();
     expect(
       await write(db, SERVER, "7777-mine.apps.googleusercontent.com"),
@@ -100,10 +100,13 @@ describe("audience ownership across products (I-13.9)", () => {
     await hold(db, "victim", TEAM_KEY, TEAM);
     await owner(db, "victim", "Acme");
     await owner(db, "other", "acme");
-    expect(await write(db, TEAM_KEY, TEAM)).toMatchObject({ ok: true });
+    expect(await write(db, TEAM_KEY, TEAM)).toMatchObject({
+      ok: false,
+      reason: "value_claimed",
+    });
   });
 
-  it("two different GitHub owners, or an owner and none, do not share", async () => {
+  it("a different GitHub owner, or none, is refused too", async () => {
     const db = await world();
     await hold(db, "victim", TEAM_KEY, TEAM);
     await owner(db, "victim", "acme");
@@ -126,7 +129,7 @@ describe("audience ownership across products (I-13.9)", () => {
     expect(await write(db, SERVER, WEB)).toMatchObject({ ok: true });
   });
 
-  it("manifest ingest refuses the same values and takes the same owner's", async () => {
+  it("manifest ingest refuses the same values, the same GitHub owner included", async () => {
     const db = await world();
     await hold(db, "victim", SERVER, WEB);
     await hold(db, "victim", TEAM_KEY, TEAM);
@@ -143,7 +146,9 @@ describe("audience ownership across products (I-13.9)", () => {
     });
     await owner(db, "victim", "acme");
     await owner(db, "other", "acme");
-    expect(await audienceCheck(db, google)).toBeNull();
-    expect(await audienceCheck(db, apple)).toBeNull();
+    expect(await audienceCheck(db, google)).toMatchObject({
+      check: "audience",
+    });
+    expect(await audienceCheck(db, apple)).toMatchObject({ check: "audience" });
   });
 });

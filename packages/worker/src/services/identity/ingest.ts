@@ -17,7 +17,7 @@ import type {
   ManifestContributor,
 } from "../../core/ingest/types.js";
 import { reservedAudienceIn } from "./platformSignIn.js";
-import { valueHeldByOtherOwner } from "../../core/settings/unique.js";
+import { valueHeldByOtherProduct } from "../../core/settings/unique.js";
 import { identityManifestIngest } from "./settings.js";
 
 /** A stored `oidc_config` row's columns (`stmtInsertOidcConfig`'s, after the product). */
@@ -226,8 +226,8 @@ export const identityManifest: ManifestContributor = {
             file: "product",
             path: "/identity/platformSignIn",
           };
-        // A native link is scoped by the Google web client id or the Apple team id, so a value a
-        // product of another owner already declares is refused at create, apply and resync alike.
+        // A native link is scoped by the Google web client id or the Apple team id, so a value
+        // another product already declares is refused at create, apply and resync alike.
         const ps = ctx.manifest.identity?.platformSignIn;
         const owned: [string, string | null | undefined, string][] = [
           [
@@ -244,11 +244,12 @@ export const identityManifest: ManifestContributor = {
         for (const [key, value, path] of owned) {
           if (!value) continue;
           if (
-            (await valueHeldByOtherOwner(ctx.db, ctx.slug, key, value)) !== null
+            (await valueHeldByOtherProduct(ctx.db, ctx.slug, key, value)) !==
+            null
           )
             return {
               check: "audience",
-              message: `${key} is already declared by a product of another owner. Use your own client or team.`,
+              message: `${key} is already declared by another product. Use your own client or team.`,
               area: "identity",
               file: "product",
               path,

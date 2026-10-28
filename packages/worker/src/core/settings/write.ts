@@ -60,7 +60,7 @@ import {
 } from "./resolve.js";
 import { NO_GUARD } from "./columns.js";
 import { reservedValueIn } from "./rules.js";
-import { valueHeldByOtherOwner } from "./unique.js";
+import { valueHeldByOtherProduct } from "./unique.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
   BREAK_GLASS_REASON_MAX,
@@ -824,7 +824,12 @@ async function writeProduct(
     }
 
     if (op === "set" && def.uniqueAcrossProducts) {
-      const held = await valueHeldByOtherOwner(ctx.db, slug, def.key, w.value);
+      const held = await valueHeldByOtherProduct(
+        ctx.db,
+        slug,
+        def.key,
+        w.value,
+      );
       if (held !== null)
         return refuse(
           422,
