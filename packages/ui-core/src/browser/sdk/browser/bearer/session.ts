@@ -2323,14 +2323,15 @@ export class BearerSession {
       res = await this.opts.fetchImpl(pending.tokenEndpoint, {
         method: "POST",
         credentials: "omit",
+        redirect: "error",
         // A device that holds its token presents it (V4 §12.5), so the sign-in keeps its licence
         // and refreshes the step-up the link offer needs; only to the Worker that issued it.
         headers: this.headers({
           "content-type": TOKEN_CONTENT_TYPE,
           ...(this.token &&
-          pending.tokenEndpoint.startsWith(`${this.opts.baseUrl}/`)
-            ? { authorization: `Bearer ${this.token}` }
-            : {}),
+            pending.tokenEndpoint.startsWith(`${this.opts.baseUrl}/`) && {
+              authorization: `Bearer ${this.token}`,
+            }),
         }),
         body: tokenForm(pending, checked.code, deviceName ?? undefined),
       });

@@ -380,6 +380,10 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       case "signin.handoff.copyLink":
         return model.copyLink();
       case "signin.again":
+        // On the link offer: Sign in again, the regular sign-in.
+        if (s.autoSignIn?.step === "link-offer")
+          return model.start({ channel: "browser" });
+        return model.retry();
       case "signInHandoff.newCode":
         return model.retry();
       case "common.cancel":

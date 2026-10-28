@@ -28,7 +28,7 @@ async function settle(el: PkSignIn): Promise<void> {
 const SEED: AutoOutcome = { kind: "linkOffer", input: { reach: "global" } };
 
 function prims(
-  accept: () => Promise<"linked" | "conflict" | "stale" | "failed">,
+  accept: () => ReturnType<NonNullable<SignInPrimitives["link"]>["accept"]>,
 ) {
   const decline = vi.fn(async () => undefined);
   const link = { accept: vi.fn(accept), decline };
@@ -101,8 +101,8 @@ describe("the link offer", () => {
     expect(el.open).toBe(false);
   });
 
-  it("a failed Link keeps the offer, says so, and Link tries again", async () => {
-    const { primitives, link } = prims(async () => "failed");
+  it("a network failure keeps the offer, says so, and Link tries again", async () => {
+    const { primitives, link } = prims(async () => "network");
     const el = await draw(primitives);
     await press(el, "signin.linkOffer.primary");
     expect(keys(el)).toContain("signin.linkOffer.primary");
@@ -111,5 +111,71 @@ describe("the link offer", () => {
     ).not.toBeNull();
     await press(el, "signin.linkOffer.primary");
     expect(link.accept).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("what a refused Link says", () => {
+  const line = (el: PkSignIn, key: string) =>
+    el.shadowRoot!.querySelector(`[data-key="${key}"]`);
+
+  it("a stale sign-in says to sign in again, and the main button becomes Sign in again", async () => {
+    const { primitives } = prims(async () => "stale");
+    const el = await draw(primitives);
+    await press(el, "signin.linkOffer.primary");
+    expect(line(el, "signin.linkOffer.stale")).not.toBeNull();
+    expect(keys(el)).toContain("signin.again");
+    expect(keys(el)).not.toContain("signin.linkOffer.primary");
+    expect(line(el, "core.codes.network.message")).toBeNull();
+  });
+
+  it("a refused device says so, and is not the network's line", async () => {
+    const { primitives } = prims(async () => "failed");
+    const el = await draw(primitives);
+    await press(el, "signin.linkOffer.primary");
+    expect(line(el, "signin.linkOffer.failed")).not.toBeNull();
+    expect(line(el, "core.codes.network.message")).toBeNull();
+  });
+
+  it("nothing happened (the chooser was dismissed): the offer stays as it was", async () => {
+    const { primitives } = prims(async () => "none");
+    const el = await draw(primitives);
+    await press(el, "signin.linkOffer.primary");
+    expect(keys(el)).toContain("signin.linkOffer.primary");
+    expect(
+      el.shadowRoot!.querySelector('[role="alert"], [data-part="callout"]'),
+    ).toBeNull();
+  });
+});
+
+describe("the gate asks for the offer once the app is on screen", () => {
+  it("shows the sheet after the one update that licenses the app (a phone has no second one)", async () => {
+    const { fakeClient } = await import("./autoFixtures.js");
+    const { adapter } = fakeClient(
+      { kind: "unavailable", code: "refused" },
+      {
+        link: {
+          pending: () => true,
+          offer: async () => ({
+            kind: "ok",
+            offer: [{ kind: "google", reach: "global" }],
+          }),
+          accept: async () => ({ kind: "unavailable" }),
+          decline: async () => undefined,
+          dismiss: () => undefined,
+        },
+      },
+    );
+    const state = adapter.snapshot() as Record<string, unknown>;
+    state.status = "ok";
+    state.gate = { status: "ok" };
+    const el = document.createElement("pk-gate") as HTMLElement & {
+      seams?: unknown;
+      updateComplete: Promise<unknown>;
+    };
+    el.setAttribute("config", '{"product":"acme"}');
+    el.seams = { client: adapter as never };
+    document.body.replaceChildren(el);
+    await settle(el as never);
+    expect(el.shadowRoot!.querySelector("pk-sign-in")).not.toBeNull();
   });
 });

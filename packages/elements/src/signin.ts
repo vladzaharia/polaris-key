@@ -185,6 +185,10 @@ export class PkSignIn extends PkElement {
       case "signin.handoff.copyLink":
         return m.copyLink();
       case "signin.again":
+        // On the link offer: Sign in again, the regular sign-in.
+        if (s.autoSignIn?.step === "link-offer")
+          return m.start({ channel: "browser" });
+        return m.retry();
       case "signInHandoff.newCode":
         return m.retry();
       case "common.cancel":

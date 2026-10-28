@@ -89,11 +89,20 @@ export function primitivesOf(
       ? {
           link: {
             accept: async () => {
-              const r = await adapter.link!.accept();
+              let r;
+              try {
+                r = await adapter.link!.accept();
+              } catch (e) {
+                // The connection is worth another try; a refused key or proof is not.
+                return (e as { code?: string } | null)?.code ===
+                  ErrorCode.networkError
+                  ? ("network" as const)
+                  : ("failed" as const);
+              }
               if (r.kind === "linked") return "linked" as const;
-              if (r.kind === "refused" && r.code === ErrorCode.linkConflict)
-                return "conflict" as const;
-              return r.kind === "refused" && r.code === ErrorCode.stepUpRequired
+              if (r.kind === "unavailable") return "none" as const;
+              if (r.code === ErrorCode.linkConflict) return "conflict" as const;
+              return r.code === ErrorCode.stepUpRequired
                 ? ("stale" as const)
                 : ("failed" as const);
             },

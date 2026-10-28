@@ -82,7 +82,16 @@ function LinkHost(props: {
     check();
     return adapter.subscribe(check);
   }, [adapter]);
-  const onClose = useCallback(() => setSeed(null), []);
+  // Escape, Close and the answers all end here; only No thanks remembers anything. A tab that
+  // dismisses is not asked again until the next sign-in.
+  const onClose = useCallback(() => {
+    void adapter.link?.dismiss();
+    setSeed(null);
+  }, [adapter]);
+  // Too old a sign-in: the regular sign-in, then the offer links in one tap.
+  const signInAgain = useCallback(() => {
+    void adapter.signInWithOidc().catch(() => undefined);
+  }, [adapter]);
   if (seed === null) return null;
   return (
     <Suspense fallback={null}>
@@ -91,6 +100,7 @@ function LinkHost(props: {
         seed={seed}
         sheet
         onBack={onClose}
+        onFallback={signInAgain}
         {...(props.theme ? { theme: props.theme } : {})}
       />
     </Suspense>

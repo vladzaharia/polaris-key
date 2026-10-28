@@ -1371,6 +1371,8 @@ export class BrowserAdapter implements PolarisAdapter {
     // Fail closed: from here no silent rung signs this device in again until a person signs in.
     // Any ladder already running is abandoned before it stores a token.
     this.signOutGeneration += 1;
+    this.linkFor_ = undefined;
+    this.linkHandle(null);
     const warn: Pick<SignOutResult, "warning"> = (await this.setExplicitSignOut(
       true,
     ))
@@ -2128,7 +2130,7 @@ export class BrowserAdapter implements PolarisAdapter {
         this.applyBearer({ busy: noBusy(), error: noErrors() });
       // `no_link` carries a handle for the link offer: held across the sign-in redirect.
       if (result.kind === "needsSignIn" && result.linkHandle !== undefined)
-        this.markLink(result.linkHandle);
+        this.linkHandle(`${this.clock()} ${result.linkHandle}`);
       return result;
     } catch (e) {
       // Only a cancellation leaves the ladder as a throw.
@@ -2139,41 +2141,43 @@ export class BrowserAdapter implements PolarisAdapter {
 
   // ── The link offer (identity.link, I-46.13) ───────────────────────────────────────────────
 
-  private link_: Promise<LinkClient> | null = null;
-
   /** The engine behind `link`: loaded on first use, after a redirect sign-in. It reads this
    *  adapter's own state by name (`LinkHost`), so no accessor table is carried here. */
   private linkEngine(): Promise<LinkClient> {
-    return (this.link_ ??= import("./bearer/link.js").then((m) =>
+    // The module loads once; the client holds no state of its own (it reads this adapter's).
+    return import("./bearer/link.js").then((m) =>
       m.createLinkClient(this as never),
-    ));
+    );
   }
 
-  /** Leave the marker `link.pending()` reads (see `LinkClient.mark`). */
-  private markLink(handle?: string): void {
-    void this.linkEngine().then((l) => l.mark?.(handle));
+  /** The account whose redirect sign-in landed on this page, `""` while its subject is not yet
+   *  known: the link offer may be made (the kit asks `link.pending()`). Per page: a reload is
+   *  "not now". Read and cleared by the lazy engine (`LinkHost`). */
+  private linkFor_: string | undefined;
+
+  /** Keep (or, with `null`, drop) the `no_link` handle across the sign-in redirect: the one thing
+   *  that has to outlive the page. Written here so it is there before the person leaves. */
+  private linkHandle(set: string | null): void {
+    try {
+      const k = `pkey-link-handle:${this.product}`;
+      if (set === null) sessionStorage.removeItem(k);
+      else sessionStorage.setItem(k, set);
+    } catch {
+      // No storage: the offer falls back to a fresh provider token.
+    }
   }
 
   /** `identity.link`: bearer mode; elsewhere typed `unavailable`. `pending` is the only call that
    *  runs before the engine loads: the marker a redirect sign-in (or a `no_link` handle) left in
    *  sessionStorage. */
   readonly link: LinkClient = {
-    pending: () => {
-      try {
-        return (
-          this.bearer !== null &&
-          sessionStorage.getItem(`pkey-link:${this.product}`) !== null
-        );
-      } catch {
-        return false;
-      }
-    },
+    pending: () => this.linkFor_ !== undefined,
     ...(Object.fromEntries(
-      (["offer", "declined", "accept", "decline"] as const).map((k) => [
+      (["offer", "accept", "decline", "dismiss"] as const).map((k) => [
         k,
         async () => (await this.linkEngine())[k](),
       ]),
-    ) as Pick<LinkClient, "offer" | "declined" | "accept" | "decline">),
+    ) as Omit<LinkClient, "pending">),
   };
 
   private readonly connectOptions: BrowserAdapterOptions["connect"];
@@ -2269,6 +2273,9 @@ export class BrowserAdapter implements PolarisAdapter {
   private signInHooks(): SettleHooks {
     return {
       onSettled: async (outcome) => {
+        // A sign-in landed: the link offer may follow (the kit asks `link.pending()`). The marker
+        // is there before the state change below, for the kit to read.
+        if (outcome.kind === "signedIn") this.linkFor_ = outcome.subject ?? "";
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         if (outcome.kind === "signedIn") await this.setExplicitSignOut(false);
         if (outcome.kind !== "signedIn" || outcome.subject !== null)
@@ -2360,16 +2367,13 @@ export class BrowserAdapter implements PolarisAdapter {
         ),
       );
     this.setBusy("identity", true);
-    const out = await completeRedirect(
+    return completeRedirect(
       b,
       pending,
       callbackUrl,
       pending.deviceName,
       this.signInHooks(),
     );
-    // A redirect sign-in landed: the link offer may follow (the kit asks `link.pending()`).
-    if (out.kind === "signedIn") this.markLink();
-    return out;
   }
 
   async mintToken(recipeId: string): Promise<MintedToken> {

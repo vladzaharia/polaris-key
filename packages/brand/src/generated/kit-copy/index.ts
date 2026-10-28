@@ -481,6 +481,8 @@ export type KitCopyKey =
   | "signin.linkOffer.bodyApp"
   | "signin.linkOffer.primary"
   | "signin.linkOffer.decline"
+  | "signin.linkOffer.stale"
+  | "signin.linkOffer.failed"
   | "signin.linkOffer.done"
   | "signin.linkOffer.conflictTitle"
   | "signin.linkOffer.conflict"

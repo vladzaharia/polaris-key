@@ -134,10 +134,14 @@ export interface SignInPrimitives {
    * button starts the browser sign-in as before.
    */
   autoSignIn?(): Promise<AutoOutcome | null>;
-  /** The link offer's two answers (identity.link). `stale`: the sign-in is too old to link;
-   *  `failed`: the network or the provider; the offer stays and Link tries again. */
+  /** The link offer's two answers (identity.link). `stale`: the sign-in is too old to link (sign
+   *  in again); `failed`: this device or the proof was refused (retrying cannot help); `network`:
+   *  the connection (Link tries again); `none`: nothing happened (the person dismissed the
+   *  provider's chooser), and the offer stays as it was. */
   link?: {
-    accept(): Promise<"linked" | "conflict" | "stale" | "failed">;
+    accept(): Promise<
+      "linked" | "conflict" | "stale" | "failed" | "network" | "none"
+    >;
     decline(): Promise<void>;
   };
 }
@@ -742,7 +746,7 @@ export class SignInModel {
     try {
       r = await link.accept();
     } catch {
-      r = "failed";
+      r = "network";
     }
     if (epoch !== this.epoch) return;
     this.patch({}, { redeeming: false });
@@ -754,11 +758,23 @@ export class SignInModel {
           step: r === "linked" ? "link-done" : "link-conflict",
         },
       });
-    else this.patch({ error: { code: "network" } });
+    else if (r !== "none")
+      this.patch({
+        error: {
+          code:
+            r === "stale"
+              ? "link-stale"
+              : r === "failed"
+                ? "link-failed"
+                : "network",
+        },
+      });
   }
 
   /** No thanks: remembered on this device, so the offer is not made again for this account. */
   async linkDecline(): Promise<void> {
+    // Link is in flight: a decline now could be stored beside a link that goes through.
+    if (this.store.get().session.redeeming) return;
     await this.primitives?.link?.decline().catch(() => undefined);
     this.patch({ autoSignIn: undefined, error: undefined });
   }

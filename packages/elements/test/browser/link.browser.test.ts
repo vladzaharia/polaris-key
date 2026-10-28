@@ -12,28 +12,23 @@ import { commands, page } from "vitest/browser";
 import type { PkSignIn } from "../../src/index.js";
 import { axeViolations, fixtureTheme, inputRow } from "./support.js";
 
-declare module "vitest/browser" {
-  interface BrowserCommands {
-    kitShot: (file: string) => Promise<void>;
-  }
-}
 declare const __PKEY_KIT_SHOTS__: string;
 declare const __PKEY_FONTS__: string;
 
-const SIZES = [
-  { label: "390", width: 390, height: 844 },
-  { label: "1440", width: 1440, height: 900 },
-] as const;
-const SCHEMES = ["dark", "light"] as const;
+const shoot = (file: string): Promise<void> =>
+  (commands as unknown as Record<string, (f: string) => Promise<void>>)
+    .kitShot!(file);
 
-beforeAll(() => {
-  fixtureTheme(__PKEY_FONTS__);
-});
-afterEach(() => {
-  document.body.replaceChildren();
-});
+const VIEWPORTS: [string, number, number][] = [
+  ["390", 390, 844],
+  ["1440", 1440, 900],
+];
 
-const SCENES = [
+beforeAll(() => fixtureTheme(__PKEY_FONTS__));
+afterEach(() => document.body.replaceChildren());
+
+/** [id, ui-matrix row, the control the step must show] */
+const STEPS: [string, string, string][] = [
   [
     "offer",
     "SignIn/link-offer: Google shared across apps",
@@ -46,60 +41,49 @@ const SCENES = [
   ],
   ["done", "SignIn/link-done", "common.continue"],
   ["conflict", "SignIn/link-conflict", "signin.linkOffer.join"],
-] as const;
+];
 
 async function draw(
   row: string,
-  scheme: "dark" | "light",
+  dark: boolean,
   sheet: boolean,
 ): Promise<PkSignIn> {
   const el = document.createElement("pk-sign-in") as PkSignIn;
-  el.colorScheme = scheme;
+  el.colorScheme = dark ? "dark" : "light";
   el.input = inputRow(sheet ? `${row} (sheet)` : row);
-  if (sheet) {
-    el.presentation = "sheet";
-    el.open = true;
-  } else el.fill = true;
-  document.body.style.background = scheme === "dark" ? "#060912" : "#f6f8ff";
+  if (sheet) Object.assign(el, { presentation: "sheet", open: true });
+  else el.fill = true;
+  document.body.style.background = dark ? "#060912" : "#f6f8ff";
   document.body.replaceChildren(el);
-  for (let i = 0; i < 6; i += 1) {
-    await new Promise((r) => setTimeout(r, 20));
-    await el.updateComplete;
-  }
+  await el.updateComplete;
   await document.fonts.ready;
-  await new Promise((r) =>
-    requestAnimationFrame(() => requestAnimationFrame(r)),
-  );
-  // The step's entrance runs to its end before axe measures colours.
-  await Promise.all(
-    el
-      .shadowRoot!.getAnimations()
-      .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-      .map((a) => a.finished.catch(() => undefined)),
-  );
+  // Settled: no step entrance still running, so axe reads the final colours.
+  const running = () =>
+    el.shadowRoot!.getAnimations().some((a) => a.playState === "running");
+  for (let frames = 0; frames < 90 && (frames < 3 || running()); frames += 1)
+    await new Promise((next) => requestAnimationFrame(next));
   return el;
 }
 
 describe("the link offer in the elements", () => {
-  for (const size of SIZES)
-    for (const scheme of SCHEMES)
+  for (const [label, width, height] of VIEWPORTS)
+    for (const dark of [true, false])
       for (const sheet of [false, true])
-        it.each(SCENES.map((s) => [...s] as const))(
-          `%s${sheet ? " (sheet)" : ""} at ${size.label} ${scheme}`,
+        it.each(STEPS)(
+          `%s${sheet ? " (sheet)" : ""} at ${label} ${dark ? "dark" : "light"}`,
           async (id, row, has) => {
-            await page.viewport(size.width, size.height);
-            const el = await draw(row, scheme, sheet);
+            await page.viewport(width, height);
+            const el = await draw(row, dark, sheet);
             expect(
               el.shadowRoot!.querySelector(`[data-key="${has}"]`),
-              has,
             ).not.toBeNull();
             expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
-              size.width,
+              width,
             );
             expect(await axeViolations(el)).toEqual([]);
             if (__PKEY_KIT_SHOTS__)
-              await commands.kitShot(
-                `${__PKEY_KIT_SHOTS__}/elements.link.${id}${sheet ? "-sheet" : ""}/${size.label}-${scheme}.png`,
+              await shoot(
+                `${__PKEY_KIT_SHOTS__}/elements.link.${id}${sheet ? "-sheet" : ""}/${label}-${dark ? "dark" : "light"}.png`,
               );
           },
         );

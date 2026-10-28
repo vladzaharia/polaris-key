@@ -25,6 +25,8 @@ import type {
 import { redirectEndpointsOf } from "../../core/signIn.js";
 import type { PlatformIdentityProvider } from "../../core/signIn.js";
 import type { BearerSession } from "./session.js";
+import { TOKEN_STORE_NAME, openPolarisDb, request } from "../offline.js";
+import { storageNamespace } from "../../core/storeNamespace.js";
 import type { BrowserStore } from "./store.js";
 import { bodyCode } from "../../core/activation.js";
 import { PolarisError } from "../../core/types.js";
@@ -242,6 +244,8 @@ const HANDLE_SECONDS = 600;
 /** The browser adapter's own members the engine reads (it is created with the adapter itself, so
  *  the adapter carries no table of accessors); named as the adapter has them. */
 export interface LinkHost {
+  /** The account whose redirect sign-in landed on this page (`""`: subject not yet known). */
+  linkFor_: string | undefined;
   product: string;
   base: string;
   bearer: BearerSession | null;
@@ -256,12 +260,44 @@ export interface LinkHost {
   ): PlatformIdentityProvider | null;
 }
 
+/** Declined offers, kept as `<product>\0declined\0<hash>` in the `tokens` object store beside the
+ *  token (IndexedDB), or in memory where the page has none. The hash only, never the identity. */
+const declinedMemory = new Set<string>();
+const declinedStore = {
+  async db(host: LinkHost): Promise<IDBDatabase | null> {
+    if ((await host.bearerStore?.status())?.backend !== "indexeddb")
+      return null;
+    return openPolarisDb(indexedDB, storageNamespace(host.base));
+  },
+  name: (host: LinkHost, hash: string) => `${host.product}\0declined\0${hash}`,
+  async has(host: LinkHost, hash: string): Promise<boolean> {
+    const db = await this.db(host);
+    const n = this.name(host, hash);
+    return db
+      ? (await request(
+          db.transaction(TOKEN_STORE_NAME).objectStore(TOKEN_STORE_NAME).get(n),
+        )) === 1
+      : declinedMemory.has(n);
+  },
+  async add(host: LinkHost, hash: string): Promise<void> {
+    const db = await this.db(host);
+    const n = this.name(host, hash);
+    if (db)
+      await request(
+        db
+          .transaction(TOKEN_STORE_NAME, "readwrite")
+          .objectStore(TOKEN_STORE_NAME)
+          .put(1, n),
+      );
+    else declinedMemory.add(n);
+  },
+};
+
 export function createLinkClient(host: LinkHost): LinkClient {
   const h = {
-    key: `pkey-link:${host.product}`,
+    hkey: `pkey-link-handle:${host.product}`,
     clock: () => host.clock(),
     bearer: () => host.bearer,
-    store: () => host.bearerStore,
     ready: () => (host.configError ? null : host.ensureDiscovery()),
     issuer: () =>
       redirectEndpointsOf(host.discovery_)?.issuer ??
@@ -270,88 +306,82 @@ export function createLinkClient(host: LinkHost): LinkClient {
     provider: async () =>
       host.platformProvider(await import("./autoSignIn.js")),
   };
-  const held = (): string | null => {
+  const get = (k: string): string | null => {
     try {
-      const raw = sessionStorage.getItem(h.key);
-      const o = (raw === null ? null : JSON.parse(raw)) as {
-        h?: unknown;
-        at?: unknown;
-      } | null;
-      return o !== null &&
-        typeof o.h === "string" &&
-        typeof o.at === "number" &&
-        h.clock() - o.at < HANDLE_SECONDS
-        ? o.h
-        : null;
+      return sessionStorage.getItem(k);
     } catch {
       return null;
     }
   };
+  /** The `no_link` handle, while it lives (600 s): stored as "<seconds> <handle>". */
+  const held = (): string | null => {
+    const [at, handle] = (get(h.hkey) ?? "").split(" ");
+    return handle && h.clock() - Number(at) < HANDLE_SECONDS ? handle : null;
+  };
+  /** Forget the marker and the handle: the offer is answered, dismissed, or not this account's. */
   const drop = (): void => {
+    host.linkFor_ = undefined;
     try {
-      sessionStorage.removeItem(h.key);
+      sessionStorage.removeItem(h.hkey);
     } catch {
       // nothing to drop
     }
   };
-  /** `sha256(issuer ‖ sub)`. */
-  const key = async (b: BearerSession): Promise<string> =>
-    declineHash(
-      h.issuer(),
-      b.account ?? (await b.subject().catch(() => null)) ?? "",
-    );
+  /** The signed-in account's subject, or `""` when it cannot be read. */
+  const subjectOf = async (b: BearerSession): Promise<string> =>
+    b.account ?? (await b.subject().catch(() => null)) ?? "";
+  /** The marker (and the handle with it) belongs to the account that is signed in now: one left
+   *  by another account's sign-in is dropped. A marker with no subject stays unbound. */
+  const mine = async (b: BearerSession): Promise<boolean> => {
+    const s = host.linkFor_;
+    if (s === undefined) return false;
+    if (s !== "" && s !== (await subjectOf(b))) {
+      drop();
+      return false;
+    }
+    return true;
+  };
+  /** `sha256(issuer ‖ sub)`; `null` while the subject is unknown (a decline then covers no one). */
+  const key = async (b: BearerSession): Promise<string | null> => {
+    const sub = await subjectOf(b);
+    return sub === "" ? null : declineHash(h.issuer(), sub);
+  };
+
+  /** True when the person declined the offer for this account on this device. */
+  const declined = async (b: BearerSession): Promise<boolean> => {
+    try {
+      const k = await key(b);
+      return k !== null && (await declinedStore.has(host, k));
+    } catch {
+      return false;
+    }
+  };
 
   const client: LinkClient = {
-    pending: () => held() !== null,
-    mark(handle) {
-      try {
-        // A handle (kept 600 s, across the sign-in redirect) replaces the marker; a landed
-        // sign-in only makes one when there is none.
-        if (handle !== undefined || sessionStorage.getItem(h.key) === null)
-          sessionStorage.setItem(
-            h.key,
-            JSON.stringify({ h: handle, at: h.clock() }),
-          );
-      } catch {
-        // No storage: the offer falls back to a fresh provider token.
-      }
-    },
+    pending: () => host.linkFor_ !== undefined,
+    dismiss: drop,
     async offer(): Promise<LinkOfferResult> {
       const b = h.bearer();
       const ready = h.ready();
-      if (ready === null || !b) return { kind: "unavailable" };
+      if (ready === null || !b || !(await mine(b)) || (await declined(b)))
+        return { kind: "unavailable" };
       await ready;
       return runOffer(await linkContextOf(b));
-    },
-    async declined() {
-      const b = h.bearer();
-      const flags = h.store()?.flags;
-      if (!b || !flags) return false;
-      try {
-        return await flags.getFlag(`declined\0${await key(b)}`);
-      } catch {
-        return false;
-      }
     },
     async accept(): Promise<LinkAcceptResult> {
       const b = h.bearer();
       const ready = h.ready();
-      if (ready === null || !b) return { kind: "unavailable" };
+      if (ready === null || !b || !(await mine(b)))
+        return { kind: "unavailable" };
       await ready;
       const port = await h.port();
-      const handle = held();
-      let r: LinkAcceptResult;
-      if (handle !== null)
-        r = await runAccept(await linkContextOf(b), port, {
-          linkHandle: handle,
-        });
-      else {
+      const viaProvider = async (): Promise<LinkAcceptResult> => {
         const provider = await h.provider();
         if (provider === null || !provider.available())
           return { kind: "unavailable" };
         const none = new Error("no provider token");
         try {
-          r = await runAccept(await linkContextOf(b), port, {
+          return await runAccept(await linkContextOf(b), port, {
             kind: provider.kind,
             subjectToken: async (nonce) => {
               const t = await provider.token(nonce, "optional");
@@ -363,12 +393,29 @@ export function createLinkClient(host: LinkHost): LinkClient {
           if (e === none) return { kind: "unavailable" };
           throw e;
         }
+      };
+      const handle = held();
+      let r: LinkAcceptResult = handle
+        ? await runAccept(await linkContextOf(b), port, { linkHandle: handle })
+        : await viaProvider();
+      // A handle that lapsed or was spent is not an error for the person: the provider is asked
+      // in the same press.
+      if (
+        handle &&
+        r.kind === "refused" &&
+        (r.code === ErrorCode.invalidGrant || r.code === ErrorCode.notFound)
+      ) {
+        try {
+          sessionStorage.removeItem(h.hkey);
+        } catch {
+          // nothing to drop
+        }
+        r = await viaProvider();
       }
       // A stale step-up leaves the handle where it is (the person signs in again); anything
       // else spends it.
-      if (!(r.kind === "refused" && r.code === ErrorCode.stepUpRequired)) {
+      if (!(r.kind === "refused" && r.code === ErrorCode.stepUpRequired))
         drop();
-      }
       // An identity that belongs to another account is not offered again here.
       if (r.kind === "refused" && r.code === ErrorCode.linkConflict)
         await client.decline();
@@ -377,10 +424,10 @@ export function createLinkClient(host: LinkHost): LinkClient {
     async decline() {
       drop();
       const b = h.bearer();
-      const flags = h.store()?.flags;
-      if (!b || !flags) return;
+      if (!b) return;
       try {
-        await flags.setFlag(true, `declined\0${await key(b)}`);
+        const k = await key(b);
+        if (k !== null) await declinedStore.add(host, k);
       } catch {
         // A store that cannot keep it asks again next time.
       }

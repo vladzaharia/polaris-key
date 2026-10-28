@@ -160,7 +160,6 @@ export class PkGate extends PkElement {
     if (this.binding.driver !== before) this.restartIdentity();
     this.auto.follow(this.driven ? this.binding.driver : null);
     this.auto.tick(this.autoOn);
-    this.checkLink();
     const error = this.binding.error;
     const code = error ? `${error.code}:${error.message}` : null;
     if (code !== this.reported) {
@@ -199,6 +198,7 @@ export class PkGate extends PkElement {
   }
 
   private onLinkClose = (): void => {
+    void this.binding.driver?.adapter.link?.dismiss();
     this.linkSeed = null;
     this.requestUpdate();
   };
@@ -391,6 +391,8 @@ export class PkGate extends PkElement {
    *  control that opened the step. */
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
+    // After the draw, so the view read is the one on screen (a phone's single update).
+    this.checkLink();
     this.focusApp();
     const step = this.driven ? this.step : "home";
     if (step === this.lastStep) return;

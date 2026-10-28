@@ -735,6 +735,16 @@ export function successMark(): ReactNode {
   );
 }
 
+/** Google's own "G", unmodified, above the link offer's title: the offer is about Google, so the
+ *  step names it before the words do. Decorative: the title says it. */
+export function providerMark(): ReactNode {
+  return (
+    <div className="provider-mark" aria-hidden="true">
+      <GoogleMark />
+    </div>
+  );
+}
+
 /** LoadingIndicator: the 2 px shimmer along the container's top edge (§1.5 rule 4). */
 export function shimmer(): ReactNode {
   return <div className="shimmer" data-part="loading" aria-hidden="true" />;

@@ -3,7 +3,7 @@
 // The link offer after a redirect sign-in (I-46.13): once the app runs and a redirect sign-in
 // landed, `<PolarisKeyGate>` asks `link.offer()` and shows the offer over the app. Link goes to
 // Done or the conflict; No thanks is stored and closes. Nothing shows without a pending sign-in,
-// a Google entry, or after a decline.
+// a Google entry, .
 
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
@@ -25,7 +25,6 @@ type Over = {
   pending?: boolean;
   offer?: LinkOfferResult;
   accept?: LinkAcceptResult;
-  declined?: boolean;
 };
 
 const DONE: LinkAcceptResult = {
@@ -50,9 +49,9 @@ function mount(over: Over = {}) {
   const link = {
     pending: vi.fn(() => over.pending ?? true),
     offer: vi.fn(async () => over.offer ?? OFFER),
-    declined: vi.fn(async () => over.declined ?? false),
     accept: vi.fn(async (): Promise<LinkAcceptResult> => over.accept ?? DONE),
     decline: vi.fn(async () => undefined),
+    dismiss: vi.fn(),
   };
   Object.assign(adapter, { link });
   const rendered = render(
@@ -116,7 +115,7 @@ describe("the link offer after a redirect sign-in", () => {
     await waitFor(() => expect(m.link.accept).toHaveBeenCalledTimes(2));
   });
 
-  it("shows nothing without a pending sign-in, a Google entry, or after a decline", async () => {
+  it("shows nothing without a pending sign-in, a Google entry, ", async () => {
     for (const over of [
       { pending: false },
       {
@@ -124,7 +123,6 @@ describe("the link offer after a redirect sign-in", () => {
       },
       { offer: { kind: "ok", offer: [] } as const },
       { offer: { kind: "unavailable" } as const },
-      { declined: true },
     ]) {
       const m = mount(over);
       await waitFor(() =>
@@ -134,5 +132,48 @@ describe("the link offer after a redirect sign-in", () => {
       expect(button(m.container, "signin.linkOffer.primary")).toBeNull();
       cleanup();
     }
+  });
+
+  it("a stale sign-in says to sign in again and Sign in again starts the regular sign-in", async () => {
+    const m = mount({
+      accept: { kind: "refused", status: 401, code: "step_up_required" },
+    });
+    await appears(m, "signin.linkOffer.primary");
+    fireEvent.click(button(m.container, "signin.linkOffer.primary")!);
+    await appears(m, "signin.again");
+    expect(button(m.container, "signin.linkOffer.primary")).toBeNull();
+    expect(
+      m.container.querySelector('[data-key="signin.linkOffer.stale"]'),
+    ).not.toBeNull();
+  });
+
+  it("a refused device says so rather than blaming the connection", async () => {
+    const m = mount({
+      accept: { kind: "refused", status: 400, code: "invalid_grant" },
+    });
+    await appears(m, "signin.linkOffer.primary");
+    fireEvent.click(button(m.container, "signin.linkOffer.primary")!);
+    await waitFor(() =>
+      expect(
+        m.container.querySelector('[data-key="signin.linkOffer.failed"]'),
+      ).not.toBeNull(),
+    );
+    expect(
+      m.container.querySelector('[data-key="core.codes.network.message"]'),
+    ).toBeNull();
+  });
+
+  it("dismissing (Escape, Close) forgets the offer for the tab but remembers no decline", async () => {
+    const m = mount();
+    await appears(m, "signin.linkOffer.primary");
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+    const close = m.container.querySelector<HTMLButtonElement>(
+      '[data-key="common.close"], button[aria-label]',
+    );
+    if (close) fireEvent.click(close);
+    await waitFor(() => expect(m.link.dismiss).toHaveBeenCalled());
+    expect(m.link.decline).not.toHaveBeenCalled();
   });
 });

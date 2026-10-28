@@ -49,6 +49,7 @@ import {
   progressBar,
   seatMeter,
   shimmer,
+  providerMark,
   successMark,
   text,
   titles,
@@ -354,9 +355,14 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
             developer: !heroTitle && view.copy.includes("common.byDeveloper"),
           })
         : nothing}
-      ${view.component === "SignIn" && view.state === "done"
+      ${view.component === "SignIn" &&
+      (view.state === "done" || view.state === "link-done")
         ? successMark()
-        : nothing}
+        : view.component === "SignIn" &&
+            view.state === "link-offer" &&
+            c.input.provider === "Google"
+          ? providerMark()
+          : nothing}
       <div class="texts" data-part="texts">
         ${titles(
           c,
