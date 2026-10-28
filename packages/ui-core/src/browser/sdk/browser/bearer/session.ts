@@ -1334,6 +1334,52 @@ export class BearerSession {
    * (WIRE-CONTRACT-V4 §2.3).
    */
   private async refreshTrust(): Promise<string | null> {
+    return this.trustLocked(() => this.refreshTrustNow());
+  }
+
+  /** One manifest change at a time: a refresh and a peer's manifest do not interleave. */
+  private trustLock: Promise<unknown> = Promise.resolve();
+  private trustLocked<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.trustLock.then(fn, fn);
+    this.trustLock = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * A trust manifest a connected peer pushed (Connect, WIRE-CONTRACT-V5 §15.5): verified against
+   * the usable pins under the rules the Worker's own manifest meets (signed by a usable pin, bound
+   * to this product, fresh, newer than the one held: anti-rollback) and installed under the trust
+   * lock, then persisted in the same slice a sync writes. Refused with the reason otherwise.
+   */
+  acceptPeerTrust(
+    jws: string,
+  ): Promise<{ applied: true } | { applied: false; reason: string }> {
+    return this.trustLocked(async () => {
+      await this.init();
+      const m = await verifyTrustManifest(jws, {
+        pinned: this.opts.pinned,
+        tombstones: this.tombstones,
+        expectedAud: this.opts.product,
+        now: this.now(),
+      });
+      if (!m.doc) return { applied: false as const, reason: "invalid" };
+      if (
+        this.manifestIssuedAt !== undefined &&
+        m.doc.issuedAt <= this.manifestIssuedAt
+      )
+        return { applied: false as const, reason: "not_newer" };
+      this.installManifest(jws, m);
+      await this.writeRecord({
+        trustJws: jws,
+        ...(Object.keys(this.evidence).length > 0
+          ? { pinRevocations: { ...this.evidence } }
+          : {}),
+      });
+      return { applied: true as const };
+    });
+  }
+
+  private async refreshTrustNow(): Promise<string | null> {
     const fetchManifest = async (signer: string | null) => {
       const res = await this.send(
         signer === null

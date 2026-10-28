@@ -2056,8 +2056,8 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
   "sync.e2e": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
-  "connect.noise": { status: "planned", service: "connect", na: [] },
-  "connect.protocol": { status: "planned", service: "connect", na: [] },
+  "connect.noise": { status: "implemented", service: "connect", na: [] },
+  "connect.protocol": { status: "implemented", service: "connect", na: [] },
   "connect.lan": {
     status: "na",
     service: "connect",
@@ -2066,7 +2066,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "connect.relay": { status: "planned", service: "connect", na: [] },
+  "connect.relay": { status: "implemented", service: "connect", na: [] },
   "connect.links": {
     status: "na",
     service: "connect",
@@ -2076,7 +2076,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
-  "connect.app": { status: "planned", service: "connect", na: [] },
+  "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": {
     status: "na",
     service: "core",
@@ -2326,4 +2326,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "41636262c7a99b17b7ed536ec69e899a13610f096330c215f461071fcb148799";
+  "02e874bb64d909e47ebe9eedc5e9c43ce78f58d63d8606a57ef61c5662ea7fec";

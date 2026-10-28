@@ -103,6 +103,7 @@ import { memoryRootVault } from "../src/browser/ring/rootVault.js";
 import {
   createConnect,
   type ConnectClient,
+  RelayError,
 } from "../src/browser/connect/index.js";
 import { memoryConnectState } from "../src/browser/connect/state.js";
 import { browserObjectFetch } from "../src/packs/browserPacks.js";
@@ -520,6 +521,7 @@ async function replay(t: Transcript): Promise<void> {
   let connectLabel: string | null = null;
   const connect: ConnectClient = createConnect({
     product: t.product,
+    baseUrl: t.baseUrl,
     device: async () => ({
       deviceId: session.deviceId,
       hasToken: session.hasToken,
@@ -845,6 +847,31 @@ async function replay(t: Transcript): Promise<void> {
         }
         break;
       }
+      case "relayTicket": {
+        // connect.relay (CC-09.2): the ticket route. A refusal reads as `result: "refused"` with
+        // the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
+        try {
+          const g = await connect.relayTicket();
+          observed.result = "ok";
+          observed.protocol = g.protocol;
+          observed.url = g.url;
+          observed.expiresIn = g.expiresAt - clock;
+        } catch (e) {
+          if (e instanceof RelayError) {
+            observed.result = "refused";
+            observed.status = e.status ?? null;
+            observed.code = e.code;
+            if (e.retryAfterSeconds !== undefined)
+              observed.retryAfter = e.retryAfterSeconds;
+            if (e.scope !== undefined) observed.scope = e.scope;
+          } else if (e instanceof PolarisError) {
+            observed.result = "refused";
+            observed.status = e.status ?? null;
+            observed.code = e.wireCode ?? e.code;
+          } else throw e;
+        }
+        break;
+      }
       case "connectIdentity":
       case "connectDevices": {
         const label = String(step.args.keyLabel);
@@ -1114,16 +1141,11 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.exchange is I-13.7's exchange-* transcripts (FedCM and GIS, I-46); the Node
     // runner replays them with a reference client (exchangeTranscripts.test.ts). sync.keyring is
     // U-36.4's keyring-* transcripts are replayed here through the ring engine (U-38.2).
-    // connect.relay is CC-07.3's connect-relay-* transcripts; the relay client is CC-09.
+    // connect.relay is CC-07.3's connect-relay-* transcripts, replayed here (CC-09.2).
     // identity.link is I-43.3's link-* transcripts (the link offer, I-46); the Node runner replays
     // them with a reference client (linkTranscripts.test.ts).
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
-    const plannedHere = [
-      "sync.settings",
-      "identity.exchange",
-      "identity.link",
-      "connect.relay",
-    ];
+    const plannedHere = ["sync.settings", "identity.exchange", "identity.link"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

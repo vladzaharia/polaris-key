@@ -6016,7 +6016,9 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "CC-09"
+          "spelling": "useCloudConnect().start",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
         },
         "python": {
           "planned": "CC-10"
@@ -6046,7 +6048,9 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "CC-09"
+          "spelling": "useCloudConnect().stop",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
         },
         "python": {
           "planned": "CC-10"
@@ -6070,7 +6074,9 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "CC-09"
+          "spelling": "useCloudConnect().peers",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
         },
         "python": {
           "planned": "CC-10"
@@ -6094,7 +6100,9 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "CC-09"
+          "spelling": "useCloudConnect().devices",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
         },
         "python": {
           "planned": "CC-10"
@@ -6118,7 +6126,9 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "CC-09"
+          "spelling": "useCloudConnect().open",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
         },
         "python": {
           "planned": "CC-10"
@@ -6148,7 +6158,9 @@
       "sdks": {
         "node": {},
         "react": {
-          "planned": "CC-09"
+          "spelling": "useCloudConnect().onChannel",
+          "shape": "hook",
+          "reason": "a hook returns a render value"
         },
         "python": {
           "planned": "CC-10"
@@ -6179,6 +6191,12 @@
         "node": {
           "sdkOnly": true,
           "reason": "Node-first helper; the other SDKs' spelling follows in their own packages"
+        },
+        "react": {
+          "spelling": "useCloudConnect().refreshPeers",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "Node-first helper; the hook and the browser adapter carry it too"
         }
       },
       "layer": "client"
@@ -6191,6 +6209,12 @@
         "node": {
           "sdkOnly": true,
           "reason": "Node-first helper; the other SDKs' spelling follows in their own packages"
+        },
+        "react": {
+          "spelling": "useCloudConnect().status",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "Node-first helper; the hook and the browser adapter carry it too"
         }
       },
       "layer": "client"
@@ -6203,6 +6227,12 @@
         "node": {
           "sdkOnly": true,
           "reason": "Node-first helper; the other SDKs' spelling follows in their own packages"
+        },
+        "react": {
+          "spelling": "useCloudConnect().onNotice",
+          "shape": "hook",
+          "sdkOnly": true,
+          "reason": "Node-first helper; the hook and the browser adapter carry it too"
         }
       },
       "layer": "client"

@@ -31,6 +31,9 @@ export interface ConnectStateRecord {
   /** The keys this device registered with the Worker, so an unchanged pair is not re-sent. */
   registered: { signKey: string; agreeKey: string } | null;
   storedAt: number;
+  /** Set when a pushed roster removed a device: the Worker replaced K_disc then, so this copy is
+   *  not used (adverts, relay) until an identity fetch brings the new one. */
+  keysStale?: true;
 }
 
 /** Where the record lives. `get` answers the raw text, or null when nothing is held. */
@@ -94,6 +97,7 @@ export function parseConnectState(raw: string): ConnectStateRecord | null {
     epoch: v.epoch as number,
     registered,
     storedAt: v.storedAt as number,
+    ...(v.keysStale === true ? { keysStale: true as const } : {}),
   };
 }
 

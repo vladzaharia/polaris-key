@@ -111,8 +111,11 @@ import {
   type KeyringClient,
 } from "../core/keyring.js";
 import {
+  createCloudConnect,
   createConnect,
+  unsupportedCloudConnect,
   unsupportedConnect,
+  type CloudConnectClient,
   type ConnectClient,
 } from "./connect/index.js";
 import { indexedDbConnectState, memoryConnectState } from "./connect/state.js";
@@ -2021,13 +2024,14 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly ringOptions: BrowserAdapterOptions["keyring"];
   private readonly connectOptions: BrowserAdapterOptions["connect"];
   private connect_: ConnectClient | null = null;
+  private cloud_: CloudConnectClient | null = null;
   private defaultKeys_: DeviceKeyPort | null = null;
 
   /** The page's device key store, one for the key ring and Connect. */
   private async defaultKeys(): Promise<DeviceKeyPort> {
     return (this.defaultKeys_ ??= (
-      await import("@polaris-key/client-core")
-    ).createWebDeviceKeyStore());
+      await import("./connect/defaultKeys.js")
+    ).webDeviceKeys());
   }
 
   /**
@@ -2062,6 +2066,8 @@ export class BrowserAdapter implements PolarisAdapter {
     let durable: ReturnType<typeof indexedDbConnectState> | null = null;
     return (this.connect_ = createConnect({
       product: this.product,
+      baseUrl: this.base,
+      applyTrust: (jws) => b.acceptPeerTrust(jws),
       device: async () => {
         await b.init();
         return { deviceId: b.deviceId, hasToken: b.hasToken };
@@ -2085,6 +2091,18 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   /**
+   * Cloud Connect over the relay (connect.app, CC-09.2): the only path a page has. Bearer mode
+   * runs it; a cookie page holds no device token and gets the typed runtime N/A. Nothing loads
+   * until `start()`.
+   */
+  get cloudConnect(): CloudConnectClient {
+    if (this.cloud_) return this.cloud_;
+    if (!this.bearer)
+      return (this.cloud_ = unsupportedCloudConnect("runtime", COOKIE_DETAIL));
+    return (this.cloud_ = createCloudConnect(this.connect));
+  }
+
+  /**
    * Sign-out and deactivation end the person's use of this device: Connect is left (its roster,
    * certificate and K_disc go; a failure reaches the caller, so a sign-out never leaves them
    * behind unnoticed) and the ring locks, the stored
@@ -2096,6 +2114,8 @@ export class BrowserAdapter implements PolarisAdapter {
     try {
       await this.keyring.forget();
     } finally {
+      // The relay stops first: a session must not outlive the roster it was admitted under.
+      await this.cloudConnect.stop().catch(() => undefined);
       await this.connect.leave();
     }
   }

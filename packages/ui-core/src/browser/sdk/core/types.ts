@@ -574,6 +574,13 @@ export interface PolarisAdapter {
    * and the local adapter answer the typed `UnsupportedError`; `unsupported` says which.
    */
   readonly keyring: import("./keyring.js").KeyringClient;
+  /**
+   * Cloud Connect over the relay (connect.app, WIRE-CONTRACT-V5 §15.7): start, stop, peers,
+   * open a session to another device of the person, and the channels and notices that arrive.
+   * Browser bearer mode runs it (the relay is a page's only path). A cookie page and the local
+   * adapter answer the typed `UnsupportedError`; the desktop renderer's host runs it in its Node SDK.
+   */
+  readonly cloudConnect: import("../browser/connect/index.js").CloudConnectClient;
   /** Edge-mint a short-lived third-party token (config.mint). Memory-cached per device token. */
   mintToken(recipeId: string): Promise<MintedToken>;
   /** The licence's commerce binding (commerce.receipt). */

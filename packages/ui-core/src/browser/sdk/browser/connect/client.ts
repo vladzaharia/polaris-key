@@ -28,6 +28,7 @@ import {
   type DevicePublicKeys,
 } from "@polaris-key/client-core";
 import {
+  replaceRing,
   ringExpired,
   verifyPeerCert,
   verifyRing,
@@ -46,6 +47,13 @@ import {
 import { UnsupportedError } from "../../core/caps.js";
 import { PolarisError, type PolarisErrorCode } from "../../core/types.js";
 import type { TrustSet } from "../offline.js";
+import type {
+  PeerIdentity,
+  RingAdoption,
+  TrustApplication,
+} from "./channel.js";
+import { LanError, RelayError, RELAY_PROTOCOL } from "./errors.js";
+import type { RelayGrant } from "./errors.js";
 import {
   CONNECT_STATE_SCHEMA,
   parseConnectState,
@@ -107,6 +115,10 @@ export interface ConnectEnv {
   now(): number;
   /** The product's discovery document once loaded; null when it could not be. */
   discovery(): Promise<unknown>;
+  /** The control-plane base URL; a relay ticket is accepted only for its host. */
+  baseUrl: string;
+  /** Verify against the usable pins and apply a trust manifest a peer pushed (the trust lock). */
+  applyTrust?: (jws: string) => Promise<TrustApplication>;
   /** The device keys: the host's, else the page's key store. */
   keys(): DeviceKeyPort | Promise<DeviceKeyPort>;
   allowEphemeralKeys: boolean;
@@ -282,7 +294,9 @@ export class ConnectEngine {
   async discoveryKeys(): Promise<DiscoveryKeys | null> {
     const dev = await this.#device();
     const held = await this.#load(await this.#store(), dev.deviceId);
-    if (held === null) return null;
+    // After a pushed roster removed a device the Worker replaced K_disc; this copy is not used
+    // (not for the relay, not for admission) until an identity fetch brings the new one.
+    if (held === null || held.keysStale === true) return null;
     const prev =
       held.discKeys.length === 2 &&
       held.prevUntil !== null &&
@@ -290,6 +304,190 @@ export class ConnectEngine {
         ? b64urlBytes(held.discKeys[1]!)
         : null;
     return hide({ current: b64urlBytes(held.discKeys[0]!), previous: prev });
+  }
+
+  /**
+   * What the relay reads: the held identity, K_disc and the device's key operations. Throws
+   * `LanError` (`no_identity`, `no_keys`) without them. @internal
+   */
+  async peerIdentity(): Promise<PeerIdentity> {
+    const id = await this.current();
+    if (id === null)
+      throw new LanError(
+        "no_identity",
+        "No Cloud Connect identity is held; call identity() first.",
+      );
+    const keys = await this.discoveryKeys();
+    const port = await this.#env.keys();
+    const pub = await port.publicKeys();
+    if (keys === null || pub === null)
+      throw new LanError("no_keys", "The device keys or K_disc are not held.");
+    return {
+      slug: this.#env.product,
+      trust: this.#env.trust(),
+      sub: id.sub,
+      deviceId: id.deviceId,
+      certJws: id.certificate,
+      certExpiresAt: id.certificateExpiresAt,
+      ringJws: id.ring,
+      ringEpoch: id.epoch,
+      roster: id.devices.map((d) => d.deviceId),
+      keys,
+      agreePublic: b64urlBytes(pub.agreeKey),
+      dh: (p) => port.dh(p),
+    };
+  }
+
+  async applyTrust(jws: string): Promise<TrustApplication> {
+    return this.#env.applyTrust === undefined
+      ? { applied: false, reason: "unsupported" }
+      : this.#env.applyTrust(jws);
+  }
+
+  /**
+   * `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket for the WebSocket. Throws
+   * `RelayError`: `disabled`, `paused` (with `retryAfterSeconds`), `quota` (with the `scope`),
+   * `ticket_invalid`; `PolarisError` for `no-token` and the Worker's other refusals. @internal
+   */
+  async relayTicket(): Promise<RelayGrant> {
+    const dev = await this.#device();
+    if (!dev.hasToken)
+      throw new PolarisError(
+        ErrorCode.noToken,
+        "Register or sign in before using Cloud Connect.",
+      );
+    const res = await this.#env.request("connect/relay/ticket", {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const wire = wireOf(body);
+      const ra = Number(res.headers.get("retry-after"));
+      const extra = {
+        status: res.status,
+        ...(Number.isSafeInteger(ra) && ra >= 0
+          ? { retryAfterSeconds: ra }
+          : {}),
+      };
+      if (wire === ErrorCode.relayDisabled)
+        throw new RelayError(
+          "disabled",
+          "This product has its relay off.",
+          extra,
+        );
+      if (wire === ErrorCode.relayPaused)
+        throw new RelayError(
+          "paused",
+          "The relay is paused; try again later.",
+          extra,
+        );
+      if (wire === ErrorCode.relayQuotaExceeded) {
+        const scope = isRecord(body) ? body.scope : undefined;
+        throw new RelayError("quota", "The relay quota is spent.", {
+          ...extra,
+          ...(scope === "person" || scope === "product" ? { scope } : {}),
+        });
+      }
+      if (wire === ErrorCode.relayTicketInvalid)
+        throw new RelayError(
+          "ticket_invalid",
+          "The relay refused the device.",
+          extra,
+        );
+      throw refusalOf(res.status, wire);
+    }
+    return this.#grant(await readBody(res));
+  }
+
+  /** The ticket answer, shape-checked, and bound to this Worker: the ticket goes only to the
+   *  Worker's own host over `wss:` and only for the protocol this client speaks. */
+  #grant(body: unknown): RelayGrant {
+    const bad = (): never => {
+      throw new RelayError(
+        "ticket_invalid",
+        "The relay ticket answer is not in the contract shape.",
+      );
+    };
+    if (!isRecord(body)) return bad();
+    const { ticket, url, protocol, expiresAt } = body;
+    if (
+      typeof ticket !== "string" ||
+      !/^pkeyrt_[A-Za-z0-9_-]{32}$/.test(ticket) ||
+      typeof url !== "string" ||
+      protocol !== RELAY_PROTOCOL ||
+      typeof expiresAt !== "number" ||
+      !Number.isSafeInteger(expiresAt)
+    )
+      return bad();
+    let target: URL;
+    let home: URL;
+    try {
+      target = new URL(url);
+      home = new URL(this.#env.baseUrl);
+    } catch {
+      return bad();
+    }
+    if (target.protocol !== "wss:" || target.host !== home.host) return bad();
+    return { ticket, url, protocol, expiresAt };
+  }
+
+  /**
+   * Store a roster a peer pushed, under the identity fetch's rules (§15.3): it must verify, be
+   * for the held subject, have a higher epoch than the held one, not be expired, and still list
+   * this device with the keys it registered. The certificate is kept; the next `identity()`
+   * fetches the one that goes with the new epoch. @internal
+   */
+  async adoptRing(jws: string): Promise<RingAdoption> {
+    const dev = await this.#device();
+    const store = await this.#store();
+    const held = await this.#load(store, dev.deviceId);
+    if (held === null) return { stored: false, reason: "no_identity" };
+    const now = this.#env.now();
+    const trust = this.#env.trust();
+    const expectedAud = this.#env.product;
+    const heldOk = await this.#verifyHeld(held);
+    const subject = heldOk.ring?.sub ?? heldOk.cert?.sub ?? null;
+    if (subject === null) return { stored: false, reason: "held_unverified" };
+    const r = await replaceRing(held.ring, jws, { trust, expectedAud, now });
+    if (!r.replace) return { stored: false, reason: r.reason };
+    const ring = r.ring;
+    if (ring.sub !== subject) return { stored: false, reason: "other_subject" };
+    const mine = held.registered;
+    if (
+      mine === null ||
+      !ring.devices.some(
+        (d) =>
+          d.deviceId === dev.deviceId &&
+          d.signKey === mine.signKey &&
+          d.agreeKey === mine.agreeKey,
+      )
+    )
+      return { stored: false, reason: "device_not_in_roster" };
+    const prior = heldOk.ring;
+    const keys =
+      prior !== null
+        ? keysAfterRing(held.discKeys, prior, ring)
+        : held.discKeys;
+    const removed =
+      prior !== null &&
+      !prior.devices.every((d) => ring.devices.some((n) => sameDevice(n, d)));
+    const rec: ConnectStateRecord = {
+      ...held,
+      ...(removed || held.keysStale === true
+        ? { keysStale: true as const }
+        : {}),
+      ring: jws,
+      epoch: ring.epoch,
+      discKeys: keys,
+      prevUntil: keys.length === 2 ? held.prevUntil : null,
+      storedAt: now,
+    };
+    try {
+      await store.put(JSON.stringify(rec));
+    } catch (e) {
+      throw this.#storeError(e);
+    }
+    return { stored: true, epoch: ring.epoch };
   }
 
   // ── Identity ────────────────────────────────────────────────────────────────────────────────
@@ -576,6 +774,27 @@ async function refusal(res: Response): Promise<PolarisError> {
     wire,
     undefined,
     { status: res.status },
+  );
+}
+
+/** The wire code of a refusal body (`{error: "code"}` or `{error: {code}}`). */
+function wireOf(b: unknown): string {
+  if (!isRecord(b)) return "http-error";
+  const e = b.error;
+  if (typeof e === "string") return e;
+  return isRecord(e) && typeof e.code === "string" ? e.code : "http-error";
+}
+
+function refusalOf(status: number, wire: string): PolarisError {
+  const code = (ERROR_CODE_VALUES as readonly string[]).includes(wire)
+    ? (wire as PolarisErrorCode)
+    : "http-error";
+  return new PolarisError(
+    code,
+    `connect request failed with status ${status}`,
+    wire,
+    undefined,
+    { status },
   );
 }
 
