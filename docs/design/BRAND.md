@@ -110,13 +110,13 @@ without gold; `opticalCut()` and `<PolarisMark>` do the same.
   (Brand-Guide p.2).
 - **Lockup proportion (owner 2026-10-27; `LOCKUP_PROPORTION`, `LOCKER_HORIZONTAL`).** In a
   horizontal lockup the mark is **1.5 x the wordmark's cap height** (never above 1.7 x), centred
-  on the cap height rather than the line box, with a gap of **0.35 x the mark's height** to the
-  wordmark. The kit's own Locker horizontal file draws the mark at 2.5 x, which makes the name
+  on the cap height rather than the line box, with a gap of **0.45–0.6 x the mark's height** to the
+  wordmark (the Locker lockup 0.45 x; the Key compact lockup's 0.57 x complies). The kit's own Locker horizontal file draws the mark at 2.5 x, which makes the name
   read small: `lockupSvg` and `<PolarisLockup>` re-lay the kit's outlined art to the rule (nothing
   is redrawn) and `lockerKitLockupSvg` keeps the kit's file byte for byte. Size a lockup by its
   wordmark: the cap is 0.667 x the trimmed Locker lockup's height, so 23 px tall sets the name at
-  about 22 px (the portal and docs header, 189 px wide), 30 px above a card, 26 px on a phone card.
-  The Key compact lockup is 1.54 x (inside the rule) but keeps the kit's wider gap (0.6 x).
+  about 22 px (the portal and docs header, 191 px wide), 26 px above a card, 23 px on a phone card's
+  56 px bar (the same as the portal header). The Key compact lockup is 1.54 x and holds the rule.
 - Preserve proportions and internal gaps. Do not stretch, rotate the stationary star, replace it
   with a sparkle emoji, add a shield or padlock, or attach an unapproved service name (kit README).
   "Delivery" is the owner-approved service name for the Star Cut (2026-10-03); use the generated
@@ -1289,8 +1289,8 @@ never rendered under 120 px wide (kit p.7).
 outlined lockup, never the name in live text beside a mark (§1.4 Don'ts). Locker guide
 p.7: the horizontal lockup is at least 180 px wide, so `lockupSvg({ kind: "locker", trim: true })`
 (`LOCKER_TRIM`, the re-laid lockup (§1.4) cropped to the mark art and the wordmark, 380 × 46) is drawn
-from 22 px tall: 23 px (189 px wide) in the portal header at every width and in the download page's
-top bar, 30 px (247 px) above a card. Where a row has no room for 180 px, the mark stands alone with an accessible name (p.7: "for
+from 22 px tall: 23 px (191 px wide) in the portal header at every width and in the download page's
+top bar, 26 px (214 px) above a card. Where a row has no room for 180 px, the mark stands alone with an accessible name (p.7: "for
 crowded navigation use the mark alone"). Key guide p.2: where the full wordmark would make the mark smaller than 48 px (every header), use
 the kit's compact lockup as supplied, uncropped (222 × 64 canvas), at 52 px tall (180 px wide) in the
 64 px bar, the size plrs.im draws; its 26 px mark has no room for the section bit. Below the width

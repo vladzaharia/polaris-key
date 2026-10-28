@@ -40,6 +40,10 @@ const BRAND_WEB_FILES: readonly string[] = [
 const BRAND_LOCKUP_FILES: readonly string[] = [
   "key-horizontal-light-944.png",
   "key-horizontal-dark-944.png",
+  // The compact lockup the emails now use (mark 1.5 x the cap height); the horizontal ones stay
+  // so mail already sent still loads.
+  "key-compact-light-444.png",
+  "key-compact-dark-444.png",
 ];
 
 /**
@@ -51,6 +55,11 @@ const BRAND_LOCKER_DIR = "assets/branding/locker";
 const BRAND_LOCKER_LOCKUP_FILES: readonly string[] = [
   "locker-horizontal-light-640.png",
   "locker-horizontal-dark-640.png",
+];
+/** The re-laid trimmed Locker lockup, 2x (`pnpm --filter @polaris-key/brand lockup-mail-png`). */
+const BRAND_LOCKER_MAIL_FILES: readonly string[] = [
+  "locker-lockup-light-2x.png",
+  "locker-lockup-dark-2x.png",
 ];
 
 /**
@@ -114,6 +123,12 @@ const brandLockerLockups = dirname(
   ),
 );
 
+const brandLockerMail = dirname(
+  createRequire(import.meta.url).resolve(
+    "@polaris-key/brand/lockups/mail/locker-lockup-light-2x.png",
+  ),
+);
+
 const CONTENT_TYPES: Record<string, string> = {
   svg: "image/svg+xml",
   ico: "image/x-icon",
@@ -136,6 +151,11 @@ const BRAND_DIRS: readonly {
     dir: BRAND_LOCKER_DIR,
     files: BRAND_LOCKER_LOCKUP_FILES,
     from: brandLockerLockups,
+  },
+  {
+    dir: BRAND_LOCKER_DIR,
+    files: BRAND_LOCKER_MAIL_FILES,
+    from: brandLockerMail,
   },
 ];
 

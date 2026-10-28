@@ -108,7 +108,7 @@ function lockupPalette(theme: LockerLockupTheme): Record<string, string> {
 
 /**
  * The Locker lockup as the platform draws it. The horizontal one is the kit's artwork re-laid to
- * the lockup proportion (BRAND.md §1.4: mark 1.5 x the cap height, centred on it, gap 0.35 x the
+ * the lockup proportion (BRAND.md §1.4: mark 1.5 x the cap height, centred on it, gap 0.45 x the
  * mark); its canvas is the trimmed box plus a quarter of the mark on each side. The others are the
  * kit's. `lockerKitLockupSvg` keeps the kit's horizontal file byte for byte.
  */

@@ -444,7 +444,7 @@ describe("the trimmed Locker horizontal lockup", () => {
     expect(LOCKER_TRIM.y + LOCKER_TRIM.height).toBeLessThanOrEqual(128);
   });
 
-  it("holds the lockup proportion: mark 1.5 x the cap height, centred on it, gap 0.35 x the mark", () => {
+  it("holds the lockup proportion: mark 1.5 x the cap height, centred on it, gap 0.45 x the mark", () => {
     const cap = 700 * 0.044;
     const mark = LOCKER_TRIM.height; // the trim is the mark's art box
     expect(mark / cap).toBeCloseTo(LOCKUP_PROPORTION.markToCap, 2);

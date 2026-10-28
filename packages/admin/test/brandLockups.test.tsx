@@ -62,14 +62,14 @@ describe("brand blocks never set the name in live text", () => {
     const svgs = [...container.querySelectorAll("svg")];
     expect(container.textContent).toBe("");
     const lockups = svgs.filter(
-      (s) => s.getAttribute("viewBox") === "8 41.5 379.79 46.2",
+      (s) => s.getAttribute("viewBox") === "8 41.5 384.41 46.2",
     );
     expect(lockups).toHaveLength(2);
     for (const s of lockups)
       expect(Number(s.getAttribute("width"))).toBeGreaterThanOrEqual(180);
     // The link around them names the brand; the mark alone is the narrow fallback.
     expect(
-      svgs.filter((s) => s.getAttribute("viewBox") !== "8 41.5 379.79 46.2"),
+      svgs.filter((s) => s.getAttribute("viewBox") !== "8 41.5 384.41 46.2"),
     ).toHaveLength(1);
   });
 

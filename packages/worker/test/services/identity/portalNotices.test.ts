@@ -281,7 +281,7 @@ describe("notice templates: rules", () => {
       expect(m.html).toContain("@media (prefers-color-scheme: dark)");
       expect(m.html).toContain(THEME_TOKENS.dark.surface.page);
       expect(m.html).toContain(
-        `${ORIGIN}/assets/branding/locker/locker-horizontal-light-640.png`,
+        `${ORIGIN}/assets/branding/locker/locker-lockup-light-2x.png`,
       );
       expect(m.html).not.toMatch(/<script|\son\w+=|powered by/i);
     });

@@ -50,8 +50,8 @@ export function HeaderBrand({
   // Container mode: the 23 px lockup only while the header is under `desk` and wide enough for it.
   // The two conditions are one rule, so no later rule can show it beside the desktop lockup.
   const phoneLockup = container
-    ? "hidden max-desk:@min-[24rem]:block"
-    : "hidden min-[24rem]:block desk:hidden";
+    ? "hidden max-desk:@min-[20rem]:block"
+    : "hidden min-[20rem]:block desk:hidden";
   return (
     <>
       <Lockup height={23} className={phoneLockup} />
@@ -61,22 +61,21 @@ export function HeaderBrand({
         size={32}
         theme={theme}
         title=""
-        className={container ? "@min-[24rem]:hidden" : "min-[24rem]:hidden"}
+        className={container ? "@min-[20rem]:hidden" : "min-[20rem]:hidden"}
       />
     </>
   );
 }
 
 /**
- * The sign-in card's brand row (SIGN-IN.md §3.1; a card's lockup, not a header's 23 px): 26 px on a phone (the name at about 25 px, clear of the card's
- * top edge, B-066), 30 px from `sm`. The size never changes
+ * The sign-in card's brand row (SIGN-IN.md §3.1; a card's lockup, not a header's 23 px): 23 px on a phone (the portal header's, in the same 56 px bar), 26 px from `sm`. The size never changes
  * between steps.
  */
 export function AuthLockup(): React.ReactElement {
   return (
     <>
-      <Lockup height={26} className="sm:hidden" />
-      <Lockup height={30} className="hidden sm:block" />
+      <Lockup height={23} className="sm:hidden" />
+      <Lockup height={26} className="hidden sm:block" />
     </>
   );
 }

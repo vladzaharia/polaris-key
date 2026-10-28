@@ -145,12 +145,12 @@ export const LOCKUP_TRIM = { x: 16, y: 32, height: 96, right: 40 } as const;
  * cap height, with `gapToMark` x the mark's height between mark and wordmark. The kit's own file
  * has the mark at 2.5 x the cap height, which makes the name read small; `lockerLockupTemplate`
  * re-lays the kit's outlined artwork to this rule (nothing is redrawn) and `kitLockupSvg` keeps the
- * kit's file byte for byte. The Key lockups hold the same rule (the compact lockup is 1.54 x).
+ * kit's file byte for byte. Of the Key lockups only the compact one holds the rule (1.54 x, gap 0.57 x).
  */
 export const LOCKUP_PROPORTION = {
   markToCap: 1.5,
   markToCapMax: 1.7,
-  gapToMark: 0.35,
+  gapToMark: 0.45,
 } as const;
 
 /**
@@ -185,7 +185,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * The re-laid Locker horizontal lockup: the mark scaled to 1.5 x the cap height and centred on it,
- * the wordmark pulled up to a gap of 0.35 x the mark. `markTransform` and `textX` are what
+ * the wordmark pulled up to a gap of 0.45 x the mark. `markTransform` and `textX` are what
  * `lockerLockupTemplate` writes into the kit's body.
  */
 export const LOCKER_HORIZONTAL = {
