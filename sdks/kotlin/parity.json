@@ -531,8 +531,8 @@
       "wp": "U-23"
     },
     "sync.keyring": {
-      "status": "planned",
-      "wp": "U-39"
+      "status": "implemented",
+      "note": "client.keyring (:sdk's SyncKeyring, over :core's im.plrs.key.core.sync: JCA HKDF, HMAC and AES-GCM, RFC 9180 mode_base written out over DeviceKeyPort.dh for open and an ephemeral X25519 key from DeviceCurves for seal, so it runs on Tink below Android API 33): create(), unlock() (opens this device's wrap through the port's dh, so the agreement key never leaves the store), wrapTo()/removeWrap(), setRecoveryCode()/recover(), reset()/adopt()/openAdopted(), acceptRingChange(confirmed), attach(listener) feeding setRoot, and the codec. The first root pins {ringId, epoch, rootKid} per product (a file in the state directory, memory without one); a served ring that differs is RingChanged and is never opened. The root is also kept in one record that is used only while it matches the pin: on the JVM the owner-only 0600 file pkey.sync-root.v1.bin beside the device keys (the JVM has no OS keyring; memory only without a state directory, which status().rootPersistence reports), on Android a Keystore-sealed file under its own alias (androidSyncRootStorage, never backed up). forget() drops the root and the pin and runs from the sign-out hook after Connect leaves (a delete that fails stops the sign-out). Every type holding key material prints as redacted. SyncVectorsTest (hkdf, envelope, blind, canonicalJson, hpkeAnchor, wrap, recovery and adopt cases, on the JCA and on Tink), SyncKeyringTest and the keyring-* transcripts in TranscriptTest."
     },
     "sync.records": {
       "status": "planned",
