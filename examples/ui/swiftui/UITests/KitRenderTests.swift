@@ -203,7 +203,7 @@ final class KitRenderTests: XCTestCase {
         "CloudSyncStatus.locked", "CloudSyncStatus.ring-changed", "UnlockSync.code",
         "UnlockSync.invalid", "UnlockSync.working", "UnlockSync.failed", "UnlockSync.start-over",
         "RecoveryCode.show", "RecoveryCode.saved", "RingChange.confirm",
-        "RingChange.confirm.nothing-served", "UnlockSync.no-code", "RingChange.failed",
+        "RingChange.confirm.nothing-served", "UnlockSync.no-code", "UnlockSync.start-over-failed", "RingChange.failed",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.

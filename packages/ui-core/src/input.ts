@@ -440,7 +440,14 @@ export interface UiInput {
   /** UnlockSync's step (U-42). `nearby` says the host could unlock from a nearby device:
    *  v0.10.0 never offers it, because NearbyApproval does not ship. */
   unlockSync?: {
-    step: "code" | "invalid" | "working" | "failed" | "no-code" | "start-over";
+    step:
+      | "code"
+      | "invalid"
+      | "working"
+      | "failed"
+      | "start-over-failed"
+      | "no-code"
+      | "start-over";
     nearby?: boolean;
     /** While `working`: which control carries the progress (default Unlock). Draw-only: the
      *  model's view does not read it. */

@@ -989,6 +989,7 @@ public struct KitCloudSync: Sendable, Codable, Equatable, Hashable {
 public struct KitUnlockSync: Sendable, Codable, Equatable, Hashable {
     public enum Step: String, Sendable, Codable, CaseIterable {
         case code, invalid, working, failed
+        case startOverFailed = "start-over-failed"
         case noCode = "no-code"
         case startOver = "start-over"
     }

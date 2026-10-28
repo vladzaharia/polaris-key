@@ -1597,6 +1597,11 @@
       "role": "body",
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code."
     },
+    "unlockSync.startOverFailed": {
+      "value": "Couldn't start over. Check your connection and try again.",
+      "role": "body",
+      "note": "UnlockSync: Start over failed (not an unlock failure); Try again repeats it."
+    },
     "unlockSync.noCode": {
       "value": "This account has no recovery code. Start over to keep syncing.",
       "role": "body",
@@ -1658,7 +1663,7 @@
       "note": "RingChange: confirm a changed sync key (U-42). Used when no device is named."
     },
     "ringChange.warning": {
-      "value": "Choose That was me only if you did this. If not, use your recovery code.",
+      "value": "Choose “That was me” only if you did this. If not, use your recovery code.",
       "role": "body",
       "note": "RingChange: confirm a changed sync key (U-42)."
     },

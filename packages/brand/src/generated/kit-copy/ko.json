@@ -311,6 +311,7 @@
   "unlockSync.startOver": "처음부터 다시 시작",
   "unlockSync.invalid": "코드가 올바르지 않습니다. 확인한 후 다시 시도하세요.",
   "unlockSync.failed": "잠금을 해제할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+  "unlockSync.startOverFailed": "처음부터 다시 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
   "unlockSync.noCode": "이 계정에는 복구 코드가 없습니다. 계속 동기화하려면 처음부터 다시 시작하세요.",
   "unlockSync.startOverTitle": "처음부터 다시 시작할까요?",
   "unlockSync.startOverWarning": "현재 동기화된 데이터가 사라집니다. 복구 코드를 찾을 수 없을 때만 다시 시작하세요.",

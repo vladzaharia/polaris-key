@@ -375,6 +375,8 @@ export const KIT_COPY: Readonly<
     "unlockSync.invalid": "That code isn't right. Check it and try again.",
     "unlockSync.failed":
       "Couldn't unlock. Check your connection and try again.",
+    "unlockSync.startOverFailed":
+      "Couldn't start over. Check your connection and try again.",
     "unlockSync.noCode":
       "This account has no recovery code. Start over to keep syncing.",
     "unlockSync.startOverTitle": "Start over?",
@@ -392,7 +394,7 @@ export const KIT_COPY: Readonly<
     "ringChange.body": "{device} set up a new key for your synced data.",
     "ringChange.bodyUnknown": "A device set up a new key for your synced data.",
     "ringChange.warning":
-      "Choose That was me only if you did this. If not, use your recovery code.",
+      "Choose “That was me” only if you did this. If not, use your recovery code.",
     "ringChange.warningNoServed":
       "Unlock with your recovery code to keep syncing.",
     "ringChange.failed":
@@ -2154,6 +2156,8 @@ export const KIT_COPY: Readonly<
       "Dieser Code stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut.",
     "unlockSync.failed":
       "Entsperren fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+    "unlockSync.startOverFailed":
+      "Neu beginnen fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "unlockSync.noCode":
       "Dieses Konto hat keinen Wiederherstellungscode. Beginnen Sie neu, um weiter zu synchronisieren.",
     "unlockSync.startOverTitle": "Neu beginnen?",
@@ -4019,6 +4023,8 @@ export const KIT_COPY: Readonly<
       "Ce code n’est pas correct. Vérifiez-le et réessayez.",
     "unlockSync.failed":
       "Impossible de déverrouiller. Vérifiez votre connexion et réessayez.",
+    "unlockSync.startOverFailed":
+      "Impossible de recommencer. Vérifiez votre connexion et réessayez.",
     "unlockSync.noCode":
       "Ce compte n’a pas de code de récupération. Recommencez pour continuer à synchroniser.",
     "unlockSync.startOverTitle": "Tout recommencer ?",
@@ -5871,6 +5877,8 @@ export const KIT_COPY: Readonly<
       "Ese código no es correcto. Revísalo e inténtalo de nuevo.",
     "unlockSync.failed":
       "No se pudo desbloquear. Comprueba tu conexión e inténtalo de nuevo.",
+    "unlockSync.startOverFailed":
+      "No se pudo empezar de nuevo. Comprueba tu conexión e inténtalo de nuevo.",
     "unlockSync.noCode":
       "Esta cuenta no tiene código de recuperación. Empieza de nuevo para seguir sincronizando.",
     "unlockSync.startOverTitle": "¿Empezar de cero?",
@@ -7721,6 +7729,8 @@ export const KIT_COPY: Readonly<
       "Esse código não está correto. Confira e tente novamente.",
     "unlockSync.failed":
       "Não foi possível desbloquear. Verifique sua conexão e tente novamente.",
+    "unlockSync.startOverFailed":
+      "Não foi possível começar de novo. Verifique sua conexão e tente novamente.",
     "unlockSync.noCode":
       "Esta conta não tem código de recuperação. Comece de novo para continuar sincronizando.",
     "unlockSync.startOverTitle": "Começar do zero?",
@@ -9525,6 +9535,8 @@ export const KIT_COPY: Readonly<
     "unlockSync.invalid": "Il codice non è corretto. Controllalo e riprova.",
     "unlockSync.failed":
       "Impossibile sbloccare. Controlla la connessione e riprova.",
+    "unlockSync.startOverFailed":
+      "Impossibile ricominciare. Controlla la connessione e riprova.",
     "unlockSync.noCode":
       "Questo account non ha un codice di recupero. Ricomincia per continuare a sincronizzare.",
     "unlockSync.startOverTitle": "Ricominciare da capo?",
@@ -11359,6 +11371,8 @@ export const KIT_COPY: Readonly<
       "コードが正しくありません。確認してもう一度お試しください。",
     "unlockSync.failed":
       "ロックを解除できませんでした。接続を確認して、もう一度お試しください。",
+    "unlockSync.startOverFailed":
+      "やり直せませんでした。接続を確認して、もう一度お試しください。",
     "unlockSync.noCode":
       "このアカウントにはリカバリーコードがありません。同期を続けるには、最初からやり直してください。",
     "unlockSync.startOverTitle": "最初からやり直しますか？",
@@ -13199,6 +13213,8 @@ export const KIT_COPY: Readonly<
       "코드가 올바르지 않습니다. 확인한 후 다시 시도하세요.",
     "unlockSync.failed":
       "잠금을 해제할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
+    "unlockSync.startOverFailed":
+      "처음부터 다시 시작할 수 없습니다. 연결을 확인하고 다시 시도하세요.",
     "unlockSync.noCode":
       "이 계정에는 복구 코드가 없습니다. 계속 동기화하려면 처음부터 다시 시작하세요.",
     "unlockSync.startOverTitle": "처음부터 다시 시작할까요?",
@@ -14940,6 +14956,7 @@ export const KIT_COPY: Readonly<
     "unlockSync.startOver": "重新开始",
     "unlockSync.invalid": "恢复码不正确。请检查后重试。",
     "unlockSync.failed": "无法解锁。请检查网络连接后重试。",
+    "unlockSync.startOverFailed": "无法重新开始。请检查网络连接后重试。",
     "unlockSync.noCode": "此账户没有恢复码。请重新开始以继续同步。",
     "unlockSync.startOverTitle": "重新开始？",
     "unlockSync.startOverWarning":
