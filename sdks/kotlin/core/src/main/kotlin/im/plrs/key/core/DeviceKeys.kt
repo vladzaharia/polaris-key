@@ -11,12 +11,8 @@ package im.plrs.key.core
 
 import java.io.File
 import java.io.IOException
-import java.nio.channels.FileChannel
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
-import java.nio.file.StandardOpenOption
-import java.nio.file.attribute.PosixFilePermissions
+import java.io.FileOutputStream
+import java.io.RandomAccessFile
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -117,11 +113,14 @@ public interface DeviceKeySealer {
 
 /**
  * The record in one file. Persistence: durable, until [clear], the user deleting the file, or (with
- * a [sealer]) the wrapping key being lost. The file is created `rw-------` in a `rwx------`
- * directory (on a file system without POSIX permissions the owner-only flags are the best the JDK
- * offers and the user profile's ACL applies), written to a temporary file of the same mode and
- * moved into place, so it is never visible with a wider mode or half written. A cross-process lock
- * file makes [putIfAbsent] atomic between processes. A symlink in the way is refused.
+ * a [sealer]) the wrapping key being lost. Plain `java.io` throughout, so the same class runs on
+ * Android API 24 (which has no `java.nio.file`).
+ *
+ * The directory is made owner-only (`rwx------`), and a temporary file is made and restricted to
+ * the owner (`rw-------`) BEFORE any key byte is written to it, then renamed into place: the keys
+ * are never visible with a wider mode or half written. On a file system without POSIX modes the
+ * JDK's owner-only flags are the best available and the user profile's ACL applies. A cross-process
+ * lock file makes [putIfAbsent] atomic between processes. A symlink in place of the file is refused.
  *
  * [clear] overwrites the bytes with zeros, deletes the file and tells the [sealer] to destroy its
  * key. Overwriting is best effort (a log-structured disk may keep old blocks); with a sealer the
@@ -145,19 +144,14 @@ public class FileDeviceKeyStorage(
     private inline fun <T> withFileLock(block: () -> T): T {
         ensureDirectory()
         refuseSymlink(lockFile)
-        val opts = arrayOf(StandardOpenOption.CREATE, StandardOpenOption.WRITE)
-        val channel = try {
-            if (posix) {
-                FileChannel.open(lockFile.toPath(), setOf(*opts), PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
-            } else {
-                FileChannel.open(lockFile.toPath(), *opts)
-            }
+        val existed = lockFile.exists()
+        val raf = try {
+            RandomAccessFile(lockFile, "rw")
         } catch (e: IOException) {
             throw StoreException("could not open $lockFile", e)
         }
-        return channel.use { ch ->
-            ch.lock().use { block() }
-        }
+        if (!existed) ownerOnly(lockFile)
+        return raf.use { r -> r.channel.lock().use { block() } }
     }
 
     override suspend fun get(): ByteArray? = locked { read() }
@@ -176,13 +170,13 @@ public class FileDeviceKeyStorage(
             if (file.exists()) {
                 val n = file.length()
                 if (n in 1..MAX_BYTES) {
-                    FileChannel.open(file.toPath(), StandardOpenOption.WRITE).use { ch ->
-                        ch.write(java.nio.ByteBuffer.wrap(ByteArray(n.toInt())))
-                        ch.force(true)
+                    RandomAccessFile(file, "rw").use { r ->
+                        r.write(ByteArray(n.toInt()))
+                        r.fd.sync()
                     }
                 }
+                if (!file.delete() && file.exists()) throw IOException("delete failed")
             }
-            Files.deleteIfExists(file.toPath())
             dir.listFiles { f -> f.name.startsWith(".${file.name}.") && f.name.endsWith(".tmp") }?.forEach { it.delete() }
         } catch (e: IOException) {
             throw StoreException("could not delete $file", e)
@@ -209,20 +203,15 @@ public class FileDeviceKeyStorage(
         val bytes = sealer?.seal(plain, sealContext) ?: plain
         val tmp = File(dir, ".${file.name}.${UUID.randomUUID()}.tmp")
         try {
-            if (posix) {
-                Files.createFile(tmp.toPath(), PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
-            } else {
-                Files.createFile(tmp.toPath())
-                ownerOnly(tmp)
+            if (!tmp.createNewFile()) throw IOException("temporary file exists")
+            ownerOnly(tmp) // before the first key byte
+            FileOutputStream(tmp).use { out ->
+                out.write(bytes)
+                out.fd.sync()
             }
-            FileChannel.open(tmp.toPath(), StandardOpenOption.WRITE).use { ch ->
-                ch.write(java.nio.ByteBuffer.wrap(bytes))
-                ch.force(true)
-            }
-            try {
-                Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            } catch (e: AtomicMoveNotSupportedException) {
-                Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            if (!tmp.renameTo(file)) {
+                // Windows will not rename over a file: the lock is held, so remove it first.
+                if (!file.delete() || !tmp.renameTo(file)) throw IOException("rename failed")
             }
         } catch (e: IOException) {
             tmp.delete()
@@ -233,37 +222,24 @@ public class FileDeviceKeyStorage(
     }
 
     private fun ensureDirectory() {
-        refuseSymlink(dir)
         if (dir.isDirectory) return
         if (!dir.mkdirs() && !dir.isDirectory) throw StoreException("could not create $dir")
-        try {
-            if (posix) Files.setPosixFilePermissions(dir.toPath(), PosixFilePermissions.fromString("rwx------")) else ownerOnly(dir)
-        } catch (e: IOException) {
-            throw StoreException("could not restrict $dir", e)
-        }
+        ownerOnly(dir)
     }
 
+    /** True when [f] is a symlink: its canonical path (parent resolved) is not where it says it is. */
     private fun refuseSymlink(f: File) {
-        if (Files.isSymbolicLink(f.toPath())) throw StoreException("refusing to use a symlink: $f")
+        val parent = f.absoluteFile.parentFile?.canonicalFile ?: return
+        val leaf = File(parent, f.name)
+        if (leaf.canonicalPath != leaf.absolutePath) throw StoreException("refusing to use a symlink: $f")
     }
 
-    private val posix: Boolean by lazy {
-        try {
-            java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")
-        } catch (e: Exception) {
-            false
-        }
-    }
-
+    /** `rw-------` for a file, `rwx------` for a directory. */
     private fun ownerOnly(f: File) {
-        f.setReadable(false, false)
-        f.setReadable(true, true)
-        f.setWritable(false, false)
-        f.setWritable(true, true)
-        if (f.isDirectory) {
-            f.setExecutable(false, false)
-            f.setExecutable(true, true)
-        }
+        val ok = f.setReadable(false, false) && f.setReadable(true, true) &&
+            f.setWritable(false, false) && f.setWritable(true, true) &&
+            (!f.isDirectory || (f.setExecutable(false, false) && f.setExecutable(true, true)))
+        if (!ok) throw StoreException("could not restrict $f")
     }
 
     private companion object {
