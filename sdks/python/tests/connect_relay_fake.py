@@ -83,6 +83,8 @@ class FakeRoom:
         self.route: Dict[str, str] = {}
         self.stamp: Dict[str, str] = {}
         self.mute_to: Set[str] = set()
+        #: Never answer a ping (a half-open socket).
+        self.mute_pong = False
 
     def issue(self, device: str, url: str = "wss://k.test/djdl/connect/relay") -> RelayGrant:
         self.issued += 1
@@ -127,7 +129,7 @@ class FakeRoom:
                 t.deliver({"op": "recv", "from": b64url_decode(frm), "session": m["session"], "noise": m["noise"]})
         elif m["op"] == "list":
             s.deliver(self.members())
-        elif m["op"] == "ping":
+        elif m["op"] == "ping" and not self.mute_pong:
             s.deliver({"op": "pong", "data": m["data"]})
 
     def members(self) -> Dict[str, Any]:

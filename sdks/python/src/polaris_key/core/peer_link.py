@@ -89,8 +89,17 @@ class SocketLink:
         handlers: Optional[LinkHandlers] = None,
         *,
         handshake_seconds: float = HANDSHAKE_SECONDS,
+        expect_peer: Optional[str] = None,
+        peer_full: Optional[Callable[[str], bool]] = None,
     ) -> None:
         self._loop = asyncio.get_running_loop()
+        #: The device id a dialling side expects; the session is refused, before it is registered or
+        #: announced, when the certificate names another.
+        self._expect_peer = expect_peer
+        #: Asked once the peer is admitted: True ends the link with ``peer_busy`` before a session exists.
+        self._peer_full = peer_full
+        #: True when the link was refused because the certificate named an unexpected device.
+        self.wrong_peer = False
         self._reader = reader
         self._writer = writer
         self._h = handlers or LinkHandlers()
@@ -269,6 +278,15 @@ class SocketLink:
         h = self._h
         if isinstance(e, Established):
             if e.peer_device_id is None:
+                return
+            if self._expect_peer is not None and e.peer_device_id != self._expect_peer:
+                self.wrong_peer = True
+                self.channel.close("peer_bye")
+                self._finish(Closed("handshake_failed", False))
+                return
+            if self._peer_full is not None and self._peer_full(e.peer_device_id):
+                self.channel.close("peer_busy")
+                self._finish(Closed("peer_busy", False))
                 return
             if self._deadline is not None:
                 self._deadline.cancel()

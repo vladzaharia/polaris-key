@@ -255,6 +255,7 @@ class RelayService:
         self._stopped = False
         self._started = False
         self._ws: Optional[RelaySocket] = None
+        self._pong_at = 0.0
         self._open = False
         self._members: Set[str] = set()
         self._on_state: List[Callable[[RelayStatus], None]] = []
@@ -401,6 +402,29 @@ class RelayService:
                 pass
         self._flush(self._stopped_error())
 
+    def abort(self) -> None:
+        """Force-end the service from another thread, with no close frame and no draining, when the
+        loop's thread is held by a host callback. Runs on the loop as soon as it is free."""
+        self._stopped = True
+        try:
+            self._loop.call_soon_threadsafe(self._abort_on_loop)
+        except RuntimeError:
+            pass
+
+    def _abort_on_loop(self) -> None:
+        self._docs.close()
+        self._set("stopped")
+        self._lose_links()
+        ws, self._ws = self._ws, None
+        self._open = False
+        if self._sleeping is not None:
+            self._sleeping.cancel()
+        if self._task is not None:
+            self._task.cancel()
+        if ws is not None:
+            asyncio.ensure_future(ws.close(1001))
+        self._flush(self._stopped_error())
+
     # -- the connect loop ---------------------------------------------------------------------------
 
     async def _run(self) -> None:
@@ -506,7 +530,7 @@ class RelayService:
             return None
         self._ws = ws
         self._open = True
-        opened_at = self._o.clock()
+        opened_at = self._pong_at = self._o.clock()
         self._last_limit = None
         self._error = None
         outbox = self._outbox = Outbox()
@@ -573,6 +597,14 @@ class RelayService:
                 await self._sleep(self._o.ping_seconds)
                 if self._ws is not ws:
                     return
+                if ws is not None and self._o.clock() - self._pong_at > 2 * self._o.ping_seconds:
+                    # Two intervals without an answer: a half-open socket. Close it; the connect loop
+                    # reconnects with a new ticket.
+                    try:
+                        await asyncio.wait_for(ws.close(1001), 5.0)
+                    except Exception:
+                        pass
+                    return
                 self._send_env({"op": "ping", "data": os.urandom(8)})
                 self._send_env({"op": "list"})
         except asyncio.CancelledError:
@@ -595,7 +627,10 @@ class RelayService:
         if op == "recv":
             await self._recv(m["from"], m["session"], m["noise"])
         elif op == "members":
-            self._members = {b64url_encode(d) for d in m["devices"]}
+            # Only the person's own devices: a room that lists others is not believed.
+            ident = await self._identity(False, quiet=True)
+            roster = set(ident.roster) if ident is not None else set()
+            self._members = {x for x in (b64url_encode(d) for d in m["devices"]) if x in roster}
             self._emit_members()
         elif op == "ring":
             # The roster changed. Fetch the newer one under the normal replacement rules; the epoch
@@ -609,7 +644,8 @@ class RelayService:
             self._emit_members()
         elif op == "limit":
             self._limit(m["reason"])
-        # pong: nothing to do
+        elif op == "pong":
+            self._pong_at = self._o.clock()
 
     def _limit(self, reason: int) -> None:
         self._last_limit = reason

@@ -35,7 +35,6 @@ import httpx
 from .backend import BackendClient
 from .core.device_keys import DeviceKeyPort
 from .connect import CloudConnect, ConnectClient
-from .connect.errors import LanError
 from .keyring import KeyringClient
 from .commerce import CommerceClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
@@ -523,21 +522,22 @@ class PolarisKeyClient:
 
         if not self.core.trust_refresh_enabled:
             return PeerTrustResult(False, "trust_refresh_off")
-        r = self._trust.accept_peer(jws)
-        if r.applied:
-            patch: Dict[str, Any] = {"trust_jws": jws}
-            evidence = self._trust.pin_revocations
-            if evidence:
-                patch["pin_revocations"] = evidence
-            self._cache.patch(**patch)
+        with self._trust.lock:
+            r = self._trust.accept_peer(jws)
+            if r.applied:
+                patch: Dict[str, Any] = {"trust_jws": jws}
+                evidence = self._trust.pin_revocations
+                if evidence:
+                    patch["pin_revocations"] = evidence
+                self._cache.patch(**patch)
         return r
 
     def _stop_cloud_connect(self) -> None:
-        """The sign-out hook: stop Cloud Connect, but never let a host callback that holds the Connect
-        thread hold the sign-out (the teardown stays queued and runs when it lets go)."""
+        """The sign-out hook: stop Cloud Connect. A host callback that holds the Connect thread cannot hold
+        the sign-out past the bound: the transports are force-cancelled and sign-out goes on."""
         try:
             self.cloud_connect.stop()
-        except LanError:
+        except Exception:
             pass
 
     def close(self) -> None:

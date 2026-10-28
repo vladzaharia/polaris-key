@@ -112,6 +112,7 @@ class Rig:
         self.port = 0
         self.responder_sessions: "List[ConnectSession]" = []
         self.got_session = threading.Event()
+        self.closed_codes: List[str] = []
 
     async def _serve(self, reader: Any, writer: Any) -> None:
         h = session_handlers(
@@ -119,6 +120,14 @@ class Rig:
             on_established=self._established,
             on_ended=self.ended.set,
         )
+        inner = h.on_closed
+
+        def closed(c: Any) -> None:
+            self.closed_codes.append(c.code)
+            if inner is not None:
+                inner(c)
+
+        h.on_closed = closed
         link = SocketLink(
             reader,
             writer,
@@ -283,6 +292,7 @@ def test_an_oversize_frame_before_the_handshake_closes_the_socket() -> None:
 
         assert run(go()) == b""
         assert rig.ended.wait(5)
+        assert rig.closed_codes == ["peer_bad_frame"]
 
 
 def test_a_zero_length_frame_closes_the_socket() -> None:
@@ -298,6 +308,7 @@ def test_a_zero_length_frame_closes_the_socket() -> None:
 
         assert run(go()) == b""
         assert rig.ended.wait(5)
+        assert rig.closed_codes == ["peer_bad_frame"]
 
 
 def test_a_lost_connection_ends_the_session_with_connection_lost() -> None:
@@ -539,6 +550,7 @@ def docs(**kw: Any) -> Tuple[PeerDocs, List[ConnectNotice], Dict[str, Any]]:
 
     d = PeerDocs(src, lambda: log.__setitem__("stored", log["stored"] + 1), spawn=lambda f: f(), timer=timer)
     d.on_notice(notes.append)
+    d._clock = lambda: float(log.get("mono", log["t"]))
     return d, notes, log
 
 
@@ -615,6 +627,18 @@ def test_a_refresh_runs_at_most_once_a_minute_and_a_failure_retries() -> None:
     log2["fail"] = False
     fire()
     assert log2["refresh"] == 2 and log2["stored"] == 2  # the roster, then the retried refresh
+
+
+def test_the_refresh_gap_runs_on_the_monotonic_clock_not_the_wall_clock() -> None:
+    d, _, log = docs()
+    log["mono"] = 5000.0
+    assert d.want_ring() is True
+    log["t"] -= 7200  # the wall clock is set back by hours
+    log["mono"] += 61
+    assert d.want_ring() is True and log["refresh"] == 2
+    log["t"] += 10**6  # and set far forward: the gap still holds on elapsed time
+    log["mono"] += 30
+    assert d.want_ring() is False and log["refresh"] == 2
 
 
 def test_no_refresh_member_means_no_fetch() -> None:
