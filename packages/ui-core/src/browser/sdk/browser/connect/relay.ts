@@ -23,6 +23,8 @@ import {
   decodeRelay,
   deviceIdBytes,
   encodeRelay,
+  RelayOutbox,
+  type RelayOutboxOptions,
   type PeerHello,
   type PeerSessionOptions,
   type SessionEvent,
@@ -104,6 +106,8 @@ export interface RelayOptions {
   handshakeMs?: number;
   rekeyMessages?: number;
   rekeySeconds?: number;
+  /** The send queue behind the socket (D-9): pacer, byte cap (default 8 MiB). */
+  outbox?: Omit<RelayOutboxOptions, "timer">;
   /** Bytes queued across all sessions before a session is closed `peer_busy` (default 32 MiB). */
   queueBudgetBytes?: number;
   /** Bytes of received envelopes waiting to be handled before the socket is closed (default 8 MiB). */
@@ -148,6 +152,8 @@ class RelayLink {
   };
   #deadline: ReturnType<typeof setTimeout>;
   #ended = false;
+  /** Set once the session is being closed: its last records skip the byte cap. */
+  closing = false;
 
   constructor(
     readonly peer: Uint8Array,
@@ -182,6 +188,14 @@ class RelayLink {
       void this.channel.close("peer_bye");
       this.finish({ code: "handshake_failed", byPeer: false });
     }, handshakeMs);
+  }
+
+  /** The send queue is full: end this session `peer_busy`, and say so to the peer. */
+  overflow(): void {
+    if (this.#ended) return;
+    this.closing = true;
+    void this.channel.close("peer_busy").catch(() => undefined);
+    this.finish({ code: "peer_busy", byPeer: false });
   }
 
   get ended(): boolean {
@@ -276,6 +290,7 @@ export class RelayService {
   #wake: (() => void) | null = null;
   #lastLimit: number | null = null;
   #chain: Promise<unknown> = Promise.resolve();
+  #out: RelayOutbox | null = null;
   #pendingBytes = 0;
   #didOpen = false;
   #neverOpened = 0;
@@ -417,7 +432,12 @@ export class RelayService {
     return session;
   }
 
-  async stop(): Promise<void> {
+  /** Stop at once: no goodbyes, nothing waited on. The sign-out bound's force path. */
+  abort(): void {
+    void this.stop(false);
+  }
+
+  async stop(graceful = true): Promise<void> {
     if (this.#stopped) return;
     this.#stopped = true;
     this.#docs.close();
@@ -426,11 +446,18 @@ export class RelayService {
     this.#wake?.();
     this.#set("stopped");
     const ws = this.#ws;
-    await Promise.all(
-      [...this.#links.values()].map((l) =>
-        l.channel.close("peer_bye").catch(() => undefined),
-      ),
-    );
+    if (graceful) {
+      await Promise.all(
+        [...this.#links.values()].map((l) =>
+          l.channel.close("peer_bye").catch(() => undefined),
+        ),
+      );
+      this.#out?.flush();
+    } else {
+      this.#out?.clear();
+      this.#id = null;
+    }
+    this.#out = null;
     this.#open = false;
     this.#ws = null;
     try {
@@ -547,6 +574,11 @@ export class RelayService {
       }
       ws.binaryType = "arraybuffer";
       this.#ws = ws;
+      const out = new RelayOutbox((d) => ws.send(d), {
+        ...this.#o.outbox,
+        ...(this.#o.timer !== undefined ? { timer: this.#o.timer } : {}),
+      });
+      this.#out = out;
       let done = false;
       let openedAt = 0;
       const cancelOpen = (this.#o.timer ?? defaultTimer)(() => {
@@ -567,6 +599,8 @@ export class RelayService {
           this.#attempts = 0;
         this.#open = false;
         if (this.#ws === ws) this.#ws = null;
+        out.clear();
+        if (this.#out === out) this.#out = null;
         this.#members.clear();
         for (const l of [...this.#links.values()]) l.lost();
         if (was) this.#emitMembers();
@@ -641,14 +675,19 @@ export class RelayService {
     this.#pingCancel = timer(tick, this.#o.pingMs ?? 25_000);
   }
 
-  #sendEnv(m: Parameters<typeof encodeRelay>[0]): void {
-    const ws = this.#ws;
-    if (ws === null || !this.#open) return;
-    try {
-      ws.send(encodeRelay(m));
-    } catch {
-      // the close event follows
-    }
+  #sendEnv(m: Parameters<typeof encodeRelay>[0], force = true): boolean {
+    return !this.#open || (this.#out?.send(m, force) ?? true);
+  }
+
+  /** A session's Noise message, paced; one past the byte cap ends that session `peer_busy`. */
+  #sendSession(
+    link: RelayLink,
+    peer: Uint8Array,
+    session: number,
+    noise: Uint8Array,
+  ): void {
+    if (!this.#sendEnv({ op: "send", to: peer, session, noise }, link.closing))
+      link.overflow();
   }
 
   async #handle(ws: RelaySocket, bytes: Uint8Array): Promise<void> {
@@ -679,6 +718,7 @@ export class RelayService {
       }
       case "limit": {
         this.#lastLimit = m.reason;
+        if (m.reason === 1) this.#out?.halve();
         const reason: RelayErrorReason =
           m.reason === 1 ? "rate_limited" : m.reason === 4 ? "paused" : "quota";
         this.#error = new RelayError(
@@ -748,8 +788,7 @@ export class RelayService {
         () => this.#src.now(),
         () => this.#docs.pushed,
       ),
-      (noise) =>
-        this.#sendEnv({ op: "send", to: peer, session: sessionId, noise }),
+      (noise) => this.#sendSession(link, peer, sessionId, noise),
       {
         ...this.#docs.hooks,
         onEstablished: (s) => {

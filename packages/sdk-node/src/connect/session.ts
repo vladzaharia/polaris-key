@@ -390,4 +390,9 @@ export class SocketLink {
     t.unref();
     this.#o.onEnded?.();
   }
+
+  /** Drop the socket now, with no goodbye (the sign-out bound's force path). */
+  destroy(): void {
+    this.#o.socket.destroy();
+  }
 }

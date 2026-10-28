@@ -543,6 +543,11 @@
       "reason": "internal record seam: the signed-out flag and token provenance read and write fail-closed; no host calls it"
     },
     {
+      "sdk": "node",
+      "path": "cloudConnect.stopForSignOut",
+      "reason": "the client's own before-sign-out step (D-12): stop within 15 s, then force-cancel; a host calls stop()"
+    },
+    {
       "sdk": "swift",
       "path": "identity.installDeviceKeys",
       "reason": "an internal hand-over seam: the umbrella gives the identity client the Connect key port; no host calls it"

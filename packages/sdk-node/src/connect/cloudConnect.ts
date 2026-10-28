@@ -20,6 +20,7 @@
 //  - a failure on one path is never swallowed: when no path works the last typed error is thrown
 //    (`LanError` or `RelayError`).
 
+import { stopWithin } from "@polaris-key/client-core/peer";
 import { serialQueue, type ConnectNotice } from "./channel.js";
 import type { ConnectClient, ConnectDevice } from "./client.js";
 import type { LanOptions, LanPeer, LanService } from "./lan.js";
@@ -63,6 +64,8 @@ export interface CloudConnectStatus {
 }
 
 const LAN_ATTEMPT_MS = 4000;
+/** The most a sign-out waits on Connect (decision D-12). */
+export const SIGN_OUT_BOUND_MS = 15_000;
 
 export class CloudConnect {
   #lan: LanService | null = null;
@@ -76,7 +79,13 @@ export class CloudConnect {
   #onNotice = new Set<(n: ConnectNotice) => void>();
   #unsub: (() => void)[] = [];
   #sessions = new Set<ConnectSession>();
-  readonly #serial = serialQueue();
+  /** Replaced by a forced stop, so a stop that never settles cannot block what comes after. */
+  #serial = serialQueue();
+  /** Bumped by a forced stop, so a `start()` it overtook tears down what it made. */
+  #epoch = 0;
+  /** What a `stop()` in flight is still closing, for the forced stop to reach. */
+  #draining: { lan: LanService | null; relay: RelayService | null } | null =
+    null;
 
   constructor(private readonly connect: ConnectClient) {}
 
@@ -100,7 +109,9 @@ export class CloudConnect {
   start(opts: CloudConnectOptions = {}): Promise<void> {
     return this.#serial(async () => {
       if (this.#running) return;
+      const epoch = this.#epoch;
       const id = await this.connect.identity();
+      if (epoch !== this.#epoch) return;
       this.#self = id.deviceId;
       this.#lanAttemptMs = opts.lanAttemptMs ?? LAN_ATTEMPT_MS;
       this.#relayOn = opts.relay !== false;
@@ -108,6 +119,10 @@ export class CloudConnect {
       if (opts.lan !== false) {
         try {
           const lan = await this.connect.lan(opts.lan ?? {});
+          if (epoch !== this.#epoch) {
+            lan.abort();
+            return;
+          }
           this.#lan = lan;
           this.#unsub.push(
             lan.onSession((s) => this.#inbound(s)),
@@ -136,20 +151,48 @@ export class CloudConnect {
   stop(): Promise<void> {
     return this.#serial(async () => {
       if (!this.#running && this.#lan === null && this.#relay === null) return;
+      const epoch = this.#epoch;
       this.#running = false;
       for (const u of this.#unsub.splice(0)) u();
       const lan = this.#lan;
       const relay = this.#relay;
       this.#lan = this.#relay = null;
+      this.#draining = { lan, relay };
       await Promise.all(
         [...this.#sessions].map((s) => s.close().catch(() => undefined)),
       );
-      this.#sessions.clear();
+      if (epoch === this.#epoch) this.#sessions.clear();
       await Promise.all([
         lan?.stop().catch(() => undefined),
         relay?.stop().catch(() => undefined),
       ]);
+      if (epoch === this.#epoch) this.#draining = null;
     });
+  }
+
+  /**
+   * The sign-out step (decision D-12): `stop()`, but never past `boundMs` (default 15 s) and never
+   * failing. A host callback or transport that holds the stop up is cut off: the LAN listener,
+   * the browse and the relay socket are force-cancelled, the held discovery key is dropped, and
+   * the sign-out goes on.
+   */
+  async stopForSignOut(boundMs: number = SIGN_OUT_BOUND_MS): Promise<void> {
+    if (await stopWithin(() => this.stop(), boundMs)) this.#forceStop();
+  }
+
+  #forceStop(): void {
+    this.#epoch++;
+    this.#serial = serialQueue();
+    this.#running = false;
+    for (const u of this.#unsub.splice(0)) u();
+    const held = [{ lan: this.#lan, relay: this.#relay }, this.#draining];
+    this.#lan = this.#relay = null;
+    this.#draining = null;
+    this.#sessions.clear();
+    for (const h of held) {
+      h?.lan?.abort();
+      h?.relay?.abort();
+    }
   }
 
   /** The person's other devices that can be reached now, with the paths each has. */
