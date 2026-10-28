@@ -576,3 +576,33 @@ def test_a_pushed_roster_is_reported_as_a_notice() -> None:
         la._docs.ring(w.ring)
         until(lambda: notices)
         assert notices[0].type == "ring" and notices[0].outcome == "refused" and notices[0].reason == "unsupported"
+
+
+def test_forged_names_cost_nothing_after_the_expected_names_are_worked_out_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import polaris_key.core.peer_advert as adv
+
+    with World() as w:
+        la = w.start(w.a)
+        real = adv.account_instance
+        calls = {"n": 0}
+
+        def counting(*a: Any, **k: Any) -> str:
+            calls["n"] += 1
+            return real(*a, **k)
+
+        la._tab = None
+        monkeypatch.setattr(adv, "account_instance", counting)
+        for i in range(200):
+            name = account_instance(bytes([3]) * 32, advert_epoch(NOW), "%032d" % i)
+            w.net.inject(MdnsFound(name, "127.0.0.1", 4000, ["v=1", "m=a"]))
+        until(lambda: len(la._miss) >= 200)
+        first = calls["n"]
+        assert 0 < first <= 512  # one table, not 512 per name
+        la._miss.clear()
+        for i in range(200, 400):
+            name = account_instance(bytes([3]) * 32, advert_epoch(NOW), "%032d" % i)
+            w.net.inject(MdnsFound(name, "127.0.0.1", 4000, ["v=1", "m=a"]))
+        until(lambda: len(la._miss) >= 200)
+        assert calls["n"] == first  # the table is reused: a forged name is a dict miss

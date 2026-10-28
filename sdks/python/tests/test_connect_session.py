@@ -589,7 +589,7 @@ def test_at_most_eight_documents_wait_and_a_duplicate_is_busy() -> None:
         d.ring("r%d" % i)
     d.ring("r0")  # already waiting
     d.ring("r-extra")  # the ninth
-    assert [n.reason for n in notes] == ["busy", "busy"] and len(held) == MAX_DOCS_QUEUED
+    assert [n.reason for n in notes] == ["busy"] and len(held) == MAX_DOCS_QUEUED  # one notice a second
     held[0]()  # one finishes, a slot frees
     d.ring("r-extra")
     assert notes[-1].reason == "x" or len(held) == MAX_DOCS_QUEUED + 1
@@ -646,3 +646,47 @@ def test_the_channel_base_hands_the_session_a_key_handle_and_the_account() -> No
     pushed = peer_account(src, lambda: ("newer", 9))
     assert pushed.held_ring() == ("newer", 9)
     assert k.hex() not in repr(acct) + repr(base["static_key"])
+
+
+def test_one_slot_is_kept_for_a_ring_and_busy_notices_are_one_a_second() -> None:
+    held: List[Callable[[], None]] = []
+    src = PeerDocsSource(now=lambda: 0, adopt_ring=lambda j: SimpleNamespace(stored=False, reason="x"))
+    d = PeerDocs(src, spawn=held.append)
+    clock = [100.0]
+    d._clock = lambda: clock[0]
+    notes: List[ConnectNotice] = []
+    d.on_notice(notes.append)
+    for i in range(MAX_DOCS_QUEUED - 1):
+        d.trust("t%d" % i)
+    assert not notes
+    for i in range(1000):  # the flood: refused, one notice
+        d.trust("flood%d" % i)
+    assert [(n.type, n.reason) for n in notes] == [("trust", "busy")]
+    d.ring("r0")  # the reserved slot
+    assert len(held) == MAX_DOCS_QUEUED and len(notes) == 1
+    clock[0] += 1.0
+    d.trust("again")
+    d.ring("r1")  # now every slot is taken: a ring notice has its own kind budget
+    assert [(n.type, n.reason) for n in notes] == [("trust", "busy")] * 2 + [("ring", "busy")]
+
+
+def test_nothing_runs_or_is_stored_after_close() -> None:
+    held: List[Callable[[], None]] = []
+    d, notes, log = docs()
+    d.close()
+    d.ring("good-1")
+    d.trust("good")
+    assert d.want_ring() is False and log["refresh"] == 0 and log["stored"] == 0 and not notes
+    # A job queued before the close, and a refresh that finishes after it, store nothing.
+    ring_ok = lambda j: SimpleNamespace(stored=True, reason="", epoch=1)  # noqa: E731
+    d2 = PeerDocs(
+        PeerDocsSource(now=lambda: 0, refresh=lambda: d2.close(), adopt_ring=ring_ok),
+        lambda: held.append(lambda: None),
+        spawn=lambda f: f(),
+        timer=lambda fn, s: (lambda: None),
+    )
+    assert d2.want_ring() is True and not held  # close() ran inside the fetch: on_stored never fires
+    d2.ring("x")
+    assert not held
+    d2._defer(5)
+    assert d2._retry is None

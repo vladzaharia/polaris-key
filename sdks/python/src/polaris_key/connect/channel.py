@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
@@ -117,9 +118,12 @@ class _Worker:
     def __init__(self) -> None:
         self._ex: Optional[ThreadPoolExecutor] = None
         self._lock = threading.Lock()
+        self._closed = False
 
     def __call__(self, job: Callable[[], None]) -> None:
         with self._lock:
+            if self._closed:
+                return
             if self._ex is None:
                 self._ex = ThreadPoolExecutor(max_workers=1, thread_name_prefix="polaris-key-docs")
             ex = self._ex
@@ -127,9 +131,10 @@ class _Worker:
 
     def close(self) -> None:
         with self._lock:
+            self._closed = True
             ex, self._ex = self._ex, None
         if ex is not None:
-            ex.shutdown(wait=False)
+            ex.shutdown(wait=False, cancel_futures=True)
 
 
 def _default_timer(fn: Callable[[], None], seconds: float) -> Callable[[], None]:
@@ -165,6 +170,9 @@ class PeerDocs:
         self._last_refresh = float("-inf")
         self._retry: Optional[Callable[[], None]] = None
         self._tries = 0
+        self._closed = False
+        self._clock: Callable[[], float] = time.monotonic
+        self._last_busy: Dict[str, float] = {}
         self._fns: List[Callable[[ConnectNotice], None]] = []
         #: The newest roster a session handed up, ``(jws, epoch)``, held until an identity load catches up.
         self.pushed: Optional[Tuple[str, int]] = None
@@ -184,8 +192,9 @@ class PeerDocs:
         return off
 
     def close(self) -> None:
-        """Stop a pending retry and the worker."""
+        """Stop a pending retry and the worker. Nothing runs or is stored after this."""
         with self._lock:
+            self._closed = True
             cancel, self._retry = self._retry, None
         if cancel is not None:
             cancel()
@@ -247,7 +256,7 @@ class PeerDocs:
 
     def _want(self, retry: bool) -> bool:
         src = self._src
-        if src.refresh is None:
+        if src.refresh is None or self._closed:
             return False
         t = src.now()
         with self._lock:
@@ -264,6 +273,8 @@ class PeerDocs:
             return False
         try:
             src.refresh()
+            if self._closed:
+                return True
             self._tries = 0
             self._on_stored()
         except Exception:
@@ -274,7 +285,7 @@ class PeerDocs:
 
     def _defer(self, seconds: float) -> None:
         with self._lock:
-            if self._retry is not None:
+            if self._retry is not None or self._closed:
                 return
 
             def fire() -> None:
@@ -291,16 +302,32 @@ class PeerDocs:
         """One at a time, at most ``MAX_DOCS_QUEUED`` waiting, and a document already waiting is not
         queued twice: the excess is refused visibly, not worked on."""
         key = kind + ":" + jws
+        # One slot is kept for a RING (G11): a flood of TRUST documents cannot starve a roster push.
+        limit = MAX_DOCS_QUEUED if kind == "ring" else MAX_DOCS_QUEUED - 1
+        notify = False
         with self._lock:
-            if key in self._queued or len(self._queued) >= MAX_DOCS_QUEUED:
+            if self._closed:
+                return
+            if key in self._queued or len(self._queued) >= limit:
                 busy = True
+                # At most one busy notice per kind per second; the rest are dropped, not notified.
+                t = self._clock()
+                if t - self._last_busy.get(kind, float("-inf")) >= 1.0:
+                    self._last_busy[kind] = t
+                    notify = True
             else:
                 busy = False
                 self._queued.add(key)
         if busy:
-            return self._emit(ConnectNotice(kind, "refused", reason="busy"))
+            if notify:
+                self._emit(ConnectNotice(kind, "refused", reason="busy"))
+            return None
 
         def go() -> None:
+            if self._closed:
+                with self._lock:
+                    self._queued.discard(key)
+                return
             try:
                 job()
             except Exception:

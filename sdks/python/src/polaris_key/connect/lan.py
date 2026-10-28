@@ -29,7 +29,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
-from ..core.peer_advert import ADVERT_EPOCH_SECONDS, account_instance, advert_epoch, browse_account_instance, parse_txt
+from ..core.peer_advert import ADVERT_EPOCH_SECONDS, BrowseHit, account_instance, advert_epoch, browse_table, parse_txt
 from ..core.peer_link import SocketLink
 from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter, is_lan_address
 from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base
@@ -144,6 +144,7 @@ class LanService:
         self._id: Optional[Tuple[int, PeerSource]] = None
         self._peers: Dict[str, Tuple[LanPeer, str]] = {}
         self._miss: Dict[str, int] = {}
+        self._tab: Optional[Tuple[Tuple[int, Tuple[bytes, ...], Tuple[str, ...]], Dict[str, BrowseHit]]] = None
         self._pending: Set[Any] = set()
         self._per_address: Dict[str, int] = {}
         self._links: Set[SocketLink] = set()
@@ -496,6 +497,15 @@ class LanService:
         for k in [k for k, (_, inst) in self._peers.items() if inst == instance]:
             del self._peers[k]
 
+    def _table(self, keys: List[bytes], roster: List[str]) -> Dict[str, BrowseHit]:
+        """The expected instance names, worked out once per (epoch, keys, roster): a forged name is an
+        O(1) miss (S3), not up to 512 HMACs on the loop."""
+        now = self._src.now()
+        sig = (advert_epoch(now), tuple(keys), tuple(roster))
+        if self._tab is None or self._tab[0] != sig:
+            self._tab = (sig, browse_table(keys, now, roster))
+        return self._tab[1]
+
     async def _found(self, f: MdnsFound) -> None:
         if self._stopped or not self._dialable(f.host):
             return
@@ -506,9 +516,7 @@ class LanService:
             return
         ident = await self._identity(False)
         keys = [ident.keys.current] + ([ident.keys.previous] if ident.keys.previous else [])
-        hit = browse_account_instance(
-            f.instance, keys, self._src.now(), [d for d in ident.roster if d != ident.device_id]
-        )
+        hit = self._table(keys, [d for d in ident.roster if d != ident.device_id]).get(f.instance)
         if hit is None:
             # Bounded negative cache: a forged instance is not worked out twice.
             if len(self._miss) >= MISS_CACHE:
