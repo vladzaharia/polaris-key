@@ -170,22 +170,14 @@ describe("large text keeps the main action in the first viewport (DL1, DL3)", ()
           document.documentElement.scrollWidth,
           "no sideways scroll",
         ).toBeLessThanOrEqual(size.width);
-        // Known: OfflineActivation's second step starts under the fold of a 390 px tall window at
-        // 150 % text; its primary docks at the step's top and cannot reach the window (tracked
-        // as a follow-up: dock it in the screen's action bar).
-        const exempt =
-          id.startsWith("OfflineActivation.") &&
-          size.label === "844x390-font24";
-        const problems = exempt
-          ? []
-          : [
-              outside(sr.querySelector("h1"), size.width, size.height),
-              outside(
-                sr.querySelector('[data-part="primary"]'),
-                size.width,
-                size.height,
-              ),
-            ].filter(Boolean);
+        const problems = [
+          outside(sr.querySelector("h1"), size.width, size.height),
+          outside(
+            sr.querySelector('[data-part="primary"]'),
+            size.width,
+            size.height,
+          ),
+        ].filter(Boolean);
         if (__PKEY_KIT_SHOTS__)
           await commands.kitShot(
             `${__PKEY_KIT_SHOTS__}/elements.${id}/lt-${size.label}-${scheme}.png`,
