@@ -637,6 +637,32 @@ public actor CoreContext {
         return true
     }
 
+    /// Verify a manifest a peer pushed and install it (CC-11.5; WIRE-CONTRACT-V5 §15.8), under the
+    /// rules the Worker's own manifest meets: signed by a USABLE pin (tombstones removed), bound to
+    /// this product, fresh, and newer than the one held (anti-rollback). A refused manifest changes
+    /// nothing. An accepted one replaces the discovered tier, files any tombstone evidence and raises
+    /// the clock floor, as a fetched one does. The caller persists the signed manifest when it is
+    /// `applied` and gates the whole path on trust refresh (CC-11.15).
+    ///
+    /// The check and the install run in one synchronous step of this actor, with no suspension
+    /// between them, so a `refreshTrust()` suspended on its network fetch cannot interleave with it:
+    /// at most one of two pushes of the same `issuedAt` applies.
+    public func acceptPeer(_ jws: String) -> PeerTrustResult {
+        // `lastTrustIssuedAt` is left out of the verification so a replay reads `not_newer`, apart
+        // from a manifest that does not verify at all (`invalid`).
+        let probe = verifyTrustManifest(
+            jws,
+            options: VerifyTrustManifestOptions(
+                pinned: pinnedTrust, tombstones: tombstones, expectedAud: product, now: now()))
+        guard let doc = probe.doc else { return PeerTrustResult(applied: false, reason: "invalid") }
+        if let held = manifest?.issuedAt, doc.issuedAt <= held {
+            return PeerTrustResult(applied: false, reason: "not_newer")
+        }
+        installManifest(jws, probe)
+        reloadUpdateSlices()
+        return PeerTrustResult(applied: true, reason: nil)
+    }
+
     private func verifyManifest(_ jws: String, checkFreshness: Bool) -> TrustManifestResult {
         verifyTrustManifest(
             jws,
@@ -1225,8 +1251,9 @@ public actor CoreContext {
         var body: Data?
         // PX-W13 §8 Q2: the device label rides along, seeding the device's name in the lists.
         let label = await deviceLabel()
-        if fingerprint != nil || label != nil, let encoded = try? JSONEncoder().encode(
-            FingerprintBody(fingerprint: fingerprint, deviceName: label))
+        if fingerprint != nil || label != nil,
+            let encoded = try? JSONEncoder().encode(
+                FingerprintBody(fingerprint: fingerprint, deviceName: label))
         {
             extra["content-type"] = "application/json"
             body = encoded
@@ -1505,7 +1532,8 @@ public actor CoreContext {
             // `expiresAt` and `expired` at `graceUntil` (R2-11). Past the half-life we re-ask
             // UNCONDITIONALLY so the server re-signs the validity window.
             if !force, let expiresAt = currentExpiresAt(slice),
-                now() > saturatingAdd(expiresAt, -REFRESH_MARGIN_SECONDS) {
+                now() > saturatingAdd(expiresAt, -REFRESH_MARGIN_SECONDS)
+            {
                 return await syncDocument(
                     slice, force: true, reacquire: reacquire, allowReacquire: allowReacquire)
             }
