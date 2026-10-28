@@ -72,7 +72,10 @@ export interface SignInSessionHandle {
 export type LicenseChoiceInput =
   | { kind: "license"; licenseId: string; replaceDeviceId?: string }
   | { kind: "keep" }
-  | { kind: "create" };
+  | { kind: "create" }
+  /** The key the person entered (UK-42, D17): the account sign-in completes with it, so the
+   *  license it activated joins the account and no list is shown. */
+  | { kind: "key"; key: string };
 
 /** What `choice.complete()` answers: signed in, or a race or a lapsed grant to recover from.
  *  `choose`: the account holds licenses and none was named (the list to choose from).
@@ -224,6 +227,9 @@ export class SignInModel {
   private manage: string | null = null;
   /** Replace a device opened the browser; the next return runs the provider sign-in again. */
   private awaitingReturn = false;
+  /** A license key the form holds until the sign-in that needs it completes, or Done closes (UK-42).
+   *  Memory only: never in the snapshot, a view's input or a URL, and never logged. */
+  private heldKey: string | null = null;
 
   constructor(options: SignInModelOptions = {}) {
     this.primitives = options.primitives;
@@ -429,6 +435,15 @@ export class SignInModel {
         case "choose":
           this.grant = r.grant;
           this.armGrantTimer(r.expiresIn ?? GRANT_SECONDS, epoch);
+          if (
+            this.heldKey !== null &&
+            this.store.get().session.channel !== "device-code"
+          ) {
+            // The license a key activated is waiting for this account (D17): complete with the
+            // key and show no list. A device-code sign-in never chooses here.
+            await this.complete({ kind: "key", key: this.heldKey });
+            return;
+          }
           this.patch(
             { choices: r.choices, loading: false },
             {
@@ -478,6 +493,7 @@ export class SignInModel {
 
   private finish(issuedNow: boolean): void {
     this.cancelGrantTimer?.();
+    this.heldKey = null;
     const channel = this.store.get().session.channel;
     this.patch(
       channel === "device-code"
@@ -533,6 +549,7 @@ export class SignInModel {
 
   /** Cancel: back to step 1. */
   async cancel(): Promise<void> {
+    this.heldKey = null;
     const h = this.handle;
     const grant = this.grant;
     this.cancelled();
@@ -557,6 +574,7 @@ export class SignInModel {
 
   /** Back from the key or Replace step to the license choice. */
   back(): void {
+    this.heldKey = null;
     this.patch(
       { replaceView: undefined, activation: undefined, keyField: undefined },
       { event: undefined, raced: false },
@@ -584,11 +602,58 @@ export class SignInModel {
     if (epoch !== this.epoch) return;
     // An ok result stays in the snapshot: its key entries are the toast's words.
     this.patch({ activation: result });
-    if (result.result === "ok") this.finish(true);
+    if (result.result === "ok") {
+      if (this.grant && this.primitives?.choice) {
+        // An account sign-in is pending: it completes with this key and the form ends as usual.
+        this.heldKey = key;
+        await this.complete({ kind: "key", key });
+        return;
+      }
+      // No account: the license is floating, held by the key alone. The form ends at ActivateDone
+      // (`key-done`); the key stays in memory until Done closes it, and leaves the snapshot now.
+      this.heldKey = key;
+      this.patch(
+        { keyField: undefined },
+        { step: "key-done", event: undefined },
+      );
+      return;
+    }
+    // `license_owned`: the key waits in memory for the sign-in that follows (D17).
+    this.heldKey =
+      result.result === "refused" && result.code === "license_owned"
+        ? key
+        : null;
+  }
+
+  /** Done on ActivateDone (Start using, or Continue without an account): the key is dropped and
+   *  the form ends as a key activation does. */
+  done(): void {
+    this.heldKey = null;
+    this.patch({ keyField: undefined }, { step: undefined });
+    this.finish(true);
+  }
+
+  /** Add to an account, from ActivateDone: the form moves to AddToAccount's step. */
+  openAttach(): void {
+    if (this.store.get().session.step !== "key-done") return;
+    this.patch({}, { step: "attach" });
+  }
+
+  /** Back from AddToAccount to ActivateDone. */
+  closeAttach(): void {
+    const s = this.store.get().session.step;
+    if (s === "attach" || s === "added") this.patch({}, { step: "key-done" });
+  }
+
+  /** The license joined the account (AddToAccount's `added`): that step shows in the form. */
+  attached(): void {
+    if (this.store.get().session.step !== "attach") return;
+    this.patch({}, { step: "added" });
   }
 
   /** Use a different key (from a refusal no key can fix): the empty field, the refusal gone. */
   differentKey(): void {
+    this.heldKey = null;
     this.patch(
       { keyField: { text: "" }, activation: undefined },
       { event: "have-key" },
@@ -672,7 +737,17 @@ export class SignInModel {
     if (epoch !== this.epoch) return;
     this.patch({ error: undefined }, { redeeming: false });
     if (r.outcome === "signedIn") {
-      this.finish(r.issuedNow || choice?.kind === "create");
+      this.finish(
+        r.issuedNow || choice?.kind === "create" || choice?.kind === "key",
+      );
+      return;
+    }
+    if (choice?.kind === "key" && r.outcome !== "expired") {
+      // A key completion never lists or picks another license (D17): anything but signed in or a
+      // lapsed grant is a failed sign-in, and the key stays for Try again.
+      if (r.outcome === "deviceLimit")
+        this.showDeviceLimit(undefined, r.manageUrl);
+      else this.patch({ error: { code: "sign-in-failed" } });
       return;
     }
     if (r.outcome === "expired") {
@@ -877,6 +952,7 @@ export class SignInModel {
 
   /** Use another account: the confirm's grant is given up and the methods step shows. */
   async useAnother(): Promise<void> {
+    this.heldKey = null;
     const grant = this.grant;
     this.endSession();
     this.store.set((s) => ({
@@ -928,6 +1004,7 @@ export class SignInModel {
    * host closes the form for good), call `cancel()`, which cancels the request and the grant.
    */
   dispose(): void {
+    this.heldKey = null;
     this.endSession();
   }
 }

@@ -696,3 +696,133 @@ describe("SignInModel: automatic sign-in (I-46.8)", () => {
     expect(m.views().signIn.state).toBe("confirm");
   });
 });
+
+/** The key step answers `license_owned`. */
+function ownedKey(p: SignInPrimitives): void {
+  p.activate = async () => {
+    throw Object.assign(new Error("owned"), {
+      activation: { kind: "licenseOwned", code: "license_owned" },
+    });
+  };
+}
+
+describe("SignInModel: a key with no account (UK-42.5)", () => {
+  const KEY = "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG";
+  const BASE = {
+    platform: MAC,
+    services: ["license", "identity"],
+    activateDone: {},
+  } as const;
+
+  it("a key with no grant ends at key-done and leaves the snapshot", async () => {
+    const sdk = fakeSdk([]);
+    const m = new SignInModel({ primitives: sdk.primitives, base: BASE });
+    m.haveKey();
+    await m.submitKey(KEY);
+    expect(m.snapshot.session.step).toBe("key-done");
+    expect(m.snapshot.session.outcome).toBeUndefined();
+    expect(m.views().signIn.state).toBe("key-done");
+    expect(m.views().signIn.component).toBe("SignIn");
+    // The key is in memory only: not in the snapshot, nor in what the views read.
+    expect(JSON.stringify(m.snapshot)).not.toContain(KEY);
+    expect(JSON.stringify(m.input())).not.toContain(KEY);
+    expect(sdk.calls.some((c) => c.startsWith("complete"))).toBe(false);
+  });
+
+  it("Done drops the key and closes the form", async () => {
+    const sdk = fakeSdk([]);
+    const m = new SignInModel({ primitives: sdk.primitives, base: BASE });
+    await m.submitKey(KEY);
+    expect((m as unknown as { heldKey: string | null }).heldKey).toBe(KEY);
+    m.done();
+    expect((m as unknown as { heldKey: string | null }).heldKey).toBeNull();
+    expect(m.snapshot.session.step).toBeUndefined();
+    expect(m.snapshot.session.outcome).toBe("signedIn");
+  });
+
+  it("key-done opens Add to account and back, and shows added", async () => {
+    const m = new SignInModel({
+      primitives: fakeSdk([]).primitives,
+      base: { ...BASE, addToAccount: { step: "form" } },
+    });
+    await m.submitKey(KEY);
+    m.openAttach();
+    expect(m.snapshot.session.step).toBe("attach");
+    m.closeAttach();
+    expect(m.snapshot.session.step).toBe("key-done");
+    m.openAttach();
+    m.attached();
+    expect(m.snapshot.session.step).toBe("added");
+    expect(m.views().signIn.state).toBe("added");
+  });
+
+  it("license_owned, then sign-in, then choose, completes the key with no list", async () => {
+    const sdk = fakeSdk(
+      [{ outcome: "choose", grant: "sg_k", choices: VIEW }],
+      [{ outcome: "signedIn", issuedNow: false }],
+    );
+    ownedKey(sdk.primitives);
+    const m = new SignInModel({ primitives: sdk.primitives, base: BASE });
+    await m.submitKey(KEY);
+    expect(m.snapshot.activation).toMatchObject({ code: "license_owned" });
+    expect(m.snapshot.session.step).toBeUndefined();
+    await m.start({ channel: "browser" });
+    await tick();
+    await tick();
+    expect(sdk.calls).toContain(
+      `complete sg_k ${JSON.stringify({ kind: "key", key: KEY })}`,
+    );
+    expect(sdk.calls).not.toContain("licenses");
+    expect(m.snapshot.choices).toBeUndefined();
+    expect(m.snapshot.session.outcome).toBe("signedIn");
+    expect((m as unknown as { heldKey: string | null }).heldKey).toBeNull();
+  });
+
+  it("a choose answer to the key completion never lists licenses", async () => {
+    const sdk = fakeSdk(
+      [{ outcome: "choose", grant: "sg_k", choices: VIEW }],
+      [{ outcome: "choose", choices: VIEW }],
+    );
+    ownedKey(sdk.primitives);
+    const m = new SignInModel({ primitives: sdk.primitives, base: BASE });
+    await m.submitKey(KEY);
+    await m.start({ channel: "browser" });
+    await tick();
+    await tick();
+    expect(m.snapshot.session.outcome).not.toBe("choose");
+    expect(m.snapshot.choices).toBeUndefined();
+    expect(m.snapshot.error).toEqual({ code: "sign-in-failed" });
+  });
+
+  it("a key submitted while a grant is pending completes {kind: key}", async () => {
+    const sdk = fakeSdk([{ outcome: "choose", grant: "sg_p", choices: VIEW }]);
+    const m = new SignInModel({ primitives: sdk.primitives, base: BASE });
+    await m.start();
+    await tick();
+    m.haveKey();
+    await m.submitKey(KEY);
+    expect(sdk.calls).toContain(
+      `complete sg_p ${JSON.stringify({ kind: "key", key: KEY })}`,
+    );
+    expect(m.snapshot.session.step).toBeUndefined();
+  });
+
+  it("Cancel and Use a different key drop a held key", async () => {
+    const owned = () => {
+      const sdk = fakeSdk([]);
+      ownedKey(sdk.primitives);
+      return new SignInModel({ primitives: sdk.primitives, base: BASE });
+    };
+    const held = (m: SignInModel) =>
+      (m as unknown as { heldKey: string | null }).heldKey;
+    const a = owned();
+    await a.submitKey(KEY);
+    expect(held(a)).toBe(KEY);
+    a.differentKey();
+    expect(held(a)).toBeNull();
+    const b = owned();
+    await b.submitKey(KEY);
+    await b.cancel();
+    expect(held(b)).toBeNull();
+  });
+});

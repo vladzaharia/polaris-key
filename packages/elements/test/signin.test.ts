@@ -13,6 +13,7 @@ import type {
   UiInput,
 } from "@polaris-key/ui-core";
 
+import { FORM_ORDER } from "../src/form.js";
 import { formStep, type PkSignIn } from "../src/index.js";
 import {
   readMatrix,
@@ -245,5 +246,36 @@ describe("live: the form drives the SDK primitives", () => {
     );
     expect(el.view.state).toBe("done");
     expect(el.shadowRoot!.querySelector(".success")).not.toBeNull();
+  });
+});
+
+describe("the form's steps after a key with no account (UK-42.5)", () => {
+  it("key-done, attach and added travel forward from the key, before done", () => {
+    const at = (s: string) => FORM_ORDER.indexOf(s);
+    expect(at("key")).toBeGreaterThan(-1);
+    expect(at("key-done")).toBeGreaterThan(at("key"));
+    expect(at("attach")).toBeGreaterThan(at("key-done"));
+    expect(at("added")).toBeGreaterThan(at("attach"));
+    expect(at("done")).toBeGreaterThan(at("added"));
+  });
+
+  it("formStep draws the form's own view for each", () => {
+    for (const step of ["key-done", "attach", "added"] as const) {
+      const i = {
+        platform: { os: "macos", formFactor: "mac" },
+        services: ["license", "identity"],
+        signIn: {
+          presentation: "inline",
+          replace: "inline",
+          channel: "browser",
+          step,
+        },
+        activateDone: {},
+        addToAccount: { step: "form" },
+      } as UiInput;
+      const f = formStep(i);
+      expect(f.form.state).toBe(step);
+      expect(f.body).toBe(f.form);
+    }
   });
 });
