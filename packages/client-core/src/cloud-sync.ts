@@ -29,9 +29,13 @@
 //     unread. The status is `unsupported` with the code `sync-encryption-pinned`; the journal and
 //     snapshot are kept. There is no fall back to server mode.
 //   - a push waits until the Worker is confirmed `e2e` this session (discovery or a body).
-//   - `encryptionSince`: a row the host opened from a `ct` carries `sealed: true`. A plaintext row
-//     is legacy data only when its `seq` is below the body's `encryptionSince`; otherwise it is
-//     `invalid`. `invalid: true` marks a `ct` the host could not open.
+//   - `encryptionSince`: whether a row was opened from a `ct` comes only from the host's typed
+//     open result (`receive`'s second argument), never from a field of the body. A plaintext row
+//     is legacy data only when the host-mapped `seq` (the change's `version`, WIRE-CONTRACT-V5
+//     §13.10.7) is below this machine's `encryptionSince`; otherwise it is `invalid`. That value
+//     is kept per partition in the persisted state, only ever lowered, and held at or below the
+//     lowest version this machine has itself pushed sealed or opened sealed. A host that supplies
+//     no `seq` leaves every plaintext row invalid.
 //   - `max` and `min` are decided here: on `conflict` the server copy is taken, and a better local
 //     value is re-pushed on the server's `version` (origin `merge`), with no prompt.
 //
@@ -195,8 +199,11 @@ export interface DeviceSetting {
 interface Versioned {
   value: Json;
   version: number;
-  /** E2E: a plaintext row at or above `encryptionSince`, or a `ct` the host could not open. */
+  /** E2E: a `ct` the host could not open, or a plaintext row at or above `encryptionSince`. */
   bad?: true;
+  /** E2E: the host-mapped `seq` of a plaintext row, judged against the partition's current
+   *  `encryptionSince` whenever it is read (so a lowered boundary reaches rows already held). */
+  plain?: number;
 }
 
 interface Partition {
@@ -214,8 +221,11 @@ interface Partition {
   signedOutAt: number | null;
   /** The last `quota.bytes − usage.bytes` a 200 carried; a larger one re-sends quota-parked ops. */
   headroom: number | null;
-  /** E2E: the store sequence from which every row is sealed (the last pull's). */
+  /** E2E: the store sequence from which every row is sealed. Only ever lowered (the least of
+   *  every value served), and never above `sealedFloor`. */
   encryptionSince?: number;
+  /** E2E: the lowest version this machine has pushed sealed or opened sealed. */
+  sealedFloor?: number;
 }
 
 type Blocked =
@@ -260,9 +270,8 @@ export interface CloudSyncOptions {
   /** The random source for new `clientId`s. */
   newClientId: () => string;
   /**
-   * The product's mode (the catalog's `cloudSync.encryption`). An absent value is `"server"`,
-   * the machine as it was before E2E; a host passes `cloudSyncEncryption(declared)` so an absent
-   * declaration means `"e2e"` (§13.10.6).
+   * The product's mode, from app code or a signed document, never from an unsigned Worker
+   * answer. An absent value is `"e2e"` (§13.10.6); a host that wants server mode says so.
    */
   encryption?: EncryptionMode;
   /** Whether the device holds the root of the current ring (§13.11). Absent: no root. */
@@ -288,6 +297,25 @@ export type SyncRequest =
 export type SyncResponse =
   | { status: number; body?: Json }
   | { error: "transport" };
+
+/** What the host's codec found for one row it was given (E2E). The host sets these from its own
+ *  open of the `ct`; the machine never reads them from the body. */
+export interface OpenedRow {
+  /** The host opened a `ct` for this row. */
+  sealed?: true;
+  /** The row carried a `ct` the host could not open. */
+  invalid?: true;
+  /** The row's store sequence: the change's `version` (§13.10.7). Absent: not legacy. */
+  seq?: number;
+}
+
+/** The host's open results for one response. `changes` is parallel to `body.changes`;
+ *  `conflicts` is keyed by `mutationId` and covers a conflict's `server` copy. Anything absent
+ *  is a plaintext row with no `seq`. */
+export interface OpenedBody {
+  changes?: ReadonlyArray<OpenedRow | undefined>;
+  conflicts?: Readonly<Record<number, OpenedRow | undefined>>;
+}
 
 export type ChangeOrigin = "local" | "remote" | "merge" | "migration";
 
@@ -510,6 +538,10 @@ function applyRecordOp(
 
 const recordKey = (c: string, id: string): string => `${c}/${id}`;
 
+/** A conflict copy the client may compare: opened sealed (not unreadable, not plaintext). */
+const decidable = (b: { bad?: true; plain?: number }): boolean =>
+  b.bad !== true && b.plain === undefined;
+
 function newPartition(clientId: string | null): Partition {
   return {
     clientId,
@@ -572,7 +604,7 @@ export class CloudSyncMachine {
     this.document = opts.document;
     this.onSignOutPolicy = opts.onSignOut ?? "clear";
     this.newClientId = opts.newClientId;
-    this.appEncryption = opts.encryption ?? "server";
+    this.appEncryption = opts.encryption ?? "e2e";
     this.root = opts.hasRoot ?? false;
     this.nowMs = opts.now;
     this.network = opts.network ?? "online";
@@ -920,7 +952,7 @@ export class CloudSyncMachine {
   }
 
   /** The transport's answer to the request in flight. */
-  receive(res: SyncResponse): void {
+  receive(res: SyncResponse, opened?: OpenedBody): void {
     const req = this.inFlight;
     if (!req) throw new Error("respond: no request is in flight");
     this.inFlight = null;
@@ -964,7 +996,7 @@ export class CloudSyncMachine {
     } else if (res.status === 200 && isObject(res.body)) {
       if (this.acceptMode(res.body)) {
         if (req.kind === "push") this.paused = false;
-        this.ok(req, res.body);
+        this.ok(req, res.body, opened ?? {});
         proceed = true;
       }
       // Otherwise the pin refused it: the body is dropped unread and the journal is unchanged.
@@ -1112,7 +1144,11 @@ export class CloudSyncMachine {
   }
 
   private rowUnreadable(row: Versioned): boolean {
-    return row.bad === true || this.lockedOut();
+    if (row.bad === true || this.lockedOut()) return true;
+    if (row.plain === undefined || !this.requiresE2e()) return false;
+    const since =
+      this.s.subject === null ? undefined : this.active().encryptionSince;
+    return !(since !== undefined && row.plain < since);
   }
 
   private snapshotUnreadable(serverKey: string): boolean {
@@ -1678,7 +1714,11 @@ export class CloudSyncMachine {
       this.s.hlc = [this.s.hlc[0] + offset, this.s.hlc[1]];
   }
 
-  private ok(req: InFlight, body: { [k: string]: Json }): void {
+  private ok(
+    req: InFlight,
+    body: { [k: string]: Json },
+    opened: OpenedBody,
+  ): void {
     if (typeof body.serverNow === "number") this.firstContact(body.serverNow);
     if (req.partition !== this.s.subject) return;
     if (typeof body.subject === "string" && body.subject !== req.partition) {
@@ -1713,7 +1753,7 @@ export class CloudSyncMachine {
         continue;
       }
       p.pending.splice(at, 1);
-      this.result(p, op, r, overrides);
+      this.result(p, op, r, overrides, opened);
     }
     // A parked edit that a later edit of the same value already replaces is dropped.
     for (const op of parkedNow)
@@ -1729,10 +1769,12 @@ export class CloudSyncMachine {
       p.records = {};
     }
     if (this.requiresE2e() && typeof body.encryptionSince === "number")
-      p.encryptionSince = body.encryptionSince;
-    for (const c of Array.isArray(body.changes) ? body.changes : []) {
+      this.lowerSince(p, body.encryptionSince);
+    const changes = Array.isArray(body.changes) ? body.changes : [];
+    for (let i = 0; i < changes.length; i++) {
+      const c = changes[i];
       if (!isObject(c) || typeof c.version !== "number") continue;
-      const bad = this.rowBad(p, c);
+      const bad = this.rowBad(p, c.version, opened.changes?.[i]);
       if (typeof c.setting === "string") {
         p.settings[c.setting] = {
           value: clone(c.value ?? null),
@@ -1777,18 +1819,57 @@ export class CloudSyncMachine {
   }
 
   /**
-   * E2E `encryptionSince` (§13.10.7): a row the host opened from a `ct` is good; a plaintext row
-   * is legacy data below `encryptionSince` (by its `seq`) and `invalid` at or above it. Server
-   * mode reads every row as it always did.
+   * E2E `encryptionSince` (§13.10.7). Only the host's open result counts: a row it opened from a
+   * `ct` is good (and lowers the clamp); one it could not open is bad; a plaintext row is legacy
+   * data only while its host-mapped `seq` stays below the partition's `encryptionSince`, judged
+   * on every read (`rowUnreadable`). A plaintext row with no `seq` is bad at once. Server mode
+   * reads every row as it always did.
    */
-  private rowBad(p: Partition, c: { [k: string]: Json }): { bad?: true } {
+  private rowBad(
+    p: Partition,
+    version: number,
+    open: OpenedRow | undefined,
+  ): { bad?: true; plain?: number } {
     if (!this.requiresE2e()) return {};
-    if (c.invalid === true) return { bad: true };
-    if (c.sealed === true) return {};
-    const since = p.encryptionSince;
-    const legacy =
-      typeof c.seq === "number" && since !== undefined && c.seq < since;
-    return legacy ? {} : { bad: true };
+    if (open?.invalid === true) return { bad: true };
+    if (open?.sealed === true) {
+      this.noteSealed(p, version);
+      return {};
+    }
+    return typeof open?.seq === "number" && Number.isFinite(open.seq)
+      ? { plain: open.seq }
+      : { bad: true };
+  }
+
+  /** A conflict's `server` copy as a held row. */
+  private copyRow(
+    p: Partition,
+    server: { [k: string]: Json },
+    open: OpenedRow | undefined,
+  ): Versioned {
+    const version = server.version as number;
+    return {
+      value: clone(server.value ?? null),
+      version,
+      ...this.rowBad(p, version, open),
+    };
+  }
+
+  /** Take a served boundary: the least ever served, held at or below the sealed floor. */
+  private lowerSince(p: Partition, served: number): void {
+    if (!Number.isFinite(served) || served < 0) return;
+    let since = Math.min(p.encryptionSince ?? served, served);
+    if (p.sealedFloor !== undefined) since = Math.min(since, p.sealedFloor);
+    p.encryptionSince = since;
+  }
+
+  /** This machine pushed, or opened, a sealed row at `version`: no plaintext at or above it is
+   *  legacy, whatever a Worker serves. */
+  private noteSealed(p: Partition, version: number): void {
+    if (!this.requiresE2e() || !Number.isFinite(version)) return;
+    p.sealedFloor = Math.min(p.sealedFloor ?? version, version);
+    if (p.encryptionSince !== undefined)
+      p.encryptionSince = Math.min(p.encryptionSince, p.sealedFloor);
   }
 
   /** A newer remote value of a `lastWrite` key replaces its parked `set` or `clear` (R5). */
@@ -1817,6 +1898,7 @@ export class CloudSyncMachine {
     op: JournalOp,
     r: { [k: string]: Json },
     overrides: Map<string, ChangeOrigin>,
+    opened: OpenedBody,
   ): void {
     const status = r.status;
     if ("setting" in op.target) {
@@ -1824,6 +1906,8 @@ export class CloudSyncMachine {
       const serverKey =
         typeof r.renamedTo === "string" ? r.renamedTo : this.alias(key);
       if (op.moved) overrides.set(key, "merge");
+      if (status === "ok" && typeof r.version === "number")
+        this.noteSealed(p, r.version);
       if (status === "ok") {
         if (r.dropped === true) {
           overrides.set(key, "migration");
@@ -1843,15 +1927,15 @@ export class CloudSyncMachine {
         // Q6: a stale write loses to the server copy, and nothing is enqueued.
         const server = r.server;
         if (typeof server.version === "number") {
-          p.settings[serverKey] = {
-            value: clone(server.value ?? null),
-            version: server.version,
-            ...(server.invalid === true ? { bad: true as const } : {}),
-          };
+          const sbad = (p.settings[serverKey] = this.copyRow(
+            p,
+            server,
+            opened.conflicts?.[op.mutationId],
+          ));
           // E2E `max`/`min`: keep the better value and re-push it on the server's version.
           if (
             op.op === "set" &&
-            server.invalid !== true &&
+            decidable(sbad) &&
             this.clientDecides(this.policyOf(key)) &&
             this.better(this.policyOf(key), op.value, server.value)
           ) {
@@ -1882,23 +1966,25 @@ export class CloudSyncMachine {
     let rebaseOn: number | "*" | null = null;
     let rebaseValue: Json | undefined;
     if (status === "ok" && typeof r.version === "number") {
+      this.noteSealed(p, r.version);
       const value = applyRecordOp(p.records[rk]?.value, op);
       if (value !== undefined) p.records[rk] = { value, version: r.version };
       if (rk in p.held) rebaseOn = r.version;
     } else if (status === "conflict" && isObject(r.server)) {
       const server = r.server;
       if (typeof server.version === "number") {
-        p.records[rk] = {
-          value: clone(server.value ?? null),
-          version: server.version,
-        };
+        const sbad = (p.records[rk] = this.copyRow(
+          p,
+          server,
+          opened.conflicts?.[op.mutationId],
+        ));
         // Rule 2: the resolution is a NEW mutation on the server's version; N is never resent.
         // Only `revision` resolves on the device; every other policy took the server's copy.
         if (rk in p.held) rebaseOn = server.version;
         else if (
           decl &&
           op.op === "set" &&
-          server.invalid !== true &&
+          decidable(sbad) &&
           this.clientDecides(decl.policy) &&
           this.better(
             decl.policy,

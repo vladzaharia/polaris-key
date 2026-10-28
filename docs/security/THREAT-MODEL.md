@@ -8503,10 +8503,19 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
   in discovery and in every pull and push body; the server refuses the wrong payload for its own
   mode (`encryption_mismatch`), including an open setting, member, field or element whose name is
   not blinded, so a name never leaks through a half-updated client. A plaintext row is honoured
-  only when its `version` is below the pull's `encryptionSince`, which the object fixes once, at
-  the first sealed push, and never moves. Residual: a Worker that serves `encryptionSince` far
-  above the real value only makes a client treat rows as invalid, never as trusted plaintext; a
-  switch of a product's catalog from `e2e` to `server` leaves sealed rows no client can open
+  only when its `version` is below the machine's own `encryptionSince`. The Worker's object fixes
+  the served value once, at the first sealed push, and never moves it, but the client does not take
+  it on trust: it keeps one value per partition in its persisted state, only ever lowers it, and
+  holds it at or below the lowest version the client has itself pushed sealed or opened sealed.
+  Whether a row was opened from a `ct` comes from the host's typed open result, never from a
+  field of the body the Worker wrote, and a host that does not map `seq` from `version` leaves
+  every plaintext row invalid. The app's mode is app code or a signed document; an omitted option
+  means `e2e`. Residual: a device with no sealed row of its own yet takes the first value it is
+  served, so a Worker that serves a value above the real one on a device's first pull can have
+  plaintext it fabricates below that value read as legacy data until the device has pushed or
+  opened a sealed row; a later, higher value never raises the boundary. A value served below the
+  real one only makes legacy rows read as invalid. A switch of a product's catalog from `e2e` to
+  `server` leaves sealed rows no client can open
   (V5 §13.10.1). Ciphertext length is visible to the server, padded to 64 bytes; budgets are
   charged on the length less the envelope overhead, so they match the client's.
 - **T19, `max` and `min`.** In E2E mode the server holds a compare-and-swap register and cannot
