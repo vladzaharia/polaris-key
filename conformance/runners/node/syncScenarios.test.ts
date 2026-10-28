@@ -161,6 +161,8 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
         subject: sc.init.subject,
         network: sc.init.network,
         onSignOut: sc.init.options.onSignOut,
+        // The v2 scenarios are server-mode conversations; the machine's own default is e2e.
+        encryption: "server",
         newClientId: () => {
           const id = ids.shift();
           if (id === undefined) throw new Error("init.clientIds exhausted");

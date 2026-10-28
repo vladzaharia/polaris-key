@@ -11,6 +11,7 @@ import {
   relaunch,
   type CloudSyncOptions,
   type Json,
+  type OpenedBody,
   type SyncRequest,
 } from "../src/cloud-sync.js";
 
@@ -71,18 +72,29 @@ const mutations = (reqs: SyncRequest[]): Json[] =>
   );
 
 /** An E2E machine whose first pull (cursor 0) was answered `e2e`. */
-function confirmed(over: Partial<CloudSyncOptions> = {}, b: Json = body()) {
+function confirmed(
+  over: Partial<CloudSyncOptions> = {},
+  b: Json = body(),
+  o?: OpenedBody,
+) {
   const opts = options({ contacted: false, ...over });
   const m = new CloudSyncMachine(opts);
   const first = m.takeRequests();
   expect(first).toHaveLength(1);
-  m.receive({ status: 200, body: b });
+  m.receive({ status: 200, body: b }, o);
   m.takeEvents();
   m.takeRequests();
   return { m, opts };
 }
 
 /** Every trigger the host has. None may produce a request while the gate is shut. */
+/** The host asks for another pull (the network came back). */
+function repull(m: CloudSyncMachine): void {
+  m.setNetwork("offline");
+  m.setNetwork("online");
+  expect(m.takeRequests().length).toBeGreaterThan(0);
+}
+
 function poke(m: CloudSyncMachine): SyncRequest[] {
   m.flush();
   m.refresh();
@@ -93,11 +105,14 @@ function poke(m: CloudSyncMachine): SyncRequest[] {
 }
 
 describe("the default mode (§13.10.6)", () => {
-  it("an absent declaration is e2e; the machine's own absent option is the pre-E2E server mode", () => {
+  it("an absent declaration is e2e, and so is the machine's own absent option", () => {
     expect(cloudSyncEncryption(undefined)).toBe("e2e");
     expect(cloudSyncEncryption("server")).toBe("server");
     const m = new CloudSyncMachine(options({ encryption: undefined }));
-    expect(m.encryptionMode()).toBe("server");
+    expect(m.encryptionMode()).toBe("e2e");
+    expect(
+      new CloudSyncMachine(options({ encryption: "server" })).encryptionMode(),
+    ).toBe("server");
   });
 
   it("server mode is unchanged: pushes at once, a body without `encryption` is read", () => {
@@ -144,10 +159,9 @@ describe("locked (§11.5)", () => {
     const { m } = confirmed(
       {},
       body({
-        changes: [
-          { setting: VOL, scope: "user", value: 0.5, version: 1, sealed: true },
-        ],
+        changes: [{ setting: VOL, scope: "user", value: 0.5, version: 1 }],
       }),
+      { changes: [{ sealed: true }] },
     );
     expect(m.get(VOL)).toEqual({ value: 0.5, from: "cloud" });
     m.setRoot(false);
@@ -217,10 +231,9 @@ describe("the pin and the downgrade (§11.5, T26)", () => {
     const { m } = confirmed(
       {},
       body({
-        changes: [
-          { setting: VOL, scope: "user", value: 0.5, version: 1, sealed: true },
-        ],
+        changes: [{ setting: VOL, scope: "user", value: 0.5, version: 1 }],
       }),
+      { changes: [{ sealed: true }] },
     );
     m.set(VOL, 0.6);
     m.advance(2000);
@@ -314,13 +327,16 @@ describe("the pin and the downgrade (§11.5, T26)", () => {
 });
 
 describe("encryptionSince (§13.10.7)", () => {
+  // The host maps `seq = version` and reports it in its open result; the body's own fields
+  // (`seq`, `sealed`, `invalid`) are never read.
   const changes = [
-    { setting: VOL, scope: "user", value: 0.1, version: 1, seq: 3 },
-    { setting: BEST, scope: "user", value: 7, version: 1, seq: 12 },
+    { setting: VOL, scope: "user", value: 0.1, version: 3 },
+    { setting: BEST, scope: "user", value: 7, version: 12 },
   ];
+  const mapped: OpenedBody = { changes: [{ seq: 3 }, { seq: 12 }] };
 
   it("reads a plaintext row below the boundary and refuses one at or above it", () => {
-    const { m } = confirmed({}, body({ encryptionSince: 10, changes }));
+    const { m } = confirmed({}, body({ encryptionSince: 10, changes }), mapped);
     expect(m.encryptionSince()).toBe(10);
     expect(m.get(VOL)).toEqual({ value: 0.1, from: "cloud" });
     expect(m.settingState(VOL).invalid).toBe(false);
@@ -328,16 +344,32 @@ describe("encryptionSince (§13.10.7)", () => {
     expect(m.settingState(BEST).invalid).toBe(true);
   });
 
-  it("a plaintext row with no sequence is not legacy; a sealed row is read; an unopenable one is invalid", () => {
+  it("a host that does not map seq = version fails closed: every plaintext row is invalid", () => {
+    const { m } = confirmed({}, body({ encryptionSince: 10, changes }));
+    expect(m.settingState(VOL).invalid).toBe(true);
+    expect(m.settingState(BEST).invalid).toBe(true);
+    // The body's own `seq` is not a mapping.
+    const withBodySeq = confirmed(
+      {},
+      body({
+        encryptionSince: 10,
+        changes: [{ ...changes[0]!, seq: 3 }],
+      }),
+    );
+    expect(withBodySeq.m.settingState(VOL).invalid).toBe(true);
+  });
+
+  it("a sealed row is read; an unopenable one is invalid", () => {
     const { m } = confirmed(
       {},
       body({
         encryptionSince: 10,
         changes: [
           { setting: VOL, scope: "user", value: 0.1, version: 1 },
-          { setting: BEST, scope: "user", value: 9, version: 1, sealed: true },
+          { setting: BEST, scope: "user", value: 9, version: 11 },
         ],
       }),
+      { changes: [{}, { sealed: true }] },
     );
     expect(m.settingState(VOL).invalid).toBe(true);
     expect(m.get(BEST).value).toBe(9);
@@ -345,25 +377,125 @@ describe("encryptionSince (§13.10.7)", () => {
     const n = confirmed(
       {},
       body({
-        changes: [
-          {
-            setting: VOL,
-            scope: "user",
-            value: 0.1,
-            version: 1,
-            invalid: true,
-          },
-        ],
+        changes: [{ setting: VOL, scope: "user", value: 0.1, version: 1 }],
       }),
+      { changes: [{ invalid: true, seq: 0 }] },
     );
     expect(n.m.settingState(VOL).invalid).toBe(true);
   });
 
-  it("a write over an invalid row is a pending value, not invalid", () => {
-    const { m } = confirmed({}, body({ encryptionSince: 10, changes }));
-    m.set(BEST, 5);
-    expect(m.settingState(BEST).invalid).toBe(false);
-    expect(m.get(BEST)).toEqual({ value: 5, from: "pending" });
+  it("takes sealed and invalid only from the host: a body that claims them is refused", () => {
+    const { m } = confirmed(
+      {},
+      body({
+        encryptionSince: 10,
+        changes: [
+          {
+            setting: VOL,
+            scope: "user",
+            value: 666,
+            version: 50,
+            sealed: true,
+            seq: 1,
+          },
+        ],
+      }),
+    );
+    expect(m.settingState(VOL).invalid).toBe(true);
+    expect(m.get(VOL)).toEqual({ value: 0.8, from: "document" });
+    // A host that reports the row unopenable wins over a body that says otherwise.
+    const n = confirmed(
+      {},
+      body({
+        changes: [
+          { setting: VOL, scope: "user", value: 1, version: 1, sealed: true },
+        ],
+      }),
+      { changes: [{ invalid: true }] },
+    );
+    expect(n.m.settingState(VOL).invalid).toBe(true);
+  });
+
+  it("a conflict copy is judged the same way: body claims do not count", () => {
+    const { m } = confirmed({}, body({ encryptionSince: 10 }));
+    m.set(VOL, 0.2);
+    m.advance(2000);
+    const sent = mutations(m.takeRequests())[0] as { mutationId: number };
+    m.receive({
+      status: 200,
+      body: body({
+        encryptionSince: 10,
+        results: [
+          {
+            mutationId: sent.mutationId,
+            status: "conflict",
+            server: { value: 0.9, version: 40, sealed: true },
+          },
+        ],
+      }),
+    });
+    m.takeRequests();
+    expect(m.settingState(VOL).invalid).toBe(true);
+    expect(m.persist().partitions[ALICE]!.settings[VOL]).toMatchObject({
+      bad: true,
+    });
+  });
+
+  it("a later, higher encryptionSince does not let a forged plaintext row through", () => {
+    const { m } = confirmed({}, body({ encryptionSince: 10 }));
+    expect(m.encryptionSince()).toBe(10);
+    // The Worker now serves a huge boundary and a forged plaintext row below it.
+    repull(m);
+    m.receive(
+      {
+        status: 200,
+        body: body({
+          encryptionSince: 2 ** 53,
+          changes: [{ setting: VOL, scope: "user", value: 0.99, version: 40 }],
+        }),
+      },
+      { changes: [{ seq: 40 }] },
+    );
+    expect(m.encryptionSince()).toBe(10);
+    expect(m.settingState(VOL).invalid).toBe(true);
+    expect(m.get(VOL)).toEqual({ value: 0.8, from: "document" });
+  });
+
+  it("only lowers the boundary, persists it, and is clamped by the lowest sealed version", () => {
+    const { m, opts } = confirmed(
+      {},
+      body({
+        encryptionSince: 100,
+        changes: [{ setting: VOL, scope: "user", value: 0.5, version: 30 }],
+      }),
+      { changes: [{ sealed: true }] },
+    );
+    // Opened sealed at version 30: the boundary is held at or below it.
+    expect(m.encryptionSince()).toBe(30);
+    expect(m.persist().partitions[ALICE]!.encryptionSince).toBe(30);
+    const again = relaunch(m, opts, "kept");
+    expect(again.encryptionSince()).toBe(30);
+    again.takeRequests();
+    again.receive({ status: 200, body: body({ encryptionSince: 500 }) });
+    expect(again.encryptionSince()).toBe(30);
+    repull(again);
+    again.receive({ status: 200, body: body({ encryptionSince: 7 }) });
+    expect(again.encryptionSince()).toBe(7);
+  });
+
+  it("a version this machine pushed sealed clamps the boundary too", () => {
+    const { m } = confirmed({}, body({ encryptionSince: 100 }));
+    m.set(BEST, 4);
+    m.advance(2000);
+    const sent = mutations(m.takeRequests())[0] as { mutationId: number };
+    m.receive({
+      status: 200,
+      body: body({
+        encryptionSince: 100,
+        results: [{ mutationId: sent.mutationId, status: "ok", version: 20 }],
+      }),
+    });
+    expect(m.encryptionSince()).toBe(20);
   });
 
   it("server mode ignores `seq` and `encryptionSince`", () => {
@@ -383,10 +515,9 @@ describe("max and min are the client's call (§13.10.5)", () => {
     const { m } = confirmed(
       {},
       body({
-        changes: [
-          { setting: BEST, scope: "user", value: 2, version: 4, sealed: true },
-        ],
+        changes: [{ setting: BEST, scope: "user", value: 2, version: 4 }],
       }),
+      { changes: [{ sealed: true }] },
     );
     m.set(BEST, value);
     m.advance(2000);
@@ -402,18 +533,21 @@ describe("max and min are the client's call (§13.10.5)", () => {
 
   it("re-pushes a better local value on the server's version, with origin merge", () => {
     const { m, sent } = pushed(10);
-    m.receive({
-      status: 200,
-      body: body({
-        results: [
-          {
-            mutationId: sent.mutationId,
-            status: "conflict",
-            server: { value: 6, version: 5 },
-          },
-        ],
-      }),
-    });
+    m.receive(
+      {
+        status: 200,
+        body: body({
+          results: [
+            {
+              mutationId: sent.mutationId,
+              status: "conflict",
+              server: { value: 6, version: 5 },
+            },
+          ],
+        }),
+      },
+      { conflicts: { [sent.mutationId]: { sealed: true } } },
+    );
     const again = mutations(m.takeRequests())[0] as Record<string, Json>;
     expect(again).toMatchObject({ op: "set", value: 10, baseVersion: 5 });
     expect(again.mutationId).not.toBe(sent.mutationId);
@@ -421,36 +555,42 @@ describe("max and min are the client's call (§13.10.5)", () => {
 
   it("keeps the server copy when it is better, and enqueues nothing", () => {
     const { m, sent } = pushed(3);
-    m.receive({
-      status: 200,
-      body: body({
-        results: [
-          {
-            mutationId: sent.mutationId,
-            status: "conflict",
-            server: { value: 6, version: 5 },
-          },
-        ],
-      }),
-    });
+    m.receive(
+      {
+        status: 200,
+        body: body({
+          results: [
+            {
+              mutationId: sent.mutationId,
+              status: "conflict",
+              server: { value: 6, version: 5 },
+            },
+          ],
+        }),
+      },
+      { conflicts: { [sent.mutationId]: { sealed: true } } },
+    );
     expect(mutations(m.takeRequests())).toEqual([]);
     expect(m.get(BEST).value).toBe(6);
   });
 
   it("does not re-merge a server copy the host could not open", () => {
     const { m, sent } = pushed(10);
-    m.receive({
-      status: 200,
-      body: body({
-        results: [
-          {
-            mutationId: sent.mutationId,
-            status: "conflict",
-            server: { value: 6, version: 5, invalid: true },
-          },
-        ],
-      }),
-    });
+    m.receive(
+      {
+        status: 200,
+        body: body({
+          results: [
+            {
+              mutationId: sent.mutationId,
+              status: "conflict",
+              server: { value: 6, version: 5 },
+            },
+          ],
+        }),
+      },
+      { conflicts: { [sent.mutationId]: { invalid: true } } },
+    );
     expect(mutations(m.takeRequests())).toEqual([]);
   });
 
@@ -458,18 +598,21 @@ describe("max and min are the client's call (§13.10.5)", () => {
     const { m } = confirmed();
     m.put("slots", "a", { playtime: 50 });
     const sent = mutations(m.takeRequests())[0] as { mutationId: number };
-    m.receive({
-      status: 200,
-      body: body({
-        results: [
-          {
-            mutationId: sent.mutationId,
-            status: "conflict",
-            server: { value: { playtime: 30 }, version: 8 },
-          },
-        ],
-      }),
-    });
+    m.receive(
+      {
+        status: 200,
+        body: body({
+          results: [
+            {
+              mutationId: sent.mutationId,
+              status: "conflict",
+              server: { value: { playtime: 30 }, version: 8 },
+            },
+          ],
+        }),
+      },
+      { conflicts: { [sent.mutationId]: { sealed: true } } },
+    );
     expect(mutations(m.takeRequests())[0]).toMatchObject({
       op: "set",
       value: { playtime: 50 },

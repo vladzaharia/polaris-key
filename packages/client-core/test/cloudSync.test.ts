@@ -83,6 +83,8 @@ function options(over: Partial<CloudSyncOptions> = {}): CloudSyncOptions {
     subject: ALICE,
     network: "online",
     newClientId: () => ids.shift()!,
+    // These are server-mode conversations; the machine's own default is e2e.
+    encryption: "server",
     ...over,
   };
 }
