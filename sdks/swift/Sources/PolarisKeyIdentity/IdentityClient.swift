@@ -225,6 +225,8 @@ public final class IdentityClient: Sendable {
     /// The device key port the platform exchange signs with (`installDeviceKeys`); nil until one
     /// is handed over, and then a `DeviceKeyStore` for the product, made on first use.
     let deviceKeys = LockedValue<(any DeviceKeyPort)?>(nil)
+    /// The platform identity `autoSignIn()` uses and `signOut()` cleans up after.
+    let platformProvider = LockedValue<(any PlatformIdentityProvider)?>(nil)
     private let sleep: @Sendable (Double) async throws -> Void
 
     /// - Parameter sleep: how the wait loop waits between polls. Defaults to `Task.sleep`, which

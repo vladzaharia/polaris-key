@@ -152,6 +152,8 @@ export const ErrorCode = {
   httpError: "http-error",
   invalidResponse: "invalid-response",
   storeFailed: "store-failed",
+  connectUnavailable: "connect-unavailable",
+  peerCertInvalid: "peer-cert-invalid",
   platformError: "platform-error",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
@@ -361,6 +363,8 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "http-error",
   "invalid-response",
   "store-failed",
+  "connect-unavailable",
+  "peer-cert-invalid",
   "platform-error",
   "no-token",
   "mint-unavailable",
@@ -572,6 +576,8 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "http-error": "client",
   "invalid-response": "client",
   "store-failed": "client",
+  "connect-unavailable": "client",
+  "peer-cert-invalid": "client",
   "platform-error": "client",
   "no-token": "client",
   "mint-unavailable": "client",
@@ -2034,7 +2040,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
-  "connect.lan": { status: "planned", service: "connect", na: [] },
+  "connect.lan": { status: "implemented", service: "connect", na: [] },
   "connect.relay": { status: "planned", service: "connect", na: [] },
   "connect.links": { status: "planned", service: "connect", na: [] },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
@@ -2202,4 +2208,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "79efe1494ace21aefce2b7eae33c7255d3d68e17b4e036bbe5051a3a780fbff0";
+  "548faa6a29ab7237d50ab7bf498777ae74418dc0ed24e0aa848c9b359d85cede";

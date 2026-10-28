@@ -263,6 +263,7 @@ public actor PolarisKeyClient {
                 fingerprintEnabled: options.license.fingerprint, publisher: publisher)
         }
         identityClient.installDeviceKeys(options.connect.keys)
+        identityClient.installPlatformIdentity(AppleSignInProvider())
         self.identity = identityClient
         self.release = ReleaseClient(core: core)
         self.distribution = DistributionClient(core: core)

@@ -105,6 +105,8 @@ extension IdentityClient {
             throw PolarisError(
                 code: ErrorCode.badResponse, message: "sign-out answered without `released`.")
         }
+        // The Worker accepted it: nothing silent may sign this person back in.
+        await markSignedOut()
         let previous = subjectValue.with { held -> String? in
             let old = held
             held = nil

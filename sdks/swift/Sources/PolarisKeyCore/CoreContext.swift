@@ -365,6 +365,8 @@ public actor CoreContext {
     /// In memory only: persisting it would change client-core's store contract (CacheRecordV3),
     /// so after a restart the source is unknown and `chooseReacquireRoute` keys on License alone.
     private var tokenSourceValue: TokenSource?
+    /// `explicitSignOut` held for this process; the store's record carries it across launches.
+    private var explicitSignOutValue = false
     private var discoveredServices: ServicesMap?
     private var discoveryDocumentValue: ProductDiscoveryDocument?
     /// Tier 2 — REPLACED, never merged into, on every successful verification (§1 rule 2).
@@ -468,7 +470,24 @@ public actor CoreContext {
         }
         tokenValue = token
         tokenSourceValue = source
+        // An explicit sign-in ends the signed-out state (automatic sign-in may run again).
+        if source == .signin { await setExplicitSignOut(false) }
     }
+
+    /// True after `identity.signOut()` until the next explicit sign-in: the automatic sign-in
+    /// ladder must not sign the person back in on its own. Persisted beside the credential
+    /// (`Store.readRecord`); a store that keeps no records holds it for the process only.
+    public func explicitSignOut() async -> Bool {
+        if explicitSignOutValue { return true }
+        return await store.readRecord(CoreContext.explicitSignOutRecord) != nil
+    }
+
+    public func setExplicitSignOut(_ on: Bool) async {
+        explicitSignOutValue = on
+        await store.writeRecord(CoreContext.explicitSignOutRecord, on ? Data("1".utf8) : nil)
+    }
+
+    static let explicitSignOutRecord = "explicit-sign-out"
 
     /// Wipe every credential and artifact, in memory and on disk, except the v4 update slices
     /// (below). Throws if the local wipe could not be completed — the caller needs to know the
