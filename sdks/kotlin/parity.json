@@ -536,6 +536,10 @@
       "status": "planned",
       "wp": "U-39"
     },
+    "sync.e2e": {
+      "status": "planned",
+      "wp": "U-39"
+    },
     "connect.identity": {
       "status": "implemented",
       "note": "Verification is :core's Peer (verifyCert, verifyRing, replaceRing, admitPeer); :conformance's PeerCasesTest drives peerCertCases, ringCases (the ring-lifetime-* rows included) and peerAdmissionCases on JCA and on Tink (CC-12.1). client.connect (:sdk, ConnectTest) makes the device keys on first need, registers them (registerDeviceKeys, PUT devices/keys), fetches GET connect/identity, verifies the roster and certificate against the effective set, refuses a stale, foreign, expired or other-keys answer, and holds them with K_disc as pkey.connect.v1 (owner-only file beside the device keys; memory-only keys refuse unless allowEphemeralKeys; an unreadable key record is an error); the previous K_disc is dropped after a leave or a key change; listDevices() and leave() (also run before sign-out). Android supplies its Keystore-sealed key store and state storage (CC-12b). No connect-identity transcript is recorded yet, so none is replayed."

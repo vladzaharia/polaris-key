@@ -721,6 +721,30 @@
       "note": "WIRE-CONTRACT-V5 §13.11.2. The keyring-* transcripts pin the routes with opaque fixture keys; the E2E codec and the ring client are U-38 to U-40."
     },
     {
+      "id": "sync.e2e",
+      "family": "sync",
+      "title": "End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "sync-vectors.json",
+          "wp": "U-33"
+        },
+        {
+          "kind": "corpus",
+          "file": "sync-scenarios.json",
+          "wp": "U-33"
+        },
+        {
+          "kind": "transcript",
+          "wp": "U-33"
+        }
+      ],
+      "allowedNa": [],
+      "note": "WIRE-CONTRACT-V5 §13. sync-vectors.json (U-34) and sync-scenarios.json v3 (U-35) are the golden vectors; the keyring-* transcripts pin the ring routes (U-36). Each SDK's client follows in U-38 to U-40."
+    },
+    {
       "id": "connect.identity",
       "family": "connect",
       "title": "Device certificates and rings: verify, key choice and admission",
