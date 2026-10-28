@@ -82,26 +82,40 @@ final class ConnectBrowseIndex: Sendable {
         }
     }
 
-    func lookup(_ instance: String, now: Int) -> ConnectBrowseIndex.Hit? {
+    func lookup(_ instance: String, now: Int) -> Hit? {
         guard PeerAdvert.isInstanceName(instance) else { return nil }
-        let epoch = peerAdvertEpoch(now)
         return state.with { s in
             guard s.loaded else { return nil }
-            if s.built?.epoch != epoch {
-                var table: [String: ConnectBrowseIndex.Hit] = [:]
-                for epochBack in 0...1 {
-                    for (i, key) in s.keys.prefix(2).enumerated() {
-                        for deviceId in s.roster.prefix(128) {
-                            guard let n = try? name(key, epoch - epochBack, deviceId), table[n] == nil else { continue }
-                            table[n] = ConnectBrowseIndex.Hit(deviceId: deviceId, epochBack: epochBack, keyIndex: i)
-                        }
-                    }
-                }
-                s.built = Built(epoch: epoch, table: table)
-                builds.with { $0 += 1 }
-            }
+            ensure(&s, now: now)
             return s.built?.table[instance]
         }
+    }
+
+    /// Bring the dictionary to `now`'s epoch; true when it had to be rebuilt (a new epoch counts), so the
+    /// caller re-runs the browse filter.
+    func refresh(now: Int) -> Bool {
+        state.with { s in
+            guard s.loaded else { return false }
+            return ensure(&s, now: now)
+        }
+    }
+
+    @discardableResult
+    private func ensure(_ s: inout State, now: Int) -> Bool {
+        let epoch = peerAdvertEpoch(now)
+        if s.built?.epoch == epoch { return false }
+        var table: [String: Hit] = [:]
+        for epochBack in 0...1 {
+            for (i, key) in s.keys.prefix(2).enumerated() {
+                for deviceId in s.roster.prefix(128) {
+                    guard let n = try? name(key, epoch - epochBack, deviceId), table[n] == nil else { continue }
+                    table[n] = Hit(deviceId: deviceId, epochBack: epochBack, keyIndex: i)
+                }
+            }
+        }
+        s.built = Built(epoch: epoch, table: table)
+        builds.with { $0 += 1 }
+        return true
     }
 }
 
@@ -608,6 +622,8 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
         if stopped { return }
         let ident = try await identity(force: true)
         let now = src.now()
+        // The epoch turned over: a peer that learned it first already advertises under the new name.
+        if index.refresh(now: now) { network.rescan() }
         let epoch = peerAdvertEpoch(now)
         guard let name = try? PeerAdvert.accountInstance(
             discoveryKey: ident.keys.current.bytes, epoch: epoch, deviceId: ident.deviceId)

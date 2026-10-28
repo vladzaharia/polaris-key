@@ -323,6 +323,20 @@ final class ConnectLanTests: XCTestCase {
         XCTAssertEqual(index.builds.current, 3)
     }
 
+    /// The epoch turning over is an index change too, so the browse filter re-runs.
+    func testRefreshReportsAnEpochRebuild() {
+        let index = ConnectBrowseIndex(name: { _, e, id in "p1-" + String(repeating: "a", count: 14) + "\(e % 10)\(id.count % 10)" })
+        XCTAssertFalse(index.refresh(now: t0), "nothing loaded")
+        XCTAssertTrue(index.update(keys: [Data(repeating: 1, count: 32)], roster: ["x"]))
+        XCTAssertFalse(index.update(keys: [Data(repeating: 1, count: 32)], roster: ["x"]))
+        XCTAssertTrue(index.refresh(now: t0), "first build")
+        XCTAssertFalse(index.refresh(now: t0 + 10), "same epoch")
+        XCTAssertTrue(index.refresh(now: t0 + 900), "next epoch")
+        XCTAssertFalse(index.refresh(now: t0 + 901))
+        XCTAssertTrue(index.update(keys: [Data(repeating: 2, count: 32)], roster: ["x"]), "a new key")
+        XCTAssertTrue(index.refresh(now: t0 + 901))
+    }
+
     func testTheIndexFindsRealNamesInPriorityOrder() throws {
         let index = ConnectBrowseIndex()
         let k = Data((0..<32).map { UInt8($0) })
