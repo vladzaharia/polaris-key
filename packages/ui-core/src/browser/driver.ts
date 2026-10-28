@@ -8,18 +8,32 @@
 // a framework.
 
 import { withManageKey, withManageReturn } from "@polaris-key/client-core";
+import { parsePortal, portalLink } from "@polaris-key/client-core/portal";
+import { ISSUER } from "@polaris-key/protocol/core";
 
 import type { ReleaseNoteInput, UiInput } from "../input.js";
 import { BrowserAdapter } from "./sdk/browser/browserAdapter.js";
 import {
   PolarisError,
+  type DeviceCodeSignInSession,
   type OidcSignInHandle,
   type PolarisAdapter,
   type PolarisState,
 } from "./sdk/core/index.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./sdk/core/services.js";
 import type { TrustSet } from "./sdk/browser/offline.js";
-import { gateInput, type GateStep } from "./input.js";
+import {
+  AddToAccountModel,
+  type AddToAccountDriver,
+  type AddToAccountSnapshot,
+} from "../addToAccountModel.js";
+import type {
+  ChoiceComplete,
+  SignInPrimitives,
+  SignInSessionHandle,
+  SignInWait,
+} from "../signInModel.js";
+import { gateInput, isHolderStep, type GateStep } from "./input.js";
 import { openLink, safeLink } from "./links.js";
 
 /** What `<pk-gate config>` takes: the product, and the few transport choices a page makes. */
@@ -171,6 +185,12 @@ export interface GateDriverOptions {
   version?: string;
   /** The product slug (the update prompt's bundle). */
   product?: string;
+  /** The control-plane origin: where the product page link falls back to when discovery names
+   *  none (an older Worker). Defaults to the SDK's. */
+  baseUrl?: string;
+  /** The device kind already worded ("computer", "browser"): the lines of ActivateDone and
+   *  AddToAccount that name this device. Defaults to "device". */
+  deviceKind?: string;
 }
 
 /** Open the device-limit link (PX-W8): the app's return URL as `return=` and, on an `/activate`
@@ -185,6 +205,37 @@ export function openManage(
   if (key) u = withManageKey(u, key);
   const safe = safeLink(u);
   if (safe) openLink(safe);
+}
+
+/** The session handle a device-code sign-in runs as, in this page's memory: the form's `wait()`
+ *  answers, one poll at a time (the SDK's own interval between them). */
+function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
+  return {
+    browserOpened: true,
+    wait: async (): Promise<SignInWait> => {
+      const r = await flow.wait({ once: true });
+      switch (r.kind) {
+        case "pending":
+          await new Promise((done) => setTimeout(done, r.interval * 1000));
+          return { outcome: "pending" };
+        case "choose":
+          return {
+            outcome: "choose",
+            grant: r.grant,
+            choices: r.choices as never,
+            expiresIn: r.expiresIn,
+          };
+        case "signedIn":
+          return { outcome: "signedIn" };
+        case "cancelled":
+          return { outcome: "cancelled" };
+        case "expired":
+          return { outcome: "expired" };
+      }
+    },
+    reopen: () => flow.reopen(),
+    cancel: () => flow.cancel(),
+  };
 }
 
 /** The first `n` non-empty lines of a summary (plain text: it never executes markup). */
@@ -227,6 +278,17 @@ export class GateDriver {
   private last: GateSnapshot | null = null;
   private lastState: PolarisState | null = null;
   private readonly options: GateDriverOptions;
+  /** The license key a gate activation took, held in memory only (UK-42): for the portal hand-off
+   *  while Identity is off. Never in a snapshot or a view's input, never logged, never stored; it
+   *  is dropped when the person leaves ActivateDone, cancels or the gate detaches. */
+  private heldKey: string | null = null;
+  /** A key activation is in flight: the state it causes must not end the Done step. */
+  private activating = false;
+  private addModel: AddToAccountModel | null = null;
+  private addUnsub: (() => void) | null = null;
+  private addSession: SignInSessionHandle | null = null;
+  /** Where AddToAccount opened from: ActivateDone, or a screen of the app (the settings row). */
+  private addFrom: GateStep = "home";
 
   constructor(
     readonly adapter: PolarisAdapter,
@@ -271,6 +333,10 @@ export class GateDriver {
       handle: this.handle,
       secondsLeft: this.secondsLeft,
       dismissed: this.dismissed,
+      deviceKind: this.options.deviceKind ?? "device",
+      ...(this.addModel
+        ? { addToAccount: this.addModel.input().addToAccount }
+        : {}),
       ...(this.options.locale !== undefined
         ? { locale: this.options.locale }
         : {}),
@@ -338,6 +404,7 @@ export class GateDriver {
     this.handle?.cancel?.();
     this.handle = null;
     this.setTimer(undefined);
+    this.dropHolder();
     if (typeof window !== "undefined") {
       window.removeEventListener("popstate", this.onPop);
       window.removeEventListener("focus", this.onBack);
@@ -353,7 +420,10 @@ export class GateDriver {
    *  failure ends the hand-off (the Welcome step shows it); Update is asked once it is on. */
   private onState(state: PolarisState): void {
     if (state.status !== "needs-activation" && state.phase !== "loading") {
-      if (this.handle || this.step !== "home") {
+      // ActivateDone and AddToAccount show over the license that just activated: only the person
+      // leaves them (and a key activation in flight is about to land on Done).
+      const holds = this.activating || isHolderStep(this.step);
+      if (this.handle || (this.step !== "home" && !holds)) {
         this.handle?.cancel?.();
         this.handle = null;
         this.step = "home";
@@ -431,6 +501,7 @@ export class GateDriver {
   // ── the platform's Back steps back through the gate: each step past Welcome is one entry ─────
 
   private toHome(): void {
+    this.dropHolder();
     this.handle?.cancel?.();
     this.handle = null;
     this.setTimer(undefined);
@@ -484,6 +555,175 @@ export class GateDriver {
     const k = this.key.trim();
     if (k) void this.adapter.submitKey(k).catch(() => undefined);
   };
+
+  // ── activation without an account (UK-42): Done, AddToAccount, the portal ───────────────
+
+  /** Leave Done and AddToAccount: what they held is spent. */
+  private dropHolder(): void {
+    this.heldKey = null;
+    this.addUnsub?.();
+    this.addUnsub = null;
+    const m = this.addModel;
+    this.addModel = null;
+    const h = this.addSession;
+    this.addSession = null;
+    if (m) void m.cancel().catch(() => {});
+    if (h) void Promise.resolve(h.cancel()).catch(() => {});
+  }
+
+  /** A key activated here: the gate shows ActivateDone with the key held in memory. */
+  private keyActivated(key: string): void {
+    this.heldKey = key;
+    this.key = "";
+    this.submitted = false;
+    this.dismissed = this.adapter.snapshot().error.license;
+    this.enter("done", "activate.submit");
+  }
+
+  /** Start using the app (Done's primary, and "continue without an account"): the gate closes
+   *  its steps and the key is dropped. */
+  private finish(): void {
+    this.dropHolder();
+    this.step = "home";
+    this.key = "";
+    this.submitted = false;
+    this.opener = null;
+    this.setTimer(undefined);
+    if (this.pushed) {
+      this.pushed = false;
+      this.skipPop = true;
+      try {
+        history.back();
+      } catch {
+        this.skipPop = false;
+      }
+    }
+    this.changed();
+  }
+
+  /** The product page, with the key as the `#key=` fragment when one is held: the one place the
+   *  key leaves memory. A fragment never reaches a server or a log, and only a link that passes
+   *  `safeLink` opens. Used where Identity is off, so there is no account sign-in to run. */
+  private async openPortal(): Promise<void> {
+    let core: unknown;
+    try {
+      core = (await this.adapter.discovery())?.core;
+    } catch {
+      core = undefined;
+    }
+    const link = portalLink({
+      portal: parsePortal(core),
+      baseUrl: this.options.baseUrl ?? `https://${ISSUER}`,
+      product: this.options.product ?? "",
+    });
+    if (link)
+      openManage(link, this.options.returnUrl, this.heldKey ?? undefined);
+  }
+
+  /** Add your name and email: with Identity on, AddToAccount; with it off, the portal. */
+  private addToAccount(): void {
+    if (!this.adapter.snapshot().capabilities.identity.enabled) {
+      void this.openPortal();
+      return;
+    }
+    if (this.step === "add") return;
+    this.dropAdd();
+    this.addFrom = this.step;
+    this.addModel = new AddToAccountModel({
+      driver: this.accountDriver(),
+      deviceKind: this.options.deviceKind ?? "device",
+    });
+    this.addUnsub = this.addModel.store.subscribe(() => {
+      this.changed();
+    });
+    this.enter("add", "activate.recommend.action");
+  }
+
+  private dropAdd(): void {
+    this.addUnsub?.();
+    this.addUnsub = null;
+    this.addModel = null;
+  }
+
+  /** AddToAccount's three calls over the SDK. The primitives load with the form, never at boot;
+   *  `start` runs the sign-in in this page (a device-code session, hints and the app's license
+   *  choice), so its answer comes back here and the license is kept and attached in order. */
+  private accountDriver(): AddToAccountDriver {
+    const ready = this.primitives().then(async (p) => {
+      const { driverOf } = await import("../addToAccountModel.js");
+      return driverOf(p);
+    });
+    return {
+      signIn: async (hints) => (await ready).signIn(hints),
+      complete: async (grant, choice) => (await ready).complete(grant, choice),
+      attach: async () => (await ready).attach(),
+    };
+  }
+
+  /** The SDK's calls as the form's primitives, with `start` running in this page. */
+  private async primitives(): Promise<SignInPrimitives> {
+    const { primitivesOf } = await import("./sdk/autoPrimitives.js");
+    return {
+      ...primitivesOf(
+        this.adapter,
+        () => undefined,
+        () => false,
+      ),
+      start: async (o) => {
+        const flow = await this.adapter.signIn.start({
+          channel: "device-code",
+          ...(o.licenseChoice === "app"
+            ? { licenseChoice: "app" as const }
+            : {}),
+          ...(o.hints?.loginHint ? { loginHint: o.hints.loginHint } : {}),
+          ...(o.hints?.nameHint ? { nameHint: o.hints.nameHint } : {}),
+          ...(o.hints?.purpose ? { purpose: o.hints.purpose } : {}),
+        });
+        void flow.reopen();
+        const h = handleOf(flow);
+        this.addSession = h;
+        return h;
+      },
+    };
+  }
+
+  /** "Sign in to that account" on a license-owned refusal: sign in in this page, and when the
+   *  sign-in has a license choice due, complete it with the key that was entered (D17): the license
+   *  joins the account and no list is shown. The key is held in memory for this call only. Where the
+   *  page cannot run the sign-in itself (a cookie page), the gate's own sign-in runs as before. */
+  private ownedSignIn(): void {
+    const key = this.key.trim();
+    void (async () => {
+      let p: SignInPrimitives;
+      let h: SignInSessionHandle;
+      try {
+        p = await this.primitives();
+        h = await p.start({ channel: "browser", licenseChoice: "app" });
+      } catch {
+        this.signIn();
+        return;
+      }
+      try {
+        for (;;) {
+          const r = await h.wait();
+          if (r.outcome === "pending") continue;
+          if (r.outcome === "choose" && key && p.choice) {
+            const c: ChoiceComplete = await p.choice.complete(r.grant, {
+              kind: "key",
+              key,
+            });
+            // Anything but signed in leaves the refusal on screen; the person can try again.
+            if (c.outcome === "signedIn") this.finish();
+          }
+          return;
+        }
+      } catch {
+        return;
+      } finally {
+        if (this.addSession === h) this.addSession = null;
+      }
+    })();
+  }
 
   // ── the controls ────────────────────────────────────────────────────────────────────────
 
@@ -543,10 +783,51 @@ export class GateDriver {
       case "activate.submit": {
         this.submitted = true;
         const v = this.key.trim();
-        if (v) void this.adapter.submitKey(v).catch(() => undefined);
+        if (v) {
+          this.activating = true;
+          void this.adapter
+            .submitKey(v)
+            .then(() => {
+              this.activating = false;
+              // No account: the license is floating, held by the key alone. ActivateDone.
+              if (this.attached) this.keyActivated(v);
+            })
+            .catch(() => {
+              this.activating = false;
+              this.changed();
+            });
+        }
         this.changed();
         return;
       }
+      case "signin.key.ownedSignIn":
+        if (this.step === "add") {
+          // The license is in an account already (AddToAccount's owned state): sign in to it.
+          this.signIn();
+          return;
+        }
+        this.ownedSignIn();
+        return;
+      case "activate.recommend.action":
+        // ActivateDone's card, and AccountAndLicense's "Not in an account" row.
+        this.addToAccount();
+        return;
+      case "activate.recommend.skip":
+      case "signin.done.start":
+        this.finish();
+        return;
+      case "activate.waitingSignIn":
+        // The license waits for its email's account: the gate's own sign-in.
+        this.signIn();
+        return;
+      case "common.continue":
+        if (this.step === "add") void this.addModel?.submit();
+        return;
+      case "activate.otherEmail.verify":
+      case "signin.auto.confirm.other":
+        // A different email: back to the form with the fields kept.
+        if (this.step === "add") void this.addModel?.cancel();
+        return;
       case "deviceLimit.title":
       case "deviceLimit.primary":
       case "deviceLimit.openBrowser": {
@@ -576,9 +857,22 @@ export class GateDriver {
       }
       case "common.cancel":
       case "common.back":
+        if (this.step === "add" && this.addFrom === "done") {
+          // AddToAccount's Cancel goes back to ActivateDone, the key still held.
+          this.dropAdd();
+          this.step = "done";
+          this.changed();
+          return;
+        }
         this.leave();
         return;
       case "common.tryAgain":
+        if (this.step === "add") {
+          void this.addModel?.tryAgain();
+          return;
+        }
+        void this.adapter.refresh({ force: true }).catch(() => undefined);
+        return;
       case "common.reconnect":
         void this.adapter.refresh({ force: true }).catch(() => undefined);
         return;
@@ -588,8 +882,12 @@ export class GateDriver {
     }
   }
 
-  /** A field changed. Only the key field is the gate's. */
+  /** A field changed: the key field, or AddToAccount's `name` and `email` (held by its model). */
   edit(field: string, value: string): void {
+    if (field === "name" || field === "email") {
+      this.addModel?.setField(field, value);
+      return;
+    }
     if (field !== "key") return;
     this.key = value;
     this.submitted = false;

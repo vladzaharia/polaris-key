@@ -2,15 +2,32 @@
 // drop-ins (React's `useSdkGate`, elements' `<pk-gate config>`) read it; the models decide every
 // screen and nothing here draws.
 
-import type { UiInput } from "../input.js";
+import type { AddToAccountInput, UiInput } from "../input.js";
 import { activationFromOutcome } from "../errors.js";
 import type { Pending } from "../vocabulary.js";
 import { isSignInRefusal } from "./sdk/core/adapter.js";
 import type { OidcSignInHandle, PolarisState } from "./sdk/core/index.js";
 import { safeLink } from "./links.js";
 
-/** Which step of the one sign-in form the gate shows while activation is needed. */
-export type GateStep = "home" | "activate" | "handoff";
+/** Which step of the one sign-in form the gate shows while activation is needed. `done` and
+ *  `add` follow a key that activated with no account (UK-42): ActivateDone, then AddToAccount.
+ *  They show over an active license, so the gate keeps them until the person leaves them. */
+export type GateStep = "home" | "activate" | "handoff" | "done" | "add";
+
+/** The steps that belong to activation without an account. */
+export function isHolderStep(step: GateStep): boolean {
+  return step === "done" || step === "add";
+}
+
+/** The license's holder, read from the signed document's `profile` (UK-42, Q2): `email` empty is
+ *  floating (held by the key alone), set is waiting for that email to sign in. `undefined` while
+ *  no document is present, and when an account is signed in on this device (`profile.user`), so a
+ *  screen never calls an account's license floating. */
+export function holderOf(state: PolarisState): { email: string } | undefined {
+  const p = state.profile;
+  if (!p || p.user) return undefined;
+  return { email: typeof p.email === "string" ? p.email : "" };
+}
 
 /** The error fields the gate needs to map a refusal to an input state. */
 export interface ErrorLike {
@@ -90,6 +107,10 @@ export function gateInput(
     locale?: string;
     /** The refusal the person already left (Back, a different key, an edit): not shown again. */
     dismissed?: unknown;
+    /** The device kind already worded ("computer", "browser"), for the lines that name it. */
+    deviceKind?: string;
+    /** AddToAccount's step, while the gate is on `add`. */
+    addToAccount?: AddToAccountInput;
   },
 ): UiInput {
   const caps = state.capabilities;
@@ -151,6 +172,15 @@ export function gateInput(
     keyField: { text: extra.key, submitted: extra.submitted },
     ...(refusal ? { activation: refusal } : {}),
   };
+  // The holder drives ActivateDone and AccountAndLicense's floating row (UK-42).
+  const holder = holderOf(state);
+  if (holder) input.licenseHolder = holder;
+  if (extra.step === "done" || extra.step === "add")
+    input.activateDone = extra.deviceKind
+      ? { deviceKind: extra.deviceKind }
+      : {};
+  if (extra.step === "add" && extra.addToAccount)
+    input.addToAccount = extra.addToAccount;
   const h = extra.handle;
   if (extra.step === "handoff" && h) {
     const address = safeLink(h.verificationUri ?? h.verificationUrl);
