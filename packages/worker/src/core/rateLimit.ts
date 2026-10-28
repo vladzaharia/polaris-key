@@ -178,6 +178,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // U-36.3: the recovery fetch, 5 a day per device (T23). Each one is audited and emailed, so an
   // outage refuses rather than letting a stolen token fetch the blob unmetered.
   keyringRecovery: "closed",
+  // The same fetch, 5 a day per subject: device ids are cheap to add, so the account has its own.
+  keyringRecoverySubject: "closed",
   // I-02: the email send limits (`core/notify/emailLimits.ts`). A refused send is answered exactly
   // like a sent one by the caller (enumeration safety, I-08), so failing closed costs a real
   // user one resend and an outage can never become an unlimited mail cannon at a victim's

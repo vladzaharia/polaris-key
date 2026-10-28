@@ -8477,12 +8477,18 @@ ring for the product. The routes are recorded in the `keyring-*` transcripts.
 - **T23, recovery-code phishing.** The recovery blob is sealed under a code the server never sees,
   and it is useful only with that code. The fetch (`GET .../recovery`) is open to any signed-in
   device of the account, with no wrap, because the device that needs it holds none. Its brakes are
-  5 fetches a day per device (a sixth is `429 rate_limited`; a fetch with nothing to return counts),
-  an audit row written before the blob is served, and a notice to the account's verified addresses
+  5 fetches a day per device and 5 a day per subject, both failing closed (a sixth is `429
+rate_limited`; a fetch with nothing to return counts), an audit row written before the blob is served, and a notice to the account's verified addresses
   that says no one will ask for the code. If no address can be delivered to, only a count-only audit
   row remains. The copy in the apps says the code is entered only in the app and never on a web
   page. Residual: a person who gives the code to a caller, with a stolen device token, gives the
   data away; the brakes make that visible, they do not prevent it.
+  The code carries 128 bits of entropy; its 32-bit checksum is for typing errors and gives a
+  guesser no advantage, so the effective strength is 128 bits, not the 160 written length.
+- **Removing a device does not rotate R.** Removing a device deletes its wraps. A device that
+  already held the root keeps it, so it can still open data sealed under that ring. Residual:
+  the remedy is "reset", which creates a new ring; data written afterwards is sealed under the new
+  root. Help says so.
 
 Writing the recovery blob and adopting a root need a wrap (they seal with the root). The recovery
 and adoption blobs are held to the contract layout (61 bytes, version 1), so the routes cannot be
@@ -8509,6 +8515,11 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
   switch of a product's catalog from `e2e` to `server` leaves sealed rows no client can open
   (V5 §13.10.1). Ciphertext length is visible to the server, padded to 64 bytes; budgets are
   charged on the length less the envelope overhead, so they match the client's.
+- **T24 and T26, the envelope AAD.** The envelope's associated data is the version, the `kid` and
+  the salt. The collection is bound through its key and the name through the inner key, but not
+  the scope or a counter. Residual: the Worker can serve an older `ct` for the same name, or move a
+  value between scopes (for example user and platform rows with the same name), and the client
+  opens it. Without a log this is inherent; it is not fixed here.
 - **T19, `max` and `min`.** In E2E mode the server holds a compare-and-swap register and cannot
   compare values; the client decides the better one. A client that ignores the rule can write a
   worse value, which harms only that person's own data. Field policies are not anti-cheat.
