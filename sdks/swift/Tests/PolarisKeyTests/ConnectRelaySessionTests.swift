@@ -310,4 +310,22 @@ final class ConnectRelaySessionTests: XCTestCase {
         XCTAssertEqual(got.sizes.last, 5)
         await w.close()
     }
+
+    func testASessionWhoseOutboxIsOverTheCapIsClosedAndTheOthersGoOn() async throws {
+        let w = try await World()
+        let clock = FakeClock()
+        let sleeper = ManualSleep()
+        let pacer = ConnectPacer(rate: 180, burst: 360, clock: { clock.now }, sleep: { try await sleeper.sleep($0) })
+        let a = try await w.start(w.a) { $0.pacer = { pacer } }
+        let b = try await w.start(w.b)
+        b.onSession { _ in }
+        let s = try await a.dial(idB)
+        while pacer.tryTake() == 0 {}  // the writer now waits on the pacer, so the outbox fills
+        let ids = await a.openLinkIds()
+        let id = try XCTUnwrap(ids.first)
+        for _ in 0..<200 { await a.sendSession(peer: id.peer, session: id.session, noise: Data(count: 60_000)) }
+        await until("the session is closed for being over the outbox cap") { s.closed != nil }
+        await until("the session left the table") { await a.openLinkIds().isEmpty }
+        await w.close()
+    }
 }

@@ -586,3 +586,24 @@ private final class WSServer: @unchecked Sendable {
     }
 }
 #endif
+
+final class RelayPipeBudgetTests: XCTestCase {
+    func testRelayInboundReservesAgainstTheSharedBudgetAndReleasesOnReadAndLoss() async throws {
+        let budget = ConnectQueueBudget(limit: 1000)
+        let a = RelayPipe(budget: budget), b = RelayPipe(budget: budget)
+        let over = LockedValue(0)
+        a.onOverflow = { over.with { $0 += 1 } }
+        b.onOverflow = { over.with { $0 += 1 } }
+        let msg = Data(count: 400)  // framed: 402
+        a.push(msg)
+        b.push(msg)
+        XCTAssertEqual(budget.used, 804)
+        a.push(msg)  // would take the total past 1000, though the pipe itself is far under its cap
+        XCTAssertEqual(over.current, 1)
+        XCTAssertEqual(budget.used, 804)
+        _ = try await a.read()
+        XCTAssertEqual(budget.used, 402)
+        b.lose()
+        XCTAssertEqual(budget.used, 0)
+    }
+}

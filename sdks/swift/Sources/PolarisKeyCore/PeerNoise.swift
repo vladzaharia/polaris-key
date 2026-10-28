@@ -200,6 +200,7 @@ public final class PeerCipherState: @unchecked Sendable, CustomStringConvertible
     private let lock = NSLock()
     private var k: SymmetricKey?
     private var n: UInt64 = 0
+    private var wiped = false
 
     init(key: Data?) { k = key.map { SymmetricKey(data: $0) } }
 
@@ -214,6 +215,7 @@ public final class PeerCipherState: @unchecked Sendable, CustomStringConvertible
 
     public func encrypt(ad: Data, _ plaintext: Data) throws -> Data {
         try lock.withLock {
+            if wiped { throw PeerNoiseError.state }
             guard let k else { return plaintext }
             if n == UInt64.max { throw PeerNoiseError.nonceExhausted }
             if plaintext.count + 16 > peerNoiseMaxMessage { throw PeerNoiseError.malformed }
@@ -225,6 +227,7 @@ public final class PeerCipherState: @unchecked Sendable, CustomStringConvertible
 
     public func decrypt(ad: Data, _ ciphertext: Data) throws -> Data {
         try lock.withLock {
+            if wiped { throw PeerNoiseError.state }
             guard let k else { return ciphertext }
             if n == UInt64.max { throw PeerNoiseError.nonceExhausted }
             if ciphertext.count < 16 || ciphertext.count > peerNoiseMaxMessage {
@@ -245,7 +248,13 @@ public final class PeerCipherState: @unchecked Sendable, CustomStringConvertible
         }
     }
 
-    func wipe() { lock.withLock { k = nil } }
+    /// After this, `encrypt` and `decrypt` throw: a wiped cipher never passes bytes through as plaintext.
+    func wipe() {
+        lock.withLock {
+            k = nil
+            wiped = true
+        }
+    }
 
     public var description: String { "PeerCipherState()" }
     public var customMirror: Mirror { Mirror(self, children: [:]) }

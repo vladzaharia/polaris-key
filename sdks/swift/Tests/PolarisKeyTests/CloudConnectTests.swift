@@ -5,7 +5,9 @@
 
 import CryptoKit
 import Foundation
+import Network
 import PolarisKeyCore
+import PolarisKeyPlatform
 import XCTest
 
 @testable import PolarisKey
@@ -26,6 +28,92 @@ private func session(_ link: Link) -> ConnectSession {
     ConnectSession(
         link: link, peerDeviceId: otherId, caps: [], hello: PeerHello(label: nil, platform: "t", app: "djdl", maxMessage: 65_536),
         role: "responder", remoteAddress: "10.0.0.2")
+}
+
+/// A LAN network that listens and advertises nothing real, and says what is still up.
+private final class LifeNet: ConnectLanNetwork, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _listening = false
+    private var _advert: String?
+    private var _stops = 0
+    private var gate: CheckedContinuation<Void, Never>?
+    var hangListen = false
+    var listening: Bool { lock.withLock { _listening } }
+    var advert: String? { lock.withLock { _advert } }
+    var stops: Int { lock.withLock { _stops } }
+
+    func listen(
+        onPipe: @escaping @Sendable (NWPipe) -> Void, onEvent: @escaping @Sendable (BonjourListenerEvent) -> Void
+    ) async throws -> UInt16 {
+        if hangListen { await withCheckedContinuation { c in lock.withLock { gate = c } } }
+        lock.withLock { _listening = true }
+        return 1
+    }
+    func release() { lock.withLock { let g = gate; gate = nil; return g }?.resume() }
+    func advertise(_ a: BonjourAdvert?) async { lock.withLock { _advert = a?.instance } }
+    func browse(
+        onUp: @escaping @Sendable (BonjourFound) -> Void, onDown: @escaping @Sendable (String) -> Void,
+        onError: @escaping @Sendable (BonjourBrowseError) -> Void
+    ) throws -> @Sendable () -> Void { {} }
+    func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe { throw BonjourPipeError.timedOut }
+    func stop() async {
+        lock.withLock {
+            _listening = false
+            _advert = nil
+            _stops += 1
+        }
+    }
+}
+
+/// A relay socket that stays open until it is closed, and says how it was closed.
+private final class HoldSocket: ConnectRelaySocket, @unchecked Sendable {
+    private let lock = NSLock()
+    private var waiter: CheckedContinuation<RelayFrame, Error>?
+    private var _code: Int?
+    var closeCode: Int? { lock.withLock { _code } }
+    func send(_ data: Data) async throws {}
+    func receive() async throws -> RelayFrame {
+        try await withCheckedThrowingContinuation { c in
+            let already = lock.withLock { () -> Bool in
+                if _code != nil { return true }
+                waiter = c
+                return false
+            }
+            if already { c.resume(throwing: RelaySocketClosed(code: nil)) }
+        }
+    }
+    func close(code: Int) async {
+        let w = lock.withLock { () -> CheckedContinuation<RelayFrame, Error>? in
+            if _code == nil { _code = code }
+            defer { waiter = nil }
+            return waiter
+        }
+        w?.resume(throwing: RelaySocketClosed(code: code))
+    }
+}
+
+private final class Sockets: @unchecked Sendable {
+    private let lock = NSLock()
+    private var all: [HoldSocket] = []
+    var list: [HoldSocket] { lock.withLock { all } }
+    var opener: ConnectRelayOpener {
+        { [self] _, _ in
+            let s = HoldSocket()
+            lock.withLock { all.append(s) }
+            return s
+        }
+    }
+}
+
+private let relayTicketBody =
+    #"{"ticket":"pkeyrt_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","url":"wss://key.example/djdl/connect/relay","protocol":"pkey-relay.1","expiresAt":\#(Int(Date().timeIntervalSince1970) + 60)}"#
+
+/// A link that never finishes closing: a host callback that blocks.
+private final class StuckLink: ConnectSessionLink, @unchecked Sendable {
+    func sendRecord(type: Int, body: Data) async throws {}
+    func close(_ code: PeerCloseCode) async { try? await Task.sleep(nanoseconds: 600 * 1_000_000_000) }
+    func closeSoon(_ code: PeerCloseCode) {}
+    func pause(_ on: Bool) {}
 }
 
 final class CloudConnectTests: XCTestCase {
@@ -176,5 +264,92 @@ final class CloudConnectTests: XCTestCase {
         struct Boom: Error {}
         let bad: CloudConnectCore.Race<Int> = await CloudConnectCore.race(5, { throw Boom() }, late: { _ in })
         guard case .failed = bad else { return XCTFail("\(bad)") }
+    }
+
+    // MARK: B1, S6, S7: stop() against start(), the start bound, and the forced stop
+
+    private func lifeOptions(_ net: LifeNet, _ sockets: Sockets) -> CloudConnectOptions {
+        CloudConnectOptions(
+            lan: true, relay: true,
+            lanOptions: ConnectLanOptions(advertise: true, browse: false, network: net),
+            relayOptions: ConnectRelayOptions(opener: sockets.opener))
+    }
+
+    func testStopAtAnyPointDuringStartLeavesNothingAdvertisingAndTheRelayClosed() async throws {
+        for delayMs in [0, 1, 2, 5, 20, -1] {
+            let c = try await client()
+            try await serve()
+            await server.reply("/djdl/connect/relay/ticket", body: relayTicketBody)
+            let net = LifeNet()
+            let sockets = Sockets()
+            let opts = lifeOptions(net, sockets)
+            let started = Task { try? await c.cloudConnect.start(options: opts) }
+            // A stop before start() has begun is a stop of nothing; the window is from the first await on.
+            for _ in 0..<500 where !(await c.cloudConnect.core.startInFlight) { try await Task.sleep(nanoseconds: 100_000) }
+            if delayMs < 0 {
+                for _ in 0..<500 where !c.cloudConnect.status().running { try await Task.sleep(nanoseconds: 10_000_000) }
+            } else if delayMs > 0 {
+                try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
+            }
+            await c.cloudConnect.stop()
+            _ = await started.value
+            let st = c.cloudConnect.status()
+            XCTAssertFalse(st.running, "delay \(delayMs)")
+            XCTAssertEqual(st.lan, "off", "delay \(delayMs)")
+            XCTAssertEqual(st.relay, "off", "delay \(delayMs)")
+            XCTAssertFalse(net.listening, "delay \(delayMs)")
+            XCTAssertNil(net.advert, "delay \(delayMs)")
+            XCTAssertTrue(sockets.list.allSatisfy { $0.closeCode != nil }, "every relay socket is closed, delay \(delayMs)")
+        }
+    }
+
+    func testStartHasABoundAndTearsDownWhatItBroughtUp() async throws {
+        let c = try await client()
+        try await serve()
+        let net = LifeNet()
+        net.hangListen = true  // a listener that never becomes ready
+        let opts = CloudConnectOptions(
+            lan: true, relay: false, lanOptions: ConnectLanOptions(advertise: true, browse: false, network: net))
+        let began = Date()
+        do { try await c.cloudConnect.core.start(opts, timeout: 0.3); XCTFail("must time out") } catch {
+            XCTAssertTrue(error is ConnectLanError)
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(began), 5)
+        XCTAssertFalse(c.cloudConnect.status().running)
+        net.release()
+        for _ in 0..<100 where net.listening { try await Task.sleep(nanoseconds: 10_000_000) }
+        await c.cloudConnect.stop()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertFalse(net.listening, "a start that came back late did not keep the listener")
+    }
+
+    func testAStuckStopIsForceCancelledAndSignOutGoesOn() async throws {
+        let c = try await client()
+        try await serve()
+        await server.reply("/djdl/connect/relay/ticket", body: relayTicketBody)
+        let net = LifeNet()
+        let sockets = Sockets()
+        try await c.cloudConnect.start(options: lifeOptions(net, sockets))
+        for _ in 0..<500 where sockets.list.isEmpty { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertEqual(sockets.list.count, 1)
+        let off = c.cloudConnect.onChannel { _ in }
+        // An inbound session whose close never returns: the graceful stop cannot get past it.
+        let stuck = ConnectSession(
+            link: StuckLink(), peerDeviceId: otherId, caps: [], hello: PeerHello(label: nil, platform: "t", app: "djdl", maxMessage: 65_536),
+            role: "responder", remoteAddress: "10.0.0.2")
+        await c.cloudConnect.deliverInbound(stuck)
+        let began = Date()
+        await c.cloudConnect.core.stop(timeout: 0.3)
+        XCTAssertLessThan(Date().timeIntervalSince(began), 5, "stop returned at the bound")
+        off()
+        XCTAssertFalse(c.cloudConnect.status().running)
+        for _ in 0..<200 where sockets.list.first?.closeCode == nil || net.stops == 0 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTAssertEqual(sockets.list.first?.closeCode, 1001, "the relay socket was cancelled, not closed gracefully")
+        XCTAssertGreaterThanOrEqual(net.stops, 1, "the listener was cancelled")
+        XCTAssertFalse(net.listening)
+        // Sign-out is not held up: a further stop is a no-op and start is possible again.
+        await c.cloudConnect.stop()
     }
 }

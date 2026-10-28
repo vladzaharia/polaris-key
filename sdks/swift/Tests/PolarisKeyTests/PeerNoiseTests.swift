@@ -536,4 +536,18 @@ final class PeerNoiseTests: XCTestCase {
         }
         XCTAssertEqual("\(PeerNoiseError.dhZero)", "noise: dh_zero")
     }
+
+    func testAWipedCipherStateThrowsInsteadOfPassingBytesThrough() throws {
+        let c = PeerCipherState(key: Data(repeating: 5, count: 32))
+        let ct = try c.encrypt(ad: Data(), Data("hello".utf8))
+        XCTAssertNotEqual(ct, Data("hello".utf8))
+        c.wipe()
+        XCTAssertThrowsError(try c.encrypt(ad: Data(), Data("hello".utf8))) { XCTAssertEqual($0 as? PeerNoiseError, .state) }
+        XCTAssertThrowsError(try c.decrypt(ad: Data(), ct)) { XCTAssertEqual($0 as? PeerNoiseError, .state) }
+        // A handshake's own cipher state, never keyed, still passes through until it is wiped.
+        let h = PeerCipherState(key: nil)
+        XCTAssertEqual(try h.encrypt(ad: Data(), Data("x".utf8)), Data("x".utf8))
+        h.wipe()
+        XCTAssertThrowsError(try h.encrypt(ad: Data(), Data("x".utf8)))
+    }
 }

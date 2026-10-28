@@ -218,6 +218,8 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
     private var held: (at: Int, src: PeerSource)?
     private var advName = ""
     private var stopBrowse: (@Sendable () -> Void)?
+    /// The browser's stop, readable without the actor, for `abort()`.
+    private let browseStop = LockedValue<(@Sendable () -> Void)?>(nil)
     private var cancelEpoch: (@Sendable () -> Void)?
     private var peers: [String: (peer: ConnectLanPeer, instance: String)] = [:]
     private var miss: [String: Int] = [:]
@@ -303,6 +305,7 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
                         Task { await self.gone(n) }
                     },
                     onError: { [errorSubs] e in errorSubs.fire(Self.lanError(e)) })
+                browseStop.set(stopBrowse)
             } catch let e as BonjourBrowseError {
                 throw Self.lanError(e)
             }
@@ -350,6 +353,34 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
         for s in sessions.values { await s.close() }
         sessions = [:]
         await network.stop()
+    }
+
+    /// Force-stop for a sign-out that cannot wait (D-12): cancel the listener and the browser now, with no
+    /// graceful close and no await on the actor, then drop the sessions and the held identity.
+    public nonisolated func abort() {
+        browseStop.with { v in
+            v?()
+            v = nil
+        }
+        docs.close()
+        let net = network
+        Task { await net.stop() }
+        Task { await self.abortInActor() }
+    }
+
+    private func abortInActor() {
+        stopped = true
+        listening = false
+        held = nil
+        cancelEpoch?()
+        cancelEpoch = nil
+        stopBrowse = nil
+        peers = [:]
+        let (p, s) = (Array(pending.values), Array(sessions.values))
+        pending = [:]
+        sessions = [:]
+        for x in p { Task { await x.close() } }
+        for x in s { Task { await x.close() } }
     }
 
     // MARK: Errors
