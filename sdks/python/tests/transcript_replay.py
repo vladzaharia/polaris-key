@@ -127,7 +127,9 @@ class ReplayServer:
         self._index = index
         self._served = [False] * len(step["exchanges"]["items"])
         for k, v in step["args"].items():
-            if isinstance(v, str):
+            # `deviceId` in a key ring step names the TARGET device (the path); the `{deviceId}`
+            # in a header stays the calling device's, which is `initial.deviceId`.
+            if isinstance(v, str) and not (k == "deviceId" and step["action"].startswith("keyring")):
                 self.bindings[k] = v
         return step
 
