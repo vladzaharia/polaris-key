@@ -910,6 +910,11 @@
       "reason": "CC-26.3 key registration (PUT devices/keys); the cross-SDK concept follows with the other SDKs' key stores (CC-26.4 to CC-26.7)"
     },
     {
+      "sdk": "godot",
+      "path": "devices.register_keys",
+      "reason": "CC-26.6 key registration (PUT devices/keys); the cross-SDK concept follows with the other SDKs' key stores (CC-26.4, CC-26.5, CC-26.7)"
+    },
+    {
       "sdk": "python",
       "path": "devices.report",
       "reason": "wiring the boot and update flows call; not an app verb"

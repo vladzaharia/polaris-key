@@ -6,6 +6,7 @@ extends RefCounted
 ##
 ##   fingerprint()        the hashed fingerprint {components, hwid}, or null (web, opted out,
 ##                        nothing readable). The capture runs off the main thread, once a session
+##   register_keys(port)  `PUT /devices/keys`: register the device key store's public keys (CC-26.6)
 ##   register()           keyless `POST /devices/register`: no bearer even when a token is held,
 ##                        the fingerprint when enabled; the token is stored with source
 ##                        `register`. Refused for four causes with one body
@@ -160,6 +161,35 @@ func request_registration() -> PKeyResult:
 
 static func _status(r: PKeyResult) -> int:
 	return int(r.detail.get("status", 0)) if r.detail is Dictionary else 0
+
+
+# ── Device keys (CC-03.2, CC-26.6) ───────────────────────────────────────────────────────
+
+## `PUT /devices/keys`: registers the port's public keys for this device with a `keys` proof
+## (PKeyDeviceKeys). `port` is a PKeyDeviceKeyStore. Resending is safe: the server answers a
+## registered pair with its `keySeq`. Refuses a memory-only port unless `allow_ephemeral`
+## (`unsupported`). Needs a device token (device-management-unsupported otherwise). ok with
+## detail {key_seq}; the private halves never leave the port. A coroutine.
+func register_keys(port: Object, allow_ephemeral := false) -> PKeyResult:
+	var core := _core()
+	var pre = _require_token(core)
+	if pre != null:
+		return pre
+	var built := PKeyDeviceKeys.build_keys_request(port, {
+		"product": core.product,
+		"device_id": core.device_id,
+		"allow_ephemeral": allow_ephemeral,
+	})
+	if not built.ok:
+		return built
+	var r := await core.request("PUT", "devices/keys", built.detail["body"], true)
+	if not r.ok:
+		return r
+	var parsed := PKeyJson.parse_bytes(r.detail["body"])
+	var seq = parsed["value"].get("keySeq") if parsed["ok"] and parsed["value"] is Dictionary else null
+	if not (seq is float or seq is int) or float(seq) != floorf(float(seq)) or float(seq) < 1.0 or float(seq) > 9007199254740991.0:
+		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "devices/keys answered without a keySeq.", {"status": _status(r)})
+	return PKeyResult.success({"key_seq": int(seq)})
 
 
 # ── Management ───────────────────────────────────────────────────────────────────────────

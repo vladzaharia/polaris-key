@@ -47,8 +47,8 @@
       "note": "PolarisKey.backend (PKeyBackend): headers() (raw X-PKey-License and X-PKey-Device lines), headers_for(url) and request() send them only to PKeyOptions.backend_origins (exact, https except loopback); request() follows redirects by hand and checks every hop's origin before it is sent; the freshness pre-sync, one shared sync, one forced sync and retry on license_stale/license_invalid (at least 10 s apart), and not_entitled/sign_in_required as typed failures. tests/suite_backend.gd replays backend-matrix.json's client rows (the Godot SDK replays only the `client` section)."
     },
     "core.devicekeys": {
-      "status": "planned",
-      "wp": "CC-26"
+      "status": "implemented",
+      "note": "PKeyDeviceKeyStore (core/store/device_key_store.gd) over PKeyCurve25519 (core/crypto/curve25519.gd: ref10 Montgomery ladder and a mask-select fixed-base sign on PKeyEd25519's field code): a binary record in user://pkey/<product>/ written through FileAccess.open_encrypted_with_pass (passphrase from OS.get_unique_id plus a per-install salt; engine encryption can be turned off; best effort on mobile and consoles, where CC-26.7 replaces it); every member answers a PKeyResult, so what the other stores throw is a code (device-keys-unreadable is never replaced and only wipe() resets it, unsupported is never reported for a bad record, device-keys-store-fault never reads as no keys); ensure/rotate/wipe run under a process mutex and a lock directory. PKeyDeviceKeys signs every pkey-proof/1 purpose and re-verifies it with PKeyDeviceProof (the strict verifier); PolarisKey.devices.register_keys sends PUT /devices/keys. tests/suite_devicekeys.gd: the CC-13 vectors, the store rules, every device-proof.json row and every valid purpose signed through the store."
     },
     "license.gate": {
       "status": "implemented"
