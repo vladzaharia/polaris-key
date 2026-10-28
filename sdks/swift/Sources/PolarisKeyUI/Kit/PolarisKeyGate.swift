@@ -204,7 +204,7 @@ public struct PolarisKeyGate<Content: View>: View {
             hasHandler: model.handlers.update != nil, update: model.inputs.update)
         {
         case .handler: return { model.handlers.update?() }
-        case .open(let link): return { openURL(link) }
+        case .open(let link): return { openLink(link) }
         case .none: return nil
         }
     }
@@ -263,11 +263,17 @@ public struct PolarisKeyGate<Content: View>: View {
             "update.title", ["product": .text(model.identity.name), "version": .text(version)])
     }
 
+    /// The kit's one opener: only an https link (or an http loopback) leaves the app.
+    private func openLink(_ link: URL) {
+        guard let valid = KitLinks.valid(link.absoluteString) else { return }
+        openURL(valid)
+    }
+
     private var replaceDevice: (() -> Void)? {
         guard let link = KitLinks.valid(model.inputs.activation?.manageUrl) else { return nil }
         return {
             manageOpened = true
-            openURL(link)
+            openLink(link)
         }
     }
 
@@ -283,7 +289,7 @@ public struct PolarisKeyGate<Content: View>: View {
             return nil
         #else
             guard let link = refusalLink else { return nil }
-            return { openURL(link) }
+            return { openLink(link) }
         #endif
     }
 
