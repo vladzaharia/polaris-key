@@ -145,7 +145,7 @@ static func message_for(r: PKeyActivationResult) -> Array:
 ## added (PX-W8, WIRE-CONTRACT-V4 §5.3). A QR link (`for_qr`) never carries the key: a code on a
 ## shared screen can be scanned by anyone in the room, so the phone's page asks for the key.
 static func manage_link(r: PKeyActivationResult, key := "", return_url := "", for_qr := false) -> String:
-	if r == null or r.kind != PKeyActivationResult.KIND_DEVICE_LIMIT or not PKeyManage.is_valid(r.manage_url):
+	if r == null or not (r.kind == PKeyActivationResult.KIND_DEVICE_LIMIT or r.kind == PKeyActivationResult.KIND_KEY_ENTRY_LIMIT) or not PKeyManage.is_valid(r.manage_url):
 		return ""
 	var url: String = r.manage_url if for_qr else PKeyManage.with_key(r.manage_url, key)
 	return PKeyManage.with_return(url, return_url)

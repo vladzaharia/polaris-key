@@ -1,0 +1,25 @@
+== entry ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Entry: Button "Approve a nearby device" [focus 1]
+== ask ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Sign in \u2068Living room TV\u2069?"
+Card/Scroll/Body/Words/Lede: Label "Tap the code \u2068Living room TV\u2069 shows"
+Card/Scroll/Body/Codes/Code0: Button "482 913" [focus 1]
+Card/Scroll/Body/Codes/Code1: Button "107 356" [focus 2]
+Card/Scroll/Body/Codes/Code2: Button "759 204" [focus 3]
+Card/Scroll/Body/Deny: Button "Not now" [focus 4]
+== approved ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Status: Label "\u2068Living room TV\u2069 is signed in."
+== not-nearby ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Status: Label "\u2068Living room TV\u2069 isn't on your network."
+== hidden ==
+<hidden>
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"

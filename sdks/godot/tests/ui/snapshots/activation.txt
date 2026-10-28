@@ -123,3 +123,33 @@ Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Lede: Label "To use it on this 
 Card/Scroll/Stack/Limit/Columns/Right/Actions/FreeDevice: Button "Replace a device" [focus 1]
 Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Try again" [focus 2]
 Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 3]
+== key-entry limit, add it in Polaris Locker (button) ==
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Title: Label "No key entries left"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Lede: Label "Add it to your account and sign in instead."
+Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/FreeDevice: Button "Add it in Polaris Locker" [focus 2]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 3]
+== key-entry limit, add it in Polaris Locker (QR) ==
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Title: Label "No key entries left"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Lede: Label "Add it to your account and sign in instead."
+Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/FreeDevice: Button "Add it in Polaris Locker" [focus 2]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 3]
+== key-entry limit, no link ==
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Title: Label "No key entries left"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Lede: Label "Add it to your account and sign in instead."
+Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 2]
+== license in another account ==
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Title: Label "License in another account"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Titles/Lede: Label "This Polaris Key SDK license is already in another Polaris Locker account. A license never moves by its key."
+Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 2]

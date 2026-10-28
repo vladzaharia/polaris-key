@@ -1834,7 +1834,7 @@ func _controllers(t: PKeyTestContext) -> void:
 ## through (usable, grace) or loads, the update strip and banner (a card inside the game's own
 ## screen), the progress strip and the toast (a card over the game), and the settings panel (it heads
 ## itself with the same header).
-const NO_HEADER := ["ok", "grace", "grace (allow_grace false)", "not-applicable", "loading", "background pill", "update available"]
+const NO_HEADER := ["ok", "grace", "grace (allow_grace false)", "not-applicable", "loading", "background pill", "update available", "hidden"]
 
 
 func _headers(t: PKeyTestContext, all: Array) -> void:

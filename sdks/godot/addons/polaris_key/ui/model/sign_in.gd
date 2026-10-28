@@ -16,6 +16,7 @@ extends RefCounted
 ## LicenseChoice state (D4): the card chooses. `replace: "browser"` never opens the device list in
 ## the app; Replace opens the card instead (`replace-in-browser`).
 
+const Activate := preload("res://addons/polaris_key/ui/model/activate.gd")
 const Context := preload("res://addons/polaris_key/ui/model/context.gd")
 const Errors := preload("res://addons/polaris_key/ui/model/errors.gd")
 const Link := preload("res://addons/polaris_key/ui/model/link.gd")
@@ -62,7 +63,7 @@ static func verification_target(ctx: RefCounted, shown: String) -> String:
 # ── SignIn ─────────────────────────────────────────────────────────────────────────────────────
 
 ## `SignInState`.
-const SIGN_IN_STATES := ["methods", "handoff", "code", "finishing", "choose", "replace", "key", "done", "error", "expired", "hidden"]
+const SIGN_IN_STATES := ["methods", "handoff", "code", "finishing", "choose", "replace", "key", "key-refused", "done", "error", "expired", "confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "hidden"]
 
 
 ## The copy key of the first sign-in method, the methods step's primary (DL9).
@@ -113,6 +114,11 @@ static func sign_in_view(ctx: RefCounted) -> Dictionary:
 			"tone": "danger",
 			"errorSlot": primary,
 		})
+	var auto = ctx.input.get("autoSignIn")
+	if View.truthy(auto):
+		var extra := {"developer": id["developer"], "email": auto.get("email")}
+		args.merge(extra, true)
+		return _auto_step_view(ctx, auto, args)
 	if s.get("outcome") == "expired" or (dc is Dictionary and (dc.get("phase") == "expired" or Link.code_expired(dc.get("secondsLeft")))):
 		return View.make(ctx, "SignIn", {
 			"state": "expired",
@@ -132,7 +138,10 @@ static func sign_in_view(ctx: RefCounted) -> Dictionary:
 		if not license:
 			copy = ["signin.return.signedInShort"]
 		elif View.truthy(s.get("issuedNow")):
-			copy = ["signin.done.start", "signin.return.signedInShort"]
+			# One key for "You're signed in · Pro license", so no kit joins two with a separator.
+			var acct = ctx.input.get("account")
+			var tier = acct.get("tier") if acct is Dictionary else null
+			copy = ["signin.done.start", "signin.return.signedInTier" if View.truthy(tier) else "signin.return.signedInShort"]
 		else:
 			copy = ["signin.desktop.toast"]
 		var start := copy.has("signin.done.start")
@@ -146,6 +155,19 @@ static func sign_in_view(ctx: RefCounted) -> Dictionary:
 		if s.get("event") == "have-key" and license and View.truthy(ctx.caps.get("keyEntry")):
 			var a = ctx.input.get("activation")
 			var refused: bool = View.truthy(a) and a.get("result") != "ok"
+			var refusal = Activate.key_refusal_of(a)
+			# The refusals a different key cannot fix leave the field behind (DL6).
+			if View.truthy(a) and refusal != null:
+				var spec := Activate.key_refusal_spec(ctx, refusal, a)
+				return View.make(ctx, "SignIn", {
+					"state": "key-refused",
+					"copy": spec["copy"],
+					"args": args,
+					"primary": spec["primary"],
+					"tone": "neutral",
+					"link": spec["link"],
+					"qr": spec["qr"],
+				})
 			# `license_owned` never names the holder (S-16): only its core copy.
 			var key_copy := ["signin.key.addTitle", "part.keyField.label"]
 			if refused:
@@ -208,6 +230,54 @@ static func sign_in_view(ctx: RefCounted) -> Dictionary:
 		})
 	# Cancel returns to step 1, with nothing else lost.
 	return _methods_view(ctx, args)
+
+
+## The provider's identity is per developer: Apple always, Google unless it is shared across apps.
+static func _per_developer(provider: String, reach: Variant) -> bool:
+	return provider == "Apple" or reach != "global"
+
+
+## Automatic sign-in's steps, drawn in the form's body (plans/auto-sign-in.md §3): confirm the
+## account, offer to link the provider, and the nearby wait.
+static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictionary) -> Dictionary:
+	var provider: String = str(View.first([ctx.input.get("provider"), PKeyConstants.SIGN_IN_PROVIDER_NAME]))
+	var args := base_args.duplicate()
+	args["provider"] = provider
+	var step: String = str(auto.get("step"))
+	var copy: Array
+	var primary = null
+	var tone = null
+	match step:
+		"confirm":
+			copy = [
+				"signin.auto.confirm.title",
+				"signin.auto.confirm.as" if View.truthy(auto.get("email")) else "signin.auto.confirm.asApple",
+				"signin.auto.confirm.primary",
+				"signin.auto.confirm.other",
+			]
+			primary = "signin.auto.confirm.primary"
+		"link-offer":
+			copy = [
+				"signin.linkOffer.title",
+				"signin.linkOffer.bodyDeveloper" if _per_developer(provider, auto.get("reach")) else "signin.linkOffer.bodyGlobal",
+				"signin.linkOffer.primary",
+				"signin.linkOffer.decline",
+			]
+			primary = "signin.linkOffer.primary"
+		"link-done":
+			copy = ["signin.linkOffer.done"]
+		"link-conflict":
+			copy = ["signin.linkOffer.conflict"]
+			tone = "neutral"
+		"nearby-prompt":
+			copy = ["signin.nearby.prePrompt", "signin.auto.confirm.primary", "common.notNow"]
+			primary = "signin.auto.confirm.primary"
+		"nearby-wait":
+			copy = ["signin.nearby.title", "signin.nearby.body", "signin.nearby.code"]
+		_:
+			step = "nearby-done"
+			copy = ["signin.nearby.done", "signin.nearby.notYou"]
+	return View.make(ctx, "SignIn", {"state": step, "copy": copy, "args": args, "primary": primary, "tone": tone})
 
 
 static func _methods_view(ctx: RefCounted, args: Dictionary) -> Dictionary:

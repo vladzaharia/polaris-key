@@ -29,6 +29,7 @@ const MODELS := {
 	"Devices": ["devices.gd", "devices_view"],
 	"SignIn": ["sign_in.gd", "sign_in_view"],
 	"SignInHandoff": ["sign_in.gd", "sign_in_handoff_view"],
+	"NearbyApproval": ["nearby.gd", "nearby_approval_view"],
 	"LicenseChoice": ["sign_in.gd", "license_choice_view"],
 	"UpdatePrompt": ["update.gd", "update_prompt_view"],
 	"UpdateProgress": ["update.gd", "update_progress_view"],

@@ -5,6 +5,7 @@ extends RefCounted
 ## license hands off to DeviceLimit, never an error string; a floating key never needs an account;
 ## a loaded offline response is not an activation until its signature verifies.
 
+const Context := preload("res://addons/polaris_key/ui/model/context.gd")
 const Errors := preload("res://addons/polaris_key/ui/model/errors.gd")
 const Link := preload("res://addons/polaris_key/ui/model/link.gd")
 const View := preload("res://addons/polaris_key/ui/model/view.gd")
@@ -116,7 +117,8 @@ static func parse_key(text: String, submitted: bool = false) -> Dictionary:
 	return {"kind": kind, "slug": slug, "prefix": prefix, "used": used, "limit": limit}
 
 
-# States: empty, typing, parsed, cut-short, busy, rejected, device-limit, done, hidden.
+# States: empty, typing, parsed, cut-short, busy, rejected, device-limit, key-entry-limit,
+# license-owned, done, hidden.
 
 const FIELD := "part.keyField.label"
 const SUBMIT := "activate.submit"
@@ -189,6 +191,19 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 				"tone": "neutral",
 				"errorSlot": FIELD,
 				"link": link,
+			})
+		# The two refusals a different key cannot fix are a focused step, not a field with a callout.
+		var refusal = key_refusal_of(activation)
+		if refusal != null:
+			var spec := key_refusal_spec(ctx, refusal, activation)
+			return View.make(ctx, "Activate", {
+				"state": refusal,
+				"copy": spec["copy"],
+				"args": {"product": product},
+				"primary": spec["primary"],
+				"tone": "neutral",
+				"link": spec["link"],
+				"qr": spec["qr"],
 			})
 		# A refusal of a well-formed key: the key is not wrong, so no danger stroke on the field.
 		return View.make(ctx, "Activate", {
@@ -264,6 +279,45 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 		"errorSlot": FIELD,
 		"focus": FIELD,
 	})
+
+
+# ── The focused key refusal ───────────────────────────────────────────────────────────────────
+# The key-entry limit and a license another account holds (SIGN-IN.md §3.9, UI-KITS DL6): no
+# field, lede or paste, since resubmitting the same key cannot succeed. Activate and the sign-in
+# form's key step both draw it. A refusal a different key can fix stays stacked under the field.
+
+const OWNED_SIGN_IN := "signin.key.ownedSignIn"
+
+
+## Which focused refusal an activation answer is ("key-entry-limit" or "license-owned"), or null.
+static func key_refusal_of(a: Variant) -> Variant:
+	if not (a is Dictionary):
+		return null
+	var result = a.get("result")
+	if result == "key-entry-limit":
+		return "key-entry-limit"
+	if result == "license-owned" or ((result == "refused" or result == "error") and a.get("code") == "license_owned"):
+		return "license-owned"
+	return null
+
+
+## The step's copy and decisions: title and message, Sign in (the primary), the add-key page for
+## the limit (a button, or a QR with its caption on a TV), and Use a different key.
+static func key_refusal_spec(ctx: RefCounted, kind: String, a: Dictionary) -> Dictionary:
+	var limit := kind == "key-entry-limit"
+	var link = Link.verdict(a.get("manageUrl"), ctx.platform, "manage") if limit else null
+	var c: String = Context.platform_class(ctx.platform)
+	var tv := c == "tv" or c == "console"
+	var add: bool = link != null and link["url"] != null
+	var copy: Array = [
+		"core.activation.key-entry-limit.title" if limit else "core.codes.license_owned.title",
+		"core.activation.key-entry-limit.message" if limit else "core.codes.license_owned.message",
+		OWNED_SIGN_IN,
+	]
+	if add:
+		copy += ["signin.key.scan", "a11y.qrAddKey"] if tv else ["signin.key.addInLocker", "a11y.externalLink"]
+	copy.append("signin.key.differentKey")
+	return {"copy": copy, "primary": OWNED_SIGN_IN, "link": link, "qr": add and tv}
 
 
 # ── OfflineActivation ─────────────────────────────────────────────────────────────────────────

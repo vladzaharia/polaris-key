@@ -1,0 +1,53 @@
+== confirm, the account's email ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Lede: Label "as \u2068ada@example.com\u2069"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
+== confirm, Apple shared no email ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Lede: Label "with your Apple ID"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
+== link offer, Google shared across apps ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Sign in with \u2068Polaris Locker\u2069 next time?"
+Card/Scroll/Body/Words/Lede: Label "\u2068Polaris Key SDK\u2069 and other apps that use Polaris Locker sign you in by themselves."
+Card/Scroll/Body/Actions/Primary: Button "Link \u2068Polaris Locker\u2069" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
+== link offer, per developer ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Sign in with \u2068Polaris Locker\u2069 next time?"
+Card/Scroll/Body/Words/Lede: Label "Apps from \u2068Drift Studio\u2069 sign you in by themselves."
+Card/Scroll/Body/Actions/Primary: Button "Link \u2068Polaris Locker\u2069" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
+== link done ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Lede: Label "\u2068Polaris Locker\u2069 linked."
+== link conflict ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Lede: Label "This \u2068Polaris Locker\u2069 account is linked to another Polaris Locker account."
+== nearby prompt ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Lede: Label "Allow access to devices on your network next, so your phone can sign you in."
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Not now" [focus 2]
+== nearby wait ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Approve on your other device"
+Card/Scroll/Body/Words/Lede: Label "Open \u2068Polaris Key SDK\u2069 on a phone or computer where you're signed in."
+Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 1]
+== nearby done ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Lede: Label "Signed in as \u2068ada@example.com\u2069"
+Card/Scroll/Body/Actions/Secondary: Button "Not you?" [focus 1]
