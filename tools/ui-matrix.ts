@@ -263,7 +263,7 @@ export const ACTIONS: Readonly<Record<string, string>> = {
 export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
   "open-card": ["signin.desktop.continue", "signin.email.continue"],
   "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
-  "start-sign-in": ["signin.key.ownedSignIn"],
+  "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
   "open-manage-url": [
     "deviceLimit.openBrowser",
     "devices.manage",
@@ -1842,6 +1842,7 @@ function signInFamily(a: A): Draft[] {
   const OWNED_ONLY = [
     "core.codes.license_owned.title",
     "core.codes.license_owned.message",
+    "signin.key.ownedSignIn",
   ];
   const manyCopy = [
     "signin.choice.title",
@@ -2100,22 +2101,44 @@ function signInFamily(a: A): Draft[] {
 
     // Automatic sign-in (I-46.1, plans/auto-sign-in.md §3). The provider is `provider`.
     row(
-      "SignIn/confirm: the account's email",
+      "SignIn/confirm: the account's email, a new license",
       {
         provider: "Google",
         signIn: si(),
-        autoSignIn: { step: "confirm", email: "maya@example.com" },
+        account: { signedIn: true, tier: "Pro" },
+        autoSignIn: {
+          step: "confirm",
+          email: "maya@example.com",
+          license: "new",
+          alsoGets: true,
+        },
       },
       "SignIn",
       "confirm",
-      but("SignIn", "confirm", "signin.auto.confirm.asApple"),
+      but(
+        "SignIn",
+        "confirm",
+        "signin.auto.confirm.asApple",
+        "signin.consent.licenseLine",
+      ),
     ),
     row(
-      "SignIn/confirm: Apple shared no email",
-      { provider: "Apple", signIn: si(), autoSignIn: { step: "confirm" } },
+      "SignIn/confirm: Apple shared no email, an existing license",
+      {
+        provider: "Apple",
+        signIn: si(),
+        autoSignIn: { step: "confirm", license: "existing" },
+      },
       "SignIn",
       "confirm",
-      but("SignIn", "confirm", "signin.auto.confirm.as"),
+      [
+        "signin.auto.confirm.title",
+        "signin.auto.confirm.asApple",
+        "signin.consent.license",
+        "signin.consent.licenseLine",
+        "signin.auto.confirm.primary",
+        "signin.auto.confirm.other",
+      ],
     ),
     row(
       "SignIn/link-offer: Google shared across apps",
@@ -2126,7 +2149,12 @@ function signInFamily(a: A): Draft[] {
       },
       "SignIn",
       "link-offer",
-      but("SignIn", "link-offer", "signin.linkOffer.bodyDeveloper"),
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyDeveloper",
+        "signin.linkOffer.bodyApp",
+      ),
     ),
     row(
       "SignIn/link-offer: Google per developer",
@@ -2137,14 +2165,24 @@ function signInFamily(a: A): Draft[] {
       },
       "SignIn",
       "link-offer",
-      but("SignIn", "link-offer", "signin.linkOffer.bodyGlobal"),
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyApp",
+      ),
     ),
     row(
       "SignIn/link-offer: Google, reach unknown, is per developer",
       { provider: "Google", signIn: si(), autoSignIn: { step: "link-offer" } },
       "SignIn",
       "link-offer",
-      but("SignIn", "link-offer", "signin.linkOffer.bodyGlobal"),
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyApp",
+      ),
     ),
     row(
       "SignIn/link-offer: Apple is always per developer",
@@ -2155,7 +2193,52 @@ function signInFamily(a: A): Draft[] {
       },
       "SignIn",
       "link-offer",
-      but("SignIn", "link-offer", "signin.linkOffer.bodyGlobal"),
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyApp",
+      ),
+      {
+        mustNot: {
+          copy: ["signin.linkOffer.bodyGlobal"],
+          invariant: "say all apps for Apple",
+        },
+      },
+    ),
+    row(
+      "SignIn/link-offer: Google per developer, no developer name",
+      {
+        provider: "Google",
+        presentation: { name: "Tidewater Studio", icon: true },
+        signIn: si(),
+        autoSignIn: { step: "link-offer", reach: "developer" },
+      },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyDeveloper",
+      ),
+    ),
+    row(
+      "SignIn/link-offer: Apple, no developer name",
+      {
+        provider: "Apple",
+        presentation: { name: "Tidewater Studio", icon: true },
+        signIn: si(),
+        autoSignIn: { step: "link-offer" },
+      },
+      "SignIn",
+      "link-offer",
+      but(
+        "SignIn",
+        "link-offer",
+        "signin.linkOffer.bodyGlobal",
+        "signin.linkOffer.bodyDeveloper",
+      ),
       {
         mustNot: {
           copy: ["signin.linkOffer.bodyGlobal"],
@@ -2194,7 +2277,7 @@ function signInFamily(a: A): Draft[] {
     ),
     row(
       "SignIn/nearby-wait: approve on the other device",
-      { signIn: si(), autoSignIn: { step: "nearby-wait" } },
+      { signIn: si(), autoSignIn: { step: "nearby-wait", code: "482 913" } },
       "SignIn",
       "nearby-wait",
       "all",
@@ -2237,6 +2320,55 @@ function signInFamily(a: A): Draft[] {
       { nearbyApproval: { step: "not-nearby", device: "Kitchen iPad" } },
       "NearbyApproval",
       "not-nearby",
+      "all",
+    ),
+    row(
+      "NearbyApproval/mismatch: a wrong code denies and says so",
+      { nearbyApproval: { step: "mismatch", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "mismatch",
+      "all",
+    ),
+    row(
+      "NearbyApproval/denied: Deny",
+      { nearbyApproval: { step: "denied", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "denied",
+      "all",
+    ),
+    row(
+      "NearbyApproval/expired: the request lapsed while the prompt was open",
+      { nearbyApproval: { step: "expired", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "expired",
+      "all",
+    ),
+    row(
+      "NearbyApproval/device-limit: the license is full: Manage devices",
+      { nearbyApproval: { step: "device-limit", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "device-limit",
+      "all",
+    ),
+    row(
+      "NearbyApproval/choose: the license is chosen here, never on the new device",
+      { nearbyApproval: { step: "choose", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "choose",
+      "all",
+    ),
+    row(
+      "NearbyApproval/account-required: this device has no sign-in",
+      { nearbyApproval: { step: "account-required", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "account-required",
+      "all",
+    ),
+    row(
+      "NearbyApproval/rate-limited: too many approvals",
+      { nearbyApproval: { step: "rate-limited", device: "Kitchen iPad" } },
+      "NearbyApproval",
+      "rate-limited",
       "all",
     ),
     hidden("NearbyApproval: Identity off", identityOff, "NearbyApproval"),

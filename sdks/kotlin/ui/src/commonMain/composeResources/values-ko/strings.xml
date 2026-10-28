@@ -66,6 +66,10 @@
     <string name="part_thisDevice__tablet">이 태블릿</string>
     <string name="part_thisDevice__computer">이 컴퓨터</string>
     <string name="part_thisDevice__tv">이 TV</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Mid-sentence form. -->
+    <string name="part_newDevice">새 기기</string>
+    <!-- The device that asked to sign in, when its name is unknown (nearby approval). Sentence-start form. -->
+    <string name="part_newDeviceTitle">새 기기</string>
     <!-- The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
     <string name="part_thisDeviceTitle">이 기기</string>
     <string name="part_thisDeviceTitle__iphone">이 iPhone</string>
@@ -161,6 +165,8 @@
     <string name="a11y_qrManage">기기 관리 페이지를 여는 QR 코드</string>
     <!-- Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page. -->
     <string name="a11y_qrAddKey">키 추가 페이지를 여는 QR 코드</string>
+    <!-- Screen reader label; never shown. Reads the code the other device must tap. Arguments: {code} = a code shown to the person; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_nearbyCode">탭할 코드: %1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">로그인 코드 %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -1040,6 +1046,9 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">그 계정으로 로그인</string>
     <string name="signin_key_ownedSignIn__macos">그 계정으로 로그인</string>
+    <!-- The key-entry limit's refusal step: starts the kit's own sign-in; the key is added to the account afterwards. -->
+    <string name="signin_key_signIn">로그인</string>
+    <string name="signin_key_signIn__macos">로그인</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_differentKey">다른 키 사용</string>
     <string name="signin_key_differentKey__macos">다른 키 사용</string>
@@ -1048,7 +1057,7 @@
     <!-- Automatic sign-in: the confirm step names the account. Arguments: {email} = the account's email address (never translated). Arguments: 1=email. -->
     <string name="signin_auto_confirm_as">%1$s 계정으로</string>
     <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
-    <string name="signin_auto_confirm_asApple">Apple ID로</string>
+    <string name="signin_auto_confirm_asApple">Apple 계정으로</string>
     <!-- Automatic sign-in: the confirm step's main button. -->
     <string name="signin_auto_confirm_primary">계속</string>
     <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
@@ -1057,22 +1066,33 @@
     <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_title">다음부터 %1$s(으)로 로그인할까요?</string>
     <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_linkOffer_bodyGlobal">%1$s 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요.</string>
+    <string name="signin_linkOffer_bodyGlobal">그러면 %1$s 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요.</string>
     <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_linkOffer_bodyDeveloper">%1$s의 앱이 자동으로 로그인해 줘요.</string>
+    <string name="signin_linkOffer_bodyDeveloper">그러면 %1$s의 앱이 자동으로 로그인해 줘요.</string>
+    <!-- Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_linkOffer_bodyApp">그러면 %1$s과 개발자의 다른 앱이 자동으로 로그인해 줘요.</string>
     <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_primary">%1$s 연결</string>
     <!-- Link offer: declines; the device remembers it. -->
     <string name="signin_linkOffer_decline">괜찮아요</string>
     <string name="signin_linkOffer_decline__macos">괜찮아요</string>
     <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
-    <string name="signin_linkOffer_done">%1$s을(를) 연결했어요.</string>
-    <!-- Link offer: the provider account is already linked to another Polaris Locker account. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
-    <string name="signin_linkOffer_conflict">이 %1$s 계정은 다른 Polaris Locker 계정에 연결되어 있어요.</string>
+    <string name="signin_linkOffer_done">%1$s 연결됨</string>
+    <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflictTitle">%1$s 연결 안 됨</string>
+    <!-- Link offer: the provider account belongs to another Polaris Locker account; the sign-in stands. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_conflict">이 %1$s 계정은 다른 Polaris Locker 계정에 속해 있어요. 로그인은 그대로 유지돼요.</string>
+    <!-- Link offer conflict: opens Help on joining two accounts. -->
+    <string name="signin_linkOffer_join">계정 합치기</string>
+    <string name="signin_linkOffer_join__macos">계정 합치기</string>
     <!-- Nearby sign-in, on the device that signs in: waits for approval on another device. -->
     <string name="signin_nearby_title">다른 기기에서 승인하세요</string>
+    <!-- Nearby sign-in, before the system asks for access to the local network. -->
+    <string name="signin_nearby_promptTitle">휴대폰으로 로그인</string>
     <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_nearby_body">로그인된 휴대폰이나 컴퓨터에서 %1$s을(를) 여세요.</string>
+    <string name="signin_nearby_body">로그인되어 있고 이 네트워크에 연결된 휴대폰이나 컴퓨터에서 %1$s을(를) 여세요.</string>
+    <!-- Nearby sign-in, waiting: the line above the code the other device must tap. -->
+    <string name="signin_nearby_match">그쪽에서 이 코드를 탭하세요:</string>
     <!-- Nearby sign-in, waiting: switches to the device code. -->
     <string name="signin_nearby_code">코드로 대신하기</string>
     <string name="signin_nearby_code__macos">코드로 대신하기</string>
@@ -1081,19 +1101,20 @@
     <!-- Nearby sign-in, done: opens the sign-out and review step when the account is not the person's. -->
     <string name="signin_nearby_notYou">본인이 아닌가요?</string>
     <string name="signin_nearby_notYou__macos">본인이 아닌가요?</string>
-    <!-- Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). The system prompt follows. -->
-    <string name="signin_nearby_prePrompt">다음 화면에서 네트워크의 기기 접근을 허용하면 휴대폰으로 로그인할 수 있어요.</string>
+    <!-- Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_prePrompt">다음 화면에서 %1$s이 네트워크의 기기를 찾도록 허용하면 휴대폰으로 로그인할 수 있어요.</string>
     <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
-    <string name="signin_nearby_ask">%1$s에 로그인할까요?</string>
-    <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
-    <string name="signin_nearby_askBody">%1$s에 표시된 코드를 탭하세요</string>
-    <!-- Nearby approval: declines. -->
-    <string name="signin_nearby_deny">나중에</string>
-    <string name="signin_nearby_deny__macos">나중에</string>
+    <string name="signin_nearby_ask">%1$s의 로그인을 허용할까요?</string>
+    <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). -->
+    <string name="signin_nearby_askBody">표시된 코드를 탭하세요.</string>
     <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
-    <string name="signin_nearby_approved">%1$s에 로그인했어요.</string>
+    <string name="signin_nearby_approved">%1$s에 로그인했어요</string>
     <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
-    <string name="signin_nearby_notNearby">%1$s이(가) 같은 네트워크에 없어요.</string>
+    <string name="signin_nearby_notNearby">%1$s이(가) 이 네트워크에 없어요</string>
+    <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_notNearbyBody">두 기기를 같은 Wi-Fi에 연결하거나 %1$s에서 코드로 로그인하세요.</string>
+    <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_mismatch">코드가 일치하지 않아 %1$s에 로그인하지 않았어요.</string>
     <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
     <string name="signin_nearby_menu">근처 기기 승인</string>
     <string name="signin_nearby_menu__macos">근처 기기 승인</string>
@@ -1101,7 +1122,7 @@
     <string name="signin_key_addInLocker">Polaris Locker에서 추가</string>
     <string name="signin_key_addInLocker__macos">Polaris Locker에서 추가</string>
     <!-- The key-refusal step on TV and console: caption of the QR that opens the add-key page. -->
-    <string name="signin_key_scan">스캔해서 휴대폰의 Polaris Locker에서 추가하세요.</string>
+    <string name="signin_key_scan">스캔해서 휴대폰의 Polaris Locker에서 이 키를 추가하세요.</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">이제 %1$s을(를) 이용할 수 있어요</string>
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
@@ -2159,7 +2180,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_nearby_title">근처에 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_nearby_message">다른 기기가 이 네트워크에 없습니다. 가까이 이동하거나 코드로 로그인하세요.</string>
+    <string name="core_codes_not_nearby_message">다른 기기가 이 네트워크에 없어요. 두 기기를 같은 Wi-Fi에 연결하거나 코드를 대신 사용하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_title">로그인 방법 사용 불가</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2843,7 +2864,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_key_entry_limit_title">남은 키 등록 횟수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_key_entry_limit_message">계정에 추가하고 대신 로그인하세요.</string>
+    <string name="core_activation_key_entry_limit_message">로그인한 뒤 이 키를 Polaris Locker 계정에 추가하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_license_owned_title">다른 계정의 라이선스</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
