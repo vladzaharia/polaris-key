@@ -17,6 +17,24 @@
 // concerns and are not modelled: a request-level failure waits for the next trigger (a commit,
 // `flush`, `network online`, `refresh`, sign-in or relaunch).
 //
+// End-to-end mode (WIRE-CONTRACT-V5 §11.5, §13.10): the machine stays plaintext. The host codec
+// seals every value and blinds every name on the way out (`sync/envelope.ts`, `sync/blind.ts`) and
+// opens every `ct` on the way in, so the requests this machine queues and the responses it takes
+// carry plaintext `value`s. What the machine owns is the policy around that boundary:
+//   - `locked`: no root for the ring (`setRoot`). Nothing is pushed or pulled, the journal is kept,
+//     edits stay in the clear on the device, and the snapshot reads as invalid.
+//   - the pin: an app that requires E2E (`encryption: "e2e"`, or a device that has ever seen E2E
+//     for this product) never talks past a Worker that advertises `server` or omits the member,
+//     in discovery (`setDiscovery`) or in any 200 body (`encryption`). That body is dropped
+//     unread. The status is `unsupported` with the code `sync-encryption-pinned`; the journal and
+//     snapshot are kept. There is no fall back to server mode.
+//   - a push waits until the Worker is confirmed `e2e` this session (discovery or a body).
+//   - `encryptionSince`: a row the host opened from a `ct` carries `sealed: true`. A plaintext row
+//     is legacy data only when its `seq` is below the body's `encryptionSince`; otherwise it is
+//     `invalid`. `invalid: true` marks a `ct` the host could not open.
+//   - `max` and `min` are decided here: on `conflict` the server copy is taken, and a better local
+//     value is re-pushed on the server's `version` (origin `merge`), with no prompt.
+//
 // Nothing here touches licence state. No module reachable from `gate.ts`, `store.ts` or
 // `verify.ts` imports this one (`test/cloudSyncIsolation.test.ts`, T5).
 
@@ -177,6 +195,8 @@ export interface DeviceSetting {
 interface Versioned {
   value: Json;
   version: number;
+  /** E2E: a plaintext row at or above `encryptionSince`, or a `ct` the host could not open. */
+  bad?: true;
 }
 
 interface Partition {
@@ -194,6 +214,8 @@ interface Partition {
   signedOutAt: number | null;
   /** The last `quota.bytes − usage.bytes` a 200 carried; a larger one re-sends quota-parked ops. */
   headroom: number | null;
+  /** E2E: the store sequence from which every row is sealed (the last pull's). */
+  encryptionSince?: number;
 }
 
 type Blocked =
@@ -216,6 +238,9 @@ export interface CloudSyncPersisted {
   deviceLocal: Record<string, Json>;
   /** Whether `importLocal` has run on this install. */
   imported: boolean;
+  /** The device has accepted an E2E answer for this product: server mode is then a downgrade,
+   *  whatever the app option says. Absent in state saved before U-35.1. */
+  e2eSeen?: boolean;
 }
 
 export interface CloudSyncOptions {
@@ -234,7 +259,27 @@ export interface CloudSyncOptions {
   imported?: boolean;
   /** The random source for new `clientId`s. */
   newClientId: () => string;
+  /**
+   * The product's mode (the catalog's `cloudSync.encryption`). An absent value is `"server"`,
+   * the machine as it was before E2E; a host passes `cloudSyncEncryption(declared)` so an absent
+   * declaration means `"e2e"` (§13.10.6).
+   */
+  encryption?: EncryptionMode;
+  /** Whether the device holds the root of the current ring (§13.11). Absent: no root. */
+  hasRoot?: boolean;
+  /** `services.sync` discovery, when the host already has it (`setDiscovery` otherwise). */
+  discovery?: { encryption?: EncryptionMode };
 }
+
+export type EncryptionMode = "e2e" | "server";
+
+/** §13.10.6: an app requires E2E unless its catalog says `server`. */
+export const cloudSyncEncryption = (
+  declared?: EncryptionMode,
+): EncryptionMode => declared ?? "e2e";
+
+/** The client code for the pin (`conformance/parity/errors.json`). */
+export const SYNC_ENCRYPTION_PINNED = "sync-encryption-pinned";
 
 export type SyncRequest =
   | { method: "POST"; path: string; body: Json }
@@ -272,7 +317,9 @@ export interface SyncStatus {
     | "syncing"
     | "offline"
     | "paused"
-    | "blocked";
+    | "blocked"
+    | "locked"
+    | "unsupported";
   pending: number;
   /** Why it is blocked, or why parked edits wait (`quota`, `entitlement`). */
   reason?:
@@ -280,7 +327,11 @@ export interface SyncStatus {
     | "unauthorized"
     | "attestation"
     | "forbidden"
+    | "keyring"
+    | "encryption"
     | ParkReason;
+  /** `sync-encryption-pinned` while `unsupported`. */
+  code?: typeof SYNC_ENCRYPTION_PINNED;
 }
 
 export interface SettingState {
@@ -497,8 +548,12 @@ export class CloudSyncMachine {
   private readonly document: CloudSyncDocument;
   private readonly onSignOutPolicy: "clear" | "keep";
   private readonly newClientId: () => string;
+  private readonly appEncryption: EncryptionMode;
 
   private s: CloudSyncPersisted;
+  private root: boolean;
+  /** What the Worker advertised this session: discovery or a 200 body. `null`: not yet known. */
+  private advertised: EncryptionMode | "omitted" | null = null;
   private nowMs: number;
   private network: "online" | "offline";
   private drafts: Record<string, Draft> = {};
@@ -517,6 +572,8 @@ export class CloudSyncMachine {
     this.document = opts.document;
     this.onSignOutPolicy = opts.onSignOut ?? "clear";
     this.newClientId = opts.newClientId;
+    this.appEncryption = opts.encryption ?? "server";
+    this.root = opts.hasRoot ?? false;
     this.nowMs = opts.now;
     this.network = opts.network ?? "online";
     this.s = persisted
@@ -533,6 +590,9 @@ export class CloudSyncMachine {
           imported: opts.imported ?? false,
         };
     this.s.partitions[LOCAL_PARTITION] ??= newPartition(null);
+    this.s.e2eSeen ??= false;
+    if (opts.discovery)
+      this.advertised = opts.discovery.encryption ?? "omitted";
     if (this.s.subject !== null) this.partitionFor(this.s.subject);
     this.expirePartitions();
     this.pullWanted = true;
@@ -637,6 +697,39 @@ export class CloudSyncMachine {
       this.kick();
     }
     return { ok: true };
+  }
+
+  /** The effective mode: E2E when the app requires it or this device has ever accepted E2E. */
+  encryptionMode(): EncryptionMode {
+    return this.requiresE2e() ? "e2e" : "server";
+  }
+
+  /** `encryptionSince` of the active partition's last E2E pull, or `null`. */
+  encryptionSince(): number | null {
+    return this.s.subject === null
+      ? null
+      : (this.active().encryptionSince ?? null);
+  }
+
+  /**
+   * The ring's root arrived (`true`: unlock) or went away (`false`: lock). Unlocking sends the
+   * held operations in `mutationId` order; locking sends and reads nothing more.
+   */
+  setRoot(present: boolean): void {
+    if (this.root === present) return;
+    this.root = present;
+    this.gateChanged();
+  }
+
+  /**
+   * What discovery says about `services.sync.encryption` (§13.5). A Worker that omits the member
+   * is `omitted`, the same refusal as `server` for an app that requires E2E. `null` forgets it.
+   */
+  setDiscovery(d: { encryption?: EncryptionMode } | null): void {
+    const before = this.advertised;
+    this.advertised = d === null ? null : (d.encryption ?? "omitted");
+    if (this.advertised === "e2e" && this.requiresE2e()) this.s.e2eSeen = true;
+    if (before !== this.advertised) this.gateChanged();
   }
 
   /** Write a record: compare-and-swap for `revision` (rule 3), a stamped `set` for `lastWrite`,
@@ -772,6 +865,7 @@ export class CloudSyncMachine {
       !discard &&
       this.network === "online" &&
       this.s.blocked === null &&
+      this.mayTalk() &&
       this.sendable(p) > 0
     ) {
       this.signingOut = {
@@ -868,9 +962,12 @@ export class CloudSyncMachine {
       this.needSnapshot = true;
       proceed = true;
     } else if (res.status === 200 && isObject(res.body)) {
-      if (req.kind === "push") this.paused = false;
-      this.ok(req, res.body);
-      proceed = true;
+      if (this.acceptMode(res.body)) {
+        if (req.kind === "push") this.paused = false;
+        this.ok(req, res.body);
+        proceed = true;
+      }
+      // Otherwise the pin refused it: the body is dropped unread and the journal is unchanged.
     }
     if (this.signingOut && this.s.subject !== null) {
       const p = this.active();
@@ -912,9 +1009,12 @@ export class CloudSyncMachine {
             ? "pending"
             : "synced",
       invalid:
-        layer !== undefined &&
-        layer.value !== undefined &&
-        !valueValid(layer.value, this.schemaOf(key)),
+        (layer !== undefined &&
+          layer.value !== undefined &&
+          !valueValid(layer.value, this.schemaOf(key))) ||
+        (this.syncs(key) &&
+          this.snapshotUnreadable(this.alias(key)) &&
+          !layer?.pending),
       locked: this.locked(key) || r?.route === "locked",
     };
   }
@@ -923,7 +1023,9 @@ export class CloudSyncMachine {
     if (this.s.subject === null) return null;
     const p = this.active();
     const rk = recordKey(collection, id);
-    let value: Json | undefined = p.records[rk]?.value;
+    const row = p.records[rk];
+    let value: Json | undefined =
+      row && !this.rowUnreadable(row) ? row.value : undefined;
     let pending = false;
     for (const op of p.pending)
       if ("record" in op.target && recordKey(...op.target.record) === rk) {
@@ -940,9 +1042,18 @@ export class CloudSyncMachine {
 
   status(): SyncStatus {
     const pending = this.pendingCount();
+    if (this.pinnedOut())
+      return {
+        state: "unsupported",
+        pending,
+        reason: "encryption",
+        code: SYNC_ENCRYPTION_PINNED,
+      };
     if (this.s.blocked)
       return { state: "blocked", pending, reason: this.s.blocked };
     if (this.s.subject === null) return { state: "local", pending };
+    if (this.lockedOut())
+      return { state: "locked", pending, reason: "keyring" };
     const parked = this.parkedReason();
     const at = (state: SyncStatus["state"]): SyncStatus =>
       parked ? { state, pending, reason: parked } : { state, pending };
@@ -975,6 +1086,69 @@ export class CloudSyncMachine {
   }
 
   // ── internals ─────────────────────────────────────────────────────────────────────────────
+
+  /** The app requires E2E, or this device has accepted it before: the pin cannot be undone by
+   *  an option. */
+  private requiresE2e(): boolean {
+    return this.appEncryption === "e2e" || this.s.e2eSeen === true;
+  }
+
+  /** The Worker's answer contradicts the mode: nothing is sent to it and nothing it says is read. */
+  private pinnedOut(): boolean {
+    if (this.advertised === null) return false;
+    return this.requiresE2e()
+      ? this.advertised !== "e2e"
+      : this.advertised === "e2e";
+  }
+
+  /** E2E with no root for the ring. */
+  private lockedOut(): boolean {
+    return this.requiresE2e() && !this.root;
+  }
+
+  /** Whether any request may go out now (blocked and offline are checked where they apply). */
+  private mayTalk(): boolean {
+    return !this.pinnedOut() && !this.lockedOut();
+  }
+
+  private rowUnreadable(row: Versioned): boolean {
+    return row.bad === true || this.lockedOut();
+  }
+
+  private snapshotUnreadable(serverKey: string): boolean {
+    if (this.s.subject === null) return false;
+    const row = this.active().settings[serverKey];
+    return row !== undefined && this.rowUnreadable(row);
+  }
+
+  /** A lock, an unlock or a discovery answer changed what may be sent. */
+  private gateChanged(): void {
+    if (this.signingOut && this.s.subject !== null && !this.mayTalk()) {
+      this.leave("signOut", this.signingOut.discard);
+      return;
+    }
+    this.kick();
+  }
+
+  /**
+   * The pin on a 200 body (§11.5): in E2E mode the body must say `encryption: "e2e"`; an app in
+   * server mode refuses an `e2e` body too, since it cannot open it. A refusal records what the
+   * Worker said and leaves the body unread.
+   */
+  private acceptMode(body: { [k: string]: Json }): boolean {
+    const said: EncryptionMode | "omitted" =
+      body.encryption === "e2e" || body.encryption === "server"
+        ? body.encryption
+        : "omitted";
+    if (!this.requiresE2e() && said !== "e2e") {
+      // Server mode and a server answer: unchanged. (A `null` discovery stays `null`.)
+      return !this.pinnedOut();
+    }
+    this.advertised = said;
+    if (this.pinnedOut()) return false;
+    if (said === "e2e") this.s.e2eSeen = true;
+    return true;
+  }
 
   /** The key's route (an old name resolves through the pull's aliases); `undefined`: open. */
   private route(key: string): SettingRoute | undefined {
@@ -1084,7 +1258,7 @@ export class CloudSyncMachine {
     const p = this.active();
     if (this.s.subject !== null) {
       const snap = p.settings[target];
-      if (snap) {
+      if (snap && !this.rowUnreadable(snap)) {
         value = clone(snap.value);
         has = true;
       }
@@ -1379,11 +1553,16 @@ export class CloudSyncMachine {
   private kick(): void {
     if (this.inFlight || this.s.subject === null || this.s.blocked) return;
     if (this.network !== "online") return;
+    // Pinned out or locked: nothing is sent, pulled or read, and the journal waits.
+    if (!this.mayTalk()) return;
     const name = this.s.subject;
     const p = this.active();
     const pullPath = (cursor: number): string =>
       `/${this.product}/sync?cursor=${cursor}&clientId=${p.clientId}`;
-    if (!this.s.contacted || this.needSnapshot) {
+    // E2E: a push waits for the Worker to be confirmed `e2e` this session, by discovery or by a
+    // pull. A pull carries nothing of ours.
+    const unconfirmed = this.requiresE2e() && this.advertised !== "e2e";
+    if (!this.s.contacted || this.needSnapshot || unconfirmed) {
       const cursor = this.needSnapshot ? 0 : p.cursor;
       this.inFlight = {
         kind: "pull",
@@ -1411,7 +1590,7 @@ export class CloudSyncMachine {
           clientId: p.clientId,
           cursor: p.cursor,
           atomic: false,
-          mutations: batch.map(wireOf) as unknown as Json,
+          mutations: batch.map((o) => this.sendForm(p, o)) as unknown as Json,
         },
       });
       return;
@@ -1429,6 +1608,27 @@ export class CloudSyncMachine {
       };
       this.outbox.push({ method: "GET", path: pullPath(p.cursor) });
     }
+  }
+
+  /** The wire form of a pending operation. In E2E mode a `max`/`min` setting is a compare-and-swap
+   *  register on the server, so its `set` names the version it was made against (§13.10.5). */
+  private sendForm(p: Partition, op: JournalOp): WireMutation {
+    const wire = wireOf(op);
+    if (
+      this.requiresE2e() &&
+      wire.op === "set" &&
+      wire.baseVersion === undefined &&
+      "setting" in wire.target &&
+      this.clientDecides(this.policyOf(wire.target.setting))
+    )
+      wire.baseVersion =
+        p.settings[this.alias(wire.target.setting)]?.version ?? "*";
+    return wire;
+  }
+
+  /** `max` and `min` are decided by the client in E2E mode (§13.10.5). */
+  private clientDecides(policy: CollectionPolicy): boolean {
+    return this.requiresE2e() && (policy === "max" || policy === "min");
   }
 
   private abandonInFlight(): void {
@@ -1528,18 +1728,23 @@ export class CloudSyncMachine {
       p.settings = {};
       p.records = {};
     }
+    if (this.requiresE2e() && typeof body.encryptionSince === "number")
+      p.encryptionSince = body.encryptionSince;
     for (const c of Array.isArray(body.changes) ? body.changes : []) {
       if (!isObject(c) || typeof c.version !== "number") continue;
+      const bad = this.rowBad(p, c);
       if (typeof c.setting === "string") {
         p.settings[c.setting] = {
           value: clone(c.value ?? null),
           version: c.version,
+          ...bad,
         };
         this.dropParkedByRemote(p, c.setting, c.editedHlc);
       } else if (Array.isArray(c.record) && c.record.length === 2)
         p.records[recordKey(String(c.record[0]), String(c.record[1]))] = {
           value: clone(c.value ?? null),
           version: c.version,
+          ...bad,
         };
     }
     for (const t of Array.isArray(body.tombstones) ? body.tombstones : []) {
@@ -1569,6 +1774,21 @@ export class CloudSyncMachine {
     this.needSnapshot = false;
     this.pullWanted = body.more === true;
     this.emitChanges(before, overrides, "remote");
+  }
+
+  /**
+   * E2E `encryptionSince` (§13.10.7): a row the host opened from a `ct` is good; a plaintext row
+   * is legacy data below `encryptionSince` (by its `seq`) and `invalid` at or above it. Server
+   * mode reads every row as it always did.
+   */
+  private rowBad(p: Partition, c: { [k: string]: Json }): { bad?: true } {
+    if (!this.requiresE2e()) return {};
+    if (c.invalid === true) return { bad: true };
+    if (c.sealed === true) return {};
+    const since = p.encryptionSince;
+    const legacy =
+      typeof c.seq === "number" && since !== undefined && c.seq < since;
+    return legacy ? {} : { bad: true };
   }
 
   /** A newer remote value of a `lastWrite` key replaces its parked `set` or `clear` (R5). */
@@ -1622,11 +1842,29 @@ export class CloudSyncMachine {
       } else if (status === "conflict" && isObject(r.server)) {
         // Q6: a stale write loses to the server copy, and nothing is enqueued.
         const server = r.server;
-        if (typeof server.version === "number")
+        if (typeof server.version === "number") {
           p.settings[serverKey] = {
             value: clone(server.value ?? null),
             version: server.version,
+            ...(server.invalid === true ? { bad: true as const } : {}),
           };
+          // E2E `max`/`min`: keep the better value and re-push it on the server's version.
+          if (
+            op.op === "set" &&
+            server.invalid !== true &&
+            this.clientDecides(this.policyOf(key)) &&
+            this.better(this.policyOf(key), op.value, server.value)
+          ) {
+            this.enqueue(p, {
+              target: op.target,
+              op: "set",
+              value: clone(op.value as Json),
+              ...(op.editedHlc ? { editedHlc: op.editedHlc } : {}),
+              baseVersion: server.version,
+            });
+            overrides.set(key, "merge");
+          }
+        }
       } else if (status === "rejected") {
         // A terminal refusal: the value reverts to the snapshot and the app is told.
         this.events.push({
@@ -1658,6 +1896,20 @@ export class CloudSyncMachine {
         // Only `revision` resolves on the device; every other policy took the server's copy.
         if (rk in p.held) rebaseOn = server.version;
         else if (
+          decl &&
+          op.op === "set" &&
+          server.invalid !== true &&
+          this.clientDecides(decl.policy) &&
+          this.better(
+            decl.policy,
+            this.compared(op.value, decl.field),
+            this.compared(server.value, decl.field),
+          )
+        ) {
+          // E2E `max`/`min` record: the better value is re-pushed on the server's version.
+          rebaseOn = server.version;
+          rebaseValue = op.value;
+        } else if (
           decl?.policy === "revision" &&
           decl.resolve === "keepLocal" &&
           op.op === "set"
@@ -1685,6 +1937,21 @@ export class CloudSyncMachine {
         baseVersion: rebaseOn,
       });
     }
+  }
+
+  /** The number a `max`/`min` record compares: the value, or its `field` member. */
+  private compared(v: Json | undefined, field?: string): Json | undefined {
+    return field !== undefined && isObject(v) ? v[field] : v;
+  }
+
+  /** Whether `local` beats `server` under a `max` or `min` policy (numbers only). */
+  private better(
+    policy: CollectionPolicy,
+    local: Json | undefined,
+    server: Json | undefined,
+  ): boolean {
+    if (typeof local !== "number" || typeof server !== "number") return false;
+    return policy === "max" ? local > server : local < server;
   }
 
   /** Sign-out, and every principal change handled like it (rule 5, plans/U-01.md §2.4). */
