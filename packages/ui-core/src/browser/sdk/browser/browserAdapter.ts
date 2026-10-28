@@ -93,6 +93,7 @@ import {
   isValidHostOutlet,
   reloadFeeds,
   resolveUpdateOutlet,
+  createWebDeviceKeyStore,
   type DetectedOutlet,
   type HostOutlet,
   type OutletStamp,
