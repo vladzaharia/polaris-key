@@ -634,15 +634,15 @@ describe("Cloud Sync → Setup", () => {
     const { dialog, field } = await openCeiling(user);
     await user.clear(field);
     await user.type(field, "100");
-    const raise = within(dialog).getByRole("button", {
-      name: "Raise to 100 GiB",
-    });
-    expect(raise.hasAttribute("disabled")).toBe(true);
+    const raise = () =>
+      within(dialog).getByRole("button", { name: "Raise to 100 GiB" });
+    // Soft-disabled: focusable, and the reason is its tooltip (confirmDisabledReason).
+    expect(raise().getAttribute("aria-disabled")).toBe("true");
     await user.type(
       within(dialog).getByLabelText(/Reason/),
       "A big launch next week",
     );
-    await user.click(raise);
+    await user.click(raise());
     expect(updateSetting).toHaveBeenCalledWith(
       "diceroll",
       "cloudSync.ceiling.bytes",

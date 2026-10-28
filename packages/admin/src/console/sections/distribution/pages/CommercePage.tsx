@@ -71,12 +71,6 @@ import {
 
 const TERRITORY = /^[A-Z]{3}$/;
 
-export {
-  iapLocalizationSeed,
-  localizationsError,
-  type IapLocalization,
-} from "../model/iapLocalization.js";
-
 const locBody = (l: IapLocalization) => ({
   locale: l.locale.trim(),
   name: l.name.trim(),
