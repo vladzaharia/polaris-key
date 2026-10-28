@@ -15,6 +15,8 @@ import type {
 import { writeDeviceSubject } from "../../../src/core/devices.js";
 import { setDeviceStatus } from "../../../src/core/devices/store.js";
 import { getDeviceKeys } from "../../../src/core/devices/keys.js";
+import { registerDeviceKeys } from "../../../src/core/devices/registerKeys.js";
+import type { Db, DbStatement } from "../../../src/db/types.js";
 
 let saved: ServiceRegistry;
 beforeEach(() => {
@@ -44,6 +46,42 @@ function listen(
 }
 
 describe("onDeviceChange", () => {
+  it("a rotation whose guarded UPDATE matches no row reports unchanged and fires no `keys` event", async () => {
+    const w = await world();
+    const token = await register(w);
+    const k1 = await newKeys();
+    await put(w, token, await body(k1));
+    const seen = listen();
+    // Another writer rotates the key between this call's read and its write.
+    const racing: Db = {
+      ...w.db,
+      first: w.db.first.bind(w.db),
+      all: w.db.all.bind(w.db),
+      run: w.db.run.bind(w.db),
+      runChanges: w.db.runChanges.bind(w.db),
+      batch: w.db.batch.bind(w.db),
+      batchChanges: async (stmts: DbStatement[]) => {
+        await w.db.run(
+          "UPDATE device_keys SET sign_key = ? WHERE product = ? AND device_id = ?",
+          "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "djdl",
+          DEVICE,
+        );
+        return w.db.batchChanges!(stmts);
+      },
+    };
+    const k2 = await newKeys();
+    const r = await registerDeviceKeys(
+      { db: racing, env: w.env, now: NOW + 1 },
+      "djdl",
+      DEVICE,
+      { signKey: k2.signKey, agreeKey: k2.agreeKey },
+    );
+    expect(r.changed).toBe(false);
+    expect(r.rotated).toBe(false);
+    expect(seen).toEqual([]);
+  });
+
   it("fires `keys` after a registration and a rotation, not for an unchanged re-send", async () => {
     const w = await world();
     const token = await register(w);
