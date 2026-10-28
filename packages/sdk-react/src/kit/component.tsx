@@ -65,7 +65,7 @@ import {
 } from "./contract.js";
 
 import { PolarisContext } from "../react/context.js";
-import { text, type Chrome, type KitCtx } from "./parts.js";
+import { GLYPHS, text, type Chrome, type KitCtx } from "./parts.js";
 import { useSdkGate, type GateStep } from "./sdk.js";
 import {
   adoptDesktopStyles,
@@ -751,6 +751,27 @@ export function KitRoot(props: {
   );
 }
 
+/** The line a sign-in or key activation leaves over the app (the form's own toast, signin.tsx). */
+function toastStrip(
+  c: KitCtx,
+  t: { key: string; args: Record<string, string | number> },
+): ReactNode {
+  return (
+    <div
+      className="toast pk-flash"
+      role="status"
+      data-part="toast"
+      data-key={t.key}
+      data-status="success"
+    >
+      {GLYPHS.success()}
+      <span className="texts">
+        <span>{text(c, t.key, t.args)}</span>
+      </span>
+    </div>
+  );
+}
+
 /** The props of `<PolarisKeyGate>`: a kit component's, and the app it gates. */
 export interface PolarisKeyGateProps extends KitProps {
   /** The app, drawn once the license holds (and under the grace banner while offline grace runs). */
@@ -875,9 +896,19 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       )
       ?.focus({ preventScroll: true });
   });
+  const flash = driven ? sdk.toast : null;
   if (view.state === "hidden" || view.state === "licensed") {
     card.current = null;
-    return <>{props.children}</>;
+    return (
+      <>
+        {flash ? (
+          <KitRoot kit={kit} bare className={props.className}>
+            {toastStrip(kit.ctxFor(view), flash)}
+          </KitRoot>
+        ) : null}
+        {props.children}
+      </>
+    );
   }
   if (holding.current) return card.current;
   const c = kit.ctxFor(view);

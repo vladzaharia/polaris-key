@@ -2208,8 +2208,8 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.boot": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
   "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
-  "ui.kit.keyentry": { status: "planned", service: "sdk", na: [] },
-  "ui.kit.account": { status: "planned", service: "sdk", na: [] },
+  "ui.kit.keyentry": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit.account": { status: "implemented", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
     service: "sdk",
@@ -2289,4 +2289,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "52c5240572e70b4937e2dff49b761a0a3ed8fbce42903f6feb1a348f3fef2a07";
+  "b6662c3bc2d2c1458fc7db243f7b2d293ca49f3b61574c4b785b7441f9fb45f8";

@@ -28,6 +28,7 @@ import {
   CLOUD_CONNECT_CEILINGS,
   CLOUD_CONNECT_DEFAULTS,
 } from "@polaris-key/catalog";
+import { hexEncode } from "../../../platform/bytes.js";
 import { decodeRelay, encodeRelay } from "@polaris-key/client-core/peer";
 
 /** Close codes: the Room's own (§15.7) and the generic one for a refused envelope. */
@@ -51,8 +52,6 @@ export const RELAY_LIMIT = {
 export const RATE_STRIKES_MAX = 100;
 
 const DAY_MS = 86_400_000;
-const hex = (b: Uint8Array): string =>
-  Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 
 /** What the upgrade route hands the room after it consumed the relay ticket. */
 export interface RelayTicket {
@@ -142,7 +141,7 @@ export class RelayEngine {
   restore(r: RelayRestore, now: number): void {
     this.socks.clear();
     this.members.clear();
-    for (const m of r.members) this.members.set(hex(m), m);
+    for (const m of r.members) this.members.set(hexEncode(m), m);
     this.quota = clampDayBytes(r.dayBytesQuota);
     this.paused = r.paused;
     this.productOver = r.productOver;
@@ -152,7 +151,7 @@ export class RelayEngine {
       this.seq = Math.max(this.seq, s.seq + 1);
       this.socks.set(s.socket, {
         id: s.socket,
-        device: hex(s.device),
+        device: hexEncode(s.device),
         deviceBytes: s.device,
         seq: s.seq,
         tokens: CLOUD_CONNECT_DEFAULTS.messageBurst,
@@ -216,14 +215,14 @@ export class RelayEngine {
       t.members.every((m) => m instanceof Uint8Array && m.length === 24) &&
       Number.isFinite(t.expiresAt);
     if (!wellFormed || t.expiresAt <= now) return shut(RELAY_CLOSE.badTicket);
-    const device = hex(t.device);
-    if (!t.members.some((m) => hex(m) === device))
+    const device = hexEncode(t.device);
+    if (!t.members.some((m) => hexEncode(m) === device))
       return shut(RELAY_CLOSE.notMember);
 
     // A room is one person: the latest admission sets the roster and the quota. Devices that
     // left the roster lose their sockets (4003) and are announced gone.
     this.rollDay(now);
-    this.members = new Map(t.members.map((m) => [hex(m), m.slice()]));
+    this.members = new Map(t.members.map((m) => [hexEncode(m), m.slice()]));
     this.quota = clampDayBytes(t.dayBytes);
     this.paused = t.paused;
     this.productOver = t.productOver;
@@ -325,7 +324,7 @@ export class RelayEngine {
         this.sendMembers(s, out);
         return;
       case "send": {
-        const to = hex(msg.to);
+        const to = hexEncode(msg.to);
         if (!this.members.has(to)) return refuse(RELAY_CLOSE.notMember);
         if (this.paused) return this.limit(s, RELAY_LIMIT.paused, out);
         if (this.productOver) return this.limit(s, RELAY_LIMIT.product, out);

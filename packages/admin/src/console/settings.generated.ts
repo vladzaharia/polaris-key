@@ -130,7 +130,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Launch gate: native token exchange",
     description:
-      "Serves the RFC 8693 token-exchange grant on the identity token route, the exchange nonce route and the link offer routes. Off answers unsupported_grant_type and not_found, as before the exchange existed.",
+      "Serves the RFC 8693 token-exchange grant on the identity token route, the exchange nonce route, the link offer routes and the discovery members that name them. Off answers unsupported_grant_type and not_found, as before the exchange existed. Registering a device key (PUT /devices/keys) is Core and is not behind this gate.",
     keywords: ["launch", "token exchange", "native sign-in", "rollout"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",
@@ -187,7 +187,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "platform",
     label: "Launch gate: Cloud Connect relay",
     description:
-      "Serves the Cloud Connect relay routes, once they exist. Nothing reads it yet.",
+      "Serves the Cloud Connect relay routes and its rooms. Off answers not_found, and an open room closes at its next minute.",
     keywords: ["launch", "relay", "cloud connect", "rollout"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",
