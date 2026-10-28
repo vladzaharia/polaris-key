@@ -12,7 +12,12 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { KIT_GLYPHS, POWERED_BY } from "@polaris-key/brand";
+import {
+  GOOGLE_G_GRID,
+  GOOGLE_G_PATHS,
+  KIT_GLYPHS,
+  POWERED_BY,
+} from "@polaris-key/brand";
 import { markSvg } from "@polaris-key/brand/svg";
 import {
   renewTarget,
@@ -232,6 +237,31 @@ function Glyph({ d, cls }: { d: ReactNode; cls: string }) {
     >
       {d}
     </svg>
+  );
+}
+
+/** Google's own "G" (brand's providerMarks), unmodified: the sign-in button keeps its mark. */
+function GoogleMark() {
+  return (
+    <svg
+      className="mark"
+      viewBox={`0 0 ${GOOGLE_G_GRID} ${GOOGLE_G_GRID}`}
+      aria-hidden="true"
+      focusable="false"
+    >
+      {GOOGLE_G_PATHS.map((p) => (
+        <path key={p.d} fill={p.fill} d={p.d} />
+      ))}
+    </svg>
+  );
+}
+
+/** The provider's button is Google's when the key is "Continue with {provider}" and the view
+ *  names Google (UI-KITS §3.6: its own fill, mark and label colours, never the accent). */
+function isGoogle(c: KitCtx, key: string): boolean {
+  return (
+    key === "signin.provider.continue" &&
+    /^google$/i.test(String(c.view.args.provider ?? c.input.provider ?? ""))
   );
 }
 
@@ -505,6 +535,8 @@ export function button(
     args?: Record<string, string | number>;
     /** Extra members of the `onAction` this control reports (a row's index). */
     detail?: Record<string, unknown>;
+    /** The control leaves the app (a Replace that runs in the browser): the new-window glyph. */
+    external?: boolean;
   } = {},
 ): ReactNode {
   // The refusal step's manage link leaves the app too (refusal.ts): the key step's title as its
@@ -546,6 +578,7 @@ function plainButton(
   const manage = key === MANAGE_KEY && isRefusalStep(c.view);
   const external =
     manage ||
+    extra.external === true ||
     (key === OWNED_SIGN_IN_KEY && c.view.args.signInLink === 1) ||
     (key === "status.renew" ? renewTarget(c.input) != null : OPENS.has(key)) ||
     c.chrome?.labels?.[key] !== undefined;
@@ -553,6 +586,7 @@ function plainButton(
     NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
       ? pickedDevice(c)
       : null;
+  const google = isGoogle(c, key);
   return (
     <button
       key={key}
@@ -561,6 +595,7 @@ function plainButton(
       data-part={variant}
       data-variant={variant}
       data-key={key}
+      data-provider={google ? "google" : undefined}
       aria-disabled={extra.busy ? "true" : undefined}
       aria-label={extra.label}
       aria-describedby={hintId}
@@ -569,6 +604,7 @@ function plainButton(
       }}
     >
       {extra.busy ? <span className="ring" aria-hidden="true" /> : null}
+      {google && !extra.busy ? <GoogleMark /> : null}
       <span>
         {device !== null
           ? text(c, "signin.replace.confirmNamed", { device })

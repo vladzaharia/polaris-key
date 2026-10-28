@@ -183,7 +183,7 @@
     },
     "identity.autosignin": {
       "status": "implemented",
-      "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-44): a stored sign-in, the platform provider silently, then its one sheet; every refusal is a result."
+      "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-44): a stored sign-in, then the platform provider's silent mode where it has one (Apple has none; Game Center is I-44.5), then its one sheet under prompt: .optional; every refusal is a result."
     },
     "identity.link": {
       "status": "planned",
@@ -469,6 +469,26 @@
     "sync.keyring": {
       "status": "planned",
       "wp": "U-39"
+    },
+    "sync.records": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.files": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.files.delta": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.e2e.recovery": {
+      "status": "planned",
+      "wp": "U-07"
+    },
+    "sync.transfer.background": {
+      "status": "planned",
+      "wp": "U-41"
     },
     "sync.e2e": {
       "status": "planned",

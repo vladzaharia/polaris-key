@@ -25,7 +25,9 @@ import AuthenticationServices
 #endif
 
 /// What Apple granted. The identity token (a JWT) and the code are secrets.
-public struct AppleSignInGrant: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct AppleSignInGrant: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
     /// Apple's stable user id for this team: not a secret.
     public let userID: String
     /// The identity token (compact JWT), UTF-8 decoded. A secret.
@@ -44,6 +46,16 @@ public struct AppleSignInGrant: Sendable, Equatable, CustomStringConvertible, Cu
 
     public var description: String { "AppleSignInGrant(userID: \(userID), token: <redacted>)" }
     public var debugDescription: String { description }
+    /// A mirror (`dump`, a debugger) shows the secrets as redacted.
+    public var customMirror: Mirror {
+        Mirror(
+            self,
+            children: [
+                "userID": userID, "identityToken": "[redacted]",
+                "authorizationCode": authorizationCode == nil ? "nil" : "[redacted]",
+                "email": email as Any,
+            ], displayStyle: .struct)
+    }
 }
 
 /// Apple's `ASAuthorizationAppleIDProvider.CredentialState`, as plain values.
@@ -184,7 +196,7 @@ private final class AppleAuthorizationRun: NSObject, ASAuthorizationControllerDe
     private var controller: ASAuthorizationController?
 
     static func perform(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
-        let run = await AppleAuthorizationRun()
+        let run = AppleAuthorizationRun()
         return try await run.start(nonce: nonce, immediate: immediate)
     }
 

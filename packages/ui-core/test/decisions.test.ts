@@ -191,6 +191,11 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     ...refusal("common.continue"),
     focus: "heading",
   }),
+  // A device limit with no license rows (KFA-0): Replace a device when a link came, else none.
+  "SignIn.device-limit": (i) => ({
+    ...refusal(i.autoSignIn?.manageUrl ? "signin.deviceLimit.replace" : null),
+    focus: "heading",
+  }),
   "SignIn.nearby-prompt": () => heading("common.continue"),
   "SignIn.nearby-wait": () => heading(null),
   "SignIn.nearby-done": () => heading("common.continue"),

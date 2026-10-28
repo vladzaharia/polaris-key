@@ -2720,9 +2720,11 @@ describe("the package record", () => {
     expect(items).toEqual(["Deprecate…"]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Deprecate…" }));
     const dialog = await screen.findByRole("alertdialog");
-    const confirm = within(dialog).getByRole("button", {
-      name: "Deprecate 2.3.0",
-    });
+    const confirmButton = () =>
+      within(dialog).getByRole("button", {
+        name: "Deprecate 2.3.0",
+      });
+    const confirm = confirmButton();
     expect(
       confirm.hasAttribute("disabled") ||
         confirm.getAttribute("aria-disabled") === "true",
@@ -2731,7 +2733,7 @@ describe("the package record", () => {
       within(dialog).getByRole("textbox", { name: "Message" }),
       "Use 3.x",
     );
-    await userEvent.click(confirm);
+    await userEvent.click(confirmButton());
     await waitFor(() =>
       expect(log.calls.find((c) => c.method === "POST")?.json).toEqual({
         message: "Use 3.x",

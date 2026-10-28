@@ -176,6 +176,7 @@ import { accountMayOpenConsole } from "../consoleAccount.js";
 import { consoleOrigin } from "../../../core/hosts.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
 import { bestRow } from "../../../core/http/routes.js";
+import { handleStorefrontName } from "./storefrontName.js";
 
 export function portalJson(
   body: unknown,
@@ -1854,6 +1855,21 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
         c.db,
         new URL(c.req.url).searchParams.get("product"),
         c.now,
+      ),
+  },
+  // LK-12d: the signed-out card's product name and icon, only for a product Discover offers a
+  // new account (`storefrontName.ts`).
+  {
+    path: "storefront/:product",
+    auth: "none",
+    handler: (c, m) =>
+      handleStorefrontName(
+        c.req,
+        c.env,
+        c.db,
+        m.params.product!,
+        c.now,
+        c.hooksFor,
       ),
   },
   {

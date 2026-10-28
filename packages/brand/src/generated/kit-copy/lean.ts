@@ -141,6 +141,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.choice.freeDevice": { macos: "Free a Device" },
   "signin.choice.continue": { macos: "Use This License" },
   "signin.none.otherAccount": { macos: "Use Another Account" },
+  "signin.deviceLimit.replace": { macos: "Replace a Device" },
   "signin.replace.open": { macos: "Replace a Device" },
   "signin.replace.confirm": { macos: "Replace and Continue" },
   "signin.notYou": { macos: "Not You?" },

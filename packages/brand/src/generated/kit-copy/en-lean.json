@@ -346,6 +346,7 @@
   "signin.none.body": "Bought it with another email? Sign in with that account instead.",
   "signin.none.get": "Get {product}",
   "signin.none.otherAccount": "Use another account",
+  "signin.deviceLimit.replace": "Replace a device",
   "signin.notYou": "Not you?",
   "signin.cancel": "Cancel",
   "signin.key.addTitle": "Add {product} to your account",

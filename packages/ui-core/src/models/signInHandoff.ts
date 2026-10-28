@@ -70,6 +70,7 @@ export type SignInState =
   | "nearby-prompt"
   | "nearby-wait"
   | "nearby-done"
+  | "device-limit"
   | "done"
   | "error"
   | "expired"

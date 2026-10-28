@@ -112,35 +112,41 @@ function lockupPalette(theme: LockerLockupTheme): Record<string, string> {
  * mark); its canvas is the trimmed box plus a quarter of the mark on each side. The others are the
  * kit's. `lockerKitLockupSvg` keeps the kit's horizontal file byte for byte.
  */
-const relaid = (() => {
+const PAD = Math.round(LOCKER_TRIM.height / 4);
+
+/** The untrimmed horizontal canvas: the trimmed box with a quarter of the mark's height around it. */
+export const LOCKER_LOCKUP_CANVAS = {
+  x: LOCKER_TRIM.x - PAD,
+  y: LOCKER_TRIM.y - PAD,
+  width: LOCKER_TRIM.width + 2 * PAD,
+  height: LOCKER_TRIM.height + 2 * PAD,
+} as const;
+
+// Built on first use, not at import: a module-level read of the templates would keep the kit's
+// outlined artwork in every bundle that imports this module (the React gate reads the canvas).
+let relaidCache: LockerTemplate | undefined;
+function relaid(): LockerTemplate {
+  if (relaidCache) return relaidCache;
   const t = LOCKER_LOCKUP_TEMPLATES.horizontal;
   const at = t.body.indexOf('<g fill="{text}"');
   const text = /translate\(144,80\)/;
   if (at < 0 || !text.test(t.body))
     throw new Error("locker: the kit's horizontal lockup changed shape");
-  const pad = Math.round(LOCKER_TRIM.height / 4);
-  return {
-    width: LOCKER_TRIM.width + 2 * pad,
-    height: LOCKER_TRIM.height + 2 * pad,
+  relaidCache = {
+    width: LOCKER_LOCKUP_CANVAS.width,
+    height: LOCKER_LOCKUP_CANVAS.height,
     title: t.title,
     body:
       `<g transform="${LOCKER_HORIZONTAL.markTransform}">${t.body.slice(0, at)}</g>` +
       t.body
         .slice(at)
         .replace(text, `translate(${LOCKER_HORIZONTAL.textX},80)`),
-  } satisfies LockerTemplate;
-})();
-
-/** The untrimmed horizontal canvas: the trimmed box with a quarter of the mark's height around it. */
-export const LOCKER_LOCKUP_CANVAS = {
-  x: LOCKER_TRIM.x - Math.round(LOCKER_TRIM.height / 4),
-  y: LOCKER_TRIM.y - Math.round(LOCKER_TRIM.height / 4),
-  width: relaid.width,
-  height: relaid.height,
-} as const;
+  };
+  return relaidCache;
+}
 
 export function lockerLockupTemplate(layout: LockerLayout): LockerTemplate {
-  return layout === "horizontal" ? relaid : LOCKER_LOCKUP_TEMPLATES[layout];
+  return layout === "horizontal" ? relaid() : LOCKER_LOCKUP_TEMPLATES[layout];
 }
 
 const fillRoles = (body: string, palette: Record<string, string>) =>

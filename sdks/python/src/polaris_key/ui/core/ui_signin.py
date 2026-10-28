@@ -172,6 +172,29 @@ def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, An
                 "signin.nearby.code",
             ],
         )
+    if step == "device-limit":
+        # A device limit with no license rows: its own step, never the key screen. Replace opens the
+        # refusal's manageUrl; without a usable link the fix is named in words.
+        link = link_verdict(auto.get("manageUrl"), ctx.platform, "replace-device")
+        replace = link.url is not None
+        return make_view(
+            ctx,
+            "SignIn",
+            "device-limit",
+            [
+                "core.codes.device_limit.title",
+                "core.codes.device_limit.message",
+                "signin.deviceLimit.replace" if replace else "deviceLimit.noManage",
+                "a11y.externalLink" if replace else None,
+                "signin.auto.confirm.other",
+                "common.cancel",
+            ],
+            args=a,
+            primary="signin.deviceLimit.replace" if replace else None,
+            tone="neutral",
+            focus="heading",
+            link=link,
+        )
     return view("nearby-done", ["signin.nearby.done", "common.continue", "signin.nearby.notYou"], "common.continue")
 
 

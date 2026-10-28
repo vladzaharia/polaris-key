@@ -959,6 +959,9 @@
     <!-- No license in this account (SIGN-IN.md §3.6). -->
     <string name="signin_none_otherAccount">다른 계정 사용</string>
     <string name="signin_none_otherAccount__macos">다른 계정 사용</string>
+    <!-- Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink. -->
+    <string name="signin_deviceLimit_replace">기기 교체</string>
+    <string name="signin_deviceLimit_replace__macos">기기 교체</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_open">기기 교체</string>
     <string name="signin_replace_open__macos">기기 교체</string>
@@ -1003,7 +1006,7 @@
     <string name="signin_consent_title">%1$s에서 %2$s 님으로 계속할까요?</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_license">이 기기의 라이선스</string>
-    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s: %5$s대 중 %4$s번째 기기</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · %2$s 교체</string>
@@ -1018,7 +1021,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_profile">프로필 및 이메일</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
-    <string name="signin_consent_pairwise">앱에는 회원님 전용 ID가 제공되며, 다른 제품이나 로그인 방법은 공개되지 않아요.</string>
+    <string name="signin_consent_pairwise">앱에는 회원님 전용 ID가 제공되며, 다른 앱이나 로그인 방법은 공개되지 않아요.</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_notYou">본인이 아닌가요?</string>
     <string name="signin_notYou__macos">본인이 아닌가요?</string>
@@ -2587,6 +2590,10 @@
     <string name="core_codes_peer_cert_invalid_title">기기를 확인할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_message">이 기기를 확인할 수 없습니다. 다시 시도하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_title">로컬 네트워크 차단됨</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_message">이 앱이 로컬 네트워크의 기기에 접근할 수 없습니다. 시스템 설정에서 허용해 주세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">플랫폼 문제</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

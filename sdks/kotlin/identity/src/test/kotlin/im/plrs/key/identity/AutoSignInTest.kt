@@ -253,7 +253,10 @@ class AutoSignInTest {
         assertEquals(AutoSignInResult.Unavailable(ErrorCode.serverError), server)
         val notServed = world(nonceStatus = 404)
             .client.autoSignIn(AutoSignInOptions(provider = FakeProvider()))
-        assertEquals(AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable), notServed)
+        // The exchange's own reason is carried, not flattened (I-45.9 M3).
+        assertEquals(AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable, ExchangeUnavailableReason.notServed), notServed)
+        val noKeys = IdentityClient(world().core).autoSignIn(AutoSignInOptions(provider = FakeProvider()))
+        assertEquals(AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable, ExchangeUnavailableReason.noDeviceKeys), noKeys)
     }
 
     @Test
@@ -313,6 +316,45 @@ class AutoSignInTest {
         assertTrue(w.paths().any { it == "/djdl/identity/signout" })
         assertEquals(1, p.cleanups)
         assertEquals(0, p.silentCalls)
+    }
+
+    @Test
+    fun aRevocationSignOutCleansUpTheOptionsProviderNotTheInstalledOne() = runBlocking {
+        val w = world()
+        val installed = FakeProvider()
+        val mine = FakeProvider(revoked = true)
+        w.client.installPlatformIdentity(installed)
+        w.client.autoSignIn(AutoSignInOptions(provider = mine))
+        assertEquals(1, mine.cleanups)
+        assertTrue(w.paths().any { it == "/djdl/identity/signout" })
+    }
+
+    @Test
+    fun aSignOutBetweenTheCheckAndTheStoreTakesTheTokenBackOut() = runBlocking {
+        val w = world()
+        val generation = w.core.signOutGeneration()
+        var checks = 0
+        val outcome = try {
+            w.client.exchangeTokens(
+                ExchangeKind.google, "id-token", null, w.client.deviceKeyPort()!!,
+                mayStore = {
+                    val ok = w.core.signOutGeneration() == generation
+                    // A sign-out lands right after the first check, before the token is stored.
+                    if (checks++ == 0) {
+                        w.core.bumpSignOutGeneration()
+                        w.core.setExplicitSignOut(true)
+                        w.core.setTokenProvenance(TokenProvenance.key)
+                    }
+                    ok
+                },
+            )
+        } catch (e: SignedOutDuringExchange) {
+            null
+        }
+        assertNull("the exchange must end as signed out", outcome)
+        assertEquals(2, checks)
+        assertNull(w.core.token())
+        assertTrue(w.core.tokenProvenance() != TokenProvenance.signin)
     }
 
     @Test

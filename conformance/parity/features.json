@@ -721,6 +721,144 @@
       "note": "WIRE-CONTRACT-V5 §13.11.2. The keyring-* transcripts pin the routes with opaque fixture keys; the E2E codec and the ring client are U-38 to U-40."
     },
     {
+      "id": "sync.records",
+      "family": "sync",
+      "title": "cloudSync records: collections with put, update, compare-and-set and union merge",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "U-10"
+        }
+      ],
+      "allowedNa": [],
+      "note": "plans/CC-01-cloud-sync.md §2.7. The sync-records transcripts pin the routes; the merge policies share the sync.conflict vocabulary."
+    },
+    {
+      "id": "sync.files",
+      "family": "sync",
+      "title": "cloudSync files: single and multipart upload, resume, progress and ranged download",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "U-10"
+        }
+      ],
+      "allowedNa": [],
+      "note": "plans/CC-01-cloud-sync.md §2.7. The sync-files transcripts pin begin, parts, resume (`received`) and finalize."
+    },
+    {
+      "id": "sync.files.delta",
+      "family": "sync",
+      "title": "cloudSync file delta: content-defined chunks, only the missing chunks travel",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "sync-vectors.json",
+          "family": "cdcCases",
+          "wp": "U-34"
+        },
+        {
+          "kind": "transcript",
+          "wp": "U-37"
+        }
+      ],
+      "allowedNa": [],
+      "note": "plans/CC-01-cloud-sync.md §1.3. sync-vectors.json pins the cut points, chunk ids and objects (cdcCases, chunkCases); the transcripts pin the chunk routes (U-37)."
+    },
+    {
+      "id": "sync.e2e.recovery",
+      "family": "sync",
+      "title": "The recovery code, and the platform backup of the root where the OS has one",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "sync-vectors.json",
+          "family": "recoveryCodeCases",
+          "wp": "U-34"
+        },
+        {
+          "kind": "transcript",
+          "wp": "U-36"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "No platform backup API: the recovery code is the only backup. This allows the backup half only; the recovery code applies everywhere."
+        },
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "No platform backup API: the recovery code is the only backup. This allows the backup half only; the recovery code applies everywhere."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "No platform backup API: the recovery code is the only backup. This allows the backup half only; the recovery code applies everywhere."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "No platform backup API: the recovery code is the only backup. This allows the backup half only; the recovery code applies everywhere."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "No platform backup API: the recovery code is the only backup. This allows the backup half only; the recovery code applies everywhere."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "No platform backup API: the recovery code is the only backup. This allows the backup half only; the recovery code applies everywhere."
+        }
+      ],
+      "note": "plans/CC-01-cloud-sync.md §1.5 and §2.7. An SDK without a backup API declares the code half, not the feature, as its scope."
+    },
+    {
+      "id": "sync.transfer.background",
+      "family": "sync",
+      "title": "Background transfer: an upload or download that continues when the app is suspended",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "device"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A page has no background transfer that outlives it."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no credentials and the host process runs while the app does."
+        },
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "A Node process runs until it exits; there is no suspension."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "A Python process runs until it exits; there is no suspension."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A JVM desktop process runs until it exits; there is no suspension."
+        }
+      ],
+      "note": "plans/CC-01-cloud-sync.md §2.7. Proven on a device (U-41)."
+    },
+    {
       "id": "sync.e2e",
       "family": "sync",
       "title": "End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine",

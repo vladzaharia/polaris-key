@@ -597,6 +597,10 @@
       "title": "Dispositivo não verificado",
       "message": "Não foi possível verificar este dispositivo. Tente novamente."
     },
+    "nearby-permission-denied": {
+      "title": "Rede local bloqueada",
+      "message": "Este app não consegue acessar dispositivos da sua rede local. Permita nas configurações do sistema."
+    },
     "platform-error": {
       "title": "Problema na plataforma",
       "message": "A plataforma informou um erro. Tente novamente."

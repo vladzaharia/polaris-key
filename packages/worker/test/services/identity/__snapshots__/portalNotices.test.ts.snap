@@ -63,6 +63,25 @@ About this email: https://key.plrs.im/docs/help/emails/#account-deletion-schedul
 }
 `;
 
+exports[`notice templates: copy > appDeviceApproved: subject and plain text 1`] = `
+{
+  "subject": "Diceroll signed in on Living room TV",
+  "text": "Diceroll signed in on Living room TV
+
+You approved it from another device.
+
+If this wasn't you, remove Living room TV from your devices in Polaris Locker.
+
+See your devices: https://key.plrs.im/#/p/diceroll/devices
+
+You are receiving this because of a change to your Polaris Locker account.
+
+What is Polaris Locker? https://key.plrs.im/docs/help/what-is-polaris-locker/
+
+About this email: https://key.plrs.im/docs/help/emails/#app-device-approved",
+}
+`;
+
 exports[`notice templates: copy > assignedToYou: subject and plain text 1`] = `
 {
   "subject": "A Mossgarden license was assigned to you",

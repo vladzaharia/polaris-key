@@ -99,7 +99,7 @@ def _is_object(v: Any) -> bool:
 
 
 def _is_number(v: Any) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
 def _is_integer(v: Any) -> bool:

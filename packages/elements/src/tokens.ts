@@ -7,7 +7,12 @@
 // Scoping (UI-KITS.md §3.2): the scales sit on `:host`, the colours on the kit root's
 // `[data-theme]`, which the element always sets to the resolved scheme. Nothing is set on `:root`.
 
-import { KIT_TOKENS, THEME_TOKENS } from "@polaris-key/brand";
+import {
+  GOOGLE_BUTTON_FILLS,
+  GOOGLE_BUTTON_FOR_SCHEME,
+  KIT_TOKENS,
+  THEME_TOKENS,
+} from "@polaris-key/brand";
 import { platformTokenCss } from "./desktopTokens.js";
 import { ELEVATION, FONT, MOTION, RADIUS, SPACE } from "@polaris-key/brand";
 
@@ -110,6 +115,11 @@ function colours(scheme: Scheme): Record<string, string> {
   out["--pk-kit-highlight"] = rgba(hl.color, hl.opacity);
   out["--pk-kit-danger-solid"] = KIT_TOKENS.danger[scheme].solid;
   out["--pk-kit-danger-on"] = KIT_TOKENS.danger[scheme].on;
+  // Google's button: its own fill, hairline and label for this scheme (brand's providerMarks).
+  const google = GOOGLE_BUTTON_FILLS[GOOGLE_BUTTON_FOR_SCHEME[scheme]];
+  out["--pk-google-fill"] = google.fill;
+  out["--pk-google-border"] = google.border ?? "transparent";
+  out["--pk-google-label"] = google.label;
   const scrim = KIT_TOKENS.components.web.scrim[scheme];
   out["--pk-kit-scrim"] = rgba(KIT_TOKENS.scrimColor[scheme], scrim.opacity);
   out["--pk-kit-scrim-blur"] = `${scrim.blur}px`;

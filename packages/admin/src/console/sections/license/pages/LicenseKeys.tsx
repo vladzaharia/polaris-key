@@ -4,6 +4,7 @@
  * under "Show N revoked". Revoke is L2 danger; Mint key shows the key once (LIC-2).
  */
 
+import { Unlocked } from "../../../../ui/WriteLock.js";
 import * as React from "react";
 import { KeyRound } from "lucide-react";
 import { type KeyDto, type LicenseDetail } from "../../../../api.js";
@@ -145,14 +146,16 @@ export function LicenseKeys({
         mobile="cards"
       />
       {revoked.length > 0 ? (
-        <Button
-          variant="link"
-          size="sm"
-          aria-expanded={showRevoked}
-          onClick={() => setShowRevoked((s) => !s)}
-        >
-          {showRevoked ? "Hide" : "Show"} {revoked.length} revoked
-        </Button>
+        <Unlocked>
+          <Button
+            variant="link"
+            size="sm"
+            aria-expanded={showRevoked}
+            onClick={() => setShowRevoked((s) => !s)}
+          >
+            {showRevoked ? "Hide" : "Show"} {revoked.length} revoked
+          </Button>
+        </Unlocked>
       ) : null}
 
       <MintKeyDialog

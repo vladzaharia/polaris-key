@@ -26,35 +26,59 @@ export const CONSENT = {
   changed: false,
 } as never;
 
-export const VIEW_FULL = {
-  state: "all-full",
-  preselected: null,
-  choices: [
-    {
-      id: "lic_pro",
-      tierName: "Pro",
-      origin: "signin",
-      state: "full",
-      expiresAt: null,
-      seats: { used: 3, limit: 3 },
-    },
-  ],
-} as never;
+/** The wire's shape of a license list (plans/I-04.md §G): `state` is `choose` whatever the rows. */
+const view = (rows: unknown[], over: object = {}) =>
+  ({
+    state: "choose",
+    choices: rows,
+    keep: false,
+    preselected: null,
+    create: null,
+    getLicense: null,
+    ...over,
+  }) as never;
 
-export const VIEW_FREE = {
-  state: "many",
-  preselected: "lic_pro",
-  choices: [
+const fullRow = (over: object = {}) => ({
+  id: "lic_pro",
+  tierName: "Pro",
+  name: "Tidewater Pro",
+  origin: "signin",
+  access: "seats",
+  seats: { used: 3, limit: 3 },
+  current: false,
+  expiresAt: null,
+  state: "full",
+  replace: { allowed: true, retryAfter: null },
+  freeDeviceUrl: null,
+  ...over,
+});
+
+/** Every seat taken, Replace allowed, the row with no link of its own (the refusal's `manageUrl`
+ *  is the fallback). */
+export const VIEW_FULL = view([fullRow()]);
+
+/** Every seat taken, Replace allowed, with the row's own link. */
+export const VIEW_FULL_LINKED = view([
+  fullRow({
+    freeDeviceUrl: "https://polaris.locker/#/p/tidewater/free-device",
+  }),
+]);
+
+/** Every seat taken and the developer manages devices: no Replace. */
+export const VIEW_FULL_FIXED = view([fullRow({ replace: null })]);
+
+export const VIEW_FREE = view(
+  [
     {
-      id: "lic_pro",
-      tierName: "Pro",
-      origin: "signin",
-      state: "free",
-      expiresAt: null,
-      seats: { used: 1, limit: 3 },
+      ...fullRow({
+        state: "free",
+        seats: { used: 1, limit: 3 },
+        replace: null,
+      }),
     },
   ],
-} as never;
+  { preselected: "lic_pro" },
+);
 
 import { vi } from "vitest";
 import type { AutoSignInResult } from "../src/core/index.js";

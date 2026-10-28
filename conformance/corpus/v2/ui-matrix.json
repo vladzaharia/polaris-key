@@ -19,7 +19,8 @@
       "open-manage-url": [
         "deviceLimit.openBrowser",
         "devices.manage",
-        "signin.key.addInLocker"
+        "signin.key.addInLocker",
+        "signin.deviceLimit.replace"
       ],
       "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
       "retry": [
@@ -47,7 +48,7 @@
       "activation": "An activation result: {result: activationResult, code?, limit?, deviceCount?, manageUrl?}.",
       "offline": "Offline activation: {copied?, file?, submitted?, verified?} (the request code copied, a response loaded, submitted, its signature verified).",
       "provider": "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
-      "autoSignIn": "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done, email?, reach?: global | developer | unknown}. No email: the provider shared none. The provider is `provider`.",
+      "autoSignIn": "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
       "nearbyApproval": "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
       "signIn": "The sign-in session: {presentation, replace, channel, outcome?, browserOpened?, redeeming?, event?, issuedNow?, raced?, grantExpired?}. outcome is session.wait()'s; issuedNow is true when this sign-in added or issued the license.",
       "deviceCode": "The device-code poll: {phase, secondsLeft?}. Present exactly on rows with signIn.channel device-code; it alone selects SignInHandoff's state.",
@@ -5155,6 +5156,128 @@
           "signin.linkOffer.conflictTitle",
           "signin.linkOffer.join"
         ]
+      }
+    },
+    {
+      "name": "SignIn/device-limit: no license rows, with a link to replace a device",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": {
+          "step": "device-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "device-limit",
+        "copy": [
+          "a11y.externalLink",
+          "common.cancel",
+          "core.codes.device_limit.message",
+          "core.codes.device_limit.title",
+          "signin.auto.confirm.other",
+          "signin.deviceLimit.replace"
+        ],
+        "actions": ["cancel", "open-manage-url"]
+      },
+      "mustNot": {
+        "invariant": "restart the flow or erase account context on a step change",
+        "states": ["confirm", "key"],
+        "copy": ["part.keyField.label", "signin.key.differentKey"]
+      }
+    },
+    {
+      "name": "SignIn/device-limit: no license rows, with a link to replace a device (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": {
+          "step": "device-limit",
+          "manageUrl": "https://polaris.locker/#/p/tidewater/free-device?license=lic_pro&for=MacBook%20Pro"
+        }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "device-limit",
+        "copy": [
+          "a11y.externalLink",
+          "common.cancel",
+          "core.codes.device_limit.message",
+          "core.codes.device_limit.title",
+          "signin.auto.confirm.other",
+          "signin.deviceLimit.replace"
+        ],
+        "actions": ["cancel", "open-manage-url"]
+      },
+      "mustNot": {
+        "invariant": "restart the flow or erase account context on a step change",
+        "states": ["confirm", "key"],
+        "copy": ["part.keyField.label", "signin.key.differentKey"]
+      }
+    },
+    {
+      "name": "SignIn/device-limit: no license rows, no link",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "device-limit" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "device-limit",
+        "copy": [
+          "common.cancel",
+          "core.codes.device_limit.message",
+          "core.codes.device_limit.title",
+          "deviceLimit.noManage",
+          "signin.auto.confirm.other"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "restart the flow or erase account context on a step change",
+        "copy": ["a11y.externalLink", "signin.deviceLimit.replace"]
+      }
+    },
+    {
+      "name": "SignIn/device-limit: no license rows, no link (sheet)",
+      "input": {
+        "provider": "Google",
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "device-limit" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "device-limit",
+        "copy": [
+          "common.cancel",
+          "core.codes.device_limit.message",
+          "core.codes.device_limit.title",
+          "deviceLimit.noManage",
+          "signin.auto.confirm.other"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "restart the flow or erase account context on a step change",
+        "copy": ["a11y.externalLink", "signin.deviceLimit.replace"]
       }
     },
     {

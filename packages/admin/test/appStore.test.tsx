@@ -250,15 +250,17 @@ describe("Distribution → App Store: the Distribute flow", () => {
       screen.getByRole("button", { name: "Submit for review…" }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    const confirm = within(dialog).getByRole("button", {
-      name: "Submit for review",
-    });
+    const confirmButton = () =>
+      within(dialog).getByRole("button", {
+        name: "Submit for review",
+      });
+    const confirm = confirmButton();
     expect(
       confirm.hasAttribute("disabled") ||
         confirm.getAttribute("aria-disabled") === "true",
     ).toBe(true);
     await userEvent.type(within(dialog).getByLabelText(/App name/), "DJDL");
-    await userEvent.click(confirm);
+    await userEvent.click(confirmButton());
     await waitFor(() =>
       expect(writes(calls)).toEqual([
         expect.objectContaining({

@@ -351,6 +351,29 @@ function autoStepView(
         auto.code && "a11y.nearbyCode",
         "signin.nearby.code",
       ]);
+    case "device-limit": {
+      // A device limit with no license rows, reached from automatic sign-in or a provider
+      // sign-in: its own step, never the key screen. Replace opens the refusal's `manageUrl`.
+      const link = linkVerdict(auto.manageUrl, ctx.platform, "replace-device");
+      const replace = link.url !== null;
+      return makeView(ctx, "SignIn", {
+        state: "device-limit",
+        copy: [
+          "core.codes.device_limit.title",
+          "core.codes.device_limit.message",
+          replace ? "signin.deviceLimit.replace" : "deviceLimit.noManage",
+          replace && "a11y.externalLink",
+          "signin.auto.confirm.other",
+          "common.cancel",
+        ],
+        args: { ...args, provider },
+        primary: replace ? "signin.deviceLimit.replace" : null,
+        tone: "neutral",
+        focus: "heading",
+        link,
+        extraActions: replace ? ["open-manage-url"] : [],
+      });
+    }
     case "nearby-done":
       return view(
         "nearby-done",

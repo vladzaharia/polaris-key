@@ -298,6 +298,8 @@ public actor CoreContext {
     // explicit ACROSS MODULES — a `let` could become a `var` in a later version of this package,
     // and the compiler will not assume otherwise on our behalf.
     public nonisolated let product: String
+    /// The keychain access group the credential and the device keys share (nil: the default).
+    public nonisolated let keychainAccessGroup: String?
     /// The product identity used for durable state. Non-production hosts append a safe host suffix.
     public nonisolated let storageNamespace: String
     public nonisolated let endpoints: Endpoints
@@ -400,6 +402,7 @@ public actor CoreContext {
 
     public init(options: CoreOptions) throws {
         self.product = options.productSlug
+        self.keychainAccessGroup = options.keychainAccessGroup
         // Throws BEFORE anything else happens — no directory created, no keychain touched — so
         // a client that failed the scheme guard has taken no other action (§5).
         self.endpoints = try Endpoints(baseUrl: options.baseUrl, product: options.productSlug)
@@ -509,9 +512,23 @@ public actor CoreContext {
     /// signed-out flag is clear. False stores nothing. Never ends the signed-out state.
     public func setTokenUnlessSignedOut(_ token: String, generation: Int) async throws -> Bool {
         if await explicitSignOut() || signOutGenerationValue != generation { return false }
+        await beforeLadderStore?()
         try await setToken(token, source: .signin)
+        // `setToken` suspends, so a sign-out may have run in between (it bumped the generation
+        // and saw no token, or the old one). Its work must stand: undo the store.
+        if signOutGenerationValue != generation {
+            tokenValue = nil
+            tokenSourceValue = nil
+            await writeProvenance(nil)
+            try? await store.clearToken()
+            return false
+        }
         return true
     }
+
+    /// Test seam: runs between the ladder's sign-out check and its store.
+    var beforeLadderStore: (@Sendable () async -> Void)?
+    func setBeforeLadderStore(_ hook: (@Sendable () async -> Void)?) { beforeLadderStore = hook }
 
     // ── Signed-out flag and token provenance ──────────────────────────────────────────
 
@@ -635,6 +652,32 @@ public actor CoreContext {
         guard result.doc != nil else { return false }
         installManifest(jws, result)
         return true
+    }
+
+    /// Verify a manifest a peer pushed and install it (CC-11.5; WIRE-CONTRACT-V5 §15.8), under the
+    /// rules the Worker's own manifest meets: signed by a USABLE pin (tombstones removed), bound to
+    /// this product, fresh, and newer than the one held (anti-rollback). A refused manifest changes
+    /// nothing. An accepted one replaces the discovered tier, files any tombstone evidence and raises
+    /// the clock floor, as a fetched one does. The caller persists the signed manifest when it is
+    /// `applied` and gates the whole path on trust refresh (CC-11.15).
+    ///
+    /// The check and the install run in one synchronous step of this actor, with no suspension
+    /// between them, so a `refreshTrust()` suspended on its network fetch cannot interleave with it:
+    /// at most one of two pushes of the same `issuedAt` applies.
+    public func acceptPeer(_ jws: String) -> PeerTrustResult {
+        // `lastTrustIssuedAt` is left out of the verification so a replay reads `not_newer`, apart
+        // from a manifest that does not verify at all (`invalid`).
+        let probe = verifyTrustManifest(
+            jws,
+            options: VerifyTrustManifestOptions(
+                pinned: pinnedTrust, tombstones: tombstones, expectedAud: product, now: now()))
+        guard let doc = probe.doc else { return PeerTrustResult(applied: false, reason: "invalid") }
+        if let held = manifest?.issuedAt, doc.issuedAt <= held {
+            return PeerTrustResult(applied: false, reason: "not_newer")
+        }
+        installManifest(jws, probe)
+        reloadUpdateSlices()
+        return PeerTrustResult(applied: true, reason: nil)
     }
 
     private func verifyManifest(_ jws: String, checkFreshness: Bool) -> TrustManifestResult {
@@ -1225,8 +1268,9 @@ public actor CoreContext {
         var body: Data?
         // PX-W13 §8 Q2: the device label rides along, seeding the device's name in the lists.
         let label = await deviceLabel()
-        if fingerprint != nil || label != nil, let encoded = try? JSONEncoder().encode(
-            FingerprintBody(fingerprint: fingerprint, deviceName: label))
+        if fingerprint != nil || label != nil,
+            let encoded = try? JSONEncoder().encode(
+                FingerprintBody(fingerprint: fingerprint, deviceName: label))
         {
             extra["content-type"] = "application/json"
             body = encoded
@@ -1505,7 +1549,8 @@ public actor CoreContext {
             // `expiresAt` and `expired` at `graceUntil` (R2-11). Past the half-life we re-ask
             // UNCONDITIONALLY so the server re-signs the validity window.
             if !force, let expiresAt = currentExpiresAt(slice),
-                now() > saturatingAdd(expiresAt, -REFRESH_MARGIN_SECONDS) {
+                now() > saturatingAdd(expiresAt, -REFRESH_MARGIN_SECONDS)
+            {
                 return await syncDocument(
                     slice, force: true, reacquire: reacquire, allowReacquire: allowReacquire)
             }

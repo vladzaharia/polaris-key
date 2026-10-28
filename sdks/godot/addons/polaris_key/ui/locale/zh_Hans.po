@@ -2617,6 +2617,16 @@ msgid "signin.none.otherAccount"
 msgstr "使用其他账户"
 
 #. Replace a device
+#. Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink.
+msgid "signin.deviceLimit.replace"
+msgstr "替换设备"
+
+#. macos: Replace a Device
+msgctxt "macos"
+msgid "signin.deviceLimit.replace"
+msgstr "替换设备"
+
+#. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.open"
 msgstr "替换设备"
@@ -2729,7 +2739,7 @@ msgid "signin.consent.license"
 msgstr "此设备的许可证"
 
 #. {license} · {term} · {device} becomes device {position} of {limit}
-#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
 msgid "signin.consent.licenseLine"
 msgstr "{license} · {term} · {device}将成为第{position}台设备（共{limit}台）"
 
@@ -2763,10 +2773,10 @@ msgstr "{app}还将获得"
 msgid "signin.consent.profile"
 msgstr "你的个人资料和电子邮件"
 
-#. It gets its own id for you, and won't see your other products or how you sign in.
+#. It gets its own id for you, and won't see your other apps or how you sign in.
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
 msgid "signin.consent.pairwise"
-msgstr "它会获得一个专属于你的独立ID，且无法看到你的其他产品或你的登录方式。"
+msgstr "它会获得一个专属于你的独立ID，且无法看到你的其他应用或你的登录方式。"
 
 #. Not you?
 #. Hosted sign-in card (SIGN-IN.md).
@@ -6802,6 +6812,16 @@ msgstr "无法验证设备"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "无法验证此设备。请重试。"
+
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "本地网络已被阻止"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "此应用无法访问本地网络上的设备。请在系统设置中允许。"
 
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).

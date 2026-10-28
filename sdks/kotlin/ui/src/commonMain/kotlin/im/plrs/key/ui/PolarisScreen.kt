@@ -251,6 +251,8 @@ internal fun PolarisScaffold(
     navigationIcon: (@Composable () -> Unit)? = null,
     detail: (@Composable ColumnScope.() -> Unit)? = null,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
+    /** At large type (font scale 1.5 and up) the actions dock below the scrolling body, so the primary stays in the first viewport. */
+    dockActionsAtLargeType: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val theme = PolarisTheme.current
@@ -328,6 +330,40 @@ internal fun PolarisScaffold(
             }
             return@PolarisSurface
         }
+        if (actions != null && dockActionsAtLargeType && LocalDensity.current.fontScale >= PolarisDockFontScale) {
+            val dockWidth = if (maxContentWidth == Dp.Unspecified) window.columnWidth else maxContentWidth
+            val dockHorizontal = if (contentAlign == TextAlign.Start) Alignment.Start else Alignment.CenterHorizontally
+            CompositionLocalProvider(LocalPolarisTextAlign provides contentAlign) {
+                Column(Modifier.fillMaxSize().padding(horizontal = window.horizontalPadding), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        Modifier.widthIn(max = dockWidth).fillMaxWidth().weight(1f, fill = true).verticalScroll(rememberScrollState()).padding(top = window.topInset),
+                        horizontalAlignment = dockHorizontal,
+                    ) {
+                        navigationIcon?.let {
+                            it()
+                            Spacer(Modifier.height(PolarisSpace.tight))
+                        }
+                        if (logo != null) {
+                            logo()
+                            Spacer(Modifier.height(window.section))
+                        }
+                        content()
+                        if (detail != null) {
+                            Spacer(Modifier.height(window.section))
+                            detail()
+                        }
+                    }
+                    // The dock: its own scroll if the actions alone exceed 60 % of the window.
+                    Column(
+                        Modifier.widthIn(max = dockWidth).fillMaxWidth().heightIn(max = maxHeight * 0.6f).verticalScroll(rememberScrollState())
+                            .padding(top = PolarisSpace.controls, bottom = window.verticalPadding),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        content = actions,
+                    )
+                }
+            }
+            return@PolarisSurface
+        }
         // On a tablet-sized window a docked action group would sit far from its content: the
         // whole column, actions included, is centred instead.
         val place = if (actions != null && window.width >= 600.dp && window.height >= 600.dp) PolarisAnchor.Center else anchor
@@ -385,6 +421,9 @@ internal fun PolarisScaffold(
         }
     }
 }
+
+/** The font scale from which a sign-in step's actions dock (Android font scale 2 is the reference; SwiftUI docks at AX5). */
+internal const val PolarisDockFontScale: Float = 1.5f
 
 /** The side inset of an embedded pane: the pane gutter beside a list, the window's own margin when the item is the whole phone screen. */
 internal val LocalPolarisEmbeddedInset = staticCompositionLocalOf { PolarisSpace.gutter }
@@ -586,8 +625,8 @@ internal fun PolarisProductIcon(size: Dp, modifier: Modifier = Modifier, name: S
 internal fun productName(copy: PolarisCopy): String? = copy.productName.takeIf { it != DEFAULT_PRODUCT_NAME && it.isNotBlank() }
 
 /**
- * The product header of a focused step (UI-KITS.md §1.2): the product icon at 32 dp beside the
- * product's name at weight 500, then a section gap. Nothing when there is neither.
+ * The product header of a focused step (UI-KITS.md §1.2): the product icon at 28 dp beside the
+ * product's name at 17 sp, weight 600 (LOGO-2; the tile is no control), then a section gap. Nothing when there is neither.
  */
 @Composable
 internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polarisWindow.section) {
@@ -596,11 +635,11 @@ internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polar
     val name = presentedName?.takeIf { it.isNotBlank() } ?: productName(theme.copy)
     if (name == null && theme.logo == null) return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-        PolarisProductIcon(32.dp, name = name)
+        PolarisProductIcon(28.dp, name = name)
         if (name != null) {
             Text(
                 name,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -718,7 +757,7 @@ internal val LocalPolarisActionGrows = staticCompositionLocalOf { false }
 
 /** Full width in a stacked group, sized to the label in a trailing row; 56 dp tall (60 on TV). */
 @Composable
-private fun Modifier.controlSize(): Modifier {
+internal fun Modifier.controlSize(): Modifier {
     val height = polarisWindow.controlHeight
     val row = LocalPolarisActionRow.current
     val sized = if (row) this else this.fillMaxWidth()

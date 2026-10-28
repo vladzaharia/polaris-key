@@ -429,20 +429,20 @@ describe("Distribution → Channel credentials", () => {
         [`POST ${P("/distribution/connectors/asc/release")}`]: { ok: true },
       });
       const confirm = await openRelease();
-      const go = within(confirm).getByRole("button", {
-        name: "Release version",
-      });
+      // The button is drawn again when its reason goes: read it afresh each time.
+      const go = () =>
+        within(confirm).getByRole("button", { name: "Release version" });
       // A release is picked, but the name is not typed yet: still disabled.
-      expect((go as HTMLButtonElement).disabled).toBe(true);
-      await userEvent.click(go);
+      expect(go().getAttribute("aria-disabled")).toBe("true");
+      await userEvent.click(go());
       expect(writes(calls)).toEqual([]);
       const name = within(confirm).getByRole("textbox", { name: /App name/ });
       await userEvent.type(name, "   ");
-      expect((go as HTMLButtonElement).disabled).toBe(true);
+      expect(go().getAttribute("aria-disabled")).toBe("true");
       await userEvent.clear(name);
       await userEvent.type(name, " DJDL Mobile ");
-      expect((go as HTMLButtonElement).disabled).toBe(false);
-      await userEvent.click(go);
+      expect(go().getAttribute("aria-disabled")).toBeNull();
+      await userEvent.click(go());
       await waitFor(() =>
         expect(writes(calls)).toEqual([
           expect.objectContaining({

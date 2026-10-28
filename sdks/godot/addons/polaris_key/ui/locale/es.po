@@ -2631,6 +2631,16 @@ msgid "signin.none.otherAccount"
 msgstr "Usar otra cuenta"
 
 #. Replace a device
+#. Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink.
+msgid "signin.deviceLimit.replace"
+msgstr "Reemplazar un dispositivo"
+
+#. macos: Replace a Device
+msgctxt "macos"
+msgid "signin.deviceLimit.replace"
+msgstr "Reemplazar un dispositivo"
+
+#. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.open"
 msgstr "Reemplazar un dispositivo"
@@ -2745,7 +2755,7 @@ msgid "signin.consent.license"
 msgstr "Licencia para este dispositivo"
 
 #. {license} · {term} · {device} becomes device {position} of {limit}
-#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
 msgid "signin.consent.licenseLine"
 msgstr "{license} · {term} · {device} pasa a ser el dispositivo {position} de {limit}"
 
@@ -2779,10 +2789,10 @@ msgstr "{app} también recibirá"
 msgid "signin.consent.profile"
 msgstr "Tu perfil y correo"
 
-#. It gets its own id for you, and won't see your other products or how you sign in.
+#. It gets its own id for you, and won't see your other apps or how you sign in.
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
 msgid "signin.consent.pairwise"
-msgstr "Recibe su propio identificador para ti y no verá tus otros productos ni cómo inicias sesión."
+msgstr "Recibe su propio identificador para ti y no verá tus otras apps ni cómo inicias sesión."
 
 #. Not you?
 #. Hosted sign-in card (SIGN-IN.md).
@@ -6828,6 +6838,16 @@ msgstr "Dispositivo no verificado"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "No se pudo verificar este dispositivo. Inténtalo de nuevo."
+
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "Red local bloqueada"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "Esta app no puede acceder a los dispositivos de tu red local. Permítelo en los ajustes del sistema."
 
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).

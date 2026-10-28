@@ -162,6 +162,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/me/profile/picture", ["post"]],
     // PX-W9 (§12.2 rule 8): the login card's signed-out key preview.
     ["/api/key/preview", ["post"]],
+    // LK-12d: the signed-out card's product name and icon (Discover-visible products only).
+    ["/api/storefront/{product}", ["get"]],
     // PX-W14 (G29): sign in with another device.
     ["/api/device-login/start", ["post"]],
     ["/api/device-login/lookup", ["post"]],

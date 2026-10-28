@@ -2617,6 +2617,16 @@ msgid "signin.none.otherAccount"
 msgstr "다른 계정 사용"
 
 #. Replace a device
+#. Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink.
+msgid "signin.deviceLimit.replace"
+msgstr "기기 교체"
+
+#. macos: Replace a Device
+msgctxt "macos"
+msgid "signin.deviceLimit.replace"
+msgstr "기기 교체"
+
+#. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.open"
 msgstr "기기 교체"
@@ -2729,7 +2739,7 @@ msgid "signin.consent.license"
 msgstr "이 기기의 라이선스"
 
 #. {license} · {term} · {device} becomes device {position} of {limit}
-#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
 msgid "signin.consent.licenseLine"
 msgstr "{license} · {term} · {device}: {limit}대 중 {position}번째 기기"
 
@@ -2763,10 +2773,10 @@ msgstr "{app}에서 다음 정보도 받아요"
 msgid "signin.consent.profile"
 msgstr "프로필 및 이메일"
 
-#. It gets its own id for you, and won't see your other products or how you sign in.
+#. It gets its own id for you, and won't see your other apps or how you sign in.
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
 msgid "signin.consent.pairwise"
-msgstr "앱에는 회원님 전용 ID가 제공되며, 다른 제품이나 로그인 방법은 공개되지 않아요."
+msgstr "앱에는 회원님 전용 ID가 제공되며, 다른 앱이나 로그인 방법은 공개되지 않아요."
 
 #. Not you?
 #. Hosted sign-in card (SIGN-IN.md).
@@ -6802,6 +6812,16 @@ msgstr "기기를 확인할 수 없음"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "이 기기를 확인할 수 없습니다. 다시 시도하세요."
+
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "로컬 네트워크 차단됨"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "이 앱이 로컬 네트워크의 기기에 접근할 수 없습니다. 시스템 설정에서 허용해 주세요."
 
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).

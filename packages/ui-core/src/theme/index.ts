@@ -20,7 +20,12 @@ import {
   resolveAccent,
   type ResolvedProductAccent,
 } from "@polaris-key/brand/accent";
-import { contrastRatio } from "@polaris-key/brand/color";
+import {
+  contrastRatio,
+  hexToOklch,
+  oklchToHex,
+  relativeLuminance,
+} from "@polaris-key/brand/color";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "@polaris-key/brand";
 
 import type {
@@ -194,6 +199,33 @@ export function brandGrounds(scheme: Scheme): string[] {
   return [s.page, s.raised, s.overlay, s.sunken];
 }
 
+/** The label-on-fill ratio the kit aims for: AA (4.5) plus a margin, so a rounded browser colour
+ *  or a conversion never lands under it (axe reads the painted pixels). */
+const LABEL_MARGIN = 4.6;
+
+/**
+ * `solid`, moved away from its label by the least lightness that clears `LABEL_MARGIN`, when it
+ * sits within the margin of AA. The move is kept only while the fill still clears 3:1 on every
+ * ground; otherwise `solid` stands (it already meets AA).
+ */
+function withLabelMargin(
+  solid: string,
+  on: string,
+  grounds: readonly string[],
+): string {
+  if (contrastRatio(on, solid) >= LABEL_MARGIN) return solid;
+  const base = hexToOklch(solid);
+  const away = relativeLuminance(on) > relativeLuminance(solid) ? -1 : 1;
+  for (let i = 1; i <= 16; i++) {
+    const hex = oklchToHex({ ...base, l: base.l + away * 0.004 * i });
+    if (contrastRatio(on, hex) < LABEL_MARGIN) continue;
+    return grounds.every((g) => contrastRatio(hex, g) >= ACCENT_RULES.ui)
+      ? hex
+      : solid;
+  }
+  return solid;
+}
+
 /**
  * The kit's colours for `accent` (a `#rrggbb`, or `null` for ink) in `scheme`, through brand's
  * `resolveAccent`. `grounds` are the surfaces the kit draws on, page first: the brand's under
@@ -220,7 +252,7 @@ export function resolveKitColors(
   const r: ResolvedProductAccent = resolveAccent(accent, scheme, grounds);
   return {
     scheme,
-    primary: r.solid,
+    primary: withLabelMargin(r.solid, r.on, grounds),
     onPrimary: r.on,
     accentText: r.fg,
     subtle: r.subtle,

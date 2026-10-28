@@ -59,54 +59,17 @@ import {
   type AscIntent,
 } from "../components/ascShared.js";
 import { useConnectorRead, useConnectors } from "../data.js";
+import {
+  DESCRIPTION_MAX,
+  iapLocalizationSeed,
+  localizationsError,
+  MAX_LOCALES,
+  NAME_MAX,
+  REFERENCE_MAX,
+  type IapLocalization,
+} from "../model/iapLocalization.js";
 
-/** Apple's limits (A-17e): reference name 64, display name 35, description 55, ≤ 10 locales. */
-const REFERENCE_MAX = 64;
-const NAME_MAX = 35;
-const DESCRIPTION_MAX = 55;
-const MAX_LOCALES = 10;
-const LOCALE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/;
 const TERRITORY = /^[A-Z]{3}$/;
-
-/** One locale of an In-App Purchase: its display name and description in the store. */
-export interface IapLocalization {
-  locale: string;
-  name: string;
-  description: string;
-}
-
-/**
- * The starting localizations of a new In-App Purchase.
- *
- * THE SEAM FOR A-18b (notes/S-15 §7.5): App Store products default their display name and
- * description from the shared listing model's locales. Until A-18b lands there is no model to read,
- * so a new purchase starts with one empty row in the app's primary language.
- */
-export function iapLocalizationSeed(
-  _product: AscIapProductDto,
-): IapLocalization[] {
-  return [{ locale: "en-US", name: "", description: "" }];
-}
-
-/** Why a set of localizations cannot be sent, or `null`. */
-export function localizationsError(locs: IapLocalization[]): string | null {
-  if (locs.length === 0) return "Add at least one locale.";
-  if (locs.length > MAX_LOCALES) return `Use at most ${MAX_LOCALES} locales.`;
-  const seen = new Set<string>();
-  for (const l of locs) {
-    const locale = l.locale.trim();
-    if (!LOCALE.test(locale))
-      return `"${l.locale}" isn't a locale code such as en-US.`;
-    if (seen.has(locale)) return `${locale} appears twice.`;
-    seen.add(locale);
-    if (l.name.trim() === "") return `Name the purchase in ${locale}.`;
-    if (l.name.trim().length > NAME_MAX)
-      return `The ${locale} name is longer than ${NAME_MAX} characters.`;
-    if (l.description.trim().length > DESCRIPTION_MAX)
-      return `The ${locale} description is longer than ${DESCRIPTION_MAX} characters.`;
-  }
-  return null;
-}
 
 const locBody = (l: IapLocalization) => ({
   locale: l.locale.trim(),
@@ -569,6 +532,7 @@ function CreateDialog({
       intent={intent}
       onClose={onClose}
       confirmDisabled={problem !== null}
+      confirmDisabledReason="Complete the purchase details to continue"
       bodyExtra={() => ({
         referenceName: referenceName.trim(),
         ...(reviewNote.trim() ? { reviewNote: reviewNote.trim() } : {}),
@@ -664,6 +628,7 @@ function LocalizationDialog({
       intent={intent}
       onClose={onClose}
       confirmDisabled={problem !== null}
+      confirmDisabledReason="Complete the locale to continue"
       bodyExtra={() => locBody(locs[0]!)}
     >
       <LocalizationRows value={locs} onChange={setLocs} single />
@@ -732,6 +697,7 @@ function PriceDialog({
       intent={intent}
       onClose={onClose}
       confirmDisabled={!valid || !chosen}
+      confirmDisabledReason="Choose a price to continue"
       bodyExtra={() => ({ baseTerritory: territory, pricePointId: point })}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[8rem_minmax(0,1fr)]">

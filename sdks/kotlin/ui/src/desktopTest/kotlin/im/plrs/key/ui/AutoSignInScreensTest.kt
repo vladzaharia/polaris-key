@@ -55,13 +55,21 @@ class AutoSignInScreensTest {
 
     private val full = LicenseChoiceView.of(
         obj(
-            """{"state":"choose","choices":[{"id":"lic_1","state":"full","name":"Tidewater Pro","origin":"signin","seats":{"used":3,"limit":3}}]}""",
+            """{"state":"choose","choices":[{"id":"lic_1","state":"full","tierName":"Pro","name":"Tidewater Pro","origin":"signin","seats":{"used":3,"limit":3},"replace":{"allowed":true}}]}""",
+        ),
+    )!!
+
+    /** The same row with Replace refused (the developer manages devices): the lede names them, no Replace button. */
+    private val fullManaged = LicenseChoiceView.of(
+        obj(
+            """{"state":"choose","choices":[{"id":"lic_1","state":"full","tierName":"Pro","name":"Tidewater Pro","origin":"signin","seats":{"used":3,"limit":3},"replace":{"allowed":false,"retryAfter":null}}]}""",
         ),
     )!!
 
     private class Fake(var ladder: AutoSignInResult, override val hasProvider: Boolean = true) : PolarisAutoSignInActions {
         var calls = 0
         var providerCalls = 0
+        var providerResult: AutoSignInResult = AutoSignInResult.SignedIn("ps_x", "lic")
         var completed: ConsentInput? = null
         var cancelled = false
         override suspend fun autoSignIn(): AutoSignInResult = ladder.also { calls++ }
@@ -70,7 +78,7 @@ class AutoSignInScreensTest {
             return ChoiceResult.Ok(ChoiceCompleted("lic", "ps_x", "profile"))
         }
         override suspend fun cancelGrant(grant: String) { cancelled = true }
-        override suspend fun providerSignIn(): AutoSignInResult = AutoSignInResult.SignedIn("ps_x", "lic").also { providerCalls++ }
+        override suspend fun providerSignIn(): AutoSignInResult = providerResult.also { providerCalls++ }
         override fun choiceActions(): PolarisLicenseChoiceActions = object : PolarisLicenseChoiceActions {
             override suspend fun licenses(grant: String) = error("unused")
             override suspend fun devices(grant: String, licenseId: String) = error("unused")
@@ -141,6 +149,72 @@ class AutoSignInScreensTest {
     }
 
     @Test
+    fun theDeviceLimitWithRowsOffersReplaceOnlyWhenSomeRowCanBeReplaced() {
+        val managed = stateOf(Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", fullManaged)))
+        matrixFrame(420, 760, dark = false, content = { PolarisAutoSignIn(managed) }, after = {
+            texts(this, "manages devices", "Use another account", "Cancel")
+            assertTrue(onAllNodesWithText("Replace a device", ignoreCase = true).fetchSemanticsNodes().isEmpty())
+        })
+        val replaceable = stateOf(Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", full)))
+        matrixFrame(420, 760, dark = false, content = { PolarisAutoSignIn(replaceable) }, after = {
+            texts(this, "Replace a device", "Use another account", "Cancel")
+            onNodeWithText("Use another account", ignoreCase = true).performClick()
+            waitForIdle()
+            assertTrue(replaceable.ui.value is PolarisAutoSignInUi.SignInForm)
+        })
+    }
+
+    @Test
+    fun theLimitWithNoRowsIsItsOwnStepAndNeverTheKeyScreen() {
+        val state = stateOf(Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null)))
+        matrixFrame(420, 760, dark = false, content = { PolarisAutoSignIn(state) }, after = {
+            texts(this, "Device limit reached", "Replace a device", "Use another account", "Cancel")
+            assertTrue(onAllNodesWithText("Use a different key", ignoreCase = true).fetchSemanticsNodes().isEmpty())
+            onNodeWithText("Use another account", ignoreCase = true).performClick()
+            waitForIdle()
+            assertTrue(state.ui.value is PolarisAutoSignInUi.SignInForm)
+        })
+        val cancel = stateOf(Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null)))
+        matrixFrame(420, 760, dark = false, content = { PolarisAutoSignIn(cancel) }, after = {
+            onNodeWithText("Cancel", ignoreCase = true).performClick()
+            waitForIdle()
+            assertEquals(PolarisAutoSignInUi.Idle, cancel.ui.value)
+        })
+        // Without a link the fix is named in words and there is no Replace.
+        val bare = stateOf(Fake(AutoSignInResult.DeviceLimit(null, null)))
+        matrixFrame(420, 760, dark = false, content = { PolarisAutoSignIn(bare) }, after = {
+            texts(this, "Sign out of", "Cancel")
+            assertTrue(onAllNodesWithText("Replace a device", ignoreCase = true).fetchSemanticsNodes().isEmpty())
+        })
+    }
+
+    @Test
+    fun comingBackFromTheBrowserAfterReplaceSignsInAgain() {
+        val fake = Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null))
+        val state = stateOf(fake)
+        val foreground = androidx.compose.runtime.mutableStateOf(true)
+        matrixFrame(
+            420, 760, dark = false,
+            content = {
+                androidx.compose.runtime.CompositionLocalProvider(LocalPolarisForeground provides { foreground.value }) { PolarisAutoSignIn(state) }
+            },
+            after = {
+                state.replaceOpened()
+                waitForIdle()
+                // Still in front: nothing runs. Away and back: the provider sign-in runs once.
+                assertEquals(0, fake.providerCalls)
+                foreground.value = false
+                waitForIdle()
+                assertEquals(0, fake.providerCalls)
+                foreground.value = true
+                waitForIdle()
+                assertEquals(1, fake.providerCalls)
+                assertEquals(PolarisAutoSignInUi.Done, state.ui.value)
+            },
+        )
+    }
+
+    @Test
     fun theGateRunsTheLadderOnceAndTheOptOutRunsNone() {
         val fake = Fake(AutoSignInResult.Confirm(ExchangeOutcome.PendingConsent(grant, 300.0, consent)))
         val actions = object : PolarisGateActions {
@@ -171,13 +245,15 @@ class AutoSignInScreensTest {
         val frames = mapOf(
             "confirm" to Fake(AutoSignInResult.Confirm(ExchangeOutcome.PendingConsent(grant, 300.0, consent))),
             "needs-sign-in" to Fake(AutoSignInResult.NeedsSignIn(null, AutoSignInReason.Terms)),
+            "needs-sign-in-nogoogle" to Fake(AutoSignInResult.NeedsSignIn(null, AutoSignInReason.Terms), hasProvider = false),
             "device-limit" to Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", full)),
+            "device-limit-managed" to Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", fullManaged)),
             "device-limit-no-rows" to Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null)),
         )
         // The Android phone layout at 420 x 760 and the macOS desktop layout at 900 x 640.
         for ((variant, size) in listOf("Android" to (420 to 760), "MacOS" to (900 to 640))) withPlatform(variant) {
             for ((name, fake) in frames) for (dark in listOf(false, true)) for (scale in listOf(1f, 2f)) {
-                val state = stateOf(Fake(fake.ladder))
+                val state = stateOf(Fake(fake.ladder, fake.hasProvider))
                 matrixFrame(size.first, size.second, dark = dark, fontScale = scale, content = { PolarisAutoSignIn(state) }, after = { shot("${variant.lowercase()}-$name", dark, scale, this) })
             }
         }

@@ -890,6 +890,12 @@
       "description": "A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 \u00a715.2, \u00a715.3). Nothing is trusted; a host fetches a fresh one."
     },
     {
+      "code": "nearby-permission-denied",
+      "kind": "client",
+      "service": "connect",
+      "description": "The OS refused this app access to devices on the local network (iOS and macOS Local Network permission; Android local-network access). The person can allow it in the system settings."
+    },
+    {
       "code": "platform-error",
       "kind": "client",
       "service": "core",

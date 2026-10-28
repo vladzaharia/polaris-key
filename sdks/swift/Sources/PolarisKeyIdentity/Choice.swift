@@ -241,6 +241,7 @@ public struct ChoiceNamespace: Sendable {
                 IdentityRedirect.parseTokenAnswer(status: 200, body: body)
         else { throw Self.badResponse("choice/complete answered without a sign-in.") }
         try await client.core.setToken(accessToken, source: .signin, person: true)
+        await client.platformSessionCompleted(grant: grant)
         if client.redirectAcquisitionSync.current { await client.onAcquired?() }
         client.updateSubject(subject)
         client.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
@@ -258,6 +259,7 @@ public struct ChoiceNamespace: Sendable {
     public func cancel(grant: String) async throws {
         let (url, _) = try await client.choiceUrl("choiceCancel") { $0.choiceCancel }
         let response = try await client.choicePost(url, ["grant": .string(try Self.checked(grant))])
+        client.platformSessionDropped(grant: grant)
         guard response.status == 204 || response.status == 200 else {
             throw client.choiceRefusal(response)
         }

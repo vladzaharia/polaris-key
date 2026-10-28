@@ -966,6 +966,9 @@
     <!-- No license in this account (SIGN-IN.md §3.6). -->
     <string name="signin_none_otherAccount">Use another account</string>
     <string name="signin_none_otherAccount__macos">Use Another Account</string>
+    <!-- Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink. -->
+    <string name="signin_deviceLimit_replace">Replace a device</string>
+    <string name="signin_deviceLimit_replace__macos">Replace a Device</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_open">Replace a device</string>
     <string name="signin_replace_open__macos">Replace a Device</string>
@@ -1011,7 +1014,7 @@
     <string name="signin_consent_title">Continue to %1$s as %2$s?</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_license">License for this device</string>
-    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s becomes device %4$s of %5$s</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · replaces %2$s</string>
@@ -1026,7 +1029,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_profile">Your profile and email</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
-    <string name="signin_consent_pairwise">It gets its own id for you, and won't see your other products or how you sign in.</string>
+    <string name="signin_consent_pairwise">It gets its own id for you, and won't see your other apps or how you sign in.</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_notYou">Not you?</string>
     <string name="signin_notYou__macos">Not You?</string>
@@ -2600,6 +2603,10 @@
     <string name="core_codes_peer_cert_invalid_title">Device not verified</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_message">This device couldn't be verified. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_title">Local network blocked</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_message">This app can't reach devices on your local network. Allow it in system settings.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">Platform problem</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

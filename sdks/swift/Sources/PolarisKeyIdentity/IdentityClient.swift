@@ -227,6 +227,8 @@ public final class IdentityClient: Sendable {
     let deviceKeys = LockedValue<(any DeviceKeyPort)?>(nil)
     /// The platform identity `autoSignIn()` uses and `signOut()` cleans up after.
     let platformProvider = LockedValue<(any PlatformIdentityProvider)?>(nil)
+    /// Platform sessions waiting on `choice.complete`, by grant (see `platformSession`).
+    let pendingPlatformSessions = LockedValue<[String: PendingPlatformSession]>([:])
     private let sleep: @Sendable (Double) async throws -> Void
 
     /// - Parameter sleep: how the wait loop waits between polls. Defaults to `Task.sleep`, which

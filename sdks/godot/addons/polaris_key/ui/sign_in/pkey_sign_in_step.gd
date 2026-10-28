@@ -12,7 +12,7 @@ signal primary_pressed(step: String)
 ## Not you?).
 signal secondary_pressed(step: String)
 
-@export_enum("confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done") var step := "confirm":
+@export_enum("confirm", "link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done", "device-limit") var step := "confirm":
 	set(value):
 		step = value
 		refresh_view()
@@ -69,6 +69,7 @@ const LAYOUT := {
 	"nearby-prompt": ["signin.nearby.promptTitle", ["signin.nearby.prePrompt"], ["common.notNow"]],
 	"nearby-wait": ["signin.nearby.title", ["signin.nearby.body", "signin.nearby.match"], ["signin.nearby.code"]],
 	"nearby-done": ["signin.nearby.done", [], ["signin.nearby.notYou"]],
+	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message", "deviceLimit.noManage"], ["signin.auto.confirm.other", "common.cancel"]],
 }
 
 var _body: VBoxContainer

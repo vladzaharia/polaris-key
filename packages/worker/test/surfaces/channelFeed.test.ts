@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { verifyJws } from "@polaris-key/jws";
 import { feedClaims } from "@polaris-key/client-core/feed";
 import { MAX_WIRE_INTEGER } from "@polaris-key/protocol/core";
+import { NO_HOOKS } from "../helpers.js";
 import { installDigestStream } from "../r2Mock.js";
 import { NOW, seedLicenseWithKey, TEST_KID, TEST_PUB } from "../seed.js";
 import { call, CONSOLE, SLUG } from "../releaseRoutesFixture.js";
@@ -345,14 +346,7 @@ describe("GET /update/<channel>/feed.jws", () => {
         db: w.db,
         product: SLUG,
         cfg: cfg!,
-        hooks: {
-          releaseCatalog: () => null,
-          delivery: () => null,
-          outletCapabilities: async () => null,
-          licenseProvenance: () => null,
-          storeProducts: () => null,
-          githubPrToken: () => null,
-        },
+        hooks: NO_HOOKS,
       },
       "stable",
     );

@@ -14,9 +14,9 @@ import {
   USER_SETTING_SYNC_SCOPES,
   cloudSyncEncryption,
   resolveCollection,
-  syncedSettings,
   userSettingIssues,
 } from "./cloudSync.js";
+import { syncedSettings } from "./syncRoutes.js";
 import type { ConfigEntry } from "./types.js";
 import { prepareSchema, validatePrepared } from "./validate.js";
 

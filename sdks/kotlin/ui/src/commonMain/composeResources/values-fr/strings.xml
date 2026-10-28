@@ -973,6 +973,9 @@
     <!-- No license in this account (SIGN-IN.md §3.6). -->
     <string name="signin_none_otherAccount">Utiliser un autre compte</string>
     <string name="signin_none_otherAccount__macos">Utiliser un autre compte</string>
+    <!-- Device limit with no license rows, reached from automatic sign-in or a provider sign-in (KFA-0): opens the page that replaces a device. The kit draws the new-window glyph beside it; its description is a11y.externalLink. -->
+    <string name="signin_deviceLimit_replace">Remplacer un appareil</string>
+    <string name="signin_deviceLimit_replace__macos">Remplacer un appareil</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_open">Remplacer un appareil</string>
     <string name="signin_replace_open__macos">Remplacer un appareil</string>
@@ -1019,7 +1022,7 @@
     <string name="signin_consent_title">Continuer vers %1$s en tant que %2$s ?</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_license">Licence pour cet appareil</string>
-    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”, or, when the kit has no name, the lower-case part.thisDevice phrase (“this device”), never the capitalised part.thisDeviceTitle, because the line reads on after a separator; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s devient l’appareil %4$s sur %5$s</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · remplace %2$s</string>
@@ -1034,7 +1037,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_profile">Votre profil et votre adresse e-mail</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
-    <string name="signin_consent_pairwise">L’app reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion.</string>
+    <string name="signin_consent_pairwise">L’app reçoit un identifiant qui lui est propre et ne verra ni vos autres apps ni votre mode de connexion.</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_notYou">Ce n’est pas vous ?</string>
     <string name="signin_notYou__macos">Ce n’est pas vous ?</string>
@@ -2613,6 +2616,10 @@
     <string name="core_codes_peer_cert_invalid_title">Appareil non vérifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_message">Cet appareil n'a pas pu être vérifié. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_title">Réseau local bloqué</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_message">Cette app ne peut pas accéder aux appareils de votre réseau local. Autorisez-le dans les réglages du système.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">Problème de plateforme</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

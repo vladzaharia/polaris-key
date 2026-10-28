@@ -46,3 +46,14 @@ describe("activity verbs for emailed keys and invitations (LX-27c.2)", () => {
     );
   });
 });
+
+describe("activity verbs for nearby approval (I-40.3)", () => {
+  it("words both outcomes, not the raw code", () => {
+    expect(verbFor("identity.nearby.approved")).toBe(
+      "approved a nearby sign-in on a device",
+    );
+    expect(verbFor("identity.nearby.denied")).toBe(
+      "denied a nearby sign-in on a device",
+    );
+  });
+});

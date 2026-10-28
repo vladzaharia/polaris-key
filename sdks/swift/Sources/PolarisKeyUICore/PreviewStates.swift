@@ -399,20 +399,27 @@ extension PolarisKeyPreviewState {
 
     private static func auto(
         _ step: KitAutoSignInStep, provider: String = "Google", email: String? = nil,
-        reach: KitLinkReach? = nil, license: String? = nil, also: Bool? = nil, code: String? = nil
+        reach: KitLinkReach? = nil, license: String? = nil, also: Bool? = nil, code: String? = nil,
+        manageUrl: String? = nil, seat: (name: String, position: Int, limit: Int)? = nil
     ) -> KitInputs {
         base {
             $0.signIn = sign()
             $0.provider = provider
             $0.autoSignIn = KitAutoSignIn(
-                step: step, email: email, reach: reach, license: license, alsoGets: also, code: code)
+                step: step, email: email, reach: reach, license: license, alsoGets: also, code: code,
+                licenseName: seat?.name, position: seat?.position, limit: seat?.limit,
+                manageUrl: manageUrl)
         }
     }
 
     static let nearby: [PolarisKeyPreviewState] = [
         .init(
             .signIn, "confirm", auto(.confirm, email: "maya@example.com", license: "new", also: true)),
-        .init(.signIn, "confirm", variant: "apple", auto(.confirm, provider: "Apple")),
+        .init(
+            .signIn, "confirm", variant: "apple",
+            auto(
+                .confirm, provider: "Apple", license: "existing", also: true,
+                seat: (name: "Pro", position: 2, limit: 3))),
         .init(.signIn, "link-offer", variant: "global", auto(.linkOffer, reach: .global)),
         .init(.signIn, "link-offer", auto(.linkOffer, reach: .developer)),
         .init(.signIn, "link-done", auto(.linkDone)),
@@ -420,6 +427,19 @@ extension PolarisKeyPreviewState {
         .init(.signIn, "nearby-prompt", auto(.nearbyPrompt)),
         .init(.signIn, "nearby-wait", auto(.nearbyWait, code: "482 913")),
         .init(.signIn, "nearby-done", auto(.nearbyDone, email: "maya@example.com")),
+        .init(
+            .signIn, "device-limit",
+            auto(.deviceLimit, manageUrl: "https://polaris.locker/#/p/tidewater/free-device")),
+        // No link to replace a device: the lede names the fix in words (deviceLimit.noManage).
+        .init(.signIn, "device-limit", variant: "no-link", auto(.deviceLimit)),
+        // Every license full, one of them allowing a replace: the rows under the refusal's title.
+        .init(
+            .signIn, "choose", variant: "device-limit",
+            base {
+                $0.signIn = sign(.choose)
+                $0.provider = "Apple"
+                $0.choices = KitLicenseChoices(choices: fullChoices)
+            }),
         .init(
             .signIn, "key-refused",
             base {

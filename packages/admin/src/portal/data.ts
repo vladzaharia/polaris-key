@@ -103,6 +103,13 @@ export function useCapabilities(
   return useQuery(pq.capabilities(product));
 }
 
+/** The signed-out card's product (name and icon), or `undefined` on any refusal or error. */
+export function useStorefrontName(
+  slug: string | null,
+): { name: string; iconUrl: string | null } | undefined {
+  return useQuery(pq.storefrontName(slug)).data;
+}
+
 /** Capabilities, or the "nothing enabled" answer while loading or on error. */
 export function capabilitiesOrNone(
   q: UseQueryResult<PortalCapabilities>,
