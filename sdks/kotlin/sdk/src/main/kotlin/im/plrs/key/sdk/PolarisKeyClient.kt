@@ -145,6 +145,8 @@ public data class PolarisKeyClientOptions @JvmOverloads constructor(
     val connect: ConnectOptions = ConnectOptions(),
     /** The Cloud Sync key ring (U-39.8): this device's keys and where the root is kept; see [KeyringOptions]. */
     val keyring: KeyringOptions = KeyringOptions(),
+    /** Cloud Sync's app-owned settings (U-07.K9): the mode (default end-to-end), the compiled catalog mirror and the renames. Never read from the Worker. */
+    val cloudSync: CloudSyncHostOptions = CloudSyncHostOptions(),
 )
 
 /**
@@ -169,6 +171,12 @@ public sealed interface PolarisEvent {
      * after a sign-out (or when the device turned out to be key-only).
      */
     public data class Identity(val subject: String?) : PolarisEvent
+
+    /**
+     * What Cloud Sync's machine reports: a synced change, a rejected edit, a sign-out, unsynced data, a
+     * sign-in offer, or a failed purge. Names keys and codes only, never a value.
+     */
+    public data class CloudSync(val event: CloudSyncEvent) : PolarisEvent
 }
 
 /** `channelChoices()`: what a channel picker offers. */
@@ -440,7 +448,10 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         core,
         onAcquired = { syncAfterAcquisition() },
         opener = options.accountOpener,
-        onSubject = { eventFlow.tryEmit(PolarisEvent.Identity(it)) },
+        onSubject = {
+            eventFlow.tryEmit(PolarisEvent.Identity(it))
+            cloudSyncApi.get()?.onIdentity(it)
+        },
         onSignedOut = {
             // The seat was released and the token dropped: the same follow-through as a deactivation.
             tokenRejection.clear()
@@ -483,12 +494,39 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /**
      * The Cloud Sync key ring (WIRE-CONTRACT-V5 section 13.10): `status`, `unlock`, `create`, `reset`,
      * `wrapTo`, `recover`, `forget` and the `codec` the E2E machine seals with. Signing out forgets the
-     * root (after Connect's roster), in memory and in storage.
+     * root through [cloudSync]'s chain (after Connect's roster and after the flush), in memory and in storage.
      */
-    public val keyring: SyncKeyring = SyncKeyring(core, options.keyring.copy(keys = options.keyring.keys ?: options.connect.deviceKeys)).also { k ->
-        // Registered after Connect's hook: the roster goes first, then the root. A root that cannot be deleted stops the sign-out.
-        identity.onBeforeSignOut { k.forget() }
+    public val keyring: SyncKeyring = SyncKeyring(core, options.keyring.copy(keys = options.keyring.keys ?: options.connect.deviceKeys))
+
+    /** The identity callback reaches the API through this, because `identity` is built before the API. */
+    private val cloudSyncApi = java.util.concurrent.atomic.AtomicReference<CloudSyncApi?>(null)
+
+    private val cloudSyncImpl: CloudSyncApi = CloudSyncApi(
+        core = core,
+        config = config,
+        makeHost = {
+            CloudSyncHost(
+                liveCloudSyncDeps(core, keyring, config, core.store.stateDirectory ?: privateTempDir()),
+                options.cloudSync,
+            )
+        },
+        account = { core.storedSubject() },
+        emit = { eventFlow.tryEmit(PolarisEvent.CloudSync(it)) },
+        forgetRing = { keyring.forget() },
+        recovery = { keyring.setRecoveryCode() },
+    ).also { api ->
+        cloudSyncApi.set(api)
+        // Registered after Connect's hook: the roster goes first. Then Cloud Sync flushes (bounded) and signs the machine out while
+        // the root is still held, the ring forgets, and the synced data is purged (A-3). A root that cannot be deleted stops the
+        // sign-out (D-13).
+        identity.onBeforeSignOut { api.beforeSignOut() }
     }
+
+    /**
+     * Cloud Sync's settings API: `status()`, `flush()`, `newRecoveryCode()`; its events are
+     * [PolarisEvent.CloudSync] on [events]. A product without the Sync service gets the typed N/A.
+     */
+    public val cloudSync: CloudSyncClient = CloudSyncClient(cloudSyncImpl)
 
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
 
@@ -556,6 +594,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
                     core.ensureStarted()
                     config.publish(emit = false)
                     started = true
+                    cloudSyncImpl.attachSoon()
                 }
             }
         }
@@ -580,7 +619,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
-    public suspend fun discover(): DiscoveryResult = core.discover()
+    public suspend fun discover(): DiscoveryResult = core.discover().also { cloudSyncImpl.noteDiscovery() }
 
     // ── Presentation (core.presentation, plans/HA-13.md) ────────────────────────────────────────
     /**
@@ -635,6 +674,8 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             // moved neither (a 401 that left the cache alone is the exception: it moves the gate).
             val changed = core.etag(DocumentSlice.license) != beforeLicense || core.etag(DocumentSlice.config) != beforeConfig
             if (result.applied && changed) config.publish()
+            // A refreshed document may change the keys the operator locks: the machine hears of it.
+            if (result.applied) cloudSyncImpl.noteDocumentRefreshed()
             publishLicense()
             mine.result.complete(result)
             return result
@@ -903,6 +944,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         refreshJob?.cancel()
         refreshJob = null
         cloudConnect.shutdown()
+        cloudSyncImpl.closeSoon()
         // SP-51: the client's own scope (event fan-out, the refresh loop, the launch confirmation) and
         // the HTTP stack's threads go too, so a JVM `main` can exit.
         scope.cancel()

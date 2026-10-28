@@ -2375,6 +2375,11 @@
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
+      "sdk": "kotlin",
+      "path": "client.cloudSync",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
       "sdk": "node",
       "path": "client.cloudSyncHost",
       "reason": "internal: the Cloud Sync host the client owns; hosts use client.cloudSync and config"

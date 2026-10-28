@@ -66,6 +66,9 @@ public class ConfigSetting internal constructor(
     /** The effective value, live: the current one now, then every change. */
     public val flow: StateFlow<JsonElement?> get() = state.value.asStateFlow()
 
+    /** Where this key stands with Cloud Sync: `local`, `pending` (an edit waits to be sent) or `synced`. */
+    public suspend fun sync(): SettingSyncState = client.settingSyncState(key)
+
     /** `config.set(key, value)`. */
     public suspend fun set(value: JsonElement): Unit = client.set(key, value)
 

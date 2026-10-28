@@ -99,6 +99,23 @@ public class CloudSyncHost private constructor(private val core: CloudSyncHostCo
         touch()
     }
 
+    /** Whether [start] has run and the host is not closed. */
+    public suspend fun isStarted(): Boolean = withContext(dispatcher) { st.live }
+
+    /**
+     * A document that changed since the machine was built is routed through a rebuild first, so the locked
+     * list the machine checks is the current one (A-6). A no-op when nothing changed. Never lifts a block:
+     * only a fetch that succeeded does ([noteDocumentRefreshed]).
+     */
+    public suspend fun refreshDocumentIfChanged() {
+        val changed = withContext(dispatcher) {
+            if (st.machine == null || st.deps.document().toString() == st.documentJson) return@withContext false
+            st.rebuildWanted = true
+            true
+        }
+        if (changed) touch()
+    }
+
     /** Bring the machine's clock to the real one, so an edit made now is stamped and debounced from now. */
     public suspend fun catchUp() {
         withContext(dispatcher) {

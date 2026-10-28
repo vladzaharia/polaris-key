@@ -21,6 +21,15 @@ public interface CloudSyncHostData {
 
     /** Offer the legacy `config.local` contents to the machine, once per install (the marker survives a purge). */
     public suspend fun importLocalOnce(values: JsonObject)
+
+    /**
+     * The same offer, without writing the marker: true when it was made (no marker yet). The caller writes the
+     * marker with [markImported] once the person's sign-in succeeded (A-6).
+     */
+    public suspend fun offerLocal(values: JsonObject): Boolean
+
+    /** Write the import marker (kept apart from the state file; a purge leaves it). */
+    public suspend fun markImported()
 }
 
 /** How long a purge or a close waits for the pump that is running, in milliseconds. */
@@ -58,6 +67,16 @@ internal class CloudSyncHostDataImpl(
 
     override suspend fun resume() {
         withContext(st.dispatcher) { st.purged = false }
+    }
+
+    override suspend fun offerLocal(values: JsonObject): Boolean = withContext(st.dispatcher) {
+        val done = withContext(Dispatchers.IO) { st.file.imported() }
+        checkNotNull(st.machine) { "Cloud Sync host: start() has not run" }.importLocal(if (done) JsonObject(emptyMap()) else values)
+        !done
+    }
+
+    override suspend fun markImported() {
+        withContext(Dispatchers.IO) { runCatching { st.file.markImported() } }
     }
 
     override suspend fun importLocalOnce(values: JsonObject) {

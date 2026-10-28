@@ -18,6 +18,7 @@ import im.plrs.key.core.FetchedFile
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.RegisterResult
 import im.plrs.key.core.SyncResult
+import im.plrs.key.core.sync.SyncStatus
 import im.plrs.key.core.UpdateCheck
 import im.plrs.key.identity.AttachResult
 import im.plrs.key.identity.AutoSignInOptions
@@ -155,6 +156,17 @@ public class PolarisKeyFutures @JvmOverloads constructor(
 
     /** `release.fetch`: the verified build download. */
     public fun fetch(target: ReleaseTarget, to: File): CompletableFuture<FetchedFile> = call { client.release.fetch(target, to) }
+
+    // ── Cloud Sync ───────────────────────────────────────────────────────────────────────────────
+
+    /** `client.cloudSync.status()`: the machine's status (`local` before Cloud Sync has started). */
+    public fun statusFuture(): CompletableFuture<SyncStatus> = call { client.cloudSync.status() }
+
+    /** `client.cloudSync.flush()`: send what is waiting (bounded), then answer the status. */
+    public fun flushFuture(): CompletableFuture<SyncStatus> = call { client.cloudSync.flush() }
+
+    /** `client.cloudSync.newRecoveryCode()`: a new recovery code, shown once and kept nowhere. */
+    public fun newRecoveryCodeFuture(): CompletableFuture<String> = call { client.cloudSync.newRecoveryCode() }
 
     // ── Cloud Connect ────────────────────────────────────────────────────────────────────────
 
