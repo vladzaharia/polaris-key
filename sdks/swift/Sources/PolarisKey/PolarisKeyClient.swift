@@ -342,6 +342,15 @@ public actor PolarisKeyClient {
         identity.installIdentityEvents { change in
             hub.emit(.identity(kind: change.kind, subject: change.subject, previous: change.previous))
         }
+        // Every sign-out, released or not, ends this person's Cloud Sync and Connect state on the
+        // device, before the Worker is asked and before anything else is wiped: Connect stops
+        // (bounded, 15 s), the roster and K_disc go, then the key ring forgets its root and pin. A
+        // root that cannot be deleted (a locked Keychain) stops the sign-out.
+        identity.onBeforeSignOut {
+            await cloudConnect.stop()
+            try await connect.leave()
+            try await forgetRing.current?()
+        }
         identity.installSignOut { [core] in
             do {
                 // Fail closed: the held roster and K_disc go first, and if they cannot, nothing
