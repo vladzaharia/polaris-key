@@ -93,7 +93,9 @@ func _ios(t: PKeyTestContext) -> void:
 	StateScript.new(fresh, PRODUCT, PKeyFakeSealer.new()).save({"persisted": {}})
 	t.check("ios: the sync state directory is excluded even when it already exists (S-3)", native.count("exclude_from_backup") == before + 1)
 	PKeyTestFixtures.remove_tree(fresh)
-	t.check("S-3: the host roots its state directory through PKeyBackupExclusion.root", FileAccess.get_file_as_string("res://addons/polaris_key/services/cloud_sync.gd").contains("PKeyBackupExclusion.root(opts.store_root)"))
+	# A source grep: an exported pack holds compiled scripts, not the .gd text, so only the editor checks it.
+	if OS.has_feature("editor"):
+		t.check("S-3: the host roots its state directory through PKeyBackupExclusion.root", FileAccess.get_file_as_string("res://addons/polaris_key/services/cloud_sync.gd").contains("PKeyBackupExclusion.root(opts.store_root)"))
 	PKeyBackupExclusion.reset_for_tests()
 	PKeyTestFixtures.remove_tree(dir)
 
