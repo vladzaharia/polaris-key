@@ -45,6 +45,7 @@ import {
   recoveryCodeChangedNotice,
   recoveryStartedNotice,
   deviceReplacedNotice,
+  appDeviceApprovedNotice,
   displayValue,
   downloadLinkEmail,
   licenseAddedNotice,
@@ -130,6 +131,13 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
       productName: "Diceroll",
       productSlug: "diceroll",
       at: NOW,
+      origin: ORIGIN,
+    }),
+  appDeviceApproved: () =>
+    appDeviceApprovedNotice({
+      deviceLabel: "Living room TV",
+      productName: "Diceroll",
+      productSlug: "diceroll",
       origin: ORIGIN,
     }),
   newDeviceSignIn: () =>
@@ -398,6 +406,28 @@ describe("notice templates: rules", () => {
     expect(hostile.html).not.toContain("<img src=x");
     expect(hostile.html).toContain("&lt;img src=x");
     expect(hostile.html).not.toContain("\u202e");
+  });
+
+  it("nearby approval notice: subject, links the devices page, escapes, null label", () => {
+    const m = TEMPLATES.appDeviceApproved!();
+    expect(m.subject).toBe("Diceroll signed in on Living room TV");
+    expect(m.text).toContain(`${ORIGIN}/#/p/diceroll/devices`);
+    const hostile = appDeviceApprovedNotice({
+      deviceLabel: "TV <b>x</b>\nBcc: v@example.com",
+      productName: "Evil\u202egnp",
+      productSlug: "evil",
+      origin: ORIGIN,
+    });
+    expect(hostile.subject).not.toMatch(/[\n\u202e]/);
+    expect(hostile.html).toContain("&lt;b&gt;x&lt;/b&gt;");
+    const bare = appDeviceApprovedNotice({
+      deviceLabel: null,
+      productName: null,
+      productSlug: "x",
+      origin: ORIGIN,
+    });
+    expect(bare.subject).toBe("An app signed in on a new device");
+    expect(bare.text).toContain("remove it from your devices");
   });
 
   it("displayValue: controls out, length bounded, fallback when empty", () => {

@@ -52,6 +52,10 @@ Choose **See your devices** to review it.
 
 Another device replaced this one. Choose **Open Polaris Locker** to see your devices.
 
+### <a id="app-device-approved"></a><var>App</var> signed in on <var>Device</var>
+
+You approved it from another device. If it wasn't you, choose **See your devices** and remove it.
+
 ### <a id="new-device-sign-in"></a>A new device signed in to your Polaris Locker account
 
 Use **Open Polaris Locker** to see where you are signed in.

@@ -504,6 +504,36 @@ export function deviceReplacedNotice(input: {
   });
 }
 
+/**
+ * A nearby approval bound a device (WIRE-CONTRACT-V5 §12.11.5 rule 7): "Diceroll signed in on
+ * Living room TV". Sent to the primary address only, so it is not a security notice (no "every
+ * verified email" footer); the remedy is the product's devices page. The label may be null.
+ */
+export function appDeviceApprovedNotice(input: {
+  deviceLabel: string | null | undefined;
+  productName: string | null | undefined;
+  productSlug: string;
+  origin: string;
+}): NoticeMessage {
+  const device = displayValue(input.deviceLabel, "a new device");
+  const name = displayValue(input.productName, "An app");
+  // Without a label there is nothing to name twice: "remove it".
+  const it = displayValue(input.deviceLabel, "") === "" ? "it" : device;
+  return buildNotice({
+    help: "app-device-approved",
+    subject: `${name} signed in on ${device}`,
+    paragraphs: [
+      "You approved it from another device.",
+      `If this wasn't you, remove ${it} from your devices in Polaris Locker.`,
+    ],
+    action: {
+      label: "See your devices",
+      url: appLink(input.origin, productRoute(input.productSlug, "devices")),
+    },
+    origin: input.origin,
+  });
+}
+
 /** "4 Oct 2026, 14:34 UTC": a unix time for a sentence in an email. */
 function emailDate(at: number): string {
   const d = new Date(at * 1000);
