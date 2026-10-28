@@ -464,4 +464,16 @@ export {
   type TokenAnswer,
 } from "./identityRedirect.js";
 
+export {
+  DEVICE_PROOF_KEYS_SKEW_SECONDS,
+  DEVICE_PROOF_PURPOSES,
+  deviceProofKeysValue,
+  deviceProofMessage,
+  verifyDeviceProof,
+  webCryptoEd25519Verify,
+  type DeviceProof,
+  type DeviceProofFields,
+  type Ed25519VerifyPort,
+} from "./deviceProof.js";
+
 export * from "./peer/index.js";

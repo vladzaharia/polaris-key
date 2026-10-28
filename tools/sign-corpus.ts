@@ -88,6 +88,7 @@ import { buildHeadersCorpus } from "./corpus/headers.js";
 import { buildNoiseVectors } from "./corpus/noise.js";
 import { buildPeerMatrix } from "./corpus/peerMatrix.js";
 import { buildSyncVectors } from "./corpus/syncVectors.js";
+import { buildDeviceProof } from "./corpus/deviceProof.js";
 import { buildOutletMatrixV1 } from "./corpus/outlet.js";
 import { buildStageMatrix } from "./corpus/stage.js";
 import { buildUpdateMatrixV1 } from "./corpus/update.js";
@@ -123,6 +124,7 @@ const V2_UI_MATRIX_OUT = join(V2_DIR, "ui-matrix.json");
 const V2_BACKEND_MATRIX_OUT = join(V2_DIR, "backend-matrix.json");
 const V2_NOISE_VECTORS_OUT = join(V2_DIR, "noise-vectors.json");
 const V2_SYNC_VECTORS_OUT = join(V2_DIR, "sync-vectors.json");
+const V2_DEVICE_PROOF_OUT = join(V2_DIR, "device-proof.json");
 const V2_PEER_MATRIX_OUT = join(V2_DIR, "peer-matrix.json");
 
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
@@ -291,6 +293,12 @@ async function main(): Promise<void> {
     parser: "json",
   });
 
+  // plans/CC-01.md R-6 (CC-03.4): the device proof pkey-proof/1, recomputed by
+  // tools/corpus/reference/deviceProof.ts over node:crypto. Unsigned documents; ASCII only.
+  const v2DeviceProof = await format(asciiJson(buildDeviceProof()), {
+    parser: "json",
+  });
+
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
   const files = new Map<string, string>([
@@ -313,6 +321,7 @@ async function main(): Promise<void> {
     [basename(V2_NOISE_VECTORS_OUT), v2NoiseVectors],
     [basename(V2_SYNC_VECTORS_OUT), v2SyncVectors],
     [basename(V2_PEER_MATRIX_OUT), v2PeerMatrix],
+    [basename(V2_DEVICE_PROOF_OUT), v2DeviceProof],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its

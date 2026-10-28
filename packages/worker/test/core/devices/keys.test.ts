@@ -12,10 +12,12 @@ import {
   getDeviceKeys,
   isValidAgreeKey,
   isValidSignKey,
-  keyPopMessage,
   upsertDeviceKeys,
-  verifyKeyPop,
 } from "../../../src/core/devices/keys.js";
+import {
+  keyPopMessage,
+  verifyKeyPop,
+} from "../../../src/core/devices/proof.js";
 import {
   purgeDeviceData,
   stmtsDeauthorizeDevice,

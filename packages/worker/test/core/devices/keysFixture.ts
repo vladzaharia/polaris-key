@@ -7,7 +7,7 @@ import { newKeys, world, type World } from "../../deviceKeyFixtures.js";
 
 export { newKeys, world, type World };
 import { handleDeviceKeys } from "../../../src/core/devices/keysRoute.js";
-import { keyPopMessage } from "../../../src/core/devices/keys.js";
+import { keyPopMessage } from "../../../src/core/devices/proof.js";
 import { dispatchWith } from "../../../src/dispatch.js";
 
 export const b64 = (b: Uint8Array): string => base64UrlEncodeBytes(b);

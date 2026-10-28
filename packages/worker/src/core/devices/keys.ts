@@ -1,7 +1,7 @@
 // Device keys (CC-03.1, plans/CC-01-cloud-connect.md §2.8): the two public keys a device registers
 // against its `devices` row, an Ed25519 `signKey` and an X25519 `agreeKey`. This module is the only
-// writer of `device_keys`. The route (CC-03.2), the lifecycle event (CC-03.3) and the proof vectors
-// (CC-03.4) build on it.
+// writer of `device_keys`. The route (CC-03.2), the lifecycle event (CC-03.3) and the proof
+// (`proof.ts`, CC-03.4) build on it.
 
 import {
   base64UrlDecode,
@@ -12,7 +12,7 @@ import type { Db, DbStatement } from "../../db/types.js";
 import { resolveSyncPrincipal } from "../accounts/accountSubjects.js";
 import { getLicense } from "../licensing/store.js";
 import { licenseUsable } from "../devices.js";
-import { hexEncode, utf8Encode, toArrayBuffer } from "../../platform/bytes.js";
+import { hexEncode, toArrayBuffer } from "../../platform/bytes.js";
 
 export interface DeviceKeysRow {
   product: string;
@@ -405,49 +405,6 @@ export async function deleteDeviceKeys(
 ): Promise<void> {
   const s = stmtDeleteDeviceKeys(product, deviceId);
   await db.run(s.sql, ...s.params);
-}
-
-// ── Proof of possession (`pkey-proof/1`, purpose `keys`) ─────────────────────────────────────
-
-/** The proof's skew window, in seconds either side of now. */
-export const KEY_POP_SKEW_SECONDS = 300;
-
-const LINE_FIELD = /^[\x21-\x7e]+$/; // no space, no newline, no control byte
-
-export interface KeyPopInput extends DeviceKeyPair {
-  product: string;
-  deviceId: string;
-  issuedAt: number;
-  /** The 64-byte Ed25519 signature, base64url. */
-  sig: string;
-  now: number;
-}
-
-/** The bytes a `keys` proof signs: `pkey-proof/1`, purpose, slug, device, value, `-`, joined by LF. */
-export function keyPopMessage(
-  input: Omit<KeyPopInput, "sig" | "now">,
-): Uint8Array | null {
-  const { product, deviceId, signKey, agreeKey, issuedAt } = input;
-  if (!Number.isSafeInteger(issuedAt) || issuedAt < 0) return null;
-  if (!LINE_FIELD.test(product) || !LINE_FIELD.test(deviceId)) return null;
-  const value = `${signKey}.${agreeKey}.${issuedAt}`;
-  if (!LINE_FIELD.test(value)) return null;
-  return utf8Encode(
-    ["pkey-proof/1", "keys", product, deviceId, value, "-"].join("\n"),
-  );
-}
-
-/**
- * Verify that the holder of `signKey` made this registration: both keys valid, `|issuedAt - now|`
- * within the window, and a strict Ed25519 signature by `signKey` over the `keys` proof lines. It
- * answers true or false and never says which check failed.
- */
-export async function verifyKeyPop(input: KeyPopInput): Promise<boolean> {
-  if (!validateDeviceKeys(input)) return false;
-  if (Math.abs(input.issuedAt - input.now) > KEY_POP_SKEW_SECONDS) return false;
-  const message = keyPopMessage(input);
-  if (!message) return false;
-  return verifyEd25519Strict(input.signKey, input.sig, message);
 }
 
 /** A strict Ed25519 verification (V5 §1.1 prechecks first) of a base64url signature by a raw key. */
