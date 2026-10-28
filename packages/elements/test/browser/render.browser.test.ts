@@ -236,7 +236,7 @@ describe("a short window and large text (DL1, DL3)", () => {
     });
 
     for (const scheme of SCHEMES)
-      it(`${component}.${state} at 390 with 200% text (${scheme}): the bar scrolls with the text, never over it`, async () => {
+      it(`${component}.${state} at 390 with 200% text (${scheme}): the bar docks, and nothing is under it at the end`, async () => {
         document.documentElement.style.fontSize = "200%";
         await page.viewport(390, 844);
         const el = await mount(row(), scheme, 844);
@@ -251,7 +251,9 @@ describe("a short window and large text (DL1, DL3)", () => {
           '[data-part="actions"]',
         );
         if (bar) {
-          expect(getComputedStyle(bar).position).toBe("static");
+          expect(getComputedStyle(bar).position).toBe("sticky");
+          window.scrollTo(0, document.documentElement.scrollHeight);
+          await new Promise((r) => requestAnimationFrame(r));
           for (const n of readable(el))
             expect(
               overlaps(rect(n), rect(bar)),
