@@ -623,6 +623,8 @@ func _manage_focus() -> void:
 	_was_visible = visible_now
 	if not visible_now:
 		return
+	if changed and outer_view() == self and _opens_at_top():
+		_top_on_open = true
 	if _lost_index >= 0 and not changed:
 		var chain := focus_order()
 		var idx := _lost_index
@@ -1202,9 +1204,18 @@ func _check_sorted() -> void:
 		_connect_check()
 	else:
 		_reveal_focus()
+		_top_on_open = false
 
 
 var _reveal_pending := false
+## A screen that opens at its top has just opened: the next reveal scrolls to the top, not to the focus.
+var _top_on_open := false
+
+
+## Whether a screen of this view opens scrolled to its top (its title in view) even when the focused
+## primary sits below the fold; a later focus move still scrolls to keep the focus visible.
+func _opens_at_top() -> bool:
+	return false
 
 
 ## A control took the focus: once the frame's layout has been sorted, bring it into view in the scroll
@@ -1229,7 +1240,10 @@ func _reveal_focus() -> void:
 	var n := f.get_parent()
 	while n != null and n != get_parent():
 		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and not n.has_meta(MANUAL_SCROLL_META):
-			(n as ScrollContainer).ensure_control_visible(f)
+			if _top_on_open:
+				(n as ScrollContainer).scroll_vertical = 0
+			else:
+				(n as ScrollContainer).ensure_control_visible(f)
 		n = n.get_parent()
 	for v in _views():
 		(v as PKeyUiView)._revealed(f)

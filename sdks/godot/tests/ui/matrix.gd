@@ -87,6 +87,15 @@ const TIGHT_CASES := [
 	["gate.offline", "custom", "1170x2532@3"],
 	# Four large-type words stack taller than the phone's page: Link, the auto step's primary, is a scroll away.
 	["sign_in.auto_link", "native36", "1170x2532@3"],
+	# A step that opens at its top (title in view, KF-godot): at 36 px on a 360 px canvas the primary is
+	# a scroll away (asserted reachable by pad); it never opens scrolled past its title.
+	["sign_in.auto_link", "native36", "640x360"],
+	["nearby.ask", "native", "pixel-art canvas_items 640x360 keep"],
+	["nearby.ask", "custom", "pixel-art canvas_items 640x360 keep"],
+	# The key refusals open at their title (F1): the primary is a scroll away at 36 px, reachable by pad.
+	["activation.key_limit", "native36", "640x360"],
+	["activation.key_limit_qr", "native36", "640x360"],
+	["activation.license_owned", "native36", "640x360"],
 	["activation", "custom", "pixel-art canvas_items 640x360 keep"],
 	["activation", "native", "pixel-art canvas_items 640x360 keep"],
 	["activation", "native36", "640x360"],
@@ -215,6 +224,7 @@ const TIGHT_CASES := [
 	["license_choice.replace", "native36", "1170x2532@3"],
 	["settings.account", "native36", "1170x2532@3"],
 	["toast.progress", "native36", "1170x2532@3"],
+	["toast.tier_long", "native36", "1170x2532@3"],
 	["update_progress.failed", "native36", "1170x2532@3"],
 	["devices.confirm", "native36", "1280x720"],
 	["devices.error", "native36", "1280x720"],
@@ -338,6 +348,10 @@ const SCREENS := [
 	["toast", "toast", "info: an update is available", "full"],
 	["toast.error", "toast", "error: stays until dismissed", "full"],
 	["toast.progress", "toast", "with progress", "full"],
+	["toast.tier", "toast", "success: signed in with the tier", "full"],
+	["toast.tier_long", "toast", "success: signed in, a long name", "full"],
+	["toast.entries", "toast", "info: key entries left", "full"],
+	["toast.entries0", "toast", "info: no key entries left", "full"],
 	# The gate under the product's presentation from discovery (core.presentation): its fetched icon,
 	# its monogram, a long name and a right-to-left one, in the product's own accent.
 	["gate.presented", "gate", "needs-activation, presented: Drift Kart's icon", "full"],
@@ -876,6 +890,10 @@ static func first_focus_problems(tree: SceneTree, view: PKeyUiView, kind: String
 		await tree.process_frame
 	var f := view.get_viewport().gui_get_focus_owner()
 	if f == null or not (view == f or view.is_ancestor_of(f)):
+		return out
+	# A screen that opens at its top keeps its title in view; its focus may sit a scroll below (tight
+	# cases assert it reachable, and a first focus move scrolls it into view).
+	if view._opens_at_top():
 		return out
 	var r := f.get_global_rect()
 	if not view.get_viewport_rect().grow(1.0).encloses(r):

@@ -7,6 +7,7 @@ extends RefCounted
 const NOW := 1700000000.0
 const CONFIG := preload("res://tests/config/support.gd")
 const PRESENTATION := preload("res://tests/support/presentation_fixtures.gd")
+const NearbyApproval := preload("res://addons/polaris_key/ui/nearby/pkey_nearby_approval.gd")
 
 ## A settings catalog with every row kind the panel must handle.
 const SETTINGS_CATALOG := [
@@ -195,7 +196,7 @@ func all() -> Array:
 	for c in [["queued: content", "queued-content"], ["queued: an app update", "queued-app"], ["downloading", "downloading"], ["downloading: no time left known", "downloading-no-eta"], ["downloading: verified, not yet installed", "verified"], ["installing", "installing"], ["paused: a metered connection", "paused"], ["failed", "failed"], ["done", "done"], ["compact", "compact"]]:
 		out.append(["update_progress", c[0], update_progress.bind(c[1])])
 	# ── PKeyToast (UI-KITS.md Toast).
-	for c in [["info: an update is available", "update"], ["success: copied", "copied"], ["success: signed in", "signed_in"], ["warning", "warning"], ["error: stays until dismissed", "error"], ["with progress", "progress"], ["bottom centre", "centre"]]:
+	for c in [["info: an update is available", "update"], ["success: copied", "copied"], ["success: signed in", "signed_in"], ["success: signed in with the tier", "tier"], ["success: signed in, a long name", "tier_long"], ["info: key entries left", "entries"], ["info: no key entries left", "entries0"], ["warning", "warning"], ["error: stays until dismissed", "error"], ["with progress", "progress"], ["bottom centre", "centre"]]:
 		out.append(["toast", c[0], toast.bind(c[1])])
 	# Every state starts from no presentation and no integrator name (the kit's identity is global).
 	for c in out:
@@ -386,6 +387,8 @@ func activation_refusal(kind: String, how: String) -> Control:
 	add(p)
 	var limit := kind == "key-entry-limit"
 	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_KEY_ENTRY_LIMIT if limit else PKeyActivationResult.KIND_LICENSE_OWNED, PKeyErrors.KEY_ENTRY_LIMIT if limit else PKeyErrors.LICENSE_OWNED, "", 403)
+	if limit:
+		r.key_entries = {"used": 3, "limit": 3}
 	if limit and how != "":
 		r.manage_url = "https://polaris.locker/add-key?product=djdl"
 	p.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
@@ -441,7 +444,7 @@ func sign_in_step(kind: String) -> Control:
 
 
 func nearby(kind: String) -> Control:
-	var n := PKeyNearbyApproval.new()
+	var n = NearbyApproval.new()
 	n.auto_sdk = false
 	add(n)
 	n.device = "" if kind == "no-name" else "Living room TV"
@@ -845,6 +848,14 @@ func toast(kind: String) -> Control:
 			t.show_copied()
 		"signed_in":
 			t.show_success("Signed in as Mara", "Pro license")
+		"tier":
+			t.show_success(String(PKeyUiView.catalog().format("signin.desktop.toast", {"name": "Mara", "tier": "Pro"})))
+		"tier_long":
+			t.show_success(String(PKeyUiView.catalog().format("signin.desktop.toast", {"name": PKeyGateView.toast_name("Mara Lindqvist-Fennick-Okonkwo (mara.lindqvist@fennick.studio)"), "tier": "Founder's Edition"})))
+		"entries":
+			t.show_info(String(PKeyUiView.catalog().format("signin.key.entriesLeftShort", {"left": 2})))
+		"entries0":
+			t.show_info(String(PKeyUiView.catalog().format("signin.key.entriesLeftShort", {"left": 0})))
 		"warning":
 			t.show_warning("Autosave is off", "Your progress is not being saved.")
 		"error":

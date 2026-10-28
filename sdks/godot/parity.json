@@ -513,12 +513,12 @@
       "note": "PX-W8: the activation panel shows Replace a device on device-limit, or a QR when a joypad is the only input (suite_ui)."
     },
     "ui.kit.account": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.7: the sign-in dialog drives identity.sign_in.start (a PKeySignInSession) and the account tab and gate sign out through identity.sign_out (I-10b.4, I-10b.3); the activation panel's License in another account step reads \"Sign in to that account\" (signin.key.ownedSignIn, UKV7-godot, KF-godot), and the gate toasts \"Signed in as {name} · {tier} license\" (signin.desktop.toast). PKeyLicenseChoiceController stays a view helper. The dialog's confirm step carries the attach toggle (session.accept) (suite_ui)."
     },
     "ui.kit.keyentry": {
-      "status": "planned",
-      "wp": "I-10b"
+      "status": "implemented",
+      "note": "I-10b.7: the key-entry-limit step shows \"{used} of {limit} key entries used\" (signin.key.meter) from the activation result's key_entries, Sign in, \"Add it in Polaris Locker\" (a QR with its caption when a joypad is the only input) and Use a different key; a key that works toasts \"{left} key entries left\" (signin.key.entriesLeftShort) (suite_ui)."
     },
     "ui.cli": {
       "status": "na",
