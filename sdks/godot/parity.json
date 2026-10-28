@@ -221,6 +221,26 @@
       ],
       "note": "Sign in with Apple on iOS and macOS, Credential Manager on Android (I-48); desktop Linux and Windows have none."
     },
+    "identity.autosignin": {
+      "status": "planned",
+      "wp": "I-48",
+      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-48)."
+    },
+    "identity.link": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Link offer (I-43.3 transcripts, I-48)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10b.1: activate_with_key() and enroll() return key-entry-limit (key_entries, manage_url) and license-owned (sign_in_url); key_entries on ok."

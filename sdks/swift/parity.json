@@ -182,6 +182,16 @@
       "wp": "I-44",
       "note": "Sign in with Apple through ASAuthorizationController (I-44)."
     },
+    "identity.autosignin": {
+      "status": "planned",
+      "wp": "I-44",
+      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-44)."
+    },
+    "identity.link": {
+      "status": "planned",
+      "wp": "I-44",
+      "note": "Link offer (I-43.3 transcripts, I-44)."
+    },
     "identity.keyentry": {
       "status": "implemented"
     },

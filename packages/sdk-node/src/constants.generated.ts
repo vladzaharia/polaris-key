@@ -152,8 +152,6 @@ export const ErrorCode = {
   httpError: "http-error",
   invalidResponse: "invalid-response",
   storeFailed: "store-failed",
-  connectUnavailable: "connect-unavailable",
-  peerCertInvalid: "peer-cert-invalid",
   platformError: "platform-error",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
@@ -363,8 +361,6 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "http-error",
   "invalid-response",
   "store-failed",
-  "connect-unavailable",
-  "peer-cert-invalid",
   "platform-error",
   "no-token",
   "mint-unavailable",
@@ -576,8 +572,6 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "http-error": "client",
   "invalid-response": "client",
   "store-failed": "client",
-  "connect-unavailable": "client",
-  "peer-cert-invalid": "client",
   "platform-error": "client",
   "no-token": "client",
   "mint-unavailable": "client",
@@ -704,6 +698,8 @@ export const Feature = {
   identityChoice: "identity.choice",
   identitySigninHints: "identity.signin.hints",
   identityExchange: "identity.exchange",
+  identityAutosignin: "identity.autosignin",
+  identityLink: "identity.link",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -835,6 +831,8 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.choice",
   "identity.signin.hints",
   "identity.exchange",
+  "identity.autosignin",
+  "identity.link",
   "release.changelog",
   "release.download",
   "release.record",
@@ -2036,7 +2034,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
-  "connect.lan": { status: "implemented", service: "connect", na: [] },
+  "connect.lan": { status: "planned", service: "connect", na: [] },
   "connect.relay": { status: "planned", service: "connect", na: [] },
   "connect.links": { status: "planned", service: "connect", na: [] },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
@@ -2075,6 +2073,12 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.exchange": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
+  "identity.autosignin": { status: "planned", service: "identity", na: [] },
+  "identity.link": {
     status: "na",
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
@@ -2198,4 +2202,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "3a2acf5e2fd913fcf4400973e82eee888d390d858d46c3d1e18dfcccfbc7de1f";
+  "79efe1494ace21aefce2b7eae33c7255d3d68e17b4e036bbe5051a3a780fbff0";

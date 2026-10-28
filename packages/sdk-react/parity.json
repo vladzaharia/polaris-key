@@ -241,6 +241,22 @@
       ],
       "note": "FedCM and Google Identity Services on the web (I-46); the desktop renderer holds no device key."
     },
+    "identity.autosignin": {
+      "status": "planned",
+      "wp": "I-46",
+      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-46)."
+    },
+    "identity.link": {
+      "status": "planned",
+      "wp": "I-46",
+      "except": [
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Link offer (I-43.3 transcripts, I-46)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10a.9: activateWithKey resolves with keyEntries; key_entry_limit (manageUrl, keyEntries) and license_owned (signInUrl) are typed activation outcomes that keep the token, cache and store. Desktop through submitKey's BridgeActivation."
