@@ -21,6 +21,9 @@ public interface PolarisClipboard {
 
     /** The clipboard's first text, or null when there is none or the clipboard is not readable. */
     public suspend fun getText(): String?
+
+    /** Empties the clipboard (Android: `clearPrimaryClip`). */
+    public suspend fun clear(): Boolean
 }
 
 /** The system clipboard for the current composition. */

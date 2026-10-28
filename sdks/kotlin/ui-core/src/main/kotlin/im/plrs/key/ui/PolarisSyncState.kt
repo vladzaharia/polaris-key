@@ -94,6 +94,7 @@ public enum class PolarisUnlockStep(public val id: String) {
     Invalid("invalid"),
     Working("working"),
     Failed("failed"),
+    StartOverFailed("start-over-failed"),
     NoCode("no-code"),
     StartOver("start-over"),
 }
@@ -228,7 +229,15 @@ public class PolarisSyncState(
     private fun replaceKey() {
         if (running) return
         retryOp = ::replaceKey
-        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working), mints = true) { shown(mint { actions.startOver() }) }
+        run(PolarisSyncUi.Unlock(PolarisUnlockStep.Working), mints = true) {
+            try {
+                shown(mint { actions.startOver() })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                PolarisSyncUi.Unlock(PolarisUnlockStep.StartOverFailed)
+            }
+        }
     }
 
     /** A first ring for this account: shows its recovery code. */
@@ -270,7 +279,8 @@ public class PolarisSyncState(
 
     /** Repeat the step that failed. */
     public fun retry() {
-        if (_ui.value != PolarisSyncUi.Unlock(PolarisUnlockStep.Failed)) return
+        val step = _ui.value
+        if (step != PolarisSyncUi.Unlock(PolarisUnlockStep.Failed) && step != PolarisSyncUi.Unlock(PolarisUnlockStep.StartOverFailed)) return
         val op = retryOp
         if (op != null) op() else open()
     }
@@ -294,7 +304,7 @@ public class PolarisSyncState(
      */
     public fun cancel() {
         if (_ui.value is PolarisSyncUi.RecoveryCode || minting) return
-        if (_ui.value == PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver)) {
+        if (_ui.value == PolarisSyncUi.Unlock(PolarisUnlockStep.StartOver) || _ui.value == PolarisSyncUi.Unlock(PolarisUnlockStep.StartOverFailed)) {
             _ui.value = PolarisSyncUi.Unlock(warningFrom)
             return
         }

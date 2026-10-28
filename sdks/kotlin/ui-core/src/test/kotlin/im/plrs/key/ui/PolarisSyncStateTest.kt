@@ -335,6 +335,26 @@ class PolarisSyncStateTest {
     }
 
     @Test
+    fun aFailedStartOverHasItsOwnStepAndTryAgainRepeatsIt() = runTest {
+        val fake = Fake()
+        fake.unlock = { SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) }
+        fake.startOver = { throw IllegalStateException("net") }
+        val state = state(fake)
+        state.open()
+        runCurrent()
+        state.startOver()
+        now += 600
+        state.confirmStartOver()
+        runCurrent()
+        assertEquals(PolarisSyncUi.Unlock(PolarisUnlockStep.StartOverFailed), state.ui.value)
+        fake.startOver = { "ABCD-EFGH" }
+        state.retry()
+        runCurrent()
+        assertEquals(2, fake.resets)
+        assertTrue(state.ui.value is PolarisSyncUi.RecoveryCode)
+    }
+
+    @Test
     fun aRecoveryCodeIsRegroupedInFoursAndCopiedHyphenated() {
         val plain = PolarisRecoveryCode("k7qm 2xrd9tba-wf4n")
         assertEquals(listOf("k7qm", "2xrd", "9tba", "wf4n"), plain.groups())

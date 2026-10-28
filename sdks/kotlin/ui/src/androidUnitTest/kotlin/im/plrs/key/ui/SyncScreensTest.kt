@@ -101,6 +101,23 @@ class SyncScreensTest {
     }
 
     @Test
+    fun aPhysicalKeyboardEnterSubmitsTheCodeAndIsNotPartOfIt() {
+        val sent = mutableListOf<String>()
+        show { PolarisUnlockSync(unlock("code"), onUnlock = { sent += it }) }
+        rule.onNode(hasSetTextAction()).performTextInput("AAAA-BBBB\n")
+        assertEquals(listOf("AAAA-BBBB"), sent)
+    }
+
+    @Test
+    fun aFailedStartOverHasItsOwnLine() {
+        var retried = 0
+        show { PolarisUnlockSync(unlock("start-over-failed"), onRetry = { retried++ }) }
+        rule.onNodeWithText("Couldn't start over. Check your connection and try again.").assertIsDisplayed()
+        rule.onNodeWithText("Try again").performClick()
+        assertEquals(1, retried)
+    }
+
+    @Test
     fun theRecoveryCodeIsAGridOfWholeGroups() {
         show { PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode"), sampleRecoveryCode) }
         val tops = listOf("K7QM", "2XRD", "9TBA", "WF4N", "HC6P", "VJ3E", "M4TS", "8YGK").map {

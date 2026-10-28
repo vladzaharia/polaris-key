@@ -40,6 +40,8 @@ internal class DesktopClipboard(private val clipboard: () -> Clipboard? = ::syst
         true
     }.getOrDefault(false)
 
+    override suspend fun clear(): Boolean = setText("", "", false)
+
     override suspend fun getText(): String? = runCatching {
         val c = clipboard() ?: return null
         if (c.isDataFlavorAvailable(DataFlavor.stringFlavor)) c.getData(DataFlavor.stringFlavor) as? String else null

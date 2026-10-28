@@ -1192,6 +1192,7 @@ internal fun PolarisTextField(
     monospace: Boolean = false,
     /** A long code: the Material field wraps over up to three lines in monospace instead of scrolling one line. */
     multiline: Boolean = false,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation = androidx.compose.ui.text.input.VisualTransformation.None,
 ) {
     val branded = PolarisTheme.current.branding == PolarisBranding.PolarisKey
     val shape = PolarisTheme.fieldShape
@@ -1218,6 +1219,7 @@ internal fun PolarisTextField(
                 label = { Text(label) },
                 placeholder = placeholder?.let { { Text(it) } },
                 trailingIcon = trailing,
+                visualTransformation = visualTransformation,
                 singleLine = !multiline,
                 maxLines = if (multiline) 3 else 1,
                 textStyle = if (multiline) LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace) else LocalTextStyle.current,

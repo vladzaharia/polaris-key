@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -52,10 +53,14 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -118,6 +123,19 @@ public fun PolarisUnlockSync(
         ) {
             Spacer(Modifier.height(PolarisSpace.tight))
             PolarisErrorLine(lines.text("unlockSync.failed").orEmpty())
+        }
+
+        "start-over-failed" -> PolarisSyncStep(
+            host,
+            title = lines.text("unlockSync.title").orEmpty(),
+            actions = {
+                PolarisPrimaryButton(lines.text("common.tryAgain").orEmpty(), onRetry, initialFocus = true)
+                Spacer(Modifier.height(PolarisSpace.controls))
+                PolarisTextButton(lines.text("common.cancel").orEmpty(), onCancel)
+            },
+        ) {
+            Spacer(Modifier.height(PolarisSpace.tight))
+            PolarisErrorLine(lines.text("unlockSync.startOverFailed").orEmpty())
         }
 
         // The account has no recovery code: nothing to enter. Start over opens its warning (it replaces nothing here).
@@ -188,7 +206,10 @@ public fun PolarisUnlockSync(
                     value = code,
                     onValueChange = {
                         // One line of text, wrapped for the eye: a hardware Enter is not a character of the code.
+                        val lineBreak = it.any { c -> c == '\n' || c == '\r' }
                         code = it.filterNot { c -> c == '\n' || c == '\r' }
+                        // A physical keyboard's Enter ends the entry, as the Done key does.
+                        if (lineBreak) submit()
                         edited = true
                         onEdit()
                     },
@@ -197,6 +218,7 @@ public fun PolarisUnlockSync(
                     focusRequester = field,
                     monospace = true,
                     multiline = true,
+                    visualTransformation = CodeGroupBreaks,
                     // Paste replaces what is typed, so it shows only while the field is empty.
                     trailing = if (code.isEmpty()) {
                         {
@@ -223,6 +245,40 @@ public fun PolarisUnlockSync(
             }
         }
     }
+}
+
+/**
+ * Breaks the typed code only between groups: a zero-width space after each hyphen (a hyphen before a digit
+ * is otherwise glued to it, so a line could break inside the next group). The text itself is unchanged.
+ */
+private val CodeGroupBreaks = VisualTransformation { text ->
+    val zwsp = '\u200B'
+    val raw = text.text
+    val out = buildString {
+        for (c in raw) {
+            append(c)
+            if (c == '-') append(zwsp)
+        }
+    }
+    val toTransformed = IntArray(raw.length + 1)
+    var added = 0
+    for (i in raw.indices) {
+        toTransformed[i] = i + added
+        if (raw[i] == '-') added++
+    }
+    toTransformed[raw.length] = raw.length + added
+    TransformedText(
+        AnnotatedString(out),
+        object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = toTransformed[offset.coerceIn(0, raw.length)]
+
+            override fun transformedToOriginal(offset: Int): Int {
+                var o = 0
+                while (o < raw.length && toTransformed[o + 1] <= offset) o++
+                return o
+            }
+        },
+    )
 }
 
 private const val CONFIRM_ARMING_MS = 500L
@@ -281,7 +337,7 @@ public fun PolarisRecoveryCodeScreen(
                     // The code does not stay on the clipboard: cleared after two minutes if it is still there.
                     clipboardClearScope.launch {
                         delay(CLIPBOARD_CLEAR_MS)
-                        if (clipboard.getText() == text) clipboard.setText("", "", sensitive = true)
+                        if (clipboard.getText() == text) clipboard.clear()
                     }
                 },
             )
@@ -291,8 +347,10 @@ public fun PolarisRecoveryCodeScreen(
                     .toggleable(value = saved, role = Role.Checkbox, onValueChange = onSavedChange),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = saved, onCheckedChange = null)
-                Spacer(Modifier.width(12.dp))
+                // The box grows with the text size, so it stays in proportion to its label at large type.
+                val grow = LocalDensity.current.fontScale.coerceIn(1f, 2f)
+                Checkbox(checked = saved, onCheckedChange = null, modifier = Modifier.scale(grow))
+                Spacer(Modifier.width(12.dp + 8.dp * (grow - 1f)))
                 Text(
                     lines.text("recoveryCode.saved").orEmpty(),
                     style = MaterialTheme.typography.bodyLarge,

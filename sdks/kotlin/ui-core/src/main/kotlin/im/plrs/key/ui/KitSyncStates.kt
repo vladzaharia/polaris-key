@@ -50,6 +50,13 @@ internal fun unlockSyncScreen(inputs: KitInputs): KitScreen {
             listOf(title, context.line("unlockSync.failed"), context.line("common.tryAgain"), context.line("common.cancel")),
         )
 
+        // Start over did not run: its own line, and Try again repeats it.
+        "start-over-failed" -> screen(
+            KitComponent.unlockSync,
+            "start-over-failed",
+            listOf(title, context.line("unlockSync.startOverFailed"), context.line("common.tryAgain"), context.line("common.cancel")),
+        )
+
         "no-code" -> screen(
             KitComponent.unlockSync,
             "no-code",

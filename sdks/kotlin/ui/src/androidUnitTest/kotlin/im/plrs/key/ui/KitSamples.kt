@@ -244,6 +244,7 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     },
     "unlockSync-code" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "code")) },
     "unlockSync-invalid" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "invalid")) },
+    "unlockSync-start-over-failed" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "start-over-failed")) },
     "unlockSync-no-code" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "no-code")) },
     "unlockSync-working" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "working")) },
     "unlockSync-failed" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "failed")) },

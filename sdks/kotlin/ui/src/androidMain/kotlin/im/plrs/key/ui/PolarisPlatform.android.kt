@@ -46,6 +46,8 @@ private class AndroidClipboard(private val clipboard: Clipboard) : PolarisClipbo
         clipboard.setClipEntry(ClipEntry(clip))
     }.isSuccess
 
+    override suspend fun clear(): Boolean = runCatching { clipboard.setClipEntry(null) }.isSuccess
+
     override suspend fun getText(): String? =
         runCatching { clipboard.getClipEntry()?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() }.getOrNull()
 }
