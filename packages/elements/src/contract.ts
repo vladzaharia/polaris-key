@@ -46,6 +46,7 @@ export {
   ensureLocale,
   onCopyLoaded,
   preloadCopy,
+  copyPending,
   provideTable,
 } from "./copy.js";
 export {

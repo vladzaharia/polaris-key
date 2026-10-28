@@ -1145,6 +1145,9 @@ export async function loadKitCopyEnRest(): Promise<Readonly<Record<string, strin
   return (await import("./en-rest.json", { with: { type: "json" } })).default;
 }
 
+/** The key prefixes \`en-rest.json\` holds: a key under one is missing only until the rest loads. */
+export const KIT_COPY_LAZY_PREFIXES: readonly string[] = ${JSON.stringify(LAZY_EN_PREFIXES)};
+
 /** English platform variants (D13 title case on macOS and documented verbs); other locales have none. */
 export const KIT_COPY_VARIANTS: Readonly<Record<string, Readonly<Record<string, string>>>> = ${JSON.stringify(variantsFor(model))};
 

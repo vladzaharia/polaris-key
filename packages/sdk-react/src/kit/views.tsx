@@ -10,6 +10,7 @@ import {
   dialogControls,
   placeKeys,
   platformLabel,
+  copyPending,
   type Layout,
 } from "./contract.js";
 import { platformVariant } from "@polaris-key/ui-core/theme";
@@ -738,8 +739,9 @@ export function renderView(c0: KitCtx): ReactNode {
   // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
   if (isLoading(c.view) && c.view.copy.length === 0) return null;
   // English's second table (the screens that follow a network answer, `LAZY_EN_PREFIXES`) is
-  // still loading: draw nothing rather than a missing string. The kit redraws when it arrives.
-  if (c.view.copy.some((k) => !c.copy.has(k))) return null;
+  // still loading: draw nothing rather than a missing string (any other missing key throws, as
+  // before). The kit redraws when it arrives.
+  if (c.view.copy.some((k) => !c.copy.has(k) && copyPending(k))) return null;
   const layout = isRefusalStep(c.view)
     ? refusalLayout(LAYOUTS[c.view.component], c.view.component)
     : LAYOUTS[c.view.component];
