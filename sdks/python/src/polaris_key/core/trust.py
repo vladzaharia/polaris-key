@@ -28,6 +28,7 @@ by the same ``trustCases`` corpus section.
 from __future__ import annotations
 
 import json
+import threading
 import time
 from urllib.parse import quote
 from dataclasses import dataclass, field
@@ -53,6 +54,7 @@ __all__ = [
     "trust_signer_order",
     "verify_trust_manifest",
     "TrustManager",
+    "PeerTrustResult",
     "TRUST_MANIFEST_PATH",
 ]
 
@@ -318,6 +320,14 @@ def trust_signer_order(usable: TrustSet, header_kid: Optional[str]) -> List[str]
     return kids[:MAX_TRUST_SIGNER_ATTEMPTS]
 
 
+@dataclass(frozen=True)
+class PeerTrustResult:
+    """What :meth:`TrustManager.accept_peer` answers."""
+
+    applied: bool
+    reason: Optional[str] = None
+
+
 class TrustManager:
     """Core's trust CUSTODIAN: it holds the two tiers and the pin evidence, decides when to
     go to the network, and folds each accepted manifest into the clock floor.
@@ -335,6 +345,8 @@ class TrustManager:
         self._tombstones: List[str] = []
         #: The ``pinRevocations`` slice as it should be written: kid -> the revoking manifest.
         self._evidence: Dict[str, str] = {}
+        #: One manifest change at a time: a refresh and a peer's manifest do not interleave.
+        self._lock = threading.RLock()
 
     @property
     def usable(self) -> TrustSet:
@@ -439,6 +451,10 @@ class TrustManager:
         arrived. A manifest that tombstoned a pin also changed :attr:`pin_revocations`,
         which the caller writes in the same patch.
         """
+        with self._lock:
+            return self._refresh_locked()
+
+    def _refresh_locked(self) -> Optional[str]:
         first = self._fetch_manifest(None)
         if first is None:
             return None
@@ -473,6 +489,30 @@ class TrustManager:
             return None
         self._install(jws, result)
         return jws
+
+    def accept_peer(self, jws: str) -> PeerTrustResult:
+        """Verify a manifest a peer pushed and install it, under the rules the Worker's own manifest
+        meets: signed by a usable pin, bound to this product, fresh, and newer than the one held
+        (anti-rollback). A manifest that is not newer than the held one is refused, as is one issued
+        at or below the clock floor it would raise. Returns ``applied`` or the ``reason`` it was
+        refused (``invalid``, ``not_newer``); the caller persists ``jws`` and :attr:`pin_revocations`
+        when it is applied (CC-10.15 wires the gating and the cache write)."""
+        with self._lock:
+            probe = verify_trust_manifest(
+                jws,
+                pinned=self._ctx.pinned_trust,
+                tombstones=self._tombstones,
+                expected_aud=self._ctx.product,
+                now=self._ctx.now(),
+            )
+            if probe.doc is None:
+                return PeerTrustResult(False, "invalid")
+            held = self.last_issued_at
+            issued = _int_or_none(probe.doc.get("issuedAt"))
+            if held is not None and issued is not None and issued <= held:
+                return PeerTrustResult(False, "not_newer")
+            self._install(jws, probe)
+            return PeerTrustResult(True)
 
     def _fetch_manifest(self, signer: Optional[str]) -> Optional[str]:
         """One ``GET /<p>/.well-known/polaris-trust.jws[?signer=<kid>]``; the body on a 200."""

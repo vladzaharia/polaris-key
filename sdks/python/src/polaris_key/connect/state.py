@@ -18,7 +18,7 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..devices.keys import DeviceKeyStorage, FileDeviceKeyStorage, InMemoryDeviceKeyStorage
 
@@ -28,6 +28,7 @@ __all__ = [
     "ConnectStateRecord",
     "parse_connect_state",
     "connect_storage",
+    "keys_after_ring",
 ]
 
 CONNECT_STATE_SCHEMA = "pkey.connect.v1"
@@ -61,27 +62,30 @@ class ConnectStateRecord:
     #: pair is not re-sent.
     registered: Optional[Tuple[str, str]]
     stored_at: int
+    #: A pushed roster removed a device, so K_disc was replaced at the Worker and this copy is stale
+    #: until the next identity fetch (CC-10.4, ``keysStale`` in Node's record). Absent when false.
+    keys_stale: bool = False
 
     def __reduce__(self) -> Any:
         raise TypeError("a Cloud Connect state record cannot be pickled")
 
     def to_bytes(self) -> bytes:
         reg = None if self.registered is None else {"signKey": self.registered[0], "agreeKey": self.registered[1]}
-        return json.dumps(
-            {
-                "schema": CONNECT_STATE_SCHEMA,
-                "product": self.product,
-                "deviceId": self.device_id,
-                "ring": self.ring,
-                "certificate": self.certificate,
-                "discKeys": list(self.disc_keys),
-                "prevUntil": self.prev_until,
-                "epoch": self.epoch,
-                "registered": reg,
-                "storedAt": self.stored_at,
-            },
-            separators=(",", ":"),
-        ).encode("utf-8")
+        doc: Dict[str, Any] = {
+            "schema": CONNECT_STATE_SCHEMA,
+            "product": self.product,
+            "deviceId": self.device_id,
+            "ring": self.ring,
+            "certificate": self.certificate,
+            "discKeys": list(self.disc_keys),
+            "prevUntil": self.prev_until,
+            "epoch": self.epoch,
+            "registered": reg,
+            "storedAt": self.stored_at,
+        }
+        if self.keys_stale:
+            doc["keysStale"] = True
+        return json.dumps(doc, separators=(",", ":")).encode("utf-8")
 
 
 def parse_connect_state(raw: bytes) -> Optional[ConnectStateRecord]:
@@ -127,7 +131,20 @@ def parse_connect_state(raw: bytes) -> Optional[ConnectStateRecord]:
         epoch=v["epoch"],
         registered=registered,
         stored_at=v["storedAt"],
+        keys_stale=v.get("keysStale") is True,
     )
+
+
+def keys_after_ring(keys: List[str], prior: Any, nxt: Any) -> List[str]:
+    """The previous K_disc survives a roster change only while no device left or changed its keys
+    (§15.4); otherwise only the newest key is kept. ``prior`` and ``nxt`` are rosters (``.devices``)."""
+    if len(keys) != 2:
+        return list(keys)
+    intact = all(
+        any(n.device_id == d.device_id and n.sign_key == d.sign_key and n.agree_key == d.agree_key for n in nxt.devices)
+        for d in prior.devices
+    )
+    return list(keys) if intact else [keys[0]]
 
 
 def connect_storage(state_dir: str, persistence: str) -> DeviceKeyStorage:
