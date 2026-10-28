@@ -187,6 +187,7 @@ public final class NWPipe: @unchecked Sendable {
     private let lock = NSLock()
     private var isClosed = false
     private var releaseSlot: (() -> Void)?
+    private var authenticated = false
     public let remoteAddress: String
 
     fileprivate init(conn: NWConnection, queue: DispatchQueue, remote: String, release: (() -> Void)?) {
@@ -224,7 +225,16 @@ public final class NWPipe: @unchecked Sendable {
     public func close() async { shut() }
 
     /// The session is admitted: this socket no longer counts against the unauthenticated limits.
-    public func markAuthenticated() { freeSlot() }
+    public func markAuthenticated() {
+        lock.withLock { authenticated = true }
+        freeSlot()
+    }
+
+    /// The pre-auth deadline: closes the socket unless the session was admitted. Idempotent.
+    fileprivate func closeUnlessAuthenticated() {
+        if lock.withLock({ authenticated }) { return }
+        shut()
+    }
 
     fileprivate func shut() {
         lock.withLock { isClosed = true }
@@ -331,8 +341,16 @@ public enum BonjourPipes {
 
 /// Listens for peers on a random TCP port and (optionally) advertises `_pkeypeer._tcp`.
 public final class BonjourListener: @unchecked Sendable {
+    /// G7: an accepted socket that is not admitted as a session within this many seconds is closed.
+    public static let preAuthSeconds: TimeInterval = 30
+    /// `start` throws when the listener has not reached `.ready` this long after `.waiting`.
+    public static let readySeconds: TimeInterval = 10
+
     private let peerToPeer: Bool
     private let limiter: UnauthenticatedLimiter
+    private let policy: BonjourDialPolicy
+    private let preAuth: TimeInterval
+    private let readyBound: TimeInterval
     private let lock = NSLock()
     private var listener: NWListener?
     private var advert: BonjourAdvert?
@@ -340,9 +358,50 @@ public final class BonjourListener: @unchecked Sendable {
     private let queue = DispatchQueue(label: "im.plrs.key.bonjour-listen")
 
     /// `peerToPeer` is D-5's opt-in (AWDL), off by default.
-    public init(peerToPeer: Bool = false, limiter: UnauthenticatedLimiter = UnauthenticatedLimiter()) {
+    /// `policy` is the accept-side address policy (G6): only LAN sources are served; loopback only on
+    /// the test opt-in.
+    public init(
+        peerToPeer: Bool = false, limiter: UnauthenticatedLimiter = UnauthenticatedLimiter(),
+        policy: BonjourDialPolicy = BonjourDialPolicy(), preAuthSeconds: TimeInterval = BonjourListener.preAuthSeconds,
+        readySeconds: TimeInterval = BonjourListener.readySeconds
+    ) {
         self.peerToPeer = peerToPeer
         self.limiter = limiter
+        self.policy = policy
+        self.preAuth = preAuthSeconds
+        self.readyBound = readySeconds
+    }
+
+    /// The limiter key of a source the policy allows, else nil. An IPv4-mapped IPv6 source and its
+    /// IPv4 form share one key; the scope id is not part of it.
+    static func allowedSource(_ e: NWEndpoint, policy: BonjourDialPolicy) -> String? {
+        guard case .hostPort(let host, _) = e, policy.allows(host: host) else { return nil }
+        if case .ipv6(let a) = host {
+            let b = Array(a.rawValue)
+            if b.count == 16, b[0..<10].allSatisfy({ $0 == 0 }), b[10] == 0xFF, b[11] == 0xFF {
+                return b[12..<16].map(String.init).joined(separator: ".")
+            }
+        }
+        let text = "\(host)"
+        return String(text.split(separator: "%", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+    }
+
+    /// Policy first, then a slot: a refused source never takes one.
+    static func gate(_ e: NWEndpoint, policy: BonjourDialPolicy, limiter: UnauthenticatedLimiter)
+        -> (address: String, slot: UnauthenticatedLimiter.Slot)?
+    {
+        guard let address = allowedSource(e, policy: policy), let slot = limiter.admit(address: address) else {
+            return nil
+        }
+        return (address, slot)
+    }
+
+    /// What a listener `.waiting` error means: a refused permission or missing plist fails `start` now;
+    /// anything else waits for the ready bound.
+    static func waitingFailure(_ e: NWError) -> BonjourBrowseError? {
+        guard case .dns(let code) = e else { return nil }
+        let c = BonjourErrors.classify(dnsError: code)
+        return c == .permissionDenied || c == .notConfigured ? c : nil
     }
 
     /// Start listening and return the port. With `advert` the service is registered; each accepted,
@@ -380,22 +439,39 @@ public final class BonjourListener: @unchecked Sendable {
             }
         }
         let limiter = limiter
+        let policy = policy
+        let preAuth = preAuth
         l.newConnectionHandler = { [queue] conn in
-            let address = Self.hostString(conn.endpoint)
-            guard let slot = limiter.admit(address: address) else {
-                conn.cancel()  // refused before a byte is read
+            guard let (address, slot) = Self.gate(conn.endpoint, policy: policy, limiter: limiter) else {
+                conn.cancel()  // a non-LAN source or a full pool: refused before a byte is read
                 return
             }
-            _ = NWPipe.open(
+            let pipe = NWPipe.open(
                 conn, queue: queue, remote: address, release: { limiter.release(slot) },
                 onReady: { onPipe($0) }, onFail: { _ in })
+            // The 30 s clock starts at accept, not when the host gets round to the handshake (G7).
+            queue.asyncAfter(deadline: .now() + preAuth) { pipe.closeUnlessAuthenticated() }
         }
+        let readyBound = readyBound
+        let queue = queue
         return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<UInt16, Error>) in
             let once = Once()
             l.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
                     if once.claim() { cont.resume(returning: l.port?.rawValue ?? 0) }
+                case .waiting(let e):
+                    // No usable interface or a policy refusal: never leave `start` suspended.
+                    if let c = Self.waitingFailure(e) {
+                        if once.claim() { l.cancel(); cont.resume(throwing: BonjourPipeError.browse(c)) }
+                    } else {
+                        queue.asyncAfter(deadline: .now() + readyBound) {
+                            if once.claim() {
+                                l.cancel()
+                                cont.resume(throwing: BonjourPipeError.failed("listener not ready"))
+                            }
+                        }
+                    }
                 case .failed(let e):
                     let c = Self.classify(e)
                     if once.claim() { cont.resume(throwing: BonjourPipeError.browse(c)) } else { onEvent(.failed(c)) }

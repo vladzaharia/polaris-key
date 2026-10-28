@@ -298,6 +298,8 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
     var stopped = false
     private var started = false
     private var ws: (any ConnectRelaySocket)?
+    /// The open socket, readable without the actor: `abort()` must work while the actor is busy.
+    private let liveSocket = LockedValue<(any ConnectRelaySocket)?>(nil)
     private var isOpen = false
     private var memberSet: Set<String> = []
     private var lastLimit: Int?
@@ -444,6 +446,31 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         flush(Self.stoppedError)
     }
 
+    /// Force-stop for a sign-out that cannot wait (D-12): cancel the socket now, with no graceful close and no
+    /// await on the actor, then drop the sessions and the held identity. Safe beside a `stop()` that is stuck.
+    public nonisolated func abort() {
+        if let s = liveSocket.with({ v -> (any ConnectRelaySocket)? in defer { v = nil }; return v }) {
+            Task { await s.close(code: 1001) }
+        }
+        docs.close()
+        Task { await self.abortInActor() }
+    }
+
+    private func abortInActor() {
+        stopped = true
+        held = nil
+        set(.stopped)
+        loseLinks()
+        ws = nil
+        isOpen = false
+        outbox?.close()
+        outbox = nil
+        pacer = nil
+        sleeping?.cancel()
+        runTask?.cancel()
+        flush(Self.stoppedError)
+    }
+
     static let stoppedError = ConnectRelayError(.stopped, "The relay is stopped.")
 
     // MARK: The connect loop
@@ -542,6 +569,7 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
             return nil
         }
         ws = sock
+        liveSocket.set(sock)
         isOpen = true
         let openedAt = clock()
         lastLimit = nil
@@ -594,6 +622,7 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         if was && clock() - openedAt >= o.stableSeconds { attempts = 0 }
         isOpen = false
         ws = nil
+        liveSocket.set(nil)
         outbox = nil
         pacer = nil
         memberSet = []
@@ -618,7 +647,19 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         o.put(d, force: true)
     }
 
+    /// The open sessions' room keys (tests).
+    func openLinkIds() -> [(peer: Data, session: UInt32)] { links.values.map { ($0.peer, $0.session) } }
+
     func sendSession(peer: Data, session: UInt32, noise: Data) {
+        // A session's traffic is never queued past the outbox cap (S4): a peer whose pings or our replies
+        // outrun the paced writer loses its session with `peer_busy`; the other sessions go on.
+        if let q = outbox, !q.roomFor(noise.count + 128) {
+            if let e = links[linkKey(peer, session)] {
+                e.link?.closeSoon(.peerBusy)
+                e.pipe.lose()
+            }
+            return
+        }
         sendEnv(.send(to: peer, session: session, noise: noise))
     }
 
@@ -871,6 +912,8 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
         var session: UInt32 = 0
     }
     private let state = LockedValue(State())
+    private let budget: ConnectQueueBudget
+    init(budget: ConnectQueueBudget = .shared) { self.budget = budget }
     var onOverflow: (@Sendable () -> Void)?
     var remoteAddress: String { "relay" }
 
@@ -893,6 +936,8 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
                 return .hand(w)
             }
             if s.bytes + framed.count > connectQueueMaxBytes { return .overflow }
+            // The total over all sessions holds too (G10): bytes the room sent that the host has not read.
+            if !budget.reserve(framed.count) { return .overflow }
             s.q.append(framed)
             s.bytes += framed.count
             return .none
@@ -908,6 +953,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
     func lose() {
         let w = state.with { s -> CheckedContinuation<Data?, Never>? in
             s.closed = true
+            budget.release(s.bytes)
             s.q = []
             s.bytes = 0
             defer { s.waiter = nil }
@@ -922,6 +968,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
                 if !s.q.isEmpty {
                     let d = s.q.removeFirst()
                     s.bytes -= d.count
+                    budget.release(d.count)
                     return .some(d)
                 }
                 if s.closed { return .some(nil) }

@@ -107,7 +107,7 @@ final class BonjourPipesTests: XCTestCase {
 
     func testLoopbackRoundTripAndEnd() async throws {
         let sink = Sink()
-        let l = BonjourListener()
+        let l = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
         defer { l.stop() }
         let port = try await listen(l, sink)
         XCTAssertNotEqual(port, 0)
@@ -135,7 +135,7 @@ final class BonjourPipesTests: XCTestCase {
 
     func testCloseWakesAPendingRead() async throws {
         let sink = Sink()
-        let l = BonjourListener()
+        let l = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
         defer { l.stop() }
         let port = try await listen(l, sink)
         let c = try await BonjourPipes.dial(endpoint(port), options: loop)
@@ -150,7 +150,7 @@ final class BonjourPipesTests: XCTestCase {
         // The writer sends far more than the socket buffers hold; the reader stays idle, so the
         // writes cannot all complete until it reads.
         let sink = Sink()
-        let l = BonjourListener()
+        let l = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
         defer { l.stop() }
         let port = try await listen(l, sink)
         let c = try await BonjourPipes.dial(endpoint(port), options: loop)
@@ -181,7 +181,7 @@ final class BonjourPipesTests: XCTestCase {
 
     func testPolicyRefusesLoopbackByDefaultBeforeAnyByte() async throws {
         let sink = Sink()
-        let l = BonjourListener()
+        let l = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
         defer { l.stop() }
         let port = try await listen(l, sink)
         do {
@@ -195,7 +195,7 @@ final class BonjourPipesTests: XCTestCase {
     }
 
     func testDialToAClosedPortFailsAndAnEndpointlessRowIsUnresolvable() async throws {
-        let l = BonjourListener()
+        let l = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
         let port = try await listen(l, Sink())
         l.stop()
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -211,9 +211,74 @@ final class BonjourPipesTests: XCTestCase {
         } catch { XCTAssertEqual(error as? BonjourPipeError, .unresolvable) }
     }
 
+    /// B2: the accept-side policy runs before a slot is taken.
+    func testANonLanSourceIsRefusedWithoutTakingASlot() {
+        let limiter = UnauthenticatedLimiter(total: 32, perAddress: 4)
+        let policy = BonjourDialPolicy()
+        func ep(_ h: NWEndpoint.Host) -> NWEndpoint { .hostPort(host: h, port: 1) }
+        for h: NWEndpoint.Host in ["8.8.8.8", "100.64.0.1", "169.254.1.1", "2001:db8::1", "127.0.0.1", "::ffff:8.8.8.8"] {
+            XCTAssertNil(BonjourListener.gate(ep(h), policy: policy, limiter: limiter), "\(h)")
+        }
+        XCTAssertNil(BonjourListener.gate(.service(name: "x", type: "_t._tcp", domain: "local", interface: nil), policy: policy, limiter: limiter))
+        XCTAssertEqual(limiter.count, 0, "no slot was taken")
+        let ok = BonjourListener.gate(ep("192.168.1.5"), policy: policy, limiter: limiter)
+        XCTAssertEqual(ok?.address, "192.168.1.5")
+        XCTAssertEqual(limiter.count, 1)
+        // The IPv4-mapped form shares the IPv4 count.
+        XCTAssertEqual(BonjourListener.gate(ep("::ffff:192.168.1.5"), policy: policy, limiter: limiter)?.address, "192.168.1.5")
+        XCTAssertNotNil(BonjourListener.gate(ep("fe80::1%en0"), policy: policy, limiter: limiter))
+        XCTAssertNotNil(BonjourListener.gate(ep("127.0.0.1"), policy: BonjourDialPolicy(allowLoopback: true), limiter: limiter))
+    }
+
+    /// B2: a live listener without the loopback opt-in serves no loopback source.
+    func testALoopbackSourceIsCancelledByTheDefaultPolicy() async throws {
+        let sink = Sink()
+        let l = BonjourListener()
+        defer { l.stop() }
+        let port = try await listen(l, sink)
+        let c = try await BonjourPipes.dial(endpoint(port), options: loop)
+        let got = try? await c.read()
+        XCTAssertNil(got ?? nil, "the socket is closed without a word")
+        XCTAssertTrue(sink.pipes.isEmpty)
+        await c.close()
+    }
+
+    /// B2: a silent accepted socket is closed at the pre-auth bound, from accept.
+    func testASilentAcceptedSocketClosesAtThePreAuthBound() async throws {
+        let sink = Sink()
+        let limiter = UnauthenticatedLimiter()
+        let l = BonjourListener(limiter: limiter, policy: BonjourDialPolicy(allowLoopback: true), preAuthSeconds: 0.4)
+        defer { l.stop() }
+        let port = try await listen(l, sink)
+        let silent = try await BonjourPipes.dial(endpoint(port), options: loop)
+        let admitted = try await BonjourPipes.dial(endpoint(port), options: loop)
+        try await waitFor("two accepted") { sink.pipes.count >= 2 }
+        sink.pipes[1].markAuthenticated()  // this one is a session by the deadline
+        let t0 = Date()
+        let end = try? await silent.read()
+        XCTAssertNil(end ?? nil, "the silent socket was closed by the listener")
+        XCTAssertGreaterThanOrEqual(Date().timeIntervalSince(t0), 0.2)
+        XCTAssertLessThan(Date().timeIntervalSince(t0), 5)
+        try await waitFor("slot freed") { limiter.count == 0 }
+        try await sink.pipes[1].write(Data([9]))
+        let still = try await admitted.read()
+        XCTAssertEqual(still, Data([9]), "an admitted session is left alone")
+        await silent.close()
+        await admitted.close()
+    }
+
+    /// S6 (listener half): a permission refusal while waiting fails `start`; other waits are bounded.
+    func testAListenerWaitingErrorIsClassified() {
+        XCTAssertEqual(
+            BonjourListener.waitingFailure(.dns(BonjourErrors.dnsPolicyDenied)), .permissionDenied)
+        XCTAssertEqual(BonjourListener.waitingFailure(.dns(BonjourErrors.dnsNoAuth)), .notConfigured)
+        XCTAssertNil(BonjourListener.waitingFailure(.dns(-1)))
+        XCTAssertNil(BonjourListener.waitingFailure(.posix(.ENETDOWN)))
+    }
+
     func testUnauthenticatedSocketsAreCappedPerAddressUntilAuthenticated() async throws {
         let sink = Sink()
-        let l = BonjourListener(limiter: UnauthenticatedLimiter(total: 32, perAddress: 2))
+        let l = BonjourListener(limiter: UnauthenticatedLimiter(total: 32, perAddress: 2), policy: BonjourDialPolicy(allowLoopback: true))
         defer { l.stop() }
         let port = try await listen(l, sink)
         var clients: [NWPipe] = []

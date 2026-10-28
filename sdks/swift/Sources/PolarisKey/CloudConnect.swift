@@ -30,6 +30,8 @@ import PolarisKeyCore
 
 public let cloudConnectLanAttemptSeconds: TimeInterval = 4
 public let cloudConnectStopSeconds: TimeInterval = 15
+/// How long `start()` may take before it tears down what it brought up and throws.
+let cloudConnectStartSeconds: TimeInterval = 30
 
 public struct CloudPeer: Sendable, Equatable {
     public let deviceId: String
@@ -115,7 +117,7 @@ private final class Listeners<T: Sendable>: Sendable {
 }
 
 public final class CloudConnect: Sendable {
-    private let core: CloudConnectCore
+    let core: CloudConnectCore
     private let channelListeners = Listeners<ConnectSession>()
     private let noticeListeners = Listeners<ConnectNotice>()
     private let statusBox = LockedValue(CloudConnectStatus(running: false, lan: "off", lanError: nil, relay: "off", relayError: nil, relayReason: nil))
@@ -155,8 +157,10 @@ public final class CloudConnect: Sendable {
         try await core.start(options)
     }
 
-    /// Close the sessions, the relay socket and the LAN service. Safe to call more than once, and before
-    /// `start`. Bounded: it returns after 15 s whatever a transport is doing.
+    /// Close the sessions, the relay socket and the LAN service, including a `start()` still in flight. Safe to
+    /// call more than once, and before `start`. Never throws and never waits past 15 s: a transport that has not
+    /// closed by then is force-cancelled (listener, browser and relay socket, no graceful close) and its
+    /// discovery key is dropped, so a sign-out is never held up by Connect.
     public func stop() async { await core.stop(timeout: cloudConnectStopSeconds) }
 
     /// The person's other devices that can be reached now, with the paths each has.
@@ -228,6 +232,8 @@ actor CloudConnectCore {
     private var selfId = ""
     private var running = false
     private var starting: Task<Void, Error>?
+    private var stopping = false
+    private var generation = 0
     private var unsub: [@Sendable () -> Void] = []
     private var sessions: [ObjectIdentifier: ConnectSession] = [:]
     private var lanAttempt = cloudConnectLanAttemptSeconds
@@ -251,31 +257,56 @@ actor CloudConnectCore {
                 relayReason: relayStatus == nil ? relayReason : nil))
     }
 
-    func start(_ o: CloudConnectOptions) async throws {
-        if let t = starting { return try await t.value }
-        if running { return }
-        let t = Task { try await self.bringUp(o) }
-        starting = t
-        defer { starting = nil }
-        try await t.value
+    func start(_ o: CloudConnectOptions, timeout: TimeInterval = cloudConnectStartSeconds) async throws {
+        if stopping { throw ConnectLanError(.notStarted, "Cloud Connect is stopping.") }
+        let gen = generation
+        let t: Task<Void, Error>
+        if let existing = starting {
+            t = existing
+        } else {
+            if running { return }
+            t = Task { try await self.bringUp(o, gen) }
+            starting = t
+        }
+        // The bound covers everything start() waits on: a listener that never becomes ready, a stuck fetch.
+        let outcome = await Self.race(timeout, { try await t.value }, late: { _ in })
+        if starting == t { starting = nil }
+        switch outcome {
+        case .value: return
+        case .failed(let e): throw e
+        case .timedOut:
+            if gen == generation {
+                t.cancel()
+                await teardown(timeout: cloudConnectStopSeconds, waitFor: nil)
+            }
+            throw ConnectLanError(.connectFailed, "Cloud Connect took too long to start.")
+        }
     }
 
-    private func bringUp(_ o: CloudConnectOptions) async throws {
+    /// A later `stop()` or a timed-out `start()` moved the generation on: whatever this run brought up is its own to
+    /// close, and nothing it made is kept.
+    private func bringUp(_ o: CloudConnectOptions, _ gen: Int) async throws {
         switch await connect.identity() {
         case .ready(let i): selfId = i.deviceId
         case .unsupported(let u): throw CloudConnectError.unsupported(u)
         case .refused(let r): throw CloudConnectError.refused(r)
         case .error(let c, let m): throw CloudConnectError.failed(code: c, message: m)
         }
+        guard gen == generation else { throw CancellationError() }
         lanAttempt = o.lanAttemptSeconds
         lanFailed = nil
         relayReason = nil
         let reason = o.relay ? cloudConnectRelayWanted(await discovery()) : "host"
+        guard gen == generation else { throw CancellationError() }
         let relayOn = reason == nil
         let src = ConnectLanSource.client(connect, now: now, applyTrust: applyTrust)
         if o.lan {
             do {
                 let svc = try await ConnectLanService.start(src, options: o.lanOptions)
+                guard gen == generation else {
+                    await svc.stop()
+                    throw CancellationError()
+                }
                 lan = svc
                 unsub.append(svc.onSession { [weak self] s in
                     guard let self else { return }
@@ -287,6 +318,7 @@ actor CloudConnectCore {
                     Task { await self.lanProblem(e) }
                 })
             } catch let e as ConnectLanError {
+                guard gen == generation else { throw CancellationError() }
                 lanFailed = e
                 if !relayOn { publish(); throw e }
             }
@@ -305,13 +337,21 @@ actor CloudConnectCore {
                 Task { await self.relayChanged(st) }
             })
             await r.start()
+            guard gen == generation else {
+                await r.stop()
+                throw CancellationError()
+            }
             relayStatus = await r.status
         } else {
             relayReason = reason
         }
+        guard gen == generation else { throw CancellationError() }
         running = true
         publish()
     }
+
+    /// A `start()` is in flight (tests).
+    var startInFlight: Bool { starting != nil }
 
     private func lanProblem(_ e: ConnectLanError) {
         lanFailed = e
@@ -324,8 +364,18 @@ actor CloudConnectCore {
         publish()
     }
 
+    /// Close everything, including a start that is still in flight (which is awaited inside the bound, so a
+    /// sign-out never leaves a service behind it). Returns after `timeout` whatever a transport is doing; what
+    /// has not closed by then is force-cancelled (D-12).
     func stop(timeout: TimeInterval) async {
-        if !running && lan == nil && relay == nil { return }
+        if starting == nil && !running && lan == nil && relay == nil { return }
+        stopping = true
+        defer { stopping = false }
+        await teardown(timeout: timeout, waitFor: starting)
+    }
+
+    private func teardown(timeout: TimeInterval, waitFor t: Task<Void, Error>?) async {
+        generation += 1
         running = false
         for u in unsub { u() }
         unsub = []
@@ -336,11 +386,18 @@ actor CloudConnectCore {
         sessions = [:]
         relayStatus = nil
         publish()
-        // Each part is bounded: a stuck transport does not hold up sign-out (S6).
-        _ = await connectBounded(timeout) {
+        let closed = await connectBounded(timeout) {
+            if let t { _ = try? await t.value }
             for s in open { await s.close() }
             await r?.stop()
             await l?.stop()
+        }
+        if !closed {
+            // Not graceful, and not waited for: the listener, the browser and the relay socket go now, and
+            // the services let go of the discovery key.
+            l?.abort()
+            r?.abort()
+            t?.cancel()
         }
     }
 

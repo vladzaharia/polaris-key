@@ -26,6 +26,7 @@ import Foundation
 /// Seconds from the first byte to the transport.
 public let peerTransportDeadlineSeconds: TimeInterval = 30
 public let peerSasDeadlineSeconds: TimeInterval = 120
+let peerPongsPerSecond = 16
 
 /// Why a session ended: a close code, or `handshake_failed` (nothing is sent for that one).
 public enum PeerClosedReason: String, Sendable, Equatable {
@@ -227,6 +228,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     private var peerRing = 0
     private var caps: [String]
     private var sent = 0
+    private var pongWindow: TimeInterval = -.infinity
+    private var pongs = 0
     private var keyedAt: TimeInterval
     private var maxSend = peerMaxMessageBytes
     private var started = false
@@ -614,7 +617,14 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         case PeerRecordType.hello:
             throw Fail(.peerBadFrame)
         case PeerRecordType.ping:
-            try emit(PeerRecordType.pong, body)
+            // Answer at most `peerPongsPerSecond` a second: a peer that pings faster than that gets no reply.
+            let t = mono()
+            if t - pongWindow >= 1 {
+                pongWindow = t
+                pongs = 0
+            }
+            pongs += 1
+            if pongs <= peerPongsPerSecond { try emit(PeerRecordType.pong, body) }
         case PeerRecordType.pong:
             return
         case PeerRecordType.rekey:
