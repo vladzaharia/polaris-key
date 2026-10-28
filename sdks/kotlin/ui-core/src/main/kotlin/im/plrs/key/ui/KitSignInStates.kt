@@ -136,7 +136,8 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
         }
         anchor.integer("position")?.let { put("position", CopyArgument.Number(it)) }
         anchor.integer("limit")?.let { put("limit", CopyArgument.Number(it)) }
-        auto.string("device")?.let { put("device", CopyArgument.Text(it)) }
+        // The line reads on after a separator: a name, else "this Mac" in lower case.
+        put("device", auto.string("device")?.let { CopyArgument.Text(it) } ?: context.thisDevice())
     }
     fun step(state: String, vararg keys: String?) = screen(KitComponent.signIn, state, keys.filterNotNull().map { context.line(it, if (it == "signin.consent.licenseLine") lineArgs else args) })
     return when (auto.string("step")) {
@@ -179,6 +180,20 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             "a11y.nearbyCode".takeIf { auto.string("code") != null },
             "signin.nearby.code",
         )
+        "device-limit" -> {
+            // A device limit with no license rows: its own step, never the key screen. Replace opens
+            // the refusal's manageUrl; without a usable link the fix is named in words.
+            val replace = KitLinks.valid(auto.string("manageUrl")) != null
+            step(
+                "device-limit",
+                "core.codes.device_limit.title",
+                "core.codes.device_limit.message",
+                if (replace) "signin.deviceLimit.replace" else "deviceLimit.noManage",
+                "a11y.externalLink".takeIf { replace },
+                "signin.auto.confirm.other",
+                "common.cancel",
+            )
+        }
         else -> step("nearby-done", "signin.nearby.done", "common.continue", "signin.nearby.notYou")
     }
 }
