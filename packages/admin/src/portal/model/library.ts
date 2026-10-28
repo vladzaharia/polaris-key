@@ -1,5 +1,5 @@
 import {
-  AUTOMATIC_GRANT,
+  SIGN_IN_ORIGIN,
   EXPIRES_SOON_DAYS,
   devicesText,
   expiresInText,
@@ -344,8 +344,8 @@ function originOf(l: OriginSummary): {
  * "Added with a key" while the key's last characters aren't kept, G7) for a key the person
  * added, "Steam key ending 3WPLDA" (or "Steam key") for a store key, "From Steam" for a
  * store-bound licence with no key, "From Tidewater Labs" for a licence the developer assigned
- * (even though it has a key; "From the developer" without a name), "Automatic Grant" for one
- * granted through OIDC at sign-in (owner polish 2026-10-07).
+ * (even though it has a key; "From the developer" without a name), "Sign-in" for one
+ * granted through OIDC at sign-in (owner polish 2026-10-07; "Sign-in" since 2026-10-28).
  */
 export function licenseOrigin(
   l: OriginSummary,
@@ -373,7 +373,7 @@ export function licenseOrigin(
         ? t("signin.choice.origin.key", { last6: last })
         : t("signin.choice.origin.keyAdded");
     case "signin":
-      return AUTOMATIC_GRANT;
+      return SIGN_IN_ORIGIN;
     case "developer":
       return t("locker.origin.from", {
         developer: facts.developer?.trim() || t("license.developerFallback"),
@@ -474,11 +474,11 @@ export function licenseStatus(
   if (isSignInLicense(l)) {
     return {
       kind: "signedInApp",
-      label: AUTOMATIC_GRANT,
+      label: SIGN_IN_ORIGIN,
       tone: "neutral",
       note: [
         tier ?? t("locker.tier.standard"),
-        AUTOMATIC_GRANT,
+        SIGN_IN_ORIGIN,
         devicesText(seats ? seats.inUse : l.deviceCount, seats?.limit),
       ].join(" · "),
       attention: false,
