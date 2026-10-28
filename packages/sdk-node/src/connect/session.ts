@@ -14,6 +14,8 @@
 //    session does not own are ignored.
 
 import type { Socket } from "node:net";
+import { PolarisError } from "@polaris-key/client-core";
+import { ErrorCode } from "../constants.generated.js";
 import { printAs } from "../core/redact.js";
 import {
   FrameReader,
@@ -50,13 +52,31 @@ export type LanErrorReason =
   | "queue_full"
   | "not_started";
 
-export class LanError extends Error {
+/** The registered client code of each reason. */
+const LAN_CODE: Record<LanErrorReason, string> = {
+  no_identity: ErrorCode.notConfigured,
+  no_keys: ErrorCode.notConfigured,
+  not_started: ErrorCode.notConfigured,
+  unknown_peer: ErrorCode.invalidArgument,
+  not_listening: ErrorCode.connectUnavailable,
+  connect_failed: ErrorCode.networkError,
+  handshake_failed: ErrorCode.peerCertInvalid,
+  wrong_peer: ErrorCode.peerCertInvalid,
+  closed: ErrorCode.networkError,
+  too_large: ErrorCode.invalidArgument,
+  bad_type: ErrorCode.invalidArgument,
+  queue_full: ErrorCode.rateLimited,
+};
+
+export class LanError extends PolarisError {
   constructor(
     readonly reason: LanErrorReason,
     message: string,
     options?: { cause?: unknown; closeCode?: SessionCloseCode },
   ) {
-    super(message, { cause: options?.cause });
+    super(LAN_CODE[reason], message, {
+      ...(options?.cause !== undefined ? { cause: options.cause } : {}),
+    });
     this.name = "LanError";
     this.closeCode = options?.closeCode;
   }

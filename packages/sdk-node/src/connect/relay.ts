@@ -19,6 +19,8 @@
 //    and the backoff; a replaced socket (4009) does not fight back.
 
 import { randomBytes } from "node:crypto";
+import { PolarisError } from "@polaris-key/client-core";
+import { ErrorCode } from "../constants.generated.js";
 import { printAs } from "../core/redact.js";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import {
@@ -78,13 +80,28 @@ export type RelayErrorReason =
   | "mode_not_allowed"
   | "stopped";
 
-export class RelayError extends Error {
-  readonly retryAfterSeconds: number | undefined;
+/** The registered code of each reason: the Worker's own for the four it answers with. */
+const RELAY_CODE: Record<RelayErrorReason, string> = {
+  disabled: ErrorCode.relayDisabled,
+  paused: ErrorCode.relayPaused,
+  quota: ErrorCode.relayQuotaExceeded,
+  ticket_invalid: ErrorCode.relayTicketInvalid,
+  rate_limited: ErrorCode.rateLimited,
+  busy: ErrorCode.rateLimited,
+  unavailable: ErrorCode.networkError,
+  not_connected: ErrorCode.connectUnavailable,
+  not_member: ErrorCode.peerCertInvalid,
+  handshake_failed: ErrorCode.peerCertInvalid,
+  wrong_peer: ErrorCode.peerCertInvalid,
+  unknown_peer: ErrorCode.invalidArgument,
+  mode_not_allowed: ErrorCode.invalidArgument,
+  replaced: ErrorCode.cancelled,
+  stopped: ErrorCode.cancelled,
+};
+
+export class RelayError extends PolarisError {
   readonly scope: "person" | "product" | undefined;
   readonly closeCode: SessionCloseCode | number | undefined;
-  /** For a refusal at the ticket route: the HTTP status and the Worker's code. */
-  readonly status: number | undefined;
-  readonly wireCode: string | undefined;
   constructor(
     readonly reason: RelayErrorReason,
     message: string,
@@ -93,17 +110,20 @@ export class RelayError extends Error {
       retryAfterSeconds?: number;
       scope?: "person" | "product";
       closeCode?: SessionCloseCode | number;
+      /** For a refusal at the ticket route: the HTTP status. */
       status?: number;
-      wireCode?: string;
     },
   ) {
-    super(message, { cause: options?.cause });
+    super(RELAY_CODE[reason], message, {
+      ...(options?.cause !== undefined ? { cause: options.cause } : {}),
+      ...(options?.retryAfterSeconds !== undefined
+        ? { retryAfterSeconds: options.retryAfterSeconds }
+        : {}),
+      ...(options?.status !== undefined ? { status: options.status } : {}),
+    });
     this.name = "RelayError";
-    this.retryAfterSeconds = options?.retryAfterSeconds;
     this.scope = options?.scope;
     this.closeCode = options?.closeCode;
-    this.status = options?.status;
-    this.wireCode = options?.wireCode;
   }
 }
 

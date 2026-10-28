@@ -5,6 +5,7 @@
 // never cross the relay. The room is a faithful in-process copy of the CC-07 engine's framing
 // (relayFixtures.ts).
 import { describe, expect, it } from "vitest";
+import { PolarisError } from "@polaris-key/client-core";
 import { signJws } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import {
@@ -90,6 +91,31 @@ describe("the ticket", () => {
       name: "RelayError",
       reason: "ticket_invalid",
     });
+  });
+
+  it("the errors are PolarisErrors with registered codes", async () => {
+    const { a, worker } = await world();
+    const codes: [typeof worker.relay, string][] = [
+      ["disabled", "relay_disabled"],
+      ["paused", "relay_paused"],
+      ["quota-person", "relay_quota_exceeded"],
+    ];
+    for (const [mode, code] of codes) {
+      worker.relay = mode;
+      const e = await a.connect.relayTicket().catch((x: unknown) => x);
+      expect(e).toBeInstanceOf(PolarisError);
+      expect(e).toBeInstanceOf(RelayError);
+      expect(e).toMatchObject({ code });
+    }
+    await expect(a.cloudConnect.open(B)).rejects.toMatchObject({
+      name: "LanError",
+      code: "not-configured",
+    });
+    expect(new LanError("wrong_peer", "x")).toBeInstanceOf(PolarisError);
+    expect(new LanError("wrong_peer", "x").code).toBe("peer-cert-invalid");
+    expect(new RelayError("not_connected", "x").code).toBe(
+      "connect-unavailable",
+    );
   });
 
   it("types the refusals: product off, paused with Retry-After, quota with its scope", async () => {
