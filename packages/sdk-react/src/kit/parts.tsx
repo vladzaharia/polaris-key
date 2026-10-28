@@ -84,6 +84,8 @@ export interface KitCtx {
   /** A component whose layout and content load on demand (the Cloud Sync screens) hands both. */
   layout?: Layout;
   content?: ReactNode;
+  /** The mark above the title, when the screen draws its own (ActivateDone's check); `null`: none. */
+  mark?: ReactNode;
   view: View;
   copy: Copy;
   resolved: Resolved;

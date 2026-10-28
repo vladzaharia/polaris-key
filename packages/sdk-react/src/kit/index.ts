@@ -14,7 +14,9 @@
 import type { ComponentName } from "@polaris-key/ui-core";
 
 import { kitComponent } from "./kitComponent.js";
+import { holderScreen } from "./holdersLazy.js";
 import { syncScreen } from "./syncLazy.js";
+import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
 import type {
   RecoveryCodeProps,
   RingChangeProps,
@@ -87,5 +89,20 @@ export { CloudSyncStatus } from "./statusDrive.js";
 export const UnlockSync = syncScreen<UnlockSyncProps>("UnlockSync");
 export const RecoveryCode = syncScreen<RecoveryCodeProps>("RecoveryCode");
 export const RingChange = syncScreen<RingChangeProps>("RingChange");
+// Activation without an account (UK-42): the Done step after a license key, and Add your name and
+// email. They load on demand; the hooks are the headless half and load nothing.
+export const ActivateDone = holderScreen<ActivateDoneProps>("ActivateDone");
+export const AddToAccount = holderScreen<AddToAccountProps>("AddToAccount");
+export {
+  useActivateDone,
+  useAddToAccount,
+  type AddToAccountValues,
+  type AttachOutcome,
+  type UseActivateDone,
+  type UseActivateDoneOptions,
+  type UseAddToAccount,
+  type UseAddToAccountOptions,
+} from "./holderHooks.js";
+export type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
 export const ChannelPicker = c("ChannelPicker");
 export const Toast = c("Toast");

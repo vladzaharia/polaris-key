@@ -449,7 +449,7 @@
     "ui.kit.holders": {
       "status": "planned",
       "wp": "UK-42",
-      "note": "UK-42.10 flips this row: the Done step, the recommendation, Add your name and email and the floating License row, over ui-core's holders models."
+      "note": "UK-42.9 built <ActivateDone>, <AddToAccount>, useActivateDone and useAddToAccount over ui-core's holders models, lazy-loaded (test/kitHolders.test.tsx; Chromium scenes in test/browser/holders.browser.test.tsx). UK-42.10 flips this row: wiring the gate's Done step, Add your name and email and the floating License row."
     },
     "ui.kit.keyentry": {
       "status": "implemented",

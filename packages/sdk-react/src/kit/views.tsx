@@ -621,14 +621,16 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
               developer: !heroTitle && view.copy.includes("common.byDeveloper"),
             })
           : null}
-        {view.component === "SignIn" &&
-        (view.state === "done" || view.state === "link-done")
-          ? successMark()
+        {c.mark !== undefined
+          ? c.mark
           : view.component === "SignIn" &&
-              view.state === "link-offer" &&
-              c.input.provider === "Google"
-            ? providerMark()
-            : null}
+              (view.state === "done" || view.state === "link-done")
+            ? successMark()
+            : view.component === "SignIn" &&
+                view.state === "link-offer" &&
+                c.input.provider === "Google"
+              ? providerMark()
+              : null}
         <div className="texts" data-part="texts">
           {titles(
             c,
