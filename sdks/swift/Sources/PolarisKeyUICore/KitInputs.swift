@@ -989,6 +989,7 @@ public struct KitCloudSync: Sendable, Codable, Equatable, Hashable {
 public struct KitUnlockSync: Sendable, Codable, Equatable, Hashable {
     public enum Step: String, Sendable, Codable, CaseIterable {
         case code, invalid, working, failed
+        case noCode = "no-code"
         case startOver = "start-over"
     }
 
@@ -1025,10 +1026,13 @@ public struct KitRingChange: Sendable, Codable, Equatable, Hashable {
 
     public var by: String?
     public var served: Ring?
+    /// Accepting did not open a root: the screen says so; Accept stays available.
+    public var failed: Bool?
 
-    public init(by: String? = nil, served: Ring? = nil) {
+    public init(by: String? = nil, served: Ring? = nil, failed: Bool? = nil) {
         self.by = by
         self.served = served
+        self.failed = failed
     }
 }
 

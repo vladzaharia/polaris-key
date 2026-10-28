@@ -20,6 +20,7 @@ public enum CloudSyncStatusState: String, KitStateID {
 
 public enum UnlockSyncState: String, KitStateID {
     case code, invalid, working, failed
+    case noCode = "no-code"
     case startOver = "start-over"
     public static let component = KitComponent.unlockSync
 }
@@ -30,7 +31,7 @@ public enum RecoveryCodeState: String, KitStateID {
 }
 
 public enum RingChangeState: String, KitStateID {
-    case confirm
+    case confirm, failed
     public static let component = KitComponent.ringChange
 }
 
@@ -77,6 +78,14 @@ extension KitStates {
                     c.line("unlockSync.title"), c.line("unlockSync.failed"),
                     c.line("common.tryAgain"), c.line("common.cancel"),
                 ])
+        case .noCode:
+            // The account holds no recovery code: nothing to enter, so Start over is the way on.
+            return KitScreen(
+                .noCode,
+                [
+                    c.line("unlockSync.title"), c.line("unlockSync.noCode"),
+                    c.line("unlockSync.startOver"), c.line("common.cancel"),
+                ])
         case .startOver:
             // The warning comes first: the sync key is replaced only from this step (T22).
             return KitScreen(
@@ -118,15 +127,17 @@ extension KitStates {
         guard i.closedServices.contains(.sync), let r = i.ringChange else { return .hidden }
         let by = r.by?.trimmingCharacters(in: .whitespacesAndNewlines)
         let named = by?.isEmpty == false ? by : nil
+        let failed = r.failed == true
         var lines = [
             c.line("ringChange.title"),
             named != nil
                 ? c.line("ringChange.body", ["device": .text(named!)]) : c.line("ringChange.bodyUnknown"),
-            c.line("ringChange.warning"),
+            // Nothing served: no Accept, only the recovery code.
+            c.line(r.served != nil ? "ringChange.warning" : "ringChange.warningNoServed"),
         ]
-        // Nothing was served to confirm: no Accept, only the recovery code.
+        if failed { lines.append(c.line("ringChange.failed")) }
         if r.served != nil { lines.append(c.line("ringChange.accept")) }
         lines += [c.line("ringChange.useCode"), c.line("common.cancel")]
-        return KitScreen(.confirm, lines)
+        return KitScreen(failed ? .failed : .confirm, lines)
     }
 }

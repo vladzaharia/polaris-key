@@ -81,23 +81,34 @@ public final class UnlockSyncModel: CustomStringConvertible {
     public func unlock() async {
         guard step == .code || step == .invalid else { return }
         let text = code.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return show(.invalid) }
-        guard let host else { return }
+        // Nothing typed: nothing was checked, so no error; the view focuses the field.
+        guard !text.isEmpty, let host else { return }
         show(.working)
         do {
             try await host.recover(text)
             code = ""
-            show(.code)
+            // Stays on `working` until the host swaps the screen: no empty form flashes.
             onUnlocked?()
         } catch let error as PolarisError where error.code == ErrorCode.recoveryCodeInvalid {
             show(.invalid)
+        } catch let error as PolarisError where error.code == ErrorCode.notFound {
+            // The account holds no recovery code: trying again cannot work; Start over can.
+            show(.noCode)
         } catch {
             show(.failed)
         }
     }
 
     /// Opens the warning. Nothing is replaced yet.
-    public func askStartOver() { if step == .code || step == .invalid { show(.startOver) } }
+    private var cameFromNoCode = false
+
+    public func askStartOver() {
+        cameFromNoCode = step == .noCode
+        if step == .code || step == .invalid || step == .noCode { show(.startOver) }
+    }
+
+    /// The field changed: an error clears on edit (DL7).
+    public func codeEdited() { if step == .invalid { show(.code) } }
 
     /// Replaces the sync key, from the warning only (T22).
     public func confirmStartOver() async {
@@ -106,7 +117,6 @@ public final class UnlockSyncModel: CustomStringConvertible {
         do {
             let fresh = try await host.reset()
             code = ""
-            show(.code)
             onStartedOver?(fresh)
         } catch {
             show(.failed)
@@ -119,7 +129,8 @@ public final class UnlockSyncModel: CustomStringConvertible {
     /// Cancel leaves the warning for the code step, and leaves the screen from anywhere else.
     public func cancel() {
         if step == .startOver {
-            show(.code)
+            // Back to where the warning was opened from.
+            show(cameFromNoCode ? .noCode : .code)
         } else {
             code = ""
             onCancel?()
@@ -147,7 +158,10 @@ public final class RecoveryCodeModel: CustomStringConvertible {
 
     nonisolated public var description: String { "RecoveryCodeModel" }
 
-    public var screen: KitScreen<RecoveryCodeState> { KitStates.recoveryCode(inputs) }
+    /// Hidden while there is no code to show: a screen with nothing to save is never drawn.
+    public var screen: KitScreen<RecoveryCodeState> {
+        code == nil ? .hidden : KitStates.recoveryCode(inputs)
+    }
     public var saved: Bool { inputs.recoveryCode?.saved == true }
 
     /// Shows `code`, from `keyring.create()` or `reset()`; the person has not saved it yet.
@@ -221,15 +235,19 @@ public final class RingChangeModel: CustomStringConvertible {
         guard !busy, let served = inputs.ringChange?.served, let host else { return }
         busy = true
         defer { busy = false }
+        inputs.ringChange?.failed = nil
         let pin = SyncRingPin(ringId: served.ringId, epoch: served.epoch, rootKid: served.rootKid)
         do {
             switch try await host.acceptRingChange(pin) {
             case .unlocked: onAccepted?()
             case .ringChanged(_, let now, _, let by):
                 inputs.ringChange = KitRingChange(by: by, served: Self.ring(now))
-            case .locked: onFailed?()
+            case .locked:
+                inputs.ringChange?.failed = true
+                onFailed?()
             }
         } catch {
+            inputs.ringChange?.failed = true
             onFailed?()
         }
     }
@@ -240,23 +258,37 @@ public final class RingChangeModel: CustomStringConvertible {
 
 // MARK: - CloudSyncStatus
 
-/// The status row's `locked` and `ring-changed` states. Its Unlock and Review go to the host that
-/// shows UnlockSync and RingChange; the settings host (U-07) wires them, so a model built here
-/// calls only the closures it is given.
+/// The status row. Its Unlock and Review open UnlockSync and RingChange; the settings host (U-07)
+/// supplies them. The kit draws only `locked` and `ring-changed` here; the other states are the
+/// settings host's.
 @MainActor
 @Observable
 public final class CloudSyncStatusModel {
     public private(set) var inputs: KitInputs
-    public var onUnlock: (@MainActor () -> Void)?
-    public var onReview: (@MainActor () -> Void)?
+    /// Opens UnlockSync. Required: a locked row always has a way forward.
+    public let onUnlock: @MainActor () -> Void
+    /// Opens RingChange. Required for the same reason.
+    public let onReview: @MainActor () -> Void
 
-    public init(_ state: KitCloudSync.State = .locked) {
+    public init(
+        _ state: KitCloudSync.State = .locked, onUnlock: @escaping @MainActor () -> Void,
+        onReview: @escaping @MainActor () -> Void
+    ) {
         var inputs = KitInputs()
         inputs.cloudSync = KitCloudSync(state: state)
         self.inputs = inputs
+        self.onUnlock = onUnlock
+        self.onReview = onReview
     }
 
-    public init(inputs: KitInputs) { self.inputs = inputs }
+    public init(
+        inputs: KitInputs, onUnlock: @escaping @MainActor () -> Void,
+        onReview: @escaping @MainActor () -> Void
+    ) {
+        self.inputs = inputs
+        self.onUnlock = onUnlock
+        self.onReview = onReview
+    }
 
     public var screen: KitScreen<CloudSyncStatusState> { KitStates.cloudSyncStatus(inputs) }
 

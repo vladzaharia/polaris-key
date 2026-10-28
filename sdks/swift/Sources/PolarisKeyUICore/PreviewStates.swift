@@ -724,7 +724,7 @@ extension PolarisKeyPreviewState {
     ]
 
     /// A made-up recovery code for previews and renders. It opens nothing.
-    public static let sampleRecoveryCode = "K7QF-2M9D-XR4T-8WHB-3JNC-6PEV"
+    public static let sampleRecoveryCode = "K7QF-2M9D-XR4T-8WHB-3JNC-6PEV-4HDA-9XKS"
 
     static let cloudSync: [PolarisKeyPreviewState] = [
         .init(.cloudSyncStatus, "locked", base { $0.cloudSync = KitCloudSync(state: .locked) }),
@@ -735,6 +735,7 @@ extension PolarisKeyPreviewState {
         .init(.unlockSync, "invalid", base { $0.unlockSync = KitUnlockSync(step: .invalid) }),
         .init(.unlockSync, "working", base { $0.unlockSync = KitUnlockSync(step: .working) }),
         .init(.unlockSync, "failed", base { $0.unlockSync = KitUnlockSync(step: .failed) }),
+        .init(.unlockSync, "no-code", base { $0.unlockSync = KitUnlockSync(step: .noCode) }),
         .init(
             .unlockSync, "start-over", base { $0.unlockSync = KitUnlockSync(step: .startOver) }),
         .init(.recoveryCode, "show", base { $0.recoveryCode = KitRecoveryCode() }),
@@ -749,6 +750,13 @@ extension PolarisKeyPreviewState {
             }),
         .init(
             .ringChange, "confirm", variant: "nothing-served",
-            base { $0.ringChange = KitRingChange() }),
+            base { $0.ringChange = KitRingChange(by: "Maya's MacBook") }),
+        .init(
+            .ringChange, "failed",
+            base {
+                $0.ringChange = KitRingChange(
+                    by: "Maya's MacBook",
+                    served: .init(ringId: "ring_9f3a", epoch: 2, rootKid: "kid_b21c"), failed: true)
+            }),
     ]
 }

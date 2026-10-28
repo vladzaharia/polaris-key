@@ -41,10 +41,13 @@ final class CloudSyncModelTests: XCTestCase {
         model.code = "BAD"
         await model.unlock()
         XCTAssertEqual(model.screen.state, .invalid)
+        model.codeEdited()
+        XCTAssertEqual(model.screen.state, .code, "the error clears on edit")
+        await model.unlock()
         XCTAssertEqual(unlocked, 0)
         model.code = "GOOD"
         await model.unlock()
-        XCTAssertEqual(model.screen.state, .code)
+        XCTAssertEqual(model.screen.state, .working, "stays until the host swaps the screen")
         XCTAssertEqual(unlocked, 1)
         XCTAssertEqual(model.code, "", "the code leaves the model once used")
     }
@@ -53,7 +56,7 @@ final class CloudSyncModelTests: XCTestCase {
         let calls = Calls()
         let model = UnlockSyncModel(host: host(calls))
         await model.unlock()
-        XCTAssertEqual(model.screen.state, .invalid)
+        XCTAssertEqual(model.screen.state, .code, "nothing was checked, so no error")
         let recovered = await calls.recovered
         XCTAssertTrue(recovered.isEmpty)
     }
@@ -148,10 +151,41 @@ final class CloudSyncModelTests: XCTestCase {
     }
 
     func testTheStatusNeverOffersUnlockOnARingChange() {
-        let model = CloudSyncStatusModel(.ringChanged)
+        let model = CloudSyncStatusModel(.ringChanged, onUnlock: {}, onReview: {})
         XCTAssertFalse(model.screen.offers(.unlock))
         model.show(.locked)
         XCTAssertTrue(model.screen.offers(.unlock))
         XCTAssertFalse(model.screen.shows("cloudSync.synced"))
+    }
+
+    func testNoRecoveryCodeOffersStartOverAndCancelReturnsThere() async {
+        let calls = Calls()
+        let model = UnlockSyncModel(
+            host: host(calls, recover: { _ in throw PolarisError(code: ErrorCode.notFound, message: "x") }))
+        model.code = "CODE"
+        await model.unlock()
+        XCTAssertEqual(model.screen.state, .noCode)
+        XCTAssertTrue(model.screen.offers(.startOver))
+        XCTAssertFalse(model.screen.shows("unlockSync.field"))
+        model.askStartOver()
+        XCTAssertEqual(model.screen.state, .startOver)
+        model.cancel()
+        XCTAssertEqual(model.screen.state, .noCode)
+    }
+
+    func testAFailedAcceptSaysSoAndCanBeRetried() async {
+        let calls = Calls()
+        let shown = SyncRingPin(ringId: "ring_9f3a", epoch: 2, rootKid: "kid_b21c")
+        let model = RingChangeModel(
+            by: nil, served: shown,
+            host: host(calls, accept: { _ in throw PolarisError(code: "network", message: "x") }))
+        await model.accept()
+        XCTAssertEqual(model.screen.state, .failed)
+        XCTAssertTrue(model.screen.shows("ringChange.failed"))
+        XCTAssertTrue(model.screen.offers(.acceptRingChange))
+    }
+
+    func testARecoveryScreenWithNoCodeDrawsNothing() {
+        XCTAssertTrue(RecoveryCodeModel().screen.isHidden)
     }
 }

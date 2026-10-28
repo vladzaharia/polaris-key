@@ -203,7 +203,7 @@ final class KitRenderTests: XCTestCase {
         "CloudSyncStatus.locked", "CloudSyncStatus.ring-changed", "UnlockSync.code",
         "UnlockSync.invalid", "UnlockSync.working", "UnlockSync.failed", "UnlockSync.start-over",
         "RecoveryCode.show", "RecoveryCode.saved", "RingChange.confirm",
-        "RingChange.confirm.nothing-served",
+        "RingChange.confirm.nothing-served", "UnlockSync.no-code", "RingChange.failed",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.
@@ -361,7 +361,15 @@ final class KitRenderTests: XCTestCase {
             }
             if issue.compactDescription.contains("Contrast"), let element = issue.element,
                 let pixels,
-                let ratio = Self.measuredContrast(pixels, in: element.frame, scale: scale)
+                // A filled button's frame reaches past its capsule onto the page: measure the
+                // label against its own fill, from the middle of the control.
+                let ratio = Self.measuredContrast(
+                    pixels,
+                    in: element.elementType == .button
+                        ? element.frame.insetBy(
+                            dx: element.frame.width * 0.2, dy: element.frame.height * 0.25)
+                        : element.frame,
+                    scale: scale)
             {
                 // A label is text at body size, so 4.5:1 whatever element carries it; only a
                 // glyph on its own may stop at 3:1.
