@@ -70,6 +70,11 @@
       "date": "2026-10-17",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-48/ (built review; one fix round merged 2026-10-17)"
     },
+    "I-33": {
+      "verdict": "pass",
+      "date": "2026-10-28",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/I-33/ (BUILT review 2026-10-28: 0 blocking, M1 calendar focus ring and M2 200 % text fixed in wp/I-33F-profile-editor, with m1 and m2)"
+    },
     "I-30": {
       "verdict": "pass",
       "date": "2026-10-17",

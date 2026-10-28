@@ -902,6 +902,7 @@
     "profile.removedMethod": "你已移除的登录方式",
     "profile.error.invalidName": "请输入名称。",
     "profile.error.invalidBirthdate": "请输入 1900 年至今天之间的日期。",
+    "profile.error.incompleteBirthdate": "请输入完整日期，或将其清除。",
     "profile.error.unknownSource": "此登录方式已不在该账户中。请重新选择。",
     "profile.error.noName": "此登录方式未提供名称。请选择其他方式或自行输入。",
     "profile.error.noPicture": "此登录方式未提供图片。请选择其他图片。",

@@ -40,6 +40,23 @@ const open = (scenario: PortalScenario, path: string, opts?: OpenOptions) =>
   portal.open(scenario, path, opts);
 
 /** What paints at the middle of the icon's top quarter, the part that overlaps the cover. */
+/** The Profile card open in its editor (I-33), with its PATCH bodies pushed onto `patches`. */
+async function openProfileEditor(
+  patches: unknown[],
+  width: number,
+  height: number,
+) {
+  const o = await open("three", "/#/account/profile", {
+    routes: profileRoutes(PROFILE_STEAM, patches),
+    width,
+    height,
+  });
+  await h1(o.page, "Account");
+  const card = o.page.getByRole("region", { name: "Profile" });
+  const edit = card.getByRole("button", { name: "Edit profile" });
+  return { o, card, edit };
+}
+
 async function iconOnTop(
   page: Page,
 ): Promise<{ overlaps: boolean; onTop: boolean }> {
@@ -587,16 +604,10 @@ describe("Account → Profile (PX-22, §4.30)", () => {
 
   it("the birth date (I-33): typed in the native field, sent alone, shown on the card, then removed", async () => {
     const patches: unknown[] = [];
-    const o = await open("three", "/#/account/profile", {
-      routes: profileRoutes(PROFILE_STEAM, patches),
-      width: 390,
-      height: 844,
-    });
+    const { o, card, edit } = await openProfileEditor(patches, 390, 844);
     try {
-      await h1(o.page, "Account");
-      const card = o.page.getByRole("region", { name: "Profile" });
-      await card.getByRole("button", { name: "Edit profile" }).click();
-      const field = card.getByLabel("Birth date");
+      await edit.click();
+      const field = card.getByRole("textbox", { name: /Birth date/ });
       await field.fill("1987-02-28");
       await card.getByRole("button", { name: "Save profile" }).click();
       await card.getByText("Born Feb 28, 1987").waitFor();
@@ -616,6 +627,39 @@ describe("Account → Profile (PX-22, §4.30)", () => {
         { birthdate: null },
       ]);
       expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("the birth date (I-33): the calendar button shows a focus ring, and a half-typed date can be cleared", async () => {
+    const patches: unknown[] = [];
+    const { o, card, edit } = await openProfileEditor(patches, 1440, 900);
+    try {
+      await edit.click();
+      const field = card.getByRole("textbox", { name: /Birth date/ });
+      await field.focus();
+      // Month, day, year, then the native calendar button.
+      for (let i = 0; i < 3; i++) await o.page.keyboard.press("Tab");
+      expect(
+        await field.evaluate((e) => getComputedStyle(e).outlineStyle),
+      ).not.toBe("none");
+      // Half a date: the message names the problem; typing on clears it; Remove clears the field.
+      await field.focus();
+      await o.page.keyboard.type("02");
+      const remove = card.getByRole("button", { name: "Remove birth date" });
+      await remove.waitFor();
+      await card.getByRole("button", { name: "Save profile" }).click();
+      expect(await card.getByRole("alert").textContent()).toBe(
+        "Enter the whole date, or clear it.",
+      );
+      await field.focus();
+      await o.page.keyboard.type("28");
+      await card.getByRole("alert").waitFor({ state: "detached" });
+      await remove.click();
+      expect(await field.inputValue()).toBe("");
+      expect(await remove.count()).toBe(0);
+      expect(patches).toEqual([]);
     } finally {
       await o.close();
     }

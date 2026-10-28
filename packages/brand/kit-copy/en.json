@@ -4523,6 +4523,11 @@
       "role": "hint",
       "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
     },
+    "profile.error.incompleteBirthdate": {
+      "value": "Enter the whole date, or clear it.",
+      "role": "hint",
+      "note": "Account page (PX-31a); moved from the portal's copy tables (P0-36)."
+    },
     "profile.error.unknownSource": {
       "value": "That sign-in method isn't on this account anymore. Choose again.",
       "role": "hint",

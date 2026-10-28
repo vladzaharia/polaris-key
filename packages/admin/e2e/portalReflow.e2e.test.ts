@@ -1,6 +1,12 @@
 import type { Page } from "playwright";
-import { afterAll, beforeAll, describe, it } from "vitest";
-import { type Handler, type Reply, portalRoutes } from "./portalFixtures.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  PROFILE_BORN,
+  type Handler,
+  type Reply,
+  portalRoutes,
+  profileRoutes,
+} from "./portalFixtures.js";
 import { SHIPPED } from "./portalStates.js";
 import {
   axe,
@@ -60,6 +66,17 @@ function longNames(slug: string): Record<string, Handler> {
   };
 }
 
+/** Root font size as a percentage, through the CSSOM: the page's CSP refuses a style element. */
+function rootText(page: Page, pct: number): Promise<void> {
+  return page.evaluate((p) => {
+    document.documentElement.style.setProperty(
+      "font-size",
+      `${p}%`,
+      "important",
+    );
+  }, pct);
+}
+
 /** With PK_SHOTS_DIR set, each row is also saved in both themes (before/after review shots). */
 const SHOTS = process.env.PK_SHOTS_DIR;
 const SHOT_ROWS = [
@@ -80,13 +97,7 @@ describe.skipIf(!SHOTS)("reflow screenshots", () => {
         });
         try {
           await h1(o.page, LONG_NAME);
-          await o.page.evaluate((pct) => {
-            document.documentElement.style.setProperty(
-              "font-size",
-              `${pct}%`,
-              "important",
-            );
-          }, text);
+          await rootText(o.page, text);
           await o.page.waitForTimeout(400);
           await o.page.screenshot({
             fullPage: true,
@@ -153,13 +164,7 @@ describe("the product page reflows", () => {
           await h1(o.page, LONG_NAME);
           if (text !== 100)
             // Through the CSSOM: the page's CSP refuses a style element.
-            await o.page.evaluate((pct) => {
-              document.documentElement.style.setProperty(
-                "font-size",
-                `${pct}%`,
-                "important",
-              );
-            }, text);
+            await rootText(o.page, text);
           await o.page.waitForTimeout(400);
           const over = await horizontalOverflow(o.page);
           // On a failure the message names the elements that pass the window's edge.
@@ -250,14 +255,7 @@ describe("identity rows wrap instead of cutting the name", () => {
         });
         try {
           await h1(o.page, "Account");
-          if (text !== 100)
-            await o.page.evaluate((pct) => {
-              document.documentElement.style.setProperty(
-                "font-size",
-                `${pct}%`,
-                "important",
-              );
-            }, text);
+          if (text !== 100) await rootText(o.page, text);
           await o.page.waitForTimeout(400);
           const over = await horizontalOverflow(o.page);
           expect(over > 0 ? await widest(o.page) : []).toEqual([]);
@@ -663,4 +661,38 @@ describe("the one-product Library and the flows lose no text at large text", () 
       });
     }
   }
+});
+
+describe("the profile editor's birth date (I-33)", () => {
+  it.each(ROWS)(
+    "$label: the whole date shows, Remove wraps under it",
+    async ({ width, height, text }) => {
+      const routes = profileRoutes(PROFILE_BORN);
+      const o = await portal.open("three", "/#/account/profile", {
+        ...{ width, height },
+        routes,
+      });
+      try {
+        await o.page.getByRole("button", { name: "Edit profile" }).click();
+        const card = o.page.getByRole("region", { name: "Profile" });
+        await rootText(o.page, text);
+        await o.page.waitForTimeout(400);
+        const field = card.getByRole("textbox", { name: /Birth date/ });
+        const [f, r] = await Promise.all([
+          field.boundingBox(),
+          card.getByRole("button", { name: "Remove birth date" }).boundingBox(),
+        ]);
+        // A narrow screen gives the field the whole row; Remove sits under it.
+        if (width < 640)
+          expect(r!.y).toBeGreaterThanOrEqual(f!.y + f!.height - 1);
+        // The date is not cut: the input's content fits its box.
+        expect(
+          await field.evaluate((e) => e.scrollWidth - e.clientWidth),
+        ).toBeLessThanOrEqual(1);
+        expect(await horizontalOverflow(o.page)).toBeLessThanOrEqual(0);
+      } finally {
+        await o.close();
+      }
+    },
+  );
 });

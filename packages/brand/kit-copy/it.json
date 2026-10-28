@@ -902,6 +902,7 @@
     "profile.removedMethod": "un metodo di accesso rimosso",
     "profile.error.invalidName": "Inserisci un nome.",
     "profile.error.invalidBirthdate": "Inserisci una data dal 1900 a oggi.",
+    "profile.error.incompleteBirthdate": "Inserisci la data completa o cancellala.",
     "profile.error.unknownSource": "Quel metodo di accesso non è più su questo account. Scegli di nuovo.",
     "profile.error.noName": "Quel metodo di accesso non ha condiviso un nome. Scegline un altro o scrivine uno.",
     "profile.error.noPicture": "Quel metodo di accesso non ha condiviso un'immagine. Scegline un'altra.",

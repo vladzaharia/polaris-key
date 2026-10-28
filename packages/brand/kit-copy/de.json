@@ -902,6 +902,7 @@
     "profile.removedMethod": "eine entfernte Anmeldemethode",
     "profile.error.invalidName": "Geben Sie einen Namen ein.",
     "profile.error.invalidBirthdate": "Geben Sie ein Datum von 1900 bis heute ein.",
+    "profile.error.incompleteBirthdate": "Geben Sie das ganze Datum ein oder löschen Sie es.",
     "profile.error.unknownSource": "Diese Anmeldemethode gehört nicht mehr zu diesem Konto. Wählen Sie erneut.",
     "profile.error.noName": "Diese Anmeldemethode hat keinen Namen geteilt. Wählen Sie eine andere oder geben Sie einen ein.",
     "profile.error.noPicture": "Diese Anmeldemethode hat kein Bild geteilt. Wählen Sie ein anderes Bild.",

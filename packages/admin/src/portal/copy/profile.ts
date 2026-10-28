@@ -44,6 +44,7 @@ export const PROFILE_COPY = {
   "profile.removedMethod": t("profile.removedMethod"),
   "profile.error.invalidName": t("profile.error.invalidName"),
   "profile.error.invalidBirthdate": t("profile.error.invalidBirthdate"),
+  "profile.error.incompleteBirthdate": t("profile.error.incompleteBirthdate"),
   "profile.error.unknownSource": t("profile.error.unknownSource"),
   "profile.error.noName": t("profile.error.noName"),
   "profile.error.noPicture": t("profile.error.noPicture"),

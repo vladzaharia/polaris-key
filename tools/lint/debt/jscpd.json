@@ -177,7 +177,7 @@
       "jscpd:duplicate": 11
     },
     "packages/admin/e2e/portal.e2e.test.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 7
     },
     "packages/admin/e2e/portalArtHero.e2e.test.ts": {
       "jscpd:duplicate": 1
