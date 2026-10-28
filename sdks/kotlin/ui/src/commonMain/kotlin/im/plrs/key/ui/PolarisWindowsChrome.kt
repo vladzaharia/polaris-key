@@ -341,6 +341,8 @@ internal fun PolarisFluentButton(
                 style = MaterialTheme.typography.labelLarge.copy(textDecoration = if (underline) TextDecoration.Underline else null),
                 color = content,
                 textAlign = TextAlign.Center,
+                // The glyph stays beside the label's own width when it wraps.
+                modifier = Modifier.weight(1f, fill = false),
                 // A label wraps (the control grows) rather than being cut: a narrow footer or a larger font scale.
             )
         }

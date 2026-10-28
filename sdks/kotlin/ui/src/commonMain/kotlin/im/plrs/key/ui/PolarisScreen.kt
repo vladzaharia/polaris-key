@@ -713,6 +713,9 @@ private fun PolarisBusyRing() {
     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
 }
 
+/** True where a control's label may wrap: GNOME's pill and the Mac's control then grow with it instead of holding one line. */
+internal val LocalPolarisActionGrows = staticCompositionLocalOf { false }
+
 /** Full width in a stacked group, sized to the label in a trailing row; 56 dp tall (60 on TV). */
 @Composable
 private fun Modifier.controlSize(): Modifier {
@@ -723,10 +726,15 @@ private fun Modifier.controlSize(): Modifier {
     // The Mac's 28 pt is a minimum: it grows with the font scale (the label's line plus 5 dp above and below).
     if (polarisWindow.isMac) {
         val grown = with(LocalDensity.current) { MaterialTheme.typography.labelLarge.lineHeight.toDp() } + 10.dp
-        return sized.height(maxOf(if (LocalPolarisMacHero.current) PolarisMac.heroButtonHeight else height, grown))
+        val floor = maxOf(if (LocalPolarisMacHero.current) PolarisMac.heroButtonHeight else height, grown)
+        return if (LocalPolarisActionGrows.current) sized.heightIn(min = floor) else sized.height(floor)
     }
-    // GNOME: both actions of a pair are 40 px pills (the lead's decision); a fixed height, not Material's floor.
-    return if (polarisWindow.isGnome) sized.height(PolarisGnome.actionHeight) else sized.heightIn(min = height)
+    // GNOME: both actions of a pair are 40 px pills (the lead's decision); a pill grows with its label at a larger font scale.
+    if (polarisWindow.isGnome) {
+        // The focus ring sits on the pill's fixed height; only a larger font scale lets the pill grow with its label.
+        return if (LocalDensity.current.fontScale > 1f || LocalPolarisActionGrows.current) sized.heightIn(min = PolarisGnome.actionHeight) else sized.height(PolarisGnome.actionHeight)
+    }
+    return sized.heightIn(min = height)
 }
 
 /** The primary action: filled, full round, 56 dp tall (60 on TV), full width in a stacked group. */
