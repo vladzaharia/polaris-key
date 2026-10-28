@@ -153,6 +153,7 @@ private final class StallPipe: PeerBytePipe, @unchecked Sendable {
     let inner: MemPipe
     let stalled = LockedValue(false)
     private let gate = LockedValue<[CheckedContinuation<Void, Never>]>([])
+    let closeCalls = LockedValue(0)
     init(_ inner: MemPipe) { self.inner = inner }
     var remoteAddress: String { inner.remoteAddress }
     func read() async throws -> Data? { try await inner.read() }
@@ -164,6 +165,7 @@ private final class StallPipe: PeerBytePipe, @unchecked Sendable {
         try await inner.write(bytes)
     }
     func close() async {
+        closeCalls.with { $0 += 1 }
         await inner.close()
         let w = gate.with { g -> [CheckedContinuation<Void, Never>] in let x = g; g = []; return x }
         for c in w { c.resume() }
@@ -196,6 +198,35 @@ final class ConnectSessionTests: XCTestCase {
         }
         for _ in 0..<200 where a.closed == nil { try? await Task.sleep(nanoseconds: 10_000_000) }
         XCTAssertEqual(a.closed?.code, "peer_busy")
+        for _ in 0..<100 where stall.closeCalls.current == 0 { try? await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertGreaterThan(stall.closeCalls.current, 0, "a stuck writer's pipe is closed at once on peer_busy")
+    }
+
+    /// N11: a link that ends for another reason closes a pipe whose writer is stuck after a short grace.
+    func testALinkThatEndsClosesAPipeWhoseWriterIsStuck() async throws {
+        let (pa, pb) = MemPipe.pair()
+        let stall = StallPipe(pa)
+        let k = rnd()
+        let A = Dev(idA, signByte: 1), B = Dev(idB, signByte: 2)
+        let ha = ConnectSessionHandlers(role: "initiator")
+        let hb = ConnectSessionHandlers(role: "responder")
+        let la = try await PeerLink.make(
+            pipe: stall, options: options(.initiator, A, [k]), handlers: ha.handlers, pipeGraceSeconds: 0.2)
+        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, B, [k]), handlers: hb.handlers)
+        ha.attach(la)
+        hb.attach(lb)
+        Task { await la.run() }
+        Task { await lb.run() }
+        await la.start()
+        async let sa = ha.opened(la)
+        async let sb = hb.opened(lb)
+        let (a, _) = try await (sa, sb)
+        stall.stalled.set(true)
+        await a.close()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(stall.closeCalls.current, 0, "the grace has not run out")
+        for _ in 0..<100 where stall.closeCalls.current == 0 { try? await Task.sleep(nanoseconds: 20_000_000) }
+        XCTAssertGreaterThan(stall.closeCalls.current, 0)
     }
 
     // MARK: Two devices

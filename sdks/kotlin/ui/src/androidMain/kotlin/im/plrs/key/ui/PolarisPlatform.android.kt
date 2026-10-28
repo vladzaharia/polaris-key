@@ -3,11 +3,14 @@
 package im.plrs.key.ui
 
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
+import android.os.PersistableBundle
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.compose.runtime.Composable
@@ -35,8 +38,15 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.runtime.SideEffect
 
 private class AndroidClipboard(private val clipboard: Clipboard) : PolarisClipboard {
-    override suspend fun setText(label: String, text: String): Boolean =
-        runCatching { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, text))) }.isSuccess
+    override suspend fun setText(label: String, text: String, sensitive: Boolean): Boolean = runCatching {
+        val clip = ClipData.newPlainText(label, text)
+        if (sensitive && Build.VERSION.SDK_INT >= 33) {
+            clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
+        }
+        clipboard.setClipEntry(ClipEntry(clip))
+    }.isSuccess
+
+    override suspend fun clear(): Boolean = runCatching { clipboard.setClipEntry(null) }.isSuccess
 
     override suspend fun getText(): String? =
         runCatching { clipboard.getClipEntry()?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() }.getOrNull()

@@ -94,10 +94,10 @@ public fun rememberPolarisEntitled(name: String, client: PolarisKeyClient = pola
         }
     }.collectAsState(false)
 
-/** A config key's effective value, live (`client.config.setting(key)`: local overrides and new documents). */
+/** A config key's effective value, live (`client.config.setting(key).flow`: local overrides and new documents). */
 @Composable
 public fun rememberPolarisSetting(key: String, client: PolarisKeyClient = polarisKey()): State<JsonElement?> =
-    remember(client, key) { flow { emitAll(client.config.setting(key)) } }.collectAsState(null)
+    remember(client, key) { flow { emitAll(client.config.setting(key).flow) } }.collectAsState(null)
 
 /** The old name of [PolarisKeyGate], kept for one release. */
 @Deprecated(

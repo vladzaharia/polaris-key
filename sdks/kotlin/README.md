@@ -370,6 +370,15 @@ the Worker accepted the report.
 `ProductCatalog` object (keys, entries, each entry's JSON schema and default; a secret's default is
 never compiled in). The `:config` tests compile a sample of it.
 
+## Cloud Connect
+
+`client.cloudConnect` links a person's signed-in devices (feature page: `/docs/features/cloud-connect/`).
+`start()` begins discovery and the relay; `peers` and `devices()` list who is reachable; `open(deviceId)`
+opens an encrypted channel and `onChannel` receives one another device opens (close it when nothing listens).
+On the JVM it tries the LAN first (mDNS and TCP), then the relay. On Android the relay works today; LAN
+discovery needs the Android adapter (CC-12b) and reports `off` with reason `unsupported` until then.
+`stop()` and sign-out close every session within 2 s each. `PolarisKeyFutures` has the Java forms.
+
 ## JVM desktop
 
 `PolarisKeyDesktop` (in `:sdk`) is the desktop entry point, as `PolarisKeyAndroid` is

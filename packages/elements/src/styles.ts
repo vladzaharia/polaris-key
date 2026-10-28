@@ -1449,7 +1449,7 @@ dialog.sheet .card,
   display: none;
 }
 .pk-root[data-shape] dialog.sheet .stage[data-split] .identity .icon {
-  display: revert;
+  display: grid;
 }
 /* In the sheet the identity is the compact header over the title, never the wide panel. */
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .identity {
@@ -1695,6 +1695,18 @@ dialog.sheet .identity {
   inline-size: 3.5rem;
   block-size: 3.5rem;
   color: var(--pk-success);
+}
+.provider-mark {
+  justify-self: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+}
+.card[data-align="start"] .provider-mark {
+  justify-self: start;
+}
+.provider-mark svg {
+  inline-size: 100%;
+  block-size: 100%;
 }
 .card[data-align="start"] .success {
   justify-self: start;

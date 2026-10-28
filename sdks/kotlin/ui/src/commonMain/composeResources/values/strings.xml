@@ -170,6 +170,8 @@
     <string name="a11y_nearbyCode">Code to tap: %1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">Sign-in code %1$s</string>
+    <!-- Screen reader label; never shown. The recovery code, as groups separated by commas so a screen reader pauses between groups. Arguments: {code} = the code the screen shows; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_recoveryCode">Recovery code %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <plurals name="a11y_seatMeter">
         <item quantity="one">%1$s of %2$d device in use</item>
@@ -726,7 +728,11 @@
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it. -->
     <string name="unlockSync_invalid">That code isn't right. Check it and try again.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
-    <string name="unlockSync_failed">Couldn't unlock. Try again later.</string>
+    <string name="unlockSync_failed">Couldn't unlock. Check your connection and try again.</string>
+    <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
+    <string name="unlockSync_startOverFailed">Couldn't start over. Check your connection and try again.</string>
+    <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
+    <string name="unlockSync_noCode">This account has no recovery code. Start over to keep syncing.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
     <string name="unlockSync_startOverTitle">Start over?</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->
@@ -743,7 +749,7 @@
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
     <string name="recoveryCode_copy">Copy code</string>
     <string name="recoveryCode_copy__macos">Copy Code</string>
-    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked. -->
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked. -->
     <string name="recoveryCode_saved">I've saved my recovery code</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
     <string name="ringChange_title">Your sync key changed</string>
@@ -752,7 +758,11 @@
     <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->
     <string name="ringChange_bodyUnknown">A device set up a new key for your synced data.</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
-    <string name="ringChange_warning">Continue only if that was you. If not, unlock with your recovery code instead.</string>
+    <string name="ringChange_warning">Choose “That was me” only if you did this. If not, use your recovery code.</string>
+    <!-- RingChange: used when no ring was served, so there is nothing to accept. -->
+    <string name="ringChange_warningNoServed">Unlock with your recovery code to keep syncing.</string>
+    <!-- RingChange: accepting the new key failed; That was me stays available to retry. -->
+    <string name="ringChange_failed">Couldn't confirm the new key. Try again, or use your recovery code.</string>
     <!-- RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange. -->
     <string name="ringChange_accept">That was me</string>
     <string name="ringChange_accept__macos">That Was Me</string>
@@ -1132,16 +1142,20 @@
     <!-- Link offer, after a regular sign-in: link the provider so the next sign-in is automatic. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_title">Sign in with %1$s next time?</string>
     <!-- Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_linkOffer_bodyGlobal">Then %1$s and other apps that use Polaris Locker can sign you in by themselves.</string>
+    <string name="signin_linkOffer_bodyGlobal">Then %1$s and other apps that use Polaris Locker can sign you in automatically.</string>
     <!-- Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_linkOffer_bodyDeveloper">Then apps from %1$s can sign you in by themselves.</string>
+    <string name="signin_linkOffer_bodyDeveloper">Then apps from %1$s can sign you in automatically.</string>
     <!-- Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_linkOffer_bodyApp">Then %1$s and its developer's other apps can sign you in by themselves.</string>
+    <string name="signin_linkOffer_bodyApp">Then %1$s and its developer's other apps can sign you in automatically.</string>
     <!-- Link offer: the main button. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_primary">Link %1$s</string>
     <!-- Link offer: declines; the device remembers it. -->
     <string name="signin_linkOffer_decline">No thanks</string>
     <string name="signin_linkOffer_decline__macos">No Thanks</string>
+    <!-- Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_stale">Sign in again to link %1$s.</string>
+    <!-- Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_failed">Couldn't link %1$s on this device.</string>
     <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_done">%1$s linked</string>
     <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->

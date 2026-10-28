@@ -499,20 +499,20 @@
       "note": "client.connect (ConnectClient): identity() registers the device keys on first need (PUT devices/keys with the keys proof; a memory-only key store is invalid-options unless ConnectOptions.allowEphemeralKeys), fetches GET connect/identity, verifies the roster and certificate (PeerDocs, from peerCertCases, ringCases, peerAdmissionCases) against the effective trust set, binds them to this device and its keys, refuses a stale, foreign or unlisted roster, and keeps the roster, the certificate and K_disc in one Keychain item (connect-state, this-device-only, never synchronized; K_disc prints as redacted). Every fetch replaces K_disc; the previous key is kept for 24 hours from first seen and dropped when a device was lost or re-keyed. A held identity with more than 3.5 days of certificate is served without a request unless refresh. An unreadable record is store-failed and never overwritten. leave() (called first on sign-out and release, which fail closed) deletes the record; with none held it touches nothing. listDevices() reads connect/devices. Typed: account_required, device_keys_required and ring_too_large come back verbatim; the service off is the product N/A. The connect transcripts replay with the relay slice."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "PolarisKeyCore PeerNoise: Noise_XX_25519_AESGCM_SHA256 over CryptoKit, a zero DH refusing with dh_zero; PeerNoiseTests replays noise-vectors.json."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
     },
     "connect.lan": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "PolarisKeyPlatform BonjourBrowse and BonjourPipes (Network.framework: NWBrowser, NWListener, NWConnection; dial policy G6 and D-10 before the first byte, accept gate and 30 s authentication bound) and PolarisKey ConnectLan (advert rotation, browse index, dial, wrong_peer, session caps); the Info.plist needs NSLocalNetworkUsageDescription and the NSBonjourServices entry _pkeypeer._tcp, and a sandboxed macOS app needs com.apple.security.network.client and .server; BonjourBrowseTests, BonjourPipesTests, ConnectLanTests."
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "client.connect.relayTicket() and PolarisKey ConnectRelay (URLSessionWebSocketTask with the pkey-relay.1 subprotocol and the ticket, reconnect policy, LIMIT and close codes 4001/4003/4008/4009, mode-a relay sessions, pacing, 8 MiB outbox cap with per-session accounting); ConnectRelayTests, ConnectRelaySessionTests, ConnectRelayTicketTests; TranscriptTests replays connect-relay-ticket and connect-relay-quota."
     },
     "connect.links": {
       "status": "planned",
@@ -523,8 +523,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "client.cloudConnect (CloudConnect): start, stop, peers, devices, open and onChannel, LAN then relay, the G21 off switches, G9 and the sign-out order, a bounded stop with a forced abort (D-12); CloudConnectTests."
     },
     "server.license": {
       "status": "planned",

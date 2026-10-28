@@ -184,6 +184,8 @@ public actor ConnectClient {
     private let accessGroup: String?
     private var madeKeys: (any DeviceKeyPort)?
     private var madeStore: ConnectStateStore?
+    /// Moves whenever the held identity is stored or removed, so the LAN and relay services drop their cached copy (N8).
+    public nonisolated let identityChanges = ConnectIdentityEpoch()
 
     public init(core: CoreContext, options: ConnectOptions = ConnectOptions(), accessGroup: String? = nil) {
         self.core = core
@@ -352,6 +354,7 @@ public actor ConnectClient {
         defer { release() }
         let store = try self.store()
         guard try store.exists() else { return }
+        defer { identityChanges.bump() }
         try store.clear()
     }
 
@@ -533,6 +536,7 @@ public actor ConnectClient {
             ring: jws, certificate: held.certificate, discKeys: keys, registered: held.registered, storedAt: now,
             prevFirstSeen: keys.count == 2 ? held.prevFirstSeen : nil, keysStale: removed || held.keysStale == true)
         do { try store.save(next) } catch { return refuse("store_failed") }
+        identityChanges.bump()
         return RingAdoption(stored: true, epoch: ring.epoch, reason: nil)
     }
 
@@ -734,6 +738,7 @@ public actor ConnectClient {
         do { try store.save(record) } catch {
             return .error(code: "store-failed", message: "The identity could not be stored.")
         }
+        identityChanges.bump()
         return .ready(
             ConnectIdentity(
                 subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: body.ring,

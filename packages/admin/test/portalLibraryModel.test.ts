@@ -135,8 +135,8 @@ describe("status model (§5.3), first match wins", () => {
     );
     expect(s).toMatchObject({
       kind: "signedInApp",
-      label: "Automatic grant",
-      note: "Standard · Automatic grant · 1 device",
+      label: "Sign-in",
+      note: "Standard · Sign-in · 1 device",
       tone: "neutral",
       attention: false,
     });
@@ -150,7 +150,7 @@ describe("status model (§5.3), first match wins", () => {
       }),
       NOW_S,
     );
-    expect(pro.note).toBe("Pro · Automatic grant · 1 device");
+    expect(pro.note).toBe("Pro · Sign-in · 1 device");
   });
 
   it("words a licence's origin in plain words, naming the store with the key", () => {
@@ -178,7 +178,7 @@ describe("status model (§5.3), first match wins", () => {
     });
     const last = [{ last4: "3WPLDA" }];
     // Granted through OIDC at sign-in (auto-issue or a group grant): owner polish 2026-10-07.
-    expect(licenseOrigin(signIn)).toBe("Automatic grant");
+    expect(licenseOrigin(signIn)).toBe("Sign-in");
     expect(licenseOrigin(key)).toBe("Added with a key");
     expect(licenseOrigin(key, { keys: last })).toBe("Key ending 3WPLDA");
     expect(licenseOrigin(steamKey)).toBe("Steam key");
@@ -233,7 +233,7 @@ describe("status model (§5.3), first match wins", () => {
     });
     expect(licenseOrigin(appStore)).toBe("From the App Store");
     const signIn = license({ product: "a", keyCount: 0, origin: "signin" });
-    expect(licenseOrigin(signIn, dev)).toBe("Automatic grant");
+    expect(licenseOrigin(signIn, dev)).toBe("Sign-in");
     // The picker keeps its word: only the License source fact changed.
     expect(shortOrigin(signIn)).toBe("Sign-in");
     // A store origin with no store named reads by its other facts, never " key" or "From ".

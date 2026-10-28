@@ -169,6 +169,8 @@
     <string name="a11y_nearbyCode">要点按的代码：%1$s</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">登录码%1$s</string>
+    <!-- Screen reader label; never shown. The recovery code, as groups separated by commas so a screen reader pauses between groups. Arguments: {code} = the code the screen shows; never split or translated. Arguments: 1=code. -->
+    <string name="a11y_recoveryCode">恢复码%1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
     <plurals name="a11y_seatMeter">
         <item quantity="other">已使用%1$s台，共%2$d台设备</item>
@@ -721,7 +723,11 @@
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it. -->
     <string name="unlockSync_invalid">恢复码不正确。请检查后重试。</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
-    <string name="unlockSync_failed">无法解锁。请稍后重试。</string>
+    <string name="unlockSync_failed">无法解锁。请检查网络连接后重试。</string>
+    <!-- UnlockSync: Start over failed (not an unlock failure); Try again repeats it. -->
+    <string name="unlockSync_startOverFailed">无法重新开始。请检查网络连接后重试。</string>
+    <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
+    <string name="unlockSync_noCode">此账户没有恢复码。请重新开始以继续同步。</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
     <string name="unlockSync_startOverTitle">重新开始？</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->
@@ -738,7 +744,7 @@
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
     <string name="recoveryCode_copy">复制恢复码</string>
     <string name="recoveryCode_copy__macos">复制恢复码</string>
-    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked. -->
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked. -->
     <string name="recoveryCode_saved">我已保存恢复码</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
     <string name="ringChange_title">你的同步密钥已更改</string>
@@ -747,7 +753,11 @@
     <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->
     <string name="ringChange_bodyUnknown">有设备为你的已同步数据设置了新密钥。</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
-    <string name="ringChange_warning">仅当是你本人操作时才继续。否则，请改用恢复码解锁。</string>
+    <string name="ringChange_warning">仅当是你本人操作时才选择“是我”。否则，请使用恢复码。</string>
+    <!-- RingChange: used when no ring was served, so there is nothing to accept. -->
+    <string name="ringChange_warningNoServed">请使用恢复码解锁，以继续同步。</string>
+    <!-- RingChange: accepting the new key failed; That was me stays available to retry. -->
+    <string name="ringChange_failed">无法确认新密钥。请重试，或使用恢复码。</string>
     <!-- RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange. -->
     <string name="ringChange_accept">是我操作的</string>
     <string name="ringChange_accept__macos">是我操作的</string>
@@ -1133,6 +1143,10 @@
     <!-- Link offer: declines; the device remembers it. -->
     <string name="signin_linkOffer_decline">不用了</string>
     <string name="signin_linkOffer_decline__macos">不用了</string>
+    <!-- Link offer: the sign-in is too old to link; the main button becomes Sign in again. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_stale">请重新登录以关联 %1$s。</string>
+    <!-- Link offer: this device or its proof was refused, so trying again cannot help; the person can decline. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
+    <string name="signin_linkOffer_failed">无法在此设备上关联 %1$s。</string>
     <!-- Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->
     <string name="signin_linkOffer_done">已关联 %1$s</string>
     <!-- Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated). Arguments: 1=provider. -->

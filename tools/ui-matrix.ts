@@ -700,11 +700,11 @@ const INPUTS: Record<string, string> = {
   cloudSync:
     "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
   unlockSync:
-    "UnlockSync's step: {step: code | invalid | working | failed | start-over, nearby?}. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
+    "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
   recoveryCode:
     "RecoveryCode: {saved?}. The code itself is never an input of the view: the kit draws it from the host, once, and keeps nothing.",
   ringChange:
-    "RingChange: {by?, served?: {ringId, epoch, rootKid}}. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code.",
+    "RingChange: {by?, served?: {ringId, epoch, rootKid}, failed?}. `failed`: accepting the ring did not open a root; the screen says so and Accept stays available. `by` is the name of the device that wrapped (`changed.by`); `served` is the ring the person was shown (`changed.served`), the one value `acceptRingChange` takes. No `served`: nothing to accept, only the recovery code.",
 };
 
 /** The precedence a model applies where several states could hold (authoring notes, pinned by
@@ -3843,6 +3843,24 @@ function cloudSyncFamily(a: A): Draft[] {
       "all",
     ),
     row(
+      "UnlockSync/start-over-failed: Start over did not run",
+      US("start-over-failed"),
+      "UnlockSync",
+      "start-over-failed",
+      "all",
+    ),
+    row(
+      "UnlockSync/no-code: the account has no recovery code",
+      US("no-code"),
+      "UnlockSync",
+      "no-code",
+      "all",
+      inv("With no recovery code there is nothing to enter.", {
+        copy: ["unlockSync.field", "unlockSync.unlock"],
+        actions: ["unlock"],
+      }),
+    ),
+    row(
       "UnlockSync/start-over: warns that synced data will be lost",
       US("start-over"),
       "UnlockSync",
@@ -3885,14 +3903,33 @@ function cloudSyncFamily(a: A): Draft[] {
       { ringChange: { by: "Maya's MacBook", served: SERVED } },
       "RingChange",
       "confirm",
-      a.but("RingChange", "confirm", "ringChange.bodyUnknown"),
+      a.but(
+        "RingChange",
+        "confirm",
+        "ringChange.bodyUnknown",
+        "ringChange.warningNoServed",
+      ),
     ),
     row(
       "RingChange/confirm: no device named",
       { ringChange: { served: SERVED } },
       "RingChange",
       "confirm",
-      a.but("RingChange", "confirm", "ringChange.body"),
+      a.but(
+        "RingChange",
+        "confirm",
+        "ringChange.body",
+        "ringChange.warningNoServed",
+      ),
+    ),
+    row(
+      "RingChange/failed: accepting did not open a root",
+      {
+        ringChange: { by: "Maya's MacBook", served: SERVED, failed: true },
+      },
+      "RingChange",
+      "failed",
+      a.but("RingChange", "failed", "ringChange.bodyUnknown"),
     ),
     row(
       "RingChange/confirm: nothing served, nothing to accept",
@@ -3904,6 +3941,7 @@ function cloudSyncFamily(a: A): Draft[] {
         "confirm",
         "ringChange.bodyUnknown",
         "ringChange.accept",
+        "ringChange.warning",
       ),
       inv(
         "Accept hands over the ring that was shown; without one it is not offered.",

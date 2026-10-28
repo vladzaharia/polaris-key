@@ -48,6 +48,7 @@ import {
   shimmer,
   statusLine,
   attribution,
+  providerMark,
   successMark,
   text,
   titles,
@@ -59,7 +60,7 @@ import {
 const ERROR_PREFIXES = ["core.codes.", "core.activation."];
 const isErrorKey = (k: string) =>
   ERROR_PREFIXES.some((p) => k.startsWith(p)) ||
-  /(Failed|\.failed|methodError|\.error)$/.test(k);
+  /(Failed|\.failed|\.stale|methodError|\.error)$/.test(k);
 
 /** Keys the content of a component draws itself. */
 function contentFor(c: KitCtx): ReactNode {
@@ -616,9 +617,14 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
               developer: !heroTitle && view.copy.includes("common.byDeveloper"),
             })
           : null}
-        {view.component === "SignIn" && view.state === "done"
+        {view.component === "SignIn" &&
+        (view.state === "done" || view.state === "link-done")
           ? successMark()
-          : null}
+          : view.component === "SignIn" &&
+              view.state === "link-offer" &&
+              c.input.provider === "Google"
+            ? providerMark()
+            : null}
         <div className="texts" data-part="texts">
           {titles(
             c,

@@ -126,7 +126,7 @@ describe("rows", () => {
         product: "Diceroll",
         developer: "Games",
       }).meta,
-    ).toBe("Automatic grant · Lifetime");
+    ).toBe("Sign-in · Lifetime");
   });
 
   it("a full row is not selectable and offers Replace only where allowed", () => {

@@ -21,7 +21,8 @@ import {
   type SignInPrimitives,
   type View,
 } from "@polaris-key/ui-core";
-import { openManage, safeLink } from "@polaris-key/ui-core/browser";
+import { openLink, openManage, safeLink } from "@polaris-key/ui-core/browser";
+import { JOIN_ACCOUNTS_URL } from "@polaris-key/ui-core/browser/sdk/linkOffer.js";
 
 import { PkElement } from "./element.js";
 import { GLYPHS, text, type RenderCtx } from "./render.js";
@@ -156,6 +157,21 @@ export class PkSignIn extends PkElement {
         return m.confirm();
       case "signin.auto.confirm.other":
         return m.useAnother();
+      case "signin.linkOffer.primary":
+        return m.linkAccept();
+      case "signin.linkOffer.decline":
+        return m.linkDecline().then(() => this.endLink());
+      case "signin.linkOffer.join":
+        openLink(JOIN_ACCOUNTS_URL);
+        return;
+      case "common.continue":
+        // The link offer's Done and its conflict end the form.
+        if (
+          s.autoSignIn?.step === "link-done" ||
+          s.autoSignIn?.step === "link-conflict"
+        )
+          return this.endLink();
+        return;
       case "signin.desktop.continue":
       case "signin.email.continue":
       case "signin.passkey":
@@ -169,6 +185,10 @@ export class PkSignIn extends PkElement {
       case "signin.handoff.copyLink":
         return m.copyLink();
       case "signin.again":
+        // On the link offer: Sign in again, the regular sign-in.
+        if (s.autoSignIn?.step === "link-offer")
+          return m.start({ channel: "browser" });
+        return m.retry();
       case "signInHandoff.newCode":
         return m.retry();
       case "common.cancel":
@@ -278,6 +298,12 @@ export class PkSignIn extends PkElement {
     this.dispatchEvent(
       new CustomEvent("pk-done", { bubbles: true, composed: true }),
     );
+  }
+
+  /** The link offer is answered: a sheet closes, the gate's own form hands back. */
+  private endLink(): void {
+    if (this.sheet) this.close();
+    else this.leave();
   }
 
   /** The gate's own form is done with: the host (the gate) draws its Welcome again. */

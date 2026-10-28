@@ -75,6 +75,9 @@ export interface CloudSyncHostDeps {
   fetchSchema: () => Promise<ProductCatalog | null>;
   /** The signed config document's values and the keys it locks. */
   document: () => CloudSyncDocument;
+  /** The person the device's session is for now, or null when not known. A request queued for
+   *  another person is dropped, not sent under this session's token. */
+  subject?: () => Promise<string | null>;
   /** Test seam: the clock and the timer (defaults: `Date.now`, `setTimeout`). */
   clock?: { now: () => number };
 }
@@ -154,6 +157,8 @@ export class CloudSyncHost {
   #closed = false;
   /** After a purge the journal stays unsaved until a principal signs in again. */
   #purged = false;
+  /** The person the machine's queued requests belong to (null for none). */
+  #bound: string | null = null;
 
   constructor(deps: CloudSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
@@ -335,9 +340,15 @@ export class CloudSyncHost {
     if (this.#used > 0) await this.#save();
   }
 
+  /** Tell the host whose requests the machine now holds (null for none). */
+  bindSubject(subject: string | null): void {
+    this.#bound = subject;
+  }
+
   /** One request: seal it (E2E), send it, open the answer, hand both to the machine. */
   async #exchange(req: SyncRequest): Promise<void> {
     const m = this.machine;
+    const bound = this.#bound;
     const codec = this.#deps.keyring.codec;
     const e2e = m.encryptionMode() === "e2e";
     // S3: a locked ring sends nothing, a pull included.
@@ -364,6 +375,10 @@ export class CloudSyncHost {
       }
     }
 
+    // Queued for one person: if the session is another person's now, nothing is sent.
+    const now = (await this.#deps.subject?.().catch(() => null)) ?? null;
+    if (bound !== null && now !== null && now !== bound)
+      return m.receive({ error: "transport" });
     const res = await sendSync(this.#deps.ctx, this.#deps.tokens, wire);
     if (!e2e || !("status" in res) || res.status !== 200 || !isObj(res.body)) {
       // Server mode, an error answer, or no answer: the machine reads it as it is.

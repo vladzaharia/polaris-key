@@ -9,10 +9,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
+import type { AutoOutcome } from "@polaris-key/ui-core";
 import type { PolarisAdapter } from "../core/index.js";
 import type { KitView } from "../desktop/bridge.js";
 import { PolarisContext } from "../react/context.js";
@@ -57,6 +59,55 @@ function OpenedHost(props: {
 }
 
 /**
+ * The link offer after a redirect sign-in (identity.link): a sheet over the app, asked once when
+ * the app runs. Nothing loads unless the adapter says a redirect sign-in landed; the offer, its
+ * form and the link engine load then.
+ */
+function LinkHost(props: {
+  adapter: PolarisAdapter;
+  theme?: KitProps["theme"];
+}) {
+  const { adapter } = props;
+  const [seed, setSeed] = useState<AutoOutcome | null>(null);
+  const asked = useRef(false);
+  useEffect(() => {
+    const check = (): void => {
+      if (asked.current || !adapter.link?.pending()) return;
+      asked.current = true;
+      void import("./autoMap.js")
+        .then((m) => m.linkOfferOutcome(adapter))
+        .then(setSeed)
+        .catch(() => undefined);
+    };
+    check();
+    return adapter.subscribe(check);
+  }, [adapter]);
+  // Escape, Close and the answers all end here; only No thanks remembers anything. A tab that
+  // dismisses is not asked again until the next sign-in.
+  const onClose = useCallback(() => {
+    void adapter.link?.dismiss();
+    setSeed(null);
+  }, [adapter]);
+  // Too old a sign-in: the regular sign-in, then the offer links in one tap.
+  const signInAgain = useCallback(() => {
+    void adapter.signInWithOidc().catch(() => undefined);
+  }, [adapter]);
+  if (seed === null) return null;
+  return (
+    <Suspense fallback={null}>
+      <AutoForm
+        adapter={adapter}
+        seed={seed}
+        sheet
+        onBack={onClose}
+        onFallback={signInAgain}
+        {...(props.theme ? { theme: props.theme } : {})}
+      />
+    </Suspense>
+  );
+}
+
+/**
  * `<PolarisKeyGate>`, with the host's menu requests wired in: on a desktop host that can ask
  * (`adapter.onOpen`), a native "Manage license" or "Check for updates" item opens Settings or the
  * update prompt over the app, in this window. The app's children are where it lives, so it shows
@@ -69,16 +120,25 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       <AutoForm {...a} />
     </Suspense>
   );
-  if (props.input !== undefined || !sdk?.adapter.onOpen)
+  const link = props.input === undefined && sdk?.adapter.link !== undefined;
+  if (props.input !== undefined || (!sdk?.adapter.onOpen && !link))
     return <Gate_ signInStep={signInStep} {...props} />;
   return (
     <Gate_ signInStep={signInStep} {...props}>
       {props.children}
-      <OpenedHost
-        adapter={sdk.adapter}
-        {...(props.theme ? { theme: props.theme } : {})}
-        {...(sdk.version !== undefined ? { version: sdk.version } : {})}
-      />
+      {link && sdk ? (
+        <LinkHost
+          adapter={sdk.adapter}
+          {...(props.theme ? { theme: props.theme } : {})}
+        />
+      ) : null}
+      {sdk?.adapter.onOpen ? (
+        <OpenedHost
+          adapter={sdk.adapter}
+          {...(props.theme ? { theme: props.theme } : {})}
+          {...(sdk.version !== undefined ? { version: sdk.version } : {})}
+        />
+      ) : null}
     </Gate_>
   );
 }

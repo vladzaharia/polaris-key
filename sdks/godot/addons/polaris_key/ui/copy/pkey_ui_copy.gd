@@ -391,7 +391,7 @@ const DEFAULTS := {
 	"choice_group": "Licenses for {product}",
 	"choice_meta": "%s · %s",
 	"choice_meta_new": "Created when you continue",
-	"choice_origin_sign_in": "Automatic grant",
+	"choice_origin_sign_in": "Sign-in",
 	"choice_origin_key_added": "Added with a key",
 	"choice_origin_store": "From %s",
 	"choice_origin_developer": "From %s",

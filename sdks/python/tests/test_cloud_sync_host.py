@@ -838,3 +838,62 @@ def test_the_async_facade_runs_the_host_on_a_worker_thread(rigs: Callable[..., R
 
     asyncio.run(go())
     assert len(w.pushes()) == 1
+
+
+# ── requests are bound to the person they were queued for ────────────────────────────────────────
+
+
+def bound_host(r: Rig, now: List[Optional[str]]) -> CloudSyncHost:
+    return CloudSyncHost(
+        CloudSyncHostDeps(
+            ctx=r.client.core,
+            tokens=r.client._tokens,
+            keyring=r.client.keyring,
+            discovery=lambda: None,
+            fetch_schema=r.client.config.fetch_schema,
+            document=lambda: {"values": {}},
+            subject=lambda: now[0],
+        ),
+        CloudSyncHostOptions(catalog=catalog(1), encryption="e2e"),
+    )
+
+
+def test_a_request_queued_for_one_person_is_never_sent_once_the_session_is_anothers(
+    rigs: Callable[..., Rig],
+) -> None:
+    w = World()
+    r = rigs(w)
+    r.client.keyring.create()
+    now: List[Optional[str]] = [SUBJECT]
+    host = bound_host(r, now)
+    host.start()
+    with host.locked() as m:
+        m.sign_in(SUBJECT)
+    host.bind_subject(SUBJECT)
+    host.touch()
+    before = len(w.sync_reqs)
+    with host.locked() as m:
+        m.set("theme", "P1-VALUE")
+    now[0] = "P2"
+    host.flush(1000)
+    assert w.sync_reqs[before:] == []
+    host.close()
+
+
+def test_an_unknown_subject_still_sends(rigs: Callable[..., Rig]) -> None:
+    w = World()
+    r = rigs(w)
+    r.client.keyring.create()
+    now: List[Optional[str]] = [None]
+    host = bound_host(r, now)
+    host.start()
+    with host.locked() as m:
+        m.sign_in(SUBJECT)
+    host.bind_subject(SUBJECT)
+    host.touch()
+    before = len(w.sync_reqs)
+    with host.locked() as m:
+        m.set("theme", "offline-boot")
+    host.flush(1000)
+    assert any(x.method == "POST" for x in w.sync_reqs[before:])
+    host.close()

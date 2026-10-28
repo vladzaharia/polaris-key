@@ -90,6 +90,8 @@ public final class ConnectPacer: Sendable {
 public final class ConnectOutbox: Sendable {
     private struct State {
         var q: [Data] = []
+        var tags: [Int?] = []
+        var byTag: [Int: Int] = [:]
         var bytes = 0
         var inflight = false
         var waiter: CheckedContinuation<Data?, Never>?
@@ -106,7 +108,7 @@ public final class ConnectOutbox: Sendable {
     public func roomFor(_ n: Int) -> Bool { state.with { $0.bytes + n <= maxBytes } }
 
     @discardableResult
-    public func put(_ data: Data, force: Bool = false) -> Bool {
+    public func put(_ data: Data, force: Bool = false, tag: Int? = nil) -> Bool {
         enum Put {
             case refused
             case queued
@@ -120,6 +122,8 @@ public final class ConnectOutbox: Sendable {
                 return .handed(w)
             }
             s.q.append(data)
+            s.tags.append(tag)
+            if let tag { s.byTag[tag, default: 0] += data.count }
             s.bytes += data.count
             return .queued
         }
@@ -139,6 +143,7 @@ public final class ConnectOutbox: Sendable {
                 if s.closed { return .some(nil) }
                 if !s.q.isEmpty {
                     let d = s.q.removeFirst()
+                    if let t = s.tags.removeFirst() { Self.take(&s, t, d.count) }
                     s.bytes -= d.count
                     s.inflight = true
                     return .some(d)
@@ -150,6 +155,36 @@ public final class ConnectOutbox: Sendable {
         }
     }
 
+    private static func take(_ s: inout State, _ tag: Int, _ n: Int) {
+        let left = (s.byTag[tag] ?? 0) - n
+        s.byTag[tag] = left > 0 ? left : nil
+    }
+
+    /// Bytes queued under `tag` (per-session accounting).
+    public func queued(tag: Int) -> Int { state.with { $0.byTag[tag] ?? 0 } }
+
+    /// The tag with the most bytes queued, and how many.
+    public func largest() -> (tag: Int, bytes: Int)? {
+        state.with { s in s.byTag.max { $0.value < $1.value }.map { ($0.key, $0.value) } }
+    }
+
+    /// Drop everything queued under `tag` (its session was closed).
+    public func purge(tag: Int) {
+        state.with { s in
+            var q: [Data] = []
+            var tags: [Int?] = []
+            for (d, t) in zip(s.q, s.tags) {
+                if t == tag { s.bytes -= d.count } else {
+                    q.append(d)
+                    tags.append(t)
+                }
+            }
+            s.q = q
+            s.tags = tags
+            s.byTag[tag] = nil
+        }
+    }
+
     /// The item `get` returned has been written (or given up on).
     public func sent() { state.with { $0.inflight = false } }
 
@@ -157,6 +192,8 @@ public final class ConnectOutbox: Sendable {
         let w = state.with { s -> CheckedContinuation<Data?, Never>? in
             s.closed = true
             s.q = []
+            s.tags = []
+            s.byTag = [:]
             s.bytes = 0
             defer { s.waiter = nil }
             return s.waiter

@@ -110,6 +110,9 @@ class CloudSyncHostDeps:
     fetch_schema: Callable[[], Optional[Mapping[str, Any]]]
     #: The signed config document's values and the keys it locks.
     document: Callable[[], Obj]
+    #: The person the device's session is for now, or ``None`` when not known. A request queued for
+    #: another person is dropped, not sent under this session's token.
+    subject: Optional[Callable[[], Optional[str]]] = field(default=None)
     #: Test seam: the clock, in epoch milliseconds.
     clock: Optional[Callable[[], int]] = field(default=None)
 
@@ -186,6 +189,8 @@ class CloudSyncHost:
         self._closed = False
         #: After a purge the journal stays unsaved until a principal signs in again.
         self._purged = False
+        #: The person the machine's queued requests belong to (``None`` for none).
+        self._bound: Optional[str] = None
         #: What the key ring last said about the root; applied to the machine at the next pump.
         self._root_pending: Optional[bool] = None
         self._building = False
@@ -427,8 +432,13 @@ class CloudSyncHost:
         with self._lock:
             m.receive(res, opened)
 
+    def bind_subject(self, subject: Optional[str]) -> None:
+        """Tell the host whose requests the machine now holds (``None`` for none)."""
+        self._bound = subject
+
     def _exchange(self, m: CloudSyncMachine, req: Obj) -> None:
         """One request: seal it (E2E), send it, open the answer, hand both to the machine."""
+        bound = self._bound
         codec = self._deps.keyring.codec
         e2e = m.encryption_mode() == "e2e"
         # S3: a locked ring sends nothing, a pull included.
@@ -448,6 +458,15 @@ class CloudSyncHost:
                     # Locked, or a mutation that cannot be sealed: nothing is sent.
                     return self._receive(m, {"error": "transport"})
 
+        # Queued for one person: if the session is another person's now, nothing is sent.
+        now: Optional[str] = None
+        if self._deps.subject is not None:
+            try:
+                now = self._deps.subject()
+            except Exception:  # noqa: BLE001 - an unknown subject does not block a send
+                now = None
+        if bound is not None and now is not None and now != bound:
+            return self._receive(m, {"error": "transport"})
         res = send_sync(self._deps.ctx, self._deps.tokens, wire)
         ok = "status" in res and res["status"] == 200 and _is_obj(res.get("body"))
         if not e2e or not ok:

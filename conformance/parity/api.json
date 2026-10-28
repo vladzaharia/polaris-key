@@ -2794,11 +2794,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "spelling": "value",
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2814,10 +2810,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2833,10 +2826,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2853,10 +2843,7 @@
         "swift": {
           "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "absent today"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2876,10 +2863,7 @@
         "python": {},
         "react": {},
         "swift": {},
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "set_value",
           "reason": "Object.set is a native method"
@@ -2896,10 +2880,7 @@
         "python": {},
         "react": {},
         "swift": {},
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {}
       },
       "layer": "client"
@@ -2918,10 +2899,7 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {
-          "planned": "U-07",
-          "reason": "a StateFlow until U-07"
-        },
+        "kotlin": {},
         "godot": {
           "spelling": "changed",
           "shape": "signal",
@@ -2944,7 +2922,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useSetting().sync",
+          "shape": "hook",
+          "reason": "a hook returns a render value; the sync state re-renders with the value"
         },
         "swift": {
           "planned": "U-07"
@@ -3721,7 +3701,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().status",
+          "shape": "hook",
+          "reason": "a hook returns a render value, following the machine"
         },
         "swift": {
           "planned": "U-07"
@@ -3745,7 +3727,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().flush",
+          "shape": "hook",
+          "reason": "the hook carries the method"
         },
         "swift": {
           "planned": "U-07"
@@ -3799,7 +3783,9 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "useCloudSync().status",
+          "shape": "hook",
+          "reason": "the hook re-renders on each machine event, so no event listener is exposed"
         },
         "swift": {
           "planned": "U-07"

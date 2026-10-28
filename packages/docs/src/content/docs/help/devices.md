@@ -37,6 +37,7 @@ Some apps also list your devices, on a screen titled **Your devices**. Your app 
 - It stops counting toward your limit straight away.
 - The app on that device asks you to activate it, or to sign in again, the next time it starts.
 - Its saved files stay on that device.
+- It is unlinked from your other devices, so they stop connecting to it.
 - You may get an email telling you the device was removed. If you did not remove it, select
   **Secure your account** in that email.
 

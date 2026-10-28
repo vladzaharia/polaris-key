@@ -7,7 +7,7 @@
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
-// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
+// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay
 // @pkey-feature identity.exchange sync.keyring
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:

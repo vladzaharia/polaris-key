@@ -12,11 +12,18 @@ import androidx.compose.ui.graphics.ImageBitmap
 
 /** The system clipboard as plain text. Both calls say whether they worked; neither throws. */
 public interface PolarisClipboard {
-    /** Puts [text] on the clipboard, labelled [label] where the platform has labels. */
-    public suspend fun setText(label: String, text: String): Boolean
+    /**
+     * Puts [text] on the clipboard, labelled [label] where the platform has labels. A [sensitive]
+     * text (a recovery code) is flagged so the system keeps it out of previews and clipboard history
+     * where it can (Android 13 and up).
+     */
+    public suspend fun setText(label: String, text: String, sensitive: Boolean = false): Boolean
 
     /** The clipboard's first text, or null when there is none or the clipboard is not readable. */
     public suspend fun getText(): String?
+
+    /** Empties the clipboard (Android: `clearPrimaryClip`). */
+    public suspend fun clear(): Boolean
 }
 
 /** The system clipboard for the current composition. */

@@ -117,6 +117,12 @@ internal val responsiveScreens: List<String> = listOf(
     "devices-list",
     "settings-list",
     "updatePrompt-available",
+    // The Cloud Sync screens (U-42).
+    "unlockSync-code",
+    "unlockSync-start-over",
+    "recoveryCode-show",
+    "recoveryCode-saved",
+    "ringChange-confirm",
 )
 
 /** Every screen drawn with PolarisMessageScreen (or its layout). */
@@ -128,7 +134,11 @@ internal val messageScreens: List<String> = listOf(
 
 /** Where the layout test checks controls: the control groups and every message screen. */
 internal val controlScreens: List<String> =
-    (listOf("signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked", "updatePrompt-available") + messageScreens).distinct()
+    (listOf("signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked", "updatePrompt-available",
+        "unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm") + messageScreens).distinct()
+
+/** The Cloud Sync screens: their panes scroll in a short window. */
+internal val syncScreens: Set<String> = setOf("unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm")
 
 internal fun kitScreen(name: String): @Composable () -> Unit = kitScreens.first { it.first == name }.second
 
@@ -251,7 +261,7 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
         val screens = controlScreens.map { it to kitScreen(it) } +
             (if (variant.tv) listOf("deviceLimit-browser-mode-tv" to deviceLimitTv) else emptyList())
         for ((name, content) in screens) show(content) {
-            checkControls(name, failures)
+            checkControls(name, failures, scrolls = name in syncScreens)
             if (name == "signInHandoff-code") {
                 // The code itself is whole: the mono text is never cut at the side or the foot.
                 val code = onAllNodes(hasText(samplePrompt.userCode), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
@@ -259,6 +269,21 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
                 if (layout == null) failures += "sign-in: the code has no text layout"
                 else if (layout.didOverflowWidth || layout.didOverflowHeight) failures += "sign-in: the code is cut (${layout.size})"
                 checkWhole("signInHandoff-code", "the code", code, failures)
+            }
+            if (name == "recoveryCode-show") {
+                // The recovery code is whole too: every group is drawn complete and unsplit (it may scroll into view, never be cut).
+                for (group in sampleRecoveryCode.reveal().split('-')) {
+                    val node = onAllNodes(hasText(group), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
+                    val layout = textLayout(node)
+                    if (layout == null) failures += "recovery code: '$group' has no text layout"
+                    else if (layout.lineCount != 1) {
+                        failures += "recovery code: '$group' is cut or split (${layout.size}, lines ${layout.lineCount})"
+                    }
+                    val shown = node?.boundsInRoot
+                    if (node != null && shown != null && !shown.isEmpty && shown.width < node.size.width - 1f) {
+                        failures += "recovery code: '$group' is clipped at the side ($shown of ${node.size})"
+                    }
+                }
             }
         }
         assertTrue("${variant.name}:\n" + failures.joinToString("\n"), failures.isEmpty())
@@ -312,11 +337,22 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
      * scroll viewports and dialogs included, are its full size), inside its root, and at least
      * 48 dp tall. With [expected], each of those labels must be among them.
      */
-    private fun ComposeTestRule.checkControls(screen: String, failures: MutableList<String>, expected: List<String> = emptyList()) {
+    private fun ComposeTestRule.checkControls(
+        screen: String,
+        failures: MutableList<String>,
+        expected: List<String> = emptyList(),
+        /** The screen's panes scroll: a control may be below the fold, but is never cut at the side or smaller than 48 dp. */
+        scrolls: Boolean = false,
+    ) {
         val min = with(density) { PolarisMinTouchTarget.toPx() } - 0.5f
         val controls = onAllNodes(hasClickAction() or hasSetTextAction()).fetchSemanticsNodes()
         for (node in controls) {
-            checkWhole(screen, node.label(), node, failures)
+            if (scrolls) {
+                val shown = node.boundsInRoot
+                if (!shown.isEmpty && (shown.width < node.size.width - 1f || shown.left < -1f)) failures += "$screen: '${node.label()}' is cut at the side ($shown)"
+            } else {
+                checkWhole(screen, node.label(), node, failures)
+            }
             val height = maxOf(node.size.height.toFloat(), node.touchBoundsInRoot.height)
             if (height < min) failures += "$screen: '${node.label()}' is ${height / density.density} dp tall"
         }

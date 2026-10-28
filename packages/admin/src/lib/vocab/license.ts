@@ -27,7 +27,8 @@ export function devicesText(n: number, limit?: number | null): string {
 
 /**
  * The **License source** of a license issued when the person signed in (the Worker's `signin`
- * origin): "Automatic grant", sentence case. The glossary names it (concepts.md); the catalog holds
- * the words (`signin.choice.origin.signIn`) so the kits say the same.
+ * origin) as the person sees it: "Sign-in". The console says "Automatic grant" (the glossary term,
+ * concepts.md) and keeps its own literal; the catalog holds these words
+ * (`signin.choice.origin.signIn`) so the kits say the same.
  */
-export const AUTOMATIC_GRANT = t("signin.choice.origin.signIn");
+export const SIGN_IN_ORIGIN = t("signin.choice.origin.signIn");

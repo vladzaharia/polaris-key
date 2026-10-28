@@ -313,7 +313,7 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
     private let sessionSubs = RelaySubs<ConnectSession>()
     private var waiters: [Int: CheckedContinuation<Void, Error>] = [:]
     private var nextWaiter = 0
-    private var held: (at: Int, src: PeerSource)?
+    private var held: (at: Int, gen: Int, src: PeerSource)?
 
     public init(source: ConnectLanSource, ticket: @escaping Ticket, options: ConnectRelayOptions = ConnectRelayOptions()) {
         src = source
@@ -337,7 +337,10 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
     public nonisolated var description: String { "ConnectRelayService()" }
     public nonisolated var customMirror: Mirror { Mirror(self, children: [:]) }
 
-    func stored() { held = nil }
+    func stored() {
+        src.changes.bump()
+        held = nil
+    }
 
     // MARK: Surface
 
@@ -651,16 +654,38 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
     func openLinkIds() -> [(peer: Data, session: UInt32)] { links.values.map { ($0.peer, $0.session) } }
 
     func sendSession(peer: Data, session: UInt32, noise: Data) {
-        // A session's traffic is never queued past the outbox cap (S4): a peer whose pings or our replies
-        // outrun the paced writer loses its session with `peer_busy`; the other sessions go on.
-        if let q = outbox, !q.roomFor(noise.count + 128) {
-            if let e = links[linkKey(peer, session)] {
+        // A session's traffic is never queued past the outbox cap (S4): when the queue is full the session
+        // holding the most queued bytes (its own share) loses its session with `peer_busy`, whichever session
+        // happens to write next; the others go on.
+        let tag = linkTag(peer, session)
+        let need = noise.count + 128
+        if let q = outbox, !q.roomFor(need) {
+            var victim = tag
+            if let big = q.largest(), big.bytes > q.queued(tag: tag) { victim = big.tag }
+            for e in links.values where linkTag(e.peer, e.session) == victim {
                 e.link?.closeSoon(.peerBusy)
                 e.pipe.lose()
             }
+            q.purge(tag: victim)
+            if victim == tag || !q.roomFor(need) { return }
+        }
+        guard isOpen, let q = outbox, let d = try? PeerRelayEnvelope.encode(.send(to: peer, session: session, noise: noise)) else {
             return
         }
-        sendEnv(.send(to: peer, session: session, noise: noise))
+        q.put(d, force: true, tag: tag)
+    }
+
+    /// The outbox's per-session accounting key: a 64-bit FNV-1a over the peer and the session id, cheap enough
+    /// for every record.
+    private func linkTag(_ peer: Data, _ session: UInt32) -> Int {
+        var h: UInt64 = 0xcbf2_9ce4_8422_2325
+        for b in peer {
+            h = (h ^ UInt64(b)) &* 0x100_0000_01b3
+        }
+        for shift in stride(from: 0, to: 32, by: 8) {
+            h = (h ^ UInt64((session >> UInt32(shift)) & 0xff)) &* 0x100_0000_01b3
+        }
+        return Int(truncatingIfNeeded: h)
     }
 
     func hasRoom(_ n: Int) -> Bool { outbox?.roomFor(n) ?? false }
@@ -854,9 +879,14 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
 
     func identity(force: Bool) async throws -> PeerSource {
         let now = src.now()
-        if !force, let h = held, now - h.at < identityTtlSeconds, h.src.certExpiresAt - now > certMarginSeconds { return h.src }
+        if !force, let h = held, h.gen == src.changes.value, now - h.at < identityTtlSeconds,
+            h.src.certExpiresAt - now > certMarginSeconds
+        {
+            return h.src
+        }
+        let gen = src.changes.value
         let v = try await src.load()
-        held = (now, v)
+        held = (now, gen, v)
         return v
     }
 

@@ -120,7 +120,7 @@ Deletion erases sessions, emails, identities, links and the account row in one a
 
 Removing a license from the library leaves it with its email, so it waits for an account that verifies that address. An auto-attach block keeps it out of this account until its key is added again. Package tokens for it are revoked and its devices keep counting toward the limit. Only a `removable` license can go: a sign-in license, a Discover claim or a keyless store or developer license answers `409 not_removable` with `reason` `no_active_key` or `key_claim_off`.
 
-A license's `origin` is `key`, `store-key`, `store`, `developer` or `signin`. Locker shows `signin` as **Automatic grant**.
+A license's `origin` is `key`, `store-key`, `store`, `developer` or `signin`. Locker and the kits show `signin` as **Sign-in**; the console says **Automatic grant**.
 
 The activate preview takes `{ "key": "<license key>" }`, rejects anything that isn't a license key shape with `422`, and returns a `verdict`.
 

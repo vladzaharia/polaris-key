@@ -823,8 +823,9 @@ describe("product page on today's data (PX-04)", () => {
     const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText("Activated");
     expect(within(card).getByText("Standard")).toBeTruthy();
-    // Granted through OIDC at sign-in: "Automatic grant" (owner polish 2026-10-07).
-    expect(licenseSource(card)).toBe("Automatic grant");
+    // Granted through OIDC at sign-in: "Sign-in" (owner polish 2026-10-07; lead decision 2026-10-28 replaced "Automatic grant").
+    // Sign-in, not "Automatic grant": lead decision 2026-10-28 (I-46.9 UX review: "Automatic grant" is internal vocabulary shown to end users).
+    expect(licenseSource(card)).toBe("Sign-in");
     // The count is the Devices card's alone.
     expect(within(card).queryByText(/of 5 in use/)).toBeNull();
     // Owner decision (2026-10-05): no licence type label; every licence is account-bound.
@@ -860,7 +861,8 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText("Activated");
-    expect(licenseSource(card)).toBe("Automatic grant");
+    // Sign-in, not "Automatic grant": lead decision 2026-10-28 (I-46.9 UX review: "Automatic grant" is internal vocabulary shown to end users).
+    expect(licenseSource(card)).toBe("Sign-in");
     expect(within(card).queryByText(/of \d+ devices?/)).toBeNull();
     expect(within(card).queryByText(/Account-wide/)).toBeNull();
   });

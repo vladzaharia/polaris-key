@@ -13,7 +13,7 @@ Cloud Connect (service slug `connect`) lets one person's devices find each other
 
 ## Status
 
-Cloud Connect is off by default, and off in production until it is signed off. The platform setting `launch.connect` serves the identity and devices routes and `launch.relay` serves the relay; both default off and fail closed, and with one off its routes answer not found and discovery reports Cloud Connect as off. A product also has to enable the service (below). The SDK calls and the console pages exist; Swift and Kotlin have the identity client, and their `CloudConnect` call is planned.
+Cloud Connect is off by default, and off in production until it is signed off. The platform setting `launch.connect` serves the identity and devices routes and `launch.relay` serves the relay; both default off and fail closed, and with one off its routes answer not found and discovery reports Cloud Connect as off. A product also has to enable the service (below). The SDK calls and the console pages exist.
 
 ## Turn it on
 
@@ -40,10 +40,10 @@ The page's Content-Security-Policy must allow the relay: add `connect-src wss://
 | Node    | `client.cloudConnect`: `start()`, `stop()`, `peers()`, `open(deviceId)`, `devices()`, `onChannel()` | Shipped |
 | Browser | `useCloudConnect()` in React; the relay is the only path                                            | Shipped |
 | Python  | `client.cloud_connect`: `start()`, `stop()`, `peers()`, `open()`, `devices()`, `on_channel()`       | Shipped |
-| Swift   | `CloudConnect`                                                                                      | Planned |
-| Kotlin  | `CloudConnect`                                                                                      | Planned |
+| Swift   | `client.cloudConnect`: `start()`, `stop()`, `peers()`, `open(deviceId)`, `devices()`, `onChannel()` | Shipped |
+| Kotlin  | `client.cloudConnect`: `start()`, `stop()`, `peers`, `open(deviceId)`, `devices()`, `onChannel`     | Shipped |
 
-`start()` brings up discovery and the relay; `open(deviceId)` returns a session that carries encrypted messages, over the local network when the other device is there and through the relay when it is not. Nothing starts on its own, and a sign-out stops it. The relay is used only when `relay` is on for the product and the person's quota allows it.
+`start()` brings up discovery and the relay; `open(deviceId)` returns a session that carries encrypted messages, over the local network when the other device is there and through the relay when it is not. Nothing starts on its own, and a sign-out stops it. On Android the local network path is planned: the SDK reports it `off` with reason `unsupported`, and the relay still works. The relay is used only when `relay` is on for the product and the person's quota allows it.
 
 ## Local network permission
 
@@ -76,5 +76,8 @@ The **Cloud Connect** section has three pages.
 
 ## Next steps
 
+- [The relay](/docs/features/cloud-connect/relay/): tickets, admission, quotas, pacing and what the relay sees.
+- [Channels](/docs/features/cloud-connect/channels/): open a channel, send messages, handle close reasons and sign-out.
+- [The peer protocol](/docs/reference/protocol/peer/): the certificate, roster, handshake and relay envelope, for implementers.
 - [Sign-in](/docs/features/sign-in/): the account Cloud Connect links devices by.
 - [Cloud Sync](/docs/features/cloud-sync/): keeps one person's settings and saves across devices.
