@@ -8,7 +8,7 @@
 // `subject()`, `signOut()`, `attach()` and `openAccount()` follow discovery's identity fragment
 // in bearer mode, refuse typed on a cookie page, and cross the desktop bridge as `invoke("identity", …)`.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { IDBFactory } from "fake-indexeddb";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import { indexedDbStore } from "../src/browser/bearer/store.js";
@@ -267,6 +267,21 @@ describe("bearer: the account calls", () => {
     expect(s.seen.some((r) => r.path === "/acme/license/deauthorize")).toBe(
       false,
     );
+  });
+
+  it("signOut and a key-only deactivation forget the key ring's root and pin", async () => {
+    const s = await server();
+    const adapter = await bearer(s);
+    await adapter.activateWithKey("pkey_good");
+    const forget = vi.spyOn(adapter.keyring, "forget");
+    await adapter.signOut();
+    expect(forget).toHaveBeenCalledTimes(1);
+    const bare = await server({ account: false });
+    const second = await bearer(bare);
+    await second.activateWithKey("pkey_good");
+    const forget2 = vi.spyOn(second.keyring, "forget");
+    await second.signOut();
+    expect(forget2).toHaveBeenCalledTimes(1);
   });
 
   it("released: false keeps the key activation", async () => {

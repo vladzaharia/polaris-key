@@ -121,6 +121,8 @@ export class IdentityClient {
     private readonly emit: (e: IdentityEvent) => void = () => undefined,
     /** The licence the device runs on (the cache's), for a sign-in's `activation`. */
     private readonly licenseId: () => string | null = () => null,
+    /** Runs after the identity is forgotten: the facade drops the key ring's root and pin. */
+    private readonly onForget: () => Promise<void> | void = () => undefined,
   ) {
     this.identityFile = join(ctx.dirs.state, "identity.json");
     this.account = new Account({
@@ -273,5 +275,6 @@ export class IdentityClient {
     await rm(subjectFile(this.ctx.dirs.state), { force: true }).catch(
       () => undefined,
     );
+    await this.onForget();
   }
 }

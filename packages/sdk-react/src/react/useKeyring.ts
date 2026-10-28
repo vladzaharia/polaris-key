@@ -22,6 +22,9 @@ export type SyncLockState =
   /** A ring exists and this device holds no root: it needs the recovery code. */
   | "locked"
   | "unlocked"
+  /** The served ring is not the one this browser pinned: unlock with the recovery code, or
+   *  `accept()` once the person confirmed. See `status.changed`. */
+  | "ring-changed"
   /** The ring could not be read; see `error`. */
   | "failed";
 
@@ -95,6 +98,9 @@ export interface UseRecoveryCode {
   replace: () => Promise<RingCode | null>;
   /** "Start over": a new ring and a new code. */
   reset: () => Promise<RingCode | null>;
+  /** After `ring-changed`, once the person confirmed in UI: pin the served ring. True when the
+   *  root is now held. */
+  accept: () => Promise<boolean>;
 }
 
 /** The recovery-code actions over the adapter's key ring. */
@@ -127,5 +133,9 @@ export function useRecoveryCode(): UseRecoveryCode {
     create: () => run(() => ring.create()),
     replace: () => run(() => ring.setRecoveryCode()),
     reset: () => run(() => ring.reset()),
+    accept: async () => {
+      const s = await run(() => ring.acceptRingChange());
+      return s?.state === "unlocked";
+    },
   };
 }

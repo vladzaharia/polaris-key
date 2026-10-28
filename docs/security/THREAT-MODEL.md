@@ -8463,10 +8463,17 @@ ring for the product. The routes are recorded in the `keyring-*` transcripts.
   `kid`, and only by a device that holds the root (or by a device for itself). The wrap slot is
   create-only. The clients add the rest: a wrap for another device is made only after a nearby
   approval that shows R-3's commit-and-reveal code, in the verifying mode (R-9), or from the
-  recovery code or a platform backup; there is no remote approval; a held root is never replaced by
-  a served one; a wrap is opened only against the ring's `rootKid`. Residual: the server's device
-  directory is trusted for listing devices and nothing else, and a client that skips the nearby
-  step is not stopped by the server.
+  recovery code or a platform backup; there is no remote approval; a wrap is opened only against
+  the ring's `rootKid`. The client also pins `{ringId, epoch, rootKid}` for its (product, subject)
+  when it first acquires a root, by create, recover or unlock, and keeps the pin (no secret) in
+  its state directory, owner-only, or in the browser's IndexedDB beside the stored root. A served
+  ring or wrap that differs from the pin is not opened and replaces nothing: the client answers
+  `ring-changed`, and only the recovery code, or an explicit accept the person confirmed in the
+  app, re-pins. A reset made by the same device re-pins itself. Sign-out and deactivation lock the
+  client and drop the pin and, in the browser, the stored root. A client that has never held a root
+  has no pin and trusts the first ring it is wrapped into. Residual: the server's device directory
+  is trusted for listing devices and nothing else, a client that skips the nearby step is not
+  stopped by the server, and a person who confirms a changed ring in the app accepts its root.
 - **T22, key loss.** With every device lost and neither a recovery code nor a platform backup, the
   data cannot be recovered, by design. Start over (`POST .../reset`) creates a new ring, and the
   replaced ring stays readable as `previous` for 30 days, so a device that still holds the old root

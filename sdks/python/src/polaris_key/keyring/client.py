@@ -13,6 +13,12 @@ Rules this module keeps:
   a wrap is opened through the port's ``dh``, so no private half is read here.
 * The recovery code is returned once, to the caller, and kept nowhere.
 * A wrap is accepted only when ``kid(R)`` equals the ring's ``rootKid``.
+* The first root this client acquires (create, recover, unlock) pins ``{ring_id, epoch, root_kid}``
+  in the state directory (``keyring-pin.json``, owner-only, no secret; in memory when the client
+  keeps no state). A served ring or wrap that differs is never opened: :meth:`KeyringClient.unlock`
+  answers ``ring-changed``, and only the recovery code (:meth:`~KeyringClient.recover`) or an
+  explicit :meth:`~KeyringClient.accept_ring_change` re-pins. Sign-out (:meth:`~KeyringClient.forget`)
+  drops the pin.
 * (CPython cannot promise to erase every copy of a secret; the zeroing here is best effort.)
 """
 
@@ -32,6 +38,7 @@ from ..core.b64url import b64url_decode, b64url_encode
 from ..core.context import CoreContext, refusal_error
 from ..core.device_keys import DeviceKeyPort
 from ..core.errors import PolarisError
+from ..core.local_state import JsonStateFile
 from ..core.token import TokenManager
 
 __all__ = [
@@ -45,6 +52,7 @@ __all__ = [
     "KeyringWrapInfo",
     "RecoveredRing",
     "RecoveryBlob",
+    "RingPin",
     "SyncCodec",
     "UnlockResult",
 ]
@@ -98,14 +106,29 @@ class KeyringState:
 
 
 @dataclass(frozen=True)
+class RingPin:
+    """What this client pinned when it first acquired a root. It holds no secret."""
+
+    ring_id: str
+    epoch: int
+    root_kid: str
+
+
+@dataclass(frozen=True)
 class UnlockResult:
-    """``kind`` is ``unlocked`` (with ``ring_id`` and ``epoch``) or ``locked`` (with ``reason``:
-    ``no-ring``, ``no-wrap`` or ``unusable-wrap``)."""
+    """``kind`` is ``unlocked`` (with ``ring_id`` and ``epoch``), ``locked`` (with ``reason``:
+    ``no-ring``, ``no-wrap`` or ``unusable-wrap``) or ``ring-changed``: the served ring is not the
+    pinned one (``pinned``, ``served``, and the wrapping device in ``served_by``). Nothing was opened
+    or replaced; confirm with the person, then ``recover(code)`` or ``accept_ring_change()``."""
 
     kind: str
     ring_id: Optional[str] = None
     epoch: Optional[int] = None
     reason: Optional[str] = None
+    pinned: Optional[RingPin] = None
+    served: Optional[RingPin] = None
+    served_by: Optional[str] = None
+    served_created_at: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -274,6 +297,9 @@ class KeyringClient:
         self._ring: Optional[KeyringRing] = None
         self._listeners: List[RootListener] = []
         self.codec = SyncCodec(self)
+        state_dir = ctx.local_state_dir()
+        self._pin_file = JsonStateFile(os.path.join(state_dir, "keyring-pin.json") if state_dir else None, lambda: {})
+        self._subject_file = JsonStateFile(os.path.join(state_dir, "subject.json") if state_dir else None, lambda: {})
 
     def __repr__(self) -> str:
         h = self._held
@@ -316,6 +342,47 @@ class KeyringClient:
             self._ring = None
             self._notify()
 
+    def forget(self) -> None:
+        """Sign-out: forget every root in memory and drop the pin, so the next person on this device
+        starts clean. The identity and licence sign-out paths call it."""
+        self.lock()
+        if self._pin_file.path is None:
+            self._pin_file.save({})
+        else:
+            try:
+                os.unlink(self._pin_file.path)
+            except OSError:
+                pass
+
+    def pin(self) -> Optional[RingPin]:
+        """The pinned ring, or ``None`` before this client first acquired a root."""
+        v = self._pin_file.load()
+        if not isinstance(v, dict) or v.get("product") != self._ctx.product:
+            return None
+        if not (isinstance(v.get("ringId"), str) and type(v.get("epoch")) is int and isinstance(v.get("rootKid"), str)):
+            return None
+        # A pin recorded for another person does not bind this one.
+        subject = self._stored_subject()
+        if isinstance(v.get("subject"), str) and subject is not None and v["subject"] != subject:
+            return None
+        return RingPin(v["ringId"], v["epoch"], v["rootKid"])
+
+    def _stored_subject(self) -> Optional[str]:
+        v = self._subject_file.load()
+        s = v.get("subject") if isinstance(v, dict) else None
+        return s if isinstance(s, str) else None
+
+    def _write_pin(self, ring_id: str, epoch: int, root_kid: str) -> None:
+        self._pin_file.save(
+            {
+                "product": self._ctx.product,
+                "subject": self._stored_subject(),
+                "ringId": ring_id,
+                "epoch": epoch,
+                "rootKid": root_kid,
+            }
+        )
+
     # ── Reads ─────────────────────────────────────────────────────────────────────────────────
 
     def read(self) -> KeyringState:
@@ -331,11 +398,34 @@ class KeyringClient:
 
     def unlock(self) -> UnlockResult:
         """Open this device's wrap and hold the root. A device with no ring, no wrap, or a wrap it
-        cannot use stays locked (a result, not an error); a network or server failure raises."""
+        cannot use stays locked (a result, not an error); a ring that is not the pinned one is
+        ``ring-changed`` and is not opened; a network or server failure raises."""
+        return self._unlock(False)
+
+    def accept_ring_change(self) -> UnlockResult:
+        """The person confirmed that the served ring is theirs (after a ``ring-changed`` answer):
+        open this device's wrap for it and pin it. Call it only from UI the person has confirmed.
+        A wrap that does not open leaves the pin as it was."""
+        return self._unlock(True)
+
+    def _unlock(self, accept: bool) -> UnlockResult:
         state = self.read()
         ring, wrap = state.ring, state.wrap
         if ring is None:
             return UnlockResult("locked", reason="no-ring")
+        pinned = self.pin()
+        if (
+            not accept
+            and pinned is not None
+            and (pinned.ring_id != ring.ring_id or pinned.epoch != ring.epoch or pinned.root_kid != ring.root_kid)
+        ):
+            return UnlockResult(
+                "ring-changed",
+                pinned=pinned,
+                served=RingPin(ring.ring_id, ring.epoch, ring.root_kid),
+                served_by=wrap.by if wrap is not None else None,
+                served_created_at=ring.created_at,
+            )
         if wrap is None:
             return UnlockResult("locked", reason="no-wrap")
         keys = self._keys
@@ -530,6 +620,8 @@ class KeyringClient:
         return h
 
     def _hold(self, h: _Held) -> None:
+        # Pinned first: no root is held without a pin.
+        self._write_pin(h.ring_id, h.epoch, h.kid.hex())
         with self._lock:
             cur = self._held
             if cur is not None:

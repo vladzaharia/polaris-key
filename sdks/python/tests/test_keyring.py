@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import pickle
+import stat
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -223,6 +225,9 @@ def test_a_wrap_for_another_root_is_not_accepted() -> None:
     c.keyring.lock()
     s.ring["rootKid"] = "00" * 16  # type: ignore[index]
     s.wraps[c.core.device_id]["kid"] = "00" * 16
+    # A pinned client calls a different root a changed ring; one with no pin finds the wrap unusable.
+    assert c.keyring.unlock().kind == "ring-changed"
+    c.keyring.forget()
     assert c.keyring.unlock().reason == "unusable-wrap"
     assert not c.keyring.unlocked
 
@@ -458,3 +463,112 @@ def test_lock_zeroes_the_buffer() -> None:
 def test_wire_code_helper_is_unused_here() -> None:
     assert wire_code_of(httpx.Response(409, json={"error": "keyring_conflict"})) == "keyring_conflict"
     _ = BASE_URL
+
+
+# ── The pin: a changed ring is never adopted silently ─────────────────────────────────────────
+
+
+def _attacked(tmp_path):
+    """A victim holding ring 1; an attacker's device of the account resets and wraps its own root
+    to the victim's device."""
+    s = FakeServer()
+    victim, vkeys = device(s, state_dir=str(tmp_path))
+    made = victim.keyring.create()
+    sealed = victim.keyring.codec.seal("n", "k", "mine")
+    attacker, _ = device(s)
+    attacker.keyring.reset()
+    attacker.keyring.wrap_to(victim.core.device_id, vkeys.ensure().agree_key)
+    return s, victim, vkeys, attacker, made, sealed
+
+
+def test_the_pin_is_written_at_create_without_a_secret(tmp_path) -> None:
+    s = FakeServer()
+    c, _ = device(s, state_dir=str(tmp_path))
+    made = c.keyring.create()
+    pin = c.keyring.pin()
+    assert (pin.ring_id, pin.epoch, pin.root_kid) == (made.ring_id, 1, made.root_kid)
+    files = list(tmp_path.rglob("keyring-pin.json"))
+    assert len(files) == 1
+    text = files[0].read_text()
+    assert made.recovery_code not in text and "ct" not in json.loads(text)
+    assert stat.S_IMODE(os.stat(files[0]).st_mode) == 0o600
+
+
+def test_an_attacker_reset_and_wrap_leave_the_victim_at_ring_changed(tmp_path) -> None:
+    s, victim, vkeys, _attacker, made, sealed = _attacked(tmp_path)
+    r = victim.keyring.unlock()
+    assert r.kind == "ring-changed"
+    assert r.pinned.ring_id == made.ring_id and r.served.ring_id == s.ring["ringId"] != made.ring_id
+    # The root held before is intact and still reads its data.
+    assert victim.keyring.unlocked
+    assert victim.keyring.codec.open("n", "k", sealed).value == "mine"
+    assert victim.keyring.pin().ring_id == made.ring_id
+    # A restart: nothing in memory, the pin on disk. It is still not adopted.
+    again = make_client(s, store=victim.core.store, device_keys=vkeys, state_dir=str(tmp_path))
+    assert again.keyring.unlock().kind == "ring-changed"
+    assert not again.keyring.unlocked
+
+
+def test_recover_re_pins_and_the_old_code_does_not_open_the_attackers_ring(tmp_path) -> None:
+    s, victim, vkeys, _attacker, made, _sealed = _attacked(tmp_path)
+    again = make_client(s, store=victim.core.store, device_keys=vkeys, state_dir=str(tmp_path))
+    assert again.keyring.unlock().kind == "ring-changed"
+    # The attacker's ring has no recovery blob for the person's code.
+    with pytest.raises(PolarisError):
+        again.keyring.recover(made.recovery_code)
+    assert again.keyring.pin().ring_id == made.ring_id
+    # The person resets from another device of theirs and gets a code for the new ring.
+    other, _ = device(s)
+    fresh = other.keyring.reset()
+    got = again.keyring.recover(fresh.recovery_code)
+    assert got.ring_id == fresh.ring_id
+    assert again.keyring.pin().ring_id == fresh.ring_id
+
+
+def test_accept_ring_change_re_pins_after_confirmation(tmp_path) -> None:
+    s, victim, vkeys, _attacker, _made, _sealed = _attacked(tmp_path)
+    again = make_client(s, store=victim.core.store, device_keys=vkeys, state_dir=str(tmp_path))
+    assert again.keyring.unlock().kind == "ring-changed"
+    r = again.keyring.accept_ring_change()
+    assert r.kind == "unlocked" and r.ring_id == s.ring["ringId"]
+    assert again.keyring.pin().ring_id == s.ring["ringId"]
+    assert again.keyring.unlock().kind == "unlocked"
+
+
+def test_a_reset_by_this_device_re_pins_itself(tmp_path) -> None:
+    s = FakeServer()
+    c, _ = device(s, state_dir=str(tmp_path))
+    c.keyring.create()
+    fresh = c.keyring.reset()
+    assert c.keyring.pin().ring_id == fresh.ring_id
+    assert c.keyring.unlock().kind == "unlocked"
+
+
+def test_another_epoch_or_root_kid_is_not_adopted(tmp_path) -> None:
+    s = FakeServer()
+    c, _ = device(s, state_dir=str(tmp_path))
+    c.keyring.create()
+    s.ring = {**s.ring, "epoch": 2}
+    assert c.keyring.unlock().kind == "ring-changed"
+    s.ring = {**s.ring, "epoch": 1, "rootKid": "f" * 32}
+    assert c.keyring.unlock().kind == "ring-changed"
+
+
+def test_forget_locks_and_drops_the_pin_and_sign_out_calls_it(tmp_path) -> None:
+    s = FakeServer()
+    c, _ = device(s, state_dir=str(tmp_path))
+    c.keyring.create()
+    c.keyring.forget()
+    assert not c.keyring.unlocked and c.keyring.pin() is None
+    assert not list(tmp_path.rglob("keyring-pin.json"))
+    c.keyring.unlock()
+    assert c.keyring.pin() is not None
+    c.identity.forget()
+    assert not c.keyring.unlocked and c.keyring.pin() is None
+
+
+def test_an_in_memory_client_pins_in_memory() -> None:
+    s = FakeServer()
+    c, _ = device(s)
+    made = c.keyring.create()
+    assert c.keyring.pin().ring_id == made.ring_id

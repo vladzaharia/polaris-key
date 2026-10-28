@@ -291,6 +291,8 @@ export class PolarisKeyClient {
       },
       (e) => this.events.safeEmit("identity", e),
       () => this.cache.state.license?.doc.licenseId ?? null,
+      // Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
+      () => this.keyring.forget(),
     );
     this.release = new ReleaseClient(
       this.core,
@@ -385,7 +387,7 @@ export class PolarisKeyClient {
     this.update.onUpdateAvailable = (check) =>
       this.events.safeEmit("updateAvailable", check);
     this.license.onDeactivated = async () => {
-      this.keyring.lock();
+      await this.keyring.forget();
       await this.identity.forget();
       this.noteLicense();
     };

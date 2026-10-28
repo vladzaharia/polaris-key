@@ -28,15 +28,46 @@ export interface StoredRoot {
   key: CryptoKey;
 }
 
+/**
+ * Which ring this browser first acquired a root for (pinned at create, recover or unwrap). It
+ * holds no secret. A served ring that differs is never adopted without the recovery code or an
+ * explicit `acceptRingChange()`.
+ */
+export interface RingPin {
+  v: 1;
+  ringId: string;
+  epoch: number;
+  /** The root's `kid`, 32 lowercase hex characters. */
+  rootKid: string;
+}
+
+export function validPin(p: unknown): p is RingPin {
+  const r = p as RingPin | null;
+  return (
+    !!r &&
+    r.v === 1 &&
+    typeof r.ringId === "string" &&
+    Number.isSafeInteger(r.epoch) &&
+    typeof r.rootKid === "string" &&
+    /^[0-9a-f]{32}$/.test(r.rootKid)
+  );
+}
+
 export interface RootVault {
   persistence(): RingPersistence;
   get(): Promise<StoredRoot | null>;
   put(rec: StoredRoot): Promise<void>;
+  /** Drops the root only; the pin stays (a lock is not a sign-out). */
   clear(): Promise<void>;
+  /** The pin, kept beside the root (the same store, the same durability). */
+  getPin(): Promise<RingPin | null>;
+  putPin(pin: RingPin): Promise<void>;
+  clearPin(): Promise<void>;
 }
 
 export function memoryRootVault(): RootVault {
   let cur: StoredRoot | null = null;
+  let pin: RingPin | null = null;
   return {
     persistence: () => "memory",
     get: async () => cur,
@@ -46,11 +77,19 @@ export function memoryRootVault(): RootVault {
     clear: async () => {
       cur = null;
     },
+    getPin: async () => pin,
+    putPin: async (p) => {
+      pin = p;
+    },
+    clearPin: async () => {
+      pin = null;
+    },
   };
 }
 
 const STORE = "root";
 const RECORD = "current";
+const PIN = "pin";
 
 /** Runs `f` in one transaction on the root store; resolves with its request's result once committed. */
 function inTx<T>(
@@ -140,6 +179,35 @@ export function indexedDbRootVault(
       if (idb === undefined) return;
       try {
         await inTx(await open(), "readwrite", (st) => st.delete(RECORD));
+      } catch {
+        // nothing durable to clear
+      }
+    },
+    async getPin() {
+      if (degraded) return mem.getPin();
+      try {
+        const rec = await inTx(await open(), "readonly", (st) => st.get(PIN));
+        return validPin(rec) ? rec : null;
+      } catch {
+        degraded = true;
+        return mem.getPin();
+      }
+    },
+    async putPin(p) {
+      // The memory copy always follows, so a store that keeps nothing still pins for the page.
+      await mem.putPin(p);
+      if (degraded) return;
+      try {
+        await inTx(await open(), "readwrite", (st) => st.put(p, PIN));
+      } catch {
+        degraded = true;
+      }
+    },
+    async clearPin() {
+      await mem.clearPin();
+      if (idb === undefined) return;
+      try {
+        await inTx(await open(), "readwrite", (st) => st.delete(PIN));
       } catch {
         // nothing durable to clear
       }

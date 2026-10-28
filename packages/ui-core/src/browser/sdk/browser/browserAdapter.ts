@@ -1347,10 +1347,12 @@ export class BrowserAdapter implements PolarisAdapter {
         // product) sign-out is the device deauthorization it always was.
         if (accountEndpointsOf(this.discovery_)?.signout) {
           const r = await this.bearer.signOut();
+          await this.forgetRing();
           this.applyBearer({ busy: noBusy(), error: noErrors() });
           return r;
         }
         await this.bearer.deactivate();
+        await this.forgetRing();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         return { released: true };
       } catch (e) {
@@ -1546,6 +1548,7 @@ export class BrowserAdapter implements PolarisAdapter {
       // This device's own seat: the deauthorization `signOut()` makes for a key-only product.
       if (this.bearer) {
         await this.bearer.deactivate();
+        await this.forgetRing();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
       } else await this.signOut();
       return;
@@ -2021,6 +2024,16 @@ export class BrowserAdapter implements PolarisAdapter {
         ? { sessionRootSeconds: o.sessionRootSeconds }
         : {}),
     }));
+  }
+
+  /**
+   * Sign-out and deactivation end the person's use of this device: the ring locks, the stored
+   * root and the pin go, so a shared browser keeps nothing of the last person's ring. Best effort
+   * on the storage; the sign-out itself has already happened.
+   */
+  private async forgetRing(): Promise<void> {
+    if (!this.bearer) return;
+    await this.keyring.forget().catch(() => undefined);
   }
 
   /** `signIn.start` / `signIn.complete` (identity.signIn). */

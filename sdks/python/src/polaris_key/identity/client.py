@@ -66,6 +66,7 @@ class IdentityClient:
         loaded_discovery: Optional[Callable[[], Optional[Dict[str, Any]]]] = None,
         license_id: Optional[Callable[[], Optional[str]]] = None,
         emit: Optional[Callable[..., Any]] = None,
+        on_forget: Optional[Callable[[], Any]] = None,
     ) -> None:
         self._ctx = ctx
         self._tokens = tokens
@@ -74,6 +75,8 @@ class IdentityClient:
         #: The identity the last ``ready`` poll showed (this process).
         self._identity: Optional[SignedInIdentity] = None
         self._before_sign_out = BeforeSignOutHooks()
+        #: Runs after the identity is forgotten (the facade drops the key ring's root and pin).
+        self._on_forget: Callable[[], Any] = on_forget or (lambda: None)
         self._account = Account(
             ctx,
             tokens,
@@ -147,6 +150,7 @@ class IdentityClient:
         The token and the licence are not touched."""
         self._identity = None
         self._account.forget_subject()
+        self._on_forget()
 
     def on_before_sign_out(self, hook: Callable[[], Any]) -> Callable[[], None]:
         """Register a function ``sign_out()`` calls first (Cloud Sync's flush registers one);

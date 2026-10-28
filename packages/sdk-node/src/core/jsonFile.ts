@@ -3,7 +3,7 @@
 // the fallback — and writes are atomic: a temporary file in the same directory, then a rename,
 // so a crash mid-write leaves the previous contents rather than half a file.
 
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -32,4 +32,9 @@ export async function writeJson(path: string, value: unknown): Promise<void> {
   const tmp = `${path}.${randomBytes(4).toString("hex")}.tmp`;
   await writeFile(tmp, JSON.stringify(value), { mode: 0o600 });
   await rename(tmp, path);
+}
+
+/** Remove `path`; a missing file is fine and so is a failure (the caller has nothing to retry). */
+export async function removeJson(path: string): Promise<void> {
+  await rm(path, { force: true }).catch(() => undefined);
 }
