@@ -68,3 +68,28 @@ export function focusAfterRetry(panel: Element | null): void {
   };
   requestAnimationFrame(attempt);
 }
+
+const STEP_UP_KEY = "pk.stepUpReturn";
+
+/**
+ * A step-up through a provider leaves the page and comes back to a fresh load, which starts at the
+ * top of the document. The sign-in link notes the leaving; {@link consumeStepUpReturn} reads it
+ * once on the way back, and the shell puts focus on the page heading.
+ */
+export function markStepUpLeave(): void {
+  try {
+    window.sessionStorage.setItem(STEP_UP_KEY, "1");
+  } catch {
+    /* private mode: focus starts at the top, as before */
+  }
+}
+
+export function consumeStepUpReturn(): boolean {
+  try {
+    const was = window.sessionStorage.getItem(STEP_UP_KEY) === "1";
+    window.sessionStorage.removeItem(STEP_UP_KEY);
+    return was;
+  } catch {
+    return false;
+  }
+}

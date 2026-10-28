@@ -679,7 +679,7 @@ function replaceGroupBody(
         .map((t) => `<span class="tag">${t}</span>`)
         .join("");
       return (
-        `<li><label class="choice"><input type="radio" name="replaceDevice" value="${escapeHtml(`${r.id}|${d.id}`)}" aria-describedby="rg-err"${bad ? ' aria-invalid="true"' : ""}${bad && i === 0 ? " autofocus" : ""}>` +
+        `<li><label class="choice"><input type="radio" name="replaceDevice" value="${escapeHtml(`${encodeURIComponent(r.id)}|${encodeURIComponent(d.id)}`)}" aria-describedby="rg-err"${bad ? ' aria-invalid="true"' : ""}${bad && i === 0 ? " autofocus" : ""}>` +
         `<span class="choice-body"><span class="choice-title"><bdi>${escapeHtml(d.label)}</bdi>${tags}</span>` +
         // "Active now" is said once: the tag, not the last-used line too.
         meta([

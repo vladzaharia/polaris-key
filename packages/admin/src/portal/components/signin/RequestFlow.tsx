@@ -23,6 +23,7 @@ import {
   safeRedirect,
   waitText,
   thisDeviceName,
+  thisDeviceTitle,
   type Chosen,
   type DeviceRowModel,
 } from "../../model/signInRequest.js";
@@ -323,7 +324,7 @@ export function RequestFlow({
       <ReplacedDone
         app={view.client.appName}
         replaced={current.replaced}
-        thisDevice={thisDeviceName(view)}
+        thisDevice={thisDeviceTitle(view)}
         onReturn={() => leave(current.redirect)}
       />
     );
@@ -337,7 +338,7 @@ export function RequestFlow({
         app={view.client.appName}
         product={view.client.appName}
         developer={view.client.developerName ?? view.client.appName}
-        thisDevice={thisDeviceName(view)}
+        thisDevice={thisDeviceTitle(view)}
         onBack={() => go({ kind: "choice" }, "back")}
         onConfirm={(device: DeviceRowModel) => {
           setChosen({ kind: "license", row: current.row, replace: device });

@@ -43,6 +43,42 @@ export function ActivateProvider({
     /** Bumps on every open, so a re-open starts from a fresh first step. */
     session: number;
   }>({ open: false, request: {}, session: 0 });
+  // Back with the modal open closes the modal and leaves the page under it where it is: the open
+  // modal holds one history entry of its own (same address), and Back pops that entry.
+  React.useEffect(() => {
+    if (!state.open) return;
+    const id = `activate-${state.session}`;
+    let popped = false;
+    const at = window.location.href;
+    try {
+      window.history.pushState(
+        { ...(window.history.state as object | null), pkDialog: id },
+        "",
+        at,
+      );
+    } catch {
+      return;
+    }
+    const onPop = (): void => {
+      if (
+        (window.history.state as { pkDialog?: string } | null)?.pkDialog === id
+      )
+        return;
+      popped = true;
+      setState((s) => ({ ...s, open: false }));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (popped) return;
+      // Closed from inside: drop the modal's entry, unless a navigation has already left it.
+      setTimeout(() => {
+        const h = window.history.state as { pkDialog?: string } | null;
+        if (h?.pkDialog === id && window.location.href === at)
+          window.history.back();
+      }, 0);
+    };
+  }, [state.open, state.session]);
   const value = React.useMemo<ActivateContextValue>(
     () => ({
       open: (request = {}) =>

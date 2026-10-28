@@ -821,6 +821,20 @@ describe("Activate license modal (PX-06)", () => {
     ).toBeNull();
   });
 
+  it("Back with the modal open closes it and leaves the page under it where it was", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const before = window.location.href;
+    await openFromHeader();
+    window.history.back();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Activate a license" }),
+      ).toBeNull(),
+    );
+    expect(window.location.href).toBe(before);
+  });
+
   it("focus follows the step: the confirm heading, Open after the claim, and the field on Change key (UX-79)", async () => {
     mockFetch({
       ...routes(),

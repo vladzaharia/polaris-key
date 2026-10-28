@@ -388,7 +388,16 @@ export async function handleAuthChoose(
       // The all-full group: one press picks the device and replaces it (no second step).
       const raw = form.get("replaceDevice") ?? "";
       if (!raw) return notice({ kind: "pick_device" });
-      const [licenseId = "", deviceId = ""] = raw.split("|");
+      // Each half is percent-encoded (licenseChoice.ts), so an id holding "|" cannot collide.
+      const [a = "", b = ""] = raw.split("|");
+      let licenseId = "";
+      let deviceId = "";
+      try {
+        licenseId = decodeURIComponent(a);
+        deviceId = decodeURIComponent(b);
+      } catch {
+        return notice({ kind: "unavailable" });
+      }
       const picked = view.rows.find((r) => r.id === licenseId);
       if (!picked?.replace?.some((d) => d.id === deviceId))
         return notice({ kind: "unavailable" });
