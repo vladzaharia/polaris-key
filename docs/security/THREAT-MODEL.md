@@ -7323,8 +7323,8 @@ HMAC-SHA-256(KEY_HASH_PEPPER, "pkey/console-member-key/v1")` (`core/console/memb
   nothing), then the account's console-IdP subjects are read; an unknown value matches only itself.
   `/me.priorSubs` carries the IdP `sub` so the SPA still says "you" on old records. Sign-out writes
   the sign-out mark under the session's `sub`: the member id for a v2 session (what the live check
-  reads), the IdP subject for a break-glass session. With no v1 cookie left, no IdP-subject mark is
-  needed for the operator's ordinary sessions.
+  reads), the IdP subject for a break-glass session. A v2 sign-out also writes the mark under the
+  IdP subject, so it ends that operator's break-glass session too.
 - **API tokens and break-glass stay groups-only roots.** For admin API tokens and a break-glass
   session, the groups alone root it; the computed rule applies to v2 sessions only.
 - **Merge, disable and delete end console eligibility on the link side.** A merge clears
@@ -7846,7 +7846,8 @@ a passkey already in the account. A passkey added in the Locker account is never
   `stepUpAt`) cannot enrol. I-16's verified-email rule, passkey cap, per-account rate limit and
   session-bound single-use ceremony apply unchanged; the ceremony is bound to the console session row.
 - **Session only.** `requireAccountSession` refuses a break-glass session (no account, reason
-  `break_glass_session`) (`account_session_required`) and a v1 cookie (no session, 401); the rows name no `tokenScope`,
+  `break_glass_session`) and any other session with no account, such as a token
+  (`account_session_required`); a v1 cookie is no session (401). The rows name no `tokenScope`,
   so an admin API token is refused before the handler.
 - **Eligibility (the lead's RP-ID decision).** The console's RP id is the host of `CONSOLE_ORIGIN`
   (`key.plrs.im`) whatever the customer RP becomes. A passkey is `consoleEligible` only when its stored

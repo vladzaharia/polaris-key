@@ -29,7 +29,11 @@ import {
   liveSubjectFor,
   resetConsoleSessionCache,
 } from "../../src/console/consoleSession.js";
-import { consoleTestSession, forgeV1Cookie } from "../consoleSessionHelper.js";
+import {
+  consoleTestBreakGlass,
+  consoleTestSession,
+  forgeV1Cookie,
+} from "../consoleSessionHelper.js";
 import { STEP_UP_ROUTES } from "../../src/console/stepUp.js";
 import { handleDocs } from "../../src/docs.js";
 
@@ -230,6 +234,30 @@ describe("server-side sign-out", () => {
       (await api(env, db, other.token, other.session.csrf, "GET", "/api/me"))
         .status,
     ).toBe(200);
+  });
+
+  it("an ordinary sign-out also ends the same operator's break-glass session", async () => {
+    const env = adminEnv();
+    const db = makeTestDb();
+    const v2 = await consoleTestSession(
+      env,
+      db,
+      { sub: "op", groups: [GROUP] },
+      NOW,
+    );
+    const bg = await consoleTestBreakGlass(
+      env,
+      { sub: "op", groups: [GROUP] },
+      NOW,
+    );
+    expect(
+      (await api(env, db, bg.token, bg.csrf, "GET", "/api/me")).status,
+    ).toBe(200);
+    const out = await api(env, db, v2.token, v2.csrf, "POST", "/api/logout");
+    expect(out.status).toBe(200);
+    expect(
+      (await api(env, db, bg.token, bg.csrf, "GET", "/api/me")).status,
+    ).toBe(401);
   });
 
   it("/docs and slug-check follow the current platform group", async () => {

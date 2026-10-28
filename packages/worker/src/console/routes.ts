@@ -126,6 +126,10 @@ async function logout(c: AdminCtx): Promise<Response> {
     // break-glass session's IdP subject (its realm has no account, so the operator's ordinary
     // sessions are not touched).
     await revokeAdminSessions(c.env, c.session.sub, c.now);
+    // An ordinary sign-out also ends the operator's break-glass session, whose `sub` is the IdP
+    // subject.
+    if (!c.session.breakGlass && c.session.idpSub)
+      await revokeAdminSessions(c.env, c.session.idpSub, c.now);
     // A v2 session also ends its own row at once (and this isolate forgets it); the mark above
     // ends the operator's other cookies.
     await endConsoleCookieSession(c.env, c.db, c.session, c.now);
