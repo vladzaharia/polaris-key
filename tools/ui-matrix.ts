@@ -56,6 +56,12 @@
 // recovery code, start over; no nearby option in v0.10.0), RecoveryCode (shown once) and RingChange
 // (names `changed.by`, hands `changed.served` to `acceptRingChange`). Only ui-core runs it; Swift,
 // Kotlin, Godot and Python read the families they name and learn this one with U-42.3 to U-42.5.
+// The `holders` family (UK-42.2, additive within version 7): activation without an account. The
+// Done step after a key (ActivateDone, with the SignIn form's `key-done`), Add your name and email
+// (AddToAccount, with the form's `attach` and `added`) and AccountAndLicense's `floating` row. A
+// license is floating until it is added to an account; the kit tells by the holder's email
+// (`licenseHolder`). Like `cloudSync` it sits outside COMPONENT_FAMILIES, so only ui-core runs it
+// until UK-43; its rows also count toward the state coverage of the must components they name.
 // Version 7 (I-46.1, automatic sign-in): the `autoSignIn` and `nearbyApproval` input members; the
 // SignIn states confirm, link-offer, link-done, link-conflict, nearby-prompt, nearby-wait and
 // nearby-done (and, from KFA-0, device-limit: a device limit with no license rows, a row that keeps
@@ -141,6 +147,7 @@ export interface UiMatrix {
   settings: Row[];
   paywall: Row[];
   cloudSync: Row[];
+  holders: Row[];
   theme: ThemeRow[];
   i18n: I18nRow[];
   cli: CliFamily;
@@ -288,12 +295,18 @@ export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
   "accept-ring-change": ["ringChange.accept"],
   "use-recovery-code": ["ringChange.useCode"],
   "copy-code": ["recoveryCode.copy"],
-  "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
+  "start-sign-in": [
+    "signin.key.signIn",
+    "signin.key.ownedSignIn",
+    "activate.waitingSignIn",
+    "activate.recommend.action",
+  ],
   "open-manage-url": [
     "deviceLimit.openBrowser",
     "devices.manage",
     "signin.key.addInLocker",
     "signin.deviceLimit.replace",
+    "activate.otherEmail.verify",
   ],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [
@@ -699,6 +712,12 @@ const INPUTS: Record<string, string> = {
   error: "{code}: a core.codes code the step failed with.",
   cloudSync:
     "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
+  licenseHolder:
+    "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
+  activateDone:
+    "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
+  addToAccount:
+    "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | failed, field?: name | email | both, deviceKind?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
   unlockSync:
     "UnlockSync's step: {step: code | invalid | working | failed | start-over-failed | no-code | start-over, nearby?}. `no-code`: the account has no recovery code, so only Start over helps. `nearby` says the host could unlock from a nearby device; v0.10.0 never offers it (NearbyApproval does not ship).",
   recoveryCode:
@@ -718,6 +737,14 @@ const PRECEDENCE: Record<string, string> = {
     "loading, error, saving (pending save or saved), dirty, locked (a locked row), list.",
   Devices:
     "loading, error, browser-mode, renaming or confirming (edit), empty, list.",
+  ActivateDone:
+    "hidden (License off), waiting (a licenseHolder email), ready (the reasons follow the services).",
+  AddToAccount:
+    "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, failed.",
+  "SignIn (holders)":
+    "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
+  "AccountAndLicense (holders)":
+    "key-only with a `licenseHolder` that has no email (floating) draws Not in an account and Add your name and email instead of the key-only line; Identity off keeps it, Add opening the portal.",
   Paywall:
     "loading, purchasing (pending purchase), restore (pending restore), purchased, not-available, offers.",
 };
@@ -3283,6 +3310,9 @@ function updateFamily(a: A): Draft[] {
 
 // ── settings: AccountAndLicense, Settings ───────────────────────────────────────────────────
 
+/** AccountAndLicense's floating-license lines (UK-42.2): only the holders family's rows show them. */
+const FLOATING_KEYS = ["account.notInAccount", "activate.recommend.action"];
+
 function settingsFamily(a: A): Draft[] {
   const { row, but, hidden, off } = a;
   const AL = "AccountAndLicense";
@@ -3350,7 +3380,7 @@ function settingsFamily(a: A): Draft[] {
       { account: { signedIn: false } },
       AL,
       "key-only",
-      "all",
+      but(AL, "key-only", ...FLOATING_KEYS),
       {
         mustNot: { copy: ["account.holder"] },
       },
@@ -3372,7 +3402,7 @@ function settingsFamily(a: A): Draft[] {
       },
       AL,
       "key-only",
-      "all",
+      but(AL, "key-only", ...FLOATING_KEYS),
     ),
     row(
       `${AL}: License off`,
@@ -3745,6 +3775,205 @@ function finish(d: Draft): Row {
     out.mustNot = m;
   }
   return out;
+}
+
+// ── holders (UK-42.2) ───────────────────────────────────────────────────────────────────────
+
+function holdersFamily(a: A): Draft[] {
+  const { row, but, off } = a;
+  const AD = "ActivateDone";
+  const AT = "AddToAccount";
+  const SI = "SignIn";
+  const AL = "AccountAndLicense";
+  const DONE: Obj = {
+    tier: "Pro",
+    term: "Lifetime",
+    deviceKind: "computer",
+    position: 1,
+    limit: 3,
+  };
+  const WAITING = { email: "maya@example.com" };
+  const FLOATING = { email: "" };
+  const NO_SYNC = off("sync");
+  const NO_IDENTITY = {
+    services: off("identity"),
+    capabilities: { signIn: false },
+  };
+  const PORTAL = "activate.recommend.portal";
+  const SYNC = "activate.recommend.sync";
+  const OTHERS = ["activate.recommend.recover", "activate.recommend.devices"];
+  const hidden = (name: string, input: Obj, component: string): Draft =>
+    row(name, input, component, "hidden", []);
+  const add = (step: string, extra: Obj = {}): Obj => ({
+    addToAccount: { step, deviceKind: "computer", ...extra },
+  });
+  const IN = (step: string, o: Obj = {}): Obj => ({
+    signIn: si({ step }),
+    ...o,
+  });
+  const WAITING_COPY = [
+    "activate.done.device",
+    "activate.done.title",
+    "activate.waiting",
+    "activate.waitingSignIn",
+    "signin.done.start",
+  ];
+  return [
+    // ActivateDone: the step after a key.
+    row(
+      `${AD}/ready: Cloud Sync, get it back and move it`,
+      { activateDone: DONE },
+      AD,
+      "ready",
+      but(AD, "ready", PORTAL),
+    ),
+    row(
+      `${AD}/ready: no Cloud Sync line without Cloud Sync`,
+      { activateDone: DONE, services: NO_SYNC },
+      AD,
+      "ready",
+      but(AD, "ready", SYNC, PORTAL),
+    ),
+    row(
+      `${AD}/ready: Identity off, one reason that opens the portal`,
+      { activateDone: DONE, ...NO_IDENTITY },
+      AD,
+      "ready",
+      but(AD, "ready", SYNC, ...OTHERS),
+    ),
+    row(
+      `${AD}/waiting: the license was sent to an email`,
+      { activateDone: DONE, licenseHolder: WAITING },
+      AD,
+      "waiting",
+      "all",
+    ),
+    hidden(
+      `${AD}/hidden: License off`,
+      { activateDone: DONE, services: off("license"), registration: "open" },
+      AD,
+    ),
+
+    // AddToAccount: Add your name and email.
+    row(`${AT}/form`, add("form"), AT, "form", but(AT, "form")),
+    ...["name", "email", "both"].map((field) =>
+      row(
+        `${AT}/invalid: ${field}`,
+        add("invalid", { field }),
+        AT,
+        "invalid",
+        but(
+          AT,
+          "invalid",
+          ...(field === "name" ? ["signin.email.invalid"] : []),
+          ...(field === "email" ? ["signin.gate.nameRequired"] : []),
+        ),
+      ),
+    ),
+    row(`${AT}/busy`, add("busy"), AT, "busy", "all"),
+    row(`${AT}/added: Cloud Sync is on`, add("added"), AT, "added", "all"),
+    row(
+      `${AT}/added: no Cloud Sync line without Cloud Sync`,
+      { ...add("added"), services: NO_SYNC },
+      AT,
+      "added",
+      but(AT, "added", "activate.attach.syncOn"),
+    ),
+    row(
+      `${AT}/owned: someone attached it meanwhile`,
+      add("owned"),
+      AT,
+      "owned",
+      "all",
+    ),
+    row(
+      `${AT}/email-bound: the license was sent to another email`,
+      { ...add("email-bound"), licenseHolder: WAITING },
+      AT,
+      "email-bound",
+      "all",
+    ),
+    row(`${AT}/failed: Try again`, add("failed"), AT, "failed", "all"),
+    hidden(
+      `${AT}/hidden: Identity off`,
+      { ...add("form"), ...NO_IDENTITY },
+      AT,
+    ),
+
+    // SignIn: the form's steps after a key, and its attach.
+    row(
+      `${SI}/key-done: the recommendation`,
+      IN("key-done", { activateDone: DONE }),
+      SI,
+      "key-done",
+      but(SI, "key-done", "activate.waiting", "activate.waitingSignIn"),
+    ),
+    row(
+      `${SI}/key-done: no Cloud Sync line without Cloud Sync`,
+      IN("key-done", { activateDone: DONE, services: NO_SYNC }),
+      SI,
+      "key-done",
+      but(SI, "key-done", SYNC, "activate.waiting", "activate.waitingSignIn"),
+    ),
+    row(
+      `${SI}/key-done: waiting for the email's account`,
+      IN("key-done", { activateDone: DONE, licenseHolder: WAITING }),
+      SI,
+      "key-done",
+      WAITING_COPY,
+    ),
+    row(
+      `${SI}/attach: name and email`,
+      IN("attach", add("form")),
+      SI,
+      "attach",
+      but(SI, "attach", "signin.gate.nameRequired", "signin.email.invalid"),
+    ),
+    row(
+      `${SI}/attach: both fields need fixing`,
+      IN("attach", add("invalid", { field: "both" })),
+      SI,
+      "attach",
+      "all",
+    ),
+    row(
+      `${SI}/added: Cloud Sync is on`,
+      IN("added", add("added")),
+      SI,
+      "added",
+      "all",
+    ),
+    row(
+      `${SI}/added: no Cloud Sync line without Cloud Sync`,
+      IN("added", { ...add("added"), services: NO_SYNC }),
+      SI,
+      "added",
+      but(SI, "added", "activate.attach.syncOn"),
+    ),
+
+    // AccountAndLicense: a license held by a key only says so and offers to add it.
+    row(
+      `${AL}/key-only: floating, Add your name and email`,
+      { licenseHolder: FLOATING, account: { signedIn: false } },
+      AL,
+      "key-only",
+      but(AL, "key-only", "account.keyOnly"),
+    ),
+    row(
+      `${AL}/key-only: floating with Identity off, Add opens the portal`,
+      { licenseHolder: FLOATING, account: { signedIn: false }, ...NO_IDENTITY },
+      AL,
+      "key-only",
+      but(AL, "key-only", "account.keyOnly"),
+    ),
+    row(
+      `${AL}/key-only: waiting for the email's account keeps the key line`,
+      { licenseHolder: WAITING, account: { signedIn: false } },
+      AL,
+      "key-only",
+      but(AL, "key-only", ...FLOATING_KEYS),
+    ),
+  ];
 }
 
 // ── cloudSync (U-42.0) ──────────────────────────────────────────────────────────────────────
@@ -5483,6 +5712,22 @@ export const SYNC_FAMILY_COMPONENTS = [
   "RingChange",
 ] as const;
 
+/** A components.json state's copy list, or an error naming the row that cites a missing state. */
+function stateList(
+  S: UiMatrixSources,
+  component: string,
+  state: string,
+  where: string,
+  errors: string[],
+): string[] | undefined {
+  const listed = S.components[component]?.states[state]?.copy;
+  if (!listed)
+    errors.push(
+      `${where}: ${component}.${state} is not a components.json state`,
+    );
+  return listed;
+}
+
 /** The cloudSync family's structure: components, states, and the keys each state lists. */
 function checkCloudSync(doc: UiMatrix, S: UiMatrixSources): string[] {
   const errors: string[] = [];
@@ -5508,13 +5753,8 @@ function checkCloudSync(doc: UiMatrix, S: UiMatrixSources): string[] {
       if (copy.length > 0) errors.push(`${where}: hidden shows no copy`);
       continue;
     }
-    const listed = S.components[component]?.states[state]?.copy;
-    if (!listed) {
-      errors.push(
-        `${where}: ${component}.${state} is not a components.json state`,
-      );
-      continue;
-    }
+    const listed = stateList(S, component, state, where, errors);
+    if (!listed) continue;
     for (const k of copy)
       if (!listed.includes(k))
         errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
@@ -5528,6 +5768,133 @@ function checkCloudSync(doc: UiMatrix, S: UiMatrixSources): string[] {
         (c !== "CloudSyncStatus" || ["locked", "ring-changed"].includes(st))
       )
         errors.push(`cloudSync: no row for ${c}.${st}`);
+  return errors;
+}
+
+/** The holders family's components. */
+export const HOLDERS_COMPONENTS = [
+  "ActivateDone",
+  "AddToAccount",
+  "SignIn",
+  "AccountAndLicense",
+] as const;
+
+/** The states the holders family pins (a must component's rows also count toward its coverage). */
+const HOLDERS_STATES: Record<string, readonly string[]> = {
+  ActivateDone: ["ready", "waiting"],
+  AddToAccount: [
+    "form",
+    "invalid",
+    "busy",
+    "added",
+    "owned",
+    "email-bound",
+    "failed",
+  ],
+  SignIn: ["key-done", "attach", "added"],
+};
+
+/** The holders family's structure: components, states, copy and actions, Cloud Sync's line. */
+function checkHolders(doc: UiMatrix, S: UiMatrixSources): string[] {
+  const errors: string[] = [];
+  const rows = doc.holders;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return ["holders: the family is empty"];
+  const allSlugs = S.services.map((s) => s.slug);
+  const names = new Set<string>();
+  const shown = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const where = `holders "${r.name}"`;
+    if (!names.has(r.name)) names.add(r.name);
+    else errors.push(`${where}: duplicate name`);
+    const { component, state, copy } = r.expect;
+    const actions = r.expect.actions ?? [];
+    if (!(HOLDERS_COMPONENTS as readonly string[]).includes(component)) {
+      errors.push(`${where}: ${component} is not a holders component`);
+      continue;
+    }
+    const services = (r.input.services as string[] | undefined) ?? allSlugs;
+    for (const s of services)
+      if (!allSlugs.includes(s)) errors.push(`${where}: unknown service ${s}`);
+    for (const s of S.services)
+      if (services.includes(s.slug))
+        for (const req of s.requires)
+          if (!services.includes(req))
+            errors.push(
+              `${where}: services is not closed (${s.slug} needs ${req})`,
+            );
+    if ([...copy].sort().join() !== copy.join())
+      errors.push(`${where}: copy is not sorted`);
+    const derived = actionsFor(copy);
+    if (derived.join() !== actions.join())
+      errors.push(
+        `${where}: actions ${actions.join(",")} are not its controls' (${derived.join(",")})`,
+      );
+    for (const a of actions)
+      if (!(a in ACTIONS))
+        errors.push(`${where}: action ${a} is not in the vocabulary`);
+    if (state === "hidden") {
+      if (services.length === allSlugs.length || copy.length > 0)
+        errors.push(`${where}: hidden shows no copy and needs a service off`);
+      continue;
+    }
+    const listed = stateList(S, component, state, where, errors);
+    if (!listed) continue;
+    for (const k of copy) {
+      if (k.startsWith("core.")) {
+        if (!(k in (S.core.en ?? {})))
+          errors.push(`${where}: ${k} is not in copy.en.json`);
+      } else if (!listed.includes(k))
+        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+    }
+    const on = (s: string) => services.includes(s);
+    // The reasons rule (UK-42.3): Cloud Sync only with sync; get it back and move it only with
+    // Identity; Identity off, the portal line alone.
+    const has = (k: string) => copy.includes(k);
+    if (has("activate.recommend.sync") && !on("sync"))
+      errors.push(`${where}: Cloud Sync's line with Cloud Sync off`);
+    if (has("activate.attach.syncOn") && !on("sync"))
+      errors.push(`${where}: Cloud Sync's line with Cloud Sync off`);
+    for (const k of [
+      "activate.recommend.recover",
+      "activate.recommend.devices",
+    ])
+      if (has(k) && !on("identity"))
+        errors.push(`${where}: ${k} with Identity off`);
+    if (has("activate.recommend.portal") && on("identity"))
+      errors.push(`${where}: the portal line is for Identity off`);
+    if (has("activate.recommend.title") && !has("activate.recommend.portal")) {
+      const reasons = [
+        "activate.recommend.sync",
+        "activate.recommend.recover",
+        "activate.recommend.devices",
+      ];
+      for (const k of reasons.slice(1))
+        if (on("identity") && !has(k))
+          errors.push(`${where}: Identity on lists ${k}`);
+      if (on("sync") && !has(reasons[0]!))
+        errors.push(`${where}: Cloud Sync on lists ${reasons[0]}`);
+    }
+    const set = shown.get(`${component}.${state}`) ?? new Set<string>();
+    for (const k of copy) set.add(k);
+    shown.set(`${component}.${state}`, set);
+  }
+  for (const [c, states] of Object.entries(HOLDERS_STATES))
+    for (const st of states) {
+      const union = shown.get(`${c}.${st}`);
+      if (!union) {
+        errors.push(`holders: no row for ${c}.${st}`);
+        continue;
+      }
+      for (const k of S.components[c]?.states[st]?.copy ?? [])
+        if (!union.has(k))
+          errors.push(`holders: no row shows ${k} in ${c}.${st}`);
+    }
+  for (const c of ["ActivateDone", "AddToAccount"])
+    if (
+      !rows.some((r) => r.expect.component === c && r.expect.state === "hidden")
+    )
+      errors.push(`holders: no hidden row for ${c}`);
   return errors;
 }
 
@@ -5947,6 +6314,14 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
     }
   }
 
+  // The holders family's rows count toward the states of the must components they name.
+  for (const r of doc.holders ?? []) {
+    const { component, state } = r.expect;
+    if (state === "hidden" || !mustNames.includes(component)) continue;
+    const key = `${component}.${state}`;
+    stateRows.set(key, [...(stateRows.get(key) ?? []), r]);
+  }
+
   // Coverage.
   for (const [c, comp] of must) {
     for (const [state, { copy: list }] of Object.entries(comp.states)) {
@@ -6107,6 +6482,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   walk(doc, "ui-matrix.json");
   errors.push(...checkCli(doc.cli, S));
   errors.push(...checkCloudSync(doc, S));
+  errors.push(...checkHolders(doc, S));
   return errors;
 }
 
@@ -6243,6 +6619,7 @@ export function buildUiMatrix(
     },
     ...out,
     cloudSync: cloudSyncFamily(a).map(finish),
+    holders: holdersFamily(a).map(finish),
     theme: themeRows(),
     i18n: i18nRows(S),
     cli: cliFamily(),

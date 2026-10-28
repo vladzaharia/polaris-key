@@ -285,6 +285,42 @@
             "signin.handoff.tooLong",
             "signin.again"
           ]
+        },
+        "key-done": {
+          "copy": [
+            "activate.done.title",
+            "activate.done.device",
+            "activate.recommend.title",
+            "activate.recommend.badge",
+            "activate.recommend.sync",
+            "activate.recommend.recover",
+            "activate.recommend.devices",
+            "activate.recommend.action",
+            "activate.recommend.skip",
+            "signin.done.start",
+            "activate.waiting",
+            "activate.waitingSignIn"
+          ]
+        },
+        "attach": {
+          "copy": [
+            "activate.recommend.action",
+            "signin.gate.name",
+            "signin.email.label",
+            "activate.attach.lede",
+            "activate.attach.fine",
+            "common.continue",
+            "common.cancel",
+            "signin.gate.nameRequired",
+            "signin.email.invalid"
+          ]
+        },
+        "added": {
+          "copy": [
+            "activate.attach.done",
+            "activate.attach.syncOn",
+            "signin.done.start"
+          ]
         }
       }
     },
@@ -535,6 +571,101 @@
             "core.activation.ok.title",
             "core.activation.ok.message",
             "part.keyField.verdict"
+          ]
+        }
+      }
+    },
+    "ActivateDone": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "ready": {
+          "copy": [
+            "activate.done.title",
+            "activate.done.device",
+            "activate.recommend.title",
+            "activate.recommend.badge",
+            "activate.recommend.sync",
+            "activate.recommend.recover",
+            "activate.recommend.devices",
+            "activate.recommend.action",
+            "activate.recommend.skip",
+            "activate.recommend.portal",
+            "signin.done.start"
+          ]
+        },
+        "waiting": {
+          "copy": [
+            "activate.done.title",
+            "activate.done.device",
+            "activate.waiting",
+            "activate.waitingSignIn",
+            "signin.done.start"
+          ]
+        }
+      }
+    },
+    "AddToAccount": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "form": {
+          "copy": [
+            "activate.recommend.action",
+            "signin.gate.name",
+            "signin.email.label",
+            "activate.attach.lede",
+            "activate.attach.fine",
+            "common.continue",
+            "common.cancel"
+          ]
+        },
+        "invalid": {
+          "copy": [
+            "activate.recommend.action",
+            "signin.gate.name",
+            "signin.email.label",
+            "activate.attach.lede",
+            "activate.attach.fine",
+            "common.continue",
+            "common.cancel",
+            "signin.gate.nameRequired",
+            "signin.email.invalid"
+          ]
+        },
+        "busy": {
+          "copy": ["activate.recommend.action", "common.working"]
+        },
+        "added": {
+          "copy": [
+            "activate.attach.done",
+            "activate.attach.syncOn",
+            "signin.done.start"
+          ]
+        },
+        "owned": {
+          "copy": [
+            "activate.owned.title",
+            "activate.owned.lede",
+            "signin.key.ownedSignIn",
+            "common.cancel"
+          ]
+        },
+        "email-bound": {
+          "copy": [
+            "activate.otherEmail.title",
+            "activate.otherEmail.body",
+            "activate.otherEmail.verify",
+            "signin.auto.confirm.other",
+            "signin.done.start"
+          ]
+        },
+        "failed": {
+          "copy": [
+            "activate.recommend.action",
+            "locker.activate.addFailed",
+            "common.tryAgain",
+            "common.cancel"
           ]
         }
       }
@@ -1002,6 +1133,8 @@
             "account.title",
             "account.tier",
             "account.keyOnly",
+            "account.notInAccount",
+            "activate.recommend.action",
             "account.updates",
             "common.signOut"
           ]
