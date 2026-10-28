@@ -28,6 +28,7 @@ import {
   refKMsg,
   refKNames,
   refKRec,
+  refMemberName,
   refAdoptAad,
   refEncodeCode,
   refHpkeContext,
@@ -506,6 +507,50 @@ function buildEnvelopeCases(): EnvelopeCase[] {
       {
         name: "language",
       },
+    ),
+  );
+  // A merge member's `k` is `setting ‖ U+0000 ‖ member`; an open key's `k` is the key (§13.10.4).
+  const member = sealRow(
+    "seal-member",
+    "A merge member: k is the setting, U+0000, then the member name ('inventory' and 'gold').",
+    "$settings",
+    refMemberName("inventory", "gold"),
+    3,
+    "m",
+  );
+  rows.push(
+    member,
+    sealRow(
+      "seal-open-key",
+      "An open key: k is the key itself, as the host names it.",
+      "$settings",
+      "notes/draft",
+      "hello",
+      "o",
+    ),
+    mutate(
+      member,
+      "member-swapped",
+      "Another member of the same setting: authentic, but k names 'gold' and the reader expects 'silver', so a server cannot swap members.",
+      env,
+      "name",
+      { name: refMemberName("inventory", "silver") },
+    ),
+    mutate(
+      member,
+      "member-wrong-setting",
+      "The same member under another merge setting: k names 'inventory' and the reader expects 'equipment', so a server cannot move a member between settings.",
+      env,
+      "name",
+      { name: refMemberName("equipment", "gold") },
+    ),
+    mutate(
+      member,
+      "member-name-only",
+      "A reader that binds the member name alone refuses: k carries the setting too.",
+      env,
+      "name",
+      { name: "gold" },
     ),
   );
   // Authentic envelopes whose plaintext breaks the P rules: sealed here with the reference's own

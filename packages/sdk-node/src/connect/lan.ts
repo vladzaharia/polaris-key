@@ -27,11 +27,11 @@ import {
   browseAccountInstance,
   parseTxt,
 } from "@polaris-key/client-core/peer";
+import { printAs } from "../core/redact.js";
 import {
   PeerDocs,
+  channelBase,
   defaultTimer,
-  peerAccount,
-  peerPorts,
   type ConnectNotice,
   type RingAdoption,
   type TrustApplication,
@@ -122,7 +122,6 @@ export class LanService {
   #browse: MdnsHandle | null = null;
   #cancelEpoch: (() => void) | null = null;
   #id: { at: number; v: LanIdentity } | null = null;
-  #ring: { jws: string; epoch: number } | null = null;
   #peers = new Map<string, LanPeer & { instance: string }>();
   #miss = new Map<string, number>();
   #pending = new Set<Socket>();
@@ -135,13 +134,19 @@ export class LanService {
   #docs: PeerDocs;
   #queue: Promise<unknown> = Promise.resolve();
 
-  private constructor(
-    private readonly src: LanSource,
-    private readonly o: LanOptions,
-  ) {
+  readonly #src: LanSource;
+  readonly #o: LanOptions;
+
+  private constructor(src: LanSource, o: LanOptions) {
+    this.#src = src;
+    this.#o = o;
     this.#docs = new PeerDocs(src, () => {
       this.#id = null;
+      // A new K_disc changes the advert name inside the epoch.
+      if (!this.#stopped && this.#adv !== null)
+        void this.#rotate().catch(() => undefined);
     });
+    printAs(this, () => ({ service: "LanService", port: this.#port }));
     this.#mdns =
       o.mdns ?? new MulticastDnsAdapter({ allowLoopback: o.allowLoopback });
   }
@@ -228,6 +233,7 @@ export class LanService {
   async stop(): Promise<void> {
     if (this.#stopped) return;
     this.#stopped = true;
+    this.#docs.close();
     this.#cancelEpoch?.();
     for (const s of [...this.#pending]) s.destroy();
     await Promise.all(
@@ -247,7 +253,7 @@ export class LanService {
   // ── Identity ────────────────────────────────────────────────────────────────────────────────
 
   async #identity(force: boolean): Promise<LanIdentity> {
-    const now = this.src.now();
+    const now = this.#src.now();
     if (
       !force &&
       this.#id !== null &&
@@ -255,12 +261,12 @@ export class LanService {
       this.#id.v.certExpiresAt - now > CERT_MARGIN_S
     )
       return this.#id.v;
-    const v = await this.src.load();
+    const v = await this.#src.load();
     if (this.#id !== null && this.#id.v.ringEpoch !== v.ringEpoch)
       this.#miss.clear();
     this.#id = { at: now, v };
-    if (this.#ring !== null && this.#ring.epoch <= v.ringEpoch)
-      this.#ring = null;
+    if (this.#docs.pushed !== null && this.#docs.pushed.epoch <= v.ringEpoch)
+      this.#docs.pushed = null;
     return v;
   }
 
@@ -269,35 +275,20 @@ export class LanService {
     id: LanIdentity,
     role: "initiator" | "responder",
   ): SocketLink {
-    const handle = new Uint8Array(32);
     const link: SocketLink = new SocketLink({
       socket,
-      handshakeMs: this.o.handshakeMs,
+      handshakeMs: this.#o.handshakeMs,
       channel: {
         mode: "a",
         role,
-        slug: id.slug,
-        staticKey: handle,
-        account: peerAccount(id, () => this.#ring),
-        caps: this.o.caps ?? ["app/1"],
-        hello: {
-          label: this.o.label,
-          platform: process.platform,
-          app: id.slug,
-        },
-        ports: peerPorts(id, handle),
-        now: () => this.src.now(),
-        timer: this.o.timer,
-        rekeyMessages: this.o.rekeyMessages,
-        rekeySeconds: this.o.rekeySeconds,
+        ...channelBase(
+          id,
+          this.#o,
+          () => this.#src.now(),
+          () => this.#docs.pushed,
+        ),
       },
-      onRing: (jws, epoch) => {
-        if (this.#ring === null || epoch > this.#ring.epoch)
-          this.#ring = { jws, epoch };
-        this.#docs.ring(jws);
-      },
-      onTrust: (jws) => this.#docs.trust(jws),
-      onRingWanted: () => this.#docs.wantRing(),
+      ...this.#docs.hooks,
       onEstablished: (s) => {
         this.#sessions.add(s);
         s.onClose(() => this.#sessions.delete(s));
@@ -311,7 +302,7 @@ export class LanService {
   // ── TCP ─────────────────────────────────────────────────────────────────────────────────────
 
   #dialable(host: string): boolean {
-    return isLanAddress(host, this.o.allowLoopback === true);
+    return isLanAddress(host, this.#o.allowLoopback === true);
   }
 
   #dial(peer: LanPeer): Promise<Socket> {
@@ -339,7 +330,7 @@ export class LanService {
     this.#server = server;
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
-      server.listen(this.o.port ?? 0, this.o.host ?? "0.0.0.0", () => {
+      server.listen(this.#o.port ?? 0, this.#o.host ?? "0.0.0.0", () => {
         server.removeListener("error", reject);
         resolve();
       });
@@ -353,9 +344,9 @@ export class LanService {
     const per = this.#perAddress.get(addr) ?? 0;
     if (
       this.#stopped ||
-      this.#pending.size >= (this.o.maxPending ?? 32) ||
-      per >= (this.o.maxPendingPerAddress ?? 4) ||
-      this.#sessions.size >= (this.o.maxSessions ?? 64) ||
+      this.#pending.size >= (this.#o.maxPending ?? 32) ||
+      per >= (this.#o.maxPendingPerAddress ?? 4) ||
+      this.#sessions.size >= (this.#o.maxSessions ?? 64) ||
       !this.#dialable(addr.replace(/^::ffff:/, ""))
     ) {
       socket.destroy();
@@ -363,7 +354,14 @@ export class LanService {
     }
     this.#pending.add(socket);
     this.#perAddress.set(addr, per + 1);
+    // An unauthenticated socket lives for the handshake window and no longer.
+    const deadline = setTimeout(
+      () => socket.destroy(),
+      this.#o.handshakeMs ?? 30_000,
+    );
+    deadline.unref();
     const done = (): void => {
+      clearTimeout(deadline);
       if (!this.#pending.delete(socket)) return;
       const n = (this.#perAddress.get(addr) ?? 1) - 1;
       if (n <= 0) this.#perAddress.delete(addr);
@@ -396,7 +394,7 @@ export class LanService {
     const run = this.#queue.then(async () => {
       if (this.#stopped) return;
       const id = await this.#identity(true);
-      const epoch = advertEpoch(this.src.now());
+      const epoch = advertEpoch(this.#src.now());
       const name = await accountInstance(id.keys.current, epoch, id.deviceId);
       if (name !== this.#advName) {
         const old = this.#adv;
@@ -408,9 +406,9 @@ export class LanService {
         this.#advName = name;
         await old?.stop().catch(() => undefined);
       }
-      const next = (epoch + 1) * ADVERT_EPOCH_SECONDS - this.src.now();
+      const next = (epoch + 1) * ADVERT_EPOCH_SECONDS - this.#src.now();
       this.#cancelEpoch?.();
-      this.#cancelEpoch = (this.o.timer ?? defaultTimer)(
+      this.#cancelEpoch = (this.#o.timer ?? defaultTimer)(
         () => void this.#rotate().catch(() => undefined),
         Math.max(1, next) * 1000,
       );
@@ -444,14 +442,14 @@ export class LanService {
     const hit = await browseAccountInstance(
       f.instance,
       keys,
-      this.src.now(),
+      this.#src.now(),
       id.roster.filter((d) => d !== id.deviceId),
     );
     if (hit === null) {
       // Bounded negative cache: a forged instance is not worked out twice.
       if (this.#miss.size >= MISS_CACHE)
         this.#miss.delete(this.#miss.keys().next().value!);
-      this.#miss.set(f.instance, this.src.now());
+      this.#miss.set(f.instance, this.#src.now());
       return;
     }
     const peer = {

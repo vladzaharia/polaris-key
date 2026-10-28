@@ -170,7 +170,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "insecure-redirect": CopyEntry(title: "Insecure connection", message: "The app refused an insecure redirect."),
     "http-error": CopyEntry(title: "Service problem", message: "The service answered with an error. Try again."),
     "invalid-response": CopyEntry(title: "Unexpected answer", message: "The service sent an answer the app couldn't use. Try again."),
-    "store-failed": CopyEntry(title: "Storage problem", message: "The app couldn't read or save its license on this device. Check that the app can write its data folder."),
+    "store-failed": CopyEntry(title: "Storage problem", message: "Couldn't save on this device. Check storage and try again."),
     "connect-unavailable": CopyEntry(title: "Connect unavailable", message: "Nearby connection isn't available for this app on this device."),
     "peer-cert-invalid": CopyEntry(title: "Device not verified", message: "This device couldn't be verified. Try again."),
     "platform-error": CopyEntry(title: "Platform problem", message: "The platform reported an error. Try again."),

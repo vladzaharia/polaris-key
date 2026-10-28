@@ -184,7 +184,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "insecure-redirect": CopyEntry("Insecure connection", "The app refused an insecure redirect."),
         "http-error": CopyEntry("Service problem", "The service answered with an error. Try again."),
         "invalid-response": CopyEntry("Unexpected answer", "The service sent an answer the app couldn't use. Try again."),
-        "store-failed": CopyEntry("Storage problem", "The app couldn't read or save its license on this device. Check that the app can write its data folder."),
+        "store-failed": CopyEntry("Storage problem", "Couldn't save on this device. Check storage and try again."),
         "connect-unavailable": CopyEntry("Connect unavailable", "Nearby connection isn't available for this app on this device."),
         "peer-cert-invalid": CopyEntry("Device not verified", "This device couldn't be verified. Try again."),
         "platform-error": CopyEntry("Platform problem", "The platform reported an error. Try again."),

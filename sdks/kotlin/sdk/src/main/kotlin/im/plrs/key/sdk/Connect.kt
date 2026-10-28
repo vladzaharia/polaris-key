@@ -192,8 +192,12 @@ internal class ConnectStateRecord(
     }
 }
 
-private fun refuse(reason: String): PolarisException =
+/** An answer that is not in the contract's shape (`bad_response`), apart from one that fails verification. */
+private fun malformed(reason: String): PolarisException =
     PolarisException(ErrorCode.badResponse, "The Cloud Connect identity was refused: $reason.")
+
+private fun refuse(reason: String): PolarisException =
+    PolarisException(ErrorCode.peerCertInvalid, "The Cloud Connect identity was refused: $reason.")
 
 /** Cloud Connect's identity: `client.connect`. Every call is serialised. */
 public class ConnectClient internal constructor(
@@ -218,10 +222,10 @@ public class ConnectClient internal constructor(
      * The held identity, fetching it first when none is held, when it is nearing its end (the
      * certificate has less than `PEER_CERT_RENEW_SECONDS` left, or the roster expired), when this
      * device's keys changed, or when [refresh] is set. Makes and registers the device keys on first
-     * need. Throws [PolarisException]: `service-unavailable` (Connect off here), `invalid-options` (a
+     * need. Throws [PolarisException]: `connect-unavailable` (Connect off here), `invalid-options` (a
      * memory-only key store the host did not allow), `no-token`, `device-keys-unreadable`, the
      * Worker's own refusals (`account_required`, `device_keys_required`, `ring_too_large`, ...) and
-     * `bad_response` for an answer that fails verification.
+     * `peer-cert-invalid` for an answer that fails verification.
      */
     public suspend fun identity(refresh: Boolean = false): ConnectIdentity = lock.withLock { loadIdentity(refresh) }
 
@@ -245,12 +249,12 @@ public class ConnectClient internal constructor(
         registerIfNeeded(p, load())
         val body = get(core.endpoints.connectDevices, "connect devices")
         val list = JsonText.parseOrNull(body).objectValue?.get("devices").arrayValue
-        if (list == null || list.size > PeerConstants.MAX_RING_DEVICES) throw refuse("the device list is not in the contract shape")
+        if (list == null || list.size > PeerConstants.MAX_RING_DEVICES) throw malformed("the device list is not in the contract shape")
         list.map { d ->
             val o = d.objectValue
             val id = o?.get("deviceId").stringValue
             val self = o?.get("self").boolValue
-            if (o == null || id == null || self == null) throw refuse("a device entry is not in the contract shape")
+            if (o == null || id == null || self == null) throw malformed("a device entry is not in the contract shape")
             ConnectDevice(id, o["label"].stringValue, o["platform"].stringValue, o["lastSeen"].longValue, self)
         }
     }
@@ -341,14 +345,14 @@ public class ConnectClient internal constructor(
     private class Answer(val ring: String, val certificate: String, val discKeys: List<String>)
 
     private fun parseAnswer(text: String): Answer {
-        val o = JsonText.parseOrNull(text).objectValue ?: throw refuse("the answer is not in the contract shape")
+        val o = JsonText.parseOrNull(text).objectValue ?: throw malformed("the answer is not in the contract shape")
         val ring = o["ring"].stringValue
         val cert = o["certificate"].stringValue
-        val keys = o["discKeys"].arrayValue?.map { it.stringValue ?: throw refuse("the answer is not in the contract shape") }
+        val keys = o["discKeys"].arrayValue?.map { it.stringValue ?: throw malformed("the answer is not in the contract shape") }
         if (ring == null || cert == null || keys == null || keys.size !in 1..2 ||
             !keys.all { validDiscKey(it) } || (keys.size == 2 && keys[0] == keys[1])
         ) {
-            throw refuse("the answer is not in the contract shape")
+            throw malformed("the answer is not in the contract shape")
         }
         return Answer(ring, cert, keys)
     }
@@ -358,7 +362,7 @@ public class ConnectClient internal constructor(
 
     private fun sameDevice(a: PeerDeviceKeys, b: PeerDeviceKeys): Boolean = a == b
 
-    /** Verify the answer and decide what to store. Throws `bad_response` on any refusal; nothing is written before this returns. */
+    /** Verify the answer and decide what to store. Throws `peer-cert-invalid` on any refusal; nothing is written before this returns. */
     private suspend fun accept(
         a: Answer,
         mine: DevicePublicKeys,
@@ -450,7 +454,7 @@ public class ConnectClient internal constructor(
         val f = doc.services[ServiceSlug.connect]
         fun off(detail: String): PolarisException {
             val u = Unsupported(Feature.connectIdentity, UnsupportedReason.product, detail)
-            return PolarisException(ErrorCode.serviceUnavailable, "The connect service is not enabled for ${core.product}.", detail = detail, unsupported = u)
+            return PolarisException(ErrorCode.connectUnavailable, "The connect service is not enabled for ${core.product}.", detail = detail, unsupported = u)
         }
         if (f == null || !f.enabled) throw off("this product has Cloud Connect off")
         if (f.endpoints.isNotEmpty() && "identity" !in f.endpoints) throw off("this product's discovery names no connect identity endpoint")

@@ -302,6 +302,28 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                 mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(mapOf("identity" to identity))),
             ).toString()
         }
+        // identity.exchange (I-45.3): a transcript with an `exchange` step and no discover step rides a product whose
+        // Identity fragment offers the rung (V5 section 12.11.6): the kinds, the Google audience, the nonce and token routes,
+        // and the grant-completion route a confirm or choose answer is finished at.
+        if (transcript.steps.any { it["action"].stringValue == "exchange" }) {
+            val endpoints = mapOf(
+                "nonce" to "$base/identity/nonce", "token" to "$base/identity/token",
+                "choiceComplete" to "$base/identity/choice/complete",
+            )
+            val exchange = JsonObject(
+                mapOf(
+                    "kinds" to JsonArray(listOf(JsonPrimitive("google"), JsonPrimitive("apple"))),
+                    "google" to JsonObject(mapOf("serverClientId" to JsonPrimitive("1234-web.apps.googleusercontent.com"))),
+                ),
+            )
+            val identity = JsonObject(
+                mapOf(
+                    "enabled" to JsonPrimitive(true), "exchange" to exchange,
+                    "endpoints" to JsonObject(endpoints.mapValues { JsonPrimitive(it.value) }),
+                ),
+            )
+            return JsonObject(mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(mapOf("identity" to identity)))).toString()
+        }
         val services = if ("identity.account" in transcript.features || "identity.attach" in transcript.features) {
             // identity.account: Identity with its account endpoints, beside the licence the steps use.
             mapOf(

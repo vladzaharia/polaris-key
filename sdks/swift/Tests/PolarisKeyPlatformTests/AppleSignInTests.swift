@@ -39,27 +39,41 @@ final class AppleSignInTests: XCTestCase {
     private let grant = AppleSignInGrant(
         userID: "001234.abcd", identityToken: "eyJ.SECRET.token", authorizationCode: "c-SECRET", email: "a@b.test")
 
-    func testSilentPassesTheServerNonceAsIsAndImmediate() async throws {
+    func testSilentIsUnavailableAndNeverReachesTheAuthorizer() async {
+        let fake = FakeAuthorizer(.success(grant))
+        let apple = AppleSignIn(authorizer: fake, userIDs: MemoryUserIDs())
+        do {
+            _ = try await apple.silent(nonce: "Zm9vLWJhci1ub25jZQ")
+            XCTFail("expected a failure")
+        } catch {
+            guard case .unavailable? = error as? AppleSignInFailure else { return XCTFail("\(error)") }
+        }
+        XCTAssertTrue(fake.calls.isEmpty)
+    }
+
+    func testSheetPassesTheServerNonceAsIsAndPrefersImmediate() async throws {
         let fake = FakeAuthorizer(.success(grant))
         let apple = AppleSignIn(authorizer: fake, userIDs: MemoryUserIDs())
         let nonce = "Zm9vLWJhci1ub25jZQ"
-        let got = try await apple.silent(nonce: nonce)
+        let got = try await apple.sheet(nonce: nonce)
         XCTAssertEqual(got, grant)
         XCTAssertEqual(fake.calls, [.init(nonce: nonce, immediate: true)])
     }
 
     func testSheetIsNotImmediate() async throws {
         let fake = FakeAuthorizer(.success(grant))
-        let apple = AppleSignIn(authorizer: fake, userIDs: MemoryUserIDs())
-        _ = try await apple.sheet(nonce: "n1")
+        let ids = MemoryUserIDs()
+        let apple = AppleSignIn(authorizer: fake, userIDs: ids)
+        _ = try await apple.sheet(nonce: "n1", preferImmediate: false)
         XCTAssertEqual(fake.calls, [.init(nonce: "n1", immediate: false)])
+        XCTAssertNil(ids.load(), "the id is kept only by remember(userID:)")
     }
 
     func testEmptyNonceIsRefusedBeforeAnyRequest() async {
         let fake = FakeAuthorizer(.success(grant))
         let apple = AppleSignIn(authorizer: fake, userIDs: MemoryUserIDs())
         do {
-            _ = try await apple.silent(nonce: "")
+            _ = try await apple.sheet(nonce: "")
             XCTFail("expected a failure")
         } catch {
             XCTAssertEqual(error as? AppleSignInFailure, .unavailable("empty nonce"))
@@ -90,7 +104,9 @@ final class AppleSignInTests: XCTestCase {
         let beforeRevoked = await apple.credentialRevoked()
         XCTAssertFalse(beforeRevoked)
 
-        _ = try await apple.silent(nonce: "n")
+        _ = try await apple.sheet(nonce: "n")
+        XCTAssertNil(ids.load())
+        apple.remember(userID: "001234.abcd")
         XCTAssertEqual(ids.load(), "001234.abcd")
         let authorized = await apple.credentialRevoked()
         XCTAssertFalse(authorized)
@@ -100,7 +116,7 @@ final class AppleSignInTests: XCTestCase {
         XCTAssertTrue(revoked)
         fake.setState(.notFound)
         let gone = await apple.credentialRevoked()
-        XCTAssertTrue(gone)
+        XCTAssertFalse(gone, "not found is not revocation")
         fake.setState(.transferred)
         let moved = await apple.credentialRevoked()
         XCTAssertFalse(moved)

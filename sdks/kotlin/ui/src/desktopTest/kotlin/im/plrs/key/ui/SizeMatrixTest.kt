@@ -82,16 +82,25 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
     },
     // The v7 sign-in steps and the approving device's prompt, resolved from the matrix's own inputs.
     MatrixScreen("sign-in-confirm", Regex("continue", RegexOption.IGNORE_CASE)) {
-        PolarisKitScreen(autoStep("confirm", email = "maya@example.com"))
+        PolarisKitScreen(autoStep("confirm", email = "maya@example.com", license = "existing", alsoGets = true))
+    },
+    MatrixScreen("sign-in-confirm-new", Regex("continue", RegexOption.IGNORE_CASE)) {
+        PolarisKitScreen(autoStep("confirm", email = "maya@example.com", license = "new"))
     },
     MatrixScreen("link-offer", Regex("link google", RegexOption.IGNORE_CASE)) {
         PolarisKitScreen(autoStep("link-offer"))
     },
+    MatrixScreen("link-done", Regex("continue", RegexOption.IGNORE_CASE)) {
+        PolarisKitScreen(autoStep("link-done"))
+    },
+    MatrixScreen("link-conflict", Regex("join accounts", RegexOption.IGNORE_CASE)) {
+        PolarisKitScreen(autoStep("link-conflict"))
+    },
     MatrixScreen("nearby-wait", Regex("use a code instead", RegexOption.IGNORE_CASE)) {
-        PolarisKitScreen(autoStep("nearby-wait"))
+        PolarisKitScreen(autoStep("nearby-wait", code = "482913"))
     },
     MatrixScreen("nearby-approval", Regex("deny", RegexOption.IGNORE_CASE)) {
-        PolarisKitScreen(KitStates.resolve(KitComponent.nearbyApproval, KitInputs.of(mapOf("nearbyApproval" to buildJsonObject { put("step", "ask"); put("device", "Kitchen iPad") }))))
+        PolarisKitScreen(KitStates.resolve(KitComponent.nearbyApproval, KitInputs.of(fixture("nearbyApproval" to buildJsonObject { put("step", "ask"); put("device", "Kitchen iPad") }))))
     },
     MatrixScreen("device-limit", Regex("browser|manage|replace", RegexOption.IGNORE_CASE)) {
         PolarisGateScreen(
@@ -119,12 +128,34 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
     },
 )
 
-private fun autoStep(step: String, email: String? = null): KitScreen = KitStates.resolve(
+/**
+ * The inputs every v7 kit fixture shares: a named product and developer, a Pro tier (the license line)
+ * and Google as the provider (React, SwiftUI and Godot render the same).
+ */
+private fun fixture(vararg more: Pair<String, kotlinx.serialization.json.JsonElement>): Map<String, kotlinx.serialization.json.JsonElement> =
+    mapOf(
+        "integrator" to buildJsonObject { put("name", BoardFixtures.PRODUCT); put("developer", BoardFixtures.DEVELOPER) },
+        "account" to buildJsonObject { put("tier", "Pro") },
+        "provider" to JsonPrimitive("Google"),
+    ) + more
+
+private fun autoStep(
+    step: String,
+    email: String? = null,
+    license: String? = null,
+    alsoGets: Boolean = false,
+    code: String? = null,
+): KitScreen = KitStates.resolve(
     KitComponent.signIn,
     KitInputs.of(
-        mapOf(
-            "provider" to JsonPrimitive("Google"),
-            "autoSignIn" to buildJsonObject { put("step", step); email?.let { put("email", it) } },
+        fixture(
+            "autoSignIn" to buildJsonObject {
+                put("step", step)
+                email?.let { put("email", it) }
+                license?.let { put("license", it) }
+                if (alsoGets) put("alsoGets", true)
+                code?.let { put("code", it) }
+            },
         ),
     ),
 )
@@ -253,6 +284,10 @@ internal val knownMatrixGaps: List<Regex> = listOf(
     Regex("""MacOS update-sheet \d+x\d+-fs2: '(Remind Me Later|All Changes in 2\.5\.0)' shows .*"""),
     // The Mac sign-in and device-limit action rows sit below the fold of the 520 dp floor at font scale 2.
     Regex("""MacOS (sign-in|device-limit) \d+x\d+-fs2: '.*' shows .*"""),
+    // The confirm step with the license and "also gets" lines (KF-compose fixture): its actions scroll below the fold at font scale 2
+    // on a phone-width GNOME window and on the Mac's 520 dp floor. Reported to the lead (a layout fix, not this slice).
+    Regex("""Gnome sign-in-confirm 390x844-fs2: '.*' shows .*"""),
+    Regex("""MacOS sign-in-confirm 844x520-fs2: (.* shows .*|the primary action .* is not in the first viewport .*)"""),
 )
 
 /** [failures] minus the known gaps; a known gap that matched nothing is reported too. */

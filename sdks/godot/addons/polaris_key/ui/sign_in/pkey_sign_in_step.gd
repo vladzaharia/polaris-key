@@ -77,6 +77,7 @@ var _title: Label
 var _lede: Label
 var _lines: Array = []
 var _actions: BoxContainer
+var _spacer: Control
 var _primary: Button
 var _secondary: Button
 var _secondary2: Button
@@ -93,6 +94,7 @@ func _build() -> void:
 	for i in 7:
 		_lines.append(label(words, "Line%d" % i, "PKeyMuted"))
 	loading_bar(_body)
+	_spacer = spacer(_body)
 	_actions = actions_row(_body, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_primary = button(_actions, "Primary", func() -> void: primary_pressed.emit(step), "PKeyPrimary")
 	_secondary = button(_actions, "Secondary", func() -> void: secondary_pressed.emit(step), "PKeyLink")
@@ -105,14 +107,25 @@ func _card_shown() -> bool:
 	return true
 
 
+## On a phone the step fills the page less the safe margins, like the refusal steps.
+func _bleeds() -> bool:
+	return true
+
+
+func _opens_at_top() -> bool:
+	return true
+
+
 func squeeze_max() -> int:
-	return 2
+	return 4
 
 
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	# Short on room, the product header gives way before the card scrolls.
 	_product.visible = squeeze_level() < 1
+	# On a phone's page the actions dock to the bottom, in the thumb zone, as the refusal steps' do.
+	_spacer.visible = phone_screen()
 
 
 func _screen_key() -> String:

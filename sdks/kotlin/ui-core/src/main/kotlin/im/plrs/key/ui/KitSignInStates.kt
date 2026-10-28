@@ -118,7 +118,27 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
         "tier" to CopyArgument.Text(tier ?: ""),
         "code" to CopyArgument.Text(auto.string("code") ?: ""),
     )
-    fun step(state: String, vararg keys: String?) = screen(KitComponent.signIn, state, keys.filterNotNull().map { context.line(it, args) })
+    // The existing-license line's arguments, from the consent view: the license, its term (worded
+    // here from the catalog), this device and its seat (signin.consent.licenseLine).
+    val anchor = auto.obj("anchor")
+    val lineArgs = buildMap<String, CopyArgument> {
+        putAll(args)
+        anchor.string("name")?.let { put("license", CopyArgument.Text(it)) }
+        anchor?.get("term")?.let { term ->
+            val end = term.string()?.toLongOrNull()
+            put(
+                "term",
+                CopyArgument.Line(
+                    if (end == null) context.line("signin.term.lifetime")
+                    else context.line("signin.term.until", mapOf("date" to CopyArgument.Text(kitDate(end, java.util.Locale.getDefault().toLanguageTag())))),
+                ),
+            )
+        }
+        anchor.integer("position")?.let { put("position", CopyArgument.Number(it)) }
+        anchor.integer("limit")?.let { put("limit", CopyArgument.Number(it)) }
+        auto.string("device")?.let { put("device", CopyArgument.Text(it)) }
+    }
+    fun step(state: String, vararg keys: String?) = screen(KitComponent.signIn, state, keys.filterNotNull().map { context.line(it, if (it == "signin.consent.licenseLine") lineArgs else args) })
     return when (auto.string("step")) {
         "confirm" -> {
             val license = auto.string("license")

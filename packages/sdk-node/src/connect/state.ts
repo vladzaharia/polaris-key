@@ -39,6 +39,9 @@ export interface ConnectStateRecord {
   /** The keys this device registered with the Worker, so an unchanged pair is not re-sent. */
   registered: { signKey: string; agreeKey: string } | null;
   storedAt: number;
+  /** A pushed roster removed a device, so K_disc was replaced at the Worker and this copy is
+   *  stale until the next identity fetch. Absent when false. */
+  keysStale?: true;
 }
 
 const KEY = /^[A-Za-z0-9_-]{43}$/;
@@ -90,6 +93,7 @@ export function parseConnectState(raw: Buffer): ConnectStateRecord | null {
     epoch: v.epoch as number,
     registered,
     storedAt: v.storedAt as number,
+    ...(v.keysStale === true ? { keysStale: true as const } : {}),
   };
 }
 

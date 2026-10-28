@@ -456,6 +456,35 @@ actor ReplayServer {
                     ]),
                 ]))
         }
+        // The exchange transcripts (identity.exchange) ride a product whose discovery names the
+        // exchange member and the nonce endpoint (§12.11.6); the two stale ones record their own.
+        if transcript.steps.contains(where: { $0.action == "exchange" }) {
+            return try? JSONEncoder().encode(
+                JSONValue.object([
+                    "product": .string(transcript.product),
+                    "services": .object([
+                        "identity": .object([
+                            "enabled": .bool(true), "configured": .bool(true),
+                            "issuer": .string("\(base)/identity"),
+                            "exchange": .object([
+                                "kinds": .array([.string("google"), .string("apple")]),
+                                "google": .object([
+                                    "serverClientId": .string("1234-web.apps.googleusercontent.com")
+                                ]),
+                            ]),
+                            "endpoints": .object([
+                                "authorize": .string("\(base)/identity/authorize"),
+                                "token": .string("\(base)/identity/token"),
+                                "choiceLicenses": .string("\(base)/identity/choice/licenses"),
+                                "choiceDevices": .string("\(base)/identity/choice/devices"),
+                                "choiceComplete": .string("\(base)/identity/choice/complete"),
+                                "choiceCancel": .string("\(base)/identity/choice/cancel"),
+                                "nonce": .string("\(base)/identity/nonce"),
+                            ]),
+                        ])
+                    ]),
+                ]))
+        }
         let doc: JSONValue = .object([
             "product": .string(transcript.product),
             "services": .object([

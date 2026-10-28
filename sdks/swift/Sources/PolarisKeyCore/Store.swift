@@ -276,12 +276,20 @@ public protocol Store: Sendable {
     func readRecord(_ name: String) async -> Data?
     /// Replace a record; nil deletes it. Best-effort, never throws.
     func writeRecord(_ name: String, _ data: Data?) async
+    /// `readRecord` that says when the read failed (as against "absent"). Default: no failure.
+    func readRecordChecked(_ name: String) async throws -> Data?
+    /// `writeRecord` that throws when the write failed. Default: no failure.
+    func writeRecordChecked(_ name: String, _ data: Data?) async throws
 }
 
 extension Store {
     public func status() async -> StoreStatus? { nil }
     public func readRecord(_ name: String) async -> Data? { nil }
     public func writeRecord(_ name: String, _ data: Data?) async {}
+    public func readRecordChecked(_ name: String) async throws -> Data? { await readRecord(name) }
+    public func writeRecordChecked(_ name: String, _ data: Data?) async throws {
+        await writeRecord(name, data)
+    }
 }
 
 // ── In-memory (tests) ────────────────────────────────────────────────────────────
@@ -610,11 +618,24 @@ public actor KeychainStore: Store, DeviceIdRebindable {
     }
 
     public func writeRecord(_ name: String, _ data: Data?) async {
+        try? await writeRecordChecked(name, data)
+    }
+
+    public func readRecordChecked(_ name: String) async throws -> Data? {
+        guard let url = recordURL(name) else { return nil }
+        return try readSecure(url)
+    }
+
+    public func writeRecordChecked(_ name: String, _ data: Data?) async throws {
         guard let url = recordURL(name) else { return }
         if let data {
-            try? writeSecure(data, to: url)
-        } else {
-            try? FileManager.default.removeItem(at: url)
+            try writeSecure(data, to: url)
+        } else if FileManager.default.fileExists(atPath: url.path) {
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                throw StoreError.io(path: url.path, code: errno)
+            }
         }
     }
 

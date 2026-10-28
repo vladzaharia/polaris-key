@@ -48,7 +48,7 @@ public enum ConnectIdentityResult: Sendable, Equatable {
     case unsupported(Unsupported)
     /// `account_required`, `device_keys_required`, `ring_too_large`, `unauthorized`, … .
     case refused(ConnectRefusal)
-    /// No usable answer: `network`, `local-only`, `no-token`, `invalid-response`, `store-failed`.
+    /// No usable answer: `network`, `local-only`, `no-token`, `invalid-response`, `peer-cert-invalid`, `store-failed`.
     case error(code: String, message: String)
 
     public var identity: ConnectIdentity? {
@@ -409,7 +409,7 @@ public actor ConnectClient {
     // ── Verification ─────────────────────────────────────────────────────────────────────
 
     private func invalid(_ why: String) -> ConnectIdentityResult {
-        .error(code: ErrorCode.invalidResponse, message: "The identity was refused: \(why).")
+        .error(code: ErrorCode.peerCertInvalid, message: "The identity was refused: \(why).")
     }
 
     /// Verifies the answer and, only if every check holds, stores it.

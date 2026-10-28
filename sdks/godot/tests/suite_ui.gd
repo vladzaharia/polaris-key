@@ -1,6 +1,8 @@
 extends RefCounted
 # @pkey-feature ui.kit
 # @pkey-feature ui.kit.manage
+# @pkey-feature ui.kit.account
+# @pkey-feature ui.kit.keyentry
 # @pkey-feature core.presentation
 # The UI kit v1 (P1-10), headless. There is no renderer, so the scenes are pinned as structural
 # text: every scene in every state of tests/ui/scenarios.gd against the committed fixtures in
@@ -65,6 +67,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _game_look(t)
 	await _settings_open(t)
 	await _key_field(t)
+	await _key_refusals(t)
 	await _layout(t, all)
 	await _spec(t)
 	t.check("coverage: states", all.size() >= 60, str(all.size()))
@@ -86,6 +89,48 @@ func _build(c: Array) -> Control:
 func _free(v: Control) -> void:
 	v.get_parent().remove_child(v)
 	v.queue_free()
+
+
+## The key refusals (identity.keyentry): the entries line on the limit, and Sign in to that account on a
+## license another account holds; both read the shared catalog, and neither shows the other's line.
+func _key_refusals(t: PKeyTestContext) -> void:
+	var lim: Control = _sc.activation_refusal("key-entry-limit", "button")
+	await _tree().process_frame
+	lim.refresh_view()
+	t.check("refusals: the limit draws no entries line (the title says it)", lim.find_child("Entries", true, false) == null)
+	var sign_in := lim.find_child("TryAgain", true, false) as Button
+	t.check("refusals: the limit's primary is Sign in", sign_in.text == "Sign in", sign_in.text)
+	_free(lim)
+	var owned: Control = _sc.activation_refusal("license-owned", "button")
+	await _tree().process_frame
+	owned.refresh_view()
+	var again := owned.find_child("TryAgain", true, false) as Button
+	t.check("refusals: a license in another account says Sign in to that account", again.text == "Sign in to that account", again.text)
+	_free(owned)
+	# F4: with only the shipped locale packs (no test translations), every refusal line is the catalog's
+	# German, none the kit's English default.
+	TranslationServer.set_locale("de")
+	var de: Control = _sc.activation_refusal("key-entry-limit", "button")
+	await _tree().process_frame
+	de.refresh_view()
+	var cat = PKeyUiView.catalog()
+	var want := {
+		"Title": cat.format("core.activation.key-entry-limit.title"),
+		"Lede": cat.format("core.activation.key-entry-limit.message"),
+		"TryAgain": cat.format("signin.key.signIn"),
+		"FreeDevice": cat.format("signin.key.addInLocker"),
+		"DifferentKey": cat.format("signin.key.differentKey"),
+	}
+	var mixed: Array = []
+	for n in want:
+		var node := (de.find_child("Limit", true, false) as Control).find_child(n, true, false) as Control
+		var got := String(node.get("text")) if node != null else "missing"
+		if got != String(want[n]) or got == "":
+			mixed.append("%s: '%s' vs '%s'" % [n, got, want[n]])
+	t.check("refusals: in German every line is the shipped catalog's", mixed.is_empty() and String(want["Title"]) != "No key entries left", "; ".join(mixed))
+	_free(de)
+	TranslationServer.set_locale("en")
+	await _tree().process_frame
 
 
 ## The key field: visible and private (drawn in clear, typed on a keyboard that neither corrects

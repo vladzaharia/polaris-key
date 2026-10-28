@@ -189,6 +189,7 @@ public fun PolarisKitScreen(
     onAction: (KitAction?) -> Unit = {},
     rows: KitRowData = KitRowData(),
     onContinue: (String) -> Unit = {},
+    onControl: (String) -> Unit = {},
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
@@ -205,7 +206,7 @@ public fun PolarisKitScreen(
         screen.component == KitComponent.paywall && screen.state != "not-available" ->
             PolarisPaywall(screen, rows.features, modifier, onUpgrade = { onAction(null) }, onPortal = { onAction(null) }, onRedeem = { onAction(null) }, onDone = { onAction(null) }, catalog = catalog, locale = locale)
         screen.component == KitComponent.entitlementGate -> KitEntitlementGate(screen, modifier, catalog, locale) { onAction(null) }
-        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode, addKeyUrl = addKeyUrl, progress = rows.progress)
+        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode, addKeyUrl = addKeyUrl, progress = rows.progress, onControl = onControl)
     }
 }
 
@@ -240,6 +241,7 @@ private fun KitScreenBody(
     requestCode: String? = null,
     addKeyUrl: String? = null,
     progress: Float? = null,
+    onControl: (String) -> Unit = {},
 ) {
     if (screen.isHidden) return
     val component = screen.component
@@ -324,11 +326,14 @@ private fun KitScreenBody(
     }
     // The account pane's controls are its rows; a button list under them would draw each twice.
     val rowsOnly = component == KitComponent.accountAndLicense
-    val tertiary = if (rowsOnly) emptyList() else controls.filter { it.key in tertiaryKeys }
-    val buttons = if (rowsOnly) emptyList() else controls.filter { it.key !in tertiaryKeys }
+    // Boot's "Not now" is paired with Download, so it stays a tonal secondary (UI-KITS.md: "never bare
+    // text when paired"); everywhere else it is the quiet decline of an automatic step.
+    val isTertiary = { key: String -> key in tertiaryKeys && !(key == "common.notNow" && component == KitComponent.boot) }
+    val tertiary = if (rowsOnly) emptyList() else controls.filter { isTertiary(it.key) }
+    val buttons = if (rowsOnly) emptyList() else controls.filter { !isTertiary(it.key) }
     // macOS: a step screen's actions are a trailing row; the Welcome keeps its stacked hero buttons.
     val macRow = autoPlatformVariant() == PolarisPlatformVariant.MacOS && component != KitComponent.welcome && buttons.isNotEmpty()
-    val onDefault: (() -> Unit)? = if (macRow && !activating) buttons.firstOrNull()?.let { line -> { onAction(KitAction.forCopyKey(line.key)) } } else null
+    val onDefault: (() -> Unit)? = if (macRow && !activating) buttons.firstOrNull()?.let { line -> { onControl(line.key); onAction(KitAction.forCopyKey(line.key)) } } else null
     val actions: (@Composable ColumnScope.() -> Unit)? = if ((controls.isEmpty() || rowsOnly) && !attribution && component != KitComponent.activate) null else {
         {
             if (component == KitComponent.activate && screen.state != "done") KitKeyField(lines, busy = activating)
@@ -343,9 +348,9 @@ private fun KitScreenBody(
                     for ((index, line) in buttons.withIndex().reversed()) {
                         val action = KitAction.forCopyKey(line.key)
                         if (index == 0) {
-                            PolarisPrimaryButton(line.text, onClick = { onAction(action) }, initialFocus = true, external = KitAction.leavesApp(line.key))
+                            PolarisPrimaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, initialFocus = true, external = KitAction.leavesApp(line.key))
                         } else {
-                            PolarisSecondaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
+                            PolarisSecondaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, external = KitAction.leavesApp(line.key))
                         }
                     }
                 }
@@ -353,7 +358,7 @@ private fun KitScreenBody(
                 CompositionLocalProvider(LocalPolarisMacHero provides (polarisWindow.isMac && component == KitComponent.welcome)) {
                     buttons.forEachIndexed { index, line ->
                         val action = KitAction.forCopyKey(line.key)
-                        val click: () -> Unit = if (gnomeReplace && line.key == "signin.replace.openSystem") ({ replaceOpen = true }) else ({ onAction(action) })
+                        val click: () -> Unit = if (gnomeReplace && line.key == "signin.replace.openSystem") ({ replaceOpen = true }) else ({ onControl(line.key); onAction(action) })
                         // One primary, then tonal secondaries (a lone action is always the primary, DL4).
                         val hero = if (polarisWindow.variant.isDesktop && component == KitComponent.welcome) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
                         if (index == 0) {
@@ -369,7 +374,7 @@ private fun KitScreenBody(
                 Spacer(Modifier.height(if (buttons.isEmpty()) 0.dp else 20.dp))
                 // The extras: one quiet row of links, no divider and no glyph (UI-KITS.md 4.3 Welcome).
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
-                    for (line in tertiary) PolarisTextButton(line.text, onClick = { onAction(KitAction.forCopyKey(line.key)) })
+                    for (line in tertiary) PolarisTextButton(line.text, onClick = { onControl(line.key); onAction(KitAction.forCopyKey(line.key)) })
                 }
             }
             if (attribution) {
@@ -725,6 +730,8 @@ public fun KitSignIn(
     presentation: PresentationSource? = null,
     modifier: Modifier = Modifier,
     onAction: (KitAction?) -> Unit = {},
+    /** The catalog key of any control pressed (the provider row has no action in the vocabulary). */
+    onControl: (String) -> Unit = {},
 ) {
     val member = rememberPresentation(presentation)
     KitScreenBody(
@@ -735,5 +742,6 @@ public fun KitSignIn(
         onAction = onAction,
         focused = true,
         productName = member?.name,
+        onControl = onControl,
     )
 }

@@ -587,7 +587,7 @@
     },
     "store-failed": {
       "title": "Speicherproblem",
-      "message": "Die App konnte ihre Lizenz auf diesem Gerät nicht lesen oder speichern. Prüfen Sie, ob die App in ihren Datenordner schreiben kann."
+      "message": "Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Speicher und versuchen Sie es erneut."
     },
     "connect-unavailable": {
       "title": "Verbindung nicht verfügbar",

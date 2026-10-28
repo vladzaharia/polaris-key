@@ -827,7 +827,7 @@ async function act(
         out.result = "refused";
         if (e instanceof RelayError) {
           out.status = e.status ?? null;
-          out.code = e.wireCode ?? e.reason;
+          out.code = e.code;
           if (e.retryAfterSeconds !== undefined)
             out.retryAfter = e.retryAfterSeconds;
           if (e.scope !== undefined) out.scope = e.scope;

@@ -1,6 +1,9 @@
 package im.plrs.key.android
 
 import android.app.Activity
+import im.plrs.key.identity.ExchangeKind
+import im.plrs.key.identity.PlatformIdentityProvider
+import im.plrs.key.identity.PlatformSubjectToken
 import im.plrs.key.platform.PlatformIdentity
 import im.plrs.key.platform.PlatformIdentityResult
 import kotlin.coroutines.resume
@@ -11,9 +14,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * platform sign-in rungs, showing the sheet from the host's foreground activity. In the `direct`
  * flavour every call answers Unavailable("outlet").
  *
- * Hookup left to I-45.2: implement `:identity`'s `PlatformIdentityProvider` port with these four
- * calls (`silent`, `sheet`, `provider` and `signOutCleanup`), mapping [PlatformIdentityResult] to
- * the port's results; the token leaves only through `PlatformIdentityToken.reveal()`.
+ * [asProvider] adapts it to `:identity`'s `PlatformIdentityProvider` port (I-45.2): hand the result to
+ * `client.identity.installPlatformIdentity(...)` and `autoSignIn()` runs rungs 3 and 4 through it.
  */
 public class PlatformSignIn(
     private val activity: () -> Activity?,
@@ -45,4 +47,38 @@ public class PlatformSignIn(
         val host = activity() ?: return PlatformIdentityResult.Unavailable(PlatformIdentity.REASON_NO_ACTIVITY)
         return suspendCancellableCoroutine { k -> call(host) { if (k.isActive) k.resume(it) } }
     }
+}
+
+/**
+ * The `:identity` port over [PlatformSignIn]. [fallbackClientId] is the fallback audience when the
+ * product's discovery publishes none. An unavailable or dismissed answer is "no token" (the ladder
+ * moves on); the token leaves only through `reveal()`. Google has no revocation signal at launch.
+ */
+public fun PlatformSignIn.asProvider(fallbackClientId: String? = null): PlatformIdentityProvider = object : PlatformIdentityProvider {
+    override val kind: ExchangeKind = ExchangeKind.google
+
+    override suspend fun silent(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+        val audience = serverClientId ?: fallbackClientId ?: return null
+        return token(nonce, this@asProvider.silent(audience, nonce))
+    }
+
+    override suspend fun sheet(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+        val audience = serverClientId ?: fallbackClientId ?: return null
+        return token(nonce, this@asProvider.sheet(audience, nonce))
+    }
+
+    /** The sign-in form's Google row: the explicit "Sign in with Google" flow (`GetSignInWithGoogleOption`). */
+    override suspend fun providerSheet(nonce: String, serverClientId: String?): PlatformSubjectToken? {
+        val audience = serverClientId ?: fallbackClientId ?: return null
+        return token(nonce, this@asProvider.provider(audience, nonce))
+    }
+
+    override suspend fun signOutCleanup() {
+        this@asProvider.signOutCleanup()
+    }
+
+    override suspend fun credentialRevoked(): Boolean = false
+
+    private fun token(nonce: String, result: PlatformIdentityResult): PlatformSubjectToken? =
+        (result as? PlatformIdentityResult.Success)?.let { PlatformSubjectToken(it.token.reveal(), nonce) }
 }

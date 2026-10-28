@@ -16,13 +16,20 @@
 //   }
 //
 // Sign-out rules:
-//   - `signOut()` sets `explicitSignOut` (CoreContext, persisted beside the credential) and runs the
-//     provider's `signOutCleanup()`. While it is set rungs 3 and 4 do not run: nothing silent
-//     signs the person back in. The next explicit sign-in (a token stored from a sign-in) clears it.
-//     A stored session (rung 1) is the person's own and is not touched by the flag.
+//   - `signOut()` bumps the sign-out generation, then (once the Worker accepted it) sets
+//     `explicitSignOut` (CoreContext, persisted beside the credential, fails closed) and runs the
+//     provider's `signOutCleanup()`. While the flag is set rungs 3 and 4 do not run. Only a sign-in
+//     the person started (redirect, device code, `choice.complete`, `exchange` called from the
+//     sign-in form) clears it; the ladder's own exchange never does.
+//   - The ladder captures the generation when it starts; a sign-out during the platform prompt or
+//     the exchange makes it store nothing and answer `needsSignIn(.signedOut)`.
+//   - Rung 1 counts only a token the device holds as a sign-in (`TokenProvenance.signin`). A
+//     key-activated device, an enrolment, or a device an account sign-out left activated is not.
 //   - A provider that reports its credential revoked at launch (Sign in with Apple, scenario 11)
 //     signs the device out through `signOut()`. If the Worker cannot be reached the flag stays
 //     unset and the check repeats at the next launch.
+//   - Device keys are the device's identity, not account state: sign-out keeps them.
+//   - Cancelling the task rethrows `CancellationError`; nothing else throws.
 //
 // Nothing here logs, prints or keeps a token, a grant or a link handle; the result redacts them.
 // `syncKey` is absent until U-39 (Q-8).
@@ -36,9 +43,12 @@ public struct PlatformSubjectToken: Sendable, Equatable, CustomStringConvertible
     public let token: String
     /// The server nonce that was bound into the request.
     public let nonce: String
-    public init(token: String, nonce: String) {
+    /// The platform's stable user id, when it gave one. Not a secret.
+    public let userID: String?
+    public init(token: String, nonce: String, userID: String? = nil) {
         self.token = token
         self.nonce = nonce
+        self.userID = userID
     }
     public var description: String { "PlatformSubjectToken(<redacted>)" }
     public var debugDescription: String { description }
@@ -49,14 +59,25 @@ public struct PlatformSubjectToken: Sendable, Equatable, CustomStringConvertible
 public protocol PlatformIdentityProvider: Sendable {
     /// Which `exchange` kind this provider's tokens are.
     var kind: ExchangeKind { get }
+    /// False when the platform has no silent mode (Sign in with Apple): rung 3 is skipped with no
+    /// request. Default: true.
+    var hasSilentRung: Bool { get }
     /// An identity token with no UI. Throws when none is immediately available.
     func silent(nonce: String) async throws -> PlatformSubjectToken
     /// An identity token through the platform's one account sheet. Throws when dismissed.
     func sheet(nonce: String) async throws -> PlatformSubjectToken
+    /// Called once the Worker accepted a platform token (`signedIn`, `confirm` or `choose`), so the
+    /// provider can keep what its launch check needs. Default: nothing.
+    func sessionStarted(_ token: PlatformSubjectToken) async
     /// Forget the platform's session state (called by `identity.signOut()`).
     func signOutCleanup() async
     /// True when the platform says the person revoked this app's credential.
     func credentialRevoked() async -> Bool
+}
+
+extension PlatformIdentityProvider {
+    public var hasSilentRung: Bool { true }
+    public func sessionStarted(_ token: PlatformSubjectToken) async {}
 }
 
 /// Whether the ladder may show the provider's sheet (rung 4).
@@ -97,8 +118,9 @@ public enum AutoSignInResult: Sendable, Equatable {
     case choose(PendingSignIn)
     /// `linkHandle` is present for `noLink` after an exchange; used once, by the link offer.
     case needsSignIn(linkHandle: String?, reason: AutoSignInReason)
-    /// Every seat is taken; `view` is the choice view (with the replace rows) when the Worker sent it.
-    case deviceLimit(view: LicenseChoiceView?)
+    /// Every seat is taken. `manageUrl` is where to manage devices and `view` the choice view
+    /// (with the replace rows), when the Worker sent them.
+    case deviceLimit(manageUrl: String?, view: LicenseChoiceView?)
     /// No exchange here, or a refusal: `code` is the Worker's or `platform-identity-unavailable`.
     case unavailable(code: String)
 }
@@ -125,13 +147,16 @@ extension IdentityClient {
         platformProvider.set(provider)
     }
 
-    /// Run the ladder. Never throws: a refusal is a result.
-    public func autoSignIn(_ options: AutoSignInOptions = AutoSignInOptions()) async -> AutoSignInResult {
+    /// Run the ladder. A refusal is a result; only cancelling the task throws.
+    public func autoSignIn(_ options: AutoSignInOptions = AutoSignInOptions()) async throws -> AutoSignInResult {
         let provider = options.provider ?? platformProvider.current
         if let provider, await provider.credentialRevoked() { await signOutAfterRevocation(provider) }
+        let generation = await core.signOutGeneration
 
-        // Rung 1: the stored session.
-        if await core.token != nil, await core.cache().license != nil {
+        // Rung 1: a token the device holds as a sign-in, with a licence.
+        if await core.token != nil, await core.tokenProvenance() == .signin,
+            await core.cache().license != nil
+        {
             let id = await core.cache().license?.doc.licenseId
             return .signedIn(SignInReady(subject: subjectValue.current, licenseId: id))
         }
@@ -140,13 +165,15 @@ extension IdentityClient {
         guard let provider else { return .unavailable(code: ErrorCode.platformIdentityUnavailable) }
 
         // Rung 3: silent.
-        switch await attempt(provider, silent: true) {
-        case .done(let result): return result
-        case .nothing: break
+        if provider.hasSilentRung {
+            switch try await attempt(provider, silent: true, generation: generation) {
+            case .done(let result): return result
+            case .nothing: break
+            }
         }
         // Rung 4: the one sheet.
         if options.prompt == .optional {
-            switch await attempt(provider, silent: false) {
+            switch try await attempt(provider, silent: false, generation: generation) {
             case .done(let result): return result
             case .nothing: break
             }
@@ -155,10 +182,11 @@ extension IdentityClient {
     }
 
     /// Called by `signOut()` once the Worker accepted it: no silent rung runs until the next
-    /// explicit sign-in, and the platform forgets its session.
-    func markSignedOut() async {
+    /// person-started sign-in, and the platform forgets its session.
+    func markSignedOut(_ provider: (any PlatformIdentityProvider)? = nil) async {
+        await core.bumpSignOutGeneration()
         await core.setExplicitSignOut(true)
-        await platformProvider.current?.signOutCleanup()
+        await (provider ?? platformProvider.current)?.signOutCleanup()
     }
 
     private enum Attempt {
@@ -167,7 +195,10 @@ extension IdentityClient {
         case nothing
     }
 
-    private func attempt(_ provider: any PlatformIdentityProvider, silent: Bool) async -> Attempt {
+    private func attempt(
+        _ provider: any PlatformIdentityProvider, silent: Bool, generation: Int
+    ) async throws -> Attempt {
+        let signedOut = Attempt.done(.needsSignIn(linkHandle: nil, reason: .signedOut))
         do {
             let answer = try await exchangeNonce(kind: provider.kind)
             guard case .nonce(let nonce) = answer else {
@@ -177,19 +208,35 @@ extension IdentityClient {
             let subject: PlatformSubjectToken
             do {
                 subject = try await silent ? provider.silent(nonce: nonce.value) : provider.sheet(nonce: nonce.value)
-            } catch is CancellationError {
-                return .done(.unavailable(code: "cancelled"))
             } catch {
+                try Task.checkCancellation()
                 return .nothing
             }
-            let outcome = try await exchange(kind: provider.kind, subjectToken: subject.token, nonce: nonce.value)
+            // A sign-out while the platform was prompting wins.
+            if await core.signOutGeneration != generation { return signedOut }
+            let outcome = try await exchange(
+                kind: provider.kind, subjectToken: subject.token, optionalNonce: nonce.value,
+                ladderGeneration: generation)
+            switch outcome {
+            case .signedIn, .confirm, .choose: await provider.sessionStarted(subject)
+            default: break
+            }
             return .done(Self.result(outcome))
+        } catch is SignedOutDuringLadder {
+            return signedOut
+        } catch let error as CancellationError {
+            throw error
         } catch let error as ExchangeError {
-            if error.code == ErrorCode.deviceLimit { return .done(.deviceLimit(view: error.view)) }
+            try Task.checkCancellation()
+            if error.code == ErrorCode.deviceLimit {
+                return .done(.deviceLimit(manageUrl: error.manageUrl, view: error.view))
+            }
             return .done(.unavailable(code: error.code))
         } catch let error as PolarisError {
+            try Task.checkCancellation()
             return .done(.unavailable(code: error.code))
         } catch {
+            try Task.checkCancellation()
             return .done(.unavailable(code: IdentityClient.networkError))
         }
     }
@@ -205,13 +252,13 @@ extension IdentityClient {
         }
     }
 
-    /// Scenario 11. With a session this is the regular `signOut()`; with none, only the local state.
+    /// Scenario 11, with the provider the ladder is using. With a session this is the regular
+    /// `signOut()`; with none, only the local state.
     private func signOutAfterRevocation(_ provider: any PlatformIdentityProvider) async {
         if await core.token == nil {
-            await core.setExplicitSignOut(true)
-            await provider.signOutCleanup()
+            await markSignedOut(provider)
         } else {
-            _ = try? await signOut()
+            _ = try? await signOut(cleaningUp: provider)
         }
     }
 }

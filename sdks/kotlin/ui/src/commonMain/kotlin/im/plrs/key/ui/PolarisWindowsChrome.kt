@@ -338,15 +338,10 @@ internal fun PolarisFluentButton(
             if (busy) androidx.compose.material3.CircularProgressIndicator(
                 modifier = Modifier.height(16.dp).widthIn(max = 16.dp), strokeWidth = 2.dp, color = content,
             )
-            // The new-window glyph leads the label as inline content, so it stays beside the first word of a wrapped label.
-            val glyph = "external"
-            val size = with(androidx.compose.ui.platform.LocalDensity.current) { 16.dp.toSp() }
-            val shown = if (external) androidx.compose.ui.text.buildAnnotatedString {
-                appendInlineContent(glyph, " ")
-                append(" ")
-                append(text)
-            } else androidx.compose.ui.text.AnnotatedString(text)
-            // The placeholder is decoration: assistive tech reads the plain label (the control says where it goes).
+            // The new-window glyph (↗) ends the label as a character joined to the last word by a no-break space, so it
+            // wraps with the text and stays at the end of the last line (an inline icon may break off onto a line of its own).
+            val shown = if (external) androidx.compose.ui.text.AnnotatedString("$text\u00A0\u2197") else androidx.compose.ui.text.AnnotatedString(text)
+            // The glyph is decoration: assistive tech reads the plain label (the control says where it goes).
             val layout = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
             Text(
                 shown,
@@ -361,11 +356,6 @@ internal fun PolarisFluentButton(
                     } else Modifier,
                 ),
                 // A label wraps (the control grows) rather than being cut: a narrow footer or a larger font scale.
-                inlineContent = if (external) mapOf(
-                    glyph to androidx.compose.foundation.text.InlineTextContent(
-                        androidx.compose.ui.text.Placeholder(size, size, androidx.compose.ui.text.PlaceholderVerticalAlign.TextCenter),
-                    ) { Icon(PolarisKitGlyphs.NewWindow, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                ) else emptyMap(),
             )
         }
     }

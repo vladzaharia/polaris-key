@@ -14,6 +14,7 @@
 
 import type { JSONValue, ManagedEntry } from "@polaris-key/protocol/core";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
+import { readCappedText } from "../core/boundedBody.js";
 import { Catalog, type ProductCatalog } from "@polaris-key/catalog";
 import { join } from "node:path";
 import { PolarisError } from "@polaris-key/client-core";
@@ -33,6 +34,27 @@ import type { TokenManager } from "../core/token.js";
 import { MintCache, mintToken, type MintedToken } from "./mint.js";
 
 export type { ConfigSource, ProductCatalog, UserConfigEntry, MintedToken };
+
+/** Where a change came from: this device (`local`), a sync (`remote`, `merge`), or the one-time
+ *  import of `local-config.json` (`migration`). */
+export type ChangeOrigin = "local" | "remote" | "merge" | "migration";
+
+/** How a setting relates to Cloud Sync. */
+export type SettingSync = "local" | "pending" | "synced";
+
+type SyncCall = { ok: true } | { ok: false; error: string };
+
+/** What the Cloud Sync host gives the config client (U-06.3). While `active()` is true `set` and
+ *  `clear` go through the machine, which answers the refusals in its own order. */
+export interface ConfigSyncPort {
+  /** Cloud Sync is on and a principal is signed in. */
+  active(): boolean;
+  set(key: string, value: JSONValue): Promise<SyncCall>;
+  clear(key: string): Promise<SyncCall>;
+  /** The machine's effective value; `from: "document"` means the signed document decides. */
+  get(key: string): { value: JSONValue; from: string };
+  state(key: string): SettingSync;
+}
 
 /** Env-var prefix for config overrides. A key's env var is
  *  `${envPrefix}${key.replaceAll(".", "__")}` — `run.concurrency` →
@@ -58,6 +80,8 @@ export interface ConfigChange {
   value: JSONValue | undefined;
   previous: JSONValue | undefined;
   source: ConfigSource;
+  /** What caused the change. */
+  origin: ChangeOrigin;
 }
 
 /** A reactive handle on one key (`config.setting(key)`, SDK parity pass §3.11). */
@@ -73,6 +97,9 @@ export interface ConfigSetting<T = JSONValue> {
   readonly visibility: SettingVisibility;
   set(value: T): Promise<void>;
   clear(): Promise<void>;
+  /** `local` with Cloud Sync off, no principal or a `local` key; `pending` while an edit waits to
+   *  be sent; `synced` otherwise. */
+  sync(): SettingSync;
   /** Subscribe to this key's changes; returns the unsubscribe function. */
   on(listener: (change: ConfigChange) => void): () => void;
 }
@@ -101,6 +128,9 @@ export class ConfigClient {
   private readonly envPrefix: string;
   private readonly env: Record<string, string | undefined>;
   private readonly minted = new MintCache();
+  private syncPort: ConfigSyncPort | null = null;
+  /** The last value reported per synced key, so a change can say what it replaced. */
+  private readonly syncSeen = new Map<string, JSONValue | undefined>();
 
   constructor(
     private readonly ctx: CoreContext,
@@ -148,12 +178,15 @@ export class ConfigClient {
 
   /** Resolve the effective value for a key, honouring management state + override layers. */
   get<T = JSONValue>(key: string, fallback: T): T {
+    const synced = this.syncedValue(key);
+    if (synced !== undefined) return synced as unknown as T;
     const v = resolveValue(this.context(), key);
     return v === undefined ? fallback : (v as unknown as T);
   }
 
   /** Where `get(key)` would source its value from (for diagnostics/settings UIs). */
   getConfigSource(key: string): ConfigSource {
+    if (this.syncedValue(key) !== undefined) return "local";
     return resolveSource(this.context(), key);
   }
 
@@ -192,7 +225,9 @@ export class ConfigClient {
         signal: this.ctx.deadline(),
       });
       if (!res.ok) return null;
-      const body: unknown = await res.json();
+      const text = await readCappedText(res);
+      if (text === null) return null;
+      const body: unknown = JSON.parse(text);
       return isCatalog(body) ? body : null;
     } catch {
       return null;
@@ -239,6 +274,10 @@ export class ConfigClient {
    * `bad_request` for a value the catalog's schema refuses (when a catalog is known).
    */
   async set(key: string, value: JSONValue): Promise<void> {
+    if (this.syncPort?.active()) {
+      this.syncSeen.set(key, this.get<JSONValue | undefined>(key, undefined));
+      return this.viaMachine(await this.syncPort.set(key, value), key);
+    }
     if (this.isLocked(key))
       throw new PolarisError(
         ErrorCode.managedByAdmin,
@@ -265,6 +304,10 @@ export class ConfigClient {
 
   /** Remove a local override (the key falls back to env, the remote default, the fallback). */
   async clear(key: string): Promise<void> {
+    if (this.syncPort?.active()) {
+      this.syncSeen.set(key, this.get<JSONValue | undefined>(key, undefined));
+      return this.viaMachine(await this.syncPort.clear(key), key);
+    }
     await this.writeLocal(key, undefined);
   }
 
@@ -297,6 +340,8 @@ export class ConfigClient {
       get visibility() {
         return visibilityOfState(self.doc?.config[key]?.state);
       },
+      sync: () =>
+        self.syncPort?.active() ? self.syncPort.state(key) : "local",
       set: (value: T) => this.set(key, value as unknown as JSONValue),
       clear: () => this.clear(key),
       on: (listener) => this.onConfigChange(key, listener),
@@ -326,9 +371,58 @@ export class ConfigClient {
     return out;
   }
 
+  /** Cloud Sync's port (the facade sets it once the host runs). */
+  useSync(port: ConfigSyncPort | null): void {
+    this.syncPort = port;
+  }
+
+  /** The legacy local values, for the one-time import into Cloud Sync. */
+  importable(): Record<string, JSONValue> {
+    return { ...this.persisted };
+  }
+
+  /** A synced value the machine holds for `key`, or undefined (the signed document decides). */
+  private syncedValue(key: string): JSONValue | undefined {
+    if (!this.syncPort?.active()) return undefined;
+    const e = this.syncPort.get(key);
+    return e.from === "document" || e.value === null ? undefined : e.value;
+  }
+
+  private viaMachine(r: SyncCall, key: string): void {
+    if (r.ok) return;
+    throw new PolarisError(
+      r.error === "managed_by_admin"
+        ? ErrorCode.managedByAdmin
+        : ErrorCode.badRequest,
+      r.error === "managed_by_admin"
+        ? `${key} is managed by an administrator.`
+        : `${key}: the value is not accepted.`,
+    );
+  }
+
+  /** The machine changed these keys: report each with its value now and what it replaced. */
+  noteSyncChange(keys: readonly string[], origin: ChangeOrigin): void {
+    for (const key of keys) {
+      const value = this.get<JSONValue | undefined>(key, undefined);
+      const previous = this.syncSeen.get(key);
+      this.syncSeen.set(key, value);
+      if (JSON.stringify(previous) === JSON.stringify(value)) continue;
+      this.emit({
+        key,
+        value,
+        previous,
+        source: this.getConfigSource(key),
+        origin,
+      });
+    }
+  }
+
   /** Emit a change for every key whose resolved value differs from `before` (the facade calls
    *  it after a sync). Returns the changes. */
-  emitChanges(before: Record<string, JSONValue | undefined>): ConfigChange[] {
+  emitChanges(
+    before: Record<string, JSONValue | undefined>,
+    origin: ChangeOrigin = "remote",
+  ): ConfigChange[] {
     const after = this.snapshot();
     const changes: ConfigChange[] = [];
     for (const key of new Set([
@@ -341,6 +435,7 @@ export class ConfigClient {
         value: after[key],
         previous: before[key],
         source: this.getConfigSource(key),
+        origin,
       });
     }
     for (const c of changes) this.emit(c);
@@ -373,7 +468,7 @@ export class ConfigClient {
     if (this.localFile) await writeJson(this.localFile, next);
     this.persisted = next;
     this.localOverrides = { ...this.hostOverrides, ...next };
-    this.emitChanges(before);
+    this.emitChanges(before, "local");
   }
 
   /** Whether the product runs Config at all — the config-side twin of the license gate's

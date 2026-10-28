@@ -300,7 +300,12 @@ func _bleeds() -> bool:
 
 
 func squeeze_max() -> int:
-	return 4
+	return 5
+
+
+## A key refusal opens at its title, even when its primary sits a scroll below.
+func _opens_at_top() -> bool:
+	return refusal != ""
 
 
 ## True while the device-limit view or a focused key refusal is on screen.
@@ -330,7 +335,9 @@ func _limit_side_by_side() -> bool:
 		return false
 	# Only when the width this panel really gets holds both columns (a host card around it can be
 	# narrower than the screen): each column keeps most of a single column's width.
-	return room_x() + 1.0 >= (role("card_width") - 2.0 * role("card_padding")) * 1.45
+	# The pad-only QR refusal puts the code beside its text sooner: large type must not push the lede off.
+	var each := 1.05 if refusal != "" else 1.45
+	return room_x() + 1.0 >= (role("card_width") - 2.0 * role("card_padding")) * each
 
 
 func _two_panes() -> bool:
@@ -640,27 +647,39 @@ func _fit_font(b: Button) -> void:
 ## pad-only device), and Use a different key (quiet).
 func _render_refusal(t: PKeyUiCopy) -> void:
 	# Short on room, the product header gives way before the screen scrolls.
-	_limit_product.visible = squeeze_level() < 2
 	_limit_product.refresh()
+	# `refresh()` decides whether the header has anything to show; the squeeze only takes it away.
+	if squeeze_level() >= 2:
+		_limit_product.visible = false
 	var limit_kind := refusal == "key-entry-limit"
-	_limit_title.text = t.text("refusal_limit_title" if limit_kind else "refusal_owned_title")
-	_limit_lede.text = t.text("refusal_limit_lede" if limit_kind else "refusal_owned_lede")
-	_limit_lede.visible = squeeze_level() < 3
+	# Every line is the row's catalog key, so a shipped locale never mixes in the kit's English defaults.
+	var who := {"product": PKeyUiCopy._product_label()}
+	cat_text(_limit_title, "core.activation.key-entry-limit.title" if limit_kind else "core.codes.license_owned.title", who)
+	cat_text(_limit_lede, "core.activation.key-entry-limit.message" if limit_kind else "core.codes.license_owned.message", who)
+	# The lede is why Sign in helps: on a landscape screen it never gives way (the page opens at its
+	# title and scrolls). Only a portrait phone at the last squeeze step drops it, so the scroll bar
+	# never narrows a page that has no width to spare.
+	_limit_lede.visible = not (phone_screen() and squeeze_level() >= 5)
 	_seats.visible = false
 	var as_qr := manage_presentation() == "qr"
 	var has_link := limit_kind and manage_url != ""
-	_manage.text = t.text("add_in_locker")
+	cat_text(_manage, "signin.key.addInLocker")
 	leaves_app(_manage)
-	_manage.add_theme_constant_override("h_separation", 0)
+	# A gap before the external-link glyph where the screen is wide; a phone has no room to spare.
+	_manage.add_theme_constant_override("h_separation", 0 if phone_screen() else maxi(roundi(role("tight_gap")), 6))
 	_manage.visible = has_link and not as_qr
 	_manage_qr.text = manage_url if has_link and as_qr else ""
 	_manage_qr.visible = has_link and as_qr and not _manage_qr.encode_failed
 	_manage_qr.get_parent().visible = _manage_qr.visible
-	show_text(_manage_caption, t.text("add_in_locker_scan") if _manage_qr.visible else "")
+	cat_text(_manage_caption, "signin.key.scan" if _manage_qr.visible else "")
 	_remedy.visible = _manage_qr.visible
-	_again.text = t.text("sign_in")
+	# The same copy key the other kits read: "Sign in to that account" for a license in another account.
+	if refusal == "license-owned":
+		cat_text(_again, "signin.key.ownedSignIn")
+	else:
+		cat_text(_again, "signin.key.signIn")
 	_again.visible = capabilities()["sign_in"]
-	_other_key.text = t.text("different_key")
+	cat_text(_other_key, "signin.key.differentKey")
 
 
 ## The controls in focus order for the form on screen now.
@@ -743,6 +762,8 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 		if not done.is_empty():
 			message = c().text(done["copy"], done["args"])
 	message_ok = r != null and r.ok
+	if message_ok and r.key_entries is Dictionary:
+		_toast_entries_left(r.key_entries)
 	message_danger = r == null or r.kind == PKeyActivationResult.KIND_UNAUTHORIZED or r.kind == PKeyActivationResult.KIND_ERROR
 	message_slot = slot
 	refresh_view()
@@ -754,6 +775,15 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 		_sign_in.grab_focus.call_deferred()
 	else:
 		_free.grab_focus.call_deferred()
+
+
+## "{left} key entries left" once the key works, as the shared toast (the host owns it, so it
+## outlives this panel). Nothing without the server's count or the autoload.
+func _toast_entries_left(entries: Dictionary) -> void:
+	if sdk == null or not is_instance_valid(sdk) or not sdk.has_method("toasts"):
+		return
+	var left := maxi(0, int(entries["limit"]) - int(entries["used"]))
+	sdk.toasts().show_info(String(catalog().format("signin.key.entriesLeftShort", {"left": left})))
 
 
 ## Show a message already worded by the caller (a rejected key the gate reports) under the key

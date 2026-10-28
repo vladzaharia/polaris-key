@@ -2604,7 +2604,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_title">Erro de armazenamento</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_message">O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele.</string>
+    <string name="core_codes_store_failed_message">Não foi possível salvar neste dispositivo. Verifique o armazenamento e tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">Conexão indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

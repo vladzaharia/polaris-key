@@ -222,6 +222,11 @@ func show_success(title: String, consequence := "", actions: Array = []) -> void
 	push({"kind": "success", "title": title, "consequence": consequence, "actions": actions})
 
 
+## A neutral note (a count, a fact) in the game's or the kit's own words: the info glyph, the 6 s timer.
+func show_info(title: String, consequence := "", actions: Array = []) -> void:
+	push({"kind": "info", "title": title, "consequence": consequence, "actions": actions})
+
+
 func show_warning(title: String, consequence := "", actions: Array = []) -> void:
 	push({"kind": "warning", "title": title, "consequence": consequence, "actions": actions})
 
@@ -336,6 +341,9 @@ func _render() -> void:
 	var t := c()
 	model = PKeyToastController.view(_input_for_model())
 	var state := String(model.get("state", "hidden"))
+	# An info note rides the copied toast's model; only its glyph says "info".
+	if state == "success" and String(current.get("kind", "")) == "info":
+		state = "info"
 	visible = state != "hidden" and not current.is_empty()
 	if not visible:
 		return
@@ -345,7 +353,7 @@ func _render() -> void:
 	show_text(_consequence, words["consequence"])
 	# A game's own warning and the core's heading are data, not the kit's copy.
 	for l in [_title, _consequence]:
-		if bool(words["data"]) and kind in ["warning", "success"] or (kind == "error" and l == _title):
+		if bool(words["data"]) and kind in ["warning", "success", "info"] or (kind == "error" and l == _title):
 			l.set_meta(DATA_META, true)
 		elif l.has_meta(DATA_META):
 			l.remove_meta(DATA_META)

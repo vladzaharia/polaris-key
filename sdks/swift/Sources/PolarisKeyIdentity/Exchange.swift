@@ -194,9 +194,14 @@ public struct ExchangeError: Error, Sendable, Equatable, CustomStringConvertible
     public let status: Int
     public let retryAfterSeconds: Int?
     public let view: LicenseChoiceView?
+    /// Where the person manages their devices (`device_limit`), when the Worker sent an https one.
+    public let manageUrl: String?
 
     public var description: String { "ExchangeError(\(code), status \(status))" }
 }
+
+/// A sign-out happened while the ladder was waiting on the platform or the Worker.
+struct SignedOutDuringLadder: Error {}
 
 extension IdentityClient {
     static let exchangeGrantType = "urn:ietf:params:oauth:grant-type:token-exchange"
@@ -219,13 +224,19 @@ extension IdentityClient {
     public func exchange(kind: ExchangeKind, subjectToken: String, nonce: String) async throws
         -> ExchangeOutcome
     {
-        try await exchange(kind: kind, subjectToken: subjectToken, optionalNonce: nonce)
+        try await exchange(kind: kind, subjectToken: subjectToken, optionalNonce: nonce, ladderGeneration: nil)
     }
 
     /// Conformance and tests only: nil takes a fresh nonce after the token exists, which the
     /// Worker refuses for a real platform token (the nonce is not inside it).
-    func exchange(kind: ExchangeKind, subjectToken: String, optionalNonce nonce: String?) async throws
-        -> ExchangeOutcome
+    ///
+    /// `ladderGeneration` is set by `autoSignIn`: the token is stored only if no sign-out happened
+    /// since (`SignedOutDuringLadder` otherwise), and storing it never ends the signed-out state.
+    /// A direct call is the person's own sign-in and clears that state.
+    func exchange(
+        kind: ExchangeKind, subjectToken: String, optionalNonce nonce: String?,
+        ladderGeneration: Int? = nil
+    ) async throws -> ExchangeOutcome
     {
         guard !subjectToken.isEmpty else {
             throw PolarisError(code: ErrorCode.invalidArgument, message: "subjectToken is empty.")
@@ -262,7 +273,7 @@ extension IdentityClient {
             .joined(separator: "&")
         let response = try await exchangeSend(
             routes.token, contentType: IdentityRedirect.tokenContentType, body: Data(form.utf8))
-        return try await exchangeOutcome(response)
+        return try await exchangeOutcome(response, ladderGeneration: ladderGeneration)
     }
 
     // ── Routes and keys ──────────────────────────────────────────────────────────────────
@@ -352,7 +363,9 @@ extension IdentityClient {
         try? JSONDecoder().decode(JSONValue.self, from: response.body)
     }
 
-    private func exchangeOutcome(_ response: PolarisResponse) async throws -> ExchangeOutcome {
+    private func exchangeOutcome(_ response: PolarisResponse, ladderGeneration: Int?) async throws
+        -> ExchangeOutcome
+    {
         let body = exchangeBody(response)
         let object = body?.objectValue ?? [:]
         if response.status == 403, object["error"]?.stringValue == ErrorCode.interstitialRequired {
@@ -380,7 +393,13 @@ extension IdentityClient {
                 PendingSignIn(
                     grant: grant, expiresIn: lifetime, expiresAt: await core.now() + lifetime, view: view))
         case .token(let accessToken, let scope, let subject, _, _, let license):
-            try await core.setToken(accessToken, source: .signin)
+            if let generation = ladderGeneration {
+                guard try await core.setTokenUnlessSignedOut(accessToken, generation: generation) else {
+                    throw SignedOutDuringLadder()
+                }
+            } else {
+                try await core.setToken(accessToken, source: .signin, person: true)
+            }
             if redirectAcquisitionSync.current { await onAcquired?() }
             updateSubject(subject)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
@@ -446,6 +465,7 @@ extension IdentityClient {
             : (code.flatMap { $0.isEmpty ? nil : $0 } ?? "http_\(response.status)")
         return ExchangeError(
             code: resolved, status: response.status, retryAfterSeconds: retry,
-            view: LicenseChoiceView.read(object["view"]))
+            view: LicenseChoiceView.read(object["view"]),
+            manageUrl: object["manageUrl"]?.stringValue.flatMap { Self.cardUrlOK($0) ? $0 : nil })
     }
 }

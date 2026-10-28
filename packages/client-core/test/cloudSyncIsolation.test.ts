@@ -43,6 +43,8 @@ describe("cloud-sync isolation (T5)", () => {
       const files = [...reachable(entry)].map((f) => f.slice(SRC.length + 1));
       expect(files).toContain(entry);
       expect(files.filter((f) => f.startsWith("cloud-sync"))).toEqual([]);
+      // The Cloud Sync host codec (U-06.1) is the same kind of module: no gate reaches it.
+      expect(files.filter((f) => f.startsWith("sync/hostCodec"))).toEqual([]);
     });
 
   it("the barrel does not re-export it either", () => {

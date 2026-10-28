@@ -2269,7 +2269,7 @@ Every symmetric key seals one plaintext, so the nonce is a constant (12 zero byt
 0x01 ‖ kid(16) ‖ salt(16) ‖ AES-256-GCM(K_msg, nonce 0¹², aad = the first 33 bytes, P)
 ```
 
-`P` is the UTF-8 canonical JSON `{"k": name, "v": value}` padded with `0x80 0x00…` to a multiple of 64 bytes. The reader checks that `k` equals the expected name or one of its `aliases` sources; otherwise the value is `invalid`. The envelope is `33 + len(P) + 16` bytes, which is why the server's shape check is `(length − 49) mod 64 = 0`. `SYNC_E2E_OVERHEAD_BYTES` is 113 (49 of envelope and at most 64 of padding): budgets (256 keys, 64 KiB, 8 KiB, §13.1) are charged on `envelopeBytes − 113`, so they keep their meaning, while the quota charges the stored bytes.
+`P` is the UTF-8 canonical JSON `{"k": name, "v": value}` padded with `0x80 0x00…` to a multiple of 64 bytes. The reader checks that `k` equals the expected name or one of its `aliases` sources; otherwise the value is `invalid`. A merge member's `k` is `setting ‖ U+0000 ‖ member` (the names, not the blinded forms), so the server cannot swap members between settings that share a member name, and an open key's `k` is the key. The envelope is `33 + len(P) + 16` bytes, which is why the server's shape check is `(length − 49) mod 64 = 0`. `SYNC_E2E_OVERHEAD_BYTES` is 113 (49 of envelope and at most 64 of padding): budgets (256 keys, 64 KiB, 8 KiB, §13.1) are charged on `envelopeBytes − 113`, so they keep their meaning, while the quota charges the stored bytes.
 
 **`pkey-sync-file/1`** seals a file as a stream of segments:
 

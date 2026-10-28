@@ -19,6 +19,7 @@ import PolarisKey
 import PolarisKeyCore
 import PolarisKeyIdentity
 import PolarisKeyLicense
+import PolarisKeyPlatform
 import PolarisKeyRelease
 
 /// Which step of the gate the person is on while the license is not yet usable.
@@ -47,13 +48,16 @@ public struct KitGateOptions: Sendable, Equatable {
     public var replace: KitReplaceMode
     /// The integrator's identity overrides (UI-KITS §3.1 `product`).
     public var integrator: KitIntegrator?
+    /// Run `identity.autoSignIn()` once at boot (silent rungs only). Off: the gate never tries it.
+    public var autoSignIn: Bool
 
     public init(
         keyEntry: Bool = true, offlineActivation: Bool = false, trial: Bool = false,
         restore: Bool = false, enroll: Bool = false,
         signInPresentation: KitSignInPresentation = .inline, replace: KitReplaceMode = .inline,
-        integrator: KitIntegrator? = nil
+        integrator: KitIntegrator? = nil, autoSignIn: Bool = true
     ) {
+        self.autoSignIn = autoSignIn
         self.keyEntry = keyEntry
         self.offlineActivation = offlineActivation
         self.trial = trial
@@ -257,6 +261,13 @@ public final class PolarisKeyGateModel {
     /// The browser the current request opened in (the injected one, else the system sheet).
     private var activeBrowser: (any KitSignInBrowser)?
     private let presentationSource: (any KitPresentationSource)?
+    /// The provider behind the sign-in form's Apple row: the plain account sheet, then the exchange.
+    private let rowProvider: any PlatformIdentityProvider
+    /// The exchange's consent, held while the confirm step is shown.
+    private var pendingConsent: PendingConsent?
+    /// The choice view of a `deviceLimit` result (no grant: Replace goes to the browser).
+    private var limitChoices: KitLicenseChoices?
+    private var ladderStarted = false
 
     /// A live model over `client`.
     public init(
@@ -264,8 +275,10 @@ public final class PolarisKeyGateModel {
         presentationSource: (any KitPresentationSource)? = nil,
         browser: (any KitSignInBrowser)? = nil, copy: KitCopy = .bundled,
         bundle: KitBundle? = nil, platform: KitPlatform = .current,
-        handlers: KitGateHandlers = KitGateHandlers()
+        handlers: KitGateHandlers = KitGateHandlers(),
+        platformProvider: (any PlatformIdentityProvider)? = nil
     ) {
+        self.rowProvider = platformProvider ?? AppleSignInProvider(preferImmediate: false)
         self.client = client
         self.options = options
         self.handlers = handlers
@@ -287,6 +300,7 @@ public final class PolarisKeyGateModel {
         request: KitSignInRequest? = nil, presentationIcon: Data? = nil
     ) {
         self.client = nil
+        self.rowProvider = AppleSignInProvider(preferImmediate: false)
         self.handlers = KitGateHandlers()
         self.options = KitGateOptions()
         self.copy = copy
@@ -346,6 +360,7 @@ public final class PolarisKeyGateModel {
         observation = Task { [weak self] in
             await self?.reload()
             await self?.refresh()
+            await self?.bootAutoSignIn()
             for await event in stream {
                 guard let self else { return }
                 if case .updateAvailable(let version, let action, let mandatory, _) = event {
@@ -673,6 +688,8 @@ public final class PolarisKeyGateModel {
 
     /// Cancel the sign-in: the form returns to its first step; nothing binds.
     public func cancelSignIn() {
+        dropConsent()
+        limitChoices = nil
         if let held = choice {
             // Backing out of the choice abandons the grant; nothing was bound.
             choice = nil
@@ -880,6 +897,296 @@ public final class PolarisKeyGateModel {
         (error as? PolarisError)?.code ?? (error as? SignInError)?.code ?? "sign-in-failed"
     }
 
+    // MARK: Automatic sign-in (CC-01-auto-sign-in, I-44.6)
+
+    /// Boot's one `autoSignIn()` call, silent rungs only (the default options). A refusal is a
+    /// result; only cancelling the task throws.
+    private func bootAutoSignIn() async {
+        guard options.autoSignIn, !ladderStarted, let client else { return }
+        ladderStarted = true
+        guard let result = try? await client.identity.autoSignIn() else { return }
+        await present(result, kind: rowProvider.kind, personStarted: false)
+    }
+
+    /// The kit's v7 auto sign-in states for what the ladder (or the provider row's exchange)
+    /// answered. `personStarted` is the provider row: the person asked, so a result is always shown.
+    private func present(_ result: AutoSignInResult, kind: ExchangeKind, personStarted: Bool) async {
+        let name = Self.providerName(kind)
+        switch result {
+        case .signedIn(let ready):
+            await finishAuto(ready, personStarted: personStarted)
+        case .confirm(let held):
+            await presentConsent(held, fallback: name)
+        case .choose(let grant):
+            signInProvider = name
+            presentLicenseChoice(grant)
+        case .deviceLimit(let manageUrl, let view):
+            presentDeviceLimit(manageUrl: manageUrl, view: view, provider: name)
+        case .needsSignIn(_, let reason):
+            // A credential the platform gave but no account stands behind (or terms to accept):
+            // the form. With no credential at boot Welcome stays.
+            guard personStarted || reason == .noLink || reason == .terms else { return }
+            signInProvider = name
+            showMethods()
+        case .unavailable:
+            // Boot falls back silently. The row falls back to the browser sign-in.
+            if personStarted { beginSignIn(method: name) }
+        }
+    }
+
+    private func showMethods() {
+        guard license.map({ !Self.usable($0) }) ?? true else { return }
+        signInError = nil
+        pending = nil
+        if signIn == nil || signIn?.outcome == .signedIn {
+            signIn = KitSignIn(
+                presentation: options.signInPresentation, replace: options.replace, channel: .browser)
+        }
+        route = .signIn
+        rebuild()
+        announce(signInScreen.copy.first)
+    }
+
+    private static func usable(_ state: LicenseState) -> Bool {
+        state.status == .ok || state.status == .grace || state.status == .notApplicable
+    }
+
+    /// "Apple", "Google": the name the auto steps use.
+    static func providerName(_ kind: ExchangeKind) -> String { providerName(kind.rawValue) ?? "" }
+
+    static func providerName(_ raw: String) -> String? {
+        switch raw.lowercased() {
+        case "apple": return "Apple"
+        case "google": return "Google"
+        default: return raw.isEmpty ? nil : raw
+        }
+    }
+
+    private func finishAuto(_ ready: SignInReady, personStarted: Bool) async {
+        dropConsent()
+        pending = nil
+        if let name = ready.identity?.name ?? ready.identity?.email { signedInName = name }
+        await reload()
+        guard personStarted else { return }
+        await readSignedInTier()
+        if signIn == nil {
+            signIn = KitSignIn(
+                presentation: options.signInPresentation, replace: options.replace, channel: .browser)
+        }
+        signIn?.outcome = .signedIn
+        signIn?.issuedNow = false
+        rebuild()
+        announce(signInScreen.copy.first)
+        if let name = signedInName { toastSignedIn(name: name, tier: signedInTier) }
+    }
+
+    /// The confirm step: the account, the license line the device gets (with its seat, when the
+    /// consent view carries one) and what the app also receives.
+    private func presentConsent(_ held: PendingConsent, fallback: String) async {
+        var auto = KitAutoSignIn(step: .confirm, email: held.consent.as.email)
+        for item in held.consent.items {
+            guard let o = item.objectValue, let kind = o["kind"]?.stringValue else { continue }
+            if kind == "profile" {
+                auto.alsoGets = true
+            } else if kind == "license" {
+                if let anchor = o["anchor"]?.objectValue {
+                    auto.license = "existing"
+                    auto.licenseName = anchor["name"]?.stringValue ?? anchor["tierName"]?.stringValue
+                    auto.term = anchor["term"]?.intValue
+                    if let seat = anchor["seat"]?.objectValue {
+                        auto.position = seat["position"]?.intValue
+                        auto.limit = seat["limit"]?.intValue
+                    }
+                    if auto.position != nil { auto.device = await client?.core.deviceLabel() }
+                } else {
+                    auto.license = "new"
+                }
+            }
+        }
+        pendingConsent = held
+        choice = nil
+        limitChoices = nil
+        signInError = nil
+        pending = nil
+        signInProvider = Self.providerName(held.consent.as.provider) ?? fallback
+        if signIn == nil || signIn?.outcome == .signedIn {
+            signIn = KitSignIn(
+                presentation: options.signInPresentation, replace: options.replace, channel: .browser)
+        }
+        route = .signIn
+        autoSignIn = auto
+        announce(signInScreen.copy.first)
+    }
+
+    /// "Continue" on the confirm step: the person consents, so the grant completes with no choice
+    /// of its own (the Worker answers `license_choice_required` when one is due).
+    public func continueAutoSignIn() async {
+        guard let client, let held = pendingConsent else { return }
+        let claims = held.consent.items.compactMap { item -> [String]? in
+            guard let o = item.objectValue, o["kind"]?.stringValue == "profile",
+                case .array(let list)? = o["claims"]
+            else { return nil }
+            return list.compactMap(\.stringValue)
+        }.flatMap { $0 }
+        pending = .signIn
+        rebuild()
+        do {
+            let done = try await client.identity.choice.complete(
+                grant: held.grant, choice: nil, consent: ChoiceConsent(claims: claims))
+            await finishAuto(done.ready, personStarted: true)
+        } catch let e as ChoiceError {
+            pending = nil
+            pendingConsent = nil
+            autoSignIn = nil
+            if e.code == ErrorCode.licenseChoiceRequired || e.code == ErrorCode.deviceLimit {
+                // The account has to choose: the choice is drawn over the same grant.
+                let model =
+                    e.view.map { LicenseChoiceModel(identity: client.identity, grant: held.grant, view: $0) }
+                    ?? LicenseChoiceModel(identity: client.identity, grant: held.grant)
+                choice = model
+                if e.view == nil { await model.start() }
+                rebuild()
+                announce(licenseChoice.copy.first)
+            } else {
+                signInError = KitError(code: e.code)
+                rebuild()
+                announce(signInScreen.copy.first)
+            }
+        } catch {
+            pending = nil
+            signInError = KitError(code: Self.signInCode(error))
+            rebuild()
+            announce(signInScreen.copy.first)
+        }
+    }
+
+    /// "Use another account" on the confirm step: the grant is dropped and the methods show.
+    public func useAnotherAccount() {
+        guard pendingConsent != nil else { return }
+        dropConsent()
+        signInError = nil
+        signIn = KitSignIn(
+            presentation: options.signInPresentation, replace: options.replace, channel: .browser)
+        rebuild()
+        announce(signInScreen.copy.first)
+    }
+
+    /// Let go of a held consent: the step goes and the grant is cancelled, best effort.
+    private func dropConsent() {
+        guard let held = pendingConsent else { return }
+        pendingConsent = nil
+        autoSignIn = nil
+        let identity = client?.identity
+        Task { try? await identity?.choice.cancel(grant: held.grant) }
+    }
+
+    private func presentDeviceLimit(manageUrl: String?, view: LicenseChoiceView?, provider: String) {
+        signInProvider = provider
+        pending = nil
+        choice = nil
+        if let view, !view.choices.isEmpty {
+            // Every seat is taken: the rows that are full, with their Replace in the browser.
+            limitChoices = LicenseChoiceModel.choices(from: view)
+            if signIn == nil {
+                signIn = KitSignIn(
+                    presentation: options.signInPresentation, replace: options.replace,
+                    channel: .browser)
+            }
+            route = .signIn
+            rebuild()
+            announce(licenseChoice.copy.first)
+        } else {
+            activation = KitActivation(result: "device-limit", manageUrl: manageUrl)
+            route = .activate
+            rebuild()
+            announce(activate.copy.first)
+        }
+    }
+
+    /// The sign-in form's provider row (Sign in with Apple): the plain account sheet over a fresh
+    /// nonce, then the exchange. The person started it, so it clears the sign-out flag.
+    public func signInWithProvider() {
+        guard let client else { return }
+        let provider = rowProvider
+        let kind = provider.kind
+        let name = Self.providerName(kind)
+        choice = nil
+        limitChoices = nil
+        dropConsent()
+        route = .signIn
+        signInError = nil
+        signIn = KitSignIn(
+            presentation: options.signInPresentation, replace: options.replace, channel: .browser,
+            method: name)
+        pending = .signIn
+        rebuild()
+        signInTask?.cancel()
+        signInTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                guard case .nonce(let nonce) = try await client.identity.exchangeNonce(kind: kind)
+                else {
+                    self.beginSignIn(method: name)
+                    return
+                }
+                let subject: PlatformSubjectToken
+                do {
+                    subject = try await provider.sheet(nonce: nonce.value)
+                } catch is CancellationError {
+                    return
+                } catch AppleSignInFailure.cancelled {
+                    // The person dismissed the sheet: the methods stay as they were.
+                    self.pending = nil
+                    self.signIn?.method = nil
+                    self.rebuild()
+                    return
+                } catch {
+                    self.beginSignIn(method: name)
+                    return
+                }
+                try Task.checkCancellation()
+                let outcome = try await client.identity.exchange(
+                    kind: kind, subjectToken: subject.token, nonce: nonce.value)
+                switch outcome {
+                case .signedIn, .confirm, .choose: await provider.sessionStarted(subject)
+                default: break
+                }
+                self.pending = nil
+                await self.present(Self.result(outcome), kind: kind, personStarted: true)
+            } catch is CancellationError {
+                return
+            } catch let e as ExchangeError {
+                self.pending = nil
+                if e.code == ErrorCode.deviceLimit {
+                    await self.present(
+                        .deviceLimit(manageUrl: e.manageUrl, view: e.view), kind: kind,
+                        personStarted: true)
+                } else {
+                    self.signInError = KitError(code: e.code)
+                    self.rebuild()
+                    self.announce(self.signInScreen.copy.first)
+                }
+            } catch {
+                self.pending = nil
+                self.signInError = KitError(code: Self.signInCode(error))
+                self.rebuild()
+                self.announce(self.signInScreen.copy.first)
+            }
+        }
+    }
+
+    private static func result(_ outcome: ExchangeOutcome) -> AutoSignInResult {
+        switch outcome {
+        case .signedIn(let ready): return .signedIn(ready)
+        case .confirm(let held): return .confirm(held)
+        case .choose(let grant): return .choose(grant)
+        case .needsSignIn(let n):
+            return .needsSignIn(
+                linkHandle: n.linkHandle, reason: n.reason == .terms ? .terms : .noLink)
+        case .unavailable(let code): return .unavailable(code: code)
+        }
+    }
+
     // MARK: Blocking states
 
     /// "Use a different key" and "Use another license": the key field, the refused license kept
@@ -972,7 +1279,12 @@ public final class PolarisKeyGateModel {
         }
         i.deviceCode = signIn?.channel == .deviceCode ? deviceCode : nil
         if route == .signIn { i.error = signInError }
-        if let choice { i = choice.inputs(base: i) }
+        if let choice {
+            i = choice.inputs(base: i)
+        } else if let limitChoices {
+            i.signIn?.outcome = .choose
+            i.choices = limitChoices
+        }
         i.update = update
         i.account = KitAccount(
             signedIn: accountSignedIn, holder: accountSignedIn ? "account" : nil,

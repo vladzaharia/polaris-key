@@ -50,6 +50,10 @@ import type {
 import type { ChoiceNamespace } from "../core/choice.js";
 import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
 import {
+  unsupportedCloudConnect,
+  type CloudConnectClient,
+} from "../browser/connect/index.js";
+import {
   BridgePresentationSource,
   type ReactPresentationSource,
 } from "../core/presentation.js";
@@ -893,6 +897,12 @@ export class DesktopAdapter implements PolarisAdapter {
   readonly keyring: KeyringClient = unsupportedKeyring(
     "version",
     "The desktop bridge has no key ring verb yet. Unlock Cloud Sync on the desktop host, or use a browser page.",
+  );
+
+  /** Cloud Connect (connect.app): the typed N/A here. */
+  readonly cloudConnect: CloudConnectClient = unsupportedCloudConnect(
+    "version",
+    "The desktop bridge has no Cloud Connect verb yet. Use the host process's Node SDK, or a browser page.",
   );
 
   /** `signIn.start` (identity.signIn): a device-code session over the bridge's `beginSignIn` /

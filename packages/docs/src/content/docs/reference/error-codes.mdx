@@ -141,7 +141,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `insecure-redirect` | `core` | Godot: A redirect pointed at plain http on a non-loopback host, or at a non-http(s) URL; it was refused. | developer only |
 | `http-error` | `core` | Godot: The server answered a non-success status with no recognised error code in its body. | [Help](/docs/help/messages/other/#http-error) |
 | `invalid-response` | `core` | Godot: The server answered 2xx with a body that failed strict parsing or lacked a required field. | [Help](/docs/help/messages/other/#invalid-response) |
-| `store-failed` | `core` | Godot: The credential or cache store could not be read or written. | [Help](/docs/help/messages/other/#store-failed) |
+| `store-failed` | `core` | The credential, cache or Cloud Connect state store could not be read or written, or its device keys could not be used. | [Help](/docs/help/messages/other/#store-failed) |
 | `connect-unavailable` | `connect` | Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 §15). | developer only |
 | `peer-cert-invalid` | `connect` | A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 §15.2, §15.3). Nothing is trusted; a host fetches a fresh one. | developer only |
 | `platform-error` | `core` | Godot: a native platform plugin answered an error, or a reply that is not JSON: the Apple plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) or the Android plugin (polaris-key-platform through PolarisKeyAndroid); `detail` carries the plugin's own fields. | [Help](/docs/help/messages/other/#platform-error) |

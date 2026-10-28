@@ -360,7 +360,7 @@ const FR: CopyBundle = {
     "not-configured":
       "La gestion des licences de l’app n’est pas encore configurée. Contactez le développeur.",
     "store-failed":
-      "L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données.",
+      "Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez.",
     cancelled: "La connexion a été annulée.",
     ok: "Votre licence est active.",
     grace:

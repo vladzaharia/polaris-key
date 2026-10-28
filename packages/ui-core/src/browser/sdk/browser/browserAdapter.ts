@@ -110,6 +110,14 @@ import {
   unsupportedKeyring,
   type KeyringClient,
 } from "../core/keyring.js";
+import {
+  createCloudConnect,
+  lazyConnect,
+  unsupportedCloudConnect,
+  unsupportedConnect,
+  type CloudConnectClient,
+  type ConnectClient,
+} from "./connect/index.js";
 import { clientBackendAction } from "@polaris-key/client-core/backend";
 import type {
   BinaryMethod,
@@ -450,6 +458,13 @@ export interface BrowserAdapterOptions {
     sessionRootSeconds?: number;
   };
   /**
+   * Cloud Connect identity (connect.identity, bearer mode only). `deviceKeys` is the device key
+   * store (default: the one the key ring uses, `createWebDeviceKeyStore()`); a memory-only store
+   * is refused with `invalid-options` unless `allowEphemeralKeys` is set, because every reload
+   * would register a new key pair and the Worker allows four a day.
+   */
+  connect?: { deviceKeys?: DeviceKeyPort; allowEphemeralKeys?: boolean };
+  /**
    * The update driver's service worker (update.driver): the container the install hand-off
    * looks for a waiting worker in (default `navigator.serviceWorker`; `null`: this page has
    * none, and `installUpdate()` answers `unsupported`) and the reload that follows the hand-off
@@ -715,6 +730,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.autoRegister = opts.autoRegister !== false;
     this.ringOptions = opts.keyring;
     this.platformIdentity = opts.platformIdentity;
+    this.connectOptions = opts.connect;
     if (this.authMode === "bearer" && !this.pinned) {
       const err = new PolarisError(
         "invalid-options",
@@ -2031,12 +2047,14 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly ringOptions: BrowserAdapterOptions["keyring"];
   private deviceKeys_: Promise<DeviceKeyPort> | null = null;
 
-  /** The device key store the key ring and the platform sign-in share: one port per adapter. The
-   *  default store (IndexedDB) loads with the first thing that needs it, not with the page. */
+  /**
+   * The page's device key store: one port per adapter, shared by the key ring, the sign-in
+   * ladder's exchange and Connect. The default store loads on the first call, never at import.
+   */
   private deviceKeyPort(): Promise<DeviceKeyPort> {
     return (this.deviceKeys_ ??= this.ringOptions?.deviceKeys
       ? Promise.resolve(this.ringOptions.deviceKeys)
-      : import("./ring/create.js").then((m) => m.createDeviceKeys()));
+      : import("./deviceKeys.js").then((m) => m.webDeviceKeys()));
   }
 
   // ── Automatic sign-in (identity.autosignin, I-46.4) ──────────────────────────────────────
@@ -2115,6 +2133,10 @@ export class BrowserAdapter implements PolarisAdapter {
     }
   }
 
+  private readonly connectOptions: BrowserAdapterOptions["connect"];
+  private connect_: ConnectClient | null = null;
+  private cloud_: CloudConnectClient | null = null;
+
   /**
    * The Cloud Sync key ring (sync.keyring). Bearer mode runs the engine; a cookie page holds no
    * device token and gets the typed runtime N/A.
@@ -2135,13 +2157,62 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   /**
-   * Sign-out and deactivation end the person's use of this device: the ring locks, the stored
+   * The Cloud Connect identity (connect.identity). Bearer mode runs the engine; a cookie page
+   * holds no device token and gets the typed runtime N/A.
+   */
+  get connect(): ConnectClient {
+    if (this.connect_) return this.connect_;
+    const b = this.bearer;
+    if (!b) return (this.connect_ = unsupportedConnect(COOKIE_DETAIL));
+    const o = this.connectOptions ?? {};
+    const name = `pkey-connect-${storeNamespace(this.product, this.base)}`;
+    return (this.connect_ = lazyConnect(
+      { now: () => this.clock(), lockName: `pkey-connect:${name}` },
+      async () =>
+        (await import("./connect/create.js")).createBrowserConnect({
+          product: this.product,
+          base: this.base,
+          bearer: b,
+          options: o,
+          now: () => this.clock(),
+          lockName: `pkey-connect:${name}`,
+          discovery: async () => {
+            await this.ensureDiscovery().catch(() => undefined);
+            return this.discovery_;
+          },
+          deviceKeys: () => this.deviceKeyPort(),
+        }),
+    ));
+  }
+
+  /**
+   * Cloud Connect over the relay (connect.app, CC-09.2): the only path a page has. Bearer mode
+   * runs it; a cookie page holds no device token and gets the typed runtime N/A. Nothing loads
+   * until `start()`.
+   */
+  get cloudConnect(): CloudConnectClient {
+    if (this.cloud_) return this.cloud_;
+    if (!this.bearer)
+      return (this.cloud_ = unsupportedCloudConnect("runtime", COOKIE_DETAIL));
+    return (this.cloud_ = createCloudConnect(this.connect));
+  }
+
+  /**
+   * Sign-out and deactivation end the person's use of this device: Connect is left (its roster,
+   * certificate and K_disc go; a failure reaches the caller, so a sign-out never leaves them
+   * behind unnoticed) and the ring locks, the stored
    * root and the pin go, so a shared browser keeps nothing of the last person's ring. A storage
    * failure reaches the caller; a sign-out that threw still runs it.
    */
   private async forgetRing(): Promise<void> {
     if (!this.bearer) return;
-    await this.keyring.forget();
+    try {
+      await this.keyring.forget();
+    } finally {
+      // The relay stops first: a session must not outlive the roster it was admitted under.
+      await this.cloudConnect.stop().catch(() => undefined);
+      await this.connect.leave();
+    }
   }
 
   /** `signIn.start` / `signIn.complete` (identity.signIn). */
@@ -2687,6 +2758,8 @@ const BEARER_ONLY = new Set<string>([
   Feature.commerceReceipt,
   // SP-58: a cookie page holds no signed licence document to send.
   Feature.coreBackend,
+  // CC-09.1: Connect rides the device token.
+  Feature.connectIdentity,
 ]);
 
 /** True when the page runs inside a Tauri webview: Tauri's injected globals, or its custom

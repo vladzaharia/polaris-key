@@ -1191,7 +1191,7 @@
   "core.codes.invalid-response.title": "意外的响应",
   "core.codes.invalid-response.message": "服务返回了应用无法使用的响应。请重试。",
   "core.codes.store-failed.title": "存储出现问题",
-  "core.codes.store-failed.message": "应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。",
+  "core.codes.store-failed.message": "无法保存到此设备。请检查存储空间后重试。",
   "core.codes.connect-unavailable.title": "无法连接",
   "core.codes.connect-unavailable.message": "此设备上的此应用无法连接附近的设备。",
   "core.codes.peer-cert-invalid.title": "无法验证设备",

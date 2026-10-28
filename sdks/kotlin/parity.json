@@ -208,15 +208,14 @@
       "status": "implemented"
     },
     "identity.exchange": {
-      "status": "planned",
-      "wp": "I-45",
+      "status": "implemented",
       "except": [
         {
           "runtime": "jvm",
           "reason": "runtime"
         }
       ],
-      "note": "Credential Manager on the Android play flavour (I-45); JVM desktop has no platform identity."
+      "note": "I-45.1/I-45.3: identity.exchangeNonce/exchange over the endpoints discovery names (Unavailable otherwise; a Worker refusal throws PolarisException); the nine exchange transcripts are replayed. The Credential Manager provider is I-45.4; JVM desktop has no platform identity."
     },
     "identity.autosignin": {
       "status": "planned",
@@ -538,7 +537,7 @@
     },
     "sync.e2e": {
       "status": "planned",
-      "wp": "U-39"
+      "wp": "U-07"
     },
     "connect.identity": {
       "status": "implemented",

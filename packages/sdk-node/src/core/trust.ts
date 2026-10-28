@@ -149,7 +149,19 @@ export class TrustManager {
    * Returns the compact JWS to persist, or null when nothing acceptable arrived. A manifest that
    * tombstoned a pin also changed `pinRevocations`, which the caller writes in the same patch.
    */
-  async refresh(): Promise<string | null> {
+  refresh(): Promise<string | null> {
+    return this.locked(() => this.refreshNow());
+  }
+
+  /** One manifest change at a time: a refresh and a peer's manifest do not interleave. */
+  private lock: Promise<unknown> = Promise.resolve();
+  private locked<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.lock.then(fn, fn);
+    this.lock = run.catch(() => undefined);
+    return run;
+  }
+
+  private async refreshNow(): Promise<string | null> {
     const first = await this.fetchManifest(null);
     if (first === null) return null;
     const verify = (jws: string) =>
@@ -190,7 +202,13 @@ export class TrustManager {
    * (anti-rollback). Returns the reason when it is refused; the caller persists `jws` and
    * `pinRevocations` when it is applied.
    */
-  async acceptPeer(
+  acceptPeer(
+    jws: string,
+  ): Promise<{ applied: true } | { applied: false; reason: string }> {
+    return this.locked(() => this.acceptPeerNow(jws));
+  }
+
+  private async acceptPeerNow(
     jws: string,
   ): Promise<{ applied: true } | { applied: false; reason: string }> {
     const base = {

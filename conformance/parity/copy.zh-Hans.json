@@ -587,7 +587,7 @@
     },
     "store-failed": {
       "title": "存储出现问题",
-      "message": "应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。"
+      "message": "无法保存到此设备。请检查存储空间后重试。"
     },
     "connect-unavailable": {
       "title": "无法连接",

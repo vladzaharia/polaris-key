@@ -378,9 +378,12 @@ extension View {
     /// ```
     public func polarisKeyGate(
         _ client: PolarisKeyClient, options: KitGateOptions = KitGateOptions(),
-        providers: [KitProvider] = [.apple], handlers: KitGateHandlers = KitGateHandlers()
+        providers: [KitProvider] = [.apple], handlers: KitGateHandlers = KitGateHandlers(),
+        autoSignIn: Bool = true
     ) -> some View {
-        PolarisKeyGate(client, options: options, providers: providers, handlers: handlers) { self }
+        var options = options
+        if !autoSignIn { options.autoSignIn = false }
+        return PolarisKeyGate(client, options: options, providers: providers, handlers: handlers) { self }
     }
 
     /// The one sign-in form as a sheet (`presentation: "sheet"`, D-79): every step morphs inside

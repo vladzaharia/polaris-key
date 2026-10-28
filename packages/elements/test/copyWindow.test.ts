@@ -40,4 +40,28 @@ describe("the copy window", () => {
     expect(() => renderView(ctx(view("signin.choice.title"), c))).toThrow();
     expect(() => renderView(ctx(view("signin.nope"), c))).toThrow();
   });
+
+  it("stays pending when the second table fails to load, and tries again", async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    let calls = 0;
+    vi.doMock("@polaris-key/brand/kit-copy/lean", async (orig) => ({
+      ...(await orig<object>()),
+      loadKitCopyEnRest: () =>
+        ++calls === 1
+          ? Promise.reject(new Error("chunk"))
+          : Promise.resolve({ "signin.choice.title": "Sign in" }),
+    }));
+    const copy = await import("../src/copy.js");
+    copy.copyFor("en");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(calls).toBe(1);
+    // A failed load is not "loaded": a lazy key is pending, never a thrown missing string.
+    expect(copy.copyPending("signin.choice.title")).toBe(true);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(calls).toBe(2);
+    expect(copy.copyPending("signin.choice.title")).toBe(false);
+    vi.useRealTimers();
+    vi.doUnmock("@polaris-key/brand/kit-copy/lean");
+  });
 });

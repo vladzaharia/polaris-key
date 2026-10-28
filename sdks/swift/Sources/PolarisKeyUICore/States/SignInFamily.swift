@@ -182,6 +182,20 @@ extension KitStates {
             ]) { a, _ in a }
         let hasDeveloper = c.identity.developer != nil
         if !hasDeveloper { args["developer"] = nil }
+        // The license line's arguments, when the consent view carried them. Without a seat the
+        // line cannot be complete, so it is left out (a named license with no seat).
+        let seatKnown = auto.position != nil && auto.limit != nil
+        if let name = auto.licenseName, seatKnown {
+            args["license"] = .text(name)
+            args["term"] =
+                auto.term.map {
+                    .line(CopyLine("signin.term.until", ["date": .text(KitFormat.date($0))]))
+                } ?? .line(CopyLine("signin.term.lifetime"))
+            args["device"] = auto.device.map { .text($0) } ?? c.thisDeviceTitle
+            args["position"] = .number(auto.position ?? 0)
+            args["limit"] = .number(auto.limit ?? 0)
+        }
+        let lineDrawn = auto.licenseName == nil || seatKnown
         let tierKnown = !(c.i.account?.tier ?? "").isEmpty
         func lines(_ keys: String?...) -> [CopyLine] { keys.compactMap { $0 }.map { c.line($0, args) } }
         switch auto.step {
@@ -198,7 +212,7 @@ extension KitStates {
                     // the choice row's "Created when you continue".
                     license == "new"
                         ? (tierKnown ? "signin.consent.newLicense" : "signin.choice.metaNew") : nil,
-                    license == "existing" ? "signin.consent.licenseLine" : nil,
+                    license == "existing" && lineDrawn ? "signin.consent.licenseLine" : nil,
                     also ? "signin.consent.alsoGets" : nil,
                     also ? "signin.consent.profile" : nil,
                     also ? "signin.consent.pairwise" : nil,

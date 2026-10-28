@@ -13,6 +13,22 @@ Anchor/Card/Body/Row/Glyph: TextureRect
 Anchor/Card/Body/Row/Texts/Title: Label "Signed in as Mara"
 Anchor/Card/Body/Row/Texts/Consequence: Label "Pro license"
 Anchor/Card/Body/Timer: ProgressBar
+== success: signed in with the tier ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Signed in as Mara · Pro license"
+Anchor/Card/Body/Timer: ProgressBar
+== success: signed in, a long name ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Signed in as Mara Lindqvist-Fenn… · Founder's Edition license"
+Anchor/Card/Body/Timer: ProgressBar
+== info: key entries left ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "2 key entries left"
+Anchor/Card/Body/Timer: ProgressBar
+== info: no key entries left ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "0 key entries left"
+Anchor/Card/Body/Timer: ProgressBar
 == warning ==
 Anchor/Card/Body/Row/Glyph: TextureRect
 Anchor/Card/Body/Row/Texts/Title: Label "Autosave is off"
