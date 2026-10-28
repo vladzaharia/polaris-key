@@ -41,16 +41,18 @@ export {
   CLOUD_SYNC_THUMBNAIL_MAX_CHARS,
   CLOUD_SYNC_TEMPLATES,
   resolveCollection,
-  isEditable,
-  settingRoute,
-  syncedSettings,
   userSettingIssues,
   mergeMembersOverLimit,
   type ResolvedCollection,
   type CloudSyncTemplateDef,
-  type SettingRoute,
   type UserSettingIssue,
 } from "./cloudSync.js";
+export {
+  isEditable,
+  settingRoute,
+  syncedSettings,
+  type SettingRoute,
+} from "./syncRoutes.js";
 export { Catalog, type ValidationResult } from "./catalog.js";
 export {
   representabilityIssue,

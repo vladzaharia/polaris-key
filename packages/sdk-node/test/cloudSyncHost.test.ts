@@ -17,11 +17,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import type { Store } from "@polaris-key/client-core";
 import type { PolarisKeyClient } from "../src/client.js";
 import { CATALOG_REFETCH_MS, CloudSyncHost } from "../src/cloudSync/host.js";
+import { CloudSyncStateFile } from "../src/cloudSync/state.js";
 import { readCappedText } from "../src/core/boundedBody.js";
 import {
   CATALOG,
@@ -128,6 +129,46 @@ describe("cloud sync host: the ring gates every request (S3)", () => {
     await host.touch();
     const p = host.machine.persist().partitions[SUBJECT]!;
     expect(p.cursor).toBe(0);
+    client.close();
+  });
+});
+
+describe("cloud sync host: a wake-up is never lost", () => {
+  it("start, then signIn, then touch sends the pull (the touch lands while start's own pump settles)", async () => {
+    const w = new World();
+    const { client, host } = await rig(w);
+    await client.keyring.create();
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    await host.touch();
+    expect(w.syncReqs.some((r) => r.method === "GET")).toBe(true);
+    client.close();
+  });
+
+  it("a touch that lands while the pump saves is run, not dropped", async () => {
+    const w = new World();
+    const { client, host } = await rig(w);
+    await client.keyring.create();
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    const save = CloudSyncStateFile.prototype.save;
+    let injected = false;
+    const spy = vi
+      .spyOn(CloudSyncStateFile.prototype, "save")
+      .mockImplementation(async function (this: CloudSyncStateFile, file) {
+        if (!injected) {
+          injected = true;
+          // The pump's loop has looked and found nothing; new work arrives while it saves.
+          host.machine.set("theme", "late");
+          host.machine.flush();
+          void host.touch();
+        }
+        await new Promise((r) => setTimeout(r, 20));
+        return save.call(this, file);
+      });
+    await host.touch();
+    spy.mockRestore();
+    expect(w.syncReqs.some((r) => r.method === "POST")).toBe(true);
     client.close();
   });
 });
