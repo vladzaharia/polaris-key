@@ -25,6 +25,7 @@ package im.plrs.key.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -678,6 +679,13 @@ internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polar
 public fun PolarisTitle(text: String, modifier: Modifier = Modifier) {
     val window = polarisWindow
     val typography = MaterialTheme.typography
+    // A screen reader reading by touch lands on the step's heading when the step appears (as the React
+    // and SwiftUI kits do), so the person hears where they are before any control. Everyone else is unchanged.
+    val requester = remember { FocusRequester() }
+    val screenReader = rememberScreenReaderOn() && LocalPolarisInitialFocus.current
+    if (screenReader) {
+        LaunchedEffect(text) { runCatching { requester.requestFocus() } }
+    }
     Text(
         text = text,
         style = when {
@@ -687,7 +695,7 @@ public fun PolarisTitle(text: String, modifier: Modifier = Modifier) {
         }.copy(lineBreak = LineBreak.Heading),
         color = MaterialTheme.colorScheme.onSurface,
         textAlign = LocalPolarisTextAlign.current,
-        modifier = modifier.fillMaxWidth().semantics { heading() },
+        modifier = (if (screenReader) modifier.focusRequester(requester).focusable() else modifier).fillMaxWidth().semantics { heading() },
     )
 }
 
