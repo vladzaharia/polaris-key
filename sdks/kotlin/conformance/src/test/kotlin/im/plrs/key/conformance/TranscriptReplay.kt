@@ -10,11 +10,21 @@
 
 package im.plrs.key.conformance
 
+import im.plrs.key.core.CoreContext
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.PolarisTransport
 import im.plrs.key.core.arrayValue
+import im.plrs.key.core.boolValue
+import im.plrs.key.core.jsonInt
+import im.plrs.key.core.longValue
+import im.plrs.key.core.sync.HostCodec
+import im.plrs.key.core.sync.SyncBlind
+import im.plrs.key.core.sync.SyncCodecPort
+import im.plrs.key.core.sync.SyncEnvelope
+import im.plrs.key.core.sync.SyncResponse
+import im.plrs.key.sdk.CloudSyncTransport
 import im.plrs.key.core.jsonEquals
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
@@ -423,5 +433,197 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         val first = candidates.first().value
         failures += "request $label does not match the recording:\n    " + problems(first, method, headers, body).joinToString("\n    ")
         PolarisResponse(599, "replay: no matching exchange".toByteArray())
+    }
+}
+
+// ── Cloud Sync settings (U-07.K11, `sync.settings`) ─────────────────────────────────────────
+
+/**
+ * Forwards to the replay server, remembers the last response's headers (lower-cased: `SyncResponse` does not
+ * carry the ETag or Retry-After) and adds the last pull's ETag as If-None-Match to the next pull.
+ */
+class HeaderTap(private val inner: PolarisTransport) : PolarisTransport {
+    @Volatile
+    var lastHeaders: Map<String, String> = emptyMap()
+        private set
+
+    /** The ETag the next pull sends as If-None-Match; empty sends none. */
+    @Volatile
+    var ifNoneMatch: String = ""
+
+    override suspend fun send(request: PolarisRequest): PolarisResponse {
+        lastHeaders = emptyMap()
+        val sent = if (request.method == "GET" && ifNoneMatch.isNotEmpty()) {
+            request.copy(headers = request.headers + ("if-none-match" to ifNoneMatch))
+        } else {
+            request
+        }
+        val r = inner.send(sent)
+        lastHeaders = r.headers.mapKeys { it.key.lowercase() }
+        return r
+    }
+}
+
+/** The host codec over a root made for the replay: not the recorder's, so every recorded `ct` reads invalid. */
+class FixtureSyncCodec(private val root: ByteArray) : SyncCodecPort {
+    override val locked: Boolean get() = false
+    override fun seal(collection: String, name: String, value: JsonElement): ByteArray = SyncEnvelope.seal(root, collection, name, value)
+    override fun open(collection: String, name: String, envelope: ByteArray, aliases: List<String>) =
+        SyncEnvelope.open(root, collection, name, envelope, aliases)
+
+    override fun openAny(collection: String, envelope: ByteArray) = SyncEnvelope.openAnyName(root, collection, envelope)
+    override fun blind(kind: SyncBlind.Kind, ctx: String, name: String): String = SyncBlind.blind(root, kind, ctx, name)
+}
+
+object CloudSyncReplay {
+    private val declared = listOf("ui.theme", "audio.volume")
+    private val e2eNames = listOf("ui.theme", "my.open.key", "game.best")
+    private val e2eDeclared = listOf("ui.theme", "game.best")
+    private const val CLIENT_ID = "c_AAAAAAAAAAAAAAAAAAAAAA"
+    private const val HLC = "018bcfe56418:0000"
+
+    /** A ring root made for the replay. */
+    val root: ByteArray = ByteArray(32) { (11 * it + 5).toByte() }
+
+    /** One label per mutation result, in the transcript format's words. */
+    fun resultLabel(r: JsonElement): String {
+        val o = r as? JsonObject
+        val status = o?.get("status").stringValue ?: return "?"
+        return when (status) {
+            "ok" -> when {
+                o!!["renamedTo"].stringValue != null -> "ok:renamedTo:" + o["renamedTo"].stringValue
+                o["dropped"].boolValue == true -> "ok:dropped"
+                else -> "ok"
+            }
+
+            "rejected" -> {
+                val code = o!!["code"].stringValue ?: "?"
+                o["scope"].stringValue?.let { "rejected:$code:$it" } ?: "rejected:$code"
+            }
+
+            else -> status
+        }
+    }
+
+    private fun number(v: JsonElement?): Boolean = (v as? JsonPrimitive)?.let { !it.isString && it.content.toDoubleOrNull() != null } == true
+
+    /**
+     * `cloudSyncPull` / `cloudSyncPush` through `CloudSyncTransport` (the bearer and the X-PKey headers). A pull
+     * sends the last ETag it saw as If-None-Match. The end-to-end transcript is sealed by `HostCodec.sealPush`
+     * and opened by `openPull` over a fixture root, so every recorded `ct` reads invalid.
+     */
+    suspend fun run(core: CoreContext, step: JsonObject, session: ReplaySession, out: MutableMap<String, JsonElement>) {
+        val tap = session.tap ?: throw AssertionError("no header tap")
+        val codec = session.codec
+        val pull = step["action"].stringValue == "cloudSyncPull"
+        val args = step["args"]!!.obj
+        val cursor = args["cursor"].longValue ?: 0L
+        val mutations = ArrayList<JsonElement>()
+        val request: JsonObject
+        if (pull) {
+            tap.ifNoneMatch = session.syncEtag
+            request = JsonObject(mapOf("method" to JsonPrimitive("GET"), "path" to JsonPrimitive("/${core.product}/sync?cursor=$cursor")))
+        } else {
+            tap.ifNoneMatch = ""
+            val names = if (codec != null) e2eNames else declared
+            for (i in 0 until (args["mutations"].longValue ?: 0L).toInt()) {
+                val id = session.syncNextId + i
+                mutations += JsonObject(
+                    mapOf(
+                        "mutationId" to jsonInt(id.toLong()),
+                        "target" to JsonObject(mapOf("setting" to JsonPrimitive(names[i % names.size]), "scope" to JsonPrimitive("user"))),
+                        "op" to JsonPrimitive("set"),
+                        "value" to JsonPrimitive("generated-$id"),
+                        "editedHlc" to JsonPrimitive(HLC),
+                    ),
+                )
+            }
+            val body = LinkedHashMap<String, JsonElement>()
+            body["clientId"] = JsonPrimitive(CLIENT_ID)
+            body["cursor"] = jsonInt(cursor)
+            body["mutations"] = JsonArray(mutations)
+            if (args["atomic"].boolValue == true) body["atomic"] = JsonPrimitive(true)
+            var sealed: JsonElement = JsonObject(body)
+            if (codec != null) sealed = HostCodec.sealPush(sealed, codec, e2eDeclared)
+            request = JsonObject(mapOf("method" to JsonPrimitive("POST"), "path" to JsonPrimitive("/${core.product}/sync/ops"), "body" to sealed))
+        }
+        val answer: SyncResponse = CloudSyncTransport.send(core, request)
+        if (answer.transportError) {
+            out["result"] = JsonPrimitive("transport")
+            return
+        }
+        val headers = tap.lastHeaders
+        val status = answer.status
+        if (pull) headers["etag"]?.let { session.syncEtag = it }
+        if (status == 304) {
+            out["result"] = JsonPrimitive("not-modified")
+            return
+        }
+        if (status < 200 || status >= 300) {
+            out["result"] = JsonPrimitive("refused")
+            out["status"] = jsonInt(status.toLong())
+            answer.body.objectValue?.get("error").objectValue?.get("code").stringValue?.takeIf { it.isNotEmpty() }
+                ?.let { out["code"] = JsonPrimitive(it) }
+            headers["retry-after"]?.toLongOrNull()?.let { out["retryAfter"] = jsonInt(it) }
+            return
+        }
+        var served: JsonElement? = answer.body
+        if (codec != null && answer.body != null) {
+            val opened = HostCodec.openPull(answer.body!!, codec, mutations)
+            served = opened.body
+            val rows = opened.opened.changes.filterNotNull() + opened.opened.conflicts.values.filterNotNull()
+            for (row in rows) {
+                if (!(row.invalid && !row.sealed)) throw AssertionError("a fixture ct opened: $row")
+            }
+            if (rows.isEmpty() && answer.body.objectValue?.get("changes").arrayValue?.isNotEmpty() == true) {
+                throw AssertionError("e2e answer carried changes but no opened rows")
+            }
+        }
+        out["result"] = JsonPrimitive("ok")
+        val b = served as? JsonObject ?: return
+        b["cursor"]?.takeIf { number(it) }?.let { out["cursor"] = it }
+        b["more"].boolValue?.let { out["more"] = JsonPrimitive(it) }
+        out["empty"] = JsonPrimitive(b["empty"].boolValue == true)
+        val names = (b["changes"].arrayValue ?: JsonArray(emptyList())).mapNotNull { it.objectValue?.get("setting").stringValue }
+        out["settings"] = JsonArray(names.sortedWith { x, y -> compareUtf16(x, y) }.map { JsonPrimitive(it) })
+        b["quota"].objectValue?.let { q ->
+            q["bytes"]?.takeIf { number(it) }?.let { out["quotaBytes"] = it }
+            q["files"].boolValue?.let { out["files"] = JsonPrimitive(it) }
+        }
+        b["encryption"].stringValue?.let { out["encryption"] = JsonPrimitive(it) }
+        b["encryptionSince"]?.takeIf { number(it) }?.let { out["encryptionSince"] = it }
+        b["aliases"]?.takeIf { it is JsonObject }?.let { out["aliases"] = it }
+        if (!pull) {
+            val last = b["lastMutationId"]
+            if (last != null && last.longValue != null) {
+                out["lastMutationId"] = last
+                session.syncNextId = last.longValue!!.toInt() + 1
+            }
+            out["results"] = JsonArray((b["results"].arrayValue ?: JsonArray(emptyList())).map { JsonPrimitive(resultLabel(it)) })
+        }
+    }
+
+    private fun compareUtf16(a: String, b: String): Int = a.compareTo(b)
+
+    /**
+     * A CORS exchange (`cloudsync-cors`): the browser's own. The preflight is the test's own bare request (no SDK
+     * headers); the push is the SDK's own POST with its headers, the bearer and the recorded origin.
+     */
+    suspend fun cors(core: CoreContext, step: JsonObject, transport: PolarisTransport) {
+        for (item in step["exchanges"]!!.obj["items"]!!.arrayValue!!) {
+            val req = item.obj["request"]!!.obj
+            val method = req["method"].stringValue!!
+            val url = core.endpoints.baseUrl + req["path"].stringValue
+            val given = req["headers"].objectValue?.mapValues { it.value.stringValue!! } ?: emptyMap()
+            if (method == "OPTIONS") {
+                runCatching { transport.send(PolarisRequest(url = url, method = "OPTIONS", headers = given)) }
+                continue
+            }
+            val extra = linkedMapOf("content-type" to "application/json", "accept" to "application/json")
+            given["origin"]?.let { extra["origin"] = it }
+            core.token()?.let { extra["authorization"] = "Bearer $it" }
+            val body = req["body"]?.takeIf { it !is JsonNull }?.obj?.get("json")?.toString()?.toByteArray(Charsets.UTF_8)
+            runCatching { transport.send(PolarisRequest(url = url, method = method, headers = core.headers(extra), body = body)) }
+        }
     }
 }
