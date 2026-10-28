@@ -73,6 +73,7 @@ export type WriteMethod =
   | "grantRole"
   | "editBindingAreas"
   | "revokeBinding"
+  | "signOutMember"
   | "revokeMyPersonalToken"
   | "createPlatformConnection"
   | "updatePlatformConnection"
@@ -463,6 +464,11 @@ export const MUTATIONS: MutationTable = {
   },
   revokeBinding: {
     label: "role revoke",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  // ST-34.12: the roster's sign-in times and the preview move; the platform trail gets `rbac.signout`.
+  signOutMember: {
+    label: "member sign-out",
     invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
   },
   // ST-31.14: the product twins also move the platform roster and the access lists NoAccess reads.

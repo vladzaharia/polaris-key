@@ -142,6 +142,29 @@ export interface Member {
   roles: MemberRole[];
 }
 
+/** One admin token a sign-out would stop: label and last use only, never an id or the token. */
+export interface SignOutToken {
+  label: string;
+  /** Epoch seconds; `null` when it was never used. */
+  lastUsedAt: number | null;
+  expiresAt: number;
+}
+
+/** `GET /manage/api/members/<id>/sign-out`: the dry run (ST-34.12). */
+export interface SignOutPreview {
+  memberId: string;
+  tokens: SignOutToken[];
+}
+
+/** `POST /manage/api/members/<id>/sign-out`. */
+export interface SignOutResult {
+  ok: true;
+  memberId: string;
+  sessions: number;
+  tokens: number;
+  notified: boolean;
+}
+
 export interface MemberInvite {
   bindingId: string;
   email: string;
@@ -1294,6 +1317,14 @@ export const platformApi = {
   revokeBinding: (id: string) =>
     call<{ ok: true }>(`/manage/api/bindings/${enc(id)}`, {
       method: "DELETE",
+    }),
+  /** What signing a member out everywhere would stop (writes nothing). */
+  memberSignOutPreview: (memberId: string) =>
+    call<SignOutPreview>(`/manage/api/members/${enc(memberId)}/sign-out`),
+  /** End a member's console sessions and admin tokens (packages tokens stay). */
+  signOutMember: (memberId: string) =>
+    call<SignOutResult>(`/manage/api/members/${enc(memberId)}/sign-out`, {
+      method: "POST",
     }),
   /**
    * Product → Settings → Members (ST-31.14): who holds access to one product. The Worker leaves

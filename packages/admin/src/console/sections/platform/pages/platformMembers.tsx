@@ -42,8 +42,10 @@ import { useTableUrlState } from "../../../useTableUrlState.js";
 import { InviteDrawer } from "../../../access/InviteDrawer.js";
 import type { ProductName } from "../../../access/InviteDrawerParts.js";
 import {
+  cannotSignOut,
   RemoveMemberDialog,
   RevokeInviteDialog,
+  SignOutMemberDialog,
 } from "./platformMembersDialogs.js";
 import {
   AccessLines,
@@ -90,6 +92,7 @@ export function PlatformMembers(): React.ReactElement {
     null,
   );
   const [removing, setRemoving] = React.useState<string | null>(null);
+  const [signingOut, setSigningOut] = React.useState<string | null>(null);
   const [revoking, setRevoking] = React.useState<MemberInvite | null>(null);
 
   const products = React.useMemo(
@@ -309,6 +312,18 @@ export function PlatformMembers(): React.ReactElement {
         onSelect: () => setRemoving(m.memberId),
         disabledReason: removeWhy,
       },
+      // Hidden on your own row: the ordinary Sign out is for that.
+      ...(m.you
+        ? []
+        : [
+            {
+              label: "Sign out everywhere…",
+              tone: "danger" as const,
+              onSelect: () => setSigningOut(m.memberId),
+              disabledReason:
+                write.disabledReason ?? cannotSignOut(me, m, productName),
+            },
+          ]),
       { type: "separator" },
       {
         label: "Show activity",
@@ -486,6 +501,10 @@ export function PlatformMembers(): React.ReactElement {
         me={me}
         productName={productName}
         onClose={() => setRemoving(null)}
+      />
+      <SignOutMemberDialog
+        member={roster?.members.find((m) => m.memberId === signingOut) ?? null}
+        onClose={() => setSigningOut(null)}
       />
       <RevokeInviteDialog
         invite={revoking}

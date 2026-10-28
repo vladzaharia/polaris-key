@@ -207,7 +207,7 @@ export function cannotTake(
   me: Me | undefined,
   role: MemberRole,
   productName: (slug: string) => string = (s) => s,
-  verb: "remove" | "revoke" = "remove",
+  verb: "remove" | "revoke" | "sign out" = "remove",
 ): string | undefined {
   if (role.bindingId === null)
     return "This comes from the root rule. It can't be removed here.";
