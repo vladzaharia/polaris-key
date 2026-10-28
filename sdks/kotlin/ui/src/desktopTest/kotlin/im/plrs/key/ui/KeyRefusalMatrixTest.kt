@@ -116,7 +116,7 @@ class KeyRefusalMatrixTest {
     fun theRefusalsSayTheCatalogsWords() {
         withPlatform("Windows") {
             matrixFrame(390, 844, dark = false, content = refusalScreens[0].content, after = {
-                onNodeWithText("Add it to your account and sign in instead.").assertExists()
+                onNodeWithText("Sign in and add this key to your Polaris Locker account instead.").assertExists()
                 onNodeWithText("Tidewater Studio").assertExists()
                 onNodeWithText("Add it in Polaris Locker").assertExists()
                 onNodeWithText("Use a different key").assertExists()

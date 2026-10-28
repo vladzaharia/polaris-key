@@ -96,7 +96,7 @@ private val controlKeys = setOf(
     "deviceLimit.primary", "deviceLimit.openBrowser", "devices.manage", "activate.submit", "boot.continueOffline",
     "signin.again", "toast.undo", "common.dismiss",
     "signin.key.ownedSignIn", "signin.auto.confirm.primary", "signin.auto.confirm.other", "signin.linkOffer.primary",
-    "signin.linkOffer.decline", "signin.nearby.code", "signin.nearby.notYou", "signin.nearby.deny", "signin.nearby.menu",
+    "signin.linkOffer.decline", "signin.linkOffer.join", "signin.key.signIn", "signin.nearby.code", "signin.nearby.notYou", "signin.approve.deny", "signin.nearby.menu",
 )
 
 /**
@@ -107,7 +107,7 @@ private val tertiaryKeys = setOf(
     "welcome.trial", "welcome.continueFree", "welcome.restore", "welcome.offline", "paywall.redeem",
     "signin.choice.keyInstead", "signin.handoff.useCode", "update.skipVersion", "update.allChanges", "signin.choice.freeDevice",
     "signin.key.differentKey", "signin.auto.confirm.other", "signin.linkOffer.decline", "signin.nearby.code",
-    "signin.nearby.notYou", "signin.nearby.deny", "common.notNow",
+    "signin.nearby.notYou", "signin.approve.deny", "signin.linkOffer.join", "common.notNow",
 )
 
 /**
@@ -398,6 +398,13 @@ private fun KitScreenBody(
             ordered.forEachIndexed { index, line ->
                 // The caption belongs to the meter, which draws it.
                 if (meters && line.key == "part.seatMeter.caption") return@forEachIndexed
+                // The add-key page as a QR on a TV; its caption sits under it, only when the host gave the link (DL14).
+                if (line.key == "signin.key.scan" && addKeyUrl != null) {
+                    lines.firstOrNull { it.key == "a11y.qrAddKey" }?.let {
+                        PolarisQr(addKeyUrl, it.text, Modifier.size(polarisWindow.qrSize))
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
                 val step = if (offline) offlineStep(line.key) else null
                 when {
                     // The confirm's first line is bold body text, read before the button (4.3 DeviceLimit item 7).
@@ -427,13 +434,6 @@ private fun KitScreenBody(
                         },
                     )
                     Spacer(Modifier.height(8.dp))
-                }
-                // The add-key page as a QR on a TV, under its caption; only when the host gave the link (DL14).
-                if (line.key == "signin.key.scan" && addKeyUrl != null) {
-                    lines.firstOrNull { it.key == "a11y.qrAddKey" }?.let {
-                        PolarisQr(addKeyUrl, it.text, Modifier.size(polarisWindow.qrSize))
-                        Spacer(Modifier.height(8.dp))
-                    }
                 }
                 if (meters && line.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage")) KitSeatMeter(screen)
             }

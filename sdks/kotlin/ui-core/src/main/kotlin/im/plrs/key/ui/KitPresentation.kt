@@ -74,6 +74,7 @@ public enum class KitAction(public val id: String) {
             "devices.manage" to openManageUrl,
             "signin.key.addInLocker" to openManageUrl,
             "signin.key.ownedSignIn" to startSignIn,
+            "signin.key.signIn" to startSignIn,
             "signin.handoff.copyLink" to copyLink,
             "a11y.copyAddress" to copyLink,
             "common.tryAgain" to retry,

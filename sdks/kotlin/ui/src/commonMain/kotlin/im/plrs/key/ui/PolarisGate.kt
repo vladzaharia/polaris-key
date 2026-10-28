@@ -393,10 +393,11 @@ public fun PolarisActivationScreen(
     // After a key-entry-limit refusal on TV: the link as a QR code.
     val refusalNote: @Composable () -> Unit = {
         if (qrOnScreen) {
-            Spacer(Modifier.height(PolarisSpace.tight))
-            PolarisBody(KitCopy.bundled.format("signin.key.scan", kitLocale()))
             Spacer(Modifier.height(polarisWindow.section))
             PolarisQr(manage, KitCopy.bundled.format("a11y.qrAddKey", kitLocale()), Modifier.size(polarisWindow.qrSize))
+            // The caption sits under the code.
+            Spacer(Modifier.height(PolarisSpace.tight))
+            PolarisBody(KitCopy.bundled.format("signin.key.scan", kitLocale()))
         }
     }
     // Opening the key path puts the cursor in the field, so the person can type or paste at once.

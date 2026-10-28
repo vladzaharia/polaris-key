@@ -84,7 +84,7 @@ internal fun keyRefusalScreen(component: KitComponent, refusal: KeyRefusal, acti
     val lines = mutableListOf(
         context.line(if (limit) "core.activation.key-entry-limit.title" else "core.codes.license_owned.title"),
         context.line(if (limit) "core.activation.key-entry-limit.message" else "core.codes.license_owned.message"),
-        context.line("signin.key.ownedSignIn"),
+        context.line(if (limit) "signin.key.signIn" else "signin.key.ownedSignIn"),
     )
     if (link != null) {
         if (context.inputs.isTv) {

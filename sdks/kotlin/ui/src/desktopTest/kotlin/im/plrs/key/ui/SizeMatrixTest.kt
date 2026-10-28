@@ -90,7 +90,7 @@ internal val matrixScreens: List<MatrixScreen> = listOf(
     MatrixScreen("nearby-wait", Regex("use a code instead", RegexOption.IGNORE_CASE)) {
         PolarisKitScreen(autoStep("nearby-wait"))
     },
-    MatrixScreen("nearby-approval", Regex("not now", RegexOption.IGNORE_CASE)) {
+    MatrixScreen("nearby-approval", Regex("deny", RegexOption.IGNORE_CASE)) {
         PolarisKitScreen(KitStates.resolve(KitComponent.nearbyApproval, KitInputs.of(mapOf("nearbyApproval" to buildJsonObject { put("step", "ask"); put("device", "Kitchen iPad") }))))
     },
     MatrixScreen("device-limit", Regex("browser|manage|replace", RegexOption.IGNORE_CASE)) {
