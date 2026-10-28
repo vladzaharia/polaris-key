@@ -570,6 +570,7 @@ const GODOT_SCRIPT: Record<string, string> = {
   packs: `"res://addons/polaris_key/services/packs.gd"`,
   presentation: `"res://addons/polaris_key/core/presentation.gd"`,
   options: `"res://addons/polaris_key/core/options.gd"`,
+  cloudSync: `"res://addons/polaris_key/services/cloud_sync.gd"`,
 };
 const GODOT_HANDLE = `"res://addons/polaris_key/services/config/setting.gd"`;
 const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;

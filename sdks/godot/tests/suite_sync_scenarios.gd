@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature sync.scenarios
-# @pkey-feature sync.settings
+# @pkey-feature sync.settings config.sync
 # `sync-scenarios.json`: the Cloud Sync client state machine and the setting routes.
 #
 # Mirrors sdks/python/tests/test_sync_scenarios.py. The corpus is read from the generator-owned

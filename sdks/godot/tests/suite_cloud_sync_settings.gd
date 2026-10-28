@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature sync.settings
+# @pkey-feature sync.settings config.sync
 # The Cloud Sync settings API (U-21.9) on a real autoload over a loopback server. One group per rule
 # of the plan's section 3: A-1 to A-7, and the sign-out chain (flush, machine sign-out, ring forget,
 # purge) in that order.
