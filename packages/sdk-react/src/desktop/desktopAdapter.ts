@@ -993,7 +993,9 @@ export class DesktopAdapter implements PolarisAdapter {
       );
     if (opts.channel === "redirect")
       throw this.fail("identity", this.noRedirect(Feature.identityRedirectWeb));
-    if (opts.channel !== "device-code")
+    // The kit's "browser" channel is the device-code session here: the host opens the page.
+    const channel = (opts as { channel: string }).channel;
+    if (channel !== "device-code" && channel !== "browser")
       throw this.fail(
         "identity",
         new PolarisError(
@@ -1008,7 +1010,9 @@ export class DesktopAdapter implements PolarisAdapter {
       opts.nameHint !== undefined ||
       opts.purpose !== undefined ||
       opts.scope !== undefined ||
-      opts.licenseChoice !== undefined
+      // `card` is what `beginSignIn` does already; a hint for the app's own choice is not.
+      (opts.licenseChoice !== undefined &&
+        (opts.licenseChoice as string) !== "card")
     )
       throw this.fail(
         "identity",

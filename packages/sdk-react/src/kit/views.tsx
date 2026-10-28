@@ -565,6 +565,13 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
   const errorKeys = plainBody
     ? p.body.filter((k) => k === REFUSAL_ERROR_KEY)
     : p.body.filter(isErrorKey);
+  // A sign-in that failed to start is said on the Welcome too (its model has no error slot).
+  if (
+    view.component === "Welcome" &&
+    c.input.error?.code === "sign-in-failed" &&
+    !errorKeys.includes(REFUSAL_ERROR_KEY)
+  )
+    errorKeys.push(REFUSAL_ERROR_KEY);
   const body = plainBody
     ? p.body.filter((k) => k !== REFUSAL_ERROR_KEY)
     : p.body.filter((k) => !isErrorKey(k));

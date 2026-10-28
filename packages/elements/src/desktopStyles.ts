@@ -424,6 +424,41 @@ export const DESKTOP_CSS = String.raw`
   overflow: hidden auto;
   max-block-size: calc(100dvh - 4.25rem);
 }
+/* The Settings sheet holds a bare pane, not a card: the dialog is capped to the window, the pane
+   scrolls its body and Done stays pinned under it (like the card rules above). */
+.pk-root[data-pk-platform="windows"] dialog.sheet[open]:has(> .pane),
+.pk-root[data-pk-platform="macos"] dialog.sheet[open]:has(> .pane),
+.pk-root[data-pk-platform="gnome"] dialog.sheet[open]:has(> .pane) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-block-size: calc(100dvh - 3rem);
+}
+.pk-root[data-pk-platform="macos"] dialog.sheet[open]:has(> .pane) {
+  max-block-size: calc(100dvh - 4.25rem);
+}
+.pk-root[data-pk-platform="windows"] dialog.sheet > .pane,
+.pk-root[data-pk-platform="macos"] dialog.sheet > .pane,
+.pk-root[data-pk-platform="gnome"] dialog.sheet > .pane {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: hidden auto;
+  padding-block-end: 0;
+  border-radius: inherit;
+  background: none;
+  box-shadow: none;
+}
+.pk-root[data-pk-platform="windows"] dialog.sheet > .pane > .actions,
+.pk-root[data-pk-platform="macos"] dialog.sheet > .pane > .actions,
+.pk-root[data-pk-platform="gnome"] dialog.sheet > .pane > .actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  margin-inline: calc(-1 * var(--pk-space-6));
+  padding: var(--pk-space-4) var(--pk-space-6);
+  background: var(--pk-surface-raised);
+  border-block-start: 1px solid var(--pk-border-subtle);
+}
 /* Only the filled buttons take side padding; links sit on the column's edge. */
 .pk-root[data-pk-platform="macos"] .btn:is([data-variant="link"]) {
   min-inline-size: 0;

@@ -255,6 +255,17 @@ export function callbackState(callbackUrl: string): string | null {
 /** Open a link in a new tab. Only an https link (or loopback http) opens; true when it did. */
 export function openUrl(url: string): Promise<boolean> {
   if (!isSecureTransportUrl(url)) return Promise.resolve(false);
+  // A desktop host with a bridge opens it in the system browser (the sample refuses popups).
+  const bridge =
+    typeof window === "undefined"
+      ? undefined
+      : (
+          window as {
+            polarisKey?: { openExternal?: (u: string) => Promise<boolean> };
+          }
+        ).polarisKey;
+  if (typeof bridge?.openExternal === "function")
+    return bridge.openExternal(url).catch(() => false);
   if (typeof window === "undefined" || typeof window.open !== "function")
     return Promise.resolve(false);
   window.open(url, "_blank", "noopener,noreferrer");
