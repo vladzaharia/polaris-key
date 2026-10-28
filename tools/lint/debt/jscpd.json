@@ -29,6 +29,9 @@
     "conformance/runners/node/suites.ts": {
       "jscpd:duplicate": 23
     },
+    "conformance/runners/node/syncVectors.test.ts": {
+      "jscpd:duplicate": 2
+    },
     "conformance/runners/node/transcriptReplay.ts": {
       "jscpd:duplicate": 3
     },
@@ -1328,6 +1331,9 @@
     "packages/client-core/src/semver.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/client-core/src/sync/fileStream.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/client-core/src/trust.ts": {
       "jscpd:duplicate": 1
     },
@@ -1344,10 +1350,10 @@
       "jscpd:duplicate": 1
     },
     "packages/client-core/test/cloudSync.test.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 3
     },
     "packages/client-core/test/cloudSyncE2e.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 6
     },
     "packages/client-core/test/content.test.ts": {
       "jscpd:duplicate": 17
@@ -3104,6 +3110,9 @@
     "packages/worker/test/core/headersCorpus.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/worker/test/core/keyring/store.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/test/core/licenseMerge.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -4406,6 +4415,9 @@
     "tools/corpus/reference/revocation.ts": {
       "jscpd:duplicate": 1
     },
+    "tools/corpus/reference/syncVectors.ts": {
+      "jscpd:duplicate": 1
+    },
     "tools/corpus/reference/update.ts": {
       "jscpd:duplicate": 2
     },
@@ -4416,6 +4428,9 @@
       "jscpd:duplicate": 1
     },
     "tools/corpus/stage.ts": {
+      "jscpd:duplicate": 2
+    },
+    "tools/corpus/syncVectors.ts": {
       "jscpd:duplicate": 2
     },
     "tools/corpus/trust.ts": {
