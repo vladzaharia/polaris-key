@@ -241,6 +241,13 @@ public enum RegisterResult: Sendable, Equatable {
 // 401, and either way the single attempt is spent and the hard-401 path applies.
 
 /// How the current device token was obtained in this process.
+/// What a held token is, for automatic sign-in's rung 1: a `signin` (an account session), a
+/// `register` (a keyless enrolment or device registration) or a `key` (a licence key, or an
+/// account sign-out that left the device activated by key).
+public enum TokenProvenance: String, Sendable, Equatable {
+    case signin, register, key
+}
+
 public enum TokenSource: String, Sendable, Equatable {
     case activate, enroll, register, signin, reacquire
 }
@@ -367,6 +374,8 @@ public actor CoreContext {
     private var tokenSourceValue: TokenSource?
     /// `explicitSignOut` held for this process; the store's record carries it across launches.
     private var explicitSignOutValue = false
+    private var signOutGenerationValue = 0
+    private var provenanceValue: TokenProvenance?
     private var discoveredServices: ServicesMap?
     private var discoveryDocumentValue: ProductDiscoveryDocument?
     /// Tier 2 — REPLACED, never merged into, on every successful verification (§1 rule 2).
@@ -461,7 +470,20 @@ public actor CoreContext {
 
     /// Store `token`. `source` is how it was obtained; nil means unknown, which routes a later
     /// re-acquire exactly as after a restart.
-    public func setToken(_ token: String, source: TokenSource? = nil) async throws {
+    ///
+    /// `provenance` is what the device holds the token as (rung 1 of automatic sign-in counts only
+    /// `.signin`); nil derives it from `source` (`.signin`, `.register` and `.enroll` map to
+    /// themselves, `.activate` to `.key`; `.reacquire` and nil keep what is held). `person` is true
+    /// for a sign-in the person started (redirect, device code, `choice.complete`, the sign-in
+    /// form's provider button): only that ends the signed-out state.
+    public func setToken(
+        _ token: String, source: TokenSource? = nil, provenance: TokenProvenance? = nil,
+        person: Bool = false
+    ) async throws {
+        let derived = provenance ?? Self.derive(source)
+        // Crash-safe order: the old provenance goes first and the new one is written last, so a
+        // crash between leaves none, which rung 1 reads as "not a sign-in".
+        if derived != nil { await writeProvenance(nil) }
         do {
             try await store.setToken(token)
         } catch let error as StoreError {
@@ -470,24 +492,80 @@ public actor CoreContext {
         }
         tokenValue = token
         tokenSourceValue = source
-        // An explicit sign-in ends the signed-out state (automatic sign-in may run again).
-        if source == .signin { await setExplicitSignOut(false) }
+        if let derived { await writeProvenance(derived) }
+        if person { await setExplicitSignOut(false) }
     }
 
-    /// True after `identity.signOut()` until the next explicit sign-in: the automatic sign-in
-    /// ladder must not sign the person back in on its own. Persisted beside the credential
-    /// (`Store.readRecord`); a store that keeps no records holds it for the process only.
+    private static func derive(_ source: TokenSource?) -> TokenProvenance? {
+        switch source {
+        case .signin?: return .signin
+        case .register?, .enroll?: return .register
+        case .activate?: return .key
+        case .reacquire?, nil: return nil
+        }
+    }
+
+    /// The ladder's store: only while no sign-out happened since `generation` was read and the
+    /// signed-out flag is clear. False stores nothing. Never ends the signed-out state.
+    public func setTokenUnlessSignedOut(_ token: String, generation: Int) async throws -> Bool {
+        if await explicitSignOut() || signOutGenerationValue != generation { return false }
+        try await setToken(token, source: .signin)
+        return true
+    }
+
+    // ── Signed-out flag and token provenance ──────────────────────────────────────────
+
+    /// Bumped by every sign-out; a ladder that started before it must not store a token.
+    public var signOutGeneration: Int { signOutGenerationValue }
+    public func bumpSignOutGeneration() { signOutGenerationValue += 1 }
+
+    /// True after `identity.signOut()` until the next person-started sign-in: the automatic
+    /// sign-in ladder must not sign the person back in on its own. Persisted beside the credential
+    /// (`Store.readRecordChecked`) with an in-memory copy. Fails closed: a read error reads as
+    /// signed out.
     public func explicitSignOut() async -> Bool {
         if explicitSignOutValue { return true }
-        return await store.readRecord(CoreContext.explicitSignOutRecord) != nil
+        do {
+            return try await store.readRecordChecked(CoreContext.explicitSignOutRecord) != nil
+        } catch {
+            lastStoreErrorValue = error as? StoreError
+            return true
+        }
     }
 
+    /// Never throws: a write failure keeps the in-memory value and is left in `lastStoreError`.
     public func setExplicitSignOut(_ on: Bool) async {
         explicitSignOutValue = on
-        await store.writeRecord(CoreContext.explicitSignOutRecord, on ? Data("1".utf8) : nil)
+        do {
+            try await store.writeRecordChecked(CoreContext.explicitSignOutRecord, on ? Data("1".utf8) : nil)
+        } catch {
+            lastStoreErrorValue = error as? StoreError
+        }
+    }
+
+    /// What the held token is. A read error reads as nil (not a sign-in).
+    public func tokenProvenance() async -> TokenProvenance? {
+        if let provenanceValue { return provenanceValue }
+        guard let data = try? await store.readRecordChecked(CoreContext.provenanceRecord) else { return nil }
+        return TokenProvenance(rawValue: String(decoding: data, as: UTF8.self))
+    }
+
+    public func setTokenProvenance(_ provenance: TokenProvenance?) async {
+        await writeProvenance(provenance)
+    }
+
+    private func writeProvenance(_ provenance: TokenProvenance?) async {
+        provenanceValue = provenance
+        do {
+            try await store.writeRecordChecked(
+                CoreContext.provenanceRecord, provenance.map { Data($0.rawValue.utf8) })
+        } catch {
+            lastStoreErrorValue = error as? StoreError
+        }
     }
 
     static let explicitSignOutRecord = "explicit-sign-out"
+    static let provenanceRecord = "token-origin"
 
     /// Wipe every credential and artifact, in memory and on disk, except the v4 update slices
     /// (below). Throws if the local wipe could not be completed — the caller needs to know the
@@ -501,6 +579,7 @@ public actor CoreContext {
         let carriedEvidence = evidence
         tokenValue = nil
         tokenSourceValue = nil
+        await writeProvenance(nil)
         record = nil
         loaded = LoadedCache()
         feedFloorsValue = [:]

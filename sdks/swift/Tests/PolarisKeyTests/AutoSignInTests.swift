@@ -6,6 +6,7 @@
 
 import Foundation
 import PolarisKey
+import PolarisKeyPlatform
 @testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
 import XCTest
@@ -16,6 +17,9 @@ private final class FakeProvider: PlatformIdentityProvider, @unchecked Sendable 
     let sheetWorks: Bool
     let revoked: Bool
     let calls = LockedValue<[String]>([])
+    var hasSilentRung: Bool { true }
+    /// Runs inside the provider call, after it is logged: where a test signs out or cancels.
+    var during: (@Sendable () async throws -> Void)?
 
     init(silent: Bool = true, sheet: Bool = true, revoked: Bool = false) {
         silentWorks = silent
@@ -27,9 +31,11 @@ private final class FakeProvider: PlatformIdentityProvider, @unchecked Sendable 
 
     func silent(nonce: String) async throws -> PlatformSubjectToken {
         calls.with { $0.append("silent") }
+        try await during?()
         guard silentWorks else { throw Nothing() }
         return PlatformSubjectToken(token: "apple.id.token", nonce: nonce)
     }
+    func sessionStarted(_ token: PlatformSubjectToken) async { calls.with { $0.append("started") } }
     func sheet(nonce: String) async throws -> PlatformSubjectToken {
         calls.with { $0.append("sheet") }
         guard sheetWorks else { throw Nothing() }
@@ -64,12 +70,14 @@ final class AutoSignInTests: XCTestCase {
     }
 
     private func client(
-        token: String? = nil, licensed: Bool = false, provider: FakeProvider? = nil
+        token: String? = nil, licensed: Bool = false, provenance: TokenProvenance? = .signin,
+        provider: FakeProvider? = nil
     ) async throws -> (PolarisKeyClient, InMemoryStore) {
         let store = InMemoryStore(deviceId: "DEVICE00000000000000000000000001")
         if let token { await store.setToken(token) }
         var trust: TrustSet = [:]
         if licensed {
+            if let provenance { await store.writeRecord("token-origin", Data(provenance.rawValue.utf8)) }
             let signer = TestSigner(kid: "auto-key")
             trust = signer.trust
             let t = Int(Date().timeIntervalSince1970)
@@ -95,7 +103,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         let provider = FakeProvider()
         let (c, _) = try await client(token: "pkeyt_a", licensed: true, provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         guard case .signedIn(let ready) = result else { return XCTFail("\(result)") }
         XCTAssertEqual(ready.licenseId, "lic_auto")
         XCTAssertEqual(provider.calls.current, [])
@@ -108,9 +116,9 @@ final class AutoSignInTests: XCTestCase {
         await server.reply("/djdl/identity/token", body: tokenOk)
         let provider = FakeProvider()
         let (c, _) = try await client(token: "pkeyt_a", provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         guard case .signedIn = result else { return XCTFail("\(result)") }
-        XCTAssertEqual(provider.calls.current, ["silent"])
+        XCTAssertEqual(provider.calls.current, ["silent", "started"])
     }
 
     // ── Rungs 3 and 4 ───────────────────────────────────────────────────────────────────
@@ -120,10 +128,10 @@ final class AutoSignInTests: XCTestCase {
         await server.reply("/djdl/identity/token", body: tokenOk)
         let provider = FakeProvider()
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         guard case .signedIn(let ready) = result else { return XCTFail("\(result)") }
         XCTAssertEqual(ready.subject, "ps_abc")
-        XCTAssertEqual(provider.calls.current, ["silent"])
+        XCTAssertEqual(provider.calls.current, ["silent", "started"])
         let held = await c.core.token
         XCTAssertEqual(held, "pkeyt_exchanged")
     }
@@ -133,9 +141,9 @@ final class AutoSignInTests: XCTestCase {
         await server.reply("/djdl/identity/token", body: tokenOk)
         let provider = FakeProvider(silent: false)
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
+        let result = try await c.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
         guard case .signedIn = result else { return XCTFail("\(result)") }
-        XCTAssertEqual(provider.calls.current, ["silent", "sheet"])
+        XCTAssertEqual(provider.calls.current, ["silent", "sheet", "started"])
         let nonces = await count("/djdl/identity/nonce")
         XCTAssertEqual(nonces, 2, "each attempt takes a fresh nonce")
     }
@@ -144,7 +152,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         let provider = FakeProvider(silent: false)
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
         XCTAssertEqual(provider.calls.current, ["silent"])
     }
@@ -153,7 +161,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         let provider = FakeProvider(silent: false, sheet: false)
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
+        let result = try await c.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
         XCTAssertEqual(provider.calls.current, ["silent", "sheet"])
     }
@@ -164,9 +172,9 @@ final class AutoSignInTests: XCTestCase {
         let installed = FakeProvider()
         let given = FakeProvider()
         let (c, _) = try await client(provider: installed)
-        _ = await c.identity.autoSignIn(AutoSignInOptions(provider: given))
+        _ = try await c.identity.autoSignIn(AutoSignInOptions(provider: given))
         XCTAssertEqual(installed.calls.current, [])
-        XCTAssertEqual(given.calls.current, ["silent"])
+        XCTAssertEqual(given.calls.current, ["silent", "started"])
     }
 
     // ── Result kinds ────────────────────────────────────────────────────────────────────
@@ -179,7 +187,7 @@ final class AutoSignInTests: XCTestCase {
                 #"{"status":"confirm","grant":"\#(grant)","expiresIn":300,"consent":{"client":{"appName":"djdl","developerName":null,"iconUrl":null,"nameVerified":true},"as":{"provider":"apple","email":"a@example.com"},"items":[],"scopeHash":"327f","firstTime":true,"changed":false}}"#
         )
         let (c, _) = try await client(provider: FakeProvider())
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         guard case .confirm(let pending) = result else { return XCTFail("\(result)") }
         XCTAssertEqual(pending.grant, grant)
         XCTAssertFalse("\(result)".contains(grant))
@@ -193,7 +201,7 @@ final class AutoSignInTests: XCTestCase {
                 #"{"status":"choose","grant":"\#(grant)","expiresIn":300,"choices":{"state":"choose","choices":[{"id":"lic_a","tierName":"djdl","name":null,"origin":"key","access":"seats","seats":{"used":0,"limit":3},"current":false,"expiresAt":null,"state":"free","replace":null,"freeDeviceUrl":null}],"keep":false,"preselected":null,"create":null,"getLicense":null}}"#
         )
         let (c, _) = try await client(provider: FakeProvider())
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         guard case .choose(let pending) = result else { return XCTFail("\(result)") }
         XCTAssertEqual(pending.grant, grant)
     }
@@ -206,7 +214,7 @@ final class AutoSignInTests: XCTestCase {
                 #"{"error":"interstitial_required","reason":"no_link","url":"\#(api)/identity/authorize","linkHandle":"\#(handle)","expiresIn":600}"#
         )
         let (c, _) = try await client(provider: FakeProvider())
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: handle, reason: .noLink))
         XCTAssertFalse("\(result)".contains(handle))
         XCTAssertFalse("\(String(reflecting: result))".contains(handle))
@@ -218,7 +226,7 @@ final class AutoSignInTests: XCTestCase {
             "/djdl/identity/token", status: 403,
             body: #"{"error":"interstitial_required","reason":"terms","url":"\#(api)/identity/authorize"}"#)
         let (c, _) = try await client(provider: FakeProvider())
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .terms))
     }
 
@@ -226,15 +234,15 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         await server.reply("/djdl/identity/token", status: 403, body: #"{"error":"device_limit"}"#)
         let (c, _) = try await client(provider: FakeProvider())
-        let result = await c.identity.autoSignIn()
-        XCTAssertEqual(result, .deviceLimit(view: nil))
+        let result = try await c.identity.autoSignIn()
+        XCTAssertEqual(result, .deviceLimit(manageUrl: nil, view: nil))
     }
 
     func testARefusalIsUnavailableWithTheCode() async throws {
         await discovery()
         await server.reply("/djdl/identity/token", status: 400, body: #"{"error":"invalid_grant"}"#)
         let (c, _) = try await client(provider: FakeProvider())
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .unavailable(code: "invalid_grant"))
     }
 
@@ -242,7 +250,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery(exchange: false)
         let provider = FakeProvider()
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .unavailable(code: ErrorCode.platformIdentityUnavailable))
         XCTAssertEqual(provider.calls.current, [])
     }
@@ -251,7 +259,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         let (c, _) = try await client()
         c.identity.installPlatformIdentity(nil)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .unavailable(code: ErrorCode.platformIdentityUnavailable))
     }
 
@@ -269,7 +277,7 @@ final class AutoSignInTests: XCTestCase {
         let persisted = await store.readRecord("explicit-sign-out")
         XCTAssertNotNil(persisted)
 
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .signedOut))
         XCTAssertEqual(provider.calls.current, ["cleanup"], "neither rung ran")
         let nonces = await count("/djdl/identity/nonce")
@@ -320,7 +328,7 @@ final class AutoSignInTests: XCTestCase {
         await server.reply("/djdl/identity/signout", body: #"{"released":true}"#)
         let provider = FakeProvider(revoked: true)
         let (c, _) = try await client(token: "pkeyt_a", licensed: true, provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .signedOut))
         let signouts = await count("/djdl/identity/signout")
         XCTAssertEqual(signouts, 1)
@@ -335,7 +343,7 @@ final class AutoSignInTests: XCTestCase {
         await discovery()
         let provider = FakeProvider(revoked: true)
         let (c, _) = try await client(provider: provider)
-        let result = await c.identity.autoSignIn()
+        let result = try await c.identity.autoSignIn()
         XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .signedOut))
         let signouts = await count("/djdl/identity/signout")
         XCTAssertEqual(signouts, 0)
@@ -347,9 +355,124 @@ final class AutoSignInTests: XCTestCase {
         await server.reply("/djdl/identity/signout", status: 500, body: "{}")
         let provider = FakeProvider(revoked: true)
         let (c, _) = try await client(token: "pkeyt_a", provider: provider)
-        _ = await c.identity.autoSignIn(AutoSignInOptions(prompt: .never))
+        _ = try await c.identity.autoSignIn(AutoSignInOptions(prompt: .never))
         let flag = await c.core.explicitSignOut()
         XCTAssertFalse(flag, "nothing is marked until the Worker accepted the sign-out")
         XCTAssertFalse(provider.calls.current.contains("cleanup"))
     }
+
+    // ── SEC-LADDER ──────────────────────────────────────────────────────────────────────
+
+    func testAKeyActivatedDeviceIsNotASession() async throws {
+        await discovery()
+        let provider = FakeProvider(silent: false)
+        let (c, _) = try await client(token: "pkeyt_a", licensed: true, provenance: .key, provider: provider)
+        let result = try await c.identity.autoSignIn()
+        XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
+        XCTAssertEqual(provider.calls.current, ["silent"])
+    }
+
+    func testAnAccountSignOutThatKeepsTheTokenIsNotASessionEither() async throws {
+        await discovery()
+        await server.reply("/djdl/identity/signout", body: #"{"released":false}"#)
+        let provider = FakeProvider(silent: false)
+        let (c, store) = try await client(token: "pkeyt_a", licensed: true, provider: provider)
+        let before = try await c.identity.autoSignIn()
+        guard case .signedIn = before else { return XCTFail("\(before)") }
+        _ = try await c.identity.signOut()
+        let held = await c.core.token
+        XCTAssertEqual(held, "pkeyt_a")
+        let origin = await store.readRecord("token-origin")
+        XCTAssertEqual(origin.map { String(decoding: $0, as: UTF8.self) }, "key")
+        let after = try await c.identity.autoSignIn()
+        XCTAssertEqual(after, .needsSignIn(linkHandle: nil, reason: .signedOut))
+    }
+
+    func testASignOutWhileTheProviderIsPendingStoresNothingAndKeepsTheFlag() async throws {
+        await discovery()
+        await server.reply("/djdl/identity/token", body: tokenOk)
+        await server.reply("/djdl/identity/signout", body: #"{"released":false}"#)
+        let provider = FakeProvider()
+        let (c, _) = try await client(token: nil, provider: provider)
+        // Sign out needs a bearer to be accepted: give the device a token before, via the stub.
+        try await c.core.setToken("pkeyt_other", source: .activate)
+        provider.during = { [identity = c.identity] in _ = try await identity.signOut() }
+        let result = try await c.identity.autoSignIn()
+        XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .signedOut))
+        let held = await c.core.token
+        XCTAssertEqual(held, "pkeyt_other", "the ladder stored no token")
+        let flag = await c.core.explicitSignOut()
+        XCTAssertTrue(flag)
+        let tokenCalls = await count("/djdl/identity/token")
+        XCTAssertEqual(tokenCalls, 0, "the exchange was not even sent")
+        XCTAssertFalse(provider.calls.current.contains("started"))
+    }
+
+    func testTheLadderNeverEndsTheSignedOutState() async throws {
+        await discovery()
+        await server.reply("/djdl/identity/token", body: tokenOk)
+        let (c, _) = try await client(provider: FakeProvider())
+        // The flag appears after the ladder started (a sign-out on another path): the store aborts.
+        let generation = await c.core.signOutGeneration
+        await c.core.setExplicitSignOut(true)
+        let stored = try await c.core.setTokenUnlessSignedOut("pkeyt_x", generation: generation)
+        XCTAssertFalse(stored)
+        let flag = await c.core.explicitSignOut()
+        XCTAssertTrue(flag)
+    }
+
+    func testAppleHasNoSilentRungSoTheDefaultNeverReachesTheAuthorizer() async throws {
+        await discovery()
+        let spy = SpyAuthorizer()
+        let (c, _) = try await client()
+        c.identity.installPlatformIdentity(AppleSignInProvider(apple: AppleSignIn(authorizer: spy, userIDs: MemoryIDs())))
+        let result = try await c.identity.autoSignIn()
+        XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
+        XCTAssertEqual(spy.count, 0)
+        let nonces = await count("/djdl/identity/nonce")
+        XCTAssertEqual(nonces, 0, "no request for a rung that cannot run")
+    }
+
+    func testTheRevokedBranchCleansUpTheOptionsProvider() async throws {
+        await discovery()
+        await server.reply("/djdl/identity/signout", body: #"{"released":true}"#)
+        let installed = FakeProvider()
+        let given = FakeProvider(revoked: true)
+        let (c, _) = try await client(token: "pkeyt_a", licensed: true, provider: installed)
+        _ = try await c.identity.autoSignIn(AutoSignInOptions(provider: given))
+        XCTAssertEqual(given.calls.current, ["cleanup"])
+        XCTAssertEqual(installed.calls.current, [])
+    }
+
+    func testCancellationIsRethrown() async throws {
+        await discovery()
+        let provider = FakeProvider()
+        provider.during = { try await Task.sleep(nanoseconds: 5_000_000_000) }
+        let (c, _) = try await client(provider: provider)
+        let identity = c.identity
+        let task = Task { try await identity.autoSignIn() }
+        while !provider.calls.current.contains("silent") { await Task.yield() }
+        task.cancel()
+        do {
+            _ = try await task.value
+            XCTFail("a cancelled ladder returned")
+        } catch is CancellationError {}
+    }
+}
+
+private final class SpyAuthorizer: AppleIDAuthorizing, @unchecked Sendable {
+    private let n = LockedValue<Int>(0)
+    var count: Int { n.current }
+    func authorize(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
+        n.with { $0 += 1 }
+        throw AppleSignInFailure.cancelled
+    }
+    func credentialState(forUserID userID: String) async -> AppleCredentialState { .authorized }
+}
+
+private final class MemoryIDs: AppleUserIDStoring, @unchecked Sendable {
+    private let v = LockedValue<String?>(nil)
+    func load() -> String? { v.current }
+    func save(_ userID: String) { v.set(userID) }
+    func clear() { v.set(nil) }
 }

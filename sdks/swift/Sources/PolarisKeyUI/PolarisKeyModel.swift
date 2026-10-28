@@ -230,9 +230,13 @@ extension View {
     public func polarisKey(
         _ client: PolarisKeyClient, theme: PolarisTheme = PolarisTheme(), gate: Bool = true,
         offersFreeTier: Bool = false, options: KitGateOptions = KitGateOptions(),
-        providers: [KitProvider] = [.apple], handlers: KitGateHandlers = KitGateHandlers()
+        providers: [KitProvider] = [.apple], handlers: KitGateHandlers = KitGateHandlers(),
+        autoSignIn: Bool = true
     ) -> some View {
-        modifier(
+        var options = options
+        // The one opt-out of the boot-time `identity.autoSignIn()` (Q-12).
+        if !autoSignIn { options.autoSignIn = false }
+        return modifier(
             PolarisKeyModifier(
                 client: client, theme: theme, gate: gate, offersFreeTier: offersFreeTier,
                 options: options, providers: providers, handlers: handlers))

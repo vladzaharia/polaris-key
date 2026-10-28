@@ -1,10 +1,12 @@
 // Sign in with Apple (I-44.4): the AuthenticationServices edge for automatic sign-in, standalone so
 // the Godot natives (I-48) reuse it.
 //
-//   silent   ASAuthorizationAppleIDProvider request, performRequests(options:
-//            .preferImmediatelyAvailableCredentials): answers at once, never shows a sheet, and
-//            fails for a person who has not used Apple sign-in with this app.
-//   sheet    the same request through plain performRequests(): the account sheet.
+//   silent   there is none: Apple's API shows a sheet whenever a credential exists, so `silent`
+//            answers `unavailable` at once and never reaches the authorizer (SEC-LADDER 1).
+//   sheet    the request with performRequests(options: .preferImmediatelyAvailableCredentials):
+//            the ladder's one OS sheet (rung 4, `prompt: .optional`). It fails at once for a
+//            person who has not used Apple sign-in with this app. `preferImmediate: false` is the
+//            plain account sheet for the sign-in form's Apple button. tvOS has only the plain call.
 //   state    getCredentialState(forUserID:) for the launch check (revoked → the caller signs out).
 //
 // Nonce (D-A4): the SERVER nonce goes into `request.nonce` as it is. Apple copies it into the
@@ -104,15 +106,21 @@ public struct AppleSignIn: Sendable {
         self.userIDs = userIDs
     }
 
-    /// Rung 3: no sheet. Throws `.cancelled` when no credential is immediately available.
+    /// Apple has no silent rung: this throws `.unavailable` and never reaches the authorizer.
     public func silent(nonce: String) async throws -> AppleSignInGrant {
-        try await run(nonce: nonce, immediate: true)
+        throw AppleSignInFailure.unavailable("Sign in with Apple has no silent rung.")
     }
 
-    /// Rung 4 and the provider row: the account sheet.
-    public func sheet(nonce: String) async throws -> AppleSignInGrant {
-        try await run(nonce: nonce, immediate: false)
+    /// Rung 4: the one OS sheet. `preferImmediate` (the default) asks only for a credential this
+    /// app already has; pass false for the plain account sheet. The user id is NOT kept here:
+    /// call `remember(userID:)` once the Worker accepted the token.
+    public func sheet(nonce: String, preferImmediate: Bool = true) async throws -> AppleSignInGrant {
+        guard !nonce.isEmpty else { throw AppleSignInFailure.unavailable("empty nonce") }
+        return try await authorizer.authorize(nonce: nonce, immediate: preferImmediate)
     }
+
+    /// Keep the Apple user id for the launch check, after a successful exchange.
+    public func remember(userID: String) { userIDs.save(userID) }
 
     /// The stored user id's state, or nil when this app never signed in with Apple.
     public func credentialState() async -> AppleCredentialState? {
@@ -120,23 +128,14 @@ public struct AppleSignIn: Sendable {
         return await authorizer.credentialState(forUserID: id)
     }
 
-    /// True when Apple says the stored credential is revoked or gone (the caller signs out).
+    /// True only when Apple says the stored credential is `.revoked` (the caller signs out).
+    /// Not found, transferred and a failed lookup are not revocation.
     public func credentialRevoked() async -> Bool {
-        switch await credentialState() {
-        case .revoked?, .notFound?: return true
-        default: return false
-        }
+        await credentialState() == .revoked
     }
 
     /// Sign-out cleanup: forget the Apple user id.
     public func signOutCleanup() { userIDs.clear() }
-
-    private func run(nonce: String, immediate: Bool) async throws -> AppleSignInGrant {
-        guard !nonce.isEmpty else { throw AppleSignInFailure.unavailable("empty nonce") }
-        let grant = try await authorizer.authorize(nonce: nonce, immediate: immediate)
-        userIDs.save(grant.userID)
-        return grant
-    }
 }
 
 #if canImport(AuthenticationServices) && (os(iOS) || os(macOS) || os(tvOS) || os(visionOS))

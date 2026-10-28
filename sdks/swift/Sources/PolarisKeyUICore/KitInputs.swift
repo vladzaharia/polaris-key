@@ -906,11 +906,26 @@ public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
     public var alsoGets: Bool?
     /// The code the nearby wait shows, to match on the other device.
     public var code: String?
+    /// The existing license the confirm step names, with its term (epoch seconds; nil is
+    /// lifetime) and the seat this device takes. Kit-side: the matrix never sets them. The
+    /// license line draws only when the seat is known.
+    public var licenseName: String?
+    public var term: Int?
+    public var device: String?
+    public var position: Int?
+    public var limit: Int?
 
     public init(
         step: KitAutoSignInStep, email: String? = nil, reach: KitLinkReach? = nil,
-        license: String? = nil, alsoGets: Bool? = nil, code: String? = nil
+        license: String? = nil, alsoGets: Bool? = nil, code: String? = nil,
+        licenseName: String? = nil, term: Int? = nil, device: String? = nil,
+        position: Int? = nil, limit: Int? = nil
     ) {
+        self.licenseName = licenseName
+        self.term = term
+        self.device = device
+        self.position = position
+        self.limit = limit
         self.step = step
         self.email = email
         self.reach = reach

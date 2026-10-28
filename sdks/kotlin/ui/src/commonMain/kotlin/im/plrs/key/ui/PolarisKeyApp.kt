@@ -102,7 +102,7 @@ public fun rememberPolarisSetting(key: String, client: PolarisKeyClient = polari
 /** The old name of [PolarisKeyGate], kept for one release. */
 @Deprecated(
     "Renamed: PolarisKeyGate is the one-liner.",
-    ReplaceWith("PolarisKeyGate(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, content)", "im.plrs.key.ui.PolarisKeyGate"),
+    ReplaceWith("PolarisKeyGate(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, content = content)", "im.plrs.key.ui.PolarisKeyGate"),
 )
 @Composable
 public fun PolarisKeyApp(
@@ -115,7 +115,7 @@ public fun PolarisKeyApp(
     onQuit: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    PolarisKeyGate(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, content)
+    PolarisKeyGate(client, modifier, bootOptions, onSignIn, packs, signIn, onQuit, content = content)
 }
 
 /**
@@ -135,11 +135,12 @@ internal fun PolarisKeyAppHost(
     update: PolarisUpdateState,
     updateActions: PolarisUpdateActions,
     optionalUpdateInDialog: Boolean,
+    autoSignIn: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val boot = remember(client, bootOptions) { PolarisBootState(bootOptions) }
-    val gate = remember(client) { PolarisGateState(client.gateActions(), scope) }
+    val gate = remember(client, autoSignIn) { PolarisGateState(client.gateActions(), scope, autoSignIn = autoSignIn) }
     val packState = remember(client, packs) { if (packs) PolarisPackProgressState(client.packProgressSource()) else null }
     // Inline sign-in re-reads the licence when it completes (the SDK has already synced).
     // Held outside the composition (keyed to the client), so an activity recreation keeps the code.

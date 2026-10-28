@@ -189,6 +189,7 @@ let package = Package(
             // The umbrella (never Sparkle, never SwiftUI) for the @Observable models over the client.
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyIdentity",
+                "PolarisKeyPlatform",
             ],
             // The ICU copy tables of every launch locale, written by `pnpm gen:brand`
             // (packages/brand/scripts/kit-copy.ts) beside the String Catalog.

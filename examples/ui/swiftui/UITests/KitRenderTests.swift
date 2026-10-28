@@ -160,6 +160,8 @@ final class KitRenderTests: XCTestCase {
         "SignInHandoff.code", "StatusScreen.revoked", "AccountAndLicense.signed-in",
         "UpdatePrompt.store", "Activate.key-entry-limit",
         "Activate.license-owned", "SignIn.key-refused", "SignIn.done.tier", "LicenseChoice.raced",
+        // The automatic sign-in's consent and the all-full choice (I-44.6): AX and landscape too.
+        "SignIn.confirm.apple", "LicenseChoice.all-full",
     ]
 
     static let all = [

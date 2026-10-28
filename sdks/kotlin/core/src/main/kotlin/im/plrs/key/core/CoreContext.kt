@@ -17,6 +17,7 @@
 package im.plrs.key.core
 
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -124,6 +125,23 @@ public data class ImportBundleResult(val bundleId: String, val imported: List<Do
 /** How the current device token was obtained in this process. */
 public enum class TokenSource(public val wire: String) {
     activate("activate"), enroll("enroll"), register("register"), signin("signin"), reacquire("reacquire"),
+}
+
+/** What a stored token stands for, for the automatic ladder: only `signin` is a signed-in person's own. */
+public enum class TokenProvenance(public val wire: String) {
+    signin("signin"), register("register"), key("key");
+
+    public companion object {
+        /** A token source's provenance; null (leave the stored one) for an unknown source or a reacquire. */
+        public fun of(source: TokenSource?): TokenProvenance? = when (source) {
+            TokenSource.signin -> signin
+            TokenSource.register, TokenSource.enroll -> register
+            TokenSource.activate -> key
+            TokenSource.reacquire, null -> null
+        }
+
+        public fun parse(text: String?): TokenProvenance? = values().firstOrNull { it.wire == text?.trim() }
+    }
 }
 
 /** The two routes §5's single re-acquire can take. */
@@ -345,13 +363,107 @@ public class CoreContext(options: CoreOptions) {
     /** Where the store keeps the token (P1b-09); null when it does not report. */
     public suspend fun storeStatus(): StoreStatus? = onStore { store.status() }
 
-    /** Store [token]; [source] is how it was obtained (null = unknown). Throws on a store failure. */
-    public suspend fun setToken(token: String, source: TokenSource? = null) {
+    /**
+     * Store [token]; [source] is how it was obtained (null = unknown). Throws on a store failure.
+     * [personInitiated] marks a sign-in the person started (redirect, device code, choice complete, a
+     * provider sign-in from the sign-in UI): only it ends the explicit-sign-out state. A silent or
+     * ladder exchange never does. [provenance] is what the token is for the automatic ladder; by default
+     * it follows [source] (`signin`, `register`/`enroll`, `activate` is a key), and a null source or a
+     * reacquire leaves the stored provenance alone.
+     */
+    public suspend fun setToken(
+        token: String,
+        source: TokenSource? = null,
+        personInitiated: Boolean = false,
+        provenance: TokenProvenance? = TokenProvenance.of(source),
+    ) {
         ensureStarted()
+        // Crash-safe: cleared first, written last, so a crash between leaves "unknown" (never signin).
+        if (provenance != null) writeProvenance(null)
         onStore { store.setToken(token) }
         lock.withLock {
             tokenValue = token
             tokenSourceValue = source
+        }
+        if (provenance != null) writeProvenance(provenance)
+        if (personInitiated) setExplicitSignOut(false)
+    }
+
+    // ── Token provenance (I-45.2 L4) ────────────────────────────────────────────────────────
+    private val provenanceSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "token-provenance")) } ?: MemoryStateSlot()
+    }
+
+    private suspend fun writeProvenance(p: TokenProvenance?) {
+        try {
+            io { provenanceSlot.write(p?.wire ?: "") }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (p != null) warn("The sign-in state could not be saved.")
+        }
+    }
+
+    /** What the stored token is for the ladder; null when unknown (an unreadable slot reads as unknown). */
+    public suspend fun tokenProvenance(): TokenProvenance? = try {
+        io { TokenProvenance.parse(provenanceSlot.read()) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Record that the stored token no longer stands for a signed-in person (a sign-out that kept the token). */
+    public suspend fun setTokenProvenance(p: TokenProvenance?): Unit = writeProvenance(p)
+
+    // ── Explicit sign-out (I-45.2) ─────────────────────────────────────────────────────────
+    // True after `identity.signOut()` until the person's next sign-in: the automatic sign-in ladder
+    // must not sign the person back in on its own. Kept beside the token so it survives a restart,
+    // with a volatile in-memory copy; it fails closed (an unreadable slot reads as signed out) and a
+    // failed write never stops a sign-out (it is surfaced through [stateWarnings]).
+    private val explicitSignOutSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "explicit-sign-out")) } ?: MemoryStateSlot()
+    }
+    @Volatile private var explicitSignOutMemory = false
+    private val signOutGenerationValue = java.util.concurrent.atomic.AtomicLong(0)
+    private val warnings = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8)
+
+    /** Non-fatal state problems (a flag or provenance that could not be saved). Fixed phrases, no secrets. */
+    public val stateWarnings: kotlinx.coroutines.flow.SharedFlow<String> get() = warnings
+
+    private fun warn(text: String) {
+        warnings.tryEmit(text)
+    }
+
+    /** Bumped by every sign-out; a ladder that captured an older value must not store a token. */
+    public fun signOutGeneration(): Long = signOutGenerationValue.get()
+
+    public fun bumpSignOutGeneration(): Long = signOutGenerationValue.incrementAndGet()
+
+    public suspend fun explicitSignOut(): Boolean {
+        if (explicitSignOutMemory) return true
+        return try {
+            io {
+                val slot = explicitSignOutSlot
+                val text = slot.read()
+                // A file that exists but cannot be read is "signed out", not "no flag".
+                if (text == null && slot is FileStateSlot && slot.file.exists()) true else text?.trim() == "1"
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            true
+        }
+    }
+
+    public suspend fun setExplicitSignOut(on: Boolean) {
+        explicitSignOutMemory = on
+        try {
+            io { explicitSignOutSlot.write(if (on) "1" else "") }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            warn(if (on) "The signed-out state could not be saved." else "The signed-in state could not be saved.")
         }
     }
 
@@ -383,6 +495,11 @@ public class CoreContext(options: CoreOptions) {
             io { subjectSlot.write("") }
         } catch (e: Exception) {
             failure = e
+        }
+        try {
+            io { provenanceSlot.write("") }
+        } catch (e: Exception) {
+            failure = failure ?: e
         }
         try {
             onStore { store.clearToken() }
