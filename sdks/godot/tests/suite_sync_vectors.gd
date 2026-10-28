@@ -10,16 +10,16 @@ const VECTORS := "res://tests/corpus/v2/sync-vectors.json"
 const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases"]
 ## Typed N/A: the section needs a primitive this slice does not ship.
 const NOT_APPLICABLE := {
-	"envelopeCases": "needs AES-256-GCM (U-40.3, U-40.5)",
+	"envelopeCases": "needs the envelope codec over AES-256-GCM (U-40.5)",
 	"transferPlanCases": "needs the transfer planner (U-40.5)",
-	"hpkeAnchor": "needs HPKE over X25519 and AES-256-GCM (U-40.5)",
+	"hpkeAnchor": "needs HPKE over X25519 (U-40.5); its AES-256-GCM encryption row runs in _aes_gcm (U-40.3)",
 	"wrapCases": "needs HPKE (U-40.5)",
-	"adoptCases": "needs AES-256-GCM (U-40.5)",
+	"adoptCases": "needs the adopt codec over AES-256-GCM (U-40.5)",
 	"cdcCases": "needs the chunker (U-40.5)",
 	"cdcEditCases": "needs the chunker (U-40.5)",
 	"deltaCases": "needs the chunker (U-40.5)",
-	"chunkCases": "needs AES-256-GCM and zstd frames (U-40.5)",
-	"fileStreamCases": "needs AES-256-GCM (U-40.5)",
+	"chunkCases": "needs the chunk codec and zstd frames (U-40.5); AES-256-GCM is at most 64 KiB per call",
+	"fileStreamCases": "files are native-only (U-23); GDScript AES-GCM refuses over 64 KiB",
 	"manifestCases": "needs the chunk manifest (U-40.5)",
 }
 ## Members of the file that are not sections.
@@ -43,7 +43,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	for c in d["recoveryCodeCases"]:
 		if c["kind"] == "blob":
 			n_blob += 1
-	t.info("N/A recoveryCodeCases kind blob (%d rows): needs AES-256-GCM (U-40.5)" % n_blob)
+	t.info("N/A recoveryCodeCases kind blob (%d rows): needs the recovery blob codec (U-40.5)" % n_blob)
 
 	_hkdf(t, d["hkdfCases"])
 	_blind(t, d["blindCases"])
@@ -51,6 +51,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_canonical(t, d["canonicalJsonCases"])
 	_recovery(t, d["recoveryCodeCases"])
 	_extras(t)
+	_aes_gcm(t, d)
 	return true
 
 
@@ -215,3 +216,138 @@ func _extras(t: PKeyTestContext) -> void:
 
 func _hex(s: String) -> PackedByteArray:
 	return s.hex_decode()
+
+
+## Known answers for AES-256-GCM: NIST SP 800-38D test cases 13 to 16 (the original GCM spec set), the
+## corpus's RFC 9180 anchor row, and generated rows (cryptography 49) over awkward lengths.
+var _gcm_nist := [
+	["tc13", "00".repeat(32), "00".repeat(12), "", "", "", "530f8afbc74536b9a963b4f1c4cb738b"],
+	["tc14", "00".repeat(32), "00".repeat(12), "00".repeat(16), "", "cea7403d4d606b6e074ec5d3baf39d18", "d0d1c8a799996bf0265b98b5d48ab919"],
+	["tc15", "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308", "cafebabefacedbaddecaf888",
+		"d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255",
+		"", "522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f662898015ad", "b094dac5d93471bdec1a502270e3cc6c"],
+	["tc16", "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308", "cafebabefacedbaddecaf888",
+		"d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39",
+		"feedfacedeadbeeffeedfacedeadbeefabaddad2", "522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f662", "76fc6ece0f4e1768cddf8853bb2d551b"],
+]
+## [row, plaintext length, aad length, sha256 of ciphertext || tag]; the inputs are the generators below.
+const GCM_GENERATED := [
+	[0, 0, 0, "2513b3a3bcdbf6228d253f37cae32fa31bdbe38041721f06fca874fab1bd9660"],
+	[1, 0, 20, "27c611d04d02bd526a5c557dea8640ed902f312eec60cd0175ffa41f37036894"],
+	[2, 1, 0, "284e7099b258f18af75c0860fbe6155f3d58213570128bdb012d10a23358c974"],
+	[3, 15, 3, "c881d4d2e8a2546de5d14e32a46f9faf954e860486c1e8c1159eec80bea6c32d"],
+	[4, 16, 16, "3acefc24bba9db140addd6bbae4ecd01eb2ae9e68422e09de325c4943652b170"],
+	[5, 17, 17, "583a26f5406615b6b9d18789804aa2d66e564ee274054aebb7ae88640bf8ef2f"],
+	[6, 100, 0, "dccfc53f97d18418d790f7b9c1bda95b1872cc4a00594fecf90be8d3bfb9970e"],
+	[7, 8192, 13, "c786d39a3561125d5c60f3cc4639d7c293e0e39c4df4ec826d8be6ec74158999"],
+	[8, 65536, 0, "bf67f08359cf5a0b4d607e9e985e337f32920a5351cdbec136c2a308be7cfc50"],
+]
+
+
+func _gen(n: int, mul: int, shift: int, add: int) -> PackedByteArray:
+	var b := PackedByteArray()
+	b.resize(n)
+	for j in n:
+		b[j] = (add + j * mul + ((j >> shift) if shift > 0 else 0) ) & 255
+	return b
+
+
+func _aes_gcm(t: PKeyTestContext, d: Dictionary) -> void:
+	for c in _gcm_nist:
+		var key := _hex(c[1])
+		var nonce := _hex(c[2])
+		var pt := _hex(c[3])
+		var aad := _hex(c[4])
+		var want := _hex(c[5] + c[6])
+		t.check("gcm %s seals" % c[0], PKeySyncAesGcm.seal(key, nonce, pt, aad) == want)
+		var opened: Variant = PKeySyncAesGcm.open(key, nonce, want, aad)
+		t.check("gcm %s opens" % c[0], opened != null and (opened as PackedByteArray) == pt)
+	var e: Dictionary = d["hpkeAnchor"]["vector"]
+	var enc: Dictionary = e["encryption"]
+	var sealed := PKeySyncAesGcm.seal(_hex(e["key"]), _hex(enc["nonce"]), _hex(enc["pt"]), _hex(enc["aad"]))
+	t.check("gcm RFC 9180 anchor seals", sealed.hex_encode() == enc["ct"], enc["ct"])
+	var rfc_open: Variant = PKeySyncAesGcm.open(_hex(e["key"]), _hex(enc["nonce"]), sealed, _hex(enc["aad"]))
+	t.check("gcm RFC 9180 anchor opens", rfc_open != null and (rfc_open as PackedByteArray) == _hex(enc["pt"]))
+	for r in GCM_GENERATED:
+		var i: int = r[0]
+		var key := _gen(32, 1, 0, i * 7)
+		var nonce := _gen(12, 3, 0, i * 13)
+		var aad := _gen(r[2], 5, 0, i)
+		var pt := _gen(r[1], 31, 3, i)
+		var out := PKeySyncAesGcm.seal(key, nonce, pt, aad)
+		t.check("gcm generated %d (%d bytes, aad %d)" % [i, r[1], r[2]], _sha(out) == r[3])
+		var back: Variant = PKeySyncAesGcm.open(key, nonce, out, aad)
+		t.check("gcm generated %d round-trips" % i, back != null and (back as PackedByteArray) == pt)
+	# Refusals and tampering.
+	var k := _gen(32, 1, 0, 9)
+	var n := _gen(12, 1, 0, 2)
+	var m := "hello".to_utf8_buffer()
+	var s := PKeySyncAesGcm.seal(k, n, m, PackedByteArray([1]))
+	t.check("tamper: ciphertext", PKeySyncAesGcm.open(k, n, _flip(s, 0), PackedByteArray([1])) == null)
+	t.check("tamper: tag", PKeySyncAesGcm.open(k, n, _flip(s, s.size() - 1), PackedByteArray([1])) == null)
+	t.check("tamper: aad", PKeySyncAesGcm.open(k, n, s, PackedByteArray([2])) == null)
+	t.check("tamper: missing aad", PKeySyncAesGcm.open(k, n, s) == null)
+	t.check("tamper: nonce", PKeySyncAesGcm.open(k, _flip(n, 11), s, PackedByteArray([1])) == null)
+	t.check("tamper: key", PKeySyncAesGcm.open(_flip(k, 0), n, s, PackedByteArray([1])) == null)
+	t.check("a short input is refused", PKeySyncAesGcm.open(k, n, s.slice(0, 15), PackedByteArray([1])) == null)
+	t.check("a 31-byte key is refused", PKeySyncAesGcm.seal(k.slice(0, 31), n, m).is_empty())
+	t.check("a 16-byte key is refused", PKeySyncAesGcm.seal(k.slice(0, 16), n, m).is_empty())
+	t.check("an 11-byte nonce is refused", PKeySyncAesGcm.seal(k, n.slice(0, 11), m).is_empty())
+	t.check("a 13-byte nonce is refused", PKeySyncAesGcm.seal(k, _gen(13, 1, 0, 0), m).is_empty())
+	t.check("65537 bytes are refused", PKeySyncAesGcm.seal(k, n, _gen(65537, 1, 0, 0)).is_empty())
+	t.check("65536 bytes are accepted", PKeySyncAesGcm.seal(k, n, _gen(65536, 1, 0, 0)).size() == 65536 + 16)
+	t.check("an open of 65537 bytes is refused", PKeySyncAesGcm.open(k, n, _gen(65537 + 16, 1, 0, 0)) == null)
+	t.check("an empty message opens to empty", (PKeySyncAesGcm.open(k, n, PKeySyncAesGcm.seal(k, n, PackedByteArray())) as PackedByteArray).is_empty())
+	_aes_gcm_timing(t, k, n)
+
+
+func _flip(b: PackedByteArray, at: int) -> PackedByteArray:
+	var c := b.duplicate()
+	c[at] ^= 1
+	return c
+
+
+func _sha(b: PackedByteArray) -> String:
+	var h := HashingContext.new()
+	h.start(HashingContext.HASH_SHA256)
+	h.update(b)
+	return h.finish().hex_encode()
+
+
+## Timing (informational, never asserted) and a constant-time sanity check of the tag compare: the
+## best of several runs for a mismatch in the first byte and in the last must agree within a factor
+## of 1.5 (a wide band: this is a smoke check on a shared machine, not a dudect run).
+func _aes_gcm_timing(t: PKeyTestContext, k: PackedByteArray, n: PackedByteArray) -> void:
+	var pt := _gen(8192, 31, 3, 1)
+	var aad := _gen(16, 1, 0, 0)
+	var seal_best := 1 << 60
+	var open_best := 1 << 60
+	var sealed := PackedByteArray()
+	for _i in 3:
+		var t0 := Time.get_ticks_usec()
+		sealed = PKeySyncAesGcm.seal(k, n, pt, aad)
+		seal_best = mini(seal_best, Time.get_ticks_usec() - t0)
+		t0 = Time.get_ticks_usec()
+		var o: Variant = PKeySyncAesGcm.open(k, n, sealed, aad)
+		open_best = mini(open_best, Time.get_ticks_usec() - t0)
+		t.check("8 KiB opens", o != null)
+	t.info("aes-gcm 8 KiB: seal %.1f ms, open %.1f ms (best of 3)" % [seal_best / 1000.0, open_best / 1000.0])
+	var a := _gen(4096, 1, 0, 0)
+	var first := a.duplicate()
+	first[0] ^= 1
+	var last := a.duplicate()
+	last[4095] ^= 1
+	var best_first := 1 << 60
+	var best_last := 1 << 60
+	for _r in 7:
+		var t1 := Time.get_ticks_usec()
+		for _i in 20:
+			PKeySyncAesGcm.equal_constant_time(a, first)
+		best_first = mini(best_first, Time.get_ticks_usec() - t1)
+		t1 = Time.get_ticks_usec()
+		for _i in 20:
+			PKeySyncAesGcm.equal_constant_time(a, last)
+		best_last = mini(best_last, Time.get_ticks_usec() - t1)
+	var ratio := float(maxi(best_first, best_last)) / float(maxi(1, mini(best_first, best_last)))
+	t.info("tag compare, 4096 bytes x20: mismatch first %d us, last %d us, ratio %.3f" % [best_first, best_last, ratio])
+	t.check("tag compare time does not depend on the mismatch position", ratio < 1.5, "ratio %.3f" % ratio)
