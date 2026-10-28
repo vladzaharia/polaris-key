@@ -116,6 +116,31 @@ export function formatSince(
   return `${date}, ${clock}`;
 }
 
+/**
+ * The house short absolute date: "Oct 7" or, with `time`, "Oct 7, 2:05 PM". The year appears only
+ * when it is not the current one. The one helper for every short date in the console.
+ */
+export function formatShort(
+  ms: number,
+  opts: FormatOptions & { time?: boolean; now?: number } = {},
+): string {
+  const year = (t: number): number =>
+    Number(
+      new Intl.DateTimeFormat("en-CA", {
+        year: "numeric",
+        timeZone: opts.timeZone,
+      }).format(t),
+    );
+  const sameYear = year(ms) === year(opts.now ?? Date.now());
+  return new Intl.DateTimeFormat(opts.locale, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+    ...(opts.time ? { hour: "numeric", minute: "2-digit" } : {}),
+    timeZone: opts.timeZone,
+  }).format(ms);
+}
+
 /** Tables: relative under 7 days ("3 hr. ago"), else the date ("3 Sep 2026"). */
 export function formatTableTime(
   ms: number,

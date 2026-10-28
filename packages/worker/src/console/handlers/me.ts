@@ -78,6 +78,8 @@ export async function handleMe(
     // ST-30c.1: a break-glass session (no account, one hour): the console says so and hides
     // the account screens.
     breakGlass: session.breakGlass === true,
+    // Whether invites and notices can be emailed; the invite drawer says so instead of promising it.
+    emailOn: env.EMAIL != null,
     // I-12: when the operator last signed in interactively, for the relink tool's step-up (a
     // sign-in no older than `stepUpMaxAgeSeconds`). `null` for a session minted before I-12.
     authAt: session.stepUpAt ?? null,

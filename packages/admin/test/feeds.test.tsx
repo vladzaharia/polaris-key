@@ -122,12 +122,6 @@ function bootSettings(
     settings: {
       ...stored.settings,
       accessMode,
-      accessDisplay:
-        accessMode === "public"
-          ? "public"
-          : accessMode === "entitled"
-            ? "licensed, gated per package"
-            : "licensed",
       ...patch,
     },
   };
@@ -1601,9 +1595,7 @@ describe("the Feeds overview", () => {
     const routes = feedRoutes();
     const overview = productOverview();
     overview.feeds = overview.feeds.map((f) =>
-      f.ecosystem === "npm"
-        ? { ...f, accessMode: "licensed", accessDisplay: "customers" }
-        : f,
+      f.ecosystem === "npm" ? { ...f, accessMode: "licensed" } : f,
     );
     routes["/manage/api/products/djdl/distribution/feeds"] = overview;
     boot("#/p/djdl/distribution/feeds", {

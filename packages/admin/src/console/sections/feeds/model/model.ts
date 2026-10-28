@@ -19,6 +19,7 @@ import {
   Package,
   type LucideIcon,
 } from "lucide-react";
+import { formatShort } from "../../../../lib/format.js";
 import { ACCESS_LABELS, label } from "../../../../lib/labels.js";
 import {
   FEED_SETUP,
@@ -339,17 +340,9 @@ export function takeAfterWrite(
   return ok;
 }
 
-/** The house short absolute form: "Oct 7, 2:05 PM", with the year only when it is not this one. */
-export function shortWhen(ms: number): string {
-  const sameYear = new Date(ms).getFullYear() === new Date().getFullYear();
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    ...(sameYear ? {} : { year: "numeric" }),
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(ms);
-}
+/** The house short absolute form: "Oct 7, 2:05 PM" (see `formatShort`). */
+export const shortWhen = (ms: number): string =>
+  formatShort(ms, { time: true });
 
 /**
  * "Turned off by Ana Lima on Oct 7, 2:05 PM". A person is named; an unnamed actor, the manifest

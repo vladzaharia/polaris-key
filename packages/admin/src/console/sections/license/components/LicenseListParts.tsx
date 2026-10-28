@@ -24,7 +24,11 @@ import { useMe, useProduct } from "../../../data/hooks.js";
 import { NoAccessPage } from "../../../access/NoAccessPage.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { cn } from "../../../../lib/cn.js";
-import { fromSeconds, formatDate } from "../../../../lib/format.js";
+import {
+  fromSeconds,
+  formatDate,
+  formatShort,
+} from "../../../../lib/format.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import {
@@ -235,9 +239,7 @@ export const SubLine = ({
 );
 
 const dayMonth = (epochSeconds: number): string =>
-  new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(
-    fromSeconds(epochSeconds),
-  );
+  formatShort(fromSeconds(epochSeconds));
 
 /** First column: an avatar (tinted initials) over name and email, or a dashed floating key. */
 export function LicenseCell({

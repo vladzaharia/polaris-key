@@ -54,6 +54,8 @@ export interface Me {
    * The shell warns, and the account-bound screens stay out of reach (the server refuses them).
    */
   breakGlass?: boolean;
+  /** Whether the worker can send email (an `EMAIL` binding); absent from an older worker (read as on). */
+  emailOn?: boolean;
 }
 
 /** The console's authorization areas (worker `core/rbac/areas.ts`; append-only). */
