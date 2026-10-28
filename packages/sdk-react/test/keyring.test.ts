@@ -593,10 +593,33 @@ describe("the pin: a changed ring is never adopted silently", () => {
   it("acceptRingChange() re-pins after the person confirms", async () => {
     const { server, vault, reload } = await attacked();
     expect((await reload.engine.status()).state).toBe("ring-changed");
-    const s = await reload.engine.acceptRingChange();
+    const served = server.ring!;
+    const shown = {
+      ringId: served.ringId,
+      epoch: served.epoch,
+      rootKid: served.rootKid,
+    };
+    // The served ring switches between the prompt and the accept: refused, nothing changes.
+    server.ring = { ...served, rootKid: "e".repeat(32) };
+    expect((await reload.engine.acceptRingChange(shown)).state).toBe(
+      "ring-changed",
+    );
+    expect((await vault.getPin())!.ringId).not.toBe(served.ringId);
+    server.ring = served;
+    const s = await reload.engine.acceptRingChange(shown);
     expect(s.state).toBe("unlocked");
     expect((await vault.getPin())!.ringId).toBe(server.ring!.ringId);
     expect((await reload.engine.status()).state).toBe("unlocked");
+  });
+
+  it("an accept whose wrap does not open keeps the old root and the old pin", async () => {
+    const { server, vault, reload, oldKid, oldRing } = await attacked();
+    const status = await reload.engine.status();
+    server.wraps.get(B)!.ct = "AAAA"; // a wrap that will not open
+    const s = await reload.engine.acceptRingChange(status.changed!.served);
+    expect(s.state).toBe("ring-changed");
+    expect((await vault.get())!.kid).toBe(oldKid);
+    expect((await vault.getPin())!.ringId).toBe(oldRing);
   });
 
   it("another epoch or root kid for the same ring id is not adopted either", async () => {
@@ -696,7 +719,7 @@ describe("the other transports", () => {
       () => ring.reset(),
       () => ring.lock(),
       () => ring.forget(),
-      () => ring.acceptRingChange(),
+      () => ring.acceptRingChange({ ringId: "rg_x", epoch: 1, rootKid: "0" }),
     ])
       await expect(f()).rejects.toMatchObject({
         name: "UnsupportedError",

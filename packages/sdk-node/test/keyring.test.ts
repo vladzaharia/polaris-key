@@ -7,6 +7,7 @@
 import {
   existsSync,
   mkdtempSync,
+  writeFileSync,
   readFileSync,
   readdirSync,
   statSync,
@@ -620,9 +621,18 @@ describe("keyring: the pin (a changed ring is never adopted silently)", () => {
   it("acceptRingChange() re-pins after the person confirms", async () => {
     const { s, victim, attacker } = await attacked();
     const again = await victim.make();
-    expect((await again.keyring.unlock()).kind).toBe("ring-changed");
+    const shown = await again.keyring.unlock();
+    if (shown.kind !== "ring-changed") throw new Error("expected ring-changed");
     const now = s.ring!.ringId as string;
-    expect(await again.keyring.acceptRingChange()).toMatchObject({
+    // The ring moves between the prompt and the accept: refused, nothing pinned.
+    const moved = { ...s.ring! };
+    s.ring = { ...s.ring!, rootKid: "e".repeat(32) };
+    expect((await again.keyring.acceptRingChange(shown.served)).kind).toBe(
+      "ring-changed",
+    );
+    expect((await again.keyring.pin())?.ringId).not.toBe(now);
+    s.ring = moved;
+    expect(await again.keyring.acceptRingChange(shown.served)).toMatchObject({
       kind: "unlocked",
       ringId: now,
     });
@@ -652,6 +662,18 @@ describe("keyring: the pin (a changed ring is never adopted silently)", () => {
     expect((await a.client.keyring.unlock()).kind).toBe("ring-changed");
     s.ring = { ...s.ring!, epoch: 1, rootKid: "f".repeat(32) };
     expect((await a.client.keyring.unlock()).kind).toBe("ring-changed");
+  });
+
+  it("a subject the Worker serves never drops the pin", async () => {
+    const { victim } = await attacked();
+    // The Worker answers /subject with a new id; the account verbs persist it.
+    writeFileSync(
+      join(victim.client.core.dirs.state, "subject.json"),
+      JSON.stringify({ subject: "ps_" + "n".repeat(30) }),
+    );
+    const again = await victim.make();
+    expect((await again.keyring.unlock()).kind).toBe("ring-changed");
+    expect(again.keyring.unlocked).toBe(false);
   });
 
   it("forget() (sign-out) locks and drops the pin", async () => {

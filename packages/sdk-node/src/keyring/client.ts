@@ -53,7 +53,6 @@ import {
   removeJson,
   writeJson,
 } from "../core/jsonFile.js";
-import { readStoredSubject } from "../identity/account.js";
 import { printAs } from "../core/redact.js";
 import type { TokenManager } from "../core/token.js";
 import { join } from "node:path";
@@ -293,23 +292,12 @@ export class KeyringClient {
       typeof v.rootKid !== "string"
     )
       return null;
-    // A pin recorded for another person does not bind this one.
-    const subject = await readStoredSubject(this.ctx.dirs.state);
-    if (
-      typeof v.subject === "string" &&
-      subject !== null &&
-      v.subject !== subject
-    )
-      return null;
+    // The pin never depends on the subject the Worker serves: only `forget()` drops it.
     return { ringId: v.ringId, epoch: v.epoch, rootKid: v.rootKid };
   }
 
   async #writePin(p: RingPin): Promise<void> {
-    await writeJson(this.#pinFile, {
-      product: this.ctx.product,
-      subject: await readStoredSubject(this.ctx.dirs.state),
-      ...p,
-    });
+    await writeJson(this.#pinFile, { product: this.ctx.product, ...p });
   }
 
   // ── Reads ───────────────────────────────────────────────────────────────────────────────────
@@ -334,32 +322,35 @@ export class KeyringClient {
    * use stays locked (a result, not an error); a network or server failure throws.
    */
   async unlock(): Promise<UnlockResult> {
-    return this.#unlock(false);
+    return this.#unlock(null);
   }
 
   /**
-   * The person confirmed that the served ring is theirs (after a `ring-changed` answer): open
-   * this device's wrap for it and pin it. Call it only from UI the person has confirmed. A wrap
+   * The person confirmed that the ring they were shown (`served` of a `ring-changed` answer) is
+   * theirs: open this device's wrap for it and pin it. `confirmed` is that ring; if the Worker
+   * now serves another, the answer is `ring-changed` again. Call it only from confirmed UI. A wrap
    * that does not open leaves the pin as it was.
    */
-  async acceptRingChange(): Promise<UnlockResult> {
-    return this.#unlock(true);
+  async acceptRingChange(confirmed: RingPin): Promise<UnlockResult> {
+    return this.#unlock(confirmed);
   }
 
-  async #unlock(accept: boolean): Promise<UnlockResult> {
+  async #unlock(accept: RingPin | null): Promise<UnlockResult> {
     const { ring, wrap } = await this.read();
     if (ring === null) return { kind: "locked", reason: "no-ring" };
     const pinned = await this.pin();
+    // An accept holds only for the ring the person was shown; a ring that moved since is
+    // reported again, not adopted.
+    const expected = accept ?? pinned;
     if (
-      !accept &&
-      pinned !== null &&
-      (pinned.ringId !== ring.ringId ||
-        pinned.epoch !== ring.epoch ||
-        pinned.rootKid !== ring.rootKid)
+      expected !== null &&
+      (expected.ringId !== ring.ringId ||
+        expected.epoch !== ring.epoch ||
+        expected.rootKid !== ring.rootKid)
     )
       return {
         kind: "ring-changed",
-        pinned,
+        pinned: pinned ?? expected,
         served: {
           ringId: ring.ringId,
           epoch: ring.epoch,
