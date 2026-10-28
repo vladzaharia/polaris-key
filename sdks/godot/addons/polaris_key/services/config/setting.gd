@@ -53,6 +53,13 @@ func clear() -> PKeyResult:
 	return c.clear(key)
 
 
+## Where this key's value is with Cloud Sync: `"local"` (Cloud Sync off, nobody signed in, or a
+## `local` key), `"pending"` (an edit waits to be sent) or `"synced"`.
+func sync() -> String:
+	var c = _config.get_ref()
+	return c._sync_state(key) if c != null else "local"
+
+
 ## Whether a device-local override currently answers for this key.
 func is_local() -> bool:
 	return source == &"local"

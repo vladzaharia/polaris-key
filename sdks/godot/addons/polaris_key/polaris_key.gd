@@ -81,6 +81,9 @@ var devices: PKeyDevices = null
 ## The Cloud Sync key ring (core/sync/ring.gd): create, unlock, wrap_to, recovery, adopt, forget, and the
 ## codec the sync lane seals with. Null until configure(). Sign-out calls `keyring.forget()`.
 var keyring: PKeySyncRing = null
+## Cloud Sync's settings API (services/cloud_sync.gd): `status()`, `flush()`. Null until configure().
+## `config.set_value` / `clear` / `setting(k).sync()` route through it while a person is signed in.
+var cloud_sync = null
 ## The licence surface (services/license.gd); null until configure().
 var license: PKeyLicense = null
 ## The licence's grants: has, value, all (services/entitlements.gd). Present before `configure()`
@@ -194,6 +197,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
 	identity.bind(core, self)
 	_build_keyring(opts)
+	_build_cloud_sync(opts)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	identity.on_change = _on_identity_change
 	presentation_source.attach(core, self)
@@ -214,9 +218,29 @@ func _build_keyring(opts: PKeyOptions) -> void:
 		identity.add_before_sign_out(_forget_ring)
 
 
-func _forget_ring() -> void:
+## The sign-out chain (A-3): Cloud Sync flushes, signs the machine out, forgets the ring, purges, in
+## that order (the final E2E flush still has the root). Without Cloud Sync, the ring alone. A ring
+## that cannot forget its root stops the sign-out (D-13): the failing PKeyResult is returned.
+func _forget_ring() -> Variant:
+	if cloud_sync != null:
+		return await cloud_sync.before_sign_out()
 	if keyring != null:
-		await keyring.forget()
+		return await keyring.forget()
+	return null
+
+
+func _build_cloud_sync(opts: PKeyOptions) -> void:
+	if cloud_sync == null:
+		cloud_sync = load("res://addons/polaris_key/services/cloud_sync.gd").new()
+	cloud_sync.bind(core, self, config, keyring, opts, _emit_cloud_sync)
+
+
+## One cloudSync event for the stream: the machine's names, other keys snake_case.
+func _emit_cloud_sync(data: Dictionary) -> void:
+	var out := {}
+	for k in data:
+		out["sign_in_url" if k == "signInUrl" else ("mutation_id" if k == "mutationId" else k)] = data[k]
+	_emit_event(PKeyConstants.EventKind.CLOUDSYNC, out)
 
 
 ## The boot (report §5.1, §5.8): runs the P1-09 stage machine through PKeyBoot and resolves at
@@ -300,6 +324,8 @@ func start() -> PKeyResult:
 		_start_timer()
 		_emit_state()
 		config.refresh()
+		if cloud_sync != null:
+			cloud_sync.attach()
 	return r
 
 
@@ -309,6 +335,8 @@ func discover() -> PKeyResult:
 		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
 	var r := await core.discover()
 	_emit_state()
+	if r.ok and cloud_sync != null:
+		cloud_sync.note_discovery()
 	return r
 
 
@@ -342,6 +370,8 @@ func sync(force := false) -> PKeySyncResult:
 	var r := await core.sync(force)
 	_syncing = false
 	config.refresh()
+	if cloud_sync != null:
+		cloud_sync.note_document_refreshed()
 	sync_finished.emit(r)
 	_emit_state()
 	return r
@@ -447,6 +477,8 @@ func _on_license_acquired() -> PKeySyncResult:
 func _on_license_wiped() -> void:
 	_emit_state()
 	config.refresh()
+	if cloud_sync != null:
+		cloud_sync.on_deactivated()
 
 
 func _init() -> void:
@@ -538,6 +570,8 @@ func _emit_event(kind: String, data: Dictionary) -> void:
 
 
 func _on_identity_change(kind: String, subject: String, previous: String) -> void:
+	if cloud_sync != null:
+		cloud_sync.on_identity(kind, subject, previous)
 	_emit_event(PKeyIdentity.EVENT_KIND, {
 		"kind": kind,
 		"subject": subject if subject != "" else null,

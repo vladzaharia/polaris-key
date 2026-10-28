@@ -123,6 +123,15 @@ var ring_vault: PKeySyncRingVault = null
 ## caller always gets the refusal.
 @export var auto_attest := true
 
+@export_group("Cloud Sync")
+## Cloud Sync's mode (app code's choice, never the Worker's): "e2e" (default) or "server". An app
+## that says "server" still refuses a Worker it has seen speak E2E. `configure` refuses anything else.
+@export var cloud_sync_encryption := "e2e"
+## Renames the app declares for synced settings (old name to current name). Never taken from a served body.
+@export var cloud_sync_aliases: Dictionary = {}
+## The codec the E2E lane seals with (a PKeyCloudSync codec port). Not an export. Null: PKeySyncHostCodec over the key ring.
+var cloud_sync_codec: Object = null
+
 @export_group("Config")
 ## Persist the player's settings by default (SDK parity §3.11): when the game has not installed its
 ## own override store, PolarisKey.config keeps the local layer in a PKeyConfigFileStore at
