@@ -142,7 +142,7 @@ public struct PolarisKeyGate<Content: View>: View {
                 screen: model.activate, text: $model.keyText,
                 onSubmit: { Task { await model.submitKey() } }, onReplaceDevice: replaceDevice,
                 onCancel: { model.backToWelcome() }, refusalLink: refusalLink,
-                onRefusalLink: openRefusalLink)
+                onRefusalLink: openRefusalLink, onSignIn: signInAction)
         case .signIn:
             SignInView(model: model, providers: providers)
         }
@@ -274,7 +274,16 @@ public struct PolarisKeyGate<Content: View>: View {
     /// The fix a key-entry-limit or license-owned refusal points at: the account page the server
     /// named, or the sign-in of the account that holds the license. Only a valid link counts.
     private var refusalLink: URL? {
-        ActivateRefusal.link(model.activate, model.inputs.activation)
+        // The kit's own sign-in is the fix for a license in another account; the card's page is
+        // only the fallback when the kit cannot sign in.
+        if ActivateRefusal.of(model.activate) == .licenseOwned, signInAction != nil { return nil }
+        return ActivateRefusal.link(model.activate, model.inputs.activation)
+    }
+
+    /// Sign in, while Identity is on and the product offers it.
+    private var signInAction: (() -> Void)? {
+        guard model.inputs.isOn(.identity), model.inputs.capabilities.signIn else { return nil }
+        return { model.beginSignIn() }
     }
 
     /// Opens the refusal's link behind the person's tap; a TV shows a QR instead.

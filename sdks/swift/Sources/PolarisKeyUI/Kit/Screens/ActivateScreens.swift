@@ -36,6 +36,69 @@ enum ActivateRefusal: Equatable {
     }
 }
 
+/// The focused step of the two account refusals (SIGN-IN.md §4.5): the product header, the
+/// refusal's title and sentence, a QR on a TV, then Sign in (the primary), the add-it link and
+/// Use a different key. No key field: resubmitting the same key cannot succeed.
+struct RefusalStep: View {
+    let screen: KitScreen<ActivateState>
+    let refusal: ActivateRefusal
+    var link: URL?
+    var onSignIn: (() -> Void)?
+    var onOpenLink: (() -> Void)?
+    var onDifferentKey: () -> Void
+    @Environment(\.polarisKeyStrings) private var strings
+
+    var body: some View {
+        kitStyle { style in
+            let product: [String: CopyArgument] = ["product": .text(style.identity.name)]
+            let title = refusal == .keyEntryLimit
+                ? CopyLine("core.activation.key-entry-limit.title")
+                : CopyLine("core.codes.license_owned.title", product)
+            let message = refusal == .keyEntryLimit
+                ? CopyLine("core.activation.key-entry-limit.message")
+                : CopyLine("core.codes.license_owned.message", product)
+            KitScreenScaffold(header: true) {
+                KitText(title, .title, color: .strong)
+                    .accessibilityAddTraits(.isHeader)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } content: {
+                VStack(alignment: .leading, spacing: style.space(.md)) {
+                    KitText(message, .body, color: .default)
+                    #if os(tvOS)
+                        if let link {
+                            PolarisQRCode(
+                                link.absoluteString,
+                                accessibilityLabel: strings.string(
+                                    refusal == .keyEntryLimit ? "a11y.qrManage" : "a11y.qr")
+                            )
+                            .frame(width: 200, height: 200)
+                        }
+                    #endif
+                }
+            } actions: {
+                KitActionStack {
+                    // Sign in finishes in the app; the link is the primary only when the kit has
+                    // no sign-in to start.
+                    if let onSignIn {
+                        KitButton(line: CopyLine("welcome.signIn"), kind: .primary, action: onSignIn)
+                            .keyboardShortcut(.defaultAction)
+                    }
+                    if let onOpenLink, refusal == .keyEntryLimit || onSignIn == nil {
+                        KitButton(
+                            line: CopyLine(
+                                refusal.actionKey, ["product": .text(style.identity.name)]),
+                            kind: onSignIn == nil ? .primary : .secondary,
+                            glyph: PolarisKitGlyph.newWindow, action: onOpenLink)
+                    }
+                    KitButton(
+                        line: CopyLine("signin.key.differentKey"), kind: .quiet,
+                        action: onDifferentKey)
+                }
+            }
+        }
+    }
+}
+
 /// The key field step. Return submits; the button keeps its label while busy; a refusal sits under
 /// the control that caused it and is announced (DL7).
 public struct ActivateView: View {
@@ -49,14 +112,19 @@ public struct ActivateView: View {
     /// owning account's sign-in. Nil hides it (and, on a TV, the QR).
     var refusalLink: URL?
     var onRefusalLink: (() -> Void)?
+    /// The kit's own sign-in (the gate's), offered while Identity is on: the primary of both
+    /// account refusals. Nil when the kit cannot sign in.
+    var onSignIn: (() -> Void)?
 
     /// `onDone` carries the Done step's one action (Start using <Product>, DL4): a lone action is
     /// always the primary. The drop-in gate leaves it nil because the app opens on success.
     public init(
         screen: KitScreen<ActivateState>, text: Binding<String>, onSubmit: @escaping () -> Void,
         onReplaceDevice: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
-        onDone: (() -> Void)? = nil, refusalLink: URL? = nil, onRefusalLink: (() -> Void)? = nil
+        onDone: (() -> Void)? = nil, refusalLink: URL? = nil, onRefusalLink: (() -> Void)? = nil,
+        onSignIn: (() -> Void)? = nil
     ) {
+        self.onSignIn = onSignIn
         self.screen = screen
         self._text = text
         self.refusalLink = refusalLink
@@ -68,6 +136,16 @@ public struct ActivateView: View {
     }
 
     public var body: some View {
+        if let refusal = ActivateRefusal.of(screen), onSignIn != nil || refusalLink != nil {
+            RefusalStep(
+                screen: screen, refusal: refusal, link: refusalLink, onSignIn: onSignIn,
+                onOpenLink: onRefusalLink, onDifferentKey: { text = "" })
+        } else {
+            form
+        }
+    }
+
+    private var form: some View {
         KitScreenScaffold(header: true) {
             // Done names its state: the outcome is the heading, not a row under the old one.
             VStack(alignment: .leading, spacing: 6) {

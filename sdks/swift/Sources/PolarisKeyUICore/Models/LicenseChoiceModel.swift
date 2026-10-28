@@ -84,6 +84,8 @@ public final class LicenseChoiceModel {
         guard phase == .choosing else { return }
         selected = id
         error = nil
+        // A pick answers the fresh list: the "choose again" notice has done its work.
+        raced = false
     }
 
     /// Open Replace for a full licence: list the devices using it.
