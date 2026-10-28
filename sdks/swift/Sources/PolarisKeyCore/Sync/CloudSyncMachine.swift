@@ -166,6 +166,23 @@ public struct SyncMachineState: Sendable, Equatable {
     public var imported: Bool
     public var e2eSeen: Bool = false
 
+    public init(
+        subject: String?, partitions: [String: SyncPartition], hlc: (physical: Int, counter: Int), offsetMs: Int,
+        contacted: Bool, aliases: [String: String] = [:], blocked: SyncBlockReason? = nil,
+        deviceLocal: [String: JSONValue] = [:], imported: Bool = false, e2eSeen: Bool = false
+    ) {
+        self.subject = subject
+        self.partitions = partitions
+        self.hlc = hlc
+        self.offsetMs = offsetMs
+        self.contacted = contacted
+        self.aliases = aliases
+        self.blocked = blocked
+        self.deviceLocal = deviceLocal
+        self.imported = imported
+        self.e2eSeen = e2eSeen
+    }
+
     public static func == (a: Self, b: Self) -> Bool {
         a.subject == b.subject && a.partitions == b.partitions && a.hlc == b.hlc && a.offsetMs == b.offsetMs
             && a.contacted == b.contacted && a.aliases == b.aliases && a.blocked == b.blocked
@@ -350,6 +367,11 @@ public final class CloudSyncMachine {
     // MARK: host surface
 
     public var clockNow: Int { now }
+    /// The person the machine is signed in as; nil while signed out. (Read-only, for the host's
+    /// request binding; `persist()` is not a read, it commits drafts.)
+    public var subject: String? { s.subject }
+    /// A request was taken and has no answer yet: `receive` is only valid while this holds.
+    public var awaitingAnswer: Bool { inFlight != nil }
     public var networkState: SyncNetwork { network }
 
     /// What survives a relaunch (the drafts are committed first, as the exit flush does).
