@@ -163,15 +163,19 @@ public struct IdentityDiscovery: Sendable, Equatable {
     /// The product's effective key-entry limit, when published.
     public let keyEntryLimit: Int?
     public let endpoints: [String: String]
+    /// The platform sign-in kinds the product accepts (WIRE-CONTRACT-V5 §12.11), or nil when the
+    /// document publishes none.
+    public let exchange: IdentityExchangeDiscovery?
 
     public init(
         issuer: String? = nil, account: Bool = false, keyEntryLimit: Int? = nil,
-        endpoints: [String: String] = [:]
+        endpoints: [String: String] = [:], exchange: IdentityExchangeDiscovery? = nil
     ) {
         self.issuer = issuer
         self.account = account
         self.keyEntryLimit = keyEntryLimit
         self.endpoints = endpoints
+        self.exchange = exchange
     }
 
     init(_ fragment: ServiceFragment) {
@@ -179,7 +183,8 @@ public struct IdentityDiscovery: Sendable, Equatable {
             issuer: fragment.extras["issuer"]?.stringValue,
             account: fragment.extras["account"]?.boolValue == true,
             keyEntryLimit: fragment.extras["keyEntryLimit"]?.intValue,
-            endpoints: fragment.endpoints)
+            endpoints: fragment.endpoints,
+            exchange: IdentityExchangeDiscovery(fragment.extras["exchange"]))
     }
 
     /// The authorize endpoint a redirect sign-in sends the browser to.
@@ -206,6 +211,32 @@ public struct IdentityDiscovery: Sendable, Equatable {
     }
     /// The product's page in the customer portal.
     public var accountPortal: String? { endpoints["accountPortal"] }
+    /// `POST`: the single-use nonce a platform provider signs into its ID token (§12.11.2).
+    public var nonce: String? { endpoints["nonce"] }
+    /// `POST`: the link offer (§12.11.4).
+    public var link: String? { endpoints["link"] }
+}
+
+/// `identity.exchange` of the discovery document (§12.11): which providers the product accepts.
+public struct IdentityExchangeDiscovery: Sendable, Equatable {
+    /// `google`, `apple`: the kinds the product declares, as published.
+    public let kinds: [String]
+    /// The product's Google server client id, the audience a Google ID token is requested for.
+    public let googleServerClientId: String?
+
+    public init(kinds: [String], googleServerClientId: String? = nil) {
+        self.kinds = kinds
+        self.googleServerClientId = googleServerClientId
+    }
+
+    init?(_ value: JSONValue?) {
+        guard let object = value?.objectValue, case .array(let list)? = object["kinds"] else {
+            return nil
+        }
+        self.init(
+            kinds: list.compactMap(\.stringValue),
+            googleServerClientId: object["google"]?.objectValue?["serverClientId"]?.stringValue)
+    }
 }
 
 public enum DiscoveryResult: Sendable {

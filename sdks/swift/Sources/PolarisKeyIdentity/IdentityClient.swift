@@ -222,6 +222,9 @@ public final class IdentityClient: Sendable {
     let beforeSignOut = LockedValue<[SignOutHook]>([])
     /// Where the facade hears of a sign-in, a sign-out and a changed subject (`installIdentityEvents`).
     let identityEvents = LockedValue<(@Sendable (IdentityChange) -> Void)?>(nil)
+    /// The device key port the platform exchange signs with (`installDeviceKeys`); nil until one
+    /// is handed over, and then a `DeviceKeyStore` for the product, made on first use.
+    let deviceKeys = LockedValue<(any DeviceKeyPort)?>(nil)
     private let sleep: @Sendable (Double) async throws -> Void
 
     /// - Parameter sleep: how the wait loop waits between polls. Defaults to `Task.sleep`, which
@@ -238,6 +241,10 @@ public final class IdentityClient: Sendable {
                 try await Task.sleep(nanoseconds: IdentityClient.sleepNanoseconds(seconds))
             }
     }
+
+    /// Hand over the device key port the platform exchange signs with (the same keys Connect
+    /// uses). Nil keeps the product's `DeviceKeyStore`, made on first use.
+    public func installDeviceKeys(_ port: (any DeviceKeyPort)?) { deviceKeys.set(port) }
 
     func notifyIdentity(_ change: IdentityChange) { identityEvents.current?(change) }
 
