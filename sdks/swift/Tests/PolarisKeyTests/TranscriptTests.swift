@@ -9,6 +9,7 @@
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
+// @pkey-feature connect.relay
 // @pkey-feature identity.exchange
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
@@ -47,13 +48,14 @@
 import CryptoKit
 import Foundation
 import PolarisKey
-@testable import PolarisKeyCore
-@testable import PolarisKeyIdentity
 import PolarisKeyLicense
-@testable import PolarisKeyPacks
 import PolarisKeyRelease
 import PolarisKeyUpdate
 import XCTest
+
+@testable import PolarisKeyCore
+@testable import PolarisKeyIdentity
+@testable import PolarisKeyPacks
 
 /// A settable clock the client reads through `CoreOptions.clock`.
 final class ReplayClock: @unchecked Sendable {
@@ -388,6 +390,30 @@ enum SwiftReplay {
                     out["code"] = .string(code)
                 }
             }
+        case "relayTicket":
+            // `client.connect.relayTicket()` (CC-11.4, `connect.relay`): a refusal reads as `refused`
+            // with the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
+            switch await client.connect.relayTicket() {
+            case .granted(let g):
+                out["result"] = .string("ok")
+                out["protocol"] = .string(g.protocolName)
+                out["url"] = .string(g.url.absoluteString)
+                out["expiresIn"] = .int(g.expiresAt - (await client.core.now()))
+            case .relay(let e):
+                out["result"] = .string("refused")
+                out["status"] = e.status.map(JSONValue.int) ?? .null
+                out["code"] = .string(e.code)
+                if let r = e.retryAfterSeconds { out["retryAfter"] = .int(r) }
+                if let sc = e.scope { out["scope"] = .string(sc) }
+            case .refused(let r):
+                out["result"] = .string("refused")
+                out["status"] = .int(r.status)
+                out["code"] = .string(r.code)
+            case .unsupported: out["result"] = .string("unavailable")
+            case .error(let code, _):
+                out["result"] = .string("error")
+                out["code"] = .string(code)
+            }
         case "sync":
             let r = await client.sync(force: step.args["force"] == .bool(true))
             out["applied"] = .bool(r.applied)
@@ -500,8 +526,7 @@ enum SwiftReplay {
     /// (a step may name its own), the hints it carries, the recorded redirect URI.
     private static func redirectSession(
         _ client: PolarisKeyClient, step: Transcript.Step, licenseChoice: LicenseChoiceMode? = nil
-    ) async throws -> SignInSession
-    {
+    ) async throws -> SignInSession {
         client.identity.redirectEntropy.set(
             (
                 state: step.args["state"]?.stringValue ?? recordedState,

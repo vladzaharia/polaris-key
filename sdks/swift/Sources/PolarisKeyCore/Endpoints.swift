@@ -101,6 +101,7 @@ public struct Endpoints: Sendable, Equatable {
     // ── Connect (V5 §15) ──
     public var connectIdentity: URL { url("connect/identity") }
     public var connectDevices: URL { url("connect/devices") }
+    public var connectRelayTicket: URL { url("connect/relay/ticket") }
     public func device(_ id: String) -> URL {
         url("devices/\(Endpoints.segment(id))")
     }
