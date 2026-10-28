@@ -131,6 +131,18 @@ public enum LicenseChoiceInput: Sendable, Equatable {
     }
 }
 
+/// What the person consented to on the exchange's consent screen (`consent` of `choice/complete`,
+/// WIRE-CONTRACT-V5 §12.11.3 rule 2): the claims they agreed to share. Required on a grant that
+/// was issued with `confirm`; the Worker refuses its absence with `bad_request` and leaves the
+/// grant open.
+public struct ChoiceConsent: Sendable, Equatable {
+    public let claims: [String]
+
+    public init(claims: [String]) { self.claims = claims }
+
+    var wire: JSONValue { .object(["claims": .array(claims.map(JSONValue.string))]) }
+}
+
 /// A redeemed redirect code that needs a licence choice (`license_choice=app`, §12.5.1): the
 /// grant (300 s, bound to this device) and the first view. Printing shows the grant `[redacted]`.
 public struct PendingSignIn: Sendable, Equatable {
@@ -210,9 +222,17 @@ public struct ChoiceNamespace: Sendable {
     /// `choice` sends none, which the Worker refuses with `license_choice_required` (fresh `view`).
     public func complete(grant: String, choice: LicenseChoiceInput?) async throws -> ChoiceCompletion
     {
+        try await complete(grant: grant, choice: choice, consent: nil)
+    }
+
+    /// As above, with the person's `consent` to an exchange `confirm` (`PendingConsent`).
+    public func complete(
+        grant: String, choice: LicenseChoiceInput?, consent: ChoiceConsent?
+    ) async throws -> ChoiceCompletion {
         let (url, _) = try await client.choiceUrl("choiceComplete") { $0.choiceComplete }
         var request: [String: JSONValue] = ["grant": .string(try Self.checked(grant))]
         if let choice { request["choice"] = choice.wire }
+        if let consent { request["consent"] = consent.wire }
         let response = try await client.choicePost(url, request)
         guard response.status == 200 else { throw client.choiceRefusal(response) }
         let body = client.choiceBody(response)
