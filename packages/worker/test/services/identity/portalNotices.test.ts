@@ -9,7 +9,10 @@
  */
 
 import { issuePortalSessionRow } from "../../portalSessionRow.js";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { WORKER_ROOT } from "../../paths.js";
 import { THEME_TOKENS } from "@polaris-key/brand";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
@@ -362,6 +365,32 @@ describe("notice templates: rules", () => {
     expect(sec.text).toContain(
       `Wasn't you? Secure your account: ${ORIGIN}/#/account/methods`,
     );
+  });
+
+  it("the key ring notices link their Help entries, and the built Help page has them", () => {
+    const anchors = {
+      recoveryStarted: "recovery-started",
+      recoveryCodeChanged: "recovery-code-changed",
+      encryptionReset: "encryption-reset",
+    };
+    for (const [name, anchor] of Object.entries(anchors))
+      expect(TEMPLATES[name]!().text).toContain(
+        `About this email: ${ORIGIN}/docs/help/emails/#${anchor}`,
+      );
+    // The manifest lists heading slugs only; these are explicit `<a id>` anchors, so read the HTML.
+    const page = join(
+      WORKER_ROOT,
+      "..",
+      "docs",
+      "dist",
+      "help",
+      "emails",
+      "index.html",
+    );
+    if (!existsSync(page)) return; // the docs site is not built
+    const html = readFileSync(page, "utf8");
+    for (const anchor of Object.values(anchors))
+      expect(html).toContain(`id="${anchor}"`);
   });
 
   it("holder moves (LX-30): the new address hears nothing about accounts, a waiting address has no account to secure", () => {
