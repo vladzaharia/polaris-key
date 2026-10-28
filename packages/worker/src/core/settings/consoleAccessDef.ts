@@ -28,7 +28,7 @@ export const CONSOLE_ACCESS_DEF: SettingDef = setting({
   widensWhen: "any",
   rbacArea: "members",
   confirm: { change: "L2" },
-  readers: ["core/rbac/principal.ts"],
+  readers: ["core/rbac/ruleGrants.ts"],
   storage: { kind: "scalar" },
   since: "ST-32",
 });

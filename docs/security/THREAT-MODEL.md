@@ -7525,6 +7525,29 @@ answers "may this member act" and not "may this member give that away".
   soundness cross-check against `can()`, the named cases above); reviewer probes over 1.4M granter
   and target combinations found no widening beyond `can()`.
 
+**Rule hijack (ST-32.3).** `console.access` rules turn a sign-in through an operator connection
+into a grant, so what can be made to satisfy a rule is what an attacker aims at. The grant is
+computed on every request (`core/rbac/ruleGrants.ts`), never stored:
+
+- Only a Superadmin with a step-up writes the rules. The writer refuses a connection that is not
+  an operator connection and a `domain` rule without a verified, enforced domain. A rule grants
+  Product admin or Console access; `evaluate` never returns Superadmin or Platform admin.
+- A rule reads only the account's links through the rule's own connection: the issuer's link,
+  `kind = 'oidc'`, with `strong_at` set. A group, claim or address from another connection or from
+  an email-code link never counts.
+- A link counts for 8 h from `asserted_at`, the root rule's bound. A stale, future or missing
+  value grants nothing, so removing a person at the IdP ends the grant at their next sign-in or
+  after 8 h.
+- A `domain` rule matches only an address the IdP marked verified, on a domain still enforced for
+  the connection. An address confirmed by an email code is not passed to the matcher.
+- A connection that stops qualifying (disabled, audience narrowed, issuer off the allowlist) grants
+  nothing at the next request. A deleted rule stops granting within the 30 s settings cache.
+- A document that cannot be read or parsed grants nothing.
+
+Residual: a group or claim the IdP asserts is trusted as asserted, so whoever administers an
+operator IdP can mint what its rules match. That is why making a connection an operator connection
+is a Superadmin write with a step-up. Tests: `test/core/ruleGrants.test.ts`.
+
 **Residual.**
 
 - The grant handlers (ST-31.6, below) call the engine.
