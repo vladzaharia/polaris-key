@@ -8,7 +8,7 @@ description: "Changes to the SDKs, the CLI, the manifest and the API, newest fir
 
 Changes to the SDKs, the CLI, the manifest and the API, newest version first. The tables of what each removal is replaced by are in [Upgrade to 0.9](/docs/build/upgrade-to-0-9/).
 
-## 0.9.x
+## 0.10.0
 
 ### Sign-in is one session call
 
@@ -19,6 +19,8 @@ Breaking · 2026-10-27 · identity · node · react · python
 `identity.signIn.start()` (Python: `sign_in.start()`) starts a `device-code` or `redirect` sign-in and answers a session with `wait`, `reopen`, `cancel` and `complete(callbackUrl)`. `identity.choice` and `useLicenseChoice` run the license choice. `subject`, `signOut`, `attach` and `openAccount` are the account calls.
 
 A key activation can answer `key-entry-limit` (`manageUrl`, `keyEntries`) or `license-owned` (`signInUrl`). Neither wipes the device's token.
+
+## 0.9.x
 
 ### Exit code 4 for a refusal
 

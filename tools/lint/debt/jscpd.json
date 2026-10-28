@@ -1343,6 +1343,12 @@
     "packages/client-core/test/chunks.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/client-core/test/cloudSync.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/client-core/test/cloudSyncE2e.test.ts": {
+      "jscpd:duplicate": 7
+    },
     "packages/client-core/test/content.test.ts": {
       "jscpd:duplicate": 17
     },
@@ -1821,7 +1827,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/browser/chrome.browser.test.tsx": {
-      "jscpd:duplicate": 40
+      "jscpd:duplicate": 42
     },
     "packages/sdk-react/test/browser/chrome.gnome.browser.test.tsx": {
       "jscpd:duplicate": 13
@@ -1830,13 +1836,13 @@
       "jscpd:duplicate": 13
     },
     "packages/sdk-react/test/browser/chrome.sizes.browser.test.tsx": {
-      "jscpd:duplicate": 15
+      "jscpd:duplicate": 14
     },
     "packages/sdk-react/test/browser/chrome.themes.browser.test.tsx": {
       "jscpd:duplicate": 8
     },
     "packages/sdk-react/test/browser/kit.browser.test.tsx": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/browser/motion.browser.test.tsx": {
       "jscpd:duplicate": 1
@@ -1902,7 +1908,7 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-react/test/kitDrive.test.tsx": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/sdk-react/test/kitFinal2.test.tsx": {
       "jscpd:duplicate": 1
@@ -2157,7 +2163,7 @@
       "jscpd:duplicate": 2
     },
     "packages/ui-core/test/signInModel.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/ui-core/test/theme.test.ts": {
       "jscpd:duplicate": 1

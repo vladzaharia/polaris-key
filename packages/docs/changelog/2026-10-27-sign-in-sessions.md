@@ -1,7 +1,7 @@
 ---
 title: "Sign-in is one session call"
 date: "2026-10-27"
-version: "0.9.x"
+version: "0.10.0"
 type: "breaking"
 services: ["identity"]
 sdks: ["node", "react", "python"]
