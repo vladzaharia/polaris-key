@@ -242,6 +242,12 @@ export interface SettingDef<T = unknown> {
    * the platform's own client id). A console write and a resync that name one are refused.
    */
   reservedFrom?: readonly string[];
+  /**
+   * The value names a scope one owner holds: another live product of a different owner that stores
+   * the same value refuses the write (`audience_claimed`; `core/settings/unique.ts`). The manifest
+   * ingest of the owning service checks it too.
+   */
+  uniqueAcrossProducts?: boolean;
   /** `secret`: only presence is ever shown or audited, never a value. */
   sensitivity: "config" | "secret";
   /**

@@ -134,18 +134,6 @@
                   "scopeHash": "327f7d9e9a356405aafdeb28138a0586ee84b663f9cb65798332291ce1b1652f",
                   "firstTime": true,
                   "changed": false
-                },
-                "choices": {
-                  "state": "none",
-                  "choices": [],
-                  "keep": false,
-                  "preselected": null,
-                  "create": null,
-                  "getLicense": {
-                    "activateUrl": "https://key.plrs.im/activate?product=djdl",
-                    "purchaseUrl": null,
-                    "keyEntry": false
-                  }
                 }
               }
             }

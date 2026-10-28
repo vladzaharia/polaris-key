@@ -300,6 +300,7 @@ function audienceSetting(
   keywords: string[],
   value: SettingDef["value"],
   defaultValue: unknown,
+  uniqueAcrossProducts = false,
 ): SettingDef {
   return setting({
     key,
@@ -322,6 +323,7 @@ function audienceSetting(
     critical: true,
     confirm: { change: "L1" },
     reservedFrom: PLATFORM_CLIENT_VARS,
+    ...(uniqueAcrossProducts ? { uniqueAcrossProducts } : {}),
     visibleWhen: VISIBLE,
     storage: { kind: "scalar" },
     readers: ["services/identity/platformSignIn.ts"],
@@ -342,6 +344,7 @@ const PS_GOOGLE_SERVER = audienceSetting(
   ["google", "audience", "aud", "oauth"],
   GOOGLE_ID_SPEC,
   null,
+  true,
 );
 const PS_GOOGLE_CLIENTS = audienceSetting(
   "identity.platformSignIn.google.clientIds",
@@ -358,6 +361,7 @@ const PS_APPLE_TEAM = audienceSetting(
   ["apple", "team"],
   { kind: "string", pattern: APPLE_TEAM_ID_RE.source, maxLength: 10 },
   null,
+  true,
 );
 const PS_APPLE_BUNDLES = audienceSetting(
   "identity.platformSignIn.apple.bundleIds",

@@ -84,9 +84,9 @@ import { randomId } from "../../../platform/crypto.js";
 import {
   DeviceKeysConflictError,
   DeviceKeysInvalidError,
-  upsertDeviceKeys,
   type DeviceKeyPair,
 } from "../../../core/devices/keys.js";
+import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
 import { getAccountRow } from "../accounts/repo.js";
 import { redeemAuthorizationCode } from "./code.js";
 import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
@@ -419,12 +419,11 @@ export async function bindAndAnswer(
 
   if (p.keys) {
     try {
-      await upsertDeviceKeys(
-        db,
+      await registerDeviceKeys(
+        { db, env, now },
         product.slug,
         deviceId,
         p.keys,
-        now,
         undefined,
         p.heldSignKey,
       );

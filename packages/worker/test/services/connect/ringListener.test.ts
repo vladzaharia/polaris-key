@@ -22,6 +22,7 @@ import {
 import { writeDeviceSubject } from "../../../src/core/devices.js";
 import { setDeviceStatus } from "../../../src/core/devices/store.js";
 import { notifyDeviceChange } from "../../../src/core/devices/lifecycle.js";
+import { registerDeviceKeys } from "../../../src/core/devices/registerKeys.js";
 import { setRelayPokePort } from "../../../src/services/connect/relayPoke.js";
 import { bumpRingNow } from "../../../src/services/connect/ringListener.js";
 import { currentRing, getRing } from "../../../src/services/connect/ring.js";
@@ -126,6 +127,18 @@ describe("connect ring listener (CC-06.3)", () => {
     // A rotation is treated as a leave: no previous key.
     expect(after.prev_disc_key).toBeNull();
     expect(pokes).toHaveLength(1);
+  });
+
+  it("registering a rotation through the Core operation bumps the ring, and the same keys again do not (I-13.9)", async () => {
+    const before = (await ringOf(w))!;
+    const keys = await newKeys();
+    const ctx = { db: w.db, env: w.env, now: NOW + 1 };
+    await registerDeviceKeys(ctx, SLUG, B, keys);
+    const after = (await ringOf(w))!;
+    expect(after.epoch).toBe(before.epoch + 1);
+    expect(pokes).toHaveLength(1);
+    await registerDeviceKeys(ctx, SLUG, B, keys);
+    expect((await ringOf(w))!.epoch).toBe(after.epoch);
   });
 
   it("an event for a device with no change in the members moves nothing", async () => {

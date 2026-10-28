@@ -60,6 +60,7 @@ import {
 } from "./resolve.js";
 import { NO_GUARD } from "./columns.js";
 import { reservedValueIn } from "./rules.js";
+import { valueHeldByOtherOwner } from "./unique.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
   BREAK_GLASS_REASON_MAX,
@@ -199,6 +200,7 @@ export type WriteRefusalReason =
   | "no_writer"
   | "invalid_value"
   | "setting_out_of_bounds"
+  | "value_claimed"
   | "expected_version_required"
   | "reason_required"
   | "invalid_reason"
@@ -818,6 +820,17 @@ async function writeProduct(
           `${def.key} must stay within the platform bound (${auditValue(out.bound)})`,
           def.key,
           { bound: out.bound, boundedBy: "platform" },
+        );
+    }
+
+    if (op === "set" && def.uniqueAcrossProducts) {
+      const held = await valueHeldByOtherOwner(ctx.db, slug, def.key, w.value);
+      if (held !== null)
+        return refuse(
+          422,
+          "value_claimed",
+          `${def.key} is already declared by another product`,
+          def.key,
         );
     }
 
