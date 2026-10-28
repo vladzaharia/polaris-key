@@ -218,6 +218,22 @@
       ],
       "note": "Credential Manager on the Android play flavour (I-45); JVM desktop has no platform identity."
     },
+    "identity.autosignin": {
+      "status": "planned",
+      "wp": "I-45",
+      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-45)."
+    },
+    "identity.link": {
+      "status": "planned",
+      "wp": "I-45",
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Link offer (I-43.3 transcripts, I-45)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10b.14: ActivationResult.Ok.keyEntries, KeyEntryLimit(manageUrl, keyEntries) and LicenseOwned(signInUrl); keyentry-* transcripts replayed."

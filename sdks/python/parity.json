@@ -178,6 +178,17 @@
       "reason": "runtime",
       "note": "No OS account to take a platform identity from (I-13); Python signs in by loopback or device code."
     },
+    "identity.autosignin": {
+      "status": "planned",
+      "wp": "I-47",
+      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-47)."
+    },
+    "identity.link": {
+      "status": "na",
+      "runtime": ["python"],
+      "reason": "runtime",
+      "note": "No OS account to offer a link from (I-43)."
+    },
     "identity.keyentry": {
       "status": "implemented",
       "note": "I-10a: ActivationOk.key_entries, ActivationKeyEntryLimit(manage_url, key_entries) and ActivationLicenseOwned(sign_in_url); no wipe, no retry."
