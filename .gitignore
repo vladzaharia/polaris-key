@@ -39,6 +39,7 @@ __pycache__/
 # committed. The Gradle wrapper jar IS committed (a global *.jar ignore would otherwise drop it).
 .gradle/
 sdks/kotlin/local.properties
+sdks/kotlin/.kotlin/
 sdks/kotlin/*/build/
 # P6-06/P6-09: the root build directory, where maven-publish writes the local Maven repository
 # (build/repo; local only, never a public registry).
