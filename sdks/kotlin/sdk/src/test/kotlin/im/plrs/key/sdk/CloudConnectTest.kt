@@ -78,7 +78,7 @@ class CloudConnectTest {
             }
         }
 
-        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit): MdnsHandle {
+        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle {
             val b = onUp to onDown
             browsers += b
             for (a in synchronized(adverts) { adverts.values.toList() }) onUp(found(a))

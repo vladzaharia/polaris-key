@@ -6,9 +6,13 @@
 // - the host name in the advert is the instance name (`p1-....local`), never the machine's name;
 // - a browse hit is dropped unless its instance name has the advert shape, it names exactly one SRV
 //   and one TXT, and it has an address in a private (or, opt-in, loopback) range;
+// - a datagram whose source is not a LAN address is dropped before it is parsed; a name's SRV, TXT and
+//   PTR records are believed only from the first source that announced it, and that source's address is
+//   dialled first;
+// - only an instance the service accepts (a name its roster can announce) enters the tables;
 // - an A record is believed only when its address is the packet's own UDP source, so a neighbour cannot
 //   point another device's name at an address of its choosing; each name keeps at most four addresses
-//   and the first one seen is dialled (no ordering a neighbour can steer);
+//   and a dial tries them in order, the announcing source's own address first;
 // - the tables of instances and addresses hold at most 256 entries each, an entry expires five minutes
 //   after it was last refreshed, and when a table is full the least recently refreshed entry is
 //   evicted, so a flood cannot stop discovery;
@@ -51,19 +55,20 @@ private const val TTL = 120L
 private const val TXT_TTL = 4500L
 private const val ASK_QUESTIONS = 32
 private const val AGAIN_MILLIS = 1000L
+private const val RETRY_READ_MILLIS = 100L
 private const val ASK_EVERY_MILLIS = 30_000L
 private const val MULTICAST_TTL = 255
 private const val RECEIVE_BUFFER = MDNS_MAX_PACKET + 1
 private val INSTANCE_FQDN = Regex("(p1-[a-z2-7]{16})\\._pkeypeer\\._tcp\\.local")
 
-private class Entry(var at: Double) {
+private class Entry(var at: Double, val src: String) {
     var port: Int? = null
     var target: String? = null
     var txt: List<String>? = null
     var up: String? = null
 }
 
-private class Addrs(var at: Double) {
+private class Addrs(var at: Double, val owner: String) {
     val ips = ArrayList<String>()
 }
 
@@ -114,6 +119,7 @@ private class JvmMdnsSocket(private val sock: MulticastSocket, private val iface
                     }
                 } catch (e: IOException) {
                     if (closed) break
+                    Thread.sleep(RETRY_READ_MILLIS) // a socket that keeps failing does not spin
                 }
             }
         }
@@ -274,7 +280,7 @@ public class JvmMdns(
 
     // -- browse ----------------------------------------------------------------------------------
 
-    private class Browse(val onUp: (MdnsFound) -> Unit, val onDown: (String) -> Unit) {
+    private class Browse(val onUp: (MdnsFound) -> Unit, val onDown: (String) -> Unit, val accept: (String) -> Boolean) {
         val lock = Any()
         val seen = LinkedHashMap<String, Entry>()
         val addr = LinkedHashMap<String, Addrs>()
@@ -283,8 +289,8 @@ public class JvmMdns(
         val jobs = ArrayList<Job>()
     }
 
-    override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit): MdnsHandle {
-        val b = Browse(onUp, onDown)
+    override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle {
+        val b = Browse(onUp, onDown, accept)
         b.sock = openSocket { data, src -> onPacket(b, data, src) }
         ask(b)
         b.jobs += scope.launch {
@@ -308,6 +314,8 @@ public class JvmMdns(
     }
 
     private fun onPacket(b: Browse, data: ByteArray, src: String) {
+        // A neighbour on the LAN only: an off-link datagram is never parsed.
+        if (!isLanAddress(src, allowLoopback)) return
         val p = try {
             parseMdnsPacket(data)
         } catch (e: MdnsPacketError) {
@@ -359,9 +367,18 @@ public class JvmMdns(
         // Only the sender's own address, and only a LAN one.
         val ip = (r.data as? MdnsData.Address)?.ip ?: return
         if (ip != src || !isLanAddress(ip, allowLoopback)) return
-        val e = b.addr.remove(r.name) ?: run {
+        val inst = r.name.removeSuffix(".local")
+        if (!r.name.endsWith(".local") || !isInstanceName(inst) || !b.accept(inst)) return
+        // A name's address belongs to the source that announced the name: a record from any other
+        // source cannot add to it, replace it, or take its slot.
+        val entry = b.seen[inst]
+        if (entry != null && entry.src != src) return
+        val had = b.addr[r.name]
+        if (had != null && had.owner != src && entry == null) return
+        val e = (if (had != null && had.owner == src) b.addr.remove(r.name) else null) ?: run {
+            b.addr.remove(r.name)
             if (b.addr.size >= MDNS_MAX_INSTANCES) trimAddr(b, now)
-            Addrs(now)
+            Addrs(now, src)
         }
         if (ip !in e.ips && e.ips.size < MDNS_MAX_ADDRS) e.ips += ip
         e.at = now
@@ -379,13 +396,17 @@ public class JvmMdns(
             val name = if (r.type == MdnsType.PTR) ptr?.name else r.name
             val inst = name?.let { INSTANCE_FQDN.matchEntire(it)?.groupValues?.get(1) } ?: continue
             if (r.type == MdnsType.PTR && r.name != PEER_SERVICE) continue
+            if (!b.accept(inst)) continue
+            // A name belongs to the first source that announced it.
+            val known = b.seen[inst]
+            if (known != null && known.src != src) continue
             if (r.type == MdnsType.PTR && r.ttl == 0L) {
                 if (b.seen.remove(inst) != null) downs += inst
                 continue
             }
             val e = b.seen.remove(inst) ?: run {
                 if (b.seen.size >= MDNS_MAX_INSTANCES) trimSeen(b, now, downs)
-                Entry(now)
+                Entry(now, src)
             }
             e.at = now
             b.seen[inst] = e
@@ -403,15 +424,16 @@ public class JvmMdns(
             }
         }
         for ((inst, e) in b.seen) {
-            val ips = e.target?.let { b.addr[it]?.ips }
+            val ips = e.target?.let { t -> b.addr[t]?.takeIf { it.owner == e.src }?.ips }
             val port = e.port
             val txt = e.txt
             if (port == null || txt == null || ips.isNullOrEmpty()) continue
-            val host = ips[0]
-            val sig = "$host|$port|${txt.joinToString("\n")}"
+            // The announcing source's own address first, then the others in the order they were learned.
+            val hosts = if (e.src in ips) listOf(e.src) + ips.filter { it != e.src } else ips.toList()
+            val sig = "${hosts.joinToString(",")}|$port|${txt.joinToString("\n")}"
             if (e.up == sig) continue
             e.up = sig
-            ups += MdnsFound(inst, host, port, txt.toList())
+            ups += MdnsFound(inst, hosts[0], port, txt.toList(), hosts)
         }
     }
 

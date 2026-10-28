@@ -121,6 +121,8 @@ public class CloudConnect internal constructor(
     private val connect: ConnectClient,
     private val core: CoreContext,
     private val now: () -> Long = { System.currentTimeMillis() / 1000 },
+    /** Epoch seconds on the trust clock floor, non-suspend: certificate, roster and `peer_expired` checks. */
+    private val floored: () -> Long = { core.flooredNow() },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val gate = Mutex()
@@ -210,7 +212,7 @@ public class CloudConnect internal constructor(
         relayReason = null
         val reason = if (!o.relay) "host" else relayWanted(core.discoveryDocument())
         val relayOn = reason == null
-        val src = lanSource(connect, now = now, applyTrust = { applyPeerTrust(it) })
+        val src = lanSource(connect, now = now, floored = floored, applyTrust = { applyPeerTrust(it) })
         try {
             if (!o.lan) {
                 lanReason = "host"
