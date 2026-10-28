@@ -14,8 +14,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
-import im.plrs.key.identity.SignInPrompt
-import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.license.ActivationResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -46,8 +45,8 @@ class GateToastTest {
     }
 
     private object Prompt : PolarisSignInActions {
-        override suspend fun begin(): SignInPrompt = samplePrompt
-        override suspend fun wait(prompt: SignInPrompt): SignInResult = SignInResult.Ready
+        override suspend fun begin(): PolarisSignInCode = samplePrompt
+        override suspend fun wait(code: PolarisSignInCode): SignInOutcome = SignInOutcome.SignedIn()
     }
 
     @Test
@@ -121,7 +120,7 @@ class GateToastTest {
         frames()
         rule.onNodeWithText(copy.signIn).performClick()
         frames()
-        rule.onNodeWithText("You're signed in").assertIsDisplayed()
+        rule.onNodeWithText("You're signed in \u00B7 Pro license").assertIsDisplayed()
     }
 
     @Test

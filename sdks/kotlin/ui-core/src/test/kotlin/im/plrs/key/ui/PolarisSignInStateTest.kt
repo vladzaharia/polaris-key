@@ -1,8 +1,8 @@
 package im.plrs.key.ui
 
 import im.plrs.key.core.ErrorCode
-import im.plrs.key.identity.SignInPrompt
-import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInError
+import im.plrs.key.identity.SignInOutcome
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
@@ -15,25 +15,23 @@ import org.junit.Test
 /** The device-code model remains independently usable without a Compose runtime. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PolarisSignInStateTest {
-    private val prompt = SignInPrompt(
-        "dc",
+    private val prompt = PolarisSignInCode(
         "ABCD-EFGH",
         "https://key.plrs.im/activate",
         "https://key.plrs.im/activate?user_code=ABCD-EFGH",
         600,
-        5,
         1_600,
     )
 
     @Test
     fun showsTheCodeCountsDownAndFinishes() = runTest {
         var now = 1_000L
-        val done = CompletableDeferred<SignInResult>()
+        val done = CompletableDeferred<SignInOutcome>()
         var signedIn = false
         val state = PolarisSignInState(
             object : PolarisSignInActions {
-                override suspend fun begin(): SignInPrompt = prompt
-                override suspend fun wait(prompt: SignInPrompt): SignInResult = done.await()
+                override suspend fun begin(): PolarisSignInCode = prompt
+                override suspend fun wait(code: PolarisSignInCode): SignInOutcome = done.await()
             },
             backgroundScope,
             clock = { now },
@@ -52,7 +50,7 @@ class PolarisSignInStateTest {
         assertEquals(300, (state.ui.value as PolarisSignInUi.Showing).secondsLeft)
         assertEquals(0.5f, (state.ui.value as PolarisSignInUi.Showing).fractionLeft)
 
-        done.complete(SignInResult.Ready)
+        done.complete(SignInOutcome.SignedIn())
         runCurrent()
         assertEquals(PolarisSignInUi.Done, state.ui.value)
         assertTrue(signedIn)
@@ -60,11 +58,11 @@ class PolarisSignInStateTest {
 
     @Test
     fun expiryAndFailureAreRecoverableByRestarting() = runTest {
-        var result: SignInResult = SignInResult.Expired
+        var result: Result<SignInOutcome> = Result.success(SignInOutcome.Expired)
         val state = PolarisSignInState(
             object : PolarisSignInActions {
-                override suspend fun begin(): SignInPrompt = prompt
-                override suspend fun wait(prompt: SignInPrompt): SignInResult = result
+                override suspend fun begin(): PolarisSignInCode = prompt
+                override suspend fun wait(code: PolarisSignInCode): SignInOutcome = result.getOrThrow()
             },
             backgroundScope,
         )
@@ -76,20 +74,20 @@ class PolarisSignInStateTest {
         runCurrent()
         assertEquals(PolarisSignInUi.Expired, state.ui.value)
 
-        result = SignInResult.Error("boom")
+        result = Result.failure(SignInError(ErrorCode.signInFailed, "boom"))
         state.restart()
         runCurrent()
         assertEquals(PolarisSignInUi.Failed, state.ui.value)
 
-        result = SignInResult.Error("device sign-in failed.", ErrorCode.signInDenied)
+        result = Result.failure(SignInError(ErrorCode.signInDenied, "device sign-in failed."))
         state.restart()
         runCurrent()
         assertEquals(PolarisSignInUi.Denied, state.ui.value)
 
         val failing = PolarisSignInState(
             object : PolarisSignInActions {
-                override suspend fun begin(): SignInPrompt = throw IllegalStateException("offline")
-                override suspend fun wait(prompt: SignInPrompt): SignInResult = SignInResult.Ready
+                override suspend fun begin(): PolarisSignInCode = throw IllegalStateException("offline")
+                override suspend fun wait(code: PolarisSignInCode): SignInOutcome = SignInOutcome.SignedIn()
             },
             backgroundScope,
         )

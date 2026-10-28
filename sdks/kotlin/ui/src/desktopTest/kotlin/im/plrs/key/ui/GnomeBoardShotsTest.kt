@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import java.io.File
 import kotlin.test.Test
@@ -33,7 +32,7 @@ class GnomeBoardShotsTest {
         Board("sign-in") {
             PolarisSignInScreen(
                 PolarisSignInUi.Showing(
-                    SignInPrompt("dc", "WDJB-MJHT", BoardFixtures.SIGN_IN, "${BoardFixtures.SIGN_IN}?code=WDJB-MJHT", 600, 5, 1_700_000_600, "Studio"),
+                    PolarisSignInCode("WDJB-MJHT", BoardFixtures.SIGN_IN, "${BoardFixtures.SIGN_IN}?code=WDJB-MJHT", 600, 1_700_000_600, "Studio"),
                     nowSeconds = 1_700_000_000,
                 ),
             )

@@ -28,7 +28,6 @@ import im.plrs.key.core.BootStage
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.core.initialBootState
-import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.sdk.DeviceInfo
 import kotlinx.serialization.json.JsonPrimitive
@@ -56,13 +55,11 @@ internal val sampleCopy = PolarisCopy(productName = "Diceroll")
 internal fun gateUi(status: LicenseStatus, range: AllowedRange? = null, graceUntil: Long? = null) =
     PolarisGateUi(license = LicenseState(status, graceUntil = graceUntil, allowedRange = range), nowSeconds = NOW)
 
-internal val samplePrompt = SignInPrompt(
-    deviceCode = "dc_sample",
+internal val samplePrompt = PolarisSignInCode(
     userCode = "WDJB-MJHT",
     verificationUri = "https://polaris.locker/device",
     verificationUriComplete = "https://polaris.locker/device?user_code=WDJB-MJHT",
     expiresIn = 600,
-    interval = 5,
     expiresAt = NOW + 461,
     deviceName = "Living room TV",
 )

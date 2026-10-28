@@ -106,6 +106,14 @@ public fun PolarisGate(
             toast = PolarisToastSpec(signedInMessage(who, locale), PolarisToastKind.Success)
         }
     }
+    // After a key activation: "N key entries left", once the product is showing.
+    val entries by state.keyEntries.collectAsState()
+    LaunchedEffect(entries, usable) {
+        val e = entries ?: return@LaunchedEffect
+        if (!usable) return@LaunchedEffect
+        toast = PolarisToastSpec(keyEntriesLeftLine(e.used, e.limit, locale), PolarisToastKind.Info)
+        state.keyEntriesShown()
+    }
     val copied = KitCopy.bundled.format("common.copied", locale)
     PolarisGateScreen(
         gate = gate,
@@ -134,15 +142,23 @@ internal suspend fun signedInAsOf(client: im.plrs.key.sdk.PolarisKeyClient): Sig
     return SignedInAs(info.profile?.name?.takeIf { it.isNotBlank() }, (info.tierLabel ?: info.tier)?.takeIf { it.isNotBlank() })
 }
 
-/** "Signed in as <name> · <Tier> license", or "You're signed in" when the name or the tier is not known. */
+/**
+ * "Signed in as <name> · <Tier> license"; "You're signed in · <Tier> license" when only the tier is known;
+ * "You're signed in" when it is not. The tier line reads the catalog's `account.tier`.
+ */
 internal fun signedInMessage(who: SignedInAs?, locale: String): String {
     val catalog = KitCopy.bundled
-    return if (who?.name != null && who.tier != null) {
-        catalog.format("signin.desktop.toast", locale, mapOf("name" to CopyArgument.Text(who.name), "tier" to CopyArgument.Text(who.tier)))
-    } else {
-        catalog.format("signin.return.signedInShort", locale)
+    val short = catalog.format("signin.return.signedInShort", locale)
+    return when {
+        who?.tier == null -> short
+        who.name != null -> catalog.format("signin.desktop.toast", locale, mapOf("name" to CopyArgument.Text(who.name), "tier" to CopyArgument.Text(who.tier)))
+        else -> "$short \u00B7 " + catalog.format("account.tier", locale, mapOf("tier" to CopyArgument.Text(who.tier)))
     }
 }
+
+/** "N key entries left" for a key with [used] of [limit] entries taken (never negative). */
+internal fun keyEntriesLeftLine(used: Long, limit: Long, locale: String): String =
+    KitCopy.bundled.format("signin.key.entriesLeftShort", locale, mapOf("left" to CopyArgument.Number((limit - used).coerceIn(0, Int.MAX_VALUE.toLong()).toInt())))
 
 /** Which screen a gate state shows; the key Crossfade animates between. */
 internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn }
@@ -309,12 +325,29 @@ public fun PolarisActivationScreen(
     val copy = PolarisTheme.copy
     val refused = (ui.error as? PolarisActivationError.Refused)?.result
     val limit = refused as? ActivationResult.DeviceLimit
+    // The two key refusals (identity.keyentry): the field carries the Worker's words; the fix is a link or a sign-in.
+    val keyLimit = refused as? ActivationResult.KeyEntryLimit
+    val owned = refused as? ActivationResult.LicenseOwned
+    val refusal = keyLimit != null || owned != null
     // The QR code carries the key-free link: a code on a shared screen never holds the key.
     val manage = if (manageAsQr) ui.manageQrUrl else ui.manageUrl
     val clipboard = rememberPolarisClipboard()
     val scope = rememberCoroutineScope()
     val opener = rememberPolarisOpener()
     var noBrowser by rememberSaveable(manage) { mutableStateOf(false) }
+    val openLink: (String) -> Unit = { url ->
+        val opened = isSafeHttpsLink(url) && (if (onOpenManage != null) runCatching { onOpenManage(url) }.isSuccess else opener(url))
+        noBrowser = !opened
+    }
+    val differentKey = KitCopy.bundled.format("signin.key.differentKey", kitLocale())
+    val ownedLabel = KitCopy.bundled.format("signin.key.ownedSignIn", kitLocale())
+    // A license that is in an account signs in to it: the kit's sign-in, else the product's sign-in page.
+    val ownedGo: (() -> Unit)? = onSignIn ?: ui.signInUrl?.let { url -> { openLink(url) } }
+    val canOpenManage = keyLimit != null && manage != null && !manageAsQr
+    val copyManage: () -> Unit = {
+        scope.launch { clipboard.setText(copy.signInCopyLink, manage!!) }
+        onCopied()
+    }
     val keyFocus = remember { FocusRequester() }
     if (focusKey) LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
     val errorText = when (val error = ui.error) {
@@ -331,6 +364,7 @@ public fun PolarisActivationScreen(
     // draft kept, from the device-limit step to the key. The Welcome itself never consumes it.
     val keyBack = PolarisBackHandler(enabled = limit == null && onSignIn != null && keyOpen && ui.error == null && !focusKey) { keyOpen = false }
     val limitBack = PolarisBackHandler(enabled = limit != null && !ui.busy) { onKeyChange(ui.key) }
+    val refusalBack = PolarisBackHandler(enabled = refusal && !ui.busy) { onKeyChange("") }
     val keyField: @Composable () -> Unit = {
         PolarisTextField(
             value = ui.key,
@@ -350,13 +384,30 @@ public fun PolarisActivationScreen(
             monospace = true,
         )
     }
+    // Under the field after a key-entry-limit refusal: how many entries the key had, and on TV the link as a QR code.
+    val refusalNote: @Composable () -> Unit = {
+        keyLimit?.keyEntries?.let { e ->
+            Spacer(Modifier.height(PolarisSpace.tight))
+            PolarisBody(
+                KitCopy.bundled.format(
+                    "signin.key.meter",
+                    kitLocale(),
+                    mapOf("used" to CopyArgument.Number(e.used.coerceIn(0, Int.MAX_VALUE.toLong()).toInt()), "limit" to CopyArgument.Number(e.limit.coerceIn(0, Int.MAX_VALUE.toLong()).toInt())),
+                ),
+            )
+        }
+        if (keyLimit != null && manageAsQr && manage != null) {
+            Spacer(Modifier.height(polarisWindow.section))
+            PolarisQr(manage, KitCopy.bundled.format("a11y.qrManage", kitLocale()), Modifier.size(polarisWindow.qrSize))
+        }
+    }
     // Opening the key path puts the cursor in the field, so the person can type or paste at once.
     var openedByTap by remember { mutableStateOf(false) }
     if (openedByTap) LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
     PolarisScaffold(
-        modifier = modifier.then(keyBack).then(limitBack),
-        anchor = if (limit != null) PolarisAnchor.Top else PolarisAnchor.Hero,
-        contentAlign = if (limit != null) TextAlign.Start else TextAlign.Center,
+        modifier = modifier.then(keyBack).then(limitBack).then(refusalBack),
+        anchor = if (limit != null || refusal) PolarisAnchor.Top else PolarisAnchor.Hero,
+        contentAlign = if (limit != null || refusal) TextAlign.Start else TextAlign.Center,
         content = {
             if (limit != null) {
                 // A focused step (UI-KITS.md 4.3 DeviceLimit): the product header, "Replace a device",
@@ -393,6 +444,16 @@ public fun PolarisActivationScreen(
                     Spacer(Modifier.height(polarisWindow.section))
                     // The QR sits beside its sentence (the lede above), one group set apart from the next.
                     PolarisQr(manage, copy.freeDeviceQrDescription, Modifier.size(polarisWindow.qrSize))
+                    Spacer(Modifier.height(PolarisSpace.group))
+                }
+            } else if (refusal) {
+                // A focused step, as the device-limit one is: the catalog's title and words, how many entries the key had, the QR on TV.
+                val code = if (keyLimit != null) "key-entry-limit" else "license-owned"
+                PolarisTitle(KitCopy.bundled.format("core.activation.$code.title", kitLocale()))
+                Spacer(Modifier.height(PolarisSpace.tight))
+                PolarisBody(KitCopy.bundled.format("core.activation.$code.message", kitLocale()))
+                refusalNote()
+                if (keyLimit != null && manageAsQr && manage != null) {
                     Spacer(Modifier.height(PolarisSpace.group))
                 }
             } else {
@@ -438,7 +499,31 @@ public fun PolarisActivationScreen(
                     val opened = isSafeHttpsLink(manage!!) && (if (onOpenManage != null) runCatching { onOpenManage(manage) }.isSuccess else opener(manage))
                     noBrowser = !opened
                 }
-                if (limit == null) {
+                if (refusal) {
+                    if (noBrowser) {
+                        PolarisInlineNotice(copy.signInNoBrowser)
+                        Spacer(Modifier.height(PolarisSpace.controls))
+                    }
+                    val goes: (() -> Unit)? = when {
+                        owned != null -> ownedGo
+                        noBrowser && ManageLink.isValid(manage) -> copyManage
+                        canOpenManage -> ({ openLink(manage!!) })
+                        else -> onSignIn
+                    }
+                    PolarisActionGroup(row = true, visualOrder = true, modifier = Modifier.polarisMacDefaultKeys(if (ui.busy) null else goes)) {
+                        PolarisSecondaryButton(text = differentKey, onClick = { onKeyChange("") }, enabled = !ui.busy)
+                        if (owned == null && onSignIn != null && canOpenManage) PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
+                        if (goes != null) {
+                            val label = when {
+                                owned != null -> ownedLabel
+                                noBrowser && ManageLink.isValid(manage) -> copy.signInCopyLink
+                                canOpenManage -> copy.openInBrowser
+                                else -> copy.signIn
+                            }
+                            PolarisPrimaryButton(text = label, onClick = goes, enabled = !ui.busy, initialFocus = true, external = owned == null && canOpenManage && !noBrowser)
+                        }
+                    }
+                } else if (limit == null) {
                     keyField()
                     Spacer(Modifier.height(PolarisSpace.controls))
                     PolarisActionGroup(row = true, visualOrder = true, modifier = Modifier.polarisMacDefaultKeys(if (ui.busy) null else onActivate)) {
@@ -493,6 +578,40 @@ public fun PolarisActivationScreen(
                         Spacer(Modifier.height(PolarisSpace.controls))
                         PolarisSecondaryButton(text = copy.useKey, onClick = { keyOpen = true; openedByTap = true }, modifier = heroModifier, enabled = !ui.busy)
                     }
+                    return@PolarisScaffold
+                }
+                if (refusal) {
+                    if (noBrowser) {
+                        PolarisInlineNotice(copy.signInNoBrowser)
+                        Spacer(Modifier.height(PolarisSpace.controls))
+                    }
+                    if (owned != null) {
+                        ownedGo?.let { PolarisPrimaryButton(text = ownedLabel, onClick = it, enabled = !ui.busy, initialFocus = true, external = onSignIn == null) }
+                    } else {
+                        if (canOpenManage) {
+                            if (noBrowser) PolarisSecondaryButton(text = copy.openInBrowser, onClick = { openLink(manage!!) }, enabled = !ui.busy, external = true) else PolarisPrimaryButton(
+                                text = copy.openInBrowser,
+                                onClick = { openLink(manage!!) },
+                                enabled = !ui.busy,
+                                initialFocus = true,
+                                external = true,
+                            )
+                            Spacer(Modifier.height(PolarisSpace.controls))
+                        }
+                        if (noBrowser && ManageLink.isValid(manage)) {
+                            PolarisPrimaryButton(text = copy.signInCopyLink, initialFocus = true, onClick = copyManage)
+                            Spacer(Modifier.height(PolarisSpace.controls))
+                        }
+                        if (onSignIn != null) {
+                            if (canOpenManage || manageAsQr && manage == null) {
+                                PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
+                            } else {
+                                PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy, initialFocus = true)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisTextButton(text = differentKey, onClick = { onKeyChange("") }, enabled = !ui.busy)
                     return@PolarisScaffold
                 }
                 // The key path: Activate is the primary once a key is being entered; Sign in steps down to tonal.

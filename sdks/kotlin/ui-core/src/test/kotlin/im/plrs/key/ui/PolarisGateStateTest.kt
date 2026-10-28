@@ -136,4 +136,41 @@ class PolarisGateStateTest {
         runCurrent()
         assertEquals(PolarisActivationError.Refused(ActivationResult.EnrollDisabled), refused.activation.value.error)
     }
+
+    @Test
+    fun aKeyEntryLimitOffersTheManageLinkAndALicenseOwnedTheSignInLink() = runTest {
+        val manage = "https://key.plrs.im/activate?product=djdl"
+        val limit = PolarisGateState(FakeGate(LicenseState(LicenseStatus.needsActivation), ActivationResult.KeyEntryLimit(manage, im.plrs.key.license.KeyEntries(3, 3))), backgroundScope)
+        limit.onKeyChange("pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
+        limit.activate()
+        runCurrent()
+        assertEquals(manage, limit.activation.value.manageUrl?.substringBefore("#"))
+        assertEquals(manage, limit.activation.value.manageQrUrl)
+
+        val owned = PolarisGateState(FakeGate(LicenseState(LicenseStatus.needsActivation), ActivationResult.LicenseOwned("https://key.plrs.im/signin?product=djdl")), backgroundScope)
+        owned.onKeyChange("pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
+        owned.activate()
+        runCurrent()
+        assertEquals("https://key.plrs.im/signin?product=djdl", owned.activation.value.signInUrl)
+        assertNull(owned.activation.value.manageUrl)
+        owned.onKeyChange("x")
+        assertNull(owned.activation.value.signInUrl)
+
+        val unsafe = PolarisGateState(FakeGate(LicenseState(LicenseStatus.needsActivation), ActivationResult.LicenseOwned("javascript:alert(1)")), backgroundScope)
+        unsafe.onKeyChange("k")
+        unsafe.activate()
+        runCurrent()
+        assertNull(unsafe.activation.value.signInUrl)
+    }
+
+    @Test
+    fun anActivationKeepsTheKeyEntriesUntilTheLineIsShown() = runTest {
+        val gate = PolarisGateState(FakeGate(LicenseState(LicenseStatus.needsActivation), ActivationResult.Ok("pkeyt_x", 1, im.plrs.key.license.KeyEntries(1, 3))), backgroundScope)
+        gate.onKeyChange("pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
+        gate.activate()
+        runCurrent()
+        assertEquals(im.plrs.key.license.KeyEntries(1, 3), gate.keyEntries.value)
+        gate.keyEntriesShown()
+        assertNull(gate.keyEntries.value)
+    }
 }

@@ -10,7 +10,6 @@ package im.plrs.key.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import java.io.File
 import kotlin.test.Test
@@ -33,7 +32,7 @@ class MacBoardShotsTest {
         Board("sign-in") {
             PolarisSignInScreen(
                 PolarisSignInUi.Showing(
-                    SignInPrompt("dc", "WDJB-MJHT", BoardFixtures.SIGN_IN, "${BoardFixtures.SIGN_IN}?code=WDJB-MJHT", 600, 5, 1_700_000_600, "Studio"),
+                    PolarisSignInCode("WDJB-MJHT", BoardFixtures.SIGN_IN, "${BoardFixtures.SIGN_IN}?code=WDJB-MJHT", 600, 1_700_000_600, "Studio"),
                     nowSeconds = 1_700_000_000,
                 ),
             )

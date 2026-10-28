@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.Density
 import im.plrs.key.core.AllowedRange
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
-import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import java.io.File
 import javax.imageio.ImageIO
@@ -55,9 +54,9 @@ internal val matrixLargeFontSizes = listOf(390 to 844, 844 to 390, 1440 to 900)
 
 private const val NOW = 1_790_000_000L
 
-private val matrixPrompt = SignInPrompt(
-    deviceCode = "dc_sample", userCode = "WDJB-MJHT", verificationUri = "${BoardFixtures.LOCKER}/device",
-    verificationUriComplete = "${BoardFixtures.LOCKER}/device?user_code=WDJB-MJHT", expiresIn = 600, interval = 5,
+private val matrixPrompt = PolarisSignInCode(
+    userCode = "WDJB-MJHT", verificationUri = "${BoardFixtures.LOCKER}/device",
+    verificationUriComplete = "${BoardFixtures.LOCKER}/device?user_code=WDJB-MJHT", expiresIn = 600,
     expiresAt = NOW + 461, deviceName = "Desk PC",
 )
 private const val MANAGE = "${BoardFixtures.LOCKER}/activate?product=tidewater&next=free-device&for=Desk%20PC"

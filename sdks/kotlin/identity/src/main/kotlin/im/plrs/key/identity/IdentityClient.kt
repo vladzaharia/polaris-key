@@ -45,8 +45,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.coroutines.coroutineContext
 
-/** What the host shows the player, plus the poll credential the SDK keeps. `toString` redacts [deviceCode]. */
-public data class SignInPrompt(
+/** The code and the poll credential the SDK keeps for one session; apps read the session's own fields. `toString` redacts [deviceCode]. */
+internal data class SignInPrompt(
     /** The poll credential. Never show it, never put it in a URL. */
     val deviceCode: String,
     /** What the player types on the verification page, e.g. `WDJB-MJHT`. */
@@ -93,16 +93,6 @@ internal sealed interface SignInPoll {
      * server never says which).
      */
     data class Error(val message: String, val code: String? = null) : SignInPoll
-}
-
-/**
- * How a sign-in wait ended, as the Compose-free kit state maps it. Cancellation throws instead.
- * Apps read [SignInSession.wait]'s [SignInOutcome]; this stays for `:ui-core`'s actions until I-10b.20.
- */
-public sealed interface SignInResult {
-    public data object Ready : SignInResult
-    public data object Expired : SignInResult
-    public data class Error(val message: String, val code: String? = null) : SignInResult
 }
 
 /** Raised after a sign-in mints a credential; the facade syncs. */

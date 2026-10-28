@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import im.plrs.key.core.AllowedRange
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
-import im.plrs.key.identity.SignInPrompt
 import im.plrs.key.license.ActivationResult
 import java.io.File
 import androidx.compose.foundation.background
@@ -36,9 +35,9 @@ class WindowsBoardShotsTest {
     private fun gateUi(status: LicenseStatus, range: AllowedRange? = null) =
         PolarisGateUi(license = LicenseState(status, allowedRange = range), nowSeconds = now)
 
-    private val prompt = SignInPrompt(
-        deviceCode = "dc_sample", userCode = "WDJB-MJHT", verificationUri = "${BoardFixtures.LOCKER}/device",
-        verificationUriComplete = "${BoardFixtures.LOCKER}/device?user_code=WDJB-MJHT", expiresIn = 600, interval = 5,
+    private val prompt = PolarisSignInCode(
+        userCode = "WDJB-MJHT", verificationUri = "${BoardFixtures.LOCKER}/device",
+        verificationUriComplete = "${BoardFixtures.LOCKER}/device?user_code=WDJB-MJHT", expiresIn = 600,
         expiresAt = now + 461, deviceName = "Desk PC",
     )
 

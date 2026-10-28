@@ -26,8 +26,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import im.plrs.key.core.LicenseStatus
-import im.plrs.key.identity.SignInPrompt
-import im.plrs.key.identity.SignInResult
+import im.plrs.key.identity.SignInOutcome
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -52,15 +51,15 @@ class FlowTest {
         var begins = 0
         var waits = 0
 
-        override suspend fun begin(): SignInPrompt {
+        override suspend fun begin(): PolarisSignInCode {
             begins++
             return samplePrompt
         }
 
-        override suspend fun wait(prompt: SignInPrompt): SignInResult {
+        override suspend fun wait(code: PolarisSignInCode): SignInOutcome {
             waits++
             if (waits == 1) awaitCancellation()
-            return SignInResult.Ready
+            return SignInOutcome.SignedIn()
         }
     }
 
@@ -209,9 +208,9 @@ class FlowTest {
 
     private class Held(val ready: Boolean = false) : PolarisSignInActions {
         var begins = 0
-        val done = kotlinx.coroutines.CompletableDeferred<SignInResult>()
-        override suspend fun begin(): SignInPrompt { begins++; return samplePrompt }
-        override suspend fun wait(prompt: SignInPrompt): SignInResult = if (ready) SignInResult.Ready else done.await()
+        val done = kotlinx.coroutines.CompletableDeferred<SignInOutcome>()
+        override suspend fun begin(): PolarisSignInCode { begins++; return samplePrompt }
+        override suspend fun wait(code: PolarisSignInCode): SignInOutcome = if (ready) SignInOutcome.SignedIn() else done.await()
     }
 
     private fun androidx.test.core.app.ActivityScenario<androidx.activity.ComponentActivity>.show(
@@ -281,7 +280,7 @@ class FlowTest {
         var fired = 0
         val scenario = androidx.test.core.app.ActivityScenario.launch(androidx.activity.ComponentActivity::class.java)
         scenario.show(key, actions) { fired++ }; idle()
-        actions.done.complete(SignInResult.Ready); idle()
+        actions.done.complete(SignInOutcome.SignedIn()); idle()
         assertEquals(1, fired)
         // Disposing the composition releases the callback: nothing composition-bound stays held.
         assertTrue("attached while shown", scenario.vm().onSignedIn != null)

@@ -6,6 +6,7 @@ package im.plrs.key.ui
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
+import im.plrs.key.license.KeyEntries
 import im.plrs.key.sdk.PolarisEvent
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.CancellationException
@@ -50,6 +51,8 @@ public data class PolarisActivationUi(
     val manageUrl: String? = null,
     /** The same link without the key, suitable for a QR code on a shared display. */
     val manageQrUrl: String? = null,
+    /** The product's sign-in page after a `license_owned` refusal (the SDK validated it; it holds no key), or null. */
+    val signInUrl: String? = null,
 )
 
 /**
@@ -62,7 +65,12 @@ public fun offeredManageUrl(
     returnUrl: String? = null,
     forQr: Boolean = false,
 ): String? {
-    val served = (result as? ActivationResult.DeviceLimit)?.manageUrl ?: return null
+    val served = when (result) {
+        is ActivationResult.DeviceLimit -> result.manageUrl
+        // A key with no entries left is added to an account on the portal's activate page.
+        is ActivationResult.KeyEntryLimit -> result.manageUrl
+        else -> null
+    } ?: return null
     if (!ManageLink.isValid(served)) return null
     val withKey = if (forQr) served else ManageLink.withKey(served, key)
     return if (returnUrl.isNullOrEmpty()) withKey else ManageLink.withReturn(withKey, returnUrl)
@@ -120,6 +128,16 @@ public class PolarisGateState(
     public val gate: StateFlow<PolarisGateUi> = _gate.asStateFlow()
     public val activation: StateFlow<PolarisActivationUi> = _activation.asStateFlow()
 
+    private val _keyEntries = MutableStateFlow<KeyEntries?>(null)
+
+    /** The entries of the key just activated (`used` of `limit`), until [keyEntriesShown]; null when the Worker sent none. */
+    public val keyEntries: StateFlow<KeyEntries?> = _keyEntries.asStateFlow()
+
+    /** The line saying so has been shown. */
+    public fun keyEntriesShown() {
+        _keyEntries.value = null
+    }
+
     /** Read the status now and follow the SDK's changes. */
     public fun start() {
         scope.launch { reload() }
@@ -149,7 +167,7 @@ public class PolarisGateState(
 
     /** Update the key draft; any local refusal and old portal link clear immediately. */
     public fun onKeyChange(key: String) {
-        _activation.update { it.copy(key = key, error = null, manageUrl = null, manageQrUrl = null) }
+        _activation.update { it.copy(key = key, error = null, manageUrl = null, manageQrUrl = null, signInUrl = null) }
     }
 
     /** Activate with the key in the form. */
@@ -161,10 +179,11 @@ public class PolarisGateState(
         }
         if (_activation.value.busy) return
         scope.launch {
-            _activation.update { it.copy(busy = true, error = null, manageUrl = null, manageQrUrl = null) }
+            _activation.update { it.copy(busy = true, error = null, manageUrl = null, manageQrUrl = null, signInUrl = null) }
             val result = guarded { actions.activate(key) } ?: ActivationResult.Error("activation threw")
             if (result is ActivationResult.Ok) {
                 _activation.value = PolarisActivationUi()
+                _keyEntries.value = result.keyEntries
             } else {
                 _activation.update {
                     it.copy(
@@ -172,6 +191,7 @@ public class PolarisGateState(
                         error = PolarisActivationError.Refused(result),
                         manageUrl = offeredManageUrl(result, key, returnUrl),
                         manageQrUrl = offeredManageUrl(result, key, returnUrl, forQr = true),
+                        signInUrl = (result as? ActivationResult.LicenseOwned)?.signInUrl?.takeIf { ManageLink.isValid(it) },
                     )
                 }
             }
