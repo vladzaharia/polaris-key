@@ -38,6 +38,7 @@ import type { AccountDeviceKeys } from "../../core/devices/keys.js";
 import { actorColumns, appendAudit, SYSTEM_ACTORS } from "../../core/audit.js";
 import { signDoc } from "../../core/signing.js";
 import { sha256Hex } from "../../platform/hash.js";
+import { pokeRelay } from "./relayPoke.js";
 import { randomToken } from "../../platform/random.js";
 
 /** How long the key before the last bump is still delivered, in seconds. */
@@ -109,14 +110,8 @@ function someoneLeft(stored: string, members: readonly AccountDeviceKeys[]) {
   return stored.split("\n").some((id) => !now.has(id));
 }
 
-/** Why a ring moved: a read that found the members changed, a lifecycle event, or an account merge. */
-export type BumpReason =
-  | "read"
-  | "removed"
-  | "unbound"
-  | "bound"
-  | "keys"
-  | "merge";
+/** Why a ring moved: a read that found the members changed, or a lifecycle event. */
+export type BumpReason = "read" | "removed" | "unbound" | "bound" | "keys";
 
 /** The `connect.ring.bump` audit row: the reason and the epoch. It names no key. */
 async function auditBump(
@@ -154,9 +149,8 @@ export async function currentRing(
   subject: string,
   load: () => Promise<AccountDeviceKeys[]>,
   now: number,
-  opts: { reason?: BumpReason; force?: boolean } = {},
+  opts: { reason?: BumpReason; leave?: boolean } = {},
 ): Promise<{ row: RingRow; members: AccountDeviceKeys[]; bumped: boolean }> {
-  let force = opts.force === true;
   let bumped = false;
   for (let attempt = 0; attempt < 6; attempt++) {
     const members = await load();
@@ -178,10 +172,11 @@ export async function currentRing(
       );
       continue;
     }
-    if (row.members_hash === hash && !force) return { row, members, bumped };
-    // A forced bump is tried once: if it lost the race, the winner's bump already moved the epoch.
-    force = false;
-    const left = someoneLeft(row.member_ids, members) ? 1 : 0;
+    if (row.members_hash === hash) return { row, members, bumped };
+    // `leave` marks a key rotation, treated as a leave: it is often the answer to a compromise,
+    // so the old key is not kept for the window.
+    const left =
+      opts.leave === true || someoneLeft(row.member_ids, members) ? 1 : 0;
     const changed = await db.runChanges(
       `UPDATE connect_rings
           SET epoch = epoch + 1, members_hash = ?, member_ids = ?,
@@ -202,6 +197,7 @@ export async function currentRing(
     );
     if (changed > 0) {
       bumped = true;
+      // The audit is bookkeeping: a failed insert must not lose the poke or fail the request.
       await auditBump(
         db,
         product,
@@ -210,7 +206,8 @@ export async function currentRing(
         opts.reason,
         left,
         now,
-      );
+      ).catch(() => {});
+      await pokeRelay({ product, subject, epoch: row.epoch + 1 });
     }
   }
   throw new Error("connect: the ring kept changing under the read");

@@ -14,6 +14,7 @@
  * stop the others.
  */
 
+import { appendAudit, actorColumns, SYSTEM_ACTORS } from "../../core/audit.js";
 import { accountDeviceKeys } from "../../core/devices/keys.js";
 import {
   deviceSubjectOf,
@@ -23,7 +24,6 @@ import {
 import { getProduct } from "../../core/products/store.js";
 import { parseServices } from "../../core/services.js";
 import type { Db } from "../../db/types.js";
-import { pokeRelay } from "./relayPoke.js";
 import {
   currentRing,
   getRing,
@@ -40,7 +40,7 @@ export async function bumpRingNow(
   subject: string,
   now: number,
   reason: BumpReason,
-  opts: { force?: boolean } = {},
+  opts: { leave?: boolean } = {},
 ): Promise<boolean> {
   const row = await getProduct(db, product);
   if (!row) return false;
@@ -49,15 +49,14 @@ export async function bumpRingNow(
   if (!(await getRing(db, product, subject))) return false;
   const seatsHeld = services.license.enabled;
   try {
-    const { row: ring, bumped } = await currentRing(
+    const { bumped } = await currentRing(
       db,
       product,
       subject,
       () => accountDeviceKeys(db, product, subject, { seatsHeld, now }),
       now,
-      { reason, force: opts.force },
+      { reason, leave: opts.leave },
     );
-    if (bumped) await pokeRelay({ product, subject, epoch: ring.epoch });
     return bumped;
   } catch (e) {
     // A roster over its size is refused at the next read; nothing moves here.
@@ -94,9 +93,23 @@ export const connectRingListener: DeviceChangeListener = async (
   if (current) subjects.add(current);
   for (const subject of subjects) {
     try {
-      await bumpRingNow(db, event.product, subject, now, event.kind);
+      await bumpRingNow(db, event.product, subject, now, event.kind, {
+        // A first registration (key sequence 1) is a join; any later one is a rotation.
+        leave: event.kind === "keys" && event.keySeq !== 1,
+      });
     } catch {
-      // One subject's failure is not another's; the read-time check is the backstop.
+      // One subject's failure is not another's; the read-time check is the backstop. It is
+      // recorded, with the reason and no key, so a stuck roster can be found.
+      await appendAudit(db, {
+        product: event.product,
+        at: now,
+        ...actorColumns(SYSTEM_ACTORS.platform),
+        action: "connect.ring.bump_failed",
+        target_kind: "connectRing",
+        target_id: subject,
+        summary: `Roster did not move (${event.kind}).`,
+        reason: event.kind,
+      }).catch(() => {});
     }
   }
 };

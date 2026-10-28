@@ -4,6 +4,10 @@
  * previous key, a merge forces a bump on the survivor, the audit row names no key, the relay-poke
  * port is told, and a failing listener never fails the write.
  */
+import { releaseDormantSeats } from "../../../src/core/devices/store.js";
+import type { Db } from "../../../src/db/types.js";
+import { mergeAccounts } from "../../../src/services/identity/accounts/merge.js";
+import { undoMerge } from "../../../src/services/identity/accounts/mergeUndo.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { dispatchWith } from "../../../src/dispatch.js";
@@ -21,7 +25,6 @@ import { notifyDeviceChange } from "../../../src/core/devices/lifecycle.js";
 import { setRelayPokePort } from "../../../src/services/connect/relayPoke.js";
 import { bumpRingNow } from "../../../src/services/connect/ringListener.js";
 import { currentRing, getRing } from "../../../src/services/connect/ring.js";
-import { connectRingsStore } from "../../../src/services/connect/subjectStore.js";
 
 async function ringOf(w: World, subject = w.subject) {
   return getRing(w.db, SLUG, subject);
@@ -111,7 +114,7 @@ describe("connect ring listener (CC-06.3)", () => {
     expect(grAfter.prev_disc_key).toBeNull();
   });
 
-  it("a key rotation bumps the ring and keeps the previous key", async () => {
+  it("a key rotation bumps the ring and keeps no previous key", async () => {
     const before = (await ringOf(w))!;
     await upsertDeviceKeys(w.db, SLUG, B, await newKeys(), NOW + 1);
     await notifyDeviceChange(
@@ -120,7 +123,8 @@ describe("connect ring listener (CC-06.3)", () => {
     );
     const after = (await ringOf(w))!;
     expect(after.epoch).toBe(before.epoch + 1);
-    expect(after.prev_disc_key).toBe(before.disc_key);
+    // A rotation is treated as a leave: no previous key.
+    expect(after.prev_disc_key).toBeNull();
     expect(pokes).toHaveLength(1);
   });
 
@@ -199,19 +203,8 @@ describe("connect ring listener (CC-06.3)", () => {
     expect(after.epoch).toBe(before.epoch + 1);
     expect(after.prev_disc_key).toBeNull();
     expect((await bumpAudits(w)).map((r) => r.reason)).toEqual(["read"]);
-  });
-
-  it("a merge forces a bump on the survivor even when its members are unchanged", async () => {
-    const before = (await ringOf(w))!;
-    await connectRingsStore.merge(
-      { db: w.db, env: w.env, now: NOW + 1 },
-      { product: SLUG, from: "absorbed-subject", to: w.subject },
-    );
-    const after = (await ringOf(w))!;
-    expect(after.epoch).toBe(before.epoch + 1);
-    expect(after.disc_key).not.toBe(before.disc_key);
-    expect((await bumpAudits(w)).map((r) => r.reason)).toEqual(["merge"]);
-    expect(pokes).toHaveLength(1);
+    // The read-time path tells the relay too.
+    expect(pokes).toEqual([{ subject: w.subject, epoch: after.epoch }]);
   });
 
   it("a failing relay port, or a failing audit, never fails the write", async () => {
@@ -222,5 +215,118 @@ describe("connect ring listener (CC-06.3)", () => {
       setDeviceStatus(w.db, SLUG, B, "deauthorized"),
     ).resolves.not.toThrow();
     expect((await ringOf(w))!.member_ids).toBe(A);
+  });
+
+  it("a dormant seat released by the sweep leaves the roster at once", async () => {
+    const before = (await ringOf(w))!;
+    await w.db.run(
+      "UPDATE devices SET last_seen = 1 WHERE product = ? AND device_id = ?",
+      SLUG,
+      B,
+    );
+    expect(await releaseDormantSeats(w.db, SLUG, NOW)).toBe(1);
+    const after = (await ringOf(w))!;
+    expect(after.epoch).toBe(before.epoch + 1);
+    expect(after.member_ids).toBe(A);
+    expect(after.prev_disc_key).toBeNull();
+  });
+
+  it("a failure to move a ring is audited as bump_failed, with no key", async () => {
+    const before = (await ringOf(w))!;
+    const broken = Object.create(w.db) as Db;
+    broken.all = async (sql, ...params) => {
+      if (sql.includes("FROM device_keys")) throw new Error("boom");
+      return w.db.all(sql, ...params);
+    };
+    await notifyDeviceChange(
+      { db: broken, env: w.env, now: NOW },
+      { product: SLUG, deviceId: A, kind: "removed", subject: w.subject },
+    );
+    const rows = await w.db.all<Record<string, unknown>>(
+      "SELECT * FROM audit WHERE action = 'connect.ring.bump_failed'",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ reason: "removed", target_id: w.subject });
+    expect(JSON.stringify(rows[0])).not.toContain(before.disc_key);
+  });
+});
+
+describe("the keyring listener on the `bound` event a merge sends (CC-06.3)", () => {
+  it("keeps the wraps of the new subject and drops those of another", async () => {
+    const w = await world();
+    const wrap = (subject: string) =>
+      w.db.run(
+        `INSERT INTO keyring_wraps
+           (product, subject, device_id, ring_id, epoch, kid, kem, enc, ct, by_device, created_at)
+         VALUES (?, ?, ?, 'r', 1, 'k', 'kem', 'enc', 'ct', ?, ?)`,
+        SLUG,
+        subject,
+        A,
+        B,
+        NOW,
+      );
+    await wrap(w.subject);
+    await wrap("someone-else");
+    await notifyDeviceChange(
+      { db: w.db, env: w.env, now: NOW },
+      { product: SLUG, deviceId: A, kind: "bound", subject: w.subject },
+    );
+    const left = await w.db.all<{ subject: string }>(
+      "SELECT subject FROM keyring_wraps WHERE product = ? AND device_id = ?",
+      SLUG,
+      A,
+    );
+    expect(left.map((r) => r.subject)).toEqual([w.subject]);
+  });
+});
+
+describe("connect ring through the real account merge (CC-06.3)", () => {
+  /** The account behind a subject (the sign-in that `bindTo` made created it). */
+  const accountOf = async (w: World, subject: string) => ({
+    id: (await w.db.first<{ account_id: string }>(
+      "SELECT account_id FROM account_product_subjects WHERE product = ? AND subject = ?",
+      SLUG,
+      subject,
+    ))!.account_id,
+    subject,
+  });
+
+  it("moves the survivor's roster after the merge batch, and again on undo", async () => {
+    const w = await world();
+    const ada = await accountOf(w, w.subject);
+    // Device C belongs to a second person, with a ring of its own.
+    w.tokens[C] = await activate(w, w.key, C);
+    const bob = await accountOf(w, await bindTo(w, C, "bob@example.com"));
+    await upsertDeviceKeys(w.db, SLUG, C, await newKeys(), NOW);
+    await seedRing(w);
+    await seedRing(w, bob.subject);
+    const before = (await ringOf(w))!;
+    const ctx = {
+      db: w.db,
+      env: w.env,
+      now: NOW,
+      origin: "https://key.plrs.im",
+    };
+    const merged = await mergeAccounts(ctx, {
+      survivor: { accountId: ada.id, authenticatedAt: NOW },
+      absorbed: { accountId: bob.id, authenticatedAt: NOW },
+    });
+    if (!merged.ok) throw new Error(merged.reason);
+    const joined = (await ringOf(w))!;
+    expect(joined.epoch).toBe(before.epoch + 1);
+    expect(joined.member_ids).toBe([A, B, C].join("\n"));
+    expect(joined.prev_disc_key).toBe(before.disc_key);
+    expect(await ringOf(w, bob.subject)).toBeNull();
+
+    const undone = await undoMerge(
+      ctx,
+      { accountId: ada.id, authenticatedAt: NOW },
+      merged.mergeId,
+    );
+    expect(undone).toMatchObject({ ok: true });
+    const left = (await ringOf(w))!;
+    expect(left.epoch).toBeGreaterThan(joined.epoch);
+    expect(left.member_ids).toBe([A, B].join("\n"));
+    expect(left.prev_disc_key).toBeNull();
   });
 });

@@ -145,17 +145,32 @@ export async function releaseDormantSeats(
 ): Promise<number> {
   // The credential goes with the seat. A released row keeps `status = 'authorized'`,
   // so its old token would otherwise keep validating with no seat while another device holds it.
-  const base = `UPDATE devices SET seat_no = NULL, token_hash = NULL
-      WHERE product = ? AND status = 'authorized'
+  const where = `product = ? AND status = 'authorized'
         AND seat_no IS NOT NULL AND last_seen <= ?`;
-  return licenseId === undefined
-    ? db.runChanges(base, product, seatActiveSince(now))
-    : db.runChanges(
-        `${base} AND license_id = ?`,
-        product,
-        seatActiveSince(now),
-        licenseId,
-      );
+  const since = seatActiveSince(now);
+  const scope = licenseId === undefined ? "" : " AND license_id = ?";
+  const scopeParams = licenseId === undefined ? [] : [licenseId];
+  // The devices that leave the roster, read first so each is announced as `removed` after the
+  // write (the device lifecycle, R-7). A device that checks in between is announced needlessly,
+  // which is harmless: a listener re-reads the members.
+  const released = await db.all<{ device_id: string; subject: string | null }>(
+    `SELECT device_id, subject FROM devices WHERE ${where}${scope}`,
+    product,
+    since,
+    ...scopeParams,
+  );
+  const changed = await db.runChanges(
+    `UPDATE devices SET seat_no = NULL, token_hash = NULL WHERE ${where}${scope}`,
+    product,
+    since,
+    ...scopeParams,
+  );
+  for (const d of released)
+    await notifyDeviceChange(
+      { db, now },
+      { product, deviceId: d.device_id, kind: "removed", subject: d.subject },
+    );
+  return changed;
 }
 
 export async function claimDeviceSeat(

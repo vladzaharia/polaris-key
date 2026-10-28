@@ -309,8 +309,7 @@ describe("the connect.rings subject store", () => {
       product: SLUG,
       subject: w.subject,
     });
-    // CC-06.3: the merge forces a bump on the survivor.
-    expect(exported).toEqual({ epoch: 2, bumpedAt: NOW });
+    expect(exported).toEqual({ epoch: 1, bumpedAt: NOW });
     expect(JSON.stringify(exported)).not.toContain(
       (await getRing(w.db, SLUG, w.subject))!.disc_key,
     );
