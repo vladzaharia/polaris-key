@@ -62,6 +62,7 @@ await build(
     {
       contract: join(root, "src", "kit", "contract.ts"),
       qr: join(root, "src", "kit", "qr.ts"),
+      contractForm: join(root, "src", "kit", "contractForm.ts"),
     },
     [withoutDesktopRules],
   ),
@@ -71,5 +72,6 @@ await build(
 );
 rmSync(join(root, "dist", "kit", "contract.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "qr.js.map"), { force: true });
+rmSync(join(root, "dist", "kit", "contractForm.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "desktopCss.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "contract.d.ts.map"), { force: true });

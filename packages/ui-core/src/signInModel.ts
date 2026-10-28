@@ -19,6 +19,7 @@
 import {
   contextOf,
   type ActivationInput,
+  type AutoSignInInput,
   type DeviceCodeInput,
   type LicenseChoiceView,
   type ReplaceView,
@@ -73,11 +74,38 @@ export type LicenseChoiceInput =
   | { kind: "keep" }
   | { kind: "create" };
 
-/** What `choice.complete()` answers: signed in, or a race or a lapsed grant to recover from. */
+/** What `choice.complete()` answers: signed in, or a race or a lapsed grant to recover from.
+ *  `choose`: the account holds licenses and none was named (the list to choose from).
+ *  `deviceLimit`: every seat is taken; `view` is the fresh list when the Worker sent one. */
 export type ChoiceComplete =
   | { outcome: "signedIn"; issuedNow: boolean }
   | { outcome: "raced" }
-  | { outcome: "expired" };
+  | { outcome: "expired" }
+  | { outcome: "choose"; choices: LicenseChoiceView }
+  | { outcome: "deviceLimit"; view?: LicenseChoiceView; manageUrl?: string };
+
+/** How automatic sign-in ended, in the form's terms (the SDK's result mapped by the kit). A
+ *  grant is the credential: it lives in the model, never in the views' input. */
+export type AutoOutcome =
+  | {
+      kind: "confirm";
+      grant: string;
+      expiresIn?: number;
+      /** The claims Continue grants: the consent view's profile claims. */
+      claims: readonly string[];
+      /** The confirm step's input (`step` is always `confirm`). */
+      input: Omit<AutoSignInInput, "step">;
+    }
+  | {
+      kind: "choose";
+      grant: string;
+      expiresIn?: number;
+      choices: LicenseChoiceView;
+    }
+  | { kind: "deviceLimit"; view?: LicenseChoiceView; manageUrl?: string }
+  | { kind: "signedIn"; issuedNow?: boolean }
+  /** The ladder found no account to continue with: the methods step stays. */
+  | { kind: "needsSignIn" };
 
 /** The SDK primitives the form drives (Node first; I-10a fixes each language's spelling). */
 export interface SignInPrimitives {
@@ -91,12 +119,19 @@ export interface SignInPrimitives {
     devices(grant: string, licenseId: string): Promise<ReplaceView>;
     complete(
       grant: string,
-      choice: LicenseChoiceInput,
+      choice: LicenseChoiceInput | undefined,
+      options?: { consent?: { claims: readonly string[] } },
     ): Promise<ChoiceComplete>;
     cancel(grant: string): Promise<void>;
   };
   /** The key step: `activate(key)`, answered as the activation result. */
   activate?(key: string): Promise<ActivationInput>;
+  /**
+   * Automatic sign-in with the platform provider, shown its chooser (`prompt: "optional"`). The
+   * person pressed the provider's button, so it also lifts a sign-out on this device. Absent: the
+   * button starts the browser sign-in as before.
+   */
+  autoSignIn?(): Promise<AutoOutcome | null>;
 }
 
 /** The form's state: the inputs of the three step views. */
@@ -110,6 +145,8 @@ export interface SignInSnapshot {
   activation?: ActivationInput;
   keyField?: { text: string; submitted?: boolean };
   error?: { code: string };
+  /** Automatic sign-in's step (confirm), drawn in the form's body. */
+  autoSignIn?: AutoSignInInput;
 }
 
 export interface SignInModelOptions {
@@ -148,6 +185,8 @@ export class SignInModel {
   private readonly schedule: Schedule;
   private handle: SignInSessionHandle | null = null;
   private grant: string | null = null;
+  /** The claims Continue grants on a confirm step. */
+  private claims: readonly string[] = [];
   private cancelGrantTimer: (() => void) | null = null;
   /** Bumped whenever a session ends, so a late answer from an old one is dropped. */
   private epoch = 0;
@@ -223,6 +262,7 @@ export class SignInModel {
       "activation",
       "keyField",
       "error",
+      "autoSignIn",
     ] as const) {
       const v = s[k];
       if (v !== undefined) (out as Record<string, unknown>)[k] = v;
@@ -408,7 +448,9 @@ export class SignInModel {
     this.cancelGrantTimer?.();
     const channel = this.store.get().session.channel;
     this.patch(
-      channel === "device-code" ? { deviceCode: { phase: "ok" } } : {},
+      channel === "device-code"
+        ? { deviceCode: { phase: "ok" }, autoSignIn: undefined }
+        : { autoSignIn: undefined },
       { outcome: "signedIn", issuedNow, event: undefined },
     );
   }
@@ -569,7 +611,10 @@ export class SignInModel {
     );
   }
 
-  private async complete(choice: LicenseChoiceInput): Promise<void> {
+  private async complete(
+    choice: LicenseChoiceInput | undefined,
+    consent?: { claims: readonly string[] },
+  ): Promise<void> {
     const p = this.requirePrimitives();
     const grant = this.grant;
     if (!grant || !p.choice) return;
@@ -577,7 +622,11 @@ export class SignInModel {
     this.patch({}, { redeeming: true });
     let r: ChoiceComplete;
     try {
-      r = await p.choice.complete(grant, choice);
+      r = await p.choice.complete(
+        grant,
+        choice,
+        consent ? { consent } : undefined,
+      );
     } catch {
       if (epoch === this.epoch)
         this.patch({ error: { code: "sign-in-failed" } }, { redeeming: false });
@@ -586,11 +635,23 @@ export class SignInModel {
     if (epoch !== this.epoch) return;
     this.patch({}, { redeeming: false });
     if (r.outcome === "signedIn") {
-      this.finish(r.issuedNow || choice.kind === "create");
+      this.finish(r.issuedNow || choice?.kind === "create");
       return;
     }
     if (r.outcome === "expired") {
       this.patch({}, { grantExpired: true });
+      return;
+    }
+    if (r.outcome === "choose") {
+      // The person consented and the account holds licenses: choose one (the list is fresh).
+      this.patch(
+        { choices: r.choices, loading: false, autoSignIn: undefined },
+        { outcome: "choose", event: undefined, raced: false },
+      );
+      return;
+    }
+    if (r.outcome === "deviceLimit") {
+      this.showDeviceLimit(r.view, r.manageUrl);
       return;
     }
     // Raced: the seat was taken since the view loaded. Re-read the view and say so.
@@ -601,6 +662,117 @@ export class SignInModel {
     } catch {
       // The race message stays over the last list; Continue tries again.
     }
+  }
+
+  // ── Automatic sign-in ───────────────────────────────────────────────────────────────────────
+
+  /** Show how automatic sign-in ended: the confirm step, the license list, the device limit, or
+   *  (signed in) the end of the form. `needsSignIn` leaves the methods step as it is. */
+  presentAuto(o: AutoOutcome): void {
+    this.live = true;
+    switch (o.kind) {
+      case "confirm":
+        this.grant = o.grant;
+        this.claims = o.claims;
+        this.armGrantTimer(o.expiresIn ?? GRANT_SECONDS, this.epoch);
+        this.patch(
+          { autoSignIn: { ...o.input, step: "confirm" } },
+          { outcome: undefined, event: undefined, grantExpired: false },
+        );
+        return;
+      case "choose":
+        this.grant = o.grant;
+        this.armGrantTimer(o.expiresIn ?? GRANT_SECONDS, this.epoch);
+        this.patch(
+          { choices: o.choices, loading: false, autoSignIn: undefined },
+          {
+            outcome: "choose",
+            event: undefined,
+            raced: false,
+            grantExpired: false,
+          },
+        );
+        return;
+      case "deviceLimit":
+        this.showDeviceLimit(o.view, o.manageUrl);
+        return;
+      case "signedIn":
+        this.finish(o.issuedNow === true);
+        return;
+      case "needsSignIn":
+        return;
+    }
+  }
+
+  /** Every seat is taken. With the list, the license step opens with the card's Replace (there
+   *  is no grant to replace with here); without it, the device-limit words and the portal link. */
+  private showDeviceLimit(
+    view: LicenseChoiceView | undefined,
+    manageUrl: string | undefined,
+  ): void {
+    this.grant = null;
+    if (view) {
+      this.patch(
+        { choices: view, loading: false, autoSignIn: undefined },
+        {
+          outcome: "choose",
+          replace: "browser",
+          event: undefined,
+          raced: false,
+        },
+      );
+      return;
+    }
+    this.patch(
+      {
+        autoSignIn: undefined,
+        activation: {
+          result: "device-limit",
+          ...(manageUrl ? { manageUrl } : {}),
+        },
+        keyField: { text: "" },
+      },
+      { outcome: "choose", event: "have-key" },
+    );
+  }
+
+  /** Continue on the confirm step: the person consents to what it listed. */
+  async confirm(): Promise<void> {
+    if (this.store.get().session.redeeming) return;
+    await this.complete(undefined, { claims: this.claims });
+  }
+
+  /** Use another account: the confirm's grant is given up and the methods step shows. */
+  async useAnother(): Promise<void> {
+    const grant = this.grant;
+    this.endSession();
+    this.store.set((s) => ({
+      session: {
+        presentation: s.session.presentation,
+        replace: s.session.replace,
+        channel: s.session.channel,
+      },
+    }));
+    if (grant) await this.primitives?.choice?.cancel(grant).catch(() => {});
+  }
+
+  /** The provider's button: the platform provider with its chooser, then what the ladder found.
+   *  Where there is none (or it found no account), the browser sign-in starts as before. */
+  async signInWithProvider(provider?: string): Promise<void> {
+    const p = this.requirePrimitives();
+    const browser = () =>
+      this.start({ channel: "browser", ...(provider ? { provider } : {}) });
+    if (!p.autoSignIn) return browser();
+    const epoch = this.epoch;
+    let o: AutoOutcome | null;
+    try {
+      o = await p.autoSignIn();
+    } catch {
+      o = null;
+    }
+    if (epoch !== this.epoch) return;
+    if (o === null || o.kind === "needsSignIn") return browser();
+    this.presentAuto(o);
   }
 
   /**

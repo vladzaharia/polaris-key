@@ -66,7 +66,9 @@ import {
 
 import { PolarisContext } from "../react/context.js";
 import { GLYPHS, text, type Chrome, type KitCtx } from "./parts.js";
-import { useSdkGate, type GateStep } from "./sdk.js";
+import type { AutoOutcome } from "@polaris-key/ui-core";
+import type { PolarisAdapter } from "../core/index.js";
+import { useSdkGate, type SdkStep } from "./sdk.js";
 import {
   adoptDesktopStyles,
   adoptKitStyles,
@@ -778,6 +780,19 @@ export interface PolarisKeyGateProps extends KitProps {
   children?: ReactNode;
   /** The app's own address, added to the device-limit link as `return=` (PX-W8). */
   returnUrl?: string;
+  /** Draws the in-app sign-in form for automatic sign-in's steps. `gate.tsx` supplies it, so the
+   *  form loads on demand from the module that already loads the host's menu views. */
+  signInStep?: (a: SignInStepArgs) => ReactNode;
+}
+
+/** What the sign-in form needs from the gate. */
+export interface SignInStepArgs {
+  adapter: PolarisAdapter;
+  seed: AutoOutcome | null;
+  theme?: KitProps["theme"];
+  className?: string;
+  onBack: () => void;
+  onFallback: () => void;
 }
 
 /** The models of the screens the gate draws; the rest of ui-core's models stay out of its entry. */
@@ -792,7 +807,7 @@ const viewOf = (component: ComponentName, input: UiInput): View =>
   GATE_SCREENS[component]!(contextOf(input));
 
 /** The component the gate draws for its state and the sign-in step it is on. */
-function gateScreen(view: View, step: GateStep): ComponentName | null {
+function gateScreen(view: View, step: SdkStep): ComponentName | null {
   switch (view.state) {
     case "grace":
       return "GraceBanner";
@@ -824,7 +839,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     locale: themeLocale(mergeThemes(provided, props.theme)),
   });
   const driven = props.input === undefined && sdk !== null;
-  const step: GateStep = driven ? sdk.step : "home";
+  const step: SdkStep = driven ? sdk.step : "home";
   // The step morph: a step change keeps drawing the old card until the View Transition has
   // captured it, then swaps inside the transition (an instant swap where there is none).
   const [, redraw] = useReducer((n: number) => n + 1, 0);
@@ -883,7 +898,7 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
   }, [stepKey]);
   const { view, input } = kit;
   // Back returns focus to the control that opened the step (DL9).
-  const prevStep = useRef<GateStep>(step);
+  const prevStep = useRef<SdkStep>(step);
   useEffect(() => {
     const was = prevStep.current;
     prevStep.current = step;
@@ -911,6 +926,21 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     );
   }
   if (holding.current) return card.current;
+  // Automatic sign-in found a step for the person: the sign-in form draws it, in the gate's place.
+  if (
+    driven &&
+    step === "signin" &&
+    view.state === "needs-activation" &&
+    props.signInStep
+  )
+    return (card.current = props.signInStep({
+      adapter: sdk.adapter,
+      seed: sdk.seed,
+      ...(props.theme ? { theme: props.theme } : {}),
+      ...(props.className ? { className: props.className } : {}),
+      onBack: () => sdk.act("common.back"),
+      onFallback: () => sdk.act("welcome.signIn"),
+    }));
   const c = kit.ctxFor(view);
   const sub = (component: ComponentName) => {
     const raw = viewOf(component, input);

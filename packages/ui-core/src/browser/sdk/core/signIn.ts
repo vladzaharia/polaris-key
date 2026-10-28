@@ -274,6 +274,9 @@ export interface AutoSignInOptions {
   licenseChoice?: "app" | "card";
   /** The device label the sign-in page shows (§12.7.1). */
   deviceName?: string;
+  /** The person pressed a sign-in button (not the app's boot): a sign-out on this device is
+   *  lifted first, so the ladder runs. Default false. */
+  explicit?: boolean;
 }
 
 /** Whether this device holds the Cloud Sync root key: `present`, or `needed` (unlock it with the

@@ -2104,6 +2104,8 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (this.configError || !b) return { kind: "unavailable", code: "runtime" };
     try {
+      // A person-initiated sign-in lifts the sign-out flag (a boot-time ladder honours it).
+      if (opts.explicit === true) await this.setExplicitSignOut(false);
       await this.ensureDiscovery();
       const m = await import("./bearer/autoSignIn.js");
       const result = await m.runAutoSignIn(
