@@ -71,6 +71,12 @@ import type { AccountContext } from "./links.js";
 import { getAccountRow, verifiedAccountEmails } from "./repo.js";
 import { PRODUCT_SIGNIN_ACTION, signInKindOf } from "./signIn.js";
 import { jsonList, jsonListArg } from "../../../core/sqlIn.js";
+import {
+  consentedClaims,
+  contactOf,
+} from "../../../core/accounts/contactEmail.js";
+
+export { consentedClaims };
 
 /** How long a relink can be undone (S-16 §5.4 item 9: 72 hours). */
 export const RELINK_UNDO_SECONDS = 72 * 60 * 60;
@@ -86,47 +92,6 @@ const USER_SIGNIN_LIMIT = 50;
 const SEARCH_MAX = 128;
 
 // ── Consent ──────────────────────────────────────────────────────────────────────────────────
-
-/**
- * The profile claims an account consented to share with one product on "Continue to <App>"
- * (`account_product_grants.claims_json`, written by I-07/I-08). Read leniently, because the writer
- * lands after this reader: a JSON array of claim names, an object of `claim: true`, or
- * `{ "claims": [...] }`. Anything else is no consent.
- */
-export function consentedClaims(json: string | null | undefined): Set<string> {
-  if (!json) return new Set();
-  let v: unknown;
-  try {
-    v = JSON.parse(json);
-  } catch {
-    return new Set();
-  }
-  if (v && typeof v === "object" && !Array.isArray(v)) {
-    const o = v as Record<string, unknown>;
-    if (Array.isArray(o.claims)) v = o.claims;
-    else
-      return new Set(
-        Object.entries(o)
-          .filter(([, on]) => on === true)
-          .map(([k]) => k),
-      );
-  }
-  return Array.isArray(v)
-    ? new Set(v.filter((c): c is string => typeof c === "string"))
-    : new Set();
-}
-
-/** The row's contact: the buyer email first, the consented primary email otherwise. */
-function contactOf(
-  buyerEmail: string | null,
-  primaryEmail: string | null,
-  claims: Set<string>,
-): { email: string | null; source: "license" | "consented" | null } {
-  if (buyerEmail) return { email: buyerEmail, source: "license" };
-  if (primaryEmail && claims.has("email"))
-    return { email: primaryEmail, source: "consented" };
-  return { email: null, source: null };
-}
 
 // ── The list ─────────────────────────────────────────────────────────────────────────────────
 

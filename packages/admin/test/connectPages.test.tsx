@@ -111,6 +111,21 @@ describe("Linked devices", () => {
     void container;
   });
 
+  it("labels a person by their contact email, with the subject beneath", async () => {
+    people.mockResolvedValue({
+      enabled: true,
+      people: [{ ...person(1), label: "ada@example.com" }],
+      nextCursor: null,
+    });
+    const { container } = view(<ConnectDevicesPage slug="acme" />);
+    const who = await screen.findByRole("link", { name: "ada@example.com" });
+    expect(who.getAttribute("href")).toContain("users/ps_01abc");
+    expect(who.getAttribute("data-person-link")).toBe(person(1).subject);
+    expect(screen.getByText(person(1).subject)).toBeTruthy();
+    expect(screen.getByText(/2 devices/)).toBeTruthy();
+    expect((await axe(container)).violations).toEqual([]);
+  });
+
   it("draws certificate and relay columns only when a device has them", async () => {
     people.mockResolvedValue({
       enabled: true,

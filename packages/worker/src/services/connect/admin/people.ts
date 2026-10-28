@@ -8,13 +8,16 @@
  *     nextCursor: string | null }
  *
  * A person is a row of `connect_rings` (created when a device first reads its identity); the
- * devices are Core's roster rule (`accountDeviceListing`). `label` (a person's name) has no stored
- * source on the Worker, and `certExpiresAt` / `lastRelayAt` are not stored either (a certificate is
- * signed per read, the relay meters per product and day), so all three are `null`. No key,
- * certificate, email or hardware value is read or returned. A product with Connect off answers
+ * devices are Core's roster rule (`accountDeviceListing`). A person's `label` is their shared contact
+ * email (Core's `contactEmailsFor`, the rule Users uses: the buyer's licence email, else the
+ * account email only with the person's consent while Identity is on), `null` without one.
+ * `certExpiresAt` / `lastRelayAt` are not stored (a certificate is signed per read, the relay
+ * meters per product and day), so both are `null`. No key, certificate or hardware value is read
+ * or returned. A product with Connect off answers
  * `{ enabled: false }`.
  */
 
+import { contactEmailsFor } from "../../../core/accounts/contactEmail.js";
 import { adminJson } from "../../../core/console/respond.js";
 import { accountDeviceListing } from "../../../core/devices/keys.js";
 import { knownPlatform } from "../../../core/devices/platformFamily.js";
@@ -37,6 +40,12 @@ export async function handlePeople(
   );
   const page = rows.slice(0, PEOPLE_PAGE);
   const seatsHeld = product.services.license.enabled;
+  const emails = await contactEmailsFor(
+    db,
+    product.slug,
+    page.map((r) => r.subject),
+    { identityOn: product.services.identity.enabled },
+  );
   const people = [];
   for (const r of page) {
     const devices = await accountDeviceListing(db, product.slug, r.subject, {
@@ -45,7 +54,7 @@ export async function handlePeople(
     });
     people.push({
       subject: r.subject,
-      label: null,
+      label: emails.get(r.subject) ?? null,
       ringEpoch: r.epoch,
       devices: devices.map((d) => ({
         deviceId: d.deviceId,
