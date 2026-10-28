@@ -2873,7 +2873,26 @@
       "id": "config.setting.sync",
       "kind": "method",
       "feature": "config.sync",
-      "reserved": "U-06",
+      "sdks": {
+        "node": {
+          "planned": "U-06"
+        },
+        "python": {
+          "planned": "U-06"
+        },
+        "react": {
+          "planned": "U-20"
+        },
+        "swift": {
+          "planned": "U-07"
+        },
+        "kotlin": {
+          "planned": "U-07"
+        },
+        "godot": {
+          "planned": "U-21"
+        }
+      },
       "layer": "client"
     },
     {
@@ -3635,6 +3654,111 @@
           "spelling": "hooks and subscribe",
           "shape": "hook",
           "reason": "React observes through hooks"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.status",
+      "kind": "method",
+      "feature": "sync.settings",
+      "sdks": {
+        "node": {
+          "planned": "U-06"
+        },
+        "python": {
+          "planned": "U-06"
+        },
+        "react": {
+          "planned": "U-20"
+        },
+        "swift": {
+          "planned": "U-07"
+        },
+        "kotlin": {
+          "planned": "U-07"
+        },
+        "godot": {
+          "planned": "U-21"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.flush",
+      "kind": "method",
+      "feature": "sync.settings",
+      "sdks": {
+        "node": {
+          "planned": "U-06"
+        },
+        "python": {
+          "planned": "U-06"
+        },
+        "react": {
+          "planned": "U-20"
+        },
+        "swift": {
+          "planned": "U-07"
+        },
+        "kotlin": {
+          "planned": "U-07"
+        },
+        "godot": {
+          "planned": "U-21"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.encryption",
+      "kind": "option",
+      "feature": "sync.e2e",
+      "sdks": {
+        "node": {
+          "planned": "U-06"
+        },
+        "python": {
+          "planned": "U-06"
+        },
+        "react": {
+          "planned": "U-20"
+        },
+        "swift": {
+          "planned": "U-07"
+        },
+        "kotlin": {
+          "planned": "U-07"
+        },
+        "godot": {
+          "planned": "U-21"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.event",
+      "kind": "stream",
+      "feature": "sync.settings",
+      "enum": "eventKind",
+      "sdks": {
+        "node": {
+          "planned": "U-06"
+        },
+        "python": {
+          "planned": "U-06"
+        },
+        "react": {
+          "planned": "U-20"
+        },
+        "swift": {
+          "planned": "U-07"
+        },
+        "kotlin": {
+          "planned": "U-07"
+        },
+        "godot": {
+          "planned": "U-21"
         }
       },
       "layer": "client"
