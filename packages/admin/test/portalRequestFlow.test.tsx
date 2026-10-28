@@ -759,12 +759,12 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
       ...over,
     };
   }
-  async function enter(handle: boolean, p: KeyPreview) {
+  async function enter(handle: boolean, p: KeyPreview, view: unknown = VIEW) {
     if (!handle) window.history.replaceState(null, "", "/");
     mockFetch({
       "/api/me": { status: 401 },
       "/api/capabilities": CAPS_ALL,
-      [REQUEST]: VIEW,
+      [REQUEST]: view,
       "POST /api/key/preview": p,
     });
     renderPortal();
@@ -824,25 +824,10 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
   });
 
   it("leaves the Cloud Sync reason out when the app has no Cloud Sync, and on the standalone on-ramp", async () => {
-    mockFetch({
-      "/api/me": { status: 401 },
-      "/api/capabilities": CAPS_ALL,
-      [REQUEST]: {
-        ...VIEW,
-        client: {
-          ...VIEW.client,
-          services: { license: true, cloudSync: false },
-        },
-      },
-      "POST /api/key/preview": preview(),
+    await enter(true, preview(), {
+      ...VIEW,
+      client: { ...VIEW.client, services: { license: true, cloudSync: false } },
     });
-    renderPortal();
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Have a license key?" }),
-    );
-    await userEvent.click(await screen.findByRole("textbox"));
-    await userEvent.paste(KEY);
-    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByRole("heading", {
       level: 1,
       name: "Keep Diceroll in an account",
