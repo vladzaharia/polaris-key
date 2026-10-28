@@ -6,57 +6,13 @@ import { describe, expect, it } from "vitest";
 import { writeListing } from "../../listingWrites.js";
 import { makeTestDb, NO_HOOKS } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
-import {
-  makeEnv,
-  NOW,
-  seedProduct,
-  seedTier,
-  setPortalToggles,
-} from "../../seed.js";
+import { makeEnv, NOW, setPortalToggles } from "../../seed.js";
+import { flags, setup } from "../../discoverFixture.js";
 import type { Db } from "../../../src/db/types.js";
-import {
-  serializeServices,
-  type ServicesMap,
-} from "../../../src/core/services.js";
-import { setServices } from "../../../src/core/products/store.js";
 import { loadProductPublic } from "../../../src/core/products.js";
 import { buildHooks, type HookContext } from "../../../src/core/hooks.js";
 import { SERVICES } from "../../../src/mount.js";
 import { discoverVisibility } from "../../../src/services/identity/portal/store/visibility.js";
-
-const flags = (identity: boolean): ServicesMap => ({
-  license: { enabled: true },
-  config: { enabled: false },
-  release: { enabled: false },
-  distribution: { enabled: false },
-  update: { enabled: false },
-  identity: { enabled: identity },
-  sync: { enabled: false },
-  commerce: { enabled: false },
-  connect: { enabled: false },
-});
-
-async function setup(
-  db: Db,
-  slug: string,
-  opts: { free?: boolean; identity?: boolean } = {},
-): Promise<void> {
-  await seedProduct(db, slug);
-  await setServices(
-    db,
-    slug,
-    serializeServices({ services: flags(opts.identity !== false) }),
-    "manifest",
-    NOW,
-  );
-  await seedTier(db, slug, "free", { deviceLimit: 2, expiryDays: 90 });
-  if (opts.free !== false)
-    await db.run(
-      "UPDATE products SET auto_issue_json = ? WHERE slug = ?",
-      JSON.stringify({ enabled: true, tierId: "free", mode: "oidcDefault" }),
-      slug,
-    );
-}
 
 async function visible(db: Db, slug: string): Promise<boolean> {
   const product = (await loadProductPublic(db, slug))!;
