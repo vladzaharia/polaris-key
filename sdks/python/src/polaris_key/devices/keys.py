@@ -40,6 +40,7 @@ import secrets
 import stat
 import threading
 import time
+import weakref
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from cryptography.exceptions import UnsupportedAlgorithm
@@ -127,6 +128,10 @@ class InMemoryDeviceKeyStorage(DeviceKeyStorage):
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._record: Optional[bytearray] = None
+        _FORK_AWARE.add(self)
+
+    def _reinit_locks(self) -> None:
+        self._lock = threading.Lock()
 
     def get(self) -> Optional[bytearray]:
         with self._lock:
@@ -157,6 +162,21 @@ class InMemoryDeviceKeyStorage(DeviceKeyStorage):
 
 _PATH_LOCKS: Dict[str, threading.Lock] = {}
 _PATH_LOCKS_GUARD = threading.Lock()
+#: Objects holding a lock of their own, re-armed in a forked child (a lock held by another thread of
+#: the parent at fork time would never be released there).
+_FORK_AWARE: "weakref.WeakSet[Any]" = weakref.WeakSet()
+
+
+def _after_fork_in_child() -> None:
+    global _PATH_LOCKS_GUARD
+    _PATH_LOCKS_GUARD = threading.Lock()
+    _PATH_LOCKS.clear()
+    for obj in list(_FORK_AWARE):
+        obj._reinit_locks()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_after_fork_in_child)
 
 
 def _path_lock(key: str) -> threading.Lock:
@@ -349,14 +369,14 @@ class FileDeviceKeyStorage(DeviceKeyStorage):
                 raise DeviceKeyStoreError(f"device keys: refusing a directory owned by another user: {path}")
             if st.st_mode & 0o077:
                 raise DeviceKeyStoreError(f"device keys: refusing a directory others may access: {path}")
-            self._check_ancestors(path)
+            self._check_ancestors(path, st)
         except BaseException:
             d.close()
             raise
         return d
 
     @staticmethod
-    def _check_ancestors(path: str) -> None:
+    def _check_ancestors(path: str, dir_stat: os.stat_result) -> None:
         """Refuses a group- or world-writable ancestor without the sticky bit, from the real path of
         the directory up to the home directory (or the root): someone who can write there can swap
         the directory out."""
@@ -364,6 +384,13 @@ class FileDeviceKeyStorage(DeviceKeyStorage):
             real = os.path.realpath(path)
         except OSError as e:
             raise _fault("resolve", path, e) from e
+        try:
+            again = os.stat(real)
+        except OSError as e:
+            raise _fault("examine", real, e) from e
+        if (again.st_dev, again.st_ino) != (dir_stat.st_dev, dir_stat.st_ino):
+            raise DeviceKeyStoreError(f"device keys: the directory moved while it was checked: {path}")
+        me = os.geteuid() if not _IS_WINDOWS else 0
         try:
             home: Optional[str] = os.path.realpath(os.path.expanduser("~"))
         except OSError:
@@ -376,6 +403,8 @@ class FileDeviceKeyStorage(DeviceKeyStorage):
                 st = os.lstat(p)
             except OSError as e:
                 raise _fault("examine", p, e) from e
+            if not _IS_WINDOWS and st.st_uid not in (0, me):
+                raise DeviceKeyStoreError(f"device keys: refusing a directory under one owned by another user: {p}")
             if (st.st_mode & 0o022) and not (st.st_mode & stat.S_ISVTX):
                 raise DeviceKeyStoreError(f"device keys: refusing a directory under one others may write: {p}")
             parent = os.path.dirname(p)
@@ -406,13 +435,15 @@ class FileDeviceKeyStorage(DeviceKeyStorage):
             try:
                 try:
                     fd = d.open(self._lock_name, os.O_RDWR | os.O_CREAT | os.O_EXCL, 0o600)
-                    if not _IS_WINDOWS:
-                        os.fchmod(fd, 0o600)  # a restrictive umask may have cut it
+                    created = True
                 except FileExistsError:
                     fd = d.open(self._lock_name, os.O_RDWR)
+                    created = False
             except OSError as e:
                 raise _fault("open the lock", self._lock_name, e) from e
             try:
+                if created and not _IS_WINDOWS:
+                    os.fchmod(fd, 0o600)  # a restrictive umask may have cut it
                 self._check_file(self._lock_name, os.fstat(fd))
                 while not _lock_fd(fd):
                     if time.monotonic() > deadline:
@@ -424,6 +455,10 @@ class FileDeviceKeyStorage(DeviceKeyStorage):
                 mine = os.fstat(fd)
                 if here is not None and (here.st_ino, here.st_dev) == (mine.st_ino, mine.st_dev):
                     return fd
+            except OSError as e:  # ENOLCK, EOPNOTSUPP, EIO ...: a fault, never "no lock needed"
+                _unlock_fd(fd)
+                os.close(fd)
+                raise _fault("lock", self._lock_name, e) from e
             except BaseException:
                 _unlock_fd(fd)
                 os.close(fd)
@@ -435,7 +470,7 @@ class FileDeviceKeyStorage(DeviceKeyStorage):
 
     def _read(self, d: _Dir) -> Optional[bytearray]:
         try:
-            fd = d.open(self._name, os.O_RDONLY)
+            fd = d.open(self._name, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))  # a FIFO cannot hang us
         except FileNotFoundError:
             return None
         except OSError as e:
@@ -605,11 +640,16 @@ def _consistent(r: _Record) -> bool:
     """The public halves belong to the private halves. An unavailable backend is "unsupported here",
     never "this record is bad"."""
     try:
-        return _ed_public(bytes(r.seed)) == r.sign_pub and _x_public(bytes(r.agree_priv)) == r.agree_pub
+        return _check_halves(r)
     except UnsupportedAlgorithm as e:
-        raise _unsupported(e) from e
+        # Raised outside the frame that holds the seed, with no chained traceback of it.
+        raise _unsupported(e) from None
     except ValueError:
         return False
+
+
+def _check_halves(r: _Record) -> bool:
+    return _ed_public(bytes(r.seed)) == r.sign_pub and _x_public(bytes(r.agree_priv)) == r.agree_pub
 
 
 def _generate(generation: int) -> _Record:
@@ -658,10 +698,10 @@ def _parse(raw: Union[bytes, bytearray]) -> Optional[_Record]:
         o = json.loads(bytes(raw).decode("utf-8"))
     except (ValueError, UnicodeDecodeError, RecursionError):
         return None
-    if not isinstance(o, dict) or o.get("v") != 1 or isinstance(o.get("v"), bool):
+    if not isinstance(o, dict) or type(o.get("v")) is not int or o.get("v") != 1:
         return None
     gen = o.get("generation")
-    if not isinstance(gen, int) or isinstance(gen, bool) or gen < 1 or gen > 2**53 - 1:
+    if type(gen) is not int or gen < 1 or gen > 2**53 - 1:
         return None
     sign, agree = o.get("sign"), o.get("agree")
     if not isinstance(sign, dict) or not isinstance(agree, dict):
@@ -671,7 +711,14 @@ def _parse(raw: Union[bytes, bytearray]) -> Optional[_Record]:
     if seed is None or sign_pub is None or priv is None or agree_pub is None:
         return None
     rec = _Record(gen, bytearray(seed), sign_pub, bytearray(priv), agree_pub)
-    if not _consistent(rec):
+    try:
+        ok = _consistent(rec)
+    except BaseException:
+        rec.zero()
+        o = seed = priv = None  # no frame in the traceback keeps the decoded secrets
+        del o, seed, priv
+        raise
+    if not ok:
         rec.zero()
         return None
     return rec
@@ -691,6 +738,10 @@ class DeviceKeyStore:
     def __init__(self, storage: DeviceKeyStorage) -> None:
         self._storage = storage
         # One operation at a time within this process; the storage's lock covers other processes.
+        self._op = threading.RLock()
+        _FORK_AWARE.add(self)
+
+    def _reinit_locks(self) -> None:
         self._op = threading.RLock()
 
     def __repr__(self) -> str:
@@ -745,6 +796,8 @@ class DeviceKeyStore:
             return result[0]
 
     def sign(self, message: bytes) -> bytes:
+        if not isinstance(message, (bytes, bytearray, memoryview)):
+            raise TypeError("device keys: sign() needs bytes")
         with self._op:
             r = self._load()
             if r is None:
