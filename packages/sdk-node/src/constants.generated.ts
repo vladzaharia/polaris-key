@@ -678,6 +678,7 @@ export const Feature = {
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
   syncKeyring: "sync.keyring",
+  syncE2e: "sync.e2e",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
   connectProtocol: "connect.protocol",
@@ -811,6 +812,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.conflict",
   "sync.saves",
   "sync.keyring",
+  "sync.e2e",
   "connect.identity",
   "connect.noise",
   "connect.protocol",
@@ -1578,7 +1580,7 @@ export const OUTLET_MATRIX_VERSION = 1;
 export const PLAN_MATRIX_VERSION = 2;
 
 /** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
-export const SYNC_SCENARIOS_VERSION = 2;
+export const SYNC_SCENARIOS_VERSION = 3;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
 export const DEVICE_LABEL_VERSION = 1;
@@ -2037,14 +2039,15 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
+  "sync.e2e": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
   "connect.lan": { status: "implemented", service: "connect", na: [] },
-  "connect.relay": { status: "planned", service: "connect", na: [] },
+  "connect.relay": { status: "implemented", service: "connect", na: [] },
   "connect.links": { status: "planned", service: "connect", na: [] },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
-  "connect.app": { status: "planned", service: "connect", na: [] },
+  "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": { status: "implemented", service: "core", na: [] },
   "devices.facts": { status: "implemented", service: "core", na: [] },
   "devices.register": { status: "implemented", service: "core", na: [] },
@@ -2208,4 +2211,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "548faa6a29ab7237d50ab7bf498777ae74418dc0ed24e0aa848c9b359d85cede";
+  "35b7574c32e8cec0c2ac3402df967a5f1fc1af360004dfff9a801c2fa6402601";

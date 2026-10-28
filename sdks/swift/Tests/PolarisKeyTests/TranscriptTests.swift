@@ -9,6 +9,7 @@
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
+// @pkey-feature identity.exchange
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -122,6 +123,9 @@ final class FixtureKeyPort: DeviceKeyPort, @unchecked Sendable {
     func persistence() async throws -> DeviceKeyPersistence { .durable }
     func wipe() async throws {}
 }
+
+/// The fake platform provider: it returns the ID token the recording was made with.
+struct RecordedProvider: Sendable { let token: String }
 
 enum SwiftReplay {
     /// THE mapping from transcript verbs and `expect` keys onto the Swift SDK. Kept in one place.
@@ -325,6 +329,19 @@ enum SwiftReplay {
             }
             // `core.presentation` (HA-13): the member the client now exposes, or null.
             out["presentation"] = client.presentation?.jsonValue ?? .null
+            // `identity.exchange` (§12.11.6): the exchange member and whether the nonce route is named.
+            let identity = await client.core.discoveryDocument?.identity
+            out["exchange"] =
+                identity?.exchange.map {
+                    var o: [String: JSONValue] = ["kinds": .array($0.kinds.map(JSONValue.string))]
+                    if let id = $0.googleServerClientId {
+                        o["google"] = .object(["serverClientId": .string(id)])
+                    }
+                    return .object(o)
+                } ?? .null
+            out["nonceEndpoint"] = .bool(!(identity?.nonce ?? "").isEmpty)
+        case "exchange":
+            try await exchange(client, step: step, session: session, into: &out)
         case "connectIdentity", "connectDevices":
             // `client.connect` (CC-06.4, `connect.identity`).
             let label = step.args["keyLabel"]?.stringValue ?? ""
@@ -469,7 +486,8 @@ enum SwiftReplay {
         for (slug, enabled) in await client.capabilities() { services[slug.rawValue] = .bool(enabled) }
         out["services"] = .object(services)
         out["licenseStatus"] = .string(await client.status().status.rawValue)
-        out["tokenHeld"] = .bool(await store.getToken() != nil)
+        // The `exchange` verb reports its own, per step (the token it stored, not the store's).
+        if step.action != "exchange" { out["tokenHeld"] = .bool(await store.getToken() != nil) }
         return out
     }
 
@@ -498,6 +516,72 @@ enum SwiftReplay {
                 licenseChoice: licenseChoice))
     }
 
+    /// `exchange` (`identity.exchange`, I-44.3): the platform's ID token is the recording's
+    /// (`subjectToken`, a fake provider that returns it). A recorded `nonce` is the one the
+    /// provider was asked with (`exchange(kind:subjectToken:nonce:)`); without one the SDK's
+    /// internal `optionalNonce: nil` path fetches it from the nonce route. The fixture device keys
+    /// are the connect port's (`keyLabel`): durable, with deterministic signatures.
+    private static func exchange(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession,
+        into out: inout [String: JSONValue]
+    ) async throws {
+        let label = step.args["keyLabel"]?.stringValue ?? ""
+        if session.keyLabel != label {
+            session.keys.use(label: label)
+            session.keyLabel = label
+        }
+        guard let kind = ExchangeKind(rawValue: step.args["kind"]?.stringValue ?? "") else {
+            throw ReplayError("exchange: unknown kind")
+        }
+        // A step that never reaches the token route records no token; the SDK needs a non-empty one.
+        let provider = RecordedProvider(token: step.args["subjectToken"]?.stringValue ?? "unused.subject.token")
+        let heldBefore = await client.core.token
+        var signedIn = false
+        do {
+            let outcome = try await client.identity.exchange(
+                kind: kind, subjectToken: provider.token,
+                optionalNonce: step.args["nonce"]?.stringValue)
+            switch outcome {
+            case .signedIn(let ready):
+                signedIn = true
+                out["result"] = .string("ok")
+                out["scope"] = ready.scope.map(JSONValue.string) ?? .null
+                out["subject"] = ready.subject.map(JSONValue.string) ?? .null
+                out["licenseId"] = ready.licenseId.map(JSONValue.string) ?? .null
+                out["issuedTokenType"] = .string("urn:polaris-key:token-type:device")
+            case .confirm(let pending):
+                out["result"] = .string("confirm")
+                out["firstTime"] = .bool(pending.consent.firstTime)
+                out["changed"] = .bool(pending.consent.changed)
+                out["as"] = .object([
+                    "provider": .string(pending.consent.as.provider),
+                    "email": pending.consent.as.email.map(JSONValue.string) ?? .null,
+                ])
+            case .choose: out["result"] = .string("choose")
+            case .needsSignIn(let n):
+                out["result"] = .string("interstitial-required")
+                out["reason"] = .string(n.reason.rawValue)
+                out["url"] = .string(n.url)
+                out["linkHandle"] = n.linkHandle.map(JSONValue.string) ?? .null
+                out["expiresIn"] = n.expiresIn.map { .int($0) } ?? .null
+            case .unavailable: out["result"] = .string("unavailable")
+            }
+        } catch let e as ExchangeError {
+            out["result"] = .string("refused")
+            out["code"] = .string(e.code)
+        } catch let e as PolarisError {
+            out["result"] = .string("error")
+            out["code"] = .string(e.code)
+        }
+        // Per step, as the other runners report it: this exchange stored a token. Any other
+        // outcome leaves the token that was already held exactly as it was.
+        let heldAfter = await client.core.token
+        if !signedIn, heldAfter != heldBefore {
+            throw ReplayError("exchange: a step that signed nobody in changed the held token")
+        }
+        out["tokenHeld"] = .bool(signedIn && heldAfter != nil)
+    }
+
     /// `choiceLicenses` / `choiceDevices` / `choiceComplete` / `choiceCancel`: `identity.choice`.
     /// The recorded `complete` has no `choice` argument; the choice is in the request the
     /// recording asserts, so the replayer reads it from there.
@@ -519,8 +603,10 @@ enum SwiftReplay {
                 out["devices"] = .array(view.devices.map { .string($0.id) })
             case "choiceComplete":
                 let done = try await client.identity.choice.complete(
-                    grant: grant, choice: recordedChoice(step))
+                    grant: grant, choice: recordedChoice(step), consent: recordedConsent(step))
                 out["result"] = .string("ok")
+                out["tokenHeld"] = .bool(await client.core.token != nil)
+                out["scope"] = done.ready.scope.map(JSONValue.string) ?? .null
                 out["licenseId"] = done.ready.licenseId.map(JSONValue.string) ?? .null
                 out["subject"] = done.ready.subject.map(JSONValue.string) ?? .null
                 if let k = done.keyEntries {
@@ -539,6 +625,16 @@ enum SwiftReplay {
         } catch {
             out["result"] = .string("error")
         }
+    }
+
+    /// The `consent` the recording's `choice/complete` request carries (an exchange `confirm`).
+    private static func recordedConsent(_ step: Transcript.Step) -> ChoiceConsent? {
+        guard
+            let claims = step.exchanges.items.first?.request.body?.json.objectValue?["consent"]?
+                .objectValue?["claims"]
+        else { return nil }
+        if case .array(let list) = claims { return ChoiceConsent(claims: list.compactMap(\.stringValue)) }
+        return nil
     }
 
     /// The `LicenseChoiceInput` the recording's `choice/complete` request carries (absent: none,
@@ -745,7 +841,9 @@ enum SwiftReplay {
                     platform: u.platform, arch: u.arch))
         }
         // The redirect recordings hold the token exchange, not the sync a sign-in triggers after it.
-        if redirects { client.identity.redirectAcquisitionSync.set(false) }
+        if redirects || t.steps.contains(where: { ["exchange", "choiceComplete"].contains($0.action) }) {
+            client.identity.redirectAcquisitionSync.set(false)
+        }
         session.platform = t.initial.platform
         session.steps = t.steps
         for i in t.steps.indices {
