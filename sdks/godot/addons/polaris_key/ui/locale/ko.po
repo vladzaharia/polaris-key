@@ -177,6 +177,16 @@ msgctxt "tv"
 msgid "part.thisDevice"
 msgstr "이 TV"
 
+#. the new device
+#. The device that asked to sign in, when its name is unknown (nearby approval). Mid-sentence form.
+msgid "part.newDevice"
+msgstr "새 기기"
+
+#. The new device
+#. The device that asked to sign in, when its name is unknown (nearby approval). Sentence-start form.
+msgid "part.newDeviceTitle"
+msgstr "새 기기"
+
 #. {formFactor, select, iphone {This iPhone} ipad {This iPad} mac {This Mac} phone {This phone} tablet {This tablet} computer {This computer} tv {This TV} other {This device}}
 #. The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
 msgid "part.thisDeviceTitle"
@@ -433,6 +443,11 @@ msgstr "기기 관리 페이지를 여는 QR 코드"
 #. Screen reader label; never shown. Describes the QR code on the key-refusal step that opens the add-key page.
 msgid "a11y.qrAddKey"
 msgstr "키 추가 페이지를 여는 QR 코드"
+
+#. Code to tap: {code}
+#. Screen reader label; never shown. Reads the code the other device must tap. Arguments: {code} = a code shown to the person; never split or translated.
+msgid "a11y.nearbyCode"
+msgstr "탭할 코드: {code}"
 
 #. Sign-in code {code}
 #. Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
@@ -2830,6 +2845,16 @@ msgctxt "macos"
 msgid "signin.key.ownedSignIn"
 msgstr "그 계정으로 로그인"
 
+#. Sign in
+#. The key-entry limit's refusal step: starts the kit's own sign-in; the key is added to the account afterwards.
+msgid "signin.key.signIn"
+msgstr "로그인"
+
+#. macos: Sign In
+msgctxt "macos"
+msgid "signin.key.signIn"
+msgstr "로그인"
+
 #. Use a different key
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.differentKey"
@@ -2850,10 +2875,10 @@ msgstr "{app}(으)로 계속"
 msgid "signin.auto.confirm.as"
 msgstr "{email} 계정으로"
 
-#. with your Apple ID
+#. with your Apple Account
 #. Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private).
 msgid "signin.auto.confirm.asApple"
-msgstr "Apple ID로"
+msgstr "Apple 계정으로"
 
 #. Continue
 #. Automatic sign-in: the confirm step's main button.
@@ -2875,15 +2900,20 @@ msgstr "다른 계정 사용"
 msgid "signin.linkOffer.title"
 msgstr "다음부터 {provider}(으)로 로그인할까요?"
 
-#. {app} and other apps that use Polaris Locker sign you in by themselves.
+#. Then {app} and other apps that use Polaris Locker can sign you in by themselves.
 #. Link offer: what linking does where the provider's identity is shared across developers. Arguments: {app} = the app's name (never translated).
 msgid "signin.linkOffer.bodyGlobal"
-msgstr "{app} 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요."
+msgstr "그러면 {app} 등 Polaris Locker를 쓰는 앱이 자동으로 로그인해 줘요."
 
-#. Apps from {developer} sign you in by themselves.
+#. Then apps from {developer} can sign you in by themselves.
 #. Link offer: what linking does where the provider's identity is per developer (Apple always). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.linkOffer.bodyDeveloper"
-msgstr "{developer}의 앱이 자동으로 로그인해 줘요."
+msgstr "그러면 {developer}의 앱이 자동으로 로그인해 줘요."
+
+#. Then {app} and its developer's other apps can sign you in by themselves.
+#. Link offer when the developer's name is unknown. Arguments: {app} = the app's name (never translated).
+msgid "signin.linkOffer.bodyApp"
+msgstr "그러면 {app}과 개발자의 다른 앱이 자동으로 로그인해 줘요."
 
 #. Link {provider}
 #. Link offer: the main button. Arguments: {provider} = the provider's name (never translated).
@@ -2900,25 +2930,50 @@ msgctxt "macos"
 msgid "signin.linkOffer.decline"
 msgstr "괜찮아요"
 
-#. {provider} linked.
+#. {provider} linked
 #. Link offer: the link succeeded. Arguments: {provider} = the provider's name (never translated).
 msgid "signin.linkOffer.done"
-msgstr "{provider}을(를) 연결했어요."
+msgstr "{provider} 연결됨"
 
-#. This {provider} account is linked to another Polaris Locker account.
-#. Link offer: the provider account is already linked to another Polaris Locker account. Arguments: {provider} = the provider's name (never translated).
+#. {provider} not linked
+#. Link offer: the provider account is already linked elsewhere. Arguments: {provider} = the provider's name (never translated).
+msgid "signin.linkOffer.conflictTitle"
+msgstr "{provider} 연결 안 됨"
+
+#. This {provider} account belongs to another Polaris Locker account. You're still signed in.
+#. Link offer: the provider account belongs to another Polaris Locker account; the sign-in stands. Arguments: {provider} = the provider's name (never translated).
 msgid "signin.linkOffer.conflict"
-msgstr "이 {provider} 계정은 다른 Polaris Locker 계정에 연결되어 있어요."
+msgstr "이 {provider} 계정은 다른 Polaris Locker 계정에 속해 있어요. 로그인은 그대로 유지돼요."
+
+#. Join accounts
+#. Link offer conflict: opens Help on joining two accounts.
+msgid "signin.linkOffer.join"
+msgstr "계정 합치기"
+
+#. macos: Join Accounts
+msgctxt "macos"
+msgid "signin.linkOffer.join"
+msgstr "계정 합치기"
 
 #. Approve on your other device
 #. Nearby sign-in, on the device that signs in: waits for approval on another device.
 msgid "signin.nearby.title"
 msgstr "다른 기기에서 승인하세요"
 
-#. Open {app} on a phone or computer where you're signed in.
+#. Sign in with your phone
+#. Nearby sign-in, before the system asks for access to the local network.
+msgid "signin.nearby.promptTitle"
+msgstr "휴대폰으로 로그인"
+
+#. Open {app} on a phone or computer that's signed in and on this network.
 #. Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated).
 msgid "signin.nearby.body"
-msgstr "로그인된 휴대폰이나 컴퓨터에서 {app}을(를) 여세요."
+msgstr "로그인되어 있고 이 네트워크에 연결된 휴대폰이나 컴퓨터에서 {app}을(를) 여세요."
+
+#. Tap this code there:
+#. Nearby sign-in, waiting: the line above the code the other device must tap.
+msgid "signin.nearby.match"
+msgstr "그쪽에서 이 코드를 탭하세요:"
 
 #. Use a code instead
 #. Nearby sign-in, waiting: switches to the device code.
@@ -2945,40 +3000,40 @@ msgctxt "macos"
 msgid "signin.nearby.notYou"
 msgstr "본인이 아닌가요?"
 
-#. Allow access to devices on your network next, so your phone can sign you in.
-#. Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). The system prompt follows.
+#. Next, allow {app} to find devices on your network, so your phone can sign you in.
+#. Nearby sign-in: shown before the system asks for access to devices on the local network (L-11). Arguments: {app} = the app's name (never translated).
 msgid "signin.nearby.prePrompt"
-msgstr "다음 화면에서 네트워크의 기기 접근을 허용하면 휴대폰으로 로그인할 수 있어요."
+msgstr "다음 화면에서 {app}이 네트워크의 기기를 찾도록 허용하면 휴대폰으로 로그인할 수 있어요."
 
-#. Sign in {device}?
+#. Let {device} sign in?
 #. Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.ask"
-msgstr "{device}에 로그인할까요?"
+msgstr "{device}의 로그인을 허용할까요?"
 
-#. Tap the code {device} shows
+#. Tap the code it shows.
 #. Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.askBody"
-msgstr "{device}에 표시된 코드를 탭하세요"
+msgstr "표시된 코드를 탭하세요."
 
-#. Not now
-#. Nearby approval: declines.
-msgid "signin.nearby.deny"
-msgstr "나중에"
-
-#. macos: Not Now
-msgctxt "macos"
-msgid "signin.nearby.deny"
-msgstr "나중에"
-
-#. {device} is signed in.
+#. {device} is signed in
 #. Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.approved"
-msgstr "{device}에 로그인했어요."
+msgstr "{device}에 로그인했어요"
 
-#. {device} isn't on your network.
+#. {device} isn't on this network
 #. Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.notNearby"
-msgstr "{device}이(가) 같은 네트워크에 없어요."
+msgstr "{device}이(가) 이 네트워크에 없어요"
+
+#. Connect both to the same Wi-Fi, or sign in with a code on {device}.
+#. Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.notNearbyBody"
+msgstr "두 기기를 같은 Wi-Fi에 연결하거나 {device}에서 코드로 로그인하세요."
+
+#. That code didn't match, so {device} wasn't signed in.
+#. Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.mismatch"
+msgstr "코드가 일치하지 않아 {device}에 로그인하지 않았어요."
 
 #. Approve a nearby device
 #. Account menu entry: opens the nearby approval list on the signed-in device.
@@ -3000,10 +3055,10 @@ msgctxt "macos"
 msgid "signin.key.addInLocker"
 msgstr "Polaris Locker에서 추가"
 
-#. Scan to add it in Polaris Locker on your phone.
+#. Scan to add this key in Polaris Locker on your phone.
 #. The key-refusal step on TV and console: caption of the QR that opens the add-key page.
 msgid "signin.key.scan"
-msgstr "스캔해서 휴대폰의 Polaris Locker에서 추가하세요."
+msgstr "스캔해서 휴대폰의 Polaris Locker에서 이 키를 추가하세요."
 
 #. {product} is yours
 #. Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -5728,10 +5783,10 @@ msgstr "Polaris Locker 페이지에서 로그인을 완료한 뒤 앱으로 돌�
 msgid "core.codes.not_nearby.title"
 msgstr "근처에 없음"
 
-#. The other device isn't on this network. Move closer, or sign in with a code instead.
+#. The other device isn't on this network. Connect both to the same Wi-Fi, or use a code instead.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_nearby.message"
-msgstr "다른 기기가 이 네트워크에 없습니다. 가까이 이동하거나 코드로 로그인하세요."
+msgstr "다른 기기가 이 네트워크에 없어요. 두 기기를 같은 Wi-Fi에 연결하거나 코드를 대신 사용하세요."
 
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7438,10 +7493,10 @@ msgstr "이 앱은 무료 라이선스를 제공하지 않아요. 라이선스 �
 msgid "core.activation.key-entry-limit.title"
 msgstr "남은 키 등록 횟수 없음"
 
-#. Add it to your account and sign in instead.
+#. Sign in and add this key to your Polaris Locker account instead.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.key-entry-limit.message"
-msgstr "계정에 추가하고 대신 로그인하세요."
+msgstr "로그인한 뒤 이 키를 Polaris Locker 계정에 추가하세요."
 
 #. License in another account
 #. Core copy (conformance/parity/copy.en.json, activation).

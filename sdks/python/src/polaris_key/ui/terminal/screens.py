@@ -361,7 +361,7 @@ def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:
         body += k.body([k.t("core.activation.ok.message")])
     elif v.kind == "key-entry-limit":
         body += k.step("warn", [k.t("core.activation.key-entry-limit.title", "strong")])
-        body += k.body([k.t("signin.key.noEntries", product=k.inline_product)])
+        body += k.body([k.t("core.activation.key-entry-limit.message")])
         body += _gap(k)
         body += _fixes(k, [("login", "welcome.signIn")])
     else:

@@ -309,7 +309,7 @@ export function signInView(ctx: Context): View<"SignIn", SignInState> {
   return methodsView(ctx, args);
 }
 
-/** The provider's identity is per developer: Apple always, Google unless it is shared across apps. */
+/** The provider's identity is per developer: Apple always, Google unless shared across apps. */
 function perDeveloper(
   provider: string,
   reach: AutoSignInInput["reach"],
@@ -318,7 +318,8 @@ function perDeveloper(
 }
 
 /** Automatic sign-in's steps, drawn in the form's body (plans/auto-sign-in.md §3): confirm the
- *  account, offer to link the provider, and the nearby wait. */
+ *  account, offer to link the provider, and the nearby wait. Every outcome has a title that takes
+ *  focus and one way on (Continue). */
 function autoStepView(
   ctx: Context,
   auto: AutoSignInInput,
@@ -327,15 +328,25 @@ function autoStepView(
   const provider = ctx.input.provider ?? DEFAULT_PROVIDER;
   const view = (
     state: SignInState,
-    copy: (string | false)[],
-    o: { primary?: string | null; tone?: "neutral" } = {},
+    copy: (string | false | undefined)[],
+    o: {
+      primary?: string | null;
+      tone?: "neutral";
+      focus?: string | null;
+    } = {},
   ) =>
     makeView(ctx, "SignIn", {
       state,
       copy,
-      args: { ...args, provider },
+      args: {
+        ...args,
+        provider,
+        tier: ctx.input.account?.tier,
+        code: auto.code,
+      },
       primary: o.primary ?? null,
       tone: o.tone ?? null,
+      focus: o.focus === undefined ? "heading" : o.focus,
     });
   switch (auto.step) {
     case "confirm":
@@ -344,51 +355,76 @@ function autoStepView(
         [
           "signin.auto.confirm.title",
           auto.email ? "signin.auto.confirm.as" : "signin.auto.confirm.asApple",
+          // What Continue does: the license this device gets, and what the app also receives.
+          auto.license && "signin.consent.license",
+          auto.license === "new" && "signin.consent.newLicense",
+          auto.license === "existing" && "signin.consent.licenseLine",
+          auto.alsoGets && "signin.consent.alsoGets",
+          auto.alsoGets && "signin.consent.profile",
+          auto.alsoGets && "signin.consent.pairwise",
           "signin.auto.confirm.primary",
           "signin.auto.confirm.other",
         ],
         { primary: "signin.auto.confirm.primary" },
       );
-    case "link-offer":
+    case "link-offer": {
+      // Per developer: named when the developer is known, else the app and its developer's others.
+      const body = !perDeveloper(provider, auto.reach)
+        ? "signin.linkOffer.bodyGlobal"
+        : args.developer
+          ? "signin.linkOffer.bodyDeveloper"
+          : "signin.linkOffer.bodyApp";
       return view(
         "link-offer",
         [
           "signin.linkOffer.title",
-          perDeveloper(provider, auto.reach)
-            ? "signin.linkOffer.bodyDeveloper"
-            : "signin.linkOffer.bodyGlobal",
+          body,
           "signin.linkOffer.primary",
           "signin.linkOffer.decline",
         ],
         { primary: "signin.linkOffer.primary" },
       );
+    }
     case "link-done":
-      return view("link-done", ["signin.linkOffer.done"]);
-    case "link-conflict":
-      return view("link-conflict", ["signin.linkOffer.conflict"], {
-        tone: "neutral",
+      return view("link-done", ["signin.linkOffer.done", "common.continue"], {
+        primary: "common.continue",
       });
+    case "link-conflict":
+      return view(
+        "link-conflict",
+        [
+          "signin.linkOffer.conflictTitle",
+          "signin.linkOffer.conflict",
+          "signin.linkOffer.join",
+          "common.continue",
+        ],
+        { primary: "common.continue", tone: "neutral" },
+      );
     case "nearby-prompt":
       return view(
         "nearby-prompt",
         [
+          "signin.nearby.promptTitle",
           "signin.nearby.prePrompt",
-          "signin.auto.confirm.primary",
+          "common.continue",
           "common.notNow",
         ],
-        { primary: "signin.auto.confirm.primary" },
+        { primary: "common.continue" },
       );
     case "nearby-wait":
       return view("nearby-wait", [
         "signin.nearby.title",
         "signin.nearby.body",
+        "signin.nearby.match",
+        auto.code && "a11y.nearbyCode",
         "signin.nearby.code",
       ]);
     case "nearby-done":
-      return view("nearby-done", [
-        "signin.nearby.done",
-        "signin.nearby.notYou",
-      ]);
+      return view(
+        "nearby-done",
+        ["signin.nearby.done", "common.continue", "signin.nearby.notYou"],
+        { primary: "common.continue" },
+      );
   }
 }
 

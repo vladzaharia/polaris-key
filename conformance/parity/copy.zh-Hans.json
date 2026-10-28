@@ -199,7 +199,7 @@
     },
     "not_nearby": {
       "title": "不在附近",
-      "message": "另一台设备不在此网络中。请靠近一些，或改用代码登录。"
+      "message": "另一台设备不在此网络中。请将两台设备连接到同一 Wi-Fi，或改用代码。"
     },
     "auth_method_disabled": {
       "title": "登录方式不可用",
@@ -887,7 +887,7 @@
     },
     "key-entry-limit": {
       "title": "密钥已无剩余输入次数",
-      "message": "请将它添加到你的账户，然后改为登录。"
+      "message": "请登录，并将此密钥添加到你的 Polaris Locker 账户。"
     },
     "license-owned": {
       "title": "许可证在另一个账户中",

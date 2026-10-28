@@ -63,7 +63,7 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
     "devices.manage",
     "signin.key.addInLocker",
   ],
-  "start-sign-in": ["signin.key.ownedSignIn"],
+  "start-sign-in": ["signin.key.ownedSignIn", "signin.key.signIn"],
   "copy-link": ["signin.handoff.copyLink", "a11y.copyAddress"],
   retry: [
     "common.tryAgain",

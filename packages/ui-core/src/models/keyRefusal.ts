@@ -33,7 +33,10 @@ export interface KeyRefusalSpec {
   qr: boolean;
 }
 
-const SIGN_IN = "signin.key.ownedSignIn";
+/** The limit's primary is a plain Sign in (the key is in no account yet); a license another account
+ *  holds says whose account the sign-in is for. */
+const SIGN_IN_LIMIT = "signin.key.signIn";
+const SIGN_IN_OWNED = "signin.key.ownedSignIn";
 
 /** The step's copy and decisions: title and message, Sign in (the primary), the add-key page for
  *  the limit (a button, or a QR with its caption on a TV), and Use a different key. */
@@ -55,7 +58,7 @@ export function keyRefusalSpec(
       limit
         ? "core.activation.key-entry-limit.message"
         : "core.codes.license_owned.message",
-      SIGN_IN,
+      limit ? SIGN_IN_LIMIT : SIGN_IN_OWNED,
       ...(add
         ? tv
           ? ["signin.key.scan", "a11y.qrAddKey"]
@@ -63,7 +66,7 @@ export function keyRefusalSpec(
         : []),
       "signin.key.differentKey",
     ],
-    primary: SIGN_IN,
+    primary: limit ? SIGN_IN_LIMIT : SIGN_IN_OWNED,
     link,
     qr: add && tv,
   };

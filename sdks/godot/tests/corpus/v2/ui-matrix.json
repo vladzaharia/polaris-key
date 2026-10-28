@@ -15,7 +15,7 @@
     "actionKeys": {
       "open-card": ["signin.desktop.continue", "signin.email.continue"],
       "open-browser": ["signin.handoff.again", "signin.handoff.openBrowser"],
-      "start-sign-in": ["signin.key.ownedSignIn"],
+      "start-sign-in": ["signin.key.signIn", "signin.key.ownedSignIn"],
       "open-manage-url": [
         "deviceLimit.openBrowser",
         "devices.manage",
@@ -1661,7 +1661,7 @@
           "core.activation.key-entry-limit.title",
           "signin.key.addInLocker",
           "signin.key.differentKey",
-          "signin.key.ownedSignIn"
+          "signin.key.signIn"
         ],
         "actions": ["open-manage-url", "start-sign-in"]
       },
@@ -1693,7 +1693,7 @@
           "core.activation.key-entry-limit.message",
           "core.activation.key-entry-limit.title",
           "signin.key.differentKey",
-          "signin.key.ownedSignIn"
+          "signin.key.signIn"
         ],
         "actions": ["start-sign-in"]
       },
@@ -1730,8 +1730,8 @@
           "core.activation.key-entry-limit.message",
           "core.activation.key-entry-limit.title",
           "signin.key.differentKey",
-          "signin.key.ownedSignIn",
-          "signin.key.scan"
+          "signin.key.scan",
+          "signin.key.signIn"
         ],
         "actions": ["start-sign-in"]
       },
@@ -4314,7 +4314,7 @@
           "core.activation.key-entry-limit.title",
           "signin.key.addInLocker",
           "signin.key.differentKey",
-          "signin.key.ownedSignIn"
+          "signin.key.signIn"
         ],
         "actions": ["open-manage-url", "start-sign-in"]
       }
@@ -4434,7 +4434,7 @@
           "core.activation.key-entry-limit.title",
           "signin.key.addInLocker",
           "signin.key.differentKey",
-          "signin.key.ownedSignIn"
+          "signin.key.signIn"
         ],
         "actions": ["open-manage-url", "start-sign-in"]
       }
@@ -4554,8 +4554,8 @@
           "core.activation.key-entry-limit.message",
           "core.activation.key-entry-limit.title",
           "signin.key.differentKey",
-          "signin.key.ownedSignIn",
-          "signin.key.scan"
+          "signin.key.scan",
+          "signin.key.signIn"
         ],
         "actions": ["start-sign-in"]
       }
@@ -4675,14 +4675,14 @@
           "core.activation.key-entry-limit.message",
           "core.activation.key-entry-limit.title",
           "signin.key.differentKey",
-          "signin.key.ownedSignIn",
-          "signin.key.scan"
+          "signin.key.scan",
+          "signin.key.signIn"
         ],
         "actions": ["start-sign-in"]
       }
     },
     {
-      "name": "SignIn/confirm: the account's email",
+      "name": "SignIn/confirm: the account's email, a new license",
       "input": {
         "provider": "Google",
         "signIn": {
@@ -4690,7 +4690,13 @@
           "replace": "inline",
           "channel": "browser"
         },
-        "autoSignIn": { "step": "confirm", "email": "maya@example.com" }
+        "account": { "signedIn": true, "tier": "Pro" },
+        "autoSignIn": {
+          "step": "confirm",
+          "email": "maya@example.com",
+          "license": "new",
+          "alsoGets": true
+        }
       },
       "expect": {
         "component": "SignIn",
@@ -4699,12 +4705,17 @@
           "signin.auto.confirm.as",
           "signin.auto.confirm.other",
           "signin.auto.confirm.primary",
-          "signin.auto.confirm.title"
+          "signin.auto.confirm.title",
+          "signin.consent.alsoGets",
+          "signin.consent.license",
+          "signin.consent.newLicense",
+          "signin.consent.pairwise",
+          "signin.consent.profile"
         ]
       }
     },
     {
-      "name": "SignIn/confirm: the account's email (sheet)",
+      "name": "SignIn/confirm: the account's email, a new license (sheet)",
       "input": {
         "provider": "Google",
         "signIn": {
@@ -4712,7 +4723,13 @@
           "replace": "inline",
           "channel": "browser"
         },
-        "autoSignIn": { "step": "confirm", "email": "maya@example.com" }
+        "account": { "signedIn": true, "tier": "Pro" },
+        "autoSignIn": {
+          "step": "confirm",
+          "email": "maya@example.com",
+          "license": "new",
+          "alsoGets": true
+        }
       },
       "expect": {
         "component": "SignIn",
@@ -4721,12 +4738,17 @@
           "signin.auto.confirm.as",
           "signin.auto.confirm.other",
           "signin.auto.confirm.primary",
-          "signin.auto.confirm.title"
+          "signin.auto.confirm.title",
+          "signin.consent.alsoGets",
+          "signin.consent.license",
+          "signin.consent.newLicense",
+          "signin.consent.pairwise",
+          "signin.consent.profile"
         ]
       }
     },
     {
-      "name": "SignIn/confirm: Apple shared no email",
+      "name": "SignIn/confirm: Apple shared no email, an existing license",
       "input": {
         "provider": "Apple",
         "signIn": {
@@ -4734,7 +4756,7 @@
           "replace": "inline",
           "channel": "browser"
         },
-        "autoSignIn": { "step": "confirm" }
+        "autoSignIn": { "step": "confirm", "license": "existing" }
       },
       "expect": {
         "component": "SignIn",
@@ -4743,12 +4765,14 @@
           "signin.auto.confirm.asApple",
           "signin.auto.confirm.other",
           "signin.auto.confirm.primary",
-          "signin.auto.confirm.title"
+          "signin.auto.confirm.title",
+          "signin.consent.license",
+          "signin.consent.licenseLine"
         ]
       }
     },
     {
-      "name": "SignIn/confirm: Apple shared no email (sheet)",
+      "name": "SignIn/confirm: Apple shared no email, an existing license (sheet)",
       "input": {
         "provider": "Apple",
         "signIn": {
@@ -4756,7 +4780,7 @@
           "replace": "inline",
           "channel": "browser"
         },
-        "autoSignIn": { "step": "confirm" }
+        "autoSignIn": { "step": "confirm", "license": "existing" }
       },
       "expect": {
         "component": "SignIn",
@@ -4765,7 +4789,9 @@
           "signin.auto.confirm.asApple",
           "signin.auto.confirm.other",
           "signin.auto.confirm.primary",
-          "signin.auto.confirm.title"
+          "signin.auto.confirm.title",
+          "signin.consent.license",
+          "signin.consent.licenseLine"
         ]
       }
     },
@@ -4954,6 +4980,106 @@
       }
     },
     {
+      "name": "SignIn/link-offer: Google per developer, no developer name",
+      "input": {
+        "provider": "Google",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "developer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Google per developer, no developer name (sheet)",
+      "input": {
+        "provider": "Google",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer", "reach": "developer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Apple, no developer name",
+      "input": {
+        "provider": "Apple",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "say all apps for Apple",
+        "copy": ["signin.linkOffer.bodyGlobal"]
+      }
+    },
+    {
+      "name": "SignIn/link-offer: Apple, no developer name (sheet)",
+      "input": {
+        "provider": "Apple",
+        "presentation": { "name": "Tidewater Studio", "icon": true },
+        "signIn": {
+          "presentation": "sheet",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "link-offer" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "link-offer",
+        "copy": [
+          "signin.linkOffer.bodyApp",
+          "signin.linkOffer.decline",
+          "signin.linkOffer.primary",
+          "signin.linkOffer.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "say all apps for Apple",
+        "copy": ["signin.linkOffer.bodyGlobal"]
+      }
+    },
+    {
       "name": "SignIn/link-done",
       "input": {
         "provider": "Google",
@@ -4967,7 +5093,7 @@
       "expect": {
         "component": "SignIn",
         "state": "link-done",
-        "copy": ["signin.linkOffer.done"]
+        "copy": ["common.continue", "signin.linkOffer.done"]
       }
     },
     {
@@ -4984,7 +5110,7 @@
       "expect": {
         "component": "SignIn",
         "state": "link-done",
-        "copy": ["signin.linkOffer.done"]
+        "copy": ["common.continue", "signin.linkOffer.done"]
       }
     },
     {
@@ -5001,7 +5127,12 @@
       "expect": {
         "component": "SignIn",
         "state": "link-conflict",
-        "copy": ["signin.linkOffer.conflict"]
+        "copy": [
+          "common.continue",
+          "signin.linkOffer.conflict",
+          "signin.linkOffer.conflictTitle",
+          "signin.linkOffer.join"
+        ]
       }
     },
     {
@@ -5018,7 +5149,12 @@
       "expect": {
         "component": "SignIn",
         "state": "link-conflict",
-        "copy": ["signin.linkOffer.conflict"]
+        "copy": [
+          "common.continue",
+          "signin.linkOffer.conflict",
+          "signin.linkOffer.conflictTitle",
+          "signin.linkOffer.join"
+        ]
       }
     },
     {
@@ -5035,9 +5171,10 @@
         "component": "SignIn",
         "state": "nearby-prompt",
         "copy": [
+          "common.continue",
           "common.notNow",
-          "signin.auto.confirm.primary",
-          "signin.nearby.prePrompt"
+          "signin.nearby.prePrompt",
+          "signin.nearby.promptTitle"
         ]
       }
     },
@@ -5055,9 +5192,10 @@
         "component": "SignIn",
         "state": "nearby-prompt",
         "copy": [
+          "common.continue",
           "common.notNow",
-          "signin.auto.confirm.primary",
-          "signin.nearby.prePrompt"
+          "signin.nearby.prePrompt",
+          "signin.nearby.promptTitle"
         ]
       }
     },
@@ -5069,14 +5207,16 @@
           "replace": "inline",
           "channel": "browser"
         },
-        "autoSignIn": { "step": "nearby-wait" }
+        "autoSignIn": { "step": "nearby-wait", "code": "482 913" }
       },
       "expect": {
         "component": "SignIn",
         "state": "nearby-wait",
         "copy": [
+          "a11y.nearbyCode",
           "signin.nearby.body",
           "signin.nearby.code",
+          "signin.nearby.match",
           "signin.nearby.title"
         ]
       }
@@ -5089,14 +5229,16 @@
           "replace": "inline",
           "channel": "browser"
         },
-        "autoSignIn": { "step": "nearby-wait" }
+        "autoSignIn": { "step": "nearby-wait", "code": "482 913" }
       },
       "expect": {
         "component": "SignIn",
         "state": "nearby-wait",
         "copy": [
+          "a11y.nearbyCode",
           "signin.nearby.body",
           "signin.nearby.code",
+          "signin.nearby.match",
           "signin.nearby.title"
         ]
       }
@@ -5114,7 +5256,11 @@
       "expect": {
         "component": "SignIn",
         "state": "nearby-done",
-        "copy": ["signin.nearby.done", "signin.nearby.notYou"]
+        "copy": [
+          "common.continue",
+          "signin.nearby.done",
+          "signin.nearby.notYou"
+        ]
       }
     },
     {
@@ -5130,7 +5276,11 @@
       "expect": {
         "component": "SignIn",
         "state": "nearby-done",
-        "copy": ["signin.nearby.done", "signin.nearby.notYou"]
+        "copy": [
+          "common.continue",
+          "signin.nearby.done",
+          "signin.nearby.notYou"
+        ]
       }
     },
     {
@@ -5163,9 +5313,10 @@
         "component": "NearbyApproval",
         "state": "ask",
         "copy": [
+          "signin.approve.deny",
+          "signin.approve.warning",
           "signin.nearby.ask",
-          "signin.nearby.askBody",
-          "signin.nearby.deny"
+          "signin.nearby.askBody"
         ]
       },
       "mustNot": {
@@ -5181,7 +5332,7 @@
       "expect": {
         "component": "NearbyApproval",
         "state": "approved",
-        "copy": ["signin.nearby.approved"]
+        "copy": ["common.done", "signin.nearby.approved"]
       }
     },
     {
@@ -5192,7 +5343,114 @@
       "expect": {
         "component": "NearbyApproval",
         "state": "not-nearby",
-        "copy": ["signin.nearby.notNearby"]
+        "copy": [
+          "common.done",
+          "signin.nearby.notNearby",
+          "signin.nearby.notNearbyBody"
+        ]
+      }
+    },
+    {
+      "name": "NearbyApproval/mismatch: a wrong code denies and says so",
+      "input": {
+        "nearbyApproval": { "step": "mismatch", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "mismatch",
+        "copy": ["common.done", "signin.nearby.mismatch"]
+      }
+    },
+    {
+      "name": "NearbyApproval/denied: Deny",
+      "input": {
+        "nearbyApproval": { "step": "denied", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "denied",
+        "copy": ["common.done", "signin.approve.deniedDone"]
+      }
+    },
+    {
+      "name": "NearbyApproval/expired: the request lapsed while the prompt was open",
+      "input": {
+        "nearbyApproval": { "step": "expired", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "expired",
+        "copy": [
+          "common.done",
+          "core.codes.sign-in-expired.message",
+          "core.codes.sign-in-expired.title"
+        ]
+      }
+    },
+    {
+      "name": "NearbyApproval/device-limit: the license is full: Manage devices",
+      "input": {
+        "nearbyApproval": { "step": "device-limit", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "device-limit",
+        "copy": [
+          "core.codes.device_limit.message",
+          "core.codes.device_limit.title",
+          "devices.manage"
+        ],
+        "actions": ["open-manage-url"]
+      }
+    },
+    {
+      "name": "NearbyApproval/choose: the license is chosen here, never on the new device",
+      "input": {
+        "nearbyApproval": { "step": "choose", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "choose",
+        "copy": [
+          "signin.choice.continue",
+          "signin.choice.lede",
+          "signin.choice.title"
+        ]
+      }
+    },
+    {
+      "name": "NearbyApproval/account-required: this device has no sign-in",
+      "input": {
+        "nearbyApproval": {
+          "step": "account-required",
+          "device": "Kitchen iPad"
+        }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "account-required",
+        "copy": [
+          "core.codes.account_required.message",
+          "core.codes.account_required.title",
+          "signin.key.signIn"
+        ],
+        "actions": ["start-sign-in"]
+      }
+    },
+    {
+      "name": "NearbyApproval/rate-limited: too many approvals",
+      "input": {
+        "nearbyApproval": { "step": "rate-limited", "device": "Kitchen iPad" }
+      },
+      "expect": {
+        "component": "NearbyApproval",
+        "state": "rate-limited",
+        "copy": [
+          "common.tryAgain",
+          "core.codes.rate_limited.message",
+          "core.codes.rate_limited.title"
+        ],
+        "actions": ["retry"]
       }
     },
     {

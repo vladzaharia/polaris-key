@@ -188,6 +188,7 @@
             "core.codes.license_owned.title",
             "core.codes.license_owned.message",
             "signin.key.ownedSignIn",
+            "signin.key.signIn",
             "signin.key.addInLocker",
             "a11y.externalLink",
             "signin.key.scan",
@@ -200,6 +201,12 @@
             "signin.auto.confirm.title",
             "signin.auto.confirm.as",
             "signin.auto.confirm.asApple",
+            "signin.consent.license",
+            "signin.consent.newLicense",
+            "signin.consent.licenseLine",
+            "signin.consent.alsoGets",
+            "signin.consent.profile",
+            "signin.consent.pairwise",
             "signin.auto.confirm.primary",
             "signin.auto.confirm.other"
           ]
@@ -209,20 +216,27 @@
             "signin.linkOffer.title",
             "signin.linkOffer.bodyGlobal",
             "signin.linkOffer.bodyDeveloper",
+            "signin.linkOffer.bodyApp",
             "signin.linkOffer.primary",
             "signin.linkOffer.decline"
           ]
         },
         "link-done": {
-          "copy": ["signin.linkOffer.done"]
+          "copy": ["signin.linkOffer.done", "common.continue"]
         },
         "link-conflict": {
-          "copy": ["signin.linkOffer.conflict"]
+          "copy": [
+            "signin.linkOffer.conflictTitle",
+            "signin.linkOffer.conflict",
+            "signin.linkOffer.join",
+            "common.continue"
+          ]
         },
         "nearby-prompt": {
           "copy": [
+            "signin.nearby.promptTitle",
             "signin.nearby.prePrompt",
-            "signin.auto.confirm.primary",
+            "common.continue",
             "common.notNow"
           ]
         },
@@ -230,11 +244,17 @@
           "copy": [
             "signin.nearby.title",
             "signin.nearby.body",
+            "signin.nearby.match",
+            "a11y.nearbyCode",
             "signin.nearby.code"
           ]
         },
         "nearby-done": {
-          "copy": ["signin.nearby.done", "signin.nearby.notYou"]
+          "copy": [
+            "signin.nearby.done",
+            "common.continue",
+            "signin.nearby.notYou"
+          ]
         },
         "done": {
           "copy": [
@@ -346,14 +366,60 @@
           "copy": [
             "signin.nearby.ask",
             "signin.nearby.askBody",
-            "signin.nearby.deny"
+            "signin.approve.warning",
+            "signin.approve.deny"
           ]
         },
         "approved": {
-          "copy": ["signin.nearby.approved"]
+          "copy": ["signin.nearby.approved", "common.done"]
         },
         "not-nearby": {
-          "copy": ["signin.nearby.notNearby"]
+          "copy": [
+            "signin.nearby.notNearby",
+            "signin.nearby.notNearbyBody",
+            "common.done"
+          ]
+        },
+        "mismatch": {
+          "copy": ["signin.nearby.mismatch", "common.done"]
+        },
+        "denied": {
+          "copy": ["signin.approve.deniedDone", "common.done"]
+        },
+        "expired": {
+          "copy": [
+            "core.codes.sign-in-expired.title",
+            "core.codes.sign-in-expired.message",
+            "common.done"
+          ]
+        },
+        "device-limit": {
+          "copy": [
+            "core.codes.device_limit.title",
+            "core.codes.device_limit.message",
+            "devices.manage"
+          ]
+        },
+        "choose": {
+          "copy": [
+            "signin.choice.title",
+            "signin.choice.lede",
+            "signin.choice.continue"
+          ]
+        },
+        "account-required": {
+          "copy": [
+            "core.codes.account_required.title",
+            "core.codes.account_required.message",
+            "signin.key.signIn"
+          ]
+        },
+        "rate-limited": {
+          "copy": [
+            "core.codes.rate_limited.title",
+            "core.codes.rate_limited.message",
+            "common.tryAgain"
+          ]
         }
       }
     },
@@ -428,7 +494,7 @@
           "copy": [
             "core.activation.key-entry-limit.title",
             "core.activation.key-entry-limit.message",
-            "signin.key.ownedSignIn",
+            "signin.key.signIn",
             "signin.key.addInLocker",
             "a11y.externalLink",
             "signin.key.scan",
