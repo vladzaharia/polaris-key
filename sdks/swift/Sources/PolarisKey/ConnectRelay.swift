@@ -1026,7 +1026,9 @@ struct RelayLinkFacade: ConnectSessionLink {
     func sendRecord(type: Int, body: Data) async throws {
         // Refuse before the engine encrypts: a message dropped after encryption would break the stream.
         guard await svc.hasRoom(body.count + 128 * (body.count / 60000 + 1)) else {
-            throw ConnectRelayError(.rateLimited, "The relay queue is full; slow down.")
+            // D-9: a full send queue ends this session `peer_busy`; the host sees the close, not an error.
+            await link.close(.peerBusy)
+            return
         }
         try await link.sendRecord(type: type, body: body)
     }

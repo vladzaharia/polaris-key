@@ -140,7 +140,7 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
         } catch PeerChannelError.messageTooLarge {
             throw ConnectLanError(.tooLarge, "The message is larger than the peer accepts.")
         } catch let e as ConnectRelayError {
-            throw e  // the relay queue is full (`rate_limited`)
+            throw e
         } catch {
             throw ConnectLanError(.closed, "The session is closed.")
         }

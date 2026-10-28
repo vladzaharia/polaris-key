@@ -4,9 +4,9 @@
 //
 //  - a token bucket on every outgoing envelope: 180 a second with a burst of 360 (0.9 of the room's numbers);
 //  - LIMIT 1 halves the rate for 10 seconds;
-//  - the queue behind the socket holds at most 8 MiB. A host send that would go beyond it is refused with
-//    `rate_limited` before anything is encrypted, so the session's keys never advance for a message that was
-//    not queued.
+//  - the queue behind the socket holds at most 8 MiB. A host send that would go beyond it closes that
+//    session with `peer_busy` before anything is encrypted, so the session's keys never advance for a message
+//    that was not queued.
 //
 // Pure bookkeeping over an injected clock and sleep: nothing here touches a socket.
 

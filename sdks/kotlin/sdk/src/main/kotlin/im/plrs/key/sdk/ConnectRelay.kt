@@ -1014,7 +1014,9 @@ internal class RelayLink(
     override suspend fun sendRecord(type: Int, body: ByteArray) {
         // Refuse before the channel encrypts: a message dropped after encryption would break the stream.
         if (!svc.hasRoom(body.size + OVERHEAD * (body.size / CHUNK + 1))) {
-            throw RelayException(RelayErrorReason.rate_limited, "The relay queue is full; slow down.")
+            // D-9: a full send queue ends this session `peer_busy`; the host sees the close, not an error.
+            channel.close(PeerCloseCode.peer_busy)
+            return
         }
         channel.sendRecord(type, body)
     }
