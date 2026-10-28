@@ -625,8 +625,8 @@ internal fun PolarisProductIcon(size: Dp, modifier: Modifier = Modifier, name: S
 internal fun productName(copy: PolarisCopy): String? = copy.productName.takeIf { it != DEFAULT_PRODUCT_NAME && it.isNotBlank() }
 
 /**
- * The product header of a focused step (UI-KITS.md §1.2): the product icon at 32 dp beside the
- * product's name at weight 500, then a section gap. Nothing when there is neither.
+ * The product header of a focused step (UI-KITS.md §1.2): the product icon at 28 dp beside the
+ * product's name at 17 sp, weight 600 (LOGO-2; the tile is no control), then a section gap. Nothing when there is neither.
  */
 @Composable
 internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polarisWindow.section) {
@@ -635,11 +635,11 @@ internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polar
     val name = presentedName?.takeIf { it.isNotBlank() } ?: productName(theme.copy)
     if (name == null && theme.logo == null) return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-        PolarisProductIcon(32.dp, name = name)
+        PolarisProductIcon(28.dp, name = name)
         if (name != null) {
             Text(
                 name,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
