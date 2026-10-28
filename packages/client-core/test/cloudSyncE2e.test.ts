@@ -20,6 +20,7 @@ const ALICE = "sub_alice";
 const cid = (n: number): string => `c_${`client${n}`.padStart(22, "0")}`;
 const VOL = "audio.volume";
 const BEST = "stats.best";
+const BIND = "input.bindings";
 
 function options(over: Partial<CloudSyncOptions> = {}): CloudSyncOptions {
   const ids = [cid(1), cid(2), cid(3)];
@@ -29,6 +30,7 @@ function options(over: Partial<CloudSyncOptions> = {}): CloudSyncOptions {
       settings: [
         { key: VOL, route: "synced", scope: "user", policy: "lastWrite" },
         { key: BEST, route: "synced", scope: "user", policy: "max" },
+        { key: BIND, route: "synced", scope: "user", policy: "merge" },
       ],
       collections: [{ name: "slots", policy: "max", field: "playtime" }],
     },
@@ -631,5 +633,41 @@ describe("max and min are the client's call (§13.10.5)", () => {
     m.advance(2000);
     const sent = mutations(m.takeRequests())[0] as Record<string, Json>;
     expect(sent.baseVersion).toBeUndefined();
+  });
+
+  it("a merge key stays per-member on the server: member ops, no base version, no re-push (§1.6)", () => {
+    const { m } = confirmed();
+    m.set(BIND, { jump: "j", dash: "shift" });
+    m.advance(2000);
+    const sent = mutations(m.takeRequests()) as Record<string, Json>[];
+    expect(sent.map((x) => x.op)).toEqual(["setMember", "setMember"]);
+    for (const x of sent) expect(x.baseVersion).toBeUndefined();
+    m.receive(
+      {
+        status: 200,
+        body: body({
+          cursor: 4,
+          lastMutationId: 2,
+          results: [
+            { mutationId: 1, status: "ok", version: 2 },
+            { mutationId: 2, status: "ok", version: 3 },
+          ],
+          changes: [
+            {
+              setting: BIND,
+              scope: "user",
+              value: { jump: "k", dash: "shift" },
+              version: 4,
+            },
+          ],
+        }),
+      },
+      { changes: [{ sealed: true }] },
+    );
+    expect(m.get(BIND)).toEqual({
+      value: { jump: "k", dash: "shift" },
+      from: "cloud",
+    });
+    expect(mutations(m.takeRequests())).toEqual([]);
   });
 });
