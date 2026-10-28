@@ -1954,7 +1954,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
     "sync.saves" to CapabilityRow("planned", "sync", listOf()),
     "sync.keyring" to CapabilityRow("planned", "sync", listOf()),
-    "connect.identity" to CapabilityRow("planned", "connect", listOf()),
+    "connect.identity" to CapabilityRow("implemented", "connect", listOf()),
     "connect.noise" to CapabilityRow("planned", "connect", listOf()),
     "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
     "connect.lan" to CapabilityRow("planned", "connect", listOf()),
@@ -2046,4 +2046,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "7c603fbf48021faca2802fb6059ed35d19677b76ee9586e2347f8079e81d05ef"
+public const val CAPABILITY_DIGEST: String = "2a74288e5032e55ec2b16dd7f6230715e48e3b4d8bf31d0869a6da28aa1fe383"
