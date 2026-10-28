@@ -63,6 +63,7 @@ const c = (name: ComponentName) => kitComponent(name);
 export const Boot = c("Boot");
 export const Welcome = c("Welcome");
 export const SignInHandoff = c("SignInHandoff");
+export const NearbyApproval = c("NearbyApproval");
 export const Activate = c("Activate");
 export const OfflineActivation = c("OfflineActivation");
 export const DeviceLimit = c("DeviceLimit");

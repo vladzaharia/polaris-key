@@ -90,7 +90,10 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
       // as ui-core's tone says.
       const refused = view.state === "rejected" || view.state === "cut-short";
       const wrong = refused && view.decisions.tone === "danger";
-      return html`${editing
+      // The refusal a different key cannot fix has no field; a TV scans the add-key page instead.
+      const addKey = view.decisions.link;
+      return html`${qrCode(c, addKey?.qr ? addKey.url : null, "a11y.qrAddKey")}
+      ${editing
         ? keyField(
             c,
             invalid || wrong,
@@ -123,7 +126,12 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
       // The address is shown as text whenever there is one (a no-browser device has only it).
       const shown = url?.display ?? url?.url?.replace(/^https?:\/\//, "");
       const showUrl = keys.has("signin.handoff.url") && shown;
-      return html`${code} ${qrCode(c, url?.qr ? url.url : null)}
+      return html`${code}
+      ${qrCode(
+        c,
+        url?.qr ? url.url : null,
+        keys.has("a11y.qrAddKey") ? "a11y.qrAddKey" : "a11y.qr",
+      )}
       ${showUrl
         ? html`<p class="body" data-key="signin.handoff.url">
             ${text(c, "signin.handoff.url", { url: shown as string })}

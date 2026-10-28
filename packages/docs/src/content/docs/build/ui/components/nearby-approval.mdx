@@ -1,0 +1,22 @@
+---
+title: "NearbyApproval"
+description: "The approving device's side of nearby sign-in: Sign in {device}? over three 6-digit codes, one of them the code the new device shows. Tapping it approves; any other code, or Not now, denies."
+sidebar:
+  order: 28
+type: "reference"
+lastReviewed: "2026-10-27"
+lanes: ["kit"]
+---
+
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+
+Shown on a device that is already signed in, when another device nearby asks to sign in. The
+person sees three 6-digit codes and taps the one the new device shows (number matching). Tapping
+another code, or Not now, denies. The outcome says whether the new device is signed in, or not on
+the network. The account menu's "Approve a nearby device" entry opens the same prompt.
+
+The kits that draw it follow in their own packages; the states and copy below are the contract.
+
+## States and copy
+
+<ComponentStates component="NearbyApproval" />

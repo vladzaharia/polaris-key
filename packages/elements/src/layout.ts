@@ -124,6 +124,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.nearby.code",
       "signin.nearby.notYou",
       "signin.key.differentKey",
+      "common.notNow",
     ],
     titles: ["signin.return.signedInShort", "signin.return.signedInTier"],
     meta: ["signin.provider.group", "signin.code.label"],
@@ -158,6 +159,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
     header: "compact",
     controls: ["signin.nearby.deny"],
     links: ["signin.nearby.menu"],
+    titles: ["signin.nearby.ask"],
   },
   Activate: {
     kind: "screen",

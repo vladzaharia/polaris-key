@@ -121,6 +121,9 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     errorSlot: KEY,
     focus: KEY,
   }),
+  // DL6: a refusal only a sign-in fixes is a focused step; Sign in is its one primary, no field.
+  "Activate.key-entry-limit": () => refusal("signin.key.ownedSignIn"),
+  "Activate.license-owned": () => refusal("signin.key.ownedSignIn"),
   "Activate.device-limit": (i) => ({
     primary: i.activation?.manageUrl ? "deviceLimit.title" : null,
     tone: "neutral",
@@ -168,6 +171,23 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     errorSlot: i.activation ? KEY : null,
     focus: KEY,
   }),
+  "SignIn.key-refused": () => refusal("signin.key.ownedSignIn"),
+  // Automatic sign-in: Continue and Link are the primaries; a conflict is a neutral refusal.
+  "SignIn.confirm": () => ({ ...none, primary: "signin.auto.confirm.primary" }),
+  "SignIn.link-offer": () => ({ ...none, primary: "signin.linkOffer.primary" }),
+  "SignIn.link-done": () => none,
+  "SignIn.link-conflict": () => refusal(null),
+  "SignIn.nearby-prompt": () => ({
+    ...none,
+    primary: "signin.auto.confirm.primary",
+  }),
+  "SignIn.nearby-wait": () => none,
+  "SignIn.nearby-done": () => none,
+  // NearbyApproval: choosing the matching code is the action, so no control is filled.
+  "NearbyApproval.entry": () => quiet,
+  "NearbyApproval.ask": () => none,
+  "NearbyApproval.approved": () => none,
+  "NearbyApproval.not-nearby": () => refusal(null),
   "SignIn.done": (i) =>
     i.signIn?.issuedNow === true && i.services?.includes("license") !== false
       ? { ...none, primary: "signin.done.start" }

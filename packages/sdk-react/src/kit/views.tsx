@@ -83,8 +83,11 @@ function contentFor(c: KitCtx): ReactNode {
       const wrong = refused && view.decisions.tone === "danger";
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
+      // The refusal a different key cannot fix has no field; a TV scans the add-key page instead.
+      const addKey = view.decisions.link;
       return (
         <>
+          {qrCode(c, addKey?.qr ? addKey.url : null, "a11y.qrAddKey")}
           {editing
             ? keyField(
                 c,
@@ -124,7 +127,11 @@ function contentFor(c: KitCtx): ReactNode {
       return (
         <>
           {codeDisplay(c)}
-          {qrCode(c, url?.qr ? url.url : null)}
+          {qrCode(
+            c,
+            url?.qr ? url.url : null,
+            keys.has("a11y.qrAddKey") ? "a11y.qrAddKey" : "a11y.qr",
+          )}
           {showUrl ? (
             <p className="body" data-key="signin.handoff.url">
               {text(c, "signin.handoff.url", { url: shown as string })}

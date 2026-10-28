@@ -713,7 +713,11 @@ export function codeDisplay(c: RenderCtx): TemplateResult | typeof nothing {
 export function qrCode(
   c: RenderCtx,
   data: string | null,
-  key: "a11y.qr" | "a11y.qrManage" | "a11y.qrRequest" = "a11y.qr",
+  key:
+    | "a11y.qr"
+    | "a11y.qrManage"
+    | "a11y.qrAddKey"
+    | "a11y.qrRequest" = "a11y.qr",
 ): TemplateResult | typeof nothing {
   if (!data || !c.view.copy.includes(key)) return nothing;
   const q = encodeQr(data);

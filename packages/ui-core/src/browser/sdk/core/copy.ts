@@ -380,8 +380,7 @@ const FR: CopyBundle = {
       ok: "Votre licence est active sur cet appareil.",
       unauthorized:
         "Cette clé de licence n’a pas été acceptée. Vérifiez-la, puis réessayez.",
-      keyEntryLimit:
-        "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
+      keyEntryLimit: "Ajoutez-la à votre compte et connectez-vous à la place.",
     },
   },
 };

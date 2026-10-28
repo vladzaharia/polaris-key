@@ -752,7 +752,11 @@ const QR_INK = "#000000"; // ui-lint: allow react-colour-literal (DL14 black mod
 export function qrCode(
   c: KitCtx,
   data: string | null,
-  key: "a11y.qr" | "a11y.qrManage" | "a11y.qrRequest" = "a11y.qr",
+  key:
+    | "a11y.qr"
+    | "a11y.qrManage"
+    | "a11y.qrAddKey"
+    | "a11y.qrRequest" = "a11y.qr",
 ): ReactNode {
   if (!data || !c.view.copy.includes(key)) return null;
   const q = encodeQr(data);
