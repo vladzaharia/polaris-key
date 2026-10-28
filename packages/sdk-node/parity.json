@@ -123,8 +123,8 @@
       "note": "client.config.set/clear/setting and onConfigChange: persisted in the state directory, validated against the catalog type, refused for an admin-managed key, with per-key and wildcard change events (SP-N13)."
     },
     "config.sync": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "client.config.set/clear/setting route a synced key through the Cloud Sync machine while it is active (ConfigSyncPort); setting(key).sync() answers local, pending or synced, and a remote or merged change fires onConfigChange with its source. The syncScenarios runner drives settingCases and every scenario."
     },
     "devices.fingerprint": {
       "status": "implemented"
@@ -457,12 +457,12 @@
       "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04). Electron bridge v4 exposes binding/claim to a trusted renderer, synchronising before its state push after an ok claim."
     },
     "sync.scenarios": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "conformance/runners/node/syncScenarios.test.ts drives every sync-scenarios.json scenario and settingCases through client-core's cloud-sync machine; the Node host uses the same machine."
     },
     "sync.settings": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "client.cloudSync.status()/flush() and the cloudSync event on client.events (packages/sdk-node/src/cloudSync): one machine per client over the shared client-core ring, driven by identity events, with the host's discovery gate and typed N/A while the product has no Sync service. test/cloudSyncHost.test.ts, test/cloudSyncSettings.test.ts; the cloudsync-* transcripts replay in the Node transcript runner."
     },
     "sync.conflict": {
       "status": "planned",
@@ -477,8 +477,8 @@
       "note": "client.keyring (packages/sdk-node/src/keyring/client.ts; the plan's client.sync.keyring, named keyring because sync() is the licence sync) over client-core's sync crypto on WebCrypto/node:crypto: create(), unlock() (opens this device's wrap through the DeviceKeyPort's dh, so the agreement key never leaves the store), wrapTo()/removeWrap(), setRecoveryCode()/recover(), reset()/adopt()/openAdopted(), attach(machine) feeding setRoot, and the codec. The root is held in memory only, never written, returned or printed; the host decides how a wrap travels (R-9). test/keyring.test.ts; the keyring-* transcripts replay in the Node transcript runner."
     },
     "sync.e2e": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "The Node settings host seals and opens every synced value through client-core's sync crypto (encryption defaults to e2e; PolarisKeyClientOptions.cloudSync.encryption, app code only, never read from the Worker) over client.keyring. syncVectors.test.ts and syncScenarios.test.ts cover the vectors and the e2e scenarios."
     },
     "connect.identity": {
       "status": "implemented",

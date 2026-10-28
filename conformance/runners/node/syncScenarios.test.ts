@@ -1,3 +1,4 @@
+// @pkey-feature sync.scenarios config.sync sync.e2e
 // The Node conformance runner for `conformance/corpus/v2/sync-scenarios.json`: the Cloud Sync
 // client state machine (`@polaris-key/client-core/cloud-sync`, plans/U-01.md §4.1 as amended by
 // plans/U-01b.md §4, WIRE-CONTRACT-V4 §11.5). It covers React too, since both JS SDKs drive the

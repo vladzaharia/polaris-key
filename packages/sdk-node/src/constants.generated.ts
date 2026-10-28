@@ -2033,13 +2033,13 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "config.mint": { status: "implemented", service: "config", na: [] },
   "config.mirror": { status: "implemented", service: "config", na: [] },
   "config.local": { status: "implemented", service: "sdk", na: [] },
-  "config.sync": { status: "planned", service: "sync", na: [] },
-  "sync.scenarios": { status: "planned", service: "sync", na: [] },
-  "sync.settings": { status: "planned", service: "sync", na: [] },
+  "config.sync": { status: "implemented", service: "sync", na: [] },
+  "sync.scenarios": { status: "implemented", service: "sync", na: [] },
+  "sync.settings": { status: "implemented", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
-  "sync.e2e": { status: "planned", service: "sync", na: [] },
+  "sync.e2e": { status: "implemented", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
@@ -2211,4 +2211,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "35b7574c32e8cec0c2ac3402df967a5f1fc1af360004dfff9a801c2fa6402601";
+  "2391a384ea9a3e3653f2fcc9b83260b62204fd1bed2b6a22cac2ca989d9866e6";

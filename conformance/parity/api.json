@@ -2899,9 +2899,7 @@
       "kind": "method",
       "feature": "config.sync",
       "sdks": {
-        "node": {
-          "planned": "U-06"
-        },
+        "node": {},
         "python": {
           "planned": "U-06"
         },
@@ -3688,9 +3686,7 @@
       "kind": "method",
       "feature": "sync.settings",
       "sdks": {
-        "node": {
-          "planned": "U-06"
-        },
+        "node": {},
         "python": {
           "planned": "U-06"
         },
@@ -3714,9 +3710,7 @@
       "kind": "method",
       "feature": "sync.settings",
       "sdks": {
-        "node": {
-          "planned": "U-06"
-        },
+        "node": {},
         "python": {
           "planned": "U-06"
         },
@@ -3741,7 +3735,7 @@
       "feature": "sync.e2e",
       "sdks": {
         "node": {
-          "planned": "U-06"
+          "path": "cloudSync.encryption"
         },
         "python": {
           "planned": "U-06"
@@ -3768,7 +3762,8 @@
       "enum": "eventKind",
       "sdks": {
         "node": {
-          "planned": "U-06"
+          "spelling": "events.on(\"cloudSync\")",
+          "reason": "one event stream on the client emitter, kind cloudSync"
         },
         "python": {
           "planned": "U-06"
