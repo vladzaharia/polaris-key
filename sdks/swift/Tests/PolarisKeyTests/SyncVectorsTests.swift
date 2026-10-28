@@ -3,6 +3,7 @@
 // WIRE-CONTRACT-V5 §13.10): hkdfCases, envelopeCases, blindCases and canonicalJsonCases. The
 // other sections belong to later work packages; a runner reads named sections only.
 
+import CryptoKit
 import Foundation
 import Testing
 
@@ -45,6 +46,44 @@ private struct Vectors: Decodable {
     struct Constants: Decodable {
         let envelopeOverheadBytes, envelopeFixedBytes, paddingBlockBytes: Int
     }
+    struct Anchor: Decodable {
+        struct Vector: Decodable {
+            struct Enc: Decodable { let aad, ct, nonce, pt: String }
+            let info, skRm, pkRm, skEm, enc, shared_secret, key, base_nonce: String
+            let encryption: Enc
+        }
+        let vector: Vector
+    }
+    struct WrapCase: Decodable {
+        struct W: Decodable {
+            let kem: Int
+            let encHex, ctHex: String
+        }
+        struct Seal: Decodable { let rootHex, recipientPublicHex, ephemeralPrivateHex, infoHex: String }
+        let id, product, deviceId, ringId, kidHex, recipientPrivateHex: String
+        let epoch: Int
+        let wrap: W
+        let expectRootHex: String?
+        let seal: Seal?
+    }
+    struct RecoveryCase: Decodable {
+        struct Seal: Decodable { let rootHex, nonceHex: String }
+        let kind, id: String
+        let codeHex, text, input, expectCodeHex, ringId, kidHex, blobHex, expectRootHex: String?
+        let epoch: Int?
+        let seal: Seal?
+    }
+    struct AdoptCase: Decodable {
+        struct Seal: Decodable { let oldRootHex, nonceHex: String }
+        let id, currentRootHex, fromRingId, kidHex, blobHex: String
+        let epoch: Int
+        let expectRootHex: String?
+        let seal: Seal?
+    }
+    let hpkeAnchor: Anchor
+    let wrapCases: [WrapCase]
+    let recoveryCodeCases: [RecoveryCase]
+    let adoptCases: [AdoptCase]
     let syncVectorsVersion: Int
     let constants: Constants
     let hkdfCases: [Hkdf]
@@ -195,5 +234,136 @@ struct SyncVectorsTests {
             (1152921504606846976, "1152921504606847000"), (12345.678, "12345.678"),
         ]
         for (d, s) in cases { #expect(try CanonicalJSON.numberString(d) == s) }
+    }
+
+    // ── U-39.2: HPKE, the wrap, the recovery code and adopt ──────────────────────────────────
+
+    @Test func hpkeAnchor() async throws {
+        let a = corpus.hpkeAnchor.vector
+        let info = hex(a.info), aad = hex(a.encryption.aad), pt = hex(a.encryption.pt)
+        let sealed = try SyncHPKE.seal(
+            recipientPublicKey: hex(a.pkRm), info: info, aad: aad, plaintext: pt,
+            ephemeralPrivate: hex(a.skEm))
+        #expect(hexString(sealed.enc) == a.enc)
+        #expect(hexString(sealed.ct) == a.encryption.ct)
+        let skR = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: hex(a.skRm))
+        #expect(hexString(skR.publicKey.rawRepresentation) == a.pkRm)
+        let dh: (Data) async throws -> Data? = { peer in
+            let p = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: peer)
+            return try skR.sharedSecretFromKeyAgreement(with: p).withUnsafeBytes { Data($0) }
+        }
+        let opened = try await SyncHPKE.open(
+            recipientPublicKey: hex(a.pkRm), dh: dh, enc: hex(a.enc), info: info, aad: aad,
+            ciphertext: hex(a.encryption.ct))
+        #expect(opened.map(hexString) == a.encryption.pt)
+        // The key schedule's own outputs.
+        let skE = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: hex(a.skEm))
+        let dhOut = try skE.sharedSecretFromKeyAgreement(
+            with: Curve25519.KeyAgreement.PublicKey(rawRepresentation: hex(a.pkRm))
+        ).withUnsafeBytes { Data($0) }
+        let ss = SyncHPKE.sharedSecret(dh: dhOut, kemContext: hex(a.enc) + hex(a.pkRm))
+        #expect(hexString(ss) == a.shared_secret)
+        let (key, nonce) = SyncHPKE.keySchedule(secret: ss, info: info)
+        #expect(hexString(key) == a.key)
+        #expect(hexString(nonce) == a.base_nonce)
+    }
+
+    /// One cross-check against CryptoKit's own HPKE, both directions.
+    @Test func hpkeAgreesWithCryptoKit() async throws {
+        let suite = HPKE.Ciphersuite(kem: .Curve25519_HKDF_SHA256, kdf: .HKDF_SHA256, aead: .AES_GCM_256)
+        let skR = Curve25519.KeyAgreement.PrivateKey()
+        let pkR = skR.publicKey.rawRepresentation
+        let info = Data("cross-check".utf8), aad = Data("aad".utf8), pt = Data("hello".utf8)
+        var sender = try HPKE.Sender(recipientKey: skR.publicKey, ciphersuite: suite, info: info)
+        let ct = try sender.seal(pt, authenticating: aad)
+        let dh: (Data) async throws -> Data? = { peer in
+            try skR.sharedSecretFromKeyAgreement(
+                with: Curve25519.KeyAgreement.PublicKey(rawRepresentation: peer)
+            ).withUnsafeBytes { Data($0) }
+        }
+        let opened = try await SyncHPKE.open(
+            recipientPublicKey: pkR, dh: dh, enc: sender.encapsulatedKey, info: info, aad: aad,
+            ciphertext: ct)
+        #expect(opened == pt)
+        let ours = try SyncHPKE.seal(recipientPublicKey: pkR, info: info, aad: aad, plaintext: pt)
+        var recipient = try HPKE.Recipient(
+            privateKey: skR, ciphersuite: suite, info: info, encapsulatedKey: ours.enc)
+        #expect(try recipient.open(ours.ct, authenticating: aad) == pt)
+    }
+
+    @Test(arguments: corpus.wrapCases.map(\.id))
+    func wrap(id: String) async throws {
+        let c = corpus.wrapCases.first { $0.id == id }!
+        let ctx = SyncHPKE.WrapContext(
+            product: c.product, deviceId: c.deviceId, ringId: c.ringId, epoch: c.epoch)
+        let kid = hex(c.kidHex)
+        let skR = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: hex(c.recipientPrivateHex))
+        let dh: (Data) async throws -> Data? = { peer in
+            guard peer.count == 32,
+                let p = try? Curve25519.KeyAgreement.PublicKey(rawRepresentation: peer),
+                let s = try? skR.sharedSecretFromKeyAgreement(with: p)
+            else { return nil }
+            let out = s.withUnsafeBytes { Data($0) }
+            return out.contains { $0 != 0 } ? out : nil
+        }
+        let w = SyncHPKE.Wrap(kem: c.wrap.kem, enc: hex(c.wrap.encHex), ct: hex(c.wrap.ctHex))
+        let got = try await SyncHPKE.unwrapRoot(
+            recipientPublicKey: skR.publicKey.rawRepresentation, dh: dh, context: ctx, kid: kid,
+            wrap: w)
+        #expect(got.map(hexString) == c.expectRootHex)
+        if let s = c.seal {
+            #expect(hexString(SyncHPKE.wrapInfo(ctx)) == s.infoHex)
+            #expect(hexString(skR.publicKey.rawRepresentation) == s.recipientPublicHex)
+            let again = try SyncHPKE.wrapRoot(
+                recipientPublicKey: hex(s.recipientPublicHex), context: ctx, kid: kid,
+                root: hex(s.rootHex), ephemeralPrivate: hex(s.ephemeralPrivateHex))
+            #expect(again == w)
+        }
+    }
+
+    @Test func wrapToAZeroKeyIsRefused() {
+        let ctx = SyncHPKE.WrapContext(product: "demo", deviceId: "d", ringId: "rg_AAAAAAAAAAAAAAAAAAAAAA", epoch: 1)
+        #expect(throws: (any Error).self) {
+            try SyncHPKE.wrapRoot(
+                recipientPublicKey: Data(count: 32), context: ctx, kid: Data(count: 16),
+                root: Data(count: 32))
+        }
+    }
+
+    @Test(arguments: corpus.recoveryCodeCases.map(\.id))
+    func recovery(id: String) throws {
+        let c = corpus.recoveryCodeCases.first { $0.id == id }!
+        switch c.kind {
+        case "code":
+            #expect(try SyncRecovery.encode(code: hex(c.codeHex!)) == c.text)
+            #expect(SyncRecovery.parse(c.text!) == hex(c.codeHex!))
+        case "parse":
+            #expect(SyncRecovery.parse(c.input!).map(hexString) == c.expectCodeHex)
+        default:
+            let code = hex(c.codeHex!), kid = hex(c.kidHex!), blob = hex(c.blobHex!)
+            let got = SyncRecovery.unwrap(
+                code: code, ringId: c.ringId!, epoch: c.epoch!, kid: kid, blob: blob)
+            #expect(got.map(hexString) == c.expectRootHex)
+            if let s = c.seal {
+                let again = try SyncRecovery.wrap(
+                    code: code, ringId: c.ringId!, epoch: c.epoch!, kid: kid, root: hex(s.rootHex),
+                    nonce: hex(s.nonceHex))
+                #expect(again == blob)
+            }
+        }
+    }
+
+    @Test(arguments: corpus.adoptCases.map(\.id))
+    func adopt(id: String) throws {
+        let c = corpus.adoptCases.first { $0.id == id }!
+        let cur = hex(c.currentRootHex)
+        let from = SyncRecovery.AdoptFrom(fromRingId: c.fromRingId, epoch: c.epoch, kid: hex(c.kidHex))
+        let blob = hex(c.blobHex)
+        #expect(SyncRecovery.openAdopt(currentRoot: cur, from: from, blob: blob).map(hexString) == c.expectRootHex)
+        if let s = c.seal {
+            let again = try SyncRecovery.sealAdopt(
+                currentRoot: cur, from: from, oldRoot: hex(s.oldRootHex), nonce: hex(s.nonceHex))
+            #expect(again == blob)
+        }
     }
 }

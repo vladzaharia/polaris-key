@@ -51,22 +51,26 @@ public enum SyncCrypto {
 
     /// AES-256-GCM with a 128-bit tag and the all-zero nonce; the result is ciphertext followed by
     /// the tag. A key that is not 32 bytes is refused.
-    public static func aesGcmSeal(key: Data, aad: Data, plaintext: Data) throws -> Data {
+    public static func aesGcmSeal(
+        key: Data, aad: Data, plaintext: Data, nonce: Data? = nil
+    ) throws -> Data {
         guard key.count == 32 else { throw SyncCryptoError.badLength("key") }
         let box = try AES.GCM.seal(
             plaintext, using: SymmetricKey(data: key),
-            nonce: AES.GCM.Nonce(data: nonce12), authenticating: aad)
+            nonce: AES.GCM.Nonce(data: nonce ?? nonce12), authenticating: aad)
         return box.ciphertext + box.tag
     }
 
     /// The plaintext, or nil when authentication fails.
-    public static func aesGcmOpen(key: Data, aad: Data, ciphertext: Data) -> Data? {
+    public static func aesGcmOpen(
+        key: Data, aad: Data, ciphertext: Data, nonce: Data? = nil
+    ) -> Data? {
         guard key.count == 32, ciphertext.count >= tagBytes else { return nil }
         let split = ciphertext.count - tagBytes
         let body = ciphertext.prefix(split)
         let tag = ciphertext.suffix(tagBytes)
         guard
-            let n = try? AES.GCM.Nonce(data: nonce12),
+            let n = try? AES.GCM.Nonce(data: nonce ?? nonce12),
             let box = try? AES.GCM.SealedBox(nonce: n, ciphertext: body, tag: tag),
             let out = try? AES.GCM.open(box, using: SymmetricKey(data: key), authenticating: aad)
         else { return nil }
