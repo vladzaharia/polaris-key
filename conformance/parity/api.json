@@ -1611,6 +1611,11 @@
     },
     {
       "sdk": "kotlin",
+      "path": "client.connect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "kotlin",
       "path": "client.packs",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },

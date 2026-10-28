@@ -591,3 +591,14 @@ public class DeviceKeyStore(
         return derived.contentEquals(r.agreePub) && verifier.verify(r.signPub, probe, sig)
     }
 }
+
+/** The file the default device key store uses in a client's state directory. */
+public const val DEVICE_KEYS_FILE: String = "device-keys.json"
+
+/**
+ * The store a client uses when the host gave none: the 0600 file in [stateDirectory], or, with no
+ * state directory, a memory-only store (which refuses to register keys). Android has no default:
+ * its store is sealed by the Keystore (`androidDeviceKeyStore`).
+ */
+public fun defaultDeviceKeyStore(stateDirectory: File?): DeviceKeyStore =
+    DeviceKeyStore(if (stateDirectory == null) InMemoryDeviceKeyStorage() else FileDeviceKeyStorage(File(stateDirectory, DEVICE_KEYS_FILE)))
