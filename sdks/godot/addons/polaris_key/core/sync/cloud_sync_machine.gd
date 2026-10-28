@@ -8,11 +8,18 @@ extends RefCounted
 ## At most one request is in flight. Everything is plain JSON data, so the journal and the persisted
 ## state are what the corpus compares. Nothing here touches licence state.
 ##
-## Ported in this slice (U-21.2): the local half. HLC, `value_valid`, `apply_setting_op`, journal,
+## Ported: the local half (U-21.2) and the exchange half (U-21.3: `receive`, `_ok`, results, conflict
+## rebase, records, client mismatch, first contact, the pin). The E2E row guards (`_row_bad`,
+## `_note_sealed`, `_lower_since`) come with `_ok` because it calls them; U-21.5 adds their unit test.
+## X-1 is applied from the start: `_copy_row` takes the push's own in-flight cursor.
+## The local half (U-21.2). HLC, `value_valid`, `apply_setting_op`, journal,
 ## drafts, debounce, partitions, routes, `import_local`, `get_value`, `setting_state`, `status`,
 ## `persist`, `relaunch`, the request queue (`_kick`), sign-in and sign-out, the E2E gate (`set_root`,
-## `set_discovery`). NOT ported yet: `receive` and what it drives (U-21.3 exchanges, U-21.4 blocked
-## states, U-21.5 E2E bodies and the X-1 conflict-copy cursor). `receive` fails loudly until then.
+## `set_discovery`).
+##
+## Host misuse (a `receive` with nothing in flight, `set_network("offline")` with a request in flight,
+## a malformed client id) never relies on `assert`, which a release template strips: the call returns
+## `{"ok": false, "error": ...}` where it has a result, and always `push_error`s.
 ##
 ## Godot notes: `set` and `get` are Object methods, so the value calls are `set_value`, `get_value`
 ## and `clear_value`. `null` is a value; `Types.ABSENT` is "no value". Compare with `Types.json_equal`.
@@ -110,8 +117,10 @@ static func json_bytes(v: Variant) -> int:
 
 
 static func format_hlc(physical_ms: int, counter: int) -> String:
-	assert(physical_ms >= 0 and physical_ms <= 0xFFFFFFFFFFFF, "HLC physical part out of range")
-	assert(counter >= 0 and counter <= 0xFFFF, "HLC counter out of range")
+	if physical_ms < 0 or physical_ms > 0xFFFFFFFFFFFF or counter < 0 or counter > 0xFFFF:
+		push_error("CloudSyncMachine: HLC out of range")
+		physical_ms = clampi(physical_ms, 0, 0xFFFFFFFFFFFF)
+		counter = clampi(counter, 0, 0xFFFF)
 	return "%012x:%04x" % [physical_ms, counter]
 
 
@@ -508,12 +517,15 @@ func sign_out(discard_unsynced: bool = false) -> Dictionary:
 	return Types.ok()
 
 
-func set_network(state: String) -> void:
-	assert(not (state == "offline" and _in_flight != null), "network: a request is in flight; respond first")
+func set_network(state: String) -> Dictionary:
+	if state == "offline" and _in_flight != null:
+		push_error("CloudSyncMachine: set_network(offline) with a request in flight; receive first")
+		return Types.fail("request-in-flight")
 	_network = state
 	if state == "online":
 		_pull_wanted = true
 		_kick()
+	return Types.ok()
 
 
 ## Move the clock, firing debounce commits and the sign-out flush deadline in time order.
@@ -545,11 +557,62 @@ func advance(ms: int) -> void:
 	_now = target
 
 
-## The transport's answer to the request in flight. Ported by U-21.3 (exchanges), U-21.4 (blocked
-## states and expiry) and U-21.5 (E2E bodies). Until then a scenario with a `respond` step is
-## pending in the runner, and calling this fails the call rather than guess.
-func receive(_res: Dictionary, _opened: Variant = null) -> void:
-	assert(false, "receive: ported in U-21.3")
+## The transport's answer to the request in flight: `{status, body?}` or `{error: "transport"}`.
+## `opened` is the host codec's result for the body (HC-2: seq, sealed, invalid, conflicts); the
+## machine reads nothing else from it.
+func receive(res: Dictionary, opened: Variant = null) -> Dictionary:
+	var req: Variant = _in_flight
+	if req == null:
+		push_error("CloudSyncMachine: receive with no request in flight")
+		return Types.fail("no-request-in-flight")
+	_in_flight = null
+	var proceed := false
+	var body: Variant = res.get("body")
+	if res.has("error"):
+		pass  # request-level failure: nothing was processed and the journal is unchanged (rule 1)
+	else:
+		var status: int = res["status"]
+		if status == 503 and req["kind"] == "push" and _error_code(body) == "writes_paused":
+			# R4: the operator paused writes; the journal is unchanged and the next trigger retries.
+			_paused = true
+		elif status >= 500 or status == 400 or status == 413 or status == 429:
+			pass  # request-level failure, as above
+		elif status == 401:
+			_s["blocked"] = "unauthorized"
+		elif status == 403:
+			var err: Dictionary = body["error"] if body is Dictionary and body.get("error") is Dictionary else {}
+			if err.get("code") == "account_required":
+				var url: Variant = err.get("signInUrl")
+				_leave("accountRequired", false)
+				_s["blocked"] = "account_required"
+				_events.append({"type": "signInOffered", "signInUrl": url if Types.is_string(url) else null})
+				return Types.ok()
+			# The journal is kept; a document refresh lifts either block.
+			_s["blocked"] = "attestation" if err.get("code") == "attestation_required" else "forbidden"
+		elif status == 409:
+			_client_mismatch(req)
+			proceed = true
+		elif status == 410:
+			var gone: Variant = _s["partitions"].get(req["partition"])
+			if gone != null:
+				gone["cursor"] = 0
+			_need_snapshot = true
+			proceed = true
+		elif status == 200 and body is Dictionary:
+			if _accept_mode(body):
+				if req["kind"] == "push":
+					_paused = false
+				_ok(req, body, opened if opened is Dictionary else {})
+				proceed = true
+			# Otherwise the pin refused it: the body is dropped unread and the journal is unchanged.
+	if _signing_out != null and _s["subject"] != null:
+		var p := _active()
+		if not proceed or _sendable(p) == 0:
+			_leave("signOut", _signing_out["discard"])
+			return Types.ok()
+	if proceed:
+		_kick()
+	return Types.ok()
 
 
 # ── reads ─────────────────────────────────────────────────────────────────────────────────────
@@ -780,7 +843,8 @@ func _partition_for(name: String) -> Dictionary:
 
 func _fresh_client_id() -> String:
 	var cid: String = _new_client_id.call()
-	assert(_client_id_re.search(cid) != null, "bad clientId")
+	if _client_id_re.search(cid) == null:
+		push_error("CloudSyncMachine: bad clientId from the host")
 	return cid
 
 
@@ -1153,6 +1217,438 @@ func _send_form(p: Dictionary, op: Dictionary) -> Dictionary:
 ## `max` and `min` are decided by the client in E2E mode.
 func _client_decides(policy: String) -> bool:
 	return _requires_e2e() and (policy == "max" or policy == "min")
+
+
+## The pin on a 200 body: in E2E mode the body must say `encryption: "e2e"`; an app in server mode
+## refuses an `e2e` body too, since it cannot open it.
+func _accept_mode(body: Dictionary) -> bool:
+	var enc: Variant = body.get("encryption")
+	var said: String = String(enc) if Types.is_string(enc) and (String(enc) == "e2e" or String(enc) == "server") else "omitted"
+	if not _requires_e2e() and said != "e2e":
+		return not _pinned_out()
+	_advertised = said
+	if _pinned_out():
+		return false
+	if said == "e2e":
+		_s["e2eSeen"] = true
+	return true
+
+
+static func _error_code(body: Variant) -> Variant:
+	if body is Dictionary and body.get("error") is Dictionary:
+		return body["error"].get("code")
+	return null
+
+
+## Whether two setting operations write the same value: the same key, and the same member unless
+## one of them writes the whole value.
+static func _same_value(a: Dictionary, b: Dictionary) -> bool:
+	if not a["target"].has("setting") or not b["target"].has("setting"):
+		return false
+	if a["target"]["setting"] != b["target"]["setting"]:
+		return false
+	var whole_a: bool = a["op"] == "set" or a["op"] == "clear"
+	var whole_b: bool = b["op"] == "set" or b["op"] == "clear"
+	return whole_a or whole_b or Types.json_equal(a.get("member"), b.get("member"))
+
+
+static func _js_string(r: Dictionary, name: String) -> String:
+	if not r.has(name):
+		return "undefined"
+	var v: Variant = r[name]
+	if v == null:
+		return "null"
+	if typeof(v) == TYPE_BOOL:
+		return "true" if v else "false"
+	return str(v)
+
+
+## A conflict copy the client may compare: opened sealed (not unreadable, not plaintext).
+static func _decidable(b: Dictionary) -> bool:
+	return b.get("bad") != true and not b.has("plain")
+
+
+static func _without(items: Array, drop: Dictionary) -> Array:
+	var out: Array = []
+	for o: Dictionary in items:
+		if not is_same(o, drop):
+			out.append(o)
+	return out
+
+
+static func _parking_of(code: String) -> String:
+	if code == "quota_exceeded":
+		return "quota"
+	if code == "entitlement_required":
+		return "entitlement"
+	return ""
+
+
+## The server never sees the numbers as anything but JSON numbers; a body member may be a float.
+func _ids_has(ids: Array, id: Variant) -> bool:
+	for x in ids:
+		if Types.json_equal(x, id):
+			return true
+	return false
+
+
+func _client_mismatch(req: Dictionary) -> void:
+	# The server bound this clientId to another device. Regenerate and renumber; none of these
+	# mutations was processed under the new id.
+	var p: Variant = _s["partitions"].get(req["partition"])
+	if p == null:
+		return
+	p["clientId"] = _fresh_client_id()
+	p["nextMutationId"] = 1
+	var ops: Array = p["pending"]
+	p["pending"] = []
+	for o: Dictionary in ops:
+		var op := {}
+		for k in o:
+			if k != "mutationId":
+				op[k] = o[k]
+		_enqueue(p, op)
+
+
+func _first_contact(server_now: Variant) -> void:
+	_s["offsetMs"] = int(server_now) - _now
+	if _s["contacted"]:
+		return
+	_s["contacted"] = true
+	var offset: int = _s["offsetMs"]
+	var restamp: bool = absi(offset) > PKeyConstants.SYNC_MAX_CLOCK_SKEW_MS
+	for name: String in _s["partitions"]:
+		var p: Dictionary = _s["partitions"][name]
+		for op: Dictionary in p["pending"]:
+			if _truthy(op, "preContact"):
+				if restamp and _truthy(op, "editedHlc"):
+					op["editedHlc"] = _shift_hlc(op["editedHlc"], offset)
+				op.erase("preContact")
+		for k: String in p["device"]:
+			var d: Dictionary = p["device"][k]
+			if _truthy(d, "preContact"):
+				if restamp:
+					d["editedHlc"] = _shift_hlc(d["editedHlc"], offset)
+				d.erase("preContact")
+	for k: String in _drafts:
+		var dr: Dictionary = _drafts[k]
+		if _truthy(dr, "preContact"):
+			if restamp:
+				dr["editedHlc"] = _shift_hlc(dr["editedHlc"], offset)
+			dr.erase("preContact")
+	if restamp and _s["hlc"][0] > 0:
+		_s["hlc"] = [_s["hlc"][0] + offset, _s["hlc"][1]]
+
+
+func _shift_hlc(h: String, offset: int) -> String:
+	var parsed: Variant = parse_hlc(h)
+	if parsed == null:
+		push_error("CloudSyncMachine: not an HLC")
+		return h
+	return format_hlc(parsed[0] + offset, parsed[1])
+
+
+func _ok(req: Dictionary, body: Dictionary, opened: Dictionary) -> void:
+	if Types.is_number(body.get("serverNow")):
+		_first_contact(body["serverNow"])
+	if req["partition"] != _s["subject"]:
+		return
+	if Types.is_string(body.get("subject")) and String(body["subject"]) != req["partition"]:
+		_leave("subjectChanged", false)
+		return
+	var p := _active()
+	var before := _value_map()
+	var overrides := {}
+	var batch: Array = []
+	for o: Dictionary in p["pending"]:
+		if _ids_has(req["mutationIds"], o["mutationId"]):
+			batch.append(o)
+	var parked_now: Array = []
+	var results: Array = body["results"] if body.get("results") is Array else []
+	for r in results:
+		if not (r is Dictionary) or not Types.is_number(r.get("mutationId")):
+			continue
+		var at := -1
+		for i in p["pending"].size():
+			var o: Dictionary = p["pending"][i]
+			if Types.json_equal(o["mutationId"], r["mutationId"]) and _ids_has(req["mutationIds"], o["mutationId"]):
+				at = i
+				break
+		if at < 0:
+			continue
+		var op: Dictionary = p["pending"][at]
+		var park := ""
+		if r.get("status") == "rejected" and op["target"].has("setting"):
+			park = _parking_of(_js_string(r, "code"))
+		if park != "":
+			# R5: a retryable refusal keeps the edit on the device, still read, until it can land.
+			op["parked"] = park
+			parked_now.append(op)
+			continue
+		p["pending"].remove_at(at)
+		_result(p, op, r, overrides, opened, req["cursor"])
+	# A parked edit that a later edit of the same value already replaces is dropped.
+	for op: Dictionary in parked_now:
+		var replaced := false
+		for q: Dictionary in batch + p["pending"]:
+			if not is_same(q, op) and q["mutationId"] > op["mutationId"] and _same_value(op, q):
+				replaced = true
+				break
+		if replaced:
+			p["pending"] = _without(p["pending"], op)
+	# The pull members: a cursor-0 request answers with a snapshot, which replaces ours.
+	if req["cursor"] == 0 and Types.is_number(body.get("cursor")):
+		p["settings"] = {}
+		p["records"] = {}
+	if _requires_e2e() and Types.is_number(body.get("encryptionSince")):
+		_lower_since(p, body["encryptionSince"])
+	var changes: Array = body["changes"] if body.get("changes") is Array else []
+	var oc: Variant = opened.get("changes")
+	var opened_changes: Array = oc if oc is Array else []
+	for i in changes.size():
+		var c: Variant = changes[i]
+		if not (c is Dictionary) or not Types.is_number(c.get("version")):
+			continue
+		# E2E guard (a): inside one partition a served change is newer than the cursor the request
+		# carried, so an older one is a replay or a forgery. Only a snapshot (cursor 0) has no floor.
+		if _requires_e2e() and req["cursor"] > 0 and c["version"] <= req["cursor"]:
+			continue
+		var open_row: Variant = opened_changes[i] if i < opened_changes.size() else null
+		var latch_key := ""
+		var is_setting := Types.is_string(c.get("setting"))
+		var is_record: bool = c.get("record") is Array and c["record"].size() == 2
+		if is_setting:
+			latch_key = "s:%s" % c["setting"]
+		elif is_record:
+			latch_key = "r:" + _record_key(str(c["record"][0]), str(c["record"][1]))
+		var bad := _row_bad(p, latch_key, c["version"], open_row, req["cursor"])
+		if is_setting:
+			p["settings"][String(c["setting"])] = _merged({"value": Types.clone(c.get("value")), "version": c["version"]}, bad)
+			_drop_parked_by_remote(p, String(c["setting"]), c.get("editedHlc"))
+		elif is_record:
+			p["records"][_record_key(str(c["record"][0]), str(c["record"][1]))] = _merged({"value": Types.clone(c.get("value")), "version": c["version"]}, bad)
+	var tombstones: Array = body["tombstones"] if body.get("tombstones") is Array else []
+	for t in tombstones:
+		if not (t is Dictionary):
+			continue
+		if Types.is_string(t.get("setting")):
+			p["settings"].erase(String(t["setting"]))
+			_drop_parked_by_remote(p, String(t["setting"]), t.get("editedHlc"))
+		elif t.get("record") is Array and t["record"].size() == 2:
+			p["records"].erase(_record_key(str(t["record"][0]), str(t["record"][1])))
+	if Types.is_number(body.get("cursor")):
+		p["cursor"] = body["cursor"]
+	if body.get("aliases") is Dictionary:
+		var al := {}
+		for k in body["aliases"]:
+			if Types.is_string(body["aliases"][k]):
+				al[k] = body["aliases"][k]
+		_s["aliases"] = al
+	# R5: more room than the last response showed re-sends the quota-parked edits.
+	var quota: Variant = body["quota"].get("bytes") if body.get("quota") is Dictionary else null
+	var usage: Variant = body["usage"].get("bytes") if body.get("usage") is Dictionary else null
+	if Types.is_number(quota) and Types.is_number(usage):
+		var headroom: Variant = quota - usage
+		if p["headroom"] != null and headroom > p["headroom"]:
+			_unpark(p, func(reason: String) -> bool: return reason == "quota")
+		p["headroom"] = headroom
+	_need_snapshot = false
+	_pull_wanted = body.get("more") == true
+	_emit_changes(before, overrides, "remote")
+
+
+## E2E `encryptionSince`: only the host's open result counts. A row it opened from a `ct` is good
+## (and lowers the clamp); one it could not open is bad; a plaintext row is legacy data only while
+## its host-mapped `seq` stays below the partition's `encryptionSince`, judged on every read. A
+## plaintext row with no `seq` is bad at once. Server mode reads every row as it always did.
+## `cursor` is the request's own cursor (X-1: a conflict copy passes the push's in-flight cursor).
+func _row_bad(p: Dictionary, latch_key: String, version: Variant, open_row: Variant, cursor: Variant) -> Dictionary:
+	if not _requires_e2e():
+		return {}
+	var row: Dictionary = open_row if open_row is Dictionary else {}
+	if row.get("invalid") == true:
+		return {"bad": true}
+	if row.get("sealed") == true:
+		_note_sealed(p, version, latch_key)
+		return {}
+	var seq: Variant = row.get("seq")
+	if not Types.is_number(seq):
+		return {"bad": true}
+	# Guard (c): a key this machine has seen sealed never reads as legacy plaintext.
+	if latch_key != "" and p.get("sealedKeys") is Dictionary and p["sealedKeys"].get(latch_key) == true:
+		return {"bad": true}
+	# Guard (b): legacy only if the request's cursor was still below the boundary.
+	var since: Variant = p.get("encryptionSince")
+	if cursor != null and (since == null or cursor >= since):
+		return {"bad": true}
+	return {"plain": seq}
+
+
+## A conflict's `server` copy as a held row. X-1: `cursor` is the push's own in-flight cursor.
+func _copy_row(p: Dictionary, latch_key: String, server: Dictionary, open_row: Variant, cursor: Variant) -> Dictionary:
+	var version: Variant = server["version"]
+	var bad := _row_bad(p, latch_key, version, open_row, cursor)
+	return _merged({"value": Types.clone(server.get("value")), "version": version}, bad)
+
+
+## Take a served boundary: the least ever served, held at or below the sealed floor.
+func _lower_since(p: Dictionary, served: Variant) -> void:
+	if not Types.is_number(served) or served < 0:
+		return
+	var since: Variant = served
+	if p.get("encryptionSince") != null:
+		since = p["encryptionSince"] if p["encryptionSince"] <= served else served
+	if p.get("sealedFloor") != null and p["sealedFloor"] < since:
+		since = p["sealedFloor"]
+	p["encryptionSince"] = since
+
+
+## This machine pushed, or opened, a sealed row at `version`: no plaintext at or above it is
+## legacy, whatever a Worker serves.
+func _note_sealed(p: Dictionary, version: Variant, latch_key: String = "") -> void:
+	if not _requires_e2e() or not Types.is_number(version):
+		return
+	if latch_key != "":
+		if not p.has("sealedKeys"):
+			p["sealedKeys"] = {}
+		var keys: Dictionary = p["sealedKeys"]
+		if keys.get(latch_key) != true:
+			keys[latch_key] = true
+			var excess: int = maxi(0, keys.size() - Types.SEALED_LATCH_MAX)
+			var olds: Array = keys.keys().slice(0, excess)
+			for old in olds:
+				keys.erase(old)
+	var floor_v: Variant = version
+	if p.get("sealedFloor") != null and p["sealedFloor"] < version:
+		floor_v = p["sealedFloor"]
+	p["sealedFloor"] = floor_v
+	if p.get("encryptionSince") != null and floor_v < p["encryptionSince"]:
+		p["encryptionSince"] = floor_v
+
+
+## A newer remote value of a `lastWrite` key replaces its parked `set` or `clear` (R5).
+func _drop_parked_by_remote(p: Dictionary, server_key: String, edited_hlc: Variant) -> void:
+	if not Types.is_string(edited_hlc):
+		return
+	var keep: Array = []
+	for o: Dictionary in p["pending"]:
+		var drop: bool = _truthy(o, "parked") and o["target"].has("setting") and (o["op"] == "set" or o["op"] == "clear") \
+			and _alias(o["target"]["setting"]) == server_key and _policy_of(o["target"]["setting"]) == "lastWrite" \
+			and o.get("editedHlc") != null and Types.utf16_less(String(o["editedHlc"]), String(edited_hlc))
+		if not drop:
+			keep.append(o)
+	p["pending"] = keep
+
+
+func _result(p: Dictionary, op: Dictionary, r: Dictionary, overrides: Dictionary, opened: Dictionary, cursor: Variant) -> void:
+	var status: Variant = r.get("status")
+	var conflicts: Variant = opened.get("conflicts")
+	var opened_conflict: Variant = null
+	if conflicts is Dictionary:
+		opened_conflict = conflicts.get(str(op["mutationId"]), conflicts.get(op["mutationId"]))
+	if op["target"].has("setting"):
+		var key: String = op["target"]["setting"]
+		var server_key: String = String(r["renamedTo"]) if Types.is_string(r.get("renamedTo")) else _alias(key)
+		if _truthy(op, "moved"):
+			overrides[key] = "merge"
+		if status == "ok" and Types.is_number(r.get("version")):
+			_note_sealed(p, r["version"], "s:%s" % server_key)
+		if status == "ok":
+			if r.get("dropped") == true:
+				overrides[key] = "migration"
+				for d: Dictionary in _catalog["settings"]:
+					if _alias(d["key"]) == _alias(key):
+						overrides[d["key"]] = "migration"
+			elif Types.is_number(r.get("version")):
+				var prior: Variant = p["settings"].get(server_key)
+				var value: Variant = apply_setting_op(_policy_of(key), prior["value"] if prior != null else Types.ABSENT, op)
+				if Types.is_absent(value):
+					p["settings"].erase(server_key)
+				else:
+					p["settings"][server_key] = {"value": value, "version": r["version"]}
+		elif status == "conflict" and r.get("server") is Dictionary:
+			# A stale write loses to the server copy, and nothing is enqueued.
+			var server: Dictionary = r["server"]
+			if Types.is_number(server.get("version")):
+				var sbad := _copy_row(p, "s:%s" % server_key, server, opened_conflict, cursor)
+				p["settings"][server_key] = sbad
+				# E2E max/min: keep the better value and re-push it on the server's version.
+				if op["op"] == "set" and _decidable(sbad) and _client_decides(_policy_of(key)) \
+						and _better(_policy_of(key), op.get("value"), server.get("value")):
+					var again := {"target": op["target"], "op": "set", "value": Types.clone(op.get("value"))}
+					if _truthy(op, "editedHlc"):
+						again["editedHlc"] = op["editedHlc"]
+					again["baseVersion"] = server["version"]
+					_enqueue(p, again)
+					overrides[key] = "merge"
+		elif status == "rejected":
+			# A terminal refusal: the value reverts to the snapshot and the app is told.
+			_events.append({"type": "rejected", "mutationId": op["mutationId"], "code": _js_string(r, "code")})
+		return
+	# A record.
+	var c: String = op["target"]["record"][0]
+	var rid: String = op["target"]["record"][1]
+	var rk := _record_key(c, rid)
+	var decl: Variant = _collection(c)
+	var rebase_on: Variant = null
+	var has_rebase := false
+	var rebase_value: Variant = null
+	if status == "ok" and Types.is_number(r.get("version")):
+		_note_sealed(p, r["version"], "r:%s" % rk)
+		var prior_r: Variant = p["records"].get(rk)
+		var rv: Variant = _apply_record_op(prior_r["value"] if prior_r != null else Types.ABSENT, op)
+		if not Types.is_absent(rv):
+			p["records"][rk] = {"value": rv, "version": r["version"]}
+		if p["held"].has(rk):
+			rebase_on = r["version"]
+			has_rebase = true
+	elif status == "conflict" and r.get("server") is Dictionary:
+		var srv: Dictionary = r["server"]
+		if Types.is_number(srv.get("version")):
+			var rbad := _copy_row(p, "r:%s" % rk, srv, opened_conflict, cursor)
+			p["records"][rk] = rbad
+			# The resolution is a NEW mutation on the server's version; N is never resent. Only
+			# `revision` resolves on the device; every other policy took the server's copy.
+			if p["held"].has(rk):
+				rebase_on = srv["version"]
+				has_rebase = true
+				rebase_value = op.get("value")
+			elif decl != null and op["op"] == "set" and _decidable(rbad) and _client_decides(decl["policy"]) \
+					and _better(decl["policy"], _compared(op.get("value"), decl.get("field")), _compared(srv.get("value"), decl.get("field"))):
+				# E2E max/min record: the better value is re-pushed on the server's version.
+				rebase_on = srv["version"]
+				has_rebase = true
+				rebase_value = op.get("value")
+			elif decl != null and decl["policy"] == "revision" and decl.get("resolve") == "keepLocal" and op["op"] == "set":
+				rebase_on = srv["version"]
+				has_rebase = true
+				rebase_value = op.get("value")
+	else:
+		if status == "rejected":
+			_events.append({"type": "rejected", "mutationId": op["mutationId"], "code": _js_string(r, "code")})
+		if p["held"].has(rk):
+			var row: Variant = p["records"].get(rk)
+			rebase_on = row["version"] if row != null else "*"
+			has_rebase = true
+	if has_rebase:
+		var value2: Variant = p["held"][rk] if p["held"].has(rk) else rebase_value
+		p["held"].erase(rk)
+		_enqueue(p, {"target": {"record": [c, rid]}, "op": "set", "value": Types.clone(value2), "baseVersion": rebase_on})
+
+
+## The number a `max`/`min` record compares: the value, or its `field` member.
+static func _compared(v: Variant, field: Variant) -> Variant:
+	if field != null and v is Dictionary:
+		return v.get(field)
+	return v
+
+
+## Whether `local` beats `server` under a `max` or `min` policy (numbers only).
+static func _better(policy: String, local: Variant, server: Variant) -> bool:
+	if not Types.is_number(local) or not Types.is_number(server):
+		return false
+	return local > server if policy == "max" else local < server
+
 
 
 ## Sign-out, and every principal change handled like it.

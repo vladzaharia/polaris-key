@@ -9,12 +9,13 @@ extends RefCounted
 # a scenario by name with a reason, as sync.scenarios is still `planned`:
 #
 #   stage 0  every scenario is pending
-#   stage 1  U-21.2 ported the local half: a scenario with a `respond` step is pending (now)
-#   stage 2  U-21.3/.4 ported the exchanges: only the `e2e-` scenarios are pending
+#   stage 1  U-21.2 ported the local half: a scenario with a `respond` step is pending
+#   stage 2  U-21.3 ported the exchanges (now): a scenario whose app requires E2E (`init.encryption`
+#            is "e2e", the ten `e2e-` ones) is pending. `server-mode-unchanged` has no `e2e-`
+#            prefix but runs in server mode, so it replays here; the rule is the data, not the name.
+#            (U-21.3 also ported the E2E row guards `_ok` calls; U-21.5 adds the E2E replay and its
+#            X-1 unit test.)
 #   deleted  U-21.5 ported E2E and X-1; every scenario runs
-#
-# Note for U-21.3 (stage 2): `server-mode-unchanged` is an E2E-related scenario without the `e2e-`
-# prefix, so the prefix rule alone does not hold it back; it may need special handling there.
 #
 # The machine contract the driver calls (snake_case; `set`/`get` are Object methods, so the value
 # calls are `set_value`/`get_value`/`clear_value`): the constructor takes the opts Dictionary
@@ -28,8 +29,8 @@ const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Routes := preload("res://addons/polaris_key/core/sync/sync_routes.gd")
 
 const CORPUS := "res://tests/corpus/v2/sync-scenarios.json"
-const PENDING_STAGE := 1
-const PENDING_REASON := "exchange half not ported yet (U-21.3 to U-21.5)"
+const PENDING_STAGE := 2
+const PENDING_REASON := "E2E replay not enabled yet (U-21.5)"
 const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "assert"]
 const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh"]
 
@@ -44,6 +45,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_shape(t, corpus)
 	_setting_cases(t, corpus["settingCases"])
 	_scenarios(t, corpus)
+	_misuse(t, corpus)
 	return true
 
 
@@ -125,7 +127,7 @@ func _is_pending(sc: Dictionary) -> bool:
 					return true
 			return false
 		2:
-			return String(sc["name"]).begins_with("e2e-")
+			return sc["init"]["encryption"] == "e2e"
 	return false
 
 
@@ -189,10 +191,10 @@ func _replay(t: PKeyTestContext, corpus: Dictionary, sc: Dictionary) -> void:
 			"advance":
 				m.advance(raw["ms"])
 			"network":
-				m.set_network(raw["state"])
+				t.check(where, m.set_network(raw["state"])["ok"])
 			"respond":
 				var res: Dictionary = {"status": raw["status"], "body": raw["body"]} if raw.has("opened") else raw
-				m.receive(res, raw.get("opened"))
+				t.check(where, m.receive(res, raw.get("opened"))["ok"])
 			"root":
 				m.set_root(raw.get("has") == true)
 			"signIn":
@@ -252,3 +254,25 @@ func _helpers(t: PKeyTestContext) -> void:
 	t.check("loader: ints stay ints, 1.0 and 1e2 stay floats", j["ok"] and typeof(v["i"]) == TYPE_INT and typeof(v["f"]) == TYPE_FLOAT and typeof(v["e"]) == TYPE_FLOAT and typeof(v["a"][0]) == TYPE_INT and typeof(v["a"][1]) == TYPE_FLOAT)
 	t.check("loader: a number past 2^53 is not made an int, null is kept", typeof(v["big"]) == TYPE_FLOAT and v.has("n") and v["n"] == null)
 	t.check("loader: strict (trailing comma, duplicate key, leading zero)", not Types.load_json_text('{"a":1,}')["ok"] and not Types.load_json_text('{"a":1,"a":2}')["ok"] and not Types.load_json_text("[01]")["ok"])
+
+
+## Host misuse never relies on `assert` (a release template strips it): an error result, always.
+func _misuse(t: PKeyTestContext, corpus: Dictionary) -> void:
+	var sc: Dictionary = corpus["scenarios"][0]
+	var init: Dictionary = sc["init"]
+	var ids: Array = init["clientIds"].duplicate()
+	var machine_script: GDScript = load("res://addons/polaris_key/core/sync/cloud_sync_machine.gd")
+	var m: Variant = machine_script.new(_opts(corpus, init, ids))
+	var empty: Variant = m.take_requests()
+	var in_flight: bool = m.status()["state"] == "syncing"
+	if not in_flight:
+		m.refresh()
+		m.set_network("offline")
+		m.set_network("online")
+		in_flight = m.status()["state"] == "syncing"
+	t.check("misuse: a signed-in machine has a request in flight", in_flight and empty.size() >= 1)
+	var off: Dictionary = m.set_network("offline")
+	t.check("misuse: set_network(offline) in flight is refused, not asserted", not off["ok"] and off["error"] == "request-in-flight" and m.network_state() == "online")
+	m.receive({"error": "transport"})
+	var again: Dictionary = m.receive({"error": "transport"})
+	t.check("misuse: receive with nothing in flight is an error result", not again["ok"] and again["error"] == "no-request-in-flight")
