@@ -344,4 +344,75 @@ class ConnectTest {
         assertEquals(setOf(java.nio.file.attribute.PosixFilePermission.OWNER_READ, java.nio.file.attribute.PosixFilePermission.OWNER_WRITE), perms)
         assertEquals("ConnectClient", r.client.connect.toString())
     }
+
+    @Test
+    fun leaveWithNoStateCreatesNothingAndSucceeds() = runBlocking {
+        val dir = tmp.newFolder("untouched")
+        // A store whose state directory is `dir`: nothing of Connect's exists there.
+        val worker = Worker { DeviceKeyStore(InMemoryDeviceKeyStorage()) }
+        val store = object : im.plrs.key.core.Store by InMemoryStore("djdl", deviceId) {
+            override val stateDirectory: File get() = dir
+        }
+        val client = PolarisKeyClient.create(
+            PolarisKeyClientOptions(
+                core = CoreOptions(
+                    productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
+                    store = store, transport = ScriptedTransport(worker::handle), clock = { now },
+                ),
+                license = LicenseClientOptions(fingerprint = false),
+            ),
+        )
+        client.connect.leave()
+        assertEquals(0, dir.list()!!.size)
+    }
+
+    @Test
+    fun leaveKeepsASharedSealerKeyAndTheDeviceKeys() = runBlocking {
+        val sealer = CountingSealer()
+        val keyFile = File(tmp.root, "sealed/device-keys.json")
+        val port = DeviceKeyStore(FileDeviceKeyStorage(keyFile, sealer))
+        val stateFile = File(tmp.root, "sealed/pkey.connect.v1.json")
+        val r = rig(port = port, options = ConnectOptions(deviceKeys = port, state = FileDeviceKeyStorage(stateFile, sealer)))
+        r.client.connect.identity()
+        val before = port.publicKeys()!!
+        r.client.connect.leave()
+        assertFalse(stateFile.exists())
+        assertEquals(0, sealer.destroyed)
+        assertEquals(before, port.publicKeys())
+        assertNull(r.client.connect.discoveryKeys())
+    }
+
+    @Test
+    fun aRecordThatCannotBeDeletedStopsLeave() = runBlocking {
+        val inner = InMemoryDeviceKeyStorage()
+        val failing = object : im.plrs.key.core.DeviceKeyStorage by inner {
+            override suspend fun deleteRecord() = throw im.plrs.key.core.StoreException("disk")
+            override suspend fun clear() = throw im.plrs.key.core.StoreException("disk")
+        }
+        val port = DeviceKeyStore(InMemoryDeviceKeyStorage())
+        val r = rig(port = port, options = ConnectOptions(deviceKeys = port, allowEphemeralKeys = true, state = failing))
+        r.client.connect.identity()
+        refusal(ErrorCode.storeFailed) { runBlocking { r.client.connect.leave() } }
+    }
+
+    @Test
+    fun refreshBypassesTheHeldIdentity() = runBlocking {
+        val r = rig()
+        r.client.connect.identity()
+        r.client.connect.identity()
+        assertEquals(1, r.worker.identityGets)
+        r.worker.epoch = 2
+        assertEquals(2L, r.client.connect.identity(refresh = true).epoch)
+        assertEquals(2, r.worker.identityGets)
+    }
+
+    /** XOR "sealer": enough to prove a sealed record round-trips and to count destroy() calls. */
+    private class CountingSealer : im.plrs.key.core.DeviceKeySealer {
+        var destroyed = 0
+        override fun seal(plain: ByteArray, context: ByteArray) = plain.map { (it.toInt() xor 0x5a).toByte() }.toByteArray()
+        override fun open(blob: ByteArray, context: ByteArray) = blob.map { (it.toInt() xor 0x5a).toByte() }.toByteArray()
+        override fun destroy() {
+            destroyed++
+        }
+    }
 }

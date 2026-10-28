@@ -86,8 +86,8 @@ public data class ConnectOptions @JvmOverloads constructor(
     /**
      * Where the held roster, certificate and K_disc live. Default: the 0600 file `pkey.connect.v1.json`
      * in the state directory. Android has no default: pass a Keystore-sealed [FileDeviceKeyStorage]
-     * whose sealer is NOT the device keys' (`clear()` destroys its sealer's key, so a shared sealer
-     * would take the device keys with it).
+     * (`leave()` deletes the record with `deleteRecord()`, which never destroys a sealer key, so a sealer
+     * shared with the device keys is safe).
      */
     val state: DeviceKeyStorage? = null,
 )
@@ -274,8 +274,27 @@ public class ConnectClient internal constructor(
      * device keys are untouched, and so is the Worker's roster.
      */
     public suspend fun leave(): Unit = lock.withLock {
+        // Nothing held means nothing to forget, and sign-out must not depend on a store it never
+        // used: no directory, lock file or Keystore call is made for an absent record.
+        if (storage == null && options.state == null) {
+            if (RuntimeFamily.isAndroid) return@withLock
+            val dir = core.store.stateDirectory
+            if (dir == null || !File(dir, CONNECT_STATE_FILE).exists()) return@withLock
+        }
         try {
-            store().clear()
+            val s = store()
+            if (options.state != null && s.persistence == DeviceKeyPersistence.durable) {
+                val held = try {
+                    s.get()
+                } catch (e: DeviceKeysUnreadableException) {
+                    ByteArray(0) // present but unusable: still delete it
+                }
+                if (held == null) return@withLock
+                held.fill(0)
+            }
+            // The record goes; a sealer shared with the device keys is never destroyed with it.
+            // A record that cannot be deleted throws, and sign-out stops (fail closed).
+            s.deleteRecord()
         } catch (e: StoreException) {
             throw storeError(e)
         } catch (e: DeviceKeysUnreadableException) {

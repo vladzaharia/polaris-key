@@ -92,6 +92,12 @@ public interface DeviceKeyStorage {
 
     /** Deletes the record so it cannot be read back. */
     public suspend fun clear()
+
+    /**
+     * Deletes the record but leaves any sealer key alone: for a record that shares its sealer with
+     * another (Cloud Connect's state beside the device keys). Defaults to [clear].
+     */
+    public suspend fun deleteRecord(): Unit = clear()
 }
 
 /** Process memory only: the keys die with the process. */
@@ -209,7 +215,11 @@ public class FileDeviceKeyStorage(
         true
     }
 
-    override suspend fun clear(): Unit {
+    override suspend fun clear(): Unit = removeRecord(destroySealer = true)
+
+    override suspend fun deleteRecord(): Unit = removeRecord(destroySealer = false)
+
+    private suspend fun removeRecord(destroySealer: Boolean) {
         locked {
             refuseSymlink(file)
             try {
@@ -228,7 +238,7 @@ public class FileDeviceKeyStorage(
                 throw StoreException("could not delete $file", e)
             }
             // Only a deleted file lets the key go; a failure above leaves the key, so nothing is lost.
-            sealer?.destroy()
+            if (destroySealer) sealer?.destroy()
         }
     }
 
