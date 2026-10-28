@@ -52,6 +52,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_faults(t)
 	_files(t)
 	_races(t)
+	_reclaim(t)
+	_weak_id_and_orphans(t)
 	_signer(t)
 	_corpus(t)
 	await _register(t)
@@ -581,3 +583,100 @@ func _register(t: PKeyTestContext) -> void:
 	t.check("register_keys: without a credential it says so", not notoken.ok and notoken.code == PKeyErrors.DEVICE_MANAGEMENT_UNSUPPORTED, str(notoken))
 	server.queue_free()
 	sdk.queue_free()
+
+
+# ── Stale lock reclaim, an empty unique id, orphaned temporaries ─────────────────────────
+
+func _reclaim(t: PKeyTestContext) -> void:
+	if not OS.has_feature("threads"):
+		t.info("reclaim: no thread support in this build; skipped")
+		return
+	var root := _dir("reclaim")
+	var dir := root.path_join("djdl")
+	var lock := dir.path_join(PKeyDeviceKeyStore.LOCK_DIR)
+	DirAccess.make_dir_recursive_absolute(lock)
+	var tok := FileAccess.open(lock.path_join("token"), FileAccess.WRITE)
+	tok.store_string("dead holder")
+	tok.close()
+	OS.delay_msec(2300)
+	var results := []
+	results.resize(5)
+	var ids := []
+	for i in 5:
+		ids.append(WorkerThreadPool.add_task(_reclaim_job.bind(i, root, results), false, "pkey-test dk reclaim"))
+	for id in ids:
+		WorkerThreadPool.wait_for_task_completion(id)
+	var ok := true
+	for r in results:
+		if r == null or not r.ok:
+			ok = false
+	t.check("reclaim: five stores racing over a pre-aged lock all succeed", ok, str(results))
+	if ok:
+		var gens := []
+		for r in results:
+			gens.append(r.detail["generation"])
+		gens.sort()
+		# Three ensures and two rotates in some order: the record's generation moves one at a
+		# time, never repeating, so the final generation is 1 + the rotates that ran after a pair.
+		var final: Dictionary = _file_store(root).public_keys().detail
+		t.check("reclaim: one pair, no generation repeated by a rotate", final["generation"] >= 2 and final["generation"] <= 3, str(gens))
+		var rot_gens := []
+		for i in [3, 4]:
+			rot_gens.append(results[i].detail["generation"])
+		t.check("reclaim: the two rotates saw distinct generations", rot_gens[0] != rot_gens[1], str(rot_gens))
+	t.check("reclaim: no lock or claimed directory is left", DirAccess.get_directories_at(dir).is_empty(), str(DirAccess.get_directories_at(dir)))
+	# A lock that is not old, and an unreadable mtime, are never reclaimed.
+	var s2 := _file_store(root)
+	s2.lock_wait_ms = 100
+	DirAccess.make_dir_recursive_absolute(lock)
+	t.check("reclaim: a fresh lock is not reclaimed", s2.ensure().code == PKeyDeviceKeyStore.STORE_FAULT)
+	# A lost token: the write aborts and writes nothing.
+	DirAccess.remove_absolute(lock)
+	var s3 := _file_store(root)
+	s3.wipe()
+	s3._lock_token = "ours"
+	var lost := s3._write_file("device-keys", PackedByteArray([1]), false)
+	t.check("reclaim: a write without our token is refused", lost != OK and not FileAccess.file_exists(dir.path_join("device-keys")))
+	PKeyTestFixtures.remove_tree(root)
+
+
+func _reclaim_job(i: int, root: String, results: Array) -> void:
+	var s := _file_store(root)
+	s.lock_stale_seconds = 1
+	s.lock_wait_ms = 8000
+	results[i] = s.ensure() if i < 3 else s.rotate()
+
+
+func _weak_id_and_orphans(t: PKeyTestContext) -> void:
+	var root := _dir("weak")
+	var s := _file_store(root)
+	s.unique_id = ""
+	t.check("weak id: an empty unique id reports file protection and best effort", s.protection() == "file" and s.best_effort())
+	var k := s.ensure()
+	t.check("weak id: the store still works", k.ok)
+	var strong := _file_store(_dir("strong"))
+	strong.unique_id = "device-1"
+	t.check("weak id: a non-empty id is encrypted-file", strong.protection() == "encrypted-file")
+	PKeyTestFixtures.remove_tree(root)
+
+	var root2 := _dir("orphan")
+	var p := _file_store(root2, false)
+	p.ensure()
+	var dir := root2.path_join("djdl")
+	var names := ["device-keys.tmp-aaaa", "device-keys.salt.tmp-bbbb"]
+	for n in names:
+		var f := FileAccess.open(dir.path_join(n), FileAccess.WRITE)
+		f.store_string("secret-looking bytes")
+		f.close()
+	p.rotate()
+	var left := false
+	for n in names:
+		if FileAccess.file_exists(dir.path_join(n)):
+			left = true
+	t.check("orphans: leftover temporaries are swept on the next locked operation", not left)
+	var f2 := FileAccess.open(dir.path_join("device-keys.tmp-cccc"), FileAccess.WRITE)
+	f2.store_string("x")
+	f2.close()
+	p.wipe()
+	t.check("orphans: wipe sweeps them too", DirAccess.get_files_at(dir).is_empty(), str(DirAccess.get_files_at(dir)))
+	PKeyTestFixtures.remove_tree(root2)

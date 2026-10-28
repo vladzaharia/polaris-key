@@ -29,8 +29,11 @@ extends RefCounted
 ##    under a lock directory (`DirAccess.make_dir` is atomic: it fails if the directory exists),
 ##    so two stores in one process, and two game instances of one install, cannot both create a
 ##    pair or repeat a generation. A holder that died leaves its lock directory; one older than
-##    LOCK_STALE_SECONDS is reclaimed. That is the best a portable engine API allows: a lock
-##    holder frozen for longer than that can lose its lock. Keep `user://` on a local disk.
+##    LOCK_STALE_SECONDS (measured on the file system's own clock) is reclaimed by an atomic
+##    rename-claim, and every lock carries a random token that is checked before the record is
+##    replaced and before the lock is released. Residual limit: a holder frozen for longer than
+##    the stale window can lose its lock; it then writes nothing (the token check) but a second
+##    holder may have run meanwhile. Keep `user://` on a local disk.
 ##  * the record is replaced atomically (temporary file, owner-only permissions, rename), so a
 ##    reader sees the old record or the new one.
 ##  * `dh` refuses a low-order peer (every spelling) and an all-zero result.
@@ -52,7 +55,10 @@ extends RefCounted
 ##                     salt and the unique id too. If the unique id changes (a new machine), the
 ##                     record no longer opens and reads as unreadable until `wipe()`.
 ##   "file"            the same file without engine encryption (`encrypted = false`), for an
-##                     engine build that lacks it.
+##                     engine build that lacks it. Also what an encrypted store reports when
+##                     `OS.get_unique_id()` is empty (some platforms have none): the passphrase
+##                     then rests on the salt beside the record alone, which is obfuscation, so
+##                     the store is `best_effort()` too.
 ##   "memory"          process memory only. A memory store refuses to register keys unless the
 ##                     caller passes `allow_ephemeral`. A web build whose `user://` is not
 ##                     persistent is also "memory".
@@ -84,6 +90,11 @@ var product: String
 var dir: String
 ## How long to wait for the file lock before answering STORE_FAULT (a test may shorten it).
 var lock_wait_ms := 3000
+## A lock older than this (by the file system's own clock) may be reclaimed. A test may shorten it.
+var lock_stale_seconds := LOCK_STALE_SECONDS
+## `OS.get_unique_id()`, read once. Empty on a platform that has none: the passphrase then rests on
+## the salt alone, `protection()` says "file" and `best_effort()` is true. A test may set it.
+var unique_id := OS.get_unique_id()
 var _memory: bool
 ## False when `root` is outside `user://`: raw keys are never written to a shared or exported path.
 var _root_ok := true
@@ -92,6 +103,8 @@ var _encrypted: bool
 var _mem_record := PackedByteArray()
 ## SHA-256 of the last record whose public halves were checked against its private halves.
 var _checked_digest := ""
+## The token of the lock this store holds ("" when none).
+var _lock_token := ""
 ## Set by _passphrase() when the salt cannot be read or made (a fault the caller reports).
 var _salt_fault: PKeyResult = null
 
@@ -129,11 +142,15 @@ func persistence() -> String:
 func protection() -> String:
 	if _memory or persistence() == "memory":
 		return "memory"
-	return "encrypted-file" if _encrypted else "file"
+	if _encrypted and unique_id != "":
+		return "encrypted-file"
+	return "file"
 
 
 ## True on mobile and consoles, where this store is a fallback for the native lane (CC-26.7).
 func best_effort() -> bool:
+	if not _memory and _encrypted and unique_id == "":
+		return true
 	var os_name := OS.get_name()
 	return os_name == "Android" or os_name == "iOS" or os_name == "visionOS" or OS.has_feature("mobile") \
 			or OS.has_feature("console") or os_name == "Switch" or os_name == "PS5" or os_name == "Xbox"
@@ -439,7 +456,7 @@ func _passphrase(create: bool) -> Variant:
 			return null
 	var ctx := HashingContext.new()
 	ctx.start(HashingContext.HASH_SHA256)
-	ctx.update(("pkey-device-keys/1\n%s\n%s\n" % [product, OS.get_unique_id()]).to_utf8_buffer())
+	ctx.update(("pkey-device-keys/1\n%s\n%s\n" % [product, unique_id]).to_utf8_buffer())
 	ctx.update(salt)
 	return ctx.finish().hex_encode()
 
@@ -543,6 +560,10 @@ func _write_file(file: String, bytes: PackedByteArray, encrypt: bool) -> int:
 	if werr != OK:
 		DirAccess.remove_absolute(tmp)
 		return werr
+	if _lock_token != "" and _read_token(dir.path_join(LOCK_DIR)) != _lock_token:
+		# The lock was reclaimed under us (a holder frozen past the stale window): write nothing.
+		DirAccess.remove_absolute(tmp)
+		return ERR_LOCKED
 	var d := DirAccess.open(dir)
 	var rerr := d.rename(tmp_name, file) if d != null else DirAccess.get_open_error()
 	if rerr != OK:
@@ -580,29 +601,111 @@ func _locked(op: Callable) -> PKeyResult:
 		if got != OK:
 			r = _fault("lock", got)
 		else:
+			_sweep_temporaries()
 			r = op.call()
-			DirAccess.remove_absolute(dir.path_join(LOCK_DIR))
+			_release()
 	_mutex.unlock()
 	return r
 
 
+static func _token_path(lock: String) -> String:
+	return lock.path_join("token")
+
+
+static func _read_token(lock: String) -> String:
+	var f := FileAccess.open(_token_path(lock), FileAccess.READ)
+	if f == null:
+		return ""
+	var t := f.get_as_text()
+	f.close()
+	return t
+
+
+static func _remove_tree(path: String) -> void:
+	for name in DirAccess.get_files_at(path):
+		DirAccess.remove_absolute(path.path_join(name))
+	DirAccess.remove_absolute(path)
+
+
+## The file system's own "now": the mtime of a fresh probe file, so a step of the wall clock can
+## never make a live lock look old. 0 when it cannot be read.
+func _fs_now() -> int:
+	var probe := dir.path_join("%s.probe-%s" % [RECORD_FILE, Crypto.new().generate_random_bytes(6).hex_encode()])
+	var f := FileAccess.open(probe, FileAccess.WRITE)
+	if f == null:
+		return 0
+	f.store_8(0)
+	f.close()
+	var t := FileAccess.get_modified_time(probe)
+	DirAccess.remove_absolute(probe)
+	return t
+
+
+## Take the lock directory. A stale one is reclaimed by an atomic claim: the directory is renamed
+## to a unique name, and only the racer whose rename succeeds removes it and retries `make_dir`.
+## An unreadable mtime (0, a failed stat) or probe is "retry", never "stale".
 func _acquire() -> int:
 	var derr := _ensure_dir()
 	if derr != OK:
 		return derr
 	var lock := dir.path_join(LOCK_DIR)
+	var token := Crypto.new().generate_random_bytes(16).hex_encode()
 	var deadline := Time.get_ticks_msec() + lock_wait_ms
 	while true:
 		var err := DirAccess.make_dir_absolute(lock)
 		if err == OK:
+			var f := FileAccess.open(_token_path(lock), FileAccess.WRITE)
+			if f == null:
+				var ferr := FileAccess.get_open_error()
+				DirAccess.remove_absolute(lock)
+				return ferr
+			f.store_string(token)
+			f.close()
+			_lock_token = token
 			return OK
 		if err != ERR_ALREADY_EXISTS:
 			return err
-		var age := Time.get_unix_time_from_system() - float(FileAccess.get_modified_time(lock))
-		if age > LOCK_STALE_SECONDS:
-			DirAccess.remove_absolute(lock)
+		var mtime := FileAccess.get_modified_time(lock)
+		var now := _fs_now()
+		if mtime > 0 and now > 0 and now - mtime > lock_stale_seconds:
+			var claimed := "%s.stale-%s" % [lock, Crypto.new().generate_random_bytes(6).hex_encode()]
+			if DirAccess.rename_absolute(lock, claimed) == OK:
+				_remove_tree(claimed)
 			continue
 		if Time.get_ticks_msec() > deadline:
 			return ERR_BUSY
 		OS.delay_msec(25)
 	return ERR_BUSY
+
+
+## Give the lock back only if it is still ours: check the token, rename the directory aside,
+## check again, then remove it (renamed back if it turned out to be someone else's).
+func _release() -> void:
+	var lock := dir.path_join(LOCK_DIR)
+	var mine := _lock_token
+	_lock_token = ""
+	if _read_token(lock) != mine:
+		return
+	var aside := "%s.release-%s" % [lock, Crypto.new().generate_random_bytes(6).hex_encode()]
+	if DirAccess.rename_absolute(lock, aside) != OK:
+		return
+	if _read_token(aside) == mine:
+		_remove_tree(aside)
+	else:
+		DirAccess.rename_absolute(aside, lock)
+
+
+## Under the lock: remove temporary files an interrupted writer left. A plaintext one is
+## overwritten with zeros first.
+func _sweep_temporaries() -> void:
+	for name in DirAccess.get_files_at(dir):
+		if name.contains(".tmp-") or name.contains(".probe-"):
+			var path := dir.path_join(name)
+			if not _encrypted and name.begins_with(RECORD_FILE + ".tmp-"):
+				var z := FileAccess.open(path, FileAccess.READ_WRITE)
+				if z != null:
+					var zeros := PackedByteArray()
+					zeros.resize(maxi(int(z.get_length()), 1))
+					z.store_buffer(zeros)
+					z.close()
+			DirAccess.remove_absolute(path)
