@@ -66,6 +66,7 @@ function rig(
   o: {
     discovery?: Record<string, unknown> | null;
     store?: ReturnType<typeof memoryStore>;
+    account?: { signout?: string; attach?: string };
   } = {},
 ) {
   const calls: string[] = [];
@@ -78,6 +79,9 @@ function rig(
       return json({ nonce: nonceOf(nonces), expiresIn: 300 });
     }
     if (url === ENDPOINTS.token) return token(nonces);
+    if (url.endsWith("/identity/signout")) return json({ released: false });
+    if (url.endsWith("/identity/attach"))
+      return json({ token: "pkeyt_attached", subject: "ps_abc" });
     if (url.endsWith("/devices/register"))
       return json({ token: "pkeyt_anon", deviceId: DEVICE });
     return new Response("", { status: 404 });
@@ -88,6 +92,7 @@ function rig(
     fetchImpl,
     store,
     exchangeEndpoints: () => exchangeDiscoveryOf(discovery),
+    ...(o.account ? { identityEndpoints: () => o.account! } : {}),
   });
   const port = durableKeys();
   return { session, store, port, calls, discovery };
@@ -118,6 +123,7 @@ function ctxOf(
     port: r.port,
     provider,
     endpoints: exchangeDiscoveryOf(r.discovery),
+    generation: () => 0,
     explicitSignOut: async () =>
       (await r.store.explicitSignOut?.get()) === true,
     syncKey: async () => undefined,
@@ -311,11 +317,89 @@ describe("rung 3: the provider asks silently", () => {
     expect(out).toEqual({ kind: "needsSignIn", reason: "noCredential" });
   });
 
-  it("throws a typed error for any other refusal", async () => {
+  it("never throws for a refusal: it is unavailable(refused)", async () => {
     const r = rig(() => json({ error: "invalid_grant" }, 400));
-    await expect(
-      runAutoSignIn(ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider)),
-    ).rejects.toMatchObject({ name: "PolarisError" });
+    expect(
+      await runAutoSignIn(ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider)),
+    ).toEqual({ kind: "unavailable", code: "refused" });
+  });
+
+  it("rethrows only a cancellation", async () => {
+    const r = rig();
+    const p = stub({ silent: SUBJECT_TOKEN }).provider;
+    p.token = async () => {
+      throw Object.assign(new Error("x"), { name: "AbortError" });
+    };
+    await expect(runAutoSignIn(ctxOf(r, p))).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
+
+  it("abandons the sign-in when the generation changed while the provider answered", async () => {
+    const r = rig();
+    let gen = 0;
+    const s = stub({ silent: SUBJECT_TOKEN });
+    const inner = s.provider.token;
+    s.provider.token = async (n, m) => {
+      const t = await inner(n, m);
+      gen += 1; // a sign-out, while the provider was pending
+      return t;
+    };
+    const out = await runAutoSignIn(
+      ctxOf(r, s.provider, { generation: () => gen }),
+    );
+    expect(out).toEqual({ kind: "needsSignIn", reason: "signedOut" });
+    expect(await r.store.getToken()).toBeNull();
+    expect(r.calls.filter((u) => u.endsWith("/token"))).toEqual([]);
+  });
+
+  it("abandons before storing when the sign-out lands after the token request", async () => {
+    const r = rig();
+    let gen = 0;
+    const s = stub({ silent: SUBJECT_TOKEN });
+    // The Worker answers with a token, but a sign-out happened meanwhile.
+    const ctx = ctxOf(r, s.provider, { generation: () => gen });
+    const fetchBefore = r.session.exchange.bind(r.session);
+    r.session.exchange = (port, o) =>
+      fetchBefore(port, {
+        ...o,
+        subjectToken: async (n) => {
+          const t = await o.subjectToken(n);
+          return t;
+        },
+        mayStore: async () => {
+          gen += 1;
+          return o.mayStore!();
+        },
+      });
+    const out = await runAutoSignIn(ctx);
+    expect(out).toEqual({ kind: "needsSignIn", reason: "signedOut" });
+    expect(await r.store.getToken()).toBeNull();
+  });
+
+  it("a released:false sign-out makes the kept token a key, and attach does not upgrade it", async () => {
+    const base = "https://key.plrs.im/acme/identity";
+    const r = rig(undefined, {
+      account: { signout: `${base}/signout`, attach: `${base}/attach` },
+    });
+    const signedIn = await runAutoSignIn(
+      ctxOf(r, stub({ silent: SUBJECT_TOKEN }).provider),
+    );
+    expect(signedIn).toMatchObject({ kind: "signedIn" });
+    expect(r.session.provenance).toBe("signin");
+    expect(await r.session.signOut()).toEqual({ released: false });
+    expect(r.session.provenance).toBe("key");
+    expect(await r.store.provenance!.get()).toBe("key");
+    expect(r.session.hasToken).toBe(true);
+    await r.session.attach(true);
+    expect(r.session.provenance).toBe("key");
+    expect(await r.store.provenance!.get()).toBe("key");
+    // Rung 1 no longer counts it.
+    const s = stub();
+    expect(await runAutoSignIn(ctxOf(r, s.provider))).toEqual({
+      kind: "needsSignIn",
+      reason: "noCredential",
+    });
   });
 
   it("is unavailable where the product serves none, or not this kind", async () => {
@@ -479,7 +563,13 @@ describe("the FedCM provider", () => {
 });
 
 describe("through the browser adapter", () => {
-  async function adapterRig(provider: PlatformIdentityProvider | null) {
+  async function adapterRig(
+    provider: PlatformIdentityProvider | null,
+    o: {
+      tokenOk?: boolean;
+      wrap?: (s: ReturnType<typeof indexedDbStore> & object) => object;
+    } = {},
+  ) {
     const key = await newTestKey("pkey-test-auto");
     const disc = JSON.parse(
       discoveryBody(services("license", "identity", "config")),
@@ -501,7 +591,9 @@ describe("through the browser adapter", () => {
         return json({ nonce: nonceOf(nonces), expiresIn: 300 });
       }
       if (url.href === ENDPOINTS.token)
-        return json({ error: "invalid_grant" }, 400);
+        return o.tokenOk
+          ? json(TOKEN_BODY)
+          : json({ error: "invalid_grant" }, 400);
       if (url.pathname === "/acme/license/activate")
         return json({ token: "pkeyt_one", schemaVersion: 1 });
       if (url.pathname === "/acme/license/deauthorize")
@@ -517,7 +609,7 @@ describe("through the browser adapter", () => {
       trust: { pinnedKeys: { [key.kid]: key.raw } },
       fetchImpl,
       now: () => NOW,
-      store,
+      store: (o.wrap ? o.wrap(store) : store) as typeof store,
       platformIdentity: provider,
       keyring: {
         deviceKeys: createWebDeviceKeyStore({
@@ -543,7 +635,7 @@ describe("through the browser adapter", () => {
     expect(s.asked).toEqual([]);
   });
 
-  it("an explicit sign-in (a key activation) clears the flag", async () => {
+  it("a key activation does not clear the sign-out flag", async () => {
     const s = stub();
     const { adapter, store } = await adapterRig(s.provider);
     await store.explicitSignOut!.set(true);
@@ -552,10 +644,73 @@ describe("through the browser adapter", () => {
       reason: "signedOut",
     });
     expect(s.asked).toEqual([]);
-    // The documents are not served here, so the sync after the activation may fail; the
-    // activation itself is what clears the flag.
+    // The documents are not served here, so the sync after the activation may fail.
     await adapter.activateWithKey("pkey_good").catch(() => undefined);
-    expect(await store.explicitSignOut!.get()).toBe(false);
+    expect(await store.explicitSignOut!.get()).toBe(true);
+  });
+
+  it("a sign-out while the provider is pending leaves no token and the flag set", async () => {
+    let release!: (t: string) => void;
+    const pending = new Promise<string>((r) => (release = r));
+    let asked!: () => void;
+    const askedP = new Promise<void>((r) => (asked = r));
+    const s = stub();
+    s.provider.token = async () => {
+      asked();
+      return pending;
+    };
+    const { adapter, store } = await adapterRig(s.provider, { tokenOk: true });
+    const ladder = adapter.autoSignIn();
+    await askedP;
+    await adapter.signOut();
+    release(SUBJECT_TOKEN);
+    expect(await ladder).toEqual({ kind: "needsSignIn", reason: "signedOut" });
+    expect(await store.getToken()).toBeNull();
+    expect(await store.explicitSignOut!.get()).toBe(true);
+  });
+
+  it("fails closed: an unreadable flag reads as signed out", async () => {
+    const s = stub({ silent: SUBJECT_TOKEN });
+    const { adapter } = await adapterRig(s.provider, {
+      tokenOk: true,
+      wrap: (st) => ({
+        ...st,
+        explicitSignOut: {
+          get: async () => {
+            throw new Error("storage");
+          },
+          set: async () => undefined,
+        },
+      }),
+    });
+    expect(await adapter.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "signedOut",
+    });
+    expect(s.asked).toEqual([]);
+  });
+
+  it("a flag that cannot be written never aborts sign-out, is reported, and holds in memory", async () => {
+    const s = stub({ silent: SUBJECT_TOKEN });
+    const { adapter } = await adapterRig(s.provider, {
+      tokenOk: true,
+      wrap: (st) => ({
+        ...st,
+        explicitSignOut: {
+          get: async () => false,
+          set: async () => {
+            throw new Error("storage");
+          },
+        },
+      }),
+    });
+    const out = await adapter.signOut();
+    expect(out).toMatchObject({ warning: "sign-out-flag-not-saved" });
+    expect(await adapter.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "signedOut",
+    });
+    expect(s.asked).toEqual([]);
   });
 
   it("answers unavailable on the desktop adapter", async () => {

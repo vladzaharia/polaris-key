@@ -1304,7 +1304,6 @@ export class BrowserAdapter implements PolarisAdapter {
       try {
         const outcome = await this.bearer.activate(key);
         if (outcome.kind !== "ok") throw activationError(outcome);
-        await this.setExplicitSignOut(false);
         await this.bearer.sync();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         return { keyEntries: outcome.keyEntries ?? null };
@@ -1355,8 +1354,14 @@ export class BrowserAdapter implements PolarisAdapter {
   async signOut(): Promise<SignOutResult> {
     if (this.configError) throw this.fail("identity", this.configError);
     this.setBusy("identity", true);
-    // Fail closed: from here no silent rung signs this device in again until an explicit sign-in.
-    await this.setExplicitSignOut(true);
+    // Fail closed: from here no silent rung signs this device in again until a person signs in.
+    // Any ladder already running is abandoned before it stores a token.
+    this.signOutGeneration += 1;
+    const warn: Pick<SignOutResult, "warning"> = (await this.setExplicitSignOut(
+      true,
+    ))
+      ? {}
+      : { warning: "sign-out-flag-not-saved" };
     // Stop the provider re-selecting the account on the next visit. Loaded on demand so the page
     // bundle stays within its size budget.
     await import("./bearer/autoSignIn.js").then(
@@ -1371,11 +1376,11 @@ export class BrowserAdapter implements PolarisAdapter {
         if (accountEndpointsOf(this.discovery_)?.signout) {
           const r = await this.bearer.signOut();
           this.applyBearer({ busy: noBusy(), error: noErrors() });
-          return r;
+          return { ...r, ...warn };
         }
         await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
-        return { released: true };
+        return { released: true, ...warn };
       } catch (e) {
         throw this.fail(
           "identity",
@@ -2040,13 +2045,19 @@ export class BrowserAdapter implements PolarisAdapter {
   private defaultProvider_: PlatformIdentityProvider | null = null;
   private platformIdentity: PlatformIdentityProvider | null | undefined;
 
-  private async setExplicitSignOut(on: boolean): Promise<void> {
-    if (!this.bearer) return;
+  /** Bumped by every `signOut()`; a running ladder compares it before it stores a token. */
+  private signOutGeneration = 0;
+
+  /** Sets the flag in memory, then in the store. False when the store could not keep it (the
+   *  in-memory flag still holds for this page); never throws. */
+  private async setExplicitSignOut(on: boolean): Promise<boolean> {
+    if (!this.bearer) return true;
     this.signedOutHere = on;
     try {
       await this.bearerStore?.explicitSignOut?.set(on);
+      return true;
     } catch {
-      // The in-memory flag still holds for this page.
+      return false;
     }
   }
 
@@ -2055,7 +2066,8 @@ export class BrowserAdapter implements PolarisAdapter {
     try {
       return (await this.bearerStore?.explicitSignOut?.get()) === true;
     } catch {
-      return false;
+      // Fail closed: a flag that cannot be read is a sign-out.
+      return true;
     }
   }
 
@@ -2070,12 +2082,11 @@ export class BrowserAdapter implements PolarisAdapter {
 
   /** `identity.autoSignIn(opts?)`: the ladder. Bearer mode; elsewhere `unavailable`. */
   async autoSignIn(opts: AutoSignInOptions = {}): Promise<AutoSignInResult> {
-    if (this.configError) throw this.fail("identity", this.configError);
     const b = this.bearer;
-    if (!b) return { kind: "unavailable", code: "runtime" };
-    await this.ensureDiscovery();
-    const m = await import("./bearer/autoSignIn.js");
+    if (this.configError || !b) return { kind: "unavailable", code: "runtime" };
     try {
+      await this.ensureDiscovery();
+      const m = await import("./bearer/autoSignIn.js");
       const result = await m.runAutoSignIn(
         {
           bearer: b,
@@ -2083,6 +2094,7 @@ export class BrowserAdapter implements PolarisAdapter {
           provider: this.platformProvider(m),
           endpoints: exchangeDiscoveryOf(this.discovery_),
           explicitSignOut: () => this.explicitSignOut(),
+          generation: () => this.signOutGeneration,
           syncKey: () =>
             this.bearer && this.capabilities.sync.enabled
               ? m.ringSyncKey(this.keyring)
@@ -2094,12 +2106,9 @@ export class BrowserAdapter implements PolarisAdapter {
         this.applyBearer({ busy: noBusy(), error: noErrors() });
       return result;
     } catch (e) {
-      throw this.fail(
-        "identity",
-        e instanceof PolarisError
-          ? e
-          : new PolarisError("sign-in-failed", (e as Error).message),
-      );
+      // Only a cancellation leaves the ladder as a throw.
+      if ((e as { name?: string } | null)?.name === "AbortError") throw e;
+      return { kind: "unavailable", code: "refused" };
     }
   }
 

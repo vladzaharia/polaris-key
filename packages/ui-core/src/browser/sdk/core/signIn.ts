@@ -291,7 +291,11 @@ export type AutoSignInUnavailable =
   /** Discovery named a sign-in endpoint off the product's origin (or not https). */
   | "endpoint"
   /** The transport has no ladder: the desktop renderer, a cookie page, the local adapter. */
-  | "runtime";
+  | "runtime"
+  /** A refusal or failure the ladder could not turn into a result. */
+  | "refused"
+  /** The network failed. */
+  | "network";
 
 /** How the ladder ended. A grant and a link handle are not enumerable, so a logged or stringified
  *  result leaves them out. */
@@ -334,7 +338,7 @@ export type AutoSignInResult =
       kind: "deviceLimit";
       manageUrl?: string;
       /** The licences and their seats, when the refusal came with the choice view. */
-      choices?: LicenseChoiceView;
+      view?: LicenseChoiceView;
     }
   | { kind: "unavailable"; code: AutoSignInUnavailable };
 
