@@ -105,8 +105,17 @@ func _card_shown() -> bool:
 	return true
 
 
+## On a phone the step fills the page less the safe margins, like the refusal steps.
+func _bleeds() -> bool:
+	return true
+
+
+func _opens_at_top() -> bool:
+	return true
+
+
 func squeeze_max() -> int:
-	return 2
+	return 4
 
 
 func _arrange(m: Dictionary) -> void:

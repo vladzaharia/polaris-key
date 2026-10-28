@@ -300,7 +300,7 @@ func _bleeds() -> bool:
 
 
 func squeeze_max() -> int:
-	return 4
+	return 5
 
 
 ## True while the device-limit view or a focused key refusal is on screen.
@@ -640,12 +640,16 @@ func _fit_font(b: Button) -> void:
 ## pad-only device), and Use a different key (quiet).
 func _render_refusal(t: PKeyUiCopy) -> void:
 	# Short on room, the product header gives way before the screen scrolls.
-	_limit_product.visible = squeeze_level() < 2
 	_limit_product.refresh()
+	# `refresh()` decides whether the header has anything to show; the squeeze only takes it away.
+	if squeeze_level() >= 2:
+		_limit_product.visible = false
 	var limit_kind := refusal == "key-entry-limit"
 	_limit_title.text = t.text("refusal_limit_title" if limit_kind else "refusal_owned_title")
 	_limit_lede.text = t.text("refusal_limit_lede" if limit_kind else "refusal_owned_lede")
-	_limit_lede.visible = squeeze_level() < 3
+	# The lede is why Sign in helps: the product header goes first, then the compact density, and only
+	# when the page still overflows (the last step) does it give way, so Sign in stays on screen.
+	_limit_lede.visible = squeeze_level() < 5
 	_seats.visible = false
 	var as_qr := manage_presentation() == "qr"
 	var has_link := limit_kind and manage_url != ""
@@ -658,7 +662,11 @@ func _render_refusal(t: PKeyUiCopy) -> void:
 	_manage_qr.get_parent().visible = _manage_qr.visible
 	show_text(_manage_caption, t.text("add_in_locker_scan") if _manage_qr.visible else "")
 	_remedy.visible = _manage_qr.visible
-	_again.text = t.text("sign_in")
+	# The same copy key the other kits read: "Sign in to that account" for a license in another account.
+	if refusal == "license-owned":
+		cat_text(_again, "signin.key.ownedSignIn")
+	else:
+		_again.text = t.text("sign_in")
 	_again.visible = capabilities()["sign_in"]
 	_other_key.text = t.text("different_key")
 

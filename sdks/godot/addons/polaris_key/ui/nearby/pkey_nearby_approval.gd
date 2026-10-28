@@ -91,7 +91,11 @@ func _build() -> void:
 
 
 func _bleeds() -> bool:
-	return false
+	return true
+
+
+func _opens_at_top() -> bool:
+	return true
 
 
 func _card_shown() -> bool:
@@ -99,7 +103,7 @@ func _card_shown() -> bool:
 
 
 func squeeze_max() -> int:
-	return 2
+	return 4
 
 
 func _arrange(m: Dictionary) -> void:
@@ -150,7 +154,8 @@ func _on_code(i: int) -> void:
 
 func _initial_focus() -> Control:
 	if step == "ask":
-		return _code_buttons[0] if is_focusable(_code_buttons[0]) else _deny
+		# Deny is the safe default: a pad's A on open never approves a code at random.
+		return _deny if is_focusable(_deny) else _code_buttons[0]
 	if is_focusable(_primary):
 		return _primary
 	return _entry if is_focusable(_entry) else null
