@@ -30,6 +30,8 @@ VALUE_HOLDERS = {"ManagedEntry"}
 #: Explicitly safe: (class, field) -> why.
 SAFE = {
     ("SyncDeps", "tokens"): "a TokenManager (default object repr), not a token string",
+    ("DeviceProofFields", "token_hash"): "a SHA-256 of a provider token (a proof line), not the token",
+    ("DeviceProof", "token_hash"): "a SHA-256 of a provider token (a proof line), not the token",
 }
 
 

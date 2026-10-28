@@ -55,8 +55,8 @@
       "note": "client.backend (polaris_key.backend): headers(), httpx_auth() (sync and async) and requests_auth() send X-PKey-License and X-PKey-Device only; backend.origins (exact, HTTPS except loopback) is checked on the request and, for requests, on every redirect hop; the freshness pre-sync, one shared concurrent sync, one retry on license_stale/license_invalid, and not_entitled/sign_in_required raised typed. tests/test_backend.py replays backend-matrix.json's client rows."
     },
     "core.devicekeys": {
-      "status": "planned",
-      "wp": "CC-26"
+      "status": "implemented",
+      "note": "polaris_key.devices.keys (create_device_key_store) over cryptography: a 0600 file in a 0700 state directory, fcntl.flock / msvcrt.locking, atomic os.replace; an unreadable record is an error that only wipe() resets; client.devices.register_keys sends PUT /devices/keys. The pkey-proof/1 signer and verifier are polaris_key.core.device_keys / device_proof. tests/test_device_keys.py, tests/test_device_proof_conformance.py."
     },
     "license.gate": {
       "status": "implemented"

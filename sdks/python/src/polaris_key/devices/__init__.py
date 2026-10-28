@@ -10,10 +10,26 @@ Mirrors ``@polaris-key/node/devices``.
 
 from __future__ import annotations
 
+from ..core.device_keys import (
+    DeviceKeyError,
+    DeviceKeyPort,
+    DeviceKeysRequest,
+    DeviceKeyStoreError,
+    DeviceKeysUnreadableError,
+    DeviceKeyUnsupportedError,
+    DeviceProofError,
+    DevicePublicKeys,
+    build_device_keys_request,
+    sign_device_proof,
+    sign_keys_proof,
+)
+from ..core.device_proof import DeviceProof, DeviceProofFields, verify_device_proof
 from .client import (
+    DEVICE_KEYS_PATH,
     DEVICES_PATH,
     REGISTER_PATH,
     AccountDevice,
+    DeviceKeysResponse,
     DeviceManagementUnsupportedError,
     DevicesClient,
     RegisterClosed,
@@ -39,6 +55,14 @@ from .fingerprint import (
     ram_bucket,
     raw_components,
 )
+from .keys import (
+    DEVICE_KEYS_FILE,
+    DeviceKeyStorage,
+    DeviceKeyStore,
+    FileDeviceKeyStorage,
+    InMemoryDeviceKeyStorage,
+    create_device_key_store,
+)
 from .store import (
     CACHE_FORMAT_VERSION,
     KEYRING_SERVICE_PREFIX,
@@ -52,6 +76,28 @@ from .store import (
 
 __all__ = [
     "DevicesClient",
+    "DeviceKeysResponse",
+    "DEVICE_KEYS_PATH",
+    "DEVICE_KEYS_FILE",
+    "DeviceKeyPort",
+    "DevicePublicKeys",
+    "DeviceKeyStore",
+    "DeviceKeyStorage",
+    "FileDeviceKeyStorage",
+    "InMemoryDeviceKeyStorage",
+    "create_device_key_store",
+    "DeviceKeyError",
+    "DeviceKeyUnsupportedError",
+    "DeviceKeysUnreadableError",
+    "DeviceKeyStoreError",
+    "DeviceProofError",
+    "DeviceProof",
+    "DeviceProofFields",
+    "DeviceKeysRequest",
+    "verify_device_proof",
+    "sign_device_proof",
+    "sign_keys_proof",
+    "build_device_keys_request",
     "AccountDevice",
     "RegisterResult",
     "RegisterOk",

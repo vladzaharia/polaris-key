@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from ..constants_generated import ErrorCode
 from ..core.cache import CacheManager
 from ..core.context import CoreContext, server_message_of
+from ..core.device_keys import DeviceKeyPort, build_device_keys_request
 from ..core.errors import PolarisError
 from ..core.telemetry import build_snapshot, report_snapshot
 from ..core.token import TokenManager
@@ -42,13 +43,16 @@ __all__ = [
     "RegisterResult",
     "DeviceManagementUnsupportedError",
     "DeviceRefusedError",
+    "DeviceKeysResponse",
     "DevicesClient",
     "REGISTER_PATH",
     "DEVICES_PATH",
+    "DEVICE_KEYS_PATH",
 ]
 
 REGISTER_PATH = "devices/register"
 DEVICES_PATH = "devices"
+DEVICE_KEYS_PATH = "devices/keys"
 
 
 @dataclass(frozen=True)
@@ -143,6 +147,13 @@ RegisterResult = Union[
     RegisterRefused,
     RegisterError,
 ]
+
+
+@dataclass(frozen=True)
+class DeviceKeysResponse:
+    """The answer of ``PUT /<p>/devices/keys``: the server's key sequence number."""
+
+    key_seq: int
 
 
 class DeviceManagementUnsupportedError(PolarisError):
@@ -295,6 +306,35 @@ class DevicesClient:
         return RegisterError(
             message=_text_or_empty(res), code=ErrorCode.HTTP_ERROR, status=res.status_code
         )
+
+    # ── Device keys (CC-03.2) ───────────────────────────────────────────────────────
+    def register_keys(self, port: DeviceKeyPort, *, allow_ephemeral: bool = False) -> DeviceKeysResponse:
+        """``PUT /<p>/devices/keys`` — registers the port's public keys for this device with a ``keys``
+        proof. Resending is safe (the server answers a registered pair with its ``keySeq``).
+
+        Refuses a memory-only port unless ``allow_ephemeral`` (a ``DeviceKeyUnsupportedError``).
+        Raises :class:`DeviceManagementUnsupportedError` without a credential,
+        ``network-error`` / ``server-error``, or :class:`DeviceRefusedError` for a refusal; the private
+        halves never leave the port."""
+        token = self._require_token()
+        _path, body = build_device_keys_request(
+            port,
+            product=self._ctx.product,
+            device_id=self._ctx.device_id,
+            allow_ephemeral=allow_ephemeral,
+        )
+        res = self._ctx.request(
+            "PUT",
+            self._ctx.url(DEVICE_KEYS_PATH),
+            headers=self._ctx.headers({"authorization": f"Bearer {token}", "content-type": "application/json"}),
+            json=body.to_json(),
+        )
+        if not res.is_success:
+            raise _refusal(res, ErrorCode.HTTP_ERROR, "device keys")
+        key_seq = _json_or_empty(res).get("keySeq")
+        if not isinstance(key_seq, int) or isinstance(key_seq, bool) or key_seq < 1 or key_seq > 2**53 - 1:
+            raise PolarisError(ErrorCode.BAD_RESPONSE, "devices/keys answered without a keySeq.")
+        return DeviceKeysResponse(key_seq=key_seq)
 
     # ── Roster ──────────────────────────────────────────────────────────────────────
     def list(self) -> List[AccountDevice]:
