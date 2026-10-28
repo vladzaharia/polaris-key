@@ -29,6 +29,7 @@
  * trusts that a row exists.
  */
 
+import { isJsonObject } from "../../platform/json.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { bearer } from "../../platform/http.js";
@@ -81,10 +82,7 @@ const noContent = (): Response =>
 const badRequest = (): Response => wireError(400, ErrorCode.BadRequest);
 const conflict = (): Response => wireError(409, ErrorCode.KeyringConflict);
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
-
-const b64url = (v: unknown, max: number): v is string =>
+const isB64urlField = (v: unknown, max: number): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= max && B64URL.test(v);
 
 interface WrapBody {
@@ -97,14 +95,15 @@ interface WrapBody {
 function wrapBody(o: Record<string, unknown>): WrapBody | null {
   const { kem, enc, ct } = o;
   if (typeof kem !== "string" || !KEM.test(kem)) return null;
-  if (!b64url(enc, MAX_ENC) || !b64url(ct, MAX_WRAP_CT)) return null;
+  if (!isB64urlField(enc, MAX_ENC) || !isB64urlField(ct, MAX_WRAP_CT))
+    return null;
   return { kem, enc, ct };
 }
 
 async function readJson(req: Request): Promise<Record<string, unknown> | null> {
   try {
     const v = JSON.parse(await readBodyText(req, MAX_BODY)) as unknown;
-    return isRecord(v) ? v : null;
+    return isJsonObject(v) ? v : null;
   } catch (e) {
     if (e instanceof BodyTooLargeError) throw e;
     return null;
@@ -233,11 +232,14 @@ async function postKeyring(
   const { ringId, rootKid } = o;
   if (typeof ringId !== "string" || !RING_ID.test(ringId)) return badRequest();
   if (typeof rootKid !== "string" || !KID.test(rootKid)) return badRequest();
-  const wrap = isRecord(o.wrap) ? wrapBody(o.wrap) : null;
+  const wrap = isJsonObject(o.wrap) ? wrapBody(o.wrap) : null;
   if (!wrap) return badRequest();
   let recoveryCt: string | null = null;
   if (o.recovery !== undefined) {
-    if (!isRecord(o.recovery) || !b64url(o.recovery.ct, MAX_RECOVERY_CT))
+    if (
+      !isJsonObject(o.recovery) ||
+      !isB64urlField(o.recovery.ct, MAX_RECOVERY_CT)
+    )
       return badRequest();
     recoveryCt = o.recovery.ct;
   }
