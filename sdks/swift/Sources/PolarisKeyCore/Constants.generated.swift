@@ -642,6 +642,7 @@ public enum Feature {
     public static let coreStore = "core.store"
     public static let coreCopy = "core.copy"
     public static let coreBackend = "core.backend"
+    public static let coreDevicekeys = "core.devicekeys"
     public static let licenseGate = "license.gate"
     public static let licenseSignedinuser = "license.signedinuser"
     public static let licenseActivate = "license.activate"
@@ -771,6 +772,7 @@ public let FEATURE_VALUES: [String] = [
     "core.store",
     "core.copy",
     "core.backend",
+    "core.devicekeys",
     "license.gate",
     "license.signedinuser",
     "license.activate",
@@ -1900,6 +1902,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.store": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.copy": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "core.backend": CapabilityRow(status: "implemented", service: "license", na: []),
+    "core.devicekeys": CapabilityRow(status: "implemented", service: "core", na: []),
     "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.signedinuser": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
@@ -2015,4 +2018,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "d6710551999ee5878e2964a236844a23a7e9d4181ef74de3c15ee42e0ebaa336"
+public let CAPABILITY_DIGEST = "2836c390881d34c3910d1248785ab3ef272c3f2353a43bc3f88363bee4e514d0"

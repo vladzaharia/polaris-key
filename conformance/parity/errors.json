@@ -434,8 +434,7 @@
       "code": "encryption_mismatch",
       "kind": "wire",
       "service": "sync",
-      "description": "A per-mutation result, or 400 from POST /<p>/sync/files/{collection}/{id}/begin: a `ct` on a server-mode product, a `value` or an unblinded name on an end-to-end product, or an `enc` that does not match the product's mode (WIRE-CONTRACT-V5 §13.3, §13.8.4, §13.9, §13.10.1; U-09, U-10).",
-      "plannedBy": "U-09"
+      "description": "A per-mutation result, or 400 from POST /<p>/sync/files/{collection}/{id}/begin: a `ct` on a server-mode product, a `value` or an unblinded name on an end-to-end product, or an `enc` that does not match the product's mode (WIRE-CONTRACT-V5 §13.3, §13.8.4, §13.9, §13.10.1; U-09.1, U-10)."
     },
     {
       "code": "upload_expired",

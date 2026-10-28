@@ -251,6 +251,15 @@ export class SqlStore implements SyncStore {
     this.setMeta("watermark", String(seq));
   }
 
+  getEncryptionSince(): number | undefined {
+    const v = this.getMeta("encryption_since");
+    return v === undefined ? undefined : Number(v);
+  }
+
+  setEncryptionSince(seq: number): void {
+    this.setMeta("encryption_since", String(seq));
+  }
+
   getUsage(): StoreUsage {
     return {
       settings: this.num("usage_settings"),

@@ -711,6 +711,11 @@
     },
     {
       "sdk": "node",
+      "path": "devices.registerKeys",
+      "reason": "CC-26.2 key registration (PUT devices/keys); the cross-SDK concept follows with the other SDKs' key stores (CC-26.3 to CC-26.7)"
+    },
+    {
+      "sdk": "node",
       "path": "devices.requestRegistration",
       "reason": "wiring the boot and update flows call; not an app verb"
     },
@@ -5782,86 +5787,6 @@
     },
     {
       "id": "packs.setChanged",
-      "kind": "stream",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
-          "shape": "signal"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.isSigningIn",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.cancel",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signedInIdentity",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.requestSignIn",
-      "kind": "method",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signInPending",
-      "kind": "stream",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
-          "shape": "signal"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signInConfirm",
-      "kind": "stream",
-      "sdks": {
-        "godot": {
-          "sdkOnly": true,
-          "reason": "Godot-only today (SP-35.13 inventory); another SDK that ships it promotes the row",
-          "shape": "signal"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signInFinished",
       "kind": "stream",
       "sdks": {
         "godot": {

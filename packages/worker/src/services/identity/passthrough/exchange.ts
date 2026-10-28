@@ -79,7 +79,6 @@ import {
 } from "./nonce.js";
 import { bindAndAnswer, oauth, TOKEN_DEVICE_RATE } from "./token.js";
 import { issueGrant } from "./grant.js";
-import { licenseChoiceView } from "./choice.js";
 import { clientRecordFor } from "./client.js";
 import { consentState } from "./routes.js";
 
@@ -342,14 +341,6 @@ export async function handleExchange(ctx: {
         firstTime: consent.firstTime,
         changed: consent.changed,
       },
-      choices: await licenseChoiceView(
-        { env, db, product, now },
-        req,
-        found.accountId,
-        {
-          deviceId,
-        },
-      ),
     };
     return noStore(json(body));
   }
@@ -421,8 +412,10 @@ async function findLinkedAccount(
         tenantScope,
         subject: id.subject,
         kind: id.kind,
-        email: id.email,
-        emailVerified: id.emailVerified,
+        // A developer-scoped link was stored unverified on purpose (it brings no licences and joins
+        // nothing); a sign-in through it never touches the address or upgrades the flag.
+        email: tenantScope === "" ? id.email : null,
+        emailVerified: tenantScope === "" ? id.emailVerified : false,
         amr: [id.kind],
       },
       now,

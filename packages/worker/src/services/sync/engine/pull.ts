@@ -21,14 +21,18 @@
 import {
   SYNC_PULL_PAGE_CHANGES,
   type SyncChange,
+  type SyncSealedChange,
   type SyncTombstone,
   type SyncUsage,
 } from "@polaris-key/protocol/sync";
+import { sealedMembers } from "./settings.js";
 import { liveMembers } from "./store.js";
 import type { StoredSetting, SyncStore } from "./types.js";
 
 /** The setting members of the wire unions: what this engine can produce until U-09. */
-export type SettingChange = Extract<SyncChange, { setting: string }>;
+export type SettingChange =
+  | Extract<SyncChange, { setting: string }>
+  | Extract<SyncSealedChange, { setting: string }>;
 export type SettingTombstone = Extract<SyncTombstone, { setting: string }>;
 
 export interface PullInput {
@@ -39,6 +43,12 @@ export interface PullInput {
   clientId?: string;
   /** The device row's platform family. */
   family: string;
+  /**
+   * End-to-end mode (§13.4, §13.10.7): rows at or above `encryptionSince` leave as `ct` (or, for
+   * a merge setting, sealed `members`), and the outcome names `encryptionSince`. Absent: the
+   * plaintext pull, unchanged.
+   */
+  e2e?: boolean;
   /** For tests; the wire page size is `SYNC_PULL_PAGE_CHANGES`. */
   pageSize?: number;
 }
@@ -54,13 +64,26 @@ export type PullOutcome =
       tombstones: SettingTombstone[];
       usage: SyncUsage;
       etag: string;
+      /** End-to-end pulls only. */
+      encryptionSince?: number;
     }
   | { ok: false; error: "cursor_expired" };
 
 export const pullEtag = (seq: number, lastMutationId: number): string =>
   `"${seq}.${lastMutationId}"`;
 
-function toChange(row: StoredSetting): SettingChange {
+function toChange(row: StoredSetting, sealed: boolean): SettingChange {
+  if (sealed) {
+    const base = {
+      setting: row.key,
+      scope: row.scope,
+      version: row.version,
+      editedHlc: row.stamp.hlc,
+      updatedBy: row.stamp.clientId,
+    };
+    if (row.members) return { ...base, members: sealedMembers(row) };
+    if (typeof row.value === "string") return { ...base, ct: row.value };
+  }
   return {
     setting: row.key,
     scope: row.scope,
@@ -84,12 +107,15 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
   const more = rows.length > size;
   const last = page[page.length - 1];
 
+  // A store with no end-to-end write yet answers the sequence its first one will take.
+  const since = input.e2e ? (store.getEncryptionSince() ?? seq + 1) : undefined;
   const changes: SettingChange[] = [];
   const tombstones: SettingTombstone[] = [];
   for (const row of page) {
     if (row.deleted)
       tombstones.push({ setting: row.key, editedHlc: row.stamp.hlc });
-    else changes.push(toChange(row));
+    else
+      changes.push(toChange(row, since !== undefined && row.version >= since));
   }
 
   const bound = input.clientId ? store.getClient(input.clientId) : undefined;
@@ -107,6 +133,7 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
     tombstones,
     usage: { bytes: u.bytes, settings: u.settings, records: 0, files: 0 },
     etag: pullEtag(seq, lastMutationId),
+    ...(since !== undefined ? { encryptionSince: since } : {}),
   };
 }
 

@@ -54,6 +54,8 @@ export type CloudSyncOp =
       clientId?: string;
       deviceId: string;
       family: string;
+      /** `"e2e"`: sealed rows leave as `ct` and the answer names `encryptionSince` (§13.4). */
+      encryption?: "e2e" | "server";
     })
   | (DoPin & { op: "usage" })
   | (DoPin & { op: "exportAll" })

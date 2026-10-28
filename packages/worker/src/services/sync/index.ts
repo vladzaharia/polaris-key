@@ -27,6 +27,7 @@ import type {
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { handleSyncAdmin } from "./admin/index.js";
+import { syncMode } from "./handlers/common.js";
 import { syncKeyring } from "./keyring.js";
 import { syncIntegration } from "./integration.js";
 import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
@@ -68,11 +69,26 @@ export const syncService: ServiceDescriptor = {
    * records) with U-10. Discovery carries no quota: it depends on the requesting device's
    * licence, so the pull carries it.
    */
-  discoveryFragment: async ({ base }: DiscoveryContext) => ({
-    enabled: true,
-    settings: true,
-    collections: false,
-    saves: false,
-    endpoints: { pull: `${base}/sync`, push: `${base}/sync/ops`, files: null },
-  }),
+  discoveryFragment: async ({ base, env, db, product }: DiscoveryContext) => {
+    // U-09.1 (WIRE-CONTRACT-V5 §13.2, §13.10.1): `encryption` is the product's mode, advertised
+    // only while the operator's launch gate `launch.syncE2e` is on. With the gate off the member
+    // is absent, as on a Worker that cannot take `ct`, so an app that requires E2E stays local
+    // (`unsupported`). The key ring endpoint is named for E2E products only.
+    const mode = await syncMode(env, db, product.slug);
+    return {
+      enabled: true,
+      settings: true,
+      collections: false,
+      saves: false,
+      ...(mode.advertise !== undefined ? { encryption: mode.advertise } : {}),
+      endpoints: {
+        pull: `${base}/sync`,
+        push: `${base}/sync/ops`,
+        files: null,
+        ...(mode.advertise === "e2e"
+          ? { keyring: `${base}/devices/keyring` }
+          : {}),
+      },
+    };
+  },
 };

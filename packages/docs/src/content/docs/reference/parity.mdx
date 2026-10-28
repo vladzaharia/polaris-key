@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 89 | 10 | 26 | 0 |
-| React | `web`, `desktop-bridge` | 89 | 21 | 15 | 0 |
-| Python | `python` | 86 | 10 | 29 | 0 |
-| Swift | `macos`, `ios` | 95 | 9 | 20 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 96 | 9 | 20 | 0 |
-| Kotlin | `android`, `jvm` | 97 | 8 | 19 | 1 |
+| Node | `node` | 90 | 10 | 26 | 0 |
+| React | `web`, `desktop-bridge` | 91 | 21 | 14 | 0 |
+| Python | `python` | 86 | 10 | 30 | 0 |
+| Swift | `macos`, `ios` | 96 | 9 | 20 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 96 | 9 | 21 | 0 |
+| Kotlin | `android`, `jvm` | 98 | 8 | 19 | 1 |
 
 ## Core
 
@@ -43,6 +43,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | ✓; N/A (desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | ✓ | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
 | `core.copy` | Error, gate and activation copy: copy.message(code), copy.title(code) | `pnpm gen constants --check` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.backend` | The client half: X-PKey-License to the app's own backend, refresh first and retry once (client.backend) | `backend-matrix.json` `client` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `core.devicekeys` | Device key store (Ed25519 signing + X25519 agreement keys) and the pkey-proof/1 signer | `device-proof.json` + unit | ✓ | planned (CC-26) | planned (CC-26) | ✓ | planned (CC-26) | ✓ | — |
 
 ## License
 
@@ -174,8 +175,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts + `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
 | `ui.kit.manage` | Device-limit screen: Replace a device (button, or a QR on TV and console) and Try again | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
-| `ui.kit.keyentry` | Key entries: the entries-left line after a key activation, and the key-entry-limit screen (Add it in Polaris Key as a button, or a QR on TV and console) | snapshot tests | N/A (headless: runtime) | planned (I-10a) | N/A (headless: runtime) | ✓ | planned (I-10b) | ✓ | headless: runtime |
-| `ui.kit.account` | Account screens: License in another account with Sign in, Add to your Library (attach) and Sign out | snapshot tests | N/A (headless: runtime) | planned (I-10a) | N/A (headless: runtime) | ✓ | planned (I-10b) | ✓ | headless: runtime |
+| `ui.kit.keyentry` | Key entries: the entries-left line after a key activation, and the key-entry-limit screen (Add it in Polaris Key as a button, or a QR on TV and console) | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | planned (I-10b) | ✓ | headless: runtime |
+| `ui.kit.account` | Account screens: License in another account with Sign in, Add to your Library (attach) and Sign out | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | planned (I-10b) | ✓ | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.mount` | Terminal drop-ins: the license verbs mounted into the host's CLI framework (namespace, collisions, exit 4) | `ui-matrix.json` `cli` + unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (UK-54); N/A (android: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.contract` | Terminal kit contract: exit codes, refusal marks, piped stdin and the capability table | `ui-matrix.json` `cli` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |

@@ -21,6 +21,7 @@ import {
 } from "@polaris-key/ui-core";
 import { monogramOf, OPENS, spellOut, type Resolved } from "./contract.js";
 import { encodeQr } from "./lazy.js";
+import { isRefusalStep, MANAGE_KEY, OPENS_BROWSER_KEY } from "./refusal.js";
 
 /** What the drop-in adds around a view's own controls: the step's Back, controls and links the
  *  state lacks (Use another key), and keys it drops (Sign out on a signed-out screen). */
@@ -490,9 +491,14 @@ export function button(
     detail?: Record<string, unknown>;
   } = {},
 ): ReactNode {
+  // The refusal step's manage link leaves the app too (refusal.ts): the key step's title as its
+  // label, and where it goes as its description.
+  const manage = key === MANAGE_KEY && isRefusalStep(c.view);
   const external =
+    manage ||
     (key === "status.renew" ? renewTarget(c.input) != null : OPENS.has(key)) ||
     c.chrome?.labels?.[key] !== undefined;
+  const hint = manage && c.copy.has(OPENS_BROWSER_KEY);
   const device =
     NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
       ? pickedDevice(c)
@@ -507,6 +513,7 @@ export function button(
       data-key={key}
       aria-disabled={extra.busy ? "true" : undefined}
       aria-label={extra.label}
+      aria-describedby={hint ? "pk-opens-browser" : undefined}
       onClick={() => {
         if (!extra.busy) c.act(key, extra.detail);
       }}
@@ -526,6 +533,11 @@ export function button(
               : ""}
           </span>
         </>
+      ) : null}
+      {hint ? (
+        <span id="pk-opens-browser" className="visually-hidden">
+          {plain(c, OPENS_BROWSER_KEY)}
+        </span>
       ) : null}
     </button>
   );

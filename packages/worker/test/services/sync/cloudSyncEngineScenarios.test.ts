@@ -152,7 +152,7 @@ function seedFromAnswer(
         clientId: OTHER_DEVICE_CLIENT,
       },
       deleted: false,
-      value: r.server.value,
+      value: r.server.value as SyncJson,
     });
   }
   // A dropped key answers ok without a version: it wrote nothing.

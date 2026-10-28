@@ -681,7 +681,6 @@ export interface ConfirmSignIn {
   grant: string;
   expiresIn: number;
   consent: ExchangeConsentView;
-  choices: LicenseChoiceView;
 }
 
 /** §12.11.3 rule 4: why the exchange cannot finish in the app. */

@@ -37,6 +37,14 @@ export interface SdkGate {
   opener: string | null;
   act(key: string): void;
   edit(field: string, value: string): void;
+  /** The line a finished sign-in or key activation leaves over the app for a few seconds. */
+  toast: GateToast | null;
+}
+
+/** A toast's copy key and arguments (the entries left, or who signed in under which tier). */
+export interface GateToast {
+  key: string;
+  args: Record<string, string | number>;
 }
 
 /** The SDK-driven gate, or `null` outside `<PolarisKeyProvider>` (the gate then takes `input`). */
@@ -57,6 +65,13 @@ export function useSdkGate(
   const [opener, setOpener] = useState<string | null>(null);
   const errorRef = useRef<unknown>(null);
   errorRef.current = state.error.license;
+  const [toast, setToast] = useState<GateToast | null>(null);
+  // The toast lasts a few seconds.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   // The platform's Back steps back through the gate: each step past Welcome is one history entry.
   const pushed = useRef(false);
@@ -126,8 +141,22 @@ export function useSdkGate(
   handleRef.current = handle;
   useEffect(() => () => handleRef.current?.cancel?.(), []);
   // A sign-in that lands, or a license that holds, ends the flow's local steps.
+  const nameRef = useRef<string | undefined>(undefined);
+  nameRef.current = state.profile?.name ?? state.profile?.email;
+  const tierRef = useRef<unknown>(undefined);
+  tierRef.current = state.entitlements?.tier;
   useEffect(() => {
     if (state.status !== "needs-activation" && state.phase !== "loading") {
+      // A sign-in that landed names who signed in and under which tier (when both are known).
+      if (
+        handleRef.current &&
+        nameRef.current &&
+        typeof tierRef.current === "string"
+      )
+        setToast({
+          key: "signin.desktop.toast",
+          args: { name: nameRef.current, tier: tierRef.current },
+        });
       handleRef.current?.cancel?.();
       setHandle(null);
       setStep("home");
@@ -167,7 +196,17 @@ export function useSdkGate(
 
   const signIn = useCallback(() => {
     if (!adapter) return;
-    void Promise.resolve(adapter.signInWithOidc())
+    // The kit starts its own sign-in; the refusal's `signInUrl` is only the fallback for a
+    // build that cannot (license_owned, refusal.ts).
+    const fallback = (): void => {
+      const url = safeLink(
+        (errorRef.current as { activation?: { signInUrl?: string } } | null)
+          ?.activation?.signInUrl,
+      );
+      if (url) openLink(url);
+    };
+    void Promise.resolve()
+      .then(() => adapter.signInWithOidc())
       .then((started) => {
         // The cookie page navigates away and never gets here; a bearer page or a desktop host
         // that reports a code hands back what to show.
@@ -179,7 +218,7 @@ export function useSdkGate(
           enter("handoff", "welcome.signIn");
         }
       })
-      .catch(() => undefined);
+      .catch(fallback);
   }, [adapter, enter]);
 
   const act = useCallback(
@@ -217,7 +256,25 @@ export function useSdkGate(
         case "activate.submit": {
           setSubmitted(true);
           const v = key.trim();
-          if (v) void adapter.submitKey(v).catch(() => undefined);
+          if (v)
+            void adapter
+              .activateWithKey(v)
+              .then((r) => {
+                // After a key activation: the entries it leaves (identity on).
+                const e = r.keyEntries;
+                if (e)
+                  setToast({
+                    key: "signin.key.entriesLeftShort",
+                    args: { left: Math.max(0, e.limit - e.used) },
+                  });
+              })
+              .catch(() => undefined);
+          return;
+        }
+        case "signin.key.addTitle": {
+          // The refusal's manage link: where the key is added to the account.
+          const url = safeLink(state.error.license?.manageUrl);
+          if (url) openLink(url);
           return;
         }
         case "deviceLimit.title":
@@ -311,6 +368,7 @@ export function useSdkGate(
     opener,
     act,
     edit,
+    toast,
   };
 }
 

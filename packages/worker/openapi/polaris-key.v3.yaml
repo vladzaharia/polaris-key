@@ -27756,6 +27756,12 @@ components:
             settings: { type: boolean }
             collections: { type: boolean }
             saves: { type: boolean }
+            encryption:
+              type: string
+              enum: [e2e, server]
+              description: >
+                The product's mode (§13.5, §13.10.1, U-09.1). Absent while the operator's launch
+                gate `launch.syncE2e` is off: an app that requires E2E then stays local.
             endpoints:
               type: object
               required: [pull, push, files]
@@ -27763,6 +27769,10 @@ components:
                 pull: { type: [string, "null"] }
                 push: { type: [string, "null"] }
                 files: { type: [string, "null"] }
+                keyring:
+                  type: string
+                  description: "`<base>/devices/keyring`, for an `e2e` product (§13.2)."
+
       examples:
         - { enabled: false }
         - enabled: true
@@ -28720,15 +28730,15 @@ components:
       description: >
         I-13.5 (§12.11.3 rule 1): the exchange's `200` when the link exists but the person has
         not consented to this app, or what it asks changed. The grant is `PendingSignIn`'s
-        (300 s, bound to the redeeming device); `choice/complete` then requires `consent`.
-      required: [status, grant, expiresIn, consent, choices]
+        (300 s, bound to the redeeming device); `choice/complete` then requires `consent`. It
+        carries no licence view: a choice that is due comes back from `complete`.
+      required: [status, grant, expiresIn, consent]
       additionalProperties: false
       properties:
         status: { type: string, const: confirm }
         grant: { type: string, pattern: "^sg_[A-Za-z0-9_-]{43}$" }
         expiresIn: { type: integer, const: 300 }
         consent: { $ref: "#/components/schemas/ExchangeConsentView" }
-        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
     ExchangeConsentView:
       type: object
       description: >
@@ -29124,6 +29134,30 @@ components:
               additionalProperties: {}
               description: "A `merge` setting's live members."
         - type: object
+          description: >
+            End-to-end mode (§13.4, §13.10, U-09.1): `ct` replaces `value`, and a `merge`
+            setting carries sealed `members` and no `ct`. A row below `encryptionSince` is
+            legacy plaintext and keeps `value`.
+          required: [setting, scope, version, editedHlc, updatedBy]
+          additionalProperties: false
+          properties:
+            setting: { type: string }
+            scope: { type: string, enum: [user, platform] }
+            ct: { type: string }
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            updatedBy: { type: string }
+            members:
+              type: array
+              items:
+                type: object
+                required: [member, ct, editedHlc]
+                additionalProperties: false
+                properties:
+                  member: { type: string, description: "Blinded (`x:…`)." }
+                  ct: { type: string }
+                  editedHlc: { type: string }
+        - type: object
           required: [record, value, version]
           additionalProperties: false
           properties:
@@ -29196,6 +29230,18 @@ components:
           type: boolean
           const: true
           description: "Only on a cursor-0 answer for a person with nothing stored."
+        encryption:
+          type: string
+          enum: [e2e, server]
+          description: >
+            The product's mode (§13.4, §13.10.1, U-09.1). Absent while the operator's launch gate
+            `launch.syncE2e` is off.
+        encryptionSince:
+          type: integer
+          minimum: 1
+          description: >
+            `e2e` only (§13.10.7): the store sequence from which every row is sealed. A change's
+            `version` below it is legacy plaintext.
         changes:
           type: array
           items: { $ref: "#/components/schemas/SyncChange" }
@@ -29261,6 +29307,17 @@ components:
             ]
         value: {}
         member: { type: string }
+        ct:
+          type: string
+          description: >
+            End-to-end mode (§13.3, §13.10, U-09.1): the sealed value, a `pkey-sync-value/1`
+            envelope in canonical base64url, in place of `value`. The wrong one of the two is a
+            `rejected` result with `encryption_mismatch`.
+        baseVersion:
+          description: >
+            A `max`/`min` setting in end-to-end mode is a compare-and-swap register: a number
+            equal to the row's `version`, or `"*"` for create-only.
+          oneOf: [{ type: integer, minimum: 0 }, { type: string, const: "*" }]
         editedHlc: { type: string, pattern: "^[0-9a-f]{12}:[0-9a-f]{4}$" }
     PushRequest:
       type: object
@@ -29305,12 +29362,19 @@ components:
             status: { type: string, const: conflict }
             server:
               type: object
-              required: [value, version]
+              required: [version]
+              description: >
+                The server's copy. A sealed row (end-to-end mode, §13.3) answers `ct`, or sealed
+                `members`, in place of `value`.
               properties:
                 value: {}
+                ct: { type: string }
                 version: { type: integer }
                 editedHlc: { type: string }
-                members: { type: object, additionalProperties: {} }
+                members:
+                  oneOf:
+                    - { type: object, additionalProperties: {} }
+                    - { type: array, items: { type: object } }
         - type: object
           required: [mutationId, status, code]
           properties:
@@ -29324,6 +29388,7 @@ components:
                 - op_invalid_for_policy
                 - collection_unknown
                 - entitlement_required
+                - encryption_mismatch
                 - quota_exceeded
             scope:
               type: string

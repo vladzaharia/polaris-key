@@ -54,6 +54,10 @@
       "status": "implemented",
       "note": "client.backend (polaris_key.backend): headers(), httpx_auth() (sync and async) and requests_auth() send X-PKey-License and X-PKey-Device only; backend.origins (exact, HTTPS except loopback) is checked on the request and, for requests, on every redirect hop; the freshness pre-sync, one shared concurrent sync, one retry on license_stale/license_invalid, and not_entitled/sign_in_required raised typed. tests/test_backend.py replays backend-matrix.json's client rows."
     },
+    "core.devicekeys": {
+      "status": "planned",
+      "wp": "CC-26"
+    },
     "license.gate": {
       "status": "implemented"
     },

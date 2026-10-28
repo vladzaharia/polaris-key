@@ -140,6 +140,16 @@ export {
   type DevicesClientOptions,
   type RegisterResult,
 } from "./devices/client.js";
+export {
+  DeviceKeyStoreError,
+  DeviceKeysUnreadableError,
+  FileDeviceKeyStorage,
+  InMemoryDeviceKeyStorage,
+  createNodeDeviceKeyStore,
+  type NodeDeviceKeyStorage,
+  type NodeDeviceKeyStore,
+  type NodeDeviceKeyStoreOptions,
+} from "./devices/deviceKeys.js";
 export { deriveDeviceId, deviceIdFromRaw } from "./devices/deviceId.js";
 export {
   collectFingerprint,

@@ -49,6 +49,7 @@ import {
 import { GLYPHS, text, type Chrome } from "./parts.js";
 import { withChoice } from "./licenseRows.js";
 import { renderView } from "./views.js";
+import { openLink, safeLink } from "./links.js";
 
 export type { FormInput, FormStep } from "./contract.js";
 
@@ -260,7 +261,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
   /** The toast an existing license leaves in the page when its sheet closes. */
   const [toast, setToast] = useState<{
     key: string;
-    args: Record<string, string>;
+    args: Record<string, string | number>;
   } | null>(null);
   const finish = () => {
     if (doneSent.current) return;
@@ -315,6 +316,20 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
         return model.continue();
       case "signin.choice.keyInstead":
         return model.haveKey();
+      case "signin.key.differentKey":
+        return model.differentKey();
+      case "welcome.signIn":
+        // A refusal's Sign in starts the kit's own sign-in; `signInUrl` is only the fallback
+        // for a build that cannot (license_owned).
+        return model.start({ channel: "browser" }).catch(() => {
+          const url = safeLink(s.activation?.signInUrl);
+          if (url) openLink(url);
+        });
+      case "signin.key.addTitle": {
+        const url = safeLink(s.activation?.manageUrl);
+        if (url) openLink(url);
+        return;
+      }
       case "activate.submit":
         return model.submitKey(s.keyField?.text ?? "");
       case "signin.replace.open":
@@ -422,7 +437,17 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
       return;
     }
     finish();
-    if (sheet && props.open && !input.signIn?.issuedNow) {
+    // After a key activation: the entries it leaves, in the page or over it (identity on).
+    const entries =
+      input.activation?.result === "ok"
+        ? input.activation.keyEntries
+        : undefined;
+    if (entries)
+      setToast({
+        key: "signin.key.entriesLeftShort",
+        args: { left: Math.max(0, entries.limit - entries.used) },
+      });
+    else if (sheet && props.open && !input.signIn?.issuedNow) {
       const holder = input.account?.holder?.trim();
       const tier = input.account?.tier;
       setToast(
@@ -539,7 +564,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
             : undefined
       }
     >
-      {sheet && toast ? (
+      {toast ? (
         <div
           className="toast pk-flash"
           role="status"

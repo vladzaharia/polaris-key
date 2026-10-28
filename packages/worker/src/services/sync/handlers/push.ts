@@ -75,6 +75,7 @@ import {
   productGone,
   productStillLive,
   retryable,
+  syncMode,
   type SyncCaller,
 } from "./common.js";
 
@@ -218,10 +219,13 @@ async function pushInner(
     }
   }
   const view = await catalogView(db, product, schemaRow);
+  // The mode the request is served in: E2E only with the launch gate on and an `e2e` catalog.
+  const mode = await syncMode(env, db, product.slug, schemaRow);
   const classified = classifyMutations(
     request.mutations,
     catalog,
     view.migrations,
+    mode.serve,
   );
 
   // 6. The product ceiling.
@@ -280,6 +284,7 @@ async function pushInner(
         clientId: request.clientId,
         deviceId: current.device.device_id,
         family: current.family,
+        encryption: mode.serve,
       });
       tally.add(pullReply.meter);
       const pull = pullReply.outcome;
@@ -323,6 +328,10 @@ async function pushInner(
     quota: current.access.quota,
     usage: pulled.usage,
     ...(pulled.empty ? { empty: true as const } : {}),
+    ...(mode.advertise !== undefined ? { encryption: mode.advertise } : {}),
+    ...(pulled.encryptionSince !== undefined
+      ? { encryptionSince: pulled.encryptionSince }
+      : {}),
     changes: pulled.changes,
     tombstones: pulled.tombstones,
     results: pushed.results,

@@ -60,6 +60,18 @@ export class DeviceKeyUnsupportedError extends Error {
   }
 }
 
+/**
+ * The stored key record exists but cannot be used (wrong shape, extractable keys, or a record
+ * that does not parse or match). It is never replaced automatically: replacing it would silently
+ * change the device's identity. Only `wipe()` clears it; `ensure()` then makes a new pair.
+ */
+export class DeviceKeysUnreadableError extends Error {
+  constructor(message = "device keys: the record is unreadable") {
+    super(message);
+    this.name = "DeviceKeysUnreadableError";
+  }
+}
+
 /** A proof could not be built or did not verify. The text never names a key or a signature. */
 export class DeviceProofError extends Error {
   constructor(message: string) {

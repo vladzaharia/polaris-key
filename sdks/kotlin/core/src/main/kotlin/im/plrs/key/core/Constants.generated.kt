@@ -644,6 +644,7 @@ public object Feature {
     public const val coreStore: String = "core.store"
     public const val coreCopy: String = "core.copy"
     public const val coreBackend: String = "core.backend"
+    public const val coreDevicekeys: String = "core.devicekeys"
     public const val licenseGate: String = "license.gate"
     public const val licenseSignedinuser: String = "license.signedinuser"
     public const val licenseActivate: String = "license.activate"
@@ -773,6 +774,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "core.store",
     "core.copy",
     "core.backend",
+    "core.devicekeys",
     "license.gate",
     "license.signedinuser",
     "license.activate",
@@ -1922,6 +1924,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.store" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "dependency"))),
     "core.copy" to CapabilityRow("implemented", "sdk", listOf()),
     "core.backend" to CapabilityRow("implemented", "license", listOf()),
+    "core.devicekeys" to CapabilityRow("implemented", "core", listOf()),
     "license.gate" to CapabilityRow("implemented", "license", listOf()),
     "license.signedinuser" to CapabilityRow("implemented", "license", listOf()),
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
@@ -2037,4 +2040,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "e046ea2b3db8345ac77fe31c331b98d056ca9477cad71145865844c19de1ac45"
+public const val CAPABILITY_DIGEST: String = "7c603fbf48021faca2802fb6059ed35d19677b76ee9586e2347f8079e81d05ef"

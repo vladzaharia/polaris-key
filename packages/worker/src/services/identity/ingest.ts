@@ -17,6 +17,7 @@ import type {
   ManifestContributor,
 } from "../../core/ingest/types.js";
 import { reservedAudienceIn } from "./platformSignIn.js";
+import { valueHeldByOtherProduct } from "../../core/settings/unique.js";
 import { identityManifestIngest } from "./settings.js";
 
 /** A stored `oidc_config` row's columns (`stmtInsertOidcConfig`'s, after the product). */
@@ -217,15 +218,44 @@ export const identityManifest: ManifestContributor = {
       run: async () => {
         // CC-01 D-A1: a product may not name the platform's own login-card client as its audience.
         const hit = reservedAudienceIn(ctx.manifest, ctx.env);
-        return hit
-          ? {
+        if (hit)
+          return {
+            check: "audience",
+            message: `identity.platformSignIn names ${hit}, which the platform reserves. Use your own client id.`,
+            area: "identity",
+            file: "product",
+            path: "/identity/platformSignIn",
+          };
+        // A native link is scoped by the Google web client id or the Apple team id, so a value
+        // another product already declares is refused at create, apply and resync alike.
+        const ps = ctx.manifest.identity?.platformSignIn;
+        const owned: [string, string | null | undefined, string][] = [
+          [
+            "identity.platformSignIn.google.serverClientId",
+            ps?.google?.serverClientId,
+            "/identity/platformSignIn/google/serverClientId",
+          ],
+          [
+            "identity.platformSignIn.apple.teamId",
+            ps?.apple?.teamId,
+            "/identity/platformSignIn/apple/teamId",
+          ],
+        ];
+        for (const [key, value, path] of owned) {
+          if (!value) continue;
+          if (
+            (await valueHeldByOtherProduct(ctx.db, ctx.slug, key, value)) !==
+            null
+          )
+            return {
               check: "audience",
-              message: `identity.platformSignIn names ${hit}, which the platform reserves. Use your own client id.`,
+              message: `${key} is already declared by another product. Use your own client or team.`,
               area: "identity",
               file: "product",
-              path: "/identity/platformSignIn",
-            }
-          : null;
+              path,
+            };
+        }
+        return null;
       },
     },
     {

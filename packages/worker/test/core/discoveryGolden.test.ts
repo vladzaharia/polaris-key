@@ -55,12 +55,16 @@
  * every document: `{"enabled":true,"activate":"<customer origin>/activate?product=<slug>"}` while
  * the product's portal is on (all three fixtures; the recording world has no `CUSTOMER_ORIGIN`),
  * `{"enabled":false}` while it is off. Additive, like `core.presentation`.
+ * U-09.1 (WIRE-CONTRACT-V5 §13.5, plans/CC-01-cloud-sync.md §2.2, approved) added `services.sync.encryption` and
+ * `endpoints.keyring` while the launch gate `launch.syncE2e` is on (the test env turns it on); the
+ * everything product pins them. Additive.
  * CC-03.2 (plans/CC-01-cloud-connect.md §2.8, approved) added `core.endpoints.deviceKeys` (`<base>/devices/keys`)
  * after `report`, in every document. Additive.
  * I-13.7 (WIRE-CONTRACT-V5 §12.11.6) added Identity's `endpoints.nonce` (`<base>/identity/nonce`) after
  * `signout` while the `launch.identityExchange` gate is on (it is, in this suite's env), and the
  * `exchange` member only for a product that declares a platform sign-in kind (none here). Additive;
  * the transcripts `discovery-identity-exchange` and `exchange-gate-off` pin both.
+ * I-13.9 added `endpoints.link` (`<base>/identity/link`) right after `nonce`, under the same gate.
  */
 
 import { readFileSync } from "node:fs";

@@ -11,6 +11,7 @@
 //   cloudsync-atomic          one bad mutation aborts the batch; nothing is stored
 //   cloudsync-client-mismatch a `clientId` bound to another device: `409 client_mismatch`
 //   cloudsync-members         `merge` members by concurrent clocks; a whole `set` is rejected
+//   cloudsync-e2e-settings    (U-09.1) ct push and pull, encryption_mismatch, a max CAS re-merge
 //
 // U-05.17 adds account-required, quota, migrations, first-signin, cors, open-settings, trust and
 // paused.
@@ -93,13 +94,19 @@ const SYNC_CATALOG = {
 
 /** A key-activated device whose person is signed in, with Cloud Sync on. */
 async function syncWorld(
-  opts: { catalog?: unknown; signedIn?: boolean } = {},
+  opts: { catalog?: unknown; signedIn?: boolean; e2eGate?: boolean } = {},
 ): Promise<{
   world: World;
   token: string;
   subject: string;
 }> {
   const world = emptyWorld();
+  // The launch gate `launch.syncE2e` (U-09.1): off for the server-mode conversations, which are
+  // the wire as it was before end-to-end mode, so those transcripts stay byte for byte. The
+  // `cloudsync-e2e-settings` conversation turns it on.
+  (world.env as unknown as Record<string, string>).LAUNCH_SYNC_E2E =
+    opts.e2eGate === true ? "on" : "off";
+  invalidatePlatformSettings(world.env, world.db);
   await seedProduct(world.db, PRODUCT, {
     catalog: opts.catalog ?? SYNC_CATALOG,
   });
@@ -231,6 +238,11 @@ function pulled(body: PullResponse): Record<string, SyncJson> {
     settings: body.changes
       .flatMap((c) => ("setting" in c ? [c.setting] : []))
       .sort(),
+    // End-to-end mode only (U-09.1): the server-mode conversations carry neither member.
+    ...(body.encryption !== undefined ? { encryption: body.encryption } : {}),
+    ...(body.encryptionSince !== undefined
+      ? { encryptionSince: body.encryptionSince }
+      : {}),
   };
 }
 
@@ -652,7 +664,10 @@ export const cloudSyncMembers: Scenario = {
       ]);
       const snap = await pullStep(r, 0, "The merged members.");
       const change = snap.body!.changes[0]!;
-      expect("setting" in change && change.value).toEqual({ a: true, b: true });
+      expect("setting" in change && "value" in change && change.value).toEqual({
+        a: true,
+        b: true,
+      });
       return r.transcript();
     }),
 };
@@ -1103,6 +1118,106 @@ export const cloudSyncCors: Scenario = {
     }),
 };
 
+// ── End-to-end settings (U-09.1; WIRE-CONTRACT-V5 §13.3, §13.4, §13.10) ───────────────────────
+
+/**
+ * A shaped `pkey-sync-value/1` envelope: byte 0 = 1 and `(length - 49) mod 64 = 0`. The server
+ * checks the shape and never decodes the rest, so a fixture needs no key.
+ */
+const sealed = (fill: number, blocks = 1): string => {
+  const bytes = new Uint8Array(49 + 64 * blocks).fill(fill);
+  bytes[0] = 1;
+  return Buffer.from(bytes).toString("base64url");
+};
+const blinded = (c: string): string => `x:${c.repeat(43)}`;
+const sealedSet = (setting: string, ct: string, extra = {}): SyncMutation =>
+  mutation(setting, "set", { ct, ...extra });
+
+export const cloudSyncE2eSettings: Scenario = {
+  id: "cloudsync-e2e-settings",
+  record: () =>
+    pinned("cloudsync-e2e-settings", async (pin) => {
+      mid = 0;
+      const { world, token } = await syncWorld({ e2eGate: true });
+      const r = recorder(
+        "cloudsync-e2e-settings",
+        "End-to-end settings (§13.10). The product is in E2E mode (the default): a push carries ct, a sealed envelope, in place of value, and the pull answers ct with encryption and encryptionSince. A value, or an open setting whose key is not blinded, is rejected encryption_mismatch. A max setting is a compare-and-swap register: a stale baseVersion is a conflict carrying the server's ct, and the client re-pushes the better value on the server's version.",
+        pin,
+        world,
+        token,
+      );
+      const first = await pullStep(
+        r,
+        0,
+        "An empty store names the sequence its first sealed row takes.",
+      );
+      expect(first.body?.encryption).toBe("e2e");
+      expect(first.body?.encryptionSince).toBe(1);
+
+      const theme = sealed(1);
+      const best = sealed(2);
+      const landed = await pushStep(
+        r,
+        [
+          sealedSet("ui.theme", theme),
+          sealedSet(blinded("A"), sealed(3, 2)),
+          sealedSet("game.best", best, { baseVersion: "*" }),
+        ],
+        "A declared key, a blinded open key and a create-only max register, all sealed.",
+      );
+      expect(statuses(landed.body)).toEqual(["ok", "ok", "ok"]);
+
+      const snap = await pullStep(r, 0, "The snapshot: ct in place of value.");
+      expect(
+        snap.body?.changes.every((c) => "ct" in c && !("value" in c)),
+      ).toBe(true);
+
+      const refusals = await pushStep(
+        r,
+        [
+          set("ui.theme", "dark"),
+          sealedSet("my.private.name", sealed(4)),
+          sealedSet("ui.theme", "not-an-envelope"),
+        ],
+        "A value on an E2E product, an unblinded open key and a malformed envelope.",
+        { cursor: landed.body!.cursor },
+      );
+      expect(statuses(refusals.body)).toEqual([
+        "rejected:encryption_mismatch",
+        "rejected:encryption_mismatch",
+        "rejected:value_invalid",
+      ]);
+
+      const stale = await pushStep(
+        r,
+        [sealedSet("game.best", sealed(5), { baseVersion: 3 })],
+        "A max write on the current baseVersion lands.",
+        { cursor: refusals.body!.cursor },
+      );
+      expect(statuses(stale.body)).toEqual(["ok"]);
+      const conflict = await pushStep(
+        r,
+        [sealedSet("game.best", sealed(6), { baseVersion: 3 })],
+        "The same baseVersion again is stale (another device wrote first): conflict, with the server's ct.",
+        { cursor: stale.body!.cursor },
+      );
+      expect(statuses(conflict.body)).toEqual(["conflict"]);
+      const copy = conflict.body!.results[0] as Extract<
+        MutationResult,
+        { status: "conflict" }
+      >;
+      expect(copy.server).toMatchObject({ ct: sealed(5), version: 4 });
+      const merged = await pushStep(
+        r,
+        [sealedSet("game.best", sealed(7), { baseVersion: 4 })],
+        "The client opened the copy, kept the better value and re-pushes on the server's version.",
+        { cursor: conflict.body!.cursor },
+      );
+      expect(statuses(merged.body)).toEqual(["ok"]);
+      return r.transcript();
+    }),
+};
+
 export const CLOUD_SYNC_SCENARIOS: Scenario[] = [
   cloudSyncPushPull,
   cloudSyncDuplicate,
@@ -1120,4 +1235,5 @@ export const CLOUD_SYNC_SCENARIOS: Scenario[] = [
   cloudSyncOpenSettings,
   cloudSyncTrust,
   cloudSyncPaused,
+  cloudSyncE2eSettings,
 ];

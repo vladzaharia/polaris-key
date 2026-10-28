@@ -9,6 +9,7 @@
  */
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
+import { budgetBytes } from "./sealed.js";
 import { liveMembers } from "./store.js";
 import type { StoredSetting, StoreUsage, SyncStore } from "./types.js";
 
@@ -38,17 +39,42 @@ export const valueBytes = (v: SyncJson): number => utf8Length(canonicalJson(v));
 export interface RowCost {
   /** 1 for a live setting, else 0. */
   settings: number;
+  /** The stored bytes: what the quota charges. */
   bytes: number;
+  /**
+   * What the budgets (256 keys, 64 KiB) charge. Equal to `bytes` for a plaintext row; a sealed
+   * value is charged on `envelopeBytes - 113` (§13.10.4), so the budgets keep their meaning.
+   */
+  budget: number;
 }
 
-const FREE: RowCost = { settings: 0, bytes: 0 };
+const FREE: RowCost = { settings: 0, bytes: 0, budget: 0 };
+
+/** The budget charge of a sealed row: the key, and each value less the envelope's overhead. */
+function sealedBudget(row: StoredSetting): number {
+  const key = utf8Length(row.key);
+  if (!row.members)
+    return key + (typeof row.value === "string" ? budgetBytes(row.value) : 0);
+  let total = key;
+  for (const [name, cell] of row.members)
+    if (!cell.removed)
+      total +=
+        utf8Length(name) +
+        (typeof cell.value === "string" ? budgetBytes(cell.value) : 0);
+  return total;
+}
 
 /** What a row costs: nothing for a tombstone or no row. */
 export function rowCost(row: StoredSetting | undefined): RowCost {
   if (!row || row.deleted) return FREE;
   const value = row.members ? liveMembers(row) : row.value;
   if (value === null && row.members) return FREE;
-  return { settings: 1, bytes: utf8Length(row.key) + valueBytes(value) };
+  const bytes = utf8Length(row.key) + valueBytes(value);
+  return {
+    settings: 1,
+    bytes,
+    budget: row.sealed ? sealedBudget(row) : bytes,
+  };
 }
 
 /** Moves the store's totals by the change from `prev` to `next`. */
@@ -63,7 +89,7 @@ export function account(
   const move = (n: number, d: number) => Math.max(0, n + d);
   const out: StoreUsage = {
     settings: move(u.settings, after.settings - before.settings),
-    settingsBytes: move(u.settingsBytes, after.bytes - before.bytes),
+    settingsBytes: move(u.settingsBytes, after.budget - before.budget),
     bytes: move(u.bytes, after.bytes - before.bytes),
   };
   store.setUsage(out);

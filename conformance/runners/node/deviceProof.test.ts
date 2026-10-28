@@ -1,10 +1,12 @@
+// @pkey-feature core.devicekeys
 // The Node conformance runner for `conformance/corpus/v2/device-proof.json` (WIRE-CONTRACT-V5
 // §12.11.1, §15.8). It covers React too, since both JS SDKs share `@polaris-key/client-core`.
 //
 // Every row: the message bytes (or none, when a field breaks the line format) and the verdict.
 // The `keys` value is rebuilt from its parts. The signer and the key stores (CC-26.1) are the last describe.
 
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -18,8 +20,13 @@ import {
   signKeysProof,
   verifyDeviceProof,
   type DeviceKeyPort,
+  type WebDeviceKeyPort,
   type DeviceProof,
 } from "@polaris-key/client-core";
+import {
+  FileDeviceKeyStorage,
+  createNodeDeviceKeyStore,
+} from "@polaris-key/node/devices";
 
 interface Row extends DeviceProof {
   id: string;
@@ -71,7 +78,19 @@ describe("device-proof.json", () => {
 
 // The signer (CC-26.1): every valid row's fields, signed by a fresh store key, give the row's
 // message bytes (a `keys` value names the key, so only its shape is compared) and verify.
-describe("device-proof.json through the signer", () => {
+const webStore = (): WebDeviceKeyPort =>
+  createWebDeviceKeyStore({ storage: memoryDeviceKeyStorage() });
+const nodeStore = (): DeviceKeyPort =>
+  createNodeDeviceKeyStore({
+    storage: new FileDeviceKeyStorage(
+      join(mkdtempSync(join(tmpdir(), "pkey-proof-")), "s", "device-keys.json"),
+    ),
+  });
+
+describe.each([
+  ["the signer", webStore],
+  ["the Node key store (CC-26.2)", nodeStore],
+] as const)("device-proof.json through %s", (_name, makeStore) => {
   const valid = corpus.cases.filter((r) => r.id.startsWith("valid-"));
 
   it("covers every purpose", () => {
@@ -79,9 +98,7 @@ describe("device-proof.json through the signer", () => {
   });
 
   it.each(valid.map((r) => [r.id, r] as const))("signs %s", async (_id, r) => {
-    const store = createWebDeviceKeyStore({
-      storage: memoryDeviceKeyStorage(),
-    });
+    const store = makeStore();
     const seen: Uint8Array[] = [];
     const port: DeviceKeyPort = {
       ensure: () => store.ensure(),

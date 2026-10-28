@@ -30,6 +30,7 @@ import {
   signInHandoffView,
   signInView,
 } from "./models/signIn.js";
+import { activationFromOutcome } from "./errors.js";
 import { createStore, type Deliver, type Store } from "./store.js";
 import { defaultSchedule, type Schedule } from "./loading.js";
 import type { View } from "./view.js";
@@ -501,13 +502,23 @@ export class SignInModel {
     let result: ActivationInput;
     try {
       result = await p.activate(key);
-    } catch {
-      // A failed call is an error under the key field (DL7), never a silent stop.
-      result = { result: "error" };
+    } catch (e) {
+      // A refusal the SDK typed is mapped (D3); any other failed call is an error under the
+      // key field (DL7), never a silent stop.
+      result = activationFromOutcome(e);
     }
     if (epoch !== this.epoch) return;
+    // An ok result stays in the snapshot: its key entries are the toast's words.
+    this.patch({ activation: result });
     if (result.result === "ok") this.finish(true);
-    else this.patch({ activation: result });
+  }
+
+  /** Use a different key (from a refusal no key can fix): the empty field, the refusal gone. */
+  differentKey(): void {
+    this.patch(
+      { keyField: { text: "" }, activation: undefined },
+      { event: "have-key" },
+    );
   }
 
   /** Replace a device on a full license: the device list in place, or the card's Replace. */

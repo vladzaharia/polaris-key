@@ -27,6 +27,8 @@ import componentRegistryJson from "../../../../packages/brand/kit-copy/component
 import type { UiInput } from "@polaris-key/ui-core";
 
 import { LAYOUTS } from "@polaris-key/elements/contract";
+import { KIT_COPY_EN_LEAN } from "@polaris-key/brand/kit-copy/lean";
+import enRest from "../../../brand/src/generated/kit-copy/en-rest.json" with { type: "json" };
 import de from "../../../brand/kit-copy/de.json" with { type: "json" };
 import es from "../../../brand/kit-copy/es.json" with { type: "json" };
 import fr from "../../../brand/kit-copy/fr.json" with { type: "json" };
@@ -36,7 +38,16 @@ import ko from "../../../brand/kit-copy/ko.json" with { type: "json" };
 import ptBR from "../../../brand/kit-copy/pt-BR.json" with { type: "json" };
 import zhHans from "../../../brand/kit-copy/zh-Hans.json" with { type: "json" };
 
+import { PolarisKeyProvider } from "@polaris-key/react";
 import * as Kit from "@polaris-key/react/kit";
+import { desktopAdapter } from "../../src/desktop/desktopAdapter.js";
+import {
+  NOW_SEC,
+  emptyBridgeState,
+  makeDoc,
+  makeFakeBridge,
+  okBridgeState,
+} from "../fixtures.js";
 import {
   DIRECT_COMPONENT_STATE_FIXTURES,
   matrixComponentStateFixtures,
@@ -75,6 +86,9 @@ const ROWS: Record<string, Row> = Object.fromEntries(
 beforeAll(async () => {
   // The QR encoder and the settings, device and account rows load on demand.
   await Kit.preloadKitParts();
+  // The wire codes' English texts (`core.codes.*`) arrive on demand in the app; the runner's
+  // server cannot serve that chunk, so a refusal's render never shows the fallback sentence.
+  Kit.provideKitCopy("en", { ...KIT_COPY_EN_LEAN, ...enRest });
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
@@ -128,6 +142,31 @@ const SCENES: Scene[] = [
     native: true,
   },
   { id: "Activate.rejected", row: "Activate/rejected: not a key" },
+  // The two key refusals no other key can fix: one focused step each (refusal.ts).
+  {
+    id: "Activate.key-entry-limit",
+    fixture: {
+      id: "Activate.key-entry-limit",
+      component: "Activate",
+      state: "rejected",
+      row: "Activate/rejected: the key-entry limit",
+      input: {
+        ...(ROWS["Activate/rejected: the key-entry limit"]!.input as UiInput),
+        activation: {
+          result: "key-entry-limit",
+          manageUrl: "https://key.plrs.im/activate?product=tidewater",
+        },
+      },
+    },
+  },
+  {
+    id: "Activate.license-owned",
+    row: "Activate/rejected: another account holds the license",
+  },
+  {
+    id: "SignIn.key-license-owned",
+    row: "SignIn/key: another account holds the key's license",
+  },
   { id: "SignIn.methods-web", row: "SignIn/methods: web" },
   { id: "SignIn.error-kept", row: "SignIn/error: a sign-in method failed" },
   { id: "SignIn.code-live", row: "SignIn/code: a device-code sign-in" },
@@ -488,6 +527,105 @@ async function check(
     /--pk-/,
   );
 }
+
+/** The gate over the app, after a key activation that leaves entries and after a sign-in that
+ *  lands: the toast each leaves (shots: react.Gate.toast-entries, react.Gate.toast-signed-in). */
+async function gateToast(kind: "entries" | "signed-in"): Promise<void> {
+  const bridge = makeFakeBridge(emptyBridgeState());
+  if (kind === "entries")
+    bridge.submitKey = async () => {
+      bridge.push(okBridgeState());
+      return { kind: "ok", keyEntries: { used: 1, limit: 3 } };
+    };
+  else bridge.pollSignIn = () => new Promise(() => {});
+  const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+  document.body.style.margin = "0";
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  root.render(
+    <PolarisKeyProvider config={{ productSlug: "tidewater", adapter }}>
+      <Kit.PolarisKeyGate theme={{ product: PRODUCT, colorScheme: "dark" }}>
+        <main data-host-content="">
+          <p>The app</p>
+        </main>
+      </Kit.PolarisKeyGate>
+    </PolarisKeyProvider>,
+  );
+  const until = async (f: () => boolean): Promise<void> => {
+    for (let i = 0; i < 150 && !f(); i++)
+      await new Promise((r) => setTimeout(r, 20));
+    expect(f()).toBe(true);
+  };
+  const press = (key: string): void =>
+    host!
+      .querySelector<HTMLButtonElement>(`button[data-key="${key}"]`)!
+      .click();
+  if (kind === "entries") {
+    await until(
+      () => host!.querySelector('[data-key="welcome.useKey"]') !== null,
+    );
+    press("welcome.useKey");
+    await until(() => host!.querySelector("#pk-key") !== null);
+    const field = host!.querySelector<HTMLInputElement>("#pk-key")!;
+    const set = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )!.set!;
+    set.call(field, "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG");
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    await frame();
+    press("activate.submit");
+  } else {
+    await until(
+      () => host!.querySelector('[data-key="welcome.signIn"]') !== null,
+    );
+    press("welcome.signIn");
+    await until(() => host!.querySelector('[data-key="a11y.code"]') !== null);
+    bridge.push(
+      okBridgeState({
+        doc: makeDoc({
+          entitlements: {
+            tier: { state: "enforced", value: "Pro", updatedAt: 950 },
+          },
+        }),
+      }),
+    );
+  }
+  await until(() => host!.querySelector('[data-part="toast"]') !== null);
+  await document.fonts.ready;
+  await frame();
+  await Promise.all(
+    document
+      .getAnimations()
+      .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+      .map((a) => a.finished.catch(() => undefined)),
+  );
+  await frame();
+  adapter.dispose();
+}
+
+describe("the gate's toasts after a key activation and a sign-in", () => {
+  for (const kind of ["entries", "signed-in"] as const)
+    for (const size of SIZES.filter((s) =>
+      ["320", "390", "1440"].includes(s.label),
+    ))
+      it(`${kind} ${size.label} dark`, async () => {
+        await page.viewport(size.width, size.height);
+        await gateToast(kind);
+        if (__PKEY_KIT_SHOTS__)
+          await commands.kitShot(
+            `${__PKEY_KIT_SHOTS__}/react.Gate.toast-${kind}/${size.label}-dark.png`,
+          );
+        const toast = document.querySelector('[data-part="toast"]')!;
+        expect(toast.textContent).toContain(
+          kind === "entries" ? "2 key entries left" : "Pro license",
+        );
+        expect(inFirstViewport(toast)).toBeNull();
+        expect(sidewaysOverflow().join("\n")).toBe("");
+        expect(document.querySelector("[data-host-content]")).not.toBeNull();
+      });
+});
 
 describe("the React kit at every size", () => {
   for (const scene of SCENES)

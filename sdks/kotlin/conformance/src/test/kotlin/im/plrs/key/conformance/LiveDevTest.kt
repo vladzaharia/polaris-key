@@ -203,12 +203,11 @@ class LiveDevTest : ConformanceSuite() {
         assertTrue("device-limit-full: $full", full is ActivationResult.DeviceLimit)
         assertEquals(ErrorCode.deviceLimit, full.code)
 
-        // The licence has used every key entry its product allows: no result of its own, the server's code.
+        // The licence has used every key entry its product allows: the typed KeyEntryLimit (I-10b.14), with the
+        // manage link and the count it carried.
         val entries = refused("key-entry-limit")
-        assertTrue("key-entry-limit: $entries", entries is ActivationResult.Refused)
-        entries as ActivationResult.Refused
+        assertTrue("key-entry-limit: $entries", entries is ActivationResult.KeyEntryLimit)
         assertEquals(ErrorCode.keyEntryLimit, entries.code)
-        assertEquals(403, entries.status)
     }
 
     // ── b3 ───────────────────────────────────────────────────────────────────────────────────

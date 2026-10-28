@@ -478,6 +478,7 @@ export {
 
 export {
   DeviceKeyUnsupportedError,
+  DeviceKeysUnreadableError,
   DeviceProofError,
   buildDeviceKeysRequest,
   signDeviceProof,

@@ -35,6 +35,7 @@ export class MemoryStore implements SyncStore {
   private settings = new Map<string, StoredSetting>();
   private usage: StoreUsage = { settings: 0, settingsBytes: 0, bytes: 0 };
   private watermark = 0;
+  private since: number | undefined;
   private held = false;
   private seen = new Map<string, number>();
 
@@ -44,6 +45,7 @@ export class MemoryStore implements SyncStore {
     const seq = this.seq;
     const usage = { ...this.usage };
     const watermark = this.watermark;
+    const since = this.since;
     const held = this.held;
     const seen = new Map(this.seen);
     const clients = new Map(
@@ -58,6 +60,7 @@ export class MemoryStore implements SyncStore {
       this.seq = seq;
       this.usage = usage;
       this.watermark = watermark;
+      this.since = since;
       this.held = held;
       this.seen = seen;
       this.clients = clients;
@@ -167,6 +170,14 @@ export class MemoryStore implements SyncStore {
 
   setWatermark(seq: number): void {
     this.watermark = seq;
+  }
+
+  getEncryptionSince(): number | undefined {
+    return this.since;
+  }
+
+  setEncryptionSince(seq: number): void {
+    this.since = seq;
   }
 
   /** Sets the sequence (a test seeding a store from a pull's cursor). */
