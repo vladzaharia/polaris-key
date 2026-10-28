@@ -250,6 +250,122 @@ leaves the last verified documents in force until `graceUntil`; `await client.st
 whether the token is in the OS keyring or in a `0600` file. A machine with no network at all
 activates from a signed file: `client.importBundle(jws)`.
 
+## Synced settings
+
+With [Cloud Sync](/docs/features/cloud-sync/) on, a person's synced settings follow them to every
+device they sign in on. The calls you already use do it: while a person is signed in,
+`config.set()` and `config.clear()` go to the synced copy, and the same code runs with Cloud Sync
+off. Which keys sync is the catalog's decision (see
+[Synced settings](/docs/features/cloud-sync/#synced-settings)); a locked key never does. Nothing
+syncs before sign-in: a device activated with a license key keeps its settings on the device and
+uploads them at the first sign-in.
+
+Settings are end-to-end encrypted by default. `cloudSync: { encryption: "server" }` in the client
+options opts out; the default is `"e2e"`. What each side can read is under
+[Who can read it](/docs/features/cloud-sync/#who-can-read-it). A product that doesn't run the Sync
+service answers `client.cloudSync.status()` with the typed not-applicable error.
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function openSyncedSettings(client: PolarisKeyClient) {
+  // The key ring decrypts the person's settings. On their first device, make it.
+  const unlocked = await client.keyring.unlock();
+  if (unlocked.kind === "locked" && unlocked.reason === "no-ring") {
+    const ring = await client.keyring.create();
+    return ring.recoveryCode; // show it once; nothing keeps it
+  }
+  return undefined;
+}
+
+export async function changeTheme(client: PolarisKeyClient) {
+  const theme = client.config.setting<string>("ui.theme");
+  await theme.set("dark"); // managed_by_admin when the operator locks the key
+  console.log(theme.value, theme.sync()); // "dark" "pending"
+  console.log(client.cloudSync.status()); // { state: "pending", pending: 1 }
+  await client.cloudSync.flush(); // send now, not after the 2 second debounce
+}
+```
+
+### The key ring
+
+`client.keyring` holds the person's encryption key on this device, in memory only. Until it is
+unlocked the status is `locked` and edits wait on the device.
+
+| Call                         | Use                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `unlock()`                   | Open this device's copy. `locked` says `no-ring`, `no-wrap` or `unusable-wrap` |
+| `create()`                   | The first device: make the ring. `recoveryCode` is shown once and kept nowhere |
+| `recover(code)`              | A new device with no other device at hand: the typed or pasted recovery code   |
+| `setRecoveryCode()`          | A new code; the old one stops working                                          |
+| `acceptRingChange(pin)`      | After the person confirms the `ring-changed` answer from `unlock()`            |
+| `reset()`                    | Start over with a new ring                                                     |
+| `wrapTo(deviceId, agreeKey)` | Give another of the person's devices the key, once they approve it nearby      |
+
+Show the recovery code for the person to copy and keep. It opens their settings, and without it
+a person who loses every device loses them.
+
+### States
+
+`setting(k).sync()` answers for one key:
+
+| State     | Meaning                                                                            |
+| --------- | ---------------------------------------------------------------------------------- |
+| `local`   | Stays on this device: nobody is signed in, Cloud Sync is off or the key is `local` |
+| `pending` | An edit waits to be sent, or is parked for a quota or an entitlement               |
+| `synced`  | The synced copy and this device agree                                              |
+
+`setting(k).locked` is true for a key the operator locks; the signed value wins and the key never
+syncs. The connection has its own state, `client.cloudSync.status().state`:
+
+| `state`       | Show                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| `idle`        | Nothing                                                                                           |
+| `pending`     | "Saving…" (`pending` counts the edits)                                                            |
+| `syncing`     | "Saving…"                                                                                         |
+| `offline`     | "Offline. Changes are saved on this device."                                                      |
+| `local`       | Sign-in needed: nobody is signed in, so nothing syncs                                             |
+| `locked`      | The key ring is locked: `unlock()`, or `recover(code)`                                            |
+| `paused`      | Polaris Key paused writes; edits wait and send later                                              |
+| `blocked`     | `reason`: `account_required`, `unauthorized`, `attestation` or `forbidden`                        |
+| `unsupported` | The app requires end-to-end encryption and the server doesn't offer it; nothing leaves the device |
+
+A `reason` of `quota` on `pending` means the person's storage is full; `entitlement` means their
+tier doesn't include sync. Either way the edits stay on the device.
+
+### Events and origin
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export function watchSync(client: PolarisKeyClient) {
+  client.events.on("config", (c) => {
+    // origin: "local" this device, "remote" another device, "merge" a conflict resolved,
+    // "migration" the one-time import of this device's earlier settings
+    if (c.origin !== "local") console.log(`${c.key} changed elsewhere`);
+  });
+  client.events.on("cloudSync", (e) => {
+    if (e.type === "rejected") console.warn(`an edit was refused: ${e.code}`);
+    if (e.type === "unsyncedData") console.warn(`${e.count} edits not sent`);
+    if (e.type === "signInOffered") console.log("show sign-in", e.signInUrl);
+  });
+}
+```
+
+The `cloudSync` events are `change` (with `keys` and `origin`), `rejected`, `signedOut`,
+`unsyncedData` and `signInOffered`. They name keys and never carry a value.
+
+### Sign-out and offline
+
+Signing out sends what is waiting (for up to 5 seconds), then deletes the synced copy and the key
+ring from this device. The settings stay in the person's account. Edits that could not be sent are
+reported once as `unsyncedData` and kept for 30 days, in case the same person signs in again. The
+same purge runs when the device is deactivated or a different person signs in.
+
+Offline, `config.set()` still succeeds and reads back at once. The edits are saved on the device
+and sent when the network returns, and conflicts resolve by each key's declared policy. For
+[limits and quotas](/docs/features/cloud-sync/#pause-and-limits), see the feature page.
+
 ## An update offer
 
 ```ts
