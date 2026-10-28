@@ -147,6 +147,17 @@ export const PORTAL_NAMESPACES: ReadonlySet<string> = new Set([
   "locker",
 ]);
 
+/**
+ * UK-42.1: keys whose components (ActivateDone, AddToAccount) and states land with UK-42.2 in
+ * components.json. Until then they are exempt from "a component state lists it"; UK-42.2 deletes
+ * this set and lists them.
+ */
+const AWAITING_COMPONENT_STATES = (key: string): boolean =>
+  /^activate\.(done|recommend|attach|owned|otherEmail)\./.test(key) ||
+  key === "activate.waiting" ||
+  key === "activate.waitingSignIn" ||
+  key === "account.notInAccount";
+
 /** Namespaces whose keys need not be listed by a component state (parts and shared groups). */
 const SHARED_NAMESPACES = new Set([
   "part",
@@ -237,6 +248,9 @@ export const STRING_ARGS = [
   "url",
   "identity",
   "tier",
+  // UK-42.1: an email with its middle hidden, and a device kind already worded ("computer").
+  "maskedEmail",
+  "deviceKind",
   "command",
   "idp",
   "host",
@@ -910,7 +924,11 @@ export function validateKitCopy(src: KitCopySources): string[] {
     }
   }
   for (const key of Object.keys(en.messages))
-    if (!SHARED_NAMESPACES.has(key.split(".")[0]!) && !listed.has(key))
+    if (
+      !SHARED_NAMESPACES.has(key.split(".")[0]!) &&
+      !listed.has(key) &&
+      !AWAITING_COMPONENT_STATES(key)
+    )
       errors.push(`en ${key}: no component state lists it`);
   return errors;
 }
@@ -1107,6 +1125,17 @@ export const LAZY_EN_PREFIXES = [
   "cloudSync.locked",
   "cloudSync.unlock",
   "cloudSync.ringChanged",
+  // UK-42: the Done step and Add your name and email follow an activation answer; the sign-in
+  // card's attach header and the skip note follow a key step. A kit that draws one at first
+  // paint moves its key to LAZY_EN_KEEP.
+  "activate.done.",
+  "activate.recommend.",
+  "activate.attach.",
+  "activate.waiting",
+  "activate.owned.",
+  "activate.otherEmail.",
+  "signin.attach.",
+  "signin.key.skipNote",
   // Screens a person opens after first paint (the menu's Settings, the device list, the offline
   // steps, the update progress and notes, the channel picker, About, the account pane).
   "settings.",

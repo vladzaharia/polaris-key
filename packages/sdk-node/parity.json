@@ -381,6 +381,11 @@
       "runtime": "headless",
       "reason": "runtime"
     },
+    "ui.kit.holders": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
     "ui.kit.keyentry": {
       "status": "na",
       "runtime": "headless",
