@@ -66,53 +66,49 @@ export function unsupportedCloudSync(
 }
 
 export interface LazyCloudSyncSource {
-  /** Runs once: builds and starts the host (dynamic imports). Throws the typed N/A it finds. */
-  load(): Promise<BrowserCloudSyncHost>;
+  /** Runs once: builds and starts the host (dynamic imports) and answers the loaded client. */
+  load(): Promise<CloudSyncClient>;
   /** Whether the product runs the Sync service; if not, every verb throws the typed N/A. */
   enabled(): boolean;
   /** The IndexedDB database the host's record lives in (`pkey-sync-<product>`). */
   dbName: string;
 }
 
-/** A client whose host loads on the first call that needs it. */
+/** A thin stub: nothing but forwarding. The first call that needs the host loads the client. */
 export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
-  let host: BrowserCloudSyncHost | null = null;
-  let loading: Promise<BrowserCloudSyncHost> | null = null;
+  let real: CloudSyncClient | null = null;
+  let loading: Promise<CloudSyncClient> | null = null;
   const listeners = new Set<(events: SyncEvent[]) => void>();
   // A product that does not run the Sync service answers the typed N/A on every verb.
-  const off = unsupportedCloudSync(
-    "product",
-    "the product does not run the Sync service",
-  );
-  const ready = (): Promise<BrowserCloudSyncHost> =>
+  const off = () =>
+    unsupportedCloudSync(
+      "product",
+      "the product does not run the Sync service",
+    );
+  const ready = (): Promise<CloudSyncClient> =>
     src.enabled()
       ? (loading ??= src.load().then(
-          (h) => {
-            host = h;
-            h.onEvents((e) => listeners.forEach((l) => l(e)));
-            return h;
-          },
-          (err) => {
-            loading = null;
-            throw err;
-          },
+          (c) => (
+            c.onEvents((e) => listeners.forEach((l) => l(e))),
+            (real = c)
+          ),
+          (err) => ((loading = null), Promise.reject(err)),
         ))
-      : off.host();
-  const status = (): SyncStatus =>
-    !src.enabled()
-      ? off.status()
-      : host?.started
-        ? host.machine.status()
-        : { state: "local", pending: 0 };
+      : (off().host() as Promise<never>);
   return {
     unsupported: null,
-    host: ready,
-    status,
-    flush: async () => (await (await ready()).flush(), status()),
+    host: async () => (await ready()).host(),
+    status: () =>
+      !src.enabled()
+        ? off().status()
+        : real
+          ? real.status()
+          : { state: "local", pending: 0 },
+    flush: async () => (await ready()).flush(),
     async purge() {
       // A load in flight is waited for, so its record is not written after the purge.
-      const h = host ?? (await loading?.catch(() => null)) ?? null;
-      if (h) return h.purge();
+      const c = real ?? (await loading?.catch(() => null)) ?? null;
+      if (c) return c.purge();
       // The host never ran: delete the record without starting anything.
       const m = await import("../browser/cloudSync/store.js");
       await m.removeSyncState(m.syncStateStore(src.dbName));

@@ -36,11 +36,25 @@ export async function fetchCatalog(
       headers: { accept: "application/json", ...(opts.headers ?? {}) },
     });
     if (!res.ok) return null;
-    // Read under a byte cap: an answer past it is not a catalog.
-    const { readCappedText } = await import("./boundedBody.js");
-    const text = await readCappedText(res);
-    if (text === null) return null;
-    const body: unknown = JSON.parse(text);
+    // Read under a byte cap (8 MiB, counted in bytes): an answer past it is not a catalog.
+    const max = 8 * 1024 * 1024;
+    if (Number(res.headers.get("content-length")) > max) return null;
+    const reader = res.body?.getReader();
+    if (!reader) return null;
+    const dec = new TextDecoder();
+    let text = "";
+    let n = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      n += value.byteLength;
+      if (n > max) {
+        void reader.cancel();
+        return null;
+      }
+      text += dec.decode(value, { stream: true });
+    }
+    const body: unknown = JSON.parse(text + dec.decode());
     return isCatalog(body) ? body : null;
   } catch {
     return null;

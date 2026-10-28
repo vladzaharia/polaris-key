@@ -8,24 +8,24 @@ import type { KeyringClient } from "../../core/keyring.js";
 import { Feature } from "../../constants.generated.js";
 import { UnsupportedError } from "../../core/caps.js";
 import type { BearerSession } from "../bearer/session.js";
+import type { CloudSyncClient } from "../../core/cloudSync.js";
 import { BrowserCloudSyncHost, type CloudSyncHostOptions } from "./host.js";
 import { syncStateStore } from "./store.js";
 import { broadcastChannel, webLocks } from "./writer.js";
 
-export interface BrowserCloudSyncArgs {
+/**
+ * The adapter's own members the host reads (private there; this lazy module takes the adapter
+ * as one object so the adapter itself carries no closures for them).
+ */
+export interface CloudSyncOwner {
   product: string;
-  /** The IndexedDB database name, `pkey-sync-<product>`. */
-  dbName: string;
-  bearer: BearerSession;
-  ring: KeyringClient;
-  options: CloudSyncHostOptions | undefined;
-  /** The catalog the adapter was given (`catalog`), used when `cloudSync.catalog` is not set. */
-  mirror: ProductCatalog | undefined;
-  /** The loaded discovery document's `services.sync`, or null. */
-  discovery: () => { enabled?: unknown; encryption?: unknown } | null;
-  fetchSchema: () => Promise<ProductCatalog | null>;
-  configEntries: () => Record<string, ManagedEntry>;
-  enabled: () => boolean;
+  keyring: KeyringClient;
+  cloudSyncOptions: CloudSyncHostOptions | undefined;
+  catalogOption: ProductCatalog | undefined;
+  discovery_: { services?: { sync?: unknown } } | null;
+  fetchSchema(): Promise<ProductCatalog | null>;
+  store: { get(): { configEntries: Record<string, ManagedEntry> } };
+  capabilities: { sync: { enabled: boolean } };
 }
 
 /** `pagehide` and `pageshow` on the window, or nothing where there is none. */
@@ -59,8 +59,10 @@ export function documentOf(
 /** The started host. Throws the typed unsupported where the browser has no Web Locks: one writer
  *  tab cannot be kept without them, and two writers would double-send. */
 export async function createBrowserCloudSync(
-  a: BrowserCloudSyncArgs,
-): Promise<BrowserCloudSyncHost> {
+  o: CloudSyncOwner,
+  bearer: BearerSession,
+  dbName: string,
+): Promise<CloudSyncClient> {
   const locks = webLocks();
   if (locks === null)
     throw new UnsupportedError({
@@ -73,27 +75,41 @@ export async function createBrowserCloudSync(
   const page = pageEvents();
   const host = new BrowserCloudSyncHost(
     {
-      product: a.product,
-      request: (path, init) => a.bearer.ringRequest(path, init),
-      ring: a.ring,
-      discovery: a.discovery,
-      fetchSchema: a.fetchSchema,
-      document: () => documentOf(a.configEntries()),
-      enabled: a.enabled,
-      store: syncStateStore(a.dbName),
+      product: o.product,
+      request: (path, init) => bearer.ringRequest(path, init),
+      ring: o.keyring,
+      discovery: () =>
+        (o.discovery_?.services?.sync as
+          | { enabled?: unknown; encryption?: unknown }
+          | undefined) ?? null,
+      fetchSchema: () => o.fetchSchema(),
+      document: () => documentOf(o.store.get().configEntries),
+      enabled: () => o.capabilities.sync.enabled,
+      store: syncStateStore(dbName),
       locks,
-      writerLock: `pkey-sync-writer:${a.dbName}`,
-      stateLock: `pkey-sync-state:${a.dbName}`,
-      channel: broadcastChannel(a.dbName),
+      writerLock: `pkey-sync-writer:${dbName}`,
+      stateLock: `pkey-sync-state:${dbName}`,
+      channel: broadcastChannel(dbName),
       ...(page ? { page } : {}),
     },
     {
-      ...a.options,
-      ...((a.options?.catalog ?? a.mirror)
-        ? { catalog: (a.options?.catalog ?? a.mirror)! }
+      ...o.cloudSyncOptions,
+      ...((o.cloudSyncOptions?.catalog ?? o.catalogOption)
+        ? { catalog: (o.cloudSyncOptions?.catalog ?? o.catalogOption)! }
         : {}),
     },
   );
   await host.start();
-  return host;
+  return {
+    unsupported: null,
+    host: async () => host,
+    status: () =>
+      host.started ? host.machine.status() : { state: "local", pending: 0 },
+    flush: async () => (
+      await host.flush(),
+      host.started ? host.machine.status() : { state: "local", pending: 0 }
+    ),
+    purge: () => host.purge(),
+    onEvents: (l) => host.onEvents(l),
+  };
 }

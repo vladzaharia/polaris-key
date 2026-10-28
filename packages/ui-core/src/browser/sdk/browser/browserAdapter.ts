@@ -116,6 +116,7 @@ import {
   type CloudSyncClient,
 } from "../core/cloudSync.js";
 import type { CloudSyncHostOptions } from "./cloudSync/host.js";
+import type { CloudSyncOwner } from "./cloudSync/create.js";
 import {
   createCloudConnect,
   lazyConnect,
@@ -2187,18 +2188,11 @@ export class BrowserAdapter implements PolarisAdapter {
       dbName,
       enabled: () => this.capabilities.sync.enabled,
       load: async () =>
-        (await import("./cloudSync/create.js")).createBrowserCloudSync({
-          product: this.product,
+        (await import("./cloudSync/create.js")).createBrowserCloudSync(
+          this as unknown as CloudSyncOwner,
+          b,
           dbName,
-          bearer: b,
-          ring: this.keyring,
-          options: this.cloudSyncOptions,
-          mirror: this.catalogOption,
-          discovery: () => this.discovery_?.services?.sync ?? null,
-          fetchSchema: () => this.fetchSchema(),
-          configEntries: () => this.store.get().configEntries,
-          enabled: () => this.capabilities.sync.enabled,
-        }),
+        ),
     }));
   }
 
