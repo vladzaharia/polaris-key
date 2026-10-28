@@ -359,6 +359,7 @@ const SWIFT_TYPE: Record<string, string> = {
   commerce: "CommerceClient",
   packs: "PacksClient",
   cloudConnect: "CloudConnect",
+  cloudSync: "CloudSyncClient",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
   ChoiceNamespace: "ChoiceNamespace",
@@ -426,7 +427,7 @@ function renderSwift(api: Api): string {
       );
     } else if (r.kind === "stream" || r.entry.shape === "property") {
       lines.push(
-        `_ = \\${SWIFT_TYPE[r.ns] ?? "PolarisKeyClient"}.${r.name}  // ${r.id}`,
+        `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);

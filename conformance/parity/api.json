@@ -2931,9 +2931,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value; the sync state re-renders with the value"
         },
-        "swift": {
-          "planned": "U-07"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07"
         },
@@ -3710,9 +3708,7 @@
           "shape": "hook",
           "reason": "a hook returns a render value, following the machine"
         },
-        "swift": {
-          "planned": "U-07"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07"
         },
@@ -3736,9 +3732,7 @@
           "shape": "hook",
           "reason": "the hook carries the method"
         },
-        "swift": {
-          "planned": "U-07"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-07"
         },
@@ -3793,7 +3787,8 @@
           "reason": "the hook re-renders on each machine event, so no event listener is exposed"
         },
         "swift": {
-          "planned": "U-07"
+          "spelling": "events",
+          "reason": "one event stream on the client, case cloudSync"
         },
         "kotlin": {
           "planned": "U-07"

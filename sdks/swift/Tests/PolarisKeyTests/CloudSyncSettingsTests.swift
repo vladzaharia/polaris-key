@@ -1,3 +1,4 @@
+// @pkey-feature sync.settings config.sync
 // U-07.8: the Cloud Sync settings API on a real client against a stub Worker (server mode, so no ring root
 // is needed to talk; the ring root sits in an in-memory store so the sign-out chain can be observed).
 // A-1 person change, A-2 offline boot, A-3 the sign-out chain, A-4 and A-5 a sign-out elsewhere and the

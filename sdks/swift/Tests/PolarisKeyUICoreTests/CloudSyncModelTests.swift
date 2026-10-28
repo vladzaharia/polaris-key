@@ -5,6 +5,7 @@
 import PolarisKey
 import PolarisKeyCore
 import PolarisKeyUICore
+import struct PolarisKeyUICore.CloudSyncHost
 import XCTest
 
 private actor Calls {

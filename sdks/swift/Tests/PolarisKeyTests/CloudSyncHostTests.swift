@@ -1,3 +1,4 @@
+// @pkey-feature sync.settings
 // The Cloud Sync host (U-07.6): H-1 to H-6 and H-10, the person binding (A-1), one pump at a time,
 // and `openPull` feeding `CloudSyncMachine.receive`. Everything runs against fakes: a scripted Worker,
 // a fixture-root codec, a fake key ring and a temporary state directory. The H rules each name their

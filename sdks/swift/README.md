@@ -388,8 +388,7 @@ and key-ring calls are unaffected. An injected transport that follows no redirec
 
 `client.keyring` holds the person's end-to-end key: one root per ring, shared by their devices and
 never sent to the Worker in the clear. The Worker stores only wraps of it, one per device, and a
-blob sealed under the recovery code. The Cloud Sync client that seals settings with it is planned;
-the key ring itself is here. It uses the device keys `client.connect` uses (a `DeviceKeyPort`).
+blob sealed under the recovery code. Cloud Sync (`client.cloudSync`, and `config` through it) seals settings with it. It uses the device keys `client.connect` uses (a `DeviceKeyPort`).
 
 | Call                              | What it does                                                                                                                            |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |

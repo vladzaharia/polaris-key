@@ -1,3 +1,4 @@
+// @pkey-feature sync.settings
 // The Cloud Sync host after its security review: S-1 an accepted edit survives a rebuild, S-2 purge takes the
 // machine away at once and blocks touch and rebuild until it ends, N-1 a served catalog is never persisted.
 
