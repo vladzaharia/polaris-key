@@ -132,7 +132,9 @@ export {
 } from "./core/events.js";
 export {
   ConfigClient,
+  type ChangeOrigin,
   type ConfigChange,
+  type SettingSync,
   type ConfigSetting,
   type ConfigClientOptions,
   type ConfigSource,

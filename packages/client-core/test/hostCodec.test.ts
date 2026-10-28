@@ -1,6 +1,9 @@
 // The host codec boundary (U-06.1; WIRE-CONTRACT-V5 §13.10, §13.10.7): what `sealPush` sends,
 // what `openPull` proves, and that the machine only ever trusts the host's own open result.
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   CloudSyncMachine,
@@ -69,9 +72,6 @@ const set = (id: number, setting: string, value: Json): Json => ({
   value,
 });
 
-// TODO(U-06.V): add a test that reads the member and open-key `envelopeCases` from
-// sync-vectors.json once they land (D-2); until then the member name is pinned only by the
-// round trip below.
 describe("sealPush", () => {
   it("seals a declared key in place, blinds an open key and a member, and sends no plaintext", async () => {
     const out = (await sealPush(
@@ -692,5 +692,99 @@ describe("openPull into CloudSyncMachine.receive", () => {
     });
     expect(m.get(VOL)).toEqual({ value: 0.1, from: "cloud" });
     expect(m.get("audio.alt").value).not.toBe(0.1);
+  });
+});
+
+// The merge member's envelope name (D-2, U-06.V): `setting U+0000 member`, pinned by the corpus's
+// `envelopeCases` rows, not only by the round trip above.
+interface VectorCase {
+  id: string;
+  rootHex: string;
+  name: string;
+  envelopeHex: string;
+  expect: { result: string; name?: string; reason?: string };
+}
+const VECTORS = JSON.parse(
+  readFileSync(
+    join(
+      dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "..",
+      "..",
+      "conformance",
+      "corpus",
+      "v2",
+      "sync-vectors.json",
+    ),
+    "utf8",
+  ),
+) as { envelopeCases: VectorCase[] };
+const row = (id: string): VectorCase => {
+  const c = VECTORS.envelopeCases.find((x) => x.id === id);
+  if (!c) throw new Error(`no envelope case ${id}`);
+  return c;
+};
+const unhex = (h: string) => new Uint8Array(Buffer.from(h, "hex"));
+
+describe("merge member envelope names (envelopeCases)", () => {
+  const sealMember = row("seal-member");
+  const vRoot = unhex(sealMember.rootHex);
+  const vCodec = codecOf(vRoot);
+
+  it("memberEnvelopeName is the name the seal-member row carries", () => {
+    expect(memberEnvelopeName("inventory", "gold")).toBe(sealMember.name);
+    expect(sealMember.name).toBe("inventory\u0000gold");
+  });
+
+  const served = async (setting: string, member: string, envHex: string) =>
+    ({
+      setting,
+      scope: "user",
+      version: 4,
+      members: [
+        {
+          member: await blind(port, vRoot, "member", setting, member),
+          ct: b64(unhex(envHex)),
+          editedHlc: "0199c82cc000:0000",
+        },
+      ],
+    }) as Json;
+  const pullOf = (change: Json): Json => ({ changes: [change] });
+
+  it("opens the corpus member envelope as that member of that setting", async () => {
+    const out = await openPull(
+      pullOf(await served("inventory", "gold", sealMember.envelopeHex)),
+      vCodec,
+    );
+    expect((out.body as any).changes[0].value).toEqual({ gold: 3 });
+    expect(out.opened.changes).toEqual([{ sealed: true }]);
+  });
+
+  it("member-swapped: the envelope of another member under this blinded name is invalid", async () => {
+    const c = row("member-swapped");
+    expect(c.expect.reason).toBe("name");
+    const out = await openPull(
+      pullOf(await served("inventory", "silver", c.envelopeHex)),
+      vCodec,
+    );
+    expect(out.opened.changes).toEqual([{ invalid: true }]);
+  });
+
+  it("member-wrong-setting: the member moved to another merge setting is invalid", async () => {
+    const c = row("member-wrong-setting");
+    expect(c.expect.reason).toBe("name");
+    const out = await openPull(
+      pullOf(await served("equipment", "gold", c.envelopeHex)),
+      vCodec,
+    );
+    expect(out.opened.changes).toEqual([{ invalid: true }]);
+  });
+
+  it("member-name-only: a reader that binds the bare member name refuses the envelope", async () => {
+    const c = row("member-name-only");
+    expect(c.name).toBe("gold");
+    expect(
+      await openValue(port, vRoot, "$settings", c.name, unhex(c.envelopeHex)),
+    ).toEqual({ ok: false, reason: "name" });
   });
 });

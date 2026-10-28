@@ -30,6 +30,7 @@ import {
   newRecoveryCode,
   openAdopt,
   openValue,
+  openValueAnyName,
   parseRecoveryCode,
   sealAdopt,
   sealValue,
@@ -151,6 +152,9 @@ export interface SyncCodec {
     envelope: Uint8Array,
     aliases?: readonly string[],
   ): Promise<OpenedValue>;
+  /** Opens an envelope whose name is inside it (a blinded open key or merge member), with the
+   *  same root loop as `open`. The caller checks the name it gets back (`HostCodec`). */
+  openAny(collection: string, envelope: Uint8Array): Promise<OpenedValue>;
   blind(kind: BlindKind, ctx: string, name: string): Promise<string>;
 }
 
@@ -760,6 +764,20 @@ export class KeyringClient {
         .filter((o) => kid === null || same(o.kid, kid))
         .map((o) => o.root),
     ];
+    // The current root first, then any adopted root whose `kid` the envelope names.
+    const tryRoots = async (
+      envelope: Uint8Array,
+      attempt: (root: Uint8Array) => Promise<OpenedValue>,
+    ): Promise<OpenedValue> => {
+      let last = await attempt(self.#need().root);
+      if (last.ok || last.reason !== "kid") return last;
+      const kid = envelope.subarray(1, 1 + SYNC_KID_BYTES);
+      for (const r of candidates(kid).slice(1)) {
+        last = await attempt(r);
+        if (last.ok || last.reason !== "kid") return last;
+      }
+      return last;
+    };
     const codec: SyncCodec = {
       get kid() {
         return self.#held ? hex(self.#held.kid) : null;
@@ -776,31 +794,14 @@ export class KeyringClient {
           value,
         );
       },
-      async open(collection, name, envelope, aliases = []) {
-        const cur = self.#need();
-        let last = await openValue(
-          self.#crypto,
-          cur.root,
-          collection,
-          name,
-          envelope,
-          aliases,
-        );
-        if (last.ok || last.reason !== "kid") return last;
-        const kid = envelope.subarray(1, 1 + SYNC_KID_BYTES);
-        for (const r of candidates(kid).slice(1)) {
-          last = await openValue(
-            self.#crypto,
-            r,
-            collection,
-            name,
-            envelope,
-            aliases,
-          );
-          if (last.ok || last.reason !== "kid") return last;
-        }
-        return last;
-      },
+      open: (collection, name, envelope, aliases = []) =>
+        tryRoots(envelope, (root) =>
+          openValue(self.#crypto, root, collection, name, envelope, aliases),
+        ),
+      openAny: (collection, envelope) =>
+        tryRoots(envelope, (root) =>
+          openValueAnyName(self.#crypto, root, collection, envelope),
+        ),
       async blind(kind, ctx, name) {
         return blind(self.#crypto, self.#need().root, kind, ctx, name);
       },

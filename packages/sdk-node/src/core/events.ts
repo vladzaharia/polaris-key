@@ -8,12 +8,14 @@
 //   packs            pack download/apply progress
 //   identity         the signed-in account changed (signed in, signed out, subject changed)
 //   store            the token store's backend or degradation changed
+//   cloudSync        the Cloud Sync machine's events (changes, rejections, sign-out, offers)
 
 import { EventEmitter } from "node:events";
 import type { PackProgress, StoreStatus } from "@polaris-key/client-core";
 import type { LicenseState } from "@polaris-key/client-core";
 import type { UpdateCheck } from "@polaris-key/protocol/update";
 import type { IdentityEvent } from "../identity/signIn.js";
+import type { SyncEvent } from "@polaris-key/client-core/cloud-sync";
 import type { ConfigChange } from "../config/client.js";
 
 export interface PolarisEvents {
@@ -23,6 +25,7 @@ export interface PolarisEvents {
   packs: [PackProgress];
   identity: [IdentityEvent];
   store: [StoreStatus | null];
+  cloudSync: [SyncEvent];
 }
 
 export type PolarisEventName = keyof PolarisEvents;
