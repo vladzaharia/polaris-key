@@ -225,6 +225,25 @@ export const REQUEST_STATES: ShippedState[] = [
   },
   {
     section: "3.1",
+    id: "app-signin-hint",
+    title:
+      "App card, signed out: the email prefilled from loginHint, purpose attach",
+    scenario: "signedOut",
+    path: PATH,
+    routes: signedOutRoutes({
+      ...VIEW,
+      purpose: "attach",
+      loginHint: "mara@fennick.studio",
+    }),
+    ready: async (p) => {
+      await h1(p, "Sign in");
+      await p.getByText("to your account", { exact: false }).waitFor();
+      const v = await p.getByRole("textbox", { name: "Email" }).inputValue();
+      if (v !== "mara@fennick.studio") throw new Error(`prefill: ${v}`);
+    },
+  },
+  {
+    section: "3.1",
     id: "app-signin-web",
     title: "App card, signed out, web app (origin)",
     scenario: "signedOut",

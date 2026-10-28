@@ -263,6 +263,101 @@ describe("the app card, signed out (SIGN-IN.md §3.1)", () => {
   });
 });
 
+describe("the request's hints and purpose (UK-42.14)", () => {
+  const out = (view: SignInRequestView = VIEW) =>
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: view,
+    });
+  const gate = (over: Record<string, unknown> = {}) => ({
+    status: "gate",
+    provider: "email",
+    stage: "choose",
+    expiresAt: 0,
+    emailRequired: false,
+    email: {
+      provider: null,
+      providerVerified: false,
+      relay: false,
+      pending: null,
+      confirmed: "ada@example.com",
+    },
+    profile: {
+      name: null,
+      nameExplicit: false,
+      suggestions: [{ name: "ada", source: "email" }],
+      picture: null,
+    },
+    terms: null,
+    platformTerms: null,
+    product: null,
+    ...over,
+  });
+
+  it("prefills the email from loginHint and sends nothing by itself", async () => {
+    out({ ...VIEW, loginHint: "ada@example.com" });
+    renderPortal();
+    const field = await screen.findByRole("textbox", { name: "Email" });
+    expect((field as HTMLInputElement).value).toBe("ada@example.com");
+    await new Promise((r) => setTimeout(r, 50));
+    const sent = vi
+      .mocked(fetch)
+      .mock.calls.filter(([u]) => String(u).includes("/email/start"));
+    expect(sent).toHaveLength(0);
+  });
+
+  it("leaves the email empty without a hint", async () => {
+    out();
+    renderPortal();
+    const field = await screen.findByRole("textbox", { name: "Email" });
+    expect((field as HTMLInputElement).value).toBe("");
+  });
+
+  it("purpose attach: the header reads Add <app> to your account", async () => {
+    out({ ...VIEW, purpose: "attach" });
+    renderPortal();
+    expect(
+      await screen.findByText("to your account", { exact: false }),
+    ).toBeTruthy();
+    expect(screen.getByText("Diceroll", { selector: "strong" })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/wants you to sign in/);
+  });
+
+  const finish = async (newAccount: boolean) => {
+    window.history.replaceState(
+      null,
+      "",
+      `/signin?request=${HANDLE}&signin=confirm-email`,
+    );
+    mockFetch({
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      [REQUEST]: { ...VIEW, nameHint: "Ada Lovelace" },
+      "/api/signin/confirm-email": gate({ newAccount }),
+    });
+    renderPortal();
+    await waitFor(() =>
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.some(([u]) => String(u).endsWith("/confirm-email")),
+      ).toBe(true),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+    const field = screen.queryByRole("textbox", { name: /name/i });
+    return (field as HTMLInputElement | null)?.value ?? "";
+  };
+
+  it("FinishStep starts the name from nameHint for a new account only", async () => {
+    expect(await finish(true)).toBe("Ada Lovelace");
+  });
+
+  it("an existing account's finish step ignores nameHint", async () => {
+    expect(await finish(false)).not.toBe("Ada Lovelace");
+  });
+});
+
 describe("LicenseChoiceStep (§3.6)", () => {
   it("lists the licences, preselects the server's pick and goes on to consent with it", async () => {
     flow(choices());

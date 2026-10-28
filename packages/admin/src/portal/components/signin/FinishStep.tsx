@@ -134,7 +134,10 @@ export function FinishStep({
   onLeave,
   onExpired,
   onTitle,
+  nameHint,
 }: {
+  /** The request's `nameHint`: starts the Name field, for a new account (this step) only. */
+  nameHint?: string | null;
   /** Cancel sign-in: back to the methods. */
   onLeave: () => void;
   /** The gate is gone (15 minutes, or never opened): back to the methods with a notice. */
@@ -224,6 +227,7 @@ export function FinishStep({
       onPassed={passed}
       onCancel={() => void cancel()}
       onTitle={onTitle}
+      nameHint={nameHint}
     />
   );
 }
@@ -335,7 +339,9 @@ function FinishForm({
   onPassed,
   onCancel,
   onTitle,
+  nameHint,
 }: {
+  nameHint?: string | null;
   gate: PortalGate;
   reload: () => Promise<void>;
   onPassed: (next: string, nudge?: boolean) => Promise<void>;
@@ -357,7 +363,9 @@ function FinishForm({
   const suggestions = gate.profile.suggestions ?? [];
   // The provider path prefills its name; an email-code account prefills the email's local part.
   const [name, setName] = React.useState(
-    gate.profile.name ?? suggestions[0]?.name ?? "",
+    gate.profile.name ||
+      (gate.newAccount === false ? "" : nameHint?.trim()) ||
+      (suggestions[0]?.name ?? ""),
   );
   const [nameError, setNameError] = React.useState(false);
   const hasPicture = Boolean(gate.profile.picture);
