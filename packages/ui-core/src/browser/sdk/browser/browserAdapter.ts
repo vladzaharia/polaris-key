@@ -112,13 +112,12 @@ import {
 } from "../core/keyring.js";
 import {
   createCloudConnect,
-  createConnect,
+  lazyConnect,
   unsupportedCloudConnect,
   unsupportedConnect,
   type CloudConnectClient,
   type ConnectClient,
 } from "./connect/index.js";
-import { indexedDbConnectState, memoryConnectState } from "./connect/state.js";
 import { clientBackendAction } from "@polaris-key/client-core/backend";
 import type {
   BinaryMethod,
@@ -2164,31 +2163,22 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (!b) return (this.connect_ = unsupportedConnect(COOKIE_DETAIL));
     const o = this.connectOptions ?? {};
-    const name = `pkey-connect-${storeNamespace(this.product, this.base)}`;
-    let durable: ReturnType<typeof indexedDbConnectState> | null = null;
-    return (this.connect_ = createConnect({
-      product: this.product,
-      baseUrl: this.base,
-      applyTrust: (jws) => b.acceptPeerTrust(jws),
-      device: async () => {
-        await b.init();
-        return { deviceId: b.deviceId, hasToken: b.hasToken };
-      },
-      request: (path, init) => b.ringRequest(path, init),
-      registerKeys: (port, opts) => b.registerKeys(port, opts),
-      trust: () => b.effectiveTrust(),
-      now: () => this.clock(),
-      discovery: async () => {
-        await this.ensureDiscovery().catch(() => undefined);
-        return this.discovery_;
-      },
-      keys: async () => o.deviceKeys ?? this.deviceKeyPort(),
-      allowEphemeralKeys: o.allowEphemeralKeys === true,
-      stores: {
-        durable: () => (durable ??= indexedDbConnectState(name)),
-        memory: memoryConnectState(),
-      },
-    }));
+    return (this.connect_ = lazyConnect(
+      () => this.clock(),
+      async () =>
+        (await import("./connect/create.js")).createBrowserConnect({
+          product: this.product,
+          base: this.base,
+          bearer: b,
+          options: o,
+          now: () => this.clock(),
+          discovery: async () => {
+            await this.ensureDiscovery().catch(() => undefined);
+            return this.discovery_;
+          },
+          deviceKeys: () => this.deviceKeyPort(),
+        }),
+    ));
   }
 
   /**

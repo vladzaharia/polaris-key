@@ -81,53 +81,38 @@ export function unsupportedConnect(detail: string): ConnectClient {
   };
 }
 
-export function createConnect(env: ConnectEnv): ConnectClient {
-  let tail: Promise<unknown> = Promise.resolve();
-  const serial = <T>(f: () => Promise<T>): Promise<T> => {
-    const run = tail.then(f, f);
-    tail = run.catch(() => undefined);
-    return run;
-  };
-  let engine: Promise<import("./client.js").ConnectEngine> | null = null;
-  const load = (): Promise<import("./client.js").ConnectEngine> =>
-    (engine ??= import("./client.js").then((m) => new m.ConnectEngine(env)));
+export { createConnect } from "./create.js";
+
+/**
+ * The page's `connect`, before its engine is loaded: every call loads `create.ts` (the engine's
+ * wiring and its stores) first, so a page that never uses Connect pays only for this facade.
+ * `now` is the one sync member the relay reads.
+ */
+export function lazyConnect(
+  now: () => number,
+  load: () => Promise<ConnectClient>,
+): ConnectClient {
+  let client: Promise<ConnectClient> | null = null;
+  const ready = (): Promise<ConnectClient> =>
+    (client ??= load().catch((e: unknown) => {
+      client = null;
+      throw e;
+    }));
   return {
-    identity: (opts = {}) =>
-      serial(async () => (await load()).identity(opts.refresh === true)),
-    current: () => serial(async () => (await load()).current()),
-    listDevices: () => serial(async () => (await load()).listDevices()),
-    discoveryKeys: () => serial(async () => (await load()).discoveryKeys()),
-    relayTicket: () => serial(async () => (await load()).relayTicket()),
+    identity: async (opts) => (await ready()).identity(opts),
+    current: async () => (await ready()).current(),
+    listDevices: async () => (await ready()).listDevices(),
+    discoveryKeys: async () => (await ready()).discoveryKeys(),
+    relayTicket: async () => (await ready()).relayTicket(),
+    leave: async () => (await ready()).leave(),
     relaySource: () => ({
-      now: () => env.now(),
-      load: () => serial(async () => (await load()).peerIdentity()),
-      refresh: async () => {
-        await serial(async () => (await load()).identity(true));
-      },
-      adoptRing: (jws: string): Promise<RingAdoption> =>
-        serial(async () => (await load()).adoptRing(jws)),
-      applyTrust: (jws: string): Promise<TrustApplication> =>
-        serial(async () => (await load()).applyTrust(jws)),
-      ticket: () => serial(async () => (await load()).relayTicket()),
+      now,
+      load: async () => (await ready()).relaySource().load(),
+      refresh: async () => (await ready()).relaySource().refresh?.(),
+      adoptRing: async (jws) => (await ready()).relaySource().adoptRing!(jws),
+      applyTrust: async (jws) => (await ready()).relaySource().applyTrust!(jws),
+      ticket: async () => (await ready()).relaySource().ticket(),
     }),
-    leave: () =>
-      serial(async () => {
-        try {
-          for (const store of [env.stores.memory, env.stores.durable()]) {
-            // Nothing held means nothing to forget; an unreadable record is cleared too. A store
-            // that cannot hold anything is not opened, so no empty database appears.
-            if ((await store.mayHold?.()) === false) continue;
-            if ((await store.get()) !== null) await store.clear();
-          }
-        } catch (e) {
-          throw e instanceof PolarisError
-            ? e
-            : new PolarisError(
-                ErrorCode.storeFailed,
-                "The Cloud Connect state could not be cleared.",
-              );
-        }
-      }),
   };
 }
 
