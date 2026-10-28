@@ -49,7 +49,6 @@ export type LanErrorReason =
   | "closed"
   | "too_large"
   | "bad_type"
-  | "queue_full"
   | "not_started";
 
 /** The registered client code of each reason. */
@@ -65,7 +64,6 @@ const LAN_CODE: Record<LanErrorReason, string> = {
   closed: ErrorCode.networkError,
   too_large: ErrorCode.invalidArgument,
   bad_type: ErrorCode.invalidArgument,
-  queue_full: ErrorCode.rateLimited,
 };
 
 export class LanError extends PolarisError {

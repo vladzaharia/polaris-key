@@ -15,7 +15,7 @@ from connect_relay_fake import FakeRoom, ManualSleep
 from test_connect_lan import World, run, until
 from test_connect_peer_session import ID_A, ID_B, Dev, _ring
 
-from polaris_key.connect.errors import LanError, RelayError
+from polaris_key.connect.errors import RelayError
 from polaris_key.connect.loop import connect_loop
 from polaris_key.connect.pacer import BURST, HALVED_SECONDS, MAX_QUEUED_BYTES, RATE, Outbox, Pacer
 from polaris_key.connect.relay import ENDED_MEMORY, RelayOptions, RelayService
@@ -404,4 +404,3 @@ def test_the_error_is_the_registered_rate_limited_code() -> None:
     from polaris_key.constants_generated import ErrorCode
 
     assert RelayError("rate_limited", "x").code == ErrorCode.RATE_LIMITED
-    assert LanError("queue_full", "x").code == ErrorCode.RATE_LIMITED
