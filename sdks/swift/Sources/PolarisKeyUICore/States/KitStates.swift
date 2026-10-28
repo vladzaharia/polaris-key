@@ -136,8 +136,13 @@ public enum KitFormat {
         "\(Int((max(0, min(1, fraction)) * 100).rounded()))%"
     }
 
+    /// The date `dayAfter` counts from when it is given none; nil is the wall clock. A render test
+    /// sets a fixed one so a date-relative state draws the same on every day.
+    nonisolated(unsafe) public static var referenceDate: Date?
+
     /// The date `days` from now, medium style, for "Reconnect by …".
-    public static func dayAfter(_ days: Int, from now: Date = Date()) -> String {
+    public static func dayAfter(_ days: Int, from now: Date? = nil) -> String {
+        let now = now ?? referenceDate ?? Date()
         let date = Calendar.current.date(byAdding: .day, value: days, to: now) ?? now
         return date.formatted(date: .abbreviated, time: .omitted)
     }

@@ -341,8 +341,11 @@ public object KitStates {
     /** The `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json these state machines implement. */
     public const val uiMatrixVersion: Int = im.plrs.key.core.UI_MATRIX_VERSION
 
-    /** Resolves [component] from [inputs] into state, catalog lines, and allowed actions. */
-    public fun resolve(component: KitComponent, inputs: KitInputs): KitScreen = when (component) {
+    /**
+     * Resolves [component] from [inputs] into state, catalog lines, and allowed actions. [today] is
+     * the date the grace banner counts its deadline from; a test passes a fixed one.
+     */
+    public fun resolve(component: KitComponent, inputs: KitInputs, today: LocalDate = LocalDate.now()): KitScreen = when (component) {
         KitComponent.gate -> gateScreen(inputs)
         KitComponent.boot -> bootScreen(inputs)
         KitComponent.welcome -> welcomeScreen(inputs)
@@ -358,7 +361,7 @@ public object KitStates {
         KitComponent.updateProgress -> updateProgressScreen(inputs)
         KitComponent.releaseNotes -> releaseNotesScreen(inputs)
         KitComponent.statusScreen -> statusScreen(inputs)
-        KitComponent.graceBanner -> graceBannerScreen(inputs)
+        KitComponent.graceBanner -> graceBannerScreen(inputs, today)
         KitComponent.accountAndLicense -> accountAndLicenseScreen(inputs)
         KitComponent.settings -> settingsScreen(inputs)
         KitComponent.paywall -> paywallScreen(inputs)
@@ -531,9 +534,9 @@ public object KitFormat {
         }
     }
 
-    /** Formats the local date [days] from now for a grace-period deadline. */
-    public fun dayAfter(days: Int): String =
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(LocalDate.now().plusDays(days.toLong()))
+    /** Formats the local date [days] after [today] for a grace-period deadline. */
+    public fun dayAfter(days: Int, today: LocalDate = LocalDate.now()): String =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(today.plusDays(days.toLong()))
 
     /** Formats a normalized fraction as a rounded percentage. */
     public fun percent(value: Double): String = "${(value.coerceIn(0.0, 1.0) * 100).roundToInt()}%"
