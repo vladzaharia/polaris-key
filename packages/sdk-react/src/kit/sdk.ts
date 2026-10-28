@@ -77,6 +77,9 @@ export function useSdkGate(
     pending: boolean;
     seed: AutoOutcome | null;
   }>({ pending: false, seed: null });
+  // Every seat is taken and the ladder came with no list: the gate's device-limit step, with the
+  // portal link it was given.
+  const [limit, setLimit] = useState<{ manageUrl?: string } | null>(null);
   const autoStarted = useRef(false);
   const alive = useRef(true);
   useEffect(() => {
@@ -111,11 +114,9 @@ export function useSdkGate(
     handleRef.current?.cancel?.();
     setHandle(null);
     setStep("home");
-    // What the ladder found is spent (its grant went with the form); the methods stay one press away.
-    setAuto((a) => ({
-      ...a,
-      seed: a.seed ? { kind: "needsSignIn" } : null,
-    }));
+    // What the ladder found is spent (its grant went with the form).
+    setAuto((a) => ({ ...a, seed: a.seed ? { kind: "needsSignIn" } : null }));
+    setLimit(null);
     setDismissed(errorRef.current);
     setSubmitted(false);
   }, []);
@@ -225,6 +226,12 @@ export function useSdkGate(
       .catch(() => ({ seed: null, open: false }))
       .then(({ seed, open }) => {
         if (!alive.current) return;
+        if (seed?.kind === "deviceLimit" && !seed.view) {
+          setAuto({ pending: false, seed: null });
+          setLimit(seed.manageUrl ? { manageUrl: seed.manageUrl } : {});
+          setStep("activate");
+          return;
+        }
         setAuto({ pending: false, seed });
         if (open) setStep("signin");
       });
@@ -315,7 +322,7 @@ export function useSdkGate(
           return;
         }
         case "welcome.signIn":
-          // The ladder found nothing to continue with: Sign in opens the form, whose provider
+          // The ladder found no account to continue with: Sign in opens the form, whose provider
           // button asks for the account chooser.
           if (auto.seed?.kind === "needsSignIn" && step === "home") {
             enter("signin", k);
@@ -382,7 +389,7 @@ export function useSdkGate(
         case "deviceLimit.title":
         case "deviceLimit.primary":
         case "deviceLimit.openBrowser": {
-          const url = state.error.license?.manageUrl;
+          const url = state.error.license?.manageUrl ?? limit?.manageUrl;
           if (!url) return;
           awaitingReturn.current = true;
           openManage(url, opts.returnUrl, key.trim() || undefined);
@@ -427,6 +434,7 @@ export function useSdkGate(
       step,
       enter,
       leave,
+      limit,
       auto.seed,
     ],
   );
@@ -469,19 +477,34 @@ export function useSdkGate(
     ],
   );
   if (!ctx || !input) return null;
+  const shown =
+    limit && step === "activate" && !input.activation
+      ? withLimit(input, limit)
+      : input;
   return {
     adapter: ctx.adapter,
     // While automatic sign-in is out the gate keeps its checking screen, never a flash of Welcome.
     input:
       auto.pending && holds
-        ? { ...input, gate: { checking: true, cached: false } }
-        : input,
+        ? { ...shown, gate: { checking: true, cached: false } }
+        : shown,
     step,
     seed: auto.seed,
     opener,
     act,
     edit,
     toast,
+  };
+}
+
+/** The device-limit refusal the ladder reported, as the key step draws it. */
+function withLimit(input: UiInput, limit: { manageUrl?: string }): UiInput {
+  return {
+    ...input,
+    activation: {
+      result: "device-limit",
+      ...(limit.manageUrl ? { manageUrl: limit.manageUrl } : {}),
+    },
   };
 }
 

@@ -12,6 +12,8 @@ import { createRoot, type Root } from "react-dom/client";
 
 import { PolarisKeyProvider } from "@polaris-key/react";
 import * as Kit from "@polaris-key/react/kit";
+import { KIT_COPY_EN_LEAN } from "@polaris-key/brand/kit-copy/lean";
+import enRest from "../../../brand/src/generated/kit-copy/en-rest.json" with { type: "json" };
 import type { AutoSignInResult } from "../../src/core/index.js";
 import { desktopAdapter } from "../../src/desktop/desktopAdapter.js";
 import { NOW_SEC, emptyBridgeState, makeFakeBridge } from "../fixtures.js";
@@ -66,6 +68,8 @@ const VIEW = {
 
 beforeAll(async () => {
   await Kit.preloadKitParts();
+  // English's second copy table loads on demand; the scenes start with the whole table.
+  Kit.provideKitCopy("en", { ...KIT_COPY_EN_LEAN, ...enRest });
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
@@ -202,6 +206,24 @@ describe("automatic sign-in in the React gate (real Chromium)", () => {
           has("signin.provider.continue"),
         );
         fits(el, "signin.provider.continue");
+      });
+
+      it(`device limit with no list at ${w} ${scheme}`, async () => {
+        const el = await scene(
+          "device-limit-no-list",
+          { kind: "deviceLimit", manageUrl: "https://key.plrs.im/m" },
+          w,
+          h,
+          scheme,
+          (e) => e.querySelector('[data-part="title"]') !== null,
+        );
+        expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+          document.documentElement.clientWidth,
+        );
+        // The gate's device-limit step, with the portal link.
+        expect(
+          el.querySelector('button[data-key^="deviceLimit."]'),
+        ).not.toBeNull();
       });
 
       it(`device limit at ${w} ${scheme}`, async () => {

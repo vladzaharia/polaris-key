@@ -157,8 +157,24 @@ describe("automatic sign-in in the gate", () => {
     );
   });
 
-  it("needs sign-in (signed out) keeps Welcome; Sign in opens the form", async () => {
+  it("signed out: Welcome, then Sign in shows the methods with the Google button", async () => {
     const m = mount({ kind: "needsSignIn", reason: "signedOut" });
+    await waitFor(() =>
+      expect(control(m.container, "welcome.signIn")).not.toBeNull(),
+    );
+    // Not the form at boot...
+    expect(control(m.container, "signin.provider.continue")).toBeNull();
+    fireEvent.click(control(m.container, "welcome.signIn")!);
+    await waitFor(() =>
+      expect(control(m.container, "signin.provider.continue")).not.toBeNull(),
+    );
+    expect(
+      control(m.container, "signin.provider.continue")!.textContent,
+    ).toContain("Google");
+  });
+
+  it("no credential: Sign in reaches the Google button too", async () => {
+    const m = mount({ kind: "needsSignIn", reason: "noCredential" });
     await waitFor(() =>
       expect(control(m.container, "welcome.signIn")).not.toBeNull(),
     );

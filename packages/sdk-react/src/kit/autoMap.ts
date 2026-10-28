@@ -73,6 +73,8 @@ export function outcomeOf(r: AutoSignInResult): AutoOutcome | null {
         ...(r.manageUrl ? { manageUrl: r.manageUrl } : {}),
       };
     case "needsSignIn":
+      // Kept for every reason: Welcome's Sign in opens the form with the provider's button.
+      // Only `noLink` and `terms` open it at boot (runAuto).
       return { kind: "needsSignIn" };
     default:
       return null;

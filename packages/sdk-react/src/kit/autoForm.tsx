@@ -103,6 +103,8 @@ export function primitivesOf(
   };
 }
 
+const GOOGLE = { provider: "Google" } as const;
+
 export interface AutoFormProps {
   adapter: PolarisAdapter;
   /** What automatic sign-in found, or null for the methods. */
@@ -128,6 +130,8 @@ export default function AutoForm(props: AutoFormProps): ReactNode {
   return (
     <SignIn
       primitives={primitives}
+      // The platform provider on the web is Google: the button names it.
+      input={GOOGLE}
       presentation="inline"
       replace="inline"
       fill
