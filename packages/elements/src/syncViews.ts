@@ -276,7 +276,7 @@ function unlockContent(c: RenderCtx): Out {
   const actions =
     s === "working"
       ? row(c, [busy], { busy })
-      : s === "failed"
+      : s === "failed" || s === "start-over-failed"
         ? row(c, ["common.tryAgain", "common.cancel"], { quiet: true })
         : s === "no-code"
           ? row(c, ["unlockSync.startOver", "common.cancel"], { quiet: true })
@@ -293,7 +293,9 @@ function unlockContent(c: RenderCtx): Out {
               );
   return html`${field}${s === "code" || s === "invalid"
     ? noAsk(c)
-    : nothing}${warning}${s === "failed"
-    ? callout(c, ["unlockSync.failed"])
+    : nothing}${warning}${s === "failed" || s === "start-over-failed"
+    ? callout(c, [
+        s === "failed" ? "unlockSync.failed" : "unlockSync.startOverFailed",
+      ])
     : nothing}${actions}`;
 }

@@ -1100,6 +1100,13 @@ export const LAZY_EN_PREFIXES = [
   "signin.confirmLink.",
   "signin.mail.",
   "signin.return.",
+  // Cloud Sync's locked-state screens (U-42): drawn after a sync answer, so the table is in place.
+  "unlockSync.",
+  "recoveryCode.",
+  "ringChange.",
+  "cloudSync.locked",
+  "cloudSync.unlock",
+  "cloudSync.ringChanged",
 ] as const;
 export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
   // The nearby approver's prompt (NearbyApproval) draws these.

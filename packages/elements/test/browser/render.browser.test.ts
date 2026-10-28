@@ -461,11 +461,22 @@ describe("the recovery code (U-42.2)", () => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
   });
 
+  it("is an image with the code spelled out in Chromium's accessibility tree", async () => {
+    await page.viewport(390, 844);
+    await mount(row(), "dark", 844);
+    const image = page.getByRole("img", { name: /Recovery code/ });
+    await expect.element(image).toBeVisible();
+    const label = (await image.element().getAttribute("aria-label")) ?? "";
+    expect(label).toContain("K 7 Q F, 2 M 9 D, X R 4 T, 8 W H B");
+  });
+
   it("every control on the three screens is at least 24 px", async () => {
     await page.viewport(390, 844);
     for (const [component, state] of [
       ["UnlockSync", "code"],
+      ["UnlockSync", "no-code"],
       ["UnlockSync", "start-over"],
+      ["RingChange", "failed"],
       ["RecoveryCode", "saved"],
       ["RingChange", "confirm"],
     ] as const) {

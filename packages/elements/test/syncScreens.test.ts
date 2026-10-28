@@ -49,6 +49,15 @@ const actions = (el: PkElement) => {
   return seen;
 };
 
+/** The actions Escape produces on `el`. */
+function escapeActions(el: PkElement): string[] {
+  const seen = actions(el);
+  q(el, ".pk-root")!.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+  );
+  return seen.map((a) => a.key);
+}
+
 describe("pk-unlock-sync", () => {
   it("hands the typed code over with Unlock only; the field is the only place it lives", async () => {
     const el = await mount("UnlockSync", { unlockSync: { step: "code" } });
@@ -142,11 +151,7 @@ describe("pk-recovery-code", () => {
       { recoveryCode: {} },
       { code: CODE },
     );
-    const seen = actions(el);
-    q(el, ".pk-root")!.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-    );
-    expect(seen).toEqual([]);
+    expect(escapeActions(el)).toEqual([]);
   });
 });
 
@@ -182,11 +187,7 @@ describe("pk-unlock-sync: every step, one field", () => {
     expect(unlock!.getAttribute("aria-disabled")).toBe("true");
     expect(q(el, 'button[data-key="common.cancel"]')).toBeNull();
     expect(field(el).readOnly).toBe(true);
-    const seen = actions(el);
-    q(el, ".pk-root")!.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-    );
-    expect(seen).toEqual([]);
+    expect(escapeActions(el)).toEqual([]);
   });
 
   it("an empty field sends nothing and keeps focus in it", async () => {
@@ -260,6 +261,22 @@ describe("pk-unlock-sync: every step, one field", () => {
     (q(el, 'button[data-key="common.tryAgain"]') as HTMLElement).click();
     await el.updateComplete;
     expect(el.view.state).toBe("code");
+  });
+
+  it("a failed Start over has its own line above the actions; Try again is left to the host", async () => {
+    const el = await mount("UnlockSync", {
+      unlockSync: { step: "start-over-failed" },
+    });
+    const seen = actions(el);
+    const reason = q(el, '[data-key="unlockSync.startOverFailed"]')!;
+    expect(
+      reason.compareDocumentPosition(q(el, ".actions")!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    (q(el, 'button[data-key="common.tryAgain"]') as HTMLElement).click();
+    await el.updateComplete;
+    expect(el.view.state).toBe("start-over-failed");
+    expect(seen.map((s) => s.key)).toEqual(["common.tryAgain"]);
   });
 
   it("the no-code step says so and leads with Start over; Cancel is quiet", async () => {

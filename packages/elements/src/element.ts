@@ -723,7 +723,9 @@ export abstract class PkElement extends LitElement {
       to("start-over");
     } else if (key === "common.cancel" && view.state === "start-over")
       to(this.unlockFrom);
-    else if (key === "common.tryAgain") to("code");
+    else if (key === "common.tryAgain" && view.state === "failed")
+      // Back to the field. After a failed Start over, Try again repeats it: the host's to run.
+      to("code");
   }
 
   /** Escape leaves a Cloud Sync screen by its Cancel (DL9), where it has one. */

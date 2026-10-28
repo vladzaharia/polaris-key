@@ -341,7 +341,7 @@ async function mount(
       // The recovery code reaches RecoveryCode as a prop, never in the input (U-42.2).
       code={
         fixture.component === "RecoveryCode"
-          ? "ABCD EFGH JKLM NPQR STUV WXYZ 2345 6789"
+          ? "K7QF-2M9D-XR4T-8WHB-3JNC-6PEZ-V5GD-HT0S"
           : undefined
       }
       fill={LAYOUTS[fixture.component].kind === "screen"}

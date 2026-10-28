@@ -119,6 +119,29 @@ const keys = (c: HTMLElement) =>
     (b) => b.dataset.key,
   );
 
+/** The driven UnlockSync, past the Start over warning's 500 ms, with Start over pressed. */
+async function startOverWith(
+  ring: KeyringClient,
+  ui: ReactNode = <UnlockSync />,
+) {
+  const { container } = inProvider(ring, ui);
+  await waitFor(() => expect(field(container)).not.toBeNull());
+  fireEvent.click(control(container, "unlockSync.startOver")!);
+  await wait(600);
+  fireEvent.click(control(container, "unlockSync.startOverConfirm")!);
+  return container;
+}
+
+/** A RingChange over a ring that reports a changed ring, with its Accept drawn. */
+async function ringChangeWith(over: Partial<KeyringClient>, ui: ReactNode) {
+  const ring = fakeRing({ status: vi.fn(async () => changed), ...over });
+  const { container } = inProvider(ring, ui);
+  await waitFor(() =>
+    expect(control(container, "ringChange.accept")).not.toBeNull(),
+  );
+  return { container, ring };
+}
+
 /** The driven UnlockSync over a ring whose `recover` answers `answer`, with `CODE` pressed in. */
 async function unlockWith(
   answer: () => Promise<RingStatus>,
@@ -408,14 +431,10 @@ describe("UnlockSync (driven)", () => {
     let finish: (c: RingCode) => void = () => undefined;
     const reset = vi.fn(() => new Promise<RingCode>((r) => (finish = r)));
     const onCancel = vi.fn();
-    const { container } = inProvider(
+    const container = await startOverWith(
       fakeRing({ reset }),
       <UnlockSync onCancel={onCancel} />,
     );
-    await waitFor(() => expect(field(container)).not.toBeNull());
-    fireEvent.click(control(container, "unlockSync.startOver")!);
-    await wait(600);
-    fireEvent.click(control(container, "unlockSync.startOverConfirm")!);
     await waitFor(() =>
       expect(
         control(container, "unlockSync.startOverConfirm")!.getAttribute(
@@ -437,11 +456,7 @@ describe("UnlockSync (driven)", () => {
       .fn<() => Promise<RingCode>>()
       .mockRejectedValueOnce(new PolarisError("network", "down"))
       .mockResolvedValueOnce({ recoveryCode: CODE, ringId: "r", epoch: 3 });
-    const { container } = inProvider(fakeRing({ reset }), <UnlockSync />);
-    await waitFor(() => expect(field(container)).not.toBeNull());
-    fireEvent.click(control(container, "unlockSync.startOver")!);
-    await wait(600);
-    fireEvent.click(control(container, "unlockSync.startOverConfirm")!);
+    const container = await startOverWith(fakeRing({ reset }));
     await waitFor(() =>
       expect(control(container, "common.tryAgain")).not.toBeNull(),
     );
@@ -560,14 +575,10 @@ describe("RingChange", () => {
   const Part = kitComponent("RingChange");
 
   it("names the device and passes the ring it was shown to acceptRingChange", async () => {
-    const ring = fakeRing({ status: vi.fn(async () => changed) });
     const onAccepted = vi.fn();
-    const { container } = inProvider(
-      ring,
+    const { container, ring } = await ringChangeWith(
+      {},
       <RingChange onAccepted={onAccepted} />,
-    );
-    await waitFor(() =>
-      expect(control(container, "ringChange.accept")).not.toBeNull(),
     );
     expect(container.textContent).toContain("Maya's MacBook");
     fireEvent.click(control(container, "ringChange.accept")!);
@@ -578,17 +589,10 @@ describe("RingChange", () => {
   it("shows progress, takes one press at a time, and says when accepting did not work", async () => {
     let answer: (s: RingStatus) => void = () => undefined;
     const accept = vi.fn(() => new Promise<RingStatus>((r) => (answer = r)));
-    const ring = fakeRing({
-      status: vi.fn(async () => changed),
-      acceptRingChange: accept,
-    });
     const onAccepted = vi.fn();
-    const { container } = inProvider(
-      ring,
+    const { container, ring } = await ringChangeWith(
+      { acceptRingChange: accept },
       <RingChange onAccepted={onAccepted} />,
-    );
-    await waitFor(() =>
-      expect(control(container, "ringChange.accept")).not.toBeNull(),
     );
     fireEvent.click(control(container, "ringChange.accept")!);
     fireEvent.click(control(container, "ringChange.accept")!);

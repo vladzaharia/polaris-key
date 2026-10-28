@@ -254,10 +254,14 @@ function UnlockBody(props: { c: KitCtx }): ReactNode {
           {text(c, "unlockSync.startOverWarning")}
         </p>
       ) : null}
-      {s === "failed" ? callout(c, ["unlockSync.failed"]) : null}
+      {s === "failed" || s === "start-over-failed"
+        ? callout(c, [
+            s === "failed" ? "unlockSync.failed" : "unlockSync.startOverFailed",
+          ])
+        : null}
       {s === "working"
         ? row(c, [busy], { busy })
-        : s === "failed"
+        : s === "failed" || s === "start-over-failed"
           ? row(c, ["common.tryAgain", "common.cancel"], { quiet: true })
           : s === "no-code"
             ? row(c, ["unlockSync.startOver", "common.cancel"], { quiet: true })

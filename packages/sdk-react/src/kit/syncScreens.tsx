@@ -102,7 +102,6 @@ function DrivenUnlock(props: UnlockSyncProps & { ring: Ring }): ReactNode {
   const [from, setFrom] = useState<Step>("code");
   const [fresh, setFresh] = useState<RingCode | null>(null);
   const [done, setDone] = useState(false);
-  const failedAt = useRef<"unlock" | "reset">("unlock");
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -119,20 +118,18 @@ function DrivenUnlock(props: UnlockSyncProps & { ring: Ring }): ReactNode {
   // Start over and the new code are not interrupted: Cancel and Escape are ignored while they run
   // (the working step offers neither), so a ring is never half replaced.
   const reset = useCallback(async () => {
-    failedAt.current = "reset";
     setBusy("start-over");
     setStep("working");
     try {
       const code = await ring.reset();
       if (alive.current) setFresh(code);
     } catch {
-      if (alive.current) setStep("failed");
+      if (alive.current) setStep("start-over-failed");
     }
   }, [ring]);
 
   const unlock = useCallback(
     async (code: string) => {
-      failedAt.current = "unlock";
       setBusy("unlock");
       setStep("working");
       try {
@@ -192,7 +189,8 @@ function DrivenUnlock(props: UnlockSyncProps & { ring: Ring }): ReactNode {
             void reset();
             break;
           case "common.tryAgain":
-            if (failedAt.current === "reset") void reset();
+            // Try again repeats what failed: a Start over, or back to the field after an unlock.
+            if (step === "start-over-failed") void reset();
             else setStep("code");
             break;
           case "common.cancel":
