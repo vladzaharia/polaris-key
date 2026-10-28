@@ -41,6 +41,7 @@ internal const val REFRESH_GAP_SECONDS: Long = 60
 internal const val MAX_DOCS_QUEUED: Int = 8
 private const val MAX_RETRIES = 5
 private const val MILLIS = 1000.0
+internal const val NANOS_PER_SECOND = 1_000_000_000L
 
 /** Which document a notice is about. */
 public enum class NoticeType { ring, trust }
@@ -66,6 +67,8 @@ internal class PeerDocsSource(
     val adoptRing: (suspend (String) -> RingAdoption)? = null,
     /** Verify and apply a pushed trust manifest. */
     val applyTrust: (suspend (String) -> PeerTrustResult)? = null,
+    /** Monotonic seconds (a wall-clock change never moves it): the refresh gap and the busy-notice spacing. */
+    val mono: () -> Long = now,
 )
 
 /** The account context of a session. [ring] is the newest roster a session handed up, if any. */
@@ -142,6 +145,9 @@ internal class PeerDocs(
     private var tries = 0
     private val listeners = CopyOnWriteArrayList<(ConnectNotice) -> Unit>()
 
+    @Volatile
+    private var closed = false
+
     /** The newest roster a session handed up, held until an identity load catches up. */
     @Volatile
     var pushed: HeldRing? = null
@@ -149,11 +155,16 @@ internal class PeerDocs(
 
     init {
         if (spawn != null) {
-            spawnJob = spawn
+            spawnJob = { j -> if (!closed) spawn(j) }
         } else {
             requireNotNull(scope) { "a scope or a spawn" }
-            scope.launch { for (j in jobs) runCatching { j() } }
-            spawnJob = { jobs.trySend(it) }
+            scope.launch {
+                for (j in jobs) {
+                    if (closed) break
+                    runCatching { j() }
+                }
+            }
+            spawnJob = { if (!closed) jobs.trySend(it) }
         }
     }
 
@@ -165,11 +176,12 @@ internal class PeerDocs(
         return { listeners -= fn }
     }
 
-    /** Stop a pending retry and the worker. */
+    /** Stop a pending retry and the worker; nothing queued runs and nothing new starts. */
     fun close() {
+        closed = true
         val cancel = synchronized(lock) { retry.also { retry = null } }
         cancel?.invoke()
-        jobs.close()
+        jobs.cancel()
     }
 
     // What a link reports; hand these to `LinkHandlers`.
@@ -238,8 +250,9 @@ internal class PeerDocs(
     suspend fun wantRing(): Boolean = want(false)
 
     private suspend fun want(retry: Boolean): Boolean {
+        if (closed) return false
         val refresh = src.refresh ?: return false
-        val t = src.now()
+        val t = src.mono()
         var gap = 0L
         val started = synchronized(lock) {
             if (lastRefresh != Long.MIN_VALUE && t - lastRefresh < REFRESH_GAP_SECONDS) {
@@ -269,7 +282,7 @@ internal class PeerDocs(
 
     private fun defer(seconds: Double) {
         synchronized(lock) {
-            if (retry != null) return
+            if (closed || retry != null) return
             val fire = {
                 synchronized(lock) { retry = null }
                 spawnJob { want(true) }
@@ -294,6 +307,7 @@ internal class PeerDocs(
     private fun queue(kind: NoticeType, jws: String, job: suspend () -> Unit) {
         val key = kind.name + ":" + jws
         val limit = if (kind == NoticeType.ring) MAX_DOCS_QUEUED else MAX_DOCS_QUEUED - 1
+        if (closed) return
         val busy = synchronized(lock) {
             if (key in queued || queued.size >= limit) {
                 true
@@ -308,6 +322,7 @@ internal class PeerDocs(
         }
         spawnJob {
             try {
+                if (closed) return@spawnJob
                 job()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -321,7 +336,7 @@ internal class PeerDocs(
 
     /** A busy refusal is one notice a second per kind: a flood does not become a flood of notices. */
     private fun emitBusy(kind: NoticeType) {
-        val t = src.now()
+        val t = src.mono()
         val first = synchronized(lock) {
             val last = lastBusy[kind]
             if (last != null && t - last < 1) false else true.also { lastBusy[kind] = t }

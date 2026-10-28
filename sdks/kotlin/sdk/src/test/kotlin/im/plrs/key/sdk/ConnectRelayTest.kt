@@ -139,7 +139,7 @@ class ConnectRelayTest {
         until { svc.members() == listOf(r.world.idA) }
         r.room.push(r.world.idA, RelayMessage.Gone(Base64Url.decodeStrict(r.world.idA)!!))
         until { svc.members().isEmpty() }
-        assertTrue(seen.last().isEmpty())
+        until { seen.lastOrNull()?.isEmpty() == true }
     }
 
     // -- reconnect and the typed stops -----------------------------------------------------------

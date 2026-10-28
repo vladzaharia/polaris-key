@@ -696,6 +696,65 @@ class ConnectSessionTest {
     }
 
     @Test
+    fun closeStopsTheWorkerNothingQueuedRunsAndNothingStartsAfterIt() {
+        val scope = CoroutineScope(Dispatchers.Default + Job())
+        try {
+            val started = java.util.concurrent.CountDownLatch(1)
+            val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+            val adopted = java.util.concurrent.atomic.AtomicInteger()
+            val refreshes = java.util.concurrent.atomic.AtomicInteger()
+            val d = PeerDocs(
+                PeerDocsSource({ now }, { refreshes.incrementAndGet() }, {
+                    started.countDown()
+                    gate.await()
+                    adopted.incrementAndGet()
+                    RingAdoption.Stored(1)
+                }, null),
+                scope = scope,
+            )
+            d.ring("r1")
+            assertTrue(started.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            d.ring("r2")
+            d.ring("r3") // queued behind the one in flight
+            d.close()
+            gate.complete(Unit)
+            Thread.sleep(300)
+            assertEquals(1, adopted.get()) // only the one already running; the queued two never ran
+            assertEquals(0, refreshes.get()) // and it started no refresh
+            d.ring("r4")
+            assertFalse(runBlocking { d.wantRing() })
+            d.onRingWanted()
+            Thread.sleep(200)
+            assertEquals(1, adopted.get())
+            assertEquals(0, refreshes.get())
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun theRefreshGapFollowsTheMonotonicClockNotTheWallClock() {
+        var wall = now
+        var mono = 1000L
+        var refreshes = 0
+        val d = PeerDocs(
+            PeerDocsSource({ wall }, { refreshes++ }, null, null, { mono }),
+            spawn = { job -> runBlocking { job() } },
+            timer = { _, _ -> {} },
+        )
+        assertTrue(runBlocking { d.wantRing() })
+        wall -= 6 * 3600 // the wall clock is set back by hours
+        mono += 30
+        assertFalse(runBlocking { d.wantRing() }) // still inside the minute
+        mono += 31
+        assertTrue(runBlocking { d.wantRing() }) // the minute has passed whatever the wall clock says
+        wall += 24 * 3600 // set forward: no earlier release
+        mono += 5
+        assertFalse(runBlocking { d.wantRing() })
+        assertEquals(2, refreshes)
+    }
+
+    @Test
     fun aListenerThatThrowsDoesNotStopTheOthers() {
         val notices = ArrayList<ConnectNotice>()
         val d = docs(apply = { PeerTrustResult(true) }, notices = notices)

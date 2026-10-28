@@ -142,3 +142,34 @@ public fun browseAccountInstance(instance: String, kDiscs: List<ByteArray>, nowS
     }
     return null
 }
+
+/**
+ * Every instance name a roster can announce right now, worked out once: the current and the previous
+ * epoch, the (at most two) delivered keys, and every device but [self]. A browse hit is then one map
+ * lookup, so a forged instance name costs no HMAC (at most 512 are spent on building the table).
+ * [mac] is the name function, a parameter so a test can count the work.
+ */
+public class BrowseIndex(
+    kDiscs: List<ByteArray>,
+    public val epoch: Long,
+    roster: List<String>,
+    mac: (ByteArray, Long, String) -> String = ::accountInstance,
+) {
+    private val names = HashMap<String, BrowseHit>()
+
+    init {
+        val devices = roster.take(MAX_ROSTER)
+        val keys = kDiscs.take(MAX_KEYS)
+        // Same precedence as [browseAccountInstance]: the current epoch and the newest key win a clash.
+        for (epochBack in 0..1) {
+            for ((keyIndex, key) in keys.withIndex()) {
+                for (d in devices) names.putIfAbsent(mac(key, epoch - epochBack, d), BrowseHit(d, epochBack, keyIndex))
+            }
+        }
+    }
+
+    /** Which roster device [instance] belongs to, or null. */
+    public fun lookup(instance: String): BrowseHit? = if (isInstanceName(instance)) names[instance] else null
+
+    override fun toString(): String = "BrowseIndex(${names.size})"
+}

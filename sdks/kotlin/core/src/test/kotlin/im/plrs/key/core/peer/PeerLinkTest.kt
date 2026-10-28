@@ -43,15 +43,27 @@ class PeerLinkTest {
         var other: MemPipe? = null
 
         @Volatile var stall = false
+        val closedGate = CompletableDeferred<Unit>()
+
+        /** True once a write that was blocked on a peer that never reads has returned (a real socket throws on close). */
+        @Volatile var stalledWriteReturned = false
 
         override suspend fun read(): ByteArray? = inbox.receiveCatching().getOrNull()
 
         override suspend fun write(bytes: ByteArray) {
-            if (stall) delay(60_000)
+            if (stall) {
+                try {
+                    closedGate.await()
+                    throw java.io.IOException("closed")
+                } finally {
+                    stalledWriteReturned = true
+                }
+            }
             other!!.inbox.trySend(bytes.copyOf())
         }
 
         override fun close() {
+            closedGate.complete(Unit)
             inbox.close()
             other?.inbox?.close()
         }
@@ -260,6 +272,11 @@ class PeerLinkTest {
                 } catch (e: IllegalStateException) { /* already closing */ }
             }
             assertEquals(SessionEvent.Closed("peer_busy", false), p.sa.closed.await())
+            // F1: the link that ended closed its pipe, so the blocked writer was released (no thread leaks).
+            withTimeout(2_000) { p.pa.closedGate.await() }
+            val end = System.nanoTime() + 2_000_000_000L
+            while (!p.pa.stalledWriteReturned && System.nanoTime() < end) delay(10)
+            assertTrue(p.pa.stalledWriteReturned)
         } finally {
             s.cancel()
         }

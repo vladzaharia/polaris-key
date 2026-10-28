@@ -141,14 +141,14 @@ private class Reader(val buf: ByteArray) {
 
         MdnsType.PTR -> {
             val (name, after) = name(start)
-            if (after > end) throw MdnsPacketError("bad_rdata")
+            if (after != end) throw MdnsPacketError("bad_rdata")
             MdnsData.Ptr(name)
         }
 
         MdnsType.SRV -> {
             if (end - start < SRV_FIXED + 1) throw MdnsPacketError("bad_rdata")
             val (target, after) = name(start + SRV_FIXED)
-            if (after > end) throw MdnsPacketError("bad_rdata")
+            if (after != end) throw MdnsPacketError("bad_rdata")
             MdnsData.Srv(port = u16(start + 4), target = target, priority = u16(start), weight = u16(start + 2))
         }
 

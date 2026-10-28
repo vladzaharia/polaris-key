@@ -11,7 +11,14 @@ public class MdnsAdvert(public val instance: String, public val port: Int, publi
 }
 
 /** A complete advert seen on the network: [host] is the address to dial. */
-public data class MdnsFound(val instance: String, val host: String, val port: Int, val txt: List<String>)
+public data class MdnsFound(
+    val instance: String,
+    val host: String,
+    val port: Int,
+    val txt: List<String>,
+    /** Every address the name was announced from, [host] first; a dial tries them in order. */
+    val hosts: List<String> = listOf(host),
+)
 
 /** What `advertise` and `browse` return. [stop] may be called twice. */
 public class MdnsHandle(private val stopper: suspend () -> Unit) {
@@ -31,8 +38,12 @@ public class MdnsHandle(private val stopper: suspend () -> Unit) {
 public interface MdnsAdapter {
     public suspend fun advertise(advert: MdnsAdvert): MdnsHandle
 
-    /** [onUp] gets each complete (or changed) advert; [onDown] an instance that said goodbye or expired. */
-    public suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit = {}): MdnsHandle
+    /**
+     * [onUp] gets each complete (or changed) advert; [onDown] an instance that said goodbye or expired.
+     * Only an instance [accept] allows enters the adapter's tables (the service passes the names its
+     * roster can announce), so a stranger's names cannot crowd out a real one.
+     */
+    public suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit = {}, accept: (String) -> Boolean = { true }): MdnsHandle
 }
 
 /** The multicast socket the adapter drives: [send] multicasts one packet on every selected interface. */

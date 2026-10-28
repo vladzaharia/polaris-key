@@ -532,6 +532,9 @@ public class CoreContext(options: CoreOptions) {
     /** The time every gate comparison and network-path claim check runs at. */
     public suspend fun now(systemNow: Long? = null): Long = locked { clock.effectiveNow(systemNow ?: systemClock()) }
 
+    /** [now] without the state lock, for a synchronous caller: `max(system clock, the verified-artifact floor)`. */
+    public fun flooredNow(): Long = clock.effectiveNow(systemClock())
+
     // ── Trust (§1) ─────────────────────────────────────────────────────────────────────────
 
     /** The effective set: manifest keys UNION pins, pins last. */

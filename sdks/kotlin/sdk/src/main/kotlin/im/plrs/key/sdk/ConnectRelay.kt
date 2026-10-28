@@ -84,6 +84,9 @@ private const val IDENTITY_TTL_S = 30L
 private const val CERT_MARGIN_S = 60L
 private const val MILLIS = 1000
 private const val STOP_TIMEOUT_MILLIS = 15_000L
+
+/** How long an abort waits for a socket or an advert to let go. */
+private const val ABORT_CLOSE_MILLIS = 1_000L
 private const val PING_BYTES = 8
 private const val MAX_BACKOFF_EXPONENT = 16
 private const val NOT_MEMBER_LIMIT = 3
@@ -358,7 +361,7 @@ internal class RelayService(
     private val endedKeys = java.util.ArrayDeque<String>()
     private val sessionFns = CopyOnWriteArrayList<(ConnectSession) -> Unit>()
     private val docs = PeerDocs(
-        PeerDocsSource(src.now, src.refresh, src.adoptRing, src.applyTrust),
+        PeerDocsSource(src.now, src.refresh, src.adoptRing, src.applyTrust, src.mono),
         onStored = { held = null },
         scope = this.scope,
     )
@@ -427,8 +430,10 @@ internal class RelayService(
             throw errorNow ?: stoppedError()
         }
         if (!started) start()
+        // Register first, then look again: session() sets openNow and drains the waiters under the same lock.
         val w = CompletableDeferred<Unit>()
         synchronized(lock) { waiters += w }
+        if (openNow) w.complete(Unit)
         try {
             val ok = withTimeoutOrNull(timeoutMillis ?: (o.openSeconds * MILLIS).toLong()) { w.await() }
             if (ok == null) throw errorNow ?: RelayException(RelayErrorReason.not_connected, "The relay is not connected.")
@@ -451,6 +456,17 @@ internal class RelayService(
         }
     }
 
+    /** Last resort after a stop that ran out of time: cancel the socket and the scope; waits for nothing. */
+    suspend fun abort() {
+        synchronized(lock) { stopped = true }
+        val s = ws
+        ws = null
+        openNow = false
+        stateNow = RelayState.stopped
+        if (ownsScope) scope.cancel()
+        withTimeoutOrNull(ABORT_CLOSE_MILLIS) { if (s != null) quiet { s.close(CLOSE_NORMAL) } }
+    }
+
     /** Stop the loop, close the socket and end every session. Gives up waiting after 15 seconds. */
     suspend fun stop() {
         synchronized(lock) {
@@ -463,7 +479,7 @@ internal class RelayService(
         set(RelayState.stopped)
         withTimeoutOrNull(STOP_TIMEOUT_MILLIS) {
             // Say goodbye to open sessions before the socket goes.
-            for (l in open) quiet { l.close(PeerCloseCode.peer_bye) }
+            for (l in open) quiet { withTimeoutOrNull(SESSION_CLOSE_MILLIS) { l.close(PeerCloseCode.peer_bye) } }
             if (q != null && openNow) q.drained(DRAIN_MILLIS)
         }
         loseLinks()
@@ -812,7 +828,7 @@ internal class RelayService(
             },
             path = "relay",
         )
-        val base = ChannelBase(ident, o.caps, o.label, { docs.pushed }, src.now, o.rekeyMessages, o.rekeySeconds)
+        val base = ChannelBase(ident, o.caps, o.label, { docs.pushed }, src.floored, o.rekeyMessages, o.rekeySeconds)
         assertRelayMode("a")
         synchronized(lock) {
             if (links.size >= o.maxSessions) return null
@@ -851,6 +867,16 @@ internal class RelayService(
     }
 
     internal fun sendSession(peer: ByteArray, session: Long, noise: ByteArray) {
+        // Handshake and PONG envelopes are not held to the outbox cap (they must go out); a session that
+        // keeps asking for them while the box is over twice the cap is closed instead.
+        val q = outbox
+        if (q != null && q.queued > 2 * q.maxBytes) {
+            val l = synchronized(lock) { links[sessionKey(peer, session)] }
+            if (l != null) {
+                l.closeNow(PeerCloseCode.peer_busy)
+                return
+            }
+        }
         sendEnv(RelayMessage.Send(peer, session, noise))
     }
 
