@@ -21,6 +21,8 @@ import { describe, expect, it } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import type { Store } from "@polaris-key/client-core";
 import type { PolarisKeyClient } from "../src/client.js";
+import { CATALOG_REFETCH_MS, CloudSyncHost } from "../src/cloudSync/host.js";
+import { readCappedText } from "../src/core/boundedBody.js";
 import {
   CATALOG,
   PRODUCT,
@@ -28,7 +30,9 @@ import {
   SUBJECT,
   TOKEN,
   World,
+  entry,
   open,
+  stateFile,
   type Body,
 } from "./cloudSyncFixtures.js";
 
@@ -50,18 +54,6 @@ async function live(w: World) {
   r.host.machine.signIn(SUBJECT);
   await r.host.touch();
   return r;
-}
-
-/** The state file: the SDK namespaces its state directory, so find it below `dir`. */
-function stateFile(dir: string): string {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name);
-    if (e.isDirectory()) {
-      const f = stateFile(p);
-      if (f !== "") return f;
-    } else if (e.name === "cloud-sync.json") return p;
-  }
-  return "";
 }
 
 const ct = async (
@@ -268,28 +260,135 @@ describe("cloud sync host: mode, catalog and state", () => {
     client.close();
   });
 
-  it("fetches the catalog once when none is cached or compiled, and again when catalogVersion changes", async () => {
+  /** A host over the client's own parts, with a clock the test moves. */
+  const timed = (client: PolarisKeyClient, mirror?: object) => {
+    const clock = { t: 1_700_000_000_000 };
+    const inner = client as unknown as { core: never; tokens: never };
+    const host = new CloudSyncHost(
+      {
+        ctx: inner.core,
+        tokens: inner.tokens,
+        keyring: client.keyring,
+        discovery: () => null,
+        fetchSchema: () => client.config.fetchSchema(),
+        document: () => ({ values: {} }),
+        clock: { now: () => clock.t },
+      },
+      mirror ? { catalog: mirror as never } : {},
+    );
+    return { host, clock };
+  };
+
+  it("fetches the catalog once when none is cached or compiled, and again only after the refetch window", async () => {
     const w = new World();
-    const r = await rig(w, { catalog: false });
-    await r.client.keyring.create();
-    await r.host.start();
+    const { client, stateDir } = await rig(w, { catalog: false });
+    await client.keyring.create();
+    const { host, clock } = timed(client);
+    await host.start();
     expect(w.schemaFetches).toBe(1);
     w.schema = CATALOG(2);
     w.pull = () => w.body({ catalogVersion: 2 });
+    host.machine.signIn(SUBJECT);
+    await host.touch();
+    // A Worker alternating versions cannot make the client fetch on every pull.
+    expect(w.schemaFetches).toBe(1);
+    clock.t += CATALOG_REFETCH_MS + 1;
+    host.machine.setNetwork("online");
+    await host.touch();
+    expect(w.schemaFetches).toBe(2);
+    // A version it does not serve is not asked for again, window or not.
+    w.pull = () => w.body({ catalogVersion: 3 });
+    clock.t += CATALOG_REFETCH_MS + 1;
+    host.machine.setNetwork("online");
+    await host.touch();
+    const after = w.schemaFetches;
+    clock.t += CATALOG_REFETCH_MS + 1;
+    host.machine.setNetwork("online");
+    await host.touch();
+    expect(w.schemaFetches).toBe(after);
+    // With no mirror the served catalog is cached beside the journal.
+    expect(
+      JSON.parse(readFileSync(stateFile(stateDir), "utf8")).catalog,
+    ).toMatchObject({ schemaVersion: 2 });
+    client.close();
+  });
+
+  it("the compiled mirror is authoritative: a served catalog only adds keys, and bad keys are dropped", async () => {
+    const w = new World();
+    w.schema = {
+      schemaVersion: 2,
+      entries: [
+        entry("theme", { sync: "local" }),
+        entry("extra", { sync: "local" }),
+        entry("bad key!", { sync: "local" }),
+      ],
+    };
+    const r = await rig(w);
+    await r.client.keyring.create();
+    await r.host.start();
+    w.pull = () => w.body({ catalogVersion: 2 });
     r.host.machine.signIn(SUBJECT);
     await r.host.touch();
-    expect(w.schemaFetches).toBe(2);
-    // A Worker that keeps naming a version it does not serve is not asked again.
-    w.pull = () => w.body({ catalogVersion: 3 });
     await r.host.touch();
-    r.host.machine.flush();
-    await r.host.touch();
-    await r.host.touch();
-    expect(w.schemaFetches).toBeLessThanOrEqual(3);
-    // The catalog is cached beside the journal.
+    const m = r.host.machine;
+    m.set("theme", "dark");
+    m.set("extra", "x");
+    expect(m.settingState("theme").sync).not.toBe("local");
+    expect(m.settingState("extra").sync).toBe("local");
+    // The mirror is never replaced by the served copy in the file.
     const saved = JSON.parse(readFileSync(stateFile(r.stateDir), "utf8"));
-    expect(saved.catalog.schemaVersion).toBe(2);
+    expect(
+      saved.catalog.entries.map((e: { key: string }) => e.key),
+    ).not.toContain("bad key!");
     r.client.close();
+  });
+
+  it("with no mirror a served catalog cannot reclassify an open setting the person already uses", async () => {
+    const w = new World();
+    const { client } = await rig(w, { catalog: false });
+    await client.keyring.create();
+    const { host, clock } = timed(client);
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    await host.touch();
+    host.machine.set("notes", "mine");
+    await host.flush(1000);
+    w.schema = {
+      schemaVersion: 2,
+      entries: [
+        entry("notes", { sync: "local" }),
+        entry("fresh", { sync: "local" }),
+      ],
+    };
+    w.pull = () => w.body({ catalogVersion: 2 });
+    clock.t += CATALOG_REFETCH_MS + 1;
+    host.machine.setNetwork("online");
+    await host.touch();
+    expect(w.schemaFetches).toBe(2);
+    expect(host.machine.settingState("notes").sync).not.toBe("local");
+    expect(host.machine.settingState("fresh").sync).toBe("local");
+    client.close();
+  });
+
+  it("junk names a Worker serves cannot push the person's open keys out of the tombstone map", async () => {
+    const w = new World();
+    const { client, host, stateDir } = await live(w);
+    host.machine.set("notes-private", "x");
+    await host.flush(1000);
+    w.pull = () =>
+      w.body({
+        cursor: 9,
+        encryptionSince: 100,
+        changes: Array.from({ length: 5000 }, (_, i) =>
+          change({ setting: `junk${i}`, value: i, version: i + 1 }),
+        ),
+      });
+    host.machine.setNetwork("online");
+    await host.touch();
+    const keys = JSON.parse(readFileSync(stateFile(stateDir), "utf8")).openKeys;
+    expect(keys).toContain("notes-private");
+    expect(keys.filter((k: string) => k.startsWith("junk"))).toEqual([]);
+    client.close();
   });
 
   it("writes cloud-sync.json with mode 0600 and the journal in it", async () => {
@@ -344,5 +443,51 @@ describe("cloud sync host: isolation", () => {
       )
       .map((f) => f.slice(SRC.length + 1));
     expect(importers.sort()).toEqual(["client.ts"]);
+  });
+});
+
+describe("cloud sync host: bounded bodies", () => {
+  const stream = (chunks: Uint8Array[], headers: Record<string, string> = {}) =>
+    new Response(
+      new ReadableStream({
+        start(c) {
+          for (const x of chunks) c.enqueue(x);
+          c.close();
+        },
+      }),
+      { headers },
+    );
+
+  it("counts bytes, not string length", async () => {
+    // 4 characters, 12 bytes.
+    const euro = new TextEncoder().encode("\u20ac\u20ac\u20ac\u20ac");
+    expect(await readCappedText(stream([euro]), 12)).toBe("\u20ac".repeat(4));
+    expect(await readCappedText(stream([euro]), 11)).toBeNull();
+  });
+
+  it("refuses on content-length without reading, and aborts a stream that outgrows its cap", async () => {
+    const big = new Response("x", {
+      headers: { "content-length": "999999999" },
+    });
+    expect(await readCappedText(big)).toBeNull();
+    let pulled = 0;
+    const endless = new Response(
+      new ReadableStream({
+        pull(c) {
+          pulled++;
+          c.enqueue(new Uint8Array(1024));
+        },
+      }),
+    );
+    expect(await readCappedText(endless, 4096)).toBeNull();
+    expect(pulled).toBeLessThan(20);
+  });
+
+  it("fetchSchema answers null for an oversized catalog", async () => {
+    const w = new World();
+    const { client } = await rig(w);
+    w.schemaLength = String(2 ** 30);
+    expect(await client.config.fetchSchema()).toBeNull();
+    client.close();
   });
 });

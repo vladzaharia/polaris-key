@@ -3,6 +3,11 @@
 // `/config/schema` (so a relaunch routes settings before the first fetch) and the names of the
 // person's open settings (so a blinded tombstone can be mapped back).
 //
+// The file holds the WHOLE opened snapshot of the signed-in person's settings (every value this
+// device has opened or edited), not only the pending edits. Whoever signs out, or loses the
+// account, must purge it with the key ring's pin (U-06.3); until then it is as sensitive as the
+// settings themselves.
+//
 // Nothing here is a secret of the ring: the root is never written (the keyring keeps it in memory).
 // The journal does hold the person's own setting values in the clear, as the machine's locked state
 // requires ("edits stay in the clear on the device"); that is why the file is 0600 and sits in the

@@ -19,6 +19,7 @@ import {
   World,
   memStore,
   open,
+  stateFile,
 } from "./cloudSyncFixtures.js";
 
 /** A signed-in rig: a ring (root held), the host started and `SUBJECT` signed in through the
@@ -41,18 +42,6 @@ const settle = async (c: PolarisKeyClient) => {
     c as unknown as { cloudSyncApi: { flush(): Promise<unknown> } }
   ).cloudSyncApi.flush();
 };
-
-/** Where the host's state file is (the SDK namespaces its state directory), or "" if absent. */
-function stateFile(dir: string): string {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name);
-    if (e.isDirectory()) {
-      const f = stateFile(p);
-      if (f !== "") return f;
-    } else if (e.name === "cloud-sync.json") return p;
-  }
-  return "";
-}
 
 const signOutHook = (c: PolarisKeyClient) =>
   (

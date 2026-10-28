@@ -9,10 +9,10 @@ import type {
   SyncResponse,
 } from "@polaris-key/client-core/cloud-sync";
 import type { CoreContext } from "../core/context.js";
+import { MAX_BODY_BYTES, readCappedText } from "../core/boundedBody.js";
 import type { TokenManager } from "../core/token.js";
 
-/** The most response bytes the host reads (the contract's pull page is far smaller). */
-export const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
+export const MAX_RESPONSE_BYTES = MAX_BODY_BYTES;
 
 const TRANSPORT: SyncResponse = { error: "transport" };
 
@@ -42,8 +42,8 @@ export async function sendSync(
   }
   try {
     const res = await ctx.request(`${ctx.baseUrl}${req.path}`, init, "sync");
-    const text = await res.text();
-    if (text.length > MAX_RESPONSE_BYTES) return TRANSPORT;
+    const text = await readCappedText(res, MAX_RESPONSE_BYTES);
+    if (text === null) return TRANSPORT;
     if (text === "") return { status: res.status };
     try {
       return { status: res.status, body: JSON.parse(text) };

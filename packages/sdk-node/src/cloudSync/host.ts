@@ -28,6 +28,7 @@ import {
   SYNC_SIGNOUT_FLUSH_MS,
   type CloudSyncCatalog,
   type CloudSyncDocument,
+  type OpenedBody,
   type EncryptionMode,
   type Json,
   type SettingRoute,
@@ -37,6 +38,7 @@ import {
   type WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import { openPull, sealPush } from "@polaris-key/client-core/sync";
+import { SYNC_KEY_PATTERN } from "@polaris-key/protocol/sync";
 import { syncedSettings, type ProductCatalog } from "@polaris-key/catalog";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
@@ -83,6 +85,33 @@ export const TICK_MS = 250;
 const MAX_EXCHANGES = 64;
 
 const EMPTY_CATALOG: ProductCatalog = { schemaVersion: 0, entries: [] };
+const SYNC_KEY = new RegExp(SYNC_KEY_PATTERN);
+/** The most entries and bytes of a catalog the host will route by. */
+export const MAX_CATALOG_ENTRIES = 1024;
+export const MAX_CATALOG_BYTES = 1024 * 1024;
+/** A served catalog is fetched again at most this often (the first fetch is free). */
+export const CATALOG_REFETCH_MS = 5 * 60_000;
+
+/** A catalog fit to route by: the right shape and size, every entry key a valid sync key, and
+ *  one entry per key. Null when it is not. */
+function vetted(c: unknown): ProductCatalog | null {
+  if (!isCatalogShape(c) || c.entries.length > MAX_CATALOG_ENTRIES) return null;
+  if (JSON.stringify(c).length > MAX_CATALOG_BYTES) return null;
+  const seen = new Set<string>();
+  const entries = c.entries.filter((e) => {
+    const k = (e as { key?: unknown } | null)?.key;
+    if (typeof k !== "string" || !SYNC_KEY.test(k) || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  const out = { ...c, entries };
+  try {
+    routesOf(out);
+  } catch {
+    return null;
+  }
+  return out;
+}
 
 const isObj = (v: unknown): v is { [k: string]: Json } =>
   v !== null && typeof v === "object" && !Array.isArray(v);
@@ -104,7 +133,14 @@ export class CloudSyncHost {
   readonly #listeners = new Set<(events: SyncEvent[]) => void>();
   #machine: CloudSyncMachine | null = null;
   #detach: (() => void) | null = null;
+  /** The catalog compiled into the app: authoritative for every key it names. */
+  #mirror: ProductCatalog | null = null;
+  /** The last catalog the Worker served: it may only add keys the mirror lacks. */
+  #served: ProductCatalog | null = null;
+  /** The catalog the machine routes by (`#effective()`). */
   #catalog: ProductCatalog = EMPTY_CATALOG;
+  #lastFetchAt: number | null = null;
+  #used = 0;
   #routes: SettingRoute[] = [];
   #openKeys = new Set<string>();
   #documentJson = "";
@@ -156,7 +192,8 @@ export class CloudSyncHost {
     this.#started = true;
     const saved = await this.#file.load();
     this.#openKeys = new Set(saved.openKeys);
-    this.#catalog = this.#pickCatalog(saved);
+    this.#mirror = vetted(this.#opts.catalog);
+    this.#served = vetted(saved.catalog);
     this.#build(saved.persisted);
     this.#exitHook = () => {
       void this.flush(SYNC_SIGNOUT_FLUSH_MS);
@@ -167,23 +204,29 @@ export class CloudSyncHost {
     this.touch();
   }
 
-  /** Cached catalog first (it is the newest the Worker served), else the compiled mirror. */
-  #pickCatalog(saved: CloudSyncFile): ProductCatalog {
-    for (const c of [saved.catalog, this.#opts.catalog ?? null]) {
-      if (c === null || !isCatalogShape(c)) continue;
-      try {
-        routesOf(c);
-        return c;
-      } catch {
-        // A catalog the derivation refuses is not used.
-      }
-    }
-    return EMPTY_CATALOG;
+  /**
+   * The routes' catalog: the mirror as it is, plus served entries only for keys the mirror does
+   * not name and the person's own open settings do not use. The Worker's catalog never changes a
+   * route the app compiled in, and never turns an open setting into a declared one.
+   */
+  #effective(): ProductCatalog {
+    const mirror = this.#mirror;
+    const served = this.#served;
+    const taken = new Set(mirror?.entries.map((e) => e.key));
+    const extra = (served?.entries ?? []).filter(
+      (e) => !taken.has(e.key) && !this.#openKeys.has(e.key),
+    );
+    return {
+      ...(mirror ?? served ?? EMPTY_CATALOG),
+      schemaVersion: served?.schemaVersion ?? mirror?.schemaVersion ?? 0,
+      entries: [...(mirror?.entries ?? []), ...extra],
+    };
   }
 
   /** (Re)build the machine from the journal, the catalog and the document. */
   #build(persisted: CloudSyncFile["persisted"]): void {
     this.#detach?.();
+    this.#catalog = this.#effective();
     this.#routes = routesOf(this.#catalog);
     const catalog: CloudSyncCatalog = { settings: this.#routes };
     const document = this.#deps.document();
@@ -254,7 +297,7 @@ export class CloudSyncHost {
   }
 
   async #pump(): Promise<void> {
-    let exchanges = 0;
+    this.#used = 0;
     do {
       this.#again = false;
       if (this.#rebuildWanted) await this.#rebuild();
@@ -263,19 +306,19 @@ export class CloudSyncHost {
       if (dt > 0) m.advance(dt);
       for (
         let reqs = m.takeRequests();
-        reqs.length > 0 && exchanges < MAX_EXCHANGES;
+        reqs.length > 0 && this.#used < MAX_EXCHANGES;
         reqs = m.takeRequests()
       ) {
         for (const req of reqs) {
-          exchanges++;
+          this.#used++;
           await this.#exchange(req);
         }
       }
       this.#emit();
-    } while (this.#again && exchanges < MAX_EXCHANGES);
+    } while (this.#again && this.#used < MAX_EXCHANGES);
     // Saving commits the debounced edits (`persist()`), so a pump that exchanged nothing leaves
     // the file alone and an edit keeps its debounce window.
-    if (exchanges > 0) await this.#save();
+    if (this.#used > 0) await this.#save();
   }
 
   /** One request: seal it (E2E), send it, open the answer, hand both to the machine. */
@@ -327,7 +370,7 @@ export class CloudSyncHost {
       // Locked since the request left: the answer is dropped and the cursor stays.
       return m.receive({ error: "transport" });
     }
-    this.#noteOpenedKeys(opened.body);
+    this.#noteOpenedKeys(opened.body, opened.opened);
     const answer: SyncResponse = { status: 200, body: opened.body };
     m.receive(answer, opened.opened);
     await this.#maybeRefetch(opened.body);
@@ -343,16 +386,27 @@ export class CloudSyncHost {
   }
 
   async #refetchCatalog(version: number | null): Promise<void> {
+    const now = this.#now;
+    // Rate-limited, and counted in the pump's budget like any other request.
+    if (
+      this.#used >= MAX_EXCHANGES ||
+      (this.#lastFetchAt !== null &&
+        now - this.#lastFetchAt < CATALOG_REFETCH_MS)
+    )
+      return;
+    this.#lastFetchAt = now;
     this.#triedCatalogVersion = version;
-    const fetched = await this.#deps.fetchSchema().catch(() => null);
-    if (fetched === null || !isCatalogShape(fetched)) return;
-    try {
-      routesOf(fetched);
-    } catch {
+    this.#used++;
+    const fetched = vetted(await this.#deps.fetchSchema().catch(() => null));
+    if (fetched === null) return;
+    if (JSON.stringify(fetched) === JSON.stringify(this.#served)) return;
+    const before = JSON.stringify(routesOf(this.#catalog));
+    this.#served = fetched;
+    // Rebuild only when the routes the machine uses would change.
+    if (JSON.stringify(routesOf(this.#effective())) === before) {
+      this.#catalog = this.#effective();
       return;
     }
-    if (JSON.stringify(fetched) === JSON.stringify(this.#catalog)) return;
-    this.#catalog = fetched;
     this.#rebuildWanted = true;
     this.#again = true;
   }
@@ -374,12 +428,20 @@ export class CloudSyncHost {
         this.#addOpenKey(mu.target.setting);
   }
 
-  #noteOpenedKeys(body: Json): void {
+  /** Names from rows this host opened (`sealed`): a served name, an unopened row or a plaintext
+   *  row never enters the set, so a Worker cannot fill it to push real names out. */
+  #noteOpenedKeys(body: Json, opened: OpenedBody): void {
     if (!isObj(body) || !Array.isArray(body.changes)) return;
     const declared = new Set(this.#routes.map((r) => r.key));
-    for (const c of body.changes)
-      if (isObj(c) && typeof c.setting === "string" && !declared.has(c.setting))
+    body.changes.forEach((c, i) => {
+      if (
+        opened.changes?.[i]?.sealed === true &&
+        isObj(c) &&
+        typeof c.setting === "string" &&
+        !declared.has(c.setting)
+      )
         this.#addOpenKey(c.setting);
+    });
   }
 
   #addOpenKey(name: string): void {
@@ -412,7 +474,7 @@ export class CloudSyncHost {
       v: 1,
       product: this.#deps.ctx.product,
       persisted: persisted ?? this.machine.persist(),
-      catalog: this.#catalog === EMPTY_CATALOG ? null : this.#catalog,
+      catalog: this.#served,
       openKeys: [...this.#openKeys],
     };
     await this.#file.save(file).catch(() => undefined);

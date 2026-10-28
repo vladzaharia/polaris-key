@@ -1,7 +1,8 @@
 // Shared fixtures for the Cloud Sync Node tests: a fake of the Worker's `/sync` routes and a client
 // opened over it (cloudSyncHost.test.ts, cloudSyncSettings.test.ts).
 
-import { mkdtempSync } from "node:fs";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { vi } from "vitest";
 import type { Store } from "@polaris-key/client-core";
 import { PolarisKeyClient } from "../src/client.js";
@@ -57,6 +58,7 @@ export interface Seen {
 export class World {
   seen: Seen[] = [];
   schemaFetches = 0;
+  schemaLength: string | undefined;
   schema: unknown = CATALOG(1);
   /** What the next pull / push answers (a function so a test can act mid-request). */
   pull: (url: URL) => Response | Body = () => this.body();
@@ -112,7 +114,11 @@ export class World {
       return j({ ringId: body!.ringId, epoch: 1 }, 201);
     if (url.pathname === `/${PRODUCT}/config/schema`) {
       this.schemaFetches++;
-      return j(this.schema);
+      return this.schemaLength === undefined
+        ? j(this.schema)
+        : new Response("{}", {
+            headers: { "content-length": this.schemaLength },
+          });
     }
     if (url.pathname === `/${PRODUCT}/sync` && method === "GET")
       return wrap(this.pull(url));
@@ -148,4 +154,17 @@ export async function open(
     vi.spyOn(client.config, "entries").mockReturnValue(over.entries as never);
   await client.init();
   return client;
+}
+
+/** The host's state file: the SDK namespaces its state directory, so find it below `dir`
+ *  ("" when absent). */
+export function stateFile(dir: string): string {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) {
+      const f = stateFile(p);
+      if (f !== "") return f;
+    } else if (e.name === "cloud-sync.json") return p;
+  }
+  return "";
 }
