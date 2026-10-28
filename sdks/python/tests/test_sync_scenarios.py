@@ -33,12 +33,70 @@ _CORPUS: Dict[str, Any] = json.loads(
 _SCENARIOS: List[Dict[str, Any]] = _CORPUS["scenarios"]
 _SETTING_CASES: List[Dict[str, Any]] = _CORPUS["settingCases"]
 
-# Scenarios the Python machine port replays today: every one with no `respond` step (U-06.6). The
-# transport half (`respond`, push, pull, rebase) arrives with U-06.7 and the E2E half with U-06.8.
+# Scenarios the Python machine port replays (D-12). Every corpus scenario is listed; the flip of
+# `sync.scenarios` to implemented deletes this list and the skip.
 PORTED = frozenset(
-    s["name"] for s in _SCENARIOS if not any("respond" in step for step in s["steps"])
+    (
+        "optimistic-read-pending",
+        "max-policy-optimistic",
+        "debounce-slider",
+        "clock-offset-folded",
+        "clock-slow-precontact-restamp",
+        "clock-fast-precontact-restamp",
+        "lww-conflict-server-wins",
+        "conflict-then-ok-one-push",
+        "request-failure-keeps-journal",
+        "conflict-rebase-new-mutation",
+        "one-outstanding-cas",
+        "account-switch-partition",
+        "first-sign-in-empty-cloud",
+        "first-sign-in-newer-and-older-cloud",
+        "sign-out-local-edit-sign-in-other",
+        "account-required-on-push",
+        "relink-clears-binding",
+        "key-activated-device-local-only",
+        "merge-alias-subject-change",
+        "unauthorized-pauses",
+        "sign-out-flush-succeeds",
+        "sign-out-flush-timeout",
+        "sign-out-discard-unsynced",
+        "pending-expire-after-30-days",
+        "on-sign-out-keep",
+        "journal-loss-new-client-id",
+        "client-mismatch-regenerates",
+        "cursor-expired-with-pending",
+        "member-merge",
+        "union-add-remove",
+        "renamed-and-dropped-keys",
+        "locked-key-refused",
+        "invalid-stored-value",
+        "rejected-result-reverts",
+        "relaunch-commits-and-pushes",
+        "open-setting-synced",
+        "open-setting-too-large",
+        "local-key-stays-local",
+        "secret-key-refused",
+        "platform-scope-target",
+        "config-local-import-loses-to-cloud",
+        "record-max-field-conflict",
+        "attestation-required-blocks",
+        "other-403-blocks",
+        "writes-paused-keeps-journal",
+        "quota-rejected-keeps-value",
+        "quota-raised-retries",
+        "quota-lowered-deletes-nothing",
+        "terminal-rejection-reverts",
+        "e2e-max-conflict-remerged",
+        "e2e-min-server-wins",
+        "e2e-merge-member-cells",
+        "e2e-locked-keeps-journal",
+        "e2e-unlock-pushes",
+        "e2e-downgrade-refused",
+        "e2e-legacy-plain-below-since",
+        "server-mode-unchanged",
+    )
 )
-_SKIP = "needs the transport half of the machine (U-06.7) or its E2E half (U-06.8)"
+_SKIP = "not on the PORTED allow-list"
 
 
 def test_corpus_constants() -> None:
@@ -54,8 +112,7 @@ def test_corpus_constants() -> None:
 
 
 def test_ported_names_exist() -> None:
-    assert PORTED <= {s["name"] for s in _SCENARIOS}
-    assert len(PORTED) > 0
+    assert PORTED == {s["name"] for s in _SCENARIOS}
 
 
 def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:

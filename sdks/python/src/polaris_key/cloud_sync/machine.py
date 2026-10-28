@@ -61,6 +61,25 @@ def _OK() -> CallResult:
     return {"ok": True}
 
 
+class _Absent:
+    """The type of ``_ABSENT``."""
+
+    __slots__ = ()
+
+    def __deepcopy__(self, memo: Any) -> "_Absent":
+        return self
+
+    def __copy__(self) -> "_Absent":
+        return self
+
+    def __repr__(self) -> str:
+        return "<absent>"
+
+
+#: "No value": the TypeScript ``undefined``. A JSON ``null`` (``None``) is a real value.
+_ABSENT: Any = _Absent()
+
+
 def _fail(error: str) -> CallResult:
     return {"ok": False, "error": error}
 
@@ -176,11 +195,11 @@ def value_valid(value: Any, schema: Optional[Obj]) -> bool:
 
 
 def apply_setting_op(policy: str, base: Any, op: Obj) -> Any:
-    """One setting operation applied to a value under the key's policy. ``None`` is "no value"
-    (the machine never stores a JSON ``null`` setting through this path)."""
+    """One setting operation applied to a value under the key's policy. ``_ABSENT`` is "no value";
+    a JSON ``null`` (``None``) is a value."""
     name = op["op"]
     if name == "clear":
-        return None
+        return _ABSENT
     if name == "set":
         v = op.get("value")
         if policy in ("max", "min") and _is_number(base) and _is_number(v):
@@ -683,7 +702,7 @@ class CloudSyncMachine:
             dl = self._s["deviceLocal"]
             return {"value": _clone(dl[key]), "from": "device"} if key in dl else doc
         layer = self._layer(key)
-        if layer is None or layer["value"] is None:
+        if layer is None or layer["value"] is _ABSENT:
             return doc
         if not value_valid(layer["value"], self._schema_of(key)):
             return doc
@@ -699,7 +718,9 @@ class CloudSyncMachine:
         else:
             sync = "synced"
         invalid = (
-            layer is not None and layer["value"] is not None and not value_valid(layer["value"], self._schema_of(key))
+            layer is not None
+            and layer["value"] is not _ABSENT
+            and not value_valid(layer["value"], self._schema_of(key))
         ) or (
             self._syncs(key)
             and self._snapshot_unreadable(self._alias(key))
@@ -720,7 +741,7 @@ class CloudSyncMachine:
         p = self._active()
         rk = _record_key(collection, record_id)
         row = p["records"].get(rk)
-        value = row["value"] if row is not None and not self._row_unreadable(row) else None
+        value = row["value"] if row is not None and not self._row_unreadable(row) else _ABSENT
         pending = False
         for op in p["pending"]:
             if "record" in op["target"] and _record_key(*op["target"]["record"]) == rk:
@@ -729,7 +750,7 @@ class CloudSyncMachine:
         if rk in p["held"]:
             value = _clone(p["held"][rk])
             pending = True
-        if value is None:
+        if value is _ABSENT:
             return None
         return {"value": _clone(value), "from": "pending" if pending else "cloud"}
 
@@ -923,7 +944,7 @@ class CloudSyncMachine:
         def matches(k: str) -> bool:
             return self._alias(k) == target
 
-        value: Any = None
+        value: Any = _ABSENT
         has = False
         pending = False
         p = self._active()
@@ -940,12 +961,12 @@ class CloudSyncMachine:
             for k in p["device"]:
                 if matches(k):
                     d = p["device"][k]
-                    value = None if d.get("cleared") else _clone(d.get("value"))
+                    value = _ABSENT if d.get("cleared") else _clone(d.get("value"))
                     has = True
         for k, d in self._drafts.items():
             if matches(k):
                 if d.get("clear"):
-                    value = None
+                    value = _ABSENT
                 elif policy == "merge":
                     value = _clone(d.get("value"))
                 else:
@@ -1055,7 +1076,7 @@ class CloudSyncMachine:
             if d.get("clear"):
                 local["device"][key] = {"cleared": True, "editedHlc": d["editedHlc"], **marks}
             else:
-                base = prior.get("value") if prior is not None and not prior.get("cleared") else None
+                base = prior.get("value") if prior is not None and not prior.get("cleared") else _ABSENT
                 if policy == "merge":
                     value = _clone(d.get("value"))
                 else:
@@ -1441,8 +1462,8 @@ class CloudSyncMachine:
                             overrides[d["key"]] = "migration"
                 elif _is_number(r.get("version")):
                     prior = p["settings"].get(server_key)
-                    value = apply_setting_op(self._policy_of(key), prior["value"] if prior else None, op)
-                    if value is None:
+                    value = apply_setting_op(self._policy_of(key), prior["value"] if prior else _ABSENT, op)
+                    if value is _ABSENT:
                         p["settings"].pop(server_key, None)
                     else:
                         p["settings"][server_key] = {"value": value, "version": r["version"]}
@@ -1481,8 +1502,8 @@ class CloudSyncMachine:
         if status == "ok" and _is_number(r.get("version")):
             self._note_sealed(p, r["version"])
             prior = p["records"].get(rk)
-            value = _apply_record_op(prior["value"] if prior else None, op)
-            if value is not None:
+            value = _apply_record_op(prior["value"] if prior else _ABSENT, op)
+            if value is not _ABSENT:
                 p["records"][rk] = {"value": value, "version": r["version"]}
             if rk in p["held"]:
                 rebase_on, has_rebase = r["version"], True
