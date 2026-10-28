@@ -473,6 +473,127 @@ describe("openPull", () => {
   });
 });
 
+describe("openPull hardening (security review)", () => {
+  it("a repeated mutationId fails the whole answer closed", async () => {
+    const mutations = [
+      {
+        mutationId: 1,
+        target: { setting: VOL, scope: "user" },
+        op: "set",
+        value: 1,
+      },
+    ] as WireMutation[];
+    const body: Json = {
+      results: [
+        {
+          mutationId: 1,
+          status: "conflict",
+          server: { value: "FORGED", version: 90 },
+        },
+        {
+          mutationId: 1,
+          status: "conflict",
+          server: { ct: await sealedCt(VOL, 0.9), version: 91 },
+        },
+      ],
+    };
+    await expect(openPull(body, codec, { mutations })).rejects.toMatchObject({
+      code: "sync-failed",
+    });
+  });
+
+  it("serves no alias or rename the app did not declare", async () => {
+    const mutations = [
+      {
+        mutationId: 1,
+        target: { setting: "old.k", scope: "user" },
+        op: "set",
+        value: 1,
+      },
+      {
+        mutationId: 2,
+        target: { setting: "x.k", scope: "user" },
+        op: "set",
+        value: 1,
+      },
+    ] as WireMutation[];
+    const body: Json = {
+      aliases: { foo: "bar" },
+      results: [
+        { mutationId: 1, status: "ok", version: 1, renamedTo: "new.k" },
+        { mutationId: 2, status: "ok", version: 2, renamedTo: "evil" },
+      ],
+    };
+    const r = await openPull(body, codec, {
+      mutations,
+      aliases: { "old.k": "new.k" },
+    });
+    const b = r.body as any;
+    expect(b.aliases).toEqual({ "old.k": "new.k" });
+    expect(b.results[0].renamedTo).toBe("new.k");
+    expect("renamedTo" in b.results[1]).toBe(false);
+    expect((await openPull(body, codec)).body).toMatchObject({ aliases: {} });
+  });
+
+  it("refuses U+0000 in a setting or member name, on push and on pull", async () => {
+    await expect(
+      sealPush(push([set(1, "a\0b", 1)]), codec, routes),
+    ).rejects.toMatchObject({ code: "invalid-options" });
+    await expect(
+      sealPush(
+        push([
+          {
+            mutationId: 1,
+            target: { setting: BIND, scope: "user" },
+            op: "setMember",
+            member: "j\0k",
+            value: 1,
+          },
+        ]),
+        codec,
+        routes,
+      ),
+    ).rejects.toMatchObject({ code: "invalid-options" });
+    // an open key sealed with a NUL by a hostile peer: the name is refused on open
+    const nul = "a\0b";
+    const r = await openPull(
+      {
+        changes: [
+          {
+            setting: await bl("setting", "$settings", nul),
+            scope: "user",
+            ct: await sealedCt(nul, 1),
+            version: 1,
+          },
+        ],
+      },
+      codec,
+    );
+    expect(r.opened.changes).toEqual([{ invalid: true }]);
+    // a member name with a NUL, sealed under the setting prefix
+    const member = "j\0k";
+    const mr = await openPull(
+      {
+        changes: [
+          {
+            setting: BIND,
+            scope: "user",
+            members: [
+              {
+                member: await bl("member", BIND, member),
+                ct: await sealedCt(memberEnvelopeName(BIND, member), 1),
+              },
+            ],
+            version: 1,
+          },
+        ],
+      },
+      codec,
+    );
+    expect(mr.opened.changes).toEqual([{ invalid: true }]);
+  });
+});
+
 describe("openPull into CloudSyncMachine.receive", () => {
   const T0 = 1_760_000_000_000;
   const ALICE = "sub_alice";
@@ -554,5 +675,22 @@ describe("openPull into CloudSyncMachine.receive", () => {
     const ct = await sealedCt(VOL, 0.1, otherRoot);
     const row = { setting: VOL, scope: "user", ct, value: 666, version: 4 };
     documentOnly(await machineWith({ encryptionSince: 0, changes: [row] }));
+  });
+
+  it("a served aliases map does not make one setting read another", async () => {
+    const m = await machineWith({
+      encryptionSince: 0,
+      aliases: { "audio.alt": VOL },
+      changes: [
+        {
+          setting: VOL,
+          scope: "user",
+          ct: await sealedCt(VOL, 0.1),
+          version: 4,
+        },
+      ],
+    });
+    expect(m.get(VOL)).toEqual({ value: 0.1, from: "cloud" });
+    expect(m.get("audio.alt").value).not.toBe(0.1);
   });
 });
