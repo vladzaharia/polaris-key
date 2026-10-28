@@ -27,6 +27,7 @@ import {
   hostedImageOrigin,
   hostedImageUrl,
   hostedImages,
+  PRESENTATION_HEADER_SLOTS,
 } from "../../../core/assets/hostedImages.js";
 import { err, notFound, portalJson, type PortalHooksFor } from "./api.js";
 
@@ -58,20 +59,53 @@ export async function handleStorefrontName(
     now,
   );
   if (!allowed) return err(429, "rate_limited", "too many requests");
-  if (!hooksFor || !SLUG.test(product)) return notFound();
+  const shown = await storefrontView(env, db, product, now, hooksFor);
+  if (!shown) return notFound();
+  return portalJson({ name: shown.name, iconUrl: shown.iconUrl }, 200, {
+    "cache-control": "public, max-age=300",
+  });
+}
+
+/** The art's width: the passport's (16:10 at 280 px, drawn at 2x), as `appForPage` draws it. */
+const ART_WIDTH = 640;
+
+/**
+ * What an anonymous caller may learn about a product: its name, icon and header art, only for a
+ * product Discover offers a brand-new account (the file comment). `null` for every other input,
+ * so a caller cannot tell "no such product" from "exists, not offered". Shared by this route and
+ * `GET /api/capabilities?product=` (the sign-in card's product header).
+ */
+export async function storefrontView(
+  env: Env,
+  db: Db,
+  product: string,
+  now: number,
+  hooksFor: PortalHooksFor | undefined,
+): Promise<{
+  slug: string;
+  name: string;
+  iconUrl: string | null;
+  artUrl: string | null;
+} | null> {
+  if (!hooksFor || !SLUG.test(product)) return null;
   const loaded = await loadProductPublic(db, product);
-  if (!loaded) return notFound();
-  if ((await hooksFor(loaded, now).discoverVisibility()) !== true)
-    return notFound();
+  if (!loaded) return null;
+  if ((await hooksFor(loaded, now).discoverVisibility()) !== true) return null;
   let iconUrl: string | null = null;
+  let artUrl: string | null = null;
   if ((await hostedImageOrigin(env, db)) !== null) {
+    const images = (slots: readonly string[]) =>
+      hostedImages(env, db, product, slots);
     const icon = firstHostedImage(
-      await hostedImages(env, db, product, PRESENTATION_ICON_SLOTS),
+      await images(PRESENTATION_ICON_SLOTS),
       PRESENTATION_ICON_SLOTS,
     );
     iconUrl = icon ? hostedImageUrl(env, product, icon, ICON_WIDTH) : null;
+    const header = firstHostedImage(
+      await images(PRESENTATION_HEADER_SLOTS),
+      PRESENTATION_HEADER_SLOTS,
+    );
+    artUrl = header ? hostedImageUrl(env, product, header, ART_WIDTH) : null;
   }
-  return portalJson({ name: loaded.name, iconUrl }, 200, {
-    "cache-control": "public, max-age=300",
-  });
+  return { slug: loaded.slug, name: loaded.name, iconUrl, artUrl };
 }

@@ -221,6 +221,7 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // ST-29, ST-31.5: who can give the caller access to an area.
     ["/manage/api/access/admins", ["get"]],
     // ST-30c.3 (SM-3(a), (d)): the signed-in operator's own sign-in methods.
+    ["/manage/api/me/prefs", ["put"]],
     ["/manage/api/me/methods", ["get"]],
     ["/manage/api/me/methods/{id}/strong", ["post"]],
     ["/manage/api/me/passkeys", ["post"]],

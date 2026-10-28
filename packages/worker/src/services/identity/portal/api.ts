@@ -179,7 +179,7 @@ import { accountMayOpenConsole } from "../consoleAccount.js";
 import { consoleOrigin } from "../../../core/hosts.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
 import { bestRow } from "../../../core/http/routes.js";
-import { handleStorefrontName } from "./storefrontName.js";
+import { handleStorefrontName, storefrontView } from "./storefrontName.js";
 
 export function portalJson(
   body: unknown,
@@ -994,8 +994,14 @@ async function handleCapabilities(
   db: Db,
   product: string | null | undefined,
   now: number,
+  hooksFor: PortalHooksFor | undefined,
 ): Promise<Response> {
   const caps = await portalAuthCapabilities(db, product);
+  // LK-FU-2 (PX-33): the sign-in card's product header, only for a product Discover offers a new
+  // account (the same gate as `GET /api/storefront/<slug>`, so it adds no oracle).
+  const shown = product
+    ? await storefrontView(env, db, product, now, hooksFor)
+    : null;
   // I-30: the seeded platform connection is the single sign-on button's only source, and every
   // other active platform connection for customers is a "Continue with <label>" entry.
   const sso = caps.portalEnabled;
@@ -1022,6 +1028,15 @@ async function handleCapabilities(
     // I-07: the login card renders Cloudflare Turnstile on the email start with this public
     // site key; null when the deploy has Turnstile off (no token is asked for).
     turnstileSiteKey: turnstileSiteKey(env),
+    ...(shown
+      ? {
+          product: {
+            slug: shown.slug,
+            name: shown.name,
+            ...(shown.artUrl ? { artUrl: shown.artUrl } : {}),
+          },
+        }
+      : {}),
     modules: {
       licensing: caps.portalEnabled,
       claim: caps.portalEnabled,
@@ -1904,6 +1919,7 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
         c.db,
         new URL(c.req.url).searchParams.get("product"),
         c.now,
+        c.hooksFor,
       ),
   },
   // LK-12d: the signed-out card's product name and icon, only for a product Discover offers a

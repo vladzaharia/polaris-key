@@ -65,6 +65,7 @@ export type WriteMethod =
   | "myPasskeyOptions"
   | "myPasskeyAdd"
   | "myMethodStrong"
+  | "setMyPrefs"
   | "inviteMembers"
   | "inviteProductMembers"
   | "editProductMemberAreas"
@@ -492,6 +493,10 @@ export const MUTATIONS: MutationTable = {
   myPasskeyAdd: {
     label: "passkey add",
     invalidates: () => [prefix(qk.myMethods())],
+  },
+  setMyPrefs: {
+    label: "console preference",
+    invalidates: () => [exact(qk.me())],
   },
   myMethodStrong: {
     label: "passkey set for the console",

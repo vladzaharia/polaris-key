@@ -751,6 +751,45 @@ describe("Home", () => {
       ).toBeTruthy();
     });
 
+    it("follows the operator: the server's preference hides the guide in a browser with no local copy", async () => {
+      boot("#/", {
+        me: { prefs: { setupGuideHidden: true } },
+        extra: { ...registry(), ...ready },
+      });
+      await home();
+      await waitFor(() => expect(cards()).toHaveLength(2));
+      expect(guide()).toBeNull();
+      expect(window.localStorage.getItem(KEY)).toBe("true");
+    });
+
+    const prefPuts = (log: {
+      calls: { method: string; path: string; json?: unknown }[];
+    }) =>
+      log.calls.filter(
+        (c) => c.method === "PUT" && c.path === "/manage/api/me/prefs",
+      );
+
+    it("hiding is stored on the server; a copy hidden before it existed is sent up once", async () => {
+      const log = boot("#/", { extra: { ...registry(), ...ready } });
+      await home();
+      fireEvent.click(
+        await within(main()).findByRole("button", {
+          name: "Hide Platform ready",
+        }),
+      );
+      await waitFor(() =>
+        expect(prefPuts(log)[0]?.json).toEqual({ setupGuideHidden: true }),
+      );
+      cleanup();
+      window.localStorage.setItem(KEY, "true");
+      const again = boot("#/", {
+        me: { prefs: { setupGuideHidden: false } },
+        extra: { ...registry(), ...ready },
+      });
+      await home();
+      await waitFor(() => expect(prefPuts(again)).toHaveLength(1));
+    });
+
     it("Show Platform ready in the header menu brings it back and focuses it", async () => {
       window.localStorage.setItem(KEY, "true");
       boot("#/", { extra: { ...registry(), ...ready } });

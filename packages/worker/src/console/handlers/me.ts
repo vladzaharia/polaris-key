@@ -30,7 +30,11 @@ import {
   type AdminSession,
 } from "../../core/console/session.js";
 import { hostOrigin } from "../../core/hosts.js";
-import { adminJson } from "../../core/console/respond.js";
+import { adminJson, err, readBody } from "../../core/console/respond.js";
+import {
+  readOperatorPrefs,
+  setSetupGuideHidden,
+} from "../../core/accounts/operatorPrefs.js";
 
 /** The deployments the console can name. */
 export const CONSOLE_ENVIRONMENTS = ["prod", "staging", "dev"] as const;
@@ -82,7 +86,24 @@ export async function handleMe(
     // sign-in no older than `stepUpMaxAgeSeconds`). `null` for a session minted before I-12.
     authAt: session.stepUpAt ?? null,
     stepUpMaxAgeSeconds: STEP_UP_MAX_AGE_SECONDS,
+    // LK-FU-2: preferences that follow the operator across browsers.
+    prefs: await readOperatorPrefs(db, session.sub),
   });
+}
+
+/** `PUT /me/prefs`: `{ setupGuideHidden: boolean }`. Session only; answers the stored prefs. */
+export async function handleMyPrefs(
+  db: Db,
+  session: AdminSession,
+  req: Request,
+  now: number,
+): Promise<Response> {
+  const body = await readBody(req);
+  const hidden = body["setupGuideHidden"];
+  if (typeof hidden !== "boolean")
+    return err(422, "bad_request", "setupGuideHidden must be a boolean");
+  await setSetupGuideHidden(db, session.sub, hidden, now);
+  return adminJson({ prefs: await readOperatorPrefs(db, session.sub) });
 }
 
 /** The areas `can()` allows at each level in one scope. */

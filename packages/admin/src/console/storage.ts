@@ -42,8 +42,9 @@ export const PREF_KEYS = {
   /** Home's product view: `cards` or `table` (ST-44). */
   homeView: "pk-admin-home-view",
   /**
-   * Prefix: Home's Platform ready guide was hidden, `<prefix><operator id>`. Per operator, kept in
-   * this browser: the console has no server-side operator preference store.
+   * Prefix: Home's Platform ready guide was hidden, `<prefix><operator id>`. Per operator. A copy of
+   * the server's `/me` `prefs.setupGuideHidden` (LK-FU-2), used for the first paint and by a worker
+   * without it.
    */
   setupGuideHiddenPrefix: "pk-admin-setup-guide-hidden:",
   /** The product switcher's recent products. */

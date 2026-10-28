@@ -137,3 +137,41 @@ describe("GET /api/storefront/<product> (LK-12d)", () => {
     expect((await get(e, db, "free", {}, "198.51.100.200")).status).toBe(200);
   });
 });
+
+describe("GET /api/capabilities?product= (LK-FU-2, PX-33)", () => {
+  const caps = (e: Env, db: Db, slug: string) =>
+    handlePortalApi(
+      new Request(`https://key.plrs.im/api/capabilities?product=${slug}`),
+      e,
+      db,
+      "/api/capabilities",
+      NOW,
+    );
+
+  it("names a Discover-visible product with its header art", async () => {
+    const db = makeTestDb();
+    await setup(db, "free");
+    await seedHosted(db, "free", "listing.header", {
+      sha256: A,
+      widths: [640],
+    });
+    const body = (await (await caps(env(), db, "free")).json()) as {
+      product?: { slug: string; name: string; artUrl?: string };
+    };
+    expect(body.product).toEqual({
+      slug: "free",
+      name: expect.any(String),
+      artUrl: `${IMG}/free/a/${A}/640.webp`,
+    });
+  });
+
+  it("omits the product wherever the storefront route would 404, and with no ?product", async () => {
+    const db = makeTestDb();
+    await setup(db, "unlisted");
+    await writeListing(db, "unlisted", { storeListed: "unlisted" });
+    for (const s of ["unlisted", "nobody"])
+      expect(await (await caps(env(), db, s)).json()).not.toHaveProperty(
+        "product",
+      );
+  });
+});
