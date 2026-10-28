@@ -213,6 +213,41 @@ describe("core.keyring subject store", () => {
     expect((await getRing(db, P, "sub-b"))!.adopted[0]!.ct).toBe("sealed");
   });
 
+  it("purges the wraps of an absorbed ring once the candidate is sealed, or after 30 days", async () => {
+    const setup = async () => {
+      const { db } = await create();
+      await createRing(db, {
+        product: P,
+        subject: "sub-b",
+        ringId: RING2,
+        rootKid: "k2",
+        wrap: wrap("d2", { ringId: RING2, kid: "k2" }),
+        now: NOW,
+      });
+      await keyringStore.merge(ctx(db), { product: P, from: S, to: "sub-b" });
+      return db;
+    };
+    // Unsealed and young: kept. The current ring's wrap is never touched.
+    const young = await setup();
+    await purgeExpiredPrevious(young, NOW + 10);
+    expect(await count(young, "keyring_wraps")).toBe(2);
+    // Past 30 days: the absorbed wrap goes, the current one stays.
+    await purgeExpiredPrevious(young, NOW + PREVIOUS_RING_SECONDS + 1);
+    expect(await count(young, "keyring_wraps")).toBe(1);
+    expect(await getWrap(young, P, "sub-b", "d2")).not.toBeNull();
+    // Sealed: the absorbed wrap goes at the next sweep.
+    const sealed = await setup();
+    await addAdopted(
+      sealed,
+      P,
+      "sub-b",
+      { ringId: RING, epoch: 1, kid: "k1", ct: "sealed" },
+      NOW,
+    );
+    await purgeExpiredPrevious(sealed, NOW + 10);
+    expect(await count(sealed, "keyring_wraps")).toBe(1);
+  });
+
   it("delete removes every row, export lists metadata without sealed values", async () => {
     const { db } = await create();
     await addAdopted(

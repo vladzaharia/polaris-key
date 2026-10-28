@@ -446,7 +446,8 @@ export async function resetRing(
 }
 
 /**
- * Forget the replaced rings whose 30 days passed: their wraps, and the `previous` marker. Returns
+ * Forget the replaced rings whose 30 days passed: their wraps, and the `previous` marker. Also the
+ * wraps of absorbed rings (see below). Returns
  * how many rings it cleared. The nightly sweep runs it (`scheduled.ts`, step `keyringPrevious`).
  */
 export async function purgeExpiredPrevious(
@@ -458,6 +459,21 @@ export async function purgeExpiredPrevious(
       WHERE (product, subject, ring_id) IN (
         SELECT product, subject, previous_ring_id FROM keyrings
          WHERE previous_ring_id IS NOT NULL AND previous_until <= ?)`,
+    now,
+  );
+  // Wraps a merge moved over from an absorbed subject open a ring that is neither current nor
+  // previous: they are never served. They go when the candidate is resolved (sealed under the
+  // current root) or after the same 30 days.
+  await db.run(
+    `DELETE FROM keyring_wraps
+      WHERE (product, subject, ring_id, epoch) IN (
+        SELECT a.product, a.subject, a.ring_id, a.epoch FROM keyring_adopted a
+         WHERE (a.ct IS NOT NULL OR a.created_at + ? <= ?)
+           AND NOT EXISTS (
+             SELECT 1 FROM keyrings k
+              WHERE k.product = a.product AND k.subject = a.subject
+                AND (k.ring_id = a.ring_id OR k.previous_ring_id = a.ring_id)))`,
+    PREVIOUS_RING_SECONDS,
     now,
   );
   return db.runChanges(

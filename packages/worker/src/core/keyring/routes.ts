@@ -8,7 +8,7 @@
  *   PUT    /<p>/devices/keyring/wraps/{deviceId}  store a wrap for a device of the same subject
  *   DELETE /<p>/devices/keyring/wraps/{deviceId}  remove the caller's own wrap
  *   PUT    /<p>/devices/keyring/recovery          replace the sealed recovery blob (audited, emailed)
- *   GET    /<p>/devices/keyring/recovery          fetch it (5 a day per device, audited, emailed)
+ *   GET    /<p>/devices/keyring/recovery          fetch it (5 a day per device and per subject, audited, emailed)
  *   POST   /<p>/devices/keyring/adopt             store a root sealed under the current one
  *   POST   /<p>/devices/keyring/reset             a new ring; the old one is `previous` for 30 days
  *
@@ -110,6 +110,13 @@ const MAX_RECOVERY_CT = 512;
 /** A device's recovery fetches per day (T23): each one is audited and emailed. */
 export const RECOVERY_FETCH_LIMIT = {
   bucket: "keyringRecovery",
+  limit: 5,
+  windowSec: 86_400,
+} as const;
+
+/** The same budget per subject, so a rotation of device ids does not reset it. Fails closed. */
+export const RECOVERY_FETCH_SUBJECT_LIMIT = {
+  bucket: "keyringRecoverySubject",
   limit: 5,
   windowSec: 86_400,
 } as const;
@@ -560,6 +567,12 @@ async function getRecoveryBlob(c: Ctx): Promise<Response> {
       c.env,
       c.product.slug,
       { ...RECOVERY_FETCH_LIMIT, id: c.device.device_id },
+      c.now,
+    )) ||
+    !(await rateLimitOk(
+      c.env,
+      c.product.slug,
+      { ...RECOVERY_FETCH_SUBJECT_LIMIT, id: c.subject },
       c.now,
     ))
   )

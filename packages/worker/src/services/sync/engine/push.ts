@@ -118,12 +118,10 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
 
   const run = (): MutationResult[] => {
     // The first end-to-end write fixes `encryptionSince` (§13.10.7): every row at or above the
-    // next sequence is sealed, every row below it is legacy plaintext. Set once.
-    if (
-      store.getEncryptionSince() === undefined &&
-      input.classified.some((c) => c.verdict === "accept" && c.sealed)
-    )
-      store.setEncryptionSince(store.currentSeq() + 1);
+    // next sequence is sealed, every row below it is legacy plaintext. Set once, and only by a
+    // sealed write that was accepted: a rejected one does not count.
+    const sealedAt =
+      store.getEncryptionSince() === undefined ? store.currentSeq() + 1 : null;
     const results: MutationResult[] = [];
     let last = startLast;
     mutations.forEach((m, i) => {
@@ -134,6 +132,14 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
       const result = applyOne(store, input, m, i);
       last = m.mutationId;
       results.push(result);
+      if (
+        sealedAt !== null &&
+        store.getEncryptionSince() === undefined &&
+        result.status === "ok" &&
+        input.classified[i]?.verdict === "accept" &&
+        input.classified[i]?.sealed
+      )
+        store.setEncryptionSince(sealedAt);
       if (shape.request.atomic && result.status !== "ok")
         throw new AtomicRollback(results);
     });

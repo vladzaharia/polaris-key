@@ -344,4 +344,22 @@ describe("the launch gate and discovery", () => {
     expect(pull).not.toHaveProperty("encryption");
     expect(pull.changes[0]).toMatchObject({ value: "dark" });
   });
+
+  it("is not fixed by a rejected sealed write, only by an accepted one", async () => {
+    const w = await worldOf({ encryption: "e2e" });
+    // A sealed write the engine refuses (a negative base version) leaves it unset.
+    const rejected = await pushed(w, [
+      mut("game.best", "set", { ct: envelope(), baseVersion: -1 }),
+    ]);
+    expect(rejected.results[0]).toMatchObject({ status: "rejected" });
+    const before = (await (await call(w, "/sync")).json()) as PullResponse;
+    expect(before.encryptionSince).toBe(1);
+    const ct = envelope();
+    await pushed(w, [mut("game.best", "set", { ct, baseVersion: "*" })]);
+    const after = (await (await call(w, "/sync")).json()) as PullResponse;
+    expect(after.encryptionSince).toBe(1);
+    expect(after.changes).toEqual([
+      expect.objectContaining({ setting: "game.best", ct, version: 1 }),
+    ]);
+  });
 });
