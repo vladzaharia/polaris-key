@@ -8,7 +8,8 @@
  * read-only member does not see it). No step-up: it only narrows (G4). Session only.
  *
  * What a POST ends: every live `account_sessions` row of the account (through Identity); the
- * operator's cookies, by the same `admin-revoked` mark a sign-out writes, keyed by the member id;
+ * operator's cookies, by the same `admin-revoked` mark a sign-out writes, keyed by the member id and by each IdP
+ * subject of the member's console links (a break-glass session carries the subject);
  * and the account's `admin`-scope personal tokens, at once. `packages`-scope tokens are not
  * touched. The change is audited as `rbac.signout` and the member is told by mail.
  *
@@ -34,6 +35,7 @@ import { listAccountGrants } from "../../core/rbac/bindings.js";
 import { isSuperadmin } from "../../core/rbac/can.js";
 import { mayRevoke } from "../../core/rbac/grantRules.js";
 import {
+  consoleIdpSubjectsForAccount,
   consoleRootHolders,
   endConsoleSessionsForAccount,
 } from "../../services/identity/public.js";
@@ -131,6 +133,13 @@ export async function handleMemberSignOut(c: AdminCtx): Promise<Response> {
   // The mark first: if the store cannot be reached nothing else has changed, and the caller retries.
   try {
     await revokeAdminSessions(c.env, t.memberId, c.now);
+    // A break-glass session has no account; its `sub` is the member's IdP subject. Mark each link.
+    for (const sub of await consoleIdpSubjectsForAccount(
+      c.env,
+      c.db,
+      t.accountId,
+    ))
+      await revokeAdminSessions(c.env, sub, c.now);
   } catch {
     return err(503, "unavailable", "try again in a moment");
   }

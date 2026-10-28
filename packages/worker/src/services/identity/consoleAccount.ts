@@ -649,6 +649,28 @@ export async function consoleMemberIdForIdpSub(
   return row ? memberIdFor(env, row.account_id) : null;
 }
 
+/**
+ * The IdP subject(s) of the console links of an account (ST-34.13). A break-glass session has no
+ * account: its `sub` is the IdP subject, so a sign-out mark for the member must also be written
+ * under each of these. Read-only, bounded.
+ */
+export async function consoleIdpSubjectsForAccount(
+  env: Env,
+  db: Db,
+  accountId: string,
+): Promise<string[]> {
+  const rp = adminOidcConfig(env);
+  if (!rp) return [];
+  return (
+    await db.all<{ subject: string }>(
+      `SELECT subject FROM account_links
+        WHERE account_id = ? AND issuer_key = ? AND tenant_scope = '' LIMIT 20`,
+      accountId,
+      portalIdentityIssuerKey(rp.issuer),
+    )
+  ).map((r) => r.subject);
+}
+
 /** A console member as the Members page shows them (ST-31.4). Never carries the account id. */
 export interface ConsoleDirectoryEntry {
   memberId: string;

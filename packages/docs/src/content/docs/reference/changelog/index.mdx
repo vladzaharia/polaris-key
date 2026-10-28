@@ -16,6 +16,14 @@ Added · 2026-10-28 · sync · react
 
 `useSetting(key)` returns the value and its `sync` state, and `useCloudSync()` returns the Cloud Sync status, a `flush()` and the sign-in offer. `config.set` syncs through the browser host while a person is signed in. Cloud Sync is not available over the desktop bridge yet.
 
+### PKEY_ADMIN_COOKIE is removed
+
+Removed · 2026-10-28
+
+**Action required:** the `pkey` CLI no longer reads `PKEY_ADMIN_COOKIE`, and the listing import no longer takes a console cookie.
+
+People run `pkey login`; CI sets `PKEY_ADMIN_TOKEN` to a `pkeya_` token. The listing import uses a personal token. A member's **Sign out everywhere** ends their admin tokens at once.
+
 ### Sign-in is one session call
 
 Breaking · 2026-10-27 · identity · node · react · python

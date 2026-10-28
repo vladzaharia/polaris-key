@@ -8043,7 +8043,8 @@ A token whose holder holds no grant cannot end itself (`current` is not a no-gra
 
 `POST /manage/api/members/<memberId>/sign-out` (and its `GET` dry run) ends one member's console access
 without touching their grants. It ends the member's `account_sessions` rows, writes the member's
-`admin-revoked` mark (the one a sign-out writes, keyed by the member id), and revokes the account's `admin`-scope
+`admin-revoked` mark (the one a sign-out writes, keyed by the member id and by each IdP subject of the member's console links, so a
+break-glass session, whose `sub` is the subject, ends too), and revokes the account's `admin`-scope
 personal tokens (reason `access_removed`). The session ends within 30 s on every isolate (the console's
 live check is cached that long); the admin tokens end at once. `packages` tokens are left alone. It is audited as `rbac.signout`
 and the member is mailed.
@@ -8058,6 +8059,25 @@ and the member is mailed.
 - **Limits.** The mark is the existing one, so a cookie minted before the sign-out ends and one minted after
   it does not. The account's sessions are shared with the portal, so a portal session ends too. A later
   change to the mark's format changes its one writer, and this route follows it.
+
+### Admin-scope personal tokens: consolidation (ST-34.13)
+
+One view of what ST-34 added, for the review that closes it. The detail is in the subsections named.
+
+- **The credential (A17, AT-2, T7).** An `admin` `pkeyp_` token is minted only by a console-approved
+  `pkey login` (step-up on the card; ST-34.5, 34.6), lives 7 days (30 at most) and is stored hashed.
+  It reaches the flagged admin routes alone, never the registry host, and holds what its owner's roles
+  allow at the time of use, never a write that needs a step-up (ST-34.3; the footnote on `reference/roles`).
+  Every use is audited (`account_token.used`). The CLI keeps it in the credential store (ST-34.7).
+- **Ending it.** The owner revokes it (ST-34.4), a Superadmin or a merge revokes it (ST-34.1), and
+  "Sign out everywhere" revokes all of a member's `admin` tokens at once and ends their console sessions
+  within 30 s (ST-34.12). `packages` tokens are not touched by any of these.
+- **Break-glass (ST-34.13).** A break-glass session has no account; its `sub` is the IdP subject. "Sign
+  out everywhere" therefore also writes the sign-out mark under each IdP subject of the member's console
+  links, so that session ends with the rest (test: `consoleMemberSignOut`). Found in the ST-30c.8 review.
+- **Residual.** A stolen admin session (T7) stays the larger risk; a stolen admin token is bounded by the
+  holder's roles, the flagged routes and its expiry. A break-glass cookie minted for a subject the member
+  has no console link for is not reached by the member's sign-out.
 
 ### Console roles read feeds, and creators manage what they make (ST-31.9)
 

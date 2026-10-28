@@ -76,6 +76,20 @@ To withdraw an invite before it is used, open its row and choose **Revoke invite
 working and you can invite the address again. An unused invite expires after 7 days and is deleted
 a week later.
 
+## Sign out everywhere
+
+**Sign out everywhere…** on a member's row ends all of their console access without changing their
+roles. The dialog lists the person's admin tokens by label first.
+
+- Their admin tokens stop working at once.
+- Their console sessions, a break-glass one included, end within 30 seconds.
+- Their package tokens keep working.
+- They get an email saying who signed them out.
+
+You can sign someone out only if you could take back every role they hold. A person in the root rule
+is signed out by a Superadmin alone. You can't use it on yourself: use **Sign out**. To lock someone
+out of the console, also remove their roles ([Remove someone](#remove-someone)).
+
 ## When the list is cut
 
 The page shows up to 500 members and 500 invites and says when it has cut the list.

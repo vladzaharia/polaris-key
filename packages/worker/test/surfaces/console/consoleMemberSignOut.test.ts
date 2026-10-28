@@ -23,7 +23,10 @@ import {
   resolvePersonalToken,
 } from "../../../src/core/accounts/personalTokens.js";
 
-import { consoleTestSession } from "../../consoleSessionHelper.js";
+import {
+  consoleTestBreakGlass,
+  consoleTestSession,
+} from "../../consoleSessionHelper.js";
 import { memberIdFor } from "../../../src/core/console/memberId.js";
 import {
   newBindingId,
@@ -221,6 +224,29 @@ describe("members/<id>/sign-out", () => {
     });
     expect(mail.map((m) => m.to)).toEqual(["bob@example.com"]);
     expect(JSON.stringify(mail)).not.toContain(admin);
+  });
+
+  it("also ends the member's break-glass session (its sub is the IdP subject)", async () => {
+    const pam = await member("pam");
+    await grant(pam, "platform_admin");
+    const bob = await member("bob");
+    await grant(bob, "console_access");
+    const bg = await consoleTestBreakGlass(
+      env,
+      {
+        sub: "idp-bob",
+        email: "bob@example.com",
+        name: "bob",
+        groups: [GROUP],
+      },
+      NOW,
+    );
+    const asBg: Person = { ...bob, token: bg.token, csrf: bg.csrf };
+    expect((await send(asBg, "GET", "/api/me")).status).toBe(200);
+    expect((await send(pam, "POST", route(bob.memberId))).status).toBe(200);
+    expect((await send(asBg, "GET", "/api/me", { now: NOW + 40 })).status).toBe(
+      401,
+    );
   });
 
   it("a Platform admin cannot sign out a Superadmin, a root holder or a peer", async () => {

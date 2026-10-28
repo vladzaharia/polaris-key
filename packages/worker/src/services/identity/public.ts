@@ -20,6 +20,7 @@ export {
   consoleRootHolders,
   type ConsoleDirectoryEntry,
   consoleMemberIdForIdpSub,
+  consoleIdpSubjectsForAccount,
   consoleSignIn,
   consoleSubject,
   consolePasskeyCeremony,
