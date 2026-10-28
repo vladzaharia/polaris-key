@@ -68,3 +68,40 @@ export function focusAfterRetry(panel: Element | null): void {
   };
   requestAnimationFrame(attempt);
 }
+
+const STEP_UP_KEY = "pk.stepUpReturn";
+
+/**
+ * A step-up through a provider leaves the page and comes back to a fresh load, which starts at the
+ * top of the document. The sign-in link notes the leaving; {@link consumeStepUpReturn} reads it
+ * once on the way back, and the shell puts focus on the page heading.
+ */
+export function markStepUpLeave(e?: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}): void {
+  // A new-tab or new-window click leaves this page where it is.
+  if (e && (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey))
+    return;
+  try {
+    window.sessionStorage.setItem(STEP_UP_KEY, String(Date.now()));
+  } catch {
+    /* private mode: focus starts at the top, as before */
+  }
+}
+
+/** How long a note of leaving stays good: a provider sign-in is a minute or two, not ten. */
+const STEP_UP_WINDOW_MS = 10 * 60 * 1000;
+
+export function consumeStepUpReturn(now = Date.now()): boolean {
+  try {
+    const at = Number(window.sessionStorage.getItem(STEP_UP_KEY));
+    window.sessionStorage.removeItem(STEP_UP_KEY);
+    return Number.isFinite(at) && at > 0 && now - at <= STEP_UP_WINDOW_MS;
+  } catch {
+    return false;
+  }
+}

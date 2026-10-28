@@ -33,6 +33,7 @@ import { ProductPage } from "./pages/ProductPage.js";
 import { AddMethodNudge } from "./components/AddMethodNudge.js";
 import { ApproveDeviceDialog } from "./components/ApproveDeviceDialog.js";
 import { LinkAccountsDialog } from "./components/LinkAccountsDialog.js";
+import { consumeStepUpReturn } from "./focus.js";
 import { commitLastMethod } from "./lastMethod.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { RequestFlow } from "./components/signin/RequestFlow.js";
@@ -214,6 +215,16 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
   const route = useRoute();
   // Another tab waiting on "Check your email" signs itself in now (§4.4).
   React.useEffect(() => announceSignedIn(), []);
+  // Back from a provider's step-up (a fresh load): focus goes to the page heading, not the top of
+  // the document. A link that asks for its own focus (`?add=`, `?connect=`) keeps it.
+  React.useEffect(() => {
+    if (!consumeStepUpReturn()) return;
+    const p = "params" in route ? route.params : null;
+    if (p?.has("add") || p?.has("connect")) return;
+    focusPageHeading();
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // The way this tab signed in is remembered for next time's hint (lastMethod.ts).
   React.useEffect(() => {
     void commitLastMethod(account);

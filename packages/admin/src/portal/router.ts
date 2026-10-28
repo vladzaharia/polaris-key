@@ -787,6 +787,15 @@ export function navigate(to: string): void {
   router.navigate(to);
 }
 
+/**
+ * `navigate` for a modal that holds a history entry of its own (activate.tsx): the move replaces
+ * that entry, so Back goes to the page the modal opened over and not to a dead copy of it.
+ */
+export function navigateFromModal(to: string): void {
+  const own = (window.history.state as { pkDialog?: string } | null)?.pkDialog;
+  router.navigate(to, own ? { replace: true } : {});
+}
+
 /** The current hash's query, read now (a page's `params` prop is the last render's). */
 export function currentParams(): URLSearchParams {
   const raw = window.location.hash || "#/";

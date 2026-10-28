@@ -821,6 +821,37 @@ describe("Activate license modal (PX-06)", () => {
     ).toBeNull();
   });
 
+  it("Back with the modal open closes it and leaves the page under it where it was", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const before = window.location.href;
+    await openFromHeader();
+    window.history.back();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Activate a license" }),
+      ).toBeNull(),
+    );
+    expect(window.location.href).toBe(before);
+  });
+
+  it("Back keeps a typed key: the next open starts on it", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await openFromHeader();
+    await userEvent.type(within(dialog).getByRole("textbox"), "pkey_moss");
+    window.history.back();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Activate a license" }),
+      ).toBeNull(),
+    );
+    const again = await openFromHeader();
+    expect((within(again).getByRole("textbox") as HTMLInputElement).value).toBe(
+      "pkey_moss",
+    );
+  });
+
   it("focus follows the step: the confirm heading, Open after the claim, and the field on Change key (UX-79)", async () => {
     mockFetch({
       ...routes(),

@@ -29,6 +29,7 @@ import {
   refreshAfterAccountChange,
   refreshAfterStepUp,
 } from "../../mutations.js";
+import { markStepUpLeave } from "../../focus.js";
 
 /**
  * "Confirm it's you first" (PORTAL.md §4.26; PX-W12's step-up rule): an account change needs a
@@ -373,14 +374,16 @@ function SignInAgain({
     <div className="flex flex-wrap gap-2">
       {providers.map((p) => (
         <Button key={p} asChild variant="outline">
-          <a href={hrefFor(p)}>
+          <a href={hrefFor(p)} onClick={markStepUpLeave}>
             {t("locker.stepUp.again", { provider: PROVIDER_NAME[p] })}
           </a>
         </Button>
       ))}
       {sso ? (
         <Button asChild variant="outline">
-          <a href={hrefFor("sso")}>{t("locker.stepUp.againSso")}</a>
+          <a href={hrefFor("sso")} onClick={markStepUpLeave}>
+            {t("locker.stepUp.againSso")}
+          </a>
         </Button>
       ) : null}
     </div>

@@ -14,6 +14,7 @@ import {
   requestHandleFromUrl,
   rowModel,
   safeRedirect,
+  thisDeviceTitle,
 } from "../src/portal/model/signInRequest.js";
 
 /**
@@ -267,5 +268,15 @@ describe("addresses", () => {
       "https://app.example/cb?code=1",
     );
     expect(safeRedirect("diceroll://cb?code=1")).toBe("diceroll://cb?code=1");
+  });
+});
+
+describe("this device at a sentence start", () => {
+  it("says This browser, and leaves a device label exactly as it is", () => {
+    const v = (deviceLabel: string | null): SignInRequestView =>
+      ({ deviceLabel }) as SignInRequestView;
+    expect(thisDeviceTitle(v(null))).toBe("This browser");
+    expect(thisDeviceTitle(v("Steam Deck"))).toBe("Steam Deck");
+    expect(thisDeviceTitle(v("iPhone 15 Pro"))).toBe("iPhone 15 Pro");
   });
 });

@@ -125,6 +125,7 @@ export function SignInMethods({
                 variant="outline"
                 className="max-sm:min-h-11"
                 iconStart={<Plus aria-hidden />}
+                aria-label={t("locker.methods.addMethod")}
               >
                 {t("locker.methods.add")}
               </Button>
@@ -575,7 +576,7 @@ function MethodGroups({
             returnTo={returnTo({ add: "email" })}
             asked={addEmailAsked}
             command={cmd.email}
-            prompt
+            prompt={view.emails.length === 0}
             onAdded={focusGroup("email")}
           />
         </ul>
@@ -631,7 +632,7 @@ function MethodGroups({
             returnTo={returnTo({ add: "passkey" })}
             asked={passkeyAsked}
             start={cmd.passkey}
-            prompt
+            prompt={!view.methods.some((m) => m.group === "passkeys")}
             onAdded={focusGroup("passkeys")}
           />
         </ul>
@@ -923,7 +924,7 @@ function AddEmail({
   asked: number;
   /** Changes when the header's Add asks for it: the form opens and its field takes focus. */
   command: number;
-  /** Show the inline button (the mockup's add row); the header's Add does the same. */
+  /** Show the inline button: only while the group is empty (PX-31a; the header's Add is the one entry point). */
   prompt: boolean;
   onAdded: () => void;
 }): React.ReactElement {
@@ -1236,7 +1237,7 @@ function AddPasskey({
   asked: number;
   /** Changes when the header's Add asks for a passkey: the ceremony starts at once. */
   start: number;
-  /** Show the inline button: only while the group is empty. */
+  /** Show the inline button: only while the group is empty, or when a press is due (`ready`). */
   prompt: boolean;
   onAdded: () => void;
 }): React.ReactElement {
@@ -1294,11 +1295,12 @@ function AddPasskey({
     // Only when asked.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start]);
-  const showing = prompt || stepUp || busy || ready || Boolean(error);
+  const inline = prompt || ready;
+  const showing = inline || stepUp || busy || Boolean(error);
   if (!showing) return <></>;
   return (
     <li className="py-3">
-      {stepUp || !prompt ? null : (
+      {stepUp || !inline ? null : (
         <Button
           ref={buttonRef}
           variant="link"

@@ -87,6 +87,11 @@ export function thisDeviceName(view: SignInRequestView): string {
   return view.deviceLabel ?? t("signin.thisBrowser");
 }
 
+/** `thisDeviceName` for the start of a sentence: the catalog's "This browser", a label as it is. */
+export function thisDeviceTitle(view: SignInRequestView): string {
+  return view.deviceLabel ?? t("signin.replace.thisBrowser");
+}
+
 // ── Licence rows ───────────────────────────────────────────────────────────────────────────
 
 /** ui-core's `LicenseChoiceState` for the states a `LicenseChoiceView` alone decides. */

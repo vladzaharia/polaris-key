@@ -225,7 +225,9 @@ afterEach(() => {
 });
 
 async function addVia(region: HTMLElement, name: string): Promise<void> {
-  await userEvent.click(within(region).getByRole("button", { name: "Add" }));
+  await userEvent.click(
+    within(region).getByRole("button", { name: "Add a sign-in method" }),
+  );
   await userEvent.click(await screen.findByRole("menuitem", { name }));
 }
 
@@ -248,14 +250,16 @@ describe("Sign-in methods (PX-13)", () => {
     // The passkey is named by its provider (AAGUID), with where it came from.
     expect(within(region).getByText("iCloud Keychain")).toBeTruthy();
     expect(within(region).getByText(/added on Safari on macOS/)).toBeTruthy();
-    // Add is in the card's header menu, and each group ends in its own add row (the mockup).
-    expect(within(region).getByRole("button", { name: "Add" })).toBeTruthy();
+    // Add is in the card's header menu: the one entry point while each group has a method (PX-31a).
     expect(
-      within(region).getByRole("button", { name: "Add an email" }),
+      within(region).getByRole("button", { name: "Add a sign-in method" }),
     ).toBeTruthy();
     expect(
-      within(region).getByRole("button", { name: "Add a passkey" }),
-    ).toBeTruthy();
+      within(region).queryByRole("button", { name: "Add an email" }),
+    ).toBeNull();
+    expect(
+      within(region).queryByRole("button", { name: "Add a passkey" }),
+    ).toBeNull();
     expect(
       within(region).getByText(
         `Changing a method asks you to confirm it's you. Every change is recorded and emailed to ${ACCOUNT.email}.`,
