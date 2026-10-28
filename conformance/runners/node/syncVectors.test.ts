@@ -5,7 +5,7 @@
 // matching derivation helper), `envelopeCases` (open every row, seal every row that has a `seal`
 // member and compare the bytes, and the reader's check order through the invalid reasons) and
 // `blindCases`, `hpkeAnchor`, `wrapCases`, `recoveryCodeCases`, `adoptCases`, `cdcCases` (the
-// streaming chunker, fed in uneven pieces), `chunkCases` and `manifestCases`. Other sections are
+// streaming chunker, fed in uneven pieces), `chunkCases`, `manifestCases`, `cdcEditCases` and `deltaCases`. Other sections are
 // another slice's.
 
 import { readFileSync } from "node:fs";
@@ -160,6 +160,8 @@ interface Vectors {
   recoveryCodeCases: RecoveryRow[];
   adoptCases: AdoptCase[];
   cdcCases: CdcCase[];
+  cdcEditCases: CdcEditCase[];
+  deltaCases: DeltaCase[];
   chunkCases: ChunkRow[];
   manifestCases: ManifestCase[];
   transferPlanCases: TransferPlanCase[];
@@ -229,6 +231,35 @@ type FileRow = { id: string; description: string } & (
 type Verdict<T> =
   | ({ result: "ok" } & T)
   | { result: "invalid"; reason: string };
+interface CdcEditCase {
+  id: string;
+  avg: number;
+  rootHex: string;
+  collection: string;
+  base: CdcCase["input"];
+  edit: {
+    op: "insert" | "delete" | "overwrite";
+    at: number;
+    length: number;
+    label: string;
+  };
+  baseLens: number[];
+  editedLens: number[];
+  baseIdsHex: string[];
+  editedIdsHex: string[];
+  keptIndexes: number[];
+  changedIndexes: number[];
+  baseManifestHex: string;
+  editedManifestHex: string;
+}
+type DeltaWant = { row: string; side: "base" | "edited" };
+interface DeltaCase {
+  id: string;
+  have: DeltaWant | { idsHex: string[] };
+  want: DeltaWant;
+  moveIdsHex: string[];
+  moveBytes: number;
+}
 interface CdcCase {
   id: string;
   avg: number;
@@ -879,6 +910,105 @@ describe("sync-vectors.json: canonicalJsonCases", () => {
       } else {
         expect(() => canonicalJson(input)).toThrow(RangeError);
       }
+    });
+  }
+});
+
+/** Cut `buf` into plaintext chunks with the streaming chunker, fed in uneven pieces. */
+function cutChunks(buf: Uint8Array, avg: number): Uint8Array[] {
+  const chunker = new CdcChunker(cdcParams(avg));
+  const out: Uint8Array[] = [];
+  for (let at = 0; at < buf.length; at += 65537)
+    for (const ch of chunker.push(buf.subarray(at, at + 65537)))
+      out.push(Uint8Array.from(ch));
+  for (const ch of chunker.finish()) out.push(Uint8Array.from(ch));
+  return out;
+}
+
+/** The edited bytes of a `cdcEditCases` row (the recipe in the file's description). */
+function applyEdit(base: Uint8Array, e: CdcEditCase["edit"]): Uint8Array {
+  const piece = new Uint8Array(e.length);
+  for (let at = 0, n = 0; at < e.length; n++, at += 32) {
+    const ctr = new Uint8Array(4);
+    new DataView(ctr.buffer).setUint32(0, n);
+    const block = createHash("sha256")
+      .update(`pkey-sync vector cdc-edit ${e.label}`)
+      .update(ctr)
+      .digest();
+    piece.set(block.subarray(0, Math.min(32, e.length - at)), at);
+  }
+  const tail = base.subarray(e.op === "insert" ? e.at : e.at + e.length);
+  const head = base.subarray(0, e.at);
+  const mid = e.op === "delete" ? new Uint8Array(0) : piece;
+  return new Uint8Array(Buffer.concat([head, mid, tail]));
+}
+
+describe("sync-vectors.json: cdcEditCases", () => {
+  for (const c of vectors.cdcEditCases) {
+    it(c.id, async () => {
+      const root = unhex(c.rootHex);
+      const base = cdcInput(c.base);
+      const edited = applyEdit(base, c.edit);
+      const sides = [
+        ["base", base, c.baseLens, c.baseIdsHex, c.baseManifestHex],
+        ["edited", edited, c.editedLens, c.editedIdsHex, c.editedManifestHex],
+      ] as const;
+      for (const [, buf, lens, ids, manifestHex] of sides) {
+        const chunks = cutChunks(buf, c.avg);
+        expect(chunks.map((ch) => ch.length)).toEqual(lens);
+        const got: string[] = [];
+        for (const ch of chunks)
+          got.push(await chunkIdHex(port, root, c.collection, ch));
+        expect(got).toEqual(ids);
+        const parsed = parseManifest(unhex(manifestHex));
+        expect(parsed.ok).toBe(true);
+        if (!parsed.ok) continue;
+        expect(parsed.manifest.plainSize).toBe(buf.length);
+        expect(hex(parsed.manifest.plainSha256)).toBe(
+          createHash("sha256").update(buf).digest("hex"),
+        );
+        expect(parsed.manifest.records.map((r) => hex(r.id))).toEqual(ids);
+        expect(parsed.manifest.records.map((r) => r.plainLen)).toEqual(lens);
+        expect(hex(encodeManifest(parsed.manifest))).toBe(manifestHex);
+      }
+      const have = new Set(c.baseIdsHex);
+      const kept: number[] = [];
+      const changed: number[] = [];
+      c.editedIdsHex.forEach((id, i) =>
+        (have.has(id) ? kept : changed).push(i),
+      );
+      expect(kept).toEqual(c.keptIndexes);
+      expect(changed).toEqual(c.changedIndexes);
+    });
+  }
+});
+
+describe("sync-vectors.json: deltaCases", () => {
+  for (const c of vectors.deltaCases) {
+    it(c.id, () => {
+      const manifestOf = (w: DeltaWant) => {
+        const row = vectors.cdcEditCases.find((e) => e.id === w.row)!;
+        const parsed = parseManifest(
+          unhex(
+            w.side === "base" ? row.baseManifestHex : row.editedManifestHex,
+          ),
+        );
+        if (!parsed.ok) throw new Error(`delta ${c.id}: manifest refused`);
+        return parsed.manifest.records.map((r) => ({
+          id: hex(r.id),
+          plainLen: r.plainLen,
+        }));
+      };
+      const have = new Set(
+        "idsHex" in c.have
+          ? c.have.idsHex
+          : manifestOf(c.have).map((r) => r.id),
+      );
+      const move = new Map<string, number>();
+      for (const r of manifestOf(c.want))
+        if (!have.has(r.id) && !move.has(r.id)) move.set(r.id, r.plainLen);
+      expect([...move.keys()]).toEqual(c.moveIdsHex);
+      expect([...move.values()].reduce((a, b) => a + b, 0)).toBe(c.moveBytes);
     });
   }
 });

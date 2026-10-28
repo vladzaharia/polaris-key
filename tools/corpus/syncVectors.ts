@@ -1,7 +1,7 @@
 // `sync-vectors.json`: Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 §13.10,
 // §13.8.1; plans/CC-01-cloud-sync.md §2.4). `syncVectorsVersion` 1.
 //
-// Slice U-34.4 adds `fileStreamCases`. Slice U-34.3 adds `cdcCases`, `chunkCases` and `manifestCases`.
+// Slice U-34.6 adds `cdcEditCases` and `deltaCases`. Slice U-34.4 adds `fileStreamCases`. Slice U-34.3 adds `cdcCases`, `chunkCases` and `manifestCases`.
 // Slice U-34.1 holds `hkdfCases`, `envelopeCases`, `blindCases` and `transferPlanCases`; U-34.2
 // adds `hpkeAnchor`, `wrapCases`, `recoveryCodeCases` and `adoptCases`. The
 // remaining sections (`cdcCases`, `chunkCases`,
@@ -2156,6 +2156,292 @@ function buildChunkCases(): Array<
   return rows;
 }
 
+// ── Edit and delta cases (§13.8.3): what a new version of a file costs ───────────────────────
+
+interface CdcEdit {
+  op: "insert" | "delete" | "overwrite";
+  at: number;
+  length: number;
+  /** The inserted or overwriting bytes: `refStream("pkey-sync vector cdc-edit " + label, length)`. */
+  label: string;
+}
+
+function applyCdcEdit(base: Uint8Array, e: CdcEdit): Uint8Array {
+  const fill = refStream(`pkey-sync vector cdc-edit ${e.label}`, e.length);
+  const head = base.subarray(0, e.at);
+  if (e.op === "insert") return cat(head, fill, base.subarray(e.at));
+  if (e.op === "delete") return cat(head, base.subarray(e.at + e.length));
+  return cat(head, fill, base.subarray(e.at + e.length));
+}
+
+interface CdcEditCase {
+  id: string;
+  description: string;
+  avg: number;
+  rootHex: string;
+  collection: string;
+  base: CdcInput;
+  edit: CdcEdit;
+  baseLens: number[];
+  editedLens: number[];
+  baseIdsHex: string[];
+  editedIdsHex: string[];
+  /** Indexes into the edited file whose id the base file already has. */
+  keptIndexes: number[];
+  /** Indexes into the edited file whose id the base file lacks. */
+  changedIndexes: number[];
+  baseManifestHex: string;
+  editedManifestHex: string;
+}
+
+function chunkRecords(
+  buf: Uint8Array,
+  lens: number[],
+): { id: Uint8Array; plainLen: number }[] {
+  let at = 0;
+  return lens.map((n) => {
+    const id = refChunkId(CHUNK_ROOT, CHUNK_COLL, buf.subarray(at, at + n));
+    at += n;
+    return { id, plainLen: n };
+  });
+}
+
+const manifestOf = (
+  buf: Uint8Array,
+  recs: { id: Uint8Array; plainLen: number }[],
+): Uint8Array =>
+  refEncodeManifest({
+    plainSize: buf.length,
+    plainSha256: new Uint8Array(createHash("sha256").update(buf).digest()),
+    records: recs,
+  });
+
+function buildCdcEditCases(): CdcEditCase[] {
+  const small = 2048;
+  const baseSmall: CdcInput = {
+    kind: "stream",
+    label: "edit",
+    length: 96 * 1024,
+  };
+  const realBase: CdcInput = {
+    kind: "stream",
+    label: "c",
+    length: 6 * 1024 * 1024 + 12345,
+  };
+  const mk = (
+    id: string,
+    description: string,
+    avg: number,
+    base: CdcInput,
+    edit: CdcEdit,
+  ): CdcEditCase => {
+    const a = cdcInput(base);
+    const b = applyCdcEdit(a, edit);
+    if (edit.op === "overwrite" && a.length !== b.length)
+      throw new Error(`syncVectors ${id}: overwrite changed the length`);
+    if (edit.op === "overwrite" && Buffer.compare(a, b) === 0)
+      throw new Error(`syncVectors ${id}: the edit changed nothing`);
+    const baseLens = refCdc(a, avg);
+    const editedLens = refCdc(b, avg);
+    const baseRecs = chunkRecords(a, baseLens);
+    const editedRecs = chunkRecords(b, editedLens);
+    const have = new Set(baseRecs.map((r) => toHex(r.id)));
+    const keptIndexes: number[] = [];
+    const changedIndexes: number[] = [];
+    editedRecs.forEach((r, i) =>
+      (have.has(toHex(r.id)) ? keptIndexes : changedIndexes).push(i),
+    );
+    if (changedIndexes.length === 0 && id !== "delete-end")
+      throw new Error(`syncVectors ${id}: no chunk changed`);
+    return {
+      id,
+      description,
+      avg,
+      rootHex: toHex(CHUNK_ROOT),
+      collection: CHUNK_COLL,
+      base,
+      edit,
+      baseLens,
+      editedLens,
+      baseIdsHex: baseRecs.map((r) => toHex(r.id)),
+      editedIdsHex: editedRecs.map((r) => toHex(r.id)),
+      keptIndexes,
+      changedIndexes,
+      baseManifestHex: toHex(manifestOf(a, baseRecs)),
+      editedManifestHex: toHex(manifestOf(b, editedRecs)),
+    };
+  };
+  const n = baseSmall.length;
+  return [
+    mk(
+      "insert-start",
+      "Insert 100 bytes at the start: the first chunk changes, the cut points resynchronise soon after and later chunks keep their ids.",
+      small,
+      baseSmall,
+      { op: "insert", at: 0, length: 100, label: "i0" },
+    ),
+    mk("insert-middle", "Insert 100 bytes in the middle.", small, baseSmall, {
+      op: "insert",
+      at: n / 2,
+      length: 100,
+      label: "i1",
+    }),
+    mk(
+      "insert-end",
+      "Append 100 bytes: only the last chunk or two change.",
+      small,
+      baseSmall,
+      { op: "insert", at: n, length: 100, label: "i2" },
+    ),
+    mk("delete-start", "Delete the first 100 bytes.", small, baseSmall, {
+      op: "delete",
+      at: 0,
+      length: 100,
+      label: "-",
+    }),
+    mk("delete-middle", "Delete 100 bytes from the middle.", small, baseSmall, {
+      op: "delete",
+      at: n / 2,
+      length: 100,
+      label: "-",
+    }),
+    mk("delete-end", "Truncate the last 100 bytes.", small, baseSmall, {
+      op: "delete",
+      at: n - 100,
+      length: 100,
+      label: "-",
+    }),
+    mk(
+      "overwrite-start",
+      "Overwrite 100 bytes at the start: the length is unchanged.",
+      small,
+      baseSmall,
+      { op: "overwrite", at: 0, length: 100, label: "o0" },
+    ),
+    mk(
+      "overwrite-middle",
+      "Overwrite 100 bytes in the middle.",
+      small,
+      baseSmall,
+      { op: "overwrite", at: n / 2, length: 100, label: "o1" },
+    ),
+    mk("overwrite-end", "Overwrite the last 100 bytes.", small, baseSmall, {
+      op: "overwrite",
+      at: n - 100,
+      length: 100,
+      label: "o2",
+    }),
+    mk("one-byte-middle", "One byte changes in the middle.", small, baseSmall, {
+      op: "overwrite",
+      at: n / 2 + 7,
+      length: 1,
+      label: "b1",
+    }),
+    mk(
+      "append-5000",
+      "Append 5000 bytes: every earlier chunk but the last keeps its id.",
+      small,
+      baseSmall,
+      { op: "insert", at: n, length: 5000, label: "i3" },
+    ),
+    mk(
+      "zeros-one-byte",
+      "A file of identical max chunks (all zeros) shares one chunk id; changing one byte makes new ids for that chunk only.",
+      1024,
+      { kind: "byte", value: 0, length: 5 * 4096 },
+      { op: "overwrite", at: 2 * 4096 + 9, length: 1, label: "z" },
+    ),
+    mk(
+      "real-insert-middle",
+      "Real parameters (avg 256 KiB): 100 bytes inserted in the middle of 6 MiB.",
+      REF_CDC.avg,
+      realBase,
+      { op: "insert", at: 3 * 1024 * 1024, length: 100, label: "r1" },
+    ),
+    mk(
+      "real-one-byte-end",
+      "Real parameters: one byte changed near the end.",
+      REF_CDC.avg,
+      realBase,
+      { op: "overwrite", at: 6 * 1024 * 1024, length: 1, label: "r2" },
+    ),
+  ];
+}
+
+type DeltaWant = { row: string; side: "base" | "edited" };
+type DeltaSide = DeltaWant | { idsHex: string[] };
+
+interface DeltaCase {
+  id: string;
+  description: string;
+  have: DeltaSide;
+  want: DeltaWant;
+  /** The distinct chunk ids to move, in the order the wanted manifest first names them. */
+  moveIdsHex: string[];
+  moveBytes: number;
+}
+
+function buildDeltaCases(edits: CdcEditCase[]): DeltaCase[] {
+  const byId = new Map(edits.map((e) => [e.id, e]));
+  const recs = (w: DeltaWant) => {
+    const e = byId.get(w.row)!;
+    const lens = w.side === "base" ? e.baseLens : e.editedLens;
+    const ids = w.side === "base" ? e.baseIdsHex : e.editedIdsHex;
+    return ids.map((id, i) => ({ id, plainLen: lens[i]! }));
+  };
+  const rows: DeltaCase[] = [];
+  const diff = (
+    id: string,
+    description: string,
+    have: DeltaSide,
+    want: DeltaWant,
+  ) => {
+    const haveIds = new Set(
+      "idsHex" in have ? have.idsHex : recs(have).map((r) => r.id),
+    );
+    const move: string[] = [];
+    let moveBytes = 0;
+    for (const r of recs(want)) {
+      if (haveIds.has(r.id) || move.includes(r.id)) continue;
+      move.push(r.id);
+      moveBytes += r.plainLen;
+    }
+    rows.push({ id, description, have, want, moveIdsHex: move, moveBytes });
+  };
+  for (const e of edits)
+    diff(
+      `upload-${e.id}`,
+      "Upload of the edited version: the chunks the server holds from the base version are not sent.",
+      { row: e.id, side: "base" },
+      { row: e.id, side: "edited" },
+    );
+  diff(
+    "download-rollback-insert-middle",
+    "A device holding the edited version fetches only the base version's chunks it lacks.",
+    { row: "insert-middle", side: "edited" },
+    { row: "insert-middle", side: "base" },
+  );
+  diff(
+    "upload-first-version",
+    "No earlier version: every distinct chunk moves, once each.",
+    { idsHex: [] },
+    { row: "insert-middle", side: "base" },
+  );
+  diff(
+    "upload-unchanged",
+    "The same version again moves nothing.",
+    { row: "insert-middle", side: "base" },
+    { row: "insert-middle", side: "base" },
+  );
+  diff(
+    "first-version-dedupes-within-file",
+    "Identical chunks inside one file move once.",
+    { idsHex: [] },
+    { row: "zeros-one-byte", side: "base" },
+  );
+  return rows;
+}
+
 const MF_SHA = new Uint8Array(
   createHash("sha256").update("pkey-sync vector manifest").digest(),
 );
@@ -2554,10 +2840,11 @@ function buildCanonicalJsonCases(): CanonicalJsonCase[] {
 }
 
 export function buildSyncVectors(): unknown {
+  const cdcEditCases = buildCdcEditCases();
   return {
     syncVectorsVersion: 1,
     description:
-      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcEditCases: a base input (the cdcCases input forms), then edit applied to it (op insert | delete | overwrite at `at` for `length` bytes, the inserted or overwriting bytes being SHA-256(UTF-8 of `pkey-sync vector cdc-edit ` + label, u32be counter) blocks cut to length); a runner cuts both at avg and expects baseLens and editedLens, computes the E2E chunk ids under rootHex and collection (baseIdsHex, editedIdsHex), expects keptIndexes (edited chunks whose id the base has) and changedIndexes (the rest), and expects baseManifestHex and editedManifestHex to parse to those ids and lengths (plainSize and plainSha256 of the whole input; encoding the parsed manifest gives the same bytes). deltaCases: what a transfer moves: have is the set of ids the other side holds (a cdcEditCases side or an explicit list), want is the manifest to reach; moveIdsHex is the distinct ids of want absent from have, in first-appearance order, and moveBytes the sum of their plainLen. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
     constants: {
       envelopeOverheadBytes: REF_E2E_OVERHEAD,
       envelopeFixedBytes: REF_ENVELOPE_FIXED,
@@ -2573,6 +2860,8 @@ export function buildSyncVectors(): unknown {
     recoveryCodeCases: buildRecoveryCodeCases(),
     adoptCases: buildAdoptCases(),
     cdcCases: buildCdcCases(),
+    cdcEditCases,
+    deltaCases: buildDeltaCases(cdcEditCases),
     chunkCases: buildChunkCases(),
     fileStreamCases: buildFileStreamCases(),
     manifestCases: buildManifestCases(),
