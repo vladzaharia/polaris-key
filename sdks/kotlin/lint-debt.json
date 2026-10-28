@@ -3270,6 +3270,27 @@
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/ConnectRelayTicketTest.kt": {
       "detekt:exceptions.SwallowedException": 1
+    },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/PeerMatrixCodecTest.kt": {
+      "detekt:exceptions.SwallowedException": 3,
+      "detekt:style.ReturnCount": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/Advert.kt": {
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:naming.EnumNaming": 4,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:enum-entry-name-case": 4
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/HandshakePayload.kt": {
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.ReturnCount": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/Sas.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:naming.EnumNaming": 3,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.ReturnCount": 3,
+      "ktlint:standard:enum-entry-name-case": 3
     }
   }
 }
