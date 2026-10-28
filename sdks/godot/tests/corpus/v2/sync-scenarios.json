@@ -195,6 +195,11 @@
       "ref": "WIRE-CONTRACT-V5 §11.5, §13.10.6; threat T26"
     },
     {
+      "id": "forged-plaintext-rows",
+      "title": "A hostile Worker's plaintext row never reads as legacy over data the device holds sealed: a change at or below the request's cursor is ignored (E2E, cursor above 0), a plaintext row is legacy only when the request's cursor is below encryptionSince, and a key this device has ever pushed or opened sealed refuses plaintext for good, across a snapshot reset. A fresh device before any sealed row stays trust-on-first-use (threat T26)",
+      "ref": "WIRE-CONTRACT-V5 §13.10.7; threat T26"
+    },
+    {
       "id": "encryption-since",
       "title": "A plaintext row is legacy data only when the host-mapped seq is below encryptionSince, which only ever lowers; otherwise it is invalid. Sealed and invalid come only from the host's open result",
       "ref": "WIRE-CONTRACT-V5 §13.10.7"
@@ -13717,6 +13722,594 @@
               }
             },
             "encryptionSince": 2
+          }
+        }
+      ],
+      "wp": "U-35.2"
+    },
+    {
+      "name": "e2e-forged-plain-change-at-or-below-cursor",
+      "description": "In E2E mode a pull made at cursor 9 cannot be answered with a change at version 2: it is ignored outright, so a plaintext row posing as legacy data (seq 2, below the boundary) neither shows nor marks the key invalid.",
+      "rules": ["forged-plaintext-rows"],
+      "init": {
+        "catalog": {
+          "settings": [
+            {
+              "key": "audio.music.volume",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            {
+              "key": "graphics.quality",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string", "enum": ["low", "medium", "high"] }
+            },
+            {
+              "key": "input.bindings",
+              "route": "synced",
+              "scope": "user",
+              "policy": "merge",
+              "schema": { "type": "object" }
+            },
+            {
+              "key": "stats.bestScore",
+              "route": "synced",
+              "scope": "user",
+              "policy": "max",
+              "schema": { "type": "integer", "minimum": 0 }
+            },
+            {
+              "key": "ui.theme",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string" }
+            },
+            {
+              "key": "stats.fastestLap",
+              "route": "synced",
+              "scope": "user",
+              "policy": "min",
+              "schema": { "type": "integer", "minimum": 0 }
+            }
+          ],
+          "collections": [
+            {
+              "name": "progress",
+              "policy": "revision",
+              "resolve": "keepLocal"
+            },
+            { "name": "unlocks", "policy": "union" }
+          ]
+        },
+        "document": {
+          "values": {
+            "audio.music.volume": 0.8,
+            "graphics.quality": "medium",
+            "input.bindings": { "jump": "space", "crouch": "ctrl" },
+            "stats.bestScore": 0,
+            "ui.theme": "dark",
+            "stats.fastestLap": 0
+          },
+          "locked": ["ui.theme"]
+        },
+        "journal": null,
+        "clock": { "now": 1760000000000, "offsetMs": 0, "contacted": true },
+        "subject": "sub_alice",
+        "network": "online",
+        "licence": {
+          "state": "valid",
+          "lastSyncUnauthorized": false,
+          "documents": ["license", "config"]
+        },
+        "clientIds": ["c_000000000000000client1", "c_000000000000000client2"],
+        "options": { "onSignOut": "clear" },
+        "legacyLocal": null,
+        "encryption": "e2e",
+        "hasRoot": true
+      },
+      "steps": [
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 9,
+              "more": false,
+              "lastMutationId": 0,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "setting": "audio.music.volume",
+                  "scope": "user",
+                  "value": 0.4,
+                  "version": 9,
+                  "editedHlc": "0199c82cbc18:0000",
+                  "updatedBy": "device"
+                }
+              ],
+              "tombstones": [],
+              "encryption": "e2e",
+              "encryptionSince": 5
+            },
+            "opened": { "changes": [{ "sealed": true }] }
+          }
+        },
+        { "network": { "state": "offline" } },
+        { "network": { "state": "online" } },
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=9&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 12,
+              "more": false,
+              "lastMutationId": 0,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "setting": "graphics.quality",
+                  "scope": "user",
+                  "value": "high",
+                  "version": 2,
+                  "editedHlc": "0199c82cc000:0000",
+                  "updatedBy": "device"
+                }
+              ],
+              "tombstones": [],
+              "encryption": "e2e",
+              "encryptionSince": 5
+            },
+            "opened": { "changes": [{ "seq": 2 }] }
+          }
+        },
+        {
+          "assert": {
+            "values": {
+              "audio.music.volume": { "value": 0.4, "from": "cloud" },
+              "graphics.quality": { "value": "medium", "from": "document" }
+            },
+            "states": {
+              "graphics.quality": {
+                "sync": "synced",
+                "invalid": false,
+                "locked": false
+              }
+            },
+            "encryptionSince": 5
+          }
+        }
+      ],
+      "wp": "U-35.2"
+    },
+    {
+      "name": "e2e-forged-plain-needs-cursor-below-since",
+      "description": "A plaintext row served to a pull whose cursor is already at or above encryptionSince is invalid, even when the host reports a seq below the boundary: legacy rows can only arrive before the boundary.",
+      "rules": ["forged-plaintext-rows"],
+      "init": {
+        "catalog": {
+          "settings": [
+            {
+              "key": "audio.music.volume",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            {
+              "key": "graphics.quality",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string", "enum": ["low", "medium", "high"] }
+            },
+            {
+              "key": "input.bindings",
+              "route": "synced",
+              "scope": "user",
+              "policy": "merge",
+              "schema": { "type": "object" }
+            },
+            {
+              "key": "stats.bestScore",
+              "route": "synced",
+              "scope": "user",
+              "policy": "max",
+              "schema": { "type": "integer", "minimum": 0 }
+            },
+            {
+              "key": "ui.theme",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string" }
+            },
+            {
+              "key": "stats.fastestLap",
+              "route": "synced",
+              "scope": "user",
+              "policy": "min",
+              "schema": { "type": "integer", "minimum": 0 }
+            }
+          ],
+          "collections": [
+            {
+              "name": "progress",
+              "policy": "revision",
+              "resolve": "keepLocal"
+            },
+            { "name": "unlocks", "policy": "union" }
+          ]
+        },
+        "document": {
+          "values": {
+            "audio.music.volume": 0.8,
+            "graphics.quality": "medium",
+            "input.bindings": { "jump": "space", "crouch": "ctrl" },
+            "stats.bestScore": 0,
+            "ui.theme": "dark",
+            "stats.fastestLap": 0
+          },
+          "locked": ["ui.theme"]
+        },
+        "journal": null,
+        "clock": { "now": 1760000000000, "offsetMs": 0, "contacted": true },
+        "subject": "sub_alice",
+        "network": "online",
+        "licence": {
+          "state": "valid",
+          "lastSyncUnauthorized": false,
+          "documents": ["license", "config"]
+        },
+        "clientIds": ["c_000000000000000client1", "c_000000000000000client2"],
+        "options": { "onSignOut": "clear" },
+        "legacyLocal": null,
+        "encryption": "e2e",
+        "hasRoot": true
+      },
+      "steps": [
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 9,
+              "more": false,
+              "lastMutationId": 0,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [],
+              "tombstones": [],
+              "encryption": "e2e",
+              "encryptionSince": 5
+            },
+            "opened": { "changes": [] }
+          }
+        },
+        { "network": { "state": "offline" } },
+        { "network": { "state": "online" } },
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=9&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 12,
+              "more": false,
+              "lastMutationId": 0,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "setting": "graphics.quality",
+                  "scope": "user",
+                  "value": "high",
+                  "version": 10,
+                  "editedHlc": "0199c82cc000:0000",
+                  "updatedBy": "device"
+                }
+              ],
+              "tombstones": [],
+              "encryption": "e2e",
+              "encryptionSince": 5
+            },
+            "opened": { "changes": [{ "seq": 3 }] }
+          }
+        },
+        {
+          "assert": {
+            "values": {
+              "graphics.quality": { "value": "medium", "from": "document" }
+            },
+            "states": {
+              "graphics.quality": {
+                "sync": "synced",
+                "invalid": true,
+                "locked": false
+              }
+            },
+            "encryptionSince": 5
+          }
+        }
+      ],
+      "wp": "U-35.2"
+    },
+    {
+      "name": "e2e-forged-plain-sealed-key-latched",
+      "description": "A key the device has opened sealed refuses plaintext for good: after the cursor expires and a snapshot replaces the rows, a plaintext row for that key with a seq below the boundary is invalid, while a plaintext row for a key never seen sealed stays legacy data.",
+      "rules": ["forged-plaintext-rows"],
+      "init": {
+        "catalog": {
+          "settings": [
+            {
+              "key": "audio.music.volume",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            {
+              "key": "graphics.quality",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string", "enum": ["low", "medium", "high"] }
+            },
+            {
+              "key": "input.bindings",
+              "route": "synced",
+              "scope": "user",
+              "policy": "merge",
+              "schema": { "type": "object" }
+            },
+            {
+              "key": "stats.bestScore",
+              "route": "synced",
+              "scope": "user",
+              "policy": "max",
+              "schema": { "type": "integer", "minimum": 0 }
+            },
+            {
+              "key": "ui.theme",
+              "route": "synced",
+              "scope": "user",
+              "policy": "lastWrite",
+              "schema": { "type": "string" }
+            },
+            {
+              "key": "stats.fastestLap",
+              "route": "synced",
+              "scope": "user",
+              "policy": "min",
+              "schema": { "type": "integer", "minimum": 0 }
+            }
+          ],
+          "collections": [
+            {
+              "name": "progress",
+              "policy": "revision",
+              "resolve": "keepLocal"
+            },
+            { "name": "unlocks", "policy": "union" }
+          ]
+        },
+        "document": {
+          "values": {
+            "audio.music.volume": 0.8,
+            "graphics.quality": "medium",
+            "input.bindings": { "jump": "space", "crouch": "ctrl" },
+            "stats.bestScore": 0,
+            "ui.theme": "dark",
+            "stats.fastestLap": 0
+          },
+          "locked": ["ui.theme"]
+        },
+        "journal": null,
+        "clock": { "now": 1760000000000, "offsetMs": 0, "contacted": true },
+        "subject": "sub_alice",
+        "network": "online",
+        "licence": {
+          "state": "valid",
+          "lastSyncUnauthorized": false,
+          "documents": ["license", "config"]
+        },
+        "clientIds": ["c_000000000000000client1", "c_000000000000000client2"],
+        "options": { "onSignOut": "clear" },
+        "legacyLocal": null,
+        "encryption": "e2e",
+        "hasRoot": true
+      },
+      "steps": [
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 9,
+              "more": false,
+              "lastMutationId": 0,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "setting": "audio.music.volume",
+                  "scope": "user",
+                  "value": 0.4,
+                  "version": 8,
+                  "editedHlc": "0199c82cb830:0000",
+                  "updatedBy": "device"
+                },
+                {
+                  "setting": "graphics.quality",
+                  "scope": "user",
+                  "value": "low",
+                  "version": 2,
+                  "editedHlc": "0199c82cbc18:0000",
+                  "updatedBy": "device"
+                }
+              ],
+              "tombstones": [],
+              "encryption": "e2e",
+              "encryptionSince": 5
+            },
+            "opened": { "changes": [{ "sealed": true }, { "seq": 2 }] }
+          }
+        },
+        { "network": { "state": "offline" } },
+        { "network": { "state": "online" } },
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=9&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 410,
+            "body": {
+              "error": {
+                "code": "cursor_expired",
+                "message": "Cursor is older than the tombstone horizon."
+              }
+            }
+          }
+        },
+        {
+          "assert": {
+            "requests": [
+              {
+                "method": "GET",
+                "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+              }
+            ]
+          }
+        },
+        {
+          "respond": {
+            "status": 200,
+            "body": {
+              "subject": "sub_alice",
+              "serverNow": 1760000000000,
+              "cursor": 20,
+              "more": false,
+              "lastMutationId": 0,
+              "catalogVersion": 1,
+              "aliases": {},
+              "quota": { "bytes": 268435456, "files": true },
+              "usage": { "bytes": 0, "settings": 0, "records": 0, "files": 0 },
+              "changes": [
+                {
+                  "setting": "audio.music.volume",
+                  "scope": "user",
+                  "value": 0.9,
+                  "version": 3,
+                  "editedHlc": "0199c82cc000:0000",
+                  "updatedBy": "device"
+                },
+                {
+                  "setting": "graphics.quality",
+                  "scope": "user",
+                  "value": "low",
+                  "version": 2,
+                  "editedHlc": "0199c82cbc18:0000",
+                  "updatedBy": "device"
+                }
+              ],
+              "tombstones": [],
+              "encryption": "e2e",
+              "encryptionSince": 5
+            },
+            "opened": { "changes": [{ "seq": 3 }, { "seq": 2 }] }
+          }
+        },
+        {
+          "assert": {
+            "values": {
+              "audio.music.volume": { "value": 0.8, "from": "document" },
+              "graphics.quality": { "value": "low", "from": "cloud" }
+            },
+            "states": {
+              "audio.music.volume": {
+                "sync": "synced",
+                "invalid": true,
+                "locked": false
+              }
+            },
+            "encryptionSince": 5
           }
         }
       ],
