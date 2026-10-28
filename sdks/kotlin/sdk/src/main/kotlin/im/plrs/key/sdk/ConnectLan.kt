@@ -72,7 +72,6 @@ private const val CERT_MARGIN_S = 60L
 private const val MISS_CACHE = 1024
 private const val MILLIS = 1000
 private const val OPEN_GRACE_SECONDS = 5
-private const val STOP_GRACE_MILLIS = 2000L
 private const val BACKLOG = 128
 
 /** A roster device seen on the network. */
