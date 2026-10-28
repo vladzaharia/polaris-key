@@ -1538,6 +1538,18 @@
     "packages/sdk-node/src/cli/yargs.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/sdk-node/src/client.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cloudSync/host.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/sdk-node/src/cloudSync/state.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cloudSync/transport.ts": {
+      "jscpd:duplicate": 2
+    },
     "packages/sdk-node/src/config/client.ts": {
       "jscpd:duplicate": 3
     },
@@ -1562,6 +1574,9 @@
     "packages/sdk-node/src/connect/state.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/sdk-node/src/core/boundedBody.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-node/src/core/bundle.ts": {
       "jscpd:duplicate": 1
     },
@@ -1572,7 +1587,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/core/presentation.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 8
     },
     "packages/sdk-node/src/core/redact.ts": {
       "jscpd:duplicate": 1
@@ -1705,6 +1720,12 @@
     },
     "packages/sdk-node/test/client.test.ts": {
       "jscpd:duplicate": 13
+    },
+    "packages/sdk-node/test/cloudSyncFixtures.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/test/cloudSyncHost.test.ts": {
+      "jscpd:duplicate": 19
     },
     "packages/sdk-node/test/commerce.test.ts": {
       "jscpd:duplicate": 1
@@ -1872,7 +1893,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/bearerAdapter.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 14
     },
     "packages/sdk-react/test/bearerBackoff.test.ts": {
       "jscpd:duplicate": 1
@@ -1930,6 +1951,9 @@
     },
     "packages/sdk-react/test/chunkFixtures.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/cloudSyncHost.test.ts": {
+      "jscpd:duplicate": 40
     },
     "packages/sdk-react/test/configMatrix.test.ts": {
       "jscpd:duplicate": 3
@@ -2165,8 +2189,26 @@
     "packages/ui-core/src/browser/sdk/browser/boot.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/ui-core/src/browser/sdk/browser/boundedBody.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
       "jscpd:duplicate": 10
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/create.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/host.ts": {
+      "jscpd:duplicate": 15
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/store.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/transport.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/writer.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/connect/bytes.ts": {
       "jscpd:duplicate": 1
@@ -2182,6 +2224,9 @@
     },
     "packages/ui-core/src/browser/sdk/browser/connect/errors.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/lock.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/connect/redact.ts": {
       "jscpd:duplicate": 2
@@ -2235,7 +2280,7 @@
       "jscpd:duplicate": 3
     },
     "packages/ui-core/src/browser/sdk/core/presentation.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/ui-core/src/browser/sdk/core/types.ts": {
       "jscpd:duplicate": 2
@@ -2961,7 +3006,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/release/packages/native/swiftArchive.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/worker/src/services/release/packages/ociPush.ts": {
       "jscpd:duplicate": 3
