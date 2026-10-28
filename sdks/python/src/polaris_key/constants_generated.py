@@ -972,6 +972,7 @@ class Feature:
     UI_KIT_MANAGE: Final = "ui.kit.manage"
     UI_KIT_KEYENTRY: Final = "ui.kit.keyentry"
     UI_KIT_ACCOUNT: Final = "ui.kit.account"
+    UI_KIT_HOLDERS: Final = "ui.kit.holders"
     UI_CLI: Final = "ui.cli"
     UI_CLI_MOUNT: Final = "ui.cli.mount"
     UI_CLI_CONTRACT: Final = "ui.cli.contract"
@@ -1110,6 +1111,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.kit.account",
+    "ui.kit.holders",
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
@@ -2509,6 +2511,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.keyentry": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.account": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.kit.holders": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.mount": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.contract": CapabilityRow("implemented", "sdk", ()),
@@ -2532,4 +2535,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "98c82ddc923c89823e27b46ca64c223d6f1353e4667f3ff4b5623b477df119b9"
+CAPABILITY_DIGEST: Final[str] = "603c39fdfad19d6df12bb89b80de18ffeb9c4ed2e2be735ab52515fbd0eb0244"

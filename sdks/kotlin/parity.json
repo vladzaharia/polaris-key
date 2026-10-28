@@ -436,6 +436,11 @@
       "status": "implemented",
       "note": "I-10b.20: License in another account on the activation screen (Sign in to that account: the kit's sign-in, else the product's sign-in page), the signed-in toast with the tier (Signed in as <name> \u00b7 <Tier> license; You're signed in \u00b7 <Tier> license without a name), and rememberLicenseChoiceState over PolarisLicenseChoiceState. PolarisSignInActions now returns the session's SignInOutcome (a refusal is a SignInError) and shows a PolarisSignInCode; SignInResult and the public SignInPrompt are gone. KeyRefusalMatrixTest renders each state in the three desktop chromes at the seven sizes, font scale 2 and touch."
     },
+    "ui.kit.holders": {
+      "status": "planned",
+      "wp": "UK-43",
+      "note": "Native port of the UK-42 holders views and AddToAccountModel (the holders rows of ui-matrix.json are the fixtures)."
+    },
     "ui.kit.keyentry": {
       "status": "implemented",
       "note": "I-10b.20: the key-entry-limit screen (the Worker's words, N of M key entries used, Open in browser for the portal link or a QR on Android TV, Sign in, Use a different key) and the key entries left toast after a key activation; PolarisGateState.keyEntries and PolarisActivationUi.signInUrl. KeyRefusalMatrixTest."

@@ -833,6 +833,141 @@ msgstr "Eine Lizenz aktivieren"
 msgid "activate.busy"
 msgstr "Wird aktiviert…"
 
+#. {product} is ready
+#. ActivateDone: the step after a license key activates. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "activate.done.title"
+msgstr "{product} ist bereit"
+
+#. {tier} · {term} · this {deviceKind} is device {n} of {limit}.
+#. ActivateDone: the license line. Arguments: {tier} = the tier's name (never translated), {term} = the term (Lifetime, Renews 3 Mar), {deviceKind} = the device kind already worded (computer, phone), {n} and {limit} = integers.
+msgid "activate.done.device"
+msgstr "{tier} · {term} · dieses {deviceKind} ist Gerät {n} von {limit}."
+
+#. Keep {product} in your account
+#. ActivateDone: the quiet recommendation card. Arguments: {product} = the product's name (never translated).
+msgid "activate.recommend.title"
+msgstr "{product} in Ihrem Konto behalten"
+
+#. Recommended
+#. ActivateDone: the badge on the recommendation card.
+msgid "activate.recommend.badge"
+msgstr "Empfohlen"
+
+#. Cloud Sync keeps your settings and saves on every device
+#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+msgid "activate.recommend.sync"
+msgstr "Die Cloud-Synchronisierung hält Ihre Einstellungen und Spielstände auf jedem Gerät aktuell"
+
+#. Get your license back if you lose the key or this device
+#. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
+msgid "activate.recommend.recover"
+msgstr "Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren"
+
+#. Move it to a new device yourself, without asking {developer}
+#. ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them.
+msgid "activate.recommend.devices"
+msgstr "Auf ein neues Gerät umziehen, selbst und ohne {developer} zu fragen"
+
+#. Add your name and email
+#. ActivateDone: the recommendation card's action; opens AddToAccount.
+msgid "activate.recommend.action"
+msgstr "Namen und E-Mail hinzufügen"
+
+#. macos: Add Your Name and Email
+msgctxt "macos"
+msgid "activate.recommend.action"
+msgstr "Namen und E-Mail hinzufügen"
+
+#. Or continue without an account. {product} works the same.
+#. ActivateDone: under the recommendation card. Arguments: {product} = the product's name (never translated).
+msgid "activate.recommend.skip"
+msgstr "Oder ohne Konto fortfahren. {product} funktioniert genauso."
+
+#. Keep your license safe in Polaris Locker
+#. ActivateDone: the single reason line when Identity is off; the action opens the portal.
+msgid "activate.recommend.portal"
+msgstr "Ihre Lizenz sicher in Polaris Locker aufbewahren"
+
+#. Your license and its devices stay as they are. You'll confirm the email with a code in your browser.
+#. AddToAccount: under the name and email fields.
+msgid "activate.attach.lede"
+msgstr "Ihre Lizenz und ihre Geräte bleiben unverändert. Die E-Mail bestätigen Sie mit einem Code in Ihrem Browser."
+
+#. We send a code to this email in your browser. {product} never sees it.
+#. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
+msgid "activate.attach.fine"
+msgstr "Wir senden einen Code an diese E-Mail in Ihrem Browser. {product} sieht ihn nie."
+
+#. {product} is in your account
+#. AddToAccount: added. Arguments: {product} = the product's name (never translated).
+msgid "activate.attach.done"
+msgstr "{product} ist in Ihrem Konto"
+
+#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+msgid "activate.attach.syncOn"
+msgstr "Die Cloud-Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren."
+
+#. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
+#. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
+msgid "activate.waiting"
+msgstr "Diese Lizenz wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten."
+
+#. Sign in as {maskedEmail}
+#. ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated).
+msgid "activate.waitingSignIn"
+msgstr "Als {maskedEmail} anmelden"
+
+#. macos: Sign In as {maskedEmail}
+msgctxt "macos"
+msgid "activate.waitingSignIn"
+msgstr "Als {maskedEmail} anmelden"
+
+#. This license is in a Polaris Locker account
+#. AddToAccount: someone attached the license while this screen was open.
+msgid "activate.owned.title"
+msgstr "Diese Lizenz ist in einem Polaris Locker-Konto"
+
+#. Sign in with the email it was sent to. {product} starts on this {deviceKind} as soon as you do.
+#. AddToAccount: under the owned title. Arguments: {product} = the product's name (never translated), {deviceKind} = the device kind already worded (computer, phone).
+msgid "activate.owned.lede"
+msgstr "Melden Sie sich mit der E-Mail an, an die sie gesendet wurde. {product} startet auf diesem {deviceKind}, sobald Sie das tun."
+
+#. This license was sent to another email
+#. AddToAccount: the license's email does not match the account.
+msgid "activate.otherEmail.title"
+msgstr "Diese Lizenz wurde an eine andere E-Mail gesendet"
+
+#. It was sent to {maskedEmail}. Sign in with that email, or add it to this account and verify it.
+#. AddToAccount: under the otherEmail title. Arguments: {maskedEmail} = the email with its middle hidden (never translated).
+msgid "activate.otherEmail.body"
+msgstr "Sie wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an oder fügen Sie sie diesem Konto hinzu und bestätigen Sie sie."
+
+#. Verify that email
+#. AddToAccount: opens the portal's sign-in methods.
+msgid "activate.otherEmail.verify"
+msgstr "Diese E-Mail bestätigen"
+
+#. macos: Verify That Email
+msgctxt "macos"
+msgid "activate.otherEmail.verify"
+msgstr "Diese E-Mail bestätigen"
+
+#. Not in an account
+#. AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email.
+msgid "account.notInAccount"
+msgstr "In keinem Konto"
+
+#. Add {product} to your account
+#. The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated).
+msgid "signin.attach.header"
+msgstr "{product} zu Ihrem Konto hinzufügen"
+
+#. {product} works the same. Add it to an account any time.
+#. License key step: under Continue without an account. Arguments: {product} = the product's name (never translated).
+msgid "signin.key.skipNote"
+msgstr "{product} funktioniert genauso. Fügen Sie es jederzeit einem Konto hinzu."
+
 #. Offline activation
 #. OfflineActivation: activation by exchanging a request code and a response file.
 msgid "offlineActivation.title"
@@ -3019,15 +3154,15 @@ msgstr[1] "Noch {left} Schlüsseleingaben"
 msgid "signin.key.noEntries"
 msgstr "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
 
-#. Skip for now
+#. Continue without an account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
-msgstr "Jetzt nicht"
+msgstr "Ohne Konto fortfahren"
 
-#. macos: Skip for Now
+#. macos: Continue Without an Account
 msgctxt "macos"
 msgid "signin.key.skip"
-msgstr "Jetzt nicht"
+msgstr "Ohne Konto fortfahren"
 
 #. Sign in to that account
 #. License key step (SIGN-IN.md §3.9).
