@@ -279,9 +279,12 @@ describe("pk-unlock-sync: every step, one field", () => {
     expect(seen.map((s) => s.key)).toEqual(["common.tryAgain"]);
   });
 
-  it("the no-code step says so and leads with Start over; Cancel is quiet", async () => {
+  it("the no-code step says so as a status and leads with Start over; Cancel is quiet", async () => {
     const el = await mount("UnlockSync", { unlockSync: { step: "no-code" } });
-    expect(q(el, '[data-key="unlockSync.noCode"]')).not.toBeNull();
+    expect(q(el, '[data-key="unlockSync.noCode"]')!.getAttribute("role")).toBe(
+      "status",
+    );
+    expect(el.view.decisions.focus).toBe("unlockSync.startOver");
     expect(
       (q(el, 'button[data-key="unlockSync.startOver"]') as HTMLElement).dataset
         .variant,
@@ -294,7 +297,8 @@ describe("pk-unlock-sync: every step, one field", () => {
 });
 
 describe("controls only a host can act on (handles)", () => {
-  it("are not drawn unless the page says it answers them", async () => {
+  it("are not drawn unless the page says it answers them, and development says so", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const locked = await mount(
       "CloudSyncStatus",
       { cloudSync: { state: "locked" } },
@@ -312,12 +316,43 @@ describe("controls only a host can act on (handles)", () => {
       { ringChange: { served: SERVED } },
       { handles: "" },
     );
-    expect(q(change, 'button[data-key="ringChange.useCode"]')).toBeNull();
+    expect(
+      warn.mock.calls.some((c) =>
+        String(c[0]).includes('handles="unlock review"'),
+      ),
+    ).toBe(true);
+    warn.mockRestore();
+    // Use recovery code opens the kit's own UnlockSync: it always draws, handled or not.
+    expect(q(change, 'button[data-key="ringChange.useCode"]')).not.toBeNull();
     expect(q(change, 'button[data-key="ringChange.accept"]')).not.toBeNull();
   });
 });
 
 describe("pk-recovery-code: the real code", () => {
+  it("Copy, then ticking the box, then Done: the label returns to the template", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn(async () => undefined) },
+      configurable: true,
+    });
+    const el = await mount(
+      "RecoveryCode",
+      { recoveryCode: {} },
+      { code: CODE },
+    );
+    const seen = actions(el);
+    (q(el, 'button[data-key="recoveryCode.copy"]') as HTMLElement).click();
+    await el.updateComplete;
+    const box = q(el, 'input[type="checkbox"]') as HTMLInputElement;
+    box.checked = true;
+    box.dispatchEvent(new Event("change"));
+    await el.updateComplete;
+    (q(el, 'button[data-key="common.done"]') as HTMLElement).click();
+    expect(seen.map((s) => s.key)).toEqual([
+      "recoveryCode.copy",
+      "common.done",
+    ]);
+  });
+
   it("is read out group by group as an image with a label, and copied hyphenated", async () => {
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -340,12 +375,14 @@ describe("pk-recovery-code: the real code", () => {
     vi.useFakeTimers();
     try {
       (q(el, 'button[data-key="recoveryCode.copy"]') as HTMLElement).click();
+      await el.updateComplete;
       expect(writeText).toHaveBeenCalledWith(CODE);
       expect(
         q(el, 'button[data-key="recoveryCode.copy"]')!.textContent,
       ).toContain("Copied");
       expect(q(el, "[data-copied-status]")!.textContent).toBe("Copied");
       await vi.advanceTimersByTimeAsync(2100);
+      await el.updateComplete;
       expect(
         q(el, 'button[data-key="recoveryCode.copy"]')!.textContent,
       ).toContain("Copy code");

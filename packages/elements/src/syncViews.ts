@@ -159,6 +159,7 @@ function pasteInto(from: HTMLElement, edited: () => void): void {
 function codeBlock(c: RenderCtx, code: string): Out {
   const groups = recoveryGroups(code);
   const spoken = spokenForm(groups);
+  const said = c.copied === true && c.copy.has("common.copied");
   const label = c.copy.has("a11y.recoveryCode")
     ? plain(c, "a11y.recoveryCode", { code: spoken })
     : spoken;
@@ -183,34 +184,23 @@ function codeBlock(c: RenderCtx, code: string): Out {
       data-variant="secondary"
       data-key="recoveryCode.copy"
       aria-disabled=${ifDefined(groups.length ? undefined : "true")}
-      @click=${(e: Event) => {
+      @click=${() => {
         if (!groups.length) return;
         void navigator.clipboard?.writeText(copyForm(groups))?.catch(() => {
           // A refused write leaves the code on screen to copy by hand.
         });
         c.act("recoveryCode.copy");
-        flashCopied(e.currentTarget as HTMLElement, c);
+        c.markCopied?.();
       }}
     >
-      ${GLYPHS.copy()}<span>${text(c, "recoveryCode.copy")}</span>
+      ${GLYPHS.copy()}<span
+        >${text(c, said ? "common.copied" : "recoveryCode.copy")}</span
+      >
     </button>
-    <span class="visually-hidden" role="status" data-copied-status></span>
+    <span class="visually-hidden" role="status" data-copied-status
+      >${said ? text(c, "common.copied") : ""}</span
+    >
   </div>`;
-}
-
-/** "Copied" in the button and to a screen reader for two seconds. */
-function flashCopied(btn: HTMLElement, c: RenderCtx): void {
-  if (!c.copy.has("common.copied")) return;
-  const label = btn.querySelector("span");
-  const status = btn.parentElement?.querySelector("[data-copied-status]");
-  if (!label || !status) return;
-  const was = label.textContent;
-  label.textContent = plain(c, "common.copied");
-  status.textContent = plain(c, "common.copied");
-  setTimeout(() => {
-    label.textContent = was;
-    status.textContent = "";
-  }, 2000);
 }
 
 /** UnlockSync, RecoveryCode and RingChange draw their fields and actions here. `c.code` is the
@@ -273,6 +263,12 @@ function unlockContent(c: RenderCtx): Out {
           ${text(c, "unlockSync.startOverWarning")}
         </p>`
       : nothing;
+  const noCode =
+    s === "no-code"
+      ? html`<p class="body" role="status" data-key="unlockSync.noCode">
+          ${text(c, "unlockSync.noCode")}
+        </p>`
+      : nothing;
   const actions =
     s === "working"
       ? row(c, [busy], { busy })
@@ -293,7 +289,7 @@ function unlockContent(c: RenderCtx): Out {
               );
   return html`${field}${s === "code" || s === "invalid"
     ? noAsk(c)
-    : nothing}${warning}${s === "failed" || s === "start-over-failed"
+    : nothing}${warning}${noCode}${s === "failed" || s === "start-over-failed"
     ? callout(c, [
         s === "failed" ? "unlockSync.failed" : "unlockSync.startOverFailed",
       ])

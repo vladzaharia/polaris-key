@@ -254,6 +254,11 @@ function UnlockBody(props: { c: KitCtx }): ReactNode {
           {text(c, "unlockSync.startOverWarning")}
         </p>
       ) : null}
+      {s === "no-code" ? (
+        <p className="body" role="status" data-key="unlockSync.noCode">
+          {text(c, "unlockSync.noCode")}
+        </p>
+      ) : null}
       {s === "failed" || s === "start-over-failed"
         ? callout(c, [
             s === "failed" ? "unlockSync.failed" : "unlockSync.startOverFailed",

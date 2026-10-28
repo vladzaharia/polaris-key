@@ -120,8 +120,8 @@ export abstract class PkElement extends LitElement {
    *  no input or view, and drawn as text; it is never an attribute or an input's value. */
   code?: string;
   /** The host actions this page answers, space separated: `unlock` and `review` (the sync status's
-   *  Unlock sync and Review) and `use-code` (RingChange's Use recovery code). A control only a
-   *  host can act on is not drawn otherwise. */
+   *  Unlock sync and Review). A control only a
+   *  host can act on is not drawn otherwise (a dev-mode warning says so). */
   handles?: string;
 
   /** The component this element draws. */
@@ -129,6 +129,7 @@ export abstract class PkElement extends LitElement {
 
   private model: ViewModel | null = null;
   private lastSyncStep = "";
+  private copied = false;
   private armUntil = 0;
   /** Where Cancel on the Start over warning goes back to. */
   private unlockFrom: "code" | "no-code" = "code";
@@ -417,6 +418,15 @@ export abstract class PkElement extends LitElement {
       wide: this.wide,
       input: this.modelInput(),
       ...(this.code ? { code: this.code } : {}),
+      copied: this.copied,
+      markCopied: () => {
+        this.copied = true;
+        this.requestUpdate();
+        setTimeout(() => {
+          this.copied = false;
+          this.requestUpdate();
+        }, 2000);
+      },
       handles: (this.handles ?? "").split(/[\s,]+/).filter(Boolean),
       ...(view.component === "UnlockSync" && view.state === "start-over"
         ? { armed: Date.now() >= this.armUntil }

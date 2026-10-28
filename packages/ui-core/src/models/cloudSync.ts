@@ -131,7 +131,7 @@ export function unlockSyncView(
         ],
         primary: "unlockSync.startOver",
         tone: "neutral",
-        focus: null,
+        // Start over takes the focus: it is the way on, and the line above it is a status.
       });
     case "start-over":
       // The warning comes first: the sync key is replaced only from this step (T22). Cancel takes

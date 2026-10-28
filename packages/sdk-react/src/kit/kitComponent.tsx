@@ -153,7 +153,9 @@ export function kitComponent(component: ComponentName) {
         !props.embedded &&
         props.asWindow !== true &&
         !UPDATE_BLOCKING.has(view.state)) ||
-      (component === "Settings" && props.onDismiss !== undefined);
+      (component === "Settings" && props.onDismiss !== undefined) ||
+      // A Cloud Sync screen the host opened over its page (`onDismiss`) is a modal dialog too.
+      (isSyncScreen(component) && props.onDismiss !== undefined);
     const base = {
       ...withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
       dialog: asDialog,
@@ -187,6 +189,12 @@ export function kitComponent(component: ComponentName) {
             later={() => ctx.act("update.later")}
             dismissed={dismissed}
             close={() => {
+              // A step with no Cancel (working, the recovery code) cannot be dismissed.
+              if (
+                isSyncScreen(component) &&
+                !view.copy.includes("common.cancel")
+              )
+                return;
               setDismissed(view.state);
               props.onDismiss?.();
             }}

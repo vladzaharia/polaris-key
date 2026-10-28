@@ -1,8 +1,8 @@
 "use client";
 // CloudSyncStatus as the drop-in (U-42.2). The strip is the plain part; its Unlock sync and Review
 // controls open the screen they name when the host does not answer them: given no `onAction`,
-// inside `<PolarisKeyProvider>`, the strip gives way to UnlockSync or RingChange (and returns when
-// that screen is cancelled or done). A host that passes `onAction` answers them itself.
+// inside `<PolarisKeyProvider>`, UnlockSync or RingChange opens in the kit's modal dialog over the
+// strip, and focus returns to the control that opened it. A host that passes `onAction` answers them itself.
 
 import { useContext, useState, type ReactNode } from "react";
 
@@ -22,38 +22,38 @@ export function CloudSyncStatus(props: KitProps): ReactNode {
   const answers = props.onAction !== undefined || !sdk;
   const close = () => setOpen(null);
   const { theme, className } = props;
-  if (open === "unlock")
-    return (
-      <UnlockSync
-        theme={theme}
-        className={className}
-        fill
-        autoFocus
-        onCancel={close}
-        onUnlocked={close}
-      />
-    );
-  if (open === "review")
-    return (
-      <RingChange
-        theme={theme}
-        className={className}
-        fill
-        autoFocus
-        onCancel={close}
-        onAccepted={close}
-        onUseCode={() => setOpen("unlock")}
-      />
-    );
+  // The screen opens in the kit's modal dialog over the strip; closing it hands focus back to
+  // the control that opened it.
   return (
-    <Status
-      {...props}
-      onAction={(a) => {
-        props.onAction?.(a);
-        if (answers) return;
-        if (a.key === "cloudSync.unlock") setOpen("unlock");
-        else if (a.key === "common.review") setOpen("review");
-      }}
-    />
+    <>
+      <Status
+        {...props}
+        onAction={(a) => {
+          props.onAction?.(a);
+          if (answers) return;
+          if (a.key === "cloudSync.unlock") setOpen("unlock");
+          else if (a.key === "common.review") setOpen("review");
+        }}
+      />
+      {open === "unlock" ? (
+        <UnlockSync
+          theme={theme}
+          className={className}
+          onDismiss={close}
+          onCancel={close}
+          onUnlocked={close}
+        />
+      ) : null}
+      {open === "review" ? (
+        <RingChange
+          theme={theme}
+          className={className}
+          onDismiss={close}
+          onCancel={close}
+          onAccepted={close}
+          onUseCode={() => setOpen("unlock")}
+        />
+      ) : null}
+    </>
   );
 }

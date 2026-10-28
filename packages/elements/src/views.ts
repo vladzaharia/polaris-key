@@ -912,12 +912,13 @@ const CHOICE_STATES: ReadonlySet<string> = new Set([
 
 /** Drop every key whose own arguments the input leaves unfilled: a missing fact is never drawn
  *  as `{name}`. */
+const warnedHandles = new Set<string>();
+
 const HOST_ONLY: Readonly<Record<string, string>> = {
   "CloudSyncStatus/cloudSync.unlock": "unlock",
   // A conflict's Review is the host's own (`canReview` says it handles it); a changed ring's opens
   // the kit's RingChange.
   "CloudSyncStatus.ring-changed/common.review": "review",
-  "RingChange/ringChange.useCode": "use-code",
 };
 
 function fillable(c: RenderCtx): View {
@@ -930,6 +931,12 @@ function fillable(c: RenderCtx): View {
       HOST_ONLY[`${base.component}/${k}`];
     return need !== undefined && !(c.handles ?? []).includes(need);
   });
+  if (gone.length && !warnedHandles.has(base.state)) {
+    warnedHandles.add(base.state);
+    console.warn(
+      `[pk] <pk-cloud-sync-status> is ${base.state} but draws no ${gone.join(", ")}: set handles="unlock review" on the element to say the page answers them.`,
+    );
+  }
   const view = gone.length
     ? {
         ...base,

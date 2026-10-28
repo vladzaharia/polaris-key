@@ -17,6 +17,7 @@ export const SYNC_LAYOUTS: Readonly<Record<SyncScreenName, Layout>> = {
       "unlockSync.invalid",
       "unlockSync.failed",
       "unlockSync.startOverFailed",
+      "unlockSync.noCode",
       "unlockSync.startOverWarning",
       "recoveryCode.noAsk",
       "unlockSync.unlock",
