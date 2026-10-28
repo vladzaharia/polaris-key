@@ -19,7 +19,9 @@ extends RefCounted
 ##
 ## Host misuse (a `receive` with nothing in flight, `set_network("offline")` with a request in flight,
 ## a malformed client id) never relies on `assert`, which a release template strips: the call returns
-## `{"ok": false, "error": ...}` where it has a result, and always `push_error`s.
+## `{"ok": false, "error": ...}` where it has a result, and always `push_error`s. A malformed client id
+## refuses with no state change (`sign_in`, a 409 in `receive`) or, at construction, leaves a
+## signed-out machine with `init_error` set.
 ##
 ## Godot notes: `set` and `get` are Object methods, so the value calls are `set_value`, `get_value`
 ## and `clear_value`. `null` is a value; `Types.ABSENT` is "no value". Compare with `Types.json_equal`.
@@ -51,6 +53,10 @@ var _outbox: Array = []
 var _events: Array = []
 var _s: Dictionary
 var _client_id_re: RegEx
+## "" when the machine was built; "bad-client-id" when the host's `newClientId` gave a malformed id.
+var init_error := ""
+## A client id already issued (and validated) for the next partition created.
+var _next_id := ""
 var _hlc_re: RegEx
 
 
@@ -93,6 +99,13 @@ func _init(opts: Dictionary, persisted: Variant = null) -> void:
 	if discovery != null and not discovery.is_empty():
 		var d: Variant = discovery.get("encryption")
 		_advertised = String(d) if d != null and String(d) != "" else "omitted"
+	if _s["subject"] != null and not _s["partitions"].has(_s["subject"]):
+		_next_id = _issue_client_id()
+		if _next_id == "":
+			# A host that cannot supply a well-formed client id gets a signed-out machine that
+			# never talks; `init_error` says why (Swift and Kotlin throw here).
+			init_error = "bad-client-id"
+			_s["subject"] = null
 	if _s["subject"] != null:
 		_partition_for(_s["subject"])
 	_expire_partitions()
@@ -467,6 +480,12 @@ func remove(collection: String, record_id: String, element: Variant) -> Dictiona
 func sign_in(subject: String) -> Dictionary:
 	if _s["subject"] == subject:
 		return Types.ok()
+	# A malformed client id from the host refuses the sign-in before any state changes.
+	var existing: Variant = _s["partitions"].get(subject)
+	if existing == null or _partition_expired(existing):
+		_next_id = _issue_client_id()
+		if _next_id == "":
+			return Types.fail("bad-client-id")
 	if _s["subject"] != null:
 		_leave("signOut", false)
 	_commit_all_drafts()
@@ -590,7 +609,9 @@ func receive(res: Dictionary, opened: Variant = null) -> Dictionary:
 			# The journal is kept; a document refresh lifts either block.
 			_s["blocked"] = "attestation" if err.get("code") == "attestation_required" else "forbidden"
 		elif status == 409:
-			_client_mismatch(req)
+			if not _client_mismatch(req):
+				_in_flight = req  # nothing changed: the host's id was refused
+				return Types.fail("bad-client-id")
 			proceed = true
 		elif status == 410:
 			var gone: Variant = _s["partitions"].get(req["partition"])
@@ -841,11 +862,23 @@ func _partition_for(name: String) -> Dictionary:
 	return p
 
 
+## The host's next client id, or "" (after a `push_error`) when it is not well formed.
+func _issue_client_id() -> String:
+	var cid: Variant = _new_client_id.call()
+	if not Types.is_string(cid) or _client_id_re.search(String(cid)) == null:
+		push_error("CloudSyncMachine: the host's newClientId gave a malformed client id")
+		return ""
+	return String(cid)
+
+
 func _fresh_client_id() -> String:
-	var cid: String = _new_client_id.call()
-	if _client_id_re.search(cid) == null:
-		push_error("CloudSyncMachine: bad clientId from the host")
-	return cid
+	if _next_id != "":
+		var id := _next_id
+		_next_id = ""
+		return id
+	# Reached only for a persisted state whose subject has no partition (corrupt); sign-in,
+	# construction and client mismatch issue and check the id first.
+	return _issue_client_id()
 
 
 func _pending_count() -> int:
@@ -1292,13 +1325,17 @@ func _ids_has(ids: Array, id: Variant) -> bool:
 	return false
 
 
-func _client_mismatch(req: Dictionary) -> void:
+## False (with `push_error`, nothing changed) when the host's new client id is malformed.
+func _client_mismatch(req: Dictionary) -> bool:
 	# The server bound this clientId to another device. Regenerate and renumber; none of these
 	# mutations was processed under the new id.
 	var p: Variant = _s["partitions"].get(req["partition"])
 	if p == null:
-		return
-	p["clientId"] = _fresh_client_id()
+		return true
+	var cid := _issue_client_id()
+	if cid == "":
+		return false
+	p["clientId"] = cid
 	p["nextMutationId"] = 1
 	var ops: Array = p["pending"]
 	p["pending"] = []
@@ -1308,6 +1345,7 @@ func _client_mismatch(req: Dictionary) -> void:
 			if k != "mutationId":
 				op[k] = o[k]
 		_enqueue(p, op)
+	return true
 
 
 func _first_contact(server_now: Variant) -> void:
@@ -1679,12 +1717,16 @@ func _leave(reason: String, discard: bool) -> void:
 	_emit_changes(before, {}, "remote")
 
 
+func _partition_expired(p: Dictionary) -> bool:
+	return p["signedOutAt"] != null and _now - int(p["signedOutAt"]) >= PKeyConstants.SYNC_PENDING_DAYS * Types.DAY_MS
+
+
 func _expire_partitions() -> void:
 	for name: String in _s["partitions"].keys():
 		if name == LOCAL_PARTITION or name == _s["subject"]:
 			continue
 		var p: Dictionary = _s["partitions"][name]
-		if p["signedOutAt"] != null and _now - int(p["signedOutAt"]) >= PKeyConstants.SYNC_PENDING_DAYS * Types.DAY_MS:
+		if _partition_expired(p):
 			_s["partitions"].erase(name)
 
 

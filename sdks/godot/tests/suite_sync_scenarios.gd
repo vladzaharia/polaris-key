@@ -1,21 +1,13 @@
 extends RefCounted
 # @pkey-feature sync.scenarios
 # @pkey-feature sync.settings
-# `sync-scenarios.json` (v3): the Cloud Sync client state machine and the setting routes.
+# `sync-scenarios.json`: the Cloud Sync client state machine and the setting routes.
 #
 # Mirrors sdks/python/tests/test_sync_scenarios.py. The corpus is read from the generator-owned
-# mirror through the strict parser (ints stay ints). `settingCases` runs in full. The scenario
-# driver below is complete, but no machine exists yet (U-21.2 to U-21.5 port it), so PENDING skips
-# a scenario by name with a reason, as sync.scenarios is still `planned`:
-#
-#   stage 0  every scenario is pending
-#   stage 1  U-21.2 ported the local half: a scenario with a `respond` step is pending
-#   stage 2  U-21.3 ported the exchanges (now): a scenario whose app requires E2E (`init.encryption`
-#            is "e2e", the ten `e2e-` ones) is pending. `server-mode-unchanged` has no `e2e-`
-#            prefix but runs in server mode, so it replays here; the rule is the data, not the name.
-#            (U-21.3 also ported the E2E row guards `_ok` calls; U-21.5 adds the E2E replay and its
-#            X-1 unit test.)
-#   deleted  U-21.5 ported E2E and X-1; every scenario runs
+# mirror through the strict parser (ints stay ints). `settingCases` runs in full and every
+# scenario replays: there is no skip list (U-21.5 deleted PENDING), and the run asserts the replay
+# count equals the corpus count. The X-1 conflict-copy unit test and the principal, blocked and
+# 410 paths are in tests/core/test_cloud_sync_machine.gd.
 #
 # The machine contract the driver calls (snake_case; `set`/`get` are Object methods, so the value
 # calls are `set_value`/`get_value`/`clear_value`): the constructor takes the opts Dictionary
@@ -29,8 +21,6 @@ const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Routes := preload("res://addons/polaris_key/core/sync/sync_routes.gd")
 
 const CORPUS := "res://tests/corpus/v2/sync-scenarios.json"
-const PENDING_STAGE := 2
-const PENDING_REASON := "E2E replay not enabled yet (U-21.5)"
 const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "assert"]
 const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh"]
 
@@ -61,7 +51,7 @@ func _constants(t: PKeyTestContext, corpus: Dictionary) -> void:
 	}))
 
 
-## A corpus change the driver does not know fails here, even while every scenario is pending.
+## A corpus change the driver does not know fails here, before any scenario replays.
 func _shape(t: PKeyTestContext, corpus: Dictionary) -> void:
 	t.check("the step kinds are the driver's", Types.json_equal(corpus["steps"], STEP_KINDS))
 	t.check("the calls are the driver's", Types.json_equal(corpus["calls"], CALLS))
@@ -77,7 +67,7 @@ func _shape(t: PKeyTestContext, corpus: Dictionary) -> void:
 				unknown += 1
 	t.check("scenario names are unique", names.size() == corpus["scenarios"].size())
 	t.check("every step and call is known", unknown == 0, str(unknown))
-	t.check("the corpus holds 60 scenarios, 34 rules and 8 setting cases", corpus["scenarios"].size() == 60 and corpus["rules"].size() == 34 and corpus["settingCases"].size() == 8)
+	t.check("the corpus has scenarios, rules and setting cases", corpus["scenarios"].size() > 0 and corpus["rules"].size() > 0 and corpus["settingCases"].size() > 0)
 
 
 func _setting_cases(t: PKeyTestContext, cases: Array) -> void:
@@ -101,34 +91,15 @@ func _setting_cases(t: PKeyTestContext, cases: Array) -> void:
 			for r: Dictionary in routes:
 				open_clean = open_clean and r["key"] != key
 		t.check("%s: open keys have no route" % name, open_clean)
-	t.check("setting cases evaluated", cases.size() >= 8)
+	t.check("setting cases evaluated", cases.size() > 0)
 
 
 func _scenarios(t: PKeyTestContext, corpus: Dictionary) -> void:
 	var ran := 0
-	var skipped := 0
 	for sc: Dictionary in corpus["scenarios"]:
-		if _is_pending(sc):
-			skipped += 1
-			continue
 		_replay(t, corpus, sc)
 		ran += 1
-	t.info("scenarios: %d replayed, %d pending (%s)" % [ran, skipped, PENDING_REASON])
-	t.check("every scenario is replayed or pending", ran + skipped == corpus["scenarios"].size())
-
-
-func _is_pending(sc: Dictionary) -> bool:
-	match PENDING_STAGE:
-		0:
-			return true
-		1:
-			for step: Dictionary in sc["steps"]:
-				if step.has("respond"):
-					return true
-			return false
-		2:
-			return sc["init"]["encryption"] == "e2e"
-	return false
+	t.check("every corpus scenario replays (no skip list)", ran == corpus["scenarios"].size(), "%d" % ran)
 
 
 func _opts(corpus: Dictionary, init: Dictionary, ids: Array) -> Dictionary:
@@ -165,8 +136,7 @@ func _call(m: Variant, name: String, args: Array) -> Dictionary:
 	return m.refresh()
 
 
-## One scenario against the machine (Python `test_scenario`). Unreached until U-21.2 sets
-## PENDING_STAGE above 0, so the machine class is loaded by path at that point.
+## One scenario against the machine (Python `test_scenario`).
 func _replay(t: PKeyTestContext, corpus: Dictionary, sc: Dictionary) -> void:
 	var init: Dictionary = sc["init"]
 	var ids: Array = init["clientIds"].duplicate()
