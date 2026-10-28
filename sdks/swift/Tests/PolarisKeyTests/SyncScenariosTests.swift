@@ -4,9 +4,9 @@
 // The Swift runner for `conformance/corpus/v2/sync-scenarios.json` (U-07.1), read in place through
 // `CorpusLocator`. Mirrors Python's `test_sync_scenarios.py`.
 //
-// `settingCases` runs in full. The scenario driver below replays the scenarios the machine ports so
-// far (D-N1): U-07.2 drops every scenario with no `respond` step (`isPending`), U-07.3 keeps only
-// the `e2e-` rule, and U-07.4 deletes the rule, so the runner then carries no skip.
+// `settingCases` runs in full, and so does every scenario: the runner carries no skip list, so a row
+// X-1.1 adds (`e2e-conflict-plaintext-copy-refused`) replays at once. The corpus version is compared
+// with the generated constant, never a literal.
 
 import Foundation
 import PolarisKeyCore
@@ -57,13 +57,6 @@ private struct SyncScenarioFile {
 }
 
 final class SyncScenariosTests: XCTestCase {
-    /// The skip rule (D-N1). U-07.3: only the E2E scenarios that need a server answer wait for the
-    /// E2E half (U-07.4 deletes the rule). `e2e-locked-keeps-journal` has no `respond` and replays.
-    static func isPending(_ sc: [String: JSONValue]) -> Bool {
-        (sc["name"]?.stringValue ?? "").hasPrefix("e2e-")
-            && (sc["steps"]?.arrayValue ?? []).contains { $0.objectValue?.keys.contains("respond") ?? false }
-    }
-
     /// Builds the machine for a scenario.
     static func makeMachine(_ i: SyncScenarioInit, _ product: JSONValue, _ newId: @escaping () -> String) throws
         -> SyncScenarioMachine
@@ -91,23 +84,16 @@ final class SyncScenariosTests: XCTestCase {
         XCTAssertEqual(f.root["constants"]?.objectValue, want)
     }
 
-    func testPendingRuleLeavesScenariosToReplay() throws {
-        let f = try file()
-        let ran = f.scenarios.filter { !Self.isPending($0) }.compactMap { $0["name"]?.stringValue }
-        XCTAssertEqual(f.scenarios.count, 60)
-        XCTAssertTrue(ran.contains("sign-out-discard-unsynced"))
-        XCTAssertFalse(ran.isEmpty)
-    }
-
     func testScenarios() throws {
         let f = try file()
         var ran = 0
-        for sc in f.scenarios where !Self.isPending(sc) {
+        for sc in f.scenarios {
             let name = sc["name"]?.stringValue ?? "?"
             try runScenario(sc, name: name, make: Self.makeMachine, product: f.root["product"] ?? .null)
             ran += 1
         }
-        XCTAssertGreaterThan(ran, 0)
+        XCTAssertEqual(ran, f.scenarios.count)
+        XCTAssertFalse(f.scenarios.isEmpty)
     }
 
     // MARK: - The driver (Python `test_scenario`)

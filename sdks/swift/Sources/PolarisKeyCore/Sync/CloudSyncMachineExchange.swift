@@ -1,6 +1,6 @@
 // The Cloud Sync machine, exchange half (U-07.3): `receive` and everything a server answer drives.
 // A port of Python `machine.py` (`receive`, `_ok`, `_result`, `_first_contact`, `_client_mismatch`,
-// the parked-edit rules and the E2E row guards). The X-1 `copyRow` cursor is U-07.4's.
+// the parked-edit rules and the E2E row guards). A conflict's server copy is judged against the push's own in-flight cursor (X-1).
 //
 // A served value, key or code is read as data and never logged or put in an error (H-11).
 
@@ -188,7 +188,7 @@ extension CloudSyncMachine {
                 continue
             }
             s.partitions[name]!.pending.remove(at: at)
-            result(name, op, r, &overrides, opened)
+            result(name, op, r, &overrides, opened, cursor: req.cursor)
         }
         // A parked edit that a later edit of the same value already replaces is dropped.
         for op in parkedNow {
@@ -276,11 +276,14 @@ extension CloudSyncMachine {
         return (false, seq)
     }
 
-    /// A conflict's `server` copy as a row.
-    func copyRow(_ name: String, _ latchKey: String, _ server: [String: JSONValue], _ version: Int, _ open: SyncOpenedRow?)
-        -> SyncRow
-    {
-        let bad = rowBad(name, latchKey, version, open)
+    /// A conflict's `server` copy as a row. `cursor` is the push's own in-flight cursor (the partition
+    /// cursor captured when it was sent), never the cursor after the answer: guard (b) then holds for
+    /// a conflict copy as for a pulled change (X-1).
+    func copyRow(
+        _ name: String, _ latchKey: String, _ server: [String: JSONValue], _ version: Int, _ open: SyncOpenedRow?,
+        cursor: Int
+    ) -> SyncRow {
+        let bad = rowBad(name, latchKey, version, open, cursor: cursor)
         return SyncRow(value: server["value"] ?? .null, version: version, bad: bad.bad, plain: bad.plain)
     }
 
@@ -335,7 +338,7 @@ extension CloudSyncMachine {
     /// One processed result.
     func result(
         _ name: String, _ op: SyncOp, _ r: [String: JSONValue], _ overrides: inout [String: SyncChangeOrigin],
-        _ opened: SyncOpenedBody
+        _ opened: SyncOpenedBody, cursor: Int
     ) {
         let status = r["status"]?.stringValue
         let openedConflict = opened.conflicts[op.mutationId]
@@ -359,7 +362,7 @@ extension CloudSyncMachine {
             } else if status == "conflict", case .object(let server)? = r["server"] {
                 // A stale write loses to the server copy, and nothing is enqueued.
                 if let sv = wholeInt(server["version"]) {
-                    let sbad = copyRow(name, "s:\(serverKey)", server, sv, openedConflict)
+                    let sbad = copyRow(name, "s:\(serverKey)", server, sv, openedConflict, cursor: cursor)
                     s.partitions[name]!.settings[serverKey] = sbad
                     // E2E max/min: keep the better value and re-push it on the server's version.
                     if op.op == .set, decidable(sbad), clientDecides(policyOf(key)),
@@ -394,7 +397,7 @@ extension CloudSyncMachine {
             if s.partitions[name]!.held[rk] != nil { (rebaseOn, hasRebase) = (version, true) }
         } else if status == "conflict", case .object(let server)? = r["server"] {
             if let sv = wholeInt(server["version"]) {
-                let sbad = copyRow(name, "r:\(rk)", server, sv, openedConflict)
+                let sbad = copyRow(name, "r:\(rk)", server, sv, openedConflict, cursor: cursor)
                 s.partitions[name]!.records[rk] = sbad
                 // The resolution is a NEW mutation on the server's version; N is never resent. Only
                 // `revision` resolves on the device; every other policy took the server's copy.
