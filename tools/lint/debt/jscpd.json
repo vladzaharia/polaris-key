@@ -8,11 +8,17 @@
     "conformance/runners/browser/dcz.setup.ts": {
       "jscpd:duplicate": 2
     },
+    "conformance/runners/browser/noiseVectors.browser.test.ts": {
+      "jscpd:duplicate": 3
+    },
     "conformance/runners/browser/presentation.browser.test.ts": {
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/configMatrix.test.ts": {
       "jscpd:duplicate": 4
+    },
+    "conformance/runners/node/noiseVectors.test.ts": {
+      "jscpd:duplicate": 3
     },
     "conformance/runners/node/presentation.test.ts": {
       "jscpd:duplicate": 2
@@ -1298,6 +1304,21 @@
     "packages/client-core/src/packs/window.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/client-core/src/peer/advert.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/client-core/src/peer/frame.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/peer/payload.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/client-core/src/peer/record.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/peer/relay.ts": {
+      "jscpd:duplicate": 4
+    },
     "packages/client-core/src/presentation.ts": {
       "jscpd:duplicate": 1
     },
@@ -1348,6 +1369,12 @@
     },
     "packages/client-core/test/packsProvides.test.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/client-core/test/peerAdmission.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/peerSession.test.ts": {
+      "jscpd:duplicate": 3
     },
     "packages/client-core/test/presentation.test.ts": {
       "jscpd:duplicate": 1
@@ -4330,6 +4357,9 @@
     },
     "tools/corpus/reference/packs.ts": {
       "jscpd:duplicate": 2
+    },
+    "tools/corpus/reference/peerMatrix.ts": {
+      "jscpd:duplicate": 10
     },
     "tools/corpus/reference/record.ts": {
       "jscpd:duplicate": 2

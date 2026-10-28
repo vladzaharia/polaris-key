@@ -35,7 +35,7 @@ The one sign-in form. Its body morphs in place through the sign-in methods, the 
     **Styled part.** `screens.sign_in(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
     `Theme(colors=…, symbols=…, preset="native")`.
 
-    **Headless.** `SignInModel` over `identity.begin_sign_in` and `wait_for_sign_in` in `polaris_key.ui.core.models`.
+    **Headless.** `SignInModel` over `identity.sign_in.start()` and its session's `wait()` in `polaris_key.ui.core.models`.
 
   </TabItem>
   <TabItem label="Terminal (Node)">

@@ -1,11 +1,11 @@
 extends RefCounted
-# @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints
+# @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints identity.choice
 # The identity suite (P1-07): PolarisKey.identity's device-code sign-in against PKeyFakeServer.
 # Each group is a file under res://tests/identity/ with `func run(t: PKeyTestContext) -> void`
 # (it may await); the suite ends with a coverage check that every group ran. The QR encoder is
 # the `qr` suite's.
 
-const GROUPS := ["flow", "confirm", "account", "redirect"]
+const GROUPS := ["flow", "confirm", "account", "redirect", "choice"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

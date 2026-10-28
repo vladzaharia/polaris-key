@@ -6,6 +6,11 @@ extends PKeyResult
 ##   pending              not settled (a session that has not been waited on)
 ##   choose               the flow is held at the signed-in identity (`confirm_identity`): show
 ##                        `identity`, then `session.accept(attach)` and `wait()` again
+##   license_choice       a redirect sign-in that asked `license_choice = "app"` and has a choice
+##                        due: no token was stored. Show the choice from `choices` (or read a fresh
+##                        view with `PolarisKey.identity.choice.licenses(grant)`), then finish with
+##                        `identity.choice.complete(grant, choice)` or `.cancel(grant)` within
+##                        `expires_in` seconds (300). `grant` is a credential: keep it out of logs
 ##   signed_in            signed in: the device token is stored and the forced sync has run
 ##                        (`sync`); `identity` names who the device is now signed in as
 ##   cancelled            `session.cancel()`, or a new `sign_in.start()` replaced the session
@@ -24,7 +29,7 @@ extends PKeyResult
 ## the Worker's own OAuth code (`invalid_grant`, `invalid_client`, `rate_limited`, ...; detail
 ## {retry_after_seconds} when it named one), `server-error` or a transport code.
 ##
-## `ok` is true for `pending`, `choose` and `signed_in`; every other kind carries its typed
+## `ok` is true for `pending`, `choose`, `license_choice` and `signed_in`; every other kind carries its typed
 ## `code` (`sign-in-denied`, `sign-in-expired`, `cancelled`, `service-unavailable`, `unauthorized`,
 ## `rate_limited`, `sign-in-failed`, ...). Show `identity` after `signed_in`: when someone else
 ## confirmed the flow with the user code and signed in as themselves, this is how the player sees
@@ -32,6 +37,7 @@ extends PKeyResult
 
 const KIND_PENDING := &"pending"
 const KIND_CHOOSE := &"choose"
+const KIND_LICENSE_CHOICE := &"license_choice"
 const KIND_SIGNED_IN := &"signed_in"
 const KIND_CANCELLED := &"cancelled"
 const KIND_EXPIRED := &"expired"
@@ -60,6 +66,13 @@ var subject := ""
 var scope := ""
 ## On `signed_in` from the redirect channel: the licence the device runs on; "" when it has none.
 var license_id := ""
+## On `license_choice`: the grant that spends one choice. A credential: never log it.
+var grant := ""
+## On `license_choice`: seconds the grant lives for.
+var expires_in := 0.0
+## On `license_choice`: the licences to choose from, as the Worker served them ({state, choices,
+## keep, preselected, create, getLicense}).
+var choices: Dictionary = {}
 ## The HTTP status of the answer that ended the sign-in, or 0.
 var status := 0
 
@@ -75,6 +88,16 @@ static func choose(p_identity: Dictionary, p_attachable: bool) -> PKeySignInOutc
 	r.kind = KIND_CHOOSE
 	r.identity = p_identity
 	r.attachable = p_attachable
+	r.status = 200
+	return r
+
+
+static func license_choice(p_grant: String, p_expires_in: float, p_choices: Dictionary) -> PKeySignInOutcome:
+	var r := PKeySignInOutcome.new(true)
+	r.kind = KIND_LICENSE_CHOICE
+	r.grant = p_grant
+	r.expires_in = p_expires_in
+	r.choices = p_choices
 	r.status = 200
 	return r
 
@@ -101,6 +124,8 @@ static func ended(p_kind: StringName, p_code: StringName, p_message: String, p_s
 func _to_string() -> String:
 	if kind == KIND_SIGNED_IN:
 		return "PKeySignInOutcome(signed_in, identity=%s%s)" % [JSON.stringify(identity), (", attached=" + attached) if attached != "" else ""]
+	if kind == KIND_LICENSE_CHOICE:
+		return "PKeySignInOutcome(license_choice, grant=[redacted], expires_in=%d)" % int(expires_in)
 	if ok:
 		return "PKeySignInOutcome(%s)" % kind
 	return "PKeySignInOutcome(%s, %s: %s)" % [kind, code, message]

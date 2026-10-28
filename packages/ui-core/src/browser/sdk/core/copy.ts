@@ -88,6 +88,8 @@ const FR: CopyBundle = {
     device_limit: "Limite d’appareils atteinte",
     key_entry_limit: "Aucune saisie restante",
     device_keys_invalid: "Appareil non configuré",
+    device_keys_required: "Appareil non lié",
+    ring_too_large: "Trop d'appareils",
     licenseDisabled: "Licence désactivée",
     license_disabled: "Licence désactivée",
     licenseExpired: "Licence expirée",
@@ -189,6 +191,10 @@ const FR: CopyBundle = {
       "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
     device_keys_invalid:
       "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.",
+    device_keys_required:
+      "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.",
+    ring_too_large:
+      "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.",
     license_disabled:
       "Cette licence a été désactivée. Contactez le développeur.",
     license_unusable:

@@ -1454,7 +1454,7 @@ static func capabilities() -> Dictionary:
 		"identity.attach": {"status": "implemented", "service": "identity", "na": []},
 		"identity.account": {"status": "implemented", "service": "identity", "na": []},
 		"identity.redirect.web": {"status": "implemented", "service": "identity", "na": []},
-		"identity.choice": {"status": "planned", "service": "identity", "na": []},
+		"identity.choice": {"status": "implemented", "service": "identity", "na": []},
 		"identity.signin.hints": {"status": "implemented", "service": "identity", "na": []},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
@@ -1522,4 +1522,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "17fa952c50a375cd039c51e66394b8b0662d376b7135956f90e1d890dd441d75"
+const CAPABILITY_DIGEST := "f05ba34ee5d3d305f5566a77ce2edb6e052f714e08cdd7431bac352a8eb82042"

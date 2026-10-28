@@ -46,6 +46,7 @@ import type {
   SignInNamespace,
   SignInOptions,
 } from "../core/signIn.js";
+import type { ChoiceNamespace } from "../core/choice.js";
 import {
   BridgePresentationSource,
   type ReactPresentationSource,
@@ -894,6 +895,34 @@ export class DesktopAdapter implements PolarisAdapter {
         this.fail("identity", this.noRedirect(Feature.identityRedirectWeb)),
       ),
   };
+
+  /** `identity.choice.*`: the desktop renderer never holds a grant (its sign-in cannot ask for
+   *  `licenseChoice: "app"`, and the bridge has no verb that spends one), so each call is the typed
+   *  unsupported. */
+  readonly choice: ChoiceNamespace = {
+    licenses: () => this.noChoice(),
+    devices: () => this.noChoice(),
+    complete: () => this.noChoice(),
+    cancel: () => this.noChoice(),
+  };
+
+  private noChoice(): Promise<never> {
+    return Promise.reject(
+      this.fail(
+        "identity",
+        new UnsupportedError(
+          {
+            supported: false,
+            feature: Feature.identityChoice,
+            reason: "runtime",
+            detail:
+              "The desktop renderer signs in by device code over the bridge, which never issues a licence-choice grant; the host process shows its own choice.",
+          },
+          "unsupported",
+        ),
+      ),
+    );
+  }
 
   private noRedirect(feature: string): PolarisError {
     return new UnsupportedError(

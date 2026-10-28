@@ -973,7 +973,9 @@ describe("GET /api/me/export", () => {
     expect(JSON.stringify(djdl)).not.toContain("Bob's laptop");
     expect(Object.keys(djdl.stores).sort()).toEqual([
       "config.accountOverrides",
+      "connect.rings",
       "core.entitlementEvents",
+      "core.keyring",
       "core.provisionedSecretMoves",
       "sync.cloudSync",
       "test.notes",

@@ -32,7 +32,9 @@
  * identity for that time, so it is as sensitive as the token it replaces.
  */
 
+import type { ConfirmSignIn } from "@polaris-key/protocol/identity";
 import {
+  CHOICE_GRANT_TTL_SECONDS,
   EXCHANGE_ISSUED_TOKEN_TYPE,
   EXCHANGE_SUBJECT_TOKEN_TYPE,
   LINK_HANDLE_TTL_SECONDS,
@@ -61,6 +63,8 @@ import {
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import { getProduct } from "../../../core/products/store.js";
+import { loadProductPublic } from "../../../core/products.js";
+import { json } from "../../../core/errors.js";
 import { signIn } from "../accounts/signIn.js";
 import { termsAccepted } from "../accounts/terms.js";
 import { productTerms } from "../productTerms.js";
@@ -73,6 +77,10 @@ import {
   type ExchangeNonceRecord,
 } from "./nonce.js";
 import { bindAndAnswer, oauth, TOKEN_DEVICE_RATE } from "./token.js";
+import { issueGrant } from "./grant.js";
+import { licenseChoiceView } from "./choice.js";
+import { clientRecordFor } from "./client.js";
+import { consentState } from "./routes.js";
 
 /** What the store holds for a live link handle (I-43 spends it). */
 export interface ExchangeLinkRecord {
@@ -266,6 +274,78 @@ export async function handleExchange(ctx: {
     );
   }
 
+  // L-1: no consent row for this product, or its scope changed, is never a token. The person sees
+  // what the app asks and answers with `choice/complete` (§12.11.3 rule 1).
+  const pub = await loadProductPublic(db, product.slug);
+  if (!pub) return refused();
+  const consent = await consentState(
+    env,
+    db,
+    pub,
+    found.accountId,
+    now,
+    settings,
+  );
+  if (consent.firstTime || consent.changed) {
+    let grant: string;
+    try {
+      grant = await issueGrant(
+        env,
+        {
+          product: product.slug,
+          accountId: found.accountId,
+          subject: found.subject,
+          deviceId,
+          scope: resolveScope(undefined, product) ?? [],
+          keys: { signKey: deviceKey, agreeKey: spent.agreeKey },
+          consent: { scopeHash: consent.scopeHash },
+        },
+        now,
+      );
+    } catch {
+      return oauth(503, "unavailable");
+    }
+    await appendAudit(db, {
+      ...base,
+      summary: `Native ${id.kind} sign-in needs the person's consent`,
+    });
+    const client = await clientRecordFor(
+      env,
+      db,
+      pub,
+      "native",
+      now,
+      undefined,
+    );
+    const body: ConfirmSignIn = {
+      status: "confirm",
+      grant,
+      expiresIn: CHOICE_GRANT_TTL_SECONDS,
+      consent: {
+        client: {
+          appName: client.appName,
+          developerName: client.developerName,
+          iconUrl: client.iconUrl,
+          nameVerified: client.nameVerified,
+        },
+        as: { provider: id.kind, email: id.email },
+        items: consent.items,
+        scopeHash: consent.scopeHash,
+        firstTime: consent.firstTime,
+        changed: consent.changed,
+      },
+      choices: await licenseChoiceView(
+        { env, db, product, now },
+        req,
+        found.accountId,
+        {
+          deviceId,
+        },
+      ),
+    };
+    return noStore(json(body));
+  }
+
   const answered = await bindAndAnswer(
     { req, env, db, product, now },
     {
@@ -273,7 +353,10 @@ export async function handleExchange(ctx: {
       subject: found.subject,
       email: found.email,
       deviceId,
-      scope: resolveScope(undefined, product) ?? [],
+      // What the person consented to, never more: a narrowed consent stays narrowed.
+      scope: (resolveScope(undefined, product) ?? []).filter((c) =>
+        (consent.claims ?? []).includes(c),
+      ),
       licenseChoice: choice,
       choice: null,
       deviceName: form.get("device_name") ?? undefined,
@@ -283,6 +366,7 @@ export async function handleExchange(ctx: {
       },
       keys: { signKey: deviceKey, agreeKey: spent.agreeKey },
       heldSignKey: held,
+      silentSingle: true,
     },
   );
   return answered.status === 200 ? withIssuedType(answered) : answered;

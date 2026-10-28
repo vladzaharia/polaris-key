@@ -35,8 +35,10 @@ import {
   ErrorCode,
   json,
   methodNotAllowed,
+  notFound,
   wireError,
 } from "../../../core/errors.js";
+import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { isValidClientDeviceId } from "../../../core/devices.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
@@ -129,6 +131,9 @@ export async function handleExchangeNonce(
   product: Product,
   now: number,
 ): Promise<Response> {
+  // LG-1: with the gate off the route does not exist.
+  if (!(await launchGateOn(env, db, "launch.identityExchange")))
+    return notFound();
   if (req.method !== "POST") return methodNotAllowed();
   const deviceId = req.headers.get(HEADER_DEVICE);
   if (!isValidClientDeviceId(deviceId))

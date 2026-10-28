@@ -112,6 +112,11 @@ curl -fsS https://key.plrs.im/manage >/dev/null
 curl -fsS https://key.plrs.im/api/capabilities | jq .
 ```
 
+Launch gates: each v0.10.0 feature has a platform setting (`launch.identityExchange`,
+`launch.connect`, `launch.syncE2e`, `launch.relay`; Platform → Settings) that ships off. A gate is
+on in staging and dev through `[vars]`. Turn one on in production only after the feature's
+security sign-off. An off gate answers as the build did before the feature existed.
+
 ## Secrets
 
 Required prod Worker secrets:

@@ -36,6 +36,14 @@ export {
   type UseLicenseGate,
   type GateScreen,
 } from "./react/hooks.js";
+// identity.choice (I-10a.11): `useLicenseChoice(grant)` over `usePolarisAuth().choice`.
+export {
+  useLicenseChoice,
+  DEFAULT_GRANT_SECONDS,
+  type LicenseChoiceStatus,
+  type UseLicenseChoice,
+  type UseLicenseChoiceOptions,
+} from "./react/useLicenseChoice.js";
 // `client.backend` (SP-58): a fetch that carries the licence document to the app's own backend.
 export { usePolarisFetch } from "./react/usePolarisFetch.js";
 export {
@@ -169,6 +177,16 @@ export {
 
 // ── Core (mode-agnostic types + helpers) ─────────────────────────────────────
 // identity.signIn (I-10a.10): `usePolarisAuth().signIn.start(opts)` and `.complete(callbackUrl)`.
+export type {
+  ChoiceCancelResult,
+  ChoiceCompleteResult,
+  ChoiceNamespace,
+  ChoiceRefusal,
+  ChoiceViewResult,
+  LicenseChoice,
+  LicenseChoiceView,
+  ReplaceView,
+} from "./core/index.js";
 export type {
   DeviceCodeSignInOptions,
   DeviceCodeSignInSession,

@@ -196,6 +196,11 @@ describe("the settings registry (ST-03)", () => {
       ["LAZY_DELTA_MAX_BYTES", "deltas.lazy.maxBytes"],
       ["BLOB_GC_MODE", "blobs.gc.mode"],
       ["BLOB_GC_GRACE_DAYS", "blobs.gc.graceDays"],
+      // LG-1: the launch gates.
+      ["LAUNCH_IDENTITY_EXCHANGE", "launch.identityExchange"],
+      ["LAUNCH_CONNECT", "launch.connect"],
+      ["LAUNCH_SYNC_E2E", "launch.syncE2e"],
+      ["LAUNCH_RELAY", "launch.relay"],
       ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],
       // PX-W13: the reserved display-name severity, an ordered enum like LX-05's.
       ["IDENTITY_RESERVED_DISPLAY_NAMES", "identity.reservedDisplayNames"],

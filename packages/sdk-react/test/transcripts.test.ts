@@ -1,7 +1,7 @@
 // @vitest-environment node
 //
 // @pkey-feature core.discover config.schema release.changelog release.download update.feed release.record update.decide
-// @pkey-feature packs.apply.chunk
+// @pkey-feature packs.apply.chunk identity.choice
 // @pkey-feature core.sync core.cache core.store license.activate license.enroll license.deactivate
 // @pkey-feature license.reregister devices.register devices.report identity.devicecode config.mint
 // @pkey-feature commerce.receipt license.refusals telemetry.updates
@@ -112,6 +112,7 @@ import { ErrorCode } from "../src/constants.generated.js";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { projectState } from "../src/core/adapter.js";
 import { accountEndpointsOf } from "../src/core/account.js";
+import { choiceEndpointsOf, type LicenseChoice } from "../src/core/choice.js";
 import {
   redirectEndpointsOf,
   type RedirectEndpoints,
@@ -217,6 +218,19 @@ const REDIRECT_DEFAULTS = {
   codeVerifier: "transcript-verifier-0123456789-abcdefghijklmnopqrst",
   redirectUri: "https://app.example/auth/callback",
 };
+
+/** The `choice` a `choiceComplete` step sends: its own `choice` arg, else the one the recording's
+ *  request carries (a key is not a transcript arg). A recording with none is the Worker's 409
+ *  `license_choice_required` for a completion naming no choice: the typed call cannot omit it, so
+ *  the replay sends the body as recorded. */
+function recordedChoice(step: Step): LicenseChoice {
+  const arg = step.args.choice;
+  if (arg !== undefined) return arg as unknown as LicenseChoice;
+  const body = step.exchanges.items[0]?.request.body?.json as
+    | { choice?: unknown }
+    | undefined;
+  return body?.choice as LicenseChoice;
+}
 
 function stringArg(step: Step, name: string): string | undefined {
   const v = step.args[name];
@@ -440,6 +454,14 @@ async function replay(t: Transcript): Promise<void> {
       redirectEndpointsOf(discovered as Record<string, unknown> | null) ??
       standardRedirect(t),
     redirectEntropy: () => entropy,
+    // identity.choice: the last discovery's `choice*` endpoints, else the Worker's standard ones.
+    choiceEndpoints: () =>
+      choiceEndpointsOf(discovered as Record<string, unknown> | null) ?? {
+        choiceLicenses: `${t.baseUrl}/${t.product}/identity/choice/licenses`,
+        choiceDevices: `${t.baseUrl}/${t.product}/identity/choice/devices`,
+        choiceComplete: `${t.baseUrl}/${t.product}/identity/choice/complete`,
+        choiceCancel: `${t.baseUrl}/${t.product}/identity/choice/cancel`,
+      },
     // The account endpoints: the last discovery's, else the Worker's standard ones.
     identityEndpoints: () =>
       accountEndpointsOf(discovered as Record<string, unknown> | null) ?? {
@@ -539,6 +561,42 @@ async function replay(t: Transcript): Promise<void> {
           observed.manageUrl = r.manageUrl ?? null;
         if (r.kind === "ok" || r.kind === "keyEntryLimit")
           observed.keyEntries = r.keyEntries ? { ...r.keyEntries } : null;
+        break;
+      }
+      case "choiceLicenses":
+      case "choiceDevices":
+      case "choiceComplete":
+      case "choiceCancel": {
+        // The grant routes (I-10a.11), a refusal being a result.
+        const grant = String(step.args.grant);
+        let refused: { code: string } | null = null;
+        if (step.action === "choiceLicenses") {
+          const r = await session.choiceLicenses(grant);
+          if (r.kind === "ok") {
+            observed.state = r.view.state;
+            observed.licenses = r.view.choices.map((c) => c.id);
+          } else refused = r;
+        } else if (step.action === "choiceDevices") {
+          const r = await session.choiceDevices(
+            grant,
+            String(step.args.licenseId),
+          );
+          if (r.kind === "ok")
+            observed.devices = r.view.devices.map((d) => d.id);
+          else refused = r;
+        } else if (step.action === "choiceComplete") {
+          const r = await session.choiceComplete(grant, recordedChoice(step));
+          if (r.kind === "ok") {
+            observed.licenseId = r.licenseId;
+            observed.subject = r.subject;
+            if (r.keyEntries) observed.keyEntries = r.keyEntries;
+          } else refused = r;
+        } else {
+          const r = await session.choiceCancel(grant);
+          if (r.kind !== "ok") refused = r;
+        }
+        observed.result = refused ? "refused" : "ok";
+        if (refused) observed.code = refused.code;
         break;
       }
       case "subject":
@@ -899,10 +957,10 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.toggle (PX-W17's identity-disabled), identity.redirect.web and
     // identity.signin.hints (I-08's redirect-web-* and identity-request-hints transcripts; the
     // browser's `authorize` and Continue are `browser` steps the replayer plays as recorded,
-    // I-10a.10). identity.choice is I-08b's redirect-web-choose*, choice-* transcripts (the
-    // choice.* primitives); React's port is I-10a.11. sync.settings is U-05's cloudsync-*
+    // I-10a.10). identity.choice (I-10a.11) is I-08b's redirect-web-choose*, choice-* transcripts (the
+    // choice.* primitives). sync.settings is U-05's cloudsync-*
     // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
-    const plannedHere = ["identity.choice", "sync.settings"];
+    const plannedHere = ["sync.settings"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

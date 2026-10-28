@@ -99,6 +99,8 @@ const OLD_CORS_CORE_KINDS = [
   "devices",
   "report",
   "register",
+  // U-36.2: the key ring (device bearer, never ambient; a listed page reaches only its own token's ring).
+  "keyring",
 ];
 
 describe("the CORS row flags equal the list they replaced", () => {
