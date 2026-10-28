@@ -934,8 +934,9 @@ class RelayLink:
     # -- calls from any thread ----------------------------------------------------------------------
 
     def send_record(self, type_: int, body: bytes) -> None:
-        """Send one record message; blocks the calling thread until the loop has queued it. Raises
-        :class:`RelayError` ``rate_limited`` when the outgoing queue is full."""
+        """Send one record message; blocks the calling thread until the loop has queued it. When the
+        outgoing queue is full the message is dropped and the session closes ``peer_busy`` (D-9); the
+        host sees that close, not an error here."""
         self._call(lambda: self._send_record(type_, body))
 
     def close(self, code: str = "peer_bye") -> None:
@@ -944,7 +945,8 @@ class RelayLink:
     def _send_record(self, type_: int, body: bytes) -> None:
         # Refuse before the engine encrypts: a message dropped after encryption would break the stream.
         if not self._svc._has_room(len(body) + 128 * (len(body) // 60000 + 1)):
-            raise RelayError("rate_limited", "The relay queue is full; slow down.")
+            self.channel.close("peer_busy")
+            return
         self.channel.send_record(type_, body)
 
     def _call(self, fn: Callable[[], Any]) -> Any:

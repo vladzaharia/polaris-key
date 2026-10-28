@@ -379,30 +379,23 @@ def test_a_limit_1_from_the_room_halves_the_service_pacer() -> None:
         assert sa.status.error is not None and sa.status.error.reason == "rate_limited"
 
 
-def test_a_send_past_8_mib_queued_is_rate_limited_before_anything_is_encrypted() -> None:
+def test_a_send_past_8_mib_queued_closes_the_session_peer_busy() -> None:
     gate = Gate()
     with Net(pacer=lambda: gate) as n:
         sa, sb, out, inn = pair(n)
+        closes: List[Any] = []
+        out.on_close(closes.append)
         gate.open = False
-        # Stalled behind the socket: whole megabytes queue up to the cap, then the host is refused.
+        # Stalled behind the socket: whole megabytes queue up to the cap, then the session closes (D-9).
         body = bytes(1024 * 1024)
-        sent = 0
-        err: Optional[Exception] = None
         for _ in range(12):
-            try:
-                out.send(body)
-                sent += 1
-            except Exception as e:
-                err = e
+            out.send(body)  # never raises: the host sees the close, not an error
+            if closes:
                 break
-        assert isinstance(err, RelayError) and err.reason == "rate_limited"
-        assert 7 <= sent <= 9
-        # Nothing was lost to the refusal: let the queue drain and the session still works in order.
-        gate.open = True
-        for _ in range(sent):
-            assert len(inn.receive(15).body) == len(body)
-        out.send(b"still in step")
-        assert inn.receive(10).body == b"still in step"
+        until(lambda: bool(closes))
+        assert closes[0].code == "peer_busy" and closes[0].by_peer is False
+        # Nothing was encrypted past the cap: the keys never advanced for a dropped message.
+        assert sa.status.error is None or sa.status.error.reason != "rate_limited"
 
 
 def test_the_error_is_the_registered_rate_limited_code() -> None:

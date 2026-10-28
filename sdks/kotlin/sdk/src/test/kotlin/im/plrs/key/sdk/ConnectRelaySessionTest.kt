@@ -363,7 +363,7 @@ class ConnectRelaySessionTest {
     }
 
     @Test
-    fun aSendPast8MibQueuedIsRateLimitedBeforeAnythingIsEncrypted() = runBlocking {
+    fun aSendPast8MibQueuedClosesTheSessionPeerBusy() = runBlocking {
         val n = Net()
         val sa = n.service(n.world.a)
         val made = ArrayList<Pacer>()
@@ -371,20 +371,16 @@ class ConnectRelaySessionTest {
         val sb = n.service(n.world.b, pacer = { Pacer(rate = 0.0001, burst = 60.0).also { made += it } }, outboxBytes = 200_000)
         n.inbound(sa)
         val out = sb.dial(n.world.idA)
+        val closes = CopyOnWriteArrayList<SessionClosed>()
+        out.onClose { closes += it }
         while (made.last().tryTake() == 0.0) { /* spend what is left */ }
-        val sent = n.room.sends(n.world.idB).size
-        var refused: RelayException? = null
         for (i in 1..10) {
-            try {
-                out.send(ByteArray(100_000))
-            } catch (e: RelayException) {
-                refused = e
-                break
-            }
+            if (out.closed != null) break
+            out.send(ByteArray(100_000)) // never throws for a full queue: the host sees the close (D-9)
         }
-        assertEquals(RelayErrorReason.rate_limited, refused?.reason)
-        assertEquals(RelayErrorReason.rate_limited.code, refused?.code)
-        assertEquals(sent, n.room.sends(n.world.idB).size) // nothing was encrypted and sent for it
+        until { closes.isNotEmpty() }
+        assertEquals("peer_busy", closes.first().code)
+        assertEquals(false, closes.first().byPeer)
         assertTrue(RecordType.PING > 0)
     }
 }

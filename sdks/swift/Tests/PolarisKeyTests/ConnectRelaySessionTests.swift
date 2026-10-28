@@ -263,7 +263,7 @@ final class ConnectRelaySessionTests: XCTestCase {
         XCTAssertNil(none)
     }
 
-    func testLimit1HalvesTheLiveRateAndAFullQueueRefusesBeforeEncryptionWithoutBreakingTheStream() async throws {
+    func testLimit1HalvesTheLiveRateAndAFullQueueClosesTheSessionPeerBusyBeforeEncryption() async throws {
         let w = try await World()
         let clock = FakeClock()
         let sleeper = ManualSleep()
@@ -283,32 +283,21 @@ final class ConnectRelaySessionTests: XCTestCase {
         while pacer.tryTake() == 0 {}
         let msg = Data(repeating: 3, count: 1 << 20)
         var sent = 0
-        var refused: ConnectRelayError?
         for _ in 0..<12 {
             do {
-                try await s.send(msg)
-                sent += 1
-            } catch let e as ConnectRelayError {
-                refused = e
+                try await s.send(msg)  // a full queue is not an error: the host sees the close (D-9)
+            } catch let e as ConnectLanError {
+                XCTAssertEqual(e.reason, .closed)  // only once the close has landed
                 break
             }
+            if s.closed != nil { break }
+            sent += 1
         }
-        XCTAssertEqual(refused?.reason, .rateLimited)
+        await until("the session is closed peer_busy") { s.closed != nil }
+        XCTAssertEqual(s.closed?.code, "peer_busy")
+        XCTAssertEqual(s.closed?.byPeer, false)
         XCTAssertGreaterThanOrEqual(sent, 7)
         XCTAssertLessThanOrEqual(sent, 9, "the queue holds about 8 MiB")
-        // Release the pacer: everything queued arrives, in order, and the stream still works.
-        clock.advance(100_000)
-        var spins = 0
-        while got.count < sent && spins < 2000 {
-            sleeper.fire { _ in true }
-            try await Task.sleep(nanoseconds: 5_000_000)
-            spins += 1
-        }
-        XCTAssertEqual(got.count, sent)
-        try await s.send(Data("after".utf8))
-        let expected = sent + 1
-        await until("a message after the refusal") { got.count == expected }
-        XCTAssertEqual(got.sizes.last, 5)
         await w.close()
     }
 
