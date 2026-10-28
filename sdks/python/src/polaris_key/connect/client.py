@@ -28,8 +28,8 @@ import os
 import re
 import threading
 import time
-from email.utils import parsedate_to_datetime
 from dataclasses import dataclass, field
+from email.utils import parsedate_to_datetime
 from typing import Any, Callable, List, Optional, Tuple
 from urllib.parse import urlsplit
 
@@ -37,7 +37,7 @@ import httpx
 
 from ..constants_generated import ErrorCode, Feature
 from ..core.b64url import b64url_decode, b64url_encode
-from ..core.context import CoreContext, refusal_error, server_error, wire_code_of
+from ..core.context import CoreContext, refusal_error, wire_code_of
 from ..core.device_keys import (
     DeviceKeyError,
     DeviceKeyPort,
@@ -424,7 +424,8 @@ class ConnectClient:
 
         if not isinstance(body, dict):
             raise bad()
-        ticket, url, protocol, expires = body.get("ticket"), body.get("url"), body.get("protocol"), body.get("expiresAt")
+        ticket, url = body.get("ticket"), body.get("url")
+        protocol, expires = body.get("protocol"), body.get("expiresAt")
         if (
             not isinstance(ticket, str)
             or _TICKET.match(ticket) is None

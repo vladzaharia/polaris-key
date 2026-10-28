@@ -53,21 +53,21 @@ from .peer_noise import (
     peer_prologue,
     peer_psk,
 )
-from .peer_sas import (
-    parse_sas_body,
-    sas_body,
-    sas_commit,
-    sas_display,
-    sas_reveal_ok,
-    sas_value,
-    encode_sas_value,
-)
 from .peer_payload import (
     caps_intersection,
     parse_handshake_payload,
     parse_strict_object,
     payload1,
     payload23,
+)
+from .peer_sas import (
+    encode_sas_value,
+    parse_sas_body,
+    sas_body,
+    sas_commit,
+    sas_display,
+    sas_reveal_ok,
+    sas_value,
 )
 
 __all__ = [
@@ -326,7 +326,7 @@ class PeerSession:
         self._sas_due: Optional[float] = None  # monotonic
         self._n_d: Optional[bytes] = None
         self._n_m: Optional[bytes] = None
-        self._commit: Optional[bytes] = None
+        self._commit: Optional[str] = None
         self._sas_done = False
         self._sas_step = 0
         self._queued: List[Tuple[int, bytes]] = []

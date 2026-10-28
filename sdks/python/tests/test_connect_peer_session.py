@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
 from helpers import KID, PRIVATE_PEM, PUBKEY_RAW
 
 from polaris_key.core.b64url import b64url_encode

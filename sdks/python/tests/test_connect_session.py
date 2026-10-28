@@ -40,10 +40,10 @@ from polaris_key.connect.session import (
     session_handlers,
     wait_opened,
 )
-from polaris_key.core.peer_frame import RECORD, PeerRecord, encode_frame, encode_record
+from polaris_key.core.b64url import b64url_encode
+from polaris_key.core.peer_frame import encode_frame
 from polaris_key.core.peer_link import HANDSHAKE_FRAME_MAX, LinkRefused, SocketLink
 from polaris_key.core.peer_session import PeerHello
-from polaris_key.core.b64url import b64url_encode
 
 
 class KeyPort:
@@ -341,7 +341,7 @@ def test_a_non_app_record_is_ignored_not_delivered() -> None:
 def test_a_peer_certificate_that_runs_out_ends_the_session_through_the_loop_clock() -> None:
     with Rig(now=NOW) as rig:
         rig.a.exp = NOW + 2  # shown to the responder
-        mine = rig.dial()
+        rig.dial()
         assert rig.got_session.wait(5)
         theirs = rig.responder_sessions[0]
         done = threading.Event()
@@ -374,7 +374,8 @@ class FakeLink:
 
 def fake_session(budget: Optional[QueueBudget] = None) -> Tuple[ConnectSession, FakeLink]:
     link = FakeLink()
-    return ConnectSession(link, ID_B, ["app/1"], PeerHello("t", "a", 1 << 20), "initiator", "10.0.0.2", budget=budget), link
+    hello = PeerHello("t", "a", 1 << 20)
+    return ConnectSession(link, ID_B, ["app/1"], hello, "initiator", "10.0.0.2", budget=budget), link
 
 
 def test_routing_delivers_only_the_app_range() -> None:

@@ -57,7 +57,6 @@
       "ruff:F841": 1
     },
     "sdks/python/src/polaris_key/client.py": {
-      "mypy:arg-type": 1,
       "ruff:I001": 1
     },
     "sdks/python/src/polaris_key/config/client.py": {
@@ -211,11 +210,6 @@
     "sdks/python/src/polaris_key/ui/core/ui_paywall.py": {
       "ruff:E501": 1
     },
-    "sdks/python/src/polaris_key/ui/core/ui_signin.py": {
-      "mypy:arg-type": 6,
-      "mypy:return-value": 1,
-      "ruff:E501": 9
-    },
     "sdks/python/src/polaris_key/ui/core/ui_update.py": {
       "mypy:arg-type": 2,
       "mypy:assignment": 1
@@ -311,7 +305,7 @@
       "ruff:E501": 2
     },
     "sdks/python/tests/cli/fixtures.py": {
-      "ruff:E501": 45
+      "ruff:E501": 44
     },
     "sdks/python/tests/cli/golden_support.py": {
       "ruff:E501": 1
@@ -624,8 +618,7 @@
       "ruff:I001": 1
     },
     "sdks/python/tests/test_transcripts.py": {
-      "ruff:E501": 1,
-      "ruff:I001": 1
+      "ruff:E501": 1
     },
     "sdks/python/tests/test_trust_custody.py": {
       "ruff:F401": 2,

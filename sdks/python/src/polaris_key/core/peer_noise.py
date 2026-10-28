@@ -21,9 +21,9 @@ import threading
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 from cryptography.exceptions import InvalidTag, UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives import serialization
 
 from .device_proof import is_x25519_low_order
 

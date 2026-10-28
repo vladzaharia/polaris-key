@@ -8,7 +8,18 @@ from __future__ import annotations
 import threading
 from typing import Any
 
-from helpers import KID, NOW, PRODUCT, PUBKEY_RAW, ROTATED_PEM, ROTATED_PUB, key_entry, make_client, routes, sign_manifest
+from helpers import (
+    KID,
+    NOW,
+    PRODUCT,
+    PUBKEY_RAW,
+    ROTATED_PEM,
+    ROTATED_PUB,
+    key_entry,
+    make_client,
+    routes,
+    sign_manifest,
+)
 
 ALT = "alt-test-2026"
 PINS = {KID: PUBKEY_RAW, ALT: ROTATED_PUB}
