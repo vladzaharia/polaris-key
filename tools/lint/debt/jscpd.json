@@ -702,7 +702,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/licenseFixture.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 8
     },
     "packages/admin/test/licenseHolders.test.tsx": {
       "jscpd:duplicate": 16
@@ -1197,7 +1197,7 @@
       "jscpd:duplicate": 5
     },
     "packages/cli/test/init.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/cli/test/listingAssets.test.ts": {
       "jscpd:duplicate": 1
@@ -1342,6 +1342,12 @@
     },
     "packages/client-core/test/chunks.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/cloudSync.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/client-core/test/cloudSyncE2e.test.ts": {
+      "jscpd:duplicate": 7
     },
     "packages/client-core/test/content.test.ts": {
       "jscpd:duplicate": 17
@@ -1602,7 +1608,7 @@
       "jscpd:duplicate": 7
     },
     "packages/sdk-node/test/capabilities.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 17
     },
     "packages/sdk-node/test/chunkFixtures.ts": {
       "jscpd:duplicate": 4
@@ -1668,7 +1674,7 @@
       "jscpd:duplicate": 6
     },
     "packages/sdk-node/test/discovery.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 14
     },
     "packages/sdk-node/test/documents.test.ts": {
       "jscpd:duplicate": 3
@@ -1857,7 +1863,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/capabilities.test.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/channels.test.tsx": {
       "jscpd:duplicate": 3
@@ -1875,7 +1881,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/desktopAdapter.test.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 8
     },
     "packages/sdk-react/test/desktopIdentity.test.tsx": {
       "jscpd:duplicate": 1
@@ -2046,7 +2052,7 @@
       "jscpd:duplicate": 1
     },
     "packages/shared-manifest/src/index.test.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 15
     },
     "packages/shared-manifest/src/index.ts": {
       "jscpd:duplicate": 3
@@ -2982,7 +2988,7 @@
       "jscpd:duplicate": 9
     },
     "packages/worker/test-workerd/payload.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 11
     },
     "packages/worker/test-workerd/pruneNotice.test.ts": {
       "jscpd:duplicate": 3
@@ -2991,13 +2997,13 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test-workerd/registryOci.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 16
     },
     "packages/worker/test-workerd/releaseMirror.test.ts": {
       "jscpd:duplicate": 2
     },
     "packages/worker/test-workerd/runtime.test.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/worker/test-workerd/seed.ts": {
       "jscpd:duplicate": 2
@@ -3036,7 +3042,7 @@
       "jscpd:duplicate": 13
     },
     "packages/worker/test/attack/R6-release.test.ts": {
-      "jscpd:duplicate": 58
+      "jscpd:duplicate": 55
     },
     "packages/worker/test/attack/R8-oidc.test.ts": {
       "jscpd:duplicate": 45
@@ -3171,7 +3177,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/core/services.test.ts": {
-      "jscpd:duplicate": 19
+      "jscpd:duplicate": 13
     },
     "packages/worker/test/core/settings-resolver.test.ts": {
       "jscpd:duplicate": 1
@@ -3180,7 +3186,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/core/updateHealth.test.ts": {
-      "jscpd:duplicate": 20
+      "jscpd:duplicate": 13
     },
     "packages/worker/test/docsCspParity.test.ts": {
       "jscpd:duplicate": 1
@@ -3240,7 +3246,7 @@
       "jscpd:duplicate": 5
     },
     "packages/worker/test/portalHarness.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 6
     },
     "packages/worker/test/portalHelpLinks.test.ts": {
       "jscpd:duplicate": 2
@@ -3249,7 +3255,7 @@
       "jscpd:duplicate": 13
     },
     "packages/worker/test/registry/go.test.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 15
     },
     "packages/worker/test/registry/godot.test.ts": {
       "jscpd:duplicate": 15
@@ -3279,7 +3285,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/services/commerce/commerce.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/services/commerce/commerceDerivedIdentity.test.ts": {
       "jscpd:duplicate": 3
@@ -3366,13 +3372,13 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/test/services/distribution/registryAuth.test.ts": {
-      "jscpd:duplicate": 18
+      "jscpd:duplicate": 17
     },
     "packages/worker/test/services/distribution/registryFeeds.test.ts": {
       "jscpd:duplicate": 6
     },
     "packages/worker/test/services/distribution/resolvedListing.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/services/distribution/storefront-settings.test.ts": {
       "jscpd:duplicate": 4
@@ -3471,7 +3477,7 @@
       "jscpd:duplicate": 7
     },
     "packages/worker/test/services/identity/portalDownloads.test.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 13
     },
     "packages/worker/test/services/identity/portalEmailCode.test.ts": {
       "jscpd:duplicate": 1
@@ -3489,7 +3495,7 @@
       "jscpd:duplicate": 11
     },
     "packages/worker/test/services/identity/portalHostedArt.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 5
     },
     "packages/worker/test/services/identity/portalLibrary.test.ts": {
       "jscpd:duplicate": 10
@@ -3510,7 +3516,7 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/services/identity/portalRegistryTokens.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/services/identity/portalSelfService.test.ts": {
       "jscpd:duplicate": 3
@@ -3663,7 +3669,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/surfaces/admin.test.ts": {
-      "jscpd:duplicate": 45
+      "jscpd:duplicate": 40
     },
     "packages/worker/test/surfaces/adminSessions.test.ts": {
       "jscpd:duplicate": 8
@@ -3672,7 +3678,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/attest.test.ts": {
-      "jscpd:duplicate": 13
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/surfaces/autoHalt.test.ts": {
       "jscpd:duplicate": 7
@@ -3723,7 +3729,7 @@
       "jscpd:duplicate": 6
     },
     "packages/worker/test/surfaces/console/bundles.test.ts": {
-      "jscpd:duplicate": 15
+      "jscpd:duplicate": 14
     },
     "packages/worker/test/surfaces/console/cappedBody.test.ts": {
       "jscpd:duplicate": 1
