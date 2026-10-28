@@ -1197,6 +1197,8 @@
   "core.codes.connect-unavailable.message": "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.",
   "core.codes.peer-cert-invalid.title": "Gerät nicht bestätigt",
   "core.codes.peer-cert-invalid.message": "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut.",
+  "core.codes.nearby-permission-denied.title": "Lokales Netzwerk gesperrt",
+  "core.codes.nearby-permission-denied.message": "Diese App kann keine Geräte in Ihrem lokalen Netzwerk erreichen. Erlauben Sie es in den Systemeinstellungen.",
   "core.codes.platform-error.title": "Plattformproblem",
   "core.codes.platform-error.message": "Die Plattform hat einen Fehler gemeldet. Versuchen Sie es erneut.",
   "core.codes.no-token.title": "Nicht aktiviert",

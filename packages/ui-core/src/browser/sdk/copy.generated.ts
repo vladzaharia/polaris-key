@@ -674,6 +674,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Device not verified",
     message: "This device couldn't be verified. Try again.",
   },
+  "nearby-permission-denied": {
+    title: "Local network blocked",
+    message:
+      "This app can't reach devices on your local network. Allow it in system settings.",
+  },
   "platform-error": {
     title: "Platform problem",
     message: "The platform reported an error. Try again.",

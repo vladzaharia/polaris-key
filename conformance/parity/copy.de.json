@@ -597,6 +597,10 @@
       "title": "Gerät nicht bestätigt",
       "message": "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut."
     },
+    "nearby-permission-denied": {
+      "title": "Lokales Netzwerk gesperrt",
+      "message": "Diese App kann keine Geräte in Ihrem lokalen Netzwerk erreichen. Erlauben Sie es in den Systemeinstellungen."
+    },
     "platform-error": {
       "title": "Plattformproblem",
       "message": "Die Plattform hat einen Fehler gemeldet. Versuchen Sie es erneut."

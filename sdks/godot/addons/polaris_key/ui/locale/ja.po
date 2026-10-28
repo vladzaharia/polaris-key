@@ -6813,6 +6813,16 @@ msgstr "デバイスを確認できません"
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "このデバイスを確認できませんでした。もう一度お試しください。"
 
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "ローカルネットワークがブロックされています"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "このアプリはローカルネットワーク上のデバイスにアクセスできません。システム設定で許可してください。"
+
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.platform-error.title"

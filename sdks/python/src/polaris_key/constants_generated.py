@@ -366,6 +366,7 @@ class ErrorCode:
     STORE_FAILED: Final = "store-failed"
     CONNECT_UNAVAILABLE: Final = "connect-unavailable"
     PEER_CERT_INVALID: Final = "peer-cert-invalid"
+    NEARBY_PERMISSION_DENIED: Final = "nearby-permission-denied"
     PLATFORM_ERROR: Final = "platform-error"
     NO_TOKEN: Final = "no-token"
     MINT_UNAVAILABLE: Final = "mint-unavailable"
@@ -576,6 +577,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "store-failed",
     "connect-unavailable",
     "peer-cert-invalid",
+    "nearby-permission-denied",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -788,6 +790,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "store-failed": "client",
         "connect-unavailable": "client",
         "peer-cert-invalid": "client",
+        "nearby-permission-denied": "client",
         "platform-error": "client",
         "no-token": "client",
         "mint-unavailable": "client",

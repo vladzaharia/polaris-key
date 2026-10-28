@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(206 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(207 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -144,6 +144,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `store-failed` | `core` | The credential, cache or Cloud Connect state store could not be read or written, or its device keys could not be used. | [Help](/docs/help/messages/other/#store-failed) |
 | `connect-unavailable` | `connect` | Cloud Connect cannot run here: the product has it off, or this SDK has no Connect on this platform. A host hides its Connect surface and does not retry (WIRE-CONTRACT-V5 §15). | developer only |
 | `peer-cert-invalid` | `connect` | A device certificate or roster failed verification, or a roster is stale or belongs to another account or product (WIRE-CONTRACT-V5 §15.2, §15.3). Nothing is trusted; a host fetches a fresh one. | developer only |
+| `nearby-permission-denied` | `connect` | The OS refused this app access to devices on the local network (iOS and macOS Local Network permission; Android local-network access). The person can allow it in the system settings. | developer only |
 | `platform-error` | `core` | Godot: a native platform plugin answered an error, or a reply that is not JSON: the Apple plugin (PolarisKeyPlatform through the PolarisKeyApple GDExtension) or the Android plugin (polaris-key-platform through PolarisKeyAndroid); `detail` carries the plugin's own fields. | [Help](/docs/help/messages/other/#platform-error) |
 | `no-token` | `core` | Godot: An authenticated call ran with no device token in hand. | [Help](/docs/help/messages/license-key/#no-token) |
 | `mint-unavailable` | `config` | Godot: this session's discovery document says the product has no approved edge-mint recipe (`config.mint.available` is false), so the mint was not sent. | [Help](/docs/help/messages/other/#mint-unavailable) |
