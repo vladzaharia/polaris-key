@@ -1449,7 +1449,7 @@ dialog.sheet .card,
   display: none;
 }
 .pk-root[data-shape] dialog.sheet .stage[data-split] .identity .icon {
-  display: revert;
+  display: grid;
 }
 /* In the sheet the identity is the compact header over the title, never the wide panel. */
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .identity {
