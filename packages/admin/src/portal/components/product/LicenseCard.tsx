@@ -33,7 +33,7 @@ import { t } from "../../../lib/copy.js";
  * names the tier and its short origin ("Pro · Key …3WPLDA", "Standard · Sign-in", "Free · From
  * Acme"). How the licence reached the person is the **License source** fact beside "Activated",
  * in plain words the Worker's `origin` decides (PX-23, S-24 D21): "Key ending 3WPLDA" or "Added
- * with a key", "Steam key", "From Steam", "From <Developer>", and "Automatic grant" for one
+ * with a key", "Steam key", "From Steam", "From <Developer>", and "Sign-in" for one
  * granted through OIDC at sign-in (owner polish 2026-10-07). The term is not repeated as a meta
  * line: "Access" already says it (owner, 2026-10-06). Every licence is account-bound, so none is
  * labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
