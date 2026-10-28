@@ -29,7 +29,9 @@ export type Surface = [
   ConfigSetting["set"],
   ConfigSetting["clear"],
   ConfigSetting["on"],
+  ConfigSetting["sync"],
   PolarisKeyClient["events"],
+  NonNullable<Options["cloudSync"]>["encryption"],
 ];
 
 it("client.create", () =>
