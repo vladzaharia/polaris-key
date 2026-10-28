@@ -1247,6 +1247,64 @@
       "note": "I-13 (WIRE-CONTRACT-V5 §12.11.2, §12.11.3): with discovery's exchange member and nonce endpoint, the SDK posts the device's signing and agreement keys to nonce, asks the platform (Credential Manager, Sign in with Apple, FedCM) for an ID token carrying that nonce, and trades it at token with the RFC 8693 grant and the pkey-proof/1 exchange proof. The answer is a device token, `confirm` (consent first), `choose` (a licence choice), 403 interstitial_required (no link) or the one invalid_grant. Pinned by discovery-identity-exchange.json and the exchange-* transcripts; the Node conformance runner replays them with a reference client (exchangeTranscripts.test.ts). I-44 (Swift), I-45 (Kotlin), I-46 (React) and I-48 (Godot) implement it."
     },
     {
+      "id": "identity.autosignin",
+      "family": "devices",
+      "title": "Automatic sign-in: the ladder that signs a device in without a click",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [],
+      "note": "I-46.2 (plan-auto-sign-in §1, §2.2): autoSignIn() walks the ladder in order and answers signedIn, confirm (PendingConsent), choose (PendingSignIn), needsSignIn (linkHandle?, reason), deviceLimit or unavailable (code). An optional syncKey (present or needed) is reported only where an E2E client exists (web now; Swift and Kotlin leave it absent until U-39). Each SDK proves it with its own unit tests over fake providers; the exchange rung replays the exchange-* transcripts (identity.exchange). I-46 (React), I-44 (Swift), I-45 (Kotlin), I-47 (Node, Python) and I-48 (Godot) implement it."
+    },
+    {
+      "id": "identity.link",
+      "family": "devices",
+      "title": "The link offer: attach a platform identity to the account after a fresh sign-in",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-43"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "A Node process (a server, a CLI, Electron's main process) has no OS account to take a Google or Apple identity from; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "A Python process has no OS account to take a Google or Apple identity from; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Windows has no platform identity provider for Google or Apple that an app can ask without a browser."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Linux has no platform identity provider for Google or Apple that an app can ask without a browser."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A JVM desktop app has no platform identity provider for Google or Apple that it can ask without a browser."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no device key and no platform identity; the host signs in."
+        }
+      ],
+      "note": "I-43 (plan-auto-sign-in §2.3): after a fresh sign-in (signin-fresh) the SDK may offer to link a Google or Apple identity: offer reads the link state, accept posts the identity proof, decline records the refusal. Pinned by the link-* transcripts recorded in I-43.3. I-46 (React), I-44 (Swift), I-45 (Kotlin) and I-48 (Godot) implement it; Node and Python have no OS account to offer from."
+    },
+    {
       "id": "release.changelog",
       "family": "release",
       "title": "Changelog",

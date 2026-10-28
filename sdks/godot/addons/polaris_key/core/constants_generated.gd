@@ -495,6 +495,8 @@ class Feature:
 	const IDENTITY_CHOICE := "identity.choice"
 	const IDENTITY_SIGNIN_HINTS := "identity.signin.hints"
 	const IDENTITY_EXCHANGE := "identity.exchange"
+	const IDENTITY_AUTOSIGNIN := "identity.autosignin"
+	const IDENTITY_LINK := "identity.link"
 	const RELEASE_CHANGELOG := "release.changelog"
 	const RELEASE_DOWNLOAD := "release.download"
 	const RELEASE_RECORD := "release.record"
@@ -561,7 +563,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.choice", "identity.signin.hints", "identity.exchange", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.choice", "identity.signin.hints", "identity.exchange", "identity.autosignin", "identity.link", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -1474,6 +1476,8 @@ static func capabilities() -> Dictionary:
 		"identity.choice": {"status": "implemented", "service": "identity", "na": []},
 		"identity.signin.hints": {"status": "implemented", "service": "identity", "na": []},
 		"identity.exchange": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
+		"identity.autosignin": {"status": "planned", "service": "identity", "na": []},
+		"identity.link": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
 		"release.record": {"status": "implemented", "service": "release", "na": []},
@@ -1540,4 +1544,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "ac94d1da8db76572735f24f723987802b7e6cf5469224ec9ef56e830fbb0c04a"
+const CAPABILITY_DIGEST := "6e9a5caf161df656a0a293aec16b55c0e4891c5f3e520a22e4ae734bf93aedbc"
