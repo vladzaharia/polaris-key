@@ -51,6 +51,10 @@ func begin_step(index: int) -> Dictionary:
 	for i in _step["exchanges"]["items"].size():
 		_served.append(false)
 	for k in _step["args"]:
+		# `deviceId` of a key ring step names the TARGET device (the path); the `{deviceId}` of a header
+		# stays the calling device's, which is `initial.deviceId`.
+		if k == "deviceId" and String(_step["action"]).begins_with("keyring"):
+			continue
 		if _step["args"][k] is String:
 			bindings[k] = _step["args"][k]
 	return _step
