@@ -3297,6 +3297,28 @@
       "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MagicNumber": 20,
       "detekt:style.ThrowsCount": 2
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/PeerSession.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 5,
+      "detekt:exceptions.TooGenericExceptionCaught": 3,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 3,
+      "detekt:style.UseCheckOrError": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/Records.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:naming.EnumNaming": 12,
+      "detekt:style.MagicNumber": 34,
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:enum-entry-name-case": 12
+    },
+    "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/PeerSessionTest.kt": {
+      "detekt:complexity.LongParameterList": 2
     }
   }
 }
