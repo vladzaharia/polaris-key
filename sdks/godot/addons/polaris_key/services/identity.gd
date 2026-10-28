@@ -9,6 +9,9 @@ extends RefCounted
 ##                                         links, `wait()`, `outcome`, `cancel()`, `reopen()`,
 ##                                         `accept()`); opts {device_name, confirm_identity,
 ##                                         browser}. See PKeySignInSession.
+##   choice.licenses(grant) / devices(grant, license_id) / complete(grant, choice) / cancel(grant)
+##                                         the licence choice an app shows itself after a redirect
+##                                         sign-in with license_choice = "app"; see PKeyIdentityChoice
 ##   is_available()                        Identity is on for this product and set up
 ##   open_in_browser(session), copy_link(session)
 ##                                         for the dialog's two buttons
@@ -63,6 +66,9 @@ var on_change: Callable = Callable():
 
 ## `sign_in.start(opts)`.
 var sign_in: PKeySignInNamespace
+## `choice.licenses / devices / complete / cancel`: the licence choice after a redirect sign-in
+## that asked `license_choice = "app"` (PKeyIdentityChoice).
+var choice: PKeyIdentityChoice
 
 ## Conformance replay only: the exact `state` and `code_verifier` of a recorded redirect
 ## conversation ({state, code_verifier}); empty draws fresh entropy.
@@ -83,6 +89,7 @@ var _starts := 0
 
 func _init() -> void:
 	sign_in = PKeySignInNamespace.new(self)
+	choice = PKeyIdentityChoice.new(self)
 
 
 ## Bind to Core (PolarisKey.configure). A sign-in in progress is cancelled.
@@ -294,6 +301,7 @@ func _begin_redirect(opts: Dictionary) -> PKeySignInSession:
 		"redirect_uri": opts.get("redirect_uri"), "scope": opts.get("scope"),
 		"login_hint": opts.get("login_hint"), "name_hint": opts.get("name_hint"), "purpose": opts.get("purpose"),
 		"state": redirect_entropy.get("state"), "code_verifier": redirect_entropy.get("code_verifier"),
+		"license_choice": opts.get("license_choice"), "choice_available": PKeyIdentityChoice.available(fragment),
 	})
 	if not started["ok"]:
 		return _failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, started["message"])
@@ -331,8 +339,10 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String) -> P
 		"malformed":
 			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The token endpoint answered without a complete sign-in.", status)
 		"choose":
-			# Only `license_choice=app` makes the Worker answer this, and this client never asks for
-			# it yet (the licence choice is I-10b.6's).
+			# Only `license_choice=app` makes the Worker answer this. Nothing is stored;
+			# `identity.choice.*` finishes it.
+			if pending.get("license_choice") == true:
+				return PKeySignInOutcome.license_choice(answer["grant"], answer["expires_in"], answer["choices"])
 			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.INVALID_RESPONSE, "The token endpoint asked for a licence choice this sign-in did not request.", status)
 		"refused":
 			var retry = answer.get("retry_after_seconds")
