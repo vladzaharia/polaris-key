@@ -56,7 +56,7 @@ The relay carries only ciphertext between a person's own devices, and only while
 - A person's bytes per day: the `pkey.cloudConnect.relayBytes` entitlement.
 - A product's bytes per month: the ceiling set in the console, at most 500 GiB.
 - Two sockets per device and 32 per room. A message is at most 64 KiB.
-- 200 messages a second per socket, with a burst of 400. The SDKs pace themselves under that and queue at most 8 MiB.
+- 200 messages a second per socket, with a burst of 400. Every SDK paces itself under that and queues at most 8 MiB; a sign-out stops Cloud Connect within 15 seconds.
 - A quota, the switch or a pause closes sockets within a minute. The local network is never metered.
 
 ## In the console

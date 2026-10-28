@@ -380,7 +380,7 @@ the launch attempt off.
 ### Cloud Sync platforms
 
 Cloud Sync runs where the SDK's transport can refuse a redirect and stream a response under a size cap:
-Apple platforms. On Linux (`FoundationNetworking`) it is off: `CloudSyncHostDeps.live` reports Sync
+Apple platforms. On Linux it is off: `CloudSyncHostDeps.live` reports Sync
 disabled and `CloudSyncTransport` sends nothing over the stock session. The licence, config, identity
 and key-ring calls are unaffected. An injected transport that follows no redirect can still be used.
 
@@ -612,14 +612,20 @@ them, over the local network first and the relay when the LAN does not answer. I
 product with the `connect` service on.
 
 ```swift
-try await client.cloudConnect.start()
-let stopListening = client.cloudConnect.onChannel { session in /* a device opened a session to this one */ }
-let peers = await client.cloudConnect.peers()
-if let first = peers.first {
-    let session = try await client.cloudConnect.open(first.deviceId)
-    try await session.send(Data("hello".utf8))
+import Foundation
+import PolarisKey
+
+func connect(_ client: PolarisKeyClient) async throws {
+    try await client.cloudConnect.start()
+    let stopListening = client.cloudConnect.onChannel { session in /* a device opened a session to this one */ }
+    let peers = await client.cloudConnect.peers()
+    if let first = peers.first {
+        let session = try await client.cloudConnect.open(first.deviceId)
+        try await session.send(Data("hello".utf8))
+    }
+    await client.cloudConnect.stop()
+    _ = stopListening
 }
-await client.cloudConnect.stop()
 ```
 
 `stop()` never waits past 15 seconds; sign-out and release stop it first. `CloudConnectOptions(lan:relay:)`

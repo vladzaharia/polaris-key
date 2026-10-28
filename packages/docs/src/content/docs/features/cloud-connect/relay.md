@@ -59,7 +59,7 @@ A socket may send 200 messages a second, with a burst of 400. When the relay can
 | 3       | The product's month | `quota`, scope `product`                                      |
 | 4       | Paused              | `paused`. A paused relay also closes sockets with 4008        |
 
-The Swift, Python and Kotlin SDKs pace themselves under the limit: 180 messages a second with a burst of 360, halved for 10 seconds after a `LIMIT` 1, and a queue of at most 8 MiB behind the socket. A send that would pass the queue fails with `rate_limited` before anything is encrypted. The Node and browser SDKs do not pace, so keep your own sends under 200 a second.
+Every SDK paces itself under the limit: 180 messages a second with a burst of 360, halved for 10 seconds after a `LIMIT` 1, and a queue of at most 8 MiB behind the socket. In Swift, Python and Kotlin a send that would pass the queue fails with `rate_limited` before anything is encrypted; in Node and the browser the session closes `peer_busy`.
 
 A spent quota, the relay switch or a pause closes sockets within a minute. The SDK reports the reason in its status.
 

@@ -884,7 +884,9 @@ out of OS backups where the platform has a flag (`PKeyBackupExclusion`):
 
 Moving to the no-backup directory does not migrate files an earlier `user://pkey` holds. `store_root`
 is still the root you configure; the ring's stores resolve it. A game that builds the Cloud Sync host
-itself passes `PKeyBackupExclusion.root(store_root)` as the host's `state_dir` root.
+itself passes `PKeyBackupExclusion.root(store_root)` as the host's `state_dir` root; the addon's own
+host does the same, and the state file's folder is excluded on every write (Android through the
+no-backup directory, iOS through the flag, both with the plugin; nowhere else).
 
 `PolarisKey.keyring.status()` reports `root_persistence`, and the vault's `protection()` names
 the store in use (`keychain-sealed`, `keystore-sealed`, `dpapi-sealed`, `encrypted-file`, `file`,
@@ -899,8 +901,7 @@ store's `dh`. The root, the code and every key print as redacted.
 
 ## Cloud Sync settings (`PolarisKey.cloud_sync`)
 
-Synced settings are planned: the calls below are in the addon source, and the `sync.settings` parity
-row stays `planned` until the release flips it. With Cloud Sync on and a person signed in, the
+With Cloud Sync on and a person signed in, the
 settings calls you already use go to the person's synced copy: `config.set_value` and `config.clear`
 send the edit, and `config.get_value` reads what the person's other devices sent. The same code runs
 with Cloud Sync off. Which keys sync is the catalog's decision (see
@@ -912,8 +913,7 @@ End-to-end encryption is on by default: `PKeyOptions.cloud_sync_encryption` is `
 opts the app out, and an app that says `"server"` still refuses a Worker it has seen speak
 end-to-end; `configure` refuses any other value. The mode is the app's choice and is never read from
 the Worker. Settings are sealed with the [key ring](#key-ring-polariskeykeyring), so edits wait on
-the device while the ring is locked. The end-to-end default is in review; the `sync.e2e` parity row is
-`planned`. `cloud_sync_aliases` (renamed keys) sits beside it.
+the device while the ring is locked. The end-to-end mode is in review; `sync.e2e` is planned. `cloud_sync_aliases` (renamed keys) sits beside it.
 
 ```gdscript
 func change_speed() -> void:
@@ -987,8 +987,9 @@ and reads back at once; the edits are sent when the network returns.
 file under `store_root`. It is sealed: by the platform lane where one exists (the same Keychain,
 Keystore and DPAPI lanes as the key ring's root table above), else by the engine-encrypted file,
 keyed from the device id, which is weaker and keeps the file out of a casual copy only. A file without
-the platform seal is not read through the weaker path. On iOS with the `PolarisKeyApple` plugin its
-folder is marked out of backups. The journal never holds the root. The backup table above covers the
+the platform seal is not read through the weaker path. Its folder is rooted through `PKeyBackupExclusion.root()` and excluded
+on every write: on Android with the `PolarisKeyAndroid` plugin it sits in the no-backup directory, on iOS with the
+`PolarisKeyApple` plugin it is marked out of backups, and elsewhere nothing is set. The journal never holds the root. The backup table above covers the
 key ring's files.
 
 ## License notes
