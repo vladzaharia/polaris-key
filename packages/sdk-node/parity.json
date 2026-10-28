@@ -467,7 +467,7 @@
     },
     "connect.identity": {
       "status": "implemented",
-      "note": "Verification is client-core's peer/cert.ts (verifyPeerCert, verifyRing, replaceRing, admitPeer), which the Node SDK consumes directly; the Node runner drives peerCertCases, ringCases and peerAdmissionCases (CC-04.4). The identity routes and the transcript replay follow in CC-06 and CC-08."
+      "note": "Verification is client-core's peer/cert.ts (verifyPeerCert, verifyRing, replaceRing, admitPeer), which the Node SDK consumes directly; the Node runner drives peerCertCases, ringCases and peerAdmissionCases (CC-04.4). client.connect (packages/sdk-node/src/connect, CC-08.1) makes the device keys on first need, registers them (devices.registerKeys), fetches GET connect/identity, verifies the roster and certificate against the effective set, refuses a stale, foreign, expired or other-keys answer, and holds them with K_disc as pkey.connect.v1 (0600 in the state directory; memory-only keys refuse unless allowEphemeralKeys); the previous K_disc is dropped after a leave or a key change; listDevices() and leave(). test/connect.test.ts (@pkey-feature connect.identity). The connect-identity transcript replay is owed: no such transcript is recorded yet."
     },
     "connect.noise": {
       "status": "implemented",
