@@ -38,6 +38,20 @@ export {
 } from "./react/hooks.js";
 // sync.keyring (U-38.2): the key ring's lock state and the recovery-code actions.
 export { useSyncLock, useRecoveryCode } from "./react/useKeyring.js";
+// connect.app (CC-09.2): Cloud Connect over the relay, the only path a page has.
+export {
+  useCloudConnect,
+  type UseCloudConnect,
+} from "./react/useCloudConnect.js";
+export type {
+  CloudConnectClient,
+  CloudConnectOptions,
+  CloudConnectStatus,
+  CloudPeer,
+  ConnectNotice,
+  ConnectSession,
+} from "./browser/connect/index.js";
+export { RelayError, LanError } from "./browser/connect/index.js";
 export type {
   SyncLockState,
   UseSyncLock,

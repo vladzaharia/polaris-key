@@ -32,7 +32,11 @@ import { noBusy, noErrors } from "./services.js";
 import type { ActivationOutcome, KeyEntries } from "./activation.js";
 import type { BootAttempt } from "./bootGuard.js";
 import type { ChoiceNamespace } from "./choice.js";
-import type { SignInNamespace } from "./signIn.js";
+import type {
+  AutoSignInOptions,
+  AutoSignInResult,
+  SignInNamespace,
+} from "./signIn.js";
 import type { BootResult, BootRunOptions } from "./boot.js";
 import type { CrashTags, CrashTagsOptions } from "./crash.js";
 import type { UpdateEvent } from "../constants.generated.js";
@@ -251,6 +255,9 @@ export interface KeyActivation {
  *  gone), false when the device keeps its key activation and only the account is forgotten. */
 export interface SignOutResult {
   released: boolean;
+  /** The sign-out itself completed, but the browser could not store the "signed out" flag, so
+   *  only this page remembers it: a reload may sign in again silently. */
+  warning?: "sign-out-flag-not-saved";
 }
 
 /** `attach({confirm})`'s typed answer (identity.attach). A refusal is a result, never a throw: it
@@ -463,6 +470,10 @@ export interface PolarisAdapter {
   /** The licence choice an app shows itself after `signIn` answered `choose` (identity.choice).
    *  Bearer mode; a cookie page and the desktop renderer throw the typed `UnsupportedError`. */
   readonly choice: ChoiceNamespace;
+  /** The automatic sign-in ladder (identity.autosignin): a stored token, then the platform
+   *  provider silently, then (only with `prompt: "optional"`) its chooser. Bearer mode runs it;
+   *  the desktop renderer, a cookie page and the local adapter answer `unavailable`. */
+  autoSignIn(opts?: AutoSignInOptions): Promise<AutoSignInResult>;
   /** Open the product's page in the customer portal (discovery's `accountPortal`). Typed
    *  `UnsupportedError` when the product names none. */
   openAccount(): Promise<void>;
@@ -574,6 +585,13 @@ export interface PolarisAdapter {
    * and the local adapter answer the typed `UnsupportedError`; `unsupported` says which.
    */
   readonly keyring: import("./keyring.js").KeyringClient;
+  /**
+   * Cloud Connect over the relay (connect.app, WIRE-CONTRACT-V5 §15.7): start, stop, peers,
+   * open a session to another device of the person, and the channels and notices that arrive.
+   * Browser bearer mode runs it (the relay is a page's only path). A cookie page and the local
+   * adapter answer the typed `UnsupportedError`; the desktop renderer's host runs it in its Node SDK.
+   */
+  readonly cloudConnect: import("../browser/connect/index.js").CloudConnectClient;
   /** Edge-mint a short-lived third-party token (config.mint). Memory-cached per device token. */
   mintToken(recipeId: string): Promise<MintedToken>;
   /** The licence's commerce binding (commerce.receipt). */

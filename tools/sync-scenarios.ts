@@ -266,6 +266,12 @@ const RULES: { id: string; title: string; ref: string }[] = [
     ref: "WIRE-CONTRACT-V5 §11.5, §13.10.6; threat T26",
   },
   {
+    id: "forged-plaintext-rows",
+    title:
+      "A hostile Worker's plaintext row never reads as legacy over data the device holds sealed: a change at or below the request's cursor is ignored (E2E, cursor above 0), a plaintext row is legacy only when the request's cursor is below encryptionSince, and a key this device has ever pushed or opened sealed refuses plaintext for good, across a snapshot reset. A fresh device before any sealed row stays trust-on-first-use (threat T26)",
+    ref: "WIRE-CONTRACT-V5 §13.10.7; threat T26",
+  },
+  {
     id: "encryption-since",
     title:
       "A plaintext row is legacy data only when the host-mapped seq is below encryptionSince, which only ever lowers; otherwise it is invalid. Sealed and invalid come only from the host's open result",
@@ -3441,6 +3447,91 @@ function scenarios(): Scenario[] {
       assert({ ...invalidity(VOL, true), encryptionSince: 2 }),
     ],
   });
+
+  /** A pull at `cursor` goes out; the next step answers it. */
+  const nextPull = (cursor: number): Obj[] => [
+    network("offline"),
+    network("online"),
+    assert({ requests: [pullReq(cursor, C1)] }),
+  ];
+  /** A pull answered with `changes`, which the host found as `opened`. */
+  const answer = (cursor: number, changes: Obj[], opened: Obj[]): Obj =>
+    respond(e2eBody({ serverNow: T0, cursor, since: 5, changes }), 200, {
+      changes: opened,
+    });
+  const forged = (name: string, description: string, steps: Obj[]): void =>
+    add3({
+      name,
+      description,
+      rules: ["forged-plaintext-rows"],
+      init: e2e(),
+      steps: [assert({ requests: [pullReq(0, C1)] }), ...steps],
+    });
+  const QUAL_UNSET = { [QUAL]: val("medium", "document") };
+
+  forged(
+    "e2e-forged-plain-change-at-or-below-cursor",
+    "In E2E mode a pull made at cursor 9 cannot be answered with a change at version 2: it is ignored outright, so a plaintext row posing as legacy data (seq 2, below the boundary) neither shows nor marks the key invalid.",
+    [
+      answer(9, [change(VOL, 0.4, 9, hlc(T0 - 1000))], [{ sealed: true }]),
+      ...nextPull(9),
+      answer(12, [change(QUAL, "high", 2, hlc(T0))], [{ seq: 2 }]),
+      assert({
+        values: { [VOL]: val(0.4, "cloud"), ...QUAL_UNSET },
+        ...invalidity(QUAL, false),
+        encryptionSince: 5,
+      }),
+    ],
+  );
+
+  forged(
+    "e2e-forged-plain-needs-cursor-below-since",
+    "A plaintext row served to a pull whose cursor is already at or above encryptionSince is invalid, even when the host reports a seq below the boundary: legacy rows can only arrive before the boundary.",
+    [
+      answer(9, [], []),
+      ...nextPull(9),
+      answer(12, [change(QUAL, "high", 10, hlc(T0))], [{ seq: 3 }]),
+      assert({
+        values: QUAL_UNSET,
+        ...invalidity(QUAL, true),
+        encryptionSince: 5,
+      }),
+    ],
+  );
+
+  forged(
+    "e2e-forged-plain-sealed-key-latched",
+    "A key the device has opened sealed refuses plaintext for good: after the cursor expires and a snapshot replaces the rows, a plaintext row for that key with a seq below the boundary is invalid, while a plaintext row for a key never seen sealed stays legacy data.",
+    [
+      answer(
+        9,
+        [
+          change(VOL, 0.4, 8, hlc(T0 - 2000)),
+          change(QUAL, "low", 2, hlc(T0 - 1000)),
+        ],
+        [{ sealed: true }, { seq: 2 }],
+      ),
+      ...nextPull(9),
+      respond(
+        errorBody(
+          "cursor_expired",
+          "Cursor is older than the tombstone horizon.",
+        ),
+        410,
+      ),
+      assert({ requests: [pullReq(0, C1)] }),
+      answer(
+        20,
+        [change(VOL, 0.9, 3, hlc(T0)), change(QUAL, "low", 2, hlc(T0 - 1000))],
+        [{ seq: 3 }, { seq: 2 }],
+      ),
+      assert({
+        values: { [VOL]: val(0.8, "document"), [QUAL]: val("low", "cloud") },
+        ...invalidity(VOL, true),
+        encryptionSince: 5,
+      }),
+    ],
+  );
 
   add3({
     name: "server-mode-unchanged",

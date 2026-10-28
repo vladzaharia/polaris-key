@@ -110,6 +110,14 @@ import {
   unsupportedKeyring,
   type KeyringClient,
 } from "../core/keyring.js";
+import {
+  createCloudConnect,
+  lazyConnect,
+  unsupportedCloudConnect,
+  unsupportedConnect,
+  type CloudConnectClient,
+  type ConnectClient,
+} from "./connect/index.js";
 import { clientBackendAction } from "@polaris-key/client-core/backend";
 import type {
   BinaryMethod,
@@ -184,7 +192,11 @@ import {
   type ServicesMap,
   licenseGateEnabled,
 } from "../core/services.js";
-import { discoverProduct, type DiscoveryDocument } from "./discovery.js";
+import {
+  discoverProduct,
+  exchangeDiscoveryOf,
+  type DiscoveryDocument,
+} from "./discovery.js";
 import { BearerSession, type AccountDevice } from "./bearer/session.js";
 import {
   BearerDeviceCodeSession,
@@ -197,7 +209,10 @@ import {
   callbackState,
   redirectEndpointsOf,
   sessionStorageStash,
+  type AutoSignInOptions,
+  type AutoSignInResult,
   type DeviceCodeSignInSession,
+  type PlatformIdentityProvider,
   type RedirectSignInSession,
   type SignInNamespace,
   type SignInOptions,
@@ -426,6 +441,11 @@ export interface BrowserAdapterOptions {
    *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
   update?: BrowserUpdateConfig;
   /**
+   * The platform identity the `autoSignIn()` ladder asks (default: Google through FedCM, using
+   * the server client id discovery names). `null`: no provider, so the ladder stops at the form.
+   */
+  platformIdentity?: PlatformIdentityProvider | null;
+  /**
    * The Cloud Sync key ring (sync.keyring, bearer mode only). `deviceKeys` is the device key store
    * (default `createWebDeviceKeyStore()`, IndexedDB with a memory fallback); a memory-only store
    * makes the ring unlock-only (recovery code), with the root held in memory. `vault` is where the
@@ -437,6 +457,13 @@ export interface BrowserAdapterOptions {
     /** Seconds the root stays in memory as bytes after it was made or recovered. Default 300. */
     sessionRootSeconds?: number;
   };
+  /**
+   * Cloud Connect identity (connect.identity, bearer mode only). `deviceKeys` is the device key
+   * store (default: the one the key ring uses, `createWebDeviceKeyStore()`); a memory-only store
+   * is refused with `invalid-options` unless `allowEphemeralKeys` is set, because every reload
+   * would register a new key pair and the Worker allows four a day.
+   */
+  connect?: { deviceKeys?: DeviceKeyPort; allowEphemeralKeys?: boolean };
   /**
    * The update driver's service worker (update.driver): the container the install hand-off
    * looks for a waiting worker in (default `navigator.serviceWorker`; `null`: this page has
@@ -702,6 +729,8 @@ export class BrowserAdapter implements PolarisAdapter {
     this.authMode = resolveAuthMode(opts.auth, this.base, opts.pageOrigin);
     this.autoRegister = opts.autoRegister !== false;
     this.ringOptions = opts.keyring;
+    this.platformIdentity = opts.platformIdentity;
+    this.connectOptions = opts.connect;
     if (this.authMode === "bearer" && !this.pinned) {
       const err = new PolarisError(
         "invalid-options",
@@ -735,6 +764,7 @@ export class BrowserAdapter implements PolarisAdapter {
         identityEndpoints: () => accountEndpointsOf(this.discovery_),
         redirectEndpoints: () => redirectEndpointsOf(this.discovery_),
         choiceEndpoints: () => choiceEndpointsOf(this.discovery_),
+        exchangeEndpoints: () => exchangeDiscoveryOf(this.discovery_),
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
         ...(opts.deviceName !== undefined
           ? { deviceName: opts.deviceName }
@@ -1337,10 +1367,18 @@ export class BrowserAdapter implements PolarisAdapter {
   async signOut(): Promise<SignOutResult> {
     if (this.configError) throw this.fail("identity", this.configError);
     this.setBusy("identity", true);
-    // Stop the browser re-selecting the account on the next visit (FedCM; a no-op elsewhere).
-    // Loaded on demand so the page bundle stays within its size budget.
-    await import("./platformIdentity/fedcm.js").then(
-      (m) => m.fedcmPreventSilentAccess(),
+    // Fail closed: from here no silent rung signs this device in again until a person signs in.
+    // Any ladder already running is abandoned before it stores a token.
+    this.signOutGeneration += 1;
+    const warn: Pick<SignOutResult, "warning"> = (await this.setExplicitSignOut(
+      true,
+    ))
+      ? {}
+      : { warning: "sign-out-flag-not-saved" };
+    // Stop the provider re-selecting the account on the next visit. Loaded on demand so the page
+    // bundle stays within its size budget.
+    await import("./bearer/autoSignIn.js").then(
+      async (m) => m.runSignOutCleanup(await this.platformProvider(m)),
       () => undefined,
     );
     if (this.bearer) {
@@ -1351,11 +1389,11 @@ export class BrowserAdapter implements PolarisAdapter {
         if (accountEndpointsOf(this.discovery_)?.signout) {
           const r = await this.bearer.signOut();
           this.applyBearer({ busy: noBusy(), error: noErrors() });
-          return r;
+          return { ...r, ...warn };
         }
         await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
-        return { released: true };
+        return { released: true, ...warn };
       } catch (e) {
         throw this.fail(
           "identity",
@@ -1474,11 +1512,13 @@ export class BrowserAdapter implements PolarisAdapter {
     licenses: (grant) => this.choiceCall((b) => b.choiceLicenses(grant)),
     devices: (grant, licenseId) =>
       this.choiceCall((b) => b.choiceDevices(grant, licenseId)),
-    complete: (grant, choice) =>
+    complete: (grant, choice, opts) =>
       this.choiceCall(async (b) => {
-        const r = await b.choiceComplete(grant, choice);
-        if (r.kind === "ok")
+        const r = await b.choiceComplete(grant, choice, opts);
+        if (r.kind === "ok") {
+          await this.setExplicitSignOut(false);
           this.applyBearer({ busy: noBusy(), error: noErrors() });
+        }
         return r;
       }),
     cancel: (grant) => this.choiceCall((b) => b.choiceCancel(grant)),
@@ -2005,6 +2045,95 @@ export class BrowserAdapter implements PolarisAdapter {
 
   private ring_: KeyringClient | null = null;
   private readonly ringOptions: BrowserAdapterOptions["keyring"];
+  private deviceKeys_: Promise<DeviceKeyPort> | null = null;
+
+  /**
+   * The page's device key store: one port per adapter, shared by the key ring, the sign-in
+   * ladder's exchange and Connect. The default store loads on the first call, never at import.
+   */
+  private deviceKeyPort(): Promise<DeviceKeyPort> {
+    return (this.deviceKeys_ ??= this.ringOptions?.deviceKeys
+      ? Promise.resolve(this.ringOptions.deviceKeys)
+      : import("./deviceKeys.js").then((m) => m.webDeviceKeys()));
+  }
+
+  // ── Automatic sign-in (identity.autosignin, I-46.4) ──────────────────────────────────────
+
+  /** The sign-out flag held in memory too, so a store that cannot be written still holds this page. */
+  private signedOutHere = false;
+  private defaultProvider_: PlatformIdentityProvider | null = null;
+  private platformIdentity: PlatformIdentityProvider | null | undefined;
+
+  /** Bumped by every `signOut()`; a running ladder compares it before it stores a token. */
+  private signOutGeneration = 0;
+
+  /** Sets the flag in memory, then in the store. False when the store could not keep it (the
+   *  in-memory flag still holds for this page); never throws. */
+  private async setExplicitSignOut(on: boolean): Promise<boolean> {
+    if (!this.bearer) return true;
+    this.signedOutHere = on;
+    try {
+      await this.bearerStore?.explicitSignOut?.set(on);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async explicitSignOut(): Promise<boolean> {
+    if (this.signedOutHere) return true;
+    try {
+      return (await this.bearerStore?.explicitSignOut?.get()) === true;
+    } catch {
+      // Fail closed: a flag that cannot be read is a sign-out.
+      return true;
+    }
+  }
+
+  private platformProvider(
+    m: typeof import("./bearer/autoSignIn.js"),
+  ): PlatformIdentityProvider | null {
+    if (this.platformIdentity !== undefined) return this.platformIdentity;
+    return (this.defaultProvider_ ??= m.fedcmGoogleProvider(
+      () => exchangeDiscoveryOf(this.discovery_)?.google?.serverClientId,
+    ));
+  }
+
+  /** `identity.autoSignIn(opts?)`: the ladder. Bearer mode; elsewhere `unavailable`. */
+  async autoSignIn(opts: AutoSignInOptions = {}): Promise<AutoSignInResult> {
+    const b = this.bearer;
+    if (this.configError || !b) return { kind: "unavailable", code: "runtime" };
+    try {
+      await this.ensureDiscovery();
+      const m = await import("./bearer/autoSignIn.js");
+      const result = await m.runAutoSignIn(
+        {
+          bearer: b,
+          port: await this.deviceKeyPort(),
+          provider: this.platformProvider(m),
+          endpoints: exchangeDiscoveryOf(this.discovery_),
+          explicitSignOut: () => this.explicitSignOut(),
+          generation: () => this.signOutGeneration,
+          syncKey: () =>
+            this.bearer && this.capabilities.sync.enabled
+              ? m.ringSyncKey(this.keyring)
+              : Promise.resolve(undefined),
+        },
+        opts,
+      );
+      if (result.kind === "signedIn" && result.via === "platform")
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+      return result;
+    } catch (e) {
+      // Only a cancellation leaves the ladder as a throw.
+      if ((e as { name?: string } | null)?.name === "AbortError") throw e;
+      return { kind: "unavailable", code: "refused" };
+    }
+  }
+
+  private readonly connectOptions: BrowserAdapterOptions["connect"];
+  private connect_: ConnectClient | null = null;
+  private cloud_: CloudConnectClient | null = null;
 
   /**
    * The Cloud Sync key ring (sync.keyring). Bearer mode runs the engine; a cookie page holds no
@@ -2020,19 +2149,68 @@ export class BrowserAdapter implements PolarisAdapter {
       (await import("./ring/create.js")).createRingEngine({
         product: this.product,
         bearer: b,
-        options: o,
+        options: { ...o, deviceKeys: await this.deviceKeyPort() },
       }),
     ));
   }
 
   /**
-   * Sign-out and deactivation end the person's use of this device: the ring locks, the stored
+   * The Cloud Connect identity (connect.identity). Bearer mode runs the engine; a cookie page
+   * holds no device token and gets the typed runtime N/A.
+   */
+  get connect(): ConnectClient {
+    if (this.connect_) return this.connect_;
+    const b = this.bearer;
+    if (!b) return (this.connect_ = unsupportedConnect(COOKIE_DETAIL));
+    const o = this.connectOptions ?? {};
+    const name = `pkey-connect-${storeNamespace(this.product, this.base)}`;
+    return (this.connect_ = lazyConnect(
+      { now: () => this.clock(), lockName: `pkey-connect:${name}` },
+      async () =>
+        (await import("./connect/create.js")).createBrowserConnect({
+          product: this.product,
+          base: this.base,
+          bearer: b,
+          options: o,
+          now: () => this.clock(),
+          lockName: `pkey-connect:${name}`,
+          discovery: async () => {
+            await this.ensureDiscovery().catch(() => undefined);
+            return this.discovery_;
+          },
+          deviceKeys: () => this.deviceKeyPort(),
+        }),
+    ));
+  }
+
+  /**
+   * Cloud Connect over the relay (connect.app, CC-09.2): the only path a page has. Bearer mode
+   * runs it; a cookie page holds no device token and gets the typed runtime N/A. Nothing loads
+   * until `start()`.
+   */
+  get cloudConnect(): CloudConnectClient {
+    if (this.cloud_) return this.cloud_;
+    if (!this.bearer)
+      return (this.cloud_ = unsupportedCloudConnect("runtime", COOKIE_DETAIL));
+    return (this.cloud_ = createCloudConnect(this.connect));
+  }
+
+  /**
+   * Sign-out and deactivation end the person's use of this device: Connect is left (its roster,
+   * certificate and K_disc go; a failure reaches the caller, so a sign-out never leaves them
+   * behind unnoticed) and the ring locks, the stored
    * root and the pin go, so a shared browser keeps nothing of the last person's ring. A storage
    * failure reaches the caller; a sign-out that threw still runs it.
    */
   private async forgetRing(): Promise<void> {
     if (!this.bearer) return;
-    await this.keyring.forget();
+    try {
+      await this.keyring.forget();
+    } finally {
+      // The relay stops first: a session must not outlive the roster it was admitted under.
+      await this.cloudConnect.stop().catch(() => undefined);
+      await this.connect.leave();
+    }
   }
 
   /** `signIn.start` / `signIn.complete` (identity.signIn). */
@@ -2047,6 +2225,7 @@ export class BrowserAdapter implements PolarisAdapter {
     return {
       onSettled: async (outcome) => {
         this.applyBearer({ busy: noBusy(), error: noErrors() });
+        if (outcome.kind === "signedIn") await this.setExplicitSignOut(false);
         if (outcome.kind !== "signedIn" || outcome.subject !== null)
           return outcome;
         // Device code answers no subject: read it when discovery names the endpoint.
@@ -2577,6 +2756,8 @@ const BEARER_ONLY = new Set<string>([
   Feature.commerceReceipt,
   // SP-58: a cookie page holds no signed licence document to send.
   Feature.coreBackend,
+  // CC-09.1: Connect rides the device token.
+  Feature.connectIdentity,
 ]);
 
 /** True when the page runs inside a Tauri webview: Tauri's injected globals, or its custom

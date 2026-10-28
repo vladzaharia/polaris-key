@@ -79,8 +79,12 @@ import {
 } from "../core/services.js";
 import { createStore, type Store } from "../core/store.js";
 import type { ChoiceNamespace } from "../core/choice.js";
-import type { SignInNamespace } from "../core/signIn.js";
+import type { AutoSignInResult, SignInNamespace } from "../core/signIn.js";
 import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
+import {
+  unsupportedCloudConnect,
+  type CloudConnectClient,
+} from "../browser/connect/index.js";
 import {
   PolarisError,
   type ChangelogEntry,
@@ -465,6 +469,12 @@ export class LocalAdapter implements PolarisAdapter {
     "A local-only page holds no device token, so it has no Cloud Sync key ring.",
   );
 
+  /** Cloud Connect (connect.app): the typed N/A here. */
+  readonly cloudConnect: CloudConnectClient = unsupportedCloudConnect(
+    "runtime",
+    "A local-only page holds no device token, so it has no Cloud Connect.",
+  );
+
   readonly signIn: SignInNamespace = {
     start: (() =>
       Promise.reject(
@@ -479,6 +489,11 @@ export class LocalAdapter implements PolarisAdapter {
     complete: () => Promise.reject(dial("The licence choice")),
     cancel: () => Promise.reject(dial("The licence choice")),
   };
+
+  /** No ladder: a local adapter holds no account. */
+  async autoSignIn(): Promise<AutoSignInResult> {
+    return { kind: "unavailable", code: "runtime" };
+  }
 
   async mintToken(_recipeId: string): Promise<MintedToken> {
     throw dial("Minting a token");

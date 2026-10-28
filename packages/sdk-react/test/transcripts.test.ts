@@ -8,7 +8,7 @@
 // @pkey-feature ui.boot release.fetch release.distribution
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
-// @pkey-feature sync.keyring
+// @pkey-feature sync.keyring identity.exchange
 //
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
 // device token run through the browser's bearer engine, `BearerSession`
@@ -83,20 +83,34 @@
 // the replay holds the recording path to the recorded bytes. `updatesPending` is the length of
 // the session's journal.
 
-import { beforeAll, describe, expect, it } from "vitest";
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  sign as edSign,
+} from "node:crypto";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   chunkRangeFetch,
   createWebDeviceKeyStore,
   memoryDeviceKeyStorage,
   recordHash,
+  type DeviceKeyPort,
 } from "@polaris-key/client-core";
 import { webCryptoSyncPort } from "@polaris-key/client-core/sync";
 import { RingEngine } from "../src/browser/ring/engine.js";
 import { memoryRootVault } from "../src/browser/ring/rootVault.js";
+import {
+  type ConnectClient,
+  RelayError,
+} from "../src/browser/connect/index.js";
+import { createConnect } from "../src/browser/connect/create.js";
+import { memoryConnectState } from "../src/browser/connect/state.js";
 import { browserObjectFetch } from "../src/packs/browserPacks.js";
 import { newTestKey, signCompact } from "./fixtures.js";
 import {
   discoverProduct,
+  exchangeDiscoveryOf,
   type DiscoveryDocument,
 } from "../src/browser/discovery.js";
 import {
@@ -120,6 +134,7 @@ import {
   fetchChangelog,
 } from "../src/browser/release.js";
 import { PolarisError } from "../src/core/types.js";
+import { UnsupportedError } from "../src/core/caps.js";
 import { runBoot } from "../src/core/boot.js";
 import { bearerBootDriver } from "../src/browser/boot.js";
 import { fetchReleaseBuild } from "../src/browser/releaseFetch.js";
@@ -239,13 +254,75 @@ const REDIRECT_DEFAULTS = {
  *  request carries (a key is not a transcript arg). A recording with none is the Worker's 409
  *  `license_choice_required` for a completion naming no choice: the typed call cannot omit it, so
  *  the replay sends the body as recorded. */
-function recordedChoice(step: Step): LicenseChoice {
+function recordedChoice(step: Step): LicenseChoice | undefined {
   const arg = step.args.choice;
   if (arg !== undefined) return arg as unknown as LicenseChoice;
   const body = step.exchanges.items[0]?.request.body?.json as
     | { choice?: unknown }
     | undefined;
-  return body?.choice as LicenseChoice;
+  return body?.choice as LicenseChoice | undefined;
+}
+
+/** The fixture device keys of `keyLabel` (format.ts, "exchange"; the Node reference client's
+ *  `deviceKeys`): an Ed25519 seed of SHA-256(label) imported as PKCS8, and an agreement key that
+ *  is SHA-256(label + ":agree") with the top bit of the last byte cleared. The port is durable. */
+async function fixtureKeyPort(keyLabel: string): Promise<DeviceKeyPort> {
+  const sha = async (text: string): Promise<Uint8Array> =>
+    new Uint8Array(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)),
+    );
+  const prefix = Uint8Array.from(
+    "302e020100300506032b657004220420"
+      .match(/../g)!
+      .map((h) => parseInt(h, 16)),
+  );
+  const seed = await sha(keyLabel);
+  const pkcs8 = new Uint8Array(prefix.length + seed.length);
+  pkcs8.set(prefix);
+  pkcs8.set(seed, prefix.length);
+  const priv = await crypto.subtle.importKey(
+    "pkcs8",
+    pkcs8,
+    { name: "Ed25519" },
+    true,
+    ["sign"],
+  );
+  const signKey = (
+    (await crypto.subtle.exportKey("jwk", priv)) as { x: string }
+  ).x;
+  const agree = await sha(`${keyLabel}:agree`);
+  agree[31]! &= 0x7f;
+  let bin = "";
+  for (const b of agree) bin += String.fromCharCode(b);
+  const agreeKey = btoa(bin)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  const keys = { signKey, agreeKey, generation: 1 };
+  return {
+    ensure: async () => keys,
+    publicKeys: async () => keys,
+    sign: async (m) =>
+      new Uint8Array(
+        await crypto.subtle.sign("Ed25519", priv, m as BufferSource),
+      ),
+    // The agreement key is a fixture value with no private half: nothing here agrees on a secret.
+    dh: async () => null,
+    rotate: async () => keys,
+    persistence: () => "durable",
+    wipe: async () => undefined,
+  };
+}
+
+/** What a `choiceComplete` step sends as consent: its own `consent` arg, else the claims the
+ *  recording's request carries (a grant's consent is not a transcript arg). */
+function recordedConsent(step: Step): { claims: string[] } | undefined {
+  const arg = step.args.consent;
+  if (arg !== undefined) return arg as unknown as { claims: string[] };
+  const body = step.exchanges.items[0]?.request.body?.json as
+    | { consent?: { claims: string[] } }
+    | undefined;
+  return body?.consent;
 }
 
 function stringArg(step: Step, name: string): string | undefined {
@@ -441,10 +518,31 @@ async function replay(t: Transcript): Promise<void> {
       : defaultServices();
   // identity.redirect.web: the entropy of the recorded conversation, set by the step.
   let entropy: { state?: string; codeVerifier?: string } = {};
+  // identity.exchange: a step that supplies a recorded `nonce` uses it (test-only: the nonce
+  // request is answered here and never reaches the recording), and the token route's
+  // `issued_token_type` is read off the Worker's answer, which the typed outcome does not carry.
+  let suppliedNonce: string | null = null;
+  let issuedTokenType: string | undefined;
+  const tapped = (async (input, init) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (suppliedNonce !== null && url.endsWith("/identity/nonce"))
+      return new Response(JSON.stringify({ nonce: suppliedNonce }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    const res = await server.fetch(input, init);
+    if (url.endsWith("/identity/token") && res.status === 200) {
+      const body = (await res.clone().json()) as {
+        issued_token_type?: string;
+      };
+      issuedTokenType = body.issued_token_type;
+    }
+    return res;
+  }) as typeof fetch;
   const base = {
     baseUrl: t.baseUrl,
     product: t.product,
-    fetchImpl: server.fetch as typeof fetch,
+    fetchImpl: tapped,
   };
   let clock = t.now;
   const store = new TranscriptStore(t.initial.deviceId, t.initial.token);
@@ -452,40 +550,59 @@ async function replay(t: Transcript): Promise<void> {
     (t.initial as { updateJournal?: UpdateEventEntry[] }).updateJournal ?? [];
   let nextEventId: string | null = null;
   let outletId: string | null = null;
-  const session = new BearerSession({
-    baseUrl: t.baseUrl,
-    product: t.product,
-    version: t.initial.version,
-    fetchImpl: base.fetchImpl,
-    now: () => clock,
-    pinned: t.trust,
-    store,
-    enabled: (slug) => belief[slug].enabled,
-    fingerprint: () => FINGERPRINT,
-    // PX-W13: `initial.deviceName` stands in for the label a host names; absent = none.
-    deviceName: t.initial.deviceName ?? "",
-    outlet: () => (outletId === null ? null : { id: outletId }),
-    eventId: () => nextEventId ?? "unexpected-event-id",
-    redirectEndpoints: () =>
-      redirectEndpointsOf(discovered as Record<string, unknown> | null) ??
-      standardRedirect(t),
-    redirectEntropy: () => entropy,
-    // identity.choice: the last discovery's `choice*` endpoints, else the Worker's standard ones.
-    choiceEndpoints: () =>
-      choiceEndpointsOf(discovered as Record<string, unknown> | null) ?? {
-        choiceLicenses: `${t.baseUrl}/${t.product}/identity/choice/licenses`,
-        choiceDevices: `${t.baseUrl}/${t.product}/identity/choice/devices`,
-        choiceComplete: `${t.baseUrl}/${t.product}/identity/choice/complete`,
-        choiceCancel: `${t.baseUrl}/${t.product}/identity/choice/cancel`,
-      },
-    // The account endpoints: the last discovery's, else the Worker's standard ones.
-    identityEndpoints: () =>
-      accountEndpointsOf(discovered as Record<string, unknown> | null) ?? {
-        subject: `${t.baseUrl}/${t.product}/identity/subject`,
-        signout: `${t.baseUrl}/${t.product}/identity/signout`,
-        attach: `${t.baseUrl}/${t.product}/identity/attach`,
-      },
-  });
+  const makeSession = () =>
+    new BearerSession({
+      baseUrl: t.baseUrl,
+      product: t.product,
+      version: t.initial.version,
+      fetchImpl: base.fetchImpl,
+      now: () => clock,
+      pinned: t.trust,
+      store,
+      // identity.exchange: these recordings end at the sign-in, so the sync a sign-in starts
+      // (licence and config documents, the device report) has no recorded exchange to meet.
+      enabled: (slug) =>
+        belief[slug].enabled &&
+        !(
+          t.features.includes("identity.exchange") &&
+          (slug === "license" || slug === "config")
+        ),
+      fingerprint: () => FINGERPRINT,
+      // PX-W13: `initial.deviceName` stands in for the label a host names; absent = none.
+      deviceName: t.initial.deviceName ?? "",
+      outlet: () => (outletId === null ? null : { id: outletId }),
+      eventId: () => nextEventId ?? "unexpected-event-id",
+      redirectEndpoints: () =>
+        redirectEndpointsOf(discovered as Record<string, unknown> | null) ??
+        standardRedirect(t),
+      redirectEntropy: () => entropy,
+      // identity.choice: the last discovery's `choice*` endpoints, else the Worker's standard ones.
+      choiceEndpoints: () =>
+        choiceEndpointsOf(discovered as Record<string, unknown> | null) ?? {
+          choiceLicenses: `${t.baseUrl}/${t.product}/identity/choice/licenses`,
+          choiceDevices: `${t.baseUrl}/${t.product}/identity/choice/devices`,
+          choiceComplete: `${t.baseUrl}/${t.product}/identity/choice/complete`,
+          choiceCancel: `${t.baseUrl}/${t.product}/identity/choice/cancel`,
+        },
+      // identity.exchange: the last discovery's nonce and token endpoints, else the Worker's
+      // standard ones (no discovery was loaded). A discovery without the member offers none.
+      exchangeEndpoints: () =>
+        discovered === null
+          ? {
+              kinds: ["google", "apple"],
+              nonceEndpoint: `${t.baseUrl}/${t.product}/identity/nonce`,
+              tokenEndpoint: `${t.baseUrl}/${t.product}/identity/token`,
+            }
+          : exchangeDiscoveryOf(discovered as Record<string, unknown>),
+      // The account endpoints: the last discovery's, else the Worker's standard ones.
+      identityEndpoints: () =>
+        accountEndpointsOf(discovered as Record<string, unknown> | null) ?? {
+          subject: `${t.baseUrl}/${t.product}/identity/subject`,
+          signout: `${t.baseUrl}/${t.product}/identity/signout`,
+          attach: `${t.baseUrl}/${t.product}/identity/attach`,
+        },
+    });
+  let session = makeSession();
   await session.init();
   // sync.keyring: the engine over this session. The ring id of the next create or reset is the
   // one the step's expectation names, because the recording fixes the Worker's answer.
@@ -499,6 +616,27 @@ async function replay(t: Transcript): Promise<void> {
     keys: createWebDeviceKeyStore({ storage: memoryDeviceKeyStorage() }),
     vault: memoryRootVault(),
     newRingId: () => nextRingId,
+  });
+  // connect.identity (CC-09.1): the engine over this session, with the fixture device keys the
+  // step's `keyLabel` names (a different label is a key rotation: the next call registers them).
+  const connectState = memoryConnectState();
+  let connectKeys: DeviceKeyPort = connectKeyPort("unused");
+  let connectLabel: string | null = null;
+  const connect: ConnectClient = createConnect({
+    product: t.product,
+    baseUrl: t.baseUrl,
+    device: async () => ({
+      deviceId: session.deviceId,
+      hasToken: session.hasToken,
+    }),
+    request: (path, init) => session.ringRequest(path, init),
+    registerKeys: (port, opts) => session.registerKeys(port, opts),
+    trust: () => session.effectiveTrust(),
+    now: () => clock,
+    discovery: async () => discovered,
+    keys: () => connectKeys,
+    allowEphemeralKeys: false,
+    stores: { durable: () => connectState, memory: connectState },
   });
   for (const e of journal) {
     clock = e.at;
@@ -614,10 +752,16 @@ async function replay(t: Transcript): Promise<void> {
             observed.devices = r.view.devices.map((d) => d.id);
           else refused = r;
         } else if (step.action === "choiceComplete") {
-          const r = await session.choiceComplete(grant, recordedChoice(step));
+          const consent = recordedConsent(step);
+          const r = await session.choiceComplete(
+            grant,
+            recordedChoice(step),
+            consent ? { consent } : {},
+          );
           if (r.kind === "ok") {
             observed.licenseId = r.licenseId;
             observed.subject = r.subject;
+            observed.scope = r.scope;
             if (r.keyEntries) observed.keyEntries = r.keyEntries;
           } else refused = r;
         } else {
@@ -812,6 +956,67 @@ async function replay(t: Transcript): Promise<void> {
         }
         break;
       }
+      case "relayTicket": {
+        // connect.relay (CC-09.2): the ticket route. A refusal reads as `result: "refused"` with
+        // the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
+        try {
+          const g = await connect.relayTicket();
+          observed.result = "ok";
+          observed.protocol = g.protocol;
+          observed.url = g.url;
+          observed.expiresIn = g.expiresAt - clock;
+        } catch (e) {
+          if (e instanceof RelayError) {
+            observed.result = "refused";
+            observed.status = e.status ?? null;
+            observed.code = e.code;
+            if (e.retryAfterSeconds !== undefined)
+              observed.retryAfter = e.retryAfterSeconds;
+            if (e.scope !== undefined) observed.scope = e.scope;
+          } else if (e instanceof PolarisError) {
+            observed.result = "refused";
+            observed.status = e.status ?? null;
+            observed.code = e.wireCode ?? e.code;
+          } else throw e;
+        }
+        break;
+      }
+      case "connectIdentity":
+      case "connectDevices": {
+        const label = String(step.args.keyLabel);
+        if (connectLabel !== label) {
+          connectKeys = connectKeyPort(label);
+          connectLabel = label;
+        }
+        // The `keys` proof carries the clock at the step.
+        vi.useFakeTimers({ toFake: ["Date"] });
+        vi.setSystemTime(clock * 1000);
+        try {
+          if (step.action === "connectIdentity") {
+            const idn = await connect.identity({
+              refresh: step.args.refresh === true,
+            });
+            const disc = await connect.discoveryKeys();
+            observed.result = "ok";
+            observed.epoch = idn.epoch;
+            observed.devices = idn.devices.map((d) => d.deviceId);
+            observed.deviceId = idn.deviceId;
+            observed.discKeys = disc?.previous ? 2 : 1;
+          } else {
+            observed.result = "ok";
+            observed.devices = (await connect.listDevices()) as never;
+          }
+        } catch (e) {
+          if (e instanceof UnsupportedError) observed.result = "unavailable";
+          else if (e instanceof PolarisError) {
+            observed.result = "refused";
+            observed.code = e.wireCode ?? e.code;
+          } else throw e;
+        } finally {
+          vi.useRealTimers();
+        }
+        break;
+      }
       case "boot": {
         const driver = bearerBootDriver({
           session,
@@ -894,6 +1099,75 @@ async function replay(t: Transcript): Promise<void> {
         observed.result =
           r.kind === "error" && r.status === 404 ? "not-found" : r.kind;
         observed.presentation = presentation.current() as JsonValue;
+        // identity.exchange: what the identity fragment offers (V5 §12.11.6).
+        {
+          const ex = exchangeDiscoveryOf(
+            discovered as Record<string, unknown> | null,
+          );
+          observed.exchange = ex
+            ? ({
+                kinds: [...ex.kinds],
+                ...(ex.google ? { google: { ...ex.google } } : {}),
+              } as JsonValue)
+            : null;
+          observed.nonceEndpoint = ex !== null;
+        }
+        break;
+      }
+      case "exchange": {
+        // identity.exchange: a fixture key port, and a provider that returns the recorded
+        // `subjectToken` (the Worker's nonce is not signed into it; the recording fixes both).
+        const port = await fixtureKeyPort(String(step.args.keyLabel));
+        // Each recorded attempt is its own client: one that signed in earlier holds no token now.
+        if (session.hasToken) {
+          store.token = null;
+          session = makeSession();
+          await session.init();
+        }
+        suppliedNonce = stringArg(step, "nonce") ?? null;
+        issuedTokenType = undefined;
+        try {
+          const r = await session.exchange(port, {
+            kind: step.args.kind as "google" | "apple",
+            subjectToken: async () => String(step.args.subjectToken),
+          });
+          switch (r.kind) {
+            case "signedIn":
+              observed.result = "ok";
+              observed.scope = r.scope;
+              observed.licenseId = r.activation.licenseId;
+              if (issuedTokenType !== undefined)
+                observed.issuedTokenType = issuedTokenType;
+              break;
+            case "pendingConsent":
+              observed.result = "confirm";
+              observed.firstTime = r.consent.firstTime;
+              observed.changed = r.consent.changed;
+              observed.as = r.consent.as as unknown as JsonValue;
+              break;
+            case "pendingSignIn":
+              observed.result = "choose";
+              break;
+            case "needsSignIn":
+              observed.result = "interstitial-required";
+              observed.reason = r.reason;
+              observed.url = r.url;
+              if (r.linkHandle !== undefined)
+                observed.linkHandle = r.linkHandle;
+              if (r.expiresIn !== undefined) observed.expiresIn = r.expiresIn;
+              break;
+            case "unavailable":
+              observed.result = "unavailable";
+              break;
+          }
+        } catch (e) {
+          // A refusal is a typed error: the wire code is what the other SDKs report.
+          if (!(e instanceof PolarisError)) throw e;
+          observed.result = "refused";
+          observed.code = e.wireCode ?? e.code;
+        } finally {
+          suppliedNonce = null;
+        }
         break;
       }
       case "fetchSchema":
@@ -1042,20 +1316,14 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // I-10a.10). identity.choice (I-10a.11) is I-08b's redirect-web-choose*, choice-* transcripts (the
     // choice.* primitives). sync.settings is U-05's cloudsync-*
     // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
-    // identity.exchange is I-13.7's exchange-* transcripts (FedCM and GIS, I-46); the Node
-    // runner replays them with a reference client (exchangeTranscripts.test.ts). sync.keyring is
+    // identity.exchange (I-46.5) is I-13.7's exchange-* transcripts, replayed through
+    // `session.exchange` over a fixture key port. sync.keyring is
     // U-36.4's keyring-* transcripts are replayed here through the ring engine (U-38.2).
-    // connect.relay is CC-07.3's connect-relay-* transcripts; the relay client is CC-09.
+    // connect.relay is CC-07.3's connect-relay-* transcripts, replayed here (CC-09.2).
     // identity.link is I-43.3's link-* transcripts (the link offer, I-46); the Node runner replays
     // them with a reference client (linkTranscripts.test.ts).
-    // connect.identity is CC-06.4's connect-identity* transcripts; React's port is CC-09.
-    const plannedHere = [
-      "sync.settings",
-      "identity.exchange",
-      "identity.link",
-      "connect.relay",
-      "connect.identity",
-    ];
+    // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
+    const plannedHere = ["sync.settings", "identity.link"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];
@@ -1468,3 +1736,40 @@ describe("the React replayer's commerce mapping fails on a doctored transcript",
     await expect(replay(t)).rejects.toThrow(/step 1: result/);
   });
 });
+
+/**
+ * The fixture device keys of `label` as a key port (format.ts, connectIdentity): the Ed25519 key is
+ * seeded by SHA-256(label), the agreement key's bytes are SHA-256(label + ":agree") with the top bit
+ * clear, so the recorded `PUT /<p>/devices/keys` bytes are the ones this sends. The agreement key
+ * has no private half here, so `dh` answers nothing; identity needs none.
+ */
+function connectKeyPort(label: string): DeviceKeyPort {
+  const seed = createHash("sha256").update(label).digest();
+  const priv = createPrivateKey({
+    key: Buffer.concat([
+      Buffer.from("302e020100300506032b657004220420", "hex"),
+      seed,
+    ]),
+    format: "der",
+    type: "pkcs8",
+  });
+  const signKey = (
+    createPublicKey(priv).export({ format: "jwk" }) as { x: string }
+  ).x;
+  const agree = createHash("sha256").update(`${label}:agree`).digest();
+  agree[31]! &= 0x7f;
+  const keys = {
+    signKey,
+    agreeKey: agree.toString("base64url"),
+    generation: 1,
+  };
+  return {
+    ensure: async () => keys,
+    publicKeys: async () => keys,
+    sign: async (m) => new Uint8Array(edSign(null, Buffer.from(m), priv)),
+    dh: async () => null,
+    rotate: async () => keys,
+    persistence: () => "durable",
+    wipe: async () => undefined,
+  };
+}

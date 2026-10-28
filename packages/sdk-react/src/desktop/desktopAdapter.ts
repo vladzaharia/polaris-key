@@ -41,6 +41,7 @@ import { createStore, type Store } from "../core/store.js";
 import { BeforeSignOutHooks } from "../core/account.js";
 import { BridgeDeviceCodeSession } from "./bridgeSignIn.js";
 import type {
+  AutoSignInResult,
   DeviceCodeSignInSession,
   RedirectSignInSession,
   SignInNamespace,
@@ -48,6 +49,10 @@ import type {
 } from "../core/signIn.js";
 import type { ChoiceNamespace } from "../core/choice.js";
 import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
+import {
+  unsupportedCloudConnect,
+  type CloudConnectClient,
+} from "../browser/connect/index.js";
 import {
   BridgePresentationSource,
   type ReactPresentationSource,
@@ -894,6 +899,12 @@ export class DesktopAdapter implements PolarisAdapter {
     "The desktop bridge has no key ring verb yet. Unlock Cloud Sync on the desktop host, or use a browser page.",
   );
 
+  /** Cloud Connect (connect.app): the typed N/A here. */
+  readonly cloudConnect: CloudConnectClient = unsupportedCloudConnect(
+    "version",
+    "The desktop bridge has no Cloud Connect verb yet. Use the host process's Node SDK, or a browser page.",
+  );
+
   /** `signIn.start` (identity.signIn): a device-code session over the bridge's `beginSignIn` /
    *  `pollSignIn`. The redirect and the hints the verbs do not carry are refused, typed. */
   readonly signIn: SignInNamespace = {
@@ -914,6 +925,11 @@ export class DesktopAdapter implements PolarisAdapter {
     complete: () => this.noChoice(),
     cancel: () => this.noChoice(),
   };
+
+  /** The desktop bridge has no platform sign-in verb (D-12): the ladder is unavailable here. */
+  async autoSignIn(): Promise<AutoSignInResult> {
+    return { kind: "unavailable", code: "runtime" };
+  }
 
   private noChoice(): Promise<never> {
     return Promise.reject(
