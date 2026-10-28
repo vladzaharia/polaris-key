@@ -287,6 +287,8 @@ static func activate_view(ctx: RefCounted) -> Dictionary:
 # form's key step both draw it. A refusal a different key can fix stays stacked under the field.
 
 const OWNED_SIGN_IN := "signin.key.ownedSignIn"
+## The key-entry limit's primary (`ownedSignIn` is for license_owned only).
+const LIMIT_SIGN_IN := "signin.key.signIn"
 
 
 ## Which focused refusal an activation answer is ("key-entry-limit" or "license-owned"), or null.
@@ -309,15 +311,16 @@ static func key_refusal_spec(ctx: RefCounted, kind: String, a: Dictionary) -> Di
 	var c: String = Context.platform_class(ctx.platform)
 	var tv := c == "tv" or c == "console"
 	var add: bool = link != null and link["url"] != null
+	var primary := LIMIT_SIGN_IN if limit else OWNED_SIGN_IN
 	var copy: Array = [
 		"core.activation.key-entry-limit.title" if limit else "core.codes.license_owned.title",
 		"core.activation.key-entry-limit.message" if limit else "core.codes.license_owned.message",
-		OWNED_SIGN_IN,
+		primary,
 	]
 	if add:
 		copy += ["signin.key.scan", "a11y.qrAddKey"] if tv else ["signin.key.addInLocker", "a11y.externalLink"]
 	copy.append("signin.key.differentKey")
-	return {"copy": copy, "primary": OWNED_SIGN_IN, "link": link, "qr": add and tv}
+	return {"copy": copy, "primary": primary, "link": link, "qr": add and tv}
 
 
 # ── OfflineActivation ─────────────────────────────────────────────────────────────────────────

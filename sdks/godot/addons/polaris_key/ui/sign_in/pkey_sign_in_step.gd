@@ -31,6 +31,26 @@ signal secondary_pressed(step: String)
 	set(value):
 		developer = value
 		refresh_view()
+## The account's tier, for a done line that names it.
+@export var tier := "":
+	set(value):
+		tier = value
+		refresh_view()
+## The code the waiting device shows (nearby-wait), which is tapped on the approving device.
+@export var code := "":
+	set(value):
+		code = value
+		refresh_view()
+## The confirm step's license line: "none", "new" or "existing".
+@export_enum("none", "new", "existing") var license_line := "none":
+	set(value):
+		license_line = value
+		refresh_view()
+## The confirm step lists what the app also gets (a first sign-in, or the consent changed).
+@export var also_gets := false:
+	set(value):
+		also_gets = value
+		refresh_view()
 ## The provider's name, or "" for the default.
 @export var provider := "":
 	set(value):
@@ -39,25 +59,27 @@ signal secondary_pressed(step: String)
 
 var model: Dictionary = {}
 
-## State -> [title, body, primary, secondary] catalog keys ("" for none), `body` for the confirm
-## step chosen by whether an email came back.
+## State -> [title key, body keys (shown when the model names them), secondary keys]; the
+## primary is the model's. Every step has a title that takes focus and no Cancel.
 const LAYOUT := {
-	"confirm": ["signin.auto.confirm.title", "", "signin.auto.confirm.primary", "signin.auto.confirm.other"],
-	"link-offer": ["signin.linkOffer.title", "", "signin.linkOffer.primary", "signin.linkOffer.decline"],
-	"link-done": ["", "signin.linkOffer.done", "", ""],
-	"link-conflict": ["", "signin.linkOffer.conflict", "", ""],
-	"nearby-prompt": ["", "signin.nearby.prePrompt", "signin.auto.confirm.primary", "common.notNow"],
-	"nearby-wait": ["signin.nearby.title", "signin.nearby.body", "", "signin.nearby.code"],
-	"nearby-done": ["", "signin.nearby.done", "", "signin.nearby.notYou"],
+	"confirm": ["signin.auto.confirm.title", ["signin.auto.confirm.as", "signin.auto.confirm.asApple", "signin.consent.license", "signin.consent.newLicense", "signin.consent.licenseLine", "signin.consent.alsoGets", "signin.consent.profile", "signin.consent.pairwise"], ["signin.auto.confirm.other"]],
+	"link-offer": ["signin.linkOffer.title", ["signin.linkOffer.bodyGlobal", "signin.linkOffer.bodyDeveloper", "signin.linkOffer.bodyApp"], ["signin.linkOffer.decline"]],
+	"link-done": ["signin.linkOffer.done", [], []],
+	"link-conflict": ["signin.linkOffer.conflictTitle", ["signin.linkOffer.conflict"], ["signin.linkOffer.join"]],
+	"nearby-prompt": ["signin.nearby.promptTitle", ["signin.nearby.prePrompt"], ["common.notNow"]],
+	"nearby-wait": ["signin.nearby.title", ["signin.nearby.body", "signin.nearby.match"], ["signin.nearby.code"]],
+	"nearby-done": ["signin.nearby.done", [], ["signin.nearby.notYou"]],
 }
 
 var _body: VBoxContainer
 var _product: PKeyProductHeader
 var _title: Label
 var _lede: Label
+var _lines: Array = []
 var _actions: BoxContainer
 var _primary: Button
 var _secondary: Button
+var _secondary2: Button
 
 
 func _build() -> void:
@@ -68,10 +90,15 @@ func _build() -> void:
 	var words := vbox(_body, "Words", "PKeyTight")
 	_title = label(words, "Title", "PKeyTitle")
 	_lede = label(words, "Lede", "PKeyMuted")
+	for i in 7:
+		_lines.append(label(words, "Line%d" % i, "PKeyMuted"))
 	loading_bar(_body)
 	_actions = actions_row(_body, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_primary = button(_actions, "Primary", func() -> void: primary_pressed.emit(step), "PKeyPrimary")
 	_secondary = button(_actions, "Secondary", func() -> void: secondary_pressed.emit(step), "PKeyLink")
+	_secondary2 = button(_actions, "Secondary2", func() -> void: secondary_pressed.emit(step), "PKeyLink")
+	for b in [_primary, _secondary, _secondary2]:
+		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _card_shown() -> bool:
@@ -79,7 +106,13 @@ func _card_shown() -> bool:
 
 
 func squeeze_max() -> int:
-	return 1
+	return 2
+
+
+func _arrange(m: Dictionary) -> void:
+	super(m)
+	# Short on room, the product header gives way before the card scrolls.
+	_product.visible = squeeze_level() < 1
 
 
 func _screen_key() -> String:
@@ -97,6 +130,14 @@ func _render() -> void:
 		inp["provider"] = provider
 	if developer != "":
 		inp["integrator"] = {"developer": developer}
+	if license_line != "none":
+		auto["license"] = license_line
+	if also_gets:
+		auto["alsoGets"] = true
+	if code != "":
+		auto["code"] = code
+	if tier != "":
+		inp["account"] = {"tier": tier}
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SignIn", inp)
 	var id := PKeyUiTheme.product_identity()
 	var args := {
@@ -104,22 +145,22 @@ func _render() -> void:
 		"developer": PKeyUiTheme.isolate(developer),
 		"email": PKeyUiTheme.isolate(email),
 		"provider": PKeyUiTheme.isolate(provider if provider != "" else PKeyConstants.SIGN_IN_PROVIDER_NAME),
+		"tier": PKeyUiTheme.isolate(tier),
+		"code": code,
 	}
 	_product.refresh()
 	var row: Array = LAYOUT.get(step, LAYOUT["nearby-done"])
-	# The copy the model names is the copy drawn: the body of a confirm or a link offer is whichever
-	# of its two lines the model chose.
+	# The copy the model names is the copy drawn: each body line is one the model chose.
 	var copy: Array = model.get("copy", [])
-	var body: String = row[1]
-	if step == "confirm":
-		body = "signin.auto.confirm.as" if copy.has("signin.auto.confirm.as") else "signin.auto.confirm.asApple"
-	elif step == "link-offer":
-		body = "signin.linkOffer.bodyGlobal" if copy.has("signin.linkOffer.bodyGlobal") else "signin.linkOffer.bodyDeveloper"
+	var lines: Array = (row[1] as Array).filter(func(k): return copy.has(k))
 	cat_text(_title, row[0], args)
-	cat_text(_lede, body, args)
-	cat_text(_primary, row[2], args)
-	cat_text(_secondary, row[3], args)
-	_secondary.theme_type_variation = &"PKeyLink"
+	cat_text(_lede, "", args)
+	for i in _lines.size():
+		cat_text(_lines[i], lines[i] if i < lines.size() else "", args)
+	cat_text(_primary, String(model["decisions"].get("primary") if model.get("decisions") != null and model["decisions"].get("primary") != null else ""), args)
+	var sec: Array = row[2]
+	cat_text(_secondary, sec[0] if sec.size() > 0 else "", args)
+	cat_text(_secondary2, sec[1] if sec.size() > 1 else "", args)
 	# The wait for the other device shows the thin indicator, never a spinner in the title.
 	set_loading(step == "nearby-wait")
 	set_process(step == "nearby-wait")
@@ -132,4 +173,4 @@ func _initial_focus() -> Control:
 
 
 func _focus_chain() -> Array:
-	return [_primary, _secondary]
+	return [_primary, _secondary, _secondary2]

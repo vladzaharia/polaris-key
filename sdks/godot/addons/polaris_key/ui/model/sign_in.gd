@@ -238,46 +238,65 @@ static func _per_developer(provider: String, reach: Variant) -> bool:
 
 
 ## Automatic sign-in's steps, drawn in the form's body (plans/auto-sign-in.md §3): confirm the
-## account, offer to link the provider, and the nearby wait.
+## account, offer to link the provider, and the nearby wait. Every outcome has a title that takes
+## focus and one way on (Continue).
 static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictionary) -> Dictionary:
 	var provider: String = str(View.first([ctx.input.get("provider"), PKeyConstants.SIGN_IN_PROVIDER_NAME]))
 	var args := base_args.duplicate()
 	args["provider"] = provider
+	var account = ctx.input.get("account")
+	args["tier"] = account.get("tier") if account is Dictionary else null
+	args["code"] = auto.get("code")
 	var step: String = str(auto.get("step"))
 	var copy: Array
 	var primary = null
 	var tone = null
 	match step:
 		"confirm":
+			var kind = auto.get("license")
+			var also := View.truthy(auto.get("alsoGets"))
 			copy = [
 				"signin.auto.confirm.title",
 				"signin.auto.confirm.as" if View.truthy(auto.get("email")) else "signin.auto.confirm.asApple",
+				"signin.consent.license" if View.truthy(kind) else null,
+				"signin.consent.newLicense" if kind == "new" else null,
+				"signin.consent.licenseLine" if kind == "existing" else null,
+				"signin.consent.alsoGets" if also else null,
+				"signin.consent.profile" if also else null,
+				"signin.consent.pairwise" if also else null,
 				"signin.auto.confirm.primary",
 				"signin.auto.confirm.other",
 			]
 			primary = "signin.auto.confirm.primary"
 		"link-offer":
-			copy = [
-				"signin.linkOffer.title",
-				"signin.linkOffer.bodyDeveloper" if _per_developer(provider, auto.get("reach")) else "signin.linkOffer.bodyGlobal",
-				"signin.linkOffer.primary",
-				"signin.linkOffer.decline",
-			]
+			var body := "signin.linkOffer.bodyGlobal"
+			if _per_developer(provider, auto.get("reach")):
+				body = "signin.linkOffer.bodyDeveloper" if View.truthy(args.get("developer")) else "signin.linkOffer.bodyApp"
+			copy = ["signin.linkOffer.title", body, "signin.linkOffer.primary", "signin.linkOffer.decline"]
 			primary = "signin.linkOffer.primary"
 		"link-done":
-			copy = ["signin.linkOffer.done"]
+			copy = ["signin.linkOffer.done", "common.continue"]
+			primary = "common.continue"
 		"link-conflict":
-			copy = ["signin.linkOffer.conflict"]
+			copy = ["signin.linkOffer.conflictTitle", "signin.linkOffer.conflict", "signin.linkOffer.join", "common.continue"]
+			primary = "common.continue"
 			tone = "neutral"
 		"nearby-prompt":
-			copy = ["signin.nearby.prePrompt", "signin.auto.confirm.primary", "common.notNow"]
-			primary = "signin.auto.confirm.primary"
+			copy = ["signin.nearby.promptTitle", "signin.nearby.prePrompt", "common.continue", "common.notNow"]
+			primary = "common.continue"
 		"nearby-wait":
-			copy = ["signin.nearby.title", "signin.nearby.body", "signin.nearby.code"]
+			copy = [
+				"signin.nearby.title",
+				"signin.nearby.body",
+				"signin.nearby.match",
+				"a11y.nearbyCode" if View.truthy(auto.get("code")) else null,
+				"signin.nearby.code",
+			]
 		_:
 			step = "nearby-done"
-			copy = ["signin.nearby.done", "signin.nearby.notYou"]
-	return View.make(ctx, "SignIn", {"state": step, "copy": copy, "args": args, "primary": primary, "tone": tone})
+			copy = ["signin.nearby.done", "common.continue", "signin.nearby.notYou"]
+			primary = "common.continue"
+	return View.make(ctx, "SignIn", {"state": step, "copy": copy, "args": args, "primary": primary, "tone": tone, "focus": "heading"})
 
 
 static func _methods_view(ctx: RefCounted, args: Dictionary) -> Dictionary:

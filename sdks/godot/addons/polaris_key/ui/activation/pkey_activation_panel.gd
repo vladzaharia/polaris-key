@@ -241,6 +241,9 @@ func _build() -> void:
 	_limit_actions = actions_row(_limit_right, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_again = button(_limit_actions, "TryAgain", _on_again, "PKeyPrimary")
 	_other_key = button(_limit_actions, "DifferentKey", _on_other_key)
+	# A long label (German, a game's large type) wraps rather than widening the card.
+	for b in [_manage, _again, _other_key]:
+		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sign_in_dialog = PKeySignInDialog.new()
 	sign_in_dialog.auto_sdk = false
 	sign_in_dialog.confirm_identity = confirm_identity
@@ -323,7 +326,7 @@ func preferred_width() -> float:
 
 ## The device-limit view's two columns (the state, the way out): on a landscape panel with room.
 func _limit_side_by_side() -> bool:
-	if not in_limit_view() or mode != "main" or phone_screen() or not bool(layout_metrics().get("landscape", false)):
+	if not in_limit_view() or (refusal != "" and manage_presentation() != "qr") or mode != "main" or phone_screen() or not bool(layout_metrics().get("landscape", false)):
 		return false
 	# Only when the width this panel really gets holds both columns (a host card around it can be
 	# narrower than the screen): each column keeps most of a single column's width.
@@ -436,14 +439,22 @@ func _arrange(m: Dictionary) -> void:
 	# a QR code instead of the button, Try again is the primary.
 	_again.theme_type_variation = &"" if _manage.visible else &"PKeyPrimary"
 	_manage.theme_type_variation = &"PKeyPrimary"
+	_other_key.theme_type_variation = &""
+	_other_key.remove_theme_font_size_override("font_size")
 	if refusal != "":
 		# Sign in is the one primary; the add-key link sits between it and Use a different key.
 		_again.theme_type_variation = &"PKeyPrimary"
 		_manage.theme_type_variation = &""
+		# Use a different key is the quiet way out: a link, which has room on a large-type phone.
+		_other_key.theme_type_variation = &"PKeyLink"
+		_fit_font(_other_key)
 		place(_manage, _limit_actions, 1)
+		# The QR (a pad-only device) sits under the actions, so Sign in is always the first thing.
+		_limit_right.move_child(_remedy, _limit_right.get_child_count() - 1)
 		return
 	# On a phone the three actions dock together at the bottom, the primary on top.
 	var docked := phone_screen() and not limit.is_empty()
+	_limit_right.move_child(_remedy, 0)
 	if docked:
 		place(_manage, _limit_actions, 0)
 	else:
@@ -613,16 +624,28 @@ func _render_limit(t: PKeyUiCopy) -> void:
 	_other_key.text = t.text("different_key")
 
 
+## A button's label never wraps below its words' width, so on a phone in a game's large type the
+## quiet button would be wider than the card: shrink its type to what the room allows.
+func _fit_font(b: Button) -> void:
+	b.remove_theme_font_size_override("font_size")
+	var room := content_room().x
+	var need := b.get_combined_minimum_size().x
+	if room > 0.0 and need > room:
+		var size := b.get_theme_font_size("font_size")
+		b.add_theme_font_size_override("font_size", maxi(roundi(size * room / need) - 1, 8))
+
+
 ## The focused key refusal (ui-matrix v7): the product, a title and one sentence, then Sign in
 ## (the primary, the kit's own), "Add it in Polaris Locker" for the limit (a QR with its caption on a
 ## pad-only device), and Use a different key (quiet).
 func _render_refusal(t: PKeyUiCopy) -> void:
-	_limit_product.visible = true
+	# Short on room, the product header gives way before the screen scrolls.
+	_limit_product.visible = squeeze_level() < 2
 	_limit_product.refresh()
 	var limit_kind := refusal == "key-entry-limit"
 	_limit_title.text = t.text("refusal_limit_title" if limit_kind else "refusal_owned_title")
 	_limit_lede.text = t.text("refusal_limit_lede" if limit_kind else "refusal_owned_lede")
-	_limit_lede.visible = true
+	_limit_lede.visible = squeeze_level() < 3
 	_seats.visible = false
 	var as_qr := manage_presentation() == "qr"
 	var has_link := limit_kind and manage_url != ""

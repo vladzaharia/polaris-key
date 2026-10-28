@@ -2,52 +2,71 @@
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Words/Lede: Label "as \u2068ada@example.com\u2069"
+Card/Scroll/Body/Words/Line0: Label "as \u2068ada@mail.io\u2069"
 Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
 == confirm, Apple shared no email ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Words/Lede: Label "with your Apple ID"
+Card/Scroll/Body/Words/Line0: Label "with your Apple Account"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
+== confirm, a new license and what the app also gets ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Words/Line0: Label "as \u2068ada@mail.io\u2069"
+Card/Scroll/Body/Words/Line1: Label "License for this device"
+Card/Scroll/Body/Words/Line2: Label "New:  license, created when you continue"
+Card/Scroll/Body/Words/Line3: Label "\u2068Polaris Key SDK\u2069 will also get"
+Card/Scroll/Body/Words/Line4: Label "Your profile and email"
+Card/Scroll/Body/Words/Line5: Label "It gets its own id for you, and won't see your other products or how you sign in."
 Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
 == link offer, Google shared across apps ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Sign in with \u2068Polaris Locker\u2069 next time?"
-Card/Scroll/Body/Words/Lede: Label "\u2068Polaris Key SDK\u2069 and other apps that use Polaris Locker sign you in by themselves."
+Card/Scroll/Body/Words/Line0: Label "Then \u2068Polaris Key SDK\u2069 and other apps that use Polaris Locker can sign you in by themselves."
 Card/Scroll/Body/Actions/Primary: Button "Link \u2068Polaris Locker\u2069" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
 == link offer, per developer ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Sign in with \u2068Polaris Locker\u2069 next time?"
-Card/Scroll/Body/Words/Lede: Label "Apps from \u2068Drift Studio\u2069 sign you in by themselves."
+Card/Scroll/Body/Words/Line0: Label "Then apps from \u2068Drift Studio\u2069 can sign you in by themselves."
 Card/Scroll/Body/Actions/Primary: Button "Link \u2068Polaris Locker\u2069" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "No thanks" [focus 2]
 == link done ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Words/Lede: Label "\u2068Polaris Locker\u2069 linked."
+Card/Scroll/Body/Words/Title: Label "\u2068Polaris Locker\u2069 linked"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
 == link conflict ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Words/Lede: Label "This \u2068Polaris Locker\u2069 account is linked to another Polaris Locker account."
+Card/Scroll/Body/Words/Title: Label "\u2068Polaris Locker\u2069 not linked"
+Card/Scroll/Body/Words/Line0: Label "This \u2068Polaris Locker\u2069 account belongs to another Polaris Locker account. You're still signed in."
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Join accounts" [focus 2]
 == nearby prompt ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Words/Lede: Label "Allow access to devices on your network next, so your phone can sign you in."
+Card/Scroll/Body/Words/Title: Label "Sign in with your phone"
+Card/Scroll/Body/Words/Line0: Label "Next, allow \u2068Polaris Key SDK\u2069 to find devices on your network, so your phone can sign you in."
 Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "Not now" [focus 2]
 == nearby wait ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Approve on your other device"
-Card/Scroll/Body/Words/Lede: Label "Open \u2068Polaris Key SDK\u2069 on a phone or computer where you're signed in."
+Card/Scroll/Body/Words/Line0: Label "Open \u2068Polaris Key SDK\u2069 on a phone or computer that's signed in and on this network."
+Card/Scroll/Body/Words/Line1: Label "Tap this code there:"
 Card/Scroll/Body/Actions/Secondary: Button "Use a code instead" [focus 1]
 == nearby done ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Words/Lede: Label "Signed in as \u2068ada@example.com\u2069"
-Card/Scroll/Body/Actions/Secondary: Button "Not you?" [focus 1]
+Card/Scroll/Body/Words/Title: Label "Signed in as \u2068ada@mail.io\u2069"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Not you?" [focus 2]

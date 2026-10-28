@@ -116,7 +116,7 @@ func all() -> Array:
 	for c in SIGN_IN_STEP_CASES:
 		out.append(["sign_in_step", c[0], sign_in_step.bind(c[1])])
 	# ── PKeyNearbyApproval (ui-matrix v7).
-	for c in ["entry", "ask", "approved", "not-nearby", "hidden"]:
+	for c in ["entry", "ask", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose", "account-required", "rate-limited", "no-name", "hidden"]:
 		out.append(["nearby", c, nearby.bind(c)])
 	# ── PKeySignInDialog.
 	out.append(["sign_in", "starting", sign_in.bind("starting")])
@@ -395,6 +395,7 @@ func activation_refusal(kind: String, how: String) -> Control:
 const SIGN_IN_STEP_CASES := [
 	["confirm, the account's email", "confirm"],
 	["confirm, Apple shared no email", "confirm-apple"],
+	["confirm, a new license and what the app also gets", "confirm-license"],
 	["link offer, Google shared across apps", "link-offer-global"],
 	["link offer, per developer", "link-offer-developer"],
 	["link done", "link-done"],
@@ -412,9 +413,13 @@ func sign_in_step(kind: String) -> Control:
 	s.developer = "Drift Studio"
 	match kind:
 		"confirm":
-			s.email = "ada@example.com"
+			s.email = "ada@mail.io"
 		"confirm-apple":
 			s.provider = "Apple"
+		"confirm-license":
+			s.email = "ada@mail.io"
+			s.license_line = "new"
+			s.also_gets = true
 		"link-offer-global":
 			s.step = "link-offer"
 			s.reach = "global"
@@ -423,10 +428,13 @@ func sign_in_step(kind: String) -> Control:
 			s.reach = "developer"
 		"nearby-done":
 			s.step = "nearby-done"
-			s.email = "ada@example.com"
+			s.email = "ada@mail.io"
+		"nearby-wait":
+			s.step = "nearby-wait"
+			s.code = "482 913"
 		_:
 			s.step = kind
-	if kind == "confirm" or kind == "confirm-apple":
+	if kind == "confirm" or kind == "confirm-apple" or kind == "confirm-license":
 		s.step = "confirm"
 	s.refresh_view()
 	return s
@@ -436,9 +444,11 @@ func nearby(kind: String) -> Control:
 	var n := PKeyNearbyApproval.new()
 	n.auto_sdk = false
 	add(n)
-	n.device = "Living room TV"
+	n.device = "" if kind == "no-name" else "Living room TV"
 	if kind == "hidden":
 		n.identity_on = false
+	elif kind == "no-name":
+		n.step = "approved"
 	else:
 		n.step = kind
 	if kind == "ask":
@@ -475,7 +485,7 @@ func sign_in(state: String) -> Control:
 			d.refresh_view()
 		"confirm":
 			d.show_prompt(prompt_fixture())
-			d.show_confirm({"identity": {"name": "Ada Lovelace", "email": "ada@example.com"}, "attachable": true})
+			d.show_confirm({"identity": {"name": "Ada Lovelace", "email": "ada@mail.io"}, "attachable": true})
 		"ok":
 			d.show_result(PKeySignInOutcome.signed_in({"name": "Ada"}, "", true, null))
 		"expired":

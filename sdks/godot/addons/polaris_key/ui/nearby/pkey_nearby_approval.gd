@@ -6,17 +6,21 @@ extends PKeyUiView
 ## denies. The kit draws the states from the model; the protocol, the codes and what a tap does are
 ## the host's (CC-15): set `step`, `device` and `codes`, and connect the signals.
 ##
-## Steps: `entry` (the account menu's "Approve a nearby device"), `ask`, `approved`, `not-nearby`.
+## Steps: `entry` (the account menu's "Approve a nearby device"), `ask`, and the outcomes
+## `approved`, `not-nearby`, `mismatch`, `denied`, `expired`, `device-limit`, `choose`,
+## `account-required` and `rate-limited`, each a title that takes focus and one way on.
 ## Hidden when the Identity service is off (`identity_on`).
 
 ## The account-menu entry was chosen.
 signal entry_pressed()
 ## One of the three codes was tapped. The host decides whether it is the matching one.
 signal code_chosen(code: String)
-## Not now.
+## Deny.
 signal denied()
+## An outcome's one way on (Done, Manage devices, Continue, Sign in, Try again).
+signal primary_pressed(step: String)
 
-@export_enum("entry", "ask", "approved", "not-nearby") var step := "entry":
+@export_enum("entry", "ask", "approved", "not-nearby", "mismatch", "denied", "expired", "device-limit", "choose", "account-required", "rate-limited") var step := "entry":
 	set(value):
 		step = value
 		refresh_view()
@@ -37,6 +41,19 @@ signal denied()
 
 var model: Dictionary = {}
 
+## State -> [title key, body keys, primary key] for the outcomes; the title takes focus.
+const OUTCOMES := {
+	"approved": ["signin.nearby.approved", [], "common.done"],
+	"not-nearby": ["signin.nearby.notNearby", ["signin.nearby.notNearbyBody"], "common.done"],
+	"mismatch": ["signin.nearby.mismatch", [], "common.done"],
+	"denied": ["signin.approve.deniedDone", [], "common.done"],
+	"expired": ["core.codes.sign-in-expired.title", ["core.codes.sign-in-expired.message"], "common.done"],
+	"device-limit": ["core.codes.device_limit.title", ["core.codes.device_limit.message"], "devices.manage"],
+	"choose": ["signin.choice.title", ["signin.choice.lede"], "signin.choice.continue"],
+	"account-required": ["core.codes.account_required.title", ["core.codes.account_required.message"], "signin.key.signIn"],
+	"rate-limited": ["core.codes.rate_limited.title", ["core.codes.rate_limited.message"], "common.tryAgain"],
+}
+
 var _body: VBoxContainer
 var _product: PKeyProductHeader
 var _title: Label
@@ -46,6 +63,7 @@ var _codes_row: BoxContainer
 var _code_buttons: Array = []
 var _deny: Button
 var _status: Label
+var _primary: Button
 
 
 func _build() -> void:
@@ -56,7 +74,9 @@ func _build() -> void:
 	var words := vbox(_body, "Words", "PKeyTight")
 	_title = label(words, "Title", "PKeyTitle")
 	_lede = label(words, "Lede", "PKeyMuted")
-	_status = label(_body, "Status")
+	_status = label(words, "Status", "PKeyMuted")
+	_primary = button(_body, "Primary", func() -> void: primary_pressed.emit(step), "PKeyPrimary")
+	_primary.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_entry = button(_body, "Entry", func() -> void: entry_pressed.emit(), "PKeyLink")
 	_entry.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_codes_row = actions_row(_body, "Codes", BoxContainer.ALIGNMENT_BEGIN)
@@ -66,6 +86,8 @@ func _build() -> void:
 		_code_buttons.append(b)
 	_deny = button(_body, "Deny", func() -> void: denied.emit(), "PKeyLink")
 	_deny.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	for b in [_primary, _entry, _deny]:
+		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _bleeds() -> bool:
@@ -77,7 +99,13 @@ func _card_shown() -> bool:
 
 
 func squeeze_max() -> int:
-	return 1
+	return 2
+
+
+func _arrange(m: Dictionary) -> void:
+	super(m)
+	# Short on room, the product header gives way before the card scrolls.
+	_product.visible = squeeze_level() < 1
 
 
 func _screen_key() -> String:
@@ -91,15 +119,20 @@ func _render() -> void:
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("NearbyApproval", inp)
 	var state: String = model.get("state", "hidden")
 	visible = state != "hidden"
-	var args := {"device": PKeyUiTheme.isolate(device)}
+	# A missing device name reads "the new device".
+	var shown := device if device != "" else String(catalog().format("part.newDevice", {}))
+	var args := {"device": PKeyUiTheme.isolate(shown), "product": PKeyUiTheme.isolate(String(PKeyUiTheme.product_identity()["name"]))}
 	_product.refresh()
 	var ask := state == "ask"
-	cat_text(_title, "signin.nearby.ask" if ask else "", args)
-	cat_text(_lede, "signin.nearby.askBody" if ask else "", args)
+	var outcome: Array = OUTCOMES.get(state, ["", [], ""])
+	var body: Array = ["signin.nearby.askBody", "signin.approve.warning"] if ask else outcome[1]
+	cat_text(_title, "signin.nearby.ask" if ask else outcome[0], args)
+	cat_text(_lede, body[0] if body.size() > 0 else "", args)
+	cat_text(_status, body[1] if body.size() > 1 else "", args)
+	_status.theme_type_variation = &"PKeyMuted"
 	cat_text(_entry, "signin.nearby.menu" if state == "entry" else "", args)
-	cat_text(_status, "signin.nearby.approved" if state == "approved" else "signin.nearby.notNearby" if state == "not-nearby" else "", args)
-	_status.theme_type_variation = &"PKeyMuted" if state == "not-nearby" else &""
-	cat_text(_deny, "signin.nearby.deny" if ask else "", args)
+	cat_text(_primary, outcome[2], args)
+	cat_text(_deny, "signin.approve.deny" if ask else "", args)
 	_codes_row.visible = ask
 	for i in _code_buttons.size():
 		var b := _code_buttons[i] as Button
@@ -107,6 +140,7 @@ func _render() -> void:
 		b.text = codes[i] if i < codes.size() else ""
 		# A code is a number, not a word: drawn as given, never translated or mirrored.
 		b.set_meta(DATA_META, true)
+		b.tooltip_text = ""
 
 
 func _on_code(i: int) -> void:
@@ -117,11 +151,13 @@ func _on_code(i: int) -> void:
 func _initial_focus() -> Control:
 	if step == "ask":
 		return _code_buttons[0] if is_focusable(_code_buttons[0]) else _deny
+	if is_focusable(_primary):
+		return _primary
 	return _entry if is_focusable(_entry) else null
 
 
 func _focus_chain() -> Array:
-	return _code_buttons + [_deny, _entry]
+	return _code_buttons + [_deny, _primary, _entry]
 
 
 func _cancel() -> bool:

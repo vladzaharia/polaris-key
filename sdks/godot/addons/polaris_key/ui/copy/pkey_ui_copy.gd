@@ -109,11 +109,11 @@ const DEFAULTS := {
 	"different_key": "Use a different key",
 	# The focused key refusals (ui-matrix v7): the key-entry limit and a license another account holds.
 	"refusal_limit_title": "No key entries left",
-	"refusal_limit_lede": "Add it to your account and sign in instead.",
+	"refusal_limit_lede": "Sign in and add this key to your Polaris Locker account instead.",
 	"refusal_owned_title": "License in another account",
 	"refusal_owned_lede": "This {product} license is already in another Polaris Locker account. A license never moves by its key.",
 	"add_in_locker": "Add it in Polaris Locker",
-	"add_in_locker_scan": "Scan to add it in Polaris Locker on your phone.",
+	"add_in_locker_scan": "Scan to add this key in Polaris Locker on your phone.",
 	"use_another_license": "Use another license",
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
