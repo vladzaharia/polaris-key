@@ -4302,7 +4302,7 @@
       "jscpd:duplicate": 6
     },
     "packages/worker/test/transcripts/scenarios/connect.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/worker/test/transcripts/scenarios/devices.ts": {
       "jscpd:duplicate": 4
@@ -4318,9 +4318,6 @@
     },
     "packages/worker/test/transcripts/scenarios/keyEntry.ts": {
       "jscpd:duplicate": 16
-    },
-    "packages/worker/test/transcripts/scenarios/keyring.ts": {
-      "jscpd:duplicate": 1
     },
     "packages/worker/test/transcripts/scenarios/license.ts": {
       "jscpd:duplicate": 7

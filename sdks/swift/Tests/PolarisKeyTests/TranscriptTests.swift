@@ -334,7 +334,7 @@ enum SwiftReplay {
                 session.keyLabel = label
             }
             if step.action == "connectIdentity" {
-                switch await client.connect.identity() {
+                switch await client.connect.identity(refresh: step.args["refresh"]?.boolValue ?? false) {
                 case .ready(let id):
                     out["result"] = .string("ok")
                     out["epoch"] = .int(id.ring.epoch)
