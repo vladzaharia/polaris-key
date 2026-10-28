@@ -128,6 +128,13 @@ public protocol StoreClient: Sendable {
     func finish(transactionID: UInt64) async -> Bool
 }
 
+/// Thrown by `StoreClient.purchase` where StoreKit cannot sell (visionOS: `Product.purchase(options:)`
+/// is unavailable). Callers answer the typed unsupported result, never a crash.
+public struct PurchaseUnsupported: Error, Sendable, Equatable {
+    public let detail: String
+    public init(detail: String = "In-app purchase is not available on visionOS.") { self.detail = detail }
+}
+
 /// Thrown by `StoreClient.purchase` for a product `products(_:)` has not loaded.
 public struct ProductNotLoaded: Error, Sendable, Equatable {
     public let productID: String
@@ -188,6 +195,8 @@ public actor StoreService {
             case .userCancelled:
                 return ["ok": true, "result": "userCancelled"]
             }
+        } catch let e as PurchaseUnsupported {
+            return PlatformHost.unsupported("runtime", e.detail)
         } catch let e as ProductNotLoaded {
             return ["ok": false, "error": "product_not_loaded", "product": .string(e.productID)]
         } catch {
@@ -236,6 +245,9 @@ public struct SystemStoreClient: StoreClient {
 
     @MainActor
     public func purchase(productID: String, appAccountToken: UUID?) async throws -> PurchaseOutcome {
+        #if os(visionOS)
+        throw PurchaseUnsupported()
+        #else
         guard let product = await state.product(productID) else { throw ProductNotLoaded(productID: productID) }
         var options: Set<Product.PurchaseOption> = []
         if let token = appAccountToken { options.insert(.appAccountToken(token)) }
@@ -262,12 +274,13 @@ public struct SystemStoreClient: StoreClient {
         @unknown default:
             return .pending
         }
+        #endif
     }
 
     public func currentEntitlements(productID: String?) async -> [TransactionInfo] {
         var out: [TransactionInfo] = []
-        #if compiler(>=6.1)
-        if let productID, availability.entitlementsForID, #available(iOS 18.4, macOS 15.4, *) {
+        #if compiler(>=6.1) && !os(watchOS)
+        if let productID, availability.entitlementsForID, #available(iOS 18.4, macOS 15.4, tvOS 18.4, visionOS 2.4, *) {
             for await r in Transaction.currentEntitlements(for: productID) { out.append(Self.describe(r)) }
             return out
         }

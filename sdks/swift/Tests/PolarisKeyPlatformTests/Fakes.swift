@@ -115,6 +115,8 @@ final class FakeStoreClient: StoreClient, @unchecked Sendable {
     private var finishedIDs: [UInt64] = []
     private var continuation: AsyncStream<TransactionInfo>.Continuation?
     private(set) var purchaseOnMainThread: Bool?
+    /// Set to throw `PurchaseUnsupported`, as `SystemStoreClient` does on visionOS.
+    var purchaseUnsupported = false
 
     init(catalog: [ProductInfo]) { self.catalog = catalog }
 
@@ -134,6 +136,7 @@ final class FakeStoreClient: StoreClient, @unchecked Sendable {
     @MainActor
     func purchase(productID: String, appAccountToken: UUID?) async throws -> PurchaseOutcome {
         lock.withLock { purchaseOnMainThread = Thread.isMainThread }
+        if purchaseUnsupported { throw PurchaseUnsupported() }
         guard lock.withLock({ loaded.contains(productID) }) else { throw ProductNotLoaded(productID: productID) }
         return lock.withLock { nextOutcome }
     }
