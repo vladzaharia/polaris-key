@@ -59,6 +59,8 @@ class PolarisKeyLifecycleTest {
         lifecycle.onActivityResumed(a)
         assertSame(a, lifecycle.currentActivity())
         assertTrue(lifecycle.inForeground)
+        val until = System.currentTimeMillis() + 3_000
+        while (syncs == 0 && System.currentTimeMillis() < until) Thread.sleep(10)
         assertEquals("the first foreground syncs", 1, syncs)
 
         // A second activity starting is not a new foreground.
@@ -78,6 +80,8 @@ class PolarisKeyLifecycleTest {
         // Syncs are de-duplicated while one runs (SP-51): let the first foreground pass finish.
         Thread.sleep(500)
         lifecycle.onActivityStarted(a)
+        val until2 = System.currentTimeMillis() + 3_000
+        while (syncs < 2 && System.currentTimeMillis() < until2) Thread.sleep(10)
         assertEquals(2, syncs)
         lifecycle.onActivityDestroyed(a)
         assertNull(lifecycle.currentActivity())
