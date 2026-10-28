@@ -693,6 +693,23 @@ extension EnvironmentValues {
 
 /// The clipboard.
 enum KitPasteboard {
+    /// A secret (the recovery code): kept on this device, marked concealed where the system has the
+    /// type, and gone after two minutes (iOS). Never a general copy.
+    @MainActor static func copySensitive(_ text: String) {
+        #if canImport(UIKit) && !os(tvOS) && !os(watchOS)
+            UIPasteboard.general.setItems(
+                [["public.utf8-plain-text": text]],
+                options: [
+                    .localOnly: true, .expirationDate: Date().addingTimeInterval(120),
+                ])
+        #elseif canImport(AppKit)
+            let board = NSPasteboard.general
+            board.clearContents()
+            board.setString(text, forType: .string)
+            board.setData(Data(), forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType"))
+        #endif
+    }
+
     @MainActor static func copy(_ text: String) {
         #if canImport(UIKit) && !os(tvOS) && !os(watchOS)
             UIPasteboard.general.string = text

@@ -37,6 +37,8 @@ public struct KitPalette: Sendable, Equatable {
     public var success: Color
     public var warning: Color
     public var danger: Color
+    /// The label on the danger fill, ≥ 4.5:1 on it (white in light, the brand's dark ink in dark).
+    public var dangerOn: Color = .white
     /// Whether the accent is the host's tint (`native`, or `host` source).
     public var accentIsHostTint: Bool
     /// The tint of the iOS 26 prominent glass. The glass lightens its tint, so a fill only just
@@ -416,7 +418,8 @@ enum KitPaletteResolver {
             accentSolid: tokens.0.color, accentOn: page.color, accentFg: tokens.0.color,
             accentSubtle: (dark ? BrandColor(hex: 0x23262e) : BrandColor(hex: 0xe6e8ef)).color,
             focus: tokens.0.color, success: status.0.color, warning: status.1.color,
-            danger: status.2.color, accentIsHostTint: false)
+            danger: status.2.color, dangerOn: (dark ? PolarisBrand.Dark.dangerOn : PolarisBrand.Light.dangerOn).color,
+            accentIsHostTint: false)
 
         if preset == .native {
             p.page = Color.systemGroupedGround

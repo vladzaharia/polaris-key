@@ -6,7 +6,8 @@
 // forbidden states, copy keys or actions appear. `theme` rows compare the resolved name, accent
 // source, scheme, icon and preset; `i18n` rows the formatted string.
 //
-// Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, theme, i18n.
+// Families: gate, activate, signIn, deviceLimit, devices, update, settings, paywall, cloudSync,
+// theme, i18n.
 
 import Foundation
 import PolarisKeyCore
@@ -21,6 +22,7 @@ final class UIMatrixTests: XCTestCase {
 
     static let families = [
         "gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall",
+        "cloudSync",
     ]
 
     func testTheMatrixIsTheVersionTheCoreImplements() throws {
@@ -36,6 +38,7 @@ final class UIMatrixTests: XCTestCase {
     func testUpdateFamily() throws { try runFamily("update") }
     func testSettingsFamily() throws { try runFamily("settings") }
     func testPaywallFamily() throws { try runFamily("paywall") }
+    func testCloudSyncFamily() throws { try runFamily("cloudSync") }
 
     func testThemeFamily() throws {
         let matrix = try UIMatrix.load()
