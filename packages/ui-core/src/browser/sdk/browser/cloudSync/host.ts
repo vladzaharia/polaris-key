@@ -179,6 +179,9 @@ function routesOf(catalog: ProductCatalog): SettingRoute[] {
   });
 }
 
+/** An id for a follower's edit, so the writer can confirm it. Not a secret. */
+const editId = (): number => Math.floor(Math.random() * 2 ** 52);
+
 function clientId(): string {
   const b = new Uint8Array(16);
   crypto.getRandomValues(b);
@@ -216,6 +219,12 @@ export class BrowserCloudSyncHost {
   #purged = false;
   #unloading = false;
   #write: Promise<void> = Promise.resolve();
+  /** Set once this tab (holding the writer lock) has read the record into its machine. */
+  #writable = false;
+  /** A follower's edits the writer has not confirmed (kept, and replayed if this tab is promoted). */
+  #outbox = new Map<number, TabMessage & { t: "edit" }>();
+  /** Edits that reached a tab which holds the lock but has not read the record yet. */
+  #queued: Array<TabMessage & { t: "edit" }> = [];
   #forgetting: Promise<void> = Promise.resolve();
   #offPage: Array<() => void> = [];
 
@@ -239,8 +248,13 @@ export class BrowserCloudSyncHost {
     return this.#started && !this.#closed;
   }
 
-  /** Whether this tab is the one that sends and writes. */
+  /** Whether this tab is the one that sends and writes: it holds the lock AND has read the record
+   *  (a tab just promoted is not the writer until it has, so nothing runs on a stale machine). */
   get isWriter(): boolean {
+    return this.#writable && this.#holdsLock;
+  }
+
+  get #holdsLock(): boolean {
     return this.#role?.isWriter ?? false;
   }
 
@@ -271,6 +285,7 @@ export class BrowserCloudSyncHost {
     await this.#role.decided;
     const rec = await this.#readRecord();
     this.#adopt(rec);
+    this.#writable = this.#holdsLock;
     const page = this.#deps.page;
     if (page) {
       this.#offPage.push(
@@ -328,7 +343,19 @@ export class BrowserCloudSyncHost {
     await this.#pumping?.catch(() => undefined);
     const rec = await this.#readRecord();
     this.#adopt(rec);
+    // Now the writer. Edits that arrived meanwhile, and this tab's own unconfirmed ones, run first.
+    this.#writable = true;
+    const edits = [...this.#queued, ...this.#outbox.values()];
+    this.#queued = [];
+    this.#outbox.clear();
+    for (const e of edits) this.#applyEdit(e);
     this.touch();
+  }
+
+  #applyEdit(m: TabMessage & { t: "edit" }): void {
+    this.catchUp();
+    if (m.op === "set") this.machine.set(m.key, m.value);
+    else this.machine.clear(m.key);
   }
 
   /**
@@ -412,7 +439,7 @@ export class BrowserCloudSyncHost {
    *  the channel and answers `ok` (the writer's refusal, if any, is the machine's own). */
   async set(key: string, value: Json): Promise<CallResult> {
     if (!this.isWriter) {
-      this.#deps.channel.post({ t: "edit", op: "set", key, value });
+      this.#handOver({ t: "edit", id: editId(), op: "set", key, value });
       return { ok: true };
     }
     this.catchUp();
@@ -423,13 +450,30 @@ export class BrowserCloudSyncHost {
 
   async clear(key: string): Promise<CallResult> {
     if (!this.isWriter) {
-      this.#deps.channel.post({ t: "edit", op: "clear", key });
+      this.#handOver({ t: "edit", id: editId(), op: "clear", key });
       return { ok: true };
     }
     this.catchUp();
     const r = this.machine.clear(key);
     await this.touch();
     return r;
+  }
+
+  /**
+   * An edit made where this tab is not the writer. A tab that holds the lock but has not read the
+   * record yet keeps it for itself. A follower posts it and keeps it until the writer confirms it
+   * (`ack`), and replays it if it is promoted first. Limit: while the writer is frozen and no tab
+   * is promoted the edit waits in this tab's memory only (at most 256 are kept).
+   */
+  #handOver(m: TabMessage & { t: "edit" }): void {
+    if (this.#holdsLock) {
+      this.#queued.push(m);
+      return;
+    }
+    if (this.#outbox.size >= 256)
+      this.#outbox.delete(this.#outbox.keys().next().value as number);
+    this.#outbox.set(m.id, m);
+    this.#deps.channel.post(m);
   }
 
   // ── The pump ─────────────────────────────────────────────────────────────────────────────
@@ -681,11 +725,24 @@ export class BrowserCloudSyncHost {
     if (!this.started) return;
     switch (m.t) {
       case "edit":
-        if (!this.isWriter) return;
-        if (m.op === "set") await this.set(m.key, m.value);
-        else await this.clear(m.key);
+        if (this.#holdsLock && !this.#writable) this.#queued.push(m);
+        else if (this.isWriter) {
+          this.#applyEdit(m);
+          this.#deps.channel.post({ t: "ack", id: m.id });
+          await this.touch();
+        }
+        return;
+      case "ack":
+        this.#outbox.delete(m.id);
         return;
       case "purge":
+        // Synchronously, before anything awaits: a save the writer's running pump is about to
+        // make must already find the record purged (SEC-HOST2 B-1).
+        this.#purged = true;
+        this.#rev = 0;
+        this.#openKeys = new Set();
+        this.#outbox.clear();
+        this.#queued = [];
         if (this.isWriter) await this.#pumping?.catch(() => undefined);
         this.#drop();
         return;
@@ -693,14 +750,22 @@ export class BrowserCloudSyncHost {
         // The writer stored a newer record: follow it. A writer never follows (it wrote it).
         if (this.isWriter || m.rev <= this.#rev) return;
         this.#purged = false;
-        this.#adopt(await this.#readRecord());
+        await this.#follow();
         return;
       case "change":
         if (this.isWriter) return;
-        this.#adopt(await this.#readRecord());
+        await this.#follow();
         this.#fan2([{ type: "change", keys: m.keys, origin: m.origin }]);
         return;
     }
+  }
+
+  /** A follower reads the record into its machine. A tab that took the lock while the read was
+   *  in flight is being promoted (or is the writer): its own machine is not replaced by a read
+   *  that began before it was the writer. */
+  async #follow(): Promise<void> {
+    const rec = await this.#readRecord();
+    if (!this.#holdsLock) this.#adopt(rec);
   }
 
   /** Listeners only: a change another tab already announced is not announced again. */
@@ -748,6 +813,8 @@ export class BrowserCloudSyncHost {
         const raw = await this.#deps.store.get();
         const cur =
           raw === null ? null : parseSyncState(raw, this.#deps.product);
+        // A purge message may have landed while we waited for the lock or the read.
+        if (this.#purged) return;
         if (raw !== null && cur === null) {
           // A record that is not ours is never replaced.
           return;
@@ -768,6 +835,7 @@ export class BrowserCloudSyncHost {
           catalog: this.#served,
           openKeys: [...this.#openKeys],
         };
+        if (this.#purged) return;
         await this.#deps.store.put(JSON.stringify(rec));
         this.#rev = rec.rev;
         this.#deps.channel.post({ t: "state", rev: rec.rev });
@@ -832,17 +900,23 @@ export class BrowserCloudSyncHost {
    */
   async purge(): Promise<void> {
     this.#purged = true;
-    this.#rev = 0;
     this.#openKeys = new Set();
+    this.#outbox.clear();
+    this.#queued = [];
     this.#clearTimer();
     if (this.started) {
       await this.#pumping?.catch(() => undefined);
+      // A save already inside the lock lands before this resolves; only then is `#rev` zeroed, so
+      // the next sign-in does not read its own first save as a purge (SEC-HOST2 S5).
       await this.#write;
+      this.#rev = 0;
+      this.#openKeys = new Set();
       this.#emitFrom(this.machine);
       this.#build(null);
       this.machine.importLocal({});
       this.machine.takeEvents();
     }
+    this.#rev = 0;
     try {
       await this.#withStateLock(() => removeSyncState(this.#deps.store));
     } finally {

@@ -110,8 +110,9 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       const c = real ?? (await loading?.catch(() => null)) ?? null;
       if (c) return c.purge();
       // The host never ran: delete the record without starting anything.
-      const m = await import("../browser/cloudSync/store.js");
-      await m.removeSyncState(m.syncStateStore(src.dbName));
+      await (
+        await import("../browser/cloudSync/purge.js")
+      ).purgeUnloaded(src.dbName);
     },
     onEvents: (l) => (listeners.add(l), () => listeners.delete(l)),
   };

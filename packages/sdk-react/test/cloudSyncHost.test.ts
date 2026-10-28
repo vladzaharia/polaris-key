@@ -191,6 +191,12 @@ class FakeLocks {
 
 class Hub {
   private members = new Set<{ deliver: (m: TabMessage) => void }>();
+  private deaf = new Set<{ deliver: (m: TabMessage) => void }>();
+  /** Make the first member deaf (a frozen writer): it keeps the lock but hears nothing. */
+  closeAll(_host: unknown): void {
+    const first = [...this.members][0]!;
+    this.deaf.add(first);
+  }
   channel(): TabChannel {
     const handlers: Array<(m: TabMessage) => void> = [];
     const me = { deliver: (m: TabMessage) => handlers.forEach((h) => h(m)) };
@@ -199,7 +205,8 @@ class Hub {
       post: (m) => {
         const copy = structuredClone(m);
         for (const o of this.members)
-          if (o !== me) setTimeout(() => o.deliver(copy), 0);
+          if (o !== me && !this.deaf.has(o))
+            setTimeout(() => o.deliver(copy), 0);
       },
       onMessage: (fn) => void handlers.push(fn),
       close: () => void this.members.delete(me),
@@ -1052,14 +1059,27 @@ describe("browser cloud sync host: one writer tab", () => {
       parseTabMessage({ t: "change", keys: [1], origin: "local" }),
     ).toBeNull();
     expect(
-      parseTabMessage({ t: "edit", op: "set", key: "bad key", value: 1 }),
+      parseTabMessage({
+        t: "edit",
+        id: 1,
+        op: "set",
+        key: "bad key",
+        value: 1,
+      }),
     ).toBeNull();
-    expect(parseTabMessage({ t: "edit", op: "set", key: "a" })).toBeNull();
-    expect(parseTabMessage({ t: "edit", op: "clear", key: "a" })).toEqual({
-      t: "edit",
-      op: "clear",
-      key: "a",
-    });
+    expect(
+      parseTabMessage({ t: "edit", id: 1, op: "set", key: "a" }),
+    ).toBeNull();
+    expect(
+      parseTabMessage({ t: "edit", id: 1, op: "set", key: "a", value: 1 }),
+    ).toEqual({ t: "edit", id: 1, op: "set", key: "a", value: 1 });
+    // An edit without an id cannot be confirmed: refused.
+    expect(parseTabMessage({ t: "edit", op: "clear", key: "a" })).toBeNull();
+    expect(
+      parseTabMessage({ t: "edit", id: 2, op: "clear", key: "a" }),
+    ).toEqual({ t: "edit", id: 2, op: "clear", key: "a" });
+    expect(parseTabMessage({ t: "ack", id: 2 })).toEqual({ t: "ack", id: 2 });
+    expect(parseTabMessage({ t: "ack", id: "2" })).toBeNull();
     expect(parseTabMessage("purge")).toBeNull();
     expect(parseTabMessage({ t: "nope" })).toBeNull();
   });
@@ -1071,9 +1091,202 @@ describe("browser cloud sync host: one writer tab", () => {
     // A request to the host from the channel is parsed before it is used (writer.ts); the host's
     // own paths never see the malformed ones.
     expect(
-      parseTabMessage({ t: "edit", op: "set", key: "../x", value: 1 }),
+      parseTabMessage({ t: "edit", id: 1, op: "set", key: "../x", value: 1 }),
     ).toBeNull();
     await b.close();
+  });
+});
+
+// ── SEC-HOST2: purge races, promotion window, confirmable edits, the placeholder root ────────
+
+describe("browser cloud sync host: SEC-HOST2 fixes", () => {
+  it("B-1: a purge message during the writer's first pump is not written back by its save", async () => {
+    const w = new World();
+    const b = new Browser();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    let started: () => void = () => undefined;
+    const inFlight = new Promise<void>((r) => (started = r));
+    const ring = await makeRing();
+    const a = await b.tab(w, {
+      ring,
+      deps: {
+        request: async (path, init) => {
+          started();
+          await gate;
+          return w.request(path, init);
+        },
+      },
+    });
+    const f = await b.tab(w, { ring });
+    await a.host.start();
+    await f.host.start();
+    a.host.machine.signIn(SUBJECT);
+    const pump = a.host.touch();
+    await inFlight;
+    // The person signs out in the follower tab while the writer's first pull is in flight.
+    await f.host.purge();
+    await new Promise((r) => setTimeout(r, 10));
+    release();
+    await pump;
+    await a.host.flush(1000);
+    expect(await b.store.get()).toBeNull();
+    await b.close();
+  });
+
+  it("S5: a purge while a save is in flight leaves rev 0, and the next sign-in saves its own state", async () => {
+    const w = new World();
+    const b = new Browser();
+    const slow = { on: false };
+    const real = b.store.put.bind(b.store);
+    b.store.put = async (t) => {
+      if (slow.on) await new Promise((r) => setTimeout(r, 30));
+      return real(t);
+    };
+    const { host } = await b.tab(w);
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    await host.set("theme", "one");
+    await host.flush(1000);
+    slow.on = true;
+    const saving = host.flush(1000);
+    await new Promise((r) => setTimeout(r, 5));
+    await host.purge();
+    await saving;
+    expect(await b.store.get()).toBeNull();
+    slow.on = false;
+    host.resume();
+    host.machine.signIn(SUBJECT);
+    await host.set("theme", "two");
+    await host.flush(1000);
+    // Its own first save after the purge is a save, not a purge to follow.
+    const rec = await record(b);
+    expect(rec).not.toBeNull();
+    expect(host.isWriter).toBe(true);
+    await b.close();
+  });
+
+  it("S6: a purge from a tab where the host never ran tells the other tabs", async () => {
+    const { IDBFactory } = await import("fake-indexeddb");
+    const g = globalThis as { indexedDB?: IDBFactory };
+    const prior = g.indexedDB;
+    g.indexedDB = new IDBFactory();
+    const heard: unknown[] = [];
+    const listener = new BroadcastChannel("pkey-sync-x");
+    listener.onmessage = (e) => heard.push(e.data);
+    try {
+      const c = lazyCloudSync({
+        load: vi.fn(),
+        enabled: () => true,
+        dbName: "pkey-sync-x",
+      });
+      await c.purge();
+      await vi.waitFor(() => expect(heard).toContainEqual({ t: "purge" }));
+    } finally {
+      listener.close();
+      g.indexedDB = prior;
+    }
+  });
+
+  it("S7: a tab just promoted is not the writer until it has read the record, and keeps an edit made meanwhile", async () => {
+    const w = new World();
+    const b = new Browser();
+    const ring = await makeRing();
+    const a = await b.tab(w, { ring });
+    const f = await b.tab(w, { ring });
+    await a.host.start();
+    await f.host.start();
+    a.host.machine.signIn(SUBJECT);
+    ring.lock();
+    await a.host.set("theme", "old");
+    await a.host.flush(1000);
+    // The promotion's read of the record is slow.
+    const real = b.store.get.bind(b.store);
+    let slow = true;
+    b.store.get = async () => {
+      if (slow) await new Promise((r) => setTimeout(r, 60));
+      return real();
+    };
+    await a.host.close();
+    await new Promise((r) => setTimeout(r, 15));
+    expect(f.host.isWriter).toBe(false);
+    await f.host.set("theme", "mine");
+    slow = false;
+    await vi.waitFor(() => expect(f.host.isWriter).toBe(true));
+    // Read from the record (the old writer's state), then the kept edit on top of it.
+    expect(f.host.machine.get("theme").value).toBe("mine");
+    expect(f.host.machine.persist().partitions[SUBJECT]!.pending.length).toBe(
+      2,
+    );
+    await b.close();
+  });
+
+  it("S7: a follower's edit is kept until the writer confirms it, and replayed if the follower is promoted", async () => {
+    const w = new World();
+    const b = new Browser();
+    const ring = await makeRing();
+    const a = await b.tab(w, { ring });
+    const f = await b.tab(w, { ring });
+    await a.host.start();
+    await f.host.start();
+    a.host.machine.signIn(SUBJECT);
+    ring.lock();
+    // The writer is deaf (frozen): its channel is closed, but it still holds the lock.
+    b.hub.closeAll(a.host);
+    await f.host.set("theme", "from-follower");
+    await new Promise((r) => setTimeout(r, 10));
+    expect(a.host.machine.get("theme").value).not.toBe("from-follower");
+    await a.host.close();
+    await vi.waitFor(() => expect(f.host.isWriter).toBe(true));
+    expect(f.host.machine.get("theme").value).toBe("from-follower");
+    await b.close();
+  });
+
+  it("S7: an edit the writer applies reaches its machine and is confirmed over the channel", async () => {
+    const w = new World();
+    const b = new Browser();
+    const ring = await makeRing();
+    const a = await b.tab(w, { ring });
+    const f = await b.tab(w, { ring });
+    await a.host.start();
+    await f.host.start();
+    a.host.machine.signIn(SUBJECT);
+    ring.lock();
+    await f.host.set("theme", "confirmed");
+    await vi.waitFor(() =>
+      expect(a.host.machine.get("theme").value).toBe("confirmed"),
+    );
+    await b.close();
+  });
+
+  it("S4: a copy of the placeholder root throws instead of deriving from zeros", async () => {
+    const vault = memoryRootVault();
+    await vault.put({
+      v: 1,
+      ringId: "rg_AAAAAAAAAAAAAAAAAAAAAA",
+      epoch: 1,
+      kid: hexOf(await deriveKid(P, RAW)),
+      key: await importRootHandle(RAW),
+    });
+    const rec = (await vault.get())!;
+    const keys = ringKeysOf(rec, P);
+    await keys.withRoot(async (p, root) => {
+      const salt = new Uint8Array(32);
+      const info = new TextEncoder().encode("x");
+      // The sentinel itself runs on the handle.
+      expect((await p.hkdf(root, salt, info, 32)).length).toBe(32);
+      // A copy would run on 32 zero bytes: refused.
+      await expect(
+        p.hkdf(Uint8Array.from(root), salt, info, 32),
+      ).rejects.toThrow(/placeholder root/);
+      await expect(p.hkdf(root.slice(), salt, info, 32)).rejects.toThrow(
+        /placeholder root/,
+      );
+      // A real 32-byte input is not the placeholder.
+      expect((await p.hkdf(Uint8Array.from(RAW), salt, info, 32)).length).toBe(
+        32,
+      );
+    });
   });
 });
 

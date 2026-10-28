@@ -40,9 +40,11 @@ export type TabMessage =
   | { t: "change"; keys: string[]; origin: ChangeOrigin }
   /** The record was deleted (sign-out, deactivation, `account_required`). */
   | { t: "purge" }
-  /** A follower's edit, for the writer to apply to its machine. */
-  | { t: "edit"; op: "set"; key: string; value: Json }
-  | { t: "edit"; op: "clear"; key: string };
+  /** A follower's edit, for the writer to apply to its machine. `id` lets the writer confirm it. */
+  | { t: "edit"; id: number; op: "set"; key: string; value: Json }
+  | { t: "edit"; id: number; op: "clear"; key: string }
+  /** The writer took edit `id` (applied to its machine, so its own journal carries it). */
+  | { t: "ack"; id: number };
 
 /** A channel the host can post to and listen on. */
 export interface TabChannel {
@@ -79,11 +81,23 @@ export function parseTabMessage(v: unknown): TabMessage | null {
         : null;
     case "purge":
       return { t: "purge" };
+    case "ack":
+      return Number.isSafeInteger(v.id)
+        ? { t: "ack", id: v.id as number }
+        : null;
     case "edit":
       if (typeof v.key !== "string" || !KEY.test(v.key)) return null;
-      if (v.op === "clear") return { t: "edit", op: "clear", key: v.key };
+      if (!Number.isSafeInteger(v.id)) return null;
+      if (v.op === "clear")
+        return { t: "edit", id: v.id as number, op: "clear", key: v.key };
       return v.op === "set" && "value" in v
-        ? { t: "edit", op: "set", key: v.key, value: v.value as Json }
+        ? {
+            t: "edit",
+            id: v.id as number,
+            op: "set",
+            key: v.key,
+            value: v.value as Json,
+          }
         : null;
     default:
       return null;
