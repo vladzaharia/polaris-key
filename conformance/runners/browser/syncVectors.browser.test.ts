@@ -13,6 +13,12 @@
 import { describe, expect, it } from "vitest";
 import syncVectors from "../../corpus/v2/sync-vectors.json";
 import { loadZstdWasm } from "@polaris-key/zstd-wasm/browser";
+import { ringCodec } from "../../../packages/ui-core/src/browser/sdk/browser/ring/codec.js";
+import {
+  importRootHandle,
+  memoryRootVault,
+  ringKeysOf,
+} from "../../../packages/ui-core/src/browser/sdk/browser/ring/rootVault.js";
 import {
   ENVELOPE_FIXED_BYTES,
   ENVELOPE_OVERHEAD_BYTES,
@@ -426,6 +432,12 @@ describe("sync-vectors.json: hkdfCases", () => {
   }
 });
 
+/** What `open` must answer for a row. */
+const expected = (c: EnvelopeCase) =>
+  c.expect.result === "ok"
+    ? { ok: true, name: c.expect.name, value: c.expect.value }
+    : { ok: false, reason: c.expect.reason };
+
 describe("sync-vectors.json: envelopeCases", () => {
   for (const c of vectors.envelopeCases) {
     it(c.id, async () => {
@@ -473,6 +485,61 @@ describe("sync-vectors.json: blindCases", () => {
       );
     });
   }
+});
+
+// U-20.1: the same vectors through the browser host codec, whose root is a non-extractable handle
+// in a vault (no raw bytes reach client-core). `rootHex` is imported once and the bytes dropped.
+async function codecOver(rootHex: string) {
+  const root = unhex(rootHex);
+  const vault = memoryRootVault();
+  await vault.put({
+    v: 1,
+    ringId: "rg_AAAAAAAAAAAAAAAAAAAAAA",
+    epoch: 1,
+    kid: hex(await deriveKid(port, root)),
+    key: await importRootHandle(root),
+  });
+  return ringCodec({
+    hasRoot: () => true,
+    ringKeys: async () => {
+      const rec = await vault.get();
+      return rec ? ringKeysOf(rec, port) : null;
+    },
+  });
+}
+
+describe("sync-vectors.json: envelopeCases through the browser codec", () => {
+  for (const c of vectors.envelopeCases) {
+    it(c.id, async () => {
+      const codec = await codecOver(c.rootHex);
+      const env = unhex(c.envelopeHex);
+      const opened = await codec.open(c.collection, c.name, env, c.aliases);
+      expect(opened).toEqual(expected(c));
+      // The name-in-envelope open answers the envelope's own name.
+      if (c.expect.result === "ok")
+        expect(await codec.openAny(c.collection, env)).toEqual(expected(c));
+      if (c.seal !== undefined) {
+        // Salt is random in the codec: the seal must open back to the same name and value, at the
+        // same length as the vector.
+        const name = c.expect.result === "ok" ? c.expect.name : c.name;
+        const sealed = await codec.seal(c.collection, name, c.seal.value);
+        expect(sealed.length).toBe(env.length);
+        expect(await codec.open(c.collection, name, sealed)).toEqual({
+          ok: true,
+          name,
+          value: c.seal.value,
+        });
+      }
+    });
+  }
+});
+
+describe("sync-vectors.json: blindCases through the browser codec", () => {
+  for (const c of vectors.blindCases)
+    it(c.id, async () => {
+      const codec = await codecOver(c.rootHex);
+      expect(await codec.blind(c.kind, c.ctx, c.n)).toBe(c.blinded);
+    });
 });
 
 describeX("sync-vectors.json: hpkeAnchor (RFC 9180)", () => {

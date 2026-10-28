@@ -263,6 +263,14 @@ export interface RingKeys {
   collKey(collection: string): Promise<Uint8Array>;
   namesKey(): Promise<Uint8Array>;
   chunkIdKey(collection: string): Promise<Uint8Array>;
+  /**
+   * Runs `f` with a crypto port and a placeholder root input: the port derives from the vault's
+   * non-extractable handle whenever it is given that input, so client-core's sealing functions run
+   * unchanged and the root's bytes are never read. The placeholder is not the root.
+   */
+  withRoot<T>(
+    f: (port: SyncCryptoPort, root: Uint8Array) => Promise<T>,
+  ): Promise<T>;
 }
 
 export function ringKeysOf(
@@ -277,5 +285,6 @@ export function ringKeysOf(
     collKey: (c) => deriveCollKey(p, ROOT_IKM, c),
     namesKey: () => deriveNamesKey(p, ROOT_IKM),
     chunkIdKey: (c) => deriveChunkIdKey(p, ROOT_IKM, c),
+    withRoot: (f) => f(p, ROOT_IKM),
   };
 }

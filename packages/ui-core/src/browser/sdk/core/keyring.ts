@@ -7,6 +7,7 @@
 // bytes. No type here carries `R`, and no error or status names a code.
 
 import type { Unsupported } from "@polaris-key/client-core";
+import type { HostCodec } from "@polaris-key/client-core/sync";
 import { Feature } from "../constants.generated.js";
 import { UnsupportedError } from "./caps.js";
 
@@ -94,6 +95,12 @@ export interface KeyringClient {
   hasRoot(): boolean;
   /** Called on every change of `hasRoot()`. Returns the unsubscribe. */
   subscribe(listener: () => void): () => void;
+  /**
+   * The Cloud Sync host codec, or null while this device holds no root (and while a lazy client's
+   * engine is not loaded). It holds no key: each call reads the vault, and refuses with
+   * `sync-locked` once the ring is locked.
+   */
+  codec(): HostCodec | null;
 }
 
 /** A ring client for a transport that cannot hold a ring: every verb throws the typed unsupported. */
@@ -124,6 +131,7 @@ export function unsupportedKeyring(
     acceptRingChange: refuse,
     hasRoot: () => false,
     subscribe: () => () => undefined,
+    codec: () => null,
   };
 }
 
@@ -188,6 +196,7 @@ export function lazyKeyring(load: () => Promise<KeyringClient>): KeyringClient {
     forget: via((e) => () => e.forget()),
     acceptRingChange: via((e) => (c: RingIdentity) => e.acceptRingChange(c)),
     hasRoot: () => engine?.hasRoot() ?? false,
+    codec: () => engine?.codec() ?? null,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
