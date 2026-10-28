@@ -75,8 +75,12 @@ signal in_play_changed(playing: bool)
 const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
 
 var core: PKeyCore = null
+var _ring_hook_added := false
 ## The device principal's surface (services/devices.gd); null until configure().
 var devices: PKeyDevices = null
+## The Cloud Sync key ring (core/sync/ring.gd): create, unlock, wrap_to, recovery, adopt, forget, and the
+## codec the sync lane seals with. Null until configure(). Sign-out calls `keyring.forget()`.
+var keyring: PKeySyncRing = null
 ## The licence surface (services/license.gd); null until configure().
 var license: PKeyLicense = null
 ## The licence's grants: has, value, all (services/entitlements.gd). Present before `configure()`
@@ -189,11 +193,28 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	distribution.attach(core)
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
 	identity.bind(core, self)
+	_build_keyring(opts)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	identity.on_change = _on_identity_change
 	presentation_source.attach(core, self)
 	PKeyUiTheme.use_presentation(presentation_source)
 	return PKeyResult.success()
+
+
+## The key ring over this Core: the options' device keys and vault, else the product's own under
+## `store_root`. Sign-out forgets the root and the pin (one hook, registered once, reads the current ring).
+func _build_keyring(opts: PKeyOptions) -> void:
+	var keys: Object = opts.device_keys if opts.device_keys != null else PKeyDeviceKeyStore.new(core.product, opts.store_root)
+	var vault: PKeySyncRingVault = opts.ring_vault if opts.ring_vault != null else PKeySyncRingVault.new(core.product, opts.store_root)
+	keyring = PKeySyncRing.for_core(core, keys, vault)
+	if not _ring_hook_added:
+		_ring_hook_added = true
+		identity.add_before_sign_out(_forget_ring)
+
+
+func _forget_ring() -> void:
+	if keyring != null:
+		await keyring.forget()
 
 
 ## The boot (report §5.1, §5.8): runs the P1-09 stage machine through PKeyBoot and resolves at

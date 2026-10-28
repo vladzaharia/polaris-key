@@ -7,6 +7,7 @@ extends RefCounted
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 # @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints identity.choice
 # @pkey-feature release.fetch
+# @pkey-feature sync.keyring sync.settings
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -63,6 +64,7 @@ extends RefCounted
 # is its queue (state.json `events`), oldest first.
 
 const FLOOR := 4
+const SyncTypes := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
@@ -108,7 +110,8 @@ static func replay(tr: Dictionary) -> Array:
 	var store := PKeyMemoryStore.new(tr["initial"]["deviceId"], tr["initial"].get("token", ""))
 	var clock := [tr["now"]]
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
-	var redirects: bool = tr["steps"].any(func(st): return st["action"] in ["browser", "redirectComplete"])
+	# `cloudsync-cors` has `browser` steps too, but they are plain requests, not a redirect sign-in.
+	var redirects: bool = tr["id"] != "cloudsync-cors" and tr["steps"].any(func(st): return st["action"] in ["browser", "redirectComplete"])
 	if tr["initial"].get("services") is Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
 	elif redirects:
@@ -122,7 +125,16 @@ static func replay(tr: Dictionary) -> Array:
 	var journal = tr["initial"].get("updateJournal")
 	if journal is Array:
 		opts.store_root = PKeyTestFixtures.scratch_dir("transcript-journal")
+	if tr["steps"].any(func(st): return String(st["action"]).begins_with("keyring")):
+		# The key ring's own device keys and vault: scratch files and memory, nothing in the keychain.
+		opts.device_keys = PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-ring-keys"), false, false)
+		opts.ring_vault = PKeySyncRingVault.new(tr["product"], "user://pkey", true)
 	var sdk := PKeyTestFixtures.new_sdk()
+	if tr["id"] == "cloudsync-e2e-settings":
+		# The end-to-end transcript runs the real host codec over a ring of its own: its root is not the
+		# recorder's, so every recorded `ct` reads `invalid`.
+		sdk.set_meta("pkey_sync_codec", await _fixture_codec(tr))
+	sdk.set_meta("pkey_sync_mem", {"etag": "", "retry_after": null, "next_id": 1})
 	sdk.set_meta("pkey_platform", String(tr["initial"].get("platform", "")))
 	var presentation_dir := PKeyTestFixtures.scratch_dir("transcript-presentation")
 	sdk.presentation_source.cache_dir = presentation_dir
@@ -248,6 +260,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			var r: PKeyBootResult = await sdk.boot({"resolve_on_stop": true, "view": view, "host": PKeyBootHost.new(sdk)})
 			out["bootOutcome"] = r.outcome
 			view.queue_free()
+		"keyringGet", "keyringCreate", "keyringReset", "keyringWrap", "keyringUnwrap", "keyringAdopt", "keyringRecoverySet", "keyringRecoveryGet":
+			await _keyring(sdk, step, out)
 		"downloadModel":
 			var r: PKeyResult = await sdk.distribution.download_model()
 			out["result"] = "ok" if r.ok else String(r.code)
@@ -270,7 +284,12 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		"report":
 			out["result"] = await sdk.devices.report()
 			out["updatesPending"] = sdk.update.updater.events().size()
+		"cloudSyncPull", "cloudSyncPush":
+			await _cloud_sync(sdk, step, out)
 		"browser":
+			if not sdk.has_meta("pkey_replay"):
+				await _cors(sdk, step)
+				return out
 			# The browser's half is the recording's; the SDK's half is the authorize URL it builds for
 			# the request the Worker answered with a 303 to the card (hints included).
 			var ctx: Dictionary = sdk.get_meta("pkey_replay")
@@ -837,6 +856,237 @@ func _synthetic_update(t: PKeyTestContext) -> void:
 
 
 ## The transcript's name for an activation outcome: license_owned is a plain `refused` there.
+# ── Cloud Sync settings (U-21.10, `sync.settings`) ────────────────────────────────────────────
+
+const SYNC_DECLARED := ["ui.theme", "audio.volume"]
+const SYNC_E2E_NAMES := ["ui.theme", "my.open.key", "game.best"]
+const SYNC_E2E_ROUTES := [{"key": "ui.theme"}, {"key": "game.best"}]
+const SYNC_CLIENT_ID := "c_AAAAAAAAAAAAAAAAAAAAAA"
+const SYNC_HLC := "018bcfe56418:0000"
+
+
+## The host codec over a ring made for this replay (a root of its own).
+static func _fixture_codec(tr: Dictionary) -> PKeySyncHostCodec:
+	var keys := PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-sync-keys"), false, false)
+	var vault := PKeySyncRingVault.new(tr["product"], "user://pkey", true)
+	var ring := PKeySyncRing.new(tr["product"], "dev_replay", func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.success({"status": 201, "body": PackedByteArray()}), keys, vault)
+	await ring.create(false)
+	return PKeySyncHostCodec.new(ring)
+
+
+## One label per mutation result, in the transcript format's words.
+static func _result_label(r: Dictionary) -> String:
+	match r.get("status"):
+		"ok":
+			if r.get("renamedTo") is String:
+				return "ok:renamedTo:%s" % r["renamedTo"]
+			return "ok:dropped" if r.get("dropped") == true else "ok"
+		"rejected":
+			return "rejected:%s:%s" % [r.get("code"), r["scope"]] if r.get("scope") is String else "rejected:%s" % r.get("code")
+	return String(r.get("status"))
+
+
+## `cloudSyncPull` / `cloudSyncPush` (WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10): the request goes
+## through Core's own transport (the bearer and the X-PKey headers). A pull sends the last ETag it saw
+## as If-None-Match, as a cache would. The end-to-end transcript is sealed by `seal_push` and opened by
+## `open_pull`, so every recorded `ct` reads `invalid`.
+static func _cloud_sync(sdk: Node, step: Dictionary, out: Dictionary) -> void:
+	var mem: Dictionary = sdk.get_meta("pkey_sync_mem")
+	var e2e: bool = sdk.has_meta("pkey_sync_codec")
+	var codec: PKeySyncHostCodec = sdk.get_meta("pkey_sync_codec") if e2e else null
+	var args: Dictionary = step["args"]
+	var cursor := int(args["cursor"])
+	var mutations: Array = []
+	var method := "GET"
+	var path := "sync?cursor=%d" % cursor
+	var body: Variant = null
+	var extra := {}
+	if step["action"] == "cloudSyncPull":
+		if mem["etag"] != "":
+			extra["if-none-match"] = mem["etag"]
+	else:
+		method = "POST"
+		path = "sync/ops"
+		var names: Array = SYNC_E2E_NAMES if e2e else SYNC_DECLARED
+		for i in int(args["mutations"]):
+			mutations.append({"mutationId": int(mem["next_id"]) + i, "target": {"setting": names[i % names.size()], "scope": "user"}, "op": "set", "value": "generated-%d" % (int(mem["next_id"]) + i), "editedHlc": SYNC_HLC})
+		body = {"clientId": SYNC_CLIENT_ID, "cursor": cursor, "mutations": mutations}
+		if args.get("atomic") == true:
+			body["atomic"] = true
+		if e2e:
+			var sealed := codec.seal_push(body, SYNC_E2E_ROUTES)
+			if not sealed["ok"]:
+				out["result"] = "sealed-refused"
+				return
+			body = sealed["body"]
+	mem["retry_after"] = null
+	var r: PKeyResult = await sdk.core.request(method, path, body, true, extra)
+	var detail: Dictionary = r.detail if r.detail is Dictionary else {}
+	var status := int(detail.get("status", 0))
+	var headers: Dictionary = detail.get("headers", {})
+	if status == 0:
+		out["result"] = String(r.code)
+		return
+	if step["action"] == "cloudSyncPull" and headers.has("etag"):
+		mem["etag"] = headers["etag"]
+	if status == 304:
+		out["result"] = "not-modified"
+		return
+	if status < 200 or status >= 300:
+		out["result"] = "refused"
+		out["status"] = status
+		var e: Variant = detail.get("error")
+		if e is Dictionary and String(e.get("code", "")) != "":
+			out["code"] = String(e["code"])
+		if headers.has("retry-after"):
+			out["retryAfter"] = int(String(headers["retry-after"]))
+		return
+	var parsed := PKeyJson.parse_bytes(detail["body"])
+	var served: Variant = parsed["value"] if parsed["ok"] else null
+	if e2e and served is Dictionary:
+		var opened := codec.open_pull(served, mutations, {}, [])
+		if not opened["ok"]:
+			out["result"] = "open-refused"
+			return
+		served = opened["body"]
+		var rows: Array = (opened["opened"].get("changes", []) as Array).duplicate()
+		for row in (opened["opened"].get("conflicts", {}) as Dictionary).values():
+			rows.append(row)
+		for row in rows:
+			if row != {"invalid": true}:
+				out["result"] = "a fixture ct opened"
+				return
+	out["result"] = "ok"
+	if not (served is Dictionary):
+		return
+	var b: Dictionary = served
+	if SyncTypes.is_number(b.get("cursor")):
+		out["cursor"] = b["cursor"]
+	if b.get("more") is bool:
+		out["more"] = b["more"]
+	out["empty"] = b.get("empty") == true
+	var names_out: Array = []
+	for c in (b.get("changes", []) as Array if b.get("changes") is Array else []):
+		if c is Dictionary and c.get("setting") is String:
+			names_out.append(c["setting"])
+	names_out.sort()
+	out["settings"] = names_out
+	if b.get("quota") is Dictionary:
+		if SyncTypes.is_number(b["quota"].get("bytes")):
+			out["quotaBytes"] = b["quota"]["bytes"]
+		if b["quota"].get("files") is bool:
+			out["files"] = b["quota"]["files"]
+	if b.get("encryption") is String:
+		out["encryption"] = b["encryption"]
+	if SyncTypes.is_number(b.get("encryptionSince")):
+		out["encryptionSince"] = b["encryptionSince"]
+	if b.get("aliases") is Dictionary:
+		out["aliases"] = b["aliases"]
+	if step["action"] == "cloudSyncPush":
+		if SyncTypes.is_number(b.get("lastMutationId")):
+			out["lastMutationId"] = b["lastMutationId"]
+			mem["next_id"] = int(b["lastMutationId"]) + 1
+		var labels: Array = []
+		for x in (b.get("results", []) as Array if b.get("results") is Array else []):
+			labels.append(_result_label(x) if x is Dictionary else "?")
+		out["results"] = labels
+
+
+## A CORS exchange (`cloudsync-cors`): the browser's own. The preflight is played as recorded; the
+## request carries the SDK's own headers and the device bearer under the recorded origin.
+static func _cors(sdk: Node, step: Dictionary) -> void:
+	for item in step["exchanges"]["items"]:
+		var req: Dictionary = item["request"]
+		var url: String = sdk.core.base_url + String(req["path"])
+		var headers: Dictionary = {}
+		var body := PackedByteArray()
+		if req["method"] == "OPTIONS":
+			# The preflight is the browser's, not the SDK's: the SDK's transport has no OPTIONS, so a bare
+			# HTTPClient plays it as recorded.
+			await _options(url, (req["headers"] as Dictionary).duplicate())
+			continue
+		else:
+			headers = sdk.core.headers({"authorization": "Bearer %s" % sdk.core.tokens.current(), "content-type": "application/json", "origin": req["headers"]["origin"]})
+			if req.get("body") is Dictionary and (req["body"] as Dictionary).has("json"):
+				body = JSON.stringify(req["body"]["json"]).to_utf8_buffer()
+		await sdk.core.transport.request(req["method"], url, headers, body)
+
+
+static func _options(url: String, headers: Dictionary) -> void:
+	var parts := url.trim_prefix("http://").split("/", true, 1)
+	var hp := parts[0].split(":")
+	var client := HTTPClient.new()
+	if client.connect_to_host(hp[0], int(hp[1])) != OK:
+		return
+	var tree := Engine.get_main_loop() as SceneTree
+	while client.get_status() in [HTTPClient.STATUS_CONNECTING, HTTPClient.STATUS_RESOLVING]:
+		client.poll()
+		await tree.process_frame
+	var lines := PackedStringArray()
+	for k in headers:
+		lines.append("%s: %s" % [k, headers[k]])
+	client.request(HTTPClient.METHOD_OPTIONS, "/" + parts[1], lines)
+	while client.get_status() == HTTPClient.STATUS_REQUESTING:
+		client.poll()
+		await tree.process_frame
+	while client.get_status() == HTTPClient.STATUS_BODY:
+		client.poll()
+		client.read_response_body_chunk()
+		await tree.process_frame
+	client.close()
+
+
+## The key ring verbs (U-40.7, `sync.keyring`) over `PolarisKey.keyring`. The transcripts hold no key
+## material the client could use, so the client makes its own: create and reset draw a root, wrap
+## seals it to a fresh agreement key for the named device (`deviceId` is the TARGET), and adopt takes
+## the root of the first ring this conversation created. A refusal reads as `refused` with the status
+## and the code.
+static func _keyring(sdk: Node, step: Dictionary, out: Dictionary) -> void:
+	var k: PKeySyncRing = sdk.keyring
+	var action: String = step["action"]
+	var args: Dictionary = step["args"]
+	var r: PKeyResult
+	match action:
+		"keyringGet":
+			r = await k.read()
+			if r.ok:
+				var g: Variant = r.detail["ring"]
+				out["ring"] = null if g == null else {"ringId": g["ring_id"], "epoch": g["epoch"], "rootKid": g["root_kid"], "state": g["state"], "recoverySet": g["recovery_set"], "previous": g["previous"]["ring_id"] if g["previous"] != null else null, "adopted": (g["adopted"] as Array).map(func(a: Dictionary) -> String: return a["ring_id"])}
+				var w: Variant = r.detail["wrap"]
+				out["wrap"] = null if w == null else {"epoch": w["epoch"], "kid": w["kid"], "by": w["by"]}
+		"keyringCreate", "keyringReset":
+			if action == "keyringCreate":
+				r = await k.create()
+			else:
+				r = await k.reset()
+			if r.ok:
+				if action == "keyringCreate" and not sdk.has_meta("pkey_first_ring"):
+					sdk.set_meta("pkey_first_ring", r.detail["ring_id"])
+				# The ring id is the client's own draw and the recording's is a fixture: both must be a well
+				# formed id, and the replay reports the recorded one when ours is.
+				var well := RegEx.create_from_string("\\Arg_[A-Za-z0-9_-]{22}\\z").search(r.detail["ring_id"]) != null
+				out["ringId"] = step["expect"].get("ringId", r.detail["ring_id"]) if well else r.detail["ring_id"]
+				out["epoch"] = r.detail["epoch"]
+		"keyringWrap":
+			var fresh := PKeyDeviceKeyStore.new("djdl", PKeyTestFixtures.scratch_dir("transcript-ring-peer"), false, false).ensure()
+			r = await k.wrap_to(String(args.get("deviceId", "")), fresh.detail["agree_key"])
+		"keyringUnwrap":
+			r = await k.remove_wrap(String(args.get("deviceId", "")))
+		"keyringAdopt":
+			r = await k.adopt(String(sdk.get_meta("pkey_first_ring", "")))
+		"keyringRecoverySet":
+			r = await k.set_recovery_code()
+		_:
+			r = await k.recovery_blob()
+			if r.ok:
+				out["ct"] = r.detail["ct"]
+	out["result"] = "ok" if r.ok else "refused"
+	if not r.ok:
+		if r.detail is Dictionary and r.detail.get("status") != null:
+			out["status"] = r.detail["status"]
+		out["code"] = String(r.code)
+
+
 static func _activation_name(r: PKeyActivationResult) -> String:
 	return "refused" if r.kind == PKeyActivationResult.KIND_LICENSE_OWNED else String(r.kind)
 
