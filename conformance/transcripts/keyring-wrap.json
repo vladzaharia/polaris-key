@@ -1,0 +1,368 @@
+{
+  "transcriptVersion": 1,
+  "id": "keyring-wrap",
+  "description": "Wrapping the root to another device of the same person (WIRE-CONTRACT-V5 §13.11.2). The device that holds the root stores a wrap for the other device: 204. The slot is create-only, so a second wrap for the same device is 409 keyring_conflict. A device of nobody is 404 not_found, whatever its id. A device removes only its own wrap: another's is 403 forbidden; its own is 204 and its ring read then carries no wrap. The wrap is an opaque fixture.",
+  "features": ["sync.keyring"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_c0ASKoM6mlfLnox9BrEAARUoe5GotM7ibuW-27xIsjA",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "keyringCreate",
+      "note": "The ring, with this device's wrap.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "ringId": "",
+                  "rootKid": "",
+                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "recovery": { "ct": "" }
+                },
+                "match": "shape",
+                "allowedKeys": ["ringId", "rootKid", "wrap", "recovery"]
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf", "epoch": 1 }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+        "epoch": 1
+      }
+    },
+    {
+      "action": "keyringWrap",
+      "note": "A wrap for the other device.",
+      "args": { "deviceId": "TRANSCRIPTDEVICE0000000000000002" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/devices/keyring/wraps/TRANSCRIPTDEVICE0000000000000002",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "epoch": 0,
+                  "kid": "",
+                  "kem": "",
+                  "enc": "",
+                  "ct": ""
+                },
+                "match": "shape",
+                "allowedKeys": ["epoch", "kid", "kem", "enc", "ct"]
+              }
+            },
+            "response": {
+              "status": 204,
+              "headers": { "cache-control": "no-store" },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok" }
+    },
+    {
+      "action": "keyringWrap",
+      "note": "The slot is create-only.",
+      "args": { "deviceId": "TRANSCRIPTDEVICE0000000000000002" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/devices/keyring/wraps/TRANSCRIPTDEVICE0000000000000002",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "epoch": 0,
+                  "kid": "",
+                  "kem": "",
+                  "enc": "",
+                  "ct": ""
+                },
+                "match": "shape",
+                "allowedKeys": ["epoch", "kid", "kem", "enc", "ct"]
+              }
+            },
+            "response": {
+              "status": 409,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "keyring_conflict" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 409,
+        "code": "keyring_conflict"
+      }
+    },
+    {
+      "action": "keyringWrap",
+      "note": "A device that is nobody's.",
+      "args": { "deviceId": "TRANSCRIPTDEVICE0000000000000009" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/devices/keyring/wraps/TRANSCRIPTDEVICE0000000000000009",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "epoch": 0,
+                  "kid": "",
+                  "kem": "",
+                  "enc": "",
+                  "ct": ""
+                },
+                "match": "shape",
+                "allowedKeys": ["epoch", "kid", "kem", "enc", "ct"]
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    },
+    {
+      "action": "keyringUnwrap",
+      "note": "Another device's wrap is not this device's to remove.",
+      "args": { "deviceId": "TRANSCRIPTDEVICE0000000000000002" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "DELETE",
+              "path": "/djdl/devices/keyring/wraps/TRANSCRIPTDEVICE0000000000000002",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "forbidden" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 403, "code": "forbidden" }
+    },
+    {
+      "action": "keyringUnwrap",
+      "note": "Its own wrap goes.",
+      "args": { "deviceId": "TRANSCRIPTDEVICE0000000000000001" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "DELETE",
+              "path": "/djdl/devices/keyring/wraps/TRANSCRIPTDEVICE0000000000000001",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 204,
+              "headers": { "cache-control": "no-store" },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok" }
+    },
+    {
+      "action": "keyringGet",
+      "note": "The ring remains; this device holds no wrap.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": {
+                  "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+                  "epoch": 1,
+                  "rootKid": "c880980dc634960e442f3b67e7db3c99",
+                  "state": "active",
+                  "createdAt": 1700000000,
+                  "recovery": { "set": true, "createdAt": 1700000000 },
+                  "adopted": []
+                },
+                "wrap": null
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ring": {
+          "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+          "epoch": 1,
+          "rootKid": "c880980dc634960e442f3b67e7db3c99",
+          "state": "active",
+          "recoverySet": true,
+          "previous": null,
+          "adopted": []
+        },
+        "wrap": null
+      }
+    }
+  ]
+}

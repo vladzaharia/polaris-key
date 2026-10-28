@@ -691,6 +691,20 @@
       "allowedNa": []
     },
     {
+      "id": "sync.keyring",
+      "family": "sync",
+      "title": "The key ring: create, wraps, recovery, adopt and reset over /devices/keyring",
+      "service": "sync",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "U-36"
+        }
+      ],
+      "allowedNa": [],
+      "note": "WIRE-CONTRACT-V5 §13.11.2. The keyring-* transcripts pin the routes with opaque fixture keys; the E2E codec and the ring client are U-38 to U-40."
+    },
+    {
       "id": "connect.identity",
       "family": "connect",
       "title": "Device certificates and rings: verify, key choice and admission",

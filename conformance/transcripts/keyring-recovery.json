@@ -1,0 +1,383 @@
+{
+  "transcriptVersion": 1,
+  "id": "keyring-recovery",
+  "description": "The recovery blob (WIRE-CONTRACT-V5 §13.11.2). A ring made without one answers the fetch 404 not_found. The device that holds the root sets a sealed 61-byte blob (204; the epoch and kid are the ring's), and a fetch returns it: 200 with ct, only to a signed-in device of the account. A device may fetch 5 times a day, counting the 404: the sixth is 429 rate_limited with Retry-After. Each fetch is audited and emailed to the account. The blob is an opaque fixture: the server never sees the code that seals it.",
+  "features": ["sync.keyring"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_S22Hra5u0qN7HPluRUE5KOWim5z4-yZ1OdJIwjDRou0",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "keyringCreate",
+      "note": "A ring with no recovery blob.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "ringId": "",
+                  "rootKid": "",
+                  "wrap": { "kem": "", "enc": "", "ct": "" }
+                },
+                "match": "shape",
+                "allowedKeys": ["ringId", "rootKid", "wrap", "recovery"]
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf", "epoch": 1 }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+        "epoch": 1
+      }
+    },
+    {
+      "action": "keyringRecoveryGet",
+      "note": "Nothing to fetch yet.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring/recovery",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    },
+    {
+      "action": "keyringRecoverySet",
+      "note": "Set the blob.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/devices/keyring/recovery",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "ct": "", "epoch": 0, "kid": "" },
+                "match": "shape",
+                "allowedKeys": ["ct", "epoch", "kid"]
+              }
+            },
+            "response": {
+              "status": 204,
+              "headers": { "cache-control": "no-store" },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok" }
+    },
+    {
+      "action": "keyringRecoveryGet",
+      "note": "Fetch 2 of 5.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring/recovery",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw",
+                "epoch": 1,
+                "kid": "c880980dc634960e442f3b67e7db3c99"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw"
+      }
+    },
+    {
+      "action": "keyringRecoveryGet",
+      "note": "Fetch 3 of 5.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring/recovery",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw",
+                "epoch": 1,
+                "kid": "c880980dc634960e442f3b67e7db3c99"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw"
+      }
+    },
+    {
+      "action": "keyringRecoveryGet",
+      "note": "Fetch 4 of 5.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring/recovery",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw",
+                "epoch": 1,
+                "kid": "c880980dc634960e442f3b67e7db3c99"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw"
+      }
+    },
+    {
+      "action": "keyringRecoveryGet",
+      "note": "Fetch 5 of 5.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring/recovery",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw",
+                "epoch": 1,
+                "kid": "c880980dc634960e442f3b67e7db3c99"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ct": "AVbRvAHY9BzgkBBeOYPt9pXax7kTTztHO-V0Cnn7QNMQFCR9uJNxeH5icAXRAaWcIzn8lJDc3RKzpsGIOw"
+      }
+    },
+    {
+      "action": "keyringRecoveryGet",
+      "note": "The sixth in a day.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring/recovery",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "rate_limited" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 429, "code": "rate_limited" }
+    }
+  ]
+}

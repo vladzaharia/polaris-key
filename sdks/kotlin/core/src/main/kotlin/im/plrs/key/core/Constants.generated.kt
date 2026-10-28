@@ -654,6 +654,7 @@ public object Feature {
     public const val syncSettings: String = "sync.settings"
     public const val syncConflict: String = "sync.conflict"
     public const val syncSaves: String = "sync.saves"
+    public const val syncKeyring: String = "sync.keyring"
     public const val connectIdentity: String = "connect.identity"
     public const val connectNoise: String = "connect.noise"
     public const val connectProtocol: String = "connect.protocol"
@@ -781,6 +782,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "sync.keyring",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -1928,6 +1930,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.settings" to CapabilityRow("planned", "sync", listOf()),
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
     "sync.saves" to CapabilityRow("planned", "sync", listOf()),
+    "sync.keyring" to CapabilityRow("planned", "sync", listOf()),
     "connect.identity" to CapabilityRow("planned", "connect", listOf()),
     "connect.noise" to CapabilityRow("planned", "connect", listOf()),
     "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
@@ -2019,4 +2022,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "b6b5b42ad0a9129ba0a764d8cd27f3921573add8bdac11d03e9206e6f0885977"
+public const val CAPABILITY_DIGEST: String = "69c5202ac324f2b998ffc777bc1d48e8ce49feeeadd8177e38921df9db824ab6"

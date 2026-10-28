@@ -222,6 +222,17 @@
 // body is held to its shape); U-06 may tighten both. The CORS exchanges of `cloudsync-cors` are
 // `browser` steps and record the `access-control-*` response headers they carry.
 //
+// keyringGet / keyringCreate / keyringWrap / keyringUnwrap / keyringRecoverySet /
+// keyringRecoveryGet / keyringAdopt / keyringReset (U-36.4, WIRE-CONTRACT-V5 §13.11.2) — the
+// `keyring-*` calls, replayed only by an SDK that marks `sync.keyring` implemented. They are
+// `GET|POST /<p>/devices/keyring`, `PUT|DELETE .../wraps/<deviceId>` (`args.deviceId`),
+// `PUT|GET .../recovery`, `POST .../adopt` and `POST .../reset`. Every key, wrap and blob is an
+// opaque fixture derived from a label, so bodies are asserted by shape. `expect`: `result` "ok" |
+// "refused" (with `status`, `code` and, on a 429, `retryAfter`); keyringGet adds `ring` (null, or
+// {ringId, epoch, rootKid, state, recoverySet, previous (the ring id or null), adopted (ring
+// ids)}) and `wrap` (null, or {epoch, kid, by}); keyringCreate and keyringReset add `ringId` and
+// `epoch`; keyringRecoveryGet adds `ct`.
+//
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
 // Kotlin `chunkRangeFetch`, Godot `PKeyPackChunks.chunk_range_fetch`) of `length` bytes at
@@ -336,7 +347,16 @@ export type Action =
   /** U-05.16 (WIRE-CONTRACT-V4 §13.4): the Cloud Sync pull, `GET /<p>/sync?cursor=<n>`. */
   | "cloudSyncPull"
   /** U-05.16 (§13.3): the Cloud Sync push, `POST /<p>/sync/ops`. */
-  | "cloudSyncPush";
+  | "cloudSyncPush"
+  /** U-36.4 (WIRE-CONTRACT-V5 §13.11.2): the key ring calls of the `keyring-*` transcripts. */
+  | "keyringGet"
+  | "keyringCreate"
+  | "keyringWrap"
+  | "keyringUnwrap"
+  | "keyringRecoverySet"
+  | "keyringRecoveryGet"
+  | "keyringAdopt"
+  | "keyringReset";
 
 export interface Step {
   action: Action;

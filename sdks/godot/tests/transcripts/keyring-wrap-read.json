@@ -1,0 +1,94 @@
+{
+  "transcriptVersion": 1,
+  "id": "keyring-wrap-read",
+  "description": "The receiving device's side of a wrap (WIRE-CONTRACT-V5 §13.11.2). Another device of the same person made the ring and stored a wrap for this one. This device reads the ring and gets the wrap addressed to it, with the device that deposited it (by); a wrap is served only to its own device.",
+  "features": ["sync.keyring"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_u3pz0TRLbPkmbp8zp4XMeOe9gqlyBxWe3iyTdcFANXE",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "keyringGet",
+      "note": "The ring and this device's wrap.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": {
+                  "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+                  "epoch": 1,
+                  "rootKid": "c880980dc634960e442f3b67e7db3c99",
+                  "state": "active",
+                  "createdAt": 1700000000,
+                  "recovery": { "set": true, "createdAt": 1700000000 },
+                  "adopted": []
+                },
+                "wrap": {
+                  "epoch": 1,
+                  "kid": "c880980dc634960e442f3b67e7db3c99",
+                  "kem": "x25519",
+                  "enc": "hOIxQ_qMc-wKmAvt7WuhXYrRgzj8TEH7Kz90xlorH1A",
+                  "ct": "kaIewYmqzWkY_zf_riwPtrz3czcwOxD_dqgJoHvbhVBYIk-uZzMma0Vq_fLT_EQm",
+                  "by": "TRANSCRIPTDEVICE0000000000000002"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ring": {
+          "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+          "epoch": 1,
+          "rootKid": "c880980dc634960e442f3b67e7db3c99",
+          "state": "active",
+          "recoverySet": true,
+          "previous": null,
+          "adopted": []
+        },
+        "wrap": {
+          "epoch": 1,
+          "kid": "c880980dc634960e442f3b67e7db3c99",
+          "by": "TRANSCRIPTDEVICE0000000000000002"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,359 @@
+{
+  "transcriptVersion": 1,
+  "id": "keyring-adopt-reset",
+  "description": "Start over, then adopt (WIRE-CONTRACT-V5 §13.11.2). A device with keys resets the ring: a new ring id and root, the caller's wrap and a sealed recovery blob; 201, epoch 1. The old ring is kept as previous for 30 days. The device then seals the previous root under the new one and adopts it: 204, once per root; the ring read lists it under adopted. A root the server does not name is 409 keyring_conflict. Reset needs a ring to replace and a new id: the same id is 409 as well.",
+  "features": ["sync.keyring"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_3ZNAMBN6ezKkm8wIUsk9Wf6UrcVsZZXRSiXAwb17g70",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "keyringCreate",
+      "note": "The first ring.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "ringId": "",
+                  "rootKid": "",
+                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "recovery": { "ct": "" }
+                },
+                "match": "shape",
+                "allowedKeys": ["ringId", "rootKid", "wrap", "recovery"]
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf", "epoch": 1 }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+        "epoch": 1
+      }
+    },
+    {
+      "action": "keyringReset",
+      "note": "Start over.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring/reset",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "ringId": "",
+                  "rootKid": "",
+                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "recovery": { "ct": "" }
+                },
+                "match": "shape",
+                "allowedKeys": ["ringId", "rootKid", "wrap", "recovery"]
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ringId": "rg_xY8zXuP9Ukf9Bn4bXRh5yj", "epoch": 1 }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ringId": "rg_xY8zXuP9Ukf9Bn4bXRh5yj",
+        "epoch": 1
+      }
+    },
+    {
+      "action": "keyringAdopt",
+      "note": "Seal the previous root under the new one.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring/adopt",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fromRingId": "", "epoch": 0, "kid": "", "ct": "" },
+                "match": "shape",
+                "allowedKeys": ["fromRingId", "epoch", "kid", "ct"]
+              }
+            },
+            "response": {
+              "status": 204,
+              "headers": { "cache-control": "no-store" },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok" }
+    },
+    {
+      "action": "keyringAdopt",
+      "note": "A root the server does not name.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring/adopt",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "fromRingId": "", "epoch": 0, "kid": "", "ct": "" },
+                "match": "shape",
+                "allowedKeys": ["fromRingId", "epoch", "kid", "ct"]
+              }
+            },
+            "response": {
+              "status": 409,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "keyring_conflict" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 409,
+        "code": "keyring_conflict"
+      }
+    },
+    {
+      "action": "keyringGet",
+      "note": "The new ring: previous and adopted.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ring": {
+                  "ringId": "rg_xY8zXuP9Ukf9Bn4bXRh5yj",
+                  "epoch": 1,
+                  "rootKid": "1a69a202b9e989bde41ecb190ea10027",
+                  "state": "active",
+                  "createdAt": 1700000000,
+                  "recovery": { "set": true, "createdAt": 1700000000 },
+                  "adopted": [
+                    {
+                      "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+                      "epoch": 1,
+                      "kid": "c880980dc634960e442f3b67e7db3c99",
+                      "ct": "Af0Cb8j_lnzBkpODAUjvHEb-sG-mG5kb-tLJYMxv3dvi4v2ibhwKFDsF-aPFqcrOmMy3ot2VEqGXZuOlhQ"
+                    }
+                  ],
+                  "previous": {
+                    "ringId": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+                    "kid": "c880980dc634960e442f3b67e7db3c99",
+                    "until": 1702592000
+                  }
+                },
+                "wrap": {
+                  "epoch": 1,
+                  "kid": "1a69a202b9e989bde41ecb190ea10027",
+                  "kem": "x25519",
+                  "enc": "tlLOB_4ZmH04OsH3RYq6f0fz-2zIn6mp_VrmMSPIfiM",
+                  "ct": "_uu1PIfCGTLpIca5p5XjvXhaJs8qBfDC82ODEnEeSOJltPvq9yOgnYtrST-65yjr",
+                  "by": "TRANSCRIPTDEVICE0000000000000001"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "ring": {
+          "ringId": "rg_xY8zXuP9Ukf9Bn4bXRh5yj",
+          "epoch": 1,
+          "rootKid": "1a69a202b9e989bde41ecb190ea10027",
+          "state": "active",
+          "recoverySet": true,
+          "previous": "rg_6pe_t38vM4AZ7jQA7SIZjf",
+          "adopted": ["rg_6pe_t38vM4AZ7jQA7SIZjf"]
+        },
+        "wrap": {
+          "epoch": 1,
+          "kid": "1a69a202b9e989bde41ecb190ea10027",
+          "by": "TRANSCRIPTDEVICE0000000000000001"
+        }
+      }
+    },
+    {
+      "action": "keyringReset",
+      "note": "Resetting to the current id is refused.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring/reset",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "ringId": "",
+                  "rootKid": "",
+                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "recovery": { "ct": "" }
+                },
+                "match": "shape",
+                "allowedKeys": ["ringId", "rootKid", "wrap", "recovery"]
+              }
+            },
+            "response": {
+              "status": 409,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "keyring_conflict" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 409,
+        "code": "keyring_conflict"
+      }
+    }
+  ]
+}

@@ -652,6 +652,7 @@ public enum Feature {
     public static let syncSettings = "sync.settings"
     public static let syncConflict = "sync.conflict"
     public static let syncSaves = "sync.saves"
+    public static let syncKeyring = "sync.keyring"
     public static let connectIdentity = "connect.identity"
     public static let connectNoise = "connect.noise"
     public static let connectProtocol = "connect.protocol"
@@ -779,6 +780,7 @@ public let FEATURE_VALUES: [String] = [
     "sync.settings",
     "sync.conflict",
     "sync.saves",
+    "sync.keyring",
     "connect.identity",
     "connect.noise",
     "connect.protocol",
@@ -1906,6 +1908,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.settings": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.keyring": CapabilityRow(status: "planned", service: "sync", na: []),
     "connect.identity": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.noise": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.protocol": CapabilityRow(status: "planned", service: "connect", na: []),
@@ -1997,4 +2000,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "3179447cccdc7b46986c33897907fb195164f81d976e9dd4dae36fc1ef3471ed"
+public let CAPABILITY_DIGEST = "4467df15f9c0f206b224ec834453d8f00385d2c9ec198fda8612e767ce4da626"

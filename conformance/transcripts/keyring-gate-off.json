@@ -1,0 +1,110 @@
+{
+  "transcriptVersion": 1,
+  "id": "keyring-gate-off",
+  "description": "The launch gate off (launch.syncE2e). With the operator's gate off the key ring routes do not exist, whatever the product has enabled: 404 on every one, before any credential is read.",
+  "features": ["sync.keyring"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_qnc2ap8zjsEJ6ME7c6CmmSgbV-bFu67eWhFrV-llYmE",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "keyringGet",
+      "note": "The gate is off.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    },
+    {
+      "action": "keyringCreate",
+      "note": "Create is 404 too.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/keyring",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "ringId": "",
+                  "rootKid": "",
+                  "wrap": { "kem": "", "enc": "", "ct": "" },
+                  "recovery": { "ct": "" }
+                },
+                "match": "shape",
+                "allowedKeys": ["ringId", "rootKid", "wrap", "recovery"]
+              }
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404, "code": "not_found" }
+    }
+  ]
+}
