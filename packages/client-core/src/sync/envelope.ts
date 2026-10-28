@@ -125,13 +125,44 @@ export async function sealValue(
  * in the order of `EnvelopeInvalid`; `kid` is checked before any decryption so a caller can look
  * for another root. A match on an alias answers that alias as `name`.
  */
-export async function openValue(
+export function openValue(
   port: SyncCryptoPort,
   root: Uint8Array,
   collection: string,
   name: string,
   envelope: Uint8Array,
   aliases: readonly string[] = [],
+): Promise<OpenedValue> {
+  return openEnvelope(
+    port,
+    root,
+    collection,
+    envelope,
+    (k) => k === name || aliases.includes(k),
+  );
+}
+
+/**
+ * Opens an envelope whose name the caller does not know yet (a blinded open key or merge member:
+ * the name is inside). It answers the envelope's own `k`. The caller MUST check that `k` is the
+ * name it expected (for a blinded one, that `blind(k)` equals the served name) before it trusts
+ * the value; the same checks as `openValue` run first.
+ */
+export function openValueAnyName(
+  port: SyncCryptoPort,
+  root: Uint8Array,
+  collection: string,
+  envelope: Uint8Array,
+): Promise<OpenedValue> {
+  return openEnvelope(port, root, collection, envelope, () => true);
+}
+
+async function openEnvelope(
+  port: SyncCryptoPort,
+  root: Uint8Array,
+  collection: string,
+  envelope: Uint8Array,
+  accepts: (k: string) => boolean,
 ): Promise<OpenedValue> {
   const n = envelope.length;
   if (
@@ -179,6 +210,6 @@ export async function openValue(
     return { ok: false, reason: "json" };
   }
   const k = parsed.k;
-  if (k !== name && !aliases.includes(k)) return { ok: false, reason: "name" };
+  if (!accepts(k)) return { ok: false, reason: "name" };
   return { ok: true, name: k, value: parsed.v as SyncJson };
 }
