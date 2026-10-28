@@ -1038,7 +1038,12 @@ over from the product-scoped design, adjusted; items 12–17 are new with the sh
       activate, refresh, attach its own floating licence, read its own pairwise subject. It can
       never list the Library, add or remove links, change the email, merge, read other products'
       data or obtain an account session. The SDKs expose no account mutations (§5.2). The
-      boundary has a test in each direction.
+      boundary has a test in each direction. _Amended by I-43 (the link offer, owner rule O-5):_
+      one account mutation exists, adding a Google or Apple sign-in method. It needs the device
+      bearer, a proof by the device's key and a same-device sign-in at most 300 seconds old
+      (spent by the link); the link is global only when the account has already verified the
+      token's address, otherwise it is scoped to the developer; the account's addresses and the
+      linked address are emailed. Everything else in this item stands.
     - _Bounded yield, not bounded asks._ In layer 1 any party can open the card for any product,
       because the start routes are public and take the product from the path (item 6's residual).
       What is bounded is the yield: a flow returns only the product the card names, that

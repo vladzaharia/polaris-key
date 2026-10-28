@@ -622,13 +622,18 @@ export function signInMethodAddedNotice(input: {
   /** The method by its own name: "Apple", "Google", "Steam", "A passkey", an email address. */
   method: string;
   origin: string;
+  /** The app that made the link (the link offer, I-43.2); absent for a link made in the portal. */
+  app?: string | undefined;
 }): NoticeMessage {
   const method = displayValue(input.method, "A sign-in method");
+  const app = input.app ? displayValue(input.app, "an app") : null;
   return buildNotice({
     help: "sign-in-method-added",
     subject: `${method} was connected to your Polaris Locker account`,
     paragraphs: [
-      `${method} was added as a way to sign in to your Polaris Locker account.`,
+      app
+        ? `${method} was added in ${app} as a way to sign in to your Polaris Locker account.`
+        : `${method} was added as a way to sign in to your Polaris Locker account.`,
     ],
     action: {
       label: "See your sign-in methods",

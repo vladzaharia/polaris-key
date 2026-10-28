@@ -9,12 +9,15 @@
  * The device code, nearby approval, restore and the token exchange never write it: they are not
  * proof that the person is at this device now.
  *
- * The link route (I-43.2) reads and spends the mark; it adds those two operations beside `markFresh`.
+ * The link route (I-43.2) reads the mark (the offer list) and spends it (the link itself). A spend
+ * is one atomic take, so of any number of concurrent links at most one finds the mark.
  */
 
 import type { Env } from "../../../platform/env.js";
 import {
   artefactRef,
+  consumeArtefact,
+  getArtefact,
   putArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
@@ -41,4 +44,22 @@ export async function markFresh(
   } catch {
     // Fail closed: without the mark the link offer is simply not available.
   }
+}
+
+/** True while the device's step-up is live. Reads the mark without spending it (the offer list). */
+export async function freshLive(
+  env: Env,
+  product: string,
+  deviceId: string,
+): Promise<boolean> {
+  return (await getArtefact(env, freshRef(product, deviceId))) !== null;
+}
+
+/** Spend the device's step-up. True for exactly one caller per mark; an unreachable store is false. */
+export async function spendFresh(
+  env: Env,
+  product: string,
+  deviceId: string,
+): Promise<boolean> {
+  return (await consumeArtefact(env, freshRef(product, deviceId))) !== null;
 }

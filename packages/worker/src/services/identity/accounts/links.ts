@@ -106,6 +106,8 @@ export async function linkIdentity(
   ctx: AccountContext,
   proof: AccountProof,
   identity: VerifiedIdentity,
+  /** A link made in an app (I-43.2): the notice names the app and also goes to `alsoTo`. */
+  via?: { app: string; alsoTo?: string | null },
 ): Promise<LinkResult> {
   const { db, env, now } = ctx;
   if (!isFresh(proof, now)) return { ok: false, error: "step_up_required" };
@@ -169,8 +171,12 @@ export async function linkIdentity(
     ctx.env,
     db,
     account.id,
-    account.primary_email,
-    signInMethodAddedNotice({ method: methodLabel(link), origin: ctx.origin }),
+    via?.alsoTo ? [account.primary_email, via.alsoTo] : account.primary_email,
+    signInMethodAddedNotice({
+      method: methodLabel(link),
+      origin: ctx.origin,
+      app: via?.app,
+    }),
     now,
   );
   return { ok: true, link, already: false };
