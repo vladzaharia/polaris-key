@@ -87,9 +87,15 @@ class CloudSyncMachineTest {
         return m.get("a.num")
     }
 
+    /** Control: at cursor 0 (below `encryptionSince`) the plaintext copy reads as legacy data. */
+    @Test
+    fun conflictCopyPlaintextReadsAsLegacyAtCursorZero() {
+        assertEquals(ReadResult(JsonPrimitive("evil"), "cloud"), conflictCopyRead(0))
+    }
+
+    /** Mutation-checked: with `copyRow` dropping the cursor this fails (the copy reads `cloud`) and the control above passes. */
     @Test
     fun conflictCopyPlaintextNeedsCursorBelowSince() {
-        assertEquals(ReadResult(JsonPrimitive("evil"), "cloud"), conflictCopyRead(0))
         assertEquals("document", conflictCopyRead(50).from)
     }
 }
