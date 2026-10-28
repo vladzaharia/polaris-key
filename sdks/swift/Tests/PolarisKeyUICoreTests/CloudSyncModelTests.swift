@@ -24,8 +24,8 @@ final class CloudSyncModelTests: XCTestCase {
         accept: @escaping @Sendable (SyncRingPin) async throws -> SyncUnlockResult = { _ in
             .unlocked(ringId: "ring_a", epoch: 1)
         }
-    ) -> CloudSyncHost {
-        CloudSyncHost(
+    ) -> CloudSyncScreenHost {
+        CloudSyncScreenHost(
             recover: { try await recover($0); await calls.recover($0) },
             reset: { await calls.reset(); return "NEW-CODE" },
             acceptRingChange: { await calls.accept($0); return try await accept($0) },
@@ -196,7 +196,7 @@ final class CloudSyncModelTests: XCTestCase {
 
     func testAStartOverInFlightCannotBeCancelledAndKeepsItsCode() async {
         let gate = AsyncStream<Void>.makeStream()
-        let slow = CloudSyncHost(
+        let slow = CloudSyncScreenHost(
             recover: { _ in }, reset: {
                 for await _ in gate.stream { break }
                 return "MINTED"
@@ -222,7 +222,7 @@ final class CloudSyncModelTests: XCTestCase {
 
     func testAFreshCodeSurvivesClearWhileItIsBeingMade() async {
         let gate = AsyncStream<Void>.makeStream()
-        let slow = CloudSyncHost(
+        let slow = CloudSyncScreenHost(
             recover: { _ in }, reset: { nil }, acceptRingChange: { _ in .locked(reason: .noRing) },
             newRecoveryCode: {
                 for await _ in gate.stream { break }
@@ -240,7 +240,7 @@ final class CloudSyncModelTests: XCTestCase {
     func testAFailedStartOverIsNotAnUnlockFailureAndRetriesItself() async {
         let calls = Calls()
         let attempts = Attempts()
-        let flaky = CloudSyncHost(
+        let flaky = CloudSyncScreenHost(
             recover: { _ in }, reset: {
                 if await attempts.next() == 1 { throw PolarisError(code: "network", message: "x") }
                 return "MINTED"
