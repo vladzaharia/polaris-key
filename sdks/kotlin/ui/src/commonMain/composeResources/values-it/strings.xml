@@ -2594,7 +2594,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_title">Problema di archiviazione</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_message">L'app non è riuscita a leggere o salvare la licenza su questo dispositivo. Verifica che l'app possa scrivere nella sua cartella dati.</string>
+    <string name="core_codes_store_failed_message">Impossibile salvare su questo dispositivo. Controlla lo spazio di archiviazione e riprova.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">Connessione non disponibile</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

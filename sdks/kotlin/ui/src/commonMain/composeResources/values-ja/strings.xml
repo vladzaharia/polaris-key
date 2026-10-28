@@ -2568,7 +2568,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_title">保存の問題</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_message">アプリはこのデバイスでライセンスを読み取るか保存することができませんでした。アプリがデータフォルダに書き込めることを確認してください。</string>
+    <string name="core_codes_store_failed_message">このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">接続できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

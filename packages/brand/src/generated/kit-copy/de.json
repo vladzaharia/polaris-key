@@ -1186,7 +1186,7 @@
   "core.codes.invalid-response.title": "Unerwartete Antwort",
   "core.codes.invalid-response.message": "Der Dienst hat eine Antwort gesendet, die die App nicht verarbeiten konnte. Versuchen Sie es erneut.",
   "core.codes.store-failed.title": "Speicherproblem",
-  "core.codes.store-failed.message": "Die App konnte ihre Lizenz auf diesem Gerät nicht lesen oder speichern. Prüfen Sie, ob die App in ihren Datenordner schreiben kann.",
+  "core.codes.store-failed.message": "Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Speicher und versuchen Sie es erneut.",
   "core.codes.connect-unavailable.title": "Verbindung nicht verfügbar",
   "core.codes.connect-unavailable.message": "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.",
   "core.codes.peer-cert-invalid.title": "Gerät nicht bestätigt",

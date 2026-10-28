@@ -1186,7 +1186,7 @@
   "core.codes.invalid-response.title": "予期しない応答",
   "core.codes.invalid-response.message": "サービスから、アプリで使用できない応答が返されました。もう一度お試しください。",
   "core.codes.store-failed.title": "保存の問題",
-  "core.codes.store-failed.message": "アプリはこのデバイスでライセンスを読み取るか保存することができませんでした。アプリがデータフォルダに書き込めることを確認してください。",
+  "core.codes.store-failed.message": "このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。",
   "core.codes.connect-unavailable.title": "接続できません",
   "core.codes.connect-unavailable.message": "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。",
   "core.codes.peer-cert-invalid.title": "デバイスを確認できません",

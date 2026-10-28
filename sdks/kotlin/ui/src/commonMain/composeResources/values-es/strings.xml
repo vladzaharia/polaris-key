@@ -2594,7 +2594,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_title">Problema de almacenamiento</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_store_failed_message">La app no pudo leer ni guardar su licencia en este dispositivo. Comprueba que la app puede escribir en su carpeta de datos.</string>
+    <string name="core_codes_store_failed_message">No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">Conexión no disponible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

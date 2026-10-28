@@ -664,8 +664,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   "store-failed": {
     title: "Storage problem",
-    message:
-      "The app couldn't read or save its license on this device. Check that the app can write its data folder.",
+    message: "Couldn't save on this device. Check storage and try again.",
   },
   "connect-unavailable": {
     title: "Connect unavailable",

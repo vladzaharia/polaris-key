@@ -1186,7 +1186,7 @@
   "core.codes.invalid-response.title": "Respuesta inesperada",
   "core.codes.invalid-response.message": "El servicio envió una respuesta que la app no pudo usar. Vuelve a intentarlo.",
   "core.codes.store-failed.title": "Problema de almacenamiento",
-  "core.codes.store-failed.message": "La app no pudo leer ni guardar su licencia en este dispositivo. Comprueba que la app puede escribir en su carpeta de datos.",
+  "core.codes.store-failed.message": "No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo.",
   "core.codes.connect-unavailable.title": "Conexión no disponible",
   "core.codes.connect-unavailable.message": "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo.",
   "core.codes.peer-cert-invalid.title": "Dispositivo no verificado",

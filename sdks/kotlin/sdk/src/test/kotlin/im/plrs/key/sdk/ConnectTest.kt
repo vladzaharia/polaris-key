@@ -218,9 +218,9 @@ class ConnectTest {
         r.worker.connectOn = false
         try {
             r.client.connect.identity()
-            fail("expected service-unavailable")
+            fail("expected connect-unavailable")
         } catch (e: PolarisException) {
-            assertEquals(ErrorCode.serviceUnavailable, e.code)
+            assertEquals(ErrorCode.connectUnavailable, e.code)
             assertEquals("connect.identity", e.unsupported!!.feature)
             assertEquals("product", e.unsupported!!.reason)
         }
@@ -250,7 +250,7 @@ class ConnectTest {
     fun aCertificateForOtherKeysIsRefusedAndNothingIsStored() = runBlocking {
         val r = rig()
         r.worker.certKeysOverride = other("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC").keys.let { it.signKey to it.agreeKey }
-        refusal(ErrorCode.badResponse) { runBlocking { r.client.connect.identity() } }
+        refusal(ErrorCode.peerCertInvalid) { runBlocking { r.client.connect.identity() } }
         assertNull(r.client.connect.current())
         assertNull(r.client.connect.discoveryKeys())
     }
@@ -261,7 +261,7 @@ class ConnectTest {
         r.worker.epoch = 5
         r.client.connect.identity()
         r.worker.epoch = 4
-        refusal(ErrorCode.badResponse) { runBlocking { r.client.connect.identity(refresh = true) } }
+        refusal(ErrorCode.peerCertInvalid) { runBlocking { r.client.connect.identity(refresh = true) } }
         assertEquals(5L, r.client.connect.current()!!.epoch)
     }
 
@@ -271,7 +271,7 @@ class ConnectTest {
         r.client.connect.identity()
         r.worker.subject = "ps_ZyXwVuTsRqPoNmLkJiHgFe"
         r.worker.epoch = 9
-        refusal(ErrorCode.badResponse) { runBlocking { r.client.connect.identity(refresh = true) } }
+        refusal(ErrorCode.peerCertInvalid) { runBlocking { r.client.connect.identity(refresh = true) } }
         assertEquals(sub, r.client.connect.current()!!.sub)
         assertEquals(1L, r.client.connect.current()!!.epoch)
     }

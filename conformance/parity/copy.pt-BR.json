@@ -587,7 +587,7 @@
     },
     "store-failed": {
       "title": "Erro de armazenamento",
-      "message": "O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele."
+      "message": "Não foi possível salvar neste dispositivo. Verifique o armazenamento e tente novamente."
     },
     "connect-unavailable": {
       "title": "Conexão indisponível",

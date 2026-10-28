@@ -1483,7 +1483,7 @@ export const KIT_COPY: Readonly<
       "The service sent an answer the app couldn't use. Try again.",
     "core.codes.store-failed.title": "Storage problem",
     "core.codes.store-failed.message":
-      "The app couldn't read or save its license on this device. Check that the app can write its data folder.",
+      "Couldn't save on this device. Check storage and try again.",
     "core.codes.connect-unavailable.title": "Connect unavailable",
     "core.codes.connect-unavailable.message":
       "Nearby connection isn't available for this app on this device.",
@@ -3300,7 +3300,7 @@ export const KIT_COPY: Readonly<
       "Der Dienst hat eine Antwort gesendet, die die App nicht verarbeiten konnte. Versuchen Sie es erneut.",
     "core.codes.store-failed.title": "Speicherproblem",
     "core.codes.store-failed.message":
-      "Die App konnte ihre Lizenz auf diesem Gerät nicht lesen oder speichern. Prüfen Sie, ob die App in ihren Datenordner schreiben kann.",
+      "Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Speicher und versuchen Sie es erneut.",
     "core.codes.connect-unavailable.title": "Verbindung nicht verfügbar",
     "core.codes.connect-unavailable.message":
       "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.",
@@ -5106,7 +5106,7 @@ export const KIT_COPY: Readonly<
       "Le service a envoyé une réponse que l’app n’a pas pu utiliser. Réessayez.",
     "core.codes.store-failed.title": "Problème de stockage",
     "core.codes.store-failed.message":
-      "L’app n’a pas pu lire ou enregistrer sa licence sur cet appareil. Vérifiez qu’elle peut écrire dans son dossier de données.",
+      "Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez.",
     "core.codes.connect-unavailable.title": "Connexion indisponible",
     "core.codes.connect-unavailable.message":
       "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.",
@@ -6901,7 +6901,7 @@ export const KIT_COPY: Readonly<
       "El servicio envió una respuesta que la app no pudo usar. Vuelve a intentarlo.",
     "core.codes.store-failed.title": "Problema de almacenamiento",
     "core.codes.store-failed.message":
-      "La app no pudo leer ni guardar su licencia en este dispositivo. Comprueba que la app puede escribir en su carpeta de datos.",
+      "No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo.",
     "core.codes.connect-unavailable.title": "Conexión no disponible",
     "core.codes.connect-unavailable.message":
       "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo.",
@@ -8665,7 +8665,7 @@ export const KIT_COPY: Readonly<
       "O serviço enviou uma resposta que o app não pôde usar. Tente novamente.",
     "core.codes.store-failed.title": "Erro de armazenamento",
     "core.codes.store-failed.message":
-      "O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele.",
+      "Não foi possível salvar neste dispositivo. Verifique o armazenamento e tente novamente.",
     "core.codes.connect-unavailable.title": "Conexão indisponível",
     "core.codes.connect-unavailable.message":
       "A conexão com dispositivos próximos não está disponível para este app neste dispositivo.",
@@ -10441,7 +10441,7 @@ export const KIT_COPY: Readonly<
       "Il servizio ha inviato una risposta che l'app non può usare. Riprova.",
     "core.codes.store-failed.title": "Problema di archiviazione",
     "core.codes.store-failed.message":
-      "L'app non è riuscita a leggere o salvare la licenza su questo dispositivo. Verifica che l'app possa scrivere nella sua cartella dati.",
+      "Impossibile salvare su questo dispositivo. Controlla lo spazio di archiviazione e riprova.",
     "core.codes.connect-unavailable.title": "Connessione non disponibile",
     "core.codes.connect-unavailable.message":
       "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo.",
@@ -12236,7 +12236,7 @@ export const KIT_COPY: Readonly<
       "サービスから、アプリで使用できない応答が返されました。もう一度お試しください。",
     "core.codes.store-failed.title": "保存の問題",
     "core.codes.store-failed.message":
-      "アプリはこのデバイスでライセンスを読み取るか保存することができませんでした。アプリがデータフォルダに書き込めることを確認してください。",
+      "このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。",
     "core.codes.connect-unavailable.title": "接続できません",
     "core.codes.connect-unavailable.message":
       "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。",
@@ -13959,7 +13959,7 @@ export const KIT_COPY: Readonly<
       "서비스에서 앱이 사용할 수 없는 응답을 보냈어요. 다시 시도하세요.",
     "core.codes.store-failed.title": "저장소 문제",
     "core.codes.store-failed.message":
-      "앱이 이 기기에서 라이선스를 읽거나 저장하지 못했어요. 앱이 데이터 폴더에 쓸 수 있는지 확인하세요.",
+      "이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요.",
     "core.codes.connect-unavailable.title": "연결할 수 없음",
     "core.codes.connect-unavailable.message":
       "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다.",
@@ -15562,7 +15562,7 @@ export const KIT_COPY: Readonly<
       "服务返回了应用无法使用的响应。请重试。",
     "core.codes.store-failed.title": "存储出现问题",
     "core.codes.store-failed.message":
-      "应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。",
+      "无法保存到此设备。请检查存储空间后重试。",
     "core.codes.connect-unavailable.title": "无法连接",
     "core.codes.connect-unavailable.message":
       "此设备上的此应用无法连接附近的设备。",

@@ -6765,7 +6765,7 @@ msgstr ""
 msgid "core.codes.store-failed.title"
 msgstr ""
 
-#. The app couldn't read or save its license on this device. Check that the app can write its data folder.
+#. Couldn't save on this device. Check storage and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.store-failed.message"
 msgstr ""

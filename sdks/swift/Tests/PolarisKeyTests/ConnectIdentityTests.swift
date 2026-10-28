@@ -384,7 +384,7 @@ final class ConnectClientTests: XCTestCase {
         await serve(keys: keys, epoch: 4)
         let older = await c.connect.identity(refresh: true)
         guard case .error(let code, let message) = older else { return XCTFail("\(older)") }
-        XCTAssertEqual(code, ErrorCode.invalidResponse)
+        XCTAssertEqual(code, ErrorCode.peerCertInvalid)
         XCTAssertTrue(message.contains("stale roster"), message)
 
         // The same epoch with other members is also stale; the same members is a re-issue.
