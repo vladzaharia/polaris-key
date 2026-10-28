@@ -901,6 +901,11 @@
     },
     {
       "sdk": "python",
+      "path": "client.connect",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "python",
       "path": "devices.request_registration",
       "reason": "wiring the boot and update flows call; not an app verb"
     },

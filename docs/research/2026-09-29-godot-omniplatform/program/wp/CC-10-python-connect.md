@@ -24,3 +24,7 @@ Python Cloud Connect: cryptography Noise, zeroconf, asyncio, websockets. Scope, 
 ## Acceptance criteria
 
 [ ] see plan
+
+## Progress and continuation (2026-10-27)
+
+CC-10.1 (identity) is done on `wp/CC-10.1-python-connect-identity`: `polaris_key.core.peer_cert` (the §15.2 and §15.3 verifiers, passing `peerCertCases`, `ringCases` and `peerAdmissionCases`), `client.connect` (`identity`, `current`, `list_devices`, `discovery_keys`, `leave`) with the `pkey.connect.v1` state file, and the `connect.identity` parity row. Still to do: Noise, zeroconf, asyncio transport, relay (`connect.noise`, `connect.protocol`, `connect.lan`, `connect.relay`, `connect.app`).
