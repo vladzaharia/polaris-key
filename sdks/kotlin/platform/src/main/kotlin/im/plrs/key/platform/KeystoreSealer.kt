@@ -22,7 +22,8 @@ import javax.crypto.spec.GCMParameterSpec
  * [open] answers null only for a blob that can never be opened: no key under the alias (lost or
  * destroyed), a permanently invalidated key (the key is removed), a bad tag, or a blob in another
  * format. A failure that may pass (the Keystore provider errored) throws [SecureStoreException], so
- * a glitch is never read as "the keys are gone". Nothing is ever returned or written in the clear.
+ * a glitch is never read as "the keys are gone": absence is confirmed with `containsAlias` on a fresh
+ * load, and a key is never created over an alias that is present. Nothing is ever returned or written in the clear.
  */
 public class KeystoreSealer(private val keys: KeyProvider, public val alias: String) {
     /** Makes the AES/GCM cipher (tests substitute one that raises Keystore-only exceptions). */
@@ -74,6 +75,7 @@ public class KeystoreSealer(private val keys: KeyProvider, public val alias: Str
     }
 
     private fun encrypt(plain: ByteArray, context: ByteArray, retry: Boolean): ByteArray {
+        // Create only when the alias is confirmed absent; never over a key that is there.
         val key = keyOrRetry() ?: keys.create(alias)
         val cipher = newCipher()
         try {
@@ -90,8 +92,17 @@ public class KeystoreSealer(private val keys: KeyProvider, public val alias: Str
         return byteArrayOf(VERSION) + iv + ct
     }
 
-    /** A transient null from the Keystore must not read as "key gone": ask once more. */
-    private fun keyOrRetry(): SecretKey? = keys.get(alias) ?: keys.get(alias)
+    /**
+     * The key, or null only when the alias is CONFIRMED absent (a fresh `KeyStore.load` and
+     * `containsAlias`). A null from `get` for an alias that is present is ambiguous and throws
+     * [SecureStoreException], so a glitch can never read as "key gone" nor lead to a new key.
+     */
+    private fun keyOrRetry(): SecretKey? {
+        keys.get(alias)?.let { return it }
+        keys.get(alias)?.let { return it }
+        if (keys.exists(alias)) throw SecureStoreException("keystore", "$alias is present but could not be loaded")
+        return null
+    }
 
     public companion object {
         private const val VERSION: Byte = 1

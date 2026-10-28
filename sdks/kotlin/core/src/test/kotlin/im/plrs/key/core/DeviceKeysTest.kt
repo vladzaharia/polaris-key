@@ -188,6 +188,71 @@ class DeviceKeysTest {
     }
 
     @Test
+    fun twoInstancesRotatingNeverLoseOrRepeatAGeneration() = runBlocking {
+        val f = File(tmp.root, "race/device-keys.json")
+        val a = file(JcaDeviceCurves, f)
+        val b = file(TinkDeviceCurves, f)
+        a.ensure()
+        val n = 6
+        val gens = (0 until n).flatMap { listOf(async { a.rotate().generation }, async { b.rotate().generation }) }.awaitAll()
+        assertEquals((2..(1 + 2 * n)).toList(), gens.sorted())
+        assertEquals(1 + 2 * n, a.publicKeys()!!.generation)
+        assertEquals(a.publicKeys(), b.publicKeys())
+    }
+
+    @Test
+    fun anUnavailableBackendIsUnsupportedNeverUnreadable() = runBlocking {
+        val storage = InMemoryDeviceKeyStorage()
+        val good = DeviceKeyStore(storage)
+        val k = good.ensure()
+        val dead = DeviceKeyStore(storage, { UnavailableDeviceCurves })
+        assertThrows<DeviceKeyUnsupportedException> { runBlocking { dead.publicKeys() } }
+        assertThrows<DeviceKeyUnsupportedException> { runBlocking { dead.ensure() } }
+        assertThrows<DeviceKeyUnsupportedException> { runBlocking { dead.sign(ByteArray(1)) } }
+        assertThrows<DeviceKeyUnsupportedException> { runBlocking { dead.dh(DeviceCurvesSelection.randomBytes(32)) } }
+        assertThrows<DeviceKeyUnsupportedException> { runBlocking { dead.rotate() } }
+        assertThrows<DeviceKeyUnsupportedException> { runBlocking { DeviceKeyStore(InMemoryDeviceKeyStorage(), { UnavailableDeviceCurves }).ensure() } }
+        assertEquals(k, good.publicKeys())
+    }
+
+    private fun posix() = "posix" in java.nio.file.FileSystems.getDefault().supportedFileAttributeViews()
+
+    @Test
+    fun aLooseDirectoryOrFileIsRefused() = runBlocking {
+        if (!posix()) return@runBlocking
+        val f = File(tmp.root, "loose/device-keys.json")
+        val s = file(JcaDeviceCurves, f)
+        s.ensure()
+        Files.setPosixFilePermissions(f.parentFile.toPath(), PosixFilePermissions.fromString("rwxrwx---"))
+        assertThrows<StoreException> { runBlocking { s.publicKeys() } }
+        Files.setPosixFilePermissions(f.parentFile.toPath(), PosixFilePermissions.fromString("rwx------"))
+        assertNotNull(s.publicKeys())
+        Files.setPosixFilePermissions(f.toPath(), PosixFilePermissions.fromString("rw-r-----"))
+        assertThrows<StoreException> { runBlocking { s.publicKeys() } }
+        assertThrows<StoreException> { runBlocking { s.rotate() } }
+        Files.setPosixFilePermissions(f.toPath(), PosixFilePermissions.fromString("rw-------"))
+        assertNotNull(s.publicKeys())
+    }
+
+    @Test
+    fun aWriteSweepsStaleTemporaryFilesAndLeavesNone() = runBlocking {
+        val f = File(tmp.root, "sweep/device-keys.json")
+        val s = file(JcaDeviceCurves, f)
+        s.ensure()
+        val stale = File(f.parentFile, ".device-keys.json.old.tmp").also { it.writeText("secret") }
+        s.rotate()
+        assertFalse(stale.exists())
+        assertTrue(f.parentFile.listFiles()!!.none { it.name.endsWith(".tmp") })
+    }
+
+    @Test
+    fun aFileThatIsNotARegularFileIsRefused() = runBlocking {
+        val f = File(tmp.root, "dirfile/device-keys.json")
+        f.mkdirs()
+        assertThrows<StoreException> { runBlocking { file(JcaDeviceCurves, f).publicKeys() } }
+    }
+
+    @Test
     fun twoStoresOverOneFileAgree() = runBlocking {
         val f = File(tmp.root, "shared/device-keys.json")
         val (a, b) = listOf(async { file(JcaDeviceCurves, f).ensure() }, async { file(TinkDeviceCurves, f).ensure() }).awaitAll()

@@ -31,6 +31,13 @@ public interface KeyProvider {
 
     public fun delete(alias: String)
 
+    /**
+     * Whether [alias] exists, asked of a FRESHLY loaded keystore, so a transient `get` that answered
+     * null can be told from a key that is really gone. The default trusts [get]; the real provider
+     * overrides it.
+     */
+    public fun exists(alias: String): Boolean = get(alias) != null
+
     /** What protects the key: {backend, securityLevel?, insideSecureHardware?, strongBox, keySize?}. */
     public fun describe(alias: String): JSONObject
 }
@@ -77,6 +84,8 @@ public class AndroidKeyStoreProvider(
     override fun delete(alias: String) {
         store().deleteEntry(alias)
     }
+
+    override fun exists(alias: String): Boolean = store().containsAlias(alias)
 
     override fun describe(alias: String): JSONObject {
         val out = JSONObject().put("backend", ANDROID_KEYSTORE)

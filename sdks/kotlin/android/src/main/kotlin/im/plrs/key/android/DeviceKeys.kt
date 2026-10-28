@@ -5,9 +5,10 @@
 // follow a copy to another device anyway. The curves are :core's DeviceCurves; Tink (tink-android)
 // comes first below API 33, where the JCA has no 25519.
 //
-// Persistence: durable. A lost or invalidated wrapping key makes the file unreadable; the next
-// ensure() then makes a new pair (the server sees a key change, which it rate limits). wipe() removes
-// the file AND the wrapping key.
+// Persistence: durable. A lost or invalidated wrapping key makes the file unreadable: every call but
+// wipe() then throws DeviceKeysUnreadableException and the file is kept, never replaced. wipe() removes
+// the file AND the wrapping key; the next ensure() makes a new pair (the server sees a key change,
+// which it rate limits).
 
 package im.plrs.key.android
 

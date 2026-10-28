@@ -85,4 +85,28 @@ class KeystoreSealerTest {
             assertEquals("keystore-provider", e.reason)
         }
     }
+
+    @Test
+    fun aPresentAliasThatWillNotLoadThrowsAndNeverGetsANewKey() {
+        val s = KeystoreSealer(keys, alias)
+        val blob = s.seal(secret, ctx)
+        val created = keys.created
+        val flaky = object : KeyProvider by keys {
+            override fun get(alias: String): javax.crypto.SecretKey? = null
+            override fun exists(alias: String): Boolean = true
+        }
+        val f = KeystoreSealer(flaky, alias)
+        try {
+            f.open(blob, ctx)
+            fail("ambiguous answer must throw")
+        } catch (e: SecureStoreException) {
+        }
+        try {
+            f.seal(secret, ctx)
+            fail("must not create over a present alias")
+        } catch (e: SecureStoreException) {
+        }
+        assertEquals(created, keys.created)
+        assertArrayEquals(secret, s.open(blob, ctx))
+    }
 }

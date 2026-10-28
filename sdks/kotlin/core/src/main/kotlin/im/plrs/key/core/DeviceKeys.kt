@@ -82,6 +82,14 @@ public interface DeviceKeyStorage {
     /** Writes [bytes], replacing any record. */
     public suspend fun put(bytes: ByteArray)
 
+    /**
+     * A read-modify-write that runs entirely under the storage's lock (the file store's cross-process
+     * lock): [transform] gets the current record (null when none; throws [DeviceKeysUnreadableException]
+     * for one that cannot be opened) and answers the bytes to write, or null to leave the record as it
+     * is. True when it wrote. An exception from [transform] writes nothing.
+     */
+    public suspend fun update(transform: (current: ByteArray?) -> ByteArray?): Boolean
+
     /** Deletes the record so it cannot be read back. */
     public suspend fun clear()
 }
@@ -101,6 +109,13 @@ public class InMemoryDeviceKeyStorage : DeviceKeyStorage {
     }
 
     override suspend fun put(bytes: ByteArray): Unit = lock.withLock { record?.fill(0); record = bytes.copyOf() }
+
+    override suspend fun update(transform: (ByteArray?) -> ByteArray?): Boolean = lock.withLock {
+        val next = transform(record?.copyOf()) ?: return@withLock false
+        record?.fill(0)
+        record = next.copyOf()
+        true
+    }
 
     override suspend fun clear(): Unit = lock.withLock { record?.fill(0); record = null }
 }
@@ -122,18 +137,23 @@ public interface DeviceKeySealer {
 
 /**
  * The record in one file. Persistence: durable, until [clear], the user deleting the file, or (with
- * a [sealer]) the wrapping key being lost. Plain `java.io` throughout, so the same class runs on
- * Android API 24 (which has no `java.nio.file`).
+ * a [sealer]) the wrapping key being lost.
  *
  * The directory is made owner-only (`rwx------`), and a temporary file is made and restricted to
- * the owner (`rw-------`) BEFORE any key byte is written to it, then renamed into place: the keys
- * are never visible with a wider mode or half written. On a file system without POSIX modes the
- * JDK's owner-only flags are the best available and the user profile's ACL applies. A cross-process
- * lock file makes [putIfAbsent] atomic between processes. A symlink in place of the file is refused.
+ * the owner (`rw-------`) BEFORE any key byte is written to it, then moved into place atomically
+ * (and the directory synced where the platform allows): the keys are never visible with a wider mode
+ * or half written. On a JVM with `java.nio.file` (not Android) every operation first REFUSES, with a
+ * [StoreException], a directory that is not owned by this user or that others may write, and a file
+ * that is not owned by this user or that others may read or write. On Android the app-private
+ * `noBackupFilesDir` is the protection and the check is skipped; the class uses plain `java.io`
+ * there because API 24 has no `java.nio.file`. On a file system without POSIX modes (Windows) the
+ * modes are left alone and the user profile's ACL applies. A cross-process lock file makes
+ * [putIfAbsent] and [update] atomic between processes. A symlink in place of the file, or a file that
+ * is not a regular file, is refused; an unreadable directory is an error, never "no record".
  *
- * [clear] overwrites the bytes with zeros, deletes the file and tells the [sealer] to destroy its
- * key. Overwriting is best effort (a log-structured disk may keep old blocks); with a sealer the
- * destroyed key is what makes a stale copy unreadable.
+ * [clear] overwrites the bytes with zeros, deletes the file and, only once it is deleted, tells the
+ * [sealer] to destroy its key. Overwriting is best effort (a log-structured disk may keep old
+ * blocks); with a sealer the destroyed key is what makes a stale copy unreadable.
  */
 public class FileDeviceKeyStorage(
     private val file: File,
@@ -145,7 +165,8 @@ public class FileDeviceKeyStorage(
 
     private val dir: File get() = file.absoluteFile.parentFile ?: File(".")
     private val lockFile: File get() = File(dir, ".${file.name}.lock")
-    private val mutex: Mutex = MUTEXES.computeIfAbsent(file.absoluteFile.normalize().path) { Mutex() }
+    private val mutex: Mutex = MUTEXES.computeIfAbsent(File(dir.canonicalFile, file.name).path) { Mutex() }
+    private val nio: Boolean = !RuntimeFamily.isAndroid && NioFiles.available
 
     private suspend inline fun <T> locked(crossinline block: () -> T): T =
         withContext(Dispatchers.IO) { mutex.withLock { withFileLock { block() } } }
@@ -153,50 +174,67 @@ public class FileDeviceKeyStorage(
     private inline fun <T> withFileLock(block: () -> T): T {
         ensureDirectory()
         refuseSymlink(lockFile)
-        val existed = lockFile.exists()
+        val existed = exists(lockFile)
         val raf = try {
             RandomAccessFile(lockFile, "rw")
         } catch (e: IOException) {
             throw StoreException("could not open $lockFile", e)
         }
-        if (!existed) ownerOnly(lockFile)
-        return raf.use { r -> r.channel.lock().use { block() } }
+        return raf.use { r ->
+            if (!existed) ownerOnly(lockFile)
+            r.channel.lock().use {
+                if (nio) NioFiles.checkTrusted(dir, file, lockFile)
+                block()
+            }
+        }
     }
 
     override suspend fun get(): ByteArray? = locked { read() }
 
     override suspend fun putIfAbsent(bytes: ByteArray): Boolean = locked {
-        if (file.exists()) return@locked false
+        if (exists(file)) return@locked false
         write(bytes)
         true
     }
 
     override suspend fun put(bytes: ByteArray): Unit = locked { write(bytes) }
 
-    override suspend fun clear(): Unit = locked {
-        refuseSymlink(file)
+    override suspend fun update(transform: (ByteArray?) -> ByteArray?): Boolean = locked {
+        val next = transform(read()) ?: return@locked false
         try {
-            if (file.exists()) {
-                val n = file.length()
-                if (n in 1..MAX_BYTES) {
-                    RandomAccessFile(file, "rw").use { r ->
-                        r.write(ByteArray(n.toInt()))
-                        r.fd.sync()
-                    }
-                }
-                if (!file.delete() && file.exists()) throw IOException("delete failed")
-            }
-            dir.listFiles { f -> f.name.startsWith(".${file.name}.") && f.name.endsWith(".tmp") }?.forEach { it.delete() }
-        } catch (e: IOException) {
-            throw StoreException("could not delete $file", e)
+            write(next)
         } finally {
+            next.fill(0)
+        }
+        true
+    }
+
+    override suspend fun clear(): Unit {
+        locked {
+            refuseSymlink(file)
+            try {
+                if (exists(file)) {
+                    val n = file.length()
+                    if (n in 1..MAX_BYTES) {
+                        RandomAccessFile(file, "rw").use { r ->
+                            r.write(ByteArray(n.toInt()))
+                            r.fd.sync()
+                        }
+                    }
+                    if (!file.delete() && exists(file)) throw IOException("delete failed")
+                }
+                sweepTemporaries()
+            } catch (e: IOException) {
+                throw StoreException("could not delete $file", e)
+            }
+            // Only a deleted file lets the key go; a failure above leaves the key, so nothing is lost.
             sealer?.destroy()
         }
     }
 
     private fun read(): ByteArray? {
         refuseSymlink(file)
-        if (!file.exists()) return null
+        if (!exists(file)) return null
         val raw = try {
             if (file.length() > MAX_BYTES) throw DeviceKeysUnreadableException("device keys: the record is not one of ours")
             file.readBytes()
@@ -210,6 +248,7 @@ public class FileDeviceKeyStorage(
     private fun write(plain: ByteArray) {
         ensureDirectory()
         refuseSymlink(file)
+        sweepTemporaries()
         val bytes = sealer?.seal(plain, sealContext) ?: plain
         val tmp = File(dir, ".${file.name}.${UUID.randomUUID()}.tmp")
         try {
@@ -219,22 +258,54 @@ public class FileDeviceKeyStorage(
                 out.write(bytes)
                 out.fd.sync()
             }
-            if (!tmp.renameTo(file)) {
-                // Windows will not rename over a file: the lock is held, so remove it first.
-                if (!file.delete() || !tmp.renameTo(file)) throw IOException("rename failed")
+            if (nio) {
+                NioFiles.replace(tmp, file)
+                NioFiles.syncDirectory(dir)
+            } else if (!tmp.renameTo(file)) {
+                // java.io renameTo replaces atomically on POSIX; a failure is an error, never delete-then-rename.
+                throw IOException("rename failed")
             }
         } catch (e: IOException) {
-            tmp.delete()
+            zeroAndDelete(tmp)
             throw StoreException("could not write $file", e)
         } finally {
             if (sealer != null) bytes.fill(0)
         }
     }
 
+    /** Removes stale temporary files (a crashed write); the lock is held, so none is in use. */
+    private fun sweepTemporaries() {
+        dir.listFiles { f -> f.name.startsWith(".${file.name}.") && f.name.endsWith(".tmp") }?.forEach { zeroAndDelete(it) }
+    }
+
+    private fun zeroAndDelete(f: File) {
+        try {
+            val n = f.length()
+            if (f.isFile && n in 1..MAX_BYTES) RandomAccessFile(f, "rw").use { it.write(ByteArray(n.toInt())) }
+        } catch (_: IOException) {
+        }
+        f.delete()
+    }
+
     private fun ensureDirectory() {
         if (dir.isDirectory) return
         if (!dir.mkdirs() && !dir.isDirectory) throw StoreException("could not create $dir")
         ownerOnly(dir)
+    }
+
+    /**
+     * Whether [f] exists, never trusting `File.exists()` alone (which answers false when the directory
+     * cannot be listed). With nio: attributes without following links, a non-regular file refused.
+     * Without: the directory must be readable and listable before "absent" is believed.
+     */
+    private fun exists(f: File): Boolean {
+        if (nio) return NioFiles.exists(f)
+        if (f.exists()) return true
+        val parent = f.absoluteFile.parentFile
+        if (parent != null && (!parent.isDirectory || !parent.canRead() || parent.list() == null)) {
+            throw StoreException("cannot list ${parent.path}")
+        }
+        return false
     }
 
     /** True when [f] is a symlink: its canonical path (parent resolved) is not where it says it is. */
@@ -244,8 +315,9 @@ public class FileDeviceKeyStorage(
         if (leaf.canonicalPath != leaf.absolutePath) throw StoreException("refusing to use a symlink: $f")
     }
 
-    /** `rw-------` for a file, `rwx------` for a directory. */
+    /** `rw-------` for a file, `rwx------` for a directory; left alone where the file system has no POSIX modes. */
     private fun ownerOnly(f: File) {
+        if (nio && !NioFiles.posix(f)) return
         val ok = f.setReadable(false, false) && f.setReadable(true, true) &&
             f.setWritable(false, false) && f.setWritable(true, true) &&
             (!f.isDirectory || (f.setExecutable(false, false) && f.setExecutable(true, true)))
@@ -255,6 +327,105 @@ public class FileDeviceKeyStorage(
     private companion object {
         const val MAX_BYTES = 64L * 1024
         val MUTEXES = ConcurrentHashMap<String, Mutex>()
+    }
+}
+
+/** The `java.nio.file` half of [FileDeviceKeyStorage]; never loaded on Android (API 24 has no such classes). */
+internal object NioFiles {
+    val available: Boolean by lazy {
+        try {
+            Class.forName("java.nio.file.Files")
+            true
+        } catch (e: Throwable) {
+            false
+        }
+    }
+
+    fun posix(f: File): Boolean = try {
+        java.nio.file.Files.getFileStore(f.toPath()).supportsFileAttributeView("posix")
+    } catch (e: Exception) {
+        false
+    }
+
+    /** Attributes without following links: absent is false; a symlink or non-regular file, or any other failure, throws. */
+    fun exists(f: File): Boolean {
+        val p = f.toPath()
+        return try {
+            val a = java.nio.file.Files.readAttributes(p, java.nio.file.attribute.BasicFileAttributes::class.java, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+            if (a.isSymbolicLink || !a.isRegularFile) throw StoreException("not a regular file: $f")
+            true
+        } catch (e: java.nio.file.NoSuchFileException) {
+            // Absent only if the directory itself is readable and listable.
+            val parent = p.parent
+            if (parent != null && !java.nio.file.Files.isDirectory(parent)) throw StoreException("cannot list $parent")
+            false
+        } catch (e: IOException) {
+            throw StoreException("cannot examine $f", e)
+        }
+    }
+
+    fun replace(tmp: File, dest: File) {
+        try {
+            java.nio.file.Files.move(
+                tmp.toPath(),
+                dest.toPath(),
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (e: java.nio.file.AtomicMoveNotSupportedException) {
+            // No atomic rename here: the lock is held, and REPLACE_EXISTING never deletes first.
+            java.nio.file.Files.move(tmp.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+
+    /** Syncs the directory entry where the platform allows it (not on Windows). */
+    fun syncDirectory(dir: File) {
+        try {
+            java.nio.channels.FileChannel.open(dir.toPath(), java.nio.file.StandardOpenOption.READ).use { it.force(true) }
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Refuses a directory or file that this user does not own, or that others may write (directory) or touch (file). */
+    fun checkTrusted(dir: File, file: File, lock: File) {
+        if (!posix(dir)) return
+        val me = currentOwner(dir)
+        checkOwner(dir, me)
+        val perms = java.nio.file.Files.getPosixFilePermissions(dir.toPath())
+        if (java.nio.file.attribute.PosixFilePermission.GROUP_WRITE in perms || java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE in perms) {
+            throw StoreException("refusing a directory others may write: $dir")
+        }
+        for (f in listOf(file, lock)) {
+            if (!java.nio.file.Files.exists(f.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) continue
+            checkOwner(f, me)
+            val fp = java.nio.file.Files.getPosixFilePermissions(f.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)
+            val loose = fp.any {
+                it.name.startsWith("GROUP_") || it.name.startsWith("OTHERS_")
+            }
+            if (loose) throw StoreException("refusing a file others may access: $f")
+        }
+    }
+
+    /** This user, as the owner of a file we make now (no name lookup that can fail). */
+    private fun currentOwner(dir: File): java.nio.file.attribute.UserPrincipal {
+        val probe = File(dir, ".owner-probe.${UUID.randomUUID()}.tmp")
+        try {
+            probe.createNewFile()
+            return java.nio.file.Files.getOwner(probe.toPath())
+        } catch (e: IOException) {
+            throw StoreException("cannot determine the current user", e)
+        } finally {
+            probe.delete()
+        }
+    }
+
+    private fun checkOwner(f: File, me: java.nio.file.attribute.UserPrincipal) {
+        val owner = try {
+            java.nio.file.Files.getOwner(f.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)
+        } catch (e: IOException) {
+            throw StoreException("cannot examine $f", e)
+        }
+        if (owner != me) throw StoreException("refusing a path owned by another user: $f")
     }
 }
 
@@ -288,18 +459,21 @@ public class DeviceKeyStore(
     override suspend fun publicKeys(): DevicePublicKeys? = lock.withLock { load()?.let { r -> r.public().also { r.zero() } } }
 
     override suspend fun ensure(): DevicePublicKeys = lock.withLock {
-        load()?.let { r -> return@withLock r.public().also { r.zero() } }
-        val fresh = generate(1)
-        val bytes = encode(fresh)
-        try {
-            if (storage.putIfAbsent(bytes)) return@withLock fresh.public()
-            // Another process made a pair first (or one is there and unreadable, which throws).
-            val r = load() ?: throw DeviceKeysUnreadableException("device keys: the record is unreadable")
-            r.public().also { r.zero() }
-        } finally {
-            bytes.fill(0)
-            fresh.zero()
+        var result: DevicePublicKeys? = null
+        // Under the storage lock: an existing record is returned (or throws if unreadable); only an
+        // absent one is created, so two processes can never each create a pair.
+        storage.update { current ->
+            if (current != null) {
+                val r = parse(current) ?: throw DeviceKeysUnreadableException("device keys: the record is unreadable")
+                result = r.public()
+                r.zero()
+                return@update null
+            }
+            val fresh = generate(1)
+            result = fresh.public()
+            encode(fresh).also { fresh.zero() }
         }
+        result!!
     }
 
     override suspend fun sign(message: ByteArray): ByteArray = lock.withLock {
@@ -323,18 +497,18 @@ public class DeviceKeyStore(
     }
 
     override suspend fun rotate(): DevicePublicKeys = lock.withLock {
-        val prev = load()
-        val gen = (prev?.generation ?: 0) + 1
-        prev?.zero()
-        val fresh = generate(gen)
-        val bytes = encode(fresh)
-        try {
-            storage.put(bytes)
-            fresh.public()
-        } finally {
-            bytes.fill(0)
-            fresh.zero()
+        var result: DevicePublicKeys? = null
+        // The generation is read and the successor written under the storage lock, so a concurrent
+        // rotate (another process) can neither be lost nor repeat a generation; an unreadable record throws.
+        storage.update { current ->
+            val prev = current?.let { parse(it) ?: throw DeviceKeysUnreadableException("device keys: the record is unreadable") }
+            val gen = (prev?.generation ?: 0) + 1
+            prev?.zero()
+            val fresh = generate(gen)
+            result = fresh.public()
+            encode(fresh).also { fresh.zero() }
         }
+        result!!
     }
 
     override suspend fun wipe(): Unit = lock.withLock { storage.clear() }
@@ -349,7 +523,13 @@ public class DeviceKeyStore(
             ed.seed.fill(0)
             throw DeviceKeyUnsupportedException("no X25519 here")
         }
-        return Record(generation, ed.seed, ed.publicKey, priv, pub)
+        val rec = Record(generation, ed.seed, ed.publicKey, priv, pub)
+        // A fresh pair must pass the same check a stored one does, before anything is written.
+        if (!consistent(rec)) {
+            rec.zero()
+            throw DeviceKeyUnsupportedException("the curve backend is inconsistent")
+        }
+        return rec
     }
 
     private fun encode(r: Record): ByteArray {
@@ -400,13 +580,14 @@ public class DeviceKeyStore(
     }
 
     /** The public halves belong to the private halves: one agreement and one signature, both checked. */
-    private fun consistent(r: Record): Boolean = try {
+    private fun consistent(r: Record): Boolean {
         val c = curves()
-        val derived = c.x25519(r.agreePriv, X25519Points.BASE)
+        // An unavailable backend is "unsupported here", never "this record is bad".
+        val derived = c.x25519(r.agreePriv, X25519Points.BASE) ?: throw DeviceKeyUnsupportedException("no X25519 here")
+        val verifier = Ed25519.verifier
+        if (verifier === UnavailableEd25519Verifier) throw DeviceKeyUnsupportedException("no Ed25519 verification here")
         val probe = byteArrayOf(0x70, 0x6b, 0x65, 0x79)
-        derived != null && derived.contentEquals(r.agreePub) &&
-            Ed25519.verifier.verify(r.signPub, probe, c.ed25519Sign(r.seed, probe))
-    } catch (e: Exception) {
-        false
+        val sig = c.ed25519Sign(r.seed, probe) // throws DeviceKeyUnsupportedException when the backend cannot
+        return derived.contentEquals(r.agreePub) && verifier.verify(r.signPub, probe, sig)
     }
 }
