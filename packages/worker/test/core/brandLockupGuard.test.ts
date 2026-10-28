@@ -82,7 +82,7 @@ describe("Worker brand blocks draw the name from an outlined lockup", () => {
       180,
     );
     expect(
-      widthOf(themedLockup("locker", "horizontal", 36, "mark", true)),
+      widthOf(themedLockup("locker", "horizontal", 23, "mark", true)),
     ).toBeGreaterThanOrEqual(180);
     expect(
       widthOf(themedLockup("key", "compact", 52, "mark")),

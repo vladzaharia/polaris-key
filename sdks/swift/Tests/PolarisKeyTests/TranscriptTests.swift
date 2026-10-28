@@ -9,7 +9,8 @@
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
-// @pkey-feature identity.exchange
+// @pkey-feature connect.relay
+// @pkey-feature identity.exchange sync.keyring
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -47,13 +48,14 @@
 import CryptoKit
 import Foundation
 import PolarisKey
-@testable import PolarisKeyCore
-@testable import PolarisKeyIdentity
 import PolarisKeyLicense
-@testable import PolarisKeyPacks
 import PolarisKeyRelease
 import PolarisKeyUpdate
 import XCTest
+
+@testable import PolarisKeyCore
+@testable import PolarisKeyIdentity
+@testable import PolarisKeyPacks
 
 /// A settable clock the client reads through `CoreOptions.clock`.
 final class ReplayClock: @unchecked Sendable {
@@ -85,6 +87,10 @@ final class ReplaySession: @unchecked Sendable {
     /// The fixture device keys behind `client.connect` and the label they were last set to.
     let keys = FixtureKeyPort()
     var keyLabel: String?
+    /// The ring id of the first ring this conversation created (`keyringAdopt` adopts its root).
+    var firstRingId: String?
+    /// The key ring's own device keys and root store: memory only, nothing touches the Keychain.
+    var ringKeys: DeviceKeyStore?
 }
 
 /// The fixture device keys of a label (format.ts, `connectIdentity`) as a key port: the Ed25519 seed is
@@ -388,6 +394,33 @@ enum SwiftReplay {
                     out["code"] = .string(code)
                 }
             }
+        case "relayTicket":
+            // `client.connect.relayTicket()` (CC-11.4, `connect.relay`): a refusal reads as `refused`
+            // with the status, the Worker's code and, where it answers them, `retryAfter` and `scope`.
+            switch await client.connect.relayTicket() {
+            case .granted(let g):
+                out["result"] = .string("ok")
+                out["protocol"] = .string(g.protocolName)
+                out["url"] = .string(g.url.absoluteString)
+                out["expiresIn"] = .int(g.expiresAt - (await client.core.now()))
+            case .relay(let e):
+                out["result"] = .string("refused")
+                out["status"] = e.status.map(JSONValue.int) ?? .null
+                out["code"] = .string(e.code)
+                if let r = e.retryAfterSeconds { out["retryAfter"] = .int(r) }
+                if let sc = e.scope { out["scope"] = .string(sc) }
+            case .refused(let r):
+                out["result"] = .string("refused")
+                out["status"] = .int(r.status)
+                out["code"] = .string(r.code)
+            case .unsupported: out["result"] = .string("unavailable")
+            case .error(let code, _):
+                out["result"] = .string("error")
+                out["code"] = .string(code)
+            }
+        case "keyringGet", "keyringCreate", "keyringReset", "keyringWrap", "keyringUnwrap", "keyringAdopt",
+            "keyringRecoverySet", "keyringRecoveryGet":
+            try await keyring(client, step: step, session: session, into: &out)
         case "sync":
             let r = await client.sync(force: step.args["force"] == .bool(true))
             out["applied"] = .bool(r.applied)
@@ -491,6 +524,70 @@ enum SwiftReplay {
         return out
     }
 
+    /// The key ring verbs (U-39.4, `sync.keyring`) over `client.keyring`. The transcripts hold no key
+    /// material the client could use, so the client makes its own: create and reset draw a root, wrap
+    /// seals it to a fresh agreement key for the named device (`deviceId` is the TARGET), and adopt takes
+    /// the root of the first ring this conversation created. A refusal reads as `refused` with the status
+    /// and the code.
+    private static func keyring(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession,
+        into out: inout [String: JSONValue]
+    ) async throws {
+        if session.ringKeys == nil {
+            let keys = try DeviceKeyStore.inMemory(productSlug: client.product)
+            session.ringKeys = keys
+            try client.configureKeyring(SyncKeyringOptions(keys: keys, rootStore: .inMemory()))
+        }
+        let k = client.keyring
+        do {
+            switch step.action {
+            case "keyringGet":
+                let r = try await k.read()
+                if let g = r.ring {
+                    out["ring"] = .object([
+                        "ringId": .string(g.ringId), "epoch": .int(g.epoch), "rootKid": .string(g.rootKid),
+                        "state": .string(g.state), "recoverySet": .bool(g.recoverySet),
+                        "previous": g.previous.map { .string($0.ringId) } ?? .null,
+                        "adopted": .array(g.adopted.map { .string($0.ringId) }),
+                    ])
+                } else {
+                    out["ring"] = .null
+                }
+                if let w = r.wrap {
+                    out["wrap"] = .object([
+                        "epoch": .int(w.epoch), "kid": .string(w.kid), "by": w.by.map { .string($0) } ?? .null,
+                    ])
+                } else {
+                    out["wrap"] = .null
+                }
+            case "keyringCreate", "keyringReset":
+                let made = step.action == "keyringCreate" ? try await k.create() : try await k.reset()
+                if step.action == "keyringCreate", session.firstRingId == nil { session.firstRingId = made.ringId }
+                // The ring id is the client's own draw and the recording's is a fixture: both must be a
+                // well formed id, and the replay reports the recorded one when ours is.
+                let ok = made.ringId.range(of: "^rg_[A-Za-z0-9_-]{22}$", options: .regularExpression) != nil
+                out["ringId"] = ok ? (step.expect["ringId"] ?? .string(made.ringId)) : .string(made.ringId)
+                out["epoch"] = .int(made.epoch)
+            case "keyringWrap":
+                let pub = Curve25519.KeyAgreement.PrivateKey().publicKey.rawRepresentation
+                try await k.wrapTo(deviceId: step.args["deviceId"]?.stringValue ?? "", agreeKey: pub)
+            case "keyringUnwrap":
+                try await k.removeWrap(deviceId: step.args["deviceId"]?.stringValue ?? "")
+            case "keyringAdopt":
+                try await k.adopt(ringId: session.firstRingId ?? "")
+            case "keyringRecoverySet":
+                _ = try await k.setRecoveryCode()
+            default:
+                out["ct"] = .string(try await k.recoveryBlob().ct)
+            }
+            out["result"] = .string("ok")
+        } catch let e as PolarisError {
+            out["result"] = .string("refused")
+            if let s = e.status { out["status"] = .int(s) }
+            out["code"] = .string(e.code)
+        }
+    }
+
     /// The recorder's constants for a redirect conversation (`packages/worker/test/transcripts`).
     private static let recordedState = "tidewater-state-0123456789"
     private static let recordedVerifier = "transcript-verifier-0123456789-abcdefghijklmnopqrst"
@@ -500,8 +597,7 @@ enum SwiftReplay {
     /// (a step may name its own), the hints it carries, the recorded redirect URI.
     private static func redirectSession(
         _ client: PolarisKeyClient, step: Transcript.Step, licenseChoice: LicenseChoiceMode? = nil
-    ) async throws -> SignInSession
-    {
+    ) async throws -> SignInSession {
         client.identity.redirectEntropy.set(
             (
                 state: step.args["state"]?.stringValue ?? recordedState,

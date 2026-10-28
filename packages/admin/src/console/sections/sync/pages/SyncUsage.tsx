@@ -44,6 +44,8 @@ import {
   formatStorage,
   nounsFor,
   PlatformPanel,
+  TILES,
+  UsageSkeleton,
   StoredPanel,
   storedKinds,
   TierPanel,
@@ -82,7 +84,7 @@ export function SyncUsagePage({ slug }: { slug: string }): React.ReactElement {
     body = <SyncOff slug={slug} name={product.data?.name ?? slug} />;
   } else if (usage.isPending || catalog.isPending) {
     // The catalog is part of loading: the page never says "People" and then "Players".
-    body = <UsageSkeleton />;
+    body = <UsageSkeleton tiles={4} />;
   } else if (usage.isError) {
     body = (
       <ErrorState
@@ -138,26 +140,6 @@ function SyncOff({
       }
       docs={section?.docs}
     />
-  );
-}
-
-const TILES =
-  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3 xl:grid-cols-4";
-
-/** Four tiles and a table card: the page's own shape, with no second header. */
-function UsageSkeleton(): React.ReactElement {
-  return (
-    <div className="space-y-6" aria-busy="true">
-      <p role="status" className="sr-only">
-        Loading usage
-      </p>
-      <div aria-hidden className={TILES}>
-        {["a", "b", "c", "d"].map((k) => (
-          <StatTile key={k} label="Loading" loading />
-        ))}
-      </div>
-      <Skeleton className="h-64 w-full rounded-xl" />
-    </div>
   );
 }
 

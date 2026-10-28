@@ -1,13 +1,14 @@
 package im.plrs.key.android
 
 import android.app.Activity
+import android.content.Context
 import im.plrs.key.identity.ExchangeKind
 import im.plrs.key.identity.PlatformIdentityProvider
 import im.plrs.key.identity.PlatformSubjectToken
 import im.plrs.key.platform.PlatformIdentity
 import im.plrs.key.platform.PlatformIdentityResult
-import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * :android's thin adapter over :platform's [PlatformIdentity] (I-45.4): suspend functions for the
@@ -20,12 +21,20 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 public class PlatformSignIn(
     private val activity: () -> Activity?,
     private val identity: PlatformIdentity = PlatformIdentity.create(),
+    /**
+     * The application context, for [signOutCleanup] when no Activity is in front (a sign-out from a
+     * background path). Without it, and without an Activity, the cleanup is skipped and answers false.
+     */
+    private val appContext: Context? = null,
 ) {
     public val isSupported: Boolean get() = identity.isSupported
 
     public val kinds: Set<String> get() = identity.kinds
 
-    /** Rung 3: no UI when exactly one previously authorised account exists. */
+    /**
+     * Rung 3: no UI when exactly one previously authorised account exists; with two or more, Credential Manager shows
+     * its chooser (see GoogleSignIn).
+     */
     public suspend fun silent(serverClientId: String, nonce: String): PlatformIdentityResult =
         ask { a, cb -> identity.silent(a, serverClientId, nonce, cb) }
 
@@ -39,7 +48,7 @@ public class PlatformSignIn(
 
     /** Sign-out: clears the credential state; false when it could not be cleared (sign-out still proceeds). */
     public suspend fun signOutCleanup(): Boolean {
-        val host = activity() ?: return false
+        val host: Context = activity()?.applicationContext ?: appContext?.applicationContext ?: return false
         return suspendCancellableCoroutine { k -> identity.signOutCleanup(host) { if (k.isActive) k.resume(it) } }
     }
 

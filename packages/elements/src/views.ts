@@ -59,7 +59,7 @@ import {
 const ERROR_PREFIXES = ["core.codes.", "core.activation."];
 const isErrorKey = (k: string) =>
   ERROR_PREFIXES.some((p) => k.startsWith(p)) ||
-  /(Failed|\.failed|methodError|\.error)$/.test(k);
+  /(Failed|\.failed|\.stale|methodError|\.error)$/.test(k);
 
 /** Keys the content of a component draws itself. */
 /** What scanning the key refusal's QR does, under the QR. */

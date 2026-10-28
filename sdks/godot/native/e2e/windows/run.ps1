@@ -57,16 +57,24 @@ $script:strays = "pkeye2e", "PKeyE2E", "PKeyE2E_godot", "PKeyE2EWS", "Update", "
 function StopStrays() {
   Get-Process $script:strays -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }
-# A watchdog in its own process, with no handle shared with this one: at the deadline it logs, stops
-# this script's process tree and the strays, so a call with no time limit of its own (vpk, ISCC,
-# pnpm, the build) fails the run with its logs instead of running into the job's limit.
-$wdLog = "$Work\logs\watchdog.log"
-$wdCmd = "Start-Sleep -Seconds $($DeadlineMinutes * 60); " +
-  "Add-Content '$wdLog' 'watchdog: run.ps1 passed its $DeadlineMinutes minute deadline; stopping it'; " +
-  "Get-Content '$Work\logs\progress.log' -Tail 5 -ErrorAction SilentlyContinue | Add-Content '$wdLog'; " +
-  "Get-Process $($script:strays -join ',') -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; " +
-  "taskkill /F /T /PID $PID"
-$script:watchdog = Start-Process pwsh -ArgumentList "-NoProfile", "-Command", $wdCmd -PassThru -WindowStyle Hidden -RedirectStandardOutput "$Work\logs\watchdog.out" -RedirectStandardError "$Work\logs\watchdog.err"
+# A watchdog in its own process (watchdog.ps1), with no handle shared with this one: it logs a
+# heartbeat, and at the deadline or when a phase outlives its budget it logs the phase and the
+# process tree, stops this script's tree and the strays, so a call with no time limit of its own
+# (vpk, ISCC, pnpm, the build) fails the run with its logs instead of running into the job's limit.
+$script:phaseFile = "$Work\logs\phase.txt"
+# Phase names what runs now and the seconds it may take; Phase "" ends it. Also a flushed progress line.
+function Phase([string]$name, [int]$seconds = 0) {
+  if ($name) {
+    $epoch = [int64][DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    Set-Content $script:phaseFile "$name|$epoch|$seconds"
+    Add-Content "$Work\logs\progress.log" ("phase {0} (budget {1} s) at {2:HH:mm:ss}" -f $name, $seconds, (Get-Date))
+    Write-Host ("== phase {0} (budget {1} s) at {2:HH:mm:ss}" -f $name, $seconds, (Get-Date))
+  }
+  else { Set-Content $script:phaseFile "-|0|0" }
+  [Console]::Out.Flush()
+}
+Phase "start" 120
+$script:watchdog = Start-Process pwsh -ArgumentList "-NoProfile", "-File", "`"$PSScriptRoot\watchdog.ps1`"", "-Work", "`"$Work`"", "-ParentPid", $PID, "-DeadlineMinutes", $DeadlineMinutes, "-Strays", ($script:strays -join ",") -PassThru -WindowStyle Hidden -RedirectStandardOutput "$Work\logs\watchdog.out" -RedirectStandardError "$Work\logs\watchdog.err"
 function Stop-Run() {
   StopStrays
   if ($script:server) { Stop-Process -Id $script:server.Id -Force -ErrorAction SilentlyContinue }
@@ -88,6 +96,7 @@ function JCheck([string]$name, [string]$case, [string]$event, [string]$expr) {
 }
 
 # 1. Build and key.
+Phase "build" 600
 & pwsh -NoProfile -File "$native\windows\build.ps1" -Deps $Deps -Out "$Work\ext" *> "$Work\logs\build.log"
 if ($LASTEXITCODE -ne 0) { Get-Content "$Work\logs\build.log" -Tail 60; throw "build failed" }
 & node -e @'
@@ -99,6 +108,7 @@ fs.writeFileSync(process.argv[1] + "/pub.b64", publicKey.export({ format: "der",
 $pub = (Get-Content "$Work\keys\pub.b64" -Raw).Trim()
 
 # 2. The probe project, exports.
+Phase "godot-import-export" 780
 $game = "$Work\game"
 Copy-Item -Recurse "$e2e\game" $game
 New-Item -ItemType Directory -Force "$game\addons" | Out-Null
@@ -159,6 +169,7 @@ Check "a Microsoft Store export carries pkey_win.dll and no updater DLL or shim"
 Check "a direct export carries velopack_libc.dll, WinSparkle.dll and the shim" ((Test-Path "$Work\out\ws-1.0.0\velopack_libc.dll") -and (Test-Path "$Work\out\ws-1.0.0\WinSparkle.dll") -and (Test-Path "$Work\out\vp-1.0.0\pkey_velopack_shim.exe"))
 
 # 3. Packages, installers, feeds.
+Phase "pack-installers-feeds" 420
 $rel = "$Work\out\releases"
 foreach ($v in "1.0.0", "1.0.1") {
   & pwsh -NoProfile -File "$native\windows\pack_velopack.ps1" -ExportDir "$Work\out\vp-$v" -PackId PKeyE2E -Version $v -OutputDir $rel *> "$Work\logs\vpk-$v.log"
@@ -202,6 +213,7 @@ $script:server = Start-Process python -ArgumentList "`"$e2e\server.py`"", $Port,
 Start-Sleep 2
 
 function RunCase([string]$name, [string]$exe, [string]$case, [string]$feed, [int]$timeout, [switch]$WaitTarget) {
+  Phase "case-$name" ($timeout + 60)
   Write-Host ("── case {0} starting at {1:HH:mm:ss}" -f $name, (Get-Date))
   Add-Content "$Work\logs\progress.log" ("case {0} at {1:HH:mm:ss}" -f $name, (Get-Date))
   $log = "$Work\logs\case-$name.jsonl"
@@ -224,6 +236,7 @@ function RunCase([string]$name, [string]$exe, [string]$case, [string]$feed, [int
 }
 # Run an installer and wait for IT (not for the game it may start) at most 180 s.
 function Install([string]$exe, [string[]]$arguments) {
+  Phase "install-$(Split-Path $exe -Leaf)" 240
   Write-Host "── install $(Split-Path $exe -Leaf) $($arguments -join ' ')"
   $p = Start-Process $exe -ArgumentList $arguments -PassThru
   if (-not $p.WaitForExit(180000)) { Write-Host "── install timed out; killing it"; $p.Kill($true) }
@@ -274,6 +287,7 @@ Check "winsparkle: the appcast and the installer carried the bearer" (($http | W
 $dv = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*" -ErrorAction SilentlyContinue | Where-Object DisplayName -eq "PKeyE2EWS" | Select-Object -First 1).DisplayVersion
 Check "winsparkle: the uninstall entry says 1.0.1" ($dv -eq "1.0.1") "DisplayVersion=$dv"
 
+Phase ""
 Stop-Run
 Remove-Item "$Work\keys\seed.b64" -ErrorAction SilentlyContinue
 Write-Host "── Windows e2e: $script:failed failed; logs in $Work\logs"

@@ -131,15 +131,38 @@ jobs:
       - run: pnpm exec turbo run build --filter=@polaris-key/worker^...
       - name: Windows end-to-end
         # Bounded, so a hung case fails with its log instead of running into the job's limit.
-        # run.ps1 has its own 24-minute watchdog that stops the whole process tree, because a stray
-        # child holding the step's output pipe keeps a step from ending at this limit too.
+        # run.ps1 gives each phase a budget and has a 24-minute watchdog (watchdog.ps1) that logs the
+        # hung phase and the process tree, then stops the whole tree, because a stray child holding
+        # the step's output pipe keeps a step from ending at this limit too. The step echoes the
+        # watchdog's heartbeat every 30 s, so a runner that is lost (3 runs ended "lost communication"
+        # after 52 min) leaves its last phase and memory in the live log.
         timeout-minutes: 30
         run: |
           $d = Join-Path $HOME ".cache/pkey-godot/native-$env:GODOT_VERSION"
-          pwsh -NoProfile -File sdks/godot/native/e2e/windows/run.ps1 `
-            -Godot (Join-Path $d "Godot_v$($env:GODOT_VERSION)-stable_win64_console.exe") `
-            -Template (Join-Path $d "windows_release_x86_64.exe") `
-            -Work (Join-Path $env:RUNNER_TEMP "e2e-windows")
+          $work = Join-Path $env:RUNNER_TEMP "e2e-windows"
+          $runArgs = @("-NoProfile", "-File", "sdks/godot/native/e2e/windows/run.ps1",
+            "-Godot", (Join-Path $d "Godot_v$($env:GODOT_VERSION)-stable_win64_console.exe"),
+            "-Template", (Join-Path $d "windows_release_x86_64.exe"), "-Work", $work)
+          $p = Start-Process pwsh -ArgumentList $runArgs -PassThru -NoNewWindow
+          $null = $p.Handle
+          $seen = 0
+          while (-not $p.WaitForExit(30000)) {
+            $hb = Join-Path $work "logs/heartbeat.log"
+            if (Test-Path $hb) {
+              $lines = @(Get-Content $hb)
+              if ($lines.Count -gt $seen) { $lines[$seen..($lines.Count - 1)] | ForEach-Object { Write-Host "[heartbeat] $_" }; $seen = $lines.Count }
+            }
+          }
+          exit $p.ExitCode
+      - name: Windows end-to-end diagnostics
+        if: failure()
+        timeout-minutes: 2
+        run: |
+          $l = Join-Path $env:RUNNER_TEMP "e2e-windows/logs"
+          foreach ($f in "watchdog.log", "progress.log", "phase.txt", "heartbeat.log") {
+            Write-Host "---- $f"
+            if (Test-Path "$l/$f") { Get-Content "$l/$f" -Tail 40 }
+          }
       - run: git diff --exit-code; if ($LASTEXITCODE -ne 0 -or (git status --porcelain)) { git status --porcelain; exit 1 }
       - name: Stop what the end-to-end left running
         if: always()

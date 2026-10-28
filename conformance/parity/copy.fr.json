@@ -597,6 +597,10 @@
       "title": "Appareil non vérifié",
       "message": "Cet appareil n'a pas pu être vérifié. Réessayez."
     },
+    "nearby-permission-denied": {
+      "title": "Réseau local bloqué",
+      "message": "Cette app ne peut pas accéder aux appareils de votre réseau local. Autorisez-le dans les réglages du système."
+    },
     "platform-error": {
       "title": "Problème de plateforme",
       "message": "La plateforme a signalé une erreur. Réessayez."

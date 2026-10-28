@@ -9,7 +9,10 @@
  */
 
 import { issuePortalSessionRow } from "../../portalSessionRow.js";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { WORKER_ROOT } from "../../paths.js";
 import { THEME_TOKENS } from "@polaris-key/brand";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
@@ -45,6 +48,7 @@ import {
   recoveryCodeChangedNotice,
   recoveryStartedNotice,
   deviceReplacedNotice,
+  appDeviceApprovedNotice,
   displayValue,
   downloadLinkEmail,
   licenseAddedNotice,
@@ -130,6 +134,13 @@ const TEMPLATES: Record<string, () => NoticeMessage> = {
       productName: "Diceroll",
       productSlug: "diceroll",
       at: NOW,
+      origin: ORIGIN,
+    }),
+  appDeviceApproved: () =>
+    appDeviceApprovedNotice({
+      deviceLabel: "Living room TV",
+      productName: "Diceroll",
+      productSlug: "diceroll",
       origin: ORIGIN,
     }),
   newDeviceSignIn: () =>
@@ -281,7 +292,7 @@ describe("notice templates: rules", () => {
       expect(m.html).toContain("@media (prefers-color-scheme: dark)");
       expect(m.html).toContain(THEME_TOKENS.dark.surface.page);
       expect(m.html).toContain(
-        `${ORIGIN}/assets/branding/locker/locker-horizontal-light-640.png`,
+        `${ORIGIN}/assets/branding/locker/locker-lockup-light-2x.png`,
       );
       expect(m.html).not.toMatch(/<script|\son\w+=|powered by/i);
     });
@@ -356,6 +367,32 @@ describe("notice templates: rules", () => {
     );
   });
 
+  it("the key ring notices link their Help entries, and the built Help page has them", () => {
+    const anchors = {
+      recoveryStarted: "recovery-started",
+      recoveryCodeChanged: "recovery-code-changed",
+      encryptionReset: "encryption-reset",
+    };
+    for (const [name, anchor] of Object.entries(anchors))
+      expect(TEMPLATES[name]!().text).toContain(
+        `About this email: ${ORIGIN}/docs/help/emails/#${anchor}`,
+      );
+    // The manifest lists heading slugs only; these are explicit `<a id>` anchors, so read the HTML.
+    const page = join(
+      WORKER_ROOT,
+      "..",
+      "docs",
+      "dist",
+      "help",
+      "emails",
+      "index.html",
+    );
+    if (!existsSync(page)) return; // the docs site is not built
+    const html = readFileSync(page, "utf8");
+    for (const anchor of Object.values(anchors))
+      expect(html).toContain(`id="${anchor}"`);
+  });
+
   it("holder moves (LX-30): the new address hears nothing about accounts, a waiting address has no account to secure", () => {
     const toYou = TEMPLATES.assignedToYou!();
     expect(toYou.subject).toBe("A Mossgarden license was assigned to you");
@@ -398,6 +435,28 @@ describe("notice templates: rules", () => {
     expect(hostile.html).not.toContain("<img src=x");
     expect(hostile.html).toContain("&lt;img src=x");
     expect(hostile.html).not.toContain("\u202e");
+  });
+
+  it("nearby approval notice: subject, links the devices page, escapes, null label", () => {
+    const m = TEMPLATES.appDeviceApproved!();
+    expect(m.subject).toBe("Diceroll signed in on Living room TV");
+    expect(m.text).toContain(`${ORIGIN}/#/p/diceroll/devices`);
+    const hostile = appDeviceApprovedNotice({
+      deviceLabel: "TV <b>x</b>\nBcc: v@example.com",
+      productName: "Evil\u202egnp",
+      productSlug: "evil",
+      origin: ORIGIN,
+    });
+    expect(hostile.subject).not.toMatch(/[\n\u202e]/);
+    expect(hostile.html).toContain("&lt;b&gt;x&lt;/b&gt;");
+    const bare = appDeviceApprovedNotice({
+      deviceLabel: null,
+      productName: null,
+      productSlug: "x",
+      origin: ORIGIN,
+    });
+    expect(bare.subject).toBe("An app signed in on a new device");
+    expect(bare.text).toContain("remove it from your devices");
   });
 
   it("displayValue: controls out, length bounded, fallback when empty", () => {

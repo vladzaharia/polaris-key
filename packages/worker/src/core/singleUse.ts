@@ -83,7 +83,9 @@ export type SingleUseKind =
   /** A same-device sign-in's step-up mark (I-43.1, WIRE-CONTRACT-V5 §12.11.4), by product + device id: written by same-device grants only. */
   | "signin-fresh"
   /** A Cloud Connect relay ticket (CC-07.3, WIRE-CONTRACT-V5 §15.7), by product + the hash of the ticket: bound to the device, its person and the resolved quota. */
-  | "relay-ticket";
+  | "relay-ticket"
+  /** A nearby-approval request (I-40.2, WIRE-CONTRACT-V5 §12.11.5), by product + the hash of its `nr_` handle. */
+  | "nearby-request";
 
 /** The address of one artefact. */
 export interface ArtefactRef {

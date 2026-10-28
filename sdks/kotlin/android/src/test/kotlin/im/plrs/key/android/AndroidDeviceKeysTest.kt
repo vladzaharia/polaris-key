@@ -1,14 +1,13 @@
 package im.plrs.key.android
 
 import im.plrs.key.core.Base64Url
-import im.plrs.key.core.DeviceProofPurpose
-import im.plrs.key.core.DeviceProofs
 import im.plrs.key.core.DeviceKeyPersistence
 import im.plrs.key.core.DeviceKeyStore
+import im.plrs.key.core.DeviceProofPurpose
+import im.plrs.key.core.DeviceProofs
 import im.plrs.key.core.FileDeviceKeyStorage
 import im.plrs.key.core.StoreException
 import im.plrs.key.platform.KeystoreSealer
-import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,6 +21,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.File
 
 /** CC-26.5: the device keys on Android, over a software stand-in for the Keystore. */
 @RunWith(RobolectricTestRunner::class)
@@ -107,5 +107,29 @@ class AndroidDeviceKeysTest {
         }
         keys.broken = false
         assertEquals(a, store().publicKeys())
+    }
+
+    @Test
+    fun theSyncRootHasItsOwnAliasAndFileAndForgettingItKeepsTheDeviceKeys() = runBlocking {
+        val deviceKeys = store()
+        val a = deviceKeys.ensure()
+        val root = FileDeviceKeyStorage(
+            File(tmp.root, "pkey/$product/sync-root.bin"),
+            AndroidDeviceKeySealer(KeystoreSealer(keys, KeystoreSealer.rootAliasFor(product))),
+            "pkey-sync-root/1/$product".toByteArray(),
+        )
+        assertNotEquals(KeystoreSealer.aliasFor(product), KeystoreSealer.rootAliasFor(product))
+        val secret = ByteArray(32) { 7 }
+        root.put(secret)
+        assertNotNull(keys.keys[KeystoreSealer.rootAliasFor(product)])
+        assertFalse(
+            File(tmp.root, "pkey/$product/sync-root.bin").readBytes().toString(Charsets.ISO_8859_1).contains(String(secret, Charsets.ISO_8859_1)),
+        )
+        root.clear()
+        assertNull(root.get())
+        assertNull(keys.keys[KeystoreSealer.rootAliasFor(product)])
+        // The device keys and their wrapping key are untouched.
+        assertEquals(a, store().publicKeys())
+        assertNotNull(keys.keys[KeystoreSealer.aliasFor(product)])
     }
 }

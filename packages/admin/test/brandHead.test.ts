@@ -51,12 +51,12 @@ describe("the brand head snippet", () => {
       "utf8",
     );
     for (const variant of ["light", "dark"]) {
-      const name = `key-horizontal-${variant}-944.png`;
+      const name = `key-compact-${variant}-444.png`;
       expect(lockups).toContain(name);
       expect(existsSync(join(brandLockupKey, name)), name).toBe(true);
     }
     expect(email).toContain(
-      "/assets/branding/key/key-horizontal-${variant}-944.png",
+      "/assets/branding/key/key-compact-${variant}-444.png",
     );
   });
 

@@ -187,9 +187,10 @@ export class PkGate extends PkElement {
     this.linkChecked = true;
     void linkOfferOutcome(a).then((seed) => {
       if (!seed || !this.isConnected) return;
+      // "Sign in again" on a stale offer is the gate's own sign-in.
       this.linkPrims = primitivesOf(
         a,
-        () => {},
+        () => void a.signInWithOidc().catch(() => undefined),
         () => false,
       );
       this.linkSeed = seed;

@@ -911,7 +911,13 @@ export function links(
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   return html`<div class="links" part="links" data-part="links">
-    ${keys.map((k) => button(c, k, "link"))}
+    ${keys.map((k) =>
+      button(c, k, "link", {
+        disabled:
+          k === "signin.linkOffer.decline" &&
+          c.input.signIn?.redeeming === true,
+      }),
+    )}
   </div>`;
 }
 

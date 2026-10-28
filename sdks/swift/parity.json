@@ -182,9 +182,8 @@
       "note": "identity.exchange(kind:subjectToken:nonce:) and exchangeNonce(kind:) (PolarisKeyIdentity): the nonce route registers the device keys, the token route takes the pkey-proof/1 exchange proof over nonce.key and the token hash; the outcome is signedIn, confirm (PendingConsent, completed through identity.choice.complete(grant:choice:consent:)), choose, needsSignIn or unavailable, and refusals are a typed ExchangeError. A 404 on either route, a discovery with no exchange member or a memory-only key port is unavailable with no request. Replayed against the exchange-* transcripts (TranscriptTests). Sign in with Apple itself is I-44.4."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-44",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-44)."
+      "status": "implemented",
+      "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-44): a stored sign-in, then the platform provider's silent mode where it has one (Apple has none; Game Center is I-44.5), then its one sheet under prompt: .optional; every refusal is a result."
     },
     "identity.link": {
       "status": "planned",
@@ -468,8 +467,28 @@
       "wp": "U-23"
     },
     "sync.keyring": {
+      "status": "implemented",
+      "note": "client.keyring (PolarisKey/SyncKeyring.swift, over PolarisKeyCore/Sync: CryptoKit HKDF, AES.GCM and HMAC, RFC 9180 mode_base written out over DeviceKeyPort.dh for open and an ephemeral Curve25519 key for seal): create(), unlock() (opens this device's wrap through the port's dh, so the agreement key never leaves the store), wrapTo()/removeWrap(), setRecoveryCode()/recover(), reset()/adopt()/openAdopted(), acceptRingChange(confirmed:), attach(_:) feeding setRoot, and the codec. The first root pins {ringId, epoch, rootKid} per product in the Core store; a served ring that differs is ringChanged and is never opened. The root is also kept in one Keychain item (sync-root, AfterFirstUnlockThisDeviceOnly, never synchronizable) that is used only while it matches the pin; forget() drops the root and the pin and runs from the release hook (a Keychain delete that fails stops the sign-out). Every type holding key material prints as redacted. SyncVectorsTests (hkdf, envelope, blind, canonicalJson, hpkeAnchor, wrap, recovery and adopt cases, plus an HPKE.Sender cross-check), SyncKeyringTests and the keyring-* transcripts in TranscriptTests."
+    },
+    "sync.records": {
       "status": "planned",
-      "wp": "U-39"
+      "wp": "U-23"
+    },
+    "sync.files": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.files.delta": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.e2e.recovery": {
+      "status": "planned",
+      "wp": "U-07"
+    },
+    "sync.transfer.background": {
+      "status": "planned",
+      "wp": "U-41"
     },
     "sync.e2e": {
       "status": "planned",
@@ -480,20 +499,20 @@
       "note": "client.connect (ConnectClient): identity() registers the device keys on first need (PUT devices/keys with the keys proof; a memory-only key store is invalid-options unless ConnectOptions.allowEphemeralKeys), fetches GET connect/identity, verifies the roster and certificate (PeerDocs, from peerCertCases, ringCases, peerAdmissionCases) against the effective trust set, binds them to this device and its keys, refuses a stale, foreign or unlisted roster, and keeps the roster, the certificate and K_disc in one Keychain item (connect-state, this-device-only, never synchronized; K_disc prints as redacted). Every fetch replaces K_disc; the previous key is kept for 24 hours from first seen and dropped when a device was lost or re-keyed. A held identity with more than 3.5 days of certificate is served without a request unless refresh. An unreadable record is store-failed and never overwritten. leave() (called first on sign-out and release, which fail closed) deletes the record; with none held it touches nothing. listDevices() reads connect/devices. Typed: account_required, device_keys_required and ring_too_large come back verbatim; the service off is the product N/A. The connect transcripts replay with the relay slice."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "PolarisKeyCore PeerNoise: Noise_XX_25519_AESGCM_SHA256 over CryptoKit, a zero DH refusing with dh_zero; PeerNoiseTests replays noise-vectors.json."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
     },
     "connect.lan": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "PolarisKeyPlatform BonjourBrowse and BonjourPipes (Network.framework: NWBrowser, NWListener, NWConnection; dial policy G6 and D-10 before the first byte, accept gate and 30 s authentication bound) and PolarisKey ConnectLan (advert rotation, browse index, dial, wrong_peer, session caps); the Info.plist needs NSLocalNetworkUsageDescription and the NSBonjourServices entry _pkeypeer._tcp, and a sandboxed macOS app needs com.apple.security.network.client and .server; BonjourBrowseTests, BonjourPipesTests, ConnectLanTests."
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "client.connect.relayTicket() and PolarisKey ConnectRelay (URLSessionWebSocketTask with the pkey-relay.1 subprotocol and the ticket, reconnect policy, LIMIT and close codes 4001/4003/4008/4009, mode-a relay sessions, pacing, 8 MiB outbox cap with per-session accounting); ConnectRelayTests, ConnectRelaySessionTests, ConnectRelayTicketTests; TranscriptTests replays connect-relay-ticket and connect-relay-quota."
     },
     "connect.links": {
       "status": "planned",
@@ -504,8 +523,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-11"
+      "status": "implemented",
+      "note": "client.cloudConnect (CloudConnect): start, stop, peers, devices, open and onChannel, LAN then relay, the G21 off switches, G9 and the sign-out order, a bounded stop with a forced abort (D-12); CloudConnectTests."
     },
     "server.license": {
       "status": "planned",

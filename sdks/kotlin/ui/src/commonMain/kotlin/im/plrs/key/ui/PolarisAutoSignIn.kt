@@ -24,22 +24,46 @@ public fun PolarisAutoSignIn(state: PolarisAutoSignInState, modifier: Modifier =
     PolarisAutoSignInScreen(ui, state, modifier)
 }
 
+/** True while the app's window is in the foreground (desktop's return signal); a test provides its own. */
+internal val LocalPolarisForeground = androidx.compose.runtime.staticCompositionLocalOf<(() -> Boolean)?> { null }
+
+/**
+ * After Replace opened the browser, the person comes back. That return runs the sign-in once more
+ * ([PolarisAutoSignInState.returned]), so they do not start again by hand.
+ */
+@Composable
+private fun ResumeAfterReplace(state: PolarisAutoSignInState) {
+    val awaiting by state.awaitingReturn.collectAsState()
+    PolarisReturnEffect(awaiting) { state.returned() }
+}
+
 @Composable
 internal fun PolarisAutoSignInScreen(ui: PolarisAutoSignInUi, state: PolarisAutoSignInState, modifier: Modifier = Modifier) {
-    val locale = kitLocale()
+    ResumeAfterReplace(state)
     val opener = rememberPolarisOpener()
     val member = rememberPresentation(LocalPolarisKey.current?.presentationSource)
     // With no presentation source the theme's product name stands in, so the lines still name the app.
     val themeName = PolarisTheme.copy.productName
     fun resolve(component: KitComponent, inputs: KitInputs): Pair<KitScreen, KitInputs> {
-        val withMember = inputs.withPresentation(member).let { if (member == null && !it.has("presentation")) it.with("presentation", JsonObject(mapOf("name" to JsonPrimitive(themeName), "icon" to JsonPrimitive(false)))) else it }
+        val withMember = inputs.withPresentation(member).let {
+            if (member == null &&
+                !it.has("presentation")
+            ) {
+                it.with("presentation", JsonObject(mapOf("name" to JsonPrimitive(themeName), "icon" to JsonPrimitive(false))))
+            } else {
+                it
+            }
+        }
         return KitStates.resolve(component, withMember) to withMember
     }
     when (ui) {
         PolarisAutoSignInUi.Idle, PolarisAutoSignInUi.Done -> Unit
+
         PolarisAutoSignInUi.Running -> PolarisProgressScreen(PolarisTheme.copy.gateLoading, modifier)
+
         is PolarisAutoSignInUi.Confirm -> {
-            val device = thisDeviceLabel()
+            // The line reads on after a separator: the host's own device line, else the model's lower-case "this phone".
+            val device = PolarisTheme.copy.deviceThis.takeIf { it != PolarisCopy().deviceThis }
             val (screen, _) = remember(ui.consent, member) { resolve(KitComponent.signIn, ui.consent.toKitInputs(device)) }
             Retryable(ui.failed, modifier) {
                 PolarisKitScreen(
@@ -53,6 +77,7 @@ internal fun PolarisAutoSignInScreen(ui: PolarisAutoSignInUi, state: PolarisAuto
                 )
             }
         }
+
         is PolarisAutoSignInUi.SignInForm -> {
             val (screen, _) = remember(ui.provider, member) { resolve(KitComponent.signIn, signInFormInputs(ui.provider)) }
             Retryable(ui.failed, modifier) {
@@ -61,36 +86,59 @@ internal fun PolarisAutoSignInScreen(ui: PolarisAutoSignInUi, state: PolarisAuto
                     onAction = { action -> if (action == KitAction.cancel) state.dismiss() },
                     onControl = { key ->
                         // The provider row is the one control with no action in the vocabulary.
-                        if (key == "signin.provider.continue" && ui.provider) state.signInWithProvider()
-                        // Any other method is the gate's own sign-in (the code, the key): hand back to its screens.
-                        else if (key != "common.cancel") state.dismiss()
+                        if (key == "signin.provider.continue" && ui.provider) {
+                            state.signInWithProvider()
+                        } // Any other method is the gate's own sign-in (the code, the key): hand back to its screens.
+                        else if (key != "common.cancel") {
+                            state.dismiss()
+                        }
                     },
                 )
             }
         }
+
         is PolarisAutoSignInUi.Choose -> PolarisAutoChoice(ui.choice, state, modifier, ::resolve)
+
         is PolarisAutoSignInUi.DeviceLimit -> {
             val view = ui.view
-            val inputs = if (view != null) view.toDeviceLimitInputs() else KitInputs.of(
-                mapOf("activation" to JsonObject(ui.manageUrl?.let { mapOf("manageUrl" to JsonPrimitive(it)) } ?: emptyMap())),
-            )
-            val (screen, withMember) = remember(ui, member) {
-                resolve(if (view != null) KitComponent.licenseChoice else KitComponent.deviceLimit, inputs)
-            }
             val manage = ui.manageUrl
-            PolarisKitScreen(
-                screen,
-                modifier,
-                rows = KitRowData.from(withMember),
-                onAction = { action ->
-                    when (action) {
-                        KitAction.replaceInBrowser, KitAction.openManageUrl -> if (manage != null) opener(manage)
-                        KitAction.cancel -> state.dismiss()
-                        else -> Unit
-                    }
-                },
-                onControl = { key -> if (key == "common.back") state.dismiss() },
-            )
+            // Replace opened the browser: the next return runs the sign-in once more (state.returned()).
+            val openManage = {
+                state.replaceOpened()
+                if (manage != null) opener(manage)
+            }
+            if (view == null) {
+                // No license rows: the sign-in's own device-limit step (Replace, Use another account, Cancel).
+                val (screen, _) = remember(ui, member) { resolve(KitComponent.signIn, deviceLimitInputs(manage, provider = false)) }
+                PolarisKitScreen(
+                    screen,
+                    modifier,
+                    onAction = { action ->
+                        when (action) {
+                            KitAction.openManageUrl, KitAction.replaceInBrowser -> openManage()
+                            KitAction.cancel -> state.dismiss()
+                            else -> Unit
+                        }
+                    },
+                    onControl = { key -> if (key == "signin.auto.confirm.other") state.useAnotherAccount() },
+                )
+            } else {
+                val (screen, withMember) = remember(ui, member) { resolve(KitComponent.licenseChoice, view.toDeviceLimitInputs()) }
+                PolarisKitScreen(
+                    screen,
+                    modifier,
+                    rows = KitRowData.from(withMember),
+                    onAction = { action ->
+                        when (action) {
+                            KitAction.replaceInBrowser, KitAction.openManageUrl -> openManage()
+                            KitAction.cancel -> state.dismiss()
+                            else -> Unit
+                        }
+                    },
+                    onControl = { key -> if (key == "common.back") state.dismiss() },
+                    onUseAnotherAccount = { state.useAnotherAccount() },
+                )
+            }
         }
     }
 }
@@ -112,21 +160,30 @@ private fun PolarisAutoChoice(
                 modifier,
                 rows = KitRowData.from(inputs),
                 onContinue = choice::choose,
-                onAction = { action -> if (action == KitAction.cancel) { choice.cancel(); state.dismiss() } },
+                onAction = { action ->
+                    if (action == KitAction.cancel) {
+                        choice.cancel()
+                        state.dismiss()
+                    }
+                },
             )
         }
+
         is PolarisLicenseChoiceUi.Replacing -> {
             val inputs = now.view.toKitInputs().with(
                 "signIn",
                 JsonObject(
                     mapOf(
-                        "channel" to JsonPrimitive("browser"), "outcome" to JsonPrimitive("choose"), "replace" to JsonPrimitive("inline"),
+                        "channel" to JsonPrimitive("browser"),
+                        "outcome" to JsonPrimitive("choose"),
+                        "replace" to JsonPrimitive("inline"),
                         "event" to JsonPrimitive("open-replace"),
                     ),
                 ),
             ).with("replaceView", now.devices.raw)
             val (screen, _) = remember(now.devices) { resolve(KitComponent.licenseChoice, inputs) }
-            val target = now.devices.devices.firstOrNull { (it["leastRecent"] as? JsonPrimitive)?.content == "true" } ?: now.devices.devices.firstOrNull()
+            val target =
+                now.devices.devices.firstOrNull { (it["leastRecent"] as? JsonPrimitive)?.content == "true" } ?: now.devices.devices.firstOrNull()
             PolarisKitScreen(
                 screen,
                 modifier,
@@ -138,12 +195,18 @@ private fun PolarisAutoChoice(
                 },
             )
         }
+
         is PolarisLicenseChoiceUi.Failed -> PolarisMessageScreen(PolarisTheme.copy.coreMessage(SIGN_IN_FAILED, PolarisMessageKind.Danger), modifier) {
             PolarisPrimaryButton(PolarisTheme.copy.retry, choice::retry, initialFocus = true)
-            PolarisSecondaryButton(PolarisTheme.copy.cancel, { choice.cancel(); state.dismiss() })
+            PolarisSecondaryButton(PolarisTheme.copy.cancel, {
+                choice.cancel()
+                state.dismiss()
+            })
         }
+
         // Done is the holder's: the session is there. Expired and cancelled end the choice: the gate's own screens.
         is PolarisLicenseChoiceUi.Done -> Unit
+
         PolarisLicenseChoiceUi.Expired, PolarisLicenseChoiceUi.Cancelled -> androidx.compose.runtime.LaunchedEffect(Unit) { state.dismiss() }
     }
 }
@@ -153,7 +216,13 @@ private fun PolarisAutoChoice(
 private fun Retryable(failed: Boolean, modifier: Modifier, content: @Composable () -> Unit) {
     androidx.compose.foundation.layout.Column(modifier) {
         if (failed) {
-            PolarisInlineNotice(KitCopy.bundled.format("core.codes.sign-in-failed.message", kitLocale(), mapOf("product" to CopyArgument.Text(PolarisTheme.copy.productName))))
+            PolarisInlineNotice(
+                KitCopy.bundled.format(
+                    "core.codes.sign-in-failed.message",
+                    kitLocale(),
+                    mapOf("product" to CopyArgument.Text(PolarisTheme.copy.productName)),
+                ),
+            )
         }
         content()
     }

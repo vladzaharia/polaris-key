@@ -41,6 +41,15 @@ device (``deviceId`` is the TARGET; the calling device stays ``initial.deviceId`
 the client sends the integer 32 (§13.11.1), so the replay maps it back to the recorded spelling
 until the transcripts move (lead decision 2026-10-27).
 
+``cloudSyncPull`` / ``cloudSyncPush`` (U-06.11, ``sync.settings``, WIRE-CONTRACT-V4 section 13.3, 13.4, V5
+section 13.10) send the request through the Cloud Sync host's own transport (``send_sync``: the bearer, the
+``X-PKey-*`` headers, the byte caps). A pull is ``GET /<p>/sync?cursor=N`` (the replay's transport adds
+``If-None-Match`` with the last ETag, as a cache would); a push carries N generated mutations. In the
+end-to-end transcript the push body is sealed by ``seal_push`` and the answer opened by ``open_pull``
+(``host_codec``) over a fixture root: the recorded ``ct`` s are fixture bytes, so every row must come back
+``invalid``. The report is ``result``, ``cursor``, ``more``, ``settings`` (the wire's setting names,
+sorted) and ``results`` (one label per mutation result) beside the quota and encryption members.
+
 ``chunkRange`` (P4-32, plans/P4-32.md §5) is ``chunk_range_fetch`` over the packs client's own
 object fetch (``client.update.packs._fetch_object``), against the blobs template the last
 discover returned. ``range`` is the fetch's status; ``bytes`` the body it returned, as a string.
@@ -57,7 +66,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints
-# @pkey-feature sync.keyring connect.identity
+# @pkey-feature sync.keyring connect.identity connect.relay sync.settings
 
 from __future__ import annotations
 
@@ -70,24 +79,13 @@ import re
 import shutil
 import tempfile
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 import httpx
 import pytest
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-
-from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
-from polaris_key.constants_generated import ERROR_CODE_VALUES
-from polaris_key.core.b64url import b64url_encode
-from polaris_key.core.caps import UnsupportedError
-from polaris_key.core.device_keys import DevicePublicKeys
-from polaris_key.core.models import ReleaseRecordDoc
-from polaris_key.core.store import CacheRecord
-from polaris_key.devices.keys import create_device_key_store
-from polaris_key.update.packs import chunk_range_fetch
-
 from transcript_replay import (
     ReplayError,
     ReplayServer,
@@ -96,6 +94,19 @@ from transcript_replay import (
     load_manifest,
     load_transcripts,
 )
+
+from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
+from polaris_key.cloud_sync.host_codec import open_pull, seal_push
+from polaris_key.cloud_sync.transport import send_sync
+from polaris_key.constants_generated import ERROR_CODE_VALUES
+from polaris_key.core import sync_crypto as sc
+from polaris_key.core.b64url import b64url_encode
+from polaris_key.core.caps import UnsupportedError
+from polaris_key.core.device_keys import DevicePublicKeys
+from polaris_key.core.models import ReleaseRecordDoc
+from polaris_key.core.store import CacheRecord
+from polaris_key.devices.keys import create_device_key_store
+from polaris_key.update.packs import chunk_range_fetch
 
 MANIFEST = load_manifest("sdks/python/parity.json")
 TRANSCRIPTS = load_transcripts()
@@ -213,6 +224,29 @@ def _connect_step(client: PolarisKeyClient, step: Dict[str, Any], session: Dict[
     return out
 
 
+def _relay_ticket_step(client: PolarisKeyClient) -> Dict[str, Any]:
+    """``client.connect.relay_ticket()`` (CC-10.4, ``connect.relay``). A refusal reads as ``result:
+    "refused"`` with the status, the Worker's code and, where it answers them, ``retryAfter`` and ``scope``."""
+    out: Dict[str, Any] = {}
+    try:
+        g = client.connect.relay_ticket()
+        out["result"] = "ok"
+        out["protocol"] = g.protocol
+        out["url"] = g.url
+        out["expiresIn"] = g.expires_at - int(time.time())
+    except PolarisError as e:
+        out["result"] = "refused"
+        out["status"] = e.status
+        out["code"] = e.code
+        retry = getattr(e, "retry_after_seconds", None)
+        if retry is not None:
+            out["retryAfter"] = retry
+        scope = getattr(e, "scope", None)
+        if scope is not None:
+            out["scope"] = scope
+    return out
+
+
 def _act(
     client: PolarisKeyClient,
     store: TranscriptStore,
@@ -227,8 +261,12 @@ def _act(
     args = step["args"]
     if action.startswith("keyring"):
         return _keyring_step(client, step, session)
+    if action in ("cloudSyncPull", "cloudSyncPush"):
+        return _cloud_sync_step(client, step, session)
     if action in ("connectIdentity", "connectDevices"):
         return _connect_step(client, step, session)
+    if action == "relayTicket":
+        return _relay_ticket_step(client)
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
@@ -551,6 +589,153 @@ def _keyring_step(
     return out
 
 
+# ── Cloud Sync settings (U-06.11, `sync.settings`) ───────────────────────────────────────────────
+
+#: The settings the generated mutations name: declared in the replay's catalog, or open.
+SYNC_DECLARED = ["ui.theme", "audio.volume"]
+SYNC_E2E_NAMES = ["ui.theme", "my.open.key", "game.best"]
+SYNC_E2E_ROUTES = [
+    {"key": "ui.theme", "route": "synced", "scope": "user", "policy": "lastWrite"},
+    {"key": "game.best", "route": "synced", "scope": "user", "policy": "max"},
+]
+SYNC_CLIENT_ID = "c_AAAAAAAAAAAAAAAAAAAAAA"
+SYNC_HLC = "018bcfe56418:0000"
+
+#: A fixture root: the replay's ring is not a real one, so every recorded ``ct`` is ``invalid``.
+FIXTURE_ROOT = bytes((3 * i + 7) % 256 for i in range(32))
+
+
+class FixtureCodec:
+    """The host codec over the fixture root (the replay's stand-in for ``client.keyring.codec``)."""
+
+    locked = False
+
+    def seal(self, collection: str, name: str, value: Any) -> bytes:
+        return sc.seal_value(FIXTURE_ROOT, collection, name, value)
+
+    def open(self, collection: str, name: str, envelope: bytes, aliases: Any = None) -> Any:
+        return sc.open_value(FIXTURE_ROOT, collection, name, envelope, aliases)
+
+    def open_any(self, collection: str, envelope: bytes) -> Any:
+        return sc.open_value_any_name(FIXTURE_ROOT, collection, envelope)
+
+    def blind(self, kind: str, ctx: str, name: str) -> str:
+        return sc.blind(FIXTURE_ROOT, kind, ctx, name)
+
+
+def _generated_mutations(count: int, first: int, names: List[str]) -> List[Dict[str, Any]]:
+    """``count`` generated set mutations, ids from ``first``, cycling through ``names``."""
+    return [
+        {
+            "mutationId": first + i,
+            "target": {"setting": names[i % len(names)], "scope": "user"},
+            "op": "set",
+            "value": f"generated-{first + i}",
+            "editedHlc": SYNC_HLC,
+        }
+        for i in range(count)
+    ]
+
+
+def _result_label(r: Dict[str, Any]) -> str:
+    """One label per mutation result, in the transcript format's words."""
+    status = r.get("status")
+    if status == "ok":
+        if isinstance(r.get("renamedTo"), str):
+            return f"ok:renamedTo:{r['renamedTo']}"
+        return "ok:dropped" if r.get("dropped") is True else "ok"
+    if status == "rejected":
+        scope = r.get("scope")
+        return f"rejected:{r.get('code')}:{scope}" if isinstance(scope, str) else f"rejected:{r.get('code')}"
+    return str(status)
+
+
+def _cloud_sync_step(
+    client: PolarisKeyClient, step: Dict[str, Any], session: Dict[str, Any]
+) -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    t = session["transcript"]
+    e2e = t["id"] == "cloudsync-e2e-settings"
+    args = step["args"]
+    cursor = int(args["cursor"])
+    wire = session.setdefault("syncWire", {"etag": None, "retryAfter": None})
+    wire["retryAfter"] = None
+    mutations: List[Dict[str, Any]] = []
+    if step["action"] == "cloudSyncPull":
+        req: Dict[str, Any] = {"method": "GET", "path": f"/{t['product']}/sync?cursor={cursor}"}
+    else:
+        mutations = _generated_mutations(
+            int(args["mutations"]),
+            session.setdefault("syncNextId", 1),
+            SYNC_E2E_NAMES if e2e else SYNC_DECLARED,
+        )
+        body: Dict[str, Any] = {
+            "clientId": SYNC_CLIENT_ID,
+            "cursor": cursor,
+            **({"atomic": True} if args.get("atomic") is True else {}),
+            "mutations": mutations,
+        }
+        req = {
+            "method": "POST",
+            "path": f"/{t['product']}/sync/ops",
+            "body": seal_push(body, FixtureCodec(), SYNC_E2E_ROUTES) if e2e else body,
+        }
+    res = send_sync(client.core, client._tokens, req)
+    if "error" in res:
+        out["result"] = res["error"]
+        return out
+    status = res["status"]
+    if status == 304:
+        out["result"] = "not-modified"
+        return out
+    if not 200 <= status < 300:
+        out["result"] = "refused"
+        out["status"] = status
+        err = res["body"].get("error") if isinstance(res.get("body"), dict) else None
+        if isinstance(err, dict) and isinstance(err.get("code"), str):
+            out["code"] = err["code"]
+        if wire["retryAfter"] is not None:
+            out["retryAfter"] = int(wire["retryAfter"])
+        return out
+    body_in: Any = res.get("body")
+    if e2e and body_in is not None:
+        body_in, opened = open_pull(body_in, FixtureCodec(), mutations=mutations)
+        rows = [*(opened.get("changes") or []), *(opened.get("conflicts") or {}).values()]
+        for row in rows:
+            assert row == {"invalid": True}, f"{t['id']}: a fixture ct opens"
+    out["result"] = "ok"
+    if not isinstance(body_in, dict):
+        return out
+    if isinstance(body_in.get("cursor"), int):
+        out["cursor"] = body_in["cursor"]
+    if isinstance(body_in.get("more"), bool):
+        out["more"] = body_in["more"]
+    out["empty"] = body_in.get("empty") is True
+    changes = body_in.get("changes") if isinstance(body_in.get("changes"), list) else []
+    out["settings"] = sorted(
+        c["setting"] for c in changes if isinstance(c, dict) and isinstance(c.get("setting"), str)
+    )
+    quota = body_in.get("quota")
+    if isinstance(quota, dict):
+        if isinstance(quota.get("bytes"), int):
+            out["quotaBytes"] = quota["bytes"]
+        if isinstance(quota.get("files"), bool):
+            out["files"] = quota["files"]
+    if isinstance(body_in.get("encryption"), str):
+        out["encryption"] = body_in["encryption"]
+    if isinstance(body_in.get("encryptionSince"), int):
+        out["encryptionSince"] = body_in["encryptionSince"]
+    if isinstance(body_in.get("aliases"), dict):
+        out["aliases"] = body_in["aliases"]
+    if step["action"] == "cloudSyncPush":
+        if isinstance(body_in.get("lastMutationId"), int):
+            out["lastMutationId"] = body_in["lastMutationId"]
+            session["syncNextId"] = body_in["lastMutationId"] + 1
+        results = body_in.get("results") if isinstance(body_in.get("results"), list) else []
+        out["results"] = [_result_label(r) if isinstance(r, dict) else "?" for r in results]
+    return out
+
+
 def _release_fetch(
     client: PolarisKeyClient, args: Dict[str, Any], session: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -680,6 +865,20 @@ def _browser_step(
         kwargs: Dict[str, Any] = {}
         if req["body"] is not None:
             kwargs["json"] = req["body"]["json"]
+        # A CORS exchange (`cloudsync-cors`) is the browser's own: the recorded headers are played as
+        # recorded, and the SDK asserts nothing about them (React's Chromium job does).
+        origin = (req.get("headers") or {}).get("origin")
+        if origin is not None:
+            token = client._tokens.current
+            if req["method"] == "OPTIONS" or token is None:
+                kwargs["headers"] = dict(req["headers"])
+            else:
+                # The request itself carries the SDK's own headers and the device bearer.
+                kwargs["headers"] = {
+                    **client.core.headers({"authorization": f"Bearer {token}"}),
+                    "content-type": "application/json",
+                    "origin": origin,
+                }
         last = server(httpx.Request(req["method"], base + path, **kwargs))
     if last is None:
         return out
@@ -846,6 +1045,7 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     # The standard discovery answer, for a transcript that loads discovery nowhere itself.
     discovery_path = f"/{t['product']}/.well-known/polaris.json"
     discovered = {"done": any(s["action"] == "discover" for s in t["steps"])}
+    sync_wire: Dict[str, Any] = {"etag": None, "retryAfter": None}
 
     def transport(request: httpx.Request) -> httpx.Response:
         step = server._step
@@ -861,7 +1061,18 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
                 headers={"content-type": "application/json"},
                 content=json.dumps(_standard_discovery(t)).encode("utf-8"),
             )
-        return server(request)
+        if request.url.path == f"/{t['product']}/sync" and request.method == "GET":
+            # A pull sends back the last ETag it saw, as a cache would (the transport has no cache).
+            if sync_wire["etag"] is not None:
+                request.headers["if-none-match"] = sync_wire["etag"]
+            res = server(request)
+            sync_wire["etag"] = res.headers.get("etag", sync_wire["etag"])
+            sync_wire["retryAfter"] = res.headers.get("retry-after")
+            return res
+        res = server(request)
+        if request.url.path == f"/{t['product']}/sync/ops":
+            sync_wire["retryAfter"] = res.headers.get("retry-after")
+        return res
 
     client = PolarisKeyClient(
         product_slug=t["product"],
@@ -893,7 +1104,7 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
             lambda _: {"events": copy.deepcopy(journal), "offered": None}
         )
         assert len(client.update_journal.events()) == len(journal)
-    session: Dict[str, Any] = {"transcript": t, "server": server}
+    session: Dict[str, Any] = {"transcript": t, "server": server, "syncWire": sync_wire}
     try:
         for i, _ in enumerate(t["steps"]):
             step = server.begin_step(i)

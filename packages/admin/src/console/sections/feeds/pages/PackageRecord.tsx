@@ -22,7 +22,11 @@ import {
   truncateMiddle,
 } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
-import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
+import {
+  ConfirmDialog,
+  confirmBlocked,
+  NEEDS_REASON,
+} from "../../../../ui/ConfirmDialog.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import {
   DataTable,
@@ -57,6 +61,7 @@ import {
   feedSetupSnippets,
   type FeedScope,
 } from "../model/model.js";
+import { sourceLine } from "../model/sourceLine.js";
 
 const TAB_LABELS: Record<(typeof PACKAGE_TABS)[number], string> = {
   versions: "Versions",
@@ -202,59 +207,6 @@ const STATE_PILL: Record<
   yanked: { tone: "danger", label: "Yanked" },
   deprecated: { tone: "warning", label: "Deprecated" },
 };
-
-/** F-22: how each native client is named on a version's source line. */
-const CLIENT_LABEL: Record<string, string> = {
-  npm: "npm publish",
-  twine: "twine upload",
-  swift: "swift package-registry publish",
-  maven: "Maven/Gradle deploy",
-};
-
-function sourceLine(v: FeedPackageVersion): React.ReactNode {
-  const s = v.source;
-  const via = s.via === "oci-push" ? " · docker push" : "";
-  if (s.kind === "oidc")
-    return (
-      <>
-        Trusted publisher{s.publisher ? ` ${s.publisher}` : ""}
-        {s.runUrl ? (
-          <>
-            {" · "}
-            <a
-              href={s.runUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="py-1 text-accent-fg underline underline-offset-4"
-            >
-              run
-            </a>
-          </>
-        ) : null}
-        {via}
-      </>
-    );
-  if (s.kind === "static")
-    return (
-      <>
-        CI token
-        {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
-        {s.client ? ` · ${CLIENT_LABEL[s.client] ?? s.client}` : null}
-        {via}
-      </>
-    );
-  if (s.kind === "registry")
-    return (
-      <>
-        Registry token
-        {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
-        {s.client ? ` · ${CLIENT_LABEL[s.client] ?? s.client}` : null}
-        {via}
-      </>
-    );
-  if (s.kind === "console") return "The console";
-  return "Unknown source";
-}
 
 function versionColumns(): DataColumn<FeedPackageVersion>[] {
   return [
@@ -531,7 +483,10 @@ function VersionDialog({
       title={c.title}
       consequences={c.consequences}
       confirmLabel={c.confirm}
-      confirmDisabled={needsText && text.trim() === ""}
+      {...confirmBlocked([
+        needsText && text.trim() === "",
+        verb === "yank" ? NEEDS_REASON : "Add a message to continue",
+      ])}
       describeError={(e) =>
         errorCopy(e, { area: "distribution", thing: "Package" })
       }

@@ -306,6 +306,186 @@ Lovelace <ada@example.com>" with a way out: the kit's sign-in form does, ending 
 `MintedToken` prints (`print`, `String(describing:)`, `debugPrint`, `dump`) with `token` as
 `[redacted]`; the property itself reads normally.
 
+### Automatic sign-in
+
+`client.identity.autoSignIn()` signs the person in from what the device already has, with no form. It
+needs the Identity service and a product that publishes the Apple exchange (the product's
+`identity.platformSignIn` setting). With no platform provider installed it answers
+`.needsSignIn(.noCredential)`; with the installed Apple provider and the default prompt it answers the same
+without a request, and `.unavailable` only when the Worker or the platform refuses. It runs a ladder and
+stops at the first rung that answers:
+
+| Rung | What it does                                            | Runs when                                                |
+| ---- | ------------------------------------------------------- | -------------------------------------------------------- |
+| 1    | A stored sign-in and a license: `.signedIn`, no network | Always                                                   |
+| 2    | Silent restore of a saved sign-in                       | Not in this SDK yet                                      |
+| 3    | The platform provider with no UI, then the exchange     | The provider has a silent mode (Apple has none: skipped) |
+| 4    | The provider's one account sheet, then the exchange     | `prompt: .optional`                                      |
+
+Past rung 4 the sign-in form is yours (or the kit's). A refusal is a result, not a throw; only
+cancelling the task throws (a cancellation error).
+
+```swift
+import PolarisKey
+import PolarisKeyIdentity
+
+func signInAutomatically(_ client: PolarisKeyClient) async throws {
+    // PolarisKeyClient installs Sign in with Apple. Apple has no silent mode, so `.optional`
+    // is what shows its sheet; the default `.never` runs rungs 1 and 3 only.
+    let result = try await client.identity.autoSignIn(AutoSignInOptions(prompt: .optional))
+    switch result {
+    case .signedIn(let ready):
+        _ = ready.identity            // who signed in, when the Worker said
+    case .confirm(let pending):
+        // First use of this app with the account: show pending.consent (the app, the account, the
+        // license line), then complete with the person's yes.
+        _ = try await client.identity.choice.complete(
+            grant: pending.grant, choice: nil, consent: ChoiceConsent(claims: []))
+    case .choose(let pending):
+        _ = pending                   // two or more licenses: the choice screen (`identity.choice`)
+    case .deviceLimit(let manageUrl, let view):
+        _ = (manageUrl, view)         // every seat is taken: offer Replace a device
+    case .needsSignIn(_, let reason):
+        _ = reason                    // .noLink, .terms, .signedOut, .noCredential: the regular form
+    case .unavailable(let code):
+        _ = code                      // no exchange here; the regular form
+    }
+}
+```
+
+- **Signing out sticks.** `identity.signOut()` sets a flag that keeps rungs 3 and 4 quiet until the
+  person starts a sign-in themselves (`reason: .signedOut`). A sign-out during the Apple sheet wins
+  too: nothing is stored.
+- **Revoked in Settings.** If the person revokes the app's Apple credential, the next
+  `autoSignIn()` signs the device out. If the Worker cannot be reached the check repeats at the next
+  launch.
+- **First use asks.** `.confirm` carries what the app and account will share; a new account never
+  binds without the person's yes. `.needsSignIn(linkHandle:reason:)` with `.noLink` means the Apple
+  account is not linked to a Polaris Locker account yet.
+- **Nothing secret prints.** A result, a token, a grant and a link handle show `[redacted]`.
+
+A custom provider conforms to `PlatformIdentityProvider` and is passed as
+`AutoSignInOptions(provider:)` or set with `client.identity.installPlatformIdentity(_:)`.
+
+**Setup for Sign in with Apple.** Add the _Sign in with Apple_ capability to every target that
+signs in (the `com.apple.developer.applesignin` entitlement) and note your Apple **Team ID**: the
+product's `identity.platformSignIn.apple.teamId` setting names it, with the bundle ids. The full
+walkthrough is planned.
+
+In the SwiftUI kit the gate runs the ladder once at launch with no sheet, and the provider row's
+Sign in with Apple button opens the sheet and then the exchange. Pass
+`.polarisKeyGate(client, autoSignIn: false)` (or `.polarisKey(client, autoSignIn: false)`) to turn
+the launch attempt off.
+
+### Cloud Sync key ring
+
+`client.keyring` holds the person's end-to-end key: one root per ring, shared by their devices and
+never sent to the Worker in the clear. The Worker stores only wraps of it, one per device, and a
+blob sealed under the recovery code. The Cloud Sync client that seals settings with it is planned;
+the key ring itself is here. It uses the device keys `client.connect` uses (a `DeviceKeyPort`).
+
+| Call                              | What it does                                                                                                                            |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `status()`                        | What this device holds now, with no request: `unlocked`, `ringId`, `epoch`, `pinned`, `rootStored`.                                     |
+| `unlock()`                        | Opens this device's own wrap. `.unlocked`, `.locked(reason:)` (`.noRing`, `.noWrap`, `.unusableWrap`) or `.ringChanged`.                |
+| `create(recovery:)`               | A new ring: a fresh root, a wrap to this device and, by default, a recovery code. A ring that already exists throws `keyring_conflict`. |
+| `reset(recovery:)`                | Starts over with a new ring. The Worker keeps the old ring as `previous` for 30 days.                                                   |
+| `wrapTo(deviceId:agreeKey:)`      | Wraps the root to another device of the same person, with the agreement key its nearby approval carried.                                |
+| `setRecoveryCode()`               | A new recovery code; the previous one stops working.                                                                                    |
+| `recover(_:)`                     | Opens the root from the typed recovery code.                                                                                            |
+| `adopt(ringId:)`, `openAdopted()` | Folds an earlier ring's root under the current one, and opens the roots others folded.                                                  |
+| `lock()`, `forget()`              | Drops the roots from memory (quit), or from memory and the Keychain with the pin (sign-out).                                            |
+
+A locked ring refuses to seal or open with `sync-locked`. `attach(_:)` takes a `SyncRootListener`
+that is told whenever the root is gained or lost.
+
+```swift
+import PolarisKey
+
+func openRing(_ client: PolarisKeyClient) async throws -> String? {
+    let ring = client.keyring
+    let status = await ring.status()
+    if status.unlocked { return nil }          // a restart: the stored root came back, no request
+
+    switch try await ring.unlock() {
+    case .unlocked:
+        return nil
+    case .locked(let reason) where reason == .noRing:
+        // The first device. The recovery code is returned once, here, and kept nowhere.
+        return try await ring.create().recoveryCode
+    case .locked:
+        return nil                             // no wrap for this device: wrap it from another, or recover
+    case .ringChanged(let pinned, let served, _, _):
+        _ = (pinned, served)                   // see "A changed ring" below
+        return nil
+    }
+}
+```
+
+**The recovery code** is shown once, when the ring is created or the code is reset, and the SDK
+keeps it nowhere: not in the Keychain, not in a log, not in an error, and `SyncCreatedRing` prints
+without it. Show it to the person to write down, and ask for it only inside your app. Every type
+that holds a root prints as redacted.
+
+```swift
+import PolarisKey
+
+func recoverRing(_ client: PolarisKeyClient, typed: String) async throws -> Bool {
+    do {
+        let recovered = try await client.keyring.recover(typed)
+        return recovered.wrapDeposited         // true: the next start unlocks without the code
+    } catch let error as PolarisError where error.code == "recovery-code-invalid" {
+        return false                           // a typo or the wrong code; the checksum failed first
+    }
+}
+```
+
+`recover(_:)` checks the code before any request. On success the root is held and pinned, and this
+device deposits its own wrap.
+
+**Wrapping to another device.** On a device that holds the root, `wrapTo(deviceId:agreeKey:)` seals
+it to the other device's agreement key. That device then calls `unlock()`. The agreement key never
+leaves its `DeviceKeyPort`: a wrap is opened through the port.
+
+```swift
+import PolarisKey
+
+func approve(_ client: PolarisKeyClient, deviceId: String, agreeKey: String) async throws {
+    try await client.keyring.wrapTo(deviceId: deviceId, agreeKey: agreeKey)
+}
+```
+
+**A changed ring.** The first root this device acquires pins the ring's `ringId`, `epoch` and
+`rootKid`. A ring or wrap the Worker later serves that differs from the pin is never opened:
+`unlock()` answers `.ringChanged` and nothing is replaced. Show the person what changed (`served`,
+`createdAt`, and `by`, the device that wrapped), and call `acceptRingChange(confirmed:)` only from
+their yes. `recover(_:)` also re-pins.
+
+```swift
+import PolarisKey
+
+func acceptChange(_ client: PolarisKeyClient, served: SyncRingPin) async throws -> Bool {
+    // Call this only after the person confirmed the ring they were shown.
+    let result = try await client.keyring.acceptRingChange(confirmed: served)
+    if case .unlocked = result { return true }
+    return false                               // the Worker now serves another ring: ask again
+}
+```
+
+**Reset and adopt.** `reset()` makes a new ring; the root this device held stays in memory so
+`adopt(ringId:)` can fold it under the new one. `openAdopted()` opens the roots already folded in,
+so `client.keyring.codec` reads data sealed under them.
+
+**Sign-out.** Releasing the device (`deactivate()`, or a sign-out that releases it) calls
+`forget()`: the roots leave memory and the Keychain and the pin is dropped, so the next person
+starts clean. A root that cannot be deleted throws and stops the release.
+
+**Where the root lives.** In memory while the app runs, and in one Keychain item: service
+`pkey:<product>`, account `sync-root`, accessible after first unlock on this device only
+(`AfterFirstUnlockThisDeviceOnly`), never synchronizable. A restart takes it back while it matches
+the pin. A Keychain write that fails leaves the root in memory only. An iCloud Keychain backup of
+the root is planned.
+
 ### Edge-mint
 
 `try await client.config.mintToken("musickit")` asks the Worker to sign a short-lived
@@ -317,6 +497,41 @@ only** — never in the cache file or the keychain — and reused until 30 secon
 `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id outside `[a-z0-9-]`)
 before any request, `unauthorized` (no token, or still 401), or the Worker's `not_found` /
 `rate_limited` / `misconfigured`.
+
+### Cloud Connect
+
+`client.cloudConnect` links the devices signed in to one account and opens an encrypted channel between
+them, over the local network first and the relay when the LAN does not answer. It needs sign-in and a
+product with the `connect` service on.
+
+```swift
+try await client.cloudConnect.start()
+let stopListening = client.cloudConnect.onChannel { session in /* a device opened a session to this one */ }
+let peers = await client.cloudConnect.peers()
+if let first = peers.first {
+    let session = try await client.cloudConnect.open(first.deviceId)
+    try await session.send(Data("hello".utf8))
+}
+await client.cloudConnect.stop()
+```
+
+`stop()` never waits past 15 seconds; sign-out and release stop it first. `CloudConnectOptions(lan:relay:)`
+turns a path off.
+
+**Local network access (Apple platforms).** The LAN path advertises and browses over Bonjour, so the app's
+`Info.plist` needs both keys; without them `start()` reports the LAN as not configured and the relay still works:
+
+```xml
+<key>NSLocalNetworkUsageDescription</key>
+<string>Finds your other devices on this network.</string>
+<key>NSBonjourServices</key>
+<array>
+  <string>_pkeypeer._tcp</string>
+</array>
+```
+
+A refused Local Network prompt is the `nearby-permission-denied` error. A **sandboxed macOS app** also needs the
+`com.apple.security.network.client` and `com.apple.security.network.server` entitlements (it dials out and listens).
 
 ### Stores
 

@@ -15,7 +15,7 @@ each with a note.
 | `:core`                | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants                                                                                                                             |
 | `:license`             | JVM library (JAR)     | the license gate, activation, enrolment, entitlements, channels, deactivation                                                                                                                                                                                                                         |
 | `:config`              | JVM library (JAR)     | layered config resolution, the user-visible list, secrets, the catalog fetch, edge-mint                                                                                                                                                                                                               |
-| `:identity`            | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure)                                                                                                                                                                                                                        |
+| `:identity`            | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure), the token exchange and `autoSignIn()`                                                                                                                                                                                 |
 | `:release`             | JVM library (JAR)     | the changelog, download and install URLs, release-record verification                                                                                                                                                                                                                                 |
 | `:update`              | JVM library (JAR)     | the version check, the signed channel feed and the v4 update decision (content included), the boot guard, the `InstallDriver` port                                                                                                                                                                    |
 | `:packs`               | JVM library (JAR)     | the pack engine: planner, full / file / chunk / delta appliers (zstd-jni), install state, `DirPackStorage`, revocations, delegation, handlers, provides, feed deltas                                                                                                                                  |
@@ -369,6 +369,15 @@ the Worker accepted the report.
 --kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
 `ProductCatalog` object (keys, entries, each entry's JSON schema and default; a secret's default is
 never compiled in). The `:config` tests compile a sample of it.
+
+## Cloud Connect
+
+`client.cloudConnect` links a person's signed-in devices (feature page: `/docs/features/cloud-connect/`).
+`start()` begins discovery and the relay; `peers` and `devices()` list who is reachable; `open(deviceId)`
+opens an encrypted channel and `onChannel` receives one another device opens (close it when nothing listens).
+On the JVM it tries the LAN first (mDNS and TCP), then the relay. On Android the relay works today; LAN
+discovery needs the Android adapter (CC-12b) and reports `off` with reason `unsupported` until then.
+`stop()` and sign-out close every session within 2 s each. `PolarisKeyFutures` has the Java forms.
 
 ## JVM desktop
 

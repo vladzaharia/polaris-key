@@ -737,6 +737,8 @@ describe("the settings API refuses what the registry refuses", () => {
       .map((d) => d.key)
       .sort();
     expect(served).toEqual([
+      // CC-07.3: the relay switch, read by the relay ticket route.
+      "cloudConnect.relay.enabled",
       // I-09: the identity block's live row-backed settings (claimByKey since ST-14).
       "identity.keyEntry.claimByKey",
       "identity.keyEntry.limit",

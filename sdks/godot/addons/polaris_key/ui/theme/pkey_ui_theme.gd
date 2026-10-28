@@ -173,10 +173,10 @@ const DEFAULT_DENSITY := "spacious"
 ##   card_width_wide  a two-column (landscape) card
 ##   content_width    a list (settings)
 ##   qr_size          a QR code a phone scans (never under PKeyUiView.QR_MIN_PHYSICAL on screen)
-##   icon_size        the product's icon heading a focused step (32)
+##   icon_size        the product's icon heading a focused step (28)
 ##   icon_size_card   the product's icon on an update or settings card (56)
 ##   hero_icon_size   the product's icon leading a screen (the gate, the boot)
-const MEASURES := {"card_width": 520, "card_width_wide": 960, "content_width": 680, "qr_size": 232, "icon_size": 32, "icon_size_card": 56, "hero_icon_size": 64}
+const MEASURES := {"card_width": 520, "card_width_wide": 960, "content_width": 680, "qr_size": 232, "icon_size": 28, "icon_size_card": 56, "hero_icon_size": 64}
 ## Which role sets each container variation's gap.
 const CONTAINER_GAPS := {
 	"PKeyStack": "stack_gap",

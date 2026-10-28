@@ -434,6 +434,67 @@ describe("bearer mode: activate, sync, devices, reload", () => {
   });
 });
 
+describe("bearer mode: Cloud Sync (U-20.2)", () => {
+  it("signing out deletes the synced data record with the ring, and a cookie page answers the typed N/A", async () => {
+    const s = await server();
+    const factory = await seededFactory();
+    const g = globalThis as { indexedDB?: IDBFactory };
+    const prior = g.indexedDB;
+    g.indexedDB = factory;
+    try {
+      // The record a host left in `pkey-sync-acme`.
+      const { indexedDbConnectState } =
+        await import("../src/browser/connect/state.js");
+      const rec = indexedDbConnectState("pkey-sync-acme", factory);
+      await rec.put('{"schema":"pkey.cloudsync.v1"}');
+      const adapter = browserAdapter({
+        productSlug: "acme",
+        auth: "bearer",
+        trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
+        fetchImpl: s.fetchImpl,
+        now: () => NOW,
+        store: indexedDbStore("acme", { factory })!,
+      });
+      await settled(adapter);
+      await adapter.submitKey("pkey_good");
+      expect(adapter.cloudSync.unsupported).toBeNull();
+      await adapter.signOut();
+      expect(await rec.get()).toBeNull();
+    } finally {
+      g.indexedDB = prior;
+    }
+    const cookie = browserAdapter({
+      productSlug: "acme",
+      baseUrl: BASE,
+      fetchImpl: (async () =>
+        new Response("{}", { status: 404 })) as typeof fetch,
+      autoStart: false,
+    });
+    expect(cookie.cloudSync.unsupported).toMatchObject({
+      feature: Feature.syncSettings,
+      reason: "runtime",
+    });
+  });
+
+  it("a product without the Sync service answers the typed product N/A and loads nothing", async () => {
+    const s = await server();
+    const adapter = browserAdapter({
+      productSlug: "acme",
+      auth: "bearer",
+      trust: { pinnedKeys: { [s.key.kid]: s.key.raw } },
+      fetchImpl: s.fetchImpl,
+      now: () => NOW,
+      store: indexedDbStore("acme", { factory: await seededFactory() })!,
+    });
+    await settled(adapter);
+    await expect(adapter.cloudSync.host()).rejects.toMatchObject({
+      feature: Feature.syncSettings,
+      reason: "product",
+    });
+    expect(() => adapter.cloudSync.status()).toThrow();
+  });
+});
+
 describe("browser facts", () => {
   it("reports only what the page states about itself", () => {
     expect(

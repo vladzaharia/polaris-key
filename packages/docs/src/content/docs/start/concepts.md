@@ -23,7 +23,7 @@ This is the canonical glossary. The console, Polaris Locker and the docs use one
 | **License in an account** | A license whose holder is an account                                                                                                                 | list filter `inAccount`                                                           | owned, bound                    |
 | **Waiting license**       | A license assigned to an email no account has verified yet. An account that verifies the address takes it in                                         | list filter `waiting`                                                             | pending holder                  |
 | **Floating license**      | A license with no holder: whoever has its key activates devices                                                                                      | list filter `floating`                                                            | unbound                         |
-| **Automatic grant**       | Locker's label for a license the access policy issued. The only use of "grant"                                                                       | origin `oidc`                                                                     | "From signing in"               |
+| **Automatic grant**       | A license the access policy issued. The only use of "grant". End users see it as "Sign-in" in the kits and Polaris Locker                            | origin `oidc`                                                                     | "From signing in"               |
 | **Tier**                  | A named license template                                                                                                                             | `tiers`, `tier_id`                                                                | plan                            |
 | **Add-on**                | A sub-license: an in-app purchase, DLC, feature pack, device pack or consumable                                                                      | `grants`, `addon_id`                                                              | grant, store mapping            |
 | **Entitlement**           | A named right a device gets from its license                                                                                                         | catalog `flag` entries                                                            | flag                            |
@@ -81,7 +81,7 @@ These words leave every console string, because the UI names each of those thing
 | --------------------------- | ---------------------------------------------------------------------------------------------------- |
 | "outlet"                    | **Channel**                                                                                          |
 | "storefront feed"           | **Install source**                                                                                   |
-| "grant"                     | **Add-on**, or a plain verb (give, add). Locker's **Automatic grant** is the one kept use            |
+| "grant"                     | **Add-on**, or a plain verb (give, add). **Automatic grant** is the one kept use                     |
 | "capability"                | The feature, the switch, or what the channel allows                                                  |
 | "portal", "customer portal" | **Polaris Locker**, then **Locker**. The console and docs say "Polaris Locker" for the customer site |
 | `"licence"`                 | **License**: US spelling, noun and verb. Identifiers and file names keep their spelling              |
@@ -146,6 +146,10 @@ Each service issues its own signed document, and a client derives the license st
 ## Cloud Sync data
 
 **Cloud Sync** stores a signed-in person's settings, records and files for one product. It needs Config and Identity. A **synced setting** is an editable catalog `config` key. A **record** is one JSON value in a **collection**, and a **save** is a record of the `saves` collection template. The SDKs name the namespace `cloudSync`.
+
+## Cloud Connect
+
+**Cloud Connect** lets one signed-in person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs Identity. A **linked device** is a device on that person's roster, one the person is signed in on; removing a device unlinks it. A **relay** carries a channel's ciphertext between two linked devices that the local network does not connect, within a per-person day quota and a per-product month ceiling. End users know a linked device as a nearby device in Polaris Locker.
 
 ## Release model
 

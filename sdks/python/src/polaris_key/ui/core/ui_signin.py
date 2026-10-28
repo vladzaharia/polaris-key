@@ -12,7 +12,7 @@ every device-code sign-in), so a Python kit never reaches it.
 
 from __future__ import annotations
 
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional
 from urllib.parse import quote
 
 from ...constants_generated import DEVICE_CODE_PAGE, SIGN_IN_PROVIDER_NAME, TV_CODE_PAGE
@@ -32,7 +32,7 @@ from .ui_view import (
 
 __all__ = ["nearby_approval_view", "sign_in_handoff_view", "sign_in_view", "verification_url"]
 
-_Copy = List[Union[str, bool, None]]
+_Copy = List[Optional[str]]
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -58,7 +58,7 @@ def verification_url(ctx: Context) -> str:
         _mapping(ctx.input.get("integrator")).get("deviceCodeUrl"),
         _mapping(ctx.input.get("deviceCode")).get("verificationUri"),
     ):
-        if valid_link(candidate) is not None:
+        if isinstance(candidate, str) and valid_link(candidate) is not None:
             return candidate
     return TV_CODE_PAGE if platform_class(ctx.platform) in ("tv", "console") else DEVICE_CODE_PAGE
 
@@ -224,7 +224,10 @@ def nearby_approval_view(ctx: Context) -> View:
         return outcome("approved", ["signin.nearby.approved", "common.done"], "common.done")
     if step == "not-nearby":
         return outcome(
-            "not-nearby", ["signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done"], "common.done", "neutral"
+            "not-nearby",
+            ["signin.nearby.notNearby", "signin.nearby.notNearbyBody", "common.done"],
+            "common.done",
+            "neutral",
         )
     if step == "mismatch":
         return outcome("mismatch", ["signin.nearby.mismatch", "common.done"], "common.done")
@@ -246,7 +249,9 @@ def nearby_approval_view(ctx: Context) -> View:
         )
     if step == "choose":
         return outcome(
-            "choose", ["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"], "signin.choice.continue"
+            "choose",
+            ["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"],
+            "signin.choice.continue",
         )
     if step == "account-required":
         return outcome(
@@ -314,11 +319,15 @@ def sign_in_view(ctx: Context) -> View:
         copy: List[str] = (
             ["signin.return.signedInShort"]
             if not license_on
-            else ["signin.done.start", "signin.return.signedInTier" if account.get("tier") else "signin.return.signedInShort"]
+            else [
+                "signin.done.start",
+                "signin.return.signedInTier" if account.get("tier") else "signin.return.signedInShort",
+            ]
             if s.get("issuedNow")
             else ["signin.desktop.toast"]
         )
         start = "signin.done.start" in copy
+        no_focus: Dict[str, Any] = {} if start else {"focus": None}
         return make_view(
             ctx,
             "SignIn",
@@ -326,7 +335,7 @@ def sign_in_view(ctx: Context) -> View:
             copy,
             args={**args, "name": account.get("holder"), "tier": account.get("tier")},
             primary="signin.done.start" if start else None,
-            **({} if start else {"focus": None}),
+            **no_focus,
         )
     in_app = _chooses_in_app(ctx)
     if s.get("outcome") == "choose" and in_app:
@@ -352,7 +361,11 @@ def sign_in_view(ctx: Context) -> View:
                 ctx,
                 "SignIn",
                 "key",
-                ["signin.key.addTitle", "part.keyField.label", *(activation_copy(a.get("result"), a.get("code")) if refused else ())],
+                [
+                    "signin.key.addTitle",
+                    "part.keyField.label",
+                    *(activation_copy(a.get("result"), a.get("code")) if refused else ()),
+                ],
                 args={**args, "code": a.get("code")},
                 primary="activate.submit",
                 tone="neutral" if refused else None,
@@ -368,7 +381,11 @@ def sign_in_view(ctx: Context) -> View:
                 ctx,
                 "SignIn",
                 "replace",
-                ["signin.replace.open", "signin.replace.lede", "signin.replace.openSystem" if system else "signin.replace.title"],
+                [
+                    "signin.replace.open",
+                    "signin.replace.lede",
+                    "signin.replace.openSystem" if system else "signin.replace.title",
+                ],
                 args={**args, "device": pick.get("label") if pick else None},
                 primary="signin.replace.openSystem" if system else "signin.replace.open",
             )
@@ -379,7 +396,9 @@ def sign_in_view(ctx: Context) -> View:
             "choose",
             ["signin.choice.title", "signin.desktop.notifyChoose" if desktop else None],
             args=args,
-            extra_actions=["replace-in-browser"] if s.get("event") == "open-replace" and s.get("replace") == "browser" else [],
+            extra_actions=(
+                ["replace-in-browser"] if s.get("event") == "open-replace" and s.get("replace") == "browser" else []
+            ),
             primary=None,  # LicenseChoice draws the rows and Continue
             focus=None,
         )
@@ -444,10 +463,17 @@ def sign_in_handoff_view(ctx: Context) -> View:
                 tone="neutral",
             )
         if phase == "starting":
-            return make_view(ctx, "SignInHandoff", "starting", ["signInHandoff.starting", "a11y.busy"], args=args, focus=None)
+            return make_view(
+                ctx, "SignInHandoff", "starting", ["signInHandoff.starting", "a11y.busy"], args=args, focus=None
+            )
         if phase == "ok":
             return make_view(
-                ctx, "SignInHandoff", "finishing", ["signin.handoff.finishing", "signInHandoff.ok"], args=args, focus=None
+                ctx,
+                "SignInHandoff",
+                "finishing",
+                ["signin.handoff.finishing", "signInHandoff.ok"],
+                args=args,
+                focus=None,
             )
         if phase in ("denied", "failed"):
             return make_view(
@@ -477,7 +503,9 @@ def sign_in_handoff_view(ctx: Context) -> View:
         # The opener failed: the screen stays, with Copy link (DL14).
         if s.get("browserOpened") is False:
             if s.get("event") == "copy-link":
-                return make_view(ctx, "SignInHandoff", "link-copied", ["signInHandoff.linkCopied"], args=args, focus=None)
+                return make_view(
+                    ctx, "SignInHandoff", "link-copied", ["signInHandoff.linkCopied"], args=args, focus=None
+                )
             return make_view(
                 ctx,
                 "SignInHandoff",
@@ -503,7 +531,13 @@ def sign_in_handoff_view(ctx: Context) -> View:
         )
     if outcome == "expired":
         return make_view(
-            ctx, "SignInHandoff", "expired", ["signInHandoff.newCode"], args=args, primary="signInHandoff.newCode", tone="neutral"
+            ctx,
+            "SignInHandoff",
+            "expired",
+            ["signInHandoff.newCode"],
+            args=args,
+            primary="signInHandoff.newCode",
+            tone="neutral",
         )
     if outcome == "cancelled":
         return make_view(
@@ -527,7 +561,12 @@ def _code_view(ctx: Context, kind: str, link: LinkVerdict, args: Mapping[str, An
             ctx,
             "SignInHandoff",
             "code",
-            head + ["a11y.qr" if link.qr else None, "signInHandoff.scanTv" if link.qr else None, "signin.handoff.url" if link.url else None],
+            head
+            + [
+                "a11y.qr" if link.qr else None,
+                "signInHandoff.scanTv" if link.qr else None,
+                "signin.handoff.url" if link.url else None,
+            ],
             args=args,
             link=link,
         )
@@ -546,7 +585,13 @@ def _code_view(ctx: Context, kind: str, link: LinkVerdict, args: Mapping[str, An
             ctx,
             "SignInHandoff",
             "code",
-            head + ["a11y.copyCode", "signin.handoff.url" if link.url else None, "a11y.copyAddress" if link.url else None, opener],
+            head
+            + [
+                "a11y.copyCode",
+                "signin.handoff.url" if link.url else None,
+                "a11y.copyAddress" if link.url else None,
+                opener,
+            ],
             args=args,
             primary="signin.handoff.openBrowser" if link.open else None,
             link=link,

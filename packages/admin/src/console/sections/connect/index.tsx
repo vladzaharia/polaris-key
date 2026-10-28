@@ -1,10 +1,21 @@
 import type * as React from "react";
 import type { SectionPageProps } from "../../pages/types.js";
+import { ConnectDevicesPage } from "./ConnectDevices.js";
 import { ConnectSetupPage } from "./ConnectSetup.js";
+import { ConnectUsagePage } from "./ConnectUsage.js";
 
-/** Cloud Connect's section: the stub page now; Setup, Usage and Linked devices come with CC-16. */
+/** Cloud Connect: one row, Setup, Linked devices and Usage route tabs. */
 export default function ConnectPages({
   route,
 }: SectionPageProps): React.ReactElement | null {
-  return route.page === "connect-setup" ? <ConnectSetupPage /> : null;
+  switch (route.page) {
+    case "connect-setup":
+      return <ConnectSetupPage slug={route.slug} />;
+    case "connect-devices":
+      return <ConnectDevicesPage slug={route.slug} />;
+    case "connect-usage":
+      return <ConnectUsagePage slug={route.slug} />;
+    default:
+      return null;
+  }
 }

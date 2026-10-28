@@ -187,6 +187,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "store-failed": CopyEntry("Storage problem", "Couldn't save on this device. Check storage and try again."),
         "connect-unavailable": CopyEntry("Connect unavailable", "Nearby connection isn't available for this app on this device."),
         "peer-cert-invalid": CopyEntry("Device not verified", "This device couldn't be verified. Try again."),
+        "nearby-permission-denied": CopyEntry("Local network blocked", "This app can't reach devices on your local network. Allow it in system settings."),
         "platform-error": CopyEntry("Platform problem", "The platform reported an error. Try again."),
         "no-token": CopyEntry("Not activated", "This device isn't activated yet. Activate it or sign in."),
         "mint-unavailable": CopyEntry("Not available", "This isn't available for this app."),

@@ -18483,7 +18483,7 @@
       "optional": false,
       "refs": ["plans/LK-00.md §7.1, §8"],
       "brief": "wp/LK-12-locker-badges-in-use.md",
-      "status": "todo",
+      "status": "in-review",
       "deferred": "LK-11 is live"
     },
     {
@@ -19117,7 +19117,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §4", "plans/CC-01.md §4"],
       "brief": "wp/CC-17-docs-help.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "CC-18",

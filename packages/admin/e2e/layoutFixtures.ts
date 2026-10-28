@@ -420,6 +420,109 @@ const ROUTES: Record<string, unknown> = {
       },
     ],
   },
+  // Listing: the store-listing model with one locale and a store override (A-18b).
+  [`${P}/distribution/listing`]: {
+    listing: {
+      app: {
+        defaultLocale: "en-US",
+        name: "DJDL",
+        developerName: "Fennick",
+        category: "music",
+        contactEmail: "support@example.com",
+        copyright: "© Fennick",
+        urls: { support: "https://example.com/support" },
+      },
+      source: "admin",
+      provenance: {},
+      modifiedAt: NOW - DAY,
+      modifiedBy: "ada@example.com",
+    },
+    locales: [
+      {
+        locale: "en-US",
+        name: "DJDL",
+        subtitle: "Mix anywhere",
+        shortDescription: "Mix anywhere.",
+        description: "A DJ app that runs wherever you do.",
+        keywords: ["dj", "mix"],
+        features: ["Beat matching", "Cloud library"],
+        source: "admin",
+        provenance: {},
+        modifiedAt: NOW - DAY,
+        modifiedBy: "ada@example.com",
+      },
+    ],
+    overrides: [],
+    limits: { name: 30, subtitle: 30, shortDescription: 80 },
+    stores: [
+      { store: "google-play", label: "Google Play" },
+      { store: "app-store", label: "App Store" },
+    ],
+    overrideStores: ["google-play"],
+    modelFields: ["name", "subtitle", "shortDescription", "description"],
+  },
+  [`${P}/distribution/listing/fit`]: {
+    exists: true,
+    release: null,
+    stores: [],
+    issues: [],
+  },
+  // The platform's alert destinations and reserved-name rules (Settings → Platform).
+  "/manage/api/platform/alerts": {
+    destinations: [],
+    kinds: [
+      { id: "auto_halt", label: "Auto-halt tripped", sent: true },
+      {
+        id: "store_connection",
+        label: "Store connection failing",
+        sent: false,
+      },
+    ],
+    inherited: 0,
+    inheritedByKind: {},
+    max: 5,
+    emailAvailable: true,
+  },
+  "/manage/api/platform/reserved-names": {
+    mode: "warn",
+    keys: [
+      { key: "pkey.locale", type: "string", rule: "A BCP 47 language tag." },
+    ],
+    prefixes: ["pkey."],
+    products: [],
+  },
+  // Access tokens: the admin API tokens and the personal ones.
+  "/manage/api/tokens": {
+    tokens: [
+      {
+        id: "tok_1",
+        label: "CI migrations",
+        scopes: ["migrations:report"],
+        createdAt: NOW - 20 * DAY,
+        expiresAt: NOW + 70 * DAY,
+        lastUsedAt: NOW - 3600,
+        revokedAt: null,
+        status: "active",
+      },
+    ],
+  },
+  "/manage/api/account-tokens": {
+    tokens: [
+      {
+        id: "ptk_1",
+        email: "ada@example.com",
+        label: "Laptop",
+        hint: "a1b2",
+        scope: "console",
+        createdAt: NOW - 10 * DAY,
+        expiresAt: NOW + 80 * DAY,
+        lastUsedAt: NOW - 7200,
+        revokedAt: null,
+        revokeReason: null,
+        status: "active",
+      },
+    ],
+  },
   "/manage/api/me": ME,
   // Sign-in methods (ST-30c.4): the linked account, a long-named passkey, one Use for the console can mark.
   "/manage/api/me/methods": {

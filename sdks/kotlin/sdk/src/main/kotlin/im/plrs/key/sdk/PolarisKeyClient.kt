@@ -143,6 +143,8 @@ public data class PolarisKeyClientOptions @JvmOverloads constructor(
     val accountOpener: im.plrs.key.identity.AccountOpener? = null,
     /** Cloud Connect (CC-12.1): the device keys and the state storage; see [ConnectOptions]. */
     val connect: ConnectOptions = ConnectOptions(),
+    /** The Cloud Sync key ring (U-39.8): this device's keys and where the root is kept; see [KeyringOptions]. */
+    val keyring: KeyringOptions = KeyringOptions(),
 )
 
 /**
@@ -457,15 +459,35 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public suspend fun useDeviceKeys(keys: im.plrs.key.core.DeviceKeyPort) {
         identity.useDeviceKeys(keys)
         connect.useDeviceKeys(keys)
+        keyring.useDeviceKeys(keys)
     }
 
     /**
      * Cloud Connect (WIRE-CONTRACT-V5 section 15): this device's keys, roster, certificate and discovery
      * key. Refuses with `service-unavailable` while the product has Connect off.
      */
-    public val connect: ConnectClient = ConnectClient(core, options.connect).also { c ->
-        // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
-        identity.onBeforeSignOut { c.leave() }
+    public val connect: ConnectClient = ConnectClient(core, options.connect)
+
+    /**
+     * Cloud Connect's API (CC-12.15): start, peers, open, onChannel, stop. Signing out stops it first, then
+     * leaves the person's devices (the roster and K_disc are not this device's to keep): Connect closes
+     * before the credential goes, and a stop that times out does not hold the sign-out.
+     */
+    public val cloudConnect: CloudConnect = CloudConnect(connect, core, options.core.clock ?: { System.currentTimeMillis() / 1000 }).also { cc ->
+        identity.onBeforeSignOut {
+            cc.stopForSignOut()
+            connect.leave()
+        }
+    }
+
+    /**
+     * The Cloud Sync key ring (WIRE-CONTRACT-V5 section 13.10): `status`, `unlock`, `create`, `reset`,
+     * `wrapTo`, `recover`, `forget` and the `codec` the E2E machine seals with. Signing out forgets the
+     * root (after Connect's roster), in memory and in storage.
+     */
+    public val keyring: SyncKeyring = SyncKeyring(core, options.keyring.copy(keys = options.keyring.keys ?: options.connect.deviceKeys)).also { k ->
+        // Registered after Connect's hook: the roster goes first, then the root. A root that cannot be deleted stops the sign-out.
+        identity.onBeforeSignOut { k.forget() }
     }
 
     private val stateFlow = kotlinx.coroutines.flow.MutableStateFlow<LicenseState?>(null)
@@ -880,6 +902,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public fun close() {
         refreshJob?.cancel()
         refreshJob = null
+        cloudConnect.shutdown()
         // SP-51: the client's own scope (event fan-out, the refresh loop, the launch confirmation) and
         // the HTTP stack's threads go too, so a JVM `main` can exit.
         scope.cancel()

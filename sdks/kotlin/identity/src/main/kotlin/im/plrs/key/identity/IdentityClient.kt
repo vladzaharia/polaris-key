@@ -36,14 +36,14 @@ import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.decimalValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
-import java.math.BigDecimal
-import java.math.RoundingMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.coroutines.coroutineContext
 
 /** The code and the poll credential the SDK keeps for one session; apps read the session's own fields. `toString` redacts [deviceCode]. */
@@ -68,10 +68,9 @@ internal data class SignInPrompt(
      */
     val deviceName: String? = null,
 ) {
-    override fun toString(): String =
-        "SignInPrompt(deviceCode=[redacted], userCode=$userCode, verificationUri=$verificationUri, " +
-            "verificationUriComplete=$verificationUriComplete, expiresIn=$expiresIn, interval=$interval, expiresAt=$expiresAt, " +
-            "deviceName=$deviceName)"
+    override fun toString(): String = "SignInPrompt(deviceCode=[redacted], userCode=$userCode, verificationUri=$verificationUri, " +
+        "verificationUriComplete=$verificationUriComplete, expiresIn=$expiresIn, interval=$interval, expiresAt=$expiresAt, " +
+        "deviceName=$deviceName)"
 }
 
 /** One poll's answer. */
@@ -189,7 +188,8 @@ public class IdentityClient(
      * `POST token` with the token-exchange grant (V5 section 12.11.3): the platform's ID token for a device
      * token. [nonce] is the one the provider signed into [subjectToken]. A token is stored only for
      * [ExchangeOutcome.SignedIn]. [personInitiated] is true when the person started this sign-in from the sign-in UI: it ends the
-     * signed-out state; a silent exchange (the default) never does. Throws on a network failure, a 5xx, or a Worker refusal (a [PolarisException] with the wire `code`, `httpStatus`, `retryAfterSeconds`).
+     * signed-out state; a silent exchange (the default) never does. Throws on a network failure, a 5xx, or a Worker refusal
+     * (a [PolarisException] with the wire `code`, `httpStatus`, `retryAfterSeconds`).
      */
     @JvmOverloads
     public suspend fun exchange(kind: ExchangeKind, subjectToken: String, nonce: ExchangeNonce, personInitiated: Boolean = false): ExchangeOutcome {
@@ -252,13 +252,16 @@ public class IdentityClient(
         if (response.status == 404) {
             val unsupported = Unsupported(Feature.identityDevicecode, UnsupportedReason.product, "the product does not run the identity service")
             throw PolarisException(
-                ErrorCode.serviceUnavailable, "The identity service is not enabled for ${core.product}.",
-                detail = unsupported.detail, unsupported = unsupported,
+                ErrorCode.serviceUnavailable,
+                "The identity service is not enabled for ${core.product}.",
+                detail = unsupported.detail,
+                unsupported = unsupported,
             )
         }
         if (response.status != 200) {
             throw PolarisException(
-                errorCode(response) ?: ErrorCode.signInUnavailable, "device sign-in could not start (status ${response.status}).",
+                errorCode(response) ?: ErrorCode.signInUnavailable,
+                "device sign-in could not start (status ${response.status}).",
             )
         }
         val b = JsonText.parseOrNull(response.text).objectValue
@@ -303,7 +306,9 @@ public class IdentityClient(
         if (response.status != 200) return SignInPoll.Error("device sign-in poll refused (status ${response.status}).")
         return when (body?.get("status").stringValue) {
             "pending" -> SignInPoll.Pending
+
             "timeout" -> SignInPoll.Expired
+
             "ready" -> {
                 val token = body?.get("token").stringValue
                 if (token.isNullOrEmpty()) return SignInPoll.Error("ready without a token.")
@@ -314,11 +319,13 @@ public class IdentityClient(
                 onAcquired?.invoke()
                 SignInPoll.Ready(subject)
             }
+
             // A Deny names itself (`reason: access_denied`); a bare `error` failed after approval.
             "error" -> SignInPoll.Error(
                 "device sign-in failed.",
                 if (body?.get("reason").stringValue == "access_denied") ErrorCode.signInDenied else ErrorCode.signInFailed,
             )
+
             else -> SignInPoll.Error("device sign-in failed.")
         }
     }
@@ -355,7 +362,9 @@ public class IdentityClient(
     // ── Internals ────────────────────────────────────────────────────────────────────────────
     private suspend fun post(url: String, body: JsonObject): PolarisResponse = try {
         core.request(
-            url, method = "POST", headers = mapOf("content-type" to "application/json"),
+            url,
+            method = "POST",
+            headers = mapOf("content-type" to "application/json"),
             body = body.toString().toByteArray(Charsets.UTF_8),
         )
     } catch (e: CancellationException) {

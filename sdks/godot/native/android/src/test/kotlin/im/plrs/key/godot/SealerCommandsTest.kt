@@ -91,6 +91,7 @@ class SealerCommandsTest {
         seal("other")
         assertEquals(setOf("pkey:diceroll:devicekeys", "pkey:other:devicekeys"), keys.keys.keys)
         assertEquals("invalid-name", seal("../x").getString("reason"))
-        assertEquals("bad_input", op("ks_seal", "product" to "diceroll", "context" to "!!", "plain" to "!!").getString("error"))
+        // android.util.Base64 skips stray characters ("!!" decodes to nothing); one lone sextet is its malformed input.
+        assertEquals("bad_input", op("ks_seal", "product" to "diceroll", "context" to "A", "plain" to "A").getString("error"))
     }
 }

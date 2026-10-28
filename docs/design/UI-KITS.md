@@ -299,8 +299,8 @@ hyphen), and never hyphenates a URL. _Test:_ the §7.1 200 % row; UK-55 `px-font
 broke mid-word and the offline request code was cut with an ellipsis. _Evidence:_
 `swiftui.signin-long`, `swiftui.offline`, `react.license-gate.login`.
 
-**DL12. Three weights.** 400 for body and row titles, 500 for labels, buttons and the product header,
-600 for headings; 700 only in the game wordmark fallback (§1.5 rule 6). The variable Rubik draws
+**DL12. Three weights.** 400 for body and row titles, 500 for labels and buttons,
+600 for headings and the product header; 700 only in the game wordmark fallback (§1.5 rule 6). The variable Rubik draws
 them, and the CJK fallback has its own 600 face, so `ja`, `ko` and `zh-Hans` headings stay
 headings. _Test:_ UK-55 `weights`. _Why:_ every Compose title was bold, and Japanese titles rendered
 at body weight. _Evidence:_ `compose.sign-in`, `godot.gate`.
@@ -418,12 +418,17 @@ screen:
 - **`ProductIdentity`** (`name`, `icon`, `developer`, optional `shortName`, `accent`, `art`,
   `wordmark` and `deviceCodeUrl`) heads every full screen, sheet and card. The icon appears at hero
   size on Welcome (120 on iOS, Android and the web at desktop width, where the web is 96 below it; 64 macOS, 72 Godot beside the game's wordmark), at
-  32 px beside the product name on every focused step, and at 56 px in update prompts and settings.
+  28 px beside the product name on every focused step, and at 56 px in update prompts and settings.
   Titles name the product in full ("Welcome to Tidewater Studio", "Tidewater Studio 2.5"). Inline
   sentences may use `shortName` only when the integrator sets it. Device names keep the user's
   casing ("signs out on Work laptop").
-- **The product header** on focused steps is icon plus name in `text-strong` at weight 500. It is the
-  strongest line in the header, not the faintest. Once a key parses, the tier follows in
+- **The product header** on focused steps is icon plus name in `text-strong` at weight 600. It is the
+  strongest line in the header, not the faintest. **Compact scale (LOGO-2):** a 28 px tile beside a
+  17 px name (tile-to-cap about 2.3, down from 32 over 16 at 2.9); where space is tight (a window
+  under 360 px) 24 px over 16 px, never smaller, since an icon or monogram loses its detail below 24. The gap stays proportional to the tile (12 px on the web). The tile is not a control, so no
+  target size binds it; a header row that becomes a control carries the target in its own minimum
+  height (24 px with a mouse, 44 px on touch). The 56 px medium and 96/120 px hero headers keep
+  their sizes. Once a key parses, the tier follows in
   `text-muted` ("Tidewater Studio · Pro").
 - **Developer attribution** has one rule: "by <Developer>" in `text-subtle` at 13/18, 6 px under
   the product name, on Welcome only.

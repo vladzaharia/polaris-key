@@ -14,7 +14,7 @@ import math
 import os
 import re
 import threading
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Protocol
 
 from ..constants_generated import SettingVisibility
 from ..core.bounded_body import read_capped_text
@@ -34,7 +34,32 @@ from .resolve import (
     resolve_source,
 )
 
-__all__ = ["ConfigClient", "ConfigSetting", "DEFAULT_ENV_PREFIX", "UNSET", "MintedToken", "validate_value"]
+__all__ = [
+    "ConfigClient",
+    "ConfigSetting",
+    "ConfigSyncPort",
+    "DEFAULT_ENV_PREFIX",
+    "MintedToken",
+    "UNSET",
+    "validate_value",
+]
+
+
+class ConfigSyncPort(Protocol):
+    """What the Cloud Sync API gives the config client. While :meth:`active` is true ``set`` and
+    ``clear`` go through the machine, which answers the refusals in its own order."""
+
+    def active(self) -> bool:
+        """Cloud Sync is on and a principal is signed in."""
+
+    def set(self, key: str, value: Any) -> Mapping[str, Any]: ...
+
+    def clear(self, key: str) -> Mapping[str, Any]: ...
+
+    def get(self, key: str) -> Mapping[str, Any]:
+        """The machine's effective value; ``from == "document"`` means the signed document decides."""
+
+    def state(self, key: str) -> str: ...
 
 
 class ConfigClient:
@@ -69,11 +94,19 @@ class ConfigClient:
         self._events = events
         #: Set by the facade: runs after a local change so the facade's one change detector
         #: emits the ``config`` event (no duplicate on the next sync). Unset: emitted here.
-        self.changed: Optional[Callable[[], None]] = None
+        self.changed: Optional[Callable[..., None]] = None
         #: The catalog from the last successful :meth:`fetch_schema`, for ``set`` validation.
         self._catalog: Optional[Dict[str, Any]] = None
         self._env_prefix = env_prefix
         self._env: Mapping[str, str] = os.environ if env is None else env
+        self._sync_port: Optional[ConfigSyncPort] = None
+        #: The last value reported per synced key, so a change can say what it replaced.
+        self._sync_seen: Dict[str, Any] = {}
+        #: Every key the machine has touched; :meth:`snapshot` includes them.
+        self._sync_keys: set = set()
+        #: Set by the facade: told the value of a key after a synced change, so its change detector
+        #: does not report the same change again.
+        self.sync_noted: Optional[Callable[[str, Any], None]] = None
 
     @property
     def doc(self) -> Optional[ConfigDoc]:
@@ -91,12 +124,17 @@ class ConfigClient:
     def get(self, key: str, fallback: Any = None) -> Any:
         """Resolve the effective value for a key, honouring management state + the
         override layers."""
+        synced = self._synced_value(key)
+        if synced is not UNSET:
+            return synced
         value, _source = resolve(self._context(), key, fallback)
         return value
 
     def get_config_source(self, key: str) -> str:
         """Where :meth:`get` would source its value from (for diagnostics /
         settings UIs)."""
+        if self._synced_value(key) is not UNSET:
+            return "local"
         return resolve_source(self._context(), key)
 
     def list_user_config(self) -> List[Dict[str, Any]]:
@@ -159,7 +197,16 @@ class ConfigClient:
         Refused with ``managed_by_admin`` when the signed document enforces or hides the key,
         and with ``bad_request`` when the value is not JSON or fails the key's catalog schema
         (``catalog``, else the one :meth:`fetch_schema` last loaded; without either only the
-        JSON shape is checked). Emits a ``config`` event when the effective value changes."""
+        JSON shape is checked). Emits a ``config`` event when the effective value changes.
+
+        While Cloud Sync holds a signed-in person the edit goes through its machine instead: the same
+        two refusals, in the machine's order (``bad_request``, then ``managed_by_admin``), against the
+        catalog it holds; ``catalog`` is not consulted."""
+        port = self._sync_port
+        if port is not None and port.active():
+            self._sync_keys.add(key)
+            self._sync_seen[key] = self.get(key)
+            return self._via_machine(port.set(key, value), key)
         doc = self.doc
         entry = doc.config.get(key) if doc is not None else None
         if entry is not None and entry.state in ("enforced", "hidden"):
@@ -178,6 +225,11 @@ class ConfigClient:
     def clear(self, key: str) -> None:
         """Forget the player's value for ``key``; the next layer (environment, remote default,
         fallback) applies again."""
+        port = self._sync_port
+        if port is not None and port.active():
+            self._sync_keys.add(key)
+            self._sync_seen[key] = self.get(key)
+            return self._via_machine(port.clear(key), key)
         self._change(key, lambda: self._local_overrides.pop(key, None))
 
     def clear_all(self) -> None:
@@ -190,6 +242,54 @@ class ConfigClient:
         """The persisted settings the player chose (a copy)."""
         persisted = self._local_store.load()
         return dict(persisted.get("overrides") or {}) if isinstance(persisted, dict) else {}
+
+    def use_sync(self, port: Optional[ConfigSyncPort]) -> None:
+        """Cloud Sync's port (the client sets it once the host runs). Not an app verb."""
+        self._sync_port = port
+
+    def importable(self) -> Dict[str, Any]:
+        """The legacy local values, for the one-time import into Cloud Sync. Not an app verb."""
+        return self.local_values()
+
+    def note_sync_change(self, keys: Iterable[str], origin: str) -> None:
+        """The machine changed these keys: report each with its value now and what it replaced. Not an
+        app verb."""
+        for key in keys:
+            self._sync_keys.add(key)
+            value = self.get(key)
+            previous = self._sync_seen.get(key)
+            self._sync_seen[key] = value
+            if self.sync_noted is not None:
+                self.sync_noted(key, value)
+            if json.dumps(previous, sort_keys=True) == json.dumps(value, sort_keys=True):
+                continue
+            if self._events is not None:
+                self._events.emit(
+                    "config",
+                    key=key,
+                    value=value,
+                    previous=previous,
+                    source=self.get_config_source(key),
+                    origin=origin,
+                )
+
+    def _synced_value(self, key: str) -> Any:
+        """A synced value the machine holds for ``key``, or ``UNSET`` (the signed document decides)."""
+        port = self._sync_port
+        if port is None or not port.active():
+            return UNSET
+        e = port.get(key)
+        if e.get("from") == "document" or e.get("value") is None:
+            return UNSET
+        return e["value"]
+
+    @staticmethod
+    def _via_machine(r: Mapping[str, Any], key: str) -> None:
+        if r.get("ok"):
+            return
+        if r.get("error") == "managed_by_admin":
+            raise PolarisError("managed_by_admin", f"{key} is managed by an administrator.")
+        raise PolarisError("bad_request", f"{key}: the value is not accepted.")
 
     def setting(self, key: str) -> "ConfigSetting":
         """A handle on one setting: the properties ``value`` (``None`` when no layer has one),
@@ -212,7 +312,7 @@ class ConfigClient:
     def snapshot(self) -> Dict[str, Any]:
         """Every known key's effective value (document keys and local ones), for change
         detection."""
-        keys = set(self._local_overrides)
+        keys = set(self._local_overrides) | self._sync_keys
         doc = self.doc
         if doc is not None:
             keys.update(doc.config)
@@ -230,11 +330,16 @@ class ConfigClient:
             self._local_store.save({"overrides": persisted})
             after = self.get(key)
         if self.changed is not None:
-            self.changed()
+            self.changed("local")
             return
         if self._events is not None and before != after:
             self._events.emit(
-                "config", key=key, value=after, previous=before, source=self.get_config_source(key)
+                "config",
+                key=key,
+                value=after,
+                previous=before,
+                source=self.get_config_source(key),
+                origin="local",
             )
 
     def mint_token(self, recipe_id: str) -> MintedToken:
@@ -303,6 +408,12 @@ class ConfigSetting:
         if state == "hidden":
             return SettingVisibility.HIDDEN
         return SettingVisibility.EDITABLE
+
+    def sync(self) -> str:
+        """``local`` with Cloud Sync off, no signed-in person or a ``local`` key; ``pending`` while an
+        edit waits to be sent; ``synced`` otherwise."""
+        port = self._client._sync_port
+        return port.state(self.key) if port is not None and port.active() else "local"
 
     def set(self, value: Any) -> None:
         self._client.set(self.key, value)

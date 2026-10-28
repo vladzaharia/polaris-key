@@ -19,6 +19,7 @@ import { errorCopy } from "../../../lib/errorCopy.js";
 import { formatCount } from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
+import { blocker, NEEDS_REASON } from "../../../ui/confirmReasons.js";
 import { Input } from "../../../ui/Input.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { toast } from "../../../ui/toast.js";
@@ -43,12 +44,42 @@ export function formatCeiling(bytes: number): string {
 const gibText = (bytes: number): string =>
   String(Number((bytes / GiB).toFixed(3)));
 
+/** The words that change with what the ceiling limits; Cloud Sync's are the defaults. */
+export interface CeilingCopy {
+  title: string;
+  field: string;
+  same: string;
+  raise: (ceiling: string) => string;
+  /** Lowering: what happens, given the new ceiling, bytes and what is used now (when known). */
+  lower: (ceiling: string, bytes: number, used: number | null) => string[];
+  set: (ceiling: string) => string;
+  reset: string;
+}
+
+const SYNC_COPY: CeilingCopy = {
+  title: "Change the storage ceiling",
+  field: "Total storage for this product (GiB)",
+  same: "Everyone on this product shares the ceiling.",
+  raise: (c) => `Everyone on this product can store up to ${c} in total.`,
+  lower: (c, bytes, used) => [
+    "Nothing is deleted.",
+    bytes === 0
+      ? "Every save that adds data is refused until you raise it."
+      : used !== null && bytes < used
+        ? `The product holds ${formatBinaryBytes(used)}. Saves that add data are refused until it holds less than ${c}. Reading and deleting keep working.`
+        : `Saves that add data are refused once the product holds ${c}. Reading and deleting keep working.`,
+  ],
+  set: (c) => `Storage ceiling set to ${c}`,
+  reset: "Storage ceiling is the platform default",
+};
+
 export function CeilingDialog({
   open,
   onOpenChange,
   slug,
   setting,
   usedBytes,
+  copy = SYNC_COPY,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,6 +87,8 @@ export function CeilingDialog({
   setting: ProductSetting;
   /** What the product holds now, when the usage read has it. */
   usedBytes: number | null;
+  /** Title, field label and consequences, when the ceiling is not Cloud Sync's storage. */
+  copy?: CeilingCopy;
 }): React.ReactElement {
   const [gib, setGib] = React.useState("");
   const [reason, setReason] = React.useState("");
@@ -99,33 +132,23 @@ export function CeilingDialog({
 
   const levels = "up" in setting.confirm ? setting.confirm : null;
   const level = levels ? levels[raising ? "up" : "down"] : "L1";
-  const below = usedBytes !== null && changed && bytes < usedBytes;
 
   const consequences = !changed
-    ? ["Everyone on this product shares the ceiling."]
+    ? [copy.same]
     : raising
-      ? [
-          `Everyone on this product can store up to ${formatCeiling(bytes)} in total.`,
-        ]
-      : [
-          "Nothing is deleted.",
-          bytes === 0
-            ? "Every save that adds data is refused until you raise it."
-            : below
-              ? `The product holds ${formatBinaryBytes(usedBytes)}. Saves that add data are refused until it holds less than ${formatCeiling(bytes)}. Reading and deleting keep working.`
-              : `Saves that add data are refused once the product holds ${formatCeiling(bytes)}. Reading and deleting keep working.`,
-        ];
+      ? [copy.raise(formatCeiling(bytes))]
+      : copy.lower(formatCeiling(bytes), bytes, usedBytes);
 
   return (
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
       intent="neutral"
-      title="Change the storage ceiling"
+      title={copy.title}
       lead={
         <div className="space-y-1.5">
           <label htmlFor={fieldId} className="block text-sm text-fg">
-            Total storage for this product (GiB)
+            {copy.field}
           </label>
           <Input
             id={fieldId}
@@ -176,6 +199,15 @@ export function CeilingDialog({
       }
       confirmVariant={changed && raising ? "danger" : "primary"}
       confirmDisabled={useDefault ? reason.trim() === "" : !changed || !valid}
+      confirmDisabledReason={
+        useDefault
+          ? blocker([reason.trim() === "", NEEDS_REASON])
+          : blocker(
+              [!inRange, "Enter a size within the limits to continue"],
+              [!changed, "Change the ceiling to continue"],
+              [reason.trim() === "", NEEDS_REASON],
+            )
+      }
       initialFocusRef={fieldRef}
       submitOnEnter
       stepUpKey={`${slug}:${setting.key}`}
@@ -218,11 +250,7 @@ export function CeilingDialog({
             });
           throw e;
         }
-        toast.success(
-          useDefault
-            ? "Storage ceiling is the platform default"
-            : `Storage ceiling set to ${formatCeiling(bytes)}`,
-        );
+        toast.success(useDefault ? copy.reset : copy.set(formatCeiling(bytes)));
       }}
     >
       <div className="space-y-1.5">

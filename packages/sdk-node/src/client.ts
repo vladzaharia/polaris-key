@@ -354,6 +354,7 @@ export class PolarisKeyClient {
         keyring: this.keyring,
         discovery: () => this.discoveryDoc,
         fetchSchema: () => this.config.fetchSchema(),
+        subject: () => readStoredSubject(this.core.dirs.state),
         document: () => {
           const entries = this.config.entries() ?? {};
           return {

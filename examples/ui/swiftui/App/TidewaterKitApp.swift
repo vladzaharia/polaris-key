@@ -72,8 +72,37 @@ import SwiftUI
     }
 #endif
 
+#if os(macOS)
+    /// The window is the sample's first scene; the boot ladder (when `--live`) runs inside it. On the
+    /// CI Macs (virtual machines) SwiftUI's own first-launch window has been seen not to open (the
+    /// xcresult shows a foreground app with a menu bar and no window), so a second after launch, if
+    /// no window is on screen, this runs the File > New Window item the scene already supplies.
+    /// A Mac where SwiftUI opened its window never reaches the fallback. It logs when it does.
+    final class SampleAppDelegate: NSObject, NSApplicationDelegate {
+        func applicationDidFinishLaunching(_ notification: Notification) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                // The update host hides the sample's own window on purpose (`-pkeyUpdate`).
+                guard SampleArgs.value("-pkeyUpdate") == nil else { return }
+                guard !NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) else { return }
+                NSLog("TidewaterKit: no window after launch; opening one from File > New Window")
+                let item = NSApp.mainMenu?.items.compactMap { $0.submenu }
+                    .flatMap { $0.items }.first { $0.title == "New Window" }
+                if let item, let action = item.action {
+                    NSApp.sendAction(action, to: item.target, from: item)
+                } else {
+                    NSLog("TidewaterKit: no File > New Window item to run")
+                }
+            }
+        }
+    }
+#endif
+
 @main
 struct TidewaterKitApp: App {
+    #if os(macOS)
+        @NSApplicationDelegateAdaptor(SampleAppDelegate.self) private var appDelegate
+    #endif
+
     init() {
         // Date-relative copy ("Works offline until ...") counts from a fixed day under the
         // baseline flag, so a render is the same on every day.

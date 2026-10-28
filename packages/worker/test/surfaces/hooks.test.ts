@@ -58,6 +58,7 @@ const HOOKS: readonly HookName[] = [
   "outletCapabilities",
   "licenseProvenance",
   "storeProducts",
+  "discoverVisibility",
   "githubPrToken",
 ];
 
@@ -310,6 +311,7 @@ describe("hook providers", () => {
       outletCapabilities: "distribution",
       licenseProvenance: "license",
       storeProducts: "commerce",
+      discoverVisibility: "identity",
       githubPrToken: "release",
     };
     for (const name of HOOKS) {

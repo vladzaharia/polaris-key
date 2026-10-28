@@ -18,8 +18,6 @@ import im.plrs.key.core.arrayValue
 import im.plrs.key.core.jsonEquals
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
-import java.io.File
-import java.net.URI
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
@@ -27,6 +25,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.io.File
+import java.net.URI
 
 /** One recorded conversation, as parsed JSON with typed accessors. */
 class Transcript(val json: JsonObject) {
@@ -64,10 +64,9 @@ class Transcript(val json: JsonObject) {
         const val DIR = "conformance/transcripts"
 
         /** Every committed transcript, in file-name order. */
-        fun load(): List<Transcript> =
-            File(Corpus.repoRoot, DIR).listFiles { f -> f.name.endsWith(".json") }!!
-                .sortedBy { it.name }
-                .map { Transcript(JsonText.parse(it.readText()) as JsonObject) }
+        fun load(): List<Transcript> = File(Corpus.repoRoot, DIR).listFiles { f -> f.name.endsWith(".json") }!!
+            .sortedBy { it.name }
+            .map { Transcript(JsonText.parse(it.readText()) as JsonObject) }
 
         /** sdks/kotlin/parity.json's statuses. */
         fun manifestStatuses(): Map<String, String> {
@@ -83,9 +82,18 @@ class Transcript(val json: JsonObject) {
 
 private fun typeOf(v: JsonElement?): String = when (v) {
     null, is JsonNull -> "null"
+
     is JsonArray -> "array"
+
     is JsonObject -> "object"
-    is JsonPrimitive -> if (v.isString) "string" else if (v.content == "true" || v.content == "false") "boolean" else "number"
+
+    is JsonPrimitive -> if (v.isString) {
+        "string"
+    } else if (v.content == "true" || v.content == "false") {
+        "boolean"
+    } else {
+        "number"
+    }
 }
 
 /** Problems with [actual] under [mode] (`exact`, `subset`, `shape`), as `$.path: message`. */
@@ -130,7 +138,12 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         step = s
         stepIndex = index
         served = BooleanArray(items(s).size)
-        for ((k, v) in s["args"]!!.obj) v.stringValue?.let { bindings[k] = it }
+        for ((k, v) in s["args"]!!.obj) {
+            // `deviceId` in a key ring step names the TARGET device (the path); the `{deviceId}` in a header stays
+            // the calling device's, which is `initial.deviceId`.
+            if (k == "deviceId" && s["action"].stringValue.orEmpty().startsWith("keyring")) continue
+            v.stringValue?.let { bindings[k] = it }
+        }
         s
     }
 
@@ -284,7 +297,9 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             }
             val identity = JsonObject(
                 mapOf(
-                    "enabled" to JsonPrimitive(true), "configured" to JsonPrimitive(true), "issuer" to JsonPrimitive(issuer),
+                    "enabled" to JsonPrimitive(true),
+                    "configured" to JsonPrimitive(true),
+                    "issuer" to JsonPrimitive(issuer),
                     "endpoints" to JsonObject(
                         buildMap {
                             put("authorize", JsonPrimitive("$base/identity/authorize"))
@@ -307,7 +322,8 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         // and the grant-completion route a confirm or choose answer is finished at.
         if (transcript.steps.any { it["action"].stringValue == "exchange" }) {
             val endpoints = mapOf(
-                "nonce" to "$base/identity/nonce", "token" to "$base/identity/token",
+                "nonce" to "$base/identity/nonce",
+                "token" to "$base/identity/token",
                 "choiceComplete" to "$base/identity/choice/complete",
             )
             val exchange = JsonObject(
@@ -318,11 +334,14 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             )
             val identity = JsonObject(
                 mapOf(
-                    "enabled" to JsonPrimitive(true), "exchange" to exchange,
+                    "enabled" to JsonPrimitive(true),
+                    "exchange" to exchange,
                     "endpoints" to JsonObject(endpoints.mapValues { JsonPrimitive(it.value) }),
                 ),
             )
-            return JsonObject(mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(mapOf("identity" to identity)))).toString()
+            return JsonObject(
+                mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(mapOf("identity" to identity))),
+            ).toString()
         }
         val services = if ("identity.account" in transcript.features || "identity.attach" in transcript.features) {
             // identity.account: Identity with its account endpoints, beside the licence the steps use.
@@ -335,8 +354,10 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                         "account" to JsonPrimitive(true),
                         "endpoints" to JsonObject(
                             mapOf(
-                                "attach" to "$base/identity/attach", "subject" to "$base/identity/subject",
-                                "signout" to "$base/identity/signout", "accountPortal" to "${transcript.baseUrl}/#/p/${transcript.product}",
+                                "attach" to "$base/identity/attach",
+                                "subject" to "$base/identity/subject",
+                                "signout" to "$base/identity/signout",
+                                "accountPortal" to "${transcript.baseUrl}/#/p/${transcript.product}",
                             ).mapValues { JsonPrimitive(it.value) },
                         ),
                     ),
@@ -368,7 +389,9 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             failures += "unexpected request outside a step: $label"
             return@withLock PolarisResponse(599, "replay: no step".toByteArray())
         }
-        standardDiscovery(path, s)?.let { return@withLock PolarisResponse(200, it.toByteArray(Charsets.UTF_8), mapOf("content-type" to "application/json")) }
+        standardDiscovery(path, s)?.let {
+            return@withLock PolarisResponse(200, it.toByteArray(Charsets.UTF_8), mapOf("content-type" to "application/json"))
+        }
         val all = items(s)
         var candidates = all.withIndex().filter { (i, item) ->
             val r = item["request"]!!.obj

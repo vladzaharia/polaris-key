@@ -45,7 +45,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 18
+      "jscpd:duplicate": 26
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -333,7 +333,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/core/pages/UserRelink.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx": {
       "jscpd:duplicate": 2
@@ -365,6 +365,9 @@
     "packages/admin/src/console/sections/distribution/pages/RolloutsPage.tsx": {
       "jscpd:duplicate": 1
     },
+    "packages/admin/src/console/sections/feeds/model/sourceLine.tsx": {
+      "jscpd:duplicate": 1
+    },
     "packages/admin/src/console/sections/feeds/pages/FeedPage.tsx": {
       "jscpd:duplicate": 3
     },
@@ -372,7 +375,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/feeds/pages/PackageRecord.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/feeds/pages/PackagesEmpty.tsx": {
       "jscpd:duplicate": 1
@@ -411,7 +414,7 @@
       "jscpd:duplicate": 11
     },
     "packages/admin/src/console/sections/license/components/LicenseHolderDialogs.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
     },
     "packages/admin/src/console/sections/license/components/LimitsTable.tsx": {
       "jscpd:duplicate": 7
@@ -684,7 +687,7 @@
       "jscpd:duplicate": 5
     },
     "packages/admin/test/feeds.test.tsx": {
-      "jscpd:duplicate": 37
+      "jscpd:duplicate": 38
     },
     "packages/admin/test/firstLicenseMoment.test.tsx": {
       "jscpd:duplicate": 1
@@ -969,7 +972,7 @@
       "jscpd:duplicate": 5
     },
     "packages/admin/test/storefronts.test.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/admin/test/sync.test.tsx": {
       "jscpd:duplicate": 1
@@ -990,7 +993,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/trustPolicy.test.tsx": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 7
     },
     "packages/admin/test/ui/dataTable.test.tsx": {
       "jscpd:duplicate": 1
@@ -1005,7 +1008,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/ui/settingRow.test.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/admin/test/ui/tableCells.test.tsx": {
       "jscpd:duplicate": 1
@@ -1023,7 +1026,7 @@
       "jscpd:duplicate": 7
     },
     "packages/brand/scripts/kit-copy.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 4
     },
     "packages/brand/scripts/kit.ts": {
       "jscpd:duplicate": 1
@@ -1455,13 +1458,13 @@
       "jscpd:duplicate": 10
     },
     "packages/elements/test/browser/polish.browser.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 5
     },
     "packages/elements/test/browser/poweredby.browser.test.ts": {
       "jscpd:duplicate": 3
     },
     "packages/elements/test/browser/render.browser.test.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 5
     },
     "packages/elements/test/browser/visual.browser.test.ts": {
       "jscpd:duplicate": 5
@@ -1535,8 +1538,23 @@
     "packages/sdk-node/src/cli/yargs.ts": {
       "jscpd:duplicate": 2
     },
-    "packages/sdk-node/src/config/client.ts": {
+    "packages/sdk-node/src/client.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cloudSync/api.ts": {
       "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/cloudSync/host.ts": {
+      "jscpd:duplicate": 12
+    },
+    "packages/sdk-node/src/cloudSync/state.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cloudSync/transport.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/src/config/client.ts": {
+      "jscpd:duplicate": 4
     },
     "packages/sdk-node/src/connect/channel.ts": {
       "jscpd:duplicate": 7
@@ -1559,6 +1577,9 @@
     "packages/sdk-node/src/connect/state.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/sdk-node/src/core/boundedBody.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-node/src/core/bundle.ts": {
       "jscpd:duplicate": 1
     },
@@ -1569,7 +1590,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/core/presentation.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 8
     },
     "packages/sdk-node/src/core/redact.ts": {
       "jscpd:duplicate": 1
@@ -1605,7 +1626,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/identity/redirect.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/identity/signIn.ts": {
       "jscpd:duplicate": 3
@@ -1702,6 +1723,12 @@
     },
     "packages/sdk-node/test/client.test.ts": {
       "jscpd:duplicate": 13
+    },
+    "packages/sdk-node/test/cloudSyncFixtures.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/test/cloudSyncHost.test.ts": {
+      "jscpd:duplicate": 19
     },
     "packages/sdk-node/test/commerce.test.ts": {
       "jscpd:duplicate": 1
@@ -1869,7 +1896,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/bearerAdapter.test.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 14
     },
     "packages/sdk-react/test/bearerBackoff.test.ts": {
       "jscpd:duplicate": 1
@@ -1926,6 +1953,12 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-react/test/chunkFixtures.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/cloudSyncHost.test.ts": {
+      "jscpd:duplicate": 40
+    },
+    "packages/sdk-react/test/cloudSyncSettings.test.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/configMatrix.test.ts": {
@@ -2025,7 +2058,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
-      "jscpd:duplicate": 19
+      "jscpd:duplicate": 27
     },
     "packages/sdk-react/test/trustCustody.test.ts": {
       "jscpd:duplicate": 2
@@ -2153,8 +2186,11 @@
     "packages/shared-protocol/test/exports.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/ui-core/src/browser/sdk/browser/bearer/redirect.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/ui-core/src/browser/sdk/browser/bearer/session.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 10
     },
     "packages/ui-core/src/browser/sdk/browser/bearer/signInSessions.ts": {
       "jscpd:duplicate": 1
@@ -2162,8 +2198,29 @@
     "packages/ui-core/src/browser/sdk/browser/boot.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/ui-core/src/browser/sdk/browser/boundedBody.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
       "jscpd:duplicate": 10
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/api.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/create.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/host.ts": {
+      "jscpd:duplicate": 14
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/store.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/transport.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/writer.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/connect/bytes.ts": {
       "jscpd:duplicate": 1
@@ -2179,6 +2236,9 @@
     },
     "packages/ui-core/src/browser/sdk/browser/connect/errors.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/lock.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/connect/redact.ts": {
       "jscpd:duplicate": 2
@@ -2229,10 +2289,10 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/localConfig.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/ui-core/src/browser/sdk/core/presentation.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/ui-core/src/browser/sdk/core/types.ts": {
       "jscpd:duplicate": 2
@@ -2244,9 +2304,6 @@
       "jscpd:duplicate": 9
     },
     "packages/ui-core/src/input.ts": {
-      "jscpd:duplicate": 1
-    },
-    "packages/ui-core/src/vocabulary.ts": {
       "jscpd:duplicate": 1
     },
     "packages/ui-core/test/imports.test.ts": {
@@ -2958,7 +3015,7 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/release/packages/native/swiftArchive.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/worker/src/services/release/packages/ociPush.ts": {
       "jscpd:duplicate": 3
@@ -3096,7 +3153,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test-workerd/runtime.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 8
     },
     "packages/worker/test-workerd/seed.ts": {
       "jscpd:duplicate": 2
@@ -3394,6 +3451,9 @@
     },
     "packages/worker/test/services/commerce/commerceUseAssigned.test.ts": {
       "jscpd:duplicate": 11
+    },
+    "packages/worker/test/services/connect/connectAdmin.test.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/worker/test/services/connect/connectIdentity.test.ts": {
       "jscpd:duplicate": 1
@@ -3732,7 +3792,7 @@
       "jscpd:duplicate": 13
     },
     "packages/worker/test/services/sync/cloudSyncUsageAdmin.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/services/update/feedContentSize.test.ts": {
       "jscpd:duplicate": 3

@@ -2,6 +2,7 @@ import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 import { Check, ChevronRight } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import { useInertOutside } from "./useInertOutside.js";
 
 /**
  * The composable dropdown menu on Radix (EXPERIENCE.md §3): the account and theme menus, the
@@ -24,10 +25,11 @@ export function DropdownMenuContent({
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
   ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.Content>>;
 }) {
+  const inertRef = useInertOutside<HTMLDivElement>(ref);
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
-        ref={ref}
+        ref={inertRef}
         sideOffset={sideOffset}
         className={cn(
           // Scrolls inside the space the viewport leaves: a menu of 44 px items on a short, zoomed

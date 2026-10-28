@@ -312,7 +312,7 @@ describe("the TV variant after the code", () => {
     void deviceCode;
   });
 
-  it("one 48 px trimmed lockup on every page, quiet in an app's context", async () => {
+  it("one 26 px trimmed lockup on every page, quiet in an app's context", async () => {
     env.CUSTOMER_ORIGIN = CUSTOMER;
     const entry = await (await send(`${CUSTOMER}/device`)).text();
     delete env.CUSTOMER_ORIGIN;
@@ -320,7 +320,7 @@ describe("the TV variant after the code", () => {
     const confirm = (await confirmPage(userCode)).html;
     for (const html of [entry, confirm])
       expect(html).toMatch(
-        /<svg class="mark"[^>]* height="48" viewBox="8 23 437 80"/,
+        /<svg class="mark"[^>]* height="26" viewBox="8 41.5 384.41 46.2"/,
       );
     expect(confirm).toContain('class="ac-brand quiet"');
     expect(entry).toContain(`<header class="ac-brand">`);

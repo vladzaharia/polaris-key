@@ -27,12 +27,17 @@ from __future__ import annotations
 import os
 import re
 import threading
+import time
 from dataclasses import dataclass, field
+from email.utils import parsedate_to_datetime
 from typing import Any, Callable, List, Optional, Tuple
+from urllib.parse import urlsplit
+
+import httpx
 
 from ..constants_generated import ErrorCode, Feature
 from ..core.b64url import b64url_decode, b64url_encode
-from ..core.context import CoreContext, refusal_error
+from ..core.context import CoreContext, refusal_error, wire_code_of
 from ..core.device_keys import (
     DeviceKeyError,
     DeviceKeyPort,
@@ -49,6 +54,7 @@ from ..core.peer_cert import (
     PeerCert,
     PeerDeviceKeys,
     Ring,
+    replace_ring,
     ring_expired,
     verify_peer_cert,
     verify_ring,
@@ -56,9 +62,21 @@ from ..core.peer_cert import (
 from ..core.token import TokenManager
 from ..devices.client import DevicesClient
 from ..devices.keys import DEVICE_KEYS_FILE, DeviceKeyStorage, DeviceKeyStore, FileDeviceKeyStorage
-from .state import CONNECT_STATE_FILE, ConnectStateRecord, connect_storage, parse_connect_state
+from .errors import RELAY_PROTOCOL, LanError, RelayError
+from .state import CONNECT_STATE_FILE, ConnectStateRecord, connect_storage, keys_after_ring, parse_connect_state
 
-__all__ = ["ConnectClient", "ConnectDevice", "ConnectIdentity", "DiscoveryKeys", "PREV_DISC_KEY_SECONDS"]
+__all__ = [
+    "ConnectClient",
+    "ConnectDevice",
+    "ConnectIdentity",
+    "DiscoveryKeys",
+    "PREV_DISC_KEY_SECONDS",
+    "PeerSource",
+    "RelayGrant",
+    "RingAdoption",
+]
+
+_TICKET = re.compile(r"pkeyrt_[A-Za-z0-9_-]{32}\Z")
 
 #: The Worker keeps the previous K_disc for 24 hours after a bump (§15.4).
 PREV_DISC_KEY_SECONDS = 86_400
@@ -108,6 +126,95 @@ class DiscoveryKeys:
 
     def __reduce__(self) -> Any:
         raise TypeError("discovery keys cannot be pickled")
+
+
+@dataclass(frozen=True)
+class RelayGrant:
+    """The ticket answer (§15.7), checked. The ticket is single use and never in a ``repr``."""
+
+    ticket: str = field(repr=False)
+    url: str
+    protocol: str
+    #: Seconds since the epoch.
+    expires_at: int
+
+    def __repr__(self) -> str:
+        return "<RelayGrant>"
+
+    def __reduce__(self) -> Any:
+        raise TypeError("a relay grant cannot be pickled")
+
+
+@dataclass(frozen=True)
+class RingAdoption:
+    """What storing a peer-pushed roster answers: ``stored`` with the new ``epoch``, or a ``reason``."""
+
+    stored: bool
+    epoch: Optional[int] = None
+    reason: Optional[str] = None
+
+
+class _StaticKey:
+    """The device's static key as Noise sees it: ``public_key()`` and ``dh()``; the private half stays in the port."""
+
+    def __init__(self, port: DeviceKeyPort, agree_public: bytes) -> None:
+        self._port = port
+        self._pub = agree_public
+
+    def public_key(self) -> bytes:
+        return self._pub
+
+    def dh(self, remote: bytes) -> Optional[bytes]:
+        return self._port.dh(remote)
+
+    def __repr__(self) -> str:
+        return "<StaticKey>"
+
+    def __reduce__(self) -> Any:
+        raise TypeError("a static key handle cannot be pickled")
+
+
+@dataclass(frozen=True)
+class PeerSource:
+    """A snapshot of what a LAN or relay session reads of the held identity (the Node ``LanIdentity``).
+    K_disc and the certificate are in it, so it has no ``repr`` and cannot be pickled."""
+
+    slug: str
+    trust: TrustSet = field(repr=False)
+    sub: str
+    device_id: str
+    cert_jws: str = field(repr=False)
+    cert_expires_at: int = 0
+    ring_jws: str = field(repr=False, default="")
+    ring_epoch: int = 0
+    #: Every roster device id, this one included.
+    roster: Tuple[str, ...] = ()
+    #: K_disc, newest first.
+    keys: DiscoveryKeys = field(repr=False, default=None)  # type: ignore[assignment]
+    #: The device's X25519 public key.
+    agree_public: bytes = field(repr=False, default=b"")
+    #: The static key handle for Noise (``public_key()`` and ``dh()``).
+    static_key: Any = field(repr=False, default=None)
+
+    def __repr__(self) -> str:
+        return "<PeerSource>"
+
+    def __reduce__(self) -> Any:
+        raise TypeError("a peer source cannot be pickled")
+
+
+def _retry_after_seconds(header: Optional[str]) -> Optional[int]:
+    """Whole seconds from a ``Retry-After`` header: delay-seconds or an HTTP date, never negative."""
+    text = (header or "").strip()
+    if not text:
+        return None
+    if re.fullmatch(r"[0-9]+(\.[0-9]+)?", text):
+        return int(-(-float(text) // 1))
+    try:
+        at = parsedate_to_datetime(text).timestamp()
+    except (TypeError, ValueError):
+        return None
+    return max(0, int(-(-(at - time.time()) // 1)))
 
 
 def _malformed(reason: str) -> PolarisError:
@@ -239,13 +346,184 @@ class ConnectClient:
         out once 24 hours have passed since it was first seen."""
         with self._lock:
             held = self._load()
-            if held is None:
+            # After a pushed roster removed a device the Worker replaced K_disc; this copy is not used
+            # (not for adverts, not for browsing) until an identity fetch brings the new one.
+            if held is None or held.keys_stale:
                 return None
             now = self._ctx.now()
             prev: Optional[bytes] = None
             if len(held.disc_keys) == 2 and held.prev_until is not None and now < held.prev_until:
                 prev = b64url_decode(held.disc_keys[1])
             return DiscoveryKeys(b64url_decode(held.disc_keys[0]), prev)
+
+    def relay_ticket(self) -> RelayGrant:
+        """``POST /<p>/connect/relay/ticket``: a single-use ``pkeyrt_`` ticket for the WebSocket. Raises
+        :class:`RelayError`: ``disabled``, ``paused`` (with ``retry_after_seconds``), ``quota`` (with the
+        ``scope``), ``ticket_invalid`` (a ticket that is not in the contract shape); and
+        :class:`~polaris_key.core.errors.PolarisError` for ``no-token`` and the Worker's other refusals."""
+        # The Worker answers ``device_keys_required`` for a device without registered keys, and 404 when
+        # the operator's launch gate is off; identity() is what registers and checks discovery.
+        token = self._require_token()
+        what = "connect relay ticket"
+        url = self._ctx.url("connect/relay/ticket")
+        try:
+            # Straight to the HTTP client: ``ctx.request`` turns a 503 into ``server-error`` and drops
+            # ``Retry-After``, which is what a paused relay answers with.
+            res = self._ctx.http().request(
+                "POST",
+                url,
+                headers=self._ctx.headers({"authorization": f"Bearer {token}"}),
+                timeout=self._ctx.timeout,
+            )
+        except (httpx.HTTPError, OSError) as e:
+            raise PolarisError(
+                ErrorCode.NETWORK_ERROR, f"POST connect/relay/ticket got no answer: {str(e) or type(e).__name__}"
+            ) from e
+        if not (200 <= res.status_code < 300):
+            wire = wire_code_of(res)
+            retry = _retry_after_seconds(res.headers.get("retry-after"))
+            status = res.status_code
+            if wire == ErrorCode.RELAY_DISABLED:
+                raise RelayError(
+                    "disabled", "This product has its relay off.", retry_after_seconds=retry, status=status
+                )
+            if wire == ErrorCode.RELAY_PAUSED:
+                raise RelayError(
+                    "paused", "The relay is paused; try again later.", retry_after_seconds=retry, status=status
+                )
+            if wire == ErrorCode.RELAY_QUOTA_EXCEEDED:
+                try:
+                    body = res.json()
+                except Exception:
+                    body = None
+                scope = body.get("scope") if isinstance(body, dict) else None
+                raise RelayError(
+                    "quota",
+                    "The relay quota is spent.",
+                    retry_after_seconds=retry,
+                    status=status,
+                    scope=scope if scope in ("person", "product") else None,
+                )
+            if wire == ErrorCode.RELAY_TICKET_INVALID:
+                raise RelayError(
+                    "ticket_invalid", "The relay refused the device.", retry_after_seconds=retry, status=status
+                )
+            raise refusal_error(res, what)
+        try:
+            body = res.json()
+        except Exception:
+            body = None
+        return self._grant(body)
+
+    def _grant(self, body: Any) -> RelayGrant:
+        """The ticket answer, shape-checked, and bound to this Worker: the ticket goes only to the
+        Worker's own host over ``wss:`` and only for the protocol this client speaks."""
+
+        def bad() -> RelayError:
+            return RelayError("ticket_invalid", "The relay ticket answer is not in the contract shape.")
+
+        if not isinstance(body, dict):
+            raise bad()
+        ticket, url = body.get("ticket"), body.get("url")
+        protocol, expires = body.get("protocol"), body.get("expiresAt")
+        if (
+            not isinstance(ticket, str)
+            or _TICKET.match(ticket) is None
+            or not isinstance(url, str)
+            or protocol != RELAY_PROTOCOL
+            or not isinstance(expires, int)
+            or isinstance(expires, bool)
+            or abs(expires) > 2**53 - 1
+        ):
+            raise bad()
+        try:
+            target = urlsplit(url)
+            home = urlsplit(self._ctx.base_url)
+            same_host = (target.hostname, target.port) == (home.hostname, home.port)
+        except ValueError:
+            raise bad() from None
+        if target.scheme != "wss" or not same_host or target.hostname is None:
+            raise bad()
+        return RelayGrant(ticket, url, protocol, expires)
+
+    def peer_source(self) -> PeerSource:
+        """A snapshot of the held identity for a LAN or relay session: slug, trust, subject, device id,
+        certificate, roster, K_disc newest first and the key port. Raises :class:`LanError`
+        (``no_identity`` without a verified identity, ``no_keys`` without K_disc or device keys)."""
+        with self._lock:
+            ident = self.current()
+            if ident is None:
+                raise LanError("no_identity", "No Cloud Connect identity is held; call identity() first.")
+            keys = self.discovery_keys()
+            port = self._port
+            pub = port.public_keys() if port is not None else None
+            if keys is None or port is None or pub is None:
+                raise LanError("no_keys", "The device keys or K_disc are not held.")
+            agree = b64url_decode(pub.agree_key)
+            return PeerSource(
+                slug=self._ctx.product,
+                trust=self._trust(),
+                sub=ident.sub,
+                device_id=ident.device_id,
+                cert_jws=ident.certificate,
+                cert_expires_at=ident.certificate_expires_at,
+                ring_jws=ident.ring,
+                ring_epoch=ident.epoch,
+                roster=tuple(d.device_id for d in ident.devices),
+                keys=keys,
+                agree_public=agree,
+                static_key=_StaticKey(port, agree),
+            )
+
+    def adopt_ring(self, jws: str) -> RingAdoption:
+        """Store a roster a peer pushed, under the identity fetch's rules (§15.3): it must verify, be for
+        the held subject, have a higher epoch than the held one, not be expired, and still list this
+        device with the keys it registered. The certificate is kept; the next ``identity()`` fetches the
+        one that goes with the new epoch. A roster that dropped a device marks K_disc stale."""
+        with self._lock:
+            held = self._load()
+            if held is None:
+                return RingAdoption(False, reason="no_identity")
+            now = self._ctx.now()
+            trust = self._trust()
+            aud = self._ctx.product
+            held_ring, held_cert = self._verify_held(held)
+            subject = held_ring.sub if held_ring is not None else (held_cert.sub if held_cert is not None else None)
+            if subject is None:
+                return RingAdoption(False, reason="held_unverified")
+            r = replace_ring(held.ring, jws, trust=trust, expected_aud=aud, now=now)
+            if not r.replace or r.ring is None:
+                return RingAdoption(False, reason=r.reason)
+            ring = r.ring
+            if ring.sub != subject:
+                return RingAdoption(False, reason="other_subject")
+            mine = held.registered
+            if mine is None or not any(
+                d.device_id == self._ctx.device_id and d.sign_key == mine[0] and d.agree_key == mine[1]
+                for d in ring.devices
+            ):
+                return RingAdoption(False, reason="device_not_in_roster")
+            keys = keys_after_ring(held.disc_keys, held_ring, ring) if held_ring is not None else list(held.disc_keys)
+            removed = held_ring is not None and not all(
+                any(_same_device(n, d) for n in ring.devices) for d in held_ring.devices
+            )
+            rec = ConnectStateRecord(
+                product=held.product,
+                device_id=held.device_id,
+                ring=jws,
+                certificate=held.certificate,
+                disc_keys=keys,
+                prev_until=held.prev_until if len(keys) == 2 else None,
+                epoch=ring.epoch,
+                registered=held.registered,
+                stored_at=now,
+                keys_stale=removed or held.keys_stale,
+            )
+            try:
+                self._store().update(lambda _cur: rec.to_bytes())
+            except DeviceKeyError as e:
+                raise self._store_error(e) from e
+            return RingAdoption(True, epoch=ring.epoch)
 
     def leave(self) -> None:
         """Forget the held roster, certificate and K_disc (sign-out, leaving the person's devices). The
@@ -281,6 +559,7 @@ class ConnectClient:
             and held is not None
             and held_ring is not None
             and held_cert is not None
+            and not held.keys_stale
             and self._fresh(held, held_ring, held_cert, mine, now)
         ):
             return self._view(held, held_ring, held_cert)

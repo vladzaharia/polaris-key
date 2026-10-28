@@ -1542,6 +1542,126 @@
       "role": "button",
       "note": "CloudSyncStatus: a small sync status. Cloud Sync needs an account."
     },
+    "cloudSync.locked": {
+      "value": "Sync is locked.",
+      "role": "body",
+      "note": "CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it."
+    },
+    "cloudSync.unlock": {
+      "value": "Unlock sync",
+      "role": "button",
+      "note": "CloudSyncStatus: a small sync status. Opens the screen that asks for the recovery code (UnlockSync)."
+    },
+    "cloudSync.ringChanged": {
+      "value": "Your sync key changed.",
+      "role": "body",
+      "note": "CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange."
+    },
+    "unlockSync.title": {
+      "value": "Unlock your synced data",
+      "role": "title",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it."
+    },
+    "unlockSync.lede": {
+      "value": "Enter the recovery code you saved for your Polaris Locker account.",
+      "role": "body",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it."
+    },
+    "unlockSync.field": {
+      "value": "Recovery code",
+      "role": "label",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The field's label. The code is checked on the device before anything is sent."
+    },
+    "unlockSync.unlock": {
+      "value": "Unlock",
+      "role": "button",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The primary action."
+    },
+    "unlockSync.startOver": {
+      "value": "Start over",
+      "role": "button",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Opens the confirmation that replaces the sync key; the second action beside Unlock."
+    },
+    "unlockSync.invalid": {
+      "value": "That code isn't right. Check it and try again.",
+      "role": "body",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it."
+    },
+    "unlockSync.failed": {
+      "value": "Couldn't unlock. Try again later.",
+      "role": "body",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code."
+    },
+    "unlockSync.startOverTitle": {
+      "value": "Start over?",
+      "role": "title",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title."
+    },
+    "unlockSync.startOverWarning": {
+      "value": "Your current synced data will be lost. Start over only if you can't find your recovery code.",
+      "role": "body",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22)."
+    },
+    "unlockSync.startOverConfirm": {
+      "value": "Start over",
+      "role": "button",
+      "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action."
+    },
+    "recoveryCode.title": {
+      "value": "Save your recovery code",
+      "role": "title",
+      "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy."
+    },
+    "recoveryCode.lede": {
+      "value": "You'll need it to unlock your synced data on a new device. It's shown only once.",
+      "role": "body",
+      "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy."
+    },
+    "recoveryCode.noAsk": {
+      "value": "No one will ever ask for this code. Enter it only in the app.",
+      "role": "body",
+      "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. Also shown by UnlockSync (T23): never entered on a web page, in an email or to a person."
+    },
+    "recoveryCode.copy": {
+      "value": "Copy code",
+      "role": "button",
+      "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy."
+    },
+    "recoveryCode.saved": {
+      "value": "I've saved my recovery code",
+      "role": "label",
+      "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked."
+    },
+    "ringChange.title": {
+      "value": "Your sync key changed",
+      "role": "title",
+      "note": "RingChange: confirm a changed sync key (U-42)."
+    },
+    "ringChange.body": {
+      "value": "{device} set up a new key for your synced data.",
+      "role": "body",
+      "note": "RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names."
+    },
+    "ringChange.bodyUnknown": {
+      "value": "A device set up a new key for your synced data.",
+      "role": "body",
+      "note": "RingChange: confirm a changed sync key (U-42). Used when no device is named."
+    },
+    "ringChange.warning": {
+      "value": "Continue only if that was you. If not, unlock with your recovery code instead.",
+      "role": "body",
+      "note": "RingChange: confirm a changed sync key (U-42)."
+    },
+    "ringChange.accept": {
+      "value": "That was me",
+      "role": "button",
+      "note": "RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange."
+    },
+    "ringChange.useCode": {
+      "value": "Use recovery code",
+      "role": "button",
+      "note": "RingChange: confirm a changed sync key (U-42). Opens UnlockSync."
+    },
     "about.title": {
       "value": "About {product}",
       "role": "windowTitle",

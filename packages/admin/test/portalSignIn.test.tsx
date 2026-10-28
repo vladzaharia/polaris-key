@@ -1088,14 +1088,14 @@ describe("E1 sign-in card fixes (B-063, B-066, B-067, B-072)", () => {
     expect(plain.getAttribute("href")).not.toContain("product=");
   });
 
-  it("B-066: the brand row is a 36 px lockup on a phone and 48 px from sm", async () => {
+  it("B-066: the brand row is a 23 px lockup on a phone and 26 px from sm", async () => {
     signedOut();
     renderPortal();
     await screen.findByRole("textbox", { name: "Email" });
     expect(
-      document.querySelector('svg[height="36"].sm\\:hidden'),
+      document.querySelector('svg[height="23"].sm\\:hidden'),
     ).not.toBeNull();
-    expect(document.querySelector('svg[height="48"].hidden')).not.toBeNull();
+    expect(document.querySelector('svg[height="26"].hidden')).not.toBeNull();
   });
 
   it("B-067: no empty error line is reserved under the email field", async () => {

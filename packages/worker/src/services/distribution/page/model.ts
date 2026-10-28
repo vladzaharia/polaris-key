@@ -271,6 +271,7 @@ export function memoHooks(h: ServiceHooks): ServiceHooks {
     outletCapabilities: (id) => h.outletCapabilities(id),
     licenseProvenance: () => h.licenseProvenance(),
     storeProducts: () => h.storeProducts(),
+    discoverVisibility: () => h.discoverVisibility(),
     githubPrToken: () => h.githubPrToken(),
   };
 }

@@ -7,7 +7,12 @@
 import type { Context } from "./input.js";
 import { coarsePointer, platformClass } from "./input.js";
 import type { LinkVerdict } from "./link.js";
-import { ACTION_KEYS, type Action, type ComponentName } from "./vocabulary.js";
+import {
+  ACTION_KEYS,
+  type Action,
+  type ComponentName,
+  type ScreenName,
+} from "./vocabulary.js";
 
 /**
  * The tone of a refusal or an error (DL6, DL7):
@@ -45,7 +50,7 @@ export interface Decisions {
 }
 
 /** One rendered state of one component. */
-export interface View<C extends ComponentName = ComponentName, S = string> {
+export interface View<C extends ScreenName = ComponentName, S = string> {
   component: C;
   state: S;
   /** The catalog keys of the strings this state shows (kit keys and `core.*`), sorted. */
@@ -86,6 +91,7 @@ const ISOLATED_ARGS = new Set([
 /** The copy keys of fields: never focused on appear under a coarse pointer (DL9). */
 const FIELDS = new Set([
   "part.keyField.label",
+  "unlockSync.field",
   "devices.renameLabel",
   "offlineActivation.paste",
 ]);
@@ -129,7 +135,7 @@ export interface ViewSpec<S> {
 }
 
 /** Build a view: copy de-duplicated and sorted, actions derived, focus resolved (DL9). */
-export function makeView<C extends ComponentName, S extends string>(
+export function makeView<C extends ScreenName, S extends string>(
   ctx: Context,
   component: C,
   spec: ViewSpec<S>,
@@ -187,7 +193,7 @@ function focusFor(ctx: Context, target: string | null): string | null {
 }
 
 /** The `hidden` view: the component's service is off, so the drop-in renders nothing. */
-export function hiddenView<C extends ComponentName>(
+export function hiddenView<C extends ScreenName>(
   ctx: Context,
   component: C,
 ): View<C, "hidden"> {

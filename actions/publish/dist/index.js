@@ -14854,38 +14854,6 @@ function formatFeedSetup(snippets) {
 // ../shared-catalog/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-catalog/dist/cloudConnect.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
-var KiB = 1024;
-var MiB = 1024 * KiB;
-var GiB = 1024 * MiB;
-var CLOUD_CONNECT_DEFAULTS = {
-  /** A person's relay bytes per UTC day when nothing sets `pkey.cloudConnect.relayBytes` (the
-   *  `cloudConnect.quota.defaultRelayBytes` setting's default). */
-  relayBytesPerDay: 256 * MiB,
-  /** A device with no usable licence. */
-  unlicensedRelayBytesPerDay: 16 * MiB,
-  /** Relay sockets: two per device (a third replaces the oldest) and 32 per room. */
-  socketsPerDevice: 2,
-  socketsPerRoom: 32,
-  /** One relay message: a 64 KiB frame plus its envelope. */
-  maxMessageBytes: 65564,
-  /** Messages per second per socket, and the burst the bucket holds. */
-  messagesPerSecond: 200,
-  messageBurst: 400
-};
-var CLOUD_CONNECT_CEILINGS = {
-  perPerson: {
-    /** The clamp on a person's relay bytes per UTC day. */
-    relayBytesPerDay: 4 * GiB
-  },
-  perProduct: {
-    /** All people on a product together, per UTC month (the `cloudConnect.ceiling.relayBytes`
-     *  setting's default). */
-    relayBytesPerMonth: 500 * GiB
-  }
-};
-
 // ../shared-catalog/dist/cloudSync.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -14938,18 +14906,18 @@ function cloudSyncEncryption(catalog) {
 var CLOUD_SYNC_COLLECTION_PATTERN = "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
 var CLOUD_SYNC_MAX_MERGE_MEMBERS = SYNC_MAX_MERGE_MEMBERS;
 var CLOUD_SYNC_SAVE_SLOTS = SYNC_SAVE_SLOTS;
-var KiB2 = 1024;
-var MiB2 = 1024 * KiB2;
-var GiB2 = 1024 * MiB2;
+var KiB = 1024;
+var MiB = 1024 * KiB;
+var GiB = 1024 * MiB;
 var CLOUD_SYNC_CEILINGS = {
   perPerson: {
     /** About 1.06 GiB: the owner-confirmed per-person total (settings, records and files). */
-    bytes: 256 * KiB2 + 64 * MiB2 + 1 * GiB2,
+    bytes: 256 * KiB + 64 * MiB + 1 * GiB,
     /** One file. */
-    fileBytes: 1 * GiB2
+    fileBytes: 1 * GiB
   },
   perProduct: {
-    bytes: 50 * GiB2,
+    bytes: 50 * GiB,
     users: 1e5,
     pushesPerSecond: 2e3
   }
@@ -14972,7 +14940,7 @@ var CLOUD_SYNC_DEFAULTS = {
     maxRecords: 1e4,
     maxCollections: 32
   },
-  files: { maxBytes: 32 * MiB2, keepRevisions: 5 },
+  files: { maxBytes: 32 * MiB, keepRevisions: 5 },
   push: {
     maxMutations: SYNC_MAX_MUTATIONS,
     maxBytes: SYNC_MAX_PUSH_BYTES,
@@ -14980,7 +14948,7 @@ var CLOUD_SYNC_DEFAULTS = {
   },
   fileTransfersPerHour: 30
 };
-var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB2 / 3);
+var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB / 3);
 var CLOUD_SYNC_TEMPLATES = {
   saves: {
     label: "Saves",
@@ -15010,37 +14978,9 @@ var CLOUD_SYNC_TEMPLATES = {
     label: "Session",
     conflict: "lastWrite",
     maxRecords: 16,
-    files: { maxBytes: 8 * MiB2, keepRevisions: 1, delta: false }
+    files: { maxBytes: 8 * MiB, keepRevisions: 1, delta: false }
   }
 };
-function isEditable(entry) {
-  return entry.managementDefault !== "enforced" && entry.managementDefault !== "hidden";
-}
-function settingRoute(entry) {
-  if (entry.kind !== "config")
-    return { key: entry.key, route: "refused" };
-  if (!isEditable(entry))
-    return { key: entry.key, route: "locked" };
-  const user = entry.user ?? {};
-  const sync = user.sync ?? "user";
-  if (sync === "local")
-    return { key: entry.key, route: "local" };
-  return {
-    key: entry.key,
-    route: "synced",
-    scope: sync,
-    policy: user.conflict ?? "lastWrite",
-    listed: user.listed ?? true,
-    ...entry.schema !== void 0 ? { schema: entry.schema } : {}
-  };
-}
-function syncedSettings(catalog) {
-  const routes = catalog.entries.map(settingRoute);
-  if (catalog.cloudSync === void 0)
-    return routes;
-  const encryption = cloudSyncEncryption(catalog);
-  return routes.map((r) => ({ ...r, encryption }));
-}
 var USER_BLOCK_MEMBERS = /* @__PURE__ */ new Set(["sync", "conflict", "listed"]);
 var isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var oneOf = (v, values) => typeof v === "string" && values.includes(v);
@@ -15106,11 +15046,36 @@ function userSettingIssues(entry) {
   return out;
 }
 
-// ../shared-catalog/dist/catalog.js
+// ../shared-catalog/dist/syncRoutes.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
-
-// ../shared-catalog/dist/validate.js
-init_define_PKEY_EMBEDDED_SCHEMAS();
+function isEditable(entry) {
+  return entry.managementDefault !== "enforced" && entry.managementDefault !== "hidden";
+}
+function settingRoute(entry) {
+  if (entry.kind !== "config")
+    return { key: entry.key, route: "refused" };
+  if (!isEditable(entry))
+    return { key: entry.key, route: "locked" };
+  const user = entry.user ?? {};
+  const sync = user.sync ?? "user";
+  if (sync === "local")
+    return { key: entry.key, route: "local" };
+  return {
+    key: entry.key,
+    route: "synced",
+    scope: sync,
+    policy: user.conflict ?? "lastWrite",
+    listed: user.listed ?? true,
+    ...entry.schema !== void 0 ? { schema: entry.schema } : {}
+  };
+}
+function syncedSettings(catalog) {
+  const routes = catalog.entries.map(settingRoute);
+  if (catalog.cloudSync === void 0)
+    return routes;
+  const encryption = cloudSyncEncryption(catalog);
+  return routes.map((r) => ({ ...r, encryption }));
+}
 
 // ../shared-catalog/dist/regex.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -15713,102 +15678,6 @@ function compileLinearPattern(source) {
   program.emit({ op: "match" });
   return new CompiledPattern(source, program.insts);
 }
-
-// ../shared-catalog/dist/validate.js
-var CTRL_OR_SPACE = /[\u0000-\u0020\u007f]/;
-var URI_SCHEME = /^[A-Za-z][A-Za-z0-9+\-.]*:/;
-var HOSTNAME_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
-var IPV4_RE = /^(?:\d{1,3}\.){3}\d{1,3}$/;
-var UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-var TIME_RE = /^\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?$/;
-var EMAIL_RE = /^[^\s@"'\\]+@[^\s@."'\\]+(?:\.[^\s@."'\\]+)+$/;
-var JSON_POINTER_RE = /^(?:\/(?:[^~/]|~[01])*)*$/;
-function isUri(s) {
-  if (CTRL_OR_SPACE.test(s) || !URI_SCHEME.test(s))
-    return false;
-  try {
-    new URL(s);
-    return true;
-  } catch {
-    return false;
-  }
-}
-function isUriReference(s) {
-  if (CTRL_OR_SPACE.test(s))
-    return false;
-  try {
-    new URL(s, "http://polaris.invalid/");
-    return true;
-  } catch {
-    return false;
-  }
-}
-function isIpv4(s) {
-  if (!IPV4_RE.test(s))
-    return false;
-  return s.split(".").every((o) => o.length <= 3 && Number(o) <= 255 && (o === "0" || o[0] !== "0"));
-}
-function isIpv6(s) {
-  if (s.length > 45 || CTRL_OR_SPACE.test(s))
-    return false;
-  const parts = s.split("::");
-  if (parts.length > 2)
-    return false;
-  const hextet = (t) => t.length >= 1 && t.length <= 4 && /^[0-9a-fA-F]+$/.test(t);
-  const groups = (chunk) => {
-    if (chunk === "")
-      return [];
-    const items = chunk.split(":");
-    const last = items[items.length - 1];
-    if (last.includes(".")) {
-      if (!isIpv4(last))
-        return null;
-      items.pop();
-      items.push("0", "0");
-    }
-    return items.every(hextet) ? items : null;
-  };
-  const head = groups(parts[0]);
-  if (head === null)
-    return false;
-  if (parts.length === 1)
-    return head.length === 8;
-  const tail = groups(parts[1]);
-  if (tail === null)
-    return false;
-  return head.length + tail.length <= 7;
-}
-function isDateTime(s) {
-  const at = s.search(/[Tt]/);
-  if (at < 0)
-    return false;
-  return DATE_RE.test(s.slice(0, at)) && TIME_RE.test(s.slice(at + 1));
-}
-var FORMATS = {
-  uri: isUri,
-  url: isUri,
-  "uri-reference": isUriReference,
-  iri: isUri,
-  email: (s) => EMAIL_RE.test(s),
-  hostname: (s) => s.length <= 253 && HOSTNAME_RE.test(s),
-  ipv4: isIpv4,
-  ipv6: isIpv6,
-  date: (s) => DATE_RE.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`)),
-  time: (s) => TIME_RE.test(s),
-  "date-time": isDateTime,
-  uuid: (s) => UUID_RE.test(s),
-  "json-pointer": (s) => JSON_POINTER_RE.test(s),
-  regex: (s) => {
-    try {
-      compileLinearPattern(s);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-};
-var SUPPORTED_FORMATS = Object.keys(FORMATS);
 
 // ../shared-catalog/dist/representable.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -53509,9 +53378,9 @@ import path34 from "node:path";
 var ASSETS_PUSH_USAGE = "Usage: pkey assets push <file> --slot <slot> [--locale <code>] --product <slug>\n              [--base-url <url>] [--dry-run]";
 var MAX_PUSH_ASSETS = 32;
 var MAX_SCREENSHOTS = 16;
-var MiB3 = 1024 * 1024;
-var ICON_MAX_BYTES = 10 * MiB3;
-var ART_MAX_BYTES = 20 * MiB3;
+var MiB2 = 1024 * 1024;
+var ICON_MAX_BYTES = 10 * MiB2;
+var ART_MAX_BYTES = 20 * MiB2;
 var SLOT_RE = /^[a-z0-9][a-z0-9.:-]{0,199}$/;
 var NOT_PUSHABLE = /^(pack:|youtube-url$|trailer-master$|notes-image:|release-file)/;
 var LOCALE_RE2 = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;

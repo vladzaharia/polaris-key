@@ -193,6 +193,66 @@ final class AutoSignInTests: XCTestCase {
         XCTAssertFalse("\(result)".contains(grant))
     }
 
+    private var confirmBody: String {
+        #"{"status":"confirm","grant":"\#(grant)","expiresIn":300,"consent":{"client":{"appName":"djdl","developerName":null,"iconUrl":null,"nameVerified":true},"as":{"provider":"apple","email":"a@example.com"},"items":[],"scopeHash":"327f","firstTime":true,"changed":false}}"#
+    }
+
+    func testTheAppleSessionStartsOnlyWhenChoiceCompleteMakesOne() async throws {
+        await discovery()
+        await server.reply("/djdl/identity/token", body: confirmBody)
+        await server.reply("/djdl/identity/choice/complete", body: tokenOk)
+        let provider = FakeProvider()
+        let (c, _) = try await client(provider: provider)
+        let result = try await c.identity.autoSignIn()
+        guard case .confirm(let pending) = result else { return XCTFail("\(result)") }
+        XCTAssertFalse(provider.calls.current.contains("started"), "no session yet: nothing is saved")
+        _ = try await c.identity.choice.complete(
+            grant: pending.grant, choice: nil, consent: ChoiceConsent(claims: []))
+        XCTAssertEqual(provider.calls.current.filter { $0 == "started" }.count, 1)
+    }
+
+    func testAnotherWayOfSigningInNeverSavesTheAppleSession() async throws {
+        await discovery()
+        await server.reply("/djdl/identity/token", body: confirmBody)
+        await server.reply("/djdl/identity/choice/cancel", body: "")
+        let provider = FakeProvider()
+        let (c, _) = try await client(provider: provider)
+        let result = try await c.identity.autoSignIn()
+        guard case .confirm(let pending) = result else { return XCTFail("\(result)") }
+        // "Use another account": the grant is dropped, then the person signs in some other way.
+        try? await c.identity.choice.cancel(grant: pending.grant)
+        try await c.core.setToken("pkeyt_other", source: .signin, person: true)
+        XCTAssertFalse(provider.calls.current.contains("started"))
+        XCTAssertTrue(c.identity.pendingPlatformSessions.current.isEmpty)
+    }
+
+    func testASignOutBetweenTheCheckAndTheStoreUndoesTheStore() async throws {
+        await discovery()
+        let (c, _) = try await client(provider: FakeProvider())
+        let generation = await c.core.signOutGeneration
+        await c.core.setBeforeLadderStore { [core = c.core] in
+            // signOut() ran here: it bumped the generation and saw no token.
+            await core.bumpSignOutGeneration()
+        }
+        let stored = try await c.core.setTokenUnlessSignedOut("pkeyt_late", generation: generation)
+        XCTAssertFalse(stored)
+        let token = await c.core.token
+        XCTAssertNil(token)
+        let provenance = await c.core.tokenProvenance()
+        XCTAssertNil(provenance, "rung 1 must not count the late token")
+    }
+
+    func testAMirrorNeverShowsTheIdentityToken() {
+        let grant = AppleSignInGrant(
+            userID: "u1", identityToken: "secret.id.token", authorizationCode: "secretcode", email: nil)
+        let subject = PlatformSubjectToken(token: "secret.id.token", nonce: "n", userID: "u1")
+        var out = ""
+        dump(grant, to: &out)
+        dump(subject, to: &out)
+        XCTAssertFalse(out.contains("secret"))
+        XCTAssertTrue(out.contains("[redacted]"))
+    }
+
     func testChoose() async throws {
         await discovery()
         await server.reply(
@@ -255,12 +315,12 @@ final class AutoSignInTests: XCTestCase {
         XCTAssertEqual(provider.calls.current, [])
     }
 
-    func testNoProviderIsUnavailable() async throws {
+    func testNoProviderNeedsSignIn() async throws {
         await discovery()
         let (c, _) = try await client()
         c.identity.installPlatformIdentity(nil)
         let result = try await c.identity.autoSignIn()
-        XCTAssertEqual(result, .unavailable(code: ErrorCode.platformIdentityUnavailable))
+        XCTAssertEqual(result, .needsSignIn(linkHandle: nil, reason: .noCredential))
     }
 
     // ── Sign-out ────────────────────────────────────────────────────────────────────────

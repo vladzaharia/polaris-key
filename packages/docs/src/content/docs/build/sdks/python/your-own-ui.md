@@ -240,6 +240,129 @@ A sync that fails offline leaves the last verified documents in force until `gra
 `client.store_status()` says whether the token is in the OS keyring or in a `0600` file. A machine
 with no network at all activates from a signed file: `client.import_bundle(text)`.
 
+## Synced settings
+
+With [Cloud Sync](/docs/features/cloud-sync/) on, a person's synced settings follow them to every
+device they sign in on. The calls you already use do it: while a person is signed in,
+`config.set()` and `config.clear()` go to the synced copy, and the same code runs with Cloud Sync
+off. Which keys sync is the catalog's decision (see
+[Synced settings](/docs/features/cloud-sync/#synced-settings)); a locked key never does. Nothing
+syncs before sign-in: a device activated with a license key keeps its settings on the device and
+uploads them at the first sign-in.
+
+Settings are end-to-end encrypted by default. `cloud_sync={"encryption": "server"}` in the client
+options opts out; the default is `"e2e"`. What each side can read is under
+[Who can read it](/docs/features/cloud-sync/#who-can-read-it). A product that doesn't run the Sync
+service answers `client.cloud_sync.status()` with the typed not-applicable error.
+
+```python
+from typing import Optional
+
+from polaris_key import PolarisKeyClient
+
+
+def open_synced_settings(client: PolarisKeyClient) -> Optional[str]:
+    # The key ring decrypts the person's settings. On their first device, make it.
+    unlocked = client.keyring.unlock()
+    if unlocked.kind == "locked" and unlocked.reason == "no-ring":
+        ring = client.keyring.create()
+        return ring.recovery_code  # show it once; nothing keeps it
+    return None
+
+
+def change_theme(client: PolarisKeyClient) -> None:
+    theme = client.config.setting("ui.theme")
+    theme.set("dark")  # managed_by_admin when the operator locks the key
+    print(theme.value, theme.sync())  # dark pending
+    print(client.cloud_sync.status())  # {"state": "pending", "pending": 1}
+    client.cloud_sync.flush()  # send now, not after the 2 second debounce
+```
+
+### The key ring
+
+`client.keyring` holds the person's encryption key on this device, in memory only. Until it is
+unlocked the status is `locked` and edits wait on the device.
+
+| Call                            | Use                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------- |
+| `unlock()`                      | Open this device's copy. `locked` says `no-ring`, `no-wrap` or `unusable-wrap`  |
+| `create()`                      | The first device: make the ring. `recovery_code` is shown once and kept nowhere |
+| `recover(code)`                 | A new device with no other device at hand: the typed or pasted recovery code    |
+| `set_recovery_code()`           | A new code; the old one stops working                                           |
+| `accept_ring_change(pin)`       | After the person confirms the `ring-changed` answer from `unlock()`             |
+| `reset()`                       | Start over with a new ring                                                      |
+| `wrap_to(device_id, agree_key)` | Give another of the person's devices the key, once they approve it nearby       |
+
+Show the recovery code for the person to copy and keep. It opens their settings, and without it
+a person who loses every device loses them.
+
+### States
+
+`setting(k).sync()` answers for one key:
+
+| State     | Meaning                                                                            |
+| --------- | ---------------------------------------------------------------------------------- |
+| `local`   | Stays on this device: nobody is signed in, Cloud Sync is off or the key is `local` |
+| `pending` | An edit waits to be sent, or is parked for a quota or an entitlement               |
+| `synced`  | The synced copy and this device agree                                              |
+
+`setting(k).locked` is true for a key the operator locks; the signed value wins and the key never
+syncs. The connection has its own state, `client.cloud_sync.status()["state"]`:
+
+| `state`       | Show                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| `idle`        | Nothing                                                                                           |
+| `pending`     | "Saving…" (`pending` counts the edits)                                                            |
+| `syncing`     | "Saving…"                                                                                         |
+| `offline`     | "Offline. Changes are saved on this device."                                                      |
+| `local`       | Sign-in needed: nobody is signed in, so nothing syncs                                             |
+| `locked`      | The key ring is locked: `unlock()`, or `recover(code)`                                            |
+| `paused`      | Polaris Key paused writes; edits wait and send later                                              |
+| `blocked`     | `reason`: `account_required`, `unauthorized`, `attestation` or `forbidden`                        |
+| `unsupported` | The app requires end-to-end encryption and the server doesn't offer it; nothing leaves the device |
+
+A `reason` of `quota` on `pending` means the person's storage is full; `entitlement` means their
+tier doesn't include sync. Either way the edits stay on the device.
+
+### Events and origin
+
+```python
+from polaris_key import PolarisKeyClient
+
+
+def watch_sync(client: PolarisKeyClient) -> None:
+    def on_config(e) -> None:
+        # origin: "local" this device, "remote" another device, "merge" a conflict resolved,
+        # "migration" the one-time import of this device's earlier settings
+        if e.data["origin"] != "local":
+            print(e.data["key"], "changed elsewhere")
+
+    def on_sync(e) -> None:
+        if e.data["type"] == "rejected":
+            print("an edit was refused:", e.data["code"])
+        elif e.data["type"] == "unsyncedData":
+            print(e.data["count"], "edits not sent")
+        elif e.data["type"] == "signInOffered":
+            print("show sign-in", e.data["signInUrl"])
+
+    client.events.on("config", on_config)
+    client.events.on("cloudSync", on_sync)
+```
+
+The `cloudSync` events carry a `type`: `change` (with `keys` and `origin`), `rejected`, `signedOut`,
+`unsyncedData` and `signInOffered`. They name keys and never carry a value.
+
+### Sign-out and offline
+
+Signing out sends what is waiting (for up to 5 seconds), then deletes the synced copy and the key
+ring from this device. The settings stay in the person's account. Edits that could not be sent are
+reported once as `unsyncedData` and kept for 30 days, in case the same person signs in again. The
+same purge runs when the device is deactivated or a different person signs in.
+
+Offline, `config.set()` still succeeds and reads back at once. The edits are saved on the device
+and sent when the network returns, and conflicts resolve by each key's declared policy. For
+[limits and quotas](/docs/features/cloud-sync/#pause-and-limits), see the feature page.
+
 ## The thread contract
 
 The sync client is thread-safe to call. The refresh loop is one daemon thread, started only when

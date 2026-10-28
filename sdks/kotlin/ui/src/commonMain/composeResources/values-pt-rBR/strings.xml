@@ -710,6 +710,60 @@
     <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
     <string name="cloudSync_signIn">Entrar para sincronizar</string>
     <string name="cloudSync_signIn__macos">Entrar para sincronizar</string>
+    <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
+    <string name="cloudSync_locked">A sincronização está bloqueada.</string>
+    <!-- CloudSyncStatus: a small sync status. Opens the screen that asks for the recovery code (UnlockSync). -->
+    <string name="cloudSync_unlock">Desbloquear sincronização</string>
+    <string name="cloudSync_unlock__macos">Desbloquear sincronização</string>
+    <!-- CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange. -->
+    <string name="cloudSync_ringChanged">Sua chave de sincronização mudou.</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. -->
+    <string name="unlockSync_title">Desbloqueie seus dados sincronizados</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. -->
+    <string name="unlockSync_lede">Digite o código de recuperação que você salvou para sua conta do Polaris Locker.</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The field's label. The code is checked on the device before anything is sent. -->
+    <string name="unlockSync_field">Código de recuperação</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The primary action. -->
+    <string name="unlockSync_unlock">Desbloquear</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Opens the confirmation that replaces the sync key; the second action beside Unlock. -->
+    <string name="unlockSync_startOver">Começar do zero</string>
+    <string name="unlockSync_startOver__macos">Começar do zero</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it. -->
+    <string name="unlockSync_invalid">Esse código não está correto. Confira e tente novamente.</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
+    <string name="unlockSync_failed">Não foi possível desbloquear. Tente novamente mais tarde.</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
+    <string name="unlockSync_startOverTitle">Começar do zero?</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->
+    <string name="unlockSync_startOverWarning">Seus dados sincronizados atuais serão perdidos. Só comece do zero se não encontrar seu código de recuperação.</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action. -->
+    <string name="unlockSync_startOverConfirm">Começar do zero</string>
+    <string name="unlockSync_startOverConfirm__macos">Começar do zero</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
+    <string name="recoveryCode_title">Salve seu código de recuperação</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
+    <string name="recoveryCode_lede">Você vai precisar dele para desbloquear seus dados sincronizados em um novo dispositivo. Ele é mostrado apenas uma vez.</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. Also shown by UnlockSync (T23): never entered on a web page, in an email or to a person. -->
+    <string name="recoveryCode_noAsk">Ninguém nunca vai pedir esse código. Digite-o somente no app.</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
+    <string name="recoveryCode_copy">Copiar código</string>
+    <string name="recoveryCode_copy__macos">Copiar código</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked. -->
+    <string name="recoveryCode_saved">Salvei meu código de recuperação</string>
+    <!-- RingChange: confirm a changed sync key (U-42). -->
+    <string name="ringChange_title">Sua chave de sincronização mudou</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names. Arguments: 1=device. -->
+    <string name="ringChange_body">%1$s configurou uma nova chave para seus dados sincronizados.</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->
+    <string name="ringChange_bodyUnknown">Um dispositivo configurou uma nova chave para seus dados sincronizados.</string>
+    <!-- RingChange: confirm a changed sync key (U-42). -->
+    <string name="ringChange_warning">Continue somente se foi você. Caso contrário, desbloqueie com seu código de recuperação.</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange. -->
+    <string name="ringChange_accept">Fui eu</string>
+    <string name="ringChange_accept__macos">Fui eu</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Opens UnlockSync. -->
+    <string name="ringChange_useCode">Usar código de recuperação</string>
+    <string name="ringChange_useCode__macos">Usar código de recuperação</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="about_title">Sobre %1$s</string>
     <!-- About: product and build information. The bare section label in a navigation list; the product name is not repeated. -->
@@ -2620,6 +2674,10 @@
     <string name="core_codes_peer_cert_invalid_title">Dispositivo não verificado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_message">Não foi possível verificar este dispositivo. Tente novamente.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_title">Rede local bloqueada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_message">Este app não consegue acessar dispositivos da sua rede local. Permita nas configurações do sistema.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">Problema na plataforma</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

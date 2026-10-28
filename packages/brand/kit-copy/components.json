@@ -1111,6 +1111,102 @@
         },
         "error": {
           "copy": ["cloudSync.error", "cloudSync.signedOut", "cloudSync.signIn"]
+        },
+        "locked": {
+          "copy": ["cloudSync.locked", "cloudSync.unlock"]
+        },
+        "ring-changed": {
+          "copy": ["cloudSync.ringChanged", "common.review"]
+        }
+      }
+    },
+    "UnlockSync": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "code": {
+          "copy": [
+            "unlockSync.title",
+            "unlockSync.lede",
+            "unlockSync.field",
+            "recoveryCode.noAsk",
+            "unlockSync.unlock",
+            "unlockSync.startOver",
+            "common.cancel"
+          ]
+        },
+        "invalid": {
+          "copy": [
+            "unlockSync.title",
+            "unlockSync.lede",
+            "unlockSync.field",
+            "unlockSync.invalid",
+            "recoveryCode.noAsk",
+            "unlockSync.unlock",
+            "unlockSync.startOver",
+            "common.cancel"
+          ]
+        },
+        "working": {
+          "copy": ["unlockSync.title", "common.working"]
+        },
+        "failed": {
+          "copy": [
+            "unlockSync.title",
+            "unlockSync.failed",
+            "common.tryAgain",
+            "common.cancel"
+          ]
+        },
+        "start-over": {
+          "copy": [
+            "unlockSync.startOverTitle",
+            "unlockSync.startOverWarning",
+            "unlockSync.startOverConfirm",
+            "common.cancel"
+          ]
+        }
+      }
+    },
+    "RecoveryCode": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "show": {
+          "copy": [
+            "recoveryCode.title",
+            "recoveryCode.lede",
+            "recoveryCode.noAsk",
+            "recoveryCode.copy",
+            "recoveryCode.saved"
+          ]
+        },
+        "saved": {
+          "copy": [
+            "recoveryCode.title",
+            "recoveryCode.lede",
+            "recoveryCode.noAsk",
+            "recoveryCode.copy",
+            "recoveryCode.saved",
+            "common.done"
+          ]
+        }
+      }
+    },
+    "RingChange": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "confirm": {
+          "copy": [
+            "ringChange.title",
+            "ringChange.body",
+            "ringChange.bodyUnknown",
+            "ringChange.warning",
+            "ringChange.accept",
+            "ringChange.useCode",
+            "common.cancel"
+          ]
         }
       }
     },

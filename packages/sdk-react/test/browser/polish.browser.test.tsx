@@ -408,3 +408,47 @@ describe("the same scenes in the light scheme (shots only)", () => {
       expect(q(el, '[data-part="license-list"]')).not.toBeNull();
     });
 });
+
+describe("the product monogram is centred in its tile", () => {
+  // A tile with no icon draws its initial. The initial's glyph box sits on the tile's centre within
+  // 1 px, at both widths, on the sign-in sheet's header.
+  const centred = (el: HTMLElement): void => {
+    const tiles = qa(el, '[data-part="monogram"]').filter(
+      (t) => t.getBoundingClientRect().width > 0,
+    );
+    expect(tiles.length).toBeGreaterThan(0);
+    for (const tile of tiles) {
+      const box = tile.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(tile);
+      const text = range.getBoundingClientRect();
+      expect(text.width).toBeGreaterThan(0);
+      expect(
+        Math.abs(text.left + text.width / 2 - (box.left + box.width / 2)),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(text.top + text.height / 2 - (box.top + box.height / 2)),
+      ).toBeLessThanOrEqual(1);
+    }
+  };
+  for (const [w, h] of [
+    [390, 844],
+    [1440, 900],
+  ] as const)
+    for (const scheme of ["dark", "light"] as const)
+      it(`link offer sheet at ${w} x ${h}, ${scheme}`, async () => {
+        const el = await draw(
+          <Sheet
+            input={inputOf(
+              "SignIn/link-offer: Google shared across apps (sheet)",
+            )}
+            scheme={scheme}
+          />,
+          w,
+          h,
+          1,
+        );
+        await shot("monogram", `${w}-${scheme}`);
+        centred(el);
+      });
+});

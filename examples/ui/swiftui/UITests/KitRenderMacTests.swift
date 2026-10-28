@@ -297,7 +297,15 @@ final class KitRenderMacTests: XCTestCase {
         app.launch()
         _ = app.wait(for: .runningForeground, timeout: 10)
         let win = app.windows.firstMatch
-        XCTAssertTrue(win.waitForExistence(timeout: 10), "\(name): no window")
+        if !win.waitForExistence(timeout: 10) {
+            // Evidence for the next CI run: the app's state and its whole accessibility tree.
+            let note = XCTAttachment(
+                string: "state \(app.state.rawValue)\n\(app.debugDescription)")
+            note.name = "\(name): no window"
+            note.lifetime = .keepAlways
+            add(note)
+        }
+        XCTAssertTrue(win.exists, "\(name): no window")
         // The 250 ms loading grace and the first layout.
         Thread.sleep(forTimeInterval: 0.9)
         if v.inactive {

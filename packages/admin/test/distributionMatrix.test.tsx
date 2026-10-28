@@ -296,17 +296,19 @@ describe("Distribution → Matrix", () => {
       }),
     );
     const confirm = await screen.findByRole("alertdialog");
-    const go = within(confirm).getByRole("button", { name: "Release 2.4.0" });
-    expect((go as HTMLButtonElement).disabled).toBe(true);
-    await userEvent.click(go);
+    // The button is drawn again when its reason goes: read it afresh each time.
+    const go = () =>
+      within(confirm).getByRole("button", { name: "Release 2.4.0" });
+    expect(go().getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(go());
     expect(writes(calls)).toEqual([]);
     const name = within(confirm).getByRole("textbox", { name: /App name/ });
     await userEvent.type(name, "   ");
-    expect((go as HTMLButtonElement).disabled).toBe(true);
+    expect(go().getAttribute("aria-disabled")).toBe("true");
     await userEvent.clear(name);
     await userEvent.type(name, " DJDL Mobile ");
-    expect((go as HTMLButtonElement).disabled).toBe(false);
-    await userEvent.click(go);
+    expect(go().getAttribute("aria-disabled")).toBeNull();
+    await userEvent.click(go());
     await waitFor(() =>
       expect(writes(calls)).toContainEqual(
         expect.objectContaining({
@@ -362,13 +364,14 @@ describe("Distribution → Matrix", () => {
       within(drawer).getByRole("button", { name: "Override…" }),
     );
     const confirm = await screen.findByRole("alertdialog");
-    const go = within(confirm).getByRole("button", { name: "Override 2.4.0" });
-    expect((go as HTMLButtonElement).disabled).toBe(true);
+    const go = () =>
+      within(confirm).getByRole("button", { name: "Override 2.4.0" });
+    expect(go().getAttribute("aria-disabled")).toBe("true");
     await userEvent.type(
       within(confirm).getByLabelText(/Reason/),
       "packs ship in the build",
     );
-    await userEvent.click(go);
+    await userEvent.click(go());
     await waitFor(() =>
       expect(writes(calls)).toContainEqual(
         expect.objectContaining({

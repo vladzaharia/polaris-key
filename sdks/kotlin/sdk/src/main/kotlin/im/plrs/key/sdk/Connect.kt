@@ -44,6 +44,7 @@ import im.plrs.key.core.PeerDeviceKeys
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.Ring
+import im.plrs.key.core.RingReplacement
 import im.plrs.key.core.RingResult
 import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
@@ -58,8 +59,11 @@ import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.registerDeviceKeys
 import im.plrs.key.core.stringValue
+import im.plrs.key.core.TrustSet
+import im.plrs.key.core.wireErrorCode
 import im.plrs.key.core.wireRefusal
 import java.io.File
+import java.net.URI
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
@@ -69,6 +73,12 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /** The Worker keeps the previous K_disc for 24 hours after a bump (section 15.4). */
 public const val PREV_DISC_KEY_SECONDS: Long = 86_400
+
+/** The relay's WebSocket sub-protocol (section 15.7). */
+public const val RELAY_PROTOCOL: String = "pkey-relay.1"
+
+/** The longest `Retry-After` a client believes: an hour (G15). */
+public const val RELAY_RETRY_AFTER_CAP_SECONDS: Int = 3_600
 
 /** The state record's schema tag and file name. */
 public const val CONNECT_STATE_SCHEMA: String = "pkey.connect.v1"
@@ -118,6 +128,47 @@ public data class ConnectDevice(
     val self: Boolean,
 )
 
+/** A relay ticket answer, shape-checked and bound to the Worker's own host. `toString` shows no ticket (G13). */
+public class RelayGrant internal constructor(
+    internal val ticket: String,
+    public val url: String,
+    public val protocol: String,
+    /** Seconds since the epoch. */
+    public val expiresAt: Long,
+) {
+    override fun toString(): String = "RelayGrant(redacted)"
+}
+
+/** What storing a peer-pushed roster answers. */
+public sealed interface RingAdoption {
+    public class Stored(public val epoch: Long) : RingAdoption
+
+    /** [reason] is a registered word: `no_identity`, `held_unverified`, `other_subject`, `device_not_in_roster`, or a replace refusal. */
+    public class Refused(public val reason: String) : RingAdoption
+}
+
+/**
+ * What the LAN and relay halves read of the held identity, as one snapshot (CC-12.10 and later). The
+ * device's static key stays in [keys]; Noise asks it for `dh`. Never printed.
+ */
+internal class PeerSource(
+    val slug: String,
+    val trust: TrustSet,
+    val sub: String,
+    val deviceId: String,
+    val certificate: String,
+    val certificateExpiresAt: Long,
+    val ring: String,
+    val ringEpoch: Long,
+    val roster: List<String>,
+    /** K_disc, newest first. */
+    val discovery: DiscoveryKeys,
+    val agreePublic: ByteArray,
+    val keys: DeviceKeyPort,
+) {
+    override fun toString(): String = "PeerSource(redacted)"
+}
+
 /** The discovery keys as bytes, newest first (section 15.4). A device advertises under [current] only. */
 public class DiscoveryKeys internal constructor(public val current: ByteArray, public val previous: ByteArray?) {
     override fun toString(): String = "DiscoveryKeys(redacted)"
@@ -135,6 +186,8 @@ internal class ConnectStateRecord(
     val registeredSign: String?,
     val registeredAgree: String?,
     val storedAt: Long,
+    /** A pushed roster removed a device, so K_disc was replaced at the Worker and this copy is stale until the next identity fetch. */
+    val keysStale: Boolean = false,
 ) {
     override fun toString(): String = "ConnectStateRecord(redacted)"
 
@@ -154,7 +207,7 @@ internal class ConnectStateRecord(
                 JsonNull
             },
             "storedAt" to jsonInt(storedAt),
-        ),
+        ) + if (keysStale) mapOf("keysStale" to JsonPrimitive(true)) else emptyMap(),
     ).toString().toByteArray(Charsets.UTF_8)
 
     companion object {
@@ -187,10 +240,13 @@ internal class ConnectStateRecord(
                 registeredSign = rs,
                 registeredAgree = ra,
                 storedAt = v["storedAt"].longValue ?: return null,
+                keysStale = v["keysStale"].boolValue == true,
             )
         }
     }
 }
+
+private val TICKET = Regex("^pkeyrt_[A-Za-z0-9_-]{32}$")
 
 /** An answer that is not in the contract's shape (`bad_response`), apart from one that fails verification. */
 private fun malformed(reason: String): PolarisException =
@@ -265,6 +321,8 @@ public class ConnectClient internal constructor(
      */
     public suspend fun discoveryKeys(): DiscoveryKeys? = lock.withLock {
         val held = load() ?: return@withLock null
+        // After a pushed roster removed a device the Worker replaced K_disc: this copy is not used until an identity fetch brings the new one.
+        if (held.keysStale) return@withLock null
         val prev = if (held.discKeys.size == 2 && held.prevUntil != null && core.now() < held.prevUntil) {
             Base64Url.decode(held.discKeys[1])
         } else {
@@ -272,6 +330,138 @@ public class ConnectClient internal constructor(
         }
         DiscoveryKeys(Base64Url.decode(held.discKeys[0])!!, prev)
     }
+
+    /**
+     * `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket for the WebSocket. Throws
+     * [RelayException] (`disabled`, `paused` with `retryAfterSeconds`, `quota` with its `scope`,
+     * `ticket_invalid` for an answer not in the contract shape) and [PolarisException] for `no-token`
+     * and the Worker's other refusals. A new ticket every call; the ticket is in no log, string or error (G13).
+     */
+    public suspend fun relayTicket(): RelayGrant {
+        // The Worker answers `device_keys_required` for a device with no registered keys and 404 when
+        // the operator's launch gate is off; identity() is what registers and checks discovery.
+        val token = requireToken()
+        val res = core.request(
+            core.endpoints.url("connect/relay/ticket"), method = "POST",
+            headers = mapOf("authorization" to "Bearer $token"),
+        )
+        if (!res.isOk) throw ticketRefusal(res)
+        return grant(res.text)
+    }
+
+    private fun ticketRefusal(res: PolarisResponse): PolarisException {
+        val wire = wireErrorCode(res.body)
+        val retry = res.header("retry-after")?.trim()?.takeIf { it.isNotEmpty() && it.all { c -> c in '0'..'9' } && it.length <= 9 }
+            ?.toInt()?.coerceAtMost(RELAY_RETRY_AFTER_CAP_SECONDS)
+        fun relay(reason: RelayErrorReason, message: String, scope: RelayQuotaScope? = null) =
+            RelayException(reason, message, retryAfterSeconds = retry, scope = scope, httpStatus = res.status)
+        return when (wire) {
+            ErrorCode.relayDisabled -> relay(RelayErrorReason.disabled, "This product has its relay off.")
+            ErrorCode.relayPaused -> relay(RelayErrorReason.paused, "The relay is paused; try again later.")
+            ErrorCode.relayQuotaExceeded -> {
+                val scope = when (JsonText.parseOrNull(res.text).objectValue?.get("scope").stringValue) {
+                    "person" -> RelayQuotaScope.person
+                    "product" -> RelayQuotaScope.product
+                    else -> null
+                }
+                relay(RelayErrorReason.quota, "The relay quota is spent.", scope)
+            }
+            ErrorCode.relayTicketInvalid -> relay(RelayErrorReason.ticket_invalid, "The relay refused the device.")
+            else -> PolarisException(
+                wire ?: ErrorCode.httpError, "connect relay ticket failed with status ${res.status}.",
+                httpStatus = res.status, retryAfterSeconds = retry,
+            )
+        }
+    }
+
+    /**
+     * The ticket answer, shape-checked and bound to this Worker: the ticket goes only to the Worker's
+     * own host over `wss:` and only for the protocol this client speaks.
+     */
+    private fun grant(text: String): RelayGrant {
+        fun bad(): Nothing = throw RelayException(RelayErrorReason.ticket_invalid, "The relay ticket answer is not in the contract shape.")
+        val o = JsonText.parseOrNull(text).objectValue ?: bad()
+        val ticket = o["ticket"].stringValue
+        val url = o["url"].stringValue
+        val expires = o["expiresAt"].longValue
+        if (ticket == null || !TICKET.matches(ticket) || url == null || o["protocol"].stringValue != RELAY_PROTOCOL || expires == null) bad()
+        val target = try {
+            URI(url)
+        } catch (e: java.net.URISyntaxException) {
+            bad()
+        }
+        val home = try {
+            URI(core.endpoints.baseUrl)
+        } catch (e: java.net.URISyntaxException) {
+            bad()
+        }
+        if (target.scheme != "wss" || target.rawAuthority == null || !target.rawAuthority.equals(home.rawAuthority, ignoreCase = true)) bad()
+        return RelayGrant(ticket, url, RELAY_PROTOCOL, expires)
+    }
+
+    /**
+     * The held identity as one snapshot for the LAN and relay halves, or a [LanException] (`no_identity`,
+     * `no_keys`) when there is none or K_disc is not held.
+     */
+    internal suspend fun peerSource(): PeerSource {
+        val id = current() ?: throw LanException(LanErrorReason.no_identity, "No Cloud Connect identity is held; call identity() first.")
+        val keys = discoveryKeys()
+        val p = lock.withLock { port }
+        val pub = p?.publicKeys()
+        val agree = pub?.let { Base64Url.decodeStrict(it.agreeKey) }
+        if (keys == null || p == null || agree == null || agree.size != 32) {
+            throw LanException(LanErrorReason.no_keys, "The device keys or K_disc are not held.")
+        }
+        return PeerSource(
+            slug = core.product, trust = core.trust(), sub = id.sub, deviceId = id.deviceId,
+            certificate = id.certificate, certificateExpiresAt = id.certificateExpiresAt,
+            ring = id.ring, ringEpoch = id.epoch, roster = id.devices.map { it.deviceId },
+            discovery = keys, agreePublic = agree, keys = p,
+        )
+    }
+
+    /**
+     * Store a roster a peer pushed, under the identity fetch's rules (section 15.3): it must verify, be
+     * for the held subject, have a higher epoch than the held one, not be expired, and still list this
+     * device with the keys it registered. The certificate is kept; the next [identity] fetches the one
+     * that goes with the new epoch. A roster that drops a device sets `keysStale`.
+     */
+    internal suspend fun adoptRing(jws: String): RingAdoption = lock.withLock {
+        val held = load() ?: return@withLock RingAdoption.Refused("no_identity")
+        val now = core.now()
+        val (heldRing, heldCert) = verifyHeld(held)
+        val subject = heldRing?.sub ?: heldCert?.sub ?: return@withLock RingAdoption.Refused("held_unverified")
+        val r = Peer.replaceRing(held.ring, jws, core.trust(), core.product, now)
+        val ring = (r as? RingReplacement.Replace)?.ring
+            ?: return@withLock RingAdoption.Refused((r as RingReplacement.Keep).reason.wire)
+        if (ring.sub != subject) return@withLock RingAdoption.Refused("other_subject")
+        val mine = if (held.registeredSign != null && held.registeredAgree != null) {
+            PeerDeviceKeys(core.deviceId(), held.registeredSign, held.registeredAgree)
+        } else {
+            null
+        }
+        if (mine == null || ring.devices.none { sameDevice(it, mine) }) return@withLock RingAdoption.Refused("device_not_in_roster")
+        val keys = if (heldRing != null) keysAfterRing(held.discKeys, heldRing, ring) else held.discKeys
+        val removed = heldRing != null && !heldRing.devices.all { d -> ring.devices.any { sameDevice(it, d) } }
+        val rec = ConnectStateRecord(
+            product = held.product, deviceId = held.deviceId, ring = jws, certificate = held.certificate,
+            discKeys = keys, prevUntil = if (keys.size == 2) held.prevUntil else null, epoch = ring.epoch,
+            registeredSign = held.registeredSign, registeredAgree = held.registeredAgree, storedAt = now,
+            keysStale = removed || held.keysStale,
+        )
+        try {
+            store().put(rec.encode())
+        } catch (e: StoreException) {
+            throw storeError(e)
+        } catch (e: DeviceKeysUnreadableException) {
+            throw storeError(e)
+        }
+        RingAdoption.Stored(ring.epoch)
+    }
+
+    /** Drops the previous K_disc when the new roster lost a device or changed a device's keys (section 15.4). */
+    private fun keysAfterRing(keys: List<String>, prior: Ring, next: Ring): List<String> =
+        if (keys.size != 2 || prior.devices.all { d -> next.devices.any { sameDevice(it, d) } }) keys else listOf(keys[0])
 
     /**
      * Forget the held roster, certificate and K_disc (sign-out, leaving the person's devices). The
@@ -397,8 +587,7 @@ public class ConnectClient internal constructor(
         var keys = a.discKeys
         if (keys.size == 2 && prior != null && ring.epoch > prior.epoch) {
             // A leave, or a device that changed its keys, takes the previous key away (section 15.4).
-            val intact = prior.devices.all { d -> ring.devices.any { sameDevice(it, d) } }
-            if (!intact) keys = listOf(keys[0])
+            keys = keysAfterRing(keys, prior, ring)
         }
         val sameEpochPrev = held != null && prior != null && prior.epoch == ring.epoch &&
             held.discKeys.size == 2 && keys.size == 2 && held.discKeys[1] == keys[1]

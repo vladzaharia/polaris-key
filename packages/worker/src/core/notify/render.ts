@@ -6,14 +6,14 @@
  *   - colours inlined from the brand theme tokens (light ground by default, the platform violet
  *     as the one accent), with a dark palette in a `prefers-color-scheme: dark` block for the
  *     clients that honour it, and `color-scheme` metadata so the rest can adapt it themselves;
- *   - the kit's horizontal PNG lockup (PORTAL.md §6.3; no "Powered by" badge), the 944 px 2x
- *     file shown at 472 x 160, linked from the console origin's `/assets/branding/key/` (emitted
+ *   - the kit's compact PNG lockup (PORTAL.md §6.3; no "Powered by" badge), the 444 px 2x
+ *     file shown at 180 x 52 (mark 1.5 x the cap height, BRAND.md §1.4), linked from the console origin's `/assets/branding/key/` (emitted
  *     there by packages/admin/vite.config.ts) with `alt="Polaris Key"`. The `light` variant (for
  *     light grounds) is the default; the dark palette swaps in the `dark` variant for the clients
  *     that apply it. With no usable origin the lockup is left out and a text wordmark stands in;
  *   - every dynamic value escaped; links are only the ones the Worker built.
  *   - `brand: "locker"` (LK-07; plans/LK-00.md §7.11, §14.2) swaps the identity: the Polaris Locker
- *     lockup (`locker-horizontal-{light,dark}-640.png`, shown at 230 x 64, from the console
+ *     lockup (`locker-lockup-{light,dark}-2x.png`, the re-laid trimmed lockup shown at 217 x 26, from the console
  *     origin's `/assets/branding/locker/`) with `alt="Polaris Locker"`, and neutral-ink actions and
  *     links instead of the violet accent (D9a: coral is identity only). Omitted = the Polaris Key
  *     output, byte for byte.
@@ -135,9 +135,11 @@ export function renderEmail(c: EmailContent): string {
     `<p class="${cls}" style="margin:0 0 16px;font-family:${font};font-size:16px;line-height:24px;${c.wrapAnywhere ? "overflow-wrap:anywhere;" : ""}color:${color}">${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
   const lockupSrc = (variant: "light" | "dark") =>
     locker
-      ? `${c.origin}/assets/branding/locker/locker-horizontal-${variant}-640.png`
-      : `${c.origin}/assets/branding/key/key-horizontal-${variant}-944.png`;
-  const [lw, lh] = locker ? [230, 64] : [472, 160];
+      ? `${c.origin}/assets/branding/locker/locker-lockup-${variant}-2x.png`
+      : `${c.origin}/assets/branding/key/key-compact-${variant}-444.png`;
+  // BRAND.md §1.4: the mark is 1.5 x the cap height. Locker: the re-laid trimmed lockup, 26 px
+  // tall; Key: the kit's compact lockup as supplied (222 x 64), 52 px tall like the console's.
+  const [lw, lh] = locker ? [217, 26] : [180, 52];
   const lockup = (variant: "light" | "dark", style: string) =>
     `<img class="pk-logo-${variant}" src="${escapeHtml(lockupSrc(variant))}" width="${lw}" height="${lh}" alt="${brandName}" style="${style}">`;
   const imgStyle = `width:${lw}px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none`;
@@ -211,7 +213,7 @@ export function renderEmail(c: EmailContent): string {
     // The lockup sits centred over the card (SIGN-IN.md §3.15).
     c.hero
       ? ""
-      : `<tr><td align="center" style="padding:0 0 ${c.origin ? 0 : 24}px;text-align:center">${brand}</td></tr>`,
+      : `<tr><td align="center" style="padding:0 0 ${c.origin && !locker ? 0 : 24}px;text-align:center">${brand}</td></tr>`,
     `<tr><td class="pk-card" bgcolor="${LIGHT.surface.raised}" style="padding:32px;background-color:${LIGHT.surface.raised};border:1px solid ${LIGHT.border.subtle};border-radius:10px">`,
     c.hero
       ? hero

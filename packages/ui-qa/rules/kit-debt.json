@@ -64,12 +64,6 @@
     {
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
-      "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt",
-      "count": 6
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-spacing-off-scale",
       "file": "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisPackProgress.kt",
       "count": 4
     },

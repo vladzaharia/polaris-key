@@ -7,7 +7,7 @@ import { join } from "node:path";
 import {
   SignInModel,
   viewOf,
-  type ComponentName,
+  type ScreenName,
   type UiInput,
   type View,
 } from "../src/index.js";
@@ -66,12 +66,13 @@ const SIGN_IN = new Set(["SignIn", "SignInHandoff", "LicenseChoice"]);
  *  every other component through its view model. */
 export function run(row: Row, defaults: Obj): View {
   const input = withDefaults(row.input, defaults);
-  const component = row.expect.component as ComponentName;
+  const component = row.expect.component as ScreenName;
   if (SIGN_IN.has(component))
     return SignInModel.restore(input).view(
       component as "SignIn" | "SignInHandoff" | "LicenseChoice",
     );
-  return viewOf(component, input);
+  // The cloudSync family's screens are not ComponentNames; the runner reads only view fields.
+  return viewOf(component, input) as View;
 }
 
 /** The generated `UI_MATRIX_VERSION` of an SDK's constants module. */

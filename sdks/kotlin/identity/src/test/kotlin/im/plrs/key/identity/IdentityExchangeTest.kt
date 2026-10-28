@@ -24,7 +24,6 @@ import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.path
-import java.net.URLDecoder
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +32,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.net.URLDecoder
 
 @OptIn(ConformanceReplayOnly::class)
 class IdentityExchangeTest {
@@ -49,11 +49,22 @@ class IdentityExchangeTest {
     private val exchangeMember = """"exchange":{"kinds":["google","apple"],"google":{"serverClientId":"1234-web.apps.googleusercontent.com"}},"""
     private val tokenOk = """{"access_token":"pkeyt_exchanged","token_type":"Bearer","scope":"profile email","schemaVersion":1,""" +
         """"device":{"id":"D"},"license":null,"subject":"ps_QQMMVm-ciTWvmWEIfhAVgQ","issued_token_type":"urn:polaris-key:token-type:device"}"""
-    private val consentBody = """{"status":"confirm","grant":"$grant","expiresIn":300,"consent":{"client":{"appName":"djdl","developerName":null,"iconUrl":null,"nameVerified":true},""" +
-        """"as":{"provider":"google","email":"ada@example.com"},"items":[{"kind":"profile","claims":["name","email"]}],"scopeHash":"abc","firstTime":true,"changed":false}}"""
-    private val chooseBody = """{"status":"choose","grant":"$grant","expiresIn":300,"choices":{"state":"choose","choices":[{"id":"lic_1","state":"free"}]}}"""
+    private val consentBody =
+        """{"status":"confirm","grant":"$grant","expiresIn":300,""" +
+            """"consent":{"client":{"appName":"djdl","developerName":null,"iconUrl":null,"nameVerified":true},""" +
+            """"as":{"provider":"google","email":"ada@example.com"},"items":[{"kind":"profile","claims":["name","email"]}],""" +
+            """"scopeHash":"abc","firstTime":true,"changed":false}}"""
+    private val chooseBody =
+        """{"status":"choose","grant":"$grant","expiresIn":300,""" +
+            """"choices":{"state":"choose","choices":[{"id":"lic_1","state":"free"}]}}"""
 
-    private class World(val client: IdentityClient, val transport: ScriptedTransport, val store: InMemoryStore, val port: DeviceKeyPort, val core: CoreContext)
+    private class World(
+        val client: IdentityClient,
+        val transport: ScriptedTransport,
+        val store: InMemoryStore,
+        val port: DeviceKeyPort,
+        val core: CoreContext,
+    )
 
     private fun discovery(member: String, endpoints: String) =
         """{"product":"djdl","services":{"identity":{"enabled":true,"configured":true,$member"endpoints":{$endpoints}}}}"""
@@ -77,16 +88,34 @@ class IdentityExchangeTest {
         val transport = ScriptedTransport { r: PolarisRequest ->
             when (r.path) {
                 "/djdl/.well-known/polaris.json" -> respond(200, discovery(member, endpoints))
-                "/djdl/identity/nonce" -> respond(nonceStatus, if (nonceStatus == 200 && nonceBody.contains(nonce1)) nonceBody.replace(nonce1, nonce1.dropLast(2) + "%02d".format(n++)) else nonceBody)
+
+                "/djdl/identity/nonce" -> respond(
+                    nonceStatus,
+                    if (nonceStatus == 200 &&
+                        nonceBody.contains(nonce1)
+                    ) {
+                        nonceBody.replace(nonce1, nonce1.dropLast(2) + "%02d".format(n++))
+                    } else {
+                        nonceBody
+                    },
+                )
+
                 "/djdl/identity/token" -> respond(tokenStatus, tokenBody, tokenHeaders)
+
                 "/djdl/identity/choice/complete" -> respond(200, tokenOk)
+
                 else -> respond(404)
             }
         }
         val core = CoreContext(
             CoreOptions(
-                productSlug = "djdl", version = "1.0.0", pinnedKeys = emptyMap(), trustRefresh = false,
-                store = store, transport = transport, clock = { 1_700_000_000L },
+                productSlug = "djdl",
+                version = "1.0.0",
+                pinnedKeys = emptyMap(),
+                trustRefresh = false,
+                store = store,
+                transport = transport,
+                clock = { 1_700_000_000L },
             ),
         )
         runBlocking { core.start() }
@@ -94,8 +123,10 @@ class IdentityExchangeTest {
         return World(IdentityClient(core, deviceKeys = if (keys) port else null), transport, store, port, core)
     }
 
-    private fun form(body: ByteArray): Map<String, String> =
-        String(body).split("&").associate { p -> p.substringBefore("=").let { URLDecoder.decode(it, "UTF-8") } to URLDecoder.decode(p.substringAfter("="), "UTF-8") }
+    private fun form(body: ByteArray): Map<String, String> = String(body).split("&").associate { p ->
+        p.substringBefore("=").let { URLDecoder.decode(it, "UTF-8") } to
+            URLDecoder.decode(p.substringAfter("="), "UTF-8")
+    }
 
     private suspend fun World.reqs(path: String) = transport.requests().filter { it.path == path }
 
@@ -124,8 +155,15 @@ class IdentityExchangeTest {
         assertEquals(nonce.value, f["nonce"])
         assertEquals(keys.signKey, f["device_key"])
         val proof = DeviceProof(
-            DeviceProofFields("exchange", "djdl", "DEVICE00000000000000000000000001", "${nonce.value}.${keys.signKey}", IdentityExchange.tokenHash(subjectToken)),
-            keys.signKey, f["proof"]!!,
+            DeviceProofFields(
+                "exchange",
+                "djdl",
+                "DEVICE00000000000000000000000001",
+                "${nonce.value}.${keys.signKey}",
+                IdentityExchange.tokenHash(subjectToken),
+            ),
+            keys.signKey,
+            f["proof"]!!,
         )
         assertTrue(DeviceProofs.verify(proof))
         // The same proof over another token must not verify.
@@ -164,7 +202,11 @@ class IdentityExchangeTest {
 
     @Test
     fun interstitialRequiredIsNeedsSignInWithTheLinkHandle() = runBlocking {
-        val w = world(tokenStatus = 403, tokenBody = """{"error":"interstitial_required","reason":"no_link","url":"$base/authorize","linkHandle":"$handle","expiresIn":600}""")
+        val w =
+            world(
+                tokenStatus = 403,
+                tokenBody = """{"error":"interstitial_required","reason":"no_link","url":"$base/authorize","linkHandle":"$handle","expiresIn":600}""",
+            )
         val out = w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken) as ExchangeOutcome.NeedsSignIn
         assertEquals("no_link", out.reason)
         assertEquals("$base/authorize", out.url)
@@ -189,7 +231,7 @@ class IdentityExchangeTest {
             return e
         }
         fail("expected a PolarisException")
-        throw IllegalStateException()
+        error("unreachable after fail")
     }
 
     @Test
@@ -220,12 +262,18 @@ class IdentityExchangeTest {
     @Test
     fun memoryOnlyKeysAreRefusedBeforeAnyRequest() = runBlocking {
         val w = world(memory = true)
-        assertEquals(ExchangeNonceResult.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys)), w.client.exchangeNonce(ExchangeKind.google))
+        assertEquals(
+            ExchangeNonceResult.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys)),
+            w.client.exchangeNonce(ExchangeKind.google),
+        )
         assertEquals(
             ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys),
             w.client.exchange(ExchangeKind.google, subjectToken, ExchangeNonce(nonce1)),
         )
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys), w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.memoryOnlyKeys),
+            w.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken),
+        )
         assertTrue(w.reqs("/djdl/identity/nonce").isEmpty() && w.reqs("/djdl/identity/token").isEmpty())
         assertEquals("pkeyt_old", w.store.getToken())
     }
@@ -265,19 +313,40 @@ class IdentityExchangeTest {
     @Test
     fun unavailableOnA404OrNoMemberOrAnUndeclaredKindOrNoKeys() = runBlocking {
         val notFound = world(nonceStatus = 404, nonceBody = """{"error":{"code":"not_found"}}""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed), notFound.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed),
+            notFound.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken),
+        )
         assertTrue(notFound.reqs("/djdl/identity/token").isEmpty())
-        assertEquals(ExchangeNonceResult.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed)), notFound.client.exchangeNonce(ExchangeKind.google))
+        assertEquals(
+            ExchangeNonceResult.Ended(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed)),
+            notFound.client.exchangeNonce(ExchangeKind.google),
+        )
         val tokenGone = world(tokenStatus = 404, tokenBody = """{"error":"not_found"}""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed), tokenGone.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.notServed),
+            tokenGone.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken),
+        )
         val noMember = world(member = "")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noMember), noMember.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noMember),
+            noMember.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken),
+        )
         val googleOnly = world(member = """"exchange":{"kinds":["google"]},""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.kindNotDeclared), googleOnly.client.exchangeWithFreshNonce(ExchangeKind.apple, subjectToken))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.kindNotDeclared),
+            googleOnly.client.exchangeWithFreshNonce(ExchangeKind.apple, subjectToken),
+        )
         val noNonce = world(endpoints = """"token":"$base/token"""")
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noEndpoint), noNonce.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noEndpoint),
+            noNonce.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken),
+        )
         val noKeys = world(keys = false)
-        assertEquals(ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys), noKeys.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken))
+        assertEquals(
+            ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys),
+            noKeys.client.exchangeWithFreshNonce(ExchangeKind.google, subjectToken),
+        )
         for (w in listOf(noMember, googleOnly, noNonce, noKeys)) {
             assertTrue(w.reqs("/djdl/identity/nonce").isEmpty() && w.reqs("/djdl/identity/token").isEmpty())
             assertEquals("pkeyt_old", w.store.getToken())

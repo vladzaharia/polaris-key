@@ -152,7 +152,7 @@ const MORE = [
   lic("saltwind", "Saltwind", { activatedAt: NOW - 15 * DAY }),
 ];
 
-/** A sign-in licence (no key) with a device: Devices' "1 of 5 devices in use", "Automatic grant". */
+/** A sign-in licence (no key) with a device: Devices' "1 of 5 devices in use", "Sign-in". */
 const QUILL_SIGNIN = lic("quill", "Quill", {
   identityProvider: "oidc",
   keyCount: 0,

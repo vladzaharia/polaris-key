@@ -134,10 +134,13 @@ public object PolarisKeyAndroid {
         val attestation = options.attestation ?: PlayIntegrityAttestation.create(ctx, android.playCloudProjectNumber)
         if (options.attestation == null) AttestationProviders.installed = attestation
         val built = PolarisKeyClient(
-            options.copy(
+            options.withAndroidKeyring(ctx, product).copy(
                 attestation = attestation,
                 core = core,
                 license = license,
+                // Android has no default device-key store in the umbrella: without one the platform
+                // `exchange` (auto sign-in rungs 3 and 4) answers Unavailable(noDeviceKeys).
+                connect = options.connect.copy(deviceKeys = options.connect.deviceKeys ?: androidDeviceKeyStore(ctx, product)),
                 factsSource = options.factsSource ?: AndroidDeviceFactsSource(ctx),
                 update = update,
                 packs = packs,

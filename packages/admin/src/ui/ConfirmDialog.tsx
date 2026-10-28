@@ -17,6 +17,8 @@ import { Button, type ButtonVariant } from "./Button.js";
 import { CopyDetails } from "./CopyDetails.js";
 import { Dialog, DialogBody, DialogFooter } from "./Dialog.js";
 
+export { confirmBlocked, NEEDS_REASON } from "./confirmReasons.js";
+
 /**
  * A confirmation (components.md §4.2, ADMIN.md §5.2).
  *
@@ -101,7 +103,10 @@ export interface ConfirmDialogProps {
   loading?: boolean;
   /** Legacy: keeps confirm disabled (an input in `children` is not valid yet). */
   confirmDisabled?: boolean;
-  /** Why `confirmDisabled` holds (a soft-disabled button names it: "Loading"). */
+  /**
+   * Why `confirmDisabled` holds ("Add a reason to continue"): the confirm button stays focusable
+   * and says so in a tooltip, like the typed-word gate does.
+   */
   confirmDisabledReason?: string;
 }
 
@@ -223,6 +228,11 @@ export function ConfirmDialog({
   };
 
   const err = shown && !stepUp ? describeError(shown) : null;
+  // The caller's own words for the refusal ("… Nothing was saved."), under the fixed title.
+  const stepUpDescription = stepUp ? describeError(shown)?.description : null;
+  const hasStory = Boolean(lead || consequences?.length || err || stepUp);
+  const hasInputs = Boolean(children || typedConfirmation);
+  const sideBySide = hasStory && hasInputs;
 
   return (
     <Dialog
@@ -243,7 +253,11 @@ export function ConfirmDialog({
         </span>
       }
       description={description}
-      className="max-sm:overflow-y-auto"
+      className={cn(
+        "max-sm:overflow-y-auto",
+        // Two columns in a short window (below): a wider box keeps each one readable.
+        sideBySide && "short:sm:max-w-[44rem]",
+      )}
       dismissible={!busy}
       closeButton={closeButton}
       initialFocusRef={
@@ -258,7 +272,14 @@ export function ConfirmDialog({
       stepUp ||
       typedConfirmation ? (
         <DialogBody
-          className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible"
+          // A short window (a phone on its side) closes the gaps and shrinks a reason box, and
+          // sets what the action does beside what it asks for: the reason and the typed field
+          // sit at the top of their column, in view without a scroll, over the pinned footer.
+          className={cn(
+            "space-y-4 text-sm short:space-y-2 short:[&_textarea]:min-h-12 max-sm:flex-none max-sm:overflow-y-visible",
+            sideBySide &&
+              "short:grid short:grid-cols-2 short:items-start short:gap-x-4 short:space-y-0",
+          )}
           onKeyDown={
             submitOnEnter
               ? (e) => {
@@ -273,90 +294,101 @@ export function ConfirmDialog({
               : undefined
           }
         >
-          {lead}
-          {consequences?.length && lead ? (
-            // After a lead, the lines are plain text, not a list of one.
-            <div className="space-y-1 text-fg-muted">
-              {consequences.map((c, i) => (
-                <p key={i}>{c}</p>
-              ))}
+          {hasStory ? (
+            <div className="min-w-0 space-y-4 short:space-y-2">
+              {lead}
+              {consequences?.length && lead ? (
+                // After a lead, the lines are plain text, not a list of one. They carry the facts: body weight.
+                <div className="space-y-1 text-fg">
+                  {consequences.map((c, i) => (
+                    <p key={i}>{c}</p>
+                  ))}
+                </div>
+              ) : consequences?.length ? (
+                <ul className="list-disc space-y-1 ps-5 text-fg">
+                  {consequences.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {err ? (
+                <div
+                  id={errorId}
+                  role="alert"
+                  className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-3"
+                >
+                  <CircleAlert
+                    aria-hidden
+                    className="mt-0.5 size-4 shrink-0 text-danger"
+                  />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-fg-strong">{err.title}</p>
+                    {err.description ? (
+                      <p className="text-fg">{err.description}</p>
+                    ) : null}
+                    <CopyDetails copy={err} />
+                  </div>
+                </div>
+              ) : null}
+              {stepUp ? (
+                <div
+                  id={errorId}
+                  role="status"
+                  className="flex gap-2 rounded-md border border-border bg-surface-sunken p-3"
+                >
+                  <Fingerprint
+                    aria-hidden
+                    className="mt-0.5 size-4 shrink-0 text-fg-muted"
+                  />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-fg-strong">
+                      Sign in again to confirm it&apos;s you
+                    </p>
+                    {stepUpDescription ? (
+                      <p className="text-fg">{stepUpDescription}</p>
+                    ) : null}
+                    {typeof signedInAt === "number" ? (
+                      <p className="text-fg">
+                        You signed in {formatRelative(signedInAt * 1000)}.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : consequences?.length ? (
-            <ul className="list-disc space-y-1 ps-5 text-fg">
-              {consequences.map((c, i) => (
-                <li key={i}>{c}</li>
-              ))}
-            </ul>
           ) : null}
-          {err ? (
-            <div
-              id={errorId}
-              role="alert"
-              className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-3"
-            >
-              <CircleAlert
-                aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-danger"
-              />
-              <div className="space-y-0.5">
-                <p className="font-semibold text-fg-strong">{err.title}</p>
-                {err.description ? (
-                  <p className="text-fg">{err.description}</p>
-                ) : null}
-                <CopyDetails copy={err} />
-              </div>
-            </div>
-          ) : null}
-          {stepUp ? (
-            <div
-              id={errorId}
-              role="status"
-              className="flex gap-2 rounded-md border border-border bg-surface-sunken p-3"
-            >
-              <Fingerprint
-                aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-fg-muted"
-              />
-              <div className="space-y-0.5">
-                <p className="font-semibold text-fg-strong">
-                  Sign in again to confirm it&apos;s you
-                </p>
-                {typeof signedInAt === "number" ? (
-                  <p className="text-fg">
-                    You signed in {formatRelative(signedInAt * 1000)}.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-          {children}
-          {typedConfirmation ? (
-            <div className="space-y-1.5">
-              <label htmlFor={typedId} className="block text-sm text-fg">
-                {typedConfirmation.label}{" "}
-                <code className="rounded-xs bg-surface-sunken px-1 font-mono text-xs text-fg-strong">
-                  {typedConfirmation.value}
-                </code>
-              </label>
-              <input
-                ref={typedRef}
-                id={typedId}
-                value={typed}
-                autoComplete="off"
-                spellCheck={false}
-                disabled={busy}
-                onChange={(e) => setTyped(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void confirm();
-                  }
-                }}
-                className={cn(
-                  "h-9 pointer-coarse:h-11 w-full rounded-md border border-border-strong bg-surface-sunken px-3 font-mono text-sm text-fg",
-                  "focus-visible:outline-2 focus-visible:outline-focus",
-                )}
-              />
+          {hasInputs ? (
+            <div className="min-w-0 space-y-4 short:space-y-2">
+              {children}
+              {typedConfirmation ? (
+                <div className="space-y-1.5">
+                  <label htmlFor={typedId} className="block text-sm text-fg">
+                    {typedConfirmation.label}{" "}
+                    <code className="rounded-xs bg-surface-sunken px-1 font-mono text-xs text-fg-strong">
+                      {typedConfirmation.value}
+                    </code>
+                  </label>
+                  <input
+                    ref={typedRef}
+                    id={typedId}
+                    value={typed}
+                    autoComplete="off"
+                    spellCheck={false}
+                    disabled={busy}
+                    onChange={(e) => setTyped(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void confirm();
+                      }
+                    }}
+                    className={cn(
+                      "h-9 pointer-coarse:h-11 w-full rounded-md border border-border-strong bg-surface-sunken px-3 font-mono text-sm text-fg",
+                      "focus-visible:outline-2 focus-visible:outline-focus",
+                    )}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </DialogBody>

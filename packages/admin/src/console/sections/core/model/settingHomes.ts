@@ -56,6 +56,7 @@ const ANCHORS: Readonly<Record<string, string>> = {
   "portal|Polaris Locker": "portal-switches",
   "presentation|Hosting and quotas": "presentation-hosting",
   "sync-setup|Product limits": "sync-limits",
+  "connect-setup|Relay": "connect-relay",
 };
 
 /** The element id a home's section lands on, if the page has one for it. */
@@ -241,6 +242,12 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // ── Cloud Sync ─────────────────────────────────────────────────────────────────────────────
   // U-05.20: Cloud Sync → Setup → Product limits (the meter and its Change dialog).
   "cloudSync.ceiling.bytes": at("sync-setup", "Product limits"),
+
+  // ── Cloud Connect ──────────────────────────────────────────────────────────────────────────
+  // CC-16: Cloud Connect → Setup. The relay switch has its control (the manifest's `connect.relay`
+  // is its default); the monthly ceiling has a Change… dialog (members with Cloud Connect edit).
+  "cloudConnect.relay.enabled": at("connect-setup", "Relay"),
+  "cloudConnect.ceiling.relayBytes": at("connect-setup", "Relay"),
 };
 
 /**

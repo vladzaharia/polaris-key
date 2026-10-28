@@ -158,6 +158,7 @@ public enum ErrorCode {
     public static let storeFailed = "store-failed"
     public static let connectUnavailable = "connect-unavailable"
     public static let peerCertInvalid = "peer-cert-invalid"
+    public static let nearbyPermissionDenied = "nearby-permission-denied"
     public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
@@ -368,6 +369,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "store-failed",
     "connect-unavailable",
     "peer-cert-invalid",
+    "nearby-permission-denied",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -578,6 +580,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "store-failed": "client",
     "connect-unavailable": "client",
     "peer-cert-invalid": "client",
+    "nearby-permission-denied": "client",
     "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",
@@ -678,6 +681,11 @@ public enum Feature {
     public static let syncConflict = "sync.conflict"
     public static let syncSaves = "sync.saves"
     public static let syncKeyring = "sync.keyring"
+    public static let syncRecords = "sync.records"
+    public static let syncFiles = "sync.files"
+    public static let syncFilesDelta = "sync.files.delta"
+    public static let syncE2eRecovery = "sync.e2e.recovery"
+    public static let syncTransferBackground = "sync.transfer.background"
     public static let syncE2e = "sync.e2e"
     public static let connectIdentity = "connect.identity"
     public static let connectNoise = "connect.noise"
@@ -811,6 +819,11 @@ public let FEATURE_VALUES: [String] = [
     "sync.conflict",
     "sync.saves",
     "sync.keyring",
+    "sync.records",
+    "sync.files",
+    "sync.files.delta",
+    "sync.e2e.recovery",
+    "sync.transfer.background",
     "sync.e2e",
     "connect.identity",
     "connect.noise",
@@ -1943,16 +1956,21 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.settings": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.keyring": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.keyring": CapabilityRow(status: "implemented", service: "sync", na: []),
+    "sync.records": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.files": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.files.delta": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.e2e.recovery": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.transfer.background": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.e2e": CapabilityRow(status: "planned", service: "sync", na: []),
     "connect.identity": CapabilityRow(status: "implemented", service: "connect", na: []),
-    "connect.noise": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.protocol": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.lan": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.relay": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.noise": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.protocol": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.lan": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.relay": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.links": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.transfer": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.app": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.app": CapabilityRow(status: "implemented", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -1971,7 +1989,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.autosignin": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2039,4 +2057,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "2661e46c8be88f8e09f96afc3267f1b98852332b9c745592b9d983b74a29b613"
+public let CAPABILITY_DIGEST = "495c5408fa6765c3cf4b1e028490cbbf919a8aabcaf4e70fd5a2bb75d79c2b3e"

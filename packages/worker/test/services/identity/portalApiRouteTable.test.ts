@@ -140,6 +140,7 @@ describe("PORTAL_API_ROUTES: the gates", () => {
     expect(table).toEqual({
       "capabilities/**": "none",
       "magic/start/**": "none",
+      "storefront/:product": "none",
       "signin/requests/:request": "none",
       "signin/**": "none",
       "key/preview": "none",

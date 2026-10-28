@@ -25,7 +25,7 @@ package im.plrs.key.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -71,10 +72,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -114,9 +115,9 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import im.plrs.key.ui.brand.PolarisKitGlyphs
-import androidx.compose.ui.unit.isSpecified
 
 /** The widest a kit screen's column grows on a phone. */
 public val PolarisMaxContentWidth: Dp = 480.dp
@@ -137,7 +138,15 @@ internal val PolarisMessageBlockWidth: Dp = 560.dp
 internal val PolarisWindow.controlHeight: Dp get() = if (tv) 60.dp else variant.controlHeight
 
 /** The smallest target of a control: 48 dp on Android (60 on TV); 24 dp under a mouse and 44 dp under touch on the desktop (U6). */
-internal val PolarisWindow.minTarget: Dp get() = if (tv) 60.dp else if (!variant.isDesktop) PolarisMinTouchTarget else if (touch) 44.dp else 24.dp
+internal val PolarisWindow.minTarget: Dp get() = if (tv) {
+    60.dp
+} else if (!variant.isDesktop) {
+    PolarisMinTouchTarget
+} else if (touch) {
+    44.dp
+} else {
+    24.dp
+}
 
 /** How a single column places its content on a tall window. */
 internal enum class PolarisAnchor {
@@ -193,10 +202,7 @@ public fun PolarisScreen(
  * large-window type scale) to [content].
  */
 @Composable
-internal fun PolarisSurface(
-    modifier: Modifier = Modifier,
-    content: @Composable (window: PolarisWindow, maxHeight: Dp) -> Unit,
-) {
+internal fun PolarisSurface(modifier: Modifier = Modifier, content: @Composable (window: PolarisWindow, maxHeight: Dp) -> Unit) {
     val tv = isTelevision()
     val touch = LocalPolarisTouchInput.current
     if (LocalPolarisEmbedded.current) {
@@ -251,6 +257,8 @@ internal fun PolarisScaffold(
     navigationIcon: (@Composable () -> Unit)? = null,
     detail: (@Composable ColumnScope.() -> Unit)? = null,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
+    /** At large type (font scale 1.5 and up) the actions dock below the scrolling body, so the primary stays in the first viewport. */
+    dockActionsAtLargeType: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val theme = PolarisTheme.current
@@ -261,7 +269,9 @@ internal fun PolarisScaffold(
             // The detail pane of a list-detail screen: one start-aligned column that scrolls on its own.
             CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start) {
                 Column(
-                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = LocalPolarisEmbeddedInset.current, vertical = window.section),
+                    Modifier.fillMaxSize().verticalScroll(
+                        rememberScrollState(),
+                    ).padding(horizontal = LocalPolarisEmbeddedInset.current, vertical = window.section),
                     horizontalAlignment = Alignment.Start,
                 ) {
                     navigationIcon?.let {
@@ -289,7 +299,10 @@ internal fun PolarisScaffold(
                     Modifier
                         .fillMaxSize()
                         // The panes pad themselves (PolarisSpace.controls) inside their scroll.
-                        .padding(horizontal = window.horizontalPadding, vertical = (window.verticalPadding - PolarisSpace.controls).coerceAtLeast(0.dp)),
+                        .padding(
+                            horizontal = window.horizontalPadding,
+                            vertical = (window.verticalPadding - PolarisSpace.controls).coerceAtLeast(0.dp),
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
@@ -324,6 +337,42 @@ internal fun PolarisScaffold(
                             actions()
                         }
                     }
+                }
+            }
+            return@PolarisSurface
+        }
+        if (actions != null && dockActionsAtLargeType && LocalDensity.current.fontScale >= POLARIS_DOCK_FONT_SCALE) {
+            val dockWidth = if (maxContentWidth == Dp.Unspecified) window.columnWidth else maxContentWidth
+            val dockHorizontal = if (contentAlign == TextAlign.Start) Alignment.Start else Alignment.CenterHorizontally
+            CompositionLocalProvider(LocalPolarisTextAlign provides contentAlign) {
+                Column(Modifier.fillMaxSize().padding(horizontal = window.horizontalPadding), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        Modifier.widthIn(
+                            max = dockWidth,
+                        ).fillMaxWidth().weight(1f, fill = true).verticalScroll(rememberScrollState()).padding(top = window.topInset),
+                        horizontalAlignment = dockHorizontal,
+                    ) {
+                        navigationIcon?.let {
+                            it()
+                            Spacer(Modifier.height(PolarisSpace.tight))
+                        }
+                        if (logo != null) {
+                            logo()
+                            Spacer(Modifier.height(window.section))
+                        }
+                        content()
+                        if (detail != null) {
+                            Spacer(Modifier.height(window.section))
+                            detail()
+                        }
+                    }
+                    // The dock: its own scroll if the actions alone exceed 60 % of the window.
+                    Column(
+                        Modifier.widthIn(max = dockWidth).fillMaxWidth().heightIn(max = maxHeight * 0.6f).verticalScroll(rememberScrollState())
+                            .padding(top = PolarisSpace.controls, bottom = window.verticalPadding),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        content = actions,
+                    )
                 }
             }
             return@PolarisSurface
@@ -386,6 +435,9 @@ internal fun PolarisScaffold(
     }
 }
 
+/** The font scale from which a sign-in step's actions dock (Android font scale 2 is the reference; SwiftUI docks at AX5). */
+internal const val POLARIS_DOCK_FONT_SCALE: Float = 1.5f
+
 /** The side inset of an embedded pane: the pane gutter beside a list, the window's own margin when the item is the whole phone screen. */
 internal val LocalPolarisEmbeddedInset = staticCompositionLocalOf { PolarisSpace.gutter }
 
@@ -393,6 +445,7 @@ internal val LocalPolarisEmbeddedInset = staticCompositionLocalOf { PolarisSpace
 internal val LocalPolarisEmbedded = staticCompositionLocalOf { false }
 
 /** True inside the two-pane layout, where the start pane draws the product art and the content must not repeat it. */
+
 /** The product name a screen presents when it differs from the theme's (the integrator's name, else the product its lines name). */
 internal val LocalPolarisArtName = staticCompositionLocalOf<String?> { null }
 
@@ -503,8 +556,11 @@ internal fun polarisMessageIcon(kind: PolarisMessageKind): ImageVector =
 /** The icon a message kind shows. */
 internal fun PolarisMessageKind.icon(): ImageVector = when (this) {
     PolarisMessageKind.Info -> PolarisSymbols.Info
+
     PolarisMessageKind.Warning, PolarisMessageKind.Danger -> PolarisSymbols.Warning
+
     PolarisMessageKind.Offline -> PolarisSymbols.Refresh
+
     // DL6: a refusal the person can resolve carries no error glyph.
     PolarisMessageKind.Blocked, PolarisMessageKind.Locked -> PolarisSymbols.Info
 }
@@ -516,9 +572,13 @@ internal fun PolarisMessageKind.tint(): Pair<Color, Color> {
     val scheme = MaterialTheme.colorScheme
     return when (this) {
         PolarisMessageKind.Info -> scheme.primaryContainer to scheme.onPrimaryContainer
+
         PolarisMessageKind.Offline -> scheme.secondaryContainer to scheme.onSecondaryContainer
+
         PolarisMessageKind.Warning -> status.warningContainer to status.onWarningContainer
+
         PolarisMessageKind.Danger -> status.dangerContainer to status.onDangerContainer
+
         // DL6: a resolvable refusal is a neutral callout: default text on the sunken surface.
         PolarisMessageKind.Blocked, PolarisMessageKind.Locked -> scheme.surfaceContainerHighest to scheme.onSurface
     }
@@ -563,7 +623,8 @@ internal fun PolarisProductIcon(size: Dp, modifier: Modifier = Modifier, name: S
         Box(modifier.size(size).clip(shape), contentAlignment = Alignment.Center) { logo() }
         return
     }
-    val initial = (name?.takeIf { it.isNotBlank() } ?: productName(theme.copy))?.trim()?.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar() ?: return
+    val initial =
+        (name?.takeIf { it.isNotBlank() } ?: productName(theme.copy))?.trim()?.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar() ?: return
     val fontSize = with(LocalDensity.current) { (size * 0.46f).toSp() }
     Surface(
         modifier = modifier.size(size).clearAndSetSemantics {},
@@ -586,8 +647,8 @@ internal fun PolarisProductIcon(size: Dp, modifier: Modifier = Modifier, name: S
 internal fun productName(copy: PolarisCopy): String? = copy.productName.takeIf { it != DEFAULT_PRODUCT_NAME && it.isNotBlank() }
 
 /**
- * The product header of a focused step (UI-KITS.md §1.2): the product icon at 32 dp beside the
- * product's name at weight 500, then a section gap. Nothing when there is neither.
+ * The product header of a focused step (UI-KITS.md §1.2): the product icon at 28 dp beside the
+ * product's name at 17 sp, weight 600 (LOGO-2; the tile is no control), then a section gap. Nothing when there is neither.
  */
 @Composable
 internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polarisWindow.section) {
@@ -596,11 +657,11 @@ internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polar
     val name = presentedName?.takeIf { it.isNotBlank() } ?: productName(theme.copy)
     if (name == null && theme.logo == null) return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-        PolarisProductIcon(32.dp, name = name)
+        PolarisProductIcon(28.dp, name = name)
         if (name != null) {
             Text(
                 name,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -618,6 +679,13 @@ internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polar
 public fun PolarisTitle(text: String, modifier: Modifier = Modifier) {
     val window = polarisWindow
     val typography = MaterialTheme.typography
+    // A screen reader reading by touch lands on the step's heading when the step appears (as the React
+    // and SwiftUI kits do), so the person hears where they are before any control. Everyone else is unchanged.
+    val requester = remember { FocusRequester() }
+    val screenReader = rememberScreenReaderOn() && LocalPolarisInitialFocus.current
+    if (screenReader) {
+        LaunchedEffect(text) { runCatching { requester.requestFocus() } }
+    }
     Text(
         text = text,
         style = when {
@@ -627,7 +695,7 @@ public fun PolarisTitle(text: String, modifier: Modifier = Modifier) {
         }.copy(lineBreak = LineBreak.Heading),
         color = MaterialTheme.colorScheme.onSurface,
         textAlign = LocalPolarisTextAlign.current,
-        modifier = modifier.fillMaxWidth().semantics { heading() },
+        modifier = (if (screenReader) modifier.focusRequester(requester).focusable() else modifier).fillMaxWidth().semantics { heading() },
     )
 }
 
@@ -718,7 +786,7 @@ internal val LocalPolarisActionGrows = staticCompositionLocalOf { false }
 
 /** Full width in a stacked group, sized to the label in a trailing row; 56 dp tall (60 on TV). */
 @Composable
-private fun Modifier.controlSize(): Modifier {
+internal fun Modifier.controlSize(): Modifier {
     val height = polarisWindow.controlHeight
     val row = LocalPolarisActionRow.current
     val sized = if (row) this else this.fillMaxWidth()
@@ -732,7 +800,13 @@ private fun Modifier.controlSize(): Modifier {
     // GNOME: both actions of a pair are 40 px pills (the lead's decision); a pill grows with its label at a larger font scale.
     if (polarisWindow.isGnome) {
         // The focus ring sits on the pill's fixed height; only a larger font scale lets the pill grow with its label.
-        return if (LocalDensity.current.fontScale > 1f || LocalPolarisActionGrows.current) sized.heightIn(min = PolarisGnome.actionHeight) else sized.height(PolarisGnome.actionHeight)
+        return if (LocalDensity.current.fontScale > 1f ||
+            LocalPolarisActionGrows.current
+        ) {
+            sized.heightIn(min = PolarisGnome.actionHeight)
+        } else {
+            sized.height(PolarisGnome.actionHeight)
+        }
     }
     return sized.heightIn(min = height)
 }
@@ -755,7 +829,13 @@ public fun PolarisPrimaryButton(
     val shape = polarisActionShape(suggested = true)
     if (polarisWindow.fluent) {
         PolarisFluentButton(
-            FluentButtonKind.Accent, text, onClick, interaction, enabled = enabled, busy = busy, external = external,
+            FluentButtonKind.Accent,
+            text,
+            onClick,
+            interaction,
+            enabled = enabled,
+            busy = busy,
+            external = external,
             modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
         )
         return
@@ -764,7 +844,14 @@ public fun PolarisPrimaryButton(
         onClick = onClick,
         enabled = enabled && !busy,
         shape = shape,
-        colors = if (danger) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) else ButtonDefaults.buttonColors(),
+        colors = if (danger) {
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+            )
+        } else {
+            ButtonDefaults.buttonColors()
+        },
         contentPadding = if (polarisWindow.isMac) PolarisMac.buttonPadding else polarisButtonPadding(),
         border = if (polarisWindow.isMac) polarisMacControlBorder() else null,
         interactionSource = interaction,
@@ -815,7 +902,13 @@ public fun PolarisSecondaryButton(
     val shape = polarisActionShape(suggested = false)
     if (polarisWindow.fluent) {
         PolarisFluentButton(
-            FluentButtonKind.Standard, text, onClick, interaction, enabled = enabled, busy = busy, external = external,
+            FluentButtonKind.Standard,
+            text,
+            onClick,
+            interaction,
+            enabled = enabled,
+            busy = busy,
+            external = external,
             modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
         )
         return
@@ -869,7 +962,11 @@ public fun PolarisTextButton(
     val tv = polarisWindow.tv
     if (polarisWindow.fluent) {
         PolarisFluentButton(
-            FluentButtonKind.Subtle, text, onClick, interaction, enabled = enabled,
+            FluentButtonKind.Subtle,
+            text,
+            onClick,
+            interaction,
+            enabled = enabled,
             modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus),
         )
         return
@@ -942,7 +1039,9 @@ internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, vis
                     }
                 }
             } else {
-                val placeables = measurables.map { it.measure(Constraints(minWidth = maxWidth, maxWidth = maxWidth)) }.let { if (macOrder) it.asReversed() else it }
+                val placeables = measurables.map {
+                    it.measure(Constraints(minWidth = maxWidth, maxWidth = maxWidth))
+                }.let { if (macOrder) it.asReversed() else it }
                 val height = placeables.sumOf { it.height } + gap * (placeables.size - 1).coerceAtLeast(0)
                 layout(maxWidth, height) {
                     var y = 0
@@ -963,11 +1062,7 @@ internal fun PolarisActionGroup(row: Boolean, modifier: Modifier = Modifier, vis
  * trailing row, on a card on TV and wide windows.
  */
 @Composable
-public fun PolarisMessageScreen(
-    message: PolarisMessageCopy,
-    modifier: Modifier = Modifier,
-    actions: (@Composable () -> Unit)? = null,
-) {
+public fun PolarisMessageScreen(message: PolarisMessageCopy, modifier: Modifier = Modifier, actions: (@Composable () -> Unit)? = null) {
     PolarisMessageLayout(
         modifier = modifier,
         emblem = { PolarisIconBadge(polarisMessageIcon(message.kind), message.kind.tint().first, message.kind.glyph()) },
@@ -1109,33 +1204,37 @@ internal fun PolarisTextField(
                 keyboardOptions, keyboardActions,
             )
         } else if (polarisWindow.isGnome) {
-            PolarisGnomeEntry(value, onValueChange, label, placeholder, enabled, error != null, trailing, focusRequester, keyboardOptions, keyboardActions)
-        } else TextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            placeholder = placeholder?.let { { Text(it) } },
-            trailingIcon = trailing,
-            singleLine = true,
-            enabled = enabled,
-            isError = error != null,
-            shape = shape,
-            colors = if (branded) {
-                TextFieldDefaults.colors(
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                )
-            } else {
-                TextFieldDefaults.colors()
-            },
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions,
-            // Branded corners round at the bottom too, so the indicator is clipped to them.
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-                .then(if (branded) Modifier.clip(shape) else Modifier),
-        )
+            PolarisGnomeEntry(
+                value, onValueChange, label, placeholder, enabled, error != null, trailing, focusRequester, keyboardOptions, keyboardActions,
+            )
+        } else {
+            TextField(
+                value = value,
+                onValueChange = onValueChange,
+                label = { Text(label) },
+                placeholder = placeholder?.let { { Text(it) } },
+                trailingIcon = trailing,
+                singleLine = true,
+                enabled = enabled,
+                isError = error != null,
+                shape = shape,
+                colors = if (branded) {
+                    TextFieldDefaults.colors(
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                    )
+                } else {
+                    TextFieldDefaults.colors()
+                },
+                keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
+                // Branded corners round at the bottom too, so the indicator is clipped to them.
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                    .then(if (branded) Modifier.clip(shape) else Modifier),
+            )
+        }
         val supportingStyle = MaterialTheme.typography.bodySmall.copy(lineBreak = LineBreak.Paragraph)
         if (error != null) {
             Text(
@@ -1288,7 +1387,10 @@ internal fun PolarisSeatMeter(used: Int, limit: Int, caption: String?, descripti
     val filled = if (limit <= SEAT_METER_SEGMENTS) used.coerceIn(0, segments) else 0
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight)) {
         Row(
-            Modifier.fillMaxWidth().semantics { contentDescription = description; role = Role.Image },
+            Modifier.fillMaxWidth().semantics {
+                contentDescription = description
+                role = Role.Image
+            },
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (limit <= SEAT_METER_SEGMENTS) {

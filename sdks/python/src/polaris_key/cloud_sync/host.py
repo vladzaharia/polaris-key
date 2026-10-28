@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import atexit
 import json
+import math
 import os
 import re
 import threading
@@ -109,6 +110,9 @@ class CloudSyncHostDeps:
     fetch_schema: Callable[[], Optional[Mapping[str, Any]]]
     #: The signed config document's values and the keys it locks.
     document: Callable[[], Obj]
+    #: The person the device's session is for now, or ``None`` when not known. A request queued for
+    #: another person is dropped, not sent under this session's token.
+    subject: Optional[Callable[[], Optional[str]]] = field(default=None)
     #: Test seam: the clock, in epoch milliseconds.
     clock: Optional[Callable[[], int]] = field(default=None)
 
@@ -185,9 +189,13 @@ class CloudSyncHost:
         self._closed = False
         #: After a purge the journal stays unsaved until a principal signs in again.
         self._purged = False
+        #: The person the machine's queued requests belong to (``None`` for none).
+        self._bound: Optional[str] = None
         #: What the key ring last said about the root; applied to the machine at the next pump.
         self._root_pending: Optional[bool] = None
         self._building = False
+        #: The thread running a pump (or a purge's final emit): it may not wait on itself.
+        self._pump_thread: Optional[int] = None
 
     # ── basics ───────────────────────────────────────────────────────────────────────────────
 
@@ -365,13 +373,19 @@ class CloudSyncHost:
         """Run the machine now: advance its clock, exchange every queued request, save. Never raises."""
         if not self.started or not self._deps.ctx.enabled("sync"):
             return
+        if self._pump_thread == threading.get_ident():
+            # A listener reacting to an event from inside the pump: the pump runs again after it.
+            self._again = True
+            return
         while True:
             if self._pump_lock.acquire(blocking=False):
+                self._pump_thread = threading.get_ident()
                 try:
                     self._pump()
                 except Exception:  # noqa: BLE001 - the pump never throws into app code
                     pass
                 finally:
+                    self._pump_thread = None
                     self._pump_lock.release()
                 self._arm()
                 return
@@ -418,8 +432,13 @@ class CloudSyncHost:
         with self._lock:
             m.receive(res, opened)
 
+    def bind_subject(self, subject: Optional[str]) -> None:
+        """Tell the host whose requests the machine now holds (``None`` for none)."""
+        self._bound = subject
+
     def _exchange(self, m: CloudSyncMachine, req: Obj) -> None:
         """One request: seal it (E2E), send it, open the answer, hand both to the machine."""
+        bound = self._bound
         codec = self._deps.keyring.codec
         e2e = m.encryption_mode() == "e2e"
         # S3: a locked ring sends nothing, a pull included.
@@ -439,6 +458,15 @@ class CloudSyncHost:
                     # Locked, or a mutation that cannot be sealed: nothing is sent.
                     return self._receive(m, {"error": "transport"})
 
+        # Queued for one person: if the session is another person's now, nothing is sent.
+        now: Optional[str] = None
+        if self._deps.subject is not None:
+            try:
+                now = self._deps.subject()
+            except Exception:  # noqa: BLE001 - an unknown subject does not block a send
+                now = None
+        if bound is not None and now is not None and now != bound:
+            return self._receive(m, {"error": "transport"})
         res = send_sync(self._deps.ctx, self._deps.tokens, wire)
         ok = "status" in res and res["status"] == 200 and _is_obj(res.get("body"))
         if not e2e or not ok:
@@ -469,7 +497,7 @@ class CloudSyncHost:
         if not _is_obj(body):
             return
         v = body.get("catalogVersion")
-        if not isinstance(v, (int, float)) or isinstance(v, bool):
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or not math.isfinite(v):
             return
         if v == self._catalog.get("schemaVersion") or v == self._tried_catalog_version:
             return
@@ -636,16 +664,32 @@ class CloudSyncHost:
         the file could not be removed; the in-memory data is gone either way."""
         with self._save_lock:
             self._purged = True
+            # At once, before waiting for any pump: a sign-out that outlives its bounds, or a process
+            # that exits, must not leave the snapshot on disk. `_purged` stops any save racing this.
+            self._remove_quietly()
         self._open_keys = {}
         self._cancel_timer()
-        if self.started:
-            with self._pump_lock:  # any pump in progress ends first
-                self._emit_from(self.machine)
-                with self._lock:
-                    self._build(None)
-                    self.machine.import_local({})
-        with self._save_lock:
+        try:
+            if self.started:
+                with self._pump_lock:  # any pump in progress ends first
+                    self._pump_thread = threading.get_ident()
+                    try:
+                        self._open_keys = {}
+                        self._emit_from(self.machine)
+                        with self._lock:
+                            self._build(None)
+                            self.machine.import_local({})
+                    finally:
+                        self._pump_thread = None
+        finally:
+            with self._save_lock:
+                self._file.remove()
+
+    def _remove_quietly(self) -> None:
+        try:
             self._file.remove()
+        except Exception:  # noqa: BLE001 - the final removal below reports a failure
+            pass
 
     def flush(self, max_ms: int = SYNC_SIGNOUT_FLUSH_MS) -> None:
         """Send what is waiting and save, giving up (the journal is kept) after ``max_ms``."""

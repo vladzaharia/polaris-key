@@ -148,6 +148,8 @@ interface MemberRow {
   label: string | null;
   platform: string | null;
   last_seen: number;
+  created_at: number;
+  rotated_at: number | null;
 }
 
 export interface MemberOptions {
@@ -173,7 +175,7 @@ async function memberRows(
   opts: MemberOptions,
 ): Promise<MemberRow[]> {
   const rows = await db.all<MemberRow & { status: string; license_id: string }>(
-    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq, d.label, d.platform, d.last_seen,
+    `SELECT k.device_id, k.sign_key, k.agree_key, k.key_seq, k.created_at, k.rotated_at, d.label, d.platform, d.last_seen,
             d.status, d.license_id
        FROM device_keys k
        JOIN devices d ON d.product = k.product AND d.device_id = k.device_id
@@ -227,6 +229,8 @@ export interface AccountDeviceListing {
   label: string | null;
   platform: string | null;
   lastSeen: number;
+  /** When the device's current keys took effect: its last rotation, else first registration. */
+  keysSince: number;
 }
 
 /** The listing for `accountDeviceKeys`' set (same rule), sorted by `device_id`. */
@@ -242,6 +246,7 @@ export async function accountDeviceListing(
     label: r.label,
     platform: r.platform,
     lastSeen: r.last_seen,
+    keysSince: r.rotated_at ?? r.created_at,
   }));
 }
 
@@ -341,8 +346,9 @@ export async function upsertDeviceKeys(
           now,
         ],
       };
+  let wrote = true;
   try {
-    await db.batch([
+    const stmts: DbStatement[] = [
       write,
       {
         sql: `INSERT INTO device_key_floor (product, device_id, key_seq, pop_at)
@@ -351,7 +357,9 @@ export async function upsertDeviceKeys(
                 pop_at = COALESCE(excluded.pop_at, device_key_floor.pop_at)`,
         params: [popAt ?? null, product, deviceId],
       },
-    ]);
+    ];
+    if (db.batchChanges) wrote = (await db.batchChanges(stmts))[0]! > 0;
+    else await db.batch(stmts);
   } catch (e) {
     // A concurrent registration took the `agreeKey` between the read above and this write.
     if (e instanceof Error && /UNIQUE constraint failed/i.test(e.message)) {
@@ -363,6 +371,15 @@ export async function upsertDeviceKeys(
   // The guarded rotation matched nothing: another write changed the key since the read above.
   if (heldSignKey !== undefined && after?.sign_key !== keys.signKey) {
     throw new DeviceKeysInvalidError();
+  }
+  // The guarded UPDATE matched nothing (a concurrent change moved the key): nothing was written,
+  // so nothing changed and no `keys` event is due.
+  if (!wrote) {
+    return {
+      keySeq: after?.key_seq ?? current?.key_seq ?? 0,
+      changed: false,
+      rotated: false,
+    };
   }
   return {
     keySeq: after?.key_seq ?? (current?.key_seq ?? 0) + 1,

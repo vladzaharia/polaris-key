@@ -34,6 +34,7 @@ class GoogleSignInTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val clientId = "web-client.apps.googleusercontent.com"
     private val nonce = "server-nonce-1"
+
     // The googleid builder decodes the JWT payload, so the fake is a well-formed (unsigned) JWT.
     private val secretToken: String = run {
         fun b64(s: String) = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(s.toByteArray())
@@ -82,12 +83,13 @@ class GoogleSignInTest {
     }
 
     @Test
-    fun sheetListsEveryAccountWithTheNonce() {
+    fun sheetListsTheAuthorisedAccountsWithTheNonce() {
         val fake = Fake().apply { response = googleResponse() }
         call({ g, cb -> g.sheet(context, clientId, nonce, cb) }, fake)
         val option = fake.requests.single().credentialOptions.single() as GetGoogleIdOption
         assertEquals(nonce, option.nonce)
-        assertFalse(option.filterByAuthorizedAccounts)
+        // The plan's rung 4 is the rung 3 call with auto-select off: the authorised accounts, always a sheet.
+        assertTrue(option.filterByAuthorizedAccounts)
         assertFalse(option.autoSelectEnabled)
     }
 

@@ -135,6 +135,8 @@ the table.
 | `sign-in`                     | `#/p/<slug>/identity/sign-in`                | Sign-in → App sign-in (`#/p/<slug>/identity/app-sign-in`)                  | moved (I-29)     |
 | `sync-data`                   | `#/p/<slug>/sync/data`                       | Cloud Sync → Data (`#/p/<slug>/sync/data`)                                 | live             |
 | `connect-setup`               | `#/p/<slug>/connect/setup`                   | Cloud Connect → Cloud Connect (`#/p/<slug>/connect/setup`)                 | live             |
+| `connect-devices`             | `#/p/<slug>/connect/devices`                 | Cloud Connect → Linked devices (`#/p/<slug>/connect/devices`)              | live             |
+| `connect-usage`               | `#/p/<slug>/connect/usage`                   | Cloud Connect → Usage (`#/p/<slug>/connect/usage`)                         | live             |
 | `commerce-overview`           | `#/p/<slug>/commerce`                        | Commerce → Overview (`#/p/<slug>/commerce`)                                | live             |
 | `commerce`                    | `#/p/<slug>/commerce/in-app-purchases`       | Commerce → In-app purchases (`#/p/<slug>/commerce/in-app-purchases`)       | live             |
 | `platform-settings`           | `#/platform/settings`                        | Settings (`#/platform/settings`)                                           | live             |

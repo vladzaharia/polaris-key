@@ -160,6 +160,7 @@ public object ErrorCode {
     public const val storeFailed: String = "store-failed"
     public const val connectUnavailable: String = "connect-unavailable"
     public const val peerCertInvalid: String = "peer-cert-invalid"
+    public const val nearbyPermissionDenied: String = "nearby-permission-denied"
     public const val platformError: String = "platform-error"
     public const val noToken: String = "no-token"
     public const val mintUnavailable: String = "mint-unavailable"
@@ -370,6 +371,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "store-failed",
     "connect-unavailable",
     "peer-cert-invalid",
+    "nearby-permission-denied",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -580,6 +582,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "store-failed" to "client",
     "connect-unavailable" to "client",
     "peer-cert-invalid" to "client",
+    "nearby-permission-denied" to "client",
     "platform-error" to "client",
     "no-token" to "client",
     "mint-unavailable" to "client",
@@ -680,6 +683,11 @@ public object Feature {
     public const val syncConflict: String = "sync.conflict"
     public const val syncSaves: String = "sync.saves"
     public const val syncKeyring: String = "sync.keyring"
+    public const val syncRecords: String = "sync.records"
+    public const val syncFiles: String = "sync.files"
+    public const val syncFilesDelta: String = "sync.files.delta"
+    public const val syncE2eRecovery: String = "sync.e2e.recovery"
+    public const val syncTransferBackground: String = "sync.transfer.background"
     public const val syncE2e: String = "sync.e2e"
     public const val connectIdentity: String = "connect.identity"
     public const val connectNoise: String = "connect.noise"
@@ -813,6 +821,11 @@ public val FEATURE_VALUES: List<String> = listOf(
     "sync.conflict",
     "sync.saves",
     "sync.keyring",
+    "sync.records",
+    "sync.files",
+    "sync.files.delta",
+    "sync.e2e.recovery",
+    "sync.transfer.background",
     "sync.e2e",
     "connect.identity",
     "connect.noise",
@@ -1965,16 +1978,21 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.settings" to CapabilityRow("planned", "sync", listOf()),
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
     "sync.saves" to CapabilityRow("planned", "sync", listOf()),
-    "sync.keyring" to CapabilityRow("planned", "sync", listOf()),
+    "sync.keyring" to CapabilityRow("implemented", "sync", listOf()),
+    "sync.records" to CapabilityRow("planned", "sync", listOf()),
+    "sync.files" to CapabilityRow("planned", "sync", listOf()),
+    "sync.files.delta" to CapabilityRow("planned", "sync", listOf()),
+    "sync.e2e.recovery" to CapabilityRow("planned", "sync", listOf()),
+    "sync.transfer.background" to CapabilityRow("planned", "sync", listOf(CapabilityNa("jvm", "runtime"))),
     "sync.e2e" to CapabilityRow("planned", "sync", listOf()),
     "connect.identity" to CapabilityRow("implemented", "connect", listOf()),
-    "connect.noise" to CapabilityRow("planned", "connect", listOf()),
-    "connect.protocol" to CapabilityRow("planned", "connect", listOf()),
+    "connect.noise" to CapabilityRow("implemented", "connect", listOf()),
+    "connect.protocol" to CapabilityRow("implemented", "connect", listOf()),
     "connect.lan" to CapabilityRow("planned", "connect", listOf()),
-    "connect.relay" to CapabilityRow("planned", "connect", listOf()),
+    "connect.relay" to CapabilityRow("implemented", "connect", listOf()),
     "connect.links" to CapabilityRow("planned", "connect", listOf()),
     "connect.transfer" to CapabilityRow("planned", "connect", listOf()),
-    "connect.app" to CapabilityRow("planned", "connect", listOf()),
+    "connect.app" to CapabilityRow("implemented", "connect", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
     "devices.register" to CapabilityRow("implemented", "core", listOf()),
@@ -1993,7 +2011,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
     "identity.exchange" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
-    "identity.autosignin" to CapabilityRow("planned", "identity", listOf()),
+    "identity.autosignin" to CapabilityRow("implemented", "identity", listOf()),
     "identity.link" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
@@ -2061,4 +2079,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "355f39cf2fc92bdea400302d73720a95edecbd0d16b50396ecbb181e3085bbb3"
+public const val CAPABILITY_DIGEST: String = "bb7a9afdae5ae364a071028d7675a2dd8c13071004c01f5e13327310c956403b"

@@ -225,7 +225,12 @@ actor ReplayServer {
         self.step = step
         stepIndex = index
         served = Array(repeating: false, count: step.exchanges.items.count)
-        for (k, v) in step.args { if case .string(let s) = v { bindings[k] = s } }
+        for (k, v) in step.args {
+            // `deviceId` in a key ring step names the TARGET device (the path); the `{deviceId}` in a
+            // header stays the calling device's, which is `initial.deviceId`.
+            if k == "deviceId", step.action.hasPrefix("keyring") { continue }
+            if case .string(let s) = v { bindings[k] = s }
+        }
         return step
     }
 

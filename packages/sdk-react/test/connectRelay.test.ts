@@ -1089,6 +1089,10 @@ describe("adapter.cloudConnect", () => {
     await until(() => cc.status().relay === "open");
     expect(sockets).toBe(1);
     expect(cc.status()).toMatchObject({ running: true, lan: "off" });
+    // The relay asks for the roster as soon as it opens. Let that answer land first: a
+    // refresh sent before it would resolve on the stale answer (only this device) on a slow runner.
+    await until(() => room.received.some((r) => r.msg.op === "list"));
+    await sleep(5); // the answer's 0 ms delivery timer was queued before this one
     // Another device joins the room.
     const other = new FakeSock(room, "u", ["pkey-relay.1", "t"]);
     other.device = OTHER;

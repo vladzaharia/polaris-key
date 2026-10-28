@@ -65,8 +65,11 @@ public sealed interface LicenseChoice {
                 replaceDeviceId?.let { put("replaceDeviceId", JsonPrimitive(it)) }
             },
         )
+
         Keep -> JsonObject(mapOf("kind" to JsonPrimitive("keep")))
+
         Create -> JsonObject(mapOf("kind" to JsonPrimitive("create")))
+
         is Key -> JsonObject(mapOf("kind" to JsonPrimitive("key"), "key" to JsonPrimitive(key)))
     }
 
@@ -156,7 +159,10 @@ public sealed interface ChoiceResult<out T> {
 }
 
 private enum class ChoiceEndpoint(val key: String) {
-    Licenses("choiceLicenses"), Devices("choiceDevices"), Complete("choiceComplete"), Cancel("choiceCancel"),
+    Licenses("choiceLicenses"),
+    Devices("choiceDevices"),
+    Complete("choiceComplete"),
+    Cancel("choiceCancel"),
 }
 
 /** `client.identity.choice`. */
@@ -246,10 +252,13 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         core.requireService(ServiceSlug.identity, Feature.identityChoice)
         val url = core.discoveryDocument()?.identity?.endpoints?.get(name.key)
         if (url.isNullOrEmpty()) {
-            val unsupported = Unsupported(Feature.identityChoice, UnsupportedReason.product, "this product's discovery names no identity ${name.key} endpoint")
+            val unsupported =
+                Unsupported(Feature.identityChoice, UnsupportedReason.product, "this product's discovery names no identity ${name.key} endpoint")
             throw PolarisException(
-                ErrorCode.serviceUnavailable, "The identity ${name.key} endpoint is not served for ${core.product}.",
-                detail = unsupported.detail, unsupported = unsupported,
+                ErrorCode.serviceUnavailable,
+                "The identity ${name.key} endpoint is not served for ${core.product}.",
+                detail = unsupported.detail,
+                unsupported = unsupported,
             )
         }
         return url
@@ -260,7 +269,9 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         return try {
             // No authorization header: the grant in the body is the credential.
             core.request(
-                url, method = "POST", headers = mapOf("content-type" to "application/json"),
+                url,
+                method = "POST",
+                headers = mapOf("content-type" to "application/json"),
                 body = JsonObject(body).toString().toByteArray(Charsets.UTF_8),
             )
         } catch (e: CancellationException) {
@@ -279,12 +290,17 @@ public class ChoiceClient internal constructor(private val client: IdentityClien
         val b = JsonText.parseOrNull(res.text).objectValue
         val error = b?.get("error")
         val code = error.objectValue?.get("code").stringValue ?: error.stringValue ?: "http_${res.status}"
-        val bodyRetry = b?.get("retryAfter").let { v -> (v as? JsonPrimitive)?.content?.toDoubleOrNull()?.takeIf { it > 0 }?.let { ceil(it).toInt() } }
+        val bodyRetry = b?.get("retryAfter").let { v ->
+            (v as? JsonPrimitive)?.content?.toDoubleOrNull()?.takeIf { it > 0 }?.let { ceil(it).toInt() }
+        }
         val retry = bodyRetry ?: res.header("retry-after")?.trim()?.toIntOrNull()?.takeIf { it > 0 }
         return ChoiceResult.Refused(
-            code = code, httpStatus = res.status, retryAfterSeconds = retry,
+            code = code,
+            httpStatus = res.status,
+            retryAfterSeconds = retry,
             view = LicenseChoiceView.of(b?.get("view").objectValue),
-            manageUrl = b?.get("manageUrl").stringValue, signInUrl = b?.get("signInUrl").stringValue,
+            manageUrl = b?.get("manageUrl").stringValue,
+            signInUrl = b?.get("signInUrl").stringValue,
             keyEntries = b?.get("keyEntries").objectValue?.let { counts(it) },
         )
     }

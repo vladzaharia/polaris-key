@@ -16,7 +16,7 @@ license for it.
 
 - An app you bought with your account's email appears by itself.
 - An app the developer gave you when you signed in appears by itself. Its **License source** says
-  **Automatic grant**.
+  **Sign-in**.
 - An app you add with a license key appears after you add the key. See
   [Add a license with a key](/docs/help/add-a-license/).
 - A free app you add from **Discover** appears when you add it. See

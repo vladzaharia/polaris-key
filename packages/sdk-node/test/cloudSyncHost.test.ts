@@ -17,11 +17,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import type { Store } from "@polaris-key/client-core";
 import type { PolarisKeyClient } from "../src/client.js";
 import { CATALOG_REFETCH_MS, CloudSyncHost } from "../src/cloudSync/host.js";
+import { CloudSyncStateFile } from "../src/cloudSync/state.js";
 import { readCappedText } from "../src/core/boundedBody.js";
 import {
   CATALOG,
@@ -45,6 +46,30 @@ async function rig(w: World, opts: { catalog?: boolean } = {}) {
   );
   return { client, host: client.cloudSyncHost, stateDir };
 }
+
+/** A host over the client's own parts, with a clock the test moves. */
+const timed = (
+  client: PolarisKeyClient,
+  mirror?: object,
+  subject?: () => Promise<string | null>,
+) => {
+  const clock = { t: 1_700_000_000_000 };
+  const inner = client as unknown as { core: never; tokens: never };
+  const host = new CloudSyncHost(
+    {
+      ctx: inner.core,
+      tokens: inner.tokens,
+      keyring: client.keyring,
+      discovery: () => null,
+      fetchSchema: () => client.config.fetchSchema(),
+      document: () => ({ values: {} }),
+      clock: { now: () => clock.t },
+      ...(subject ? { subject } : {}),
+    },
+    mirror ? { catalog: mirror as never } : {},
+  );
+  return { host, clock };
+};
 
 /** A rig with a created ring (the root held), the host started and `SUBJECT` signed in. */
 async function live(w: World) {
@@ -128,6 +153,46 @@ describe("cloud sync host: the ring gates every request (S3)", () => {
     await host.touch();
     const p = host.machine.persist().partitions[SUBJECT]!;
     expect(p.cursor).toBe(0);
+    client.close();
+  });
+});
+
+describe("cloud sync host: a wake-up is never lost", () => {
+  it("start, then signIn, then touch sends the pull (the touch lands while start's own pump settles)", async () => {
+    const w = new World();
+    const { client, host } = await rig(w);
+    await client.keyring.create();
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    await host.touch();
+    expect(w.syncReqs.some((r) => r.method === "GET")).toBe(true);
+    client.close();
+  });
+
+  it("a touch that lands while the pump saves is run, not dropped", async () => {
+    const w = new World();
+    const { client, host } = await rig(w);
+    await client.keyring.create();
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    const save = CloudSyncStateFile.prototype.save;
+    let injected = false;
+    const spy = vi
+      .spyOn(CloudSyncStateFile.prototype, "save")
+      .mockImplementation(async function (this: CloudSyncStateFile, file) {
+        if (!injected) {
+          injected = true;
+          // The pump's loop has looked and found nothing; new work arrives while it saves.
+          host.machine.set("theme", "late");
+          host.machine.flush();
+          void host.touch();
+        }
+        await new Promise((r) => setTimeout(r, 20));
+        return save.call(this, file);
+      });
+    await host.touch();
+    spy.mockRestore();
+    expect(w.syncReqs.some((r) => r.method === "POST")).toBe(true);
     client.close();
   });
 });
@@ -259,25 +324,6 @@ describe("cloud sync host: mode, catalog and state", () => {
     expect(host.machine.get("theme").value).not.toBe("plain");
     client.close();
   });
-
-  /** A host over the client's own parts, with a clock the test moves. */
-  const timed = (client: PolarisKeyClient, mirror?: object) => {
-    const clock = { t: 1_700_000_000_000 };
-    const inner = client as unknown as { core: never; tokens: never };
-    const host = new CloudSyncHost(
-      {
-        ctx: inner.core,
-        tokens: inner.tokens,
-        keyring: client.keyring,
-        discovery: () => null,
-        fetchSchema: () => client.config.fetchSchema(),
-        document: () => ({ values: {} }),
-        clock: { now: () => clock.t },
-      },
-      mirror ? { catalog: mirror as never } : {},
-    );
-    return { host, clock };
-  };
 
   it("fetches the catalog once when none is cached or compiled, and again only after the refetch window", async () => {
     const w = new World();
@@ -488,6 +534,44 @@ describe("cloud sync host: bounded bodies", () => {
     const { client } = await rig(w);
     w.schemaLength = String(2 ** 30);
     expect(await client.config.fetchSchema()).toBeNull();
+    client.close();
+  });
+});
+
+describe("cloud sync host: requests are bound to the person they were queued for", () => {
+  it("a request queued for one person is never sent once the session is another's", async () => {
+    const w = new World();
+    const { client } = await rig(w);
+    await client.keyring.create();
+    const now = { v: SUBJECT as string | null };
+    const { host } = timed(client, undefined, async () => now.v);
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    host.bindSubject(SUBJECT);
+    await host.touch();
+    const before = w.syncReqs.length;
+    host.machine.set("theme", "P1-VALUE");
+    now.v = "P2";
+    await host.flush(1000);
+    expect(w.syncReqs.slice(before)).toEqual([]);
+    client.close();
+  });
+
+  it("an unknown subject still sends", async () => {
+    const w = new World();
+    const { client } = await rig(w);
+    await client.keyring.create();
+    const { host } = timed(client, undefined, async () => null);
+    await host.start();
+    host.machine.signIn(SUBJECT);
+    host.bindSubject(SUBJECT);
+    await host.touch();
+    const before = w.syncReqs.length;
+    host.machine.set("theme", "offline-boot");
+    await host.flush(1000);
+    expect(w.syncReqs.slice(before).some((r) => r.method === "POST")).toBe(
+      true,
+    );
     client.close();
   });
 });

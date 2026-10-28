@@ -18,3 +18,202 @@ only from Polaris Key's Maven feed. To start, see the [quickstart](/docs/build/q
 to draw your own screens, [Your own UI](/docs/build/sdks/kotlin/your-own-ui/).
 
 <KotlinReadme />
+
+## Automatic sign-in
+
+`identity.autoSignIn()` signs the person in without a form. It never throws (cancellation aside) and
+answers an `AutoSignInResult`. The rungs, in order:
+
+1. **Stored session.** A device token from an earlier sign-in and a held license: `SignedIn`, no network.
+2. **Silent restore.** Planned; the ladder skips it.
+3. **Platform account, silently.** On Android the Google account the person already used with your app,
+   through Credential Manager. The exchange runs over a fresh nonce from the Worker.
+4. **Platform sheet.** One Google account sheet, listing the accounts already used with your app, only when you pass `AutoSignInPrompt.OPTIONAL`.
+
+Anything else is the regular sign-in form. A JVM desktop app has no platform account: the ladder is
+rung 1, then `NeedsSignIn`.
+
+```kotlin
+import im.plrs.key.identity.AutoSignInOptions
+import im.plrs.key.identity.AutoSignInPrompt
+import im.plrs.key.identity.AutoSignInResult
+
+suspend fun signInAtLaunch() {
+    val result = client.identity.autoSignIn(AutoSignInOptions(prompt = AutoSignInPrompt.OPTIONAL))
+    when (result) {
+        is AutoSignInResult.SignedIn -> showGate()
+        is AutoSignInResult.Confirm -> {}      // show the consent, then identity.choice.complete(grant, null, consent)
+        is AutoSignInResult.Choose -> {}       // show the license choice, then identity.choice.complete(grant, choice)
+        is AutoSignInResult.DeviceLimit -> {}  // every seat is taken: result.manageUrl frees one
+        is AutoSignInResult.NeedsSignIn -> {}  // result.reason: NoLink, Terms, SignedOut or NoCredential
+        is AutoSignInResult.Unavailable -> {}  // result.code is the Worker's, or platform-identity-unavailable
+    }
+}
+```
+
+From Java, `PolarisKeyFutures.autoSignIn(options)` returns a `CompletableFuture`.
+
+### Android
+
+Install the provider once, before the first `autoSignIn()`. The `play` flavor carries Credential
+Manager. In the `direct` flavor the provider answers unavailable: the ladder still asks the Worker for a
+nonce at each of rungs 3 and 4, finds nothing, and ends at `NeedsSignIn(NoCredential)`, so install it
+in the `play` flavor only.
+
+`PolarisKeyAndroid.client` also gives the client its device keys (`androidDeviceKeyStore`, Keystore-wrapped,
+in `noBackupFilesDir`), which the platform exchange signs its proof with. Pass `ConnectOptions(deviceKeys = ...)`
+to use your own.
+
+```kotlin android
+import android.app.Activity
+import android.content.Context
+import im.plrs.key.android.PlatformSignIn
+import im.plrs.key.android.asProvider
+import im.plrs.key.sdk.PolarisKeyClient
+
+fun installSignIn(client: PolarisKeyClient, context: Context, currentActivity: () -> Activity?) {
+    client.identity.installPlatformIdentity(PlatformSignIn(currentActivity, appContext = context).asProvider())
+}
+```
+
+`PlatformSignIn` needs `appContext` so sign-out can clear Credential Manager's state with no Activity in
+front.
+
+Rung 3 is silent only when the person has exactly one authorised Google account. With two or more,
+Credential Manager shows its account chooser, and it gives no signal to stop that, so the "silent" rung can
+show one sheet even under `AutoSignInPrompt.NEVER`. Do not install the provider if your app must never show one.
+
+The Google web client id comes from the product's discovery document. `asProvider(fallbackClientId)`
+takes a fallback for a product that publishes none.
+
+### Signing out
+
+`identity.signOut()` sets a flag on the device and, on Android, clears Credential Manager's state (through
+the Activity in front, else the `appContext` you gave `PlatformSignIn`; without either, only the flag is set). While it is set,
+rungs 3 and 4 do not run: nothing signs the person back in behind their back. The next sign-in the person
+starts clears it. A provider that reports its credential revoked at launch signs the device out the
+same way.
+
+### Compose
+
+`PolarisKeyGate` runs `autoSignIn()` once at boot and draws the consent, the license choice, the device
+limit and the sign-in form, with a "Continue with Google" row when a provider is installed.
+`PolarisKeyGate(client, autoSignIn = false)` turns it off. See the
+[Compose kit](/docs/build/ui/frameworks/compose/).
+
+### Google setup
+
+Two things to register before the Google rungs work, both in Google Cloud:
+
+- **Client id.** A Web client, whose id is `identity.platformSignIn.google.serverClientId` in your
+  `.pkey/product` manifest or the console. Add an Android client per package for `clientIds`.
+- **SHA-1.** Each Android client needs your package name and a signing-certificate SHA-1: the Play app
+  signing key, the upload key and the debug key.
+
+The step-by-step page is planned (Developers, Sign-in, platform setup).
+
+## Cloud Sync key ring
+
+`client.keyring` holds the person's end-to-end key: one root per ring, shared by their devices and
+never sent to the Worker in the clear. The Worker stores only wraps of it, one per device, and a blob
+sealed under the recovery code. The Cloud Sync client that seals settings with it is planned; the key
+ring itself is here. It uses the device keys `client.connect` uses.
+
+| Call                             | What it does                                                                                                                            |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `status()`                       | What this device holds now, with no request: `unlocked`, `ringId`, `epoch`, `pinned`, `rootStored`, `rootPersistence`.                  |
+| `unlock()`                       | Opens this device's own wrap: `Unlocked`, `Locked(reason)` (`NoRing`, `NoWrap`, `UnusableWrap`) or `RingChanged`.                       |
+| `create(recovery)`               | A new ring: a fresh root, a wrap to this device and, by default, a recovery code. A ring that already exists throws `keyring_conflict`. |
+| `reset(recovery)`                | Starts over with a new ring. The Worker keeps the old ring as `previous` for 30 days.                                                   |
+| `wrapTo(deviceId, agreeKey)`     | Wraps the root to another device of the same person, with the agreement key its nearby approval carried.                                |
+| `setRecoveryCode()`              | A new recovery code; the previous one stops working.                                                                                    |
+| `recover(codeText)`              | Opens the root from the typed recovery code.                                                                                            |
+| `adopt(ringId)`, `openAdopted()` | Folds an earlier ring's root under the current one, and opens the roots already folded in.                                              |
+| `lock()`, `forget()`             | Drops the roots from memory (quit), or from memory and storage with the pin (sign-out).                                                 |
+
+A locked ring refuses to seal or open with `sync-locked`. `attach(listener)` takes a `SyncRootListener`
+that is told whenever the root is gained or lost.
+
+```kotlin
+import im.plrs.key.sdk.SyncUnlockResult
+
+suspend fun openRing(): String? {
+    val ring = client.keyring
+    if (ring.status().unlocked) return null    // a restart: the stored root came back, no request
+
+    return when (val result = ring.unlock()) {
+        is SyncUnlockResult.Unlocked -> null
+        is SyncUnlockResult.Locked ->
+            // No ring yet: the first device. The recovery code is returned once, here, and kept nowhere.
+            if (result.reason == SyncUnlockResult.LockReason.NoRing) ring.create().recoveryCode else null
+        is SyncUnlockResult.RingChanged -> null // see "A changed ring" below
+    }
+}
+```
+
+**The recovery code** is shown once, when the ring is created or the code is reset, and the SDK keeps
+it nowhere: not in storage, not in a log, not in an error, and `SyncCreatedRing` prints without it.
+Show it to the person to write down, and ask for it only inside your app. Every type that holds a
+root prints as redacted.
+
+```kotlin
+import im.plrs.key.core.PolarisException
+
+suspend fun recoverRing(typed: String): Boolean = try {
+    client.keyring.recover(typed).wrapDeposited // true: the next start unlocks without the code
+} catch (e: PolarisException) {
+    if (e.code == "recovery-code-invalid") false else throw e // a typo or the wrong code
+}
+```
+
+`recover` checks the code before any request. On success the root is held and pinned, and this device
+deposits its own wrap.
+
+**Wrapping to another device.** On a device that holds the root, `wrapTo(deviceId, agreeKey)` seals it
+to the other device's agreement key. That device then calls `unlock()`. The agreement key never leaves
+its `DeviceKeyPort`: a wrap is opened through the port.
+
+```kotlin
+suspend fun approve(deviceId: String, agreeKey: String) {
+    client.keyring.wrapTo(deviceId, agreeKey)
+}
+```
+
+**A changed ring.** The first root this device acquires pins the ring's `ringId`, `epoch` and
+`rootKid`. A ring or wrap the Worker later serves that differs from the pin is never opened: `unlock()`
+answers `RingChanged` and nothing is replaced. Show the person what changed (`served`, `createdAt`,
+and `by`, the device that wrapped), and call `acceptRingChange(served)` only from their yes.
+`recover` also re-pins.
+
+```kotlin
+import im.plrs.key.sdk.SyncRingPin
+import im.plrs.key.sdk.SyncUnlockResult
+
+suspend fun acceptChange(served: SyncRingPin): Boolean {
+    // Call this only after the person confirmed the ring they were shown.
+    val result = client.keyring.acceptRingChange(served)
+    return result is SyncUnlockResult.Unlocked // otherwise the Worker now serves another ring: ask again
+}
+```
+
+**Reset and adopt.** `reset()` makes a new ring; the root this device held stays in memory so
+`adopt(ringId)` can fold it under the new one. `openAdopted()` opens the roots already folded in, so
+`client.keyring.codec` reads data sealed under them.
+
+**Sign-out.** `identity.signOut()` calls `forget()` after Connect's roster is dropped: the roots leave
+memory and storage and the pin is dropped, so the next person starts clean. A root that cannot be
+deleted throws and stops the sign-out.
+
+**Where the root lives.** In memory while the app runs, and in one stored record that a restart takes
+back while it matches the pin. Where depends on the platform:
+
+- **Android.** `PolarisKeyAndroid.client` seals it with the Android Keystore under its own alias,
+  separate from the device keys', in a file under `noBackupFilesDir` that is never backed up. Pass
+  `KeyringOptions(rootStorage = androidSyncRootStorage(context, product))` to build it yourself.
+- **JVM desktop.** An owner-only (0600) file, `pkey.sync-root.v1.bin`, in the state directory beside
+  the device keys. The JVM has no OS keyring for it.
+- **No state directory.** Memory only: the root dies with the process, and `status().rootPersistence`
+  reads `memory`.
+
+A write that fails leaves the root in memory only. Pass `KeyringOptions(rootStorage = ...)` to keep it
+anywhere else.

@@ -538,6 +538,27 @@
       "status": "implemented",
       "note": "U-38.2: the browser bearer engine's key ring (RingEngine, ui-core browser/ring) on client-core's sync crypto and WebCrypto. The seven keyring-* transcripts replay through it (test/transcripts.test.ts); test/keyring.test.ts pins create, unwrap of this device's wrap, wrap to another device, recover and set the recovery code, reset and adopt, the lock and the codec keys. The root is a non-extractable HKDF key in IndexedDB; its bytes live in memory for 300 s after a create or recovery. A browser unlocks only with the recovery code (Q8). A browser whose device keys are memory-only (WebKit) cannot create or reset a ring (the Worker needs registered keys): it unlocks with the code and keeps the root in memory, so every load asks for the code again. A cookie page, the local adapter and the desktop bridge answer the typed N/A (runtime, runtime, version): the host serves no ring verb yet."
     },
+    "sync.records": {
+      "status": "planned",
+      "wp": "U-22"
+    },
+    "sync.files": {
+      "status": "planned",
+      "wp": "U-22"
+    },
+    "sync.files.delta": {
+      "status": "planned",
+      "wp": "U-22"
+    },
+    "sync.e2e.recovery": {
+      "status": "planned",
+      "wp": "U-20"
+    },
+    "sync.transfer.background": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime"
+    },
     "sync.e2e": {
       "status": "planned",
       "wp": "U-20"

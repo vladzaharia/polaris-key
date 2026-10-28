@@ -700,6 +700,60 @@
     <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
     <string name="cloudSync_signIn">サインインして同期</string>
     <string name="cloudSync_signIn__macos">サインインして同期</string>
+    <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
+    <string name="cloudSync_locked">同期はロックされています。</string>
+    <!-- CloudSyncStatus: a small sync status. Opens the screen that asks for the recovery code (UnlockSync). -->
+    <string name="cloudSync_unlock">同期のロックを解除</string>
+    <string name="cloudSync_unlock__macos">同期のロックを解除</string>
+    <!-- CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange. -->
+    <string name="cloudSync_ringChanged">同期キーが変更されました。</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. -->
+    <string name="unlockSync_title">同期したデータのロックを解除</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. -->
+    <string name="unlockSync_lede">Polaris Lockerアカウント用に保存したリカバリーコードを入力してください。</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The field's label. The code is checked on the device before anything is sent. -->
+    <string name="unlockSync_field">リカバリーコード</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The primary action. -->
+    <string name="unlockSync_unlock">ロック解除</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Opens the confirmation that replaces the sync key; the second action beside Unlock. -->
+    <string name="unlockSync_startOver">最初からやり直す</string>
+    <string name="unlockSync_startOver__macos">最初からやり直す</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it. -->
+    <string name="unlockSync_invalid">コードが正しくありません。確認してもう一度お試しください。</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code. -->
+    <string name="unlockSync_failed">ロックを解除できませんでした。しばらくしてからもう一度お試しください。</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
+    <string name="unlockSync_startOverTitle">最初からやり直しますか？</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->
+    <string name="unlockSync_startOverWarning">現在同期されているデータは失われます。リカバリーコードが見つからない場合にのみ、やり直してください。</string>
+    <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action. -->
+    <string name="unlockSync_startOverConfirm">最初からやり直す</string>
+    <string name="unlockSync_startOverConfirm__macos">最初からやり直す</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
+    <string name="recoveryCode_title">リカバリーコードを保存</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
+    <string name="recoveryCode_lede">新しいデバイスで同期データのロックを解除するときに必要です。表示されるのは一度だけです。</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. Also shown by UnlockSync (T23): never entered on a web page, in an email or to a person. -->
+    <string name="recoveryCode_noAsk">このコードを尋ねる人はいません。アプリ内でのみ入力してください。</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
+    <string name="recoveryCode_copy">コードをコピー</string>
+    <string name="recoveryCode_copy__macos">コードをコピー</string>
+    <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked. -->
+    <string name="recoveryCode_saved">リカバリーコードを保存しました</string>
+    <!-- RingChange: confirm a changed sync key (U-42). -->
+    <string name="ringChange_title">同期キーが変更されました</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names. Arguments: 1=device. -->
+    <string name="ringChange_body">%1$sが同期データの新しいキーを設定しました。</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->
+    <string name="ringChange_bodyUnknown">デバイスが同期データの新しいキーを設定しました。</string>
+    <!-- RingChange: confirm a changed sync key (U-42). -->
+    <string name="ringChange_warning">ご自身で行った場合のみ続けてください。そうでない場合は、リカバリーコードでロックを解除してください。</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange. -->
+    <string name="ringChange_accept">自分で行いました</string>
+    <string name="ringChange_accept__macos">自分で行いました</string>
+    <!-- RingChange: confirm a changed sync key (U-42). Opens UnlockSync. -->
+    <string name="ringChange_useCode">リカバリーコードを使う</string>
+    <string name="ringChange_useCode__macos">リカバリーコードを使う</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="about_title">%1$sについて</string>
     <!-- About: product and build information. The bare section label in a navigation list; the product name is not repeated. -->
@@ -2594,6 +2648,10 @@
     <string name="core_codes_peer_cert_invalid_title">デバイスを確認できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_message">このデバイスを確認できませんでした。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_title">ローカルネットワークがブロックされています</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_permission_denied_message">このアプリはローカルネットワーク上のデバイスにアクセスできません。システム設定で許可してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">プラットフォームの問題</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

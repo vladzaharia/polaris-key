@@ -248,6 +248,8 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
 export const INTERNAL: Readonly<Record<string, string>> = {
   PKeyEntitlementBadge:
     '"Included with" chips a game places beside its own UI; the catalog has no component for them (the framework page lists the scene)',
+  PKeySignInStep:
+    "The automatic sign-in steps (confirm, link offer, nearby) drawn from the SignIn form's model with an `autoSignIn` input; the catalog has no component of their own, the host's flow drives them",
 };
 
 // ── The addon's source ────────────────────────────────────────────────────────────────────

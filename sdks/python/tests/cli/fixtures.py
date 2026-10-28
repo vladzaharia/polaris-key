@@ -151,8 +151,20 @@ FIXTURES: Tuple[Fixture, ...] = (
     Fixture("SignInHandoff", "code", "login", _sign_in(True)),
     Fixture("SignInHandoff", "waiting", "login", _sign_in(False, ("use_code", None))),
     Fixture("SignInHandoff", "link-copied", "login", _sign_in(True, ("copied", None))),
-    Fixture("SignIn", "finishing", "login", lambda k: screens.sign_in(k, SignInModel()._set(component="SignIn", state="finishing", url_complete=_Prompt.verification_uri_complete), "login", frame=2)),
-    Fixture("SignIn", "done", "login", _sign_in(False, ("finished", _Result("signed_in", "Mara Fennick", "mara@fennick.studio")))),
+    Fixture(
+        "SignIn",
+        "finishing",
+        "login",
+        lambda k: screens.sign_in(
+            k,
+            SignInModel()._set(component="SignIn", state="finishing", url_complete=_Prompt.verification_uri_complete),
+            "login",
+            frame=2,
+        ),
+    ),
+    Fixture(
+        "SignIn", "done", "login", _sign_in(False, ("finished", _Result("signed_in", "Mara Fennick", "mara@fennick.studio")))
+    ),
     Fixture("SignInHandoff", "expired", "login", _sign_in(True, ("finished", _Result("expired")))),
     Fixture("SignInHandoff", "denied", "login", _sign_in(True, ("errored", "sign-in-denied"))),
     Fixture("SignInHandoff", "failed", "login", _sign_in(True, ("errored", "sign-in-failed"))),
@@ -204,6 +216,11 @@ FIXTURES: Tuple[Fixture, ...] = (
     Fixture("Settings", "error", "config", lambda k: screens.settings(k, SettingsView("Settings", "error", code="managed_by_admin"), "config")),
 )
 
+_AUTO_SIGN_IN = (
+    "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); "
+    "the terminal signs in by browser or code"
+)
+
 #: Catalog states the terminal never draws, and why (UI-KITS §1.3: the terminal is the browser
 #: presentation of sign-in, SIGN-IN.md D-93; layer 1 has no device list for a key, §4.3).
 NOT_DRAWN = {
@@ -215,14 +232,17 @@ NOT_DRAWN = {
     ("Activate", "key-entry-limit"): "the terminal prints the refusal with its fix, `login` (the activate verb); no QR",
     ("Activate", "license-owned"): "the terminal prints the refusal with its fix, `login` (the activate verb)",
     ("SignIn", "key-refused"): "the key path is the activate verb",
-    ("SignIn", "confirm"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
-    ("SignIn", "link-offer"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
-    ("SignIn", "link-done"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
-    ("SignIn", "link-conflict"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
-    ("SignIn", "nearby-prompt"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
-    ("SignIn", "nearby-wait"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
-    ("SignIn", "nearby-done"): "automatic sign-in is the platform ladder of an app (I-44, I-45, I-46, I-48); the terminal signs in by browser or code",
-    ("SignIn", "device-limit"): "a device limit with no license rows follows an automatic or provider sign-in; the terminal's device limit is Activate device-limit, drawn by the activate verb",
+    ("SignIn", "confirm"): _AUTO_SIGN_IN,
+    ("SignIn", "link-offer"): _AUTO_SIGN_IN,
+    ("SignIn", "link-done"): _AUTO_SIGN_IN,
+    ("SignIn", "link-conflict"): _AUTO_SIGN_IN,
+    ("SignIn", "nearby-prompt"): _AUTO_SIGN_IN,
+    ("SignIn", "nearby-wait"): _AUTO_SIGN_IN,
+    ("SignIn", "nearby-done"): _AUTO_SIGN_IN,
+    ("SignIn", "device-limit"): (
+        "a device limit with no license rows follows an automatic or provider sign-in; "
+        "the terminal's device limit is Activate device-limit, drawn by the activate verb"
+    ),
     ("SignIn", "expired"): "the terminal's sign-in expires with its code: SignInHandoff expired",
     ("SignInHandoff", "finishing"): "the SDK redeems the code inside wait_for_sign_in; SignIn finishing is drawn",
     ("DeviceLimit", "default"): "no device list for a key in layer 1 (UI-KITS §4.3); browser mode is drawn",

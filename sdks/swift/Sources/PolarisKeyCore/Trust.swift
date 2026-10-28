@@ -35,6 +35,18 @@ public struct TrustManifestResult: Sendable, Equatable {
     }
 }
 
+/// What `CoreContext.acceptPeer` answers: `applied`, or the `reason` it was refused
+/// (`invalid`, `not_newer`). It names no key material.
+public struct PeerTrustResult: Sendable, Equatable {
+    public let applied: Bool
+    public let reason: String?
+
+    public init(applied: Bool, reason: String?) {
+        self.applied = applied
+        self.reason = reason
+    }
+}
+
 public struct VerifyTrustManifestOptions: Sendable {
     /// The ONLY keys a manifest may be signed by. A discovered key can never sign the manifest
     /// that would extend its own authority.

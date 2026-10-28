@@ -23,7 +23,8 @@ playIntegrity = "1.6.0"
 # (below ours) and no minCompileSdk, so it builds under compileSdk 36 and AGP 8.6.1.
 playBilling = "9.1.0"
 # Credential Manager for :platform's play flavour (I-45.4, Q-10), exact pins. credentials 1.6.0 is
-# the last stable (1.7.0 is alpha); googleid 1.2.1 depends on credentials 1.6.0 (1.2.0 on a beta).
+# the last stable (1.7.0 is alpha). googleid is pinned at 1.2.0 (the lead's decision; 1.2.1 is not adopted):
+# it declares a credentials beta, which the direct 1.6.0 pin above resolves up to.
 androidxCredentials = "1.6.0"
 googleid = "1.2.0"
 junit = "4.13.2"

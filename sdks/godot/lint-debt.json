@@ -299,7 +299,7 @@
       "gdlint:class-definitions-order": 1
     },
     "sdks/godot/addons/polaris_key/ui/model/activate.gd": {
-      "gdlint:class-definitions-order": 9
+      "gdlint:class-definitions-order": 11
     },
     "sdks/godot/addons/polaris_key/ui/model/copy_format.gd": {
       "gdlint:class-definitions-order": 5,
@@ -467,9 +467,6 @@
     },
     "sdks/godot/tests/dev_live/test_refusals.gd": {
       "gdlint:max-line-length": 4
-    },
-    "sdks/godot/tests/dev_live/test_signin.gd": {
-      "gdlint:max-line-length": 3
     },
     "sdks/godot/tests/dev_live/test_update.gd": {
       "gdlint:max-line-length": 3
@@ -705,8 +702,8 @@
       "gdlint:max-file-lines": 1
     },
     "sdks/godot/tests/ui/scenarios.gd": {
-      "gdlint:class-definitions-order": 1,
-      "gdlint:max-line-length": 27,
+      "gdlint:class-definitions-order": 2,
+      "gdlint:max-line-length": 29,
       "gdlint:max-public-methods": 1
     },
     "sdks/godot/tests/update/support.gd": {

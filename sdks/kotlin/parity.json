@@ -42,7 +42,7 @@
     },
     "core.sync": {
       "status": "implemented",
-      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) StateFlows and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency). SP-51: every licence transition emits (LiveStateTest), a revoked foreground licence shows the activation screen (RevokedInForegroundTest), and close() ends a JVM main (CloseTest)."
+      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) handles (value, source, locked, visibility, set, clear, on, flow) and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency). SP-51: every licence transition emits (LiveStateTest), a revoked foreground licence shows the activation screen (RevokedInForegroundTest), and close() ends a JVM main (CloseTest)."
     },
     "core.local": {
       "status": "implemented"
@@ -130,7 +130,7 @@
     },
     "config.local": {
       "status": "implemented",
-      "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) StateFlows and config.changes emit every change (ConfigLocalTest)."
+      "note": "config.set/clear/clearAll persist device-local overrides in local-config.json beside the store, checked against the catalog (or the document's type), never over an enforced or hidden entry (managed_by_admin); config.setting(key) handles (value, source, locked, visibility, set, clear, on, flow) and config.changes emit every change (ConfigLocalTest, ConfigSettingTest)."
     },
     "config.sync": {
       "status": "planned",
@@ -218,9 +218,8 @@
       "note": "I-45.1/I-45.3: identity.exchangeNonce/exchange over the endpoints discovery names (Unavailable otherwise; a Worker refusal throws PolarisException); the nine exchange transcripts are replayed. The Credential Manager provider is I-45.4; JVM desktop has no platform identity."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-45",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-45)."
+      "status": "implemented",
+      "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-45): a stored sign-in, the platform provider silently, then its one sheet; every refusal is a result."
     },
     "identity.link": {
       "status": "planned",
@@ -532,8 +531,34 @@
       "wp": "U-23"
     },
     "sync.keyring": {
+      "status": "implemented",
+      "note": "client.keyring (:sdk's SyncKeyring, over :core's im.plrs.key.core.sync: JCA HKDF, HMAC and AES-GCM, RFC 9180 mode_base written out over DeviceKeyPort.dh for open and an ephemeral X25519 key from DeviceCurves for seal, so it runs on Tink below Android API 33): create(), unlock() (opens this device's wrap through the port's dh, so the agreement key never leaves the store), wrapTo()/removeWrap(), setRecoveryCode()/recover(), reset()/adopt()/openAdopted(), acceptRingChange(confirmed), attach(listener) feeding setRoot, and the codec. The first root pins {ringId, epoch, rootKid} per product (a file in the state directory, memory without one); a served ring that differs is RingChanged and is never opened. The root is also kept in one record that is used only while it matches the pin: on the JVM the owner-only 0600 file pkey.sync-root.v1.bin beside the device keys (the JVM has no OS keyring; memory only without a state directory, which status().rootPersistence reports), on Android a Keystore-sealed file under its own alias (androidSyncRootStorage, never backed up). forget() drops the root and the pin and runs from the sign-out hook after Connect leaves (a delete that fails stops the sign-out). Every type holding key material prints as redacted. SyncVectorsTest (hkdf, envelope, blind, canonicalJson, hpkeAnchor, wrap, recovery and adopt cases, on the JCA and on Tink), SyncKeyringTest and the keyring-* transcripts in TranscriptTest."
+    },
+    "sync.records": {
       "status": "planned",
-      "wp": "U-39"
+      "wp": "U-23"
+    },
+    "sync.files": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.files.delta": {
+      "status": "planned",
+      "wp": "U-23"
+    },
+    "sync.e2e.recovery": {
+      "status": "planned",
+      "wp": "U-07"
+    },
+    "sync.transfer.background": {
+      "status": "planned",
+      "wp": "U-41",
+      "except": [
+        {
+          "runtime": "jvm",
+          "reason": "runtime"
+        }
+      ]
     },
     "sync.e2e": {
       "status": "planned",
@@ -544,20 +569,21 @@
       "note": "Verification is :core's Peer (verifyCert, verifyRing, replaceRing, admitPeer); :conformance's PeerCasesTest drives peerCertCases, ringCases (the ring-lifetime-* rows included) and peerAdmissionCases on JCA and on Tink (CC-12.1). client.connect (:sdk, ConnectTest) makes the device keys on first need, registers them (registerDeviceKeys, PUT devices/keys), fetches GET connect/identity, verifies the roster and certificate against the effective set, refuses a stale, foreign, expired or other-keys answer, and holds them with K_disc as pkey.connect.v1 (owner-only file beside the device keys; memory-only keys refuse unless allowEphemeralKeys; an unreadable key record is an error); the previous K_disc is dropped after a leave or a key change; listDevices() and leave() (also run before sign-out). Android supplies its Keystore-sealed key store and state storage (CC-12b). No connect-identity transcript is recorded yet, so none is replayed."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-12"
+      "status": "implemented",
+      "note": "Noise_XX_25519_AESGCM_SHA256 in :core (peer.Noise) on DeviceCurves, so it runs on JCA and on Tink (API 24 to 32); :conformance replays noise-vectors.json on both."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-12"
+      "status": "implemented",
+      "note": "pkey-peer/1 in :core: adverts, prologue, PSK, SAS, frames, records and the PeerChannel and PeerLink engines (modes a, v, p; commit-reveal SAS, handshake limits, write cap); :conformance replays peer-matrix.json, with :core's PeerChannelTest, PeerChannelSasTest and PeerLinkTest."
     },
     "connect.lan": {
       "status": "planned",
-      "wp": "CC-12"
+      "wp": "CC-12b",
+      "note": "The JVM half is built and tested: :core mDNS (JvmMdns, bounded tables, per-source caps) and TCP pipes, and :sdk ConnectLan, used off Android (ConnectLanTest, the live test under PKEY_LIVE_MDNS=1). Android has no adapter yet, so LAN reports off with reason unsupported there and the relay still works; CC-12b adapts :platform NSD to the MdnsAdapter and PeerPipe ports, adds the ACCESS_LOCAL_NETWORK permission (nearby-permission-denied) and the Keystore-sealed state storage."
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-12"
+      "status": "implemented",
+      "note": "client.connect.relayTicket() and :sdk's ConnectRelay (ticket offer, WebSocket on an OkHttp client with interceptors cleared and the Sec-WebSocket-Protocol echo checked, reconnect policy, LIMIT and close codes, mode-a relay sessions, pacing); ConnectRelayTest and ConnectRelaySessionTest. Works on the JVM and on Android."
     },
     "connect.links": {
       "status": "planned",
@@ -568,8 +594,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-12"
+      "status": "implemented",
+      "note": "client.cloudConnect (:sdk, CloudConnect.kt and ConnectChannel.kt): start, stop, peers, devices, open and onChannel, LAN then relay, the G21 off switches, G9 and the sign-out order (each session close bounded to 2 s, then abort); PolarisKeyFutures has the Java forms. CloudConnectTest."
     },
     "server.license": {
       "status": "implemented",

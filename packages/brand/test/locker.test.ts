@@ -16,7 +16,13 @@ import { badgeSvg, lockupSvg, markSvg } from "../src/svg.js";
 import { LOCKER_BADGE_LABELS } from "../src/generated/locker.js";
 import { LOCKER_BADGE_KINDS } from "../src/marks/locker.js";
 import { opticalCut } from "../src/marks/core.js";
-import { BRAND, LOCKER, LOCKER_TRIM } from "../src/tokens/primitives.js";
+import {
+  BRAND,
+  LOCKER,
+  LOCKER_HORIZONTAL,
+  LOCKER_TRIM,
+  LOCKUP_PROPORTION,
+} from "../src/tokens/primitives.js";
 import { resolveLocker } from "../src/tokens/resolve.js";
 import { SERVICE_IDS, THEMES } from "../src/tokens/source.js";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -422,30 +428,46 @@ describe("the trimmed Locker horizontal lockup", () => {
   });
   const inner = (s: string) => s.slice(s.indexOf(">") + 1);
 
-  it("is the kit's artwork under a cropped viewBox, nothing redrawn", () => {
+  it("is the same re-laid artwork under a cropped viewBox, nothing redrawn", () => {
     expect(inner(trim)).toBe(inner(kit));
     expect(trim).toContain(
       `viewBox="${LOCKER_TRIM.x} ${LOCKER_TRIM.y} ${LOCKER_TRIM.width} ${LOCKER_TRIM.height}"`,
     );
   });
 
-  it("keeps the mark art and the wordmark inside the crop (Chromium-measured: x 8..443)", () => {
+  it("keeps the mark art and the wordmark inside the crop and the canvas", () => {
+    // Re-laid ink, in canvas units: mark x 8..8+66.1, wordmark ends at 443 - (144 - textX).
+    const inkRight = 443 - (144 - LOCKER_HORIZONTAL.textX);
     expect(LOCKER_TRIM.x).toBeLessThanOrEqual(8);
-    expect(LOCKER_TRIM.x + LOCKER_TRIM.width).toBeGreaterThanOrEqual(443);
-    expect(LOCKER_TRIM.y).toBeLessThanOrEqual(23.67);
-    expect(LOCKER_TRIM.y + LOCKER_TRIM.height).toBeGreaterThanOrEqual(102);
-    expect(LOCKER_TRIM.x + LOCKER_TRIM.width).toBeLessThanOrEqual(460);
+    expect(LOCKER_TRIM.x + LOCKER_TRIM.width).toBeGreaterThanOrEqual(inkRight);
+    expect(LOCKER_TRIM.x + LOCKER_TRIM.width).toBeLessThanOrEqual(inkRight + 4);
+    expect(LOCKER_TRIM.y + LOCKER_TRIM.height).toBeLessThanOrEqual(128);
   });
 
-  it("meets the guide's 180 px minimum from 33 px tall up; stacked refuses trim", () => {
+  it("holds the lockup proportion: mark 1.5 x the cap height, centred on it, gap 0.45 x the mark", () => {
+    const cap = 700 * 0.044;
+    const mark = LOCKER_TRIM.height; // the trim is the mark's art box
+    expect(mark / cap).toBeCloseTo(LOCKUP_PROPORTION.markToCap, 2);
+    expect(mark / cap).toBeLessThanOrEqual(LOCKUP_PROPORTION.markToCapMax);
+    expect(LOCKER_TRIM.y + mark / 2).toBeCloseTo(80 - cap / 2, 1);
+    const markRight = 8 + 112 * LOCKER_HORIZONTAL.markScale;
+    const inkLeft = LOCKER_HORIZONTAL.textX + 78.15625 * 0.044;
+    expect((inkLeft - markRight) / mark).toBeCloseTo(
+      LOCKUP_PROPORTION.gapToMark,
+      2,
+    );
+    expect(LOCKER_HORIZONTAL.capToHeight).toBeCloseTo(cap / mark, 5);
+  });
+
+  it("meets the guide's 180 px minimum from 22 px tall up; stacked refuses trim", () => {
     const w = (h: number) =>
       Number(
         /width="([\d.]+)"/.exec(
           lockupSvg({ kind: "locker", trim: true, height: h }),
         )![1],
       );
-    expect(w(32)).toBeLessThan(180);
-    expect(w(33)).toBeGreaterThanOrEqual(180);
+    expect(w(21)).toBeLessThan(180);
+    expect(w(22)).toBeGreaterThanOrEqual(180);
     expect(() =>
       lockupSvg({ kind: "locker", layout: "stacked", trim: true }),
     ).toThrow(RangeError);

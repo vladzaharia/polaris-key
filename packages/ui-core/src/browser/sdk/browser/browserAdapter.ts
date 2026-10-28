@@ -111,6 +111,13 @@ import {
   type KeyringClient,
 } from "../core/keyring.js";
 import {
+  lazyCloudSync,
+  unsupportedCloudSync,
+  type CloudSyncClient,
+} from "../core/cloudSync.js";
+import type { CloudSyncHostOptions } from "./cloudSync/host.js";
+import type { CloudSyncOwner } from "./cloudSync/create.js";
+import {
   createCloudConnect,
   lazyConnect,
   unsupportedCloudConnect,
@@ -447,6 +454,13 @@ export interface BrowserAdapterOptions {
    */
   platformIdentity?: PlatformIdentityProvider | null;
   /**
+   * Cloud Sync for settings (sync.settings, bearer mode only). `encryption` is the product's mode
+   * (default `"e2e"`; app code only, never read from the Worker), `catalog` the compiled mirror
+   * (`pkey mirror`, authoritative for every key it names) and `aliases` the renames the app
+   * declares. Nothing loads until `adapter.cloudSync.host()`.
+   */
+  cloudSync?: CloudSyncHostOptions;
+  /**
    * The Cloud Sync key ring (sync.keyring, bearer mode only). `deviceKeys` is the device key store
    * (default `createWebDeviceKeyStore()`, IndexedDB with a memory fallback); a memory-only store
    * makes the ring unlock-only (recovery code), with the root held in memory. `vault` is where the
@@ -730,6 +744,8 @@ export class BrowserAdapter implements PolarisAdapter {
     this.authMode = resolveAuthMode(opts.auth, this.base, opts.pageOrigin);
     this.autoRegister = opts.autoRegister !== false;
     this.ringOptions = opts.keyring;
+    this.cloudSyncOptions = opts.cloudSync;
+    this.catalogOption = opts.catalog ?? undefined;
     this.platformIdentity = opts.platformIdentity;
     this.connectOptions = opts.connect;
     if (this.authMode === "bearer" && !this.pinned) {
@@ -1158,6 +1174,7 @@ export class BrowserAdapter implements PolarisAdapter {
         await b.register();
       if (b.hasToken) await b.sync();
       this.applyBearer();
+      this.syncFollowsSession(false);
     } catch (e) {
       await capabilities;
       this.applyBearer({
@@ -1521,6 +1538,7 @@ export class BrowserAdapter implements PolarisAdapter {
         if (r.kind === "ok") {
           await this.setExplicitSignOut(false);
           this.applyBearer({ busy: noBusy(), error: noErrors() });
+          this.syncFollowsSession(true);
         }
         return r;
       }),
@@ -2047,6 +2065,9 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   private ring_: KeyringClient | null = null;
+  private cloudSync_: CloudSyncClient | null = null;
+  private readonly cloudSyncOptions: CloudSyncHostOptions | undefined;
+  private readonly catalogOption: ProductCatalog | undefined;
   private readonly ringOptions: BrowserAdapterOptions["keyring"];
   private deviceKeys_: Promise<DeviceKeyPort> | null = null;
 
@@ -2131,6 +2152,7 @@ export class BrowserAdapter implements PolarisAdapter {
       // `no_link` carries a handle for the link offer: held across the sign-in redirect.
       if (result.kind === "needsSignIn" && result.linkHandle !== undefined)
         this.linkHandle(`${this.clock()} ${result.linkHandle}`);
+      if (result.kind === "signedIn") this.syncFollowsSession(true);
       return result;
     } catch (e) {
       // Only a cancellation leaves the ladder as a throw.
@@ -2154,6 +2176,8 @@ export class BrowserAdapter implements PolarisAdapter {
    *  known: the link offer may be made (the kit asks `link.pending()`). Per page: a reload is
    *  "not now". Read and cleared by the lazy engine (`LinkHost`). */
   private linkFor_: string | undefined;
+  /** The subject of the last sign-in on this page, for `linkHandle`'s owner check. */
+  private lastSubject_: string | undefined;
 
   /** Keep (or, with `null`, drop) the `no_link` handle across the sign-in redirect: the one thing
    *  that has to outlive the page. Written here so it is there before the person leaves. */
@@ -2201,6 +2225,61 @@ export class BrowserAdapter implements PolarisAdapter {
         options: { ...o, deviceKeys: await this.deviceKeyPort() },
       }),
     ));
+  }
+
+  /**
+   * Cloud Sync for settings (sync.settings). Bearer mode runs the host, loaded on first use, with
+   * the state in IndexedDB `pkey-sync-<product>` and one writer tab; a cookie page holds no device
+   * token and gets the typed runtime N/A, as does a browser without Web Locks.
+   */
+  get cloudSync(): CloudSyncClient {
+    if (this.cloudSync_) return this.cloudSync_;
+    const b = this.bearer;
+    if (!b)
+      return (this.cloudSync_ = unsupportedCloudSync("runtime", COOKIE_DETAIL));
+    const dbName = `pkey-sync-${storeNamespace(this.product, this.base)}`;
+    // Sign-out sends what is waiting first (bounded); nothing loaded means nothing to send.
+    b.onBeforeSignOut(() => this.cloudSync.beforeSignOut());
+    return (this.cloudSync_ = lazyCloudSync({
+      dbName,
+      signInOrigin: new URL(this.base).origin,
+      enabled: () => this.capabilities.sync.enabled,
+      load: async () =>
+        (await import("./cloudSync/create.js")).createBrowserCloudSync(
+          this as unknown as CloudSyncOwner,
+          b,
+          dbName,
+        ),
+    }));
+  }
+
+  /** The signed-in person for Cloud Sync: null for none, undefined when it could not be read (an
+   *  unreachable network is not a sign-out). */
+  private async syncSubject(): Promise<string | null | undefined> {
+    const b = this.bearer;
+    if (!b || !b.hasToken) return null;
+    // No discovery (an offline boot) cannot say who is signed in: that is not a sign-out.
+    if (this.discovery_ === null) return undefined;
+    if (!accountEndpointsOf(this.discovery_)?.subject) return null;
+    try {
+      return await b.subject();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Cloud Sync follows the session: start it (once the product runs Sync), or tell it who just
+   *  signed in. Never throws; a Sync failure is not a sign-in failure. */
+  private syncFollowsSession(signedIn: boolean): void {
+    if (!this.bearer || !this.capabilities.sync.enabled) return;
+    const run = signedIn
+      ? this.syncSubject().then((subject) =>
+          typeof subject === "string"
+            ? this.cloudSync.identity({ kind: "signedIn", subject })
+            : this.cloudSync.attach(),
+        )
+      : this.cloudSync.attach();
+    void run.catch(() => undefined);
   }
 
   /**
@@ -2256,9 +2335,19 @@ export class BrowserAdapter implements PolarisAdapter {
     try {
       await this.keyring.forget();
     } finally {
-      // The relay stops first: a session must not outlive the roster it was admitted under.
-      await this.cloudConnect.stop().catch(() => undefined);
-      await this.connect.leave();
+      try {
+        // The person's synced settings go with the ring (a failure reaches the caller).
+        await this.cloudSync.purge();
+      } finally {
+        // Tell Cloud Sync the person is gone, so a tab that loaded mid-sign-out cannot bring
+        // the snapshot back (the pre-sign-out hook ran before the server's answer).
+        await this.cloudSync
+          .identity({ kind: "signedOut" })
+          .catch(() => undefined);
+        // The relay stops first: a session must not outlive the roster it was admitted under.
+        await this.cloudConnect.stop().catch(() => undefined);
+        await this.connect.leave();
+      }
     }
   }
 
@@ -2269,21 +2358,37 @@ export class BrowserAdapter implements PolarisAdapter {
     complete: (callbackUrl) => this.completeSignIn(callbackUrl),
   };
 
+  /** A `no_link` handle is one person's: another account signing in drops it. */
+  private noteSubject(sub: string | null): void {
+    if (sub === null || this.lastSubject_ === sub) return;
+    if (this.lastSubject_ !== undefined) this.linkHandle(null);
+    this.lastSubject_ = sub;
+  }
+
   /** What a settled sign-in does to the adapter: the state, the busy flag, the subject. */
-  private signInHooks(): SettleHooks {
+  private signInHooks(redirect = false): SettleHooks {
     return {
       onSettled: async (outcome) => {
-        // A sign-in landed: the link offer may follow (the kit asks `link.pending()`). The marker
-        // is there before the state change below, for the kit to read.
-        if (outcome.kind === "signedIn") this.linkFor_ = outcome.subject ?? "";
+        // A redirect sign-in landed: the link offer may follow (the kit asks `link.pending()`).
+        // The marker is there before the state change below, for the kit to read. A `no_link`
+        // handle is one person's: a landing account other than the last one drops it.
+        if (outcome.kind === "signedIn") {
+          this.noteSubject(outcome.subject);
+          if (redirect) this.linkFor_ = outcome.subject ?? "";
+        }
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         if (outcome.kind === "signedIn") await this.setExplicitSignOut(false);
-        if (outcome.kind !== "signedIn" || outcome.subject !== null)
+        if (outcome.kind !== "signedIn") return outcome;
+        if (outcome.subject !== null) {
+          this.syncFollowsSession(true);
           return outcome;
+        }
         // Device code answers no subject: read it when discovery names the endpoint.
         const subject = accountEndpointsOf(this.discovery_)?.subject
           ? await this.bearer!.subject().catch(() => null)
           : null;
+        this.noteSubject(subject);
+        this.syncFollowsSession(true);
         return { ...outcome, subject };
       },
       onFailed: (error) => {
@@ -2321,7 +2426,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.setBusy("identity", true);
     try {
       await this.ensureDiscovery();
-      const hooks = this.signInHooks();
+      const hooks = this.signInHooks(opts.channel === "redirect");
       if (opts.channel === "device-code")
         return new BearerDeviceCodeSession(b, await b.beginSignIn(opts), hooks);
       if (opts.channel !== "redirect")
@@ -2372,7 +2477,7 @@ export class BrowserAdapter implements PolarisAdapter {
       pending,
       callbackUrl,
       pending.deviceName,
-      this.signInHooks(),
+      this.signInHooks(true),
     );
   }
 

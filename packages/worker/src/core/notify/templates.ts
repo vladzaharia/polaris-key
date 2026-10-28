@@ -504,6 +504,36 @@ export function deviceReplacedNotice(input: {
   });
 }
 
+/**
+ * A nearby approval bound a device (WIRE-CONTRACT-V5 §12.11.5 rule 7): "Diceroll signed in on
+ * Living room TV". Sent to the primary address only, so it is not a security notice (no "every
+ * verified email" footer); the remedy is the product's devices page. The label may be null.
+ */
+export function appDeviceApprovedNotice(input: {
+  deviceLabel: string | null | undefined;
+  productName: string | null | undefined;
+  productSlug: string;
+  origin: string;
+}): NoticeMessage {
+  const device = displayValue(input.deviceLabel, "a new device");
+  const name = displayValue(input.productName, "An app");
+  // Without a label there is nothing to name twice: "remove it".
+  const it = displayValue(input.deviceLabel, "") === "" ? "it" : device;
+  return buildNotice({
+    help: "app-device-approved",
+    subject: `${name} signed in on ${device}`,
+    paragraphs: [
+      "You approved it from another device.",
+      `If this wasn't you, remove ${it} from your devices in Polaris Locker.`,
+    ],
+    action: {
+      label: "See your devices",
+      url: appLink(input.origin, productRoute(input.productSlug, "devices")),
+    },
+    origin: input.origin,
+  });
+}
+
 /** "4 Oct 2026, 14:34 UTC": a unix time for a sentence in an email. */
 function emailDate(at: number): string {
   const d = new Date(at * 1000);
@@ -552,6 +582,7 @@ function devicesLinks(input: { productSlug: string; origin: string }) {
 /** The three key ring notices share their shape: copy, "See your devices", the secure link. */
 function ringNotice(
   input: RingNoticeInput,
+  help: string,
   copy: (
     device: string,
     name: string,
@@ -564,8 +595,8 @@ function ringNotice(
   const device = displayValue(input.deviceLabel, "");
   const name = displayValue(input.productName, "your product");
   const { subject, paragraphs } = copy(device, name, emailDate(input.at));
-  // No `help` anchor yet: the Help Emails page is over its word budget; U-42 owns its entries.
   return buildNotice({
+    help,
     subject,
     paragraphs: [...paragraphs, RING_NO_ASK],
     ...devicesLinks(input),
@@ -575,7 +606,7 @@ function ringNotice(
 
 /** A device fetched the recovery data: "Recovery started on Studio PC". */
 export function recoveryStartedNotice(input: RingNoticeInput): NoticeMessage {
-  return ringNotice(input, (device, name, when) => ({
+  return ringNotice(input, "recovery-started", (device, name, when) => ({
     subject: `Recovery started on ${device || "a device"}`,
     paragraphs: [
       `${device || "A device"} started recovering your ${name} data on ${when}. Enter your recovery code in ${name} only.`,
@@ -587,7 +618,7 @@ export function recoveryStartedNotice(input: RingNoticeInput): NoticeMessage {
 export function recoveryCodeChangedNotice(
   input: RingNoticeInput,
 ): NoticeMessage {
-  return ringNotice(input, (device, name, when) => ({
+  return ringNotice(input, "recovery-code-changed", (device, name, when) => ({
     subject: `Your ${name} recovery code changed`,
     paragraphs: [
       `${device || "A device"} made a new recovery code for your ${name} data on ${when}. The old code no longer works.`,
@@ -597,7 +628,7 @@ export function recoveryCodeChangedNotice(
 
 /** Encryption was reset: new key, new code; the old key's data moves over for 30 days. */
 export function encryptionResetNotice(input: RingNoticeInput): NoticeMessage {
-  return ringNotice(input, (device, name, when) => ({
+  return ringNotice(input, "encryption-reset", (device, name, when) => ({
     subject: `${name} encryption was reset`,
     paragraphs: [
       `${device || "A device"} reset the encryption for your ${name} data on ${when}. There is a new key and a new recovery code.`,

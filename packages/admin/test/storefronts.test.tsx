@@ -578,9 +578,11 @@ describe("Distribution → Storefronts", () => {
       }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    const confirm = within(dialog).getByRole("button", {
-      name: "Send the changes for review",
-    });
+    const confirmButton = () =>
+      within(dialog).getByRole("button", {
+        name: "Send the changes for review",
+      });
+    const confirm = confirmButton();
     expect(
       confirm.hasAttribute("disabled") ||
         confirm.getAttribute("aria-disabled") === "true",
@@ -589,7 +591,7 @@ describe("Distribution → Storefronts", () => {
       within(dialog).getByRole("textbox", { name: /App name/ }),
       "DJDL",
     );
-    await userEvent.click(confirm);
+    await userEvent.click(confirmButton());
     await waitFor(() =>
       expect(writes(calls)).toEqual([
         expect.objectContaining({

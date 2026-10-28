@@ -187,6 +187,9 @@ public actor PolarisKeyClient {
     public nonisolated let devices: DevicesClient
     /// Cloud Connect identity (`identity()`, `held()`, `listDevices()`, `leave()`).
     public nonisolated let connect: ConnectClient
+    /// Cloud Connect: peers, sessions to the person's other devices (LAN first, then the relay), and the
+    /// pushed-document notices. Sign-out stops it before the credential goes.
+    public nonisolated let cloudConnect: CloudConnect
     /// Store purchases to licence flags: binding, claim, and the StoreKit one-calls.
     public nonisolated let commerce: CommerceClient
     /// The download page's model (`downloadModel()`, `thisPlatform()`).
@@ -294,6 +297,12 @@ public actor PolarisKeyClient {
         self.refreshIntervalSeconds = options.refreshIntervalSeconds
         let connect = ConnectClient(core: core, options: options.connect, accessGroup: options.core.keychainAccessGroup)
         self.connect = connect
+        // The key ring forgets its root and pin with the seat; filled below, once `attachments` is usable.
+        let forgetRing = LockedValue<(@Sendable () async throws -> Void)?>(nil)
+        let cloudConnect = CloudConnect(
+            connect: connect, discovery: { await core.discoveryDocument },
+            applyTrust: { await core.applyPeerTrust($0) })
+        self.cloudConnect = cloudConnect
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
         // take long before it wants documents (an installer that registers at setup and syncs on
@@ -311,7 +320,11 @@ public actor PolarisKeyClient {
             onReleased: { await publisher.publish() },
             // A released device holds no roster and no discovery key; if they cannot be removed
             // (a locked Keychain) the release stops.
-            beforeRelease: { try await connect.leave() })
+            beforeRelease: {
+                await cloudConnect.stop()  // Connect stops before the roster and the credential go
+                try await connect.leave()
+                try await forgetRing.current?()
+            })
         self.entitlements = EntitlementsClient(license: self.license)
         let license = self.license
         licenseBox.set(license)
@@ -329,10 +342,20 @@ public actor PolarisKeyClient {
         identity.installIdentityEvents { change in
             hub.emit(.identity(kind: change.kind, subject: change.subject, previous: change.previous))
         }
+        // Every sign-out, released or not, ends this person's Cloud Sync and Connect state on the
+        // device, before the Worker is asked and before anything else is wiped: Connect stops
+        // (bounded, 15 s), the roster and K_disc go, then the key ring forgets its root and pin. A
+        // root that cannot be deleted (a locked Keychain) stops the sign-out.
+        identity.onBeforeSignOut {
+            await cloudConnect.stop()
+            try await connect.leave()
+            try await forgetRing.current?()
+        }
         identity.installSignOut { [core] in
             do {
                 // Fail closed: the held roster and K_disc go first, and if they cannot, nothing
                 // else is wiped.
+                await cloudConnect.stop()
                 try await connect.leave()
                 try await core.clearAll()
             } catch {
@@ -341,6 +364,8 @@ public actor PolarisKeyClient {
             }
             await publisher.publish()
         }
+        let attachments = self.attachments
+        forgetRing.set { try await PolarisKeyClient.keyring(core: core, attachments: attachments).forget() }
         backendSync.set { [weak self] force in
             guard let self else { return false }
             let result = await self.sync(force: force)

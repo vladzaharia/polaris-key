@@ -330,13 +330,19 @@ function autoStepView(
           : stale
             ? "signin.linkOffer.stale"
             : code === "link-failed" && "signin.linkOffer.failed";
-      const primary = stale ? "signin.again" : "signin.linkOffer.primary";
+      // Retrying cannot fix a refused device: Link goes, and No thanks is the way on.
+      const refused = code === "link-failed";
+      const primary = stale
+        ? "signin.again"
+        : refused
+          ? "signin.linkOffer.decline"
+          : "signin.linkOffer.primary";
       return view(
         "link-offer",
         [
           "signin.linkOffer.title",
           body,
-          primary,
+          !refused && primary,
           "signin.linkOffer.decline",
           line,
         ],

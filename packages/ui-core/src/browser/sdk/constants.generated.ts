@@ -154,6 +154,7 @@ export const ErrorCode = {
   storeFailed: "store-failed",
   connectUnavailable: "connect-unavailable",
   peerCertInvalid: "peer-cert-invalid",
+  nearbyPermissionDenied: "nearby-permission-denied",
   platformError: "platform-error",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
@@ -365,6 +366,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "store-failed",
   "connect-unavailable",
   "peer-cert-invalid",
+  "nearby-permission-denied",
   "platform-error",
   "no-token",
   "mint-unavailable",
@@ -578,6 +580,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "store-failed": "client",
   "connect-unavailable": "client",
   "peer-cert-invalid": "client",
+  "nearby-permission-denied": "client",
   "platform-error": "client",
   "no-token": "client",
   "mint-unavailable": "client",
@@ -678,6 +681,11 @@ export const Feature = {
   syncConflict: "sync.conflict",
   syncSaves: "sync.saves",
   syncKeyring: "sync.keyring",
+  syncRecords: "sync.records",
+  syncFiles: "sync.files",
+  syncFilesDelta: "sync.files.delta",
+  syncE2eRecovery: "sync.e2e.recovery",
+  syncTransferBackground: "sync.transfer.background",
   syncE2e: "sync.e2e",
   connectIdentity: "connect.identity",
   connectNoise: "connect.noise",
@@ -812,6 +820,11 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "sync.conflict",
   "sync.saves",
   "sync.keyring",
+  "sync.records",
+  "sync.files",
+  "sync.files.delta",
+  "sync.e2e.recovery",
+  "sync.transfer.background",
   "sync.e2e",
   "connect.identity",
   "connect.noise",
@@ -2054,6 +2067,18 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
+  "sync.records": { status: "planned", service: "sync", na: [] },
+  "sync.files": { status: "planned", service: "sync", na: [] },
+  "sync.files.delta": { status: "planned", service: "sync", na: [] },
+  "sync.e2e.recovery": { status: "planned", service: "sync", na: [] },
+  "sync.transfer.background": {
+    status: "na",
+    service: "sync",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "sync.e2e": { status: "planned", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
@@ -2326,4 +2351,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "6f0c25071e51426825ecb8d0c850330975883ad27af7adbba39ca11408e7ea7f";
+  "d68ca572c047434c741541623951560e4b4dd4553cb9ec65b27ad953bc87382c";

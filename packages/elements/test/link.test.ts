@@ -128,12 +128,45 @@ describe("what a refused Link says", () => {
     expect(line(el, "core.codes.network.message")).toBeNull();
   });
 
-  it("a refused device says so, and is not the network's line", async () => {
+  it("a refused device says so, is not the network's line, and Link is no longer offered", async () => {
     const { primitives } = prims(async () => "failed");
     const el = await draw(primitives);
     await press(el, "signin.linkOffer.primary");
     expect(line(el, "signin.linkOffer.failed")).not.toBeNull();
     expect(line(el, "core.codes.network.message")).toBeNull();
+    expect(keys(el)).toEqual(["signin.linkOffer.decline"]);
+  });
+
+  it("every refusal line is announced as an alert", async () => {
+    for (const r of ["stale", "failed", "network"] as const) {
+      const { primitives } = prims(async () => r);
+      const el = await draw(primitives);
+      await press(el, "signin.linkOffer.primary");
+      const key =
+        r === "network"
+          ? "core.codes.network.message"
+          : `signin.linkOffer.${r}`;
+      expect(line(el, key)?.closest('[role="alert"]'), r).not.toBeNull();
+    }
+  });
+
+  it("No thanks cannot close the sheet while Link runs", async () => {
+    let finish: (v: "linked") => void = () => {};
+    const { primitives, link } = prims(
+      () => new Promise<"linked">((resolve) => (finish = resolve)),
+    );
+    const el = await draw(primitives);
+    await press(el, "signin.linkOffer.primary");
+    const no = el.shadowRoot!.querySelector<HTMLElement>(
+      '[data-key="signin.linkOffer.decline"]',
+    )!;
+    expect(no.getAttribute("aria-disabled")).toBe("true");
+    await press(el, "signin.linkOffer.decline");
+    expect(link.decline).not.toHaveBeenCalled();
+    expect(el.open).toBe(true);
+    finish("linked");
+    await settle(el);
+    expect(keys(el)).toContain("common.continue");
   });
 
   it("nothing happened (the chooser was dismissed): the offer stays as it was", async () => {
@@ -147,35 +180,57 @@ describe("what a refused Link says", () => {
   });
 });
 
+/** `<pk-gate config>` over a licensed fake client whose `link` offers Google and answers `accept`. */
+async function licensedGate(accept: unknown) {
+  const { fakeClient } = await import("./autoFixtures.js");
+  const { adapter } = fakeClient(
+    { kind: "unavailable", code: "refused" },
+    {
+      link: {
+        pending: () => true,
+        offer: async () => ({
+          kind: "ok",
+          offer: [{ kind: "google", reach: "global" }],
+        }),
+        accept: async () => accept,
+        decline: async () => undefined,
+        dismiss: () => undefined,
+      },
+    },
+  );
+  Object.assign(adapter.snapshot() as object, {
+    status: "ok",
+    gate: { status: "ok" },
+  });
+  const el = document.createElement("pk-gate") as HTMLElement & {
+    seams?: unknown;
+    updateComplete: Promise<unknown>;
+  };
+  el.setAttribute("config", '{"product":"acme"}');
+  el.seams = { client: adapter as never };
+  document.body.replaceChildren(el);
+  await settle(el as never);
+  return { adapter, el };
+}
+
 describe("the gate asks for the offer once the app is on screen", () => {
   it("shows the sheet after the one update that licenses the app (a phone has no second one)", async () => {
-    const { fakeClient } = await import("./autoFixtures.js");
-    const { adapter } = fakeClient(
-      { kind: "unavailable", code: "refused" },
-      {
-        link: {
-          pending: () => true,
-          offer: async () => ({
-            kind: "ok",
-            offer: [{ kind: "google", reach: "global" }],
-          }),
-          accept: async () => ({ kind: "unavailable" }),
-          decline: async () => undefined,
-          dismiss: () => undefined,
-        },
-      },
-    );
-    const state = adapter.snapshot() as Record<string, unknown>;
-    state.status = "ok";
-    state.gate = { status: "ok" };
-    const el = document.createElement("pk-gate") as HTMLElement & {
-      seams?: unknown;
-      updateComplete: Promise<unknown>;
-    };
-    el.setAttribute("config", '{"product":"acme"}');
-    el.seams = { client: adapter as never };
-    document.body.replaceChildren(el);
-    await settle(el as never);
+    const { el } = await licensedGate({ kind: "unavailable" });
     expect(el.shadowRoot!.querySelector("pk-sign-in")).not.toBeNull();
+  });
+});
+
+describe("Sign in again on a stale offer, in the gate", () => {
+  it("starts the gate's own sign-in", async () => {
+    const { adapter, el } = await licensedGate({
+      kind: "refused",
+      status: 401,
+      code: "step_up_required",
+    });
+    const form = el.shadowRoot!.querySelector("pk-sign-in") as PkSignIn;
+    await press(form, "signin.linkOffer.primary");
+    expect(keys(form)).toContain("signin.again");
+    await press(form, "signin.again");
+    expect(adapter.signInWithOidc).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,9 +1,9 @@
 package im.plrs.key.platform.play
 
 import android.content.Context
+import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
-import android.os.CancellationSignal
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CredentialManagerCallback
@@ -80,8 +80,12 @@ internal class CredentialManagerBackend : CredentialBackend {
  * [PlatformIdentity] over Credential Manager with Google ID (I-45.4):
  *
  * - [silent] (rung 3): `GetGoogleIdOption` with `setFilterByAuthorizedAccounts(true)` and
- *   `setAutoSelectEnabled(true)`: no UI when exactly one authorised account exists.
- * - [sheet] (rung 4): the same option with the filter off, so the chooser lists every account.
+ *   `setAutoSelectEnabled(true)`: no UI when exactly one authorised account exists. CAVEAT: Credential
+ *   Manager auto-selects only that one account. With two or more authorised accounts it shows its account
+ *   chooser, and it gives no signal beforehand (nor a "silent only" mode) to stop that, so this rung
+ *   cannot be guaranteed sheet-free; an app that must never show a sheet should not install the provider.
+ * - [sheet] (rung 4): the same authorised-accounts option with auto-select off, so the chooser lists the
+ *   accounts the person already used with this app (the plan's rung 4 is "the same call").
  * - [provider]: `GetSignInWithGoogleOption`, the explicit button flow.
  *
  * The server nonce goes on every option; the ID token carries it and the Worker checks it. Errors
@@ -110,7 +114,7 @@ public class GoogleSignIn internal constructor(private val backend: CredentialBa
         ask(context, serverClientId, nonce, callback) {
             GetGoogleIdOption.Builder()
                 .setServerClientId(serverClientId)
-                .setFilterByAuthorizedAccounts(false)
+                .setFilterByAuthorizedAccounts(true)
                 .setAutoSelectEnabled(false)
                 .setNonce(nonce)
                 .build()

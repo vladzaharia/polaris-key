@@ -173,6 +173,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "store-failed": CopyEntry(title: "Storage problem", message: "Couldn't save on this device. Check storage and try again."),
     "connect-unavailable": CopyEntry(title: "Connect unavailable", message: "Nearby connection isn't available for this app on this device."),
     "peer-cert-invalid": CopyEntry(title: "Device not verified", message: "This device couldn't be verified. Try again."),
+    "nearby-permission-denied": CopyEntry(title: "Local network blocked", message: "This app can't reach devices on your local network. Allow it in system settings."),
     "platform-error": CopyEntry(title: "Platform problem", message: "The platform reported an error. Try again."),
     "no-token": CopyEntry(title: "Not activated", message: "This device isn't activated yet. Activate it or sign in."),
     "mint-unavailable": CopyEntry(title: "Not available", message: "This isn't available for this app."),

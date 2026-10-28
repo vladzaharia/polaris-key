@@ -10,7 +10,7 @@ import {
 /**
  * A tile's facts for the Library and Discover (portal.library, portal.discover): the tier, the
  * device count and one fact per line, from what the Worker sends today. The duration line
- * ("Updates until", "Then keeps the last version"), the add-ons and "Automatic grant" are not
+ * ("Updates until", "Then keeps the last version"), the add-ons and "Sign-in" are not
  * here: they wait for LX-15, LX-38 and LX-41 (PX-28b).
  */
 export interface TileFact {

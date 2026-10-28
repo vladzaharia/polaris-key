@@ -259,6 +259,7 @@ const PY_CLASS: Record<string, string> = {
   license: "LicenseClient",
   entitlements: "EntitlementsClient",
   identity: "IdentityClient",
+  cloudConnect: "CloudConnect",
 };
 
 function renderPython(api: Api): string {
@@ -300,6 +301,7 @@ import pytest
 
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
+from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -314,6 +316,7 @@ CLASSES = {
     "SignInSession": SignInSession,
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
+    "CloudConnect": CloudConnect,
 }
 
 ${list("ATTRS", attrs)}
@@ -355,6 +358,7 @@ const SWIFT_TYPE: Record<string, string> = {
   distribution: "DistributionClient",
   commerce: "CommerceClient",
   packs: "PacksClient",
+  cloudConnect: "CloudConnect",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
   ChoiceNamespace: "ChoiceNamespace",
@@ -462,6 +466,7 @@ const KOTLIN_TYPE: Record<string, string> = {
   backend: "BackendClient",
   packs: "PacksClient",
   presentation: "PresentationSource",
+  cloudConnect: "CloudConnect",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
 const KOTLIN_UNASSERTED = new Set([
@@ -521,6 +526,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.DistributionClient`,
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
+    `import im.plrs.key.sdk.CloudConnect`,
     `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
     ...[

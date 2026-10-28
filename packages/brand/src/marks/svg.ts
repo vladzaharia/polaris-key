@@ -19,6 +19,7 @@ import {
   BRAND,
   CUT_GRID,
   LOCKUP_TRIM,
+  LOCKER_HORIZONTAL,
   LOCKER_TRIM,
   OPTICAL,
   type BadgeLayout,
@@ -45,6 +46,7 @@ import {
   lockerBadgeBodyWith,
   lockerBadgeAlt,
   lockerBadgeTemplate,
+  LOCKER_LOCKUP_CANVAS,
   lockerLockupBody,
   lockerLockupTemplate,
   lockerMarkParts,
@@ -324,14 +326,20 @@ export function lockupMetrics(opts: LockupOptions = {}): {
           width: LOCKER_TRIM.width,
           height: LOCKER_TRIM.height,
         }
-      : { x: 0, y: 0, width: t.width, height: t.height };
+      : layout === "horizontal"
+        ? { ...LOCKER_LOCKUP_CANVAS }
+        : { x: 0, y: 0, width: t.width, height: t.height };
     const height = opts.height ?? view.height;
     return {
       template: t,
       view,
       width: (view.width * height) / view.height,
       height,
-      glyphPx: (128 * height) / view.height,
+      glyphPx:
+        (128 *
+          (layout === "horizontal" ? LOCKER_HORIZONTAL.markScale : 1) *
+          height) /
+        view.height,
       cut: "master",
       bit: false,
     };

@@ -23,6 +23,7 @@ every load. There is no unsigned field left for a local attacker to poison.
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import weakref
@@ -33,9 +34,10 @@ import httpx
 
 from .backend import BackendClient
 from .core.device_keys import DeviceKeyPort
-from .connect import ConnectClient
+from .connect import CloudConnect, ConnectClient
 from .keyring import KeyringClient
 from .commerce import CommerceClient
+from .cloud_sync.api import CloudSyncApi, CloudSyncClient
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
@@ -91,6 +93,8 @@ from .presentation import DiscoveryPresentationSource
 from .release.client import ReleaseClient
 from .update.bootguard import BootGuard
 from .update.client import UpdateClient, UpdateClientOptions
+
+_log = logging.getLogger("polaris_key")
 
 __all__ = [
     "PolarisKeyClient",
@@ -328,8 +332,16 @@ class PolarisKeyClient:
             device_keys=device_keys,
             allow_ephemeral_keys=allow_ephemeral_keys,
         )
-        # Signing out forgets the held roster, certificate and K_disc (the device keys stay). A
-        # state that cannot be deleted raises, and the sign-out stops (fail closed).
+        #: Cloud Connect (WIRE-CONTRACT-V5 §15): LAN and relay behind one facade. Nothing starts until
+        #: ``cloud_connect.start()``: no thread, no socket.
+        self.cloud_connect = CloudConnect(
+            self.connect, lambda: self._discovery_doc, apply_trust=self._apply_peer_trust, now=self.core.now
+        )
+        # Signing out first stops Cloud Connect (the sessions, the relay and the LAN service are this
+        # person's devices' business), then forgets the held roster, certificate and K_disc (the device
+        # keys stay). Hooks run in this order. A state that cannot be deleted raises, and the sign-out
+        # stops (fail closed).
+        self.identity.on_before_sign_out(self._stop_cloud_connect)
         self.identity.on_before_sign_out(self.connect.leave)
 
         #: The Cloud Sync host (WIRE-CONTRACT-V5 §13): the machine, its transport and the state file.
@@ -342,11 +354,28 @@ class PolarisKeyClient:
                 discovery=lambda: self._discovery_doc,
                 fetch_schema=self.config.fetch_schema,
                 document=self._sync_document,
+                subject=self.identity._account.stored_subject,
             ),
             cloud_sync
             if isinstance(cloud_sync, CloudSyncHostOptions)
             else CloudSyncHostOptions(**dict(cloud_sync or {})),
         )
+        self._cloud_sync_api = CloudSyncApi(
+            ctx=self.core,
+            host=self.cloud_sync_host,
+            keyring=self.keyring,
+            config=self.config,
+            subject=self.identity._account.stored_subject,
+            emit=self._emit_cloud_sync,
+            log=lambda m: _log.warning("%s", m),
+        )
+        #: Cloud Sync (WIRE-CONTRACT-V5 §13): ``status()`` and ``flush()``; changes arrive as
+        #: ``client.events`` ``cloudSync`` events. A product without the Sync service gets the typed N/A.
+        self.cloud_sync = CloudSyncClient(self._cloud_sync_api)
+        # The identity session's subject drives the machine; a sign-out flushes (bounded) and forgets.
+        self.events.subscribe(self._identity_to_sync, ("identity",))
+        self.identity.on_before_sign_out(self._cloud_sync_api.before_sign_out)
+        self.config.sync_noted = self._note_synced_config
 
         # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
         self.commerce = CommerceClient(
@@ -368,11 +397,7 @@ class PolarisKeyClient:
         self.release.update = self.update
         self.update._client_ref = weakref.ref(self)
         self.update.events = self.events
-        self.update.packs.on(
-            lambda p: self.events.emit(
-                "packs", pack=p.pack_id, phase=p.phase, done=p.done, total=p.total
-            )
-        )
+        self.update.packs.on(self._emit_pack_progress)
         self._observed: Optional[Dict[str, Any]] = None
         self.config.changed = self._publish
         # The app build's boot guard (SDK parity pass §3.15), beside the token store.
@@ -471,10 +496,59 @@ class PolarisKeyClient:
     def _forget_identity_and_ring(self) -> None:
         self.keyring.forget()
         self.identity.forget()
+        try:
+            self._cloud_sync_api.on_deactivated()
+        except Exception:  # noqa: BLE001 - leaving Cloud Sync never fails a deactivation
+            pass
+
+    def _emit_cloud_sync(self, data: Dict[str, Any]) -> None:
+        self.events.emit("cloudSync", **data)
+
+    def _emit_pack_progress(self, p: Any) -> None:
+        self.events.emit("packs", pack=p.pack_id, phase=p.phase, done=p.done, total=p.total)
+
+    def _identity_to_sync(self, event: Any) -> None:
+        self._cloud_sync_api.on_identity(event.get("change", ""), event.get("subject"))
+
+    def _note_synced_config(self, key: str, value: Any) -> None:
+        # The machine's change was reported on its own; the change detector must not report it again.
+        if self._observed is not None:
+            self._observed["config"][key] = value
+
+    def _apply_peer_trust(self, jws: str) -> Any:
+        """A trust manifest a connected peer pushed: verified and installed by the trust custodian, then
+        persisted in the same slices a sync writes. Refused (with the reason) when the host turned trust
+        refresh off, or the manifest is invalid or not newer."""
+        from .core.trust import PeerTrustResult
+
+        if not self.core.trust_refresh_enabled:
+            return PeerTrustResult(False, "trust_refresh_off")
+        with self._trust.lock:
+            r = self._trust.accept_peer(jws)
+            if r.applied:
+                patch: Dict[str, Any] = {"trust_jws": jws}
+                evidence = self._trust.pin_revocations
+                if evidence:
+                    patch["pin_revocations"] = evidence
+                self._cache.patch(**patch)
+        return r
+
+    def _stop_cloud_connect(self) -> None:
+        """The sign-out hook: stop Cloud Connect. A host callback that holds the Connect thread cannot hold
+        the sign-out past the bound: the transports are force-cancelled and sign-out goes on."""
+        try:
+            self.cloud_connect.stop()
+        except Exception:
+            pass
 
     def close(self) -> None:
-        """Stop the refresh thread and release the HTTP client. Safe to call twice."""
+        """Stop Cloud Connect, the refresh thread and release the HTTP client. Safe to call twice."""
+        try:
+            self.cloud_connect.stop()
+        except Exception:
+            pass
         self._timer_stop.set()
+        self._cloud_sync_api.close()
         self.cloud_sync_host.close()
         self.keyring.lock()
         timer = self._timer
@@ -538,6 +612,7 @@ class PolarisKeyClient:
             self._discovery_doc = result.manifest
             self.core.set_services(result.services)
             self.cloud_sync_host.note_discovery()
+            self._cloud_sync_api.attach_soon()
             try:
                 self.presentation_source.accept(result.manifest)
             except Exception:  # display data never fails discovery
@@ -692,8 +767,9 @@ class PolarisKeyClient:
         except Exception:
             return {"status": None, "ents": {}, "config": {}}
 
-    def _publish(self) -> None:
-        """Emit the license, entitlement and config events since the last observation."""
+    def _publish(self, origin: str = "remote") -> None:
+        """Emit the license, entitlement and config events since the last observation. ``origin`` is
+        what the config events say caused them."""
         before = self._observed
         after = self._observe()
         self._observed = after
@@ -709,7 +785,12 @@ class PolarisKeyClient:
             a, b = after["config"].get(key), before["config"].get(key)
             if a != b:
                 self.events.emit(
-                    "config", key=key, value=a, previous=b, source=self.config.get_config_source(key)
+                    "config",
+                    key=key,
+                    value=a,
+                    previous=b,
+                    source=self.config.get_config_source(key),
+                    origin=origin,
                 )
 
     def _report_once(self) -> None:

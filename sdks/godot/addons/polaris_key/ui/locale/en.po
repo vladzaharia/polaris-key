@@ -1917,6 +1917,156 @@ msgctxt "macos"
 msgid "cloudSync.signIn"
 msgstr "Sign In to Sync"
 
+#. Sync is locked.
+#. CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it.
+msgid "cloudSync.locked"
+msgstr "Sync is locked."
+
+#. Unlock sync
+#. CloudSyncStatus: a small sync status. Opens the screen that asks for the recovery code (UnlockSync).
+msgid "cloudSync.unlock"
+msgstr "Unlock sync"
+
+#. macos: Unlock Sync
+msgctxt "macos"
+msgid "cloudSync.unlock"
+msgstr "Unlock Sync"
+
+#. Your sync key changed.
+#. CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange.
+msgid "cloudSync.ringChanged"
+msgstr "Your sync key changed."
+
+#. Unlock your synced data
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
+msgid "unlockSync.title"
+msgstr "Unlock your synced data"
+
+#. Enter the recovery code you saved for your Polaris Locker account.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
+msgid "unlockSync.lede"
+msgstr "Enter the recovery code you saved for your Polaris Locker account."
+
+#. Recovery code
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The field's label. The code is checked on the device before anything is sent.
+msgid "unlockSync.field"
+msgstr "Recovery code"
+
+#. Unlock
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The primary action.
+msgid "unlockSync.unlock"
+msgstr "Unlock"
+
+#. Start over
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Opens the confirmation that replaces the sync key; the second action beside Unlock.
+msgid "unlockSync.startOver"
+msgstr "Start over"
+
+#. macos: Start Over
+msgctxt "macos"
+msgid "unlockSync.startOver"
+msgstr "Start Over"
+
+#. That code isn't right. Check it and try again.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. Shown under the field when the code's check characters fail or the server refuses it.
+msgid "unlockSync.invalid"
+msgstr "That code isn't right. Check it and try again."
+
+#. Couldn't unlock. Try again later.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The unlock request failed for a reason other than the code.
+msgid "unlockSync.failed"
+msgstr "Couldn't unlock. Try again later."
+
+#. Start over?
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
+msgid "unlockSync.startOverTitle"
+msgstr "Start over?"
+
+#. Your current synced data will be lost. Start over only if you can't find your recovery code.
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22).
+msgid "unlockSync.startOverWarning"
+msgstr "Your current synced data will be lost. Start over only if you can't find your recovery code."
+
+#. Start over
+#. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action.
+msgid "unlockSync.startOverConfirm"
+msgstr "Start over"
+
+#. macos: Start Over
+msgctxt "macos"
+msgid "unlockSync.startOverConfirm"
+msgstr "Start Over"
+
+#. Save your recovery code
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
+msgid "recoveryCode.title"
+msgstr "Save your recovery code"
+
+#. You'll need it to unlock your synced data on a new device. It's shown only once.
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
+msgid "recoveryCode.lede"
+msgstr "You'll need it to unlock your synced data on a new device. It's shown only once."
+
+#. No one will ever ask for this code. Enter it only in the app.
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. Also shown by UnlockSync (T23): never entered on a web page, in an email or to a person.
+msgid "recoveryCode.noAsk"
+msgstr "No one will ever ask for this code. Enter it only in the app."
+
+#. Copy code
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
+msgid "recoveryCode.copy"
+msgstr "Copy code"
+
+#. macos: Copy Code
+msgctxt "macos"
+msgid "recoveryCode.copy"
+msgstr "Copy Code"
+
+#. I've saved my recovery code
+#. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done stays off until it is checked.
+msgid "recoveryCode.saved"
+msgstr "I've saved my recovery code"
+
+#. Your sync key changed
+#. RingChange: confirm a changed sync key (U-42).
+msgid "ringChange.title"
+msgstr "Your sync key changed"
+
+#. {device} set up a new key for your synced data.
+#. RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names.
+msgid "ringChange.body"
+msgstr "{device} set up a new key for your synced data."
+
+#. A device set up a new key for your synced data.
+#. RingChange: confirm a changed sync key (U-42). Used when no device is named.
+msgid "ringChange.bodyUnknown"
+msgstr "A device set up a new key for your synced data."
+
+#. Continue only if that was you. If not, unlock with your recovery code instead.
+#. RingChange: confirm a changed sync key (U-42).
+msgid "ringChange.warning"
+msgstr "Continue only if that was you. If not, unlock with your recovery code instead."
+
+#. That was me
+#. RingChange: confirm a changed sync key (U-42). Passes the ring that was shown (changed.served) to acceptRingChange.
+msgid "ringChange.accept"
+msgstr "That was me"
+
+#. macos: That Was Me
+msgctxt "macos"
+msgid "ringChange.accept"
+msgstr "That Was Me"
+
+#. Use recovery code
+#. RingChange: confirm a changed sync key (U-42). Opens UnlockSync.
+msgid "ringChange.useCode"
+msgstr "Use recovery code"
+
+#. macos: Use Recovery Code
+msgctxt "macos"
+msgid "ringChange.useCode"
+msgstr "Use Recovery Code"
+
 #. About {product}
 #. About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "about.title"
@@ -6835,6 +6985,16 @@ msgstr "Device not verified"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer-cert-invalid.message"
 msgstr "This device couldn't be verified. Try again."
+
+#. Local network blocked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.title"
+msgstr "Local network blocked"
+
+#. This app can't reach devices on your local network. Allow it in system settings.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-permission-denied.message"
+msgstr "This app can't reach devices on your local network. Allow it in system settings."
 
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).

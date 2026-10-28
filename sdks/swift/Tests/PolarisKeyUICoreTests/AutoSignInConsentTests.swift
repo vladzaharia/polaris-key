@@ -58,4 +58,29 @@ final class AutoSignInConsentTests: XCTestCase {
         let screen = confirm(KitAutoSignIn(step: .confirm, license: "existing"))
         XCTAssertNotNil(screen.line("signin.consent.licenseLine"))
     }
+
+    func testTheAppleConfirmFixtureCarriesALicenseLineAndConsentLines() throws {
+        let preview = try XCTUnwrap(
+            PolarisKeyPreviewState.all.first { $0.id == "SignIn.confirm.apple" })
+        let screen = KitStates.signIn(preview.inputs)
+        XCTAssertTrue(try XCTUnwrap(screen.line("signin.consent.licenseLine")).isComplete())
+        for key in ["signin.consent.alsoGets", "signin.consent.profile", "signin.consent.pairwise"] {
+            XCTAssertNotNil(screen.line(key), key)
+        }
+        XCTAssertNotNil(screen.line("signin.auto.confirm.asApple"))
+    }
+
+    func testTheDeviceLimitFixturesCoverNoLinkAndAFullRowThatAllowsReplace() throws {
+        let ids = Set(PolarisKeyPreviewState.all.map(\.id))
+        XCTAssertTrue(ids.isSuperset(of: ["SignIn.device-limit", "SignIn.device-limit.no-link", "SignIn.choose.device-limit"]))
+        let rows = try XCTUnwrap(
+            PolarisKeyPreviewState.all.first { $0.id == "SignIn.choose.device-limit" })
+        XCTAssertTrue(
+            rows.inputs.choices?.choices.contains { $0.isFull && $0.replace?.allowed == true } == true)
+        let noLink = try XCTUnwrap(
+            PolarisKeyPreviewState.all.first { $0.id == "SignIn.device-limit.no-link" })
+        let screen = KitStates.signIn(noLink.inputs)
+        XCTAssertNotNil(screen.line("deviceLimit.noManage"))
+        XCTAssertNil(screen.line("signin.deviceLimit.replace"))
+    }
 }

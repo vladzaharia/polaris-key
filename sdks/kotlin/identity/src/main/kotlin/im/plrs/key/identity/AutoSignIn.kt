@@ -115,13 +115,19 @@ public sealed interface AutoSignInResult {
             "AutoSignInResult.NeedsSignIn(linkHandle=${if (linkHandle == null) "null" else "[redacted]"}, reason=${reason.wire})"
     }
 
-    /** Every seat is taken; [manageUrl] is the Worker's page for freeing one and [view] is the choice view (with the replace rows) when the Worker sent it. */
+    /**
+     * Every seat is taken; [manageUrl] is the Worker's page for freeing one and [view] is the choice view (with the
+     * replace rows) when the Worker sent it.
+     */
     public class DeviceLimit(public val manageUrl: String?, public val view: LicenseChoiceView?) : AutoSignInResult {
         override fun toString(): String = "AutoSignInResult.DeviceLimit"
     }
 
-    /** No exchange here, or a refusal: [code] is the Worker's or `platform-identity-unavailable`. */
-    public data class Unavailable(val code: String) : AutoSignInResult
+    /**
+     * No exchange here, or a refusal: [code] is the Worker's or `platform-identity-unavailable`. [reason] is why
+     * the exchange was unavailable (no device keys, not served, ...) when that is what ended the ladder.
+     */
+    public data class Unavailable @JvmOverloads constructor(val code: String, val reason: ExchangeUnavailableReason? = null) : AutoSignInResult
 }
 
 internal suspend fun IdentityClient.runAutoSignIn(options: AutoSignInOptions): AutoSignInResult {
@@ -156,7 +162,7 @@ internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
     try {
         val nonce = when (val n = exchangeNonce(provider.kind)) {
             is ExchangeNonceResult.Issued -> n.nonce
-            is ExchangeNonceResult.Ended -> return AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable)
+            is ExchangeNonceResult.Ended -> return unavailable(n.outcome)
         }
         val audience = core.discoveryDocument()?.identity?.exchange?.googleServerClientId
         val subject = try {
@@ -207,7 +213,7 @@ private suspend fun IdentityClient.attempt(provider: PlatformIdentityProvider, s
     try {
         val nonce = when (val n = exchangeNonce(provider.kind)) {
             is ExchangeNonceResult.Issued -> n.nonce
-            is ExchangeNonceResult.Ended -> return AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable)
+            is ExchangeNonceResult.Ended -> return unavailable(n.outcome)
         }
         val audience = core.discoveryDocument()?.identity?.exchange?.googleServerClientId
         val subject = try {
@@ -238,13 +244,22 @@ private fun signedOutResult() = AutoSignInResult.NeedsSignIn(null, AutoSignInRea
 
 private fun result(outcome: ExchangeOutcome): AutoSignInResult = when (outcome) {
     is ExchangeOutcome.SignedIn -> AutoSignInResult.SignedIn(outcome.subject, outcome.licenseId)
+
     is ExchangeOutcome.PendingConsent -> AutoSignInResult.Confirm(outcome)
+
     is ExchangeOutcome.PendingSignIn -> AutoSignInResult.Choose(outcome)
+
     is ExchangeOutcome.NeedsSignIn -> AutoSignInResult.NeedsSignIn(
-        outcome.linkHandle, if (outcome.reason == "terms") AutoSignInReason.Terms else AutoSignInReason.NoLink,
+        outcome.linkHandle,
+        if (outcome.reason == "terms") AutoSignInReason.Terms else AutoSignInReason.NoLink,
     )
-    is ExchangeOutcome.Unavailable -> AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable)
+
+    is ExchangeOutcome.Unavailable -> AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable, outcome.reason)
 }
+
+/** The ladder's answer when the nonce step ended it: the exchange's own reason is kept, not flattened. */
+private fun unavailable(outcome: ExchangeOutcome): AutoSignInResult =
+    AutoSignInResult.Unavailable(ErrorCode.platformIdentityUnavailable, (outcome as? ExchangeOutcome.Unavailable)?.reason)
 
 /** Scenario 11. With a session this is the regular `signOut()`; with none, only the local state. */
 private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIdentityProvider) {
@@ -259,5 +274,7 @@ private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIden
         } catch (e: Exception) {
             // The Worker could not be reached: the flag stays unset and the check repeats at the next launch.
         }
+        // signOut() cleans up the installed provider; the one passed in the options is the one that reported it.
+        if (provider !== platformProvider.get()) safeCleanup(provider)
     }
 }

@@ -441,8 +441,23 @@ const KIT_CSS = String.raw`
   object-fit: cover;
   flex: none;
 }
+/* LOGO-2: a 28 px tile beside a 17 px semibold name (tile-to-cap about 2.3); 24 over 16 where
+   space is tight. The tile is no control, so no target size binds it (a row that becomes one
+   carries the target in its own min-height). */
 .identity[data-size="compact"] .icon {
-  --pk-icon-size: 2rem;
+  --pk-icon-size: 1.75rem;
+}
+.identity[data-size="compact"] .name {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+@media (max-width: 22.5rem) {
+  .identity[data-size="compact"] .icon {
+    --pk-icon-size: 1.5rem;
+  }
+  .identity[data-size="compact"] .name {
+    font-size: 1rem;
+  }
 }
 /* A hero icon never takes more than a fifth of the window, so large text still shows the lede. */
 .identity[data-size="hero"] .icon {
@@ -1434,7 +1449,7 @@ dialog.sheet .card,
   display: none;
 }
 .pk-root[data-shape] dialog.sheet .stage[data-split] .identity .icon {
-  display: revert;
+  display: grid;
 }
 /* In the sheet the identity is the compact header over the title, never the wide panel. */
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .identity {
@@ -1443,7 +1458,7 @@ dialog.sheet .card,
   text-align: start;
 }
 .pk-root[data-shape] dialog.sheet .stage[data-split] .passport .icon {
-  --pk-icon-size: 2rem;
+  --pk-icon-size: 1.75rem;
 }
 /* Under 35rem the sheet docks to the bottom edge, past the home indicator (DL2, DL17). */
 @media (max-width: 35rem) {
