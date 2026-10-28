@@ -14,6 +14,7 @@
 //    session does not own are ignored.
 
 import type { Socket } from "node:net";
+import { printAs } from "../core/redact.js";
 import {
   FrameReader,
   PeerChannel,
@@ -29,6 +30,11 @@ export const HANDSHAKE_MS = 30_000;
 /** The first APP record type; `send` defaults to it. */
 export const APP_DEFAULT_TYPE = 0x0100;
 const MAX_QUEUED_MESSAGES = 256;
+/** A peer that sends faster than the host reads: pause the socket at 4 MiB queued, resume under
+ *  1 MiB, and close with `peer_busy` at 8 MiB. */
+export const QUEUE_PAUSE_BYTES = 4 * 1024 * 1024;
+export const QUEUE_RESUME_BYTES = 1024 * 1024;
+export const QUEUE_MAX_BYTES = 8 * 1024 * 1024;
 
 export type LanErrorReason =
   | "no_identity"
@@ -73,6 +79,8 @@ export interface SessionClosed {
 /** Anything that owns a `PeerChannel`: a TCP socket or a relay session. */
 export interface ChannelLink {
   readonly channel: PeerChannel;
+  /** Stop (true) or resume (false) reading from the transport, where it can. */
+  pause?(on: boolean): void;
 }
 
 /** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
@@ -87,17 +95,28 @@ export class ConnectSession {
   #onMessage = new Set<(m: SessionMessage) => void>();
   #onClose = new Set<(c: SessionClosed) => void>();
   #closed: SessionClosed | null = null;
+  #bytes = 0;
+  readonly #link: ChannelLink;
 
   /** @internal */
   constructor(
-    private readonly link: ChannelLink,
+    link: ChannelLink,
     readonly peerDeviceId: string,
     readonly caps: readonly string[],
     readonly hello: PeerHello,
     readonly role: "initiator" | "responder",
     readonly remoteAddress: string,
     readonly path: SessionPath = "lan",
-  ) {}
+  ) {
+    this.#link = link;
+    // The link holds the channel and with it the discovery keys: never printed.
+    printAs(this, () => ({
+      session: "ConnectSession",
+      peerDeviceId,
+      path,
+      role,
+    }));
+  }
 
   get closed(): SessionClosed | null {
     return this.#closed;
@@ -110,7 +129,7 @@ export class ConnectSession {
     if (this.#closed !== null)
       throw new LanError("closed", "The session is closed.");
     try {
-      await this.link.channel.sendRecord(type, body);
+      await this.#link.channel.sendRecord(type, body);
     } catch (e) {
       if (e instanceof Error && e.message === "message too large")
         throw new LanError(
@@ -121,10 +140,20 @@ export class ConnectSession {
     }
   }
 
+  /** Send a record of any type the session does not own (a peer document, a later transfer
+   *  type). The channel refuses HELLO, CLOSE, REKEY and SAS records. @internal */
+  sendRecord(type: number, body: Uint8Array): Promise<void> {
+    return this.#link.channel.sendRecord(type, body);
+  }
+
   /** The next message; rejects when the session closes with none waiting. */
   receive(): Promise<SessionMessage> {
     const m = this.#queue.shift();
-    if (m !== undefined) return Promise.resolve(m);
+    if (m !== undefined) {
+      this.#bytes -= m.body.length;
+      if (this.#bytes < QUEUE_RESUME_BYTES) this.#link.pause?.(false);
+      return Promise.resolve(m);
+    }
     if (this.#closed !== null)
       return Promise.reject(new LanError("closed", "The session is closed."));
     return new Promise((resolve, reject) =>
@@ -146,7 +175,7 @@ export class ConnectSession {
 
   /** Close with `peer_bye` (or another code); resolves when the socket is down. */
   async close(code: "peer_bye" | "peer_busy" = "peer_bye"): Promise<void> {
-    await this.link.channel.close(code);
+    await this.#link.channel.close(code);
   }
 
   /** @internal */
@@ -158,11 +187,16 @@ export class ConnectSession {
     }
     const w = this.#waiters.shift();
     if (w !== undefined) return w.resolve(m);
-    if (this.#queue.length >= MAX_QUEUED_MESSAGES) {
-      void this.link.channel.close("peer_busy");
+    if (
+      this.#queue.length >= MAX_QUEUED_MESSAGES ||
+      this.#bytes + m.body.length > QUEUE_MAX_BYTES
+    ) {
+      void this.#link.channel.close("peer_busy");
       return;
     }
     this.#queue.push(m);
+    this.#bytes += m.body.length;
+    if (this.#bytes > QUEUE_PAUSE_BYTES) this.#link.pause?.(true);
   }
 
   /** @internal */
@@ -215,7 +249,11 @@ export class SocketLink {
   #ended = false;
   #lost = false;
 
-  constructor(private readonly o: SocketLinkOptions) {
+  readonly #o: SocketLinkOptions;
+
+  constructor(o: SocketLinkOptions) {
+    this.#o = o;
+    printAs(this, () => ({ link: "SocketLink" }));
     const { socket } = o;
     this.opened = new Promise((resolve, reject) => {
       this.#settle = { resolve, reject };
@@ -245,6 +283,12 @@ export class SocketLink {
     });
   }
 
+  pause(on: boolean): void {
+    const s = this.#o.socket;
+    if (on) s.pause();
+    else if (!s.destroyed) s.resume();
+  }
+
   #data(chunk: Buffer): void {
     if (this.#ended) return;
     const frames = this.#reader.push(chunk);
@@ -266,10 +310,10 @@ export class SocketLink {
           e.peerDeviceId,
           e.caps,
           e.hello,
-          this.o.channel.role,
-          this.o.socket.remoteAddress ?? "",
+          this.#o.channel.role,
+          this.#o.socket.remoteAddress ?? "",
         );
-        this.o.onEstablished?.(this.#session);
+        this.#o.onEstablished?.(this.#session);
         this.#settle.resolve(this.#session);
         break;
       }
@@ -277,13 +321,13 @@ export class SocketLink {
         routeRecord(this, this.#session, e.recordType, e.body);
         break;
       case "ring":
-        this.o.onRing?.(e.jws, e.epoch);
+        this.#o.onRing?.(e.jws, e.epoch);
         break;
       case "trust-unverified":
-        this.o.onTrust?.(e.jws);
+        this.#o.onTrust?.(e.jws);
         break;
       case "ring-wanted":
-        this.o.onRingWanted?.();
+        this.#o.onRingWanted?.();
         break;
       case "closed":
         this.#finish(
@@ -319,11 +363,11 @@ export class SocketLink {
           closeCode: c.code,
         }),
       );
-    const s = this.o.socket;
+    const s = this.#o.socket;
     // Let the CLOSE record flush, then drop the socket.
     s.end(() => s.destroy());
     const t = setTimeout(() => s.destroy(), 1000);
     t.unref();
-    this.o.onEnded?.();
+    this.#o.onEnded?.();
   }
 }

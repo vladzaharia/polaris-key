@@ -4,8 +4,7 @@
 // reconnect with backoff, the typed quota and pause errors, and the rule that modes `v` and `p`
 // never cross the relay. The room is a faithful in-process copy of the CC-07 engine's framing
 // (relayFixtures.ts).
-import { rmSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { signJws } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import {
@@ -19,14 +18,12 @@ import {
   LanError,
   RELAY_MODES,
   RelayError,
-  RelayService,
   assertRelayMode,
   type ConnectNotice,
   type ConnectSession,
 } from "../src/connect/index.js";
 import {
   MemoryMdnsNetwork,
-  MultiWorker,
   PRODUCT,
   T0,
   devId,
@@ -37,38 +34,12 @@ import {
   until,
   utf8,
 } from "./lanFixtures.js";
-import { FakeRoom, ManualTimer } from "./relayFixtures.js";
+import { FakeRoom, ManualTimer, relayHarness } from "./relayFixtures.js";
 import { TEST_KID, TEST_PEM, TEST_PUB } from "./parityFixtures.js";
 
 const A = devId("1");
 const B = devId("2");
-let dirs: string[] = [];
-let clients: PolarisKeyClient[] = [];
-let services: RelayService[] = [];
-
-beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(T0 * 1000);
-});
-afterEach(async () => {
-  await Promise.all(services.splice(0).map((s) => s.stop()));
-  await Promise.all(clients.splice(0).map((c) => c.cloudConnect.stop()));
-  for (const c of clients.splice(0)) c.close();
-  vi.useRealTimers();
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
-});
-
-async function world(trustRefresh = false) {
-  const worker = new MultiWorker();
-  const room = new FakeRoom(worker);
-  const a = await makeClient(worker, "1", dirs, { trustRefresh });
-  const b = await makeClient(worker, "2", dirs, { trustRefresh });
-  clients.push(a, b);
-  await a.connect.identity();
-  await b.connect.identity();
-  await a.connect.identity({ refresh: true });
-  return { worker, room, a, b };
-}
+const { dirs, clients, world, svc } = relayHarness();
 
 const relayOnly = (room: FakeRoom, extra: object = {}) => ({
   lan: false as const,
@@ -288,27 +259,11 @@ describe("LAN first, then the relay", () => {
 });
 
 describe("reconnect and the typed stops", () => {
-  function svc(
-    a: PolarisKeyClient,
-    room: FakeRoom,
-    t: ManualTimer,
-    extra: object = {},
-  ) {
-    const r = new RelayService(a.connect.relaySource(), {
-      webSocket: room.webSocket,
-      timer: t.timer,
-      random: () => 0.5,
-      ...extra,
-    });
-    services.push(r);
-    r.start();
-    return r;
-  }
-
   it("reconnects with a growing, jittered backoff and a fresh ticket each time", async () => {
     const { a, room, worker } = await world();
     const t = new ManualTimer();
-    const r = svc(a, room, t);
+    // `stableMs: 0`: every open counts as stable, so the delay restarts each time.
+    const r = svc(a, room, t, { stableMs: 0 });
     await r.ready();
     expect(worker.ticketsAsked).toBe(1);
     // The room drops the socket; the session on it ends as connection_lost.
@@ -328,7 +283,7 @@ describe("reconnect and the typed stops", () => {
     expect(t.fire((ms) => ms === 1500)).toBe(true);
     await r.ready();
     expect(worker.ticketsAsked).toBe(4);
-    expect(r.status.attempts).toBe(0);
+    expect(r.status.attempts).toBe(2);
   });
 
   it("ends a session on the dropped socket with connection_lost", async () => {
@@ -570,8 +525,7 @@ describe("pushed documents", () => {
 
   /** The peer pushes a TRUST record on an open session (host code cannot; the test reaches in). */
   async function pushTrust(from: ConnectSession, jws: string): Promise<void> {
-    const link = (from as unknown as { link: { channel: PeerChannel } }).link;
-    await link.channel.sendRecord(0x0003, utf8(JSON.stringify({ trust: jws })));
+    await from.sendRecord(0x0003, utf8(JSON.stringify({ trust: jws })));
   }
 
   it("a peer's TRUST manifest is verified and applied, or refused with a reason", async () => {

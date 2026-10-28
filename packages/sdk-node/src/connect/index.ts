@@ -7,7 +7,13 @@ export {
   type DiscoveryKeys,
 } from "./client.js";
 export { LanService, type LanSource } from "./lan.js";
-export { ConnectSession, LanError, type SessionPath } from "./session.js";
+export {
+  QUEUE_MAX_BYTES,
+  QUEUE_PAUSE_BYTES,
+  ConnectSession,
+  LanError,
+  type SessionPath,
+} from "./session.js";
 export {
   CloudConnect,
   type CloudConnectOptions,
@@ -18,7 +24,6 @@ export {
 export {
   RELAY_MODES,
   RelayError,
-  RelayService,
   assertRelayMode,
   type RelayErrorReason,
   type RelayGrant,

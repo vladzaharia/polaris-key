@@ -3,7 +3,7 @@
 // a browse keeps and drops, and one real multicast round trip on this machine (skipped, with the
 // reason printed, when the sandbox has no multicast).
 import { EventEmitter } from "node:events";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   MulticastDnsAdapter,
   PEER_SERVICE,
@@ -14,6 +14,8 @@ import {
 
 const INST = "p1-abcdefghijklmnop";
 const FQDN = `${INST}.${PEER_SERVICE}`;
+/** The UDP source of the packets: an A record is believed only from its own address. */
+const SRC = { address: "192.168.1.20" };
 const HOST = `${INST}.local`;
 
 class FakeSocket extends EventEmitter implements MdnsSocket {
@@ -93,6 +95,9 @@ describe("MulticastDnsAdapter", () => {
     expect(s.responses).toHaveLength(n);
     s.emit("query", { questions: [{ name: PEER_SERVICE, type: "PTR" }] });
     expect(s.responses).toHaveLength(n + 1);
+    // Replies are sent at most once a second.
+    s.emit("query", { questions: [{ name: PEER_SERVICE, type: "PTR" }] });
+    expect(s.responses).toHaveLength(n + 1);
     await h.stop();
     const bye = s.responses.at(-1).answers;
     expect(bye.every((r: any) => r.ttl === 0)).toBe(true);
@@ -120,14 +125,14 @@ describe("MulticastDnsAdapter", () => {
       type: "PTR",
     });
     // The PTR alone: not up yet, and the next question asks for the rest.
-    s.emit("response", { answers: [packet().answers[0]] });
+    s.emit("response", { answers: [packet().answers[0]] }, SRC);
     expect(up).toEqual([]);
-    s.emit("response", { answers: packet().answers.slice(1) });
+    s.emit("response", { answers: packet().answers.slice(1) }, SRC);
     expect(up).toEqual([
       { instance: INST, host: "192.168.1.20", port: 4242, txt: ["v=1", "m=a"] },
     ]);
     // The same answer again is not a second event.
-    s.emit("response", packet());
+    s.emit("response", packet(), SRC);
     expect(up).toHaveLength(1);
     s.emit("response", {
       answers: [{ name: PEER_SERVICE, type: "PTR", ttl: 0, data: FQDN }],
@@ -144,7 +149,7 @@ describe("MulticastDnsAdapter", () => {
       await new MulticastDnsAdapter({ create: () => s }).browse((f) =>
         up.push(f),
       );
-      s.emit("response", { answers });
+      s.emit("response", { answers }, SRC);
       return up;
     };
     const mutate = (f: (p: ReturnType<typeof packet>) => void) => {
@@ -181,6 +186,73 @@ describe("MulticastDnsAdapter", () => {
     expect(await run(other)).toHaveLength(1); // SRV/TXT/A still name the instance by themselves
   });
 
+  it("believes an A record only from its own source, keeps four, and dials the first seen", async () => {
+    const s = new FakeSocket();
+    const up: MdnsFound[] = [];
+    await new MulticastDnsAdapter({ create: () => s }).browse((f) =>
+      up.push(f),
+    );
+    const [ptr, srv, txt] = packet().answers;
+    const a = (ip: string) => ({ name: HOST, type: "A", ttl: 120, data: ip });
+    s.emit("response", { answers: [ptr, srv, txt] }, SRC);
+    // A neighbour claims another device's name for an address that is not its own.
+    s.emit("response", { answers: [a("192.168.1.99")] }, SRC);
+    expect(up).toEqual([]);
+    // Several sources answer; the first is dialled, not the lexically smallest.
+    s.emit(
+      "response",
+      { answers: [a("192.168.1.50")] },
+      { address: "192.168.1.50" },
+    );
+    for (const n of [10, 11, 12, 13, 14])
+      s.emit(
+        "response",
+        { answers: [a(`192.168.1.${n}`)] },
+        { address: `192.168.1.${n}` },
+      );
+    expect(up).toHaveLength(1);
+    expect(up[0]!.host).toBe("192.168.1.50");
+  });
+
+  it("expires and evicts resolve entries so a flood cannot stop discovery", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const s = new FakeSocket();
+      const up: MdnsFound[] = [];
+      await new MulticastDnsAdapter({ create: () => s }).browse((f) =>
+        up.push(f),
+      );
+      const base32 = "abcdefghijklmnopqrstuvwxyz234567";
+      const flood = (n: number) => ({
+        answers: Array.from({ length: n }, (_, i) => ({
+          name: PEER_SERVICE,
+          type: "PTR",
+          ttl: 120,
+          data: `p1-${base32[i % 32]}${base32[(i >> 5) % 32]}${"b".repeat(14)}.${PEER_SERVICE}`,
+        })),
+      });
+      // Full of half-resolved names: the real device still resolves (the oldest is evicted).
+      s.emit("response", flood(400), SRC);
+      s.emit("response", packet(), SRC);
+      expect(up.map((f) => f.instance)).toEqual([INST]);
+      // And much later, after the entries expired, a new device resolves as well.
+      vi.setSystemTime(Date.now() + 6 * 60_000);
+      const other = packet();
+      const inst2 = "p1-ccccccccccccccc2";
+      const host2 = `${inst2}.local`;
+      const fq2 = `${inst2}.${PEER_SERVICE}`;
+      other.answers[0]!.data = fq2;
+      other.answers[1]!.name = fq2;
+      other.answers[1]!.data.target = host2;
+      other.answers[2]!.name = fq2;
+      other.answers[3]!.name = host2;
+      s.emit("response", other, SRC);
+      expect(up.map((f) => f.instance)).toEqual([INST, inst2]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("bounds the instances it tracks", async () => {
     const s = new FakeSocket();
     const a = new MulticastDnsAdapter({ create: () => s });
@@ -205,15 +277,11 @@ describe("MulticastDnsAdapter", () => {
   });
 
   it("isLanAddress", () => {
-    for (const ok of [
-      "10.1.2.3",
-      "172.16.0.1",
-      "172.31.255.1",
-      "192.168.0.9",
-      "169.254.1.1",
-    ])
+    for (const ok of ["10.1.2.3", "172.16.0.1", "172.31.255.1", "192.168.0.9"])
       expect(isLanAddress(ok)).toBe(true);
     for (const no of [
+      "169.254.1.1",
+      "100.64.0.1",
       "8.8.8.8",
       "172.32.0.1",
       "127.0.0.1",

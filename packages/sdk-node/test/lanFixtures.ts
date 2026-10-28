@@ -107,6 +107,8 @@ export class MultiWorker {
   certSpan = 604_800;
   /** The relay ticket route: what it answers, and the tickets it issued (ticket to device). */
   relay: "ok" | "disabled" | "paused" | "quota-person" | "quota-product" = "ok";
+  /** The `Retry-After` of a paused answer, seconds. */
+  retryAfter = 300;
   tickets = new Map<string, string>();
   ticketsAsked = 0;
   /** The `url` the ticket answer carries. */
@@ -178,7 +180,7 @@ export class MultiWorker {
           JSON.stringify({ error: { code: "relay_paused" } }),
           {
             status: 503,
-            ...hdr({ "retry-after": "300" }),
+            ...hdr({ "retry-after": String(this.retryAfter) }),
           },
         );
       if (this.relay === "quota-person" || this.relay === "quota-product")

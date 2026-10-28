@@ -266,7 +266,9 @@ export class ConnectClient {
   discoveryKeys(): Promise<DiscoveryKeys | null> {
     return this.#serial(async () => {
       const held = await this.#load();
-      if (held === null) return null;
+      // After a pushed roster removed a device the Worker replaced K_disc; this copy is not used
+      // (not for adverts, not for browsing) until an identity fetch brings the new one.
+      if (held === null || held.keysStale === true) return null;
       const now = this.ctx.now();
       const prev =
         held.discKeys.length === 2 &&
@@ -475,8 +477,14 @@ export class ConnectClient {
         prior !== null
           ? keysAfterRing(held.discKeys, prior, ring)
           : held.discKeys;
+      const removed =
+        prior !== null &&
+        !prior.devices.every((d) => ring.devices.some((n) => sameDevice(n, d)));
       const rec: ConnectStateRecord = {
         ...held,
+        ...(removed || held.keysStale === true
+          ? { keysStale: true as const }
+          : {}),
         ring: jws,
         epoch: ring.epoch,
         discKeys: keys,
