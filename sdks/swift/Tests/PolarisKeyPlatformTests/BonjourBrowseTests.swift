@@ -19,7 +19,12 @@ private final class FakeDriver: BonjourBrowseDriver, @unchecked Sendable {
         return { [self] in lock.withLock { stops += 1 } }
     }
 
-    func send(_ e: BonjourDriverEvent) { lock.withLock { _emit }?(e) }
+    private var _snap: [BonjourFound] = []
+    func send(_ e: BonjourDriverEvent) {
+        if case .upserted(let f) = e { lock.withLock { _snap += f } }
+        lock.withLock { _emit }?(e)
+    }
+    func snapshot() -> [BonjourFound] { lock.withLock { _snap } }
 }
 
 private final class Log: @unchecked Sendable {
@@ -113,6 +118,41 @@ final class BonjourBrowseTests: XCTestCase {
         // The evicted one comes back as a new hit once seen again, evicting the next oldest.
         d.send(.upserted([found(1)]))
         XCTAssertEqual(l.down, [inst(1), inst(2)])
+    }
+
+    /// S2: match first, then store. Forged names never take a slot, so they cannot evict a real peer.
+    func testOnlyAcceptedNamesEnterTheTable() throws {
+        let d = FakeDriver()
+        let real = inst(7)
+        let b = BonjourBrowse(driver: d, configurationCheck: { nil }, accept: { $0 == real })
+        let l = Log()
+        try start(b, l)
+        d.send(.upserted([found(7)]))
+        d.send(.upserted((1000..<1600).map { found($0) }))
+        XCTAssertEqual(l.up, [found(7)])
+        XCTAssertEqual(l.down, [], "the real peer is not evicted")
+    }
+
+    /// A peer seen before the roster listed it enters the table on `rescan`, with no new browse event.
+    func testRescanAdmitsAPeerSeenBeforeItWasKnown() throws {
+        let d = FakeDriver()
+        let known = PlatformLock(Set<String>())
+        let b = BonjourBrowse(driver: d, configurationCheck: { nil }, accept: { name in known.withLock { s in s.contains(name) } })
+        let l = Log()
+        try start(b, l)
+        d.send(.upserted([found(7), found(8)]))
+        XCTAssertEqual(l.up, [])
+        b.rescan()
+        XCTAssertEqual(l.up, [], "still unknown")
+        known.withLock { $0 = [inst(7)] }
+        b.rescan()
+        XCTAssertEqual(l.up, [found(7)])
+        b.rescan()
+        XCTAssertEqual(l.up, [found(7)], "reported once")
+        b.stop()
+        known.withLock { $0 = [inst(7), inst(8)] }
+        b.rescan()
+        XCTAssertEqual(l.up, [found(7)], "nothing after stop")
     }
 
     func testPolicyDeniedAndNoAuthAreClassified() {

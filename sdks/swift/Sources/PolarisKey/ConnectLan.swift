@@ -6,7 +6,8 @@
 //  - the advert is `p1-` plus HMAC(K_disc, epoch, deviceId) with `v=1`, `m=a` and nothing else; it is
 //    renewed at every 15-minute epoch boundary and when K_disc changes, and uses only the newest key (G4);
 //  - a browse hit is kept only if it matches a roster device (never this one) under the current or
-//    previous epoch and either delivered key; a name that did not match is not worked out twice;
+//    previous epoch and either delivered key; the match is one dictionary lookup (`ConnectBrowseIndex`),
+//    and a name that does not match never enters the browse table;
 //  - the listener starts a handshake only when this device holds a verified identity. A failed tag closes
 //    the socket without a word (G2, in the engine);
 //  - unauthenticated sockets are bounded (G7): 32 in total and 4 per address are the listener's
@@ -29,7 +30,94 @@ import Network
 public let connectLanMaxSessions = 64
 private let identityTtlSeconds = 30
 private let certMarginSeconds = 60
-private let missCache = 1024
+
+/// Browse names to roster devices: one dictionary per (15-minute epoch, key pair, roster), so a
+/// forged `p1-` name costs one lookup and no HMAC. Rebuilt (at most 2 epochs x 2 keys x 127 devices
+/// = 508 HMACs) when the epoch, the keys or the roster change. First match wins in the order
+/// current epoch, newest key, roster order.
+final class ConnectBrowseIndex: Sendable {
+    struct Hit: Equatable, Sendable {
+        let deviceId: String
+        /// 0 the current epoch, 1 the previous one.
+        let epochBack: Int
+        /// 0 the newest discovery key, 1 the previous one.
+        let keyIndex: Int
+    }
+    typealias NameFn = @Sendable (_ key: Data, _ epoch: Int, _ deviceId: String) throws -> String
+
+    private struct Built {
+        var epoch: Int
+        var table: [String: ConnectBrowseIndex.Hit]
+    }
+    private struct State {
+        var keys: [Data] = []
+        var roster: [String] = []
+        var loaded = false
+        var built: Built?
+    }
+    private let state = LockedValue(State())
+    private let name: NameFn
+    /// How many times the dictionary was built (a test reads it).
+    let builds = LockedValue(0)
+
+    init(
+        name: @escaping NameFn = { try PeerAdvert.accountInstance(discoveryKey: $0, epoch: $1, deviceId: $2) }
+    ) { self.name = name }
+
+    /// The identity just loaded; a change of keys or roster drops the dictionary.
+    @discardableResult
+    func update(_ ident: PeerSource) -> Bool {
+        update(keys: ident.keys.all.map(\.bytes), roster: ident.roster.filter { $0 != ident.deviceId })
+    }
+
+    @discardableResult
+    func update(keys: [Data], roster: [String]) -> Bool {
+        state.with { s in
+            if s.loaded && s.keys == keys && s.roster == roster { return false }
+            s.keys = keys
+            s.roster = roster
+            s.loaded = true
+            s.built = nil
+            return true
+        }
+    }
+
+    func lookup(_ instance: String, now: Int) -> Hit? {
+        guard PeerAdvert.isInstanceName(instance) else { return nil }
+        return state.with { s in
+            guard s.loaded else { return nil }
+            ensure(&s, now: now)
+            return s.built?.table[instance]
+        }
+    }
+
+    /// Bring the dictionary to `now`'s epoch; true when it had to be rebuilt (a new epoch counts), so the
+    /// caller re-runs the browse filter.
+    func refresh(now: Int) -> Bool {
+        state.with { s in
+            guard s.loaded else { return false }
+            return ensure(&s, now: now)
+        }
+    }
+
+    @discardableResult
+    private func ensure(_ s: inout State, now: Int) -> Bool {
+        let epoch = peerAdvertEpoch(now)
+        if s.built?.epoch == epoch { return false }
+        var table: [String: Hit] = [:]
+        for epochBack in 0...1 {
+            for (i, key) in s.keys.prefix(2).enumerated() {
+                for deviceId in s.roster.prefix(128) {
+                    guard let n = try? name(key, epoch - epochBack, deviceId), table[n] == nil else { continue }
+                    table[n] = Hit(deviceId: deviceId, epochBack: epochBack, keyIndex: i)
+                }
+            }
+        }
+        s.built = Built(epoch: epoch, table: table)
+        builds.with { $0 += 1 }
+        return true
+    }
+}
 
 /// What the LAN service needs of the client. `load` reads the held identity (it may touch the key store);
 /// `now` is epoch seconds. `refresh` asks the Worker for a newer roster (throws on failure); `adoptRing`
@@ -87,6 +175,12 @@ public protocol ConnectLanNetwork: Sendable {
     /// Connect; the pipe is handed back only after the address passed the dial policy.
     func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe
     func stop() async
+    /// The roster or keys changed: offer the browser's current results to the name filter again.
+    func rescan()
+}
+
+extension ConnectLanNetwork {
+    public func rescan() {}
 }
 
 /// The OS network: `NWListener`, `NWBrowser` and `NWConnection` through `PolarisKeyPlatform`.
@@ -94,10 +188,18 @@ public final class SystemConnectLanNetwork: ConnectLanNetwork, @unchecked Sendab
     private let listener: BonjourListener
     private let browseOptions: BonjourBrowseOptions
     private let dialOptions: BonjourDialOptions
+    private let browseAccept: (@Sendable (String) -> Bool)?
+    private let browsing = LockedValue<BonjourBrowse?>(nil)
 
     /// `peerToPeer` is AWDL (D-5), off by default. `allowLoopback` is for tests and same-host use.
-    public init(peerToPeer: Bool = false, allowLoopback: Bool = false) {
-        listener = BonjourListener(peerToPeer: peerToPeer)
+    public convenience init(peerToPeer: Bool = false, allowLoopback: Bool = false) {
+        self.init(peerToPeer: peerToPeer, allowLoopback: allowLoopback, accept: nil)
+    }
+
+    /// `accept` keeps a browse name out of the table unless it matches a roster device.
+    init(peerToPeer: Bool, allowLoopback: Bool, accept: (@Sendable (String) -> Bool)?) {
+        listener = BonjourListener(peerToPeer: peerToPeer, policy: BonjourDialPolicy(allowLoopback: allowLoopback))
+        browseAccept = accept
         browseOptions = BonjourBrowseOptions(peerToPeer: peerToPeer)
         dialOptions = BonjourDialOptions(policy: BonjourDialPolicy(allowLoopback: allowLoopback), peerToPeer: peerToPeer)
     }
@@ -114,9 +216,13 @@ public final class SystemConnectLanNetwork: ConnectLanNetwork, @unchecked Sendab
         onUp: @escaping @Sendable (BonjourFound) -> Void, onDown: @escaping @Sendable (String) -> Void,
         onError: @escaping @Sendable (BonjourBrowseError) -> Void
     ) throws -> @Sendable () -> Void {
-        let b = BonjourBrowse(options: browseOptions)
+        let b = BonjourBrowse(options: browseOptions, accept: browseAccept)
         try b.start(onUp: onUp, onDown: onDown, onError: onError)
-        return { b.stop() }
+        browsing.set(b)
+        return { [browsing] in
+            browsing.set(nil)
+            b.stop()
+        }
     }
 
     public func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe {
@@ -124,6 +230,8 @@ public final class SystemConnectLanNetwork: ConnectLanNetwork, @unchecked Sendab
     }
 
     public func stop() async { listener.stop() }
+
+    public func rescan() { browsing.current?.rescan() }
 }
 
 /// `NWPipe` as the engine's byte pipe.
@@ -222,15 +330,21 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
     private let browseStop = LockedValue<(@Sendable () -> Void)?>(nil)
     private var cancelEpoch: (@Sendable () -> Void)?
     private var peers: [String: (peer: ConnectLanPeer, instance: String)] = [:]
-    private var miss: [String: Int] = [:]
-    private var missOrder: [String] = []
+    private let index: ConnectBrowseIndex
     private var pending: [ObjectIdentifier: NWPipe] = [:]
     private var sessions: [ObjectIdentifier: ConnectSession] = [:]
 
     private init(_ src: ConnectLanSource, _ o: ConnectLanOptions) {
         self.src = src
         self.o = o
-        network = o.network ?? SystemConnectLanNetwork(peerToPeer: o.peerToPeer, allowLoopback: o.allowLoopback)
+        let index = ConnectBrowseIndex()
+        self.index = index
+        let now = src.now
+        network =
+            o.network
+            ?? SystemConnectLanNetwork(
+                peerToPeer: o.peerToPeer, allowLoopback: o.allowLoopback,
+                accept: { index.lookup($0, now: now()) != nil })
         timer =
             o.timer ?? { s, fn in
                 let t = Task {
@@ -410,10 +524,7 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
         do { v = try await src.load() } catch let e as ConnectLanError { throw e } catch {
             throw ConnectLanError(.noIdentity, "No Cloud Connect identity is held.")
         }
-        if let h = held, h.src.ringEpoch != v.ringEpoch {
-            miss = [:]
-            missOrder = []
-        }
+        if index.update(v) { network.rescan() }
         held = (now, v)
         return v
     }
@@ -424,6 +535,8 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
 
     func stored() {
         held = nil
+        // Reload now so the browse index follows a new roster or key.
+        if !stopped { Task { _ = try? await self.identity(force: false) } }
         if !stopped && listening && o.advertise { Task { try? await self.rotate() } }
     }
 
@@ -540,6 +653,8 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
         if stopped { return }
         let ident = try await identity(force: true)
         let now = src.now()
+        // The epoch turned over: a peer that learned it first already advertises under the new name.
+        if index.refresh(now: now) { network.rescan() }
         let epoch = peerAdvertEpoch(now)
         guard let name = try? PeerAdvert.accountInstance(
             discoveryKey: ident.keys.current.bytes, epoch: epoch, deviceId: ident.deviceId)
@@ -563,16 +678,7 @@ public actor ConnectLanService: CustomStringConvertible, CustomReflectable {
     private func found(_ f: BonjourFound) async {
         if stopped { return }
         guard case .ok(let mode, _) = PeerAdvert.parseTxt(f.txt), mode == .a else { return }
-        if miss[f.instance] != nil { return }
-        guard let ident = try? await identity(force: false) else { return }
-        let hit = try? PeerAdvert.browseAccountInstance(
-            f.instance, discoveryKeys: ident.keys.all.map(\.bytes), now: src.now(),
-            roster: ident.roster.filter { $0 != ident.deviceId })
-        guard let hit else {
-            // Bounded negative cache: a forged instance is not worked out twice.
-            if missOrder.count >= missCache { miss[missOrder.removeFirst()] = nil }
-            miss[f.instance] = src.now()
-            missOrder.append(f.instance)
+        guard (try? await identity(force: false)) != nil, let hit = index.lookup(f.instance, now: src.now()) else {
             return
         }
         let peer = ConnectLanPeer(deviceId: hit.deviceId, endpoint: f.endpoint)
