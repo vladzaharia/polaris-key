@@ -66,6 +66,7 @@ import {
   DeviceManagementUnsupportedError,
   type DevicesClientOptions,
 } from "./devices/client.js";
+import { createNodeDeviceKeyStore } from "./devices/deviceKeys.js";
 import { IdentityClient } from "./identity/client.js";
 import { ReleaseClient } from "./release/client.js";
 import { CommerceClient } from "./commerce/client.js";
@@ -73,6 +74,7 @@ import { DistributionClient } from "./distribution/client.js";
 import { PolarisEventEmitter } from "./core/events.js";
 import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
+import { ConnectClient, type ConnectOptions } from "./connect/client.js";
 import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
 import {
@@ -129,6 +131,9 @@ export interface PolarisKeyClientOptions extends CoreOptions {
   backend?: BackendClientOptions;
   /** The Cloud Sync key ring (U-38.1): the device keys and the crypto port. */
   keyring?: KeyringOptions;
+  /** Cloud Connect (CC-08.1): the device keys (default: the file store, or `keyring.deviceKeys`)
+   *  and whether a memory-only key store is allowed. */
+  connect?: ConnectOptions;
 }
 
 /**
@@ -193,6 +198,9 @@ export class PolarisKeyClient {
    *  Named `keyring` because `sync()` is the licence-sync method; it is the plan's
    *  `client.sync.keyring`. */
   readonly keyring: KeyringClient;
+  /** Cloud Connect: the device's identity among the person's devices (WIRE-CONTRACT-V5 §15):
+   *  keys, roster, certificate and discovery key. */
+  readonly connect: ConnectClient;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -296,6 +304,31 @@ export class PolarisKeyClient {
       this.tokens,
       opts.keyring ?? {},
     );
+    this.connect = new ConnectClient(
+      this.core,
+      this.tokens,
+      {
+        devices: this.devices,
+        trust: () => this.trust.effective,
+        defaultKeys: () =>
+          createNodeDeviceKeyStore({
+            product: this.product,
+            ...(opts.stateDir ? { stateDir: opts.stateDir } : {}),
+          }),
+        discovery: async () => {
+          if (this.discoveryDoc === null) await this.discover();
+          return this.discoveryDoc;
+        },
+      },
+      {
+        ...(opts.keyring?.deviceKeys
+          ? { deviceKeys: opts.keyring.deviceKeys }
+          : {}),
+        ...opts.connect,
+      },
+    );
+    // Signing out leaves the person's devices: the roster and K_disc are not this device's to keep.
+    this.identity.onBeforeSignOut(() => this.connect.leave());
     this.commerce = new CommerceClient(this.core, this.tokens, () =>
       this.sync({ force: true }).then(() => undefined),
     );
