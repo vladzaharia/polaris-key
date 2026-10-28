@@ -475,20 +475,20 @@
       "note": "polaris_key.core.peer_cert ports client-core's peer/cert.ts (verify_peer_cert, verify_ring, ring_expired, replace_ring, admit_peer) over the SDK's strict verify_jws; tests/test_connect_conformance.py runs peerCertCases, ringCases and peerAdmissionCases. client.connect (polaris_key/connect, CC-10.1): identity() registers the device keys on first need (a memory-only store refuses unless allow_ephemeral_keys), fetches GET connect/identity and verifies the roster and certificate against the effective set, refusing a stale, foreign, expired or other-keys answer with bad_response; the roster, certificate and K_disc are kept as pkey.connect.v1 (0600 in a 0700 state directory, never in a repr or log) with the previous K_disc dropped on a leave or key change and after 24 h; list_devices(), current(), discovery_keys(), leave(). tests/test_connect_identity.py. No identity transcript is recorded yet; the relay transcripts belong to connect.relay."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-10"
+      "status": "implemented",
+      "note": "polaris_key.core.peer_noise: Noise_XX_25519_AESGCM_SHA256 on the cryptography package, a zero or failing DH refusing with dh_zero; tests/test_connect_noise.py replays noise-vectors.json."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-10"
+      "status": "implemented",
+      "note": "polaris_key.core peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter) and TrustManager.accept_peer; tests/test_connect_peer_*.py, test_connect_session.py and test_trust_accept_peer.py replay peer-matrix.json."
     },
     "connect.lan": {
-      "status": "planned",
-      "wp": "CC-10"
+      "status": "implemented",
+      "note": "polaris_key.connect.lan and the bounded mDNS responder and browser (advert rotation, browse match, TCP listen and dial, G7 caps, wrong_peer, flood and write-buffer caps); tests/test_connect_lan.py, test_connect_mdns.py, test_connect_mdns_packet.py. A live multicast test runs only with PKEY_LIVE_MDNS=1."
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-10"
+      "status": "implemented",
+      "note": "client.connect.relay_ticket() and polaris_key.connect.relay (ticket offer, WebSocket socket via the optional websockets extra, reconnect policy, LIMIT and close codes, redirects refused, mode-a relay sessions, pacing, 8 MiB queue cap); tests/test_connect_relay*.py and test_connect_client_relay.py; tests/test_transcripts.py replays connect-relay-ticket and connect-relay-quota."
     },
     "connect.links": {
       "status": "planned",
@@ -499,8 +499,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-10"
+      "status": "implemented",
+      "note": "client.cloud_connect (polaris_key.connect.cloud_connect): start, stop, peers, devices, open and on_channel, LAN then relay, the G21 off switches, G9 and the sign-out order, with an AsyncClient mirror; tests/test_cloud_connect.py."
     },
     "server.license": {
       "status": "implemented",

@@ -2420,13 +2420,13 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
         "sync.e2e": CapabilityRow("planned", "sync", ()),
         "connect.identity": CapabilityRow("implemented", "connect", ()),
-        "connect.noise": CapabilityRow("planned", "connect", ()),
-        "connect.protocol": CapabilityRow("planned", "connect", ()),
-        "connect.lan": CapabilityRow("planned", "connect", ()),
-        "connect.relay": CapabilityRow("planned", "connect", ()),
+        "connect.noise": CapabilityRow("implemented", "connect", ()),
+        "connect.protocol": CapabilityRow("implemented", "connect", ()),
+        "connect.lan": CapabilityRow("implemented", "connect", ()),
+        "connect.relay": CapabilityRow("implemented", "connect", ()),
         "connect.links": CapabilityRow("planned", "connect", ()),
         "connect.transfer": CapabilityRow("planned", "connect", ()),
-        "connect.app": CapabilityRow("planned", "connect", ()),
+        "connect.app": CapabilityRow("implemented", "connect", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
         "devices.register": CapabilityRow("implemented", "core", ()),
@@ -2514,4 +2514,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "02064b856cceb3051c2865949f4219473044d013ba7bd5e32db24bed389c42ba"
+CAPABILITY_DIGEST: Final[str] = "1cc5de436848ad0696044227dc22bbc90b3b0f1ee96d41d496ea5e90b1991de8"
