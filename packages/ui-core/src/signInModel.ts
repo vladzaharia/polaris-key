@@ -109,13 +109,29 @@ export type AutoOutcome =
   /** The ladder found no account to continue with: the methods step stays. */
   | { kind: "needsSignIn" };
 
+/** Hints that only prefill the sign-in page (WIRE-CONTRACT-V4 §12.4): they verify nothing and
+ *  never make the page send a code. `purpose: "attach"` asks for the account to hold the license. */
+export interface SignInHintsInput {
+  loginHint?: string;
+  nameHint?: string;
+  purpose?: "signin" | "attach";
+}
+
+/** What `attach()` answers (identity.attach). A refusal is a result, not a throw; `code` is the
+ *  server's (`account_required`, `license_owned`, `license_email_bound`, ...). The request carries
+ *  no address: the server compares the license's email with the account's. */
+export type AttachOutcome = { kind: "ok" } | { kind: "refused"; code: string };
+
 /** The SDK primitives the form drives (Node first; I-10a fixes each language's spelling). */
 export interface SignInPrimitives {
   start(options: {
     channel: SignInChannel;
     licenseChoice: "app" | "card";
     provider?: string;
+    hints?: SignInHintsInput;
   }): Promise<SignInSessionHandle>;
+  /** Put this device's license in the signed-in account (`attach({confirm: true})`). */
+  attach?(): Promise<AttachOutcome>;
   choice?: {
     licenses(grant: string): Promise<LicenseChoiceView>;
     devices(grant: string, licenseId: string): Promise<ReplaceView>;
