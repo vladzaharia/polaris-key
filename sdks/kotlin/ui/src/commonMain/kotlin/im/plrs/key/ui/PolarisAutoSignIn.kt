@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -24,8 +25,30 @@ public fun PolarisAutoSignIn(state: PolarisAutoSignInState, modifier: Modifier =
     PolarisAutoSignInScreen(ui, state, modifier)
 }
 
+/** True while the app's window is in the foreground; a test provides its own. */
+internal val LocalPolarisForeground = androidx.compose.runtime.staticCompositionLocalOf<(() -> Boolean)?> { null }
+
+/**
+ * After Replace opened the browser, the person comes back: the window leaves the foreground and returns.
+ * That return runs the sign-in once more ([PolarisAutoSignInState.returned]), so they do not start again by hand.
+ */
+@Composable
+private fun ResumeAfterReplace(state: PolarisAutoSignInState) {
+    val awaiting by state.awaitingReturn.collectAsState()
+    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+    val foreground = LocalPolarisForeground.current ?: { windowInfo.isWindowFocused }
+    androidx.compose.runtime.LaunchedEffect(awaiting) {
+        if (!awaiting) return@LaunchedEffect
+        // Away, then back: the browser took the window and gave it up.
+        androidx.compose.runtime.snapshotFlow(foreground).first { !it }
+        androidx.compose.runtime.snapshotFlow(foreground).first { it }
+        state.returned()
+    }
+}
+
 @Composable
 internal fun PolarisAutoSignInScreen(ui: PolarisAutoSignInUi, state: PolarisAutoSignInState, modifier: Modifier = Modifier) {
+    ResumeAfterReplace(state)
     val locale = kitLocale()
     val opener = rememberPolarisOpener()
     val member = rememberPresentation(LocalPolarisKey.current?.presentationSource)
@@ -39,7 +62,8 @@ internal fun PolarisAutoSignInScreen(ui: PolarisAutoSignInUi, state: PolarisAuto
         PolarisAutoSignInUi.Idle, PolarisAutoSignInUi.Done -> Unit
         PolarisAutoSignInUi.Running -> PolarisProgressScreen(PolarisTheme.copy.gateLoading, modifier)
         is PolarisAutoSignInUi.Confirm -> {
-            val device = thisDeviceLabel()
+            // The line reads on after a separator: the host's own device line, else the model's lower-case "this phone".
+            val device = PolarisTheme.copy.deviceThis.takeIf { it != PolarisCopy().deviceThis }
             val (screen, _) = remember(ui.consent, member) { resolve(KitComponent.signIn, ui.consent.toKitInputs(device)) }
             Retryable(ui.failed, modifier) {
                 PolarisKitScreen(
@@ -71,26 +95,41 @@ internal fun PolarisAutoSignInScreen(ui: PolarisAutoSignInUi, state: PolarisAuto
         is PolarisAutoSignInUi.Choose -> PolarisAutoChoice(ui.choice, state, modifier, ::resolve)
         is PolarisAutoSignInUi.DeviceLimit -> {
             val view = ui.view
-            val inputs = if (view != null) view.toDeviceLimitInputs() else KitInputs.of(
-                mapOf("activation" to JsonObject(ui.manageUrl?.let { mapOf("manageUrl" to JsonPrimitive(it)) } ?: emptyMap())),
-            )
-            val (screen, withMember) = remember(ui, member) {
-                resolve(if (view != null) KitComponent.licenseChoice else KitComponent.deviceLimit, inputs)
-            }
             val manage = ui.manageUrl
-            PolarisKitScreen(
-                screen,
-                modifier,
-                rows = KitRowData.from(withMember),
-                onAction = { action ->
-                    when (action) {
-                        KitAction.replaceInBrowser, KitAction.openManageUrl -> if (manage != null) opener(manage)
-                        KitAction.cancel -> state.dismiss()
-                        else -> Unit
-                    }
-                },
-                onControl = { key -> if (key == "common.back") state.dismiss() },
-            )
+            // Replace opened the browser: the next return runs the sign-in once more (state.returned()).
+            val openManage = { state.replaceOpened(); if (manage != null) opener(manage) }
+            if (view == null) {
+                // No license rows: the sign-in's own device-limit step (Replace, Use another account, Cancel).
+                val (screen, _) = remember(ui, member) { resolve(KitComponent.signIn, deviceLimitInputs(manage, provider = false)) }
+                PolarisKitScreen(
+                    screen,
+                    modifier,
+                    onAction = { action ->
+                        when (action) {
+                            KitAction.openManageUrl, KitAction.replaceInBrowser -> openManage()
+                            KitAction.cancel -> state.dismiss()
+                            else -> Unit
+                        }
+                    },
+                    onControl = { key -> if (key == "signin.auto.confirm.other") state.useAnotherAccount() },
+                )
+            } else {
+                val (screen, withMember) = remember(ui, member) { resolve(KitComponent.licenseChoice, view.toDeviceLimitInputs()) }
+                PolarisKitScreen(
+                    screen,
+                    modifier,
+                    rows = KitRowData.from(withMember),
+                    onAction = { action ->
+                        when (action) {
+                            KitAction.replaceInBrowser, KitAction.openManageUrl -> openManage()
+                            KitAction.cancel -> state.dismiss()
+                            else -> Unit
+                        }
+                    },
+                    onControl = { key -> if (key == "common.back") state.dismiss() },
+                    onUseAnotherAccount = { state.useAnotherAccount() },
+                )
+            }
         }
     }
 }

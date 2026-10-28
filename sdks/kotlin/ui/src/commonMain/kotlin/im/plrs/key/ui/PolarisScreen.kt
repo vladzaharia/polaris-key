@@ -251,6 +251,8 @@ internal fun PolarisScaffold(
     navigationIcon: (@Composable () -> Unit)? = null,
     detail: (@Composable ColumnScope.() -> Unit)? = null,
     actions: (@Composable ColumnScope.() -> Unit)? = null,
+    /** At large type (font scale 1.5 and up) the actions dock below the scrolling body, so the primary stays in the first viewport. */
+    dockActionsAtLargeType: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val theme = PolarisTheme.current
@@ -328,6 +330,40 @@ internal fun PolarisScaffold(
             }
             return@PolarisSurface
         }
+        if (actions != null && dockActionsAtLargeType && LocalDensity.current.fontScale >= PolarisDockFontScale) {
+            val dockWidth = if (maxContentWidth == Dp.Unspecified) window.columnWidth else maxContentWidth
+            val dockHorizontal = if (contentAlign == TextAlign.Start) Alignment.Start else Alignment.CenterHorizontally
+            CompositionLocalProvider(LocalPolarisTextAlign provides contentAlign) {
+                Column(Modifier.fillMaxSize().padding(horizontal = window.horizontalPadding), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        Modifier.widthIn(max = dockWidth).fillMaxWidth().weight(1f, fill = true).verticalScroll(rememberScrollState()).padding(top = window.topInset),
+                        horizontalAlignment = dockHorizontal,
+                    ) {
+                        navigationIcon?.let {
+                            it()
+                            Spacer(Modifier.height(PolarisSpace.tight))
+                        }
+                        if (logo != null) {
+                            logo()
+                            Spacer(Modifier.height(window.section))
+                        }
+                        content()
+                        if (detail != null) {
+                            Spacer(Modifier.height(window.section))
+                            detail()
+                        }
+                    }
+                    // The dock: its own scroll if the actions alone exceed 60 % of the window.
+                    Column(
+                        Modifier.widthIn(max = dockWidth).fillMaxWidth().heightIn(max = maxHeight * 0.6f).verticalScroll(rememberScrollState())
+                            .padding(top = PolarisSpace.controls, bottom = window.verticalPadding),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        content = actions,
+                    )
+                }
+            }
+            return@PolarisSurface
+        }
         // On a tablet-sized window a docked action group would sit far from its content: the
         // whole column, actions included, is centred instead.
         val place = if (actions != null && window.width >= 600.dp && window.height >= 600.dp) PolarisAnchor.Center else anchor
@@ -385,6 +421,9 @@ internal fun PolarisScaffold(
         }
     }
 }
+
+/** The font scale from which a sign-in step's actions dock (Android font scale 2 is the reference; SwiftUI docks at AX5). */
+internal const val PolarisDockFontScale: Float = 1.5f
 
 /** The side inset of an embedded pane: the pane gutter beside a list, the window's own margin when the item is the whole phone screen. */
 internal val LocalPolarisEmbeddedInset = staticCompositionLocalOf { PolarisSpace.gutter }
@@ -718,7 +757,7 @@ internal val LocalPolarisActionGrows = staticCompositionLocalOf { false }
 
 /** Full width in a stacked group, sized to the label in a trailing row; 56 dp tall (60 on TV). */
 @Composable
-private fun Modifier.controlSize(): Modifier {
+internal fun Modifier.controlSize(): Modifier {
     val height = polarisWindow.controlHeight
     val row = LocalPolarisActionRow.current
     val sized = if (row) this else this.fillMaxWidth()

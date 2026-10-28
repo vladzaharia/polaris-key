@@ -101,6 +101,10 @@ public class PolarisAutoSignInState(
     public val ui: StateFlow<PolarisAutoSignInUi> = _ui.asStateFlow()
     private val started = AtomicBoolean(false)
 
+    /** True after Replace opened the browser from a device-limit step: the next return runs the sign-in once more. */
+    private val _awaitingReturn = MutableStateFlow(false)
+    public val awaitingReturn: StateFlow<Boolean> = _awaitingReturn.asStateFlow()
+
     /** The pending consent grant. A credential: never exposed. */
     private var grant: String? = null
 
@@ -151,9 +155,37 @@ public class PolarisAutoSignInState(
         scope.launch { apply(guarded { actions.providerSignIn() }, fromForm = true) }
     }
 
+    /**
+     * Replace (or the manage link) opened the browser from the device-limit step. Call it just before the
+     * link opens; [returned] then runs the sign-in once more.
+     */
+    public fun replaceOpened() {
+        if (_ui.value is PolarisAutoSignInUi.DeviceLimit) _awaitingReturn.value = true
+    }
+
+    /**
+     * The person is back in the app after [replaceOpened]. Runs the provider sign-in once more (the ladder
+     * where the platform has no provider), once per Replace. A sheet they dismiss, or a refusal, leaves the
+     * device-limit step as it was; a second limit shows the new step; a session ends in Done.
+     */
+    public fun returned() {
+        if (!_awaitingReturn.compareAndSet(expect = true, update = false)) return
+        val before = _ui.value as? PolarisAutoSignInUi.DeviceLimit ?: return
+        _ui.value = PolarisAutoSignInUi.Running
+        scope.launch {
+            val result = guarded { if (actions.hasProvider) actions.providerSignIn() else actions.autoSignIn() }
+            when (result) {
+                is AutoSignInResult.SignedIn, is AutoSignInResult.Confirm, is AutoSignInResult.Choose, is AutoSignInResult.DeviceLimit -> apply(result, fromForm = true)
+                // Nothing new (the seat is still taken, the sheet was dismissed, the call failed): the step they left.
+                else -> _ui.value = before
+            }
+        }
+    }
+
     /** Leave the form (Cancel, or a different sign-in method): the gate's own screens. */
     public fun dismiss() {
         grant = null
+        _awaitingReturn.value = false
         idle()
     }
 
@@ -257,13 +289,33 @@ public fun signInFormInputs(provider: Boolean): KitInputs =
 public fun LicenseChoiceView.toKitInputs(): KitInputs =
     KitInputs.of(mapOf("signIn" to browserSignIn("outcome" to JsonPrimitive("choose")), "choices" to raw))
 
-/** The device limit with the Worker's replace rows: the all-full choice with Replace in the browser. */
-public fun LicenseChoiceView.toDeviceLimitInputs(): KitInputs =
+/**
+ * The device limit with the Worker's replace rows: the all-full choice. Replace in the browser is offered
+ * only when some row can be replaced (`replace.allowed`); a row that cannot is given as having no
+ * replace, so the lede names the developer, never a Replace that would be refused.
+ */
+public fun LicenseChoiceView.toDeviceLimitInputs(): KitInputs {
+    val choices = raw.array("choices")?.objects() ?: emptyList()
+    val canReplace = choices.any { it.obj("replace").boolean("allowed") == true }
+    val view = if (canReplace) raw else JsonObject(
+        raw + ("choices" to kotlinx.serialization.json.JsonArray(choices.map { JsonObject(it + ("replace" to kotlinx.serialization.json.JsonNull)) })),
+    )
+    val signIn = if (canReplace) browserSignIn("outcome" to JsonPrimitive("choose"), "replace" to JsonPrimitive("browser"), "event" to JsonPrimitive("open-replace"))
+    else browserSignIn("outcome" to JsonPrimitive("choose"))
+    return KitInputs.of(mapOf("signIn" to signIn, "choices" to view))
+}
+
+/** The device limit with no license rows (`SignIn/device-limit`): its own step, never the key screen. */
+public fun deviceLimitInputs(manageUrl: String?, provider: Boolean = false): KitInputs =
     KitInputs.of(
-        mapOf(
-            "signIn" to browserSignIn("outcome" to JsonPrimitive("choose"), "replace" to JsonPrimitive("browser"), "event" to JsonPrimitive("open-replace")),
-            "choices" to raw,
-        ),
+        buildMap {
+            put("signIn", browserSignIn())
+            if (provider) put("provider", JsonPrimitive("Google"))
+            put(
+                "autoSignIn",
+                JsonObject(buildMap { put("step", JsonPrimitive("device-limit")); manageUrl?.let { put("manageUrl", JsonPrimitive(it)) } }),
+            )
+        },
     )
 
 private fun providerName(wire: String): String = when (wire) {

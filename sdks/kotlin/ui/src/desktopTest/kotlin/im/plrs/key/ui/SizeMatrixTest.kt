@@ -285,8 +285,7 @@ internal val knownMatrixGaps: List<Regex> = listOf(
     // The Mac sign-in and device-limit action rows sit below the fold of the 520 dp floor at font scale 2.
     Regex("""MacOS (sign-in|device-limit) \d+x\d+-fs2: '.*' shows .*"""),
     // The confirm step with the license and "also gets" lines (KF-compose fixture): its actions scroll below the fold at font scale 2
-    // on a phone-width GNOME window and on the Mac's 520 dp floor. Reported to the lead (a layout fix, not this slice).
-    Regex("""Gnome sign-in-confirm 390x844-fs2: '.*' shows .*"""),
+    // on the Mac's 520 dp floor (two panes). The phone-width window docks its actions now (KFA-compose).
     Regex("""MacOS sign-in-confirm 844x520-fs2: (.* shows .*|the primary action .* is not in the first viewport .*)"""),
 )
 

@@ -202,4 +202,76 @@ class PolarisAutoSignInStateTest {
         assertEquals("Drift Kart Pro · Lifetime · Pixel 9 becomes device 2 of 3", text)
         assertTrue(screen.shows("signin.auto.confirm.primary") && screen.shows("signin.auto.confirm.other"))
     }
+
+    @Test
+    fun comingBackFromReplaceRunsTheProviderSignInOnceMore() = runTest {
+        val fake = Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null), provider = AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null))
+        var signedIn = 0
+        val state = PolarisAutoSignInState(fake, backgroundScope, onSignedIn = { signedIn++ })
+        state.start(); runCurrent()
+        val limit = state.ui.value
+        assertTrue(limit is PolarisAutoSignInUi.DeviceLimit)
+        // No Replace yet: a return runs nothing.
+        state.returned(); runCurrent()
+        assertEquals(0, fake.providerCalls)
+        state.replaceOpened()
+        assertTrue(state.awaitingReturn.value)
+        // Back, the seat still taken: the step they left, and one run only.
+        state.returned(); runCurrent()
+        assertEquals(1, fake.providerCalls)
+        assertTrue(state.ui.value is PolarisAutoSignInUi.DeviceLimit)
+        state.returned(); runCurrent()
+        assertEquals(1, fake.providerCalls)
+        // Replace again, the seat freed: signed in.
+        fake.provider = AutoSignInResult.SignedIn("ps_x", "lic")
+        state.replaceOpened(); state.returned(); runCurrent()
+        assertEquals(2, fake.providerCalls)
+        assertEquals(PolarisAutoSignInUi.Done, state.ui.value)
+        assertEquals(1, signedIn)
+        assertEquals(1, fake.ladderCalls)
+    }
+
+    @Test
+    fun withNoProviderTheReturnRunsTheLadderAndCancelEndsTheWait() = runTest {
+        val fake = Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null), hasProvider = false)
+        val state = PolarisAutoSignInState(fake, backgroundScope)
+        state.start(); runCurrent()
+        // A desktop with a stored session after the browser: the ladder is rung 1.
+        state.replaceOpened()
+        fake.ladder = AutoSignInResult.SignedIn("ps_x", "lic")
+        state.returned(); runCurrent()
+        assertEquals(2, fake.ladderCalls)
+        assertEquals(0, fake.providerCalls)
+        assertEquals(PolarisAutoSignInUi.Done, state.ui.value)
+
+        val other = Fake(AutoSignInResult.DeviceLimit("https://polaris.locker/manage", null))
+        val second = PolarisAutoSignInState(other, backgroundScope)
+        second.start(); runCurrent()
+        second.replaceOpened(); second.dismiss(); second.returned(); runCurrent()
+        assertEquals(0, other.providerCalls)
+        assertEquals(PolarisAutoSignInUi.Idle, second.ui.value)
+    }
+
+    @Test
+    fun replaceIsOfferedOnlyWhenSomeRowCanBeReplaced() {
+        fun view(replace: String) = LicenseChoiceView.of(
+            obj("""{"state":"choose","choices":[{"id":"lic_1","state":"full","name":"Pro","origin":"signin","seats":{"used":3,"limit":3},"replace":$replace}]}"""),
+        )!!
+        val allowed = KitStates.resolve(KitComponent.licenseChoice, view("""{"allowed":true}""").toDeviceLimitInputs())
+        assertTrue(KitAction.replaceInBrowser in allowed.actions)
+        val refused = KitStates.resolve(KitComponent.licenseChoice, view("""{"allowed":false,"retryAfter":60}""").toDeviceLimitInputs())
+        assertFalse(KitAction.replaceInBrowser in refused.actions)
+        assertTrue(refused.shows("signin.choice.noneReplaceable"))
+    }
+
+    @Test
+    fun theNoRowsLimitIsASignInStepWithReplaceUseAnotherAccountAndCancel() {
+        val screen = KitStates.resolve(KitComponent.signIn, deviceLimitInputs("https://polaris.locker/#/p/x/free-device?license=lic_pro"))
+        assertEquals("device-limit", screen.state)
+        assertTrue(screen.shows("signin.deviceLimit.replace") && screen.shows("signin.auto.confirm.other") && screen.shows("common.cancel"))
+        assertFalse(screen.shows("part.keyField.label") || screen.shows("signin.key.differentKey"))
+        val bare = KitStates.resolve(KitComponent.signIn, deviceLimitInputs(null))
+        assertFalse(bare.shows("signin.deviceLimit.replace"))
+        assertTrue(bare.shows("deviceLimit.noManage"))
+    }
 }

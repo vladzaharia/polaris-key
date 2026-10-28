@@ -190,6 +190,8 @@ public fun PolarisKitScreen(
     rows: KitRowData = KitRowData(),
     onContinue: (String) -> Unit = {},
     onControl: (String) -> Unit = {},
+    /** Offered with the license choice when every license is on all its devices (the automatic sign-in). */
+    onUseAnotherAccount: (() -> Unit)? = null,
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
@@ -199,7 +201,7 @@ public fun PolarisKitScreen(
     when {
         screen.isHidden -> Unit
         screen.component == KitComponent.licenseChoice && choices != null && choices.choices.isNotEmpty() && screen.state in LicenseChoiceRowStates ->
-            PolarisLicenseChoice(screen, choices, modifier, onContinue = onContinue, onAction = onAction, catalog = catalog, locale = locale)
+            PolarisLicenseChoice(screen, choices, modifier, onContinue = onContinue, onAction = onAction, catalog = catalog, locale = locale, onUseAnotherAccount = onUseAnotherAccount)
         screen.component == KitComponent.releaseNotes ->
             PolarisReleaseNotes(screen, rows.releaseNotes, modifier, onRetry = { onAction(KitAction.retry) }, catalog = catalog, locale = locale)
         // Not available is the message KitScreenBody draws; every other state is the Paywall.
@@ -328,11 +330,14 @@ private fun KitScreenBody(
     val rowsOnly = component == KitComponent.accountAndLicense
     // Boot's "Not now" is paired with Download, so it stays a tonal secondary (UI-KITS.md: "never bare
     // text when paired"); everywhere else it is the quiet decline of an automatic step.
-    val isTertiary = { key: String -> key in tertiaryKeys && !(key == "common.notNow" && component == KitComponent.boot) }
+    val deviceLimitStep = component == KitComponent.signIn && screen.state == "device-limit"
+    val isTertiary = { key: String -> (key in tertiaryKeys || (deviceLimitStep && key == "common.cancel")) && !(key == "common.notNow" && component == KitComponent.boot) }
     val tertiary = if (rowsOnly) emptyList() else controls.filter { isTertiary(it.key) }
     val buttons = if (rowsOnly) emptyList() else controls.filter { !isTertiary(it.key) }
     // macOS: a step screen's actions are a trailing row; the Welcome keeps its stacked hero buttons.
     val macRow = autoPlatformVariant() == PolarisPlatformVariant.MacOS && component != KitComponent.welcome && buttons.isNotEmpty()
+    // The automatic steps' quiet links (Use another account, Cancel) share the trailing group's one axis on the Mac.
+    val quietInRow = macRow && component == KitComponent.signIn && (screen.state == "confirm" || deviceLimitStep)
     val onDefault: (() -> Unit)? = if (macRow && !activating) buttons.firstOrNull()?.let { line -> { onControl(line.key); onAction(KitAction.forCopyKey(line.key)) } } else null
     val actions: (@Composable ColumnScope.() -> Unit)? = if ((controls.isEmpty() || rowsOnly) && !attribution && component != KitComponent.activate) null else {
         {
@@ -344,10 +349,17 @@ private fun KitScreenBody(
             if (macRow) {
                 // macOS (B1): a trailing row sized to the labels, Cancel and Back directly left of the default,
                 // emitted left to right so Tab runs the same way; the default has the focus.
+                // The quiet links (Use another account, Cancel) are the group's secondaries too: one trailing axis.
                 PolarisActionGroup(row = true, visualOrder = true) {
+                    for (line in if (quietInRow) tertiary.reversed() else emptyList()) {
+                        val action = KitAction.forCopyKey(line.key)
+                        PolarisSecondaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, external = KitAction.leavesApp(line.key))
+                    }
                     for ((index, line) in buttons.withIndex().reversed()) {
                         val action = KitAction.forCopyKey(line.key)
-                        if (index == 0) {
+                        if (isGoogleProviderLine(line.key, line.args)) {
+                            PolarisGoogleButton(line.text, onClick = { onControl(line.key); onAction(action) }, initialFocus = index == 0)
+                        } else if (index == 0) {
                             PolarisPrimaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, initialFocus = true, external = KitAction.leavesApp(line.key))
                         } else {
                             PolarisSecondaryButton(line.text, onClick = { onControl(line.key); onAction(action) }, external = KitAction.leavesApp(line.key))
@@ -361,7 +373,9 @@ private fun KitScreenBody(
                         val click: () -> Unit = if (gnomeReplace && line.key == "signin.replace.openSystem") ({ replaceOpen = true }) else ({ onControl(line.key); onAction(action) })
                         // One primary, then tonal secondaries (a lone action is always the primary, DL4).
                         val hero = if (polarisWindow.variant.isDesktop && component == KitComponent.welcome) Modifier.widthIn(max = PolarisMac.heroButtonMaxWidth) else Modifier
-                        if (index == 0) {
+                        if (isGoogleProviderLine(line.key, line.args)) {
+                            PolarisGoogleButton(line.text, onClick = click, modifier = hero)
+                        } else if (index == 0) {
                             PolarisPrimaryButton(line.text, onClick = click, modifier = hero, external = KitAction.leavesApp(line.key))
                         } else {
                             PolarisSecondaryButton(line.text, onClick = click, modifier = hero, external = KitAction.leavesApp(line.key))
@@ -370,7 +384,7 @@ private fun KitScreenBody(
                     }
                 }
             }
-            if (tertiary.isNotEmpty()) {
+            if (tertiary.isNotEmpty() && !quietInRow) {
                 Spacer(Modifier.height(if (buttons.isEmpty()) 0.dp else 20.dp))
                 // The extras: one quiet row of links, no divider and no glyph (UI-KITS.md 4.3 Welcome).
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
@@ -400,7 +414,8 @@ private fun KitScreenBody(
             val handoff = component == KitComponent.activate && screen.state == "device-limit"
             val ordered = if (handoff) text.filterNot { it.key == "core.activation.device-limit.title" }.sortedBy { if (it.key == "deviceLimit.title") 0 else 1 } else text
             val meters = (component == KitComponent.deviceLimit || handoff) && KitSeatMeterShown(screen)
-            ordered.forEachIndexed { index, line ->
+            if (component == KitComponent.signIn && screen.state == "confirm") KitConfirmLines(text)
+            else ordered.forEachIndexed { index, line ->
                 // The caption belongs to the meter, which draws it.
                 if (meters && line.key == "part.seatMeter.caption") return@forEachIndexed
                 // The add-key page as a QR on a TV; its caption sits under it, only when the host gave the link (DL14).
@@ -464,6 +479,7 @@ private fun KitScreenBody(
                 anchor = PolarisAnchor.Top,
                 contentAlign = TextAlign.Start,
                 actions = actions,
+                dockActionsAtLargeType = focused,
                 content = body,
             )
         } else {
@@ -491,6 +507,53 @@ private fun KitScreenBody(
         }
     } else {
         screenContent()
+    }
+}
+
+/**
+ * The automatic confirm's lines with their hierarchy (SIGN-IN.md §3.19): "as <email>" under the title,
+ * overline labels over their values, the license line strong. A label whose value did not draw
+ * (a seat the view does not know) is left out with it. 4 dp inside a group, 16 dp between groups.
+ */
+@Composable
+private fun KitConfirmLines(lines: List<KitLine>) {
+    val scheme = MaterialTheme.colorScheme
+    val hasLicense = lines.any { it.key == "signin.consent.licenseLine" || it.key == "signin.consent.newLicense" }
+    for ((index, line) in lines.withIndex()) {
+        if (line.key == "signin.consent.license" && !hasLicense) continue
+        when (line.key) {
+            "signin.consent.license", "signin.consent.alsoGets" -> {
+                if (index > 0 && lines.take(index).any { it.key.startsWith("signin.consent.") }) Spacer(Modifier.height(PolarisSpace.controls))
+                Text(line.text, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(4.dp))
+            }
+            "signin.consent.licenseLine", "signin.consent.newLicense", "signin.consent.profile" -> {
+                val strong = line.key != "signin.consent.profile"
+                Text(
+                    line.text,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = if (strong) FontWeight.Medium else FontWeight.Normal),
+                    color = scheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+            "signin.consent.pairwise" -> {
+                Text(line.text, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
+            }
+            "signin.auto.confirm.as", "signin.auto.confirm.asApple" -> {
+                PolarisBody(line.text)
+                Spacer(Modifier.height(PolarisSpace.controls + 4.dp))
+            }
+            else -> {
+                if (index == 0) {
+                    PolarisTitle(line.text)
+                    Spacer(Modifier.height(4.dp))
+                } else {
+                    PolarisBody(line.text)
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
+        }
     }
 }
 
