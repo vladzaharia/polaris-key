@@ -31,6 +31,15 @@ export interface BrowserStore extends Store {
   /** The offline record store behind `getDeviceId`/`readCache`. */
   readonly offline: OfflineStore;
   status(): Promise<StoreStatus>;
+  /**
+   * The explicit-sign-out flag (web automatic sign-in): set by `signOut()`, cleared by the next
+   * explicit sign-in. While it is set the ladder does not try the platform provider. It lives
+   * beside the token, so it survives a reload, and a bundle import does not drop it.
+   */
+  readonly explicitSignOut?: {
+    get(): Promise<boolean>;
+    set(on: boolean): Promise<void>;
+  };
 }
 
 /** What `status()` reads about the page's storage; the page's globals by default. */
@@ -79,6 +88,16 @@ export function indexedDbStore(
     async clear() {
       await request((await tokens("readwrite")).delete(product));
     },
+    async getFlag() {
+      return (
+        (await request((await tokens("readonly")).get(flagKey(product)))) === 1
+      );
+    },
+    async setFlag(on) {
+      const store = await tokens("readwrite");
+      if (on) await request(store.put(1, flagKey(product)));
+      else await request(store.delete(flagKey(product)));
+    },
     async status() {
       const persistence = opts.persistence ?? pagePersistence();
       let persisted = false;
@@ -116,6 +135,7 @@ export function memoryStore(
     },
   };
   let token: string | null = null;
+  let flag = false;
   return recordStore(product, backing, {
     async get() {
       return token;
@@ -125,6 +145,12 @@ export function memoryStore(
     },
     async clear() {
       token = null;
+    },
+    async getFlag() {
+      return flag;
+    },
+    async setFlag(on) {
+      flag = on;
     },
     async status() {
       return {
@@ -142,8 +168,13 @@ interface TokenSlot {
   get(): Promise<string | null>;
   set(token: string): Promise<void>;
   clear(): Promise<void>;
+  getFlag(): Promise<boolean>;
+  setFlag(on: boolean): Promise<void>;
   status(): Promise<StoreStatus>;
 }
+
+/** The flag's key in the `tokens` object store; a product id never contains a NUL. */
+const flagKey = (product: string): string => `${product}\0explicitSignOut`;
 
 function recordStore(
   product: string,
@@ -170,5 +201,9 @@ function recordStore(
       await offline.write(product, { deviceId: record.deviceId });
     },
     status: () => token.status(),
+    explicitSignOut: {
+      get: () => token.getFlag(),
+      set: (on) => token.setFlag(on),
+    },
   };
 }

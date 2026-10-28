@@ -199,7 +199,10 @@ import {
   callbackState,
   redirectEndpointsOf,
   sessionStorageStash,
+  type AutoSignInOptions,
+  type AutoSignInResult,
   type DeviceCodeSignInSession,
+  type PlatformIdentityProvider,
   type RedirectSignInSession,
   type SignInNamespace,
   type SignInOptions,
@@ -432,6 +435,11 @@ export interface BrowserAdapterOptions {
   /** Wire v4 update decisions (`decideUpdate()`). Absent ⇒ it throws `not-configured`. Needs
    *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
   update?: BrowserUpdateConfig;
+  /**
+   * The platform identity the `autoSignIn()` ladder asks (default: Google through FedCM, using
+   * the server client id discovery names). `null`: no provider, so the ladder stops at the form.
+   */
+  platformIdentity?: PlatformIdentityProvider | null;
   /**
    * The Cloud Sync key ring (sync.keyring, bearer mode only). `deviceKeys` is the device key store
    * (default `createWebDeviceKeyStore()`, IndexedDB with a memory fallback); a memory-only store
@@ -709,6 +717,7 @@ export class BrowserAdapter implements PolarisAdapter {
     this.authMode = resolveAuthMode(opts.auth, this.base, opts.pageOrigin);
     this.autoRegister = opts.autoRegister !== false;
     this.ringOptions = opts.keyring;
+    this.platformIdentity = opts.platformIdentity;
     if (this.authMode === "bearer" && !this.pinned) {
       const err = new PolarisError(
         "invalid-options",
@@ -1295,6 +1304,7 @@ export class BrowserAdapter implements PolarisAdapter {
       try {
         const outcome = await this.bearer.activate(key);
         if (outcome.kind !== "ok") throw activationError(outcome);
+        await this.setExplicitSignOut(false);
         await this.bearer.sync();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         return { keyEntries: outcome.keyEntries ?? null };
@@ -1345,10 +1355,12 @@ export class BrowserAdapter implements PolarisAdapter {
   async signOut(): Promise<SignOutResult> {
     if (this.configError) throw this.fail("identity", this.configError);
     this.setBusy("identity", true);
-    // Stop the browser re-selecting the account on the next visit (FedCM; a no-op elsewhere).
-    // Loaded on demand so the page bundle stays within its size budget.
-    await import("./platformIdentity/fedcm.js").then(
-      (m) => m.fedcmPreventSilentAccess(),
+    // Fail closed: from here no silent rung signs this device in again until an explicit sign-in.
+    await this.setExplicitSignOut(true);
+    // Stop the provider re-selecting the account on the next visit. Loaded on demand so the page
+    // bundle stays within its size budget.
+    await import("./bearer/autoSignIn.js").then(
+      async (m) => m.runSignOutCleanup(await this.platformProvider(m)),
       () => undefined,
     );
     if (this.bearer) {
@@ -1485,8 +1497,10 @@ export class BrowserAdapter implements PolarisAdapter {
     complete: (grant, choice, opts) =>
       this.choiceCall(async (b) => {
         const r = await b.choiceComplete(grant, choice, opts);
-        if (r.kind === "ok")
+        if (r.kind === "ok") {
+          await this.setExplicitSignOut(false);
           this.applyBearer({ busy: noBusy(), error: noErrors() });
+        }
         return r;
       }),
     cancel: (grant) => this.choiceCall((b) => b.choiceCancel(grant)),
@@ -2011,6 +2025,83 @@ export class BrowserAdapter implements PolarisAdapter {
 
   private ring_: KeyringClient | null = null;
   private readonly ringOptions: BrowserAdapterOptions["keyring"];
+  private deviceKeys_: DeviceKeyPort | null = null;
+
+  /** The device key store the key ring and the platform sign-in share: one port per adapter. */
+  private deviceKeyPort(): DeviceKeyPort {
+    return (this.deviceKeys_ ??=
+      this.ringOptions?.deviceKeys ?? createWebDeviceKeyStore());
+  }
+
+  // ── Automatic sign-in (identity.autosignin, I-46.4) ──────────────────────────────────────
+
+  /** The sign-out flag held in memory too, so a store that cannot be written still holds this page. */
+  private signedOutHere = false;
+  private defaultProvider_: PlatformIdentityProvider | null = null;
+  private platformIdentity: PlatformIdentityProvider | null | undefined;
+
+  private async setExplicitSignOut(on: boolean): Promise<void> {
+    if (!this.bearer) return;
+    this.signedOutHere = on;
+    try {
+      await this.bearerStore?.explicitSignOut?.set(on);
+    } catch {
+      // The in-memory flag still holds for this page.
+    }
+  }
+
+  private async explicitSignOut(): Promise<boolean> {
+    if (this.signedOutHere) return true;
+    try {
+      return (await this.bearerStore?.explicitSignOut?.get()) === true;
+    } catch {
+      return false;
+    }
+  }
+
+  private platformProvider(
+    m: typeof import("./bearer/autoSignIn.js"),
+  ): PlatformIdentityProvider | null {
+    if (this.platformIdentity !== undefined) return this.platformIdentity;
+    return (this.defaultProvider_ ??= m.fedcmGoogleProvider(
+      () => exchangeDiscoveryOf(this.discovery_)?.google?.serverClientId,
+    ));
+  }
+
+  /** `identity.autoSignIn(opts?)`: the ladder. Bearer mode; elsewhere `unavailable`. */
+  async autoSignIn(opts: AutoSignInOptions = {}): Promise<AutoSignInResult> {
+    if (this.configError) throw this.fail("identity", this.configError);
+    const b = this.bearer;
+    if (!b) return { kind: "unavailable", code: "runtime" };
+    await this.ensureDiscovery();
+    const m = await import("./bearer/autoSignIn.js");
+    try {
+      const result = await m.runAutoSignIn(
+        {
+          bearer: b,
+          port: this.deviceKeyPort(),
+          provider: this.platformProvider(m),
+          endpoints: exchangeDiscoveryOf(this.discovery_),
+          explicitSignOut: () => this.explicitSignOut(),
+          syncKey: () =>
+            this.bearer && this.capabilities.sync.enabled
+              ? m.ringSyncKey(this.keyring)
+              : Promise.resolve(undefined),
+        },
+        opts,
+      );
+      if (result.kind === "signedIn" && result.via === "platform")
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+      return result;
+    } catch (e) {
+      throw this.fail(
+        "identity",
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("sign-in-failed", (e as Error).message),
+      );
+    }
+  }
 
   /**
    * The Cloud Sync key ring (sync.keyring). Bearer mode runs the engine; a cookie page holds no
@@ -2021,7 +2112,7 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (!b) return (this.ring_ = unsupportedKeyring("runtime", COOKIE_DETAIL));
     const o = this.ringOptions ?? {};
-    const keys = o.deviceKeys ?? createWebDeviceKeyStore();
+    const keys = this.deviceKeyPort();
     return (this.ring_ = new RingEngine({
       product: this.product,
       deviceId: () => b.deviceId,
@@ -2059,6 +2150,7 @@ export class BrowserAdapter implements PolarisAdapter {
     return {
       onSettled: async (outcome) => {
         this.applyBearer({ busy: noBusy(), error: noErrors() });
+        if (outcome.kind === "signedIn") await this.setExplicitSignOut(false);
         if (outcome.kind !== "signedIn" || outcome.subject !== null)
           return outcome;
         // Device code answers no subject: read it when discovery names the endpoint.

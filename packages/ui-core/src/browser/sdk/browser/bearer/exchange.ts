@@ -129,7 +129,11 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Define `value` on `target` as a member a spread, a JSON stringify or a console dump skips. */
-function hidden<T extends object>(target: T, key: string, value: string): T {
+export function hidden<T extends object>(
+  target: T,
+  key: string,
+  value: string,
+): T {
   Object.defineProperty(target, key, {
     value,
     enumerable: false,

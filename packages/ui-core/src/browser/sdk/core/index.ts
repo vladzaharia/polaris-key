@@ -151,6 +151,13 @@ export {
 export type { AttachResult, KeyActivation, SignOutResult } from "./types.js";
 export type {
   AuthorizePurpose,
+  AutoSignInOptions,
+  AutoSignInPrompt,
+  AutoSignInResult,
+  AutoSignInUnavailable,
+  AutoSyncKey,
+  PlatformIdentityProvider,
+  PlatformMediation,
   DeviceCodeSignInOptions,
   DeviceCodeSignInSession,
   RedirectSignInOptions,
