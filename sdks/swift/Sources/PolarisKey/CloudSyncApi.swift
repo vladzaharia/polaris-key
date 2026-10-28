@@ -97,7 +97,7 @@ func safeSignInUrl(_ url: String?, origin: String) -> String? {
 actor CloudSyncApi {
     private enum Work {
         case identity(IdentityChange)
-        case marker(CheckedContinuation<Void, Never>)
+        case marker(@Sendable () -> Void)
     }
 
     private let core: CoreContext
@@ -163,6 +163,9 @@ actor CloudSyncApi {
 
     func newRecoveryCode() async throws -> String { try await recovery() }
 
+    /// The person Cloud Sync is signed in as (for tests and diagnostics).
+    func currentSubject() -> String? { subject }
+
     // MARK: what the client calls
 
     /// An identity change, queued and handled in order.
@@ -215,16 +218,24 @@ actor CloudSyncApi {
 
     private func handle(_ work: Work) async {
         switch work {
-        case .marker(let c): c.resume()
+        case .marker(let done): done()
         case .identity(let change): await onIdentityNow(change)
         }
     }
 
     /// Wait for every identity change queued so far. Never from inside a handler.
-    private func drain() async {
+    /// With `maxMs`, the wait ends at the bound whatever the consumer is doing (S-3).
+    private func drain(maxMs: Int? = nil) async {
         await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
             if consumer == nil { c.resume(); return }
-            enqueue.yield(.marker(c))
+            let once = Once(c)
+            if let maxMs {
+                once.sleeper = Task.detached {
+                    try? await Task.sleep(nanoseconds: UInt64(max(maxMs, 0)) * 1_000_000)
+                    once.fire()
+                }
+            }
+            enqueue.yield(.marker { once.fire() })
         }
     }
 
@@ -283,7 +294,8 @@ actor CloudSyncApi {
                 attributes: [.posixPermissions: 0o700])
             try? Data("{\"v\":1}".utf8).write(to: importMarker, options: .atomic)
         }
-        await h.touch()
+        // Not the whole pump: sign-out and the release hook never wait behind a slow Worker (S-3).
+        Task { await h.touch() }
         await settle()
     }
 
@@ -314,31 +326,40 @@ actor CloudSyncApi {
         await drain()
         await drainEvents()
         if let h = hostValue, await h.isStarted, subject != nil { await leave() }
-        try await forgetAndPurge()
+        if let failure = await forgetAndPurge() { throw failure }
     }
 
     /// The identity client's pre-sign-out hook (the old token is still current): bounded flush, the
     /// machine's sign-out, then the ring forgets and the data is purged (A-3).
     func beforeSignOut() async throws {
-        await drain()
+        // Bounded like the flush: a consumer stuck behind a slow Worker never holds the sign-out (S-3).
+        let began = Date()
+        await drain(maxMs: SYNC_SIGNOUT_FLUSH_MS)
+        let left = max(0, SYNC_SIGNOUT_FLUSH_MS - Int(Date().timeIntervalSince(began) * 1000))
         explicitForget = true
         defer { explicitForget = false }
-        if let h = hostValue, await h.isStarted, subject != nil {
+        let who = subject
+        if let h = hostValue, await h.isStarted, who != nil {
             await h.signOut()
-            await h.flush(maxMs: SYNC_SIGNOUT_FLUSH_MS)
+            await h.flush(maxMs: max(left, 500))
             await drainEvents()
         }
         subject = nil
-        try await forgetAndPurge()
+        if let failure = await forgetAndPurge() {
+            // D-13: a ring that cannot forget stops the sign-out and the person stays signed in, so
+            // Cloud Sync is signed in again for them (the data was purged and is pulled afresh).
+            if let who { await signIn(who) }
+            throw failure
+        }
     }
 
-    /// Forget the ring, then purge. Each is tried whatever the other did; a forget failure is rethrown
+    /// Forget the ring, then purge. Each is tried whatever the other did; a forget failure is returned
     /// (it stops the sign-out), a purge failure is reported and never replaces it.
-    private func forgetAndPurge() async throws {
+    private func forgetAndPurge() async -> (any Error)? {
         var failure: (any Error)?
         do { try await forgetRing() } catch { failure = error }
         await purge()
-        if let failure { throw failure }
+        return failure
     }
 
     private func purge() async {
@@ -429,8 +450,9 @@ struct SyncPort: ConfigSyncPort {
         // A document that changed since the machine was built is routed first (A-6).
         await h.refreshDocumentIfChanged()
         let r = await h.set(key, value)
-        // One pump reports the edit's events (nothing is due before the debounce).
-        await h.touch()
+        // One pump reports the edit's events (nothing is due before the debounce); the call does not
+        // wait for it (S-3).
+        Task { await h.touch() }
         return r
     }
 
@@ -438,7 +460,7 @@ struct SyncPort: ConfigSyncPort {
         guard let h = await api.activeHost() else { return .failed("signed-out") }
         await h.refreshDocumentIfChanged()
         let r = await h.clear(key)
-        await h.touch()
+        Task { await h.touch() }
         return r
     }
 

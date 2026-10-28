@@ -278,6 +278,8 @@ public actor SyncKeyring: CustomReflectable {
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?
     private var memoryPin: SyncRingPin?
+    /// Bumped by `forget()`: an acquisition that began before it is not kept (N-2).
+    private var forgetGeneration = 0
     private var ring: SyncKeyringRing?
 
     /// What the E2E machine seals and opens with; it reads the ring's current root on every call.
@@ -338,6 +340,8 @@ public actor SyncKeyring: CustomReflectable {
     /// person on this device starts clean. A root that cannot be deleted throws, so the sign-out
     /// stops rather than leave it behind.
     public func forget() async throws {
+        // N-2: a root being acquired when this runs is not stored after it.
+        forgetGeneration += 1
         lock()
         memoryPin = nil
         var failure: Error?
@@ -412,6 +416,7 @@ public actor SyncKeyring: CustomReflectable {
     }
 
     private func unlock(accepting accept: SyncRingPin?) async throws -> SyncUnlockResult {
+        let gen = forgetGeneration
         let state = try await read()
         guard let ring = state.ring else { return .locked(reason: .noRing) }
         let pinned = await pin()
@@ -429,7 +434,7 @@ public actor SyncKeyring: CustomReflectable {
         }
         // The Keychain root, when it is this ring's (and, when a pin stands, the pinned one).
         if let stored = storedRoot(matching: served) {
-            try await hold(stored, store: false)
+            try await hold(stored, store: false, gen: gen)
             return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
         }
         guard let wrap = state.wrap else { return .locked(reason: .noWrap) }
@@ -443,7 +448,7 @@ public actor SyncKeyring: CustomReflectable {
             context: await wrapContext(ring.ringId, ring.epoch), kid: kid,
             wrap: SyncHPKE.Wrap(kem: SyncHPKE.kemX25519, enc: enc, ct: ct))
         guard let root, same(SyncCrypto.deriveKid(root: root), kid) else { return .locked(reason: .unusableWrap) }
-        try await hold(HeldRoot(ringId: ring.ringId, epoch: ring.epoch, kid: kid, root: root), store: true)
+        try await hold(HeldRoot(ringId: ring.ringId, epoch: ring.epoch, kid: kid, root: root), store: true, gen: gen)
         return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
     }
 
@@ -519,6 +524,7 @@ public actor SyncKeyring: CustomReflectable {
     public func recover(_ codeText: String) async throws -> SyncRecovered {
         let invalid = PolarisError(
             code: ErrorCode.recoveryCodeInvalid, message: "The recovery code is not valid for this key ring.")
+        let gen = forgetGeneration
         guard let code = SyncRecovery.parse(codeText) else { throw invalid }
         guard let ring = try await read().ring, ring.recoverySet else {
             throw PolarisError(code: ErrorCode.notFound, message: "There is no recovery code for this key ring.")
@@ -533,7 +539,7 @@ public actor SyncKeyring: CustomReflectable {
             let root = SyncRecovery.unwrap(code: code, ringId: ring.ringId, epoch: ring.epoch, kid: kid, blob: bytes),
             same(SyncCrypto.deriveKid(root: root), kid)
         else { throw invalid }
-        try await hold(HeldRoot(ringId: ring.ringId, epoch: ring.epoch, kid: kid, root: root), store: true)
+        try await hold(HeldRoot(ringId: ring.ringId, epoch: ring.epoch, kid: kid, root: root), store: true, gen: gen)
         return SyncRecovered(ringId: ring.ringId, epoch: ring.epoch, wrapDeposited: await depositOwnWrap())
     }
 
@@ -575,8 +581,10 @@ public actor SyncKeyring: CustomReflectable {
     /// that does not open (or names a different `kid`) is skipped.
     public func openAdopted() async throws -> [String] {
         let h = try need()
+        let gen = forgetGeneration
         let current: SyncKeyringRing?
         if let r = ring { current = r } else { current = try await read().ring }
+        guard gen == forgetGeneration else { throw CancellationError() }
         var opened: [String] = []
         for a in current?.adopted ?? [] {
             guard let kid = unhex(a.kid), let ct = unb64(a.ct) else { continue }
@@ -601,9 +609,17 @@ public actor SyncKeyring: CustomReflectable {
 
     /// Takes a freshly acquired root: pinned first (no root is held without a pin), then kept in
     /// the Keychain (a failure there leaves the root in memory only), then held.
-    private func hold(_ h: HeldRoot, store: Bool) async throws {
+    private func hold(_ h: HeldRoot, store: Bool, gen: Int) async throws {
+        // N-2: the ring was forgotten (sign-out) since this acquisition began: nothing is kept.
+        guard gen == forgetGeneration else { throw CancellationError() }
         let pinned = SyncRingPin(ringId: h.ringId, epoch: h.epoch, rootKid: hexOf(h.kid))
         if await pin() != pinned { try await writePin(pinned) }
+        if gen != forgetGeneration {
+            // Forgotten while the pin was written: take the pin back as well.
+            memoryPin = nil
+            try? await core.store.writeRecordChecked(Self.pinRecord, nil)
+            throw CancellationError()
+        }
         if store {
             try? roots().save(
                 StoredRingRoot(ringId: h.ringId, epoch: h.epoch, kid: hexOf(h.kid), root: Base64URL.encode(h.root)))
@@ -650,6 +666,7 @@ public actor SyncKeyring: CustomReflectable {
     }
 
     private func makeRing(_ path: String, withRecovery: Bool) async throws -> SyncCreatedRing {
+        let gen = forgetGeneration
         let agree = try await agreeKey()
         let root = SyncCrypto.random(SyncCrypto.rootBytes)
         let kid = SyncCrypto.deriveKid(root: root)
@@ -666,7 +683,7 @@ public actor SyncKeyring: CustomReflectable {
             shown = try SyncRecovery.encode(code: code)
         }
         try await send("POST", path, body)
-        try await hold(HeldRoot(ringId: ringId, epoch: epoch, kid: kid, root: root), store: true)
+        try await hold(HeldRoot(ringId: ringId, epoch: epoch, kid: kid, root: root), store: true, gen: gen)
         ring = nil
         return SyncCreatedRing(ringId: ringId, epoch: epoch, rootKid: hexOf(kid), recoveryCode: shown)
     }

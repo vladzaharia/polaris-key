@@ -67,7 +67,7 @@ public final class CloudSyncStateFile: @unchecked Sendable {
         let keys = raw["openKeys"]?.arrayValue?.compactMap(\.stringValue) ?? []
         return CloudSyncFile(
             persisted: raw["persisted"].flatMap { SyncMachineState(fileJSON: $0) },
-            catalog: isCatalogShape(raw["catalog"]) ? raw["catalog"] : nil,
+            catalog: nil,  // N-1: a served catalog is never read back
             openKeys: Array(keys.suffix(cloudSyncOpenKeysMax)))
     }
 
@@ -76,7 +76,7 @@ public final class CloudSyncStateFile: @unchecked Sendable {
             "v": .int(1), "product": .string(product), "openKeys": .array(file.openKeys.map { .string($0) }),
         ]
         o["persisted"] = file.persisted.map { $0.fileJSON } ?? .null
-        o["catalog"] = file.catalog ?? .null
+        o["catalog"] = .null  // N-1: a served catalog is never persisted
         let data = try JSONEncoder().encode(JSONValue.object(o))
         try lock.withLock { try writeAtomic(data) }
     }

@@ -57,6 +57,11 @@ public struct CloudSyncTransport: Sendable {
 
     /// Send one machine request; the answer is a status and body, or `.transport`.
     public func send(_ req: SyncRequest) async -> SyncResponse {
+        #if canImport(FoundationNetworking)
+        // S-4: the stock session follows redirects before any final-URL check and buffers the whole body
+        // before the cap, so Cloud Sync does not run over it. An injected transport is still checked below.
+        if transport is URLSessionTransport { return .transport }
+        #endif
         guard let token = await token(), !token.isEmpty, Self.isSyncPath(product: product, req.path),
             let url = URL(string: baseUrl + req.path)
         else { return .transport }

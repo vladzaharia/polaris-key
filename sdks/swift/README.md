@@ -377,6 +377,13 @@ Sign in with Apple button opens the sheet and then the exchange. Pass
 `.polarisKeyGate(client, autoSignIn: false)` (or `.polarisKey(client, autoSignIn: false)`) to turn
 the launch attempt off.
 
+### Cloud Sync platforms
+
+Cloud Sync runs where the SDK's transport can refuse a redirect and stream a response under a size cap:
+Apple platforms. On Linux (`FoundationNetworking`) it is off: `CloudSyncHostDeps.live` reports Sync
+disabled and `CloudSyncTransport` sends nothing over the stock session. The licence, config, identity
+and key-ring calls are unaffected. An injected transport that follows no redirect can still be used.
+
 ### Cloud Sync key ring
 
 `client.keyring` holds the person's end-to-end key: one root per ring, shared by their devices and

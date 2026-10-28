@@ -455,9 +455,13 @@ extension IdentityClient {
                     grant: grant, expiresIn: lifetime, expiresAt: await core.now() + lifetime,
                     view: view))
         case .token(let accessToken, let scope, let subject, _, _, let license):
-            try await core.setToken(accessToken, source: .signin, person: true)
+            let previous = holdSubjectFirst(subject)
+            do { try await core.setToken(accessToken, source: .signin, person: true) } catch {
+                restoreSubject(previous, ifHeld: subject)
+                throw error
+            }
             if redirectAcquisitionSync.current { await onAcquired?() }
-            updateSubject(subject)
+            announceSubject(subject, previous: previous)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
             return .ready(
                 SignInReady(

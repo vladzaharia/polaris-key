@@ -40,6 +40,21 @@ private final class Events: @unchecked Sendable {
     }
 }
 
+/// Delays the requests `holdFor` names (seconds), then forwards them to the stub.
+private struct HoldTransport: PolarisTransport {
+    let inner: StubTransport
+    let holdFor: @Sendable (PolarisRequest) -> Double?
+    let hits: LockedValue<Int>
+
+    func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+        if let seconds = holdFor(request) {
+            hits.with { $0 += 1 }
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        }
+        return try await inner.send(request)
+    }
+}
+
 final class CloudSyncSettingsTests: XCTestCase {
     private let signer = TestSigner(kid: "sync-kid")
     private var server = StubServer()
@@ -100,7 +115,9 @@ final class CloudSyncSettingsTests: XCTestCase {
         func delete() throws { throw DeviceKeyError.keychain(-25308) }
     }
 
-    private func rig(roots: RingRootStore = .inMemory(), token: String = "pkeyt_alice") async throws -> Rig {
+    private func rig(
+        roots: RingRootStore = .inMemory(), token: String = "pkeyt_alice", transport: (any PolarisTransport)? = nil
+    ) async throws -> Rig {
         let store = InMemoryStore(deviceId: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
         await store.setToken(token)
         let keys = try DeviceKeyStore.inMemory(productSlug: "djdl")
@@ -108,7 +125,7 @@ final class CloudSyncSettingsTests: XCTestCase {
         await serve(roots)
         let core = CoreOptions(
             productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0", pinnedKeys: signer.trust,
-            trustRefresh: false, store: store, transport: server.transport,
+            trustRefresh: false, store: store, transport: transport ?? server.transport,
             expectedServices: [.license, .config, .identity, .sync], stateDir: dir)
         let client = try await PolarisKeyClient.create(
             options: PolarisKeyClientOptions(
@@ -179,6 +196,12 @@ final class CloudSyncSettingsTests: XCTestCase {
         let log = await server.requests.map(\.url.path)
         XCTAssertFalse(log.contains("/djdl/identity/signout"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: stateFile.path), "purge is tried whatever the forget did")
+        // N-4: the person is still signed in, so Cloud Sync is too (it was signed out and purged on the way).
+        await eventually("the machine is signed in again") {
+            ((try? await r.client.cloudSync.status().state) ?? .local) != .local
+        }
+        let who = await r.client.cloudSyncApi.currentSubject()
+        XCTAssertEqual(who, ALICE)
     }
 
     // MARK: A-1
@@ -199,6 +222,53 @@ final class CloudSyncSettingsTests: XCTestCase {
         }
         let value = await r.client.config.get(VOL, default: .null)
         XCTAssertNotEqual(value, .double(0.31), "the old person's projection left memory")
+    }
+
+    // B-1. Naive: the token is Bob's while the held subject is still Alice's (the licence sync in
+    // `onAcquired` runs between), so Alice's pending edit goes out under Bob's token.
+    func testNoRequestCarriesAlicesValueUnderBobsTokenWhileTheSignInAcquires() async throws {
+        let hits = LockedValue<Int>(0)
+        let hold = HoldTransport(
+            inner: server.transport,
+            holdFor: { $0.headers["authorization"] == "Bearer pkeyt_bob" && !$0.url.path.hasPrefix("/djdl/sync") ? 5 : nil },
+            hits: hits)
+        let r = try await rig(transport: hold)
+        await signIn(r)
+        await server.reply(
+            "/djdl/identity/auth/device/start",
+            body: #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#)
+        await server.reply(
+            "/djdl/identity/auth/device/poll",
+            body: #"{"status":"ready","token":"pkeyt_bob","schemaVersion":1,"subject":"\#(BOB)"}"#)
+        try await r.client.config.set(VOL, .double(0.31))  // pending for Alice, debounced
+        let prompt = try await r.client.identity.startDeviceCode()
+        _ = try await r.client.identity.pollDeviceCode(prompt)  // the window is the 5 s licence-sync hold
+        XCTAssertGreaterThan(hits.current, 0, "the window did not open")
+        for req in await server.requests(forPath: "/djdl/sync/ops") where req.headers["authorization"] == "Bearer pkeyt_bob" {
+            XCTAssertFalse(String(decoding: req.body ?? Data(), as: UTF8.self).contains("0.31"), "Alice's value went out under Bob's token")
+        }
+    }
+
+    // S-3. Naive: the sign-out waits for the identity consumer's whole pump (a hung pull).
+    func testAStuckPumpDoesNotHoldTheSignOutBeyondItsBound() async throws {
+        let hold = HoldTransport(
+            inner: server.transport,
+            holdFor: { $0.headers["authorization"] == "Bearer pkeyt_bob" && $0.url.path == "/djdl/sync" ? 25 : nil },
+            hits: LockedValue<Int>(0))
+        let r = try await rig(transport: hold)
+        await signIn(r)
+        await server.reply(
+            "/djdl/identity/auth/device/start",
+            body: #"{"deviceCode":"dc","userCode":"ABCD-EFGH","verificationUri":"https://key.example/d","verificationUriComplete":"https://key.example/d?user_code=ABCD-EFGH","expiresIn":600,"interval":1}"#)
+        await server.reply(
+            "/djdl/identity/auth/device/poll",
+            body: #"{"status":"ready","token":"pkeyt_bob","schemaVersion":1,"subject":"\#(BOB)"}"#)
+        let prompt = try await r.client.identity.startDeviceCode()
+        _ = try await r.client.identity.pollDeviceCode(prompt)
+        try await Task.sleep(nanoseconds: 500_000_000)  // Bob's first pull is out and hangs
+        let t0 = Date()
+        _ = try await r.client.identity.signOut()
+        XCTAssertLessThan(Date().timeIntervalSince(t0), 15, "the sign-out waited behind the stuck pump")
     }
 
     // MARK: A-2

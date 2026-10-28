@@ -92,6 +92,44 @@ private final class RingServer: PolarisTransport, @unchecked Sendable {
     }
 }
 
+/// Holds the first POST to the key ring route until `release()`, then forwards it.
+private final class RingGate: PolarisTransport, @unchecked Sendable {
+    private let inner: any PolarisTransport
+    private let lock = NSLock()
+    private var held = false
+    private var reached = false
+    private var waiter: CheckedContinuation<Void, Never>?
+    init(_ inner: any PolarisTransport) { self.inner = inner }
+
+    var isHeld: Bool { lock.withLock { reached && held } }
+    func release() {
+        let w = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+            held = false
+            defer { waiter = nil }
+            return waiter
+        }
+        w?.resume()
+    }
+
+    func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+        let first = lock.withLock { () -> Bool in
+            if request.method == "POST", !reached { reached = true; held = true; return true }
+            return false
+        }
+        if first {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                let resumeNow = lock.withLock { () -> Bool in
+                    if !held { return true }
+                    waiter = c
+                    return false
+                }
+                if resumeNow { c.resume() }
+            }
+        }
+        return try await inner.send(request)
+    }
+}
+
 private final class Listener: SyncRootListener, @unchecked Sendable {
     private let lock = NSLock()
     private var seen: [Bool] = []
@@ -414,5 +452,23 @@ final class SyncKeyringTests: XCTestCase {
         // The Worker never saw the root or the code in the clear.
         let all = server.requestLog().joined()
         XCTAssertFalse(all.contains(stored.root))
+    }
+
+    // N-2: a ring made (or unlocked) before `forget()` ran never stores its root after it.
+    func testACreateThatStartedBeforeForgetKeepsNoRoot() async throws {
+        let gate = RingGate(RingServer())
+        let a = try await device("a", server: gate)
+        let making = Task { try await a.keyring.create() }
+        while !gate.isHeld { try await Task.sleep(nanoseconds: 5_000_000) }
+        try await a.keyring.forget()
+        gate.release()
+        do {
+            _ = try await making.value
+            XCTFail("a create that began before the forget completed")
+        } catch {}
+        XCTAssertNil(try a.roots.load(), "the root was stored after the forget")
+        XCTAssertFalse(a.keyring.unlocked)
+        let pin = await a.core.store.readRecord("sync-ring-pin")
+        XCTAssertNil(pin, "the pin was written after the forget")
     }
 }
