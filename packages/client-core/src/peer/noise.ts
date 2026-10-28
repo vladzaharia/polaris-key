@@ -161,7 +161,7 @@ const utf8 = (s: string): Uint8Array => new TextEncoder().encode(s);
 
 // ── Hash and KDF ─────────────────────────────────────────────────────────────────────────────
 
-async function sha256(...parts: Uint8Array[]): Promise<Uint8Array> {
+export async function sha256(...parts: Uint8Array[]): Promise<Uint8Array> {
   return new Uint8Array(await subtle().digest("SHA-256", buf(cat(...parts))));
 }
 
@@ -180,7 +180,7 @@ export async function hmac(
 }
 
 /** HKDF-SHA256 (RFC 5869). An empty salt is HashLen zero bytes, as the RFC defines. */
-async function hkdfSha256(
+export async function hkdfSha256(
   salt: Uint8Array,
   ikm: Uint8Array,
   info: Uint8Array,
