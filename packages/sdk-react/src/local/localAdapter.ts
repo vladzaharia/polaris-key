@@ -80,6 +80,7 @@ import {
 import { createStore, type Store } from "../core/store.js";
 import type { ChoiceNamespace } from "../core/choice.js";
 import type { SignInNamespace } from "../core/signIn.js";
+import { unsupportedKeyring, type KeyringClient } from "../core/keyring.js";
 import {
   PolarisError,
   type ChangelogEntry,
@@ -455,6 +456,14 @@ export class LocalAdapter implements PolarisAdapter {
   async enroll(): Promise<void> {
     throw dial("Enrolling");
   }
+
+  /**
+   * The Cloud Sync key ring (sync.keyring): the typed `runtime` N/A here.
+   */
+  readonly keyring: KeyringClient = unsupportedKeyring(
+    "runtime",
+    "A local-only page holds no device token, so it has no Cloud Sync key ring.",
+  );
 
   readonly signIn: SignInNamespace = {
     start: (() =>

@@ -8,6 +8,7 @@
 // @pkey-feature ui.boot release.fetch release.distribution
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
+// @pkey-feature sync.keyring
 //
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
 // device token run through the browser's bearer engine, `BearerSession`
@@ -63,6 +64,13 @@
 // against the recording, so the renderer's verbs, their argument shape and the post-claim state
 // refresh are checked against the same exchanges.
 //
+// `keyring*` (sync.keyring, U-38.2) are the browser key ring engine's (`RingEngine`, the code
+// `browserAdapter({ auth: "bearer" }).keyring` runs) over the session's `ringRequest`. The
+// recordings hold opaque fixture keys and the server never opens them, so the replay pins the
+// routes, the request shapes and the refusals: the engine makes real keys, the step supplies the
+// ring id the recording names (`newRingId`), and the observation is the ring and wrap the Worker
+// reports (`inspect()`), never a key. The device keys are already registered, so none is sent.
+//
 // `result` is `discoverProduct`'s outcome; React reports a 404 as `{kind:"error",status:404}`,
 // which is the vocabulary's `not-found`. `services` is the map the browser adapter installs from
 // it (BrowserAdapter.loadCapabilities): the document's map on success, otherwise the
@@ -76,7 +84,15 @@
 // the session's journal.
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
+import {
+  chunkRangeFetch,
+  createWebDeviceKeyStore,
+  memoryDeviceKeyStorage,
+  recordHash,
+} from "@polaris-key/client-core";
+import { webCryptoSyncPort } from "@polaris-key/client-core/sync";
+import { RingEngine } from "../src/browser/ring/engine.js";
+import { memoryRootVault } from "../src/browser/ring/rootVault.js";
 import { browserObjectFetch } from "../src/packs/browserPacks.js";
 import { newTestKey, signCompact } from "./fixtures.js";
 import {
@@ -413,6 +429,19 @@ async function browserStep(
   return out;
 }
 
+/**
+ * The recordings still hold the Worker's first form of `kem`, the text "x25519", while the client
+ * sends the contract's integer 32 (V5 §13.11.1). Until the fix slice moves the Worker and these
+ * transcripts to the integer, the replay translates the request's `kem` to the recorded text so
+ * the shapes compare; the engine itself, and its unit tests, send 32. Delete this with that slice.
+ */
+function recordedKemText(body: string): string {
+  const b = JSON.parse(body) as { kem?: unknown; wrap?: { kem?: unknown } };
+  if (b.kem === 32) b.kem = "x25519";
+  if (b.wrap?.kem === 32) b.wrap.kem = "x25519";
+  return JSON.stringify(b);
+}
+
 async function replay(t: Transcript): Promise<void> {
   const server = new ReplayServer(t);
   let discovered: DiscoveryDocument | null = null;
@@ -471,6 +500,24 @@ async function replay(t: Transcript): Promise<void> {
       },
   });
   await session.init();
+  // sync.keyring: the engine over this session. The ring id of the next create or reset is the
+  // one the step's expectation names, because the recording fixes the Worker's answer.
+  let nextRingId = "";
+  const ring = new RingEngine({
+    product: t.product,
+    deviceId: () => session.deviceId,
+    transport: {
+      request: (path, init) =>
+        session.ringRequest(path, {
+          ...init,
+          body:
+            init.body === undefined ? undefined : recordedKemText(init.body),
+        }),
+    },
+    keys: createWebDeviceKeyStore({ storage: memoryDeviceKeyStorage() }),
+    vault: memoryRootVault(),
+    newRingId: () => nextRingId,
+  });
   for (const e of journal) {
     clock = e.at;
     nextEventId = e.eventId;
@@ -730,6 +777,59 @@ async function replay(t: Transcript): Promise<void> {
         Object.assign(observed, claimObserved(r as CommerceClaimResult));
         break;
       }
+      case "keyringGet":
+      case "keyringCreate":
+      case "keyringReset":
+      case "keyringAdopt":
+      case "keyringWrap":
+      case "keyringUnwrap":
+      case "keyringRecoverySet":
+      case "keyringRecoveryGet": {
+        const want = step.expect.ringId;
+        if (typeof want === "string") nextRingId = want;
+        // keyring-wrap's `args.deviceId` names the TARGET device, but the replay server binds every
+        // string arg as a placeholder, so it would also replace `{deviceId}` (this device's id in
+        // the `x-pkey-device` header). The request is this device's: bind it back.
+        server.bindings.deviceId = t.initial.deviceId;
+        try {
+          if (step.action === "keyringGet") {
+            const d = await ring.inspect();
+            observed.ring = d.ring as JsonValue;
+            observed.wrap = d.wrap as JsonValue;
+          } else if (
+            step.action === "keyringCreate" ||
+            step.action === "keyringReset"
+          ) {
+            const r =
+              step.action === "keyringCreate"
+                ? await ring.create()
+                : await ring.reset();
+            observed.ringId = r.ringId;
+            observed.epoch = r.epoch;
+          } else if (step.action === "keyringAdopt") {
+            await ring.adoptPrevious();
+          } else if (step.action === "keyringWrap") {
+            // The other device's agreement key: a fresh X25519 public key, as a nearby exchange gives.
+            const pub = await webCryptoSyncPort.x25519.publicKey(
+              webCryptoSyncPort.random(32),
+            );
+            await ring.wrapTo(String(step.args.deviceId), pub);
+          } else if (step.action === "keyringUnwrap") {
+            await ring.removeWrap(String(step.args.deviceId));
+          } else if (step.action === "keyringRecoverySet") {
+            await ring.setRecoveryCode();
+          } else {
+            observed.ct = (await ring.getRecoveryBlob()).ct;
+          }
+          observed.result = "ok";
+        } catch (e) {
+          if (!(e instanceof PolarisError) || e.status === undefined) throw e;
+          observed.result = "refused";
+          observed.status = e.status;
+          observed.code = e.wireCode ?? e.code;
+        }
+        break;
+      }
       case "boot": {
         const driver = bearerBootDriver({
           session,
@@ -962,8 +1062,8 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // transcripts (the cloudSyncPull and cloudSyncPush steps); React's port is U-20.
     // identity.exchange is I-13.7's exchange-* transcripts (FedCM and GIS, I-46); the Node
     // runner replays them with a reference client (exchangeTranscripts.test.ts). sync.keyring is
-    // U-36.4's keyring-* transcripts; the ring client is U-38.
-    const plannedHere = ["sync.settings", "identity.exchange", "sync.keyring"];
+    // U-36.4's keyring-* transcripts, replayed here through the ring engine (U-38.2).
+    const plannedHere = ["sync.settings", "identity.exchange"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];
