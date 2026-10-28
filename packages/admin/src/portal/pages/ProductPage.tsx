@@ -48,6 +48,7 @@ import {
 import { EntryProductBody } from "./EntryProductPage.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
 import { t } from "../../lib/copy.js";
+import { useDownloadFailedNotice } from "../downloadNotice.js";
 import { focusRoute } from "../../ui/focusRoute.js";
 
 /**
@@ -66,6 +67,7 @@ export function ProductPage({
   section: ProductSection | null;
   params: URLSearchParams;
 }): React.ReactElement {
+  useDownloadFailedNotice(params);
   const lib = useLibrary();
   const product = lib.products?.find((p) => p.slug === slug);
   useDocumentTitle(

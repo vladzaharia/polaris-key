@@ -5643,6 +5643,26 @@
       "role": "body",
       "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
     },
+    "locker.error.downloadLink.title": {
+      "value": "This download link expired",
+      "role": "title",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.downloadLink.body": {
+      "value": "Go back to Polaris Locker and choose Download again.",
+      "role": "body",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.downloadLink.toast": {
+      "value": "The link expired or was already used. Choose Download again.",
+      "role": "body",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
+    "locker.error.downloadLink.back": {
+      "value": "Back to Polaris Locker",
+      "role": "button",
+      "note": "Polaris Locker's own browser error wording where no core.codes.* entry fits (P0-36)."
+    },
     "locker.error.signInAgain": {
       "value": "Sign in again to carry on.",
       "role": "body",

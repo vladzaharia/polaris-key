@@ -458,6 +458,99 @@ describe("licensed R2 downloads from the portal", () => {
     );
   });
 
+  it("HA-09F: an expired link says so in words; a JSON caller's error names the link, not a licence", async () => {
+    const w = await world("licensed");
+    w.env.CUSTOMER_ORIGIN = "https://polaris.locker";
+    const p = await account(w);
+    const url = await ticketedUrl(w, p);
+    vi.setSystemTime((NOW + 130) * 1000);
+    const page = await fetchUrl(w, url, {
+      headers: { accept: "text/html,application/xhtml+xml" },
+    });
+    expect(page.status).toBe(410);
+    expect(page.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    expect(page.headers.get("content-security-policy")).toContain("sandbox");
+    expect(page.headers.has("x-pkey-error-document")).toBe(false);
+    const html = await page.text();
+    expect(html).toContain("This download link expired");
+    expect(html).toContain(`href="https://polaris.locker/#/p/${SLUG}"`);
+    expect(html).toContain("Back to Polaris Locker");
+    expect(html).not.toMatch(/<script|license is required|ticket=/i);
+
+    const json = await fetchUrl(w, url);
+    expect(json.status).toBe(401);
+    const body = (await json.json()) as { error: string; message: string };
+    expect(body.error).toBe("download_auth_required");
+    expect(body.message).toContain("link");
+    expect(body.message).not.toMatch(/license|artifact/i);
+    // No ticket at all keeps the old answer, and a navigation without one gets no page.
+    const bare = new URL(url);
+    bare.searchParams.delete("ticket");
+    const none = await fetchUrl(w, bare, { headers: { accept: "text/html" } });
+    expect(none.status).toBe(401);
+    expect(none.headers.get("content-type")).not.toContain("text/html");
+  });
+
+  it("HA-09F: a Range request resumes for an hour past expiry, for its own file only", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const url = await ticketedUrl(w, p);
+    const range = { headers: { range: "bytes=0-3" } };
+    expect((await fetchUrl(w, url, range)).status).toBe(206);
+    vi.setSystemTime((NOW + 120 + 3599) * 1000);
+    expect((await fetchUrl(w, url, range)).status).toBe(206);
+    // A fresh GET gets no grace.
+    expect((await fetchUrl(w, url)).status).toBe(401);
+    vi.setSystemTime((NOW + 120 + 3600) * 1000);
+    expect((await fetchUrl(w, url, range)).status).toBe(401);
+    // Never another file, even inside the window.
+    vi.setSystemTime((NOW + 600) * 1000);
+    const other = `${BYTES}/${SLUG}/distribution/files/${encodeURIComponent("app@1.2.0")}/Diceroll-1.2.0-windows-arm64.zip?ticket=${encodeURIComponent(url.searchParams.get("ticket")!)}`;
+    expect((await fetchUrl(w, other, range)).status).toBe(401);
+  });
+
+  it("HA-09F: a refused redemption sends a browser back to Locker, and an API caller keeps the 404", async () => {
+    const w = await world("licensed");
+    const p = await account(w);
+    const t = await token(w, p);
+    expect((await redeem(w, t)).status).toBe(302);
+    const html = { headers: { accept: "text/html" } };
+    const again = (query: string, init: RequestInit = {}) =>
+      handlePortalDownload(
+        new Request(
+          `${CONSOLE}/download/${encodeURIComponent(t)}${query}`,
+          init,
+        ),
+        w.env,
+        w.db,
+        t,
+        NOW,
+      );
+    const spent = await again(`?p=${SLUG}`, html);
+    expect(spent.status).toBe(303);
+    expect(spent.headers.get("location")).toBe(`/#/p/${SLUG}?download=failed`);
+    expect((await again("", html)).headers.get("location")).toBe(
+      "/#/?download=failed",
+    );
+    // The product is data to read, never a path to follow.
+    expect(
+      (await again("?p=..%2F..%2Fevil", html)).headers.get("location"),
+    ).toBe("/#/?download=failed");
+    const api = await again(`?p=${SLUG}`, {
+      headers: { accept: "application/json" },
+    });
+    expect(api.status).toBe(404);
+  });
+
+  it("HA-09F (m2): a file whose stored copy is missing is not offered, and no ticket is minted", async () => {
+    const w = await world("licensed", { blobs: false });
+    const p = await account(w);
+    const files = (await listing(w, p)).platforms.flatMap((x) => x.files);
+    expect(files.every((f) => f.reason === "not_hosted")).toBe(true);
+    const { artifact_id } = await artifactOf(w, "app@1.2.0", WIN);
+    expect((await mint(w, p, "app@1.2.0", artifact_id)).status).toBe(409);
+  });
+
   it("binding: a ticket presented for another file, release or product is refused", async () => {
     const w = await world("licensed");
     const p = await account(w);
@@ -514,15 +607,10 @@ describe("licensed R2 downloads from the portal", () => {
       "app@1.2.0",
       original.artifact_id,
     );
+    // HA-09F: its R2 key names other bytes, so the bytes host cannot serve this row and no
+    // ticket is handed out for it at all.
     const minted = await mint(w, p, "app@1.2.0", dupId);
-    expect(minted.status, await minted.clone().text()).toBe(201);
-    const { url: path } = (await minted.json()) as { url: string };
-    const res = await redeem(
-      w,
-      decodeURIComponent(path.replace(/^\/download\//, "")),
-    );
-    expect(res.status).toBe(302);
-    expect((await fetchUrl(w, res.headers.get("location")!)).status).toBe(401);
+    expect(minted.status, await minted.clone().text()).toBe(409);
     // The served artifact's own ticket still works.
     expect((await fetchUrl(w, await ticketedUrl(w, p))).status).toBe(200);
   });

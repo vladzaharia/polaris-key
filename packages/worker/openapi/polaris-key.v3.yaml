@@ -3049,6 +3049,15 @@ paths:
                   - { $ref: "#/components/schemas/WireError" }
         "403": { $ref: "#/components/responses/ReleaseForbidden" }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "410":
+          description: >
+            HA-09F: bytes host only. A browser navigation that presented a download ticket which
+            no longer works (expired, spent past its resume window, or not valid) gets a static,
+            script-free Polaris Locker page, "This download link expired", with a link back to
+            the product's page. Nothing else on the host answers HTML at an error status.
+          content:
+            text/html:
+              schema: { type: string }
         "416":
           description: An unsatisfiable `Range` (R2-served bytes).
         "429":
@@ -23419,11 +23428,15 @@ components:
         access check and the file's own per-file check with the caller's device bearer.
         On the BYTES HOST only, a valid ticket stands in for the device bearer for exactly the
         file it was minted for (product, release, name and SHA-256); it lives at most 120 s and
-        may be reused inside that window, so `Range`, resume and `HEAD` work. The console host
-        ignores it. An invalid, expired or mismatched ticket is treated as ABSENT: the answer is
-        the same as for a caller with no credential (`401 download_auth_required` flat for
-        `authenticated` and `licensed`, `401 unauthorized` wire for `entitled`), never a
-        ticket-specific error. Devices never send it.
+        may be reused inside that window, so `Range`, resume and `HEAD` work. HA-09F: a request
+        carrying `Range` (a browser's Resume) keeps working for 3600 s past that window, for the
+        same file only. The console host ignores it. An invalid, expired or mismatched ticket is
+        treated as ABSENT: the answer is a 401 (`download_auth_required` flat for
+        `authenticated` and `licensed`, `unauthorized` wire for `entitled`), never a
+        ticket-specific code. HA-09F: with a ticket on the request, the flat message names the
+        link ("this download link expired or is not valid"), not a licence, and a browser
+        navigation (`Sec-Fetch-Dest: document`, or `Accept` with `text/html`) gets the branded
+        `410` "This download link expired" page instead. Devices never send it.
       schema: { type: string, maxLength: 128 }
     IfNoneMatch:
       name: If-None-Match

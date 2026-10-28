@@ -46,6 +46,7 @@
  */
 
 import { FONT, THEME_TOKENS } from "@polaris-key/brand";
+import { PORTAL_COPY_EN } from "@polaris-key/brand/kit-copy/portal";
 import type { Env } from "../../platform/env.js";
 import { bytesHostname, customerSiteOrigin } from "../hosts.js";
 import { BRAND_LOCKUP_HEIGHT } from "../brandHtml.js";
@@ -182,13 +183,14 @@ export function landingShell(environment: string | null): {
   };
 }
 
-/** The landing page's HTML for this deployment. */
-export function renderLandingPage(env: Env): string {
-  // The one link goes to Polaris Locker, and only when this deployment has a customer site.
-  const lockerOrigin = customerSiteOrigin(env);
-  const environment = landingEnvironment(env);
-  const { title, lockups, faviconHref } = landingShell(environment);
-  const description = "The download host for games and apps.";
+/** The document around one page's `main` content: the shared head, stylesheet and lockup. */
+function renderDocument(
+  title: string,
+  description: string,
+  environment: string | null,
+  faviconHref: string,
+  main: string[],
+): string {
   return [
     `<!doctype html>`,
     `<html lang="en" data-brand="locker">`,
@@ -206,6 +208,24 @@ export function renderLandingPage(env: Env): string {
     `</head>`,
     `<body>`,
     `<main>`,
+    ...main,
+    `</main>`,
+    `</body>`,
+    `</html>`,
+    ``,
+  ]
+    .filter((line, i, all) => line !== "" || i === all.length - 1)
+    .join("\n");
+}
+
+/** The landing page's HTML for this deployment. */
+export function renderLandingPage(env: Env): string {
+  // The one link goes to Polaris Locker, and only when this deployment has a customer site.
+  const lockerOrigin = customerSiteOrigin(env);
+  const environment = landingEnvironment(env);
+  const { title, lockups, faviconHref } = landingShell(environment);
+  const description = "The download host for games and apps.";
+  return renderDocument(title, description, environment, faviconHref, [
     `<h1>${lockups}</h1>`,
     environment
       ? `<p class="env">${escapeHtml(environment)} environment</p>`
@@ -215,13 +235,62 @@ export function renderLandingPage(env: Env): string {
     lockerOrigin
       ? `<nav aria-label="Polaris Locker"><ul><li><a href="${escapeHtml(`${lockerOrigin}/`)}">Open Polaris Locker</a></li></ul></nav>`
       : "",
-    `</main>`,
-    `</body>`,
-    `</html>`,
-    ``,
-  ]
-    .filter((line, i, all) => line !== "" || i === all.length - 1)
-    .join("\n");
+  ]);
+}
+
+// ── The expired-link page (HA-09F) ───────────────────────────────────────────────────────────
+
+/**
+ * Marks a route answer as an error DOCUMENT: the one HTML answer this host admits at a 4xx
+ * status. The dispatcher strips it, then checks the page like the landing page (inert policy,
+ * exactly `410` and `text/html; charset=utf-8`); anything else carrying it is the plain not-found.
+ */
+export const ERROR_DOCUMENT_HEADER = "x-pkey-error-document";
+
+/** The only status an error document may carry. */
+export const ERROR_DOCUMENT_STATUS = 410;
+
+/**
+ * The page a browser navigation meets when a download link no longer works (an expired or
+ * invalid ticket). Static but for the product slug in the one link back to its page in Polaris
+ * Locker (a validated slug, escaped); no ticket, file or account is read or shown. The words are
+ * the catalog's (`locker.error.downloadLink.*`).
+ */
+export async function expiredLinkResponse(
+  env: Env,
+  productSlug: string,
+): Promise<Response> {
+  const lockerOrigin = customerSiteOrigin(env);
+  const environment = landingEnvironment(env);
+  const { lockups, faviconHref } = landingShell(environment);
+  const title = PORTAL_COPY_EN["locker.error.downloadLink.title"];
+  const back = lockerOrigin
+    ? `${lockerOrigin}/#/p/${encodeURIComponent(productSlug)}`
+    : null;
+  const html = renderDocument(
+    `${title} · Polaris Locker`,
+    title,
+    environment,
+    faviconHref,
+    [
+      `<h1>${lockups}</h1>`,
+      `<p class="lede">${escapeHtml(title)}</p>`,
+      `<p class="about">${escapeHtml(PORTAL_COPY_EN["locker.error.downloadLink.body"])}</p>`,
+      back
+        ? `<nav aria-label="Polaris Locker"><ul><li><a href="${escapeHtml(back)}">${escapeHtml(PORTAL_COPY_EN["locker.error.downloadLink.back"])}</a></li></ul></nav>`
+        : "",
+    ],
+  );
+  return new Response(html, {
+    status: ERROR_DOCUMENT_STATUS,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "content-security-policy": await landingCsp(),
+      "cache-control": "no-store",
+      "x-frame-options": "DENY",
+      [ERROR_DOCUMENT_HEADER]: "1",
+    },
+  });
 }
 
 /** The landing page's answer for `req` (GET or HEAD), before the host's own hardening. */

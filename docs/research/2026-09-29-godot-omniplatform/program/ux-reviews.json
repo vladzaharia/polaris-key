@@ -524,6 +524,11 @@
       "verdict": "pass",
       "date": "2026-10-26",
       "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/UXR-A-32.md (BUILT review BLOCK) -> one fix round wp/A-32-uxfix 8d8300395 (B1/B2, F1-F9, V1-V7, step-up), merged e5d22cfdf; lead-verified _evidence/A-32/uxfix/first-view-dark-1440.png; security review + fixes merged 5eac35662"
+    },
+    "HA-09": {
+      "verdict": "pass",
+      "date": "2026-10-28",
+      "evidence": "/Users/vlad/Repos/pk-wt/_lead/reviews/UXR-HA-09.md (BUILT review CHANGES REQUIRED: success path passes; 1 major + 2 minor on the failure path after the click) -> follow-up wp/HA-09F-download-failures (refused redemption returns to the product page, branded expired-link page on the bytes host, 1 h Range resume, stored-copy check before a ticket); evidence /Users/vlad/Repos/pk-wt/_mockups/review/HA-09/"
     }
   }
 }

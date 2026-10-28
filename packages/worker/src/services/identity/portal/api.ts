@@ -29,6 +29,7 @@ import { parseJsonOr } from "../../../platform/json.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type {
+  CatalogLocation,
   CatalogSourceArtifact,
   Delivery,
   ReleaseCatalog,
@@ -40,6 +41,8 @@ import {
 } from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/licensing/entitledAccess.js";
 import { isBytesHost } from "../../../core/hosts.js";
+import { isBrowserNavigation } from "../../../core/http/navigation.js";
+import { hasRef, parseKey } from "../../../core/assets/blobs.js";
 import {
   DOWNLOAD_TICKET_PARAM,
   downloadTicketsEnabled,
@@ -66,7 +69,7 @@ import {
   mintRegistryToken,
   revokeRegistryToken,
 } from "../../../core/registry/registryTokens.js";
-import { PACKAGE_ECOSYSTEMS } from "@polaris-key/manifest";
+import { PACKAGE_ECOSYSTEMS, PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import {
   getPortalAccount,
   getPortalLicense,
@@ -385,6 +388,8 @@ export type PortalHooksFor = (
 ) => ServiceHooks;
 
 export interface DeliveryGate {
+  /** The database the gate was built on (the bytes-host copy check reads the product's refs). */
+  db?: Db;
   product: ProductPublic;
   delivery: Delivery;
   /** Release's catalog hook (`null` when Release is off): the files and release facts. */
@@ -418,7 +423,7 @@ export async function deliveryGate(
     (visibility ??= catalog
       ? catalog.repositoryPublic()
       : Promise.resolve(false));
-  return { product: loaded.product, delivery, catalog, repositoryPublic };
+  return { db, product: loaded.product, delivery, catalog, repositoryPublic };
 }
 
 /** One product's hooks, or `null` when no hooks were provided or the product is gone. */
@@ -450,6 +455,8 @@ export interface ServedFile {
   sha256: string | null;
   /** GitHub's own download URL for it, when a sync stored one. */
   sourceUrl: string | null;
+  /** Where its bytes live (Release's catalog); absent = unknown, so no location check is made. */
+  locations?: CatalogLocation[];
 }
 
 export function servedFile(a: CatalogSourceArtifact): ServedFile {
@@ -459,6 +466,7 @@ export function servedFile(a: CatalogSourceArtifact): ServedFile {
     name: a.name,
     sha256: a.sha256,
     sourceUrl: a.sourceUrl,
+    locations: a.locations,
   };
 }
 
@@ -681,12 +689,53 @@ async function ticketTarget(
   gate: DeliveryGate,
 ): Promise<DownloadTarget | null> {
   if (!artifact.sha256 || !downloadTicketsEnabled(env)) return null;
+  // HA-09F: a ticket is handed out only for a file the bytes host can serve, so the person is
+  // never sent to a 404; a file it cannot serve falls back as a missing mirror always has.
+  if (!(await bytesHostCanServe(env, artifact, gate))) return null;
   const hosted = await bytesHostTarget(env, artifact, gate);
   // A ticket is honoured on the bytes host alone (origin isolation, THREAT-MODEL §3), so the
   // URL must sit on it and carry no query of its own for the ticket to join.
   return hosted !== null && isBytesHost(hosted, env) && hosted.search === ""
     ? { kind: "ticket", base: hosted.toString() }
     : null;
+}
+
+/**
+ * Can the bytes host serve this file from a stored copy it holds? Mirrors the order its `files`
+ * route walks (`distribution/bytes.ts` `serveArtifact`): a GitHub location streams through the
+ * installation token and an `https` external one redirects, so either serves; an R2 location
+ * serves only when its key is the content address of THIS file's SHA-256, the product holds a
+ * ref to it and the object is there. A location list that names none of these (a location
+ * recorded with its object missing) is the one case this refuses. Unknown locations (an older
+ * caller that did not pass them) are not second-guessed.
+ */
+async function bytesHostCanServe(
+  env: Env,
+  artifact: ServedFile,
+  gate: DeliveryGate,
+): Promise<boolean> {
+  const locations = artifact.locations;
+  if (locations === undefined) return true;
+  for (const loc of locations) {
+    if (loc.provider === "github") return true;
+    if (loc.provider === "external" && loc.url?.startsWith("https://"))
+      return true;
+    if (loc.provider !== "r2" || !loc.key || !env.BLOBS || !artifact.sha256)
+      continue;
+    const parsed = parseKey(loc.key);
+    if (
+      !parsed ||
+      parsed.area !== "locked" ||
+      parsed.kind !== "blob" ||
+      parsed.gated ||
+      parsed.sha256 !== artifact.sha256
+    )
+      continue;
+    if (gate.db && !(await hasRef(gate.db, gate.product.slug, loc.key)))
+      continue;
+    if ((await env.BLOBS.head(loc.key)) !== null) return true;
+  }
+  return false;
 }
 
 /** Distribution's bytes-host URL for a file, when it is `https` on the configured bytes host. */
@@ -2605,7 +2654,44 @@ async function dispatchPortalApi(
   return row.handler(ctx, matched, { session, sessionIdHash });
 }
 
+/**
+ * HA-09F: a browser navigation whose redemption was refused lands back in Polaris Locker, on the
+ * product's page (`?p=<slug>`, which the Locker adds when it follows the link; the Library without it), where the
+ * "download didn't start" message shows with Download again. Never raw JSON in a person's
+ * window. API callers (no `text/html` in `Accept`) keep the plain 404.
+ */
+function redemptionRefusedPage(req: Request): Response {
+  const slug = new URL(req.url).searchParams.get("p") ?? "";
+  const page = PRODUCT_SLUG_RE.test(slug)
+    ? `p/${encodeURIComponent(slug)}`
+    : "";
+  return new Response(null, {
+    status: 303,
+    headers: portalSecurityHeaders(
+      new Headers({
+        location: `/#/${page}?download=failed`,
+        "cache-control": "no-store",
+      }),
+    ),
+  });
+}
+
 export async function handlePortalDownload(
+  req: Request,
+  env: Env,
+  db: Db,
+  token: string,
+  now: number,
+  /** One product's descriptor hooks (`dispatch.ts`); without them nothing is redeemed. */
+  hooksFor?: PortalHooksFor,
+): Promise<Response> {
+  const res = await redeemPortalDownload(req, env, db, token, now, hooksFor);
+  return res.status === 404 && isBrowserNavigation(req)
+    ? redemptionRefusedPage(req)
+    : res;
+}
+
+async function redeemPortalDownload(
   req: Request,
   env: Env,
   db: Db,
