@@ -18,12 +18,12 @@ protocol SyncScenarioMachine: AnyObject {
     func call(_ name: String, _ args: [JSONValue]) -> CallResult
     func advance(ms: Int)
     func setNetwork(_ state: String)
-    func receive(status: Int, body: JSONValue?, opened: SyncOpenedBody?)
-    func receiveTransportError()
+    func receive(status: Int, body: JSONValue?, opened: SyncOpenedBody?) throws
+    func receiveTransportError() throws
     func setRoot(has: Bool)
-    func signIn(subject: String)
+    func signIn(subject: String) throws
     func signOut(discardUnsynced: Bool)
-    func relaunch(journalLost: Bool) -> SyncScenarioMachine
+    func relaunch(journalLost: Bool) throws -> SyncScenarioMachine
     func takeRequests() -> [JSONValue]
     func takeEvents() -> [JSONValue]
     func get(_ key: String) -> JSONValue?
@@ -57,17 +57,18 @@ private struct SyncScenarioFile {
 }
 
 final class SyncScenariosTests: XCTestCase {
-    /// The skip rule (D-N1). U-07.2: a scenario that needs a server answer waits for the exchange
-    /// half. U-07.3 narrows it to the `e2e-` prefix and U-07.4 deletes it.
+    /// The skip rule (D-N1). U-07.3: only the E2E scenarios that need a server answer wait for the
+    /// E2E half (U-07.4 deletes the rule). `e2e-locked-keeps-journal` has no `respond` and replays.
     static func isPending(_ sc: [String: JSONValue]) -> Bool {
-        (sc["steps"]?.arrayValue ?? []).contains { $0.objectValue?.keys.contains("respond") ?? false }
+        (sc["name"]?.stringValue ?? "").hasPrefix("e2e-")
+            && (sc["steps"]?.arrayValue ?? []).contains { $0.objectValue?.keys.contains("respond") ?? false }
     }
 
     /// Builds the machine for a scenario.
-    static func makeMachine(_ i: SyncScenarioInit, _ product: JSONValue, _ newId: @escaping () -> String)
+    static func makeMachine(_ i: SyncScenarioInit, _ product: JSONValue, _ newId: @escaping () -> String) throws
         -> SyncScenarioMachine
     {
-        let a = CloudSyncScenarioAdapter(product: product, initBlock: i, newClientId: newId)
+        let a = try CloudSyncScenarioAdapter(product: product, initBlock: i, newClientId: newId)
         if let legacy = i["legacyLocal"], legacy != .null {
             XCTAssertEqual(a.machine.importLocal(legacy.objectValue ?? [:]), .ok, "import")
         }
@@ -113,7 +114,7 @@ final class SyncScenariosTests: XCTestCase {
 
     private func runScenario(
         _ sc: [String: JSONValue], name: String,
-        make: (SyncScenarioInit, JSONValue, @escaping () -> String) -> SyncScenarioMachine, product: JSONValue
+        make: (SyncScenarioInit, JSONValue, @escaping () -> String) throws -> SyncScenarioMachine, product: JSONValue
     ) throws {
         let initBlock = SyncScenarioInit(sc["init"] ?? .null)
         var ids = initBlock.clientIds
@@ -121,7 +122,7 @@ final class SyncScenariosTests: XCTestCase {
             XCTAssertFalse(ids.isEmpty, "init.clientIds exhausted")
             return ids.isEmpty ? "" : ids.removeFirst()
         }
-        var m = make(initBlock, product, newClientId)
+        var m = try make(initBlock, product, newClientId)
         let licence = initBlock["licence"]
         for (i, step) in (sc["steps"]?.arrayValue ?? []).enumerated() {
             guard let (kind, raw) = step.objectValue?.first else { continue }
@@ -135,16 +136,16 @@ final class SyncScenariosTests: XCTestCase {
             case "network": m.setNetwork(o["state"]?.stringValue ?? "")
             case "respond":
                 if o["error"] != nil {
-                    m.receiveTransportError()
+                    try m.receiveTransportError()
                 } else {
-                    m.receive(
+                    try m.receive(
                         status: o["status"]?.intValue ?? 0, body: o["body"],
                         opened: o["opened"].map(SyncOpenedBody.init(json:)))
                 }
             case "root": m.setRoot(has: o["has"] == .bool(true))
-            case "signIn": m.signIn(subject: o["subject"]?.stringValue ?? "")
+            case "signIn": try m.signIn(subject: o["subject"]?.stringValue ?? "")
             case "signOut": m.signOut(discardUnsynced: o["discardUnsynced"] == .bool(true))
-            case "relaunch": m = m.relaunch(journalLost: o["journal"] == .string("lost"))
+            case "relaunch": m = try m.relaunch(journalLost: o["journal"] == .string("lost"))
             case "assert": try assertStep(m, o, at: at, licence: licence)
             default: XCTFail("\(at): unknown step")
             }
@@ -207,6 +208,18 @@ final class SyncScenariosTests: XCTestCase {
         }
     }
 
+    func testBadHostClientIdThrows() throws {
+        var o = SyncMachineOptions(
+            product: "demo", catalog: SyncMachineCatalog(settings: []), document: SyncMachineDocument(), now: 0,
+            newClientId: { "not-a-client-id" })
+        o.subject = "sub_a"
+        XCTAssertThrowsError(try CloudSyncMachine(o)) { XCTAssertEqual($0 as? SyncMachineError, .badClientId) }
+        o.subject = nil
+        let m = try CloudSyncMachine(o)
+        XCTAssertThrowsError(try m.signIn("sub_a"))
+        XCTAssertNil(m.persist().subject, "a refused sign-in moves nothing")
+    }
+
     // MARK: - M-4 helpers
 
     func testJSONEqualIsNumericAndKeepsNullApartFromAbsent() {
@@ -237,7 +250,7 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
     let machine: CloudSyncMachine
     private let opts: SyncMachineOptions
 
-    init(product: JSONValue, initBlock i: SyncScenarioInit, newClientId: @escaping () -> String) {
+    init(product: JSONValue, initBlock i: SyncScenarioInit, newClientId: @escaping () -> String) throws {
         let cat = i["catalog"]?.objectValue ?? [:]
         let doc = i["document"]?.objectValue ?? [:]
         let clock = i["clock"]?.objectValue ?? [:]
@@ -263,7 +276,7 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
         o.encryption = i["encryption"]?.stringValue.flatMap(SyncEncryption.init(rawValue:)) ?? .e2e
         o.hasRoot = i["hasRoot"]?.boolValue ?? false
         opts = o
-        machine = CloudSyncMachine(o)
+        machine = try CloudSyncMachine(o)
     }
 
     private init(machine: CloudSyncMachine, opts: SyncMachineOptions) {
@@ -289,16 +302,16 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
 
     func advance(ms: Int) { machine.advance(ms) }
     func setNetwork(_ state: String) { machine.setNetwork(SyncNetwork(rawValue: state) ?? .online) }
-    func receive(status: Int, body: JSONValue?, opened: SyncOpenedBody?) {
-        XCTFail("receive arrives with the exchange half (U-07.3)")
+    func receive(status: Int, body: JSONValue?, opened: SyncOpenedBody?) throws {
+        try machine.receive(.answer(status: status, body: body), opened: opened)
     }
-    func receiveTransportError() { XCTFail("receive arrives with the exchange half (U-07.3)") }
+    func receiveTransportError() throws { try machine.receive(.transport) }
     func setRoot(has: Bool) { machine.setRoot(has) }
-    func signIn(subject: String) { machine.signIn(subject) }
+    func signIn(subject: String) throws { try machine.signIn(subject) }
     func signOut(discardUnsynced: Bool) { machine.signOut(discardUnsynced: discardUnsynced) }
-    func relaunch(journalLost: Bool) -> SyncScenarioMachine {
+    func relaunch(journalLost: Bool) throws -> SyncScenarioMachine {
         CloudSyncScenarioAdapter(
-            machine: CloudSyncMachine.relaunch(machine, opts, journalLost: journalLost), opts: opts)
+            machine: try CloudSyncMachine.relaunch(machine, opts, journalLost: journalLost), opts: opts)
     }
     func takeRequests() -> [JSONValue] { machine.takeRequests().map(\.json) }
     func takeEvents() -> [JSONValue] { machine.takeEvents().map(\.json) }

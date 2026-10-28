@@ -59,6 +59,9 @@ public enum SyncOnSignOut: String, Sendable, Equatable { case clear, keep }
 /// What discovery says about `services.sync.encryption`: `e2e`, `server`, or a Worker that omits it.
 public enum SyncAdvertised: String, Sendable, Equatable { case e2e, server, omitted }
 
+/// A host-supplied client id that does not match `SYNC_CLIENT_ID_PATTERN`.
+public enum SyncMachineError: Error, Equatable { case badClientId }
+
 public struct SyncMachineOptions {
     public var product: String
     public var catalog: SyncMachineCatalog
@@ -140,6 +143,12 @@ public struct SyncPartition: Sendable, Equatable {
     public var device: [String: SyncDeviceSetting] = [:]
     public var signedOutAt: Int?
     public var encryptionSince: Int?
+    /// The keys this machine has seen sealed (E2E latch), oldest first, at most `syncSealedLatchMax`.
+    public var sealedKeys: [String] = []
+    /// The lowest version this machine pushed or opened sealed.
+    public var sealedFloor: Int?
+    /// Quota minus usage on the last response, in bytes.
+    public var headroom: Double?
 
     public init(clientId: String?) { self.clientId = clientId }
 }
@@ -312,7 +321,7 @@ public final class CloudSyncMachine {
     var events: [SyncEvent] = []
     var s: SyncMachineState
 
-    public init(_ opts: SyncMachineOptions, persisted: SyncMachineState? = nil) {
+    public init(_ opts: SyncMachineOptions, persisted: SyncMachineState? = nil) throws {
         product = opts.product
         catalog = opts.catalog
         document = opts.document
@@ -332,7 +341,7 @@ public final class CloudSyncMachine {
         }
         if s.partitions[syncLocalPartition] == nil { s.partitions[syncLocalPartition] = SyncPartition(clientId: nil) }
         if let d = opts.discovery { advertised = d }
-        if let subject = s.subject { _ = partitionFor(subject) }
+        if let subject = s.subject { _ = try partitionFor(subject) }
         expirePartitions()
         pullWanted = true
         kick()
@@ -523,15 +532,17 @@ public final class CloudSyncMachine {
     }
 
     @discardableResult
-    public func signIn(_ subject: String) -> CallResult {
+    public func signIn(_ subject: String) throws -> CallResult {
         if s.subject == subject { return .ok }
+        // Created first, so a bad host client id throws before any state moves.
+        _ = try partitionFor(subject)
         if s.subject != nil { leave(.signOut, discard: false) }
         commitAllDrafts()
         let before = valueMap()
         s.blocked = nil
         signingOut = nil
         expirePartitions()
-        _ = partitionFor(subject)
+        _ = try partitionFor(subject)
         s.partitions[subject]!.signedOutAt = nil
         let local = s.partitions[syncLocalPartition]!
         let moving = syncSortedKeys(local.device.keys).filter { syncs($0) }
@@ -752,17 +763,18 @@ public final class CloudSyncMachine {
 
     var activeName: String { s.subject ?? syncLocalPartition }
 
-    func partitionFor(_ name: String) -> SyncPartition {
+    func partitionFor(_ name: String) throws -> SyncPartition {
         if let p = s.partitions[name] { return p }
-        let p = SyncPartition(clientId: name == syncLocalPartition ? nil : freshClientId())
+        let p = SyncPartition(clientId: name == syncLocalPartition ? nil : try freshClientId())
         s.partitions[name] = p
         return p
     }
 
-    func freshClientId() -> String {
+    func freshClientId() throws -> String {
         let cid = newClientId()
-        let ok = cid.range(of: SYNC_CLIENT_ID_PATTERN, options: .regularExpression) != nil
-        assert(ok, "bad clientId")
+        guard cid.range(of: SYNC_CLIENT_ID_PATTERN, options: .regularExpression) != nil else {
+            throw SyncMachineError.badClientId
+        }
         return cid
     }
 
@@ -1113,7 +1125,7 @@ public final class CloudSyncMachine {
     /// the device binding, `subject`, is device state and survives, and so does the `config.local`
     /// store behind `deviceLocal`).
     public static func relaunch(_ m: CloudSyncMachine, _ opts: SyncMachineOptions, journalLost: Bool = false)
-        -> CloudSyncMachine
+        throws -> CloudSyncMachine
     {
         let saved = m.persist()
         var o = opts
@@ -1125,8 +1137,8 @@ public final class CloudSyncMachine {
             o.subject = saved.subject
             o.deviceLocal = saved.deviceLocal
             o.imported = saved.imported
-            return CloudSyncMachine(o)
+            return try CloudSyncMachine(o)
         }
-        return CloudSyncMachine(o, persisted: saved)
+        return try CloudSyncMachine(o, persisted: saved)
     }
 }
